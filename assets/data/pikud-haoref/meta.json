@@ -1,0 +1,13 @@
+{
+  "source": {
+    "polygons": "https://raw.githubusercontent.com/yuvadm/pakarlib/main/pakarlib/data/build/all.geojson",
+    "names": "https://www.oref.org.il/districts/districts_heb.json + districts_eng.json",
+    "cityNames": "https://www.oref.org.il/districts/cities_heb.json + cities_eng.json",
+    "cityDissolveTool": "mapshaper dissolve by cityHeb"
+  },
+  "generatedAt": "2026-02-18T16:20:27.078Z",
+  "areaZoneCount": 1428,
+  "cityPolygonCount": 1396,
+  "zoneIndexCount": 1428,
+  "notes": "all.json stores high-resolution alert areas; city-polygons.json stores dissolved city boundaries for zoomed-out labeling."
+}

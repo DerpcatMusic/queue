@@ -1,0 +1,46 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "incremental": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "constants/**/*.ts",
+    "constants/**/*.tsx",
+    "convex/**/*.ts",
+    "convex/**/*.tsx",
+    "hooks/**/*.ts",
+    "hooks/**/*.tsx",
+    "i18n/**/*.ts",
+    "i18n/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "types/**/*.ts",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".expo/web",
+    "dist",
+    "build",
+    ".next",
+    "android",
+    "ios",
+    "scripts/android/sdk-proxy"
+  ]
+}

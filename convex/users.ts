@@ -1,0 +1,565 @@
+import { ConvexError, v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { requireIdentity, requireUserRole } from "./lib/auth";
+import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
+import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
+import {
+  normalizeCoordinates,
+  normalizeOptionalString,
+  normalizeRequiredString,
+  omitUndefined,
+  trimOptionalString,
+} from "./lib/validation";
+
+const MAX_SPORTS = 12;
+const MAX_ZONES = 25;
+const MAX_STUDIO_NAME_LENGTH = 120;
+const MAX_ADDRESS_LENGTH = 220;
+const MAX_PHONE_LENGTH = 20;
+
+export const syncCurrentUser = mutation({
+  args: {},
+  returns: v.id("users"),
+  handler: async (ctx) => {
+    const identity = await requireIdentity(ctx);
+    const now = Date.now();
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    const derivedName = [identity.givenName, identity.familyName]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const fullName =
+      identity.name ?? (derivedName.length > 0 ? derivedName : undefined);
+
+    if (existing) {
+      await ctx.db.patch("users", existing._id, {
+        ...omitUndefined({
+          email: identity.email,
+          fullName: existing.fullName ?? fullName,
+          phoneE164: identity.phoneNumber ?? existing.phoneE164,
+        }),
+        isActive: true,
+        updatedAt: now,
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("users", {
+      clerkId: identity.subject,
+      role: "pending",
+      onboardingComplete: false,
+      ...omitUndefined({
+        email: identity.email,
+        fullName,
+        phoneE164: identity.phoneNumber,
+      }),
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const getCurrentUser = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      _id: v.id("users"),
+      _creationTime: v.number(),
+      clerkId: v.string(),
+      role: v.union(
+        v.literal("pending"),
+        v.literal("instructor"),
+        v.literal("studio"),
+      ),
+      onboardingComplete: v.boolean(),
+      email: v.optional(v.string()),
+      fullName: v.optional(v.string()),
+      phoneE164: v.optional(v.string()),
+      isActive: v.boolean(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user || !user.isActive) {
+      return null;
+    }
+
+    return user;
+  },
+});
+
+export const setMyRole = mutation({
+  args: {
+    role: v.union(v.literal("instructor"), v.literal("studio")),
+  },
+  returns: v.id("users"),
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!existing) {
+      throw new ConvexError("User must be synced before role selection");
+    }
+
+    if (existing.role === args.role) {
+      return existing._id;
+    }
+
+    if (existing.role !== "pending") {
+      throw new ConvexError("Role is already set and cannot be changed");
+    }
+
+    await ctx.db.patch("users", existing._id, {
+      role: args.role,
+      onboardingComplete: false,
+      updatedAt: Date.now(),
+    });
+
+    return existing._id;
+  },
+});
+
+export const getMyInstructorSettings = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      instructorId: v.id("instructorProfiles"),
+      displayName: v.string(),
+      bio: v.optional(v.string()),
+      notificationsEnabled: v.boolean(),
+      hasExpoPushToken: v.boolean(),
+      hourlyRateExpectation: v.optional(v.number()),
+      sports: v.array(v.string()),
+      address: v.optional(v.string()),
+      latitude: v.optional(v.number()),
+      longitude: v.optional(v.number()),
+      calendarProvider: v.union(
+        v.literal("none"),
+        v.literal("google"),
+        v.literal("apple"),
+      ),
+      calendarSyncEnabled: v.boolean(),
+      calendarConnectedAt: v.optional(v.number()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user || !user.isActive || user.role !== "instructor") {
+      return null;
+    }
+
+    const profile = await ctx.db
+      .query("instructorProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) return null;
+
+    const sportsRows = await ctx.db
+      .query("instructorSports")
+      .withIndex("by_instructor_id", (q) => q.eq("instructorId", profile._id))
+      .collect();
+
+    const sports = [...new Set(sportsRows.map((row) => row.sport))].sort();
+
+    return {
+      instructorId: profile._id,
+      displayName: profile.displayName,
+      notificationsEnabled: profile.notificationsEnabled,
+      hasExpoPushToken: Boolean(profile.expoPushToken),
+      sports,
+      ...omitUndefined({
+        bio: profile.bio,
+        hourlyRateExpectation: profile.hourlyRateExpectation,
+        address: profile.address,
+        latitude: profile.latitude,
+        longitude: profile.longitude,
+      }),
+      calendarProvider: profile.calendarProvider ?? "none",
+      calendarSyncEnabled: profile.calendarSyncEnabled ?? false,
+      ...omitUndefined({ calendarConnectedAt: profile.calendarConnectedAt }),
+    };
+  },
+});
+
+export const updateMyInstructorSettings = mutation({
+  args: {
+    notificationsEnabled: v.boolean(),
+    hourlyRateExpectation: v.optional(v.number()),
+    sports: v.array(v.string()),
+    address: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    includeDetectedZone: v.optional(v.boolean()),
+    detectedZone: v.optional(v.string()),
+    calendarProvider: v.union(
+      v.literal("none"),
+      v.literal("google"),
+      v.literal("apple"),
+    ),
+    calendarSyncEnabled: v.boolean(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    sportsCount: v.number(),
+    notificationsEnabled: v.boolean(),
+    calendarProvider: v.union(
+      v.literal("none"),
+      v.literal("google"),
+      v.literal("apple"),
+    ),
+    calendarSyncEnabled: v.boolean(),
+    zoneAdded: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const user = await requireUserRole(ctx, ["instructor"]);
+
+    const profile = await ctx.db
+      .query("instructorProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) {
+      throw new ConvexError("Instructor profile not found");
+    }
+
+    if (
+      args.hourlyRateExpectation !== undefined &&
+      (!Number.isFinite(args.hourlyRateExpectation) || args.hourlyRateExpectation <= 0)
+    ) {
+      throw new ConvexError("hourlyRateExpectation must be greater than 0");
+    }
+
+    const sports = [...new Set(args.sports.map((sport) => normalizeSportType(sport)))];
+    if (sports.length === 0) {
+      throw new ConvexError("At least one sport is required");
+    }
+    if (sports.length > MAX_SPORTS) {
+      throw new ConvexError("Too many sports selected");
+    }
+    const address = normalizeOptionalString(
+      args.address,
+      MAX_ADDRESS_LENGTH,
+      "Address",
+    );
+    const { latitude, longitude } = normalizeCoordinates(
+      omitUndefined({
+        latitude: args.latitude,
+        longitude: args.longitude,
+      }),
+    );
+    const detectedZone = args.detectedZone
+      ? normalizeZoneId(args.detectedZone)
+      : undefined;
+
+    const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
+    const notificationsEnabled = args.notificationsEnabled && hasExpoPushToken;
+
+    const calendarProvider = args.calendarProvider;
+    const calendarSyncEnabled =
+      calendarProvider !== "none" && args.calendarSyncEnabled;
+    const calendarConnectedAt =
+      calendarProvider === "none"
+        ? undefined
+        : profile.calendarConnectedAt ?? now;
+
+    const [existingSports, existingZones] = await Promise.all([
+      ctx.db
+        .query("instructorSports")
+        .withIndex("by_instructor_id", (q) => q.eq("instructorId", profile._id))
+        .collect(),
+      ctx.db
+        .query("instructorZones")
+        .withIndex("by_instructor_id", (q) => q.eq("instructorId", profile._id))
+        .collect(),
+    ]);
+
+    await Promise.all(
+      existingSports.map((row) => ctx.db.delete("instructorSports", row._id)),
+    );
+    await Promise.all(
+      sports.map((sport) =>
+        ctx.db.insert("instructorSports", {
+          instructorId: profile._id,
+          sport,
+          createdAt: now,
+        }),
+      ),
+    );
+
+    let zoneAdded = false;
+    if (args.includeDetectedZone && detectedZone) {
+      const existingZoneSet = new Set(existingZones.map((zoneRow) => zoneRow.zone));
+      if (!existingZoneSet.has(detectedZone)) {
+        if (existingZoneSet.size >= MAX_ZONES) {
+          throw new ConvexError("Too many zones selected");
+        }
+        await ctx.db.insert("instructorZones", {
+          instructorId: profile._id,
+          zone: detectedZone,
+          createdAt: now,
+        });
+        zoneAdded = true;
+      }
+    }
+
+    await ctx.db.patch("instructorProfiles", profile._id, {
+      notificationsEnabled,
+      ...omitUndefined({
+        hourlyRateExpectation: args.hourlyRateExpectation,
+        address,
+        latitude,
+        longitude,
+      }),
+      calendarProvider,
+      calendarSyncEnabled,
+      ...(calendarConnectedAt !== undefined ? { calendarConnectedAt } : {}),
+      updatedAt: now,
+    });
+
+    await rebuildInstructorCoverage(ctx, profile._id);
+
+    return {
+      ok: true,
+      sportsCount: sports.length,
+      notificationsEnabled,
+      calendarProvider,
+      calendarSyncEnabled,
+      zoneAdded,
+    };
+  },
+});
+
+export const getMyStudioSettings = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      studioId: v.id("studioProfiles"),
+      studioName: v.string(),
+      address: v.string(),
+      zone: v.string(),
+      latitude: v.optional(v.number()),
+      longitude: v.optional(v.number()),
+      contactPhone: v.optional(v.string()),
+      notificationsEnabled: v.boolean(),
+      hasExpoPushToken: v.boolean(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user || !user.isActive || user.role !== "studio") {
+      return null;
+    }
+
+    const profile = await ctx.db
+      .query("studioProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) {
+      return null;
+    }
+
+    const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
+    const notificationsEnabled =
+      Boolean(profile.notificationsEnabled) && hasExpoPushToken;
+
+    return {
+      studioId: profile._id,
+      studioName: profile.studioName,
+      address: profile.address,
+      zone: profile.zone,
+      ...omitUndefined({
+        latitude: profile.latitude,
+        longitude: profile.longitude,
+        contactPhone: profile.contactPhone,
+      }),
+      notificationsEnabled,
+      hasExpoPushToken,
+    };
+  },
+});
+
+export const updateMyStudioSettings = mutation({
+  args: {
+    studioName: v.string(),
+    address: v.string(),
+    zone: v.string(),
+    contactPhone: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    zone: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await requireUserRole(ctx, ["studio"]);
+    const profile = await ctx.db
+      .query("studioProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+
+    if (!profile) {
+      throw new ConvexError("Studio profile not found");
+    }
+
+    const studioName = normalizeRequiredString(
+      args.studioName,
+      MAX_STUDIO_NAME_LENGTH,
+      "Studio name",
+    );
+    const address = normalizeRequiredString(args.address, MAX_ADDRESS_LENGTH, "Address");
+    const zone = normalizeZoneId(args.zone);
+    const contactPhone = normalizeOptionalString(
+      args.contactPhone,
+      MAX_PHONE_LENGTH,
+      "Contact phone",
+    );
+    const { latitude, longitude } = normalizeCoordinates(
+      omitUndefined({
+        latitude: args.latitude,
+        longitude: args.longitude,
+      }),
+    );
+
+    await ctx.db.patch("studioProfiles", profile._id, {
+      studioName,
+      address,
+      zone,
+      ...omitUndefined({
+        contactPhone,
+        latitude,
+        longitude,
+      }),
+      updatedAt: Date.now(),
+    });
+
+    return {
+      ok: true,
+      zone,
+    };
+  },
+});
+
+export const getMyStudioNotificationSettings = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      studioId: v.id("studioProfiles"),
+      notificationsEnabled: v.boolean(),
+      hasExpoPushToken: v.boolean(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user || !user.isActive || user.role !== "studio") {
+      return null;
+    }
+
+    const profile = await ctx.db
+      .query("studioProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) {
+      return null;
+    }
+
+    const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
+    const notificationsEnabled =
+      Boolean(profile.notificationsEnabled) && hasExpoPushToken;
+
+    return {
+      studioId: profile._id,
+      notificationsEnabled,
+      hasExpoPushToken,
+    };
+  },
+});
+
+export const updateMyStudioNotificationSettings = mutation({
+  args: {
+    notificationsEnabled: v.boolean(),
+    expoPushToken: v.optional(v.string()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    notificationsEnabled: v.boolean(),
+    hasExpoPushToken: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await requireUserRole(ctx, ["studio"]);
+    const profile = await ctx.db
+      .query("studioProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+
+    if (!profile) {
+      throw new ConvexError("Studio profile not found");
+    }
+
+    const nextPushToken =
+      trimOptionalString(args.expoPushToken) ?? profile.expoPushToken;
+    const hasExpoPushToken = Boolean(trimOptionalString(nextPushToken));
+    const notificationsEnabled = args.notificationsEnabled && hasExpoPushToken;
+
+    await ctx.db.patch("studioProfiles", profile._id, {
+      ...omitUndefined({ expoPushToken: nextPushToken }),
+      notificationsEnabled,
+      updatedAt: Date.now(),
+    });
+
+    return {
+      ok: true,
+      notificationsEnabled,
+      hasExpoPushToken,
+    };
+  },
+});

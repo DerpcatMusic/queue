@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+resolve_sdk_root_wsl() {
+  if [[ -n "${ANDROID_SDK_ROOT_REAL:-}" ]]; then
+    echo "$ANDROID_SDK_ROOT_REAL"
+    return 0
+  fi
+
+  if [[ -n "${ANDROID_SDK_ROOT_WIN:-}" ]]; then
+    wslpath "$ANDROID_SDK_ROOT_WIN"
+    return 0
+  fi
+
+  local sdk_root_win
+  sdk_root_win="$(powershell.exe -NoProfile -Command "if (\$env:ANDROID_SDK_ROOT) { Write-Output \$env:ANDROID_SDK_ROOT } else { Join-Path \$env:LOCALAPPDATA 'Android\\Sdk' }" | tr -d '\r')"
+  wslpath "$sdk_root_win"
+}
+
+SDK_ROOT_WSL="$(resolve_sdk_root_wsl)"
+ADB_EXE="$SDK_ROOT_WSL/platform-tools/adb.exe"
+
+if [[ ! -x "$ADB_EXE" ]]; then
+  echo "adb.exe not found at: $ADB_EXE" >&2
+  exit 1
+fi
+
+exec "$ADB_EXE" "$@"
