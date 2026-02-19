@@ -86,7 +86,8 @@
       ],
       "expo-notifications",
       "@maplibre/maplibre-react-native",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-asset"
     ],
     "extra": {
       "supportsRTL": true

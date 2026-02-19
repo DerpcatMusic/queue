@@ -1,4 +1,4 @@
-import { useClerk } from "@clerk/clerk-expo";
+import { useAuthActions } from "@convex-dev/auth/react";
 import { Image } from "expo-image";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
@@ -13,7 +13,7 @@ import { Fonts } from "@/constants/theme";
 import { useAppLanguage } from "@/hooks/use-app-language";
 
 export default function ExploreScreen() {
-  const { signOut } = useClerk();
+  const { signOut } = useAuthActions();
   const { t } = useTranslation();
   const { language, setLanguage } = useAppLanguage();
 

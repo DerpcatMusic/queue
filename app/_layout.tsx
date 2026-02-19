@@ -1,7 +1,6 @@
-import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
-import { tokenCache } from "@clerk/clerk-expo/token-cache";
+import "expo-dev-client";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { useFonts } from "expo-font";
 import Constants from "expo-constants";
 import {
@@ -18,15 +17,25 @@ import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from "react-native-reanimated";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as SecureStore from "expo-secure-store";
 
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import i18n, { bootstrapLocalization } from "@/i18n";
 import { getConvexClient, isConvexUrlConfigured } from "@/lib/convex";
+import { checkLocationRuntimeSupport } from "@/lib/location-zone";
 import { loadThemePreference } from "@/lib/theme-preference";
 
-const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const IGNORED_LOG_MESSAGES = [
+  "ProgressBarAndroid has been extracted from react-native core",
+  "SafeAreaView has been deprecated and will be removed",
+  "Clipboard has been extracted from react-native core",
+  "PushNotificationIOS has been extracted from react-native core",
+];
+
+LogBox.ignoreLogs(IGNORED_LOG_MESSAGES);
 
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
@@ -43,16 +52,6 @@ export default function RootLayout() {
   const convex = getConvexClient();
   const [fontsLoaded, fontError] = useFonts(MaterialIcons.font);
   const [fontLoadTimedOut, setFontLoadTimedOut] = useState(false);
-
-  useEffect(() => {
-    LogBox.ignoreLogs([
-      "Clerk: Clerk has been loaded with development keys.",
-      "ProgressBarAndroid has been extracted from react-native core",
-      "SafeAreaView has been deprecated and will be removed",
-      "Clipboard has been extracted from react-native core",
-      "PushNotificationIOS has been extracted from react-native core",
-    ]);
-  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -96,6 +95,32 @@ export default function RootLayout() {
     };
 
     void setupNotifications();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkLocationSupport = async () => {
+      const support = await checkLocationRuntimeSupport();
+      if (cancelled || support.available || support.error?.code !== "native_module_missing") {
+        return;
+      }
+
+      Alert.alert(
+        "Location module unavailable",
+        "This build is missing expo-location. Rebuild and reinstall the dev client with `bunx expo run:android`, then relaunch the app.",
+      );
+    };
+
+    void checkLocationSupport();
+
     return () => {
       cancelled = true;
     };
@@ -159,17 +184,6 @@ export default function RootLayout() {
     return <LoadingScreen />;
   }
 
-  if (!clerkPublishableKey) {
-    return (
-      <View style={styles.errorContainer}>
-        <ThemedText type="title">Configuration Error</ThemedText>
-        <ThemedText>
-          Missing `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` in your environment.
-        </ThemedText>
-      </View>
-    );
-  }
-
   if (!isConvexUrlConfigured || !convex) {
     return (
       <View style={styles.errorContainer}>
@@ -181,42 +195,45 @@ export default function RootLayout() {
     );
   }
 
-  const nativeClerkProviderProps =
-    Platform.OS === "web" || !tokenCache
-      ? {}
-      : {
-          tokenCache,
-        };
+  const secureStorage = {
+    getItem: SecureStore.getItemAsync,
+    setItem: SecureStore.setItemAsync,
+    removeItem: SecureStore.deleteItemAsync,
+  };
+  const nativeStorage =
+    Platform.OS === "android" || Platform.OS === "ios"
+      ? secureStorage
+      : null;
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <ClerkProvider
-        publishableKey={clerkPublishableKey}
-        {...nativeClerkProviderProps}
-      >
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-          <ThemeProvider
-            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-          >
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="onboarding"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="modal"
-                options={{
-                  presentation: "modal",
-                  title: i18n.t("modal.headerTitle"),
-                }}
-              />
-            </Stack>
-            <StatusBar style="auto" translucent={false} />
-          </ThemeProvider>
-        </ConvexProviderWithClerk>
-      </ClerkProvider>
+      <SafeAreaProvider>
+        <ConvexAuthProvider
+          client={convex}
+          {...(nativeStorage ? { storage: nativeStorage } : {})}
+        >
+            <ThemeProvider
+              value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+            >
+              <Stack>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="onboarding"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="modal"
+                  options={{
+                    presentation: "modal",
+                    title: i18n.t("modal.headerTitle"),
+                  }}
+                />
+              </Stack>
+              <StatusBar style="auto" translucent={false} />
+            </ThemeProvider>
+        </ConvexAuthProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

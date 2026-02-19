@@ -5,7 +5,7 @@ type NotificationPermissionsStatus = Awaited<
   ReturnType<NotificationsModule["getPermissionsAsync"]>
 >;
 
-export function hasGrantedNotificationPermission(
+function hasGrantedNotificationPermission(
   Notifications: NotificationsModule,
   permissionStatus: NotificationPermissionsStatus,
 ): boolean {

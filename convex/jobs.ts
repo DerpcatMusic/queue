@@ -10,7 +10,8 @@ import {
   SESSION_LANGUAGES,
 } from "./constants";
 import { requireUserRole } from "./lib/auth";
-import { isKnownZoneId, normalizeSportType } from "./lib/domainValidation";
+import { isKnownZoneId, normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
+import { hasCoverageKey, loadInstructorEligibility } from "./lib/instructorEligibility";
 import { assertPositiveInteger, omitUndefined, trimOptionalString } from "./lib/validation";
 
 const APPLICATION_STATUS_SET = new Set<string>(APPLICATION_STATUSES);
@@ -179,7 +180,9 @@ export const postJob = mutation({
     const now = Date.now();
 
     const sport = normalizeSportType(args.sport);
-    const studioZone = normalizeRequired(studio.zone, "studio zone");
+    const studioZone = normalizeZoneId(
+      normalizeRequired(studio.zone, "studio zone"),
+    );
     const timeZone = normalizeTimeZone(args.timeZone);
 
     assertPositiveNumber(args.pay, "pay");
@@ -320,18 +323,8 @@ export const getAvailableJobsForInstructor = query({
     const instructor = await requireInstructorProfile(ctx);
     const now = args.now ?? Date.now();
 
-    const [sports, zones] = await Promise.all([
-      ctx.db
-        .query("instructorSports")
-        .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructor._id))
-        .collect(),
-      ctx.db
-        .query("instructorZones")
-        .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructor._id))
-        .collect(),
-    ]);
-
-    if (sports.length === 0 || zones.length === 0) {
+    const eligibility = await loadInstructorEligibility(ctx, instructor._id);
+    if (eligibility.coverageCount === 0) {
       return [];
     }
 
@@ -339,36 +332,32 @@ export const getAvailableJobsForInstructor = query({
     assertPositiveInteger(rawLimit, "limit");
     const limit = Math.min(rawLimit, 200);
 
-    const uniqueSports = [...new Set(sports.map((row) => row.sport))];
-    const zoneSet = new Set(
-      zones.map((row) => trimOptionalString(row.zone) ?? row.zone),
-    );
-    const fetchPerSport = Math.min(
-      Math.max(Math.ceil((limit * 3) / uniqueSports.length), 30),
-      200,
+    const fetchPerPair = Math.min(
+      Math.max(Math.ceil((limit * 2) / eligibility.coveragePairs.length), 8),
+      80,
     );
 
-    const openJobsBySport = await Promise.all(
-      uniqueSports.map((sport) =>
+    const openJobsByCoveragePair = await Promise.all(
+      eligibility.coveragePairs.map(({ sport, zone }) =>
         ctx.db
           .query("jobs")
-          .withIndex("by_sport_and_status", (q) =>
-            q.eq("sport", sport).eq("status", "open"),
+          .withIndex("by_sport_zone_status_postedAt", (q) =>
+            q.eq("sport", sport).eq("zone", zone).eq("status", "open"),
           )
           .order("desc")
-          .take(fetchPerSport),
+          .take(fetchPerPair),
       ),
     );
 
     const matchingById = new Map<Id<"jobs">, Doc<"jobs">>();
-    for (const jobsForSport of openJobsBySport) {
-      for (const job of jobsForSport) {
+    for (const jobsForPair of openJobsByCoveragePair) {
+      for (const job of jobsForPair) {
         const normalizedJobZone = trimOptionalString(job.zone);
-        if (
-          normalizedJobZone &&
-          isKnownZoneId(normalizedJobZone) &&
-          !zoneSet.has(normalizedJobZone)
-        ) {
+        if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
+          continue;
+        }
+        const zoneSetForSport = eligibility.coverageBySport.get(job.sport);
+        if (!zoneSetForSport?.has(normalizedJobZone)) {
           continue;
         }
         if (job.startTime <= now) continue;
@@ -562,15 +551,8 @@ export const applyToJob = mutation({
   handler: async (ctx, args) => {
     const instructor = await requireInstructorProfile(ctx);
 
-    const [sports, zones, job] = await Promise.all([
-      ctx.db
-        .query("instructorSports")
-        .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructor._id))
-        .collect(),
-      ctx.db
-        .query("instructorZones")
-        .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructor._id))
-        .collect(),
+    const [eligibility, job] = await Promise.all([
+      loadInstructorEligibility(ctx, instructor._id),
       ctx.db.get("jobs", args.jobId),
     ]);
 
@@ -585,19 +567,11 @@ export const applyToJob = mutation({
       throw new ConvexError("Job has already started");
     }
 
-    const sportSet = new Set(sports.map((row) => row.sport));
-    const zoneSet = new Set(
-      zones.map((row) => trimOptionalString(row.zone) ?? row.zone),
-    );
     const normalizedJobZone = trimOptionalString(job.zone);
-    if (!sportSet.has(job.sport)) {
-      throw new ConvexError("You are not eligible for this job");
+    if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
+      throw new ConvexError("Job has invalid zone configuration");
     }
-    if (
-      normalizedJobZone !== undefined &&
-      isKnownZoneId(normalizedJobZone) &&
-      !zoneSet.has(normalizedJobZone)
-    ) {
+    if (!hasCoverageKey(eligibility, job.sport, normalizedJobZone)) {
       throw new ConvexError("You are not eligible for this job");
     }
 

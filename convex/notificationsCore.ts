@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import { internalMutation, internalQuery } from "./_generated/server";
+import { isKnownZoneId } from "./lib/domainValidation";
 import { omitUndefined } from "./lib/validation";
 
 export const getJobAndEligibleInstructors = internalQuery({
@@ -24,6 +25,15 @@ export const getJobAndEligibleInstructors = internalQuery({
     const job = await ctx.db.get("jobs", args.jobId);
     if (!job || job.status !== "open") {
       return null;
+    }
+    if (!isKnownZoneId(job.zone)) {
+      return {
+        jobId: job._id,
+        sport: job.sport,
+        zone: job.zone,
+        startTime: job.startTime,
+        recipients: [],
+      };
     }
 
     const coverageRows = await ctx.db

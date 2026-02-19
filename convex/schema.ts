@@ -1,9 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
+import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  ...authTables,
   users: defineTable({
-    clerkId: v.string(),
     role: v.union(
       v.literal("pending"),
       v.literal("instructor"),
@@ -13,11 +14,16 @@ export default defineSchema({
     email: v.optional(v.string()),
     fullName: v.optional(v.string()),
     phoneE164: v.optional(v.string()),
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_clerk_id", ["clerkId"])
     .index("by_role", ["role"]),
 
   instructorProfiles: defineTable({
@@ -130,6 +136,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_status_postedAt", ["status", "postedAt"])
     .index("by_sport_and_status", ["sport", "status"])
+    .index("by_sport_zone_status_postedAt", ["sport", "zone", "status", "postedAt"])
     .index("by_zone_and_status", ["zone", "status"]),
 
   jobApplications: defineTable({

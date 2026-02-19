@@ -1,16 +1,8 @@
-import type { AuthConfig } from "convex/server";
-
-const clerkJwtIssuerDomain = process.env.CLERK_JWT_ISSUER_DOMAIN;
-
-if (!clerkJwtIssuerDomain) {
-  throw new Error("Missing CLERK_JWT_ISSUER_DOMAIN in Convex environment");
-}
-
 export default {
   providers: [
     {
-      domain: clerkJwtIssuerDomain,
+      domain: process.env.CONVEX_SITE_URL,
       applicationID: "convex",
     },
   ],
-} satisfies AuthConfig;
+};

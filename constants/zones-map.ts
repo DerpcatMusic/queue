@@ -42,7 +42,7 @@ type CityFeatureCollection = GeoJSON.FeatureCollection<
   CityFeatureProperties
 >;
 
-export type ZoneIndexEntry = {
+type ZoneIndexEntry = {
   id: string;
   featureIndex: number;
   bbox: [number, number, number, number];
@@ -66,9 +66,9 @@ const zoneIndexFile = zoneIndexFileRaw as ZoneIndexFile;
 
 export const PIKUD_ZONE_GEOJSON = zoneGeoJson;
 export const PIKUD_CITY_GEOJSON = cityGeoJson;
-export const PIKUD_ZONE_FEATURES = zoneGeoJson.features ?? [];
-export const PIKUD_ZONE_INDEX = zoneIndexFile.zones ?? [];
-export const ISRAEL_MAP_BOUNDS = zoneIndexFile.bounds;
+const PIKUD_ZONE_FEATURES = zoneGeoJson.features ?? [];
+const PIKUD_ZONE_INDEX = zoneIndexFile.zones ?? [];
+const ISRAEL_MAP_BOUNDS = zoneIndexFile.bounds;
 // Keep the camera inside covered PMTiles area and reduce drift into empty ocean space.
 export const ISRAEL_MAP_INTERACTION_BOUNDS = {
   sw: [ISRAEL_MAP_BOUNDS.sw[0] + 0.32, ISRAEL_MAP_BOUNDS.sw[1]] as [
@@ -116,7 +116,7 @@ export function getZoneIndexEntry(zoneId: string): ZoneIndexEntry | undefined {
   return zoneIndexById.get(zoneId);
 }
 
-export function getZoneFeature(zoneId: string): ZoneFeature | undefined {
+function getZoneFeature(zoneId: string): ZoneFeature | undefined {
   const zone = getZoneIndexEntry(zoneId);
   if (!zone) return undefined;
 

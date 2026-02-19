@@ -55,10 +55,10 @@ const he = {
     },
     errors: {
       authInitTimeoutTitle: "תם הזמן לטעינת אימות",
-      authInitTimeoutBody: "Clerk לא סיים להיטען. בדקו רשת ומפתח publishable.",
+      authInitTimeoutBody: "Convex Auth לא סיים להיטען. בדקו רשת ומפתח publishable.",
       convexAuthTimeoutTitle: "תם הזמן לאימות Convex",
       convexAuthTimeoutBody:
-        "Convex לא קיבל טוקן סשן תקין מ-Clerk. ודאו תבנית JWT בשם `convex` ואת `CLERK_JWT_ISSUER_DOMAIN` ב-Convex.",
+        "Convex לא קיבל טוקן סשן תקין מ-Convex Auth. ודאו תבנית JWT בשם `convex` ואת `Convex Auth_JWT_ISSUER_DOMAIN` ב-Convex.",
       accountQueryTimeoutTitle: "תם הזמן לשאילתת חשבון",
       accountQueryTimeoutBody:
         "שאילתת המשתמש ב-Convex לא הושלמה. ודאו URL של Convex ותצורת אימות.",
@@ -172,6 +172,16 @@ const he = {
         hourlyRatePositive: "ציפיית השכר חייבת להיות גדולה מ-0.",
         addressRequired: "כתובת היא שדה חובה.",
         locationResolveFailed: "איתור האזור מהמיקום נכשל.",
+        locationNativeMissing:
+          "מודול המיקום לא זמין בבילד הזה. בנו מחדש והתקינו שוב את dev client.",
+        locationPermissionDenied: "הרשאת מיקום נדחתה.",
+        locationPermissionBlocked:
+          "הרשאת מיקום חסומה. אפשרו מיקום בהגדרות המערכת.",
+        locationServicesDisabled:
+          "שירותי המיקום כבויים במכשיר. הפעילו GPS ונסו שוב.",
+        locationTimeout: "בקשת המיקום נכשלה עקב Timeout. נסו שוב.",
+        locationAddressNotFound: "לא נמצאה כתובת.",
+        locationOutsideSupportedZone: "המיקום מחוץ לאזורי השירות הנתמכים.",
         studioNameRequired: "שם סטודיו הוא שדה חובה.",
         saveFailed: "שמירת ההגדרות נכשלה.",
       },
@@ -211,7 +221,7 @@ const he = {
     additionalStepRequired: "נדרש שלב אימות נוסף.",
     additionalStepRequiredWithStatus:
       "נדרש שלב אימות נוסף (סטטוס: {{status}}).",
-    sessionTaskPending: "לסשן נדרש שלב נוסף ב-Clerk (משימה: {{task}}).",
+    sessionTaskPending: "לסשן נדרש שלב נוסף ב-Convex Auth (משימה: {{task}}).",
     secondFactorUnavailable: "נדרש אימות דו-שלבי, אבל לא נמצאה שיטה נתמכת.",
     unexpectedError: "אירעה שגיאה. נסו שוב.",
     accountSectionTitle: "חשבון",
@@ -226,7 +236,9 @@ const he = {
     roleInstructorDescription: "מציאת שיעורים פתוחים לפי תחומים ואזורי הגעה.",
     roleStudioTitle: "סטודיו",
     roleStudioDescription: "פרסום שיעורים וגיוס מדריכים פרילנס במהירות.",
+    roleSelectHint: "בחרו תפקיד כדי להמשיך.",
     studioDetailsTitle: "פרטי סטודיו",
+    instructorDetailsTitle: "פרטי מדריך/ה",
     instructorStep: "שלב {{current}} מתוך {{total}}",
     displayName: "שם להצגה",
     bioOptional: "ביוגרפיה קצרה (אופציונלי)",
@@ -234,6 +246,13 @@ const he = {
     studioName: "שם הסטודיו",
     studioAddress: "כתובת הסטודיו",
     phoneOptional: "טלפון (E.164, אופציונלי)",
+    sportsTitle: "תחומי הדרכה",
+    map: {
+      instructorTitle: "מפת אזורי הדרכה",
+      instructorHint: "השתמשו ב-GPS או לחצו על אזורים כדי לבנות אזור שירות.",
+      studioTitle: "מפת מיקום הסטודיו",
+      studioHint: "השתמשו ב-GPS או לחצו על המפה כדי למקם את הסטודיו.",
+    },
     location: {
       instructorAddressOptional: "הכתובת שלכם (אופציונלי)",
       findByAddress: "איתור לפי כתובת",
@@ -264,6 +283,7 @@ const he = {
       requestFailed: "בקשת הרשאת התראות נכשלה.",
     },
     errors: {
+      roleRequired: "בחרו תפקיד כדי להמשיך.",
       displayNameRequired: "שם להצגה הוא שדה חובה.",
       selectAtLeastOneSport: "בחרו לפחות תחום אחד.",
       selectAtLeastOneZone: "בחרו לפחות אזור אחד.",
@@ -273,6 +293,14 @@ const he = {
       instructorAddressRequired: "יש להזין כתובת קודם.",
       failedToResolveAddress: "איתור האזור לפי כתובת נכשל.",
       failedToResolveGps: "איתור האזור לפי GPS נכשל.",
+      locationNativeMissing:
+        "מודול המיקום חסר בגרסה הזו. בנו והתקינו מחדש Dev Client.",
+      locationPermissionDenied: "הרשאת מיקום נדחתה.",
+      locationPermissionBlocked: "הרשאת מיקום חסומה. אפשרו אותה בהגדרות המכשיר.",
+      locationServicesDisabled: "שירותי המיקום כבויים במכשיר. הפעילו GPS ונסו שוב.",
+      locationTimeout: "בקשת המיקום נכשלה עקב Timeout. נסו שוב.",
+      locationAddressNotFound: "לא נמצאה כתובת.",
+      locationOutsideSupportedZone: "המיקום מחוץ לאזורי השירות הנתמכים.",
       tooManyZones: "נבחרו יותר מדי אזורים.",
       failedToComplete: "השלמת ההגדרה נכשלה.",
     },
@@ -292,7 +320,7 @@ const he = {
       "הקישו על אזור כדי להפעיל/לכבות. לחיצה 100ms מאפשרת גרירת מפה.",
     devBuildRequiredTitle: "המפה דורשת Build לפיתוח",
     devBuildRequiredBody:
-      "הרכיב משתמש במודולים נייטיב שאינם זמינים ב-Expo Go. הריצו `bun run android:wsl` או Dev Client.",
+      "הרכיב משתמש במודולים נייטיב שאינם זמינים ב-Expo Go. הריצו `bun run android` או Dev Client.",
     selectedZones: "אזורים שנבחרו: {{count}}",
     noMatchingZones: "לא נמצאו אזורים תואמים.",
     typeToSearchHint: "התחילו להקליד לחיפוש, או גררו למטה להצגת הרשימה.",

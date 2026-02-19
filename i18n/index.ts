@@ -25,12 +25,12 @@ export function normalizeLanguage(languageLike?: string | null): AppLanguage {
   return "en";
 }
 
-export function getDeviceLanguage(): AppLanguage {
+function getDeviceLanguage(): AppLanguage {
   const primaryLocale = getLocales()[0]?.languageCode;
   return normalizeLanguage(primaryLocale);
 }
 
-export function isRtlLanguage(language: AppLanguage): boolean {
+function isRtlLanguage(language: AppLanguage): boolean {
   return RTL_LANGUAGES.has(language);
 }
 

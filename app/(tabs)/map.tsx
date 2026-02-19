@@ -3,10 +3,12 @@ import { InstructorZonesMap } from "@/components/maps/instructor-zones-map";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { BrandSurface } from "@/components/ui/brand-surface";
+import { ExpressiveFab } from "@/components/ui/expressive";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Brand } from "@/constants/brand";
 import { ZONE_OPTIONS } from "@/constants/zones";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useNativeTabLayout } from "@/hooks/use-native-tab-layout";
 import { useMutation, useQuery } from "convex/react";
 import Constants from "expo-constants";
 import { Redirect } from "expo-router";
@@ -47,6 +49,7 @@ export default function MapTabScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const palette = Brand[colorScheme];
   const insets = useSafeAreaInsets();
+  const tabLayout = useNativeTabLayout();
   const language = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
   const isRtl = i18n.dir(i18n.resolvedLanguage) === "rtl";
   const isExpoGoNative =
@@ -274,7 +277,7 @@ export default function MapTabScreen() {
           <View
             style={[
               styles.expoGoWrap,
-              { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 },
+              { paddingTop: insets.top, paddingBottom: tabLayout.bottomInset },
             ]}
           >
             <BrandSurface tone="alt">
@@ -437,22 +440,20 @@ export default function MapTabScreen() {
               </View>
             </Animated.View>
 
-            <Pressable
+            <ExpressiveFab
+              selected={isZoneModeEnabled}
+              disabled={isSaving}
+              {...(selectedZoneIds.length > 0
+                ? { badgeLabel: String(selectedZoneIds.length) }
+                : {})}
               style={[
                 styles.selectFab,
                 {
-                  bottom: insets.bottom + 98,
+                  bottom: tabLayout.bottomOverlayInset,
                   [isRtl ? "left" : "right"]: 16,
-                  backgroundColor: isZoneModeEnabled
-                    ? palette.primary
-                    : palette.surface,
-                  borderColor: isZoneModeEnabled
-                    ? palette.primaryPressed
-                    : palette.border,
                   opacity: isSaving ? 0.72 : 1,
                 },
               ]}
-              disabled={isSaving}
               onPress={() => {
                 if (isZoneModeEnabled) {
                   closeZoneMode();
@@ -461,38 +462,18 @@ export default function MapTabScreen() {
                 setErrorMessage(null);
                 setIsZoneModeEnabled(true);
               }}
-            >
-              <IconSymbol
-                name={
-                  isZoneModeEnabled ? "checkmark.circle.fill" : "slider.horizontal.3"
-                }
-                size={24}
-                color={isZoneModeEnabled ? palette.onPrimary : palette.text}
-              />
-              {selectedZoneIds.length > 0 ? (
-                <View
-                  style={[
-                    styles.countBadge,
-                    {
-                      backgroundColor: isZoneModeEnabled
-                        ? palette.onPrimary
-                        : palette.primary,
-                    },
-                  ]}
-                >
-                  <ThemedText
-                    type="defaultSemiBold"
-                    style={{
-                      color: isZoneModeEnabled ? palette.primary : palette.onPrimary,
-                      fontSize: 11,
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {selectedZoneIds.length}
-                  </ThemedText>
-                </View>
-              ) : null}
-            </Pressable>
+              icon={
+                <IconSymbol
+                  name={
+                    isZoneModeEnabled
+                      ? "checkmark.circle.fill"
+                      : "slider.horizontal.3"
+                  }
+                  size={24}
+                  color={isZoneModeEnabled ? palette.onPrimary : palette.text}
+                />
+              }
+            />
           </>
         )}
       </View>
@@ -597,24 +578,7 @@ const styles = StyleSheet.create({
   },
   selectFab: {
     position: "absolute",
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    borderCurve: "continuous",
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
     overflow: "visible",
-  },
-  countBadge: {
-    position: "absolute",
-    top: -5,
-    right: -5,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
+    zIndex: 12,
   },
 });

@@ -60,10 +60,10 @@ const en = {
     errors: {
       authInitTimeoutTitle: "Auth initialization timeout",
       authInitTimeoutBody:
-        "Clerk did not finish loading. Check network and publishable key.",
+        "Auth provider did not finish loading. Check network and auth configuration.",
       convexAuthTimeoutTitle: "Convex auth timeout",
       convexAuthTimeoutBody:
-        "Convex did not receive a usable Clerk session token. Verify Clerk JWT template `convex` and Convex `CLERK_JWT_ISSUER_DOMAIN`.",
+        "Convex did not receive a usable auth session token. Verify Convex Auth environment and deployment.",
       accountQueryTimeoutTitle: "Account query timeout",
       accountQueryTimeoutBody:
         "Convex user query did not resolve. Verify Convex URL and auth configuration.",
@@ -179,6 +179,17 @@ const en = {
         hourlyRatePositive: "Hourly expectation must be greater than 0.",
         addressRequired: "Address is required.",
         locationResolveFailed: "Failed to resolve zone from location.",
+        locationNativeMissing:
+          "Location module is unavailable in this build. Rebuild and reinstall the dev client.",
+        locationPermissionDenied: "Location permission was denied.",
+        locationPermissionBlocked:
+          "Location permission is blocked. Enable location in system settings.",
+        locationServicesDisabled:
+          "Location services are disabled on this device. Enable GPS and try again.",
+        locationTimeout: "Location request timed out. Try again.",
+        locationAddressNotFound: "Address was not found.",
+        locationOutsideSupportedZone:
+          "This location is outside supported service zones.",
         studioNameRequired: "Studio name is required.",
         saveFailed: "Failed to save settings.",
       },
@@ -234,7 +245,7 @@ const en = {
     additionalStepRequiredWithStatus:
       "Additional verification is required (status: {{status}}).",
     sessionTaskPending:
-      "Your session needs one more step in Clerk (task: {{task}}).",
+      "Your session needs one more step (task: {{task}}).",
     sessionActivationFailed:
       "Could not activate your session. Please sign in after verification.",
     secondFactorUnavailable:
@@ -252,7 +263,9 @@ const en = {
     roleInstructorDescription: "Find open classes that match your sports and travel zones.",
     roleStudioTitle: "Studio",
     roleStudioDescription: "Post classes and hire freelance instructors quickly.",
+    roleSelectHint: "Choose a role to continue.",
     studioDetailsTitle: "Studio details",
+    instructorDetailsTitle: "Instructor details",
     instructorStep: "Step {{current}} of {{total}}",
     displayName: "Display name",
     bioOptional: "Short bio (optional)",
@@ -260,6 +273,13 @@ const en = {
     studioName: "Studio name",
     studioAddress: "Studio address",
     phoneOptional: "Phone (E.164, optional)",
+    sportsTitle: "Sports",
+    map: {
+      instructorTitle: "Teaching zones map",
+      instructorHint: "Use GPS or tap zones to build your service area.",
+      studioTitle: "Studio pin map",
+      studioHint: "Use GPS or tap the map to place your studio location.",
+    },
     location: {
       instructorAddressOptional: "Your address (optional)",
       findByAddress: "Find from address",
@@ -290,6 +310,7 @@ const en = {
       requestFailed: "Failed to request push permission.",
     },
     errors: {
+      roleRequired: "Select a role to continue.",
       displayNameRequired: "Display name is required.",
       selectAtLeastOneSport: "Select at least one sport.",
       selectAtLeastOneZone: "Select at least one zone.",
@@ -299,6 +320,17 @@ const en = {
       instructorAddressRequired: "Enter an address first.",
       failedToResolveAddress: "Failed to resolve zone from address.",
       failedToResolveGps: "Failed to resolve zone from GPS.",
+      locationNativeMissing:
+        "Location module is unavailable in this build. Rebuild and reinstall the dev client.",
+      locationPermissionDenied: "Location permission was denied.",
+      locationPermissionBlocked:
+        "Location permission is blocked. Enable location in system settings.",
+      locationServicesDisabled:
+        "Location services are disabled on this device. Enable GPS and try again.",
+      locationTimeout: "Location request timed out. Try again.",
+      locationAddressNotFound: "Address was not found.",
+      locationOutsideSupportedZone:
+        "This location is outside supported service zones.",
       tooManyZones: "You selected too many zones.",
       failedToComplete: "Failed to complete onboarding.",
     },
@@ -317,7 +349,7 @@ const en = {
     zoneModeHint: "Tap zones to toggle on/off. Hold 100ms to drag map.",
     devBuildRequiredTitle: "Map requires a development build",
     devBuildRequiredBody:
-      "This map uses native modules not available in Expo Go. Use `bun run android:wsl` or a dev client build.",
+      "This map uses native modules not available in Expo Go. Use `bun run android` or a dev client build.",
     selectedZones: "Selected zones: {{count}}",
     noMatchingZones: "No matching zones.",
     typeToSearchHint: "Type to search zones, or drag down to expand list.",

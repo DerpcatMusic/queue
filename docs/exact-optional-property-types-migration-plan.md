@@ -34,7 +34,7 @@ This prevents subtle bugs where we accidentally write `undefined` into patch pay
    - `bunx tsc --noEmit --pretty false > /tmp/ts-baseline.txt`
 3. Record key metrics:
    - Type errors: `wc -l /tmp/ts-baseline.txt`
-   - Build/runtime smoke status (web + android:wsl)
+  - Build/runtime smoke status (web + android)
 
 Why: prevent “moving target” debugging and guarantee we can attribute regressions.
 

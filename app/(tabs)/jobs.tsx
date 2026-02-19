@@ -4,8 +4,11 @@ import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { BrandButton } from "@/components/ui/brand-button";
+import { ExpressiveFab } from "@/components/ui/expressive";
 import { Brand } from "@/constants/brand";
+import { getZoneLabel } from "@/constants/zones";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useNativeTabLayout } from "@/hooks/use-native-tab-layout";
 import {
   clearLessonReminder,
   getLessonReminder,
@@ -22,13 +25,14 @@ import { useTranslation } from "react-i18next";
 import {
   Platform,
   Pressable,
+  I18nManager,
   ScrollView,
   StyleSheet,
   TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type DateTimePickerAndroidLike = {
   open: (options: {
@@ -206,6 +210,46 @@ type OptionChipProps = {
   selectedTextColor: string;
 };
 
+type NoticeBannerProps = {
+  tone: "success" | "error";
+  message: string;
+  onDismiss: () => void;
+  borderColor: string;
+  backgroundColor: string;
+  textColor: string;
+  iconColor: string;
+};
+
+function NoticeBanner({
+  tone,
+  message,
+  onDismiss,
+  borderColor,
+  backgroundColor,
+  textColor,
+  iconColor,
+}: NoticeBannerProps) {
+  return (
+    <View style={[styles.noticeBanner, { borderColor, backgroundColor }]}>
+      <MaterialIcons
+        name={tone === "success" ? "check-circle" : "error-outline"}
+        size={18}
+        color={iconColor}
+      />
+      <ThemedText selectable style={[styles.noticeCopy, { color: textColor }]}>
+        {message}
+      </ThemedText>
+      <Pressable
+        hitSlop={8}
+        onPress={onDismiss}
+        style={styles.noticeDismiss}
+      >
+        <MaterialIcons name="close" size={16} color={textColor} />
+      </Pressable>
+    </View>
+  );
+}
+
 function OptionChip({
   label,
   selected,
@@ -240,9 +284,11 @@ export default function JobsTabScreen() {
   const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme() ?? "light";
   const palette = Brand[colorScheme];
-  const insets = useSafeAreaInsets();
+  const tabLayout = useNativeTabLayout();
   const { height: windowHeight } = useWindowDimensions();
+  const isRtl = I18nManager.isRTL;
   const locale = i18n.resolvedLanguage ?? "en";
+  const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
 
   const currentUser = useQuery(api.users.getCurrentUser);
 
@@ -382,7 +428,7 @@ export default function JobsTabScreen() {
     if (!statusMessage) return;
     const timer = setTimeout(() => {
       setStatusMessage(null);
-    }, 2600);
+    }, 4200);
     return () => {
       clearTimeout(timer);
     };
@@ -465,9 +511,10 @@ export default function JobsTabScreen() {
   const nonAcceptedApplications = (myApplications ?? [])
     .filter((row) => row.status !== "accepted")
     .sort((a, b) => b.appliedAt - a.appliedAt);
+  const openMatchesCount = availableJobs?.length ?? 0;
   const jobsEmptyMinHeight = Math.max(
     260,
-    Math.round(windowHeight - insets.top - insets.bottom - 140),
+    Math.round(windowHeight - tabLayout.topInset - tabLayout.bottomInset - 140),
   );
 
   if (currentUser === undefined) {
@@ -771,26 +818,128 @@ export default function JobsTabScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
+    <SafeAreaView
+      edges={["top"]}
+      style={[styles.screen, { backgroundColor: palette.appBg }]}
+    >
       <ScrollView
         style={styles.screen}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: insets.bottom + 32 },
+          { paddingBottom: tabLayout.bottomOverlayInset },
         ]}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
+        stickyHeaderIndices={currentUser.role === "instructor" ? [1] : undefined}
       >
-        {errorMessage ? (
+        <View>
+          {errorMessage ? (
+            <View style={styles.noticeWrap}>
+              <NoticeBanner
+                tone="error"
+                message={errorMessage}
+                onDismiss={() => setErrorMessage(null)}
+                borderColor={palette.borderStrong}
+                backgroundColor={palette.surface}
+                textColor={palette.danger}
+                iconColor={palette.danger}
+              />
+            </View>
+          ) : null}
+
+          {statusMessage ? (
+            <View style={styles.noticeWrap}>
+              <NoticeBanner
+                tone="success"
+                message={statusMessage}
+                onDismiss={() => setStatusMessage(null)}
+                borderColor={palette.borderStrong}
+                backgroundColor={palette.surface}
+                textColor={palette.text}
+                iconColor={palette.success}
+              />
+            </View>
+          ) : null}
+        </View>
+
+        {currentUser.role === "instructor" ? (
           <View
             style={[
-              styles.messageRow,
-              { borderBottomColor: palette.border, backgroundColor: palette.surfaceAlt },
+              styles.focusStickyWrap,
+              {
+                borderBottomColor: palette.border,
+                backgroundColor: palette.surfaceAlt,
+              },
             ]}
           >
-            <ThemedText selectable style={{ color: palette.danger }}>
-              {errorMessage}
-            </ThemedText>
+            {focusSession ? (
+              <View
+                style={[
+                  styles.lessonSheet,
+                  {
+                    borderBottomColor: palette.border,
+                    backgroundColor: palette.surfaceAlt,
+                  },
+                ]}
+              >
+                <View style={styles.lessonHeader}>
+                  <View style={styles.lessonCopy}>
+                    <ThemedText type="subtitle">
+                      {toSportLabel(focusSession.sport as never)}
+                    </ThemedText>
+                    <ThemedText style={{ color: palette.textMuted }}>
+                      {focusSession.studioName}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.lessonMeta}>
+                    <ThemedText style={styles.lessonTimingText}>
+                      {focusTimingLabel}
+                    </ThemedText>
+                    <ThemedText style={{ color: palette.textMuted }}>
+                      {focusSession.lifecycle === "live"
+                        ? t("jobsTab.liveBadge")
+                        : t("jobsTab.upcomingBadge")}
+                    </ThemedText>
+                  </View>
+                </View>
+                <ThemedText
+                  selectable
+                  style={{ color: palette.textMuted, fontVariant: ["tabular-nums"] }}
+                >
+                  {focusWindowLabel}
+                </ThemedText>
+                <View style={[styles.progressTrack, { backgroundColor: palette.border }]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${Math.round(focusProgress * 100)}%`,
+                        backgroundColor: palette.success,
+                      },
+                    ]}
+                  />
+                </View>
+                {focusSession.lifecycle === "upcoming" ? (
+                  <Pressable
+                    style={[styles.compactAction, { borderColor: palette.borderStrong }]}
+                    onPress={() => {
+                      void toggleLessonReminder(focusSession);
+                    }}
+                    disabled={isReminderBusyJobId === String(focusSession.jobId)}
+                  >
+                    <ThemedText type="defaultSemiBold">
+                      {isReminderBusyJobId === String(focusSession.jobId)
+                        ? t("jobsTab.actions.updatingReminder")
+                        : reminderByJobId[String(focusSession.jobId)]
+                          ? t("jobsTab.actions.clearReminder")
+                          : t("jobsTab.actions.setReminder")}
+                    </ThemedText>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : (
+              <View style={styles.lessonSheet} />
+            )}
           </View>
         ) : null}
 
@@ -1154,7 +1303,7 @@ export default function JobsTabScreen() {
                       </ThemedText>
                     </View>
                     <ThemedText style={{ color: palette.textMuted }}>
-                      {job.zone} • {formatDateTime(job.startTime, locale)}
+                      {getZoneLabel(job.zone, zoneLanguage)} • {formatDateTime(job.startTime, locale)}
                     </ThemedText>
                     <ThemedText style={{ color: palette.textMuted }}>
                       {t("jobsTab.card.pay", { value: job.pay })}
@@ -1254,72 +1403,6 @@ export default function JobsTabScreen() {
 
         {currentUser.role === "instructor" ? (
           <>
-            {focusSession ? (
-              <View
-                style={[
-                  styles.lessonSheet,
-                  {
-                    borderBottomColor: palette.border,
-                    backgroundColor: palette.surfaceAlt,
-                  },
-                ]}
-              >
-                <View style={styles.lessonHeader}>
-                  <View style={styles.lessonCopy}>
-                    <ThemedText type="subtitle">
-                      {toSportLabel(focusSession.sport as never)}
-                    </ThemedText>
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      {focusSession.studioName}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.lessonMeta}>
-                    <ThemedText style={styles.lessonTimingText}>
-                      {focusTimingLabel}
-                    </ThemedText>
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      {focusSession.lifecycle === "live"
-                        ? t("jobsTab.liveBadge")
-                        : t("jobsTab.upcomingBadge")}
-                    </ThemedText>
-                  </View>
-                </View>
-                <ThemedText
-                  selectable
-                  style={{ color: palette.textMuted, fontVariant: ["tabular-nums"] }}
-                >
-                  {focusWindowLabel}
-                </ThemedText>
-                <View style={[styles.progressTrack, { backgroundColor: palette.border }]}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${Math.round(focusProgress * 100)}%`,
-                        backgroundColor: palette.success,
-                      },
-                    ]}
-                  />
-                </View>
-                {focusSession.lifecycle === "upcoming" ? (
-                  <Pressable
-                    style={[styles.compactAction, { borderColor: palette.borderStrong }]}
-                    onPress={() => {
-                      void toggleLessonReminder(focusSession);
-                    }}
-                    disabled={isReminderBusyJobId === String(focusSession.jobId)}
-                  >
-                    <ThemedText type="defaultSemiBold">
-                      {isReminderBusyJobId === String(focusSession.jobId)
-                        ? t("jobsTab.actions.updatingReminder")
-                        : reminderByJobId[String(focusSession.jobId)]
-                          ? t("jobsTab.actions.clearReminder")
-                          : t("jobsTab.actions.setReminder")}
-                    </ThemedText>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : null}
 
             {needsDoneSessions.length > 0 ? (
               <View style={[styles.section, { borderBottomColor: palette.border }]}>
@@ -1365,7 +1448,23 @@ export default function JobsTabScreen() {
               </View>
             ) : null}
 
-            <View style={[styles.jobsFeed, { borderBottomColor: palette.border }]}>
+            <View
+              style={[
+                styles.jobsFeed,
+                {
+                  borderBottomColor: palette.border,
+                  backgroundColor: palette.surface,
+                },
+              ]}
+            >
+              <View style={[styles.jobsFeedHeader, { borderBottomColor: palette.border }]}>
+                <ThemedText type="defaultSemiBold">
+                  {t("jobsTab.status.job.open")}
+                </ThemedText>
+                <ThemedText style={{ color: palette.textMuted }}>
+                  {openMatchesCount}
+                </ThemedText>
+              </View>
               {availableJobs === undefined ? (
                 <View style={[styles.emptyStateWrap, { minHeight: jobsEmptyMinHeight }]}>
                   <ThemedText style={[styles.emptyStateText, { color: palette.textMuted }]}>
@@ -1411,7 +1510,7 @@ export default function JobsTabScreen() {
                       </ThemedText>
                     </View>
                     <ThemedText style={{ color: palette.textMuted }}>
-                      {formatDateTime(job.startTime, locale)} • {job.zone}
+                      {formatDateTime(job.startTime, locale)} • {getZoneLabel(job.zone, zoneLanguage)}
                     </ThemedText>
                     <ThemedText>{job.note ?? t("jobsTab.noNotes")}</ThemedText>
                     <View style={styles.jobFooterRow}>
@@ -1470,64 +1569,41 @@ export default function JobsTabScreen() {
         ) : null}
       </ScrollView>
 
-      {statusMessage ? (
-        <View
-          pointerEvents="none"
-          style={[styles.toastWrap, { top: insets.top + 10 }]}
-        >
-          <View
-            style={[
-              styles.toastBlob,
-              {
-                borderColor: palette.borderStrong,
-                backgroundColor: palette.surface,
-              },
-            ]}
-          >
-            <MaterialIcons name="check-circle" size={16} color={palette.success} />
-            <ThemedText style={{ color: palette.text }}>{statusMessage}</ThemedText>
-          </View>
-        </View>
-      ) : null}
-
-      {currentUser.role === "instructor" ? (
-        <Pressable
+      {currentUser.role === "instructor" && !isArchiveOpen ? (
+        <ExpressiveFab
+          selected={archivedSessions.length > 0}
+          disabled={archivedSessions.length === 0}
+          {...(archivedSessions.length > 0
+            ? { badgeLabel: String(archivedSessions.length) }
+            : {})}
+          icon={
+            <MaterialIcons
+              name="archive"
+              size={24}
+              color={archivedSessions.length > 0 ? palette.onPrimary : palette.textMuted}
+            />
+          }
           style={[
             styles.archiveFab,
             {
-              bottom: insets.bottom + 12,
-              right: 16,
-              backgroundColor:
-                archivedSessions.length > 0 ? palette.primarySubtle : palette.surface,
-              borderColor:
-                archivedSessions.length > 0 ? palette.primary : palette.borderStrong,
+              bottom: tabLayout.bottomOverlayInset,
+              [isRtl ? "left" : "right"]: 16,
             },
           ]}
           onPress={() => {
             if (archivedSessions.length === 0) return;
             setIsArchiveOpen((current) => !current);
           }}
-        >
-          <MaterialIcons
-            name="archive"
-            size={24}
-            color={archivedSessions.length > 0 ? palette.primary : palette.textMuted}
-          />
-          {archivedSessions.length > 0 ? (
-            <View style={[styles.archiveBadge, { backgroundColor: palette.primary }]}>
-              <ThemedText
-                type="defaultSemiBold"
-                style={{ color: palette.onPrimary, fontSize: 11 }}
-              >
-                {archivedSessions.length}
-              </ThemedText>
-            </View>
-          ) : null}
-        </Pressable>
+        />
       ) : null}
 
       {currentUser.role === "instructor" && isArchiveOpen ? (
-        <View style={styles.archiveOverlay}>
+        <View
+          style={[
+            styles.archiveOverlay,
+            { paddingBottom: tabLayout.bottomOverlayInset },
+          ]}
+        >
           <Pressable
             style={StyleSheet.absoluteFill}
             onPress={() => {
@@ -1540,7 +1616,7 @@ export default function JobsTabScreen() {
               {
                 backgroundColor: palette.surface,
                 borderColor: palette.border,
-                paddingBottom: insets.bottom + 10,
+                paddingBottom: Math.max(tabLayout.safeBottomInset, 12),
               },
             ]}
           >
@@ -1597,7 +1673,7 @@ export default function JobsTabScreen() {
           </View>
         </View>
       ) : null}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -1608,10 +1684,28 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
   },
-  messageRow: {
-    borderBottomWidth: 1,
+  noticeWrap: {
     paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  noticeBanner: {
+    borderWidth: 1,
+    borderRadius: 14,
+    borderCurve: "continuous",
+    paddingHorizontal: 12,
     paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  noticeCopy: {
+    flex: 1,
+  },
+  noticeDismiss: {
+    minHeight: 20,
+    minWidth: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   section: {
     borderBottomWidth: 1,
@@ -1635,6 +1729,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     gap: 8,
+  },
+  focusStickyWrap: {
+    zIndex: 2,
+  },
+  snapshotSection: {
+    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  snapshotGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  snapshotTile: {
+    minWidth: 120,
+    flexGrow: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  snapshotValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    lineHeight: 24,
   },
   lessonHeader: {
     flexDirection: "row",
@@ -1666,6 +1788,14 @@ const styles = StyleSheet.create({
   },
   jobsFeed: {
     borderBottomWidth: 1,
+  },
+  jobsFeedHeader: {
+    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   emptyStateWrap: {
     paddingHorizontal: 16,
@@ -1808,44 +1938,9 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
   },
-  toastWrap: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    alignItems: "center",
-    zIndex: 5,
-  },
-  toastBlob: {
-    borderWidth: 1,
-    borderRadius: 999,
-    borderCurve: "continuous",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    maxWidth: "100%",
-  },
   archiveFab: {
     position: "absolute",
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    borderCurve: "continuous",
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  archiveBadge: {
-    position: "absolute",
-    top: -5,
-    right: -5,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
+    zIndex: 12,
   },
   archiveOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1875,3 +1970,4 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
 });
+

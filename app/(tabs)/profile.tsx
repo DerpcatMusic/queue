@@ -1,15 +1,14 @@
-import { useClerk, useUser } from "@clerk/clerk-expo";
+import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import { Brand, BrandRadius } from "@/constants/brand";
 import { ZONE_OPTIONS } from "@/constants/zones";
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import {
-  resolveAddressToZone,
-  resolveCurrentLocationToZone,
-  type ResolvedLocation,
-} from "@/lib/location-zone";
+import { useLocationResolution } from "@/hooks/use-location-resolution";
+import { useNativeTabLayout } from "@/hooks/use-native-tab-layout";
+import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
+import { type ResolvedLocation } from "@/lib/location-zone";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { setThemePreference } from "@/lib/theme-preference";
 import { useMutation, useQuery } from "convex/react";
@@ -24,7 +23,6 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandButton } from "@/components/ui/brand-button";
@@ -202,8 +200,7 @@ function buildStudioSignature(input: {
 }
 
 export default function ProfileScreen() {
-  const { signOut } = useClerk();
-  const { user } = useUser();
+  const { signOut } = useAuthActions();
   const currentUser = useQuery(api.users.getCurrentUser);
   const { language, setLanguage } = useAppLanguage();
   const saveInstructorSettings = useMutation(api.users.updateMyInstructorSettings);
@@ -220,7 +217,7 @@ export default function ProfileScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const palette = Brand[colorScheme];
   const { t, i18n } = useTranslation();
-  const insets = useSafeAreaInsets();
+  const tabLayout = useNativeTabLayout();
   const languageCode = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -231,8 +228,7 @@ export default function ProfileScreen() {
   const [instructorLongitude, setInstructorLongitude] = useState<number | undefined>();
   const [instructorDetectedZone, setInstructorDetectedZone] = useState<string | null>(null);
   const [includeDetectedZone, setIncludeDetectedZone] = useState(false);
-  const [isResolvingInstructorLocation, setIsResolvingInstructorLocation] =
-    useState(false);
+  const instructorLocationResolver = useLocationResolution();
   const [calendarProvider, setCalendarProvider] = useState<CalendarProvider>("none");
   const [calendarSyncEnabled, setCalendarSyncEnabled] = useState(false);
   const [studioNameInput, setStudioNameInput] = useState("");
@@ -241,7 +237,7 @@ export default function ProfileScreen() {
   const [studioZoneInput, setStudioZoneInput] = useState<string | null>(null);
   const [studioLatitude, setStudioLatitude] = useState<number | undefined>();
   const [studioLongitude, setStudioLongitude] = useState<number | undefined>();
-  const [isResolvingStudioLocation, setIsResolvingStudioLocation] = useState(false);
+  const studioLocationResolver = useLocationResolution();
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -279,12 +275,8 @@ export default function ProfileScreen() {
     setStudioLongitude(studioSettings.longitude);
   }, [studioSettings]);
 
-  const nameValue =
-    currentUser?.fullName ?? user?.fullName ?? t("profile.account.fallbackName");
-  const emailValue =
-    currentUser?.email ??
-    user?.primaryEmailAddress?.emailAddress ??
-    t("profile.account.fallbackEmail");
+  const nameValue = currentUser?.fullName ?? t("profile.account.fallbackName");
+  const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
   const roleValue = currentUser?.role
     ? t(ROLE_TRANSLATION_KEYS[currentUser.role])
     : t("profile.roles.unknown");
@@ -425,6 +417,7 @@ export default function ProfileScreen() {
     setInstructorLatitude(resolved.latitude);
     setInstructorLongitude(resolved.longitude);
     setInstructorDetectedZone(resolved.zoneId);
+    setIncludeDetectedZone(true);
   };
 
   const resolveInstructorByAddress = async () => {
@@ -432,39 +425,43 @@ export default function ProfileScreen() {
       setErrorMessage(t("profile.settings.errors.addressRequired"));
       return;
     }
-    setIsResolvingInstructorLocation(true);
     setErrorMessage(null);
     setStatusMessage(null);
-    try {
-      const resolved = await resolveAddressToZone(instructorAddressInput);
-      applyInstructorResolution(resolved);
-    } catch (error) {
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : t("profile.settings.errors.locationResolveFailed");
-      setErrorMessage(message);
-    } finally {
-      setIsResolvingInstructorLocation(false);
+    const result = await instructorLocationResolver.resolveFromAddress(
+      instructorAddressInput,
+    );
+    if (!result.ok) {
+      setErrorMessage(
+        getLocationResolveErrorMessage({
+          code: result.error.code,
+          fallbackMessage: result.error.message,
+          fallbackKey: "locationResolveFailed",
+          translationPrefix: "profile.settings.errors",
+          t,
+        }),
+      );
+      return;
     }
+    applyInstructorResolution(result.data.value);
   };
 
   const resolveInstructorByGps = async () => {
-    setIsResolvingInstructorLocation(true);
     setErrorMessage(null);
     setStatusMessage(null);
-    try {
-      const resolved = await resolveCurrentLocationToZone();
-      applyInstructorResolution(resolved);
-    } catch (error) {
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : t("profile.settings.errors.locationResolveFailed");
-      setErrorMessage(message);
-    } finally {
-      setIsResolvingInstructorLocation(false);
+    const result = await instructorLocationResolver.resolveFromGps();
+    if (!result.ok) {
+      setErrorMessage(
+        getLocationResolveErrorMessage({
+          code: result.error.code,
+          fallbackMessage: result.error.message,
+          fallbackKey: "locationResolveFailed",
+          translationPrefix: "profile.settings.errors",
+          t,
+        }),
+      );
+      return;
     }
+    applyInstructorResolution(result.data.value);
   };
 
   const applyStudioResolution = (resolved: ResolvedLocation) => {
@@ -479,39 +476,43 @@ export default function ProfileScreen() {
       setErrorMessage(t("profile.settings.errors.addressRequired"));
       return;
     }
-    setIsResolvingStudioLocation(true);
     setErrorMessage(null);
     setStatusMessage(null);
-    try {
-      const resolved = await resolveAddressToZone(studioAddressInput);
-      applyStudioResolution(resolved);
-    } catch (error) {
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : t("profile.settings.errors.locationResolveFailed");
-      setErrorMessage(message);
-    } finally {
-      setIsResolvingStudioLocation(false);
+    const result = await studioLocationResolver.resolveFromAddress(
+      studioAddressInput,
+    );
+    if (!result.ok) {
+      setErrorMessage(
+        getLocationResolveErrorMessage({
+          code: result.error.code,
+          fallbackMessage: result.error.message,
+          fallbackKey: "locationResolveFailed",
+          translationPrefix: "profile.settings.errors",
+          t,
+        }),
+      );
+      return;
     }
+    applyStudioResolution(result.data.value);
   };
 
   const resolveStudioByGps = async () => {
-    setIsResolvingStudioLocation(true);
     setErrorMessage(null);
     setStatusMessage(null);
-    try {
-      const resolved = await resolveCurrentLocationToZone();
-      applyStudioResolution(resolved);
-    } catch (error) {
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : t("profile.settings.errors.locationResolveFailed");
-      setErrorMessage(message);
-    } finally {
-      setIsResolvingStudioLocation(false);
+    const result = await studioLocationResolver.resolveFromGps();
+    if (!result.ok) {
+      setErrorMessage(
+        getLocationResolveErrorMessage({
+          code: result.error.code,
+          fallbackMessage: result.error.message,
+          fallbackKey: "locationResolveFailed",
+          translationPrefix: "profile.settings.errors",
+          t,
+        }),
+      );
+      return;
     }
+    applyStudioResolution(result.data.value);
   };
 
   const onSaveInstructorSettings = async () => {
@@ -603,7 +604,21 @@ export default function ProfileScreen() {
       let longitude = studioLongitude;
 
       if (!zone || latitude === undefined || longitude === undefined) {
-        const resolved = await resolveAddressToZone(studioAddressInput);
+        const result = await studioLocationResolver.resolveFromAddress(
+          studioAddressInput,
+        );
+        if (!result.ok) {
+          throw new Error(
+            getLocationResolveErrorMessage({
+              code: result.error.code,
+              fallbackMessage: result.error.message,
+              fallbackKey: "locationResolveFailed",
+              translationPrefix: "profile.settings.errors",
+              t,
+            }),
+          );
+        }
+        const resolved = result.data.value;
         applyStudioResolution(resolved);
         zone = resolved.zoneId;
         latitude = resolved.latitude;
@@ -650,7 +665,10 @@ export default function ProfileScreen() {
       style={[styles.screen, { backgroundColor: palette.appBg }]}
       contentContainerStyle={[
         styles.content,
-        { paddingBottom: insets.bottom + 96 },
+        {
+          paddingTop: Math.max(tabLayout.topInset, 22),
+          paddingBottom: tabLayout.bottomInset,
+        },
       ]}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
@@ -892,7 +910,7 @@ export default function ProfileScreen() {
                 <View style={styles.actionRow}>
                   <BrandButton
                     label={
-                      isResolvingInstructorLocation
+                      instructorLocationResolver.isResolving
                         ? t("profile.settings.location.resolvingAddress")
                         : t("profile.settings.location.findByAddress")
                     }
@@ -900,11 +918,11 @@ export default function ProfileScreen() {
                     onPress={() => {
                       void resolveInstructorByAddress();
                     }}
-                    disabled={isResolvingInstructorLocation}
+                    disabled={instructorLocationResolver.isResolving}
                   />
                   <BrandButton
                     label={
-                      isResolvingInstructorLocation
+                      instructorLocationResolver.isResolving
                         ? t("profile.settings.location.resolvingGps")
                         : t("profile.settings.location.useGps")
                     }
@@ -912,7 +930,7 @@ export default function ProfileScreen() {
                     onPress={() => {
                       void resolveInstructorByGps();
                     }}
-                    disabled={isResolvingInstructorLocation}
+                    disabled={instructorLocationResolver.isResolving}
                   />
                 </View>
                 <View
@@ -1114,7 +1132,7 @@ export default function ProfileScreen() {
                 <View style={styles.actionRow}>
                   <BrandButton
                     label={
-                      isResolvingStudioLocation
+                      studioLocationResolver.isResolving
                         ? t("profile.settings.location.resolvingAddress")
                         : t("profile.settings.location.findByAddress")
                     }
@@ -1122,11 +1140,11 @@ export default function ProfileScreen() {
                     onPress={() => {
                       void resolveStudioByAddress();
                     }}
-                    disabled={isResolvingStudioLocation}
+                    disabled={studioLocationResolver.isResolving}
                   />
                   <BrandButton
                     label={
-                      isResolvingStudioLocation
+                      studioLocationResolver.isResolving
                         ? t("profile.settings.location.resolvingGps")
                         : t("profile.settings.location.useGps")
                     }
@@ -1134,7 +1152,7 @@ export default function ProfileScreen() {
                     onPress={() => {
                       void resolveStudioByGps();
                     }}
-                    disabled={isResolvingStudioLocation}
+                    disabled={studioLocationResolver.isResolving}
                   />
                 </View>
                 <View

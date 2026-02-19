@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { Brand } from "@/constants/brand";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useNativeTabLayout } from "@/hooks/use-native-tab-layout";
 import {
   syncAcceptedSessionsToDeviceCalendar,
   type DeviceCalendarSyncResult,
@@ -25,22 +26,12 @@ import {
   ScrollView,
   StyleSheet,
   View,
-  type LayoutChangeEvent,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  runOnJS,
-  useAnimatedReaction,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 
 const MIN_VISIBLE_DAYS = 1;
 const MAX_VISIBLE_DAYS = 7;
-const DEFAULT_VISIBLE_DAYS = 5;
-const RESIZE_PIXELS_PER_DAY = 96;
+const DEFAULT_VISIBLE_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_HOUR_SLOT_HEIGHT = 64;
 const MIN_HOUR_SLOT_HEIGHT = 42;
@@ -48,9 +39,10 @@ const MAX_HOUR_SLOT_HEIGHT = 126;
 const CALENDAR_HOUR_COLUMN_WIDTH = 60;
 const CALENDAR_RENDER_PAST_BUFFER_DAYS = 14;
 const CALENDAR_RENDER_FUTURE_BUFFER_DAYS = 45;
-const RESIZE_MODE_NONE = 0;
-const RESIZE_MODE_DAY = 1;
-const RESIZE_MODE_HOUR = 2;
+const DEFAULT_EVENT_SWATCH: CalendarEventSwatch = {
+  background: "#dcecff",
+  title: "#0d1219",
+};
 
 type VisibleDayCount = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type CalendarSyncTone = "muted" | "primary" | "success" | "danger";
@@ -65,6 +57,8 @@ type MonthGridCell = {
   dateOnly: string;
   inMonth: boolean;
 };
+
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -141,11 +135,24 @@ function addMonths(dateOnly: string, months: number) {
 }
 
 function getDateLabelDate(dateOnly: string) {
-  const [yearRaw, monthRaw, dayRaw] = dateOnly.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  return new Date(year, month - 1, day);
+  const matched = DATE_ONLY_PATTERN.exec(dateOnly);
+  if (!matched) {
+    return new Date();
+  }
+
+  const year = Number(matched[1]);
+  const month = Number(matched[2]);
+  const day = Number(matched[3]);
+  const parsed = new Date(year, month - 1, day);
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return new Date();
+  }
+  return parsed;
 }
 
 function startOfMonth(dateOnly: string) {
@@ -197,8 +204,9 @@ function getCalendarEventSwatch(
   seed: string,
   swatches: readonly CalendarEventSwatch[],
 ) {
+  if (swatches.length === 0) return DEFAULT_EVENT_SWATCH;
   const index = hashSeed(seed) % swatches.length;
-  return swatches[index] ?? swatches[0]!;
+  return swatches[index] ?? swatches[0] ?? DEFAULT_EVENT_SWATCH;
 }
 
 function chunkArray<T>(items: readonly T[], size: number) {
@@ -217,20 +225,16 @@ function toWeekdayIndexMonday(date: Date) {
 
 export default function CalendarTabScreen() {
   const { t, i18n } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const bottomChromeInset = Math.max(insets.bottom + 72, 82);
+  const tabLayout = useNativeTabLayout();
+  const bottomChromeInset = tabLayout.bottomInset;
   const colorScheme = useColorScheme() ?? "light";
   const palette = Brand[colorScheme];
   const calendarAccent = palette.calendar.accent;
-  const eventSwatches =
-    palette.calendar.eventSwatches as readonly CalendarEventSwatch[];
+  const eventSwatches = palette.calendar
+    .eventSwatches as readonly CalendarEventSwatch[];
   const isRtl = i18n.dir() === "rtl" || I18nManager.isRTL;
   const gridLineColor = useMemo(
-    () => hexToRgba(palette.borderStrong, colorScheme === "dark" ? 0.62 : 0.72),
-    [colorScheme, palette.borderStrong],
-  );
-  const timelineDividerColor = useMemo(
-    () => hexToRgba(palette.borderStrong, colorScheme === "dark" ? 0.44 : 0.48),
+    () => hexToRgba(palette.borderStrong, colorScheme === "dark" ? 0.62 : 0.95),
     [colorScheme, palette.borderStrong],
   );
 
@@ -255,8 +259,6 @@ export default function CalendarTabScreen() {
   const anchorDateRef = useRef(initialAnchorDate);
   const pendingAnchorSyncRef = useRef<string | null>(null);
   const visibleDaysRef = useRef<VisibleDayCount>(DEFAULT_VISIBLE_DAYS);
-  const resizeFocusedDateRef = useRef<string>(initialFocusedDate);
-  const weekVisibleDaysRef = useRef<VisibleDayCount>(DEFAULT_VISIBLE_DAYS);
   const calendarReadyTaskRef = useRef<ReturnType<
     typeof InteractionManager.runAfterInteractions
   > | null>(null);
@@ -265,29 +267,18 @@ export default function CalendarTabScreen() {
   const [visibleDays, setVisibleDays] =
     useState<VisibleDayCount>(DEFAULT_VISIBLE_DAYS);
   const [anchorDate, setAnchorDate] = useState(() => initialAnchorDate);
-  const [railWidth, setRailWidth] = useState(0);
-  const [isResizing, setIsResizing] = useState(false);
   const [isCalendarReady, setIsCalendarReady] = useState(false);
   const [isCalendarInteractive, setIsCalendarInteractive] = useState(false);
-  const [hourSlotHeight, setHourSlotHeight] = useState(DEFAULT_HOUR_SLOT_HEIGHT);
   const [monthCursor, setMonthCursor] = useState(() =>
     startOfMonth(initialFocusedDate),
   );
-  const [monthSelectedDate, setMonthSelectedDate] = useState(initialFocusedDate);
+  const [monthSelectedDate, setMonthSelectedDate] =
+    useState(initialFocusedDate);
   const [syncStatus, setSyncStatus] = useState<CalendarSyncStatus>("disabled");
   const [syncDetail, setSyncDetail] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [calendarWakeTick, setCalendarWakeTick] = useState(0);
-
-  const visibleDaysSv = useSharedValue<number>(DEFAULT_VISIBLE_DAYS);
-  const previewDaysSv = useSharedValue<number>(DEFAULT_VISIBLE_DAYS);
-  const resizeProgressSv = useSharedValue<number>(0);
-  const railWidthSv = useSharedValue<number>(0);
-  const resizeModeSv = useSharedValue<number>(RESIZE_MODE_NONE);
-  const startPreviewSv = useSharedValue(DEFAULT_VISIBLE_DAYS);
-  const lastStepSv = useSharedValue(DEFAULT_VISIBLE_DAYS);
-  const hourSlotHeightSv = useSharedValue(DEFAULT_HOUR_SLOT_HEIGHT);
-  const startHourSlotHeightSv = useSharedValue(DEFAULT_HOUR_SLOT_HEIGHT);
+  const calendarWakeTickRef = useRef(0);
 
   const locale = i18n.language || "en";
 
@@ -427,7 +418,7 @@ export default function CalendarTabScreen() {
       });
     }
 
-    const trailing = (7 - (cells.length % 7)) % 7;
+    const trailing = Math.max(0, 42 - cells.length);
     for (let day = 1; day <= trailing; day += 1) {
       cells.push({
         dateOnly: formatDateOnly(new Date(year, month + 1, day)),
@@ -438,12 +429,18 @@ export default function CalendarTabScreen() {
     return cells;
   }, [monthCursor]);
 
-  const monthGridRows = useMemo(() => chunkArray(monthGridCells, 7), [monthGridCells]);
+  const monthGridRows = useMemo(
+    () => chunkArray(monthGridCells, 7),
+    [monthGridCells],
+  );
 
   const weekdayHeaderLabels = useMemo(() => {
     return Array.from({ length: 7 }, (_, index) => {
       const base = new Date(2024, 0, 1 + index);
-      return dayFormatter.format(base);
+      return {
+        key: formatDateOnly(base),
+        label: dayFormatter.format(base),
+      };
     });
   }, [dayFormatter]);
 
@@ -474,8 +471,12 @@ export default function CalendarTabScreen() {
     }
 
     const sortedDates = Array.from(eventsByDate.keys()).sort();
-    const upcoming = sortedDates.filter((dateOnly) => dateOnly >= monthSelectedDate);
-    const previous = sortedDates.filter((dateOnly) => dateOnly < monthSelectedDate);
+    const upcoming = sortedDates.filter(
+      (dateOnly) => dateOnly >= monthSelectedDate,
+    );
+    const previous = sortedDates.filter(
+      (dateOnly) => dateOnly < monthSelectedDate,
+    );
     const orderedDates = [...upcoming, ...previous];
 
     return orderedDates.map((dateOnly) => ({
@@ -484,40 +485,9 @@ export default function CalendarTabScreen() {
     }));
   }, [allCalendarEvents, monthCursor, monthSelectedDate]);
 
-  const updatePresentationState = useCallback((nextHourSlotHeight: number) => {
-    setHourSlotHeight(nextHourSlotHeight);
-  }, []);
-
-  useAnimatedReaction(
-    () => ({
-      hourHeight: Math.round(hourSlotHeightSv.value),
-    }),
-    (next, prev) => {
-      if (!prev || next.hourHeight !== prev.hourHeight) {
-        runOnJS(updatePresentationState)(next.hourHeight);
-      }
-    },
-    [updatePresentationState],
-  );
-
-  useEffect(() => {
-    visibleDaysSv.value = visibleDays;
-    previewDaysSv.value = visibleDays;
-  }, [previewDaysSv, visibleDays, visibleDaysSv]);
-
   useEffect(() => {
     visibleDaysRef.current = visibleDays;
   }, [visibleDays]);
-
-  useEffect(() => {
-    if (viewMode === "week" && visibleDays >= 3) {
-      weekVisibleDaysRef.current = visibleDays;
-    }
-  }, [viewMode, visibleDays]);
-
-  useEffect(() => {
-    hourSlotHeightSv.value = hourSlotHeight;
-  }, [hourSlotHeight, hourSlotHeightSv]);
 
   useEffect(() => {
     if (viewMode === "month") return;
@@ -527,12 +497,6 @@ export default function CalendarTabScreen() {
 
   const emitSelectionHaptic = useCallback(() => {
     void Haptics.selectionAsync().catch(() => {
-      // Ignore unsupported devices.
-    });
-  }, []);
-
-  const emitSoftImpactHaptic = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {
       // Ignore unsupported devices.
     });
   }, []);
@@ -550,7 +514,10 @@ export default function CalendarTabScreen() {
     const minStart = now - 2 * DAY_MS;
     const maxStart = now + 180 * DAY_MS;
     return acceptedSessions
-      .filter((session) => session.startTime >= minStart && session.startTime <= maxStart)
+      .filter(
+        (session) =>
+          session.startTime >= minStart && session.startTime <= maxStart,
+      )
       .sort((left, right) => left.startTime - right.startTime)
       .map((session) => ({
         id: String(session.applicationId),
@@ -563,13 +530,9 @@ export default function CalendarTabScreen() {
       }));
   }, [acceptedSessions]);
 
-  const deviceSyncSignature = useMemo(
-    () =>
-      deviceSyncEvents
-        .map((event) => `${event.id}:${event.startTime}:${event.endTime}`)
-        .join("|"),
-    [deviceSyncEvents],
-  );
+  useEffect(() => {
+    calendarWakeTickRef.current = calendarWakeTick;
+  }, [calendarWakeTick]);
 
   useEffect(() => {
     if (!canAutoSyncDeviceCalendar) return;
@@ -590,6 +553,7 @@ export default function CalendarTabScreen() {
       return;
     }
 
+    const wakeTickAtStart = calendarWakeTick;
     let cancelled = false;
     setSyncStatus("syncing");
 
@@ -598,7 +562,7 @@ export default function CalendarTabScreen() {
       preferredProvider: preferredSyncProvider,
       events: deviceSyncEvents,
     }).then((result) => {
-      if (cancelled) return;
+      if (cancelled || wakeTickAtStart !== calendarWakeTickRef.current) return;
       setSyncStatus(result.status);
       setSyncDetail(result.message ?? null);
       if (result.status === "synced") {
@@ -612,7 +576,6 @@ export default function CalendarTabScreen() {
   }, [
     canAutoSyncDeviceCalendar,
     deviceSyncEvents,
-    deviceSyncSignature,
     instructorSettings,
     preferredSyncProvider,
     calendarWakeTick,
@@ -632,11 +595,13 @@ export default function CalendarTabScreen() {
   const markCalendarInteractiveWhenReady = useCallback(() => {
     calendarReadyTaskRef.current?.cancel();
     setIsCalendarInteractive(false);
-    calendarReadyTaskRef.current = InteractionManager.runAfterInteractions(() => {
-      requestAnimationFrame(() => {
-        setIsCalendarInteractive(true);
-      });
-    });
+    calendarReadyTaskRef.current = InteractionManager.runAfterInteractions(
+      () => {
+        requestAnimationFrame(() => {
+          setIsCalendarInteractive(true);
+        });
+      },
+    );
   }, []);
 
   useEffect(
@@ -647,15 +612,9 @@ export default function CalendarTabScreen() {
   );
 
   useEffect(() => {
-    if (!isCalendarReady || isResizing || viewMode === "month") return;
+    if (!isCalendarReady || viewMode === "month") return;
     markCalendarInteractiveWhenReady();
-  }, [
-    isCalendarReady,
-    isResizing,
-    markCalendarInteractiveWhenReady,
-    visibleDays,
-    viewMode,
-  ]);
+  }, [isCalendarReady, markCalendarInteractiveWhenReady, viewMode]);
 
   useEffect(() => {
     if (!isCalendarReady || !isCalendarInteractive) return;
@@ -706,7 +665,10 @@ export default function CalendarTabScreen() {
     (nextDays: VisibleDayCount, focusDate: string, animated: boolean) => {
       visibleDaysRef.current = nextDays;
       setVisibleDays(nextDays);
-      goToAnchorDate(getAnchorDateFromFocusedDate(focusDate, nextDays), animated);
+      goToAnchorDate(
+        getAnchorDateFromFocusedDate(focusDate, nextDays),
+        animated,
+      );
     },
     [goToAnchorDate],
   );
@@ -717,19 +679,17 @@ export default function CalendarTabScreen() {
       const focusDate =
         viewMode === "month"
           ? monthSelectedDate
-          : getFocusedDateFromAnchor(anchorDateRef.current, visibleDaysRef.current);
+          : getFocusedDateFromAnchor(
+              anchorDateRef.current,
+              visibleDaysRef.current,
+            );
 
       if (nextMode === "day") {
         setVisibleDaysAroundDate(1, focusDate, false);
       }
 
       if (nextMode === "week") {
-        const preferredDays = clamp(
-          weekVisibleDaysRef.current,
-          3,
-          MAX_VISIBLE_DAYS,
-        ) as VisibleDayCount;
-        setVisibleDaysAroundDate(preferredDays, focusDate, false);
+        setVisibleDaysAroundDate(MAX_VISIBLE_DAYS, focusDate, false);
       }
 
       if (nextMode === "month") {
@@ -742,251 +702,12 @@ export default function CalendarTabScreen() {
     [monthSelectedDate, setVisibleDaysAroundDate, viewMode],
   );
 
-  const beginDayResizeSession = useCallback(() => {
-    resizeFocusedDateRef.current = getFocusedDateFromAnchor(
-      anchorDateRef.current,
-      visibleDaysRef.current,
-    );
-  }, []);
-
-  const clearDayResizeSession = useCallback(() => {
-    resizeFocusedDateRef.current = getFocusedDateFromAnchor(
-      anchorDateRef.current,
-      visibleDaysRef.current,
-    );
-  }, []);
-
-  const commitVisibleDays = useCallback(
-    (nextCount: number) => {
-      const clampedCount = clamp(
-        Math.round(nextCount),
-        MIN_VISIBLE_DAYS,
-        MAX_VISIBLE_DAYS,
-      ) as VisibleDayCount;
-      const focusedResizeDate = resizeFocusedDateRef.current;
-      setVisibleDaysAroundDate(clampedCount, focusedResizeDate, false);
-      setIsResizing(false);
-    },
-    [setVisibleDaysAroundDate],
-  );
-
-  const setLiveVisibleDays = useCallback(
-    (nextCount: number) => {
-      if (!isCalendarReady || viewMode !== "week") return;
-      const clampedCount = clamp(
-        Math.round(nextCount),
-        MIN_VISIBLE_DAYS,
-        MAX_VISIBLE_DAYS,
-      ) as VisibleDayCount;
-      const focusedResizeDate = resizeFocusedDateRef.current;
-      const nextAnchorDate = getAnchorDateFromFocusedDate(
-        focusedResizeDate,
-        clampedCount,
-      );
-      if (nextAnchorDate !== anchorDateRef.current) {
-        goToAnchorDate(nextAnchorDate, false);
-      }
-      visibleDaysRef.current = clampedCount;
-      setVisibleDays((current) => (current === clampedCount ? current : clampedCount));
-    },
-    [goToAnchorDate, isCalendarReady, viewMode],
-  );
-
-  const beginResizeMode = useCallback(() => {
-    setIsResizing(true);
-  }, []);
-
-  const endResizeMode = useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
   const handleCalendarDateChanged = useCallback((nextDate: string) => {
     const normalized = toDateOnly(nextDate);
     if (normalized === anchorDateRef.current) return;
     anchorDateRef.current = normalized;
     setAnchorDate(normalized);
   }, []);
-
-  const handleDayRailLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      const nextWidth = Math.max(0, event.nativeEvent.layout.width);
-      setRailWidth(nextWidth);
-      railWidthSv.value = nextWidth;
-    },
-    [railWidthSv],
-  );
-
-  const handleDayRailTap = useCallback(
-    (tapX: number) => {
-      if (railWidth <= 0) return;
-      const displayDate = anchorDate;
-      const visibleColumns = visibleDays;
-      if (visibleColumns <= 0) return;
-
-      const normalizedX = clamp(isRtl ? railWidth - tapX : tapX, 0, railWidth);
-      const columnWidth = railWidth / visibleColumns;
-      let targetIndex = Math.floor(normalizedX / Math.max(columnWidth, 1));
-      targetIndex = clamp(targetIndex, 0, visibleColumns - 1);
-
-      const targetDate = addDays(displayDate, targetIndex);
-      const nextAnchorDate = getAnchorDateFromFocusedDate(targetDate, visibleColumns);
-      goToAnchorDate(nextAnchorDate, true);
-      emitSelectionHaptic();
-    },
-    [
-      anchorDate,
-      emitSelectionHaptic,
-      goToAnchorDate,
-      isRtl,
-      railWidth,
-      visibleDays,
-    ],
-  );
-
-  const dayRailGesture = useMemo(() => {
-    const resize = Gesture.Pan()
-      .activateAfterLongPress(250)
-      .onBegin(() => {
-        if (viewMode !== "week") return;
-        if (resizeModeSv.value !== RESIZE_MODE_NONE) return;
-        resizeModeSv.value = RESIZE_MODE_DAY;
-        startPreviewSv.value = visibleDaysSv.value;
-        previewDaysSv.value = visibleDaysSv.value;
-        resizeProgressSv.value = 0;
-        lastStepSv.value = Math.round(visibleDaysSv.value);
-        runOnJS(beginDayResizeSession)();
-        runOnJS(beginResizeMode)();
-      })
-      .onUpdate((event) => {
-        if (viewMode !== "week") return;
-        if (resizeModeSv.value !== RESIZE_MODE_DAY) return;
-
-        const nextPreview = Math.min(
-          MAX_VISIBLE_DAYS,
-          Math.max(
-            MIN_VISIBLE_DAYS,
-            startPreviewSv.value + event.translationY / RESIZE_PIXELS_PER_DAY,
-          ),
-        );
-        previewDaysSv.value = nextPreview;
-        resizeProgressSv.value = Math.min(
-          1,
-          Math.abs(nextPreview - visibleDaysSv.value),
-        );
-
-        const nextStep = Math.round(nextPreview);
-        if (nextStep !== lastStepSv.value) {
-          lastStepSv.value = nextStep;
-          runOnJS(setLiveVisibleDays)(nextStep);
-          runOnJS(emitSelectionHaptic)();
-        }
-      })
-      .onEnd(() => {
-        if (viewMode !== "week") return;
-        if (resizeModeSv.value !== RESIZE_MODE_DAY) return;
-
-        const nextVisibleDays = Math.min(
-          MAX_VISIBLE_DAYS,
-          Math.max(MIN_VISIBLE_DAYS, Math.round(previewDaysSv.value)),
-        );
-        visibleDaysSv.value = nextVisibleDays;
-        previewDaysSv.value = nextVisibleDays;
-        resizeProgressSv.value = withTiming(0, { duration: 180 });
-        resizeModeSv.value = RESIZE_MODE_NONE;
-        runOnJS(commitVisibleDays)(nextVisibleDays);
-        runOnJS(clearDayResizeSession)();
-        runOnJS(endResizeMode)();
-        runOnJS(emitSoftImpactHaptic)();
-      })
-      .onFinalize(() => {
-        if (viewMode !== "week") return;
-        if (resizeModeSv.value !== RESIZE_MODE_DAY) return;
-        resizeModeSv.value = RESIZE_MODE_NONE;
-        runOnJS(clearDayResizeSession)();
-        runOnJS(endResizeMode)();
-      });
-
-    const tap = Gesture.Tap()
-      .maxDuration(220)
-      .onEnd((event, success) => {
-        if (!success || resizeModeSv.value !== RESIZE_MODE_NONE) return;
-        runOnJS(handleDayRailTap)(event.x);
-      });
-
-    return Gesture.Exclusive(resize, tap);
-  }, [
-    beginDayResizeSession,
-    beginResizeMode,
-    clearDayResizeSession,
-    commitVisibleDays,
-    emitSelectionHaptic,
-    emitSoftImpactHaptic,
-    endResizeMode,
-    handleDayRailTap,
-    lastStepSv,
-    previewDaysSv,
-    resizeModeSv,
-    resizeProgressSv,
-    setLiveVisibleDays,
-    startPreviewSv,
-    viewMode,
-    visibleDaysSv,
-  ]);
-
-  const hourRailGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .activateAfterLongPress(250)
-        .onBegin(() => {
-          if (viewMode === "month") return;
-          if (resizeModeSv.value !== RESIZE_MODE_NONE) return;
-          resizeModeSv.value = RESIZE_MODE_HOUR;
-          startHourSlotHeightSv.value = hourSlotHeightSv.value;
-          runOnJS(beginResizeMode)();
-        })
-        .onUpdate((event) => {
-          if (resizeModeSv.value !== RESIZE_MODE_HOUR) return;
-          const nextHourHeight = Math.min(
-            MAX_HOUR_SLOT_HEIGHT,
-            Math.max(
-              MIN_HOUR_SLOT_HEIGHT,
-              startHourSlotHeightSv.value + event.translationX / 2.6,
-            ),
-          );
-          hourSlotHeightSv.value = nextHourHeight;
-        })
-        .onEnd(() => {
-          if (resizeModeSv.value !== RESIZE_MODE_HOUR) return;
-          resizeModeSv.value = RESIZE_MODE_NONE;
-          runOnJS(endResizeMode)();
-          runOnJS(emitSoftImpactHaptic)();
-        })
-        .onFinalize(() => {
-          if (resizeModeSv.value !== RESIZE_MODE_HOUR) return;
-          resizeModeSv.value = RESIZE_MODE_NONE;
-          runOnJS(endResizeMode)();
-        }),
-    [
-      beginResizeMode,
-      endResizeMode,
-      emitSoftImpactHaptic,
-      hourSlotHeightSv,
-      resizeModeSv,
-      startHourSlotHeightSv,
-      viewMode,
-    ],
-  );
-
-  useEffect(() => {
-    if (!isCalendarInteractive || viewMode === "month") return;
-    runCalendarImperative((calendar) => {
-      calendar.zoom({ height: hourSlotHeight });
-    });
-  }, [hourSlotHeight, isCalendarInteractive, runCalendarImperative, viewMode]);
-
-  const bodyFadeStyle = useAnimatedStyle(() => ({
-    opacity: 1 - resizeProgressSv.value * 0.08,
-  }));
 
   const renderCustomHorizontalLine = useCallback(
     ({ index, borderColor }: { index: number; borderColor: string }) => (
@@ -997,28 +718,22 @@ export default function CalendarTabScreen() {
           {
             backgroundColor: borderColor,
             height: Number.isInteger(index) ? 1 : StyleSheet.hairlineWidth,
-            opacity: Number.isInteger(index) ? 0.9 : 0.48,
+            opacity:
+              colorScheme === "dark"
+                ? Number.isInteger(index)
+                  ? 0.9
+                  : 0.48
+                : Number.isInteger(index)
+                  ? 1
+                  : 0.75,
           },
         ]}
       />
     ),
-    [],
-  );
-
-  const headerColumnWidths = useMemo(() => {
-    if (visibleDays <= 0 || railWidth <= 0) return [];
-    const width = railWidth / visibleDays;
-    return Array.from({ length: visibleDays }, () => width);
-  }, [railWidth, visibleDays]);
-
-  const railDates = useMemo(
-    () =>
-      Array.from({ length: visibleDays }, (_, index) => addDays(anchorDate, index)),
-    [anchorDate, visibleDays],
+    [colorScheme],
   );
 
   const visibleColumnCount = visibleDays;
-  const activeColumnIndex = getMiddleColumnOffset(visibleColumnCount);
   const lastVisibleDate = addDays(anchorDate, visibleColumnCount - 1);
   const todayDateOnly = toDateOnly(new Date());
   const isLoadingCurrentUser = currentUser === undefined;
@@ -1032,7 +747,8 @@ export default function CalendarTabScreen() {
   const syncTone: CalendarSyncTone = useMemo(() => {
     if (syncStatus === "synced") return "success";
     if (syncStatus === "syncing") return "primary";
-    if (syncStatus === "permission_denied" || syncStatus === "failed") return "danger";
+    if (syncStatus === "permission_denied" || syncStatus === "failed")
+      return "danger";
     return "muted";
   }, [syncStatus]);
 
@@ -1048,7 +764,8 @@ export default function CalendarTabScreen() {
         }),
       });
     }
-    if (syncStatus === "permission_denied") return t("calendarTab.sync.permissionDenied");
+    if (syncStatus === "permission_denied")
+      return t("calendarTab.sync.permissionDenied");
     if (syncStatus === "failed") return t("calendarTab.sync.failed");
     return t("calendarTab.sync.disabled");
   }, [canAutoSyncDeviceCalendar, syncStatus, lastSyncedAt, locale, t]);
@@ -1085,6 +802,25 @@ export default function CalendarTabScreen() {
     [goToFocusedDate],
   );
 
+  const handleNavigateByPage = useCallback(
+    (direction: -1 | 1) => {
+      const didRun = runCalendarImperative((calendar) => {
+        if (direction > 0) {
+          calendar.goToNextPage(true, true);
+        } else {
+          calendar.goToPrevPage(true, true);
+        }
+      });
+      if (didRun) {
+        emitSelectionHaptic();
+        return;
+      }
+
+      handleShiftFocusedDay(direction);
+    },
+    [emitSelectionHaptic, handleShiftFocusedDay, runCalendarImperative],
+  );
+
   const handleNavigatePrevious = useCallback(() => {
     if (viewMode === "month") {
       const previousMonthAnchor = startOfMonth(addMonths(monthCursor, -1));
@@ -1094,8 +830,8 @@ export default function CalendarTabScreen() {
       }
       return;
     }
-    handleShiftFocusedDay(-1);
-  }, [handleShiftFocusedDay, monthCursor, monthSelectedDate, viewMode]);
+    handleNavigateByPage(-1);
+  }, [handleNavigateByPage, monthCursor, monthSelectedDate, viewMode]);
 
   const handleNavigateNext = useCallback(() => {
     if (viewMode === "month") {
@@ -1106,16 +842,19 @@ export default function CalendarTabScreen() {
       }
       return;
     }
-    handleShiftFocusedDay(1);
-  }, [handleShiftFocusedDay, monthCursor, monthSelectedDate, viewMode]);
+    handleNavigateByPage(1);
+  }, [handleNavigateByPage, monthCursor, monthSelectedDate, viewMode]);
 
-  const handleSelectMonthDate = useCallback((dateOnly: string, inMonth: boolean) => {
-    if (!inMonth) {
-      setMonthCursor(startOfMonth(dateOnly));
-    }
-    setMonthSelectedDate(dateOnly);
-    emitSelectionHaptic();
-  }, [emitSelectionHaptic]);
+  const handleSelectMonthDate = useCallback(
+    (dateOnly: string, inMonth: boolean) => {
+      if (!inMonth) {
+        setMonthCursor(startOfMonth(dateOnly));
+      }
+      setMonthSelectedDate(dateOnly);
+      emitSelectionHaptic();
+    },
+    [emitSelectionHaptic],
+  );
 
   const renderMonthAgendaEvent = useCallback(
     (event: EventItem) => {
@@ -1127,7 +866,9 @@ export default function CalendarTabScreen() {
           : `${timeFormatter.format(startDate)} - ${timeFormatter.format(endDate)}`;
 
       const eventColor =
-        typeof event.color === "string" ? event.color : palette.calendar.accentSubtle;
+        typeof event.color === "string"
+          ? event.color
+          : palette.calendar.accentSubtle;
       const eventTitleColor =
         typeof event.titleColor === "string" ? event.titleColor : palette.text;
 
@@ -1138,7 +879,10 @@ export default function CalendarTabScreen() {
             styles.monthAgendaEvent,
             {
               backgroundColor: eventColor,
-              borderColor: hexToRgba(eventTitleColor, colorScheme === "dark" ? 0.28 : 0.2),
+              borderColor: hexToRgba(
+                eventTitleColor,
+                colorScheme === "dark" ? 0.28 : 0.2,
+              ),
             },
           ]}
         >
@@ -1158,7 +902,10 @@ export default function CalendarTabScreen() {
               style={[
                 styles.monthAgendaEventTime,
                 {
-                  color: hexToRgba(eventTitleColor, colorScheme === "dark" ? 0.82 : 0.78),
+                  color: hexToRgba(
+                    eventTitleColor,
+                    colorScheme === "dark" ? 0.82 : 0.78,
+                  ),
                 },
               ]}
             >
@@ -1171,13 +918,101 @@ export default function CalendarTabScreen() {
     [colorScheme, palette.calendar.accentSubtle, palette.text, timeFormatter],
   );
 
+  const renderCalendarDayItem = useCallback(
+    ({ dateUnix }: { dateUnix: number }) => {
+      const date = new Date(dateUnix);
+      const dateOnly = toDateOnly(date);
+      const isToday = dateOnly === todayDateOnly;
+      const isFocused = dateOnly === focusedDate;
+
+      return (
+        <Pressable
+          onPress={() => {
+            if (!isFocused) {
+              goToFocusedDate(dateOnly, true);
+            }
+            emitSelectionHaptic();
+          }}
+          android_ripple={{
+            color: hexToRgba(calendarAccent, 0.14),
+            borderless: false,
+          }}
+          style={styles.calendarDayItemPressable}
+        >
+          <View style={styles.calendarDayItem}>
+            <Animated.Text
+              style={[
+                styles.calendarDayWeekday,
+                {
+                  color: isFocused
+                    ? palette.onPrimary
+                    : isToday
+                      ? calendarAccent
+                      : palette.textMuted,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {dayFormatter.format(date)}
+            </Animated.Text>
+            <View
+              style={[
+                styles.calendarDayNumberWrap,
+                isFocused
+                  ? { backgroundColor: calendarAccent }
+                  : isToday
+                    ? {
+                        borderColor: calendarAccent,
+                        backgroundColor: hexToRgba(calendarAccent, 0.14),
+                      }
+                    : null,
+              ]}
+            >
+              <Animated.Text
+                style={[
+                  styles.calendarDayNumber,
+                  {
+                    color: isFocused ? palette.onPrimary : palette.text,
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {dayNumberFormatter.format(date)}
+              </Animated.Text>
+            </View>
+            <View
+              style={[
+                styles.calendarDayDot,
+                isToday && !isFocused
+                  ? { backgroundColor: calendarAccent, opacity: 1 }
+                  : { opacity: 0 },
+              ]}
+            />
+          </View>
+        </Pressable>
+      );
+    },
+    [
+      calendarAccent,
+      dayFormatter,
+      dayNumberFormatter,
+      emitSelectionHaptic,
+      focusedDate,
+      goToFocusedDate,
+      palette.onPrimary,
+      palette.text,
+      palette.textMuted,
+      todayDateOnly,
+    ],
+  );
+
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <View
         style={[
           styles.page,
           {
-            paddingTop: Math.max(insets.top, 10),
+            paddingTop: tabLayout.topInset,
             paddingBottom: 0,
           },
         ]}
@@ -1195,17 +1030,18 @@ export default function CalendarTabScreen() {
             style={[
               styles.modeControl,
               {
-                backgroundColor: palette.surfaceAlt,
                 borderColor: palette.border,
                 flexDirection: isRtl ? "row-reverse" : "row",
               },
             ]}
           >
-            {([
-              ["day", t("calendarTab.mode.day")],
-              ["week", t("calendarTab.mode.week")],
-              ["month", t("calendarTab.mode.month")],
-            ] as const).map(([mode, label]) => {
+            {(
+              [
+                ["day", t("calendarTab.mode.day")],
+                ["week", t("calendarTab.mode.week")],
+                ["month", t("calendarTab.mode.month")],
+              ] as const
+            ).map(([mode, label]) => {
               const active = viewMode === mode;
               return (
                 <Pressable
@@ -1217,9 +1053,7 @@ export default function CalendarTabScreen() {
                   }}
                   style={[
                     styles.modeControlButton,
-                    active && {
-                      backgroundColor: palette.calendar.accentSubtle,
-                    },
+                    active && { borderBottomColor: calendarAccent },
                   ]}
                 >
                   <Animated.Text
@@ -1273,26 +1107,38 @@ export default function CalendarTabScreen() {
             <Pressable
               onPress={handleNavigatePrevious}
               hitSlop={10}
-              android_ripple={{ color: hexToRgba(calendarAccent, 0.16), radius: 18 }}
+              android_ripple={{
+                color: hexToRgba(calendarAccent, 0.16),
+                radius: 18,
+              }}
               style={styles.navigationButton}
             >
-              <Animated.Text style={[styles.navigationButtonLabel, { color: calendarAccent }]}>
+              <Animated.Text
+                style={[
+                  styles.navigationButtonLabel,
+                  { color: calendarAccent },
+                ]}
+              >
                 {isRtl ? ">" : "<"}
               </Animated.Text>
             </Pressable>
 
             <Pressable
               onPress={handleJumpToday}
-              android_ripple={{ color: hexToRgba(calendarAccent, 0.16), radius: 20 }}
+              android_ripple={{
+                color: hexToRgba(calendarAccent, 0.16),
+                radius: 20,
+              }}
               style={[
                 styles.todayButton,
                 {
-                  borderColor: palette.borderStrong,
-                  backgroundColor: palette.surfaceAlt,
+                  backgroundColor: "transparent",
                 },
               ]}
             >
-              <Animated.Text style={[styles.todayButtonLabel, { color: palette.text }]}>
+              <Animated.Text
+                style={[styles.todayButtonLabel, { color: palette.text }]}
+              >
                 {t("calendarTab.today")}
               </Animated.Text>
             </Pressable>
@@ -1300,10 +1146,18 @@ export default function CalendarTabScreen() {
             <Pressable
               onPress={handleNavigateNext}
               hitSlop={10}
-              android_ripple={{ color: hexToRgba(calendarAccent, 0.16), radius: 18 }}
+              android_ripple={{
+                color: hexToRgba(calendarAccent, 0.16),
+                radius: 18,
+              }}
               style={styles.navigationButton}
             >
-              <Animated.Text style={[styles.navigationButtonLabel, { color: calendarAccent }]}>
+              <Animated.Text
+                style={[
+                  styles.navigationButtonLabel,
+                  { color: calendarAccent },
+                ]}
+              >
                 {isRtl ? "<" : ">"}
               </Animated.Text>
             </Pressable>
@@ -1327,21 +1181,24 @@ export default function CalendarTabScreen() {
                   },
                 ]}
               >
-                {weekdayHeaderLabels.map((label, index) => (
-                  <View key={`${label}-${index}`} style={styles.monthWeekdayCell}>
+                {weekdayHeaderLabels.map((item) => (
+                  <View key={item.key} style={styles.monthWeekdayCell}>
                     <Animated.Text
-                      style={[styles.monthWeekdayLabel, { color: palette.textMuted }]}
+                      style={[
+                        styles.monthWeekdayLabel,
+                        { color: palette.textMuted },
+                      ]}
                       numberOfLines={1}
                     >
-                      {label}
+                      {item.label}
                     </Animated.Text>
                   </View>
                 ))}
               </View>
 
-              {monthGridRows.map((weekRow, rowIndex) => (
+              {monthGridRows.map((weekRow) => (
                 <View
-                  key={`row-${rowIndex}`}
+                  key={`row-${weekRow.map((cell) => cell.dateOnly).join("|")}`}
                   style={[
                     styles.monthRow,
                     {
@@ -1358,7 +1215,9 @@ export default function CalendarTabScreen() {
                     return (
                       <Pressable
                         key={cell.dateOnly}
-                        onPress={() => handleSelectMonthDate(cell.dateOnly, cell.inMonth)}
+                        onPress={() =>
+                          handleSelectMonthDate(cell.dateOnly, cell.inMonth)
+                        }
                         android_ripple={{
                           color: hexToRgba(calendarAccent, 0.16),
                           borderless: false,
@@ -1371,10 +1230,11 @@ export default function CalendarTabScreen() {
                             selected && {
                               backgroundColor: calendarAccent,
                             },
-                            !selected && isToday && {
-                              borderColor: calendarAccent,
-                              borderWidth: 1,
-                            },
+                            !selected &&
+                              isToday && {
+                                borderColor: calendarAccent,
+                                borderWidth: 1,
+                              },
                           ]}
                         >
                           <Animated.Text
@@ -1398,117 +1258,7 @@ export default function CalendarTabScreen() {
                 </View>
               ))}
             </View>
-          ) : (
-            <View
-              style={[
-                styles.timelineHeader,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.surface,
-                  flexDirection: isRtl ? "row-reverse" : "row",
-                },
-              ]}
-            >
-              <GestureDetector gesture={hourRailGesture}>
-                <View
-                  style={[
-                    styles.scrubberHourRail,
-                    {
-                      width: CALENDAR_HOUR_COLUMN_WIDTH,
-                      ...(isRtl
-                        ? {
-                            borderLeftWidth: 1,
-                            borderLeftColor: timelineDividerColor,
-                            borderRightWidth: 0,
-                          }
-                        : {
-                            borderRightWidth: 1,
-                            borderRightColor: timelineDividerColor,
-                            borderLeftWidth: 0,
-                          }),
-                    },
-                  ]}
-                >
-                  <Animated.Text
-                    style={[
-                      styles.scrubberHourLabel,
-                      {
-                        color: palette.textMuted,
-                      },
-                    ]}
-                  >
-                    {t("calendarTab.hoursLabel")}
-                  </Animated.Text>
-                </View>
-              </GestureDetector>
-
-              <GestureDetector gesture={dayRailGesture}>
-                <View style={styles.scrubberDayRail} onLayout={handleDayRailLayout}>
-                  <View
-                    style={[
-                      styles.scrubberRow,
-                      {
-                        flexDirection: isRtl ? "row-reverse" : "row",
-                      },
-                    ]}
-                  >
-                    {railDates.map((dateOnly, index) => {
-                      const width = headerColumnWidths[index] ?? 0;
-                      const active = index === activeColumnIndex;
-                      const isToday = dateOnly === todayDateOnly;
-                      const hidden = width < 1;
-                      const dayDate = getDateLabelDate(dateOnly);
-
-                      return (
-                        <View
-                          key={`${dateOnly}-${index}`}
-                          style={[
-                            styles.scrubberCell,
-                            {
-                              width,
-                              opacity: hidden ? 0 : 1,
-                              ...(isRtl
-                                ? {
-                                    borderRightWidth: index > 0 && !hidden ? 1 : 0,
-                                    borderRightColor: timelineDividerColor,
-                                  }
-                                : {
-                                    borderLeftWidth: index > 0 && !hidden ? 1 : 0,
-                                    borderLeftColor: timelineDividerColor,
-                                  }),
-                            },
-                          ]}
-                        >
-                          <Animated.Text
-                            style={[
-                              styles.dayName,
-                              {
-                                color: active || isToday ? calendarAccent : palette.textMuted,
-                              },
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {dayFormatter.format(dayDate)}
-                          </Animated.Text>
-                          <Animated.Text
-                            style={[
-                              styles.dayNumber,
-                              {
-                                color: active || isToday ? palette.text : palette.textMuted,
-                              },
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {dayNumberFormatter.format(dayDate)}
-                          </Animated.Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              </GestureDetector>
-            </View>
-          )}
+          ) : null}
         </View>
 
         <Animated.View
@@ -1518,13 +1268,14 @@ export default function CalendarTabScreen() {
               backgroundColor: palette.surface,
               borderColor: palette.border,
             },
-            bodyFadeStyle,
           ]}
         >
           {isLoadingCurrentUser || isLoadingApplications ? (
             <View style={styles.calendarLoadingState}>
               <ActivityIndicator color={calendarAccent} />
-              <Animated.Text style={[styles.loadingLabel, { color: palette.textMuted }]}>
+              <Animated.Text
+                style={[styles.loadingLabel, { color: palette.textMuted }]}
+              >
                 {t("calendarTab.loading")}
               </Animated.Text>
             </View>
@@ -1534,7 +1285,7 @@ export default function CalendarTabScreen() {
               contentContainerStyle={[
                 styles.monthAgendaContent,
                 {
-                  paddingBottom: Math.max(bottomChromeInset, 18),
+                  paddingBottom: bottomChromeInset,
                 },
               ]}
               contentInsetAdjustmentBehavior="automatic"
@@ -1542,10 +1293,17 @@ export default function CalendarTabScreen() {
             >
               {monthAgendaSections.length === 0 ? (
                 <View style={styles.monthAgendaEmpty}>
-                  <Animated.Text style={[styles.emptyStateTitle, { color: palette.text }]}>
+                  <Animated.Text
+                    style={[styles.emptyStateTitle, { color: palette.text }]}
+                  >
                     {t("calendarTab.month.emptyTitle")}
                   </Animated.Text>
-                  <Animated.Text style={[styles.emptyStateBody, { color: palette.textMuted }]}>
+                  <Animated.Text
+                    style={[
+                      styles.emptyStateBody,
+                      { color: palette.textMuted },
+                    ]}
+                  >
                     {t("calendarTab.month.emptyBody")}
                   </Animated.Text>
                 </View>
@@ -1554,8 +1312,16 @@ export default function CalendarTabScreen() {
                   const sectionDate = getDateLabelDate(section.dateOnly);
                   const sectionTitle = `${dayNumberFormatter.format(sectionDate)} ${dayFormatter.format(sectionDate)}`;
                   return (
-                    <View key={section.dateOnly} style={styles.monthAgendaSection}>
-                      <Animated.Text style={[styles.monthAgendaSectionTitle, { color: calendarAccent }]}>
+                    <View
+                      key={section.dateOnly}
+                      style={styles.monthAgendaSection}
+                    >
+                      <Animated.Text
+                        style={[
+                          styles.monthAgendaSectionTitle,
+                          { color: calendarAccent },
+                        ]}
+                      >
                         {sectionTitle}
                       </Animated.Text>
                       <View style={styles.monthAgendaSectionEvents}>
@@ -1570,13 +1336,14 @@ export default function CalendarTabScreen() {
             <>
               <CalendarContainer
                 ref={calendarRef}
-                initialDate={anchorDate}
+                initialDate={initialAnchorDate}
                 hourWidth={CALENDAR_HOUR_COLUMN_WIDTH}
                 numberOfDays={visibleDays}
                 scrollByDay
-                allowHorizontalSwipe={!isResizing}
+                allowHorizontalSwipe
                 events={calendarEvents}
                 onDateChanged={handleCalendarDateChanged}
+                onChange={handleCalendarDateChanged}
                 onLoad={() => {
                   setIsCalendarReady(true);
                   markCalendarInteractiveWhenReady();
@@ -1588,7 +1355,7 @@ export default function CalendarTabScreen() {
                 initialTimeIntervalHeight={DEFAULT_HOUR_SLOT_HEIGHT}
                 minTimeIntervalHeight={MIN_HOUR_SLOT_HEIGHT}
                 maxTimeIntervalHeight={MAX_HOUR_SLOT_HEIGHT}
-                spaceFromBottom={Math.max(bottomChromeInset, 12)}
+                spaceFromBottom={bottomChromeInset}
                 allowPinchToZoom={false}
                 overlapType="no-overlap"
                 theme={{
@@ -1619,7 +1386,11 @@ export default function CalendarTabScreen() {
                   },
                 }}
               >
-                <CalendarHeader dayBarHeight={0} headerBottomHeight={0} />
+                <CalendarHeader
+                  dayBarHeight={74}
+                  headerBottomHeight={0}
+                  renderDayItem={renderCalendarDayItem}
+                />
                 <CalendarBody
                   hourFormat="HH:mm"
                   showNowIndicator
@@ -1630,12 +1401,19 @@ export default function CalendarTabScreen() {
 
               {showEmptyCalendarMessage ? (
                 <View pointerEvents="none" style={styles.emptyStateOverlay}>
-                  <Animated.Text style={[styles.emptyStateTitle, { color: palette.text }]}>
+                  <Animated.Text
+                    style={[styles.emptyStateTitle, { color: palette.text }]}
+                  >
                     {!isInstructor
                       ? t("calendarTab.empty.nonInstructorTitle")
                       : t("calendarTab.empty.noSessionsTitle")}
                   </Animated.Text>
-                  <Animated.Text style={[styles.emptyStateBody, { color: palette.textMuted }]}>
+                  <Animated.Text
+                    style={[
+                      styles.emptyStateBody,
+                      { color: palette.textMuted },
+                    ]}
+                  >
                     {!isInstructor
                       ? t("calendarTab.empty.nonInstructorBody")
                       : t("calendarTab.empty.noSessionsBody")}
@@ -1646,8 +1424,16 @@ export default function CalendarTabScreen() {
           )}
 
           {syncStatus === "failed" && syncDetail ? (
-            <View pointerEvents="none" style={styles.syncErrorBanner}>
-              <Animated.Text style={[styles.syncErrorText, { color: palette.danger }]}>
+            <View
+              pointerEvents="none"
+              style={[
+                styles.syncErrorBanner,
+                { bottom: tabLayout.bottomOverlayInset },
+              ]}
+            >
+              <Animated.Text
+                style={[styles.syncErrorText, { color: palette.danger }]}
+              >
                 {syncDetail}
               </Animated.Text>
             </View>
@@ -1662,11 +1448,13 @@ export default function CalendarTabScreen() {
             {
               borderTopColor: palette.border,
               backgroundColor: palette.appBg,
-              paddingBottom: Math.max(insets.bottom, 10),
+              paddingBottom: tabLayout.bottomInset,
             },
           ]}
         >
-          <Animated.Text style={[styles.roleHintText, { color: palette.textMuted }]}>
+          <Animated.Text
+            style={[styles.roleHintText, { color: palette.textMuted }]}
+          >
             {t("calendarTab.footerHint")}
           </Animated.Text>
         </View>
@@ -1692,15 +1480,16 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   modeControl: {
-    borderRadius: 999,
-    borderWidth: 1,
-    overflow: "hidden",
+    borderBottomWidth: 1,
+    gap: 2,
   },
   modeControlButton: {
     alignItems: "center",
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
     flex: 1,
     justifyContent: "center",
-    minHeight: 34,
+    minHeight: 36,
   },
   modeControlLabel: {
     fontSize: 13,
@@ -1737,56 +1526,51 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   todayButton: {
-    borderRadius: 999,
-    borderWidth: 1,
     marginHorizontal: "auto",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   todayButtonLabel: {
     fontSize: 12,
     fontWeight: "700",
     lineHeight: 16,
   },
-  timelineHeader: {
-    borderRadius: 14,
-    borderWidth: 1,
-    height: 76,
-    overflow: "hidden",
-  },
-  scrubberHourRail: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  scrubberHourLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    lineHeight: 14,
-  },
-  scrubberDayRail: {
+  calendarDayItemPressable: {
     flex: 1,
   },
-  scrubberRow: {
-    alignItems: "stretch",
-    flex: 1,
-  },
-  scrubberCell: {
+  calendarDayItem: {
     alignItems: "center",
-    gap: 2,
     justifyContent: "center",
+    height: "100%",
+    paddingTop: 8,
+    paddingBottom: 6,
+    gap: 1,
   },
-  dayName: {
+  calendarDayWeekday: {
     fontSize: 12,
     fontWeight: "600",
     lineHeight: 15,
     textTransform: "uppercase",
   },
-  dayNumber: {
-    fontSize: 27,
+  calendarDayNumberWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calendarDayNumber: {
+    fontSize: 22,
     fontVariant: ["tabular-nums"],
     fontWeight: "700",
-    lineHeight: 30,
+    lineHeight: 26,
+  },
+  calendarDayDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   monthFrame: {
     borderRadius: 18,
@@ -1913,7 +1697,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   syncErrorBanner: {
-    bottom: 10,
     left: 14,
     position: "absolute",
     right: 14,

@@ -1,7 +1,7 @@
 # UI Backbone Plan (Phase 1)
 
 ## Goal
-Ship the first real app backbone on top of working Clerk + Convex auth:
+Ship the first real app backbone on top of working Convex Auth + Convex backend:
 - role-gated onboarding
 - consistent visual system
 - non-placeholder home/explore tabs

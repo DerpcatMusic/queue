@@ -1,4 +1,5 @@
 import { ConvexError } from "convex/values";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
@@ -15,15 +16,12 @@ export async function requireIdentity(ctx: Ctx) {
 }
 
 export async function getCurrentUser(ctx: Ctx): Promise<Doc<"users"> | null> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
     return null;
   }
 
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-    .unique();
+  const user = await ctx.db.get(userId);
 
   if (!user || !user.isActive) {
     return null;
@@ -33,15 +31,12 @@ export async function getCurrentUser(ctx: Ctx): Promise<Doc<"users"> | null> {
 }
 
 export async function requireCurrentUser(ctx: Ctx): Promise<Doc<"users">> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
     throw new ConvexError("Authentication required");
   }
 
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-    .unique();
+  const user = await ctx.db.get(userId);
 
   if (!user) {
     throw new ConvexError("Authenticated user is not registered");

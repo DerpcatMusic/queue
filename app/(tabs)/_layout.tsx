@@ -1,5 +1,5 @@
-import { useAuth, useClerk } from "@clerk/clerk-expo";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
@@ -19,16 +19,13 @@ import { Brand, BrandRadius, BrandShadow } from "@/constants/brand";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function TabLayout() {
-  const { signOut } = useClerk();
-  const { isLoaded: isClerkLoaded } = useAuth();
+  const { signOut } = useAuthActions();
   const { isLoading: isConvexAuthLoading, isAuthenticated } = useConvexAuth();
   const currentUser = useQuery(
     api.users.getCurrentUser,
     isAuthenticated ? {} : "skip",
   );
   const syncCurrentUser = useMutation(api.users.syncCurrentUser);
-  const [clerkLoadTimedOut, setClerkLoadTimedOut] = useState(false);
-  const [convexAuthTimedOut, setConvexAuthTimedOut] = useState(false);
   const [userQueryTimedOut, setUserQueryTimedOut] = useState(false);
   const [hasAttemptedSync, setHasAttemptedSync] = useState(false);
   const [isSyncingUser, setIsSyncingUser] = useState(false);
@@ -42,36 +39,6 @@ export default function TabLayout() {
       window.location.reload();
     }
   };
-
-  useEffect(() => {
-    if (isClerkLoaded) {
-      setClerkLoadTimedOut(false);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setClerkLoadTimedOut(true);
-    }, 10000);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [isClerkLoaded]);
-
-  useEffect(() => {
-    if (!isClerkLoaded || !isConvexAuthLoading) {
-      setConvexAuthTimedOut(false);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setConvexAuthTimedOut(true);
-    }, 12000);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [isClerkLoaded, isConvexAuthLoading]);
 
   useEffect(() => {
     if (!isAuthenticated || currentUser !== undefined) {
@@ -124,56 +91,8 @@ export default function TabLayout() {
     t,
   ]);
 
-  if (!isClerkLoaded && !clerkLoadTimedOut) {
-    return <LoadingScreen label={t("tabsLayout.loading.checkingSession")} />;
-  }
-
-  if (!isClerkLoaded && clerkLoadTimedOut) {
-    return (
-      <View style={[styles.errorContainer, { backgroundColor: palette.appBg }]}>
-        <ThemedText type="title">
-          {t("tabsLayout.errors.authInitTimeoutTitle")}
-        </ThemedText>
-        <ThemedText>{t("tabsLayout.errors.authInitTimeoutBody")}</ThemedText>
-        <Pressable
-          style={[styles.primaryButton, { backgroundColor: palette.primary, borderColor: palette.primaryPressed }]}
-          onPress={reloadWebApp}
-        >
-          <ThemedText
-            type="defaultSemiBold"
-            style={{ color: palette.onPrimary }}
-          >
-            {t("tabsLayout.actions.reload")}
-          </ThemedText>
-        </Pressable>
-      </View>
-    );
-  }
-
-  if (isConvexAuthLoading && !convexAuthTimedOut) {
+  if (isConvexAuthLoading) {
     return <LoadingScreen label={t("tabsLayout.loading.negotiatingSession")} />;
-  }
-
-  if (isConvexAuthLoading && convexAuthTimedOut) {
-    return (
-      <View style={[styles.errorContainer, { backgroundColor: palette.appBg }]}>
-        <ThemedText type="title">
-          {t("tabsLayout.errors.convexAuthTimeoutTitle")}
-        </ThemedText>
-        <ThemedText>{t("tabsLayout.errors.convexAuthTimeoutBody")}</ThemedText>
-        <Pressable
-          style={[styles.primaryButton, { backgroundColor: palette.primary, borderColor: palette.primaryPressed }]}
-          onPress={reloadWebApp}
-        >
-          <ThemedText
-            type="defaultSemiBold"
-            style={{ color: palette.onPrimary }}
-          >
-            {t("tabsLayout.actions.reload")}
-          </ThemedText>
-        </Pressable>
-      </View>
-    );
   }
 
   if (!isAuthenticated) {
@@ -195,16 +114,13 @@ export default function TabLayout() {
         </ThemedText>
         <Pressable
           style={[styles.primaryButton, { backgroundColor: palette.primary, borderColor: palette.primaryPressed }]}
-          onPress={() => {
-            setUserQueryTimedOut(false);
-            setHasAttemptedSync(false);
-          }}
+          onPress={reloadWebApp}
         >
           <ThemedText
             type="defaultSemiBold"
             style={{ color: palette.onPrimary }}
           >
-            {t("tabsLayout.actions.retry")}
+            {t("tabsLayout.actions.reload")}
           </ThemedText>
         </Pressable>
       </View>
@@ -263,6 +179,7 @@ export default function TabLayout() {
   return (
     <NativeTabs
       backgroundColor={palette.tabBar}
+      disableTransparentOnScrollEdge
       iconColor={{ default: palette.textMuted, selected: palette.primary }}
       labelStyle={{
         default: { color: palette.textMuted, fontSize: 12, fontWeight: "600" },
@@ -270,9 +187,7 @@ export default function TabLayout() {
       }}
       shadowColor={palette.tabBarBorder}
     >
-      <NativeTabs.Trigger
-        name="index"
-      >
+      <NativeTabs.Trigger name="index">
         <Icon
           sf={{ default: "house", selected: "house.fill" }}
           androidSrc={<VectorIcon family={MaterialIcons} name="home" />}
@@ -280,9 +195,7 @@ export default function TabLayout() {
         <Label>{t("tabs.home")}</Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger
-        name="calendar"
-      >
+      <NativeTabs.Trigger name="calendar">
         <Icon
           sf={{ default: "calendar", selected: "calendar" }}
           androidSrc={<VectorIcon family={MaterialIcons} name="calendar-month" />}
@@ -290,10 +203,7 @@ export default function TabLayout() {
         <Label>{t("tabs.calendar")}</Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger
-        name="jobs"
-        hidden={!showJobsTab}
-      >
+      <NativeTabs.Trigger name="jobs" hidden={!showJobsTab}>
         <Icon
           sf={{ default: "briefcase", selected: "briefcase.fill" }}
           androidSrc={<VectorIcon family={MaterialIcons} name="work" />}
@@ -301,10 +211,7 @@ export default function TabLayout() {
         <Label>{t("tabs.jobs")}</Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger
-        name="map"
-        hidden={currentUser.role !== "instructor"}
-      >
+      <NativeTabs.Trigger name="map" hidden={currentUser.role !== "instructor"}>
         <Icon
           sf={{ default: "map", selected: "map.fill" }}
           androidSrc={<VectorIcon family={MaterialIcons} name="map" />}
@@ -312,9 +219,7 @@ export default function TabLayout() {
         <Label>{t("tabs.map")}</Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger
-        name="profile"
-      >
+      <NativeTabs.Trigger name="profile">
         <Icon
           sf={{
             default: "person.crop.circle",

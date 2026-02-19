@@ -1,6 +1,12 @@
 import { ConvexError, v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
-import { requireIdentity, requireUserRole } from "./lib/auth";
+import {
+  getCurrentUser as getCurrentUserDoc,
+  requireCurrentUser,
+  requireIdentity,
+  requireUserRole,
+} from "./lib/auth";
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
 import {
@@ -17,17 +23,36 @@ const MAX_STUDIO_NAME_LENGTH = 120;
 const MAX_ADDRESS_LENGTH = 220;
 const MAX_PHONE_LENGTH = 20;
 
+function toCurrentUserPayload(user: Doc<"users">) {
+  return {
+    _id: user._id,
+    _creationTime: user._creationTime,
+    role: user.role,
+    onboardingComplete: user.onboardingComplete,
+    isActive: user.isActive,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    ...omitUndefined({
+      email: user.email,
+      fullName: user.fullName,
+      phoneE164: user.phoneE164,
+      name: user.name,
+      image: user.image,
+      emailVerificationTime: user.emailVerificationTime,
+      phone: user.phone,
+      phoneVerificationTime: user.phoneVerificationTime,
+      isAnonymous: user.isAnonymous,
+    }),
+  };
+}
+
 export const syncCurrentUser = mutation({
   args: {},
   returns: v.id("users"),
   handler: async (ctx) => {
     const identity = await requireIdentity(ctx);
+    const user = await requireCurrentUser(ctx);
     const now = Date.now();
-
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
 
     const derivedName = [identity.givenName, identity.familyName]
       .filter(Boolean)
@@ -36,32 +61,17 @@ export const syncCurrentUser = mutation({
     const fullName =
       identity.name ?? (derivedName.length > 0 ? derivedName : undefined);
 
-    if (existing) {
-      await ctx.db.patch("users", existing._id, {
-        ...omitUndefined({
-          email: identity.email,
-          fullName: existing.fullName ?? fullName,
-          phoneE164: identity.phoneNumber ?? existing.phoneE164,
-        }),
-        isActive: true,
-        updatedAt: now,
-      });
-      return existing._id;
-    }
-
-    return await ctx.db.insert("users", {
-      clerkId: identity.subject,
-      role: "pending",
-      onboardingComplete: false,
+    await ctx.db.patch("users", user._id, {
       ...omitUndefined({
         email: identity.email,
-        fullName,
-        phoneE164: identity.phoneNumber,
+        fullName: user.fullName ?? fullName,
+        phoneE164: identity.phoneNumber ?? user.phoneE164,
       }),
       isActive: true,
-      createdAt: now,
       updatedAt: now,
     });
+
+    return user._id;
   },
 });
 
@@ -71,7 +81,6 @@ export const getCurrentUser = query({
     v.object({
       _id: v.id("users"),
       _creationTime: v.number(),
-      clerkId: v.string(),
       role: v.union(
         v.literal("pending"),
         v.literal("instructor"),
@@ -81,6 +90,12 @@ export const getCurrentUser = query({
       email: v.optional(v.string()),
       fullName: v.optional(v.string()),
       phoneE164: v.optional(v.string()),
+      name: v.optional(v.string()),
+      image: v.optional(v.string()),
+      emailVerificationTime: v.optional(v.number()),
+      phone: v.optional(v.string()),
+      phoneVerificationTime: v.optional(v.number()),
+      isAnonymous: v.optional(v.boolean()),
       isActive: v.boolean(),
       createdAt: v.number(),
       updatedAt: v.number(),
@@ -88,21 +103,13 @@ export const getCurrentUser = query({
     v.null(),
   ),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
+    const user = await getCurrentUserDoc(ctx);
 
     if (!user || !user.isActive) {
       return null;
     }
 
-    return user;
+    return toCurrentUserPayload(user);
   },
 });
 
@@ -112,12 +119,7 @@ export const setMyRole = mutation({
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
-
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
+    const existing = await requireCurrentUser(ctx);
 
     if (!existing) {
       throw new ConvexError("User must be synced before role selection");
@@ -166,15 +168,7 @@ export const getMyInstructorSettings = query({
     v.null(),
   ),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
+    const user = await getCurrentUserDoc(ctx);
     if (!user || !user.isActive || user.role !== "instructor") {
       return null;
     }
@@ -377,15 +371,7 @@ export const getMyStudioSettings = query({
     v.null(),
   ),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
+    const user = await getCurrentUserDoc(ctx);
     if (!user || !user.isActive || user.role !== "studio") {
       return null;
     }
@@ -491,15 +477,7 @@ export const getMyStudioNotificationSettings = query({
     v.null(),
   ),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
+    const user = await getCurrentUserDoc(ctx);
     if (!user || !user.isActive || user.role !== "studio") {
       return null;
     }
