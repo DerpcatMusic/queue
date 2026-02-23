@@ -26,7 +26,11 @@ const rootDir = path.resolve(
 const outputDataDir = path.join(rootDir, "assets", "data", "pikud-haoref");
 const outputMetaPath = path.join(outputDataDir, "meta.json");
 const outputZoneIndexPath = path.join(outputDataDir, "zone-index.json");
-const outputZonesPath = path.join(rootDir, "constants", "zones.generated.ts");
+const outputZoneCityIndexPath = path.join(
+  outputDataDir,
+  "zone-city-index.json",
+);
+const outputZonesPath = path.join(rootDir, "src", "constants", "zones.generated.ts");
 const outputConvexZoneIdsPath = path.join(
   rootDir,
   "convex",
@@ -351,6 +355,55 @@ function buildZoneOptions(geojson) {
   return options;
 }
 
+function buildZoneCityIndex(geojson) {
+  const zones = [];
+  const zoneIdsByCityKey = new Map();
+
+  for (const feature of geojson.features ?? []) {
+    const properties = feature?.properties ?? {};
+    const zoneId = String(properties.id ?? "").trim();
+    if (!zoneId) continue;
+
+    const cityHeb = String(properties.cityHeb ?? "").trim();
+    const cityEng = String(properties.cityEng ?? "").trim();
+    const cityKey = cityHeb || cityEng || zoneId;
+
+    zones.push({
+      id: zoneId,
+      cityKey,
+      cityHeb: cityHeb || cityKey,
+      cityEng: cityEng || cityKey,
+    });
+
+    const existing = zoneIdsByCityKey.get(cityKey);
+    if (existing) {
+      existing.push(zoneId);
+    } else {
+      zoneIdsByCityKey.set(cityKey, [zoneId]);
+    }
+  }
+
+  zones.sort((a, b) => a.id.localeCompare(b.id, "en", { sensitivity: "base" }));
+
+  const cities = [...zoneIdsByCityKey.entries()]
+    .map(([cityKey, zoneIds]) => ({
+      cityKey,
+      zoneIds: [...new Set(zoneIds)].sort((a, b) =>
+        a.localeCompare(b, "en", { sensitivity: "base" }),
+      ),
+    }))
+    .sort((a, b) => a.cityKey.localeCompare(b.cityKey, "en", { sensitivity: "base" }));
+
+  return {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    zoneCount: zones.length,
+    cityCount: cities.length,
+    zones,
+    cities,
+  };
+}
+
 async function run() {
   console.log("Fetching high-resolution Pikud HaOref area polygons...");
 
@@ -386,6 +439,7 @@ async function run() {
   const zoneOptions = buildZoneOptions(allGeoJson);
   const zoneIds = zoneOptions.map((option) => option.id);
   const zoneIndex = buildZoneIndex(allGeoJson);
+  const zoneCityIndex = buildZoneCityIndex(allGeoJson);
 
   if (zoneOptions.length < 1000) {
     throw new Error(
@@ -401,6 +455,7 @@ async function run() {
     writeFile(path.join(outputDataDir, SOURCE_FILES.districts), JSON.stringify(districts)),
     writeFile(path.join(outputDataDir, SOURCE_FILES.cities), JSON.stringify(cities)),
     writeFile(outputZoneIndexPath, JSON.stringify(zoneIndex)),
+    writeFile(outputZoneCityIndexPath, JSON.stringify(zoneCityIndex)),
     writeFile(outputCityPolygonsPath, JSON.stringify(cityPolygons)),
     writeFile(
       outputMetaPath,
@@ -416,8 +471,9 @@ async function run() {
           areaZoneCount: zoneOptions.length,
           cityPolygonCount: cityPolygons.features.length,
           zoneIndexCount: zoneIndex.zones.length,
+          zoneCityIndexCount: zoneCityIndex.zones.length,
           notes:
-            "all.json stores high-resolution alert areas; city-polygons.json stores dissolved city boundaries for zoomed-out labeling.",
+            "all.json stores high-resolution alert areas; city-polygons.json stores dissolved city boundaries for zoomed-out labeling; zone-city-index.json stores lightweight zone-to-city metadata for UI grouping.",
         },
         null,
         2,

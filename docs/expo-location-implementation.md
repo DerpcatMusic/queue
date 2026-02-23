@@ -24,10 +24,10 @@ If using EAS dev builds, create/install a fresh dev build after native dependenc
 
 ## Added safeguards in app code
 
-1. `lib/location-zone.ts`
+1. `src/lib/location-zone.ts`
    - Classifies location failures into typed error codes (`native_module_missing`, `permission_blocked`, `services_disabled`, etc.).
    - Adds runtime preflight (`checkLocationRuntimeSupport`) by calling `getProviderStatusAsync` with timeout.
-2. `app/_layout.tsx`
+2. `src/app/_layout.tsx`
    - Runs location preflight on native startup and shows deterministic rebuild guidance when native module is missing.
 3. `scripts/android/doctor-windows.ps1`
    - Verifies Android package install and app version match on connected devices.
@@ -35,7 +35,7 @@ If using EAS dev builds, create/install a fresh dev build after native dependenc
 
 ## Current app flow
 
-Location and geocoding are centralized in `lib/location-zone.ts`:
+Location and geocoding are centralized in `src/lib/location-zone.ts`:
 
 1. Request foreground location permission.
 2. For GPS:
@@ -46,12 +46,12 @@ Location and geocoding are centralized in `lib/location-zone.ts`:
    - Cache reverse-geocode results by rounded coordinate key.
 4. For address geocoding:
    - Use `geocodeAsync` and cache resolved addresses.
-5. Map coordinates to zone via `findZoneIdForCoordinate(...)` from `constants/zones-map.ts`.
+5. Map coordinates to zone via `findZoneIdForCoordinate(...)` from `src/constants/zones-map.ts`.
 6. Return `{ address, latitude, longitude, zoneId }`.
 
 ## Resolver API contract
 
-1. UI screens use `hooks/use-location-resolution.ts` for all location actions.
+1. UI screens use `src/hooks/use-location-resolution.ts` for all location actions.
 2. Each resolver call returns a structured result:
    - `ok: true` with resolved location data
    - `ok: false` with typed error code + message
@@ -61,7 +61,7 @@ Location and geocoding are centralized in `lib/location-zone.ts`:
 
 1. Removed duplicate profile GPS/address execution path and migrated profile to the shared resolver hook.
 2. Removed web onboarding "demo pin" fallback that injected fake coordinates.
-3. Centralized location error-to-translation mapping via `lib/location-error-message.ts`.
+3. Centralized location error-to-translation mapping via `src/lib/location-error-message.ts`.
 
 ## Expo docs alignment (SDK 54)
 

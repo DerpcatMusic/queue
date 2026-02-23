@@ -16,11 +16,11 @@ Ship a fast, cost-aware, professional onboarding map flow for Israel zones using
 - Removed duplicate map SDKs (`expo-maps`, `@rnmapbox/maps`).
 - Added MapLibre Expo config plugin in `app.json`.
 - Added zone index generation in `scripts/data/seed-pikud-haoref.mjs`.
-- Added map helpers in `constants/zones-map.ts`.
+- Added map helpers in `src/constants/zones-map.ts`.
 - Added onboarding-native map component:
-  - `components/maps/pikud-zones-map.native.tsx`
-  - `components/maps/pikud-zones-map.web.tsx` fallback
-- Wired onboarding search dropdown + polygon selection map in `app/onboarding.tsx`.
+  - `src/components/maps/pikud-zones-map.native.tsx`
+  - `src/components/maps/pikud-zones-map.web.tsx` fallback
+- Wired onboarding search dropdown + polygon selection map in `src/app/onboarding.tsx`.
 
 ## Next (Phase 2)
 

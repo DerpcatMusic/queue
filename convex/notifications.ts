@@ -58,7 +58,7 @@ export const sendJobNotifications = internalAction({
         to: recipient.expoPushToken,
         sound: "default",
         title: "New class opportunity",
-        body: `${payload.sport} • ${payload.zone}`,
+        body: `${payload.sport} - ${payload.zone}`,
         data: {
           type: "job_opened",
           jobId: String(payload.jobId),
@@ -164,3 +164,4 @@ export const sendJobNotifications = internalAction({
     };
   },
 });
+

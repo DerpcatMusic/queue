@@ -12,7 +12,7 @@ bun run seed:pikud-haoref
 
 ## Generated Outputs
 
-- `constants/zones.generated.ts`
+- `src/constants/zones.generated.ts`
   - App-friendly zone options list (`id`, English/Hebrew labels, alert seconds).
 - `assets/data/pikud-haoref/all.geojson`
   - Full split-level alert area GeoJSON (`ראשון לציון - מזרח/מערב` style).
@@ -29,6 +29,6 @@ bun run seed:pikud-haoref
 
 ## Notes
 
-- `constants/zones.ts` re-exports the generated options and helper lookups.
-- `constants/zones-map.ts` exposes GeoJSON + zone index helpers for map components.
+- `src/constants/zones.ts` re-exports the generated options and helper lookups.
+- `src/constants/zones-map.ts` exposes GeoJSON + zone index helpers for map components.
 - Regenerate when upstream zone definitions change.

@@ -30,6 +30,7 @@ export const SPORT_TYPES = [
 ] as const;
 
 export type SportType = (typeof SPORT_TYPES)[number];
+const SPORT_TYPE_SET = new Set<string>(SPORT_TYPES);
 
 export const REQUIRED_LEVELS = [
   "beginner_friendly",
@@ -63,4 +64,8 @@ export function toSportLabel(sport: SportType): string {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+export function isSportType(value: string): value is SportType {
+  return SPORT_TYPE_SET.has(value);
 }

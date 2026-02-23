@@ -86,6 +86,7 @@ export default defineSchema({
     expoPushToken: v.optional(v.string()),
     notificationsEnabled: v.optional(v.boolean()),
     logoStorageId: v.optional(v.id("_storage")),
+    autoExpireMinutesBefore: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -141,6 +142,7 @@ export default defineSchema({
 
   jobApplications: defineTable({
     jobId: v.id("jobs"),
+    studioId: v.optional(v.id("studioProfiles")),
     instructorId: v.id("instructorProfiles"),
     status: v.union(
       v.literal("pending"),
@@ -153,9 +155,20 @@ export default defineSchema({
     message: v.optional(v.string()),
   })
     .index("by_job", ["jobId"])
+    .index("by_studio", ["studioId"])
     .index("by_instructor", ["instructorId"])
     .index("by_instructor_appliedAt", ["instructorId", "appliedAt"])
     .index("by_job_and_instructor", ["jobId", "instructorId"]),
+
+  jobApplicationStats: defineTable({
+    jobId: v.id("jobs"),
+    studioId: v.id("studioProfiles"),
+    applicationsCount: v.number(),
+    pendingApplicationsCount: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_studio", ["studioId"]),
 
   userNotifications: defineTable({
     recipientUserId: v.id("users"),
@@ -184,6 +197,6 @@ export default defineSchema({
     error: v.optional(v.string()),
   })
     .index("by_job", ["jobId"])
-    .index("by_instructor", ["instructorId"]) 
+    .index("by_instructor", ["instructorId"])
     .index("by_job_and_instructor", ["jobId", "instructorId"]),
 });

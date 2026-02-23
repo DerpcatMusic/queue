@@ -19,7 +19,7 @@ export function KitSwitchRow({
   onValueChange,
   disabled = false,
 }: KitSwitchRowProps) {
-  const { palette, switchTrackOff, switchTrackOn } = useKitTheme();
+  const { interaction, foreground } = useKitTheme();
 
   return (
     <KitListItem
@@ -29,16 +29,22 @@ export function KitSwitchRow({
           value={value}
           disabled={disabled}
           onValueChange={onValueChange}
-          trackColor={{ false: switchTrackOff, true: switchTrackOn }}
-          thumbColor={value ? (palette.primary as string) : (palette.surface as string)}
-          ios_backgroundColor={switchTrackOff}
+          trackColor={{
+            false: interaction.switchTrackOff,
+            true: interaction.switchTrackOn,
+          }}
+          thumbColor={
+            value
+              ? (interaction.switchThumbOn as string)
+              : (interaction.switchThumbOff as string)
+          }
+          ios_backgroundColor={interaction.switchTrackOff as string}
         />
       }
     >
       {description ? (
-        <ThemedText style={{ color: palette.textMuted, fontSize: 13 }}>{description}</ThemedText>
+        <ThemedText style={{ color: foreground.muted, fontSize: 13 }}>{description}</ThemedText>
       ) : null}
     </KitListItem>
   );
 }
-

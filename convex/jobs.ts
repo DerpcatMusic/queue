@@ -89,6 +89,43 @@ async function requireStudioProfile(ctx: QueryCtx | MutationCtx) {
   return studio;
 }
 
+async function recomputeJobApplicationStats(
+  ctx: MutationCtx,
+  job: Doc<"jobs">,
+) {
+  if (!USE_JOB_APPLICATION_STATS) return;
+
+  const applications = await ctx.db
+    .query("jobApplications")
+    .withIndex("by_job", (q) => q.eq("jobId", job._id))
+    .collect();
+
+  const applicationsCount = applications.length;
+  const pendingApplicationsCount = applications.filter(
+    (application) => application.status === "pending",
+  ).length;
+  const existing = await ctx.db
+    .query("jobApplicationStats")
+    .withIndex("by_job", (q) => q.eq("jobId", job._id))
+    .unique();
+  const next = {
+    studioId: job.studioId,
+    applicationsCount,
+    pendingApplicationsCount,
+    updatedAt: Date.now(),
+  };
+
+  if (existing) {
+    await ctx.db.patch(existing._id, next);
+    return;
+  }
+
+  await ctx.db.insert("jobApplicationStats", {
+    jobId: job._id,
+    ...next,
+  });
+}
+
 function toDisplayLabel(value: string) {
   return value
     .split("_")
@@ -97,6 +134,10 @@ function toDisplayLabel(value: string) {
 }
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
+const DEFAULT_AUTO_EXPIRE_MINUTES = 30;
+const USE_JOB_APPLICATION_STATS = process.env.ENABLE_JOB_APPLICATION_STATS !== "0";
+const USE_STUDIO_APPLICATIONS_BY_STUDIO = process.env.ENABLE_STUDIO_APPLICATIONS_BY_STUDIO !== "0";
+
 
 async function enqueueUserNotification(
   ctx: MutationCtx,
@@ -260,6 +301,18 @@ export const postJob = mutation({
       { jobId },
     );
 
+    const expireMinutes =
+      studio.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
+    const expireAt = args.startTime - expireMinutes * 60 * 1000;
+    const expireDelay = Math.max(expireAt - now, 0);
+    if (expireAt > now) {
+      await ctx.scheduler.runAfter(
+        expireDelay,
+        internal.jobs.autoExpireUnfilledJob,
+        { jobId },
+      );
+    }
+
     return { jobId };
   },
 });
@@ -361,6 +414,9 @@ export const getAvailableJobsForInstructor = query({
           continue;
         }
         if (job.startTime <= now) continue;
+        if (job.applicationDeadline !== undefined && job.applicationDeadline < now) {
+          continue;
+        }
         matchingById.set(job._id, job);
       }
     }
@@ -374,20 +430,25 @@ export const getAvailableJobsForInstructor = query({
     }
 
     const applicationByJobId = new Map<string, Doc<"jobApplications">>();
-    const matchingApplications = await Promise.all(
-      matchingJobs.map((job) =>
-        ctx.db
-          .query("jobApplications")
-          .withIndex("by_job_and_instructor", (q) =>
-            q.eq("jobId", job._id).eq("instructorId", instructor._id),
-          )
-          .unique(),
-      ),
-    );
+    const matchingJobIdSet = new Set(matchingJobs.map((job) => String(job._id)));
+    const instructorApplications = await ctx.db
+      .query("jobApplications")
+      .withIndex("by_instructor", (q) => q.eq("instructorId", instructor._id))
+      .collect();
 
-    for (const application of matchingApplications) {
-      if (!application) continue;
-      applicationByJobId.set(String(application.jobId), application);
+    for (const application of instructorApplications) {
+      const jobId = String(application.jobId);
+      if (!matchingJobIdSet.has(jobId)) continue;
+      const existing = applicationByJobId.get(jobId);
+      if (!existing) {
+        applicationByJobId.set(jobId, application);
+        continue;
+      }
+      const existingUpdatedAt = existing.updatedAt ?? existing.appliedAt;
+      const nextUpdatedAt = application.updatedAt ?? application.appliedAt;
+      if (nextUpdatedAt > existingUpdatedAt) {
+        applicationByJobId.set(jobId, application);
+      }
     }
 
     const studioIds = [...new Set(matchingJobs.map((job) => job.studioId))];
@@ -591,6 +652,7 @@ export const applyToJob = mutation({
       }
 
       await ctx.db.patch("jobApplications", existing._id, {
+        studioId: job.studioId,
         status: "pending",
         ...omitUndefined({ message }),
         updatedAt: now,
@@ -599,6 +661,7 @@ export const applyToJob = mutation({
     } else {
       applicationId = await ctx.db.insert("jobApplications", {
         jobId: args.jobId,
+        studioId: job.studioId,
         instructorId: instructor._id,
         status: "pending",
         appliedAt: now,
@@ -619,6 +682,8 @@ export const applyToJob = mutation({
         applicationId,
       });
     }
+
+    await recomputeJobApplicationStats(ctx, job);
 
     return { applicationId, status: "pending" as const };
   },
@@ -659,22 +724,40 @@ export const getMyStudioJobs = query({
       .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
       .order("desc")
       .take(limit);
-
-    const applicationsByJob = await Promise.all(
-      jobs.map((job) =>
-        ctx.db
-          .query("jobApplications")
-          .withIndex("by_job", (q) => q.eq("jobId", job._id))
-          .collect(),
-      ),
-    );
+    const jobIds = new Set(jobs.map((job) => String(job._id)));
+    const statsByJobId = new Map<string, Doc<"jobApplicationStats">>();
+    const fallbackApplicationsByJobId = new Map<string, Doc<"jobApplications">[]>();
+    if (USE_JOB_APPLICATION_STATS) {
+      const stats = await ctx.db
+        .query("jobApplicationStats")
+        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+        .collect();
+      for (const stat of stats) {
+        const jobId = String(stat.jobId);
+        if (!jobIds.has(jobId)) continue;
+        statsByJobId.set(jobId, stat);
+      }
+    } else {
+      const applicationsByJob = await Promise.all(
+        jobs.map((job) =>
+          ctx.db
+            .query("jobApplications")
+            .withIndex("by_job", (q) => q.eq("jobId", job._id))
+            .collect(),
+        ),
+      );
+      for (let i = 0; i < jobs.length; i += 1) {
+        const job = jobs[i];
+        if (!job) continue;
+        fallbackApplicationsByJobId.set(String(job._id), applicationsByJob[i] ?? []);
+      }
+    }
 
     const rows = [];
     for (let i = 0; i < jobs.length; i += 1) {
       const job = jobs[i];
       if (!job) continue;
-      const applications =
-        applicationsByJob[i] ?? ([] as Doc<"jobApplications">[]);
+      const stat = statsByJobId.get(String(job._id));
 
       rows.push({
         jobId: job._id,
@@ -685,8 +768,14 @@ export const getMyStudioJobs = query({
         pay: job.pay,
         status: job.status,
         postedAt: job.postedAt,
-        applicationsCount: applications.length,
-        pendingApplicationsCount: applications.filter((a) => a.status === "pending").length,
+        applicationsCount:
+          stat?.applicationsCount ??
+          (fallbackApplicationsByJobId.get(String(job._id)) ?? []).length,
+        pendingApplicationsCount:
+          stat?.pendingApplicationsCount ??
+          (fallbackApplicationsByJobId.get(String(job._id)) ?? []).filter(
+            (application) => application.status === "pending",
+          ).length,
         ...omitUndefined({
           timeZone: job.timeZone,
           note: job.note,
@@ -748,20 +837,49 @@ export const getMyStudioJobsWithApplications = query({
       .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
       .order("desc")
       .take(limit);
+    const jobIds = new Set(jobs.map((job) => String(job._id)));
+    const statsByJobId = new Map<string, Doc<"jobApplicationStats">>();
+    if (USE_JOB_APPLICATION_STATS) {
+      const stats = await ctx.db
+        .query("jobApplicationStats")
+        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+        .collect();
+      for (const stat of stats) {
+        const jobId = String(stat.jobId);
+        if (!jobIds.has(jobId)) continue;
+        statsByJobId.set(jobId, stat);
+      }
+    }
 
-    const applicationsByJob = await Promise.all(
-      jobs.map((job) =>
-        ctx.db
-          .query("jobApplications")
-          .withIndex("by_job", (q) => q.eq("jobId", job._id))
-          .collect(),
-      ),
-    );
+    const studioApplications = USE_STUDIO_APPLICATIONS_BY_STUDIO
+      ? await ctx.db
+        .query("jobApplications")
+        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+        .collect()
+      : (await Promise.all(
+        jobs.map((job) =>
+          ctx.db
+            .query("jobApplications")
+            .withIndex("by_job", (q) => q.eq("jobId", job._id))
+            .collect(),
+        ),
+      )).flat();
+    const applicationsByJobId = new Map<string, Doc<"jobApplications">[]>();
+    for (const application of studioApplications) {
+      const jobId = String(application.jobId);
+      if (!jobIds.has(jobId)) continue;
+      const existing = applicationsByJobId.get(jobId);
+      if (existing) {
+        existing.push(application);
+      } else {
+        applicationsByJobId.set(jobId, [application]);
+      }
+    }
 
     const instructorIds = [
       ...new Set(
-        applicationsByJob
-          .flat()
+        studioApplications
+          .filter((application) => jobIds.has(String(application.jobId)))
           .map((application) => application.instructorId),
       ),
     ];
@@ -784,7 +902,8 @@ export const getMyStudioJobsWithApplications = query({
       const job = jobs[i];
       if (!job) continue;
       const applications =
-        applicationsByJob[i] ?? ([] as Doc<"jobApplications">[]);
+        applicationsByJobId.get(String(job._id)) ?? ([] as Doc<"jobApplications">[]);
+      const stat = statsByJobId.get(String(job._id));
 
       const sortedApplications = [...applications].sort((a, b) => {
         const statusRank: Record<Doc<"jobApplications">["status"], number> = {
@@ -808,9 +927,10 @@ export const getMyStudioJobsWithApplications = query({
         pay: job.pay,
         status: job.status,
         postedAt: job.postedAt,
-        applicationsCount: applications.length,
-        pendingApplicationsCount: applications.filter((a) => a.status === "pending")
-          .length,
+        applicationsCount: stat?.applicationsCount ?? applications.length,
+        pendingApplicationsCount:
+          stat?.pendingApplicationsCount ??
+          applications.filter((a) => a.status === "pending").length,
         ...omitUndefined({
           timeZone: job.timeZone,
           note: job.note,
@@ -893,6 +1013,7 @@ export const reviewApplication = mutation({
 
       for (const row of competingApplications) {
         await ctx.db.patch("jobApplications", row._id, {
+          studioId: job.studioId,
           status: row._id === application._id ? "accepted" : "rejected",
           updatedAt: Date.now(),
         });
@@ -932,8 +1053,11 @@ export const reviewApplication = mutation({
           event: "lesson_completed",
         },
       );
+
+      await recomputeJobApplicationStats(ctx, job);
     } else {
       await ctx.db.patch("jobApplications", application._id, {
+        studioId: job.studioId,
         status: "rejected",
         updatedAt: Date.now(),
       });
@@ -953,6 +1077,8 @@ export const reviewApplication = mutation({
           applicationId: application._id,
         });
       }
+
+      await recomputeJobApplicationStats(ctx, job);
     }
 
     return { ok: true };
@@ -1072,5 +1198,44 @@ export const closeJobIfStillOpen = internalMutation({
 
     await ctx.db.patch("jobs", job._id, { status: "cancelled" });
     return { updated: true };
+  },
+});
+
+export const autoExpireUnfilledJob = internalMutation({
+  args: {
+    jobId: v.id("jobs"),
+  },
+  returns: v.object({ expired: v.boolean() }),
+  handler: async (ctx, args) => {
+    const job = await ctx.db.get("jobs", args.jobId);
+    if (!job) {
+      return { expired: false };
+    }
+    if (job.status !== "open") {
+      return { expired: false };
+    }
+
+    const studio = await ctx.db.get("studioProfiles", job.studioId);
+    const expireMinutes =
+      studio?.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
+    const expireCutoff = job.startTime - expireMinutes * 60 * 1000;
+
+    if (Date.now() < expireCutoff) {
+      return { expired: false };
+    }
+
+    await ctx.db.patch("jobs", job._id, { status: "cancelled" });
+
+    if (studio) {
+      await enqueueUserNotification(ctx, {
+        recipientUserId: studio.userId,
+        kind: "lesson_completed",
+        title: "Job expired",
+        body: `Your ${toDisplayLabel(job.sport)} job was not filled and has been auto-cancelled.`,
+        jobId: job._id,
+      });
+    }
+
+    return { expired: true };
   },
 });

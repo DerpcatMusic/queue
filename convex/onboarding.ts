@@ -222,6 +222,12 @@ export const completeStudioOnboarding = mutation({
     const expoPushToken = trimOptionalString(args.expoPushToken);
     const notificationsEnabled = Boolean(args.notificationsEnabled && expoPushToken);
 
+    if (args.logoStorageId !== undefined) {
+      throw new ConvexError(
+        "Studio logo uploads are temporarily disabled until ownership verification is implemented",
+      );
+    }
+
     const existingProfile = await ctx.db
       .query("studioProfiles")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
@@ -237,7 +243,6 @@ export const completeStudioOnboarding = mutation({
           latitude,
           longitude,
           expoPushToken,
-          logoStorageId: args.logoStorageId,
         }),
         notificationsEnabled,
         updatedAt: now,
@@ -262,7 +267,6 @@ export const completeStudioOnboarding = mutation({
         latitude,
         longitude,
         expoPushToken,
-        logoStorageId: args.logoStorageId,
       }),
       notificationsEnabled,
       createdAt: now,

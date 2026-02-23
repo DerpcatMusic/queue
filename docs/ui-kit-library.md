@@ -14,14 +14,13 @@ Scope: `Queue/src/components/ui/kit/*`
 
 - Global theme adapter: `src/components/ui/kit/use-kit-theme.ts`
   - Reads `useBrand()` + `useThemePreference()`.
-  - Produces semantic kit tokens:
-    - `glassBackground`
-    - `highlightBorder`
-    - `primaryLiftShadow`
-    - `surfaceShadow`
-    - `switchTrackOn` / `switchTrackOff`
-    - `transparent`
-    - `symbolTint`
+  - Produces semantic kit tokens with explicit groups:
+    - `theme.color.primary`, `theme.color.primaryPressed`, `theme.color.secondary`, `theme.color.danger`
+    - `theme.background.surface`, `theme.background.surfaceSecondary`, `theme.background.surfaceElevated`, `theme.background.glass`
+    - `theme.foreground.primary`, `theme.foreground.secondary`, `theme.foreground.muted`
+    - `theme.border.primary`, `theme.border.secondary`, `theme.border.highlight`
+    - `theme.interaction.switchTrackOn`, `theme.interaction.switchTrackOff`, `theme.interaction.ripple`
+    - `theme.shadow.primaryLift`, `theme.shadow.surface`
 - Color utility: `src/components/ui/kit/color-utils.ts`
   - Converts hex semantic colors into alpha variants without per-component color literals.
 
@@ -52,6 +51,6 @@ Exports are centralized in `src/components/ui/kit/index.ts`.
 ## Extension Rules
 
 - New kit components must consume `useKitTheme()` and never declare hardcoded color literals.
+- Use semantic token names only (`.primary`, `.secondary`, `.surface`, `.foreground`, `.border`, etc.) instead of direct palette fields inside components.
 - New shadow/glass/overlay treatments must be tokenized in `use-kit-theme.ts`.
 - Feature screens should import from `@/components/ui/kit` and avoid ad-hoc control styling.
-

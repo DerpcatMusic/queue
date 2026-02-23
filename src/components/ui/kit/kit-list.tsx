@@ -21,7 +21,7 @@ type KitListItemProps = {
 };
 
 export function KitList({ children, style, inset = true }: KitListProps) {
-  const { palette } = useKitTheme();
+  const { border, background } = useKitTheme();
   const entries = React.Children.toArray(children);
 
   return (
@@ -30,8 +30,8 @@ export function KitList({ children, style, inset = true }: KitListProps) {
         {
           overflow: "hidden",
           borderWidth: 1,
-          borderColor: palette.border,
-          backgroundColor: palette.surfaceElevated,
+          borderColor: border.primary,
+          backgroundColor: background.surfaceElevated,
           borderRadius: inset ? BrandRadius.card : 0,
           marginHorizontal: inset ? 16 : 0,
         },
@@ -48,7 +48,7 @@ export function KitList({ children, style, inset = true }: KitListProps) {
                 style={{
                   height: 1,
                   marginLeft: 16,
-                  backgroundColor: palette.border,
+                  backgroundColor: border.primary,
                 }}
               />
             ) : null}
@@ -67,14 +67,14 @@ export function KitListItem({
   leading,
   onPress,
 }: KitListItemProps) {
-  const { palette, transparent } = useKitTheme();
+  const { foreground, background, interaction } = useKitTheme();
 
   const content = (
     <>
       {leading ? <View style={{ marginRight: 12 }}>{leading}</View> : null}
       <View style={{ flex: 1, justifyContent: "center", gap: children ? 2 : 0 }}>
         {title ? (
-          <ThemedText type="body" style={{ color: palette.text, fontSize: 17 }}>
+          <ThemedText type="body" style={{ color: foreground.secondary, fontSize: 17 }}>
             {title}
           </ThemedText>
         ) : null}
@@ -88,7 +88,7 @@ export function KitListItem({
     return (
       <Pressable
         accessibilityRole="button"
-        android_ripple={{ color: palette.primarySubtle as string }}
+        android_ripple={{ color: interaction.ripple as string }}
         onPress={onPress}
         style={({ pressed }) => [
           {
@@ -97,7 +97,9 @@ export function KitListItem({
             paddingHorizontal: 16,
             paddingVertical: 14,
             minHeight: 56,
-            backgroundColor: pressed ? palette.surfaceAlt : transparent,
+            backgroundColor: pressed
+              ? background.surfaceSecondary
+              : background.transparent,
           },
           style,
         ]}

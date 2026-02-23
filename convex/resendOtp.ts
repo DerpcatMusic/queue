@@ -4,7 +4,7 @@ import { Resend as ResendApi } from "resend";
 
 export const ResendOTP = Email({
   id: "resend-otp",
-  apiKey: process.env.RESEND_API_KEY ?? process.env.AUTH_RESEND_KEY,
+  apiKey: (process.env.RESEND_API_KEY ?? process.env.AUTH_RESEND_KEY)!,
   maxAge: 60 * 15,
   async generateVerificationToken() {
     const random: RandomReader = {

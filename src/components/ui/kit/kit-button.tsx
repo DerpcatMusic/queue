@@ -38,43 +38,43 @@ function getButtonColors(
   variant: NonNullable<KitButtonProps["variant"]>,
   theme: ReturnType<typeof useKitTheme>,
 ): ButtonColors {
-  const { palette, highlightBorder, primaryLiftShadow, surfaceShadow } = theme;
+  const { color, background, foreground, border, shadow, isCustomStyle } = theme;
   if (variant === "primary") {
     return {
-      backgroundColor: palette.primary,
-      borderColor: palette.primaryPressed,
-      textColor: palette.onPrimary,
-      iconColor: palette.onPrimary,
-      highlight: highlightBorder,
-      shadow: primaryLiftShadow,
+      backgroundColor: color.primary,
+      borderColor: color.primaryPressed,
+      textColor: foreground.primary,
+      iconColor: foreground.primary,
+      highlight: border.highlight,
+      shadow: shadow.primaryLift,
     };
   }
   if (variant === "danger") {
     return {
-      backgroundColor: palette.danger,
-      borderColor: palette.danger,
-      textColor: palette.onPrimary,
-      iconColor: palette.onPrimary,
-      highlight: highlightBorder,
-      shadow: surfaceShadow,
+      backgroundColor: color.danger,
+      borderColor: color.danger,
+      textColor: foreground.primary,
+      iconColor: foreground.primary,
+      highlight: border.highlight,
+      shadow: shadow.surface,
     };
   }
   if (variant === "secondary") {
     return {
-      backgroundColor: theme.glassBackground,
-      borderColor: palette.borderStrong,
-      textColor: palette.text,
-      iconColor: palette.primary,
-      highlight: palette.border,
-      shadow: theme.isCustomStyle ? surfaceShadow : undefined,
+      backgroundColor: background.glass,
+      borderColor: border.secondary,
+      textColor: foreground.secondary,
+      iconColor: color.primary,
+      highlight: border.primary,
+      shadow: isCustomStyle ? shadow.surface : undefined,
     };
   }
   return {
-    backgroundColor: theme.transparent,
-    borderColor: palette.borderStrong,
-    textColor: palette.primary,
-    iconColor: palette.primary,
-    highlight: theme.transparent,
+    backgroundColor: background.transparent,
+    borderColor: border.secondary,
+    textColor: color.primary,
+    iconColor: color.primary,
+    highlight: border.transparent,
   };
 }
 
@@ -102,19 +102,19 @@ export function KitButton({
   style,
 }: KitButtonProps) {
   const theme = useKitTheme();
-  const { palette, isCustomStyle } = theme;
+  const { interaction, isCustomStyle } = theme;
   const scale = useSharedValue(1);
   const colors = getButtonColors(variant, theme);
   const sizing = getButtonSize(size);
   const isDisabled = disabled || loading;
-  const symbolTint = toSymbolTint(colors.iconColor, theme.symbolTint);
+  const symbolTint = toSymbolTint(colors.iconColor, theme.symbol.defaultTint);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
   const pressableProps: PressableProps = !isCustomStyle
-    ? { android_ripple: { color: palette.primarySubtle as string } }
+    ? { android_ripple: { color: interaction.ripple as string } }
     : {};
 
   return (

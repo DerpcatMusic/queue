@@ -20,7 +20,7 @@ export function KitSurface({
   style,
   ...rest
 }: KitSurfaceProps) {
-  const { palette, scheme, stylePreference, glassBackground, surfaceShadow } = useKitTheme();
+  const { background, border, shadow, scheme, stylePreference } = useKitTheme();
   const isGlass = tone === "glass";
   const allowNativeGlass = stylePreference === "native" && process.env.EXPO_OS === "ios";
 
@@ -32,16 +32,16 @@ export function KitSurface({
       padding,
       gap,
       overflow: "hidden" as const,
-      borderColor: tone === "sunken" ? palette.borderStrong : palette.border,
+      borderColor: tone === "sunken" ? border.secondary : border.primary,
       backgroundColor:
         tone === "elevated"
-          ? palette.surfaceElevated
+          ? background.surfaceElevated
           : tone === "sunken"
-            ? palette.surfaceAlt
+            ? background.surfaceSecondary
             : isGlass
-              ? glassBackground
-              : palette.surface,
-      boxShadow: tone === "sunken" ? undefined : surfaceShadow,
+              ? background.glass
+              : background.surface,
+      boxShadow: tone === "sunken" ? undefined : shadow.surface,
     },
     style,
   ];
@@ -65,4 +65,3 @@ export function KitSurface({
     </View>
   );
 }
-

@@ -19,7 +19,7 @@ export function KitHeader({
   rightAccessory,
   compact = false,
 }: KitHeaderProps) {
-  const { palette } = useKitTheme();
+  const { foreground, border, background } = useKitTheme();
 
   return (
     <View
@@ -34,7 +34,7 @@ export function KitHeader({
         <View style={{ flex: 1, gap: 2 }}>
           <ThemedText type={compact ? "subtitle" : "title"}>{title}</ThemedText>
           {subtitle ? (
-            <ThemedText type="caption" style={{ color: palette.textMuted }}>
+            <ThemedText type="caption" style={{ color: foreground.muted }}>
               {subtitle}
             </ThemedText>
           ) : null}
@@ -44,8 +44,8 @@ export function KitHeader({
             style={{
               borderRadius: 999,
               borderWidth: 1,
-              borderColor: palette.border,
-              backgroundColor: palette.surfaceAlt,
+              borderColor: border.primary,
+              backgroundColor: background.surfaceSecondary,
               paddingHorizontal: 10,
               paddingVertical: 5,
             }}
@@ -53,7 +53,7 @@ export function KitHeader({
             <ThemedText
               type="micro"
               style={{
-                color: palette.textMuted,
+                color: foreground.muted,
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
               }}

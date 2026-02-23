@@ -14,7 +14,7 @@ export function KitTextField({
   placeholderTextColor,
   ...inputProps
 }: KitTextFieldProps) {
-  const { palette, glassBackground } = useKitTheme();
+  const { foreground, background, border } = useKitTheme();
   const hasError = Boolean(errorText);
 
   return (
@@ -24,7 +24,7 @@ export function KitTextField({
           style={{
             fontSize: 14,
             fontWeight: "600",
-            color: palette.text,
+            color: foreground.secondary,
             includeFontPadding: false,
           }}
         >
@@ -41,19 +41,19 @@ export function KitTextField({
           gap: 8,
           flexDirection: "row",
           alignItems: "center",
-          borderColor: hasError ? palette.danger : palette.borderStrong,
-          backgroundColor: glassBackground,
+          borderColor: hasError ? foreground.danger : border.secondary,
+          backgroundColor: background.glass,
         }}
       >
         {leading ? <View>{leading}</View> : null}
         <TextInput
           {...inputProps}
-          placeholderTextColor={placeholderTextColor ?? (palette.textMuted as string)}
+          placeholderTextColor={placeholderTextColor ?? (foreground.muted as string)}
           style={[
             {
               flex: 1,
               minHeight: 48,
-              color: palette.text,
+              color: foreground.secondary,
               fontSize: 15,
               paddingVertical: 10,
               includeFontPadding: false,
@@ -64,11 +64,10 @@ export function KitTextField({
         {trailing ? <View>{trailing}</View> : null}
       </View>
       {hasError ? (
-        <Text style={{ fontSize: 12, lineHeight: 16, color: palette.danger }}>{errorText}</Text>
+        <Text style={{ fontSize: 12, lineHeight: 16, color: foreground.danger }}>{errorText}</Text>
       ) : helperText ? (
-        <Text style={{ fontSize: 12, lineHeight: 16, color: palette.textMuted }}>{helperText}</Text>
+        <Text style={{ fontSize: 12, lineHeight: 16, color: foreground.muted }}>{helperText}</Text>
       ) : null}
     </View>
   );
 }
-

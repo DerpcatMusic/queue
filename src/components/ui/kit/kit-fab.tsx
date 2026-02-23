@@ -20,7 +20,8 @@ export function KitFab({
   disabled = false,
   style,
 }: KitFabProps) {
-  const { palette, isCustomStyle, primaryLiftShadow, glassBackground } = useKitTheme();
+  const { color, foreground, background, border, interaction, shadow, isCustomStyle } =
+    useKitTheme();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -32,7 +33,7 @@ export function KitFab({
       accessibilityRole="button"
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
-      {...(!isCustomStyle ? { android_ripple: { color: palette.primarySubtle as string } } : {})}
+      {...(!isCustomStyle ? { android_ripple: { color: interaction.ripple as string } } : {})}
       onPressIn={() => {
         scale.value = withSpring(0.97, { damping: 14, stiffness: 340 });
       }}
@@ -55,10 +56,10 @@ export function KitFab({
           borderCurve: "continuous",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: selected ? palette.primary : glassBackground,
-          borderColor: selected ? palette.primaryPressed : palette.borderStrong,
+          backgroundColor: selected ? color.primary : background.glass,
+          borderColor: selected ? color.primaryPressed : border.secondary,
           opacity: disabled ? 0.55 : 1,
-          boxShadow: selected ? primaryLiftShadow : undefined,
+          boxShadow: selected ? shadow.primaryLift : undefined,
           overflow: "visible",
         },
         style,
@@ -78,13 +79,13 @@ export function KitFab({
             justifyContent: "center",
             paddingHorizontal: 4,
             borderWidth: 1,
-            borderColor: selected ? palette.primaryPressed : palette.primary,
-            backgroundColor: selected ? palette.onPrimary : palette.primary,
+            borderColor: selected ? color.primaryPressed : color.primary,
+            backgroundColor: selected ? foreground.primary : color.primary,
           }}
         >
           <Text
             style={{
-              color: selected ? palette.primary : palette.onPrimary,
+              color: selected ? color.primary : foreground.primary,
               fontSize: 10,
               fontWeight: "700",
               includeFontPadding: false,
@@ -97,4 +98,3 @@ export function KitFab({
     </AnimatedPressable>
   );
 }
-

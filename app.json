@@ -20,7 +20,6 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false
     },
     "androidStatusBar": {
@@ -32,10 +31,10 @@
     },
     "updates": {
       "checkAutomatically": "ON_ERROR_RECOVERY",
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "enableBsdiffPatchSupport": true
     },
     "plugins": [
-      "expo-dev-client",
       "expo-router",
       [
         "expo-system-ui",
@@ -87,7 +86,16 @@
       "expo-notifications",
       "@maplibre/maplibre-react-native",
       "@react-native-community/datetimepicker",
-      "expo-asset"
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true
+          },
+          "buildReactNativeFromSource": true,
+          "useHermesV1": true
+        }
+      ]
     ],
     "extra": {
       "supportsRTL": true

@@ -26,18 +26,24 @@ export async function rebuildInstructorCoverage(
       .collect(),
   ]);
 
-  await Promise.all(
-    coverageRows.map((row) => ctx.db.delete("instructorCoverage", row._id)),
-  );
-
-  if (sports.length === 0 || zones.length === 0) {
-    return;
+  const desiredKeys = new Set<string>();
+  for (const sportRow of sports) {
+    for (const zoneRow of zones) {
+      desiredKeys.add(`${sportRow.sport}::${zoneRow.zone}`);
+    }
   }
 
-  const now = Date.now();
-  const seen = new Set<string>();
+  const existingByKey = new Map<string, (typeof coverageRows)[number]>();
+  for (const row of coverageRows) {
+    existingByKey.set(`${row.sport}::${row.zone}`, row);
+  }
 
-  const rowsToInsert: {
+  const toDelete = coverageRows.filter(
+    (row) => !desiredKeys.has(`${row.sport}::${row.zone}`),
+  );
+
+  const now = Date.now();
+  const toInsert: {
     instructorId: Id<"instructorProfiles">;
     sport: string;
     zone: string;
@@ -46,23 +52,39 @@ export async function rebuildInstructorCoverage(
     updatedAt: number;
   }[] = [];
 
-  for (const sportRow of sports) {
-    for (const zoneRow of zones) {
-      const key = `${sportRow.sport}::${zoneRow.zone}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      rowsToInsert.push({
-        instructorId,
-        sport: sportRow.sport,
-        zone: zoneRow.zone,
-        notificationsEnabled: profile.notificationsEnabled ?? false,
-        updatedAt: now,
-        ...omitUndefined({ expoPushToken: profile.expoPushToken }),
-      });
+  for (const key of desiredKeys) {
+    if (!existingByKey.has(key)) {
+      const [sport, zone] = key.split("::");
+      if (sport && zone) {
+        toInsert.push({
+          instructorId,
+          sport,
+          zone,
+          notificationsEnabled: profile.notificationsEnabled ?? false,
+          updatedAt: now,
+          ...omitUndefined({ expoPushToken: profile.expoPushToken }),
+        });
+      }
     }
   }
 
-  await Promise.all(
-    rowsToInsert.map((row) => ctx.db.insert("instructorCoverage", row)),
-  );
+  const toUpdate = coverageRows.filter((row) => {
+    if (!desiredKeys.has(`${row.sport}::${row.zone}`)) return false;
+    return (
+      row.notificationsEnabled !== (profile.notificationsEnabled ?? false) ||
+      row.expoPushToken !== profile.expoPushToken
+    );
+  });
+
+  await Promise.all([
+    ...toDelete.map((row) => ctx.db.delete("instructorCoverage", row._id)),
+    ...toInsert.map((row) => ctx.db.insert("instructorCoverage", row)),
+    ...toUpdate.map((row) =>
+      ctx.db.patch("instructorCoverage", row._id, {
+        notificationsEnabled: profile.notificationsEnabled ?? false,
+        ...omitUndefined({ expoPushToken: profile.expoPushToken }),
+        updatedAt: now,
+      }),
+    ),
+  ]);
 }

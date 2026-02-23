@@ -20,7 +20,7 @@ export function KitSegmentedToggle<T extends string>({
   onChange,
   options,
 }: KitSegmentedToggleProps<T>) {
-  const { palette, primaryLiftShadow, transparent } = useKitTheme();
+  const { color, foreground, border, background, shadow } = useKitTheme();
 
   return (
     <View
@@ -28,8 +28,8 @@ export function KitSegmentedToggle<T extends string>({
         borderWidth: 1,
         borderRadius: BrandRadius.button,
         borderCurve: "continuous",
-        borderColor: palette.borderStrong,
-        backgroundColor: palette.surfaceAlt,
+        borderColor: border.secondary,
+        backgroundColor: background.surfaceSecondary,
         padding: 4,
         flexDirection: "row",
         gap: 4,
@@ -48,19 +48,19 @@ export function KitSegmentedToggle<T extends string>({
               borderWidth: 1,
               borderRadius: BrandRadius.button - 4,
               borderCurve: "continuous",
-              borderColor: selected ? palette.primaryPressed : transparent,
-              backgroundColor: selected ? palette.primary : palette.surfaceAlt,
+              borderColor: selected ? color.primaryPressed : border.transparent,
+              backgroundColor: selected ? color.primary : background.surfaceSecondary,
               alignItems: "center",
               justifyContent: "center",
               opacity: option.disabled ? 0.5 : pressed ? 0.86 : 1,
-              boxShadow: selected ? primaryLiftShadow : undefined,
+              boxShadow: selected ? shadow.primaryLift : undefined,
             })}
           >
             <Text
               style={{
                 fontSize: 13,
                 fontWeight: "700",
-                color: selected ? palette.onPrimary : palette.textMuted,
+                color: selected ? foreground.primary : foreground.muted,
                 includeFontPadding: false,
               }}
             >

@@ -1,23 +1,23 @@
 # Safe Area and Native UI Audit (Expo SDK 54)
 
 Date: 2026-02-19  
-Scope: `Queue/app/(tabs)` and shared inset hook
+Scope: `Queue/src/app/(tabs)` and shared inset hook
 
 ## What was fixed
 
-1. Standardized tab-safe bottom spacing in `Queue/hooks/use-native-tab-layout.ts`.
+1. Standardized tab-safe bottom spacing in `Queue/src/hooks/use-native-tab-layout.ts`.
 2. Added a new `bottomOverlayInset` (tab-safe bottom + extra breathing room) for floating controls.
 3. Updated floating buttons that were clipping under the native tab bar:
-   - `Queue/app/(tabs)/map.tsx` (`selectFab`)
-   - `Queue/app/(tabs)/jobs.tsx` (`archiveFab`)
+   - `Queue/src/app/(tabs)/map.tsx` (`selectFab`)
+   - `Queue/src/app/(tabs)/jobs/index.tsx` (`archiveFab`)
 4. Stopped FAB/content collision when archive sheet is open:
-   - `Queue/app/(tabs)/jobs.tsx` hides FAB while archive overlay is visible.
+   - `Queue/src/app/(tabs)/jobs/index.tsx` hides FAB while archive overlay is visible.
 5. Fixed calendar sync-error banner clipping under tab bar:
-   - `Queue/app/(tabs)/calendar.tsx` now anchors banner using `bottomOverlayInset`.
+   - `Queue/src/app/(tabs)/calendar/index.tsx` now anchors banner using `bottomOverlayInset`.
 6. Fixed top-notch/status-bar overlap in shared parallax header:
-   - `Queue/components/parallax-scroll-view.tsx` now uses safe-area top inset.
+   - `Queue/src/components/parallax-scroll-view.tsx` now uses safe-area top inset.
 7. Disabled NativeTabs automatic content insets for all tab triggers and kept one manual inset system:
-   - `Queue/app/(tabs)/_layout.tsx` (`disableAutomaticContentInsets` on each trigger).
+   - `Queue/src/app/(tabs)/_layout.tsx` (`disableAutomaticContentInsets` on each trigger).
 
 ## Why clipping happened
 
@@ -70,20 +70,20 @@ To avoid clipping on modern iOS/Android tab styles, the shared hook now uses con
 ## Deletion Candidates (From Knip)
 
 Potential dead exports/types to validate before removal:
-- `constants/zones.ts`: `findZoneById`, `ZoneOption`
-- `i18n/index.ts`: `getDeviceLanguage`, `isRtlLanguage`
-- `constants/zones-map.ts`: `PIKUD_ZONE_FEATURES`, `PIKUD_ZONE_INDEX`, `ISRAEL_MAP_BOUNDS`, `getZoneFeature`, `ZoneIndexEntry`
-- `lib/notification-permissions.ts`: `hasGrantedNotificationPermission`
-- `components/themed-text.tsx`: `ThemedTextProps`
-- `components/themed-view.tsx`: `ThemedViewProps`
-- `lib/theme-preference.ts`: `ThemePreference`
-- `lib/device-calendar-sync.ts`: `DeviceCalendarProvider`, `DeviceCalendarSyncEvent`
+- `src/constants/zones.ts`: `findZoneById`, `ZoneOption`
+- `src/i18n/index.ts`: `getDeviceLanguage`, `isRtlLanguage`
+- `src/constants/zones-map.ts`: `PIKUD_ZONE_FEATURES`, `PIKUD_ZONE_INDEX`, `ISRAEL_MAP_BOUNDS`, `getZoneFeature`, `ZoneIndexEntry`
+- `src/lib/notification-permissions.ts`: `hasGrantedNotificationPermission`
+- `src/components/themed-text.tsx`: `ThemedTextProps`
+- `src/components/themed-view.tsx`: `ThemedViewProps`
+- `src/lib/theme-preference.ts`: `ThemePreference`
+- `src/lib/device-calendar-sync.ts`: `DeviceCalendarProvider`, `DeviceCalendarSyncEvent`
 
 Note: remove in small batches and run lint/typecheck after each batch.
 
 ## Expo-native guideline checks
 
-1. `SafeAreaProvider` is present at app root (`Queue/app/_layout.tsx`) which is correct.
+1. `SafeAreaProvider` is present at app root (`Queue/src/app/_layout.tsx`) which is correct.
 2. Tab screens mostly use `ScrollView` with `contentInsetAdjustmentBehavior="automatic"` which aligns with native expectations.
 3. Native tabs are used (`expo-router/unstable-native-tabs`) which matches SDK 54 direction.
 

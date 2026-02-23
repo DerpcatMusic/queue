@@ -79,11 +79,11 @@ function Ensure-Reverse {
 
 function Start-ExpoDevServer {
   if (Get-Command bunx -ErrorAction SilentlyContinue) {
-    & bunx expo start --dev-client
+    & bunx expo start
     return
   }
   if (Get-Command npx -ErrorAction SilentlyContinue) {
-    & npx expo start --dev-client
+    & npx expo start
     return
   }
   throw "Neither bunx nor npx is available. Install Bun (preferred) or Node.js."

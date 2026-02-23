@@ -367,6 +367,7 @@ export const getMyStudioSettings = query({
       contactPhone: v.optional(v.string()),
       notificationsEnabled: v.boolean(),
       hasExpoPushToken: v.boolean(),
+      autoExpireMinutesBefore: v.number(),
     }),
     v.null(),
   ),
@@ -400,6 +401,7 @@ export const getMyStudioSettings = query({
       }),
       notificationsEnabled,
       hasExpoPushToken,
+      autoExpireMinutesBefore: profile.autoExpireMinutesBefore ?? 30,
     };
   },
 });
@@ -412,6 +414,7 @@ export const updateMyStudioSettings = mutation({
     contactPhone: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    autoExpireMinutesBefore: v.optional(v.number()),
   },
   returns: v.object({
     ok: v.boolean(),
@@ -447,6 +450,23 @@ export const updateMyStudioSettings = mutation({
       }),
     );
 
+    let autoExpireMinutesBefore: number | undefined;
+    if (args.autoExpireMinutesBefore !== undefined) {
+      const val = args.autoExpireMinutesBefore;
+      if (
+        !Number.isFinite(val) ||
+        !Number.isInteger(val) ||
+        val < 5 ||
+        val > 120 ||
+        val % 5 !== 0
+      ) {
+        throw new ConvexError(
+          "autoExpireMinutesBefore must be 5\u2013120 in 5-min increments",
+        );
+      }
+      autoExpireMinutesBefore = val;
+    }
+
     await ctx.db.patch("studioProfiles", profile._id, {
       studioName,
       address,
@@ -455,6 +475,7 @@ export const updateMyStudioSettings = mutation({
         contactPhone,
         latitude,
         longitude,
+        autoExpireMinutesBefore,
       }),
       updatedAt: Date.now(),
     });
