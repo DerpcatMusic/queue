@@ -42,10 +42,11 @@ Exports are centralized in `src/components/ui/kit/index.ts`.
 ## Migration + Cleanup
 
 - Legacy `expressive/*` implementation removed.
-- Existing wrappers now point to kit:
-  - `src/components/ui/brand-button.tsx` -> `KitButton`
-  - `src/components/ui/brand-surface.tsx` -> `KitSurface`
-  - `src/components/ui/native-list.tsx` -> `KitList` + `KitListItem`
+- Legacy compatibility wrappers removed:
+  - `src/components/ui/brand-button.tsx`
+  - `src/components/ui/brand-surface.tsx`
+  - `src/components/ui/native-list.tsx`
+- Screens now import kit primitives directly from `@/components/ui/kit`.
 - Profile settings screens updated to use `KitHeader`, `KitSwitchRow`, and `KitSegmentedToggle`.
 
 ## Extension Rules

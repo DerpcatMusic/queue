@@ -1,6 +1,6 @@
 import { toSportLabel } from "@/convex/constants";
 import { EmptyState } from "@/components/ui/empty-state";
-import { NativeList, NativeListItem } from "@/components/ui/native-list";
+import { KitList, KitListItem } from "@/components/ui/kit";
 import { ThemedText } from "@/components/themed-text";
 import { BrandSpacing } from "@/constants/brand";
 import type { BrandPalette } from "@/constants/brand";
@@ -116,9 +116,9 @@ export function InstructorHomeContent({
             }}
           />
         ) : (
-          <NativeList inset>
+          <KitList inset>
             {upcomingSessions.map((session) => (
-              <NativeListItem
+              <KitListItem
                 key={session.applicationId}
                 title={toSportLabel(session.sport as never)}
                 accessory={
@@ -131,17 +131,18 @@ export function InstructorHomeContent({
               >
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
                   <ThemedText type="caption" style={{ color: palette.textMuted }} numberOfLines={1}>
-                    {session.studioName} • {session.zone}
+                    {session.studioName} â€¢ {session.zone}
                   </ThemedText>
                   <ThemedText type="bodyStrong" style={{ color: palette.success, fontVariant: ["tabular-nums"] }}>
                     {currencyFormatter.format(session.pay)}
                   </ThemedText>
                 </View>
-              </NativeListItem>
+              </KitListItem>
             ))}
-          </NativeList>
+          </KitList>
         )}
       </Animated.View>
     </ScrollView>
   );
 }
+

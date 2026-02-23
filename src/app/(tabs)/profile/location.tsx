@@ -6,9 +6,14 @@ import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import type { ResolvedLocation } from "@/lib/location-zone";
 
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
-import { KitButton, KitHeader, KitSwitchRow } from "@/components/ui/kit";
+import {
+  KitButton,
+  KitHeader,
+  KitList,
+  KitListItem,
+  KitSwitchRow,
+} from "@/components/ui/kit";
 import { LoadingScreen } from "@/components/loading-screen";
-import { NativeList, NativeListItem } from "@/components/ui/native-list";
 import { ThemedText } from "@/components/themed-text";
 
 import { useMutation, useQuery } from "convex/react";
@@ -163,8 +168,8 @@ export default function LocationScreen() {
         compact
       />
 
-      <NativeList inset>
-        <NativeListItem title={t("profile.settings.location.addressPlaceholder")}>
+      <KitList inset>
+        <KitListItem title={t("profile.settings.location.addressPlaceholder")}>
           <View style={{ gap: 8, marginTop: 8 }}>
             <AddressAutocomplete
               value={addressInput}
@@ -214,8 +219,8 @@ export default function LocationScreen() {
               disabled={locationResolver.isResolving}
             />
           </View>
-        </NativeListItem>
-      </NativeList>
+        </KitListItem>
+      </KitList>
 
       {/* Zone badge */}
       <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
@@ -247,13 +252,13 @@ export default function LocationScreen() {
       {/* Include zone toggle */}
       {detectedZone ? (
         <View style={{ paddingTop: 8 }}>
-          <NativeList inset>
+          <KitList inset>
             <KitSwitchRow
               title={t("profile.settings.location.includeDetectedZone")}
               value={includeDetectedZone}
               onValueChange={setIncludeDetectedZone}
             />
-          </NativeList>
+          </KitList>
         </View>
       ) : null}
 
@@ -301,5 +306,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 });
+
 
 

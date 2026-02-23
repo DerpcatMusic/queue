@@ -1,7 +1,13 @@
 import { api } from "@/convex/_generated/api";
-import { KitButton, KitHeader, KitSegmentedToggle, KitSwitchRow } from "@/components/ui/kit";
+import {
+  KitButton,
+  KitHeader,
+  KitList,
+  KitListItem,
+  KitSegmentedToggle,
+  KitSwitchRow,
+} from "@/components/ui/kit";
 import { LoadingScreen } from "@/components/loading-screen";
-import { NativeList, NativeListItem } from "@/components/ui/native-list";
 import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { useMutation, useQuery } from "convex/react";
@@ -97,8 +103,8 @@ export default function CalendarSettingsScreen() {
         compact
       />
 
-      <NativeList inset>
-        <NativeListItem title={t("profile.settings.calendar.provider.none")}>
+      <KitList inset>
+        <KitListItem title={t("profile.settings.calendar.provider.none")}>
           <View style={{ marginTop: 8 }}>
             <KitSegmentedToggle<CalendarProvider>
               value={provider}
@@ -112,11 +118,11 @@ export default function CalendarSettingsScreen() {
               }))}
             />
           </View>
-        </NativeListItem>
-      </NativeList>
+        </KitListItem>
+      </KitList>
 
       <View style={{ paddingTop: 8 }}>
-        <NativeList inset>
+        <KitList inset>
           <KitSwitchRow
             title={t("profile.settings.calendar.autoSync")}
             value={syncEnabled}
@@ -125,13 +131,13 @@ export default function CalendarSettingsScreen() {
             description={t("profile.settings.calendar.futureNote")}
           />
           {connectedDate ? (
-            <NativeListItem
+            <KitListItem
               title={t("profile.settings.calendar.lastConnected", {
                 date: connectedDate,
               })}
             />
           ) : null}
-        </NativeList>
+        </KitList>
       </View>
 
       <View style={{ paddingHorizontal: 16, paddingTop: BrandSpacing.md, gap: 10 }}>
@@ -161,4 +167,5 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+
 

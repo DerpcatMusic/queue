@@ -1,6 +1,6 @@
 import { toSportLabel } from "@/convex/constants";
 import { EmptyState } from "@/components/ui/empty-state";
-import { NativeList, NativeListItem } from "@/components/ui/native-list";
+import { KitList, KitListItem } from "@/components/ui/kit";
 import { ThemedText } from "@/components/themed-text";
 import { BrandSpacing } from "@/constants/brand";
 import type { BrandPalette } from "@/constants/brand";
@@ -110,9 +110,9 @@ export function StudioHomeContent({
             }}
           />
         ) : (
-          <NativeList inset>
+          <KitList inset>
             {recentJobs.slice(0, 3).map((job) => (
-              <NativeListItem
+              <KitListItem
                 key={job.jobId}
                 title={toSportLabel(job.sport as never)}
                 accessory={
@@ -125,17 +125,18 @@ export function StudioHomeContent({
               >
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
                   <ThemedText type="caption" style={{ color: palette.textMuted }} numberOfLines={1}>
-                    {job.zone} • {new Date(job.startTime).toLocaleDateString(locale)}
+                    {job.zone} â€¢ {new Date(job.startTime).toLocaleDateString(locale)}
                   </ThemedText>
                   <ThemedText type="bodyStrong" style={{ color: palette.text, fontVariant: ["tabular-nums"] }}>
                     {currencyFormatter.format(job.pay)}
                   </ThemedText>
                 </View>
-              </NativeListItem>
+              </KitListItem>
             ))}
-          </NativeList>
+          </KitList>
         )}
       </Animated.View>
     </ScrollView>
   );
 }
+

@@ -17,8 +17,7 @@ import { useTranslation } from "react-i18next";
 
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { NativeList, NativeListItem } from "@/components/ui/native-list";
-import { KitSwitchRow } from "@/components/ui/kit";
+import { KitList, KitListItem, KitSwitchRow } from "@/components/ui/kit";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -99,30 +98,30 @@ export default function ProfileScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <SectionHeader label={t("profile.account.title")} palette={palette} />
-      <NativeList inset>
-        <NativeListItem
+      <KitList inset>
+        <KitListItem
           title={t("profile.account.nameLabel")}
           accessory={<ThemedText style={{ color: palette.textMuted }}>{nameValue}</ThemedText>}
         />
-        <NativeListItem
+        <KitListItem
           title={t("profile.account.emailLabel")}
           accessory={<ThemedText style={{ color: palette.textMuted }}>{emailValue}</ThemedText>}
         />
-        <NativeListItem
+        <KitListItem
           title={t("profile.account.roleLabel")}
           accessory={<ThemedText style={{ color: palette.textMuted }}>{roleValue}</ThemedText>}
         />
         {memberSince ? (
-          <NativeListItem
+          <KitListItem
             title={t("profile.account.memberSince")}
             accessory={<ThemedText style={{ color: palette.textMuted }}>{memberSince}</ThemedText>}
           />
         ) : null}
-      </NativeList>
+      </KitList>
 
       <SectionHeader label={t("profile.appearance.title")} palette={palette} />
-      <NativeList inset>
-        <NativeListItem
+      <KitList inset>
+        <KitListItem
           title={t("profile.language.title")}
           onPress={() => {
             void setLanguage(language === "en" ? "he" : "en");
@@ -169,13 +168,13 @@ export default function ProfileScreen() {
               : t("profile.appearance.darkMode.description")
           }
         />
-      </NativeList>
+      </KitList>
 
       {currentUser?.role === "instructor" ? (
         <>
           <SectionHeader label={t("profile.settings.title")} palette={palette} />
-          <NativeList inset>
-            <NativeListItem
+          <KitList inset>
+            <KitListItem
               title={t("profile.settings.sports.title")}
               onPress={() => router.push("/(tabs)/profile/sports")}
               accessory={
@@ -187,7 +186,7 @@ export default function ProfileScreen() {
                 </View>
               }
             />
-            <NativeListItem
+            <KitListItem
               title={t("profile.settings.location.title")}
               onPress={() => router.push("/(tabs)/profile/location")}
               accessory={
@@ -199,7 +198,7 @@ export default function ProfileScreen() {
                 </View>
               }
             />
-            <NativeListItem
+            <KitListItem
               title={t("profile.settings.calendar.title")}
               onPress={() => router.push("/(tabs)/profile/calendar-settings")}
               accessory={
@@ -211,13 +210,13 @@ export default function ProfileScreen() {
                 </View>
               }
             />
-          </NativeList>
+          </KitList>
         </>
       ) : null}
 
       <View style={{ marginTop: 16 }}>
-        <NativeList inset>
-          <NativeListItem
+        <KitList inset>
+          <KitListItem
             title={t("auth.signOutButton")}
             onPress={() => {
               void signOut();
@@ -226,8 +225,8 @@ export default function ProfileScreen() {
             <ThemedText style={{ color: palette.textMuted, fontSize: 13, marginTop: 2 }}>
               {t("profile.signOut.description")}
             </ThemedText>
-          </NativeListItem>
-        </NativeList>
+          </KitListItem>
+        </KitList>
       </View>
     </ScrollView>
   );
@@ -269,4 +268,5 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
 });
+
 

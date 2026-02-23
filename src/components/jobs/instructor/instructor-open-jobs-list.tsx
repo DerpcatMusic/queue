@@ -1,7 +1,7 @@
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { ThemedText } from "@/components/themed-text";
-import { NativeList, NativeListItem } from "@/components/ui/native-list";
+import { KitList, KitListItem } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing, type BrandPalette } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { formatDateTime, getApplicationStatusTranslationKey } from "@/lib/jobs-utils";
@@ -115,9 +115,9 @@ export function InstructorOpenJobsList({
           {jobs.length}
         </ThemedText>
       </View>
-      <NativeList inset>
+      <KitList inset>
         {jobs.map((job, index) => (
-          <NativeListItem key={job.jobId}>
+          <KitListItem key={job.jobId}>
             <Animated.View
               entering={FadeInUp.delay(Math.min(index, 6) * 36).duration(260).springify()}
               style={{ gap: 8 }}
@@ -205,9 +205,10 @@ export function InstructorOpenJobsList({
                 </Pressable>
               </View>
             </Animated.View>
-          </NativeListItem>
+          </KitListItem>
         ))}
-      </NativeList>
+      </KitList>
     </View>
   );
 }
+

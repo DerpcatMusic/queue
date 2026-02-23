@@ -7,8 +7,7 @@ import {
   sanitizeZoneIds,
 } from "@/components/map-tab/zone-selection-model";
 import { ThemedText } from "@/components/themed-text";
-import { BrandSurface } from "@/components/ui/brand-surface";
-import { KitFab } from "@/components/ui/kit";
+import { KitFab, KitSurface } from "@/components/ui/kit";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { FEATURE_FLAGS } from "@/constants/feature-flags";
 import { useBrand } from "@/hooks/use-brand";
@@ -391,14 +390,14 @@ export default function MapTabScreen() {
               { paddingTop: insets.top, paddingBottom: 24 },
             ]}
           >
-            <BrandSurface tone="alt">
+            <KitSurface tone="sunken">
               <ThemedText type="defaultSemiBold">
                 {t("mapTab.devBuildRequiredTitle")}
               </ThemedText>
               <ThemedText style={{ color: palette.textMuted }}>
                 {t("mapTab.devBuildRequiredBody")}
               </ThemedText>
-            </BrandSurface>
+            </KitSurface>
           </View>
         ) : (
           <>
@@ -577,4 +576,5 @@ const styles = StyleSheet.create({
     gap: 2,
   },
 });
+
 

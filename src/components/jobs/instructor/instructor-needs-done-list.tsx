@@ -1,8 +1,7 @@
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { ThemedText } from "@/components/themed-text";
-import { KitButton } from "@/components/ui/kit";
-import { NativeList, NativeListItem } from "@/components/ui/native-list";
+import { KitButton, KitList, KitListItem } from "@/components/ui/kit";
 import { BrandRadius, type BrandPalette } from "@/constants/brand";
 import { formatDateTime } from "@/lib/jobs-utils";
 import type { ReactNode } from "react";
@@ -41,9 +40,9 @@ export function InstructorNeedsDoneList({
 
   return (
     <ViewWrap style={{ paddingHorizontal: 16 }}>
-      <NativeList inset>
+      <KitList inset>
         {sessions.map((session, index) => (
-          <NativeListItem key={session.applicationId}>
+          <KitListItem key={session.applicationId}>
             <Animated.View entering={FadeInUp.delay(Math.min(index, 4) * 36).duration(240).springify()}>
               <Row>
               <ViewWrap style={{ flex: 1, gap: 2 }}>
@@ -85,9 +84,9 @@ export function InstructorNeedsDoneList({
               />
               </Row>
             </Animated.View>
-          </NativeListItem>
+          </KitListItem>
         ))}
-      </NativeList>
+      </KitList>
     </ViewWrap>
   );
 }
@@ -105,4 +104,5 @@ function ViewWrap({
 function Row({ children }: { children: ReactNode }) {
   return <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>{children}</View>;
 }
+
 

@@ -1,5 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
-import { NativeList, NativeListItem } from "@/components/ui/native-list";
+import { KitList, KitListItem } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { BrandPalette } from "@/constants/brand";
 import { getJobStatusTokens } from "@/lib/status-tokens";
@@ -181,8 +181,8 @@ export function PrimaryActionCard({
 }: PrimaryActionCardProps) {
   return (
     <Animated.View entering={FadeInUp.delay(100).duration(360).springify()}>
-      <NativeList inset>
-        <NativeListItem
+      <KitList inset>
+        <KitListItem
           title={title}
           leading={
             <View
@@ -207,8 +207,9 @@ export function PrimaryActionCard({
           >
             {subtitle}
           </ThemedText>
-        </NativeListItem>
-      </NativeList>
+        </KitListItem>
+      </KitList>
     </Animated.View>
   );
 }
+

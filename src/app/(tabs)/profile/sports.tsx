@@ -2,9 +2,8 @@ import { api } from "@/convex/_generated/api";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import { BrandSpacing } from "@/constants/brand";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { NativeListItem } from "@/components/ui/native-list";
+import { KitButton, KitListItem } from "@/components/ui/kit";
 import { ThemedText } from "@/components/themed-text";
-import { KitButton } from "@/components/ui/kit";
 import { LoadingScreen } from "@/components/loading-screen";
 import { useBrand } from "@/hooks/use-brand";
 
@@ -122,7 +121,7 @@ export default function SportsScreen() {
         renderItem={({ item: sport }) => {
           const selected = sports.includes(sport);
           return (
-            <NativeListItem
+            <KitListItem
               title={toSportLabel(sport)}
               onPress={() => toggleSport(sport)}
               accessory={
@@ -296,5 +295,6 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
 });
+
 
 
