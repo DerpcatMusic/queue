@@ -1,0 +1,944 @@
+import { api } from "@/convex/_generated/api";
+import { SPORT_TYPES } from "@/convex/constants";
+import { LoadingScreen } from "@/components/loading-screen";
+import { OnboardingLocationMap } from "@/components/maps/onboarding-location-map";
+import { ThemedText } from "@/components/themed-text";
+import {
+  KitButton,
+  KitChip,
+  KitSurface,
+  KitTextField,
+} from "@/components/ui/kit";
+import { ZONE_OPTIONS } from "@/constants/zones";
+import { useBrand } from "@/hooks/use-brand";
+import { useLocationResolution } from "@/hooks/use-location-resolution";
+import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
+import { omitUndefined } from "@/lib/omit-undefined";
+import { registerForPushNotificationsAsync } from "@/lib/push-notifications";
+import { useMutation, useQuery } from "convex/react";
+import { Redirect, useRouter } from "expo-router";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from "react-native";
+
+type OnboardingRole = "instructor" | "studio";
+
+const MAX_INSTRUCTOR_ZONES = 25;
+const MAX_PREVIEW_ZONES = 20;
+
+function toDisplayLabel(value: string) {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function trimOptional(value: string) {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function StepBadge({
+  current,
+  total,
+  palette,
+}: {
+  current: number;
+  total: number;
+  palette: ReturnType<typeof useBrand>;
+}) {
+  return (
+    <View
+      style={{
+        alignSelf: "flex-start",
+        borderRadius: 999,
+        borderCurve: "continuous",
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: palette.surface,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+      }}
+    >
+      <ThemedText
+        type="micro"
+        style={{ color: palette.textMuted, fontVariant: ["tabular-nums"] }}
+      >
+        {`STEP ${current}/${total}`}
+      </ThemedText>
+    </View>
+  );
+}
+
+function SectionCaption({
+  label,
+  palette,
+}: {
+  label: string;
+  palette: ReturnType<typeof useBrand>;
+}) {
+  return (
+    <ThemedText
+      type="micro"
+      style={{ color: palette.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}
+    >
+      {label}
+    </ThemedText>
+  );
+}
+
+export default function OnboardingScreen() {
+  const router = useRouter();
+  const { t, i18n } = useTranslation();
+
+  const palette = useBrand();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 980;
+  const language = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
+
+  const currentUser = useQuery(api.users.getCurrentUser);
+  const completeInstructorOnboarding = useMutation(
+    api.onboarding.completeInstructorOnboarding,
+  );
+  const completeStudioOnboarding = useMutation(
+    api.onboarding.completeStudioOnboarding,
+  );
+
+  const [step, setStep] = useState<0 | 1>(0);
+  const [selectedRole, setSelectedRole] = useState<OnboardingRole | null>(null);
+  const totalSteps = 2;
+  const currentStep = step + 1;
+
+  const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
+  const [selectedSports, setSelectedSports] = useState<string[]>([]);
+  const [selectedZones, setSelectedZones] = useState<string[]>([]);
+  const [zoneSearch, setZoneSearch] = useState("");
+  const [instructorAddress, setInstructorAddress] = useState("");
+  const [instructorLatitude, setInstructorLatitude] = useState<number | undefined>();
+  const [instructorLongitude, setInstructorLongitude] = useState<number | undefined>();
+  const [instructorDetectedZone, setInstructorDetectedZone] = useState<string | null>(null);
+  const [pushToken, setPushToken] = useState<string | null>(null);
+  const [isRequestingPush, setIsRequestingPush] = useState(false);
+
+  const [studioName, setStudioName] = useState("");
+  const [studioAddress, setStudioAddress] = useState("");
+  const [studioContactPhone, setStudioContactPhone] = useState("");
+  const [studioLatitude, setStudioLatitude] = useState<number | undefined>();
+  const [studioLongitude, setStudioLongitude] = useState<number | undefined>();
+  const [studioDetectedZone, setStudioDetectedZone] = useState<string | null>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const instructorResolver = useLocationResolution();
+  const studioResolver = useLocationResolution();
+
+  const filteredZones = useMemo(() => {
+    const query = zoneSearch.trim().toLowerCase();
+    if (!query) {
+      return ZONE_OPTIONS.slice(0, 80);
+    }
+
+    return ZONE_OPTIONS.filter((zone) => {
+      const localized = zone.label[language].toLowerCase();
+      const english = zone.label.en.toLowerCase();
+      return (
+        localized.includes(query) ||
+        english.includes(query) ||
+        zone.id.toLowerCase().includes(query)
+      );
+    });
+  }, [language, zoneSearch]);
+
+  const previewZoneIds = useMemo(
+    () => filteredZones.slice(0, MAX_PREVIEW_ZONES).map((zone) => zone.id),
+    [filteredZones],
+  );
+
+  if (currentUser === undefined) {
+    return <LoadingScreen label={t("onboarding.loading")} />;
+  }
+
+  if (currentUser === null) {
+    return <Redirect href="/sign-in" />;
+  }
+
+  if (currentUser.onboardingComplete) {
+    return <Redirect href="/" />;
+  }
+
+  const role = selectedRole ?? (currentUser.role === "pending" ? null : currentUser.role);
+
+  const toggleSport = (sport: string) => {
+    setSelectedSports((current) =>
+      current.includes(sport)
+        ? current.filter((value) => value !== sport)
+        : [...current, sport],
+    );
+  };
+
+  const toggleZone = (zoneId: string) => {
+    setSelectedZones((current) => {
+      if (current.includes(zoneId)) {
+        return current.filter((zone) => zone !== zoneId);
+      }
+      if (current.length >= MAX_INSTRUCTOR_ZONES) {
+        setErrorMessage(t("onboarding.errors.tooManyZones"));
+        return current;
+      }
+      return [...current, zoneId];
+    });
+  };
+
+  const applyInstructorResolution = (
+    resolved: {
+      address: string;
+      latitude: number;
+      longitude: number;
+      zoneId: string;
+    },
+    autoAddZone: boolean,
+  ) => {
+    setInstructorAddress(resolved.address);
+    setInstructorLatitude(resolved.latitude);
+    setInstructorLongitude(resolved.longitude);
+    setInstructorDetectedZone(resolved.zoneId);
+
+    if (autoAddZone) {
+      setSelectedZones((current) => {
+        if (current.includes(resolved.zoneId)) {
+          return current;
+        }
+        if (current.length >= MAX_INSTRUCTOR_ZONES) {
+          return current;
+        }
+        return [...current, resolved.zoneId];
+      });
+    }
+  };
+
+  const applyStudioResolution = (resolved: {
+    address: string;
+    latitude: number;
+    longitude: number;
+    zoneId: string;
+  }) => {
+    setStudioAddress(resolved.address);
+    setStudioLatitude(resolved.latitude);
+    setStudioLongitude(resolved.longitude);
+    setStudioDetectedZone(resolved.zoneId);
+  };
+
+  const resolveInstructorFromAddress = async () => {
+    if (!instructorAddress.trim()) {
+      setErrorMessage(t("onboarding.errors.instructorAddressRequired"));
+      return;
+    }
+
+    setErrorMessage(null);
+    const result = await instructorResolver.resolveFromAddress(instructorAddress);
+    if (!result.ok) {
+      setErrorMessage(
+        getLocationResolveErrorMessage({
+          code: result.error.code,
+          fallbackMessage: result.error.message,
+          fallbackKey: "failedToResolveAddress",
+          translationPrefix: "onboarding.errors",
+          t,
+        }),
+      );
+      return;
+    }
+
+    applyInstructorResolution(result.data.value, true);
+  };
+
+  const resolveInstructorFromGps = async () => {
+    setErrorMessage(null);
+    const result = await instructorResolver.resolveFromGps();
+    if (!result.ok) {
+      setErrorMessage(
+        getLocationResolveErrorMessage({
+          code: result.error.code,
+          fallbackMessage: result.error.message,
+          fallbackKey: "failedToResolveGps",
+          translationPrefix: "onboarding.errors",
+          t,
+        }),
+      );
+      return;
+    }
+
+    applyInstructorResolution(result.data.value, true);
+  };
+
+  const resolveInstructorFromMapPin = async (pin: {
+    latitude: number;
+    longitude: number;
+  }) => {
+    setErrorMessage(null);
+    const result = await instructorResolver.resolveFromCoordinates(pin);
+    if (!result.ok) {
+      setErrorMessage(
+        getLocationResolveErrorMessage({
+          code: result.error.code,
+          fallbackMessage: result.error.message,
+          fallbackKey: "failedToResolveGps",
+          translationPrefix: "onboarding.errors",
+          t,
+        }),
+      );
+      return;
+    }
+
+    applyInstructorResolution(result.data.value, true);
+  };
+
+  const resolveStudioFromAddress = async () => {
+    if (!studioAddress.trim()) {
+      setErrorMessage(t("onboarding.errors.studioAddressRequired"));
+      return;
+    }
+
+    setErrorMessage(null);
+    const result = await studioResolver.resolveFromAddress(studioAddress);
+    if (!result.ok) {
+      setErrorMessage(
+        getLocationResolveErrorMessage({
+          code: result.error.code,
+          fallbackMessage: result.error.message,
+          fallbackKey: "failedToResolveAddress",
+          translationPrefix: "onboarding.errors",
+          t,
+        }),
+      );
+      return;
+    }
+
+    applyStudioResolution(result.data.value);
+  };
+
+  const resolveStudioFromGps = async () => {
+    setErrorMessage(null);
+    const result = await studioResolver.resolveFromGps();
+    if (!result.ok) {
+      setErrorMessage(
+        getLocationResolveErrorMessage({
+          code: result.error.code,
+          fallbackMessage: result.error.message,
+          fallbackKey: "failedToResolveGps",
+          translationPrefix: "onboarding.errors",
+          t,
+        }),
+      );
+      return;
+    }
+
+    applyStudioResolution(result.data.value);
+  };
+
+  const resolveStudioFromMapPin = async (pin: {
+    latitude: number;
+    longitude: number;
+  }) => {
+    setErrorMessage(null);
+    const result = await studioResolver.resolveFromCoordinates(pin);
+    if (!result.ok) {
+      setErrorMessage(
+        getLocationResolveErrorMessage({
+          code: result.error.code,
+          fallbackMessage: result.error.message,
+          fallbackKey: "failedToResolveGps",
+          translationPrefix: "onboarding.errors",
+          t,
+        }),
+      );
+      return;
+    }
+
+    applyStudioResolution(result.data.value);
+  };
+
+  const requestPushPermission = async () => {
+    setIsRequestingPush(true);
+    setErrorMessage(null);
+
+    try {
+      const token = await registerForPushNotificationsAsync();
+      setPushToken(token);
+      if (!token) {
+        setErrorMessage(t("onboarding.push.permissionNotGranted"));
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : t("onboarding.push.requestFailed");
+      setErrorMessage(message);
+    } finally {
+      setIsRequestingPush(false);
+    }
+  };
+
+  const goToProfileStep = () => {
+    if (!role) {
+      setErrorMessage(t("onboarding.errors.roleRequired"));
+      return;
+    }
+    setErrorMessage(null);
+    setStep(1);
+  };
+
+  const submitInstructor = async () => {
+    if (!displayName.trim()) {
+      setErrorMessage(t("onboarding.errors.displayNameRequired"));
+      return;
+    }
+
+    if (selectedSports.length === 0) {
+      setErrorMessage(t("onboarding.errors.selectAtLeastOneSport"));
+      return;
+    }
+
+    if (selectedZones.length === 0) {
+      setErrorMessage(t("onboarding.errors.selectAtLeastOneZone"));
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      const hourly = Number.parseFloat(hourlyRate);
+      const hourlyRateExpectation =
+        Number.isFinite(hourly) && hourly > 0 ? hourly : undefined;
+
+      await completeInstructorOnboarding({
+        displayName: displayName.trim(),
+        sports: selectedSports,
+        zones: selectedZones,
+        notificationsEnabled: Boolean(pushToken),
+        ...omitUndefined({
+          bio: trimOptional(bio),
+          address: trimOptional(instructorAddress),
+          latitude: instructorLatitude,
+          longitude: instructorLongitude,
+          expoPushToken: pushToken ?? undefined,
+          hourlyRateExpectation,
+        }),
+      });
+
+      router.replace("/");
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : t("onboarding.errors.failedToComplete");
+      setErrorMessage(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const submitStudio = async () => {
+    if (!studioName.trim()) {
+      setErrorMessage(t("onboarding.errors.studioNameRequired"));
+      return;
+    }
+
+    if (!studioAddress.trim()) {
+      setErrorMessage(t("onboarding.errors.studioAddressRequired"));
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      let resolvedZone = studioDetectedZone;
+      let resolvedLatitude = studioLatitude;
+      let resolvedLongitude = studioLongitude;
+
+      if (!resolvedZone || resolvedLatitude === undefined || resolvedLongitude === undefined) {
+        const result = await studioResolver.resolveFromAddress(studioAddress);
+        if (!result.ok) {
+          throw new Error(
+            getLocationResolveErrorMessage({
+              code: result.error.code,
+              fallbackMessage: result.error.message,
+              fallbackKey: "failedToResolveAddress",
+              translationPrefix: "onboarding.errors",
+              t,
+            }),
+          );
+        }
+
+        const resolved = result.data.value;
+        applyStudioResolution(resolved);
+        resolvedZone = resolved.zoneId;
+        resolvedLatitude = resolved.latitude;
+        resolvedLongitude = resolved.longitude;
+      }
+
+      if (!resolvedZone || resolvedLatitude === undefined || resolvedLongitude === undefined) {
+        throw new Error(t("onboarding.errors.failedToResolveAddress"));
+      }
+
+      await completeStudioOnboarding({
+        studioName: studioName.trim(),
+        address: studioAddress.trim(),
+        zone: resolvedZone,
+        latitude: resolvedLatitude,
+        longitude: resolvedLongitude,
+        ...omitUndefined({ contactPhone: trimOptional(studioContactPhone) }),
+      });
+
+      router.replace("/");
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : t("onboarding.errors.failedToComplete");
+      setErrorMessage(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const mapPane = role ? (
+    <KitSurface tone="glass" style={styles.mapCard}>
+      <View style={styles.mapHeader}>
+        <View style={styles.mapHeaderRow}>
+          <ThemedText type="defaultSemiBold">
+            {role === "instructor" ? t("onboarding.map.instructorTitle") : t("onboarding.map.studioTitle")}
+          </ThemedText>
+          <ThemedText type="micro" style={{ color: palette.textMuted }}>
+            {role === "instructor"
+              ? t("mapTab.selectedZones", { count: selectedZones.length })
+              : studioDetectedZone
+                ? studioDetectedZone
+                : t("profile.roles.pending")}
+          </ThemedText>
+        </View>
+        <ThemedText style={{ color: palette.textMuted }}>
+          {role === "instructor"
+            ? t("onboarding.map.instructorHint")
+            : t("onboarding.map.studioHint")}
+        </ThemedText>
+      </View>
+      <View style={styles.mapWrap}>
+        <OnboardingLocationMap
+          mode={role === "instructor" ? "instructorZone" : "studioPin"}
+          pin={
+            role === "instructor"
+              ? instructorLatitude !== undefined && instructorLongitude !== undefined
+                ? { latitude: instructorLatitude, longitude: instructorLongitude }
+                : null
+              : studioLatitude !== undefined && studioLongitude !== undefined
+                ? { latitude: studioLatitude, longitude: studioLongitude }
+                : null
+          }
+          selectedZoneIds={
+            role === "instructor"
+              ? selectedZones
+              : studioDetectedZone
+                ? [studioDetectedZone]
+                : []
+          }
+          previewZoneIds={role === "instructor" ? previewZoneIds : []}
+          focusZoneId={
+            role === "instructor"
+              ? instructorDetectedZone
+              : studioDetectedZone
+          }
+          onPressZone={toggleZone}
+          onPressMap={
+            role === "instructor" ? resolveInstructorFromMapPin : resolveStudioFromMapPin
+          }
+          onUseGps={role === "instructor" ? resolveInstructorFromGps : resolveStudioFromGps}
+        />
+      </View>
+    </KitSurface>
+  ) : null;
+
+  const instructorForm = (
+    <KitSurface tone="elevated" style={styles.formCard}>
+      <ThemedText type="subtitle">{t("onboarding.instructorDetailsTitle")}</ThemedText>
+
+      <SectionCaption label={t("onboarding.instructorDetailsTitle")} palette={palette} />
+      <KitTextField
+        label={t("onboarding.displayName")}
+        value={displayName}
+        onChangeText={setDisplayName}
+        autoCapitalize="words"
+      />
+
+      <KitTextField
+        label={t("onboarding.bioOptional")}
+        value={bio}
+        onChangeText={setBio}
+        multiline
+        numberOfLines={4}
+        style={styles.multilineInput}
+      />
+
+      <KitTextField
+        label={t("onboarding.hourlyRateOptional")}
+        value={hourlyRate}
+        onChangeText={setHourlyRate}
+        keyboardType="decimal-pad"
+      />
+
+      <View style={styles.sectionBlock}>
+        <SectionCaption label={t("onboarding.sportsTitle")} palette={palette} />
+        <ThemedText type="defaultSemiBold">{t("onboarding.sportsTitle")}</ThemedText>
+        <View style={styles.chipGrid}>
+          {SPORT_TYPES.map((sport) => (
+            <KitChip
+              key={sport}
+              label={toDisplayLabel(sport)}
+              selected={selectedSports.includes(sport)}
+              onPress={() => toggleSport(sport)}
+            />
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.sectionBlock}>
+        <SectionCaption label={t("profile.settings.location.title")} palette={palette} />
+        <KitTextField
+          label={t("onboarding.zoneSearchPlaceholder")}
+          value={zoneSearch}
+          onChangeText={setZoneSearch}
+        />
+
+        <KitTextField
+          label={t("onboarding.location.instructorAddressOptional")}
+          value={instructorAddress}
+          onChangeText={(value) => {
+            setInstructorAddress(value);
+            setInstructorLatitude(undefined);
+            setInstructorLongitude(undefined);
+            setInstructorDetectedZone(null);
+          }}
+        />
+
+        <View style={styles.inlineActions}>
+          <KitButton
+            variant="secondary"
+            disabled={instructorResolver.isResolving}
+            label={
+              instructorResolver.isResolving
+                ? t("onboarding.location.resolvingAddress")
+                : t("onboarding.location.findByAddress")
+            }
+            onPress={() => {
+              void resolveInstructorFromAddress();
+            }}
+          />
+        </View>
+
+        <ThemedText style={{ color: palette.textMuted }}>
+          {instructorDetectedZone
+            ? t("onboarding.location.detectedZone", { zone: instructorDetectedZone })
+            : t("onboarding.location.zoneOptionalHint")}
+        </ThemedText>
+
+        <View style={styles.chipGrid}>
+          {selectedZones.map((zoneId) => {
+            const zone = ZONE_OPTIONS.find((item) => item.id === zoneId);
+            const label = zone ? zone.label[language] : zoneId;
+            return (
+              <KitChip
+                key={zoneId}
+                label={label}
+                selected
+                onPress={() => toggleZone(zoneId)}
+              />
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={styles.sectionBlock}>
+        <KitButton
+          variant={pushToken ? "secondary" : "primary"}
+          disabled={isRequestingPush}
+          label={
+            isRequestingPush
+              ? t("onboarding.push.requesting")
+              : pushToken
+                ? t("onboarding.push.enabled")
+                : t("onboarding.push.requestPermission")
+          }
+          onPress={() => {
+            void requestPushPermission();
+          }}
+        />
+      </View>
+    </KitSurface>
+  );
+
+  const studioForm = (
+    <KitSurface tone="elevated" style={styles.formCard}>
+      <ThemedText type="subtitle">{t("onboarding.studioDetailsTitle")}</ThemedText>
+
+      <SectionCaption label={t("onboarding.studioDetailsTitle")} palette={palette} />
+      <KitTextField
+        label={t("onboarding.studioName")}
+        value={studioName}
+        onChangeText={setStudioName}
+      />
+
+      <KitTextField
+        label={t("onboarding.studioAddress")}
+        value={studioAddress}
+        onChangeText={(value) => {
+          setStudioAddress(value);
+          setStudioLatitude(undefined);
+          setStudioLongitude(undefined);
+          setStudioDetectedZone(null);
+        }}
+      />
+
+      <KitTextField
+        label={t("onboarding.phoneOptional")}
+        value={studioContactPhone}
+        onChangeText={setStudioContactPhone}
+      />
+
+      <KitButton
+        variant="secondary"
+        disabled={studioResolver.isResolving}
+        label={
+          studioResolver.isResolving
+            ? t("onboarding.location.resolvingAddress")
+            : t("onboarding.location.findByAddress")
+        }
+        onPress={() => {
+          void resolveStudioFromAddress();
+        }}
+      />
+
+      <ThemedText style={{ color: palette.textMuted }}>
+        {studioDetectedZone
+          ? t("onboarding.location.detectedZone", { zone: studioDetectedZone })
+          : t("onboarding.location.zonePending")}
+      </ThemedText>
+    </KitSurface>
+  );
+
+  return (
+    <ScrollView
+      style={[styles.screen, { backgroundColor: palette.appBg }]}
+      contentContainerStyle={styles.content}
+      contentInsetAdjustmentBehavior="automatic"
+      keyboardShouldPersistTaps="handled"
+    >
+      <KitSurface tone="glass" style={styles.headerCard}>
+        <StepBadge current={currentStep} total={totalSteps} palette={palette} />
+        <ThemedText type="title">{t("onboarding.title")}</ThemedText>
+        <ThemedText style={{ color: palette.textMuted }}>
+          {t("onboarding.subtitle")}
+        </ThemedText>
+
+        <View style={styles.progressRow}>
+          <View
+            style={[
+              styles.progressSegment,
+              {
+                backgroundColor: step >= 0 ? palette.primary : palette.border,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.progressSegment,
+              {
+                backgroundColor: step >= 1 ? palette.primary : palette.border,
+              },
+            ]}
+          />
+        </View>
+      </KitSurface>
+
+      {step === 0 ? (
+        <KitSurface tone="elevated" style={styles.roleCard}>
+          <SectionCaption label={t("onboarding.rolePrompt")} palette={palette} />
+          <ThemedText type="defaultSemiBold">{t("onboarding.rolePrompt")}</ThemedText>
+          <View style={styles.roleGrid}>
+            <View style={styles.roleOption}>
+              <KitButton
+                variant={role === "instructor" ? "primary" : "secondary"}
+                label={t("onboarding.roleInstructorTitle")}
+                onPress={() => setSelectedRole("instructor")}
+              />
+              <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                {t("onboarding.roleInstructorDescription")}
+              </ThemedText>
+            </View>
+            <View style={styles.roleOption}>
+              <KitButton
+                variant={role === "studio" ? "primary" : "secondary"}
+                label={t("onboarding.roleStudioTitle")}
+                onPress={() => setSelectedRole("studio")}
+              />
+              <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                {t("onboarding.roleStudioDescription")}
+              </ThemedText>
+            </View>
+          </View>
+          <ThemedText style={{ color: palette.textMuted }}>{t("onboarding.roleSelectHint")}</ThemedText>
+
+          <View style={styles.navRow}>
+            <KitButton
+              label={t("onboarding.next")}
+              disabled={!role}
+              onPress={() => goToProfileStep()}
+            />
+          </View>
+        </KitSurface>
+      ) : role === "instructor" ? (
+        <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
+          {instructorForm}
+          {mapPane}
+        </View>
+      ) : role === "studio" ? (
+        <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
+          {studioForm}
+          {mapPane}
+        </View>
+      ) : null}
+
+      {step === 1 ? (
+        <KitSurface tone="glass">
+          <View style={styles.navRowSplit}>
+            <KitButton
+              variant="secondary"
+              label={t("onboarding.back")}
+              style={{ flex: 1 }}
+              onPress={() => {
+                setStep(0);
+              }}
+            />
+
+            <KitButton
+              label={isSubmitting ? t("onboarding.save") : t("onboarding.complete")}
+              disabled={isSubmitting}
+              style={{ flex: 1 }}
+              onPress={() => {
+                if (role === "instructor") {
+                  void submitInstructor();
+                  return;
+                }
+                if (role === "studio") {
+                  void submitStudio();
+                }
+              }}
+            />
+          </View>
+        </KitSurface>
+      ) : null}
+
+      {errorMessage ? (
+        <KitSurface tone="elevated">
+          <ThemedText style={{ color: palette.danger }}>{errorMessage}</ThemedText>
+        </KitSurface>
+      ) : null}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    gap: 12,
+  },
+  headerCard: {
+    gap: 8,
+  },
+  progressRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  progressSegment: {
+    flex: 1,
+    height: 6,
+    borderRadius: 999,
+  },
+  roleCard: {
+    gap: 12,
+  },
+  roleGrid: {
+    gap: 10,
+  },
+  roleOption: {
+    gap: 6,
+  },
+  navRow: {
+    marginTop: 4,
+  },
+  navRowSplit: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  stepTwoWrap: {
+    gap: 12,
+  },
+  stepTwoDesktop: {
+    flexDirection: "row",
+    alignItems: "stretch",
+  },
+  formCard: {
+    gap: 12,
+    flex: 1,
+    minWidth: 320,
+  },
+  mapCard: {
+    flex: 1,
+    minWidth: 320,
+    minHeight: 360,
+    gap: 10,
+  },
+  mapHeader: {
+    gap: 4,
+  },
+  mapHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+  },
+  mapWrap: {
+    flex: 1,
+    minHeight: 300,
+  },
+  chipGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  sectionBlock: {
+    gap: 8,
+  },
+  inlineActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  multilineInput: {
+    minHeight: 96,
+    textAlignVertical: "top",
+  },
+});
+

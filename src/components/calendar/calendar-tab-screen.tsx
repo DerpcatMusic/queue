@@ -1,0 +1,294 @@
+import { useCallback, useMemo, useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useQuery } from "convex/react";
+import { useTranslation } from "react-i18next";
+import {
+  CalendarBody,
+  CalendarContainer,
+  CalendarHeader,
+  CalendarKitHandle,
+  EventItem,
+  PackedEvent,
+} from "@howljs/calendar-kit";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { runOnJS, useSharedValue } from "react-native-reanimated";
+
+import { useBrand } from "@/hooks/use-brand";
+import { useThemePreference } from "@/hooks/use-theme-preference";
+import { api } from "@/convex/_generated/api";
+import { LoadingScreen } from "@/components/loading-screen";
+
+/** Hash a sport name to pick a consistent swatch index. */
+function sportSwatchIndex(sport: string, len: number): number {
+  let h = 0;
+  for (let i = 0; i < sport.length; i++) {
+    h = sport.charCodeAt(i) + ((h << 5) - h);
+  }
+  return Math.abs(h) % len;
+}
+
+const DAY_OPTIONS = [1, 3, 5, 7] as const;
+
+function dayLabel(d: number): string {
+  if (d === 1) return "calendarTab.mode.day";
+  if (d === 7) return "calendarTab.mode.week";
+  return `${d}D`;
+}
+
+export default function CalendarTabScreen() {
+  const { t } = useTranslation();
+  const palette = useBrand();
+  const { resolvedScheme } = useThemePreference();
+  const calendarRef = useRef<CalendarKitHandle>(null);
+  const currentUser = useQuery(api.users.getCurrentUser);
+  const isInstructor = currentUser?.role === "instructor";
+  const isStudio = currentUser?.role === "studio";
+
+  const myApplications = useQuery(
+    api.jobs.getMyApplications,
+    isInstructor ? {} : "skip",
+  );
+  const rawStudioJobs = useQuery(
+    api.jobs.getMyStudioJobsWithApplications,
+    isStudio ? {} : "skip",
+  );
+  const [numberOfDays, setNumberOfDays] = useState(3);
+  const swatches = palette.calendar.eventSwatches;
+
+  const events = useMemo<EventItem[]>(() => {
+    if (!currentUser) return [];
+
+    if (isInstructor && myApplications) {
+      return myApplications.map((app) => {
+        const swatch = swatches[sportSwatchIndex(app.sport, swatches.length)];
+        return {
+          id: app.applicationId,
+          title: `${app.sport} @ ${app.studioName}`,
+          start: { dateTime: new Date(app.startTime).toISOString() },
+          end: { dateTime: new Date(app.endTime).toISOString() },
+          color: (swatch?.background as string) ?? (palette.primary as string),
+        };
+      });
+    }
+
+    if (isStudio && rawStudioJobs) {
+      return rawStudioJobs.map((job) => {
+        const swatch = swatches[sportSwatchIndex(job.sport, swatches.length)];
+        return {
+          id: job.jobId,
+          title: job.sport,
+          start: { dateTime: new Date(job.startTime).toISOString() },
+          end: { dateTime: new Date(job.endTime).toISOString() },
+          color: (swatch?.background as string) ?? (palette.primary as string),
+        };
+      });
+    }
+
+    return [];
+  }, [currentUser, isInstructor, isStudio, myApplications, rawStudioJobs, swatches, palette]);
+  // accumulated scale crosses a whole-number threshold the calendar
+  // actually adds or removes a day column in real time.
+  //
+  // Direction detection via `manualActivation` + `onTouchesDown` ensures
+  // vertical pinches pass through to CalendarKit's native hour zoom.
+  //
+  const pinchStartDays = useSharedValue(3);
+  const lastEmittedDays = useSharedValue(3);
+  const isHorizontalPinch = useSharedValue(false);
+
+  const applyDays = useCallback((days: number) => {
+    setNumberOfDays(days);
+  }, []);
+
+  const horizontalPinch = Gesture.Pinch()
+    .manualActivation(true)
+    .onTouchesDown((e, stateManager) => {
+      if (e.numberOfTouches >= 2) {
+        const t0 = e.allTouches[0]!;
+        const t1 = e.allTouches[1]!;
+        const dx = Math.abs(t0.x - t1.x);
+        const dy = Math.abs(t0.y - t1.y);
+
+        if (dx > dy * 1.2) {
+          isHorizontalPinch.value = true;
+          stateManager.activate();
+        } else {
+          isHorizontalPinch.value = false;
+          stateManager.fail();
+        }
+      }
+    })
+    .onStart(() => {
+      pinchStartDays.value = numberOfDays;
+      lastEmittedDays.value = numberOfDays;
+    })
+    .onUpdate((e) => {
+      if (!isHorizontalPinch.value) return;
+
+      // Pinch in (scale > 1) = fewer days, pinch out (< 1) = more days
+      const raw = pinchStartDays.value / e.scale;
+      const clamped = Math.max(1, Math.min(7, Math.round(raw)));
+
+      // Only bridge to JS when the day count actually changes
+      if (clamped !== lastEmittedDays.value) {
+        lastEmittedDays.value = clamped;
+        runOnJS(applyDays)(clamped);
+      }
+    })
+    .onEnd((e) => {
+      if (!isHorizontalPinch.value) return;
+      // Final snap (in case rounding drifted)
+      const raw = pinchStartDays.value / e.scale;
+      const clamped = Math.max(1, Math.min(7, Math.round(raw)));
+      runOnJS(applyDays)(clamped);
+    });
+  const onPressDayNumber = useCallback((date: string) => {
+    calendarRef.current?.setVisibleDate(date);
+    setNumberOfDays(1);
+  }, []);
+  const renderEvent = useCallback(
+    (event: PackedEvent) => (
+      <View
+        style={[
+          chipStyles.container,
+          {
+            backgroundColor:
+              (event.color as string) ?? (palette.primary as string),
+          },
+        ]}
+      >
+        <Text
+          style={[chipStyles.title, { color: palette.onPrimary as string }]}
+          numberOfLines={1}
+        >
+          {event.title}
+        </Text>
+      </View>
+    ),
+    [palette],
+  );
+  if (currentUser === undefined) {
+    return <LoadingScreen label={t("calendarTab.loading")} />;
+  }
+  return (
+    <View style={[styles.root, { backgroundColor: palette.appBg }]}>
+      {/* Day-count pill selector (secondary control) */}
+      <View style={[styles.pillRow, { backgroundColor: palette.surfaceAlt }]}>
+        {DAY_OPTIONS.map((d) => {
+          const active = numberOfDays === d;
+          return (
+            <Pressable
+              key={d}
+              onPress={() => setNumberOfDays(d)}
+              style={[
+                styles.pill,
+                {
+                  backgroundColor: active
+                    ? (palette.primary as string)
+                    : "transparent",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.pillText,
+                  {
+                    color: active
+                      ? (palette.onPrimary as string)
+                      : (palette.text as string),
+                  },
+                ]}
+              >
+                {d === 3 || d === 5 ? dayLabel(d) : t(dayLabel(d))}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Calendar: horizontal pinch updates day count live */}
+      <GestureDetector gesture={horizontalPinch}>
+        <View style={styles.calendarWrap}>
+          <CalendarContainer
+            key={resolvedScheme}
+            ref={calendarRef}
+            events={events}
+            numberOfDays={numberOfDays}
+            scrollByDay={numberOfDays <= 3}
+            allowPinchToZoom
+            minTimeIntervalHeight={30}
+            maxTimeIntervalHeight={120}
+            initialTimeIntervalHeight={60}
+            onPressDayNumber={onPressDayNumber}
+            theme={{
+              colors: {
+                background: palette.appBg as string,
+                onBackground: palette.text as string,
+                primary: palette.primary as string,
+                onPrimary: palette.onPrimary as string,
+                surface: palette.surface as string,
+                onSurface: palette.text as string,
+                border: palette.border as string,
+                text: palette.text as string,
+              },
+              headerBackgroundColor: palette.surfaceElevated as string,
+              headerBorderColor: palette.border as string,
+              dayBarBorderColor: palette.border as string,
+              hourBorderColor: palette.border as string,
+              dayName: { color: palette.textMuted as string },
+              dayNumber: { color: palette.text as string },
+              todayName: { color: palette.primary as string, fontWeight: "700" },
+              todayNumber: { color: palette.primary as string, fontWeight: "700" },
+              todayNumberContainer: {
+                backgroundColor: palette.primarySubtle as string,
+                borderRadius: 10,
+              },
+              hourTextStyle: { color: palette.textMuted as string },
+              nowIndicatorColor: palette.primary as string,
+            }}
+          >
+            <CalendarHeader />
+            <CalendarBody renderEvent={renderEvent} />
+          </CalendarContainer>
+        </View>
+      </GestureDetector>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  pillRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  pill: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  pillText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  calendarWrap: {
+    flex: 1,
+  },
+});
+
+const chipStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  title: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+});
