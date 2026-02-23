@@ -40,8 +40,14 @@ export function KitList({ children, style, inset = true }: KitListProps) {
     >
       {entries.map((child, index) => {
         const isLast = index === entries.length - 1;
+        const childKey =
+          React.isValidElement(child) && child.key != null
+            ? String(child.key)
+            : typeof child === "string" || typeof child === "number"
+              ? `content-${child}`
+              : "content";
         return (
-          <View key={index}>
+          <View key={childKey}>
             {child}
             {!isLast ? (
               <View

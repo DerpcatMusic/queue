@@ -29,9 +29,9 @@ import {
   formatRelativeDuration,
   getLessonProgress,
   getMonotonicNow,
-  LessonLifecycle,
-  ReminderMap,
-  ClockAnchor,
+  type LessonLifecycle,
+  type ReminderMap,
+  type ClockAnchor,
   MINUTE_MS,
 } from "@/lib/jobs-utils";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";

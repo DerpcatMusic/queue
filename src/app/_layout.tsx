@@ -67,9 +67,9 @@ configureReanimatedLogger({
 
 type PerformanceWithRnStartupTiming = Performance & {
   rnStartupTiming?: {
-    startTime?: number | void;
-    executeJavaScriptBundleEntryPointStart?: number | void;
-    endTime?: number | void;
+    startTime?: number | undefined;
+    executeJavaScriptBundleEntryPointStart?: number | undefined;
+    endTime?: number | undefined;
   };
 };
 

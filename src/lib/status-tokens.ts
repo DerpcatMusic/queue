@@ -63,7 +63,6 @@ export function getApplicationStatusTokens(
         bg: palette.dangerSubtle,
         border: palette.danger,
       };
-    case "pending":
     default:
       return {
         fg: palette.primary,

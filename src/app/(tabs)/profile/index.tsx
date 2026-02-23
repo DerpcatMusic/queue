@@ -12,7 +12,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { type BrandPalette } from "@/constants/brand";
+import type { BrandPalette } from "@/constants/brand";
 import { useTranslation } from "react-i18next";
 
 import { ThemedText } from "@/components/themed-text";

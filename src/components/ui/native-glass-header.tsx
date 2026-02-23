@@ -1,5 +1,5 @@
-import React from "react";
-import { Platform, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+import type React from "react";
+import { Platform, View, StyleSheet, type StyleProp, type ViewStyle } from "react-native";
 import { BlurView, type BlurTint } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

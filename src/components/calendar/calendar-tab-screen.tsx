@@ -6,9 +6,9 @@ import {
   CalendarBody,
   CalendarContainer,
   CalendarHeader,
-  CalendarKitHandle,
-  EventItem,
-  PackedEvent,
+  type CalendarKitHandle,
+  type EventItem,
+  type PackedEvent,
 } from "@howljs/calendar-kit";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS, useSharedValue } from "react-native-reanimated";

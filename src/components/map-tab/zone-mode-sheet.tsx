@@ -3,7 +3,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import type { BrandPalette } from "@/constants/brand";
 import type { ZoneListRow } from "@/components/map-tab/zone-selection-model";
 import BottomSheet, {
-  BottomSheetBackgroundProps,
+  type BottomSheetBackgroundProps,
   BottomSheetFlatList,
   BottomSheetTextInput,
 } from "@gorhom/bottom-sheet";

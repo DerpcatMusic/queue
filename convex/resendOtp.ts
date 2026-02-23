@@ -1,5 +1,5 @@
 import { Email } from "@convex-dev/auth/providers/Email";
-import { RandomReader, generateRandomString } from "@oslojs/crypto/random";
+import { type RandomReader, generateRandomString } from "@oslojs/crypto/random";
 import { Resend as ResendApi } from "resend";
 
 export const ResendOTP = Email({

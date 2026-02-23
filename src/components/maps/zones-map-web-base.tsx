@@ -23,7 +23,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol } from "pmtiles";
 import type { FeatureCollection } from "geojson";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, View } from "react-native";
 import { useThemePreference } from "@/hooks/use-theme-preference";
@@ -157,6 +157,12 @@ export function ZonesMapWebBase({
   const onZoomLevelChangeRef = useRef(onZoomLevelChange);
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
   const [selectionLevel, setSelectionLevel] = useState<"city" | "zone">("city");
+  const updateSelectionLevel = useCallback((nextLevel: "city" | "zone") => {
+    if (selectionLevelRef.current === nextLevel) return;
+    selectionLevelRef.current = nextLevel;
+    setSelectionLevel(nextLevel);
+    onSelectionLevelChangeRef.current?.(nextLevel);
+  }, []);
 
   const selectedFeatures = useMemo(() => {
     if (selectionLevel === "city") {
@@ -192,7 +198,7 @@ export function ZonesMapWebBase({
     if (!selectionEnabled) {
       updateSelectionLevel("zone");
     }
-  }, [selectionEnabled]);
+  }, [selectionEnabled, updateSelectionLevel]);
 
   useEffect(() => {
     onPressZoneRef.current = onPressZone;
@@ -209,13 +215,6 @@ export function ZonesMapWebBase({
   useEffect(() => {
     onZoomLevelChangeRef.current = onZoomLevelChange;
   }, [onZoomLevelChange]);
-
-  const updateSelectionLevel = (nextLevel: "city" | "zone") => {
-    if (selectionLevelRef.current === nextLevel) return;
-    selectionLevelRef.current = nextLevel;
-    setSelectionLevel(nextLevel);
-    onSelectionLevelChangeRef.current?.(nextLevel);
-  };
 
   useEffect(() => {
     const container = containerRef.current;
@@ -555,8 +554,8 @@ export function ZonesMapWebBase({
     mapPalette.surfaceAlt,
     mapPalette.text,
     resolvedScheme,
-    stylePreference,
     userLocationFeature,
+    updateSelectionLevel,
   ]);
 
   // Handle basemap theme switch separately to avoid full map rebuild

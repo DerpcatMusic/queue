@@ -33,6 +33,7 @@ import { useBrand } from "@/hooks/use-brand";
 type Step = "email" | "code";
 const OTP_LENGTH = 6;
 const OTP_PILL_WIDTH = 44;
+const OTP_SLOTS = Array.from({ length: OTP_LENGTH }, (_, slot) => slot);
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -348,13 +349,13 @@ export default function SignInScreen() {
                     height: 1,
                   }}
                 />
-                {Array.from({ length: OTP_LENGTH }).map((_, index) => {
-                  const digit = code[index] ?? "";
-                  const isActive = code.length === index;
+                {OTP_SLOTS.map((slot) => {
+                  const digit = code[slot] ?? "";
+                  const isActive = code.length === slot;
                   return (
                     <Animated.View
-                      key={index}
-                      entering={FadeIn.delay(index * 40).duration(200)}
+                      key={`otp-slot-${slot}`}
+                      entering={FadeIn.delay(slot * 40).duration(200)}
                       onTouchEnd={() => codeInputRef.current?.focus()}
                       style={{
                         width: OTP_PILL_WIDTH,

@@ -191,7 +191,7 @@ export default function MapTabScreen() {
         });
       });
     },
-    [showMapDebug],
+    [],
   );
 
   const toggleZone = useCallback(
