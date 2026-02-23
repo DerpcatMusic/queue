@@ -42,3 +42,14 @@ app-example
 # generated native folders
 /ios
 /android
+
+# local build/cache artifacts
+.gradle-project-cache-*/
+*.log
+tsc*.txt
+tsc*.out
+tsc*.log
+typecheck.log
+gradle-build.log
+temp_brand.ts
+temp_brand_utf8.ts
