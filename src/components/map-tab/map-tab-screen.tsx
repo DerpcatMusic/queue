@@ -1,6 +1,9 @@
 import { api } from "@/convex/_generated/api";
 import { LoadingScreen } from "@/components/loading-screen";
-import { InstructorZonesMap } from "@/components/maps/instructor-zones-map";
+import {
+  getInstructorZonesMapStatus,
+  InstructorZonesMap,
+} from "@/components/maps/instructor-zones-map";
 import {
   buildZoneSelectionViewModel,
   isKnownZoneId,
@@ -66,6 +69,9 @@ export default function MapTabScreen() {
   const isRtl = i18n.dir(i18n.resolvedLanguage) === "rtl";
   const isExpoGoNative =
     Platform.OS !== "web" && Constants.appOwnership === "expo";
+  const mapRuntimeStatus = useMemo(() => getInstructorZonesMapStatus(), []);
+  const isMapRuntimeUnavailable =
+    !isExpoGoNative && !mapRuntimeStatus.available;
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const remoteZones = useQuery(
@@ -383,7 +389,7 @@ export default function MapTabScreen() {
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <StatusBar style="auto" />
       <View style={styles.mapWrap}>
-        {isExpoGoNative ? (
+        {isExpoGoNative || isMapRuntimeUnavailable ? (
           <View
             style={[
               styles.expoGoWrap,
@@ -392,10 +398,14 @@ export default function MapTabScreen() {
           >
             <KitSurface tone="sunken">
               <ThemedText type="defaultSemiBold">
-                {t("mapTab.devBuildRequiredTitle")}
+                {isMapRuntimeUnavailable
+                  ? "Map runtime unavailable in this build."
+                  : t("mapTab.devBuildRequiredTitle")}
               </ThemedText>
               <ThemedText style={{ color: palette.textMuted }}>
-                {t("mapTab.devBuildRequiredBody")}
+                {isMapRuntimeUnavailable
+                  ? "Rebuild and relaunch your dev client with native map modules."
+                  : t("mapTab.devBuildRequiredBody")}
               </ThemedText>
             </KitSurface>
           </View>

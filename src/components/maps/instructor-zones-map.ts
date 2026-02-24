@@ -5,6 +5,7 @@ import { Platform } from "react-native";
 import type { InstructorZonesMapProps } from "./instructor-zones-map.types";
 
 let resolvedImpl: ComponentType<InstructorZonesMapProps> | null | undefined;
+let resolvedReason: "expo_go" | "native_module_unavailable" | null = null;
 
 function resolveImpl(): ComponentType<InstructorZonesMapProps> | null {
   if (resolvedImpl !== undefined) {
@@ -17,11 +18,13 @@ function resolveImpl(): ComponentType<InstructorZonesMapProps> | null {
       InstructorZonesMap: ComponentType<InstructorZonesMapProps>;
     };
     resolvedImpl = webModule.InstructorZonesMap;
+    resolvedReason = null;
     return resolvedImpl;
   }
 
   if (Constants.appOwnership === "expo") {
     resolvedImpl = null;
+    resolvedReason = "expo_go";
     return null;
   }
 
@@ -31,11 +34,21 @@ function resolveImpl(): ComponentType<InstructorZonesMapProps> | null {
       InstructorZonesMap: ComponentType<InstructorZonesMapProps>;
     };
     resolvedImpl = nativeModule.InstructorZonesMap;
+    resolvedReason = null;
     return resolvedImpl;
   } catch {
     resolvedImpl = null;
+    resolvedReason = "native_module_unavailable";
     return null;
   }
+}
+
+export function getInstructorZonesMapStatus() {
+  const implementation = resolveImpl();
+  return {
+    available: implementation !== null,
+    reason: resolvedReason,
+  };
 }
 
 function InstructorZonesMapInner(props: InstructorZonesMapProps) {
