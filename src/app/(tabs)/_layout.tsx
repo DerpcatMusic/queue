@@ -15,7 +15,6 @@ import { KitButton, KitSurface } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { recordPerfMetric } from "@/lib/perf-telemetry";
 
 type KnownRole = "pending" | "instructor" | "studio" | "admin";
 
@@ -97,86 +96,6 @@ export default function TabLayout() {
     syncCurrentUser,
     t,
   ]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (__DEV__) return;
-
-    let cancelled = false;
-    const timeoutHandles: ReturnType<typeof setTimeout>[] = [];
-    const idleHandles: number[] = [];
-    const prewarmTasks: {
-      key: string;
-      delayAfterMs: number;
-      load: () => Promise<unknown>;
-    }[] = [
-      { key: "tab.calendar", delayAfterMs: 800, load: () => import("./calendar/index") },
-      { key: "tab.jobs", delayAfterMs: 900, load: () => import("./jobs/index") },
-      { key: "tab.map", delayAfterMs: 1000, load: () => import("./map") },
-      { key: "tab.profile", delayAfterMs: 1000, load: () => import("./profile/index") },
-    ];
-
-    const scheduleWhenIdle = (work: () => void) => {
-      if (typeof globalThis.requestIdleCallback === "function") {
-        const idleHandle = globalThis.requestIdleCallback(() => {
-          if (!cancelled) {
-            work();
-          }
-        }, { timeout: 2000 });
-        idleHandles.push(idleHandle);
-        return;
-      }
-
-      const timeoutHandle = setTimeout(() => {
-        if (!cancelled) {
-          work();
-        }
-      }, 0);
-      timeoutHandles.push(timeoutHandle);
-    };
-
-    const queuePrewarm = (index: number, delayMs: number) => {
-      if (cancelled || index >= prewarmTasks.length) return;
-      const nextTask = prewarmTasks[index];
-      if (!nextTask) return;
-
-      const timeoutHandle = setTimeout(() => {
-        if (cancelled) return;
-        scheduleWhenIdle(() => {
-          const startedAt = performance.now();
-          void nextTask
-            .load()
-            .then(() => {
-              recordPerfMetric("tabs.prewarm_module", performance.now() - startedAt, {
-                module: nextTask.key,
-              });
-            })
-            .catch(() => {
-              // Best-effort warmup only.
-            })
-            .finally(() => {
-              queuePrewarm(index + 1, nextTask.delayAfterMs);
-            });
-          });
-      }, delayMs);
-
-      timeoutHandles.push(timeoutHandle);
-    };
-
-    queuePrewarm(0, 1500);
-
-    return () => {
-      cancelled = true;
-      for (const idleHandle of idleHandles) {
-        if (typeof globalThis.cancelIdleCallback === "function") {
-          globalThis.cancelIdleCallback(idleHandle);
-        }
-      }
-      for (const timeoutHandle of timeoutHandles) {
-        clearTimeout(timeoutHandle);
-      }
-    };
-  }, [isAuthenticated]);
 
   if (isConvexAuthLoading && currentUser === undefined && !cachedRole) {
     return <LoadingScreen label={t("tabsLayout.loading.negotiatingSession")} />;
