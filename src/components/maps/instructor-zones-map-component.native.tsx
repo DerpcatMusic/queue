@@ -111,6 +111,7 @@ function InstructorZonesMapInner({
 
   const [bundledPmtilesUrl, setBundledPmtilesUrl] = useState("");
   const [selectionLevel, setSelectionLevel] = useState<"city" | "zone">("city");
+  const [hasMapStyleLoadError, setHasMapStyleLoadError] = useState(false);
   const zoneModeRef = useRef(zoneMode);
   const selectionLevelRef = useRef(selectionLevel);
   const onSelectionLevelChangeRef = useRef(onSelectionLevelChange);
@@ -162,17 +163,18 @@ function InstructorZonesMapInner({
   const pmtilesInputUrl = PMTILES_URL || bundledPmtilesUrl;
 
   const mapStyle = useMemo(() => {
-    const pmtilesSourceUrl = toPmtilesSourceUrl(pmtilesInputUrl);
-    if (pmtilesSourceUrl) {
-      return getMapStyle(resolvedScheme, pmtilesSourceUrl, MAP_GLYPHS_URL);
-    }
-
-    if (FALLBACK_STYLE_URL) {
-      return FALLBACK_STYLE_URL;
+    if (!hasMapStyleLoadError) {
+      const pmtilesSourceUrl = toPmtilesSourceUrl(pmtilesInputUrl);
+      if (pmtilesSourceUrl) {
+        return getMapStyle(resolvedScheme, pmtilesSourceUrl, MAP_GLYPHS_URL);
+      }
+      if (FALLBACK_STYLE_URL) {
+        return FALLBACK_STYLE_URL;
+      }
     }
 
     return getFallbackMapStyle(resolvedScheme, MAP_GLYPHS_URL);
-  }, [pmtilesInputUrl, resolvedScheme]);
+  }, [hasMapStyleLoadError, pmtilesInputUrl, resolvedScheme]);
 
   const effectiveMaxZoomLevel = pmtilesInputUrl
     ? (Number.isFinite(PMTILES_MAX_ZOOM) ? PMTILES_MAX_ZOOM : 12) + 2
@@ -251,7 +253,7 @@ function InstructorZonesMapInner({
             10.2,
             0.3,
           ] as Expression)
-        : 0,
+        : 0.22,
     [zoneMode],
   );
   const cityOutlineStyle = useMemo(
@@ -567,6 +569,9 @@ function InstructorZonesMapInner({
           logoEnabled={false}
           surfaceView={Platform.OS === "android"}
           onRegionDidChange={handleRegionDidChange}
+          onDidFailLoadingMap={() => {
+            setHasMapStyleLoadError(true);
+          }}
         >
           <CameraComponent
             ref={cameraRef}
