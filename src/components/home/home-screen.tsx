@@ -9,6 +9,10 @@ import { useTranslation } from "react-i18next";
 import { InstructorHomeContent } from "@/components/home/instructor-home-content";
 import { StudioHomeContent } from "@/components/home/studio-home-content";
 
+const HOME_APPLICATIONS_LIMIT = 80;
+const HOME_AVAILABLE_JOBS_LIMIT = 40;
+const HOME_STUDIO_JOBS_LIMIT = 60;
+
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
@@ -18,15 +22,15 @@ export default function HomeScreen() {
   const currentUser = useQuery(api.users.getCurrentUser);
   const myApplications = useQuery(
     api.jobs.getMyApplications,
-    currentUser?.role === "instructor" ? { limit: 250 } : "skip",
+    currentUser?.role === "instructor" ? { limit: HOME_APPLICATIONS_LIMIT } : "skip",
   );
   const availableJobs = useQuery(
     api.jobs.getAvailableJobsForInstructor,
-    currentUser?.role === "instructor" ? { limit: 80 } : "skip",
+    currentUser?.role === "instructor" ? { limit: HOME_AVAILABLE_JOBS_LIMIT } : "skip",
   );
   const myStudioJobs = useQuery(
     api.jobs.getMyStudioJobs,
-    currentUser?.role === "studio" ? { limit: 150 } : "skip",
+    currentUser?.role === "studio" ? { limit: HOME_STUDIO_JOBS_LIMIT } : "skip",
   );
 
   const currencyFormatter = useMemo(

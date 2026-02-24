@@ -28,10 +28,7 @@ function isKnownRole(value: string): value is KnownRole {
 export default function TabLayout() {
   const { signOut } = useAuthActions();
   const { isLoading: isConvexAuthLoading, isAuthenticated } = useConvexAuth();
-  const currentUser = useQuery(
-    api.users.getCurrentUser,
-    isAuthenticated ? {} : "skip",
-  );
+  const currentUser = useQuery(api.users.getCurrentUser);
   const syncCurrentUser = useMutation(api.users.syncCurrentUser);
   const [cachedRole, setCachedRole] = useState<KnownRole | null>(null);
   const [hasAttemptedSync, setHasAttemptedSync] = useState(false);
@@ -181,22 +178,27 @@ export default function TabLayout() {
     };
   }, [isAuthenticated]);
 
-  if (isConvexAuthLoading) {
+  if (isConvexAuthLoading && currentUser === undefined && !cachedRole) {
     return <LoadingScreen label={t("tabsLayout.loading.negotiatingSession")} />;
   }
 
-  if (!isAuthenticated) {
+  if (!isConvexAuthLoading && !isAuthenticated) {
     return <Redirect href="/sign-in" />;
   }
 
-  if (currentUser === null && (isSyncingUser || !hasAttemptedSync)) {
+  if (currentUser === undefined && !cachedRole) {
+    return <LoadingScreen label={t("tabsLayout.loading.loadingAccount")} />;
+  }
+
+  if (currentUser === null && (isSyncingUser || !hasAttemptedSync) && !cachedRole) {
     return <LoadingScreen label={t("tabsLayout.loading.loadingAccount")} />;
   }
 
   if (
     currentUser === null &&
     hasAttemptedSync &&
-    !isSyncingUser
+    !isSyncingUser &&
+    !cachedRole
   ) {
     return (
       <ShellErrorState

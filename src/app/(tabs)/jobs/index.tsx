@@ -2,20 +2,10 @@ import { Redirect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { lazy, Suspense } from "react";
 
+import { InstructorFeed } from "@/components/jobs/instructor-feed";
+import { StudioFeed } from "@/components/jobs/studio-feed";
 import { LoadingScreen } from "@/components/loading-screen";
-
-const LazyInstructorFeed = lazy(() =>
-  import("@/components/jobs/instructor-feed").then((module) => ({
-    default: module.InstructorFeed,
-  })),
-);
-const LazyStudioFeed = lazy(() =>
-  import("@/components/jobs/studio-feed").then((module) => ({
-    default: module.StudioFeed,
-  })),
-);
 
 export default function JobsTabScreen() {
   const { t } = useTranslation();
@@ -34,19 +24,11 @@ export default function JobsTabScreen() {
   }
 
   if (currentUser.role === "instructor") {
-    return (
-      <Suspense fallback={<LoadingScreen label={t("jobsTab.loading")} />}>
-        <LazyInstructorFeed />
-      </Suspense>
-    );
+    return <InstructorFeed />;
   }
 
   if (currentUser.role === "studio") {
-    return (
-      <Suspense fallback={<LoadingScreen label={t("jobsTab.loading")} />}>
-        <LazyStudioFeed />
-      </Suspense>
-    );
+    return <StudioFeed />;
   }
 
   return <Redirect href="/" />;
