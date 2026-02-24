@@ -14,7 +14,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Animated,
-  InteractionManager,
   LogBox,
   Platform,
   StyleSheet,
@@ -79,9 +78,11 @@ export const unstable_settings = {
 
 function waitForInteractions() {
   return new Promise<void>((resolve) => {
-    InteractionManager.runAfterInteractions(() => {
-      resolve();
-    });
+    if (typeof globalThis.requestIdleCallback === "function") {
+      globalThis.requestIdleCallback(() => resolve(), { timeout: 1200 });
+      return;
+    }
+    setTimeout(resolve, 0);
   });
 }
 

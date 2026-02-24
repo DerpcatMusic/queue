@@ -5,7 +5,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { InteractionManager, View } from "react-native";
+import { View } from "react-native";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -103,75 +103,80 @@ export default function TabLayout() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    if (__DEV__) return;
 
     let cancelled = false;
-    const timers: ReturnType<typeof setTimeout>[] = [];
+    const timeoutHandles: ReturnType<typeof setTimeout>[] = [];
+    const idleHandles: number[] = [];
     const prewarmTasks: {
       key: string;
       delayAfterMs: number;
       load: () => Promise<unknown>;
     }[] = [
-      { key: "tab.index", delayAfterMs: 350, load: () => import("./index") },
-      { key: "tab.calendar", delayAfterMs: 450, load: () => import("./calendar/index") },
-      { key: "tab.jobs", delayAfterMs: 450, load: () => import("./jobs/index") },
-      { key: "tab.map", delayAfterMs: 650, load: () => import("./map") },
-      { key: "tab.profile", delayAfterMs: 800, load: () => import("./profile/index") },
-      {
-        key: "screen.calendar",
-        delayAfterMs: 900,
-        load: () => import("@/components/calendar/calendar-tab-screen"),
-      },
-      {
-        key: "screen.jobs.instructor",
-        delayAfterMs: 1000,
-        load: () => import("@/components/jobs/instructor-feed"),
-      },
-      {
-        key: "screen.jobs.studio",
-        delayAfterMs: 1200,
-        load: () => import("@/components/jobs/studio-feed"),
-      },
-      {
-        key: "screen.map",
-        delayAfterMs: 0,
-        load: () => import("@/components/map-tab/map-tab-screen"),
-      },
+      { key: "tab.calendar", delayAfterMs: 800, load: () => import("./calendar/index") },
+      { key: "tab.jobs", delayAfterMs: 900, load: () => import("./jobs/index") },
+      { key: "tab.map", delayAfterMs: 1000, load: () => import("./map") },
+      { key: "tab.profile", delayAfterMs: 1000, load: () => import("./profile/index") },
     ];
+
+    const scheduleWhenIdle = (work: () => void) => {
+      if (typeof globalThis.requestIdleCallback === "function") {
+        const idleHandle = globalThis.requestIdleCallback(() => {
+          if (!cancelled) {
+            work();
+          }
+        }, { timeout: 2000 });
+        idleHandles.push(idleHandle);
+        return;
+      }
+
+      const timeoutHandle = setTimeout(() => {
+        if (!cancelled) {
+          work();
+        }
+      }, 0);
+      timeoutHandles.push(timeoutHandle);
+    };
+
     const queuePrewarm = (index: number, delayMs: number) => {
       if (cancelled || index >= prewarmTasks.length) return;
       const nextTask = prewarmTasks[index];
       if (!nextTask) return;
 
-      const timer = setTimeout(() => {
+      const timeoutHandle = setTimeout(() => {
         if (cancelled) return;
-        const startedAt = performance.now();
-        void nextTask
-          .load()
-          .then(() => {
-            recordPerfMetric("tabs.prewarm_module", performance.now() - startedAt, {
-              module: nextTask.key,
+        scheduleWhenIdle(() => {
+          const startedAt = performance.now();
+          void nextTask
+            .load()
+            .then(() => {
+              recordPerfMetric("tabs.prewarm_module", performance.now() - startedAt, {
+                module: nextTask.key,
+              });
+            })
+            .catch(() => {
+              // Best-effort warmup only.
+            })
+            .finally(() => {
+              queuePrewarm(index + 1, nextTask.delayAfterMs);
             });
-          })
-          .catch(() => {
-            // Best-effort warmup only.
-          })
-          .finally(() => {
-            queuePrewarm(index + 1, nextTask.delayAfterMs);
           });
       }, delayMs);
 
-      timers.push(timer);
+      timeoutHandles.push(timeoutHandle);
     };
 
-    const task = InteractionManager.runAfterInteractions(() => {
-      queuePrewarm(0, 850);
-    });
+    queuePrewarm(0, 1500);
 
     return () => {
       cancelled = true;
-      task.cancel();
-      for (const timer of timers) {
-        clearTimeout(timer);
+      for (const idleHandle of idleHandles) {
+        if (typeof globalThis.cancelIdleCallback === "function") {
+          globalThis.cancelIdleCallback(idleHandle);
+        }
+      }
+      for (const timeoutHandle of timeoutHandles) {
+        clearTimeout(timeoutHandle);
       }
     };
   }, [isAuthenticated]);
@@ -270,7 +275,7 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Label>{t("tabs.map")}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="profile/index">
+      <NativeTabs.Trigger name="profile">
         <NativeTabs.Trigger.Icon
           sf={{
             default: "person.crop.circle",
