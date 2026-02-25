@@ -2,6 +2,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import { LoadingScreen } from "@/components/loading-screen";
+import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
 import { ThemedText } from "@/components/themed-text";
@@ -29,11 +30,12 @@ import {
 import { omitUndefined } from "@/lib/omit-undefined";
 import { createPerfTimer, logPerfSummary, recordPerfMetric } from "@/lib/perf-telemetry";
 import { registerForPushNotificationsAsync } from "@/lib/push-notifications";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
 import type { ComponentType, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import * as WebBrowser from "expo-web-browser";
 import {
   Platform,
   Pressable,
@@ -44,55 +46,7 @@ import {
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 
-type HeroMetric = {
-  label: string;
-  value: number;
-};
-
-type FeedHeroProps = {
-  title: string;
-  subtitle: string;
-  metrics: HeroMetric[];
-  palette: ReturnType<typeof useBrand>;
-};
-
-function FeedHero({ title, subtitle, metrics, palette }: FeedHeroProps) {
-  return (
-    <View style={styles.heroWrap}>
-      <ThemedText type="micro" style={{ color: palette.textMuted }}>
-        {subtitle}
-      </ThemedText>
-      <ThemedText
-        type="heading"
-        style={{ fontSize: 34, lineHeight: 38, letterSpacing: -1.1, fontWeight: "800" }}
-      >
-        {title}
-      </ThemedText>
-      <View style={styles.heroMetricsRow}>
-        {metrics.map((metric, index) => (
-          <View key={`${metric.label}-${index}`} style={styles.heroMetricCol}>
-            <ThemedText
-              selectable
-              style={{
-                color: palette.text,
-                fontSize: 24,
-                lineHeight: 28,
-                letterSpacing: -0.6,
-                fontWeight: "800",
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {metric.value >= 100 ? "99+" : String(metric.value)}
-            </ThemedText>
-            <ThemedText type="micro" style={{ color: palette.textMuted }}>
-              {metric.label}
-            </ThemedText>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
+WebBrowser.maybeCompleteAuthSession();
 
 type FeedSectionHeaderProps = {
   title: string;
@@ -248,6 +202,7 @@ export function StudioFeed() {
   const postJob = useMutation(api.jobs.postJob);
   const reviewApplication = useMutation(api.jobs.reviewApplication);
   const updateStudioNotificationSettings = useMutation(api.users.updateMyStudioNotificationSettings);
+  const createCheckoutForJob = useAction(api.rapyd.createCheckoutForJob);
 
   const studioJobs = useQuery(
     api.jobs.getMyStudioJobsWithApplications,
@@ -257,6 +212,10 @@ export function StudioFeed() {
   const studioNotificationSettings = useQuery(
     api.users.getMyStudioNotificationSettings,
     currentUser?.role === "studio" ? {} : "skip",
+  );
+  const studioPayments = useQuery(
+    api.payments.listMyPayments,
+    currentUser?.role === "studio" ? { limit: 200 } : "skip",
   );
 
   const [studioDraft, setStudioDraft] = useState<StudioDraft>(
@@ -268,13 +227,72 @@ export function StudioFeed() {
   const [isSubmittingStudio, setIsSubmittingStudio] = useState(false);
   const [isEnablingStudioPush, setIsEnablingStudioPush] = useState(false);
   const [isReviewingApplicationId, setIsReviewingApplicationId] = useState<Id<"jobApplications"> | null>(null);
+  const [isStartingCheckoutForJobId, setIsStartingCheckoutForJobId] = useState<Id<"jobs"> | null>(null);
+  const [jobsSearchQuery, setJobsSearchQuery] = useState("");
+  const [jobsStatusFilter, setJobsStatusFilter] = useState<
+    "all" | "needs_review" | "open" | "filled" | "completed"
+  >("all");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const studioJobsStartedAtRef = useRef<number | null>(null);
-  const studioOpenCount = studioJobs?.filter((job) => job.status === "open").length ?? 0;
-  const studioPendingApplications =
-    studioJobs?.reduce((sum, job) => sum + job.pendingApplicationsCount, 0) ?? 0;
+
   const deviceTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const filteredStudioJobs = useMemo(() => {
+    const search = jobsSearchQuery.trim().toLowerCase();
+    return (studioJobs ?? []).filter((job) => {
+      if (jobsStatusFilter === "needs_review" && job.pendingApplicationsCount === 0) {
+        return false;
+      }
+      if (
+        jobsStatusFilter !== "all" &&
+        jobsStatusFilter !== "needs_review" &&
+        job.status !== jobsStatusFilter
+      ) {
+        return false;
+      }
+
+      if (!search) return true;
+      const applicants = job.applications.map((application) => application.instructorName).join(" ");
+      const haystack = `${job.zone} ${toSportLabel(job.sport as never)} ${applicants}`.toLowerCase();
+      return haystack.includes(search);
+    });
+  }, [studioJobs, jobsSearchQuery, jobsStatusFilter]);
+  const latestPaymentByJobId = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        paymentId: Id<"payments">;
+        status: "created" | "pending" | "authorized" | "captured" | "failed" | "cancelled" | "refunded";
+        payoutStatus:
+          | "queued"
+          | "processing"
+          | "pending_provider"
+          | "paid"
+          | "failed"
+          | "cancelled"
+          | "needs_attention"
+          | null;
+      }
+    >();
+    for (const row of studioPayments ?? []) {
+      const key = String(row.payment.jobId);
+      if (map.has(key)) continue;
+      map.set(key, {
+        paymentId: row.payment._id,
+        status: row.payment.status,
+        payoutStatus: row.payout?.status ?? null,
+      });
+    }
+    return map;
+  }, [studioPayments]);
+  const filteredStudioJobsWithPayments = useMemo(
+    () =>
+      filteredStudioJobs.map((job) => ({
+        ...job,
+        payment: latestPaymentByJobId.get(String(job.jobId)) ?? null,
+      })),
+    [filteredStudioJobs, latestPaymentByJobId],
+  );
 
   useEffect(() => {
     if (!FEATURE_FLAGS.jobsPerfTelemetry) return;
@@ -526,38 +544,42 @@ export function StudioFeed() {
     }
   };
 
+  const startStudioCheckout = async (jobId: Id<"jobs">) => {
+    if (currentUser.role !== "studio") return;
+
+    setIsStartingCheckoutForJobId(jobId);
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    try {
+      const checkout = await createCheckoutForJob({
+        jobId,
+      });
+      await WebBrowser.openBrowserAsync(checkout.checkoutUrl);
+      setStatusMessage(t("jobsTab.success.checkoutOpened"));
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : t("jobsTab.errors.failedToStartCheckout");
+      setErrorMessage(message);
+    } finally {
+      setIsStartingCheckoutForJobId(null);
+    }
+  };
+
 
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
-      <ScrollView
+      <TabScreenScrollView
+        routeKey="studio/jobs/index"
         style={styles.screen}
         contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
       >
         <View>
-          <View style={{ paddingHorizontal: BrandSpacing.lg, paddingTop: 8 }}>
-            <FeedHero
-              title={t("jobsTab.title")}
-              subtitle={t("jobsTab.studioSubtitle")}
-              palette={palette}
-              metrics={[
-                {
-                  label: t("jobsTab.studioFeedTitle"),
-                  value: studioJobs?.length ?? 0,
-                },
-                {
-                  label: t("jobsTab.status.job.open"),
-                  value: studioOpenCount,
-                },
-                {
-                  label: t("jobsTab.studioApplicationsTitle"),
-                  value: studioPendingApplications,
-                },
-              ]}
-            />
-          </View>
+          {/* Header removed from Jobs Tab for minimalism */}
 
           {errorMessage ? (
             <View style={styles.noticeWrap}>
@@ -944,6 +966,61 @@ export function StudioFeed() {
                 subtitle={t("jobsTab.studioApplicationsTitle")}
                 palette={palette}
               />
+              <View style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.sm, paddingBottom: BrandSpacing.sm }}>
+                <TextInput
+                  value={jobsSearchQuery}
+                  onChangeText={setJobsSearchQuery}
+                  placeholder="Search jobs"
+                  placeholderTextColor={palette.textMuted}
+                  style={[
+                    styles.input,
+                    {
+                      borderColor: palette.border,
+                      color: palette.text,
+                      backgroundColor: palette.surface,
+                    },
+                  ]}
+                />
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipGrid}
+                >
+                  {[
+                    { key: "all", label: "All jobs" },
+                    { key: "needs_review", label: "Needs review" },
+                    { key: "open", label: "Open" },
+                    { key: "filled", label: "Filled" },
+                    { key: "completed", label: "Completed" },
+                  ].map((option) => {
+                    const selected = jobsStatusFilter === option.key;
+                    return (
+                      <Pressable
+                        key={option.key}
+                        style={[
+                          styles.chip,
+                          {
+                            borderColor: selected ? palette.primary : palette.border,
+                            backgroundColor: selected ? palette.primarySubtle : palette.surface,
+                          },
+                        ]}
+                        onPress={() => {
+                          setJobsStatusFilter(
+                            option.key as "all" | "needs_review" | "open" | "filled" | "completed",
+                          );
+                        }}
+                      >
+                        <ThemedText
+                          type="micro"
+                          style={{ color: selected ? palette.primary : palette.textMuted }}
+                        >
+                          {option.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
               {studioJobs === undefined ? (
                 <View style={[styles.emptyStateWrap, { minHeight: 300 }]}>
                   <ThemedText style={{ color: palette.textMuted }}>
@@ -958,15 +1035,27 @@ export function StudioFeed() {
                     body=""
                   />
                 </View>
+              ) : filteredStudioJobs.length === 0 ? (
+                <View style={{ flex: 1, minHeight: 260, justifyContent: "center" }}>
+                  <EmptyState
+                    icon="magnifyingglass"
+                    title={t("jobsTab.noJobsFound")}
+                    body={t("jobsTab.tryDifferentSearchOrTimeFilter")}
+                  />
+                </View>
               ) : (
                 <StudioJobsList
-                  jobs={studioJobs}
+                  jobs={filteredStudioJobsWithPayments}
                   locale={locale}
                   zoneLanguage={zoneLanguage}
                   palette={palette}
                   reviewingApplicationId={isReviewingApplicationId}
+                  payingJobId={isStartingCheckoutForJobId}
                   onReview={(applicationId, status) => {
                     void reviewStudioApplication(applicationId, status);
+                  }}
+                  onStartPayment={(jobId) => {
+                    void startStudioCheckout(jobId);
                   }}
                   t={t}
                 />
@@ -975,7 +1064,7 @@ export function StudioFeed() {
           </>
         ) : null}
 
-      </ScrollView>
+      </TabScreenScrollView>
     </View>
   );
 }
@@ -1261,9 +1350,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-
-
-
 
 
 

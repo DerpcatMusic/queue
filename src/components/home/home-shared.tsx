@@ -4,7 +4,7 @@ import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { BrandPalette } from "@/constants/brand";
 import { getJobStatusTokens } from "@/lib/status-tokens";
 import type { JobStatus } from "@/lib/status-tokens";
-import { SymbolView } from "expo-symbols";
+import { AppSymbol } from "@/components/ui/app-symbol";
 import { View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 
@@ -195,10 +195,10 @@ export function PrimaryActionCard({
                 backgroundColor: palette.primarySubtle,
               }}
             >
-              <SymbolView name={icon} tintColor={palette.primary} />
+              <AppSymbol name={icon} tintColor={palette.primary} />
             </View>
           }
-          accessory={<SymbolView name="chevron.right" tintColor={palette.textMuted} />}
+          accessory={<AppSymbol name="chevron.right" tintColor={palette.textMuted} />}
           onPress={onPress}
         >
           <ThemedText

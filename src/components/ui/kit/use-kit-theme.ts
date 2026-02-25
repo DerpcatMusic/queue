@@ -17,10 +17,7 @@ function resolveAlphaColor(base: unknown, alpha: number, fallback: unknown): Col
   return TRANSPARENT;
 }
 
-function resolveShadowColor(base: unknown, alpha: number, fallback: unknown) {
-  const resolved = resolveAlphaColor(base, alpha, fallback);
-  return typeof resolved === "string" ? resolved : TRANSPARENT;
-}
+
 
 function resolveStringColor(...colors: unknown[]) {
   for (const color of colors) {
@@ -103,24 +100,8 @@ export function useKitTheme() {
       scheme === "dark" ? 0.24 : 0.36,
       palette.border as unknown,
     );
-    const primaryLiftShadow = `0 1px 1px ${resolveShadowColor(
-      palette.text as unknown,
-      0.26,
-      palette.borderStrong as unknown,
-    )}, 0 8px 22px ${resolveShadowColor(
-      palette.primary as unknown,
-      isCustomStyle ? 0.3 : 0.2,
-      palette.borderStrong as unknown,
-    )}`;
-    const surfaceShadow = `0 1px 1px ${resolveShadowColor(
-      palette.text as unknown,
-      0.2,
-      palette.borderStrong as unknown,
-    )}, 0 8px 20px ${resolveShadowColor(
-      palette.borderStrong as unknown,
-      0.28,
-      palette.border as unknown,
-    )}`;
+    const primaryLiftShadow = "none";
+    const surfaceShadow = "none";
     const switchTrackOff = resolveAlphaColor(
       palette.borderStrong as unknown,
       0.5,

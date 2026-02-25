@@ -1,8 +1,9 @@
 import { api } from "@/convex/_generated/api";
 import { SPORT_TYPES } from "@/convex/constants";
 import { LoadingScreen } from "@/components/loading-screen";
-import { OnboardingLocationMap } from "@/components/maps/onboarding-location-map";
+import { QueueMap } from "@/components/maps/queue-map";
 import { ThemedText } from "@/components/themed-text";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import {
   KitButton,
   KitChip,
@@ -17,7 +18,7 @@ import { omitUndefined } from "@/lib/omit-undefined";
 import { registerForPushNotificationsAsync } from "@/lib/push-notifications";
 import { useMutation, useQuery } from "convex/react";
 import { Redirect, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ScrollView,
@@ -29,7 +30,6 @@ import {
 type OnboardingRole = "instructor" | "studio";
 
 const MAX_INSTRUCTOR_ZONES = 25;
-const MAX_PREVIEW_ZONES = 20;
 
 function toDisplayLabel(value: string) {
   return value
@@ -119,7 +119,6 @@ export default function OnboardingScreen() {
   const [hourlyRate, setHourlyRate] = useState("");
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [selectedZones, setSelectedZones] = useState<string[]>([]);
-  const [zoneSearch, setZoneSearch] = useState("");
   const [instructorAddress, setInstructorAddress] = useState("");
   const [instructorLatitude, setInstructorLatitude] = useState<number | undefined>();
   const [instructorLongitude, setInstructorLongitude] = useState<number | undefined>();
@@ -139,28 +138,6 @@ export default function OnboardingScreen() {
 
   const instructorResolver = useLocationResolution();
   const studioResolver = useLocationResolution();
-
-  const filteredZones = useMemo(() => {
-    const query = zoneSearch.trim().toLowerCase();
-    if (!query) {
-      return ZONE_OPTIONS.slice(0, 80);
-    }
-
-    return ZONE_OPTIONS.filter((zone) => {
-      const localized = zone.label[language].toLowerCase();
-      const english = zone.label.en.toLowerCase();
-      return (
-        localized.includes(query) ||
-        english.includes(query) ||
-        zone.id.toLowerCase().includes(query)
-      );
-    });
-  }, [language, zoneSearch]);
-
-  const previewZoneIds = useMemo(
-    () => filteredZones.slice(0, MAX_PREVIEW_ZONES).map((zone) => zone.id),
-    [filteredZones],
-  );
 
   if (currentUser === undefined) {
     return <LoadingScreen label={t("onboarding.loading")} />;
@@ -234,6 +211,46 @@ export default function OnboardingScreen() {
     setStudioLatitude(resolved.latitude);
     setStudioLongitude(resolved.longitude);
     setStudioDetectedZone(resolved.zoneId);
+  };
+
+  const handleInstructorPlaceSelected = (coords: {
+    latitude: number;
+    longitude: number;
+    formattedAddress: string;
+  }) => {
+    setInstructorAddress(coords.formattedAddress);
+    setInstructorLatitude(coords.latitude);
+    setInstructorLongitude(coords.longitude);
+    setErrorMessage(null);
+    void instructorResolver
+      .resolveFromCoordinates({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      })
+      .then((result) => {
+        if (!result.ok) return;
+        applyInstructorResolution(result.data.value, true);
+      });
+  };
+
+  const handleStudioPlaceSelected = (coords: {
+    latitude: number;
+    longitude: number;
+    formattedAddress: string;
+  }) => {
+    setStudioAddress(coords.formattedAddress);
+    setStudioLatitude(coords.latitude);
+    setStudioLongitude(coords.longitude);
+    setErrorMessage(null);
+    void studioResolver
+      .resolveFromCoordinates({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      })
+      .then((result) => {
+        if (!result.ok) return;
+        applyStudioResolution(result.data.value);
+      });
   };
 
   const resolveInstructorFromAddress = async () => {
@@ -534,8 +551,8 @@ export default function OnboardingScreen() {
         </ThemedText>
       </View>
       <View style={styles.mapWrap}>
-        <OnboardingLocationMap
-          mode={role === "instructor" ? "instructorZone" : "studioPin"}
+        <QueueMap
+          mode={role === "instructor" ? "zoneSelect" : "pinDrop"}
           pin={
             role === "instructor"
               ? instructorLatitude !== undefined && instructorLongitude !== undefined
@@ -552,7 +569,6 @@ export default function OnboardingScreen() {
                 ? [studioDetectedZone]
                 : []
           }
-          previewZoneIds={role === "instructor" ? previewZoneIds : []}
           focusZoneId={
             role === "instructor"
               ? instructorDetectedZone
@@ -613,14 +629,7 @@ export default function OnboardingScreen() {
 
       <View style={styles.sectionBlock}>
         <SectionCaption label={t("profile.settings.location.title")} palette={palette} />
-        <KitTextField
-          label={t("onboarding.zoneSearchPlaceholder")}
-          value={zoneSearch}
-          onChangeText={setZoneSearch}
-        />
-
-        <KitTextField
-          label={t("onboarding.location.instructorAddressOptional")}
+        <AddressAutocomplete
           value={instructorAddress}
           onChangeText={(value) => {
             setInstructorAddress(value);
@@ -628,6 +637,14 @@ export default function OnboardingScreen() {
             setInstructorLongitude(undefined);
             setInstructorDetectedZone(null);
           }}
+          onPlaceSelected={handleInstructorPlaceSelected}
+          placeholder={t("onboarding.location.instructorAddressOptional")}
+          placeholderTextColor={palette.textMuted}
+          borderColor={palette.border}
+          textColor={palette.text}
+          backgroundColor={palette.appBg}
+          surfaceColor={palette.surface}
+          mutedTextColor={palette.textMuted}
         />
 
         <View style={styles.inlineActions}>
@@ -697,8 +714,7 @@ export default function OnboardingScreen() {
         onChangeText={setStudioName}
       />
 
-      <KitTextField
-        label={t("onboarding.studioAddress")}
+      <AddressAutocomplete
         value={studioAddress}
         onChangeText={(value) => {
           setStudioAddress(value);
@@ -706,6 +722,14 @@ export default function OnboardingScreen() {
           setStudioLongitude(undefined);
           setStudioDetectedZone(null);
         }}
+        onPlaceSelected={handleStudioPlaceSelected}
+        placeholder={t("onboarding.studioAddress")}
+        placeholderTextColor={palette.textMuted}
+        borderColor={palette.border}
+        textColor={palette.text}
+        backgroundColor={palette.appBg}
+        surfaceColor={palette.surface}
+        mutedTextColor={palette.textMuted}
       />
 
       <KitTextField

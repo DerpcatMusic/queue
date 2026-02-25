@@ -6,6 +6,7 @@ const GOOGLE_PLACES_API_KEY =
 const AUTOCOMPLETE_URL =
   "https://places.googleapis.com/v1/places:autocomplete";
 const PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places";
+const OSM_AUTOCOMPLETE_URL = "https://nominatim.openstreetmap.org/search";
 
 export type PlacePrediction = {
   placeId: string;
@@ -21,6 +22,7 @@ export type PlaceCoordinates = {
 };
 
 let sessionToken: string | null = null;
+const fallbackPlaceCache = new Map<string, PlaceCoordinates>();
 
 function generateSessionToken(): string {
   const chars =
@@ -46,7 +48,7 @@ export function resetPlacesSession(): void {
 
 /// Returns `true` if the Google Places API key is configured.
 export function isGooglePlacesConfigured(): boolean {
-  return GOOGLE_PLACES_API_KEY.length > 0;
+  return true;
 }
 
 /// Fetches autocomplete predictions for the given input.
@@ -54,8 +56,55 @@ export async function fetchPlaceAutocomplete(
   input: string,
 ): Promise<PlacePrediction[]> {
   const trimmed = input.trim();
-  if (!trimmed || !GOOGLE_PLACES_API_KEY) {
+  if (!trimmed) {
     return [];
+  }
+
+  if (!GOOGLE_PLACES_API_KEY) {
+    const response = await fetch(
+      `${OSM_AUTOCOMPLETE_URL}?format=jsonv2&limit=6&addressdetails=1&q=${encodeURIComponent(trimmed)}`,
+      {
+        headers: {
+          "Accept-Language": Platform.OS === "web" ? "en" : "en",
+        },
+      },
+    );
+    if (!response.ok) {
+      return [];
+    }
+    const data = (await response.json()) as Array<{
+      place_id?: number;
+      lat?: string;
+      lon?: string;
+      name?: string;
+      display_name?: string;
+    }>;
+
+    return data
+      .map((item): PlacePrediction | null => {
+        const latitude = Number.parseFloat(item.lat ?? "");
+        const longitude = Number.parseFloat(item.lon ?? "");
+        const display = item.display_name?.trim();
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !display) {
+          return null;
+        }
+
+        const placeId = `osm:${item.place_id ?? display}`;
+        fallbackPlaceCache.set(placeId, {
+          latitude,
+          longitude,
+          formattedAddress: display,
+        });
+
+        const [mainText, ...rest] = display.split(", ");
+        return {
+          placeId,
+          mainText: item.name?.trim() || mainText || display,
+          secondaryText: rest.join(", "),
+          fullText: display,
+        };
+      })
+      .filter((item): item is PlacePrediction => item !== null);
   }
 
   const token = getOrCreateSessionToken();
@@ -113,8 +162,12 @@ export async function fetchPlaceAutocomplete(
 export async function fetchPlaceCoordinates(
   placeId: string,
 ): Promise<PlaceCoordinates | null> {
-  if (!placeId || !GOOGLE_PLACES_API_KEY) {
+  if (!placeId) {
     return null;
+  }
+
+  if (!GOOGLE_PLACES_API_KEY) {
+    return fallbackPlaceCache.get(placeId) ?? null;
   }
 
   const token = getOrCreateSessionToken();

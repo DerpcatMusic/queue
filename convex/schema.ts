@@ -170,6 +170,170 @@ export default defineSchema({
     .index("by_job", ["jobId"])
     .index("by_studio", ["studioId"]),
 
+  payments: defineTable({
+    jobId: v.id("jobs"),
+    studioId: v.id("studioProfiles"),
+    studioUserId: v.id("users"),
+    instructorId: v.optional(v.id("instructorProfiles")),
+    instructorUserId: v.optional(v.id("users")),
+    provider: v.literal("rapyd"),
+    providerCheckoutId: v.optional(v.string()),
+    providerPaymentId: v.optional(v.string()),
+    status: v.union(
+      v.literal("created"),
+      v.literal("pending"),
+      v.literal("authorized"),
+      v.literal("captured"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+      v.literal("refunded"),
+    ),
+    currency: v.string(),
+    instructorBaseAmountAgorot: v.number(),
+    platformMarkupAmountAgorot: v.number(),
+    studioChargeAmountAgorot: v.number(),
+    platformMarkupBps: v.number(),
+    idempotencyKey: v.string(),
+    metadata: v.optional(v.any()),
+    lastError: v.optional(v.string()),
+    capturedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_studio", ["studioId", "createdAt"])
+    .index("by_studio_user", ["studioUserId", "createdAt"])
+    .index("by_instructor_user", ["instructorUserId", "createdAt"])
+    .index("by_job", ["jobId", "createdAt"])
+    .index("by_status", ["status", "createdAt"])
+    .index("by_studio_user_idempotency", ["studioUserId", "idempotencyKey"])
+    .index("by_provider_checkoutId", ["provider", "providerCheckoutId"])
+    .index("by_provider_paymentId", ["provider", "providerPaymentId"]),
+
+  paymentEvents: defineTable({
+    provider: v.literal("rapyd"),
+    providerEventId: v.string(),
+    eventType: v.optional(v.string()),
+    paymentId: v.optional(v.id("payments")),
+    providerPaymentId: v.optional(v.string()),
+    providerCheckoutId: v.optional(v.string()),
+    statusRaw: v.optional(v.string()),
+    signatureValid: v.boolean(),
+    processed: v.boolean(),
+    payloadHash: v.string(),
+    payload: v.any(),
+    processingError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_provider_eventId", ["provider", "providerEventId"])
+    .index("by_payment", ["paymentId", "createdAt"])
+    .index("by_provider_payment_processed", [
+      "provider",
+      "providerPaymentId",
+      "processed",
+      "createdAt",
+    ])
+    .index("by_provider_checkout_processed", [
+      "provider",
+      "providerCheckoutId",
+      "processed",
+      "createdAt",
+    ]),
+
+  payouts: defineTable({
+    paymentId: v.id("payments"),
+    jobId: v.id("jobs"),
+    studioId: v.id("studioProfiles"),
+    studioUserId: v.id("users"),
+    instructorId: v.id("instructorProfiles"),
+    instructorUserId: v.id("users"),
+    destinationId: v.optional(v.id("payoutDestinations")),
+    provider: v.literal("rapyd"),
+    idempotencyKey: v.string(),
+    amountAgorot: v.number(),
+    currency: v.string(),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("processing"),
+      v.literal("pending_provider"),
+      v.literal("paid"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+      v.literal("needs_attention"),
+    ),
+    providerPayoutId: v.optional(v.string()),
+    providerStatusRaw: v.optional(v.string()),
+    attemptCount: v.number(),
+    maxAttempts: v.number(),
+    lastError: v.optional(v.string()),
+    lastAttemptAt: v.optional(v.number()),
+    nextRetryAt: v.optional(v.number()),
+    terminalAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_payment", ["paymentId", "createdAt"])
+    .index("by_instructor_user", ["instructorUserId", "createdAt"])
+    .index("by_destination", ["destinationId", "createdAt"])
+    .index("by_status_retryAt", ["status", "nextRetryAt"])
+    .index("by_provider_payoutId", ["provider", "providerPayoutId"])
+    .index("by_idempotency", ["idempotencyKey"]),
+
+  payoutEvents: defineTable({
+    payoutId: v.id("payouts"),
+    paymentId: v.id("payments"),
+    provider: v.literal("rapyd"),
+    eventType: v.union(
+      v.literal("attempt_started"),
+      v.literal("provider_response"),
+      v.literal("retry_scheduled"),
+      v.literal("terminal_failure"),
+      v.literal("status_update"),
+    ),
+    attempt: v.optional(v.number()),
+    providerEventId: v.optional(v.string()),
+    providerPayoutId: v.optional(v.string()),
+    statusRaw: v.optional(v.string()),
+    mappedStatus: v.optional(
+      v.union(
+        v.literal("queued"),
+        v.literal("processing"),
+        v.literal("pending_provider"),
+        v.literal("paid"),
+        v.literal("failed"),
+        v.literal("cancelled"),
+        v.literal("needs_attention"),
+      ),
+    ),
+    retryable: v.optional(v.boolean()),
+    httpStatus: v.optional(v.number()),
+    errorCode: v.optional(v.string()),
+    message: v.optional(v.string()),
+    payload: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_payout", ["payoutId", "createdAt"])
+    .index("by_payment", ["paymentId", "createdAt"])
+    .index("by_provider_eventId", ["provider", "providerEventId"]),
+
+  payoutDestinations: defineTable({
+    userId: v.id("users"),
+    provider: v.literal("rapyd"),
+    type: v.string(),
+    externalRecipientId: v.string(),
+    label: v.optional(v.string()),
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    last4: v.optional(v.string()),
+    isDefault: v.boolean(),
+    status: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId", "updatedAt"])
+    .index("by_user_provider_external", ["userId", "provider", "externalRecipientId"])
+    .index("by_user_default", ["userId", "isDefault", "updatedAt"]),
+
   userNotifications: defineTable({
     recipientUserId: v.id("users"),
     actorUserId: v.optional(v.id("users")),
@@ -186,7 +350,9 @@ export default defineSchema({
     applicationId: v.optional(v.id("jobApplications")),
     createdAt: v.number(),
     readAt: v.optional(v.number()),
-  }).index("by_recipient_createdAt", ["recipientUserId", "createdAt"]),
+  })
+    .index("by_recipient_createdAt", ["recipientUserId", "createdAt"])
+    .index("by_recipient_readAt", ["recipientUserId", "readAt"]),
 
   notificationLog: defineTable({
     jobId: v.id("jobs"),

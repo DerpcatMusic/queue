@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 
 import { InstructorHomeContent } from "@/components/home/instructor-home-content";
 import { StudioHomeContent } from "@/components/home/studio-home-content";
+import { useUser } from "@/contexts/user-context";
 
 const HOME_APPLICATIONS_LIMIT = 80;
 const HOME_AVAILABLE_JOBS_LIMIT = 40;
@@ -19,18 +20,21 @@ export default function HomeScreen() {
   const locale = i18n.resolvedLanguage ?? "en";
   const router = useRouter();
 
-  const currentUser = useQuery(api.users.getCurrentUser);
+  // Use centralized user context - eliminates duplicate getCurrentUser query
+  const { currentUser, effectiveRole } = useUser();
+
+  // Role-specific queries - only fetch when user role is known
   const myApplications = useQuery(
     api.jobs.getMyApplications,
-    currentUser?.role === "instructor" ? { limit: HOME_APPLICATIONS_LIMIT } : "skip",
+    effectiveRole === "instructor" ? { limit: HOME_APPLICATIONS_LIMIT } : "skip",
   );
   const availableJobs = useQuery(
     api.jobs.getAvailableJobsForInstructor,
-    currentUser?.role === "instructor" ? { limit: HOME_AVAILABLE_JOBS_LIMIT } : "skip",
+    effectiveRole === "instructor" ? { limit: HOME_AVAILABLE_JOBS_LIMIT } : "skip",
   );
   const myStudioJobs = useQuery(
     api.jobs.getMyStudioJobs,
-    currentUser?.role === "studio" ? { limit: HOME_STUDIO_JOBS_LIMIT } : "skip",
+    effectiveRole === "studio" ? { limit: HOME_STUDIO_JOBS_LIMIT } : "skip",
   );
 
   const currencyFormatter = useMemo(
@@ -43,7 +47,10 @@ export default function HomeScreen() {
     [locale],
   );
 
+  // Loading state - user context handles the initial auth loading
   if (currentUser === undefined) return <LoadingScreen label={t("home.loading")} />;
+  
+  // Redirect states - these should already be handled by TabLayout, but keep as safety net
   if (currentUser === null) return <Redirect href="/sign-in" />;
   if (!currentUser.onboardingComplete || currentUser.role === "pending") {
     return <Redirect href="/onboarding" />;
@@ -84,8 +91,8 @@ export default function HomeScreen() {
         currencyFormatter={currencyFormatter}
         t={t}
         upcomingSessions={upcomingSessions}
-        onOpenCalendar={() => router.push("/(tabs)/calendar")}
-        onOpenJobs={() => router.push("/(tabs)/jobs")}
+        onOpenCalendar={() => router.push("/(tabs)/instructor/calendar/index")}
+        onOpenJobs={() => router.push("/(tabs)/instructor/jobs")}
         isDataLoading={isDataLoading}
       />
     );
@@ -110,7 +117,8 @@ export default function HomeScreen() {
       currencyFormatter={currencyFormatter}
       t={t}
       recentJobs={studioJobs}
-      onOpenJobs={() => router.push("/(tabs)/jobs")}
+      onOpenJobs={() => router.push("/(tabs)/studio/jobs")}
+      onOpenCalendar={() => router.push("/(tabs)/studio/calendar/index")}
       isDataLoading={isDataLoading}
     />
   );

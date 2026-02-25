@@ -3,21 +3,22 @@ import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { Link, Redirect, usePathname } from "expo-router";
 import { useConvexAuth } from "convex/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Platform,
+  Pressable,
   ScrollView,
   TextInput,
   View,
 } from "react-native";
-import type { SymbolViewProps } from "expo-symbols";
 import Animated, {
   FadeIn,
   FadeInRight,
   FadeOutLeft,
   LinearTransition,
 } from "react-native-reanimated";
-import { SymbolView } from "expo-symbols";
+import { AppSymbol } from "@/components/ui/app-symbol";
 
 import { ThemedText } from "@/components/themed-text";
 import {
@@ -45,7 +46,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 /** Floating SF Symbol hero icons shown above the sign-in card. */
 function HeroSymbols({ palette }: { palette: BrandPalette }) {
   const symbols: {
-    name: SymbolViewProps["name"];
+    name: string;
     delay: number;
     rotate: string;
   }[] = [
@@ -71,7 +72,7 @@ function HeroSymbols({ palette }: { palette: BrandPalette }) {
           entering={FadeIn.delay(s.delay).duration(500).springify().damping(18)}
           style={{ transform: [{ rotate: s.rotate }] }}
         >
-          <SymbolView
+          <AppSymbol
             name={s.name}
             size={i === 1 ? 48 : 36}
             tintColor={
@@ -79,7 +80,6 @@ function HeroSymbols({ palette }: { palette: BrandPalette }) {
                 ? palette.primary
                 : (palette.textMicro as string)
             }
-            resizeMode="scaleAspectFit"
           />
         </Animated.View>
       ))}
@@ -141,6 +141,14 @@ export default function SignInScreen() {
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (step !== "code") return;
+    const timeout = setTimeout(() => {
+      codeInputRef.current?.focus();
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [step]);
 
   if (isAuthenticated) {
     return <Redirect href="/" />;
@@ -337,14 +345,17 @@ export default function SignInScreen() {
                   onChangeText={(value) =>
                     setCode(value.replace(/\D/g, "").slice(0, OTP_LENGTH))
                   }
+                  autoFocus
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="number-pad"
+                  inputMode="numeric"
                   textContentType="oneTimeCode"
+                  autoComplete="one-time-code"
                   maxLength={OTP_LENGTH}
                   style={{
                     position: "absolute",
-                    opacity: 0,
+                    opacity: Platform.OS === "web" ? 0.01 : 0,
                     width: 1,
                     height: 1,
                   }}
@@ -353,33 +364,41 @@ export default function SignInScreen() {
                   const digit = code[slot] ?? "";
                   const isActive = code.length === slot;
                   return (
-                    <Animated.View
+                    <Pressable
                       key={`otp-slot-${slot}`}
-                      entering={FadeIn.delay(slot * 40).duration(200)}
-                      onTouchEnd={() => codeInputRef.current?.focus()}
+                      onPress={() => codeInputRef.current?.focus()}
+                      onPressIn={() => codeInputRef.current?.focus()}
                       style={{
                         width: OTP_PILL_WIDTH,
                         height: 56,
-                        borderWidth: 1.5,
-                        borderRadius: BrandRadius.input,
-                        borderCurve: "continuous",
-                        borderColor: isActive
-                          ? palette.primary
-                          : palette.border,
-                        backgroundColor: isActive
-                          ? palette.primarySubtle
-                          : palette.surface,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: isActive
-                          ? "0 0 0 3px rgba(10, 132, 255, 0.18)"
-                          : undefined,
                       }}
                     >
-                      <ThemedText type="heading" style={{ fontSize: 22 }}>
-                        {digit || " "}
-                      </ThemedText>
-                    </Animated.View>
+                      <Animated.View
+                        entering={FadeIn.delay(slot * 40).duration(200)}
+                        style={{
+                          width: OTP_PILL_WIDTH,
+                          height: 56,
+                          borderWidth: 1.5,
+                          borderRadius: BrandRadius.input,
+                          borderCurve: "continuous",
+                          borderColor: isActive
+                            ? palette.primary
+                            : palette.border,
+                          backgroundColor: isActive
+                            ? palette.primarySubtle
+                            : palette.surface,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: isActive
+                            ? "0 0 0 3px rgba(10, 132, 255, 0.18)"
+                            : undefined,
+                        }}
+                      >
+                        <ThemedText type="heading" style={{ fontSize: 22 }}>
+                          {digit || " "}
+                        </ThemedText>
+                      </Animated.View>
+                    </Pressable>
                   );
                 })}
               </View>

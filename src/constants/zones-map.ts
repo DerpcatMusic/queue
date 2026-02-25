@@ -76,7 +76,7 @@ export const PIKUD_CITY_GEOJSON = cityGeoJson;
 const PIKUD_ZONE_FEATURES = zoneGeoJson.features ?? [];
 const PIKUD_ZONE_INDEX = zoneIndexFile.zones ?? [];
 const ISRAEL_MAP_BOUNDS = zoneIndexFile.bounds;
-// Keep the camera inside covered PMTiles area and reduce drift into empty ocean space.
+// Keep the camera inside Israel bounds and reduce drift into empty ocean space.
 export const ISRAEL_MAP_INTERACTION_BOUNDS = {
   sw: [ISRAEL_MAP_BOUNDS.sw[0] + 0.32, ISRAEL_MAP_BOUNDS.sw[1]] as [
     number,

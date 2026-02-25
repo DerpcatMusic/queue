@@ -23,9 +23,13 @@ import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as notificationsCore from "../notificationsCore.js";
 import type * as onboarding from "../onboarding.js";
+import type * as payments from "../payments.js";
+import type * as payouts from "../payouts.js";
+import type * as rapyd from "../rapyd.js";
 import type * as resendOtp from "../resendOtp.js";
 import type * as userPushNotifications from "../userPushNotifications.js";
 import type * as users from "../users.js";
+import type * as webhooks from "../webhooks.js";
 
 import type {
   ApiFromModules,
@@ -49,9 +53,13 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   notificationsCore: typeof notificationsCore;
   onboarding: typeof onboarding;
+  payments: typeof payments;
+  payouts: typeof payouts;
+  rapyd: typeof rapyd;
   resendOtp: typeof resendOtp;
   userPushNotifications: typeof userPushNotifications;
   users: typeof users;
+  webhooks: typeof webhooks;
 }>;
 
 /**

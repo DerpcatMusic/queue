@@ -1,12 +1,22 @@
-import { LoadingScreen } from "@/components/loading-screen";
-import { lazy, Suspense } from "react";
+import { Redirect } from "expo-router";
 
-const LazyHomeScreen = lazy(() => import("@/components/home/home-screen"));
+import { LoadingScreen } from "@/components/loading-screen";
+import { useUser } from "@/contexts/user-context";
 
 export default function HomeTabRoute() {
-  return (
-    <Suspense fallback={<LoadingScreen />}>
-      <LazyHomeScreen />
-    </Suspense>
-  );
+  const { currentUser } = useUser();
+
+  if (currentUser === undefined) {
+    return <LoadingScreen />;
+  }
+
+  if (currentUser?.role === "instructor") {
+    return <Redirect href="/(tabs)/instructor" />;
+  }
+
+  if (currentUser?.role === "studio") {
+    return <Redirect href="/(tabs)/studio" />;
+  }
+
+  return <Redirect href="/onboarding" />;
 }

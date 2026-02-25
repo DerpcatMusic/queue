@@ -29,7 +29,7 @@ export function ThemePreferenceProvider({ children }: PropsWithChildren) {
   const systemScheme = useColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>("system");
   const [stylePreference, setStylePreferenceState] =
-    useState<ThemeStylePreference>("native");
+    useState<ThemeStylePreference>("custom");
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function ThemePreferenceProvider({ children }: PropsWithChildren) {
         loadThemeStylePreference(),
       ]);
       const nextPreference = stored ?? "system";
-      const nextStylePreference = storedStyle ?? "native";
+      const nextStylePreference = storedStyle ?? "custom";
       applyThemePreference(nextPreference);
       if (!mounted) return;
       setPreferenceState(nextPreference);

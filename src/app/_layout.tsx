@@ -33,6 +33,7 @@ import { ThemePreferenceProvider, useThemePreference } from "@/hooks/use-theme-p
 import i18n, { bootstrapLocalization } from "@/i18n";
 import { getConvexClient, isConvexUrlConfigured } from "@/lib/convex";
 import { recordPerfMetric } from "@/lib/perf-telemetry";
+import { UserProvider } from "@/contexts/user-context";
 
 const IGNORED_LOG_MESSAGES = [
   "ProgressBarAndroid has been extracted from react-native core",
@@ -274,9 +275,10 @@ function RootLayoutContent() {
           client={convex}
           {...(nativeStorage ? { storage: nativeStorage } : {})}
         >
-          <ThemeProvider
-            value={navigationTheme}
-          >
+          <UserProvider>
+            <ThemeProvider
+              value={navigationTheme}
+            >
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -308,9 +310,10 @@ function RootLayoutContent() {
               ]}
             />
           </ThemeProvider>
-        </ConvexAuthProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+        </UserProvider>
+      </ConvexAuthProvider>
+    </SafeAreaProvider>
+  </GestureHandlerRootView>
   );
 }
 

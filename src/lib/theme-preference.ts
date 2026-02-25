@@ -58,7 +58,17 @@ export async function persistThemeStylePreference(
 }
 
 export function applyThemePreference(preference: ThemePreference): void {
-  Appearance.setColorScheme(preference === "system" ? "unspecified" : preference);
+  const setColorScheme = (
+    Appearance as {
+      setColorScheme?: (scheme: "light" | "dark" | "unspecified" | null) => void;
+    }
+  ).setColorScheme;
+
+  if (typeof setColorScheme !== "function") {
+    return;
+  }
+
+  setColorScheme(preference === "system" ? "unspecified" : preference);
 }
 
 export async function setThemePreference(

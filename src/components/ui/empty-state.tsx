@@ -1,8 +1,9 @@
 import { View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
+import type { SymbolViewProps } from "expo-symbols";
 
 import { ThemedText } from "@/components/themed-text";
+import { AppSymbol } from "@/components/ui/app-symbol";
 import { KitButton } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
@@ -49,14 +50,10 @@ export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
         paddingVertical: BrandSpacing.xxl,
       }}
     >
-      <SymbolView
+      <AppSymbol
         name={icon}
         size={52}
         tintColor={palette.textMicro as string}
-        animationSpec={{
-          effect: { type: "bounce", direction: "up" },
-          repeating: false,
-        }}
       />
       <View style={{ gap: BrandSpacing.xs, alignItems: "center" }}>
         <ThemedText

@@ -1,5 +1,4 @@
 import * as Haptics from "expo-haptics";
-import { SymbolView } from "expo-symbols";
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +14,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { BrandRadius, BrandType } from "@/constants/brand";
+import { AppSymbol } from "@/components/ui/app-symbol";
 import { useKitTheme } from "./use-kit-theme";
 import type { KitButtonProps } from "./types";
 
@@ -177,11 +177,10 @@ export function KitButton({
       {loading ? (
         <ActivityIndicator color={colors.iconColor} />
       ) : icon ? (
-        <SymbolView
+        <AppSymbol
           name={icon}
           size={18}
           {...(symbolTint ? { tintColor: symbolTint } : {})}
-          resizeMode="scaleAspectFit"
         />
       ) : leadingIcon ? (
         <View>{leadingIcon}</View>

@@ -1,15 +1,59 @@
+﻿import { FEATURE_FLAGS } from "@/constants/feature-flags";
+import {
+  generateThemeTokens,
+  getTokenAliasMap,
+  mapLegacyTokenPath,
+  type GeneratedThemeTokens,
+  type ThemeSeed,
+} from "@/constants/theme-generation";
 import { Color } from "expo-router";
-import { Platform, PlatformColor } from "react-native";
+import { Platform } from "react-native";
+import type { ColorValue } from "react-native";
 
 import type { ThemeStylePreference } from "@/lib/theme-preference";
 
 export type ResolvedBrandScheme = "light" | "dark";
 
+type CalendarSwatch = { background: string; title: string };
+
+type BrandCalendar = {
+  accent: string;
+  accentSubtle: string;
+  eventSwatches: CalendarSwatch[];
+};
+
+export type BrandPalette = {
+  appBg: ColorValue;
+  surface: ColorValue;
+  surfaceAlt: ColorValue;
+  surfaceElevated: ColorValue;
+  border: ColorValue;
+  borderStrong: ColorValue;
+  text: ColorValue;
+  textMuted: ColorValue;
+  textMicro: ColorValue;
+  primary: ColorValue;
+  primaryPressed: ColorValue;
+  primarySubtle: ColorValue;
+  onPrimary: ColorValue;
+  success: string;
+  successSubtle: string;
+  danger: ColorValue;
+  dangerSubtle: ColorValue;
+  warning: string;
+  warningSubtle: string;
+  focusRing: ColorValue;
+  tabBar: ColorValue;
+  tabBarBorder: ColorValue;
+  calendar: BrandCalendar;
+  generated?: GeneratedThemeTokens;
+};
+
 // Native-first semantic color palette.
 // On iOS this uses system adaptive colors.
 // On Android this uses Material 3 dynamic colors.
 // On web/fallback this uses static values.
-const NativeBrand = {
+const NativeBrand: BrandPalette = {
   appBg: Platform.select({
     ios: Color.ios.systemGroupedBackground,
     android: Color.android.dynamic.background,
@@ -66,7 +110,7 @@ const NativeBrand = {
     default: "#006edf",
   }),
   primarySubtle: Platform.select({
-    ios: PlatformColor("systemTeal"),
+    ios: Color.ios.systemTeal,
     android: Color.android.dynamic.primaryContainer,
     default: "#dcecff",
   }),
@@ -79,19 +123,19 @@ const NativeBrand = {
     ios: Color.ios.systemGreen,
     android: Color.android.attr.colorSuccess,
     default: "#168a4a",
-  }),
+  }) as string,
   successSubtle: Platform.select({
-    ios: PlatformColor("systemMint"),
+    ios: Color.ios.systemMint,
     android: Color.android.attr.colorSuccessContainer,
     default: "#d4f0e2",
-  }),
+  }) as string,
   danger: Platform.select({
     ios: Color.ios.systemRed,
     android: Color.android.dynamic.error,
     default: "#c5333e",
   }),
   dangerSubtle: Platform.select({
-    ios: PlatformColor("systemPink"),
+    ios: Color.ios.systemPink,
     android: Color.android.dynamic.errorContainer,
     default: "#fce8ea",
   }),
@@ -99,12 +143,12 @@ const NativeBrand = {
     ios: Color.ios.systemOrange,
     android: Color.android.attr.colorWarning,
     default: "#996b00",
-  }),
+  }) as string,
   warningSubtle: Platform.select({
-    ios: PlatformColor("systemYellow"),
+    ios: Color.ios.systemYellow,
     android: Color.android.attr.colorWarningContainer,
     default: "#fff3cc",
-  }),
+  }) as string,
   focusRing: Platform.select({
     ios: Color.ios.systemBlue,
     android: Color.android.dynamic.primary,
@@ -125,135 +169,230 @@ const NativeBrand = {
       ios: Color.ios.systemPink,
       android: Color.android.dynamic.tertiary,
       default: "#f6118f",
-    }),
+    }) as string,
     accentSubtle: Platform.select({
-      ios: PlatformColor("systemPink"),
+      ios: Color.ios.systemPink,
       android: Color.android.dynamic.tertiaryContainer,
       default: "#fce8ea",
-    }),
+    }) as string,
     eventSwatches: [
       {
         background: Platform.select({
           ios: Color.ios.systemTeal,
           android: Color.android.dynamic.primaryContainer,
           default: "#dcecff",
-        }),
+        }) as string,
         title: Platform.select({
           ios: Color.ios.systemBlue,
           android: Color.android.dynamic.onPrimaryContainer,
           default: "#0d1219",
-        }),
+        }) as string,
       },
       {
         background: Platform.select({
           ios: Color.ios.systemMint,
           android: Color.android.attr.colorSuccessContainer,
           default: "#d4f0e2",
-        }),
+        }) as string,
         title: Platform.select({
           ios: Color.ios.systemGreen,
           android: Color.android.attr.colorSuccess,
           default: "#168a4a",
-        }),
+        }) as string,
       },
       {
         background: Platform.select({
           ios: Color.ios.systemYellow,
           android: Color.android.attr.colorWarningContainer,
           default: "#fff3cc",
-        }),
+        }) as string,
         title: Platform.select({
           ios: Color.ios.systemOrange,
           android: Color.android.attr.colorWarning,
           default: "#996b00",
-        }),
+        }) as string,
       },
       {
         background: Platform.select({
           ios: Color.ios.systemPink,
           android: Color.android.dynamic.errorContainer,
           default: "#fce8ea",
-        }),
+        }) as string,
         title: Platform.select({
           ios: Color.ios.systemRed,
           android: Color.android.dynamic.onErrorContainer,
           default: "#c5333e",
-        }),
+        }) as string,
       },
     ],
   },
-} as const;
+};
 
-const CustomBrand = {
+const CustomSeed: Record<ResolvedBrandScheme, ThemeSeed> = {
   light: {
-    appBg: "#f4f6f8",
-    surface: "#ffffff",
-    surfaceAlt: "#eef2f5",
-    surfaceElevated: "#ffffff",
-    border: "#d6dde5",
-    borderStrong: "#bcc8d6",
-    text: "#0f141b",
-    textMuted: "#5d6a79",
-    textMicro: "#7f8c9b",
-    primary: "#00c2e8",
-    primaryPressed: "#00a6c7",
-    primarySubtle: "#daf7fd",
-    onPrimary: "#032029",
-    success: "#1d8d56",
-    successSubtle: "#dbf2e6",
-    danger: "#ca3b53",
-    dangerSubtle: "#fbe6ea",
-    warning: "#9e6a00",
-    warningSubtle: "#fff1c9",
-    focusRing: "#58ccf0",
-    tabBar: "#ffffff",
-    tabBarBorder: "#dbe3ec",
+    primary: "#ff5500",
+    background: "#f4f5f7",
+    neutral: "#e2e8f0",
+    success: "#10b981",
+    warning: "#f59e0b",
+    danger: "#ef4444",
+    accent: "#ff5500",
+  },
+  dark: {
+    primary: "#ff5500",
+    background: "#111318",
+    neutral: "#2a2e35",
+    success: "#10b981",
+    warning: "#f59e0b",
+    danger: "#ef4444",
+    accent: "#ff5500",
+  },
+};
+
+const StaticCustomBrand: Record<ResolvedBrandScheme, BrandPalette> = {
+  light: {
+    appBg: "#F4F5F7",
+    surface: "#FFFFFF",
+    surfaceAlt: "#EAECEE",
+    surfaceElevated: "#FFFFFF",
+    border: "#D1D5DB",
+    borderStrong: "#9CA3AF",
+    text: "#111827",
+    textMuted: "#6B7280",
+    textMicro: "#9CA3AF",
+    primary: "#FF5500",
+    primaryPressed: "#CC4400",
+    primarySubtle: "#FFE5D9",
+    onPrimary: "#FFFFFF",
+    success: "#10B981",
+    successSubtle: "#D1FAE5",
+    danger: "#EF4444",
+    dangerSubtle: "#FEE2E2",
+    warning: "#F59E0B",
+    warningSubtle: "#FEF3C7",
+    focusRing: "#FF884D",
+    tabBar: "#FFFFFF",
+    tabBarBorder: "#E5E7EB",
     calendar: {
-      accent: "#05afd1",
-      accentSubtle: "#dcf7fd",
+      accent: "#FF5500",
+      accentSubtle: "#FFE5D9",
       eventSwatches: [
-        { background: "#def7fd", title: "#066478" },
-        { background: "#def1e8", title: "#1a7a4d" },
-        { background: "#fff4d7", title: "#8f6200" },
-        { background: "#fde6ea", title: "#a73143" },
+        { background: "#FFE5D9", title: "#CC4400" },
+        { background: "#D1FAE5", title: "#047857" },
+        { background: "#FEF3C7", title: "#B45309" },
+        { background: "#FEE2E2", title: "#B91C1C" },
       ],
     },
   },
   dark: {
-    appBg: "#0c1015",
-    surface: "#131922",
-    surfaceAlt: "#1a2230",
-    surfaceElevated: "#1b2432",
-    border: "#2a3444",
-    borderStrong: "#34455a",
-    text: "#f1f5fb",
-    textMuted: "#9aabbe",
-    textMicro: "#7f92a8",
-    primary: "#38d4ef",
-    primaryPressed: "#1fbad6",
-    primarySubtle: "#143b4c",
-    onPrimary: "#04212a",
-    success: "#38c97f",
-    successSubtle: "#1d3e2e",
-    danger: "#ff7082",
-    dangerSubtle: "#4f2530",
-    warning: "#ffc866",
-    warningSubtle: "#453717",
-    focusRing: "#64ddf5",
-    tabBar: "#101722",
-    tabBarBorder: "#223044",
+    appBg: "#111318",
+    surface: "#1A1D24",
+    surfaceAlt: "#22252B",
+    surfaceElevated: "#1A1D24",
+    border: "#2A2E35",
+    borderStrong: "#343A40",
+    text: "#F8F9FA",
+    textMuted: "#A0AAB5",
+    textMicro: "#6B7280",
+    primary: "#FF5500",
+    primaryPressed: "#E64C00",
+    primarySubtle: "#331100",
+    onPrimary: "#FFFFFF",
+    success: "#10B981",
+    successSubtle: "#064E3B",
+    danger: "#EF4444",
+    dangerSubtle: "#7F1D1D",
+    warning: "#F59E0B",
+    warningSubtle: "#78350F",
+    focusRing: "#FF884D",
+    tabBar: "#111318",
+    tabBarBorder: "#2A2E35",
     calendar: {
-      accent: "#3ed8f1",
-      accentSubtle: "#1f4654",
+      accent: "#FF5500",
+      accentSubtle: "#331100",
       eventSwatches: [
-        { background: "#1b4450", title: "#99ecfa" },
-        { background: "#1e4732", title: "#9fefc5" },
-        { background: "#4a3c1d", title: "#ffe09e" },
-        { background: "#4b2630", title: "#ffb4c1" },
+        { background: "#331100", title: "#FF884D" },
+        { background: "#064E3B", title: "#34D399" },
+        { background: "#78350F", title: "#FBBF24" },
+        { background: "#7F1D1D", title: "#F87171" },
       ],
     },
   },
-} as const;
+};
+
+const DEPRECATED_TOKEN_KEYS = new Set<string>(["textMicro", "tabBarBorder"]);
+const warnedDeprecatedTokenKeys = new Set<string>();
+
+function buildGeneratedCustomBrand(scheme: ResolvedBrandScheme): BrandPalette {
+  const generated = generateThemeTokens(CustomSeed[scheme], scheme);
+
+  return {
+    appBg: generated.surface.app,
+    surface: generated.surface.base,
+    surfaceAlt: generated.surface.alt,
+    surfaceElevated: generated.surface.elevated,
+    border: generated.border.subtle,
+    borderStrong: generated.border.strong,
+    text: generated.text.primary,
+    textMuted: generated.text.secondary,
+    textMicro: generated.text.micro,
+    primary: generated.brand.primary,
+    primaryPressed: generated.brand.pressed,
+    primarySubtle: generated.brand.subtle,
+    onPrimary: generated.brand.onPrimary,
+    success: generated.semantic.success.base,
+    successSubtle: generated.semantic.success.subtle,
+    danger: generated.semantic.danger.base,
+    dangerSubtle: generated.semantic.danger.subtle,
+    warning: generated.semantic.warning.base,
+    warningSubtle: generated.semantic.warning.subtle,
+    focusRing: generated.border.focus,
+    tabBar: generated.overlay.tabBar,
+    tabBarBorder: generated.overlay.tabBarBorder,
+    calendar: {
+      accent: generated.brand.accent,
+      accentSubtle: generated.brand.subtle,
+      eventSwatches: [
+        {
+          background: generated.brand.subtle,
+          title: generated.brand.primary,
+        },
+        {
+          background: generated.semantic.success.subtle,
+          title: generated.semantic.success.base,
+        },
+        {
+          background: generated.semantic.warning.subtle,
+          title: generated.semantic.warning.base,
+        },
+        {
+          background: generated.semantic.danger.subtle,
+          title: generated.semantic.danger.base,
+        },
+      ],
+    },
+    generated,
+  };
+}
+
+function maybeWrapDeprecatedTokenWarnings(palette: BrandPalette): BrandPalette {
+  if (!FEATURE_FLAGS.generatedThemeAliasStrictMode || Platform.OS === "web") {
+    return palette;
+  }
+
+  return new Proxy(palette, {
+    get(target, prop, receiver) {
+      if (typeof prop === "string" && DEPRECATED_TOKEN_KEYS.has(prop) && !warnedDeprecatedTokenKeys.has(prop)) {
+        warnedDeprecatedTokenKeys.add(prop);
+        const mapped = mapLegacyTokenPath(prop);
+        if (mapped) {
+          console.warn(`[theme] legacy token \`${prop}\` used; prefer \`${mapped}\``);
+        }
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+}
 
 const NativeMapBrandPalette = {
   light: {
@@ -320,8 +459,16 @@ const CustomMapBrandPalette = {
 export function getBrandPalette(
   stylePreference: ThemeStylePreference,
   scheme: ResolvedBrandScheme,
-) {
-  return stylePreference === "custom" ? CustomBrand[scheme] : NativeBrand;
+): BrandPalette {
+  if (stylePreference !== "custom") {
+    return NativeBrand;
+  }
+
+  const custom = FEATURE_FLAGS.generatedThemeEnabled
+    ? buildGeneratedCustomBrand(scheme)
+    : StaticCustomBrand[scheme];
+
+  return maybeWrapDeprecatedTokenWarnings(custom);
 }
 
 export function getMapBrandPalette(
@@ -336,6 +483,10 @@ export function getMapBrandPalette(
 export const Brand = NativeBrand;
 export const MapBrandPalette = NativeMapBrandPalette;
 
+export function getThemeTokenAliasMap() {
+  return getTokenAliasMap();
+}
+
 export const BrandRadius = {
   card: 20,
   button: 14,
@@ -344,8 +495,8 @@ export const BrandRadius = {
 } as const;
 
 export const BrandShadow = {
-  raised: "0 1px 1px rgba(2, 7, 20, 0.22), 0 8px 24px rgba(2, 12, 31, 0.2)",
-  soft: "0 1px 1px rgba(6, 18, 37, 0.15), 0 4px 14px rgba(6, 18, 37, 0.12)",
+  raised: "none",
+  soft: "none",
 } as const;
 
 export const BrandType = {
@@ -419,5 +570,3 @@ export const BrandFonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
-
-export type BrandPalette = typeof NativeBrand;

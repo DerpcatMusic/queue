@@ -29,6 +29,7 @@ Set in Convex deployment:
 Optional email sender:
 
 1. `AUTH_EMAIL_FROM`
+2. `AUTH_EMAIL_DEV_INBOX` (dev-only OTP reroute target for Resend test mode)
 
 ## Key generation
 
@@ -61,6 +62,7 @@ bunx convex codegen
 
 1. OAuth buttons are wired in the new sign-in screen, but require provider env vars to be set.
 2. OTP env aliases are accepted (`RESEND_API_KEY` and `AUTH_RESEND_KEY`).
-3. Legacy cleanup is complete:
+3. For local testing with many account emails on a Resend test key, set `AUTH_EMAIL_DEV_INBOX` to your own inbox.
+4. Legacy cleanup is complete:
    - A one-off migration removed old `clerkId` fields from existing users.
    - `users:getCurrentUser` no longer returns `clerkId`.

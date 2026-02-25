@@ -55,6 +55,26 @@ export const getMyNotifications = query({
   },
 });
 
+export const getMyUnreadNotificationCount = query({
+  args: {},
+  returns: v.object({
+    count: v.number(),
+  }),
+  handler: async (ctx) => {
+    const user = await requireCurrentUser(ctx);
+    const unreadRows = await ctx.db
+      .query("userNotifications")
+      .withIndex("by_recipient_readAt", (q) =>
+        q.eq("recipientUserId", user._id).eq("readAt", undefined),
+      )
+      .collect();
+
+    return {
+      count: unreadRows.length,
+    };
+  },
+});
+
 export const markMyNotificationRead = mutation({
   args: { notificationId: v.id("userNotifications") },
   returns: v.object({ ok: v.boolean() }),

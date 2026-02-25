@@ -23,6 +23,7 @@ const MAPPING = {
   "person.crop.circle.fill": "account-circle",
   "slider.horizontal.3": "tune",
   "checkmark.circle.fill": "check-circle",
+  "location.fill": "my-location",
   "paperplane.fill": "send",
   "chevron.left.forwardslash.chevron.right": "code",
   "chevron.right": "chevron-right",

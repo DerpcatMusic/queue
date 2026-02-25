@@ -19,5 +19,20 @@ export const FEATURE_FLAGS = {
     process.env.EXPO_PUBLIC_ENABLE_JOBS_PERF_TELEMETRY,
     false,
   ),
+  generatedThemeEnabled: readBooleanFlag(
+    process.env.EXPO_PUBLIC_THEME_GENERATED_ENABLED,
+    true,
+  ),
+  generatedThemeAliasStrictMode: readBooleanFlag(
+    process.env.EXPO_PUBLIC_THEME_ALIAS_STRICT_MODE,
+    false,
+  ),
+  androidFloatingTabsEnabled: readBooleanFlag(
+    process.env.EXPO_PUBLIC_TABS_ANDROID_FLOATING_ENABLED,
+    true,
+  ),
+  androidFloatingTabsCompactOnly: readBooleanFlag(
+    process.env.EXPO_PUBLIC_TABS_ANDROID_FLOATING_COMPACT_ONLY,
+    false,
+  ),
 } as const;
-

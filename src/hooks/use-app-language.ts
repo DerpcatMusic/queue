@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Platform } from "react-native";
+import { Alert, DevSettings, Platform } from "react-native";
 
 import i18n, {
   getCurrentLanguage,
@@ -39,6 +39,15 @@ export function useAppLanguage() {
       const Updates = await import("expo-updates");
       await Updates.reloadAsync();
     } catch {
+      if (__DEV__) {
+        try {
+          DevSettings.reload();
+          return;
+        } catch {
+          // Fall through to alert.
+        }
+      }
+
       Alert.alert(
         i18n.t("language.restartRequiredTitle"),
         i18n.t("language.restartRequiredMessage"),

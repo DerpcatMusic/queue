@@ -35,11 +35,15 @@ function isRtlLanguage(language: AppLanguage): boolean {
 }
 
 function syncRtlPreference(language: AppLanguage): boolean {
+  const shouldRtl = isRtlLanguage(language);
   if (Platform.OS === "web") {
+    if (typeof document !== "undefined") {
+      document.documentElement.dir = shouldRtl ? "rtl" : "ltr";
+      document.documentElement.lang = language;
+    }
     return false;
   }
 
-  const shouldRtl = isRtlLanguage(language);
   const changed = I18nManager.isRTL !== shouldRtl;
   I18nManager.allowRTL(shouldRtl);
   I18nManager.forceRTL(shouldRtl);
@@ -69,13 +73,9 @@ export async function bootstrapLocalization(): Promise<{
     savedLanguage = null;
   }
 
-  if (!savedLanguage) {
-    const language = getDeviceLanguage();
-    await i18n.changeLanguage(language);
-    return { directionChanged: false };
-  }
-
-  const language = normalizeLanguage(savedLanguage);
+  const language = savedLanguage
+    ? normalizeLanguage(savedLanguage)
+    : getDeviceLanguage();
   const directionChanged = syncRtlPreference(language);
   await i18n.changeLanguage(language);
   return { directionChanged };

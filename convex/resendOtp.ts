@@ -2,6 +2,15 @@ import { Email } from "@convex-dev/auth/providers/Email";
 import { type RandomReader, generateRandomString } from "@oslojs/crypto/random";
 import { Resend as ResendApi } from "resend";
 
+function resolveRecipient(email: string) {
+  const devInbox = process.env.AUTH_EMAIL_DEV_INBOX?.trim();
+  const shouldReroute = Boolean(devInbox);
+  return {
+    to: shouldReroute ? devInbox! : email,
+    shouldReroute,
+  };
+}
+
 export const ResendOTP = Email({
   id: "resend-otp",
   apiKey: (process.env.RESEND_API_KEY ?? process.env.AUTH_RESEND_KEY)!,
@@ -16,16 +25,25 @@ export const ResendOTP = Email({
     return generateRandomString(random, "0123456789", 6);
   },
   async sendVerificationRequest({ identifier: email, provider, token }) {
+    const { to, shouldReroute } = resolveRecipient(email);
     const resend = new ResendApi(provider.apiKey);
     const { error } = await resend.emails.send({
       from: process.env.AUTH_EMAIL_FROM ?? "Queue <onboarding@resend.dev>",
-      to: [email],
+      to: [to],
       subject: "Your Queue sign-in code",
-      text: `Your verification code is ${token}`,
+      text: shouldReroute
+        ? `Dev reroute target: ${email}\nYour verification code is ${token}`
+        : `Your verification code is ${token}`,
     });
 
     if (error) {
-      throw new Error(JSON.stringify(error));
+      throw new Error(
+        JSON.stringify({
+          ...error,
+          hint:
+            "If using Resend test mode, set AUTH_EMAIL_DEV_INBOX to your verified testing inbox or verify a sender domain and use AUTH_EMAIL_FROM.",
+        }),
+      );
     }
   },
 });

@@ -141,6 +141,8 @@ export function AddressAutocomplete({
         ]}
         autoCorrect={false}
         autoCapitalize="words"
+        autoComplete="street-address"
+        textContentType="fullStreetAddress"
         returnKeyType="search"
       />
       {isLoading ? (

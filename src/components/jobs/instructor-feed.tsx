@@ -1,15 +1,17 @@
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { isSportType, toSportLabel } from "@/convex/constants";
+import { toSportLabel } from "@/convex/constants";
 import { InstructorArchiveSheet } from "@/components/jobs/instructor/instructor-archive-sheet";
 import { InstructorNeedsDoneList } from "@/components/jobs/instructor/instructor-needs-done-list";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
 import { LoadingScreen } from "@/components/loading-screen";
+import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { ThemedText } from "@/components/themed-text";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KitFab } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
+import { getZoneLabel } from "@/constants/zones";
 import { FEATURE_FLAGS } from "@/constants/feature-flags";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
@@ -18,19 +20,10 @@ import {
   logPerfSummary,
   recordPerfMetric,
 } from "@/lib/perf-telemetry";
+
 import {
-  clearLessonReminder,
-  getLessonReminder,
-  setLessonReminder,
-} from "@/lib/lesson-reminders";
-import {
-  formatDateTime,
-  formatCompactDateTime,
-  formatRelativeDuration,
-  getLessonProgress,
   getMonotonicNow,
   type LessonLifecycle,
-  type ReminderMap,
   type ClockAnchor,
   MINUTE_MS,
 } from "@/lib/jobs-utils";
@@ -43,61 +36,12 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   I18nManager,
-  ScrollView,
   StyleSheet,
   View,
   Pressable,
+  TextInput,
 } from "react-native";
-
-type HeroMetric = {
-  label: string;
-  value: number;
-};
-
-type FeedHeroProps = {
-  title: string;
-  subtitle: string;
-  metrics: HeroMetric[];
-  palette: ReturnType<typeof useBrand>;
-};
-
-function FeedHero({ title, subtitle, metrics, palette }: FeedHeroProps) {
-  return (
-    <View style={styles.heroWrap}>
-      <ThemedText type="micro" style={{ color: palette.textMuted }}>
-        {subtitle}
-      </ThemedText>
-      <ThemedText
-        type="heading"
-        style={{ fontSize: 34, lineHeight: 38, letterSpacing: -1.1, fontWeight: "800" }}
-      >
-        {title}
-      </ThemedText>
-      <View style={styles.heroMetricsRow}>
-        {metrics.map((metric, index) => (
-          <View key={`${metric.label}-${index}`} style={styles.heroMetricCol}>
-            <ThemedText
-              selectable
-              style={{
-                color: palette.text,
-                fontSize: 24,
-                lineHeight: 28,
-                letterSpacing: -0.6,
-                fontWeight: "800",
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {metric.value >= 100 ? "99+" : String(metric.value)}
-            </ThemedText>
-            <ThemedText type="micro" style={{ color: palette.textMuted }}>
-              {metric.label}
-            </ThemedText>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type FeedSectionHeaderProps = {
   title: string;
@@ -122,6 +66,7 @@ function FeedSectionHeader({ title, subtitle, palette }: FeedSectionHeaderProps)
 
 export function InstructorFeed() {
   const { t, i18n } = useTranslation();
+  const insets = useSafeAreaInsets();
 
   const palette = useBrand();
   const { resolvedScheme } = useThemePreference();
@@ -161,13 +106,13 @@ export function InstructorFeed() {
   const [clockOffsetMs, setClockOffsetMs] = useState(0);
   const [clockAnchor, setClockAnchor] = useState<ClockAnchor | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const [reminderByJobId, setReminderByJobId] = useState<ReminderMap>({});
-  const [isReminderBusyJobId, setIsReminderBusyJobId] = useState<string | null>(
-    null,
-  );
+
+
   const [isMarkingDoneJobId, setIsMarkingDoneJobId] = useState<string | null>(
     null,
   );
+  const [jobsSearchQuery, setJobsSearchQuery] = useState("");
+  const [jobsWindowFilter, setJobsWindowFilter] = useState<"all" | "24h" | "72h">("all");
   const [hasShownNoSessionsToast, setHasShownNoSessionsToast] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -207,43 +152,7 @@ export function InstructorFeed() {
     };
   }, [clockAnchor, clockOffsetMs, isFocused]);
 
-  useEffect(() => {
-    if (!isFocused || currentUser?.role !== "instructor" || !myApplications) {
-      return;
-    }
 
-    let cancelled = false;
-    const loadReminders = async () => {
-      const referenceNow = serverNow?.now ?? Date.now() + clockOffsetMs;
-      const accepted = myApplications.filter(
-        (row) => row.status === "accepted" && row.endTime > referenceNow,
-      );
-      const entries = await Promise.all(
-        accepted.map(async (row) => {
-          const reminder = await getLessonReminder(String(row.jobId));
-          return [String(row.jobId), reminder] as const;
-        }),
-      );
-
-      if (cancelled) return;
-
-      const nextState: ReminderMap = {};
-      for (const [jobId, reminder] of entries) {
-        if (!reminder) continue;
-        nextState[jobId] = {
-          triggerAt: reminder.triggerAt,
-          leadMinutes: reminder.leadMinutes,
-          startTime: reminder.startTime,
-        };
-      }
-      setReminderByJobId(nextState);
-    };
-
-    void loadReminders();
-    return () => {
-      cancelled = true;
-    };
-  }, [clockOffsetMs, currentUser?.role, isFocused, myApplications, serverNow]);
 
   useEffect(() => {
     if (!statusMessage) return;
@@ -343,38 +252,36 @@ export function InstructorFeed() {
       .sort((a, b) => a.startTime - b.startTime);
   }, [currentUser?.role, myApplications, now]);
 
-  const liveSessions = instructorSessions.filter((row) => row.lifecycle === "live");
-  const upcomingSessions = instructorSessions.filter(
-    (row) => row.lifecycle === "upcoming",
-  );
+
   const needsDoneSessions = instructorSessions.filter(
     (row) => row.lifecycle === "needs_done",
   );
   const archivedSessions = [...instructorSessions]
     .filter((row) => row.endTime <= now || row.lifecycle === "completed")
     .sort((a, b) => b.endTime - a.endTime);
-  const focusSession = liveSessions[0] ?? upcomingSessions[0] ?? null;
-  const focusProgress = focusSession
-    ? focusSession.lifecycle === "upcoming"
-      ? 0
-      : getLessonProgress(now, focusSession.startTime, focusSession.endTime)
-    : 0;
-  const focusTimingLabel = focusSession
-    ? focusSession.lifecycle === "live"
-      ? `${formatRelativeDuration(focusSession.endTime - now)} left`
-      : `${formatRelativeDuration(focusSession.startTime - now)} to start`
-    : null;
-  const focusWindowLabel = focusSession
-    ? `${formatDateTime(focusSession.startTime, locale)} - ${formatCompactDateTime(
-        focusSession.endTime,
-        locale,
-      )}`
-    : null;
+
   const nonAcceptedApplications = (myApplications ?? [])
     .filter((row) => row.status !== "accepted")
     .sort((a, b) => b.appliedAt - a.appliedAt);
-  const openJobsCount = availableJobs?.length ?? 0;
-  const nextSessionCount = upcomingSessions.length + liveSessions.length;
+
+  const filteredAvailableJobs = useMemo(() => {
+    const search = jobsSearchQuery.trim().toLowerCase();
+    const nowRef = now;
+    return (availableJobs ?? []).filter((job) => {
+      if (jobsWindowFilter === "24h" && job.startTime > nowRef + 24 * 60 * 60 * 1000) {
+        return false;
+      }
+      if (jobsWindowFilter === "72h" && job.startTime > nowRef + 72 * 60 * 60 * 1000) {
+        return false;
+      }
+
+      if (!search) return true;
+      const zoneLabel = getZoneLabel(job.zone, zoneLanguage).toLowerCase();
+      const sportLabel = toSportLabel(job.sport as never).toLowerCase();
+      const haystack = `${job.studioName} ${job.note ?? ""} ${job.zone} ${zoneLabel} ${sportLabel}`.toLowerCase();
+      return haystack.includes(search);
+    });
+  }, [availableJobs, jobsSearchQuery, jobsWindowFilter, now, zoneLanguage]);
 
   const applyForJob = async (jobId: Id<"jobs">) => {
     if (currentUser?.role !== "instructor") return;
@@ -418,54 +325,6 @@ export function InstructorFeed() {
   }
 
 
-  const toggleLessonReminder = async (session: {
-    jobId: Id<"jobs">;
-    sport: string;
-    studioName: string;
-    startTime: number;
-  }) => {
-    const key = String(session.jobId);
-    setIsReminderBusyJobId(key);
-    setErrorMessage(null);
-
-    try {
-      if (reminderByJobId[key]) {
-        await clearLessonReminder(key);
-        setReminderByJobId((current) => {
-          const next = { ...current };
-          delete next[key];
-          return next;
-        });
-        return;
-      }
-
-      const reminder = await setLessonReminder({
-        jobId: key,
-        sportLabel: isSportType(session.sport)
-          ? toSportLabel(session.sport)
-          : session.sport,
-        studioName: session.studioName,
-        startTime: session.startTime,
-        leadMinutes: 30,
-      });
-      setReminderByJobId((current) => ({
-        ...current,
-        [key]: {
-          triggerAt: reminder.triggerAt,
-          leadMinutes: reminder.leadMinutes,
-          startTime: reminder.startTime,
-        },
-      }));
-    } catch (error) {
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : t("jobsTab.errors.failedToSetReminder");
-      setErrorMessage(message);
-    } finally {
-      setIsReminderBusyJobId(null);
-    }
-  };
 
   const markLessonDone = async (jobId: Id<"jobs">) => {
     setErrorMessage(null);
@@ -487,35 +346,13 @@ export function InstructorFeed() {
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
-      <ScrollView
+      <TabScreenScrollView
+        routeKey="instructor/jobs/index"
         style={styles.screen}
         contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
-        stickyHeaderIndices={currentUser.role === "instructor" ? [1] : undefined}
       >
         <View>
-          <View style={{ paddingHorizontal: BrandSpacing.lg, paddingTop: 8 }}>
-            <FeedHero
-              title={t("jobsTab.title")}
-              subtitle={t("jobsTab.instructorSubtitle")}
-              palette={palette}
-              metrics={[
-                {
-                  label: t("jobsTab.availableJobsTitle"),
-                  value: openJobsCount,
-                },
-                {
-                  label: t("jobsTab.currentLessonTitle"),
-                  value: nextSessionCount,
-                },
-                {
-                  label: t("jobsTab.notificationsTitle"),
-                  value: nonAcceptedApplications.length,
-                },
-              ]}
-            />
-          </View>
 
           {errorMessage ? (
             <View style={styles.noticeWrap}>
@@ -546,102 +383,20 @@ export function InstructorFeed() {
           ) : null}
         </View>
 
+
+
+
+
         {currentUser.role === "instructor" ? (
-          <View
-            style={[
-              styles.focusStickyWrap,
-              {
-                borderBottomColor: palette.border,
-                backgroundColor: palette.surfaceAlt,
-              },
-            ]}
-          >
-            {focusSession ? (
-              <View
-                style={[
-                  styles.lessonSheet,
-                  {
-                    borderBottomColor: palette.border,
-                    backgroundColor: palette.surfaceAlt,
-                  },
-                ]}
-              >
-                <View style={styles.lessonHeader}>
-                  <View style={styles.lessonCopy}>
-                    <ThemedText type="micro" style={{ color: palette.textMuted }}>
-                      {focusSession.lifecycle === "live"
-                        ? t("jobsTab.currentLessonTitle")
-                        : t("jobsTab.instructorSessionsTitle")}
-                    </ThemedText>
-                    <ThemedText type="subtitle">
-                      {toSportLabel(focusSession.sport as never)}
-                    </ThemedText>
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      {focusSession.studioName}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.lessonMeta}>
-                    <ThemedText style={styles.lessonTimingText}>
-                      {focusTimingLabel}
-                    </ThemedText>
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      {focusSession.lifecycle === "live"
-                        ? t("jobsTab.liveBadge")
-                        : t("jobsTab.upcomingBadge")}
-                    </ThemedText>
-                  </View>
-                </View>
-                <ThemedText
-                  selectable
-                  style={{ color: palette.textMuted, fontVariant: ["tabular-nums"] }}
-                >
-                  {focusWindowLabel}
-                </ThemedText>
-                <View style={[styles.progressTrack, { backgroundColor: palette.border }]}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${Math.round(focusProgress * 100)}%`,
-                        backgroundColor: palette.success,
-                      },
-                    ]}
-                  />
-                </View>
-                {focusSession.lifecycle === "upcoming" ? (
-                  <Pressable
-                    style={[styles.compactAction, { borderColor: palette.borderStrong }]}
-                    onPress={() => {
-                      void toggleLessonReminder(focusSession);
-                    }}
-                    disabled={isReminderBusyJobId === String(focusSession.jobId)}
-                  >
-                    <ThemedText type="defaultSemiBold">
-                      {isReminderBusyJobId === String(focusSession.jobId)
-                        ? t("jobsTab.actions.updatingReminder")
-                        : reminderByJobId[String(focusSession.jobId)]
-                          ? t("jobsTab.actions.clearReminder")
-                          : t("jobsTab.actions.setReminder")}
-                    </ThemedText>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : (
-              <View style={styles.lessonSheet} />
-            )}
-          </View>
+          <FeedSectionHeader
+            title={t("jobsTab.needsDoneTitle", { count: needsDoneSessions.length })}
+            subtitle={t("jobsTab.instructorSessionsTitle")}
+            palette={palette}
+          />
         ) : null}
-
-
 
         {currentUser.role === "instructor" ? (
           <>
-            <FeedSectionHeader
-              title={t("jobsTab.needsDoneTitle", { count: needsDoneSessions.length })}
-              subtitle={t("jobsTab.instructorSessionsTitle")}
-              palette={palette}
-            />
-
             <InstructorNeedsDoneList
               sessions={needsDoneSessions}
               locale={locale}
@@ -652,13 +407,59 @@ export function InstructorFeed() {
               }}
               t={t}
             />
-
             <View style={{ flex: 1, paddingTop: BrandSpacing.md }}>
               <FeedSectionHeader
                 title={t("jobsTab.availableJobsTitle")}
                 subtitle={t("jobsTab.timezoneHint", { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
                 palette={palette}
               />
+              <View style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.sm, paddingBottom: BrandSpacing.sm }}>
+                <TextInput
+                  value={jobsSearchQuery}
+                  onChangeText={setJobsSearchQuery}
+                  placeholder={t("jobsTab.searchPlaceholder")}
+                  placeholderTextColor={palette.textMuted}
+                  style={[
+                    styles.input,
+                    {
+                      borderColor: palette.border,
+                      color: palette.text,
+                      backgroundColor: palette.surface,
+                    },
+                  ]}
+                />
+                <View style={styles.chipGrid}>
+                  {[
+                    { key: "all", label: t("jobsTab.filters.anyTime") },
+                    { key: "24h", label: t("jobsTab.filters.next24h") },
+                    { key: "72h", label: t("jobsTab.filters.next72h") },
+                  ].map((option) => {
+                    const selected = jobsWindowFilter === option.key;
+                    return (
+                      <Pressable
+                        key={option.key}
+                        style={[
+                          styles.chip,
+                          {
+                            borderColor: selected ? palette.primary : palette.border,
+                            backgroundColor: selected ? palette.primarySubtle : palette.surface,
+                          },
+                        ]}
+                        onPress={() => {
+                          setJobsWindowFilter(option.key as "all" | "24h" | "72h");
+                        }}
+                      >
+                        <ThemedText
+                          type="micro"
+                          style={{ color: selected ? palette.primary : palette.textMuted }}
+                        >
+                          {option.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
 
               {availableJobs === undefined ? (
                 <View style={[styles.emptyStateWrap, { minHeight: 260 }]}>
@@ -674,9 +475,17 @@ export function InstructorFeed() {
                     body=""
                   />
                 </View>
+              ) : filteredAvailableJobs.length === 0 ? (
+                <View style={{ minHeight: 220, justifyContent: "center", paddingHorizontal: BrandSpacing.lg }}>
+                  <EmptyState
+                    icon="magnifyingglass"
+                    title={t("jobsTab.noJobsFound")}
+                    body={t("jobsTab.tryDifferentSearchOrTimeFilter")}
+                  />
+                </View>
               ) : (
                 <InstructorOpenJobsList
-                  jobs={availableJobs}
+                  jobs={filteredAvailableJobs}
                   locale={locale}
                   zoneLanguage={zoneLanguage}
                   palette={palette}
@@ -700,7 +509,7 @@ export function InstructorFeed() {
             ) : null}
           </>
         ) : null}
-      </ScrollView>
+      </TabScreenScrollView>
 
       {currentUser.role === "instructor" ? (
         <KitFab
@@ -712,7 +521,7 @@ export function InstructorFeed() {
             : {})}
           icon={
             <MaterialIcons
-              name="archive"
+              name="history"
               size={24}
               color={archivedSessions.length > 0 ? palette.onPrimary : palette.textMuted}
             />
@@ -720,8 +529,8 @@ export function InstructorFeed() {
           style={[
             styles.archiveFab,
             {
-              bottom: 24,
-              [isRtl ? "left" : "right"]: 16,
+              bottom: Math.max(insets.bottom, 24),
+              [isRtl ? "left" : "right"]: BrandSpacing.lg,
             },
           ]}
           onPress={() => {

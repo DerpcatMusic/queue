@@ -42,6 +42,8 @@ let locationModulePromise: Promise<LocationModule> | null = null;
 let findZoneIdForCoordinatePromise: Promise<FindZoneIdForCoordinate> | null = null;
 const addressResolutionCache = new Map<string, ResolvedLocation>();
 const reverseAddressCache = new Map<string, string>();
+const WEB_GEOCODER_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
+const WEB_GEOCODER_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
 
 function createLocationError(code: LocationResolveErrorCode, message: string) {
   return new LocationResolveError(code, message);
@@ -95,13 +97,6 @@ export function normalizeLocationResolveError(error: unknown): LocationResolveEr
 }
 
 async function getLocationModule() {
-  if (Platform.OS === "web") {
-    throw createLocationError(
-      "unsupported_platform",
-      "Location lookup is not supported on web.",
-    );
-  }
-
   if (!locationModulePromise) {
     locationModulePromise = import("expo-location").catch((error: unknown) => {
       const message =
@@ -114,6 +109,106 @@ async function getLocationModule() {
   }
 
   return locationModulePromise;
+}
+
+async function geocodeAddressOnWeb(address: string): Promise<{
+  latitude: number;
+  longitude: number;
+}> {
+  const url = `${WEB_GEOCODER_SEARCH_URL}?format=jsonv2&limit=1&q=${encodeURIComponent(address)}`;
+  const response = await withTimeout(
+    fetch(url, {
+      headers: {
+        "Accept-Language": "en",
+      },
+    }),
+    12000,
+  );
+
+  if (!response.ok) {
+    throw createLocationError("address_not_found", "Address not found.");
+  }
+
+  const results = (await response.json()) as Array<{
+    lat?: string;
+    lon?: string;
+  }>;
+  const first = results[0];
+  const latitude = Number.parseFloat(first?.lat ?? "");
+  const longitude = Number.parseFloat(first?.lon ?? "");
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    throw createLocationError("address_not_found", "Address not found.");
+  }
+  return { latitude, longitude };
+}
+
+async function reverseGeocodeOnWeb(latitude: number, longitude: number): Promise<string> {
+  const url = `${WEB_GEOCODER_REVERSE_URL}?format=jsonv2&lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`;
+  const response = await withTimeout(
+    fetch(url, {
+      headers: {
+        "Accept-Language": "en",
+      },
+    }),
+    12000,
+  );
+  if (!response.ok) {
+    return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+  }
+  const data = (await response.json()) as { display_name?: string };
+  return data.display_name?.trim() || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+}
+
+async function getCurrentCoordinatesOnWeb(): Promise<{
+  latitude: number;
+  longitude: number;
+}> {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    throw createLocationError(
+      "unsupported_platform",
+      "Location lookup is not supported in this browser.",
+    );
+  }
+
+  return await withTimeout(
+    new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          if (error.code === error.PERMISSION_DENIED) {
+            reject(
+              createLocationError(
+                "permission_denied",
+                "Location permission was denied.",
+              ),
+            );
+            return;
+          }
+          if (error.code === error.TIMEOUT) {
+            reject(createLocationError("timeout", "Location request timed out."));
+            return;
+          }
+          reject(
+            createLocationError(
+              "services_disabled",
+              "Unable to determine current location from this browser.",
+            ),
+          );
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 2 * 60 * 1000,
+        },
+      );
+    }),
+    18000,
+  );
 }
 
 async function getFindZoneIdForCoordinate() {
@@ -192,7 +287,16 @@ export async function checkLocationRuntimeSupport(): Promise<{
 }> {
   try {
     if (Platform.OS === "web") {
-      return { available: false, error: createLocationError("unsupported_platform", "Location lookup is not supported on web.") };
+      if (typeof navigator === "undefined" || !navigator.geolocation) {
+        return {
+          available: false,
+          error: createLocationError(
+            "unsupported_platform",
+            "Location lookup is not supported in this browser.",
+          ),
+        };
+      }
+      return { available: true };
     }
 
     const location = await getLocationModule();
@@ -218,18 +322,24 @@ export async function resolveAddressToZone(addressInput: string): Promise<Resolv
       return cached;
     }
 
-    const location = await getLocationModule();
-    const geocoded = await withTimeout(location.geocodeAsync(address), 12000);
-    const first = geocoded[0];
-    if (!first) {
-      throw createLocationError("address_not_found", "Address not found.");
-    }
+    const geocoded =
+      Platform.OS === "web"
+        ? await geocodeAddressOnWeb(address)
+        : await (async () => {
+            const location = await getLocationModule();
+            const result = await withTimeout(location.geocodeAsync(address), 12000);
+            const first = result[0];
+            if (!first) {
+              throw createLocationError("address_not_found", "Address not found.");
+            }
+            return first;
+          })();
 
-    const zoneId = await resolveZoneOrThrow(first.latitude, first.longitude);
+    const zoneId = await resolveZoneOrThrow(geocoded.latitude, geocoded.longitude);
     const resolved: ResolvedLocation = {
       address,
-      latitude: first.latitude,
-      longitude: first.longitude,
+      latitude: geocoded.latitude,
+      longitude: geocoded.longitude,
       zoneId,
     };
     addressResolutionCache.set(normalizedAddress, resolved);
@@ -245,7 +355,6 @@ export async function resolveCoordinatesToZone(input: {
   includeAddress?: boolean;
 }): Promise<ResolvedLocation> {
   try {
-    const location = await getLocationModule();
     const zoneId = await resolveZoneOrThrow(input.latitude, input.longitude);
 
     let address = `${input.latitude.toFixed(5)}, ${input.longitude.toFixed(5)}`;
@@ -256,16 +365,21 @@ export async function resolveCoordinatesToZone(input: {
       if (cachedReverseAddress) {
         address = cachedReverseAddress;
       } else {
-        const reverse = await withTimeout(
-          location.reverseGeocodeAsync({
-            latitude: input.latitude,
-            longitude: input.longitude,
-          }),
-          12000,
-        );
-        address =
-          formatAddress(reverse[0] ?? {}) ||
-          `${input.latitude.toFixed(5)}, ${input.longitude.toFixed(5)}`;
+        if (Platform.OS === "web") {
+          address = await reverseGeocodeOnWeb(input.latitude, input.longitude);
+        } else {
+          const location = await getLocationModule();
+          const reverse = await withTimeout(
+            location.reverseGeocodeAsync({
+              latitude: input.latitude,
+              longitude: input.longitude,
+            }),
+            12000,
+          );
+          address =
+            formatAddress(reverse[0] ?? {}) ||
+            `${input.latitude.toFixed(5)}, ${input.longitude.toFixed(5)}`;
+        }
         reverseAddressCache.set(cacheKey, address);
       }
     }
@@ -326,6 +440,15 @@ async function getBestCurrentCoordinates(location: LocationModule): Promise<{
 
 export async function resolveCurrentLocationToZone(): Promise<ResolvedLocation> {
   try {
+    if (Platform.OS === "web") {
+      const { latitude, longitude } = await getCurrentCoordinatesOnWeb();
+      return await resolveCoordinatesToZone({
+        latitude,
+        longitude,
+        includeAddress: true,
+      });
+    }
+
     const location = await getLocationModule();
     await ensureForegroundPermission(location);
 

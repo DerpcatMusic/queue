@@ -85,6 +85,9 @@ const en = {
     restartRequiredMessage:
       "The app needs to reload to apply right-to-left layout changes.",
   },
+  common: {
+    cancel: "Cancel",
+  },
   profile: {
     title: "Profile",
     subtitle: "Manage your account preferences and settings.",
@@ -145,6 +148,8 @@ const en = {
       sports: {
         title: "Sports you teach",
         description: "Select your active teaching sports.",
+        none: "No sports selected",
+        selected: "{{count}} selected",
       },
       location: {
         title: "Location and zone",
@@ -222,6 +227,7 @@ const en = {
     signUpSubtitle: "Create your account and verify your email.",
     signInWithGoogle: "Continue with Google",
     signUpWithGoogle: "Sign up with Google",
+    signInWithApple: "Continue with Apple",
     or: "or",
     methodPassword: "Password",
     methodEmailCode: "Email OTP",
@@ -413,6 +419,14 @@ const en = {
     emptySessions: "No accepted sessions yet.",
     emptyUpcoming: "No upcoming lessons.",
     emptyArchive: "No completed lessons yet.",
+    searchPlaceholder: "Search jobs",
+    noJobsFound: "No jobs found",
+    tryDifferentSearchOrTimeFilter: "Try a different search or time filter.",
+    filters: {
+      anyTime: "Any time",
+      next24h: "Next 24h",
+      next72h: "Next 72h",
+    },
     noNotes: "No notes provided.",
     form: {
       sport: "Sport",
@@ -474,6 +488,7 @@ const en = {
       rejected: "Application rejected.",
       pushEnabled: "Push notifications enabled.",
       lessonCompleted: "Lesson marked complete.",
+      checkoutOpened: "Checkout opened. You can track updates in Payments.",
     },
     errors: {
       sportRequired: "Select a sport.",
@@ -493,6 +508,7 @@ const en = {
       failedToEnablePush: "Failed to enable studio push notifications.",
       failedToSetReminder: "Failed to update lesson reminder.",
       failedToMarkLessonDone: "Failed to mark lesson as complete.",
+      failedToStartCheckout: "Failed to start checkout.",
     },
   },
   home: {

@@ -65,6 +65,149 @@ export const getServerNow = query({
   },
 });
 
+export const getInstructorTabCounts = query({
+  args: {
+    now: v.optional(v.number()),
+  },
+  returns: v.object({
+    jobsBadgeCount: v.number(),
+    calendarBadgeCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const instructor = await requireInstructorProfile(ctx);
+    const now = args.now ?? Date.now();
+
+    const eligibility = await loadInstructorEligibility(ctx, instructor._id);
+    let jobsBadgeCount = 0;
+
+    if (eligibility.coverageCount > 0) {
+      const fetchPerPair = Math.min(
+        Math.max(Math.ceil((BADGE_COUNT_CAP * 2) / eligibility.coveragePairs.length), 8),
+        60,
+      );
+      const openJobsByCoveragePair = await Promise.all(
+        eligibility.coveragePairs.map(({ sport, zone }) =>
+          ctx.db
+            .query("jobs")
+            .withIndex("by_sport_zone_status_postedAt", (q) =>
+              q.eq("sport", sport).eq("zone", zone).eq("status", "open"),
+            )
+            .order("desc")
+            .take(fetchPerPair),
+        ),
+      );
+
+      const matchingById = new Set<string>();
+      for (const jobsForPair of openJobsByCoveragePair) {
+        for (const job of jobsForPair) {
+          const normalizedJobZone = trimOptionalString(job.zone);
+          if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
+            continue;
+          }
+          if (!hasCoverageKey(eligibility, job.sport, normalizedJobZone)) {
+            continue;
+          }
+          if (job.startTime <= now) continue;
+          if (job.applicationDeadline !== undefined && job.applicationDeadline < now) {
+            continue;
+          }
+
+          matchingById.add(String(job._id));
+          if (matchingById.size >= BADGE_COUNT_CAP) break;
+        }
+        if (matchingById.size >= BADGE_COUNT_CAP) break;
+      }
+
+      jobsBadgeCount = matchingById.size;
+    }
+
+    const applications = await ctx.db
+      .query("jobApplications")
+      .withIndex("by_instructor", (q) => q.eq("instructorId", instructor._id))
+      .collect();
+    const acceptedJobIds = [
+      ...new Set(
+        applications
+          .filter((application) => application.status === "accepted")
+          .map((application) => application.jobId),
+      ),
+    ];
+    const acceptedJobs = await Promise.all(
+      acceptedJobIds.map((jobId) => ctx.db.get("jobs", jobId)),
+    );
+
+    let calendarBadgeCount = 0;
+    for (const job of acceptedJobs) {
+      if (!job) continue;
+      if (job.status === "cancelled" || job.status === "completed") continue;
+      if (job.endTime <= now) continue;
+      calendarBadgeCount += 1;
+      if (calendarBadgeCount >= BADGE_COUNT_CAP) break;
+    }
+
+    return {
+      jobsBadgeCount: clampBadgeCount(jobsBadgeCount),
+      calendarBadgeCount: clampBadgeCount(calendarBadgeCount),
+    };
+  },
+});
+
+export const getStudioTabCounts = query({
+  args: {
+    now: v.optional(v.number()),
+  },
+  returns: v.object({
+    jobsBadgeCount: v.number(),
+    calendarBadgeCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const studio = await requireStudioProfile(ctx);
+    const now = args.now ?? Date.now();
+    const jobs = await ctx.db
+      .query("jobs")
+      .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
+      .collect();
+    const activeJobs = jobs.filter(
+      (job) =>
+        (job.status === "open" || job.status === "filled") && job.endTime > now,
+    );
+    const activeJobIdSet = new Set(activeJobs.map((job) => String(job._id)));
+    const calendarBadgeCount = clampBadgeCount(activeJobs.length);
+
+    let jobsBadgeCount = 0;
+    if (activeJobIdSet.size > 0) {
+      if (USE_JOB_APPLICATION_STATS) {
+        const stats = await ctx.db
+          .query("jobApplicationStats")
+          .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+          .collect();
+
+        for (const stat of stats) {
+          if (!activeJobIdSet.has(String(stat.jobId))) continue;
+          jobsBadgeCount += stat.pendingApplicationsCount;
+          if (jobsBadgeCount >= BADGE_COUNT_CAP) break;
+        }
+      } else {
+        const applications = await ctx.db
+          .query("jobApplications")
+          .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+          .collect();
+        for (const application of applications) {
+          if (!activeJobIdSet.has(String(application.jobId))) continue;
+          if (application.status !== "pending") continue;
+          jobsBadgeCount += 1;
+          if (jobsBadgeCount >= BADGE_COUNT_CAP) break;
+        }
+      }
+    }
+
+    return {
+      jobsBadgeCount: clampBadgeCount(jobsBadgeCount),
+      calendarBadgeCount,
+    };
+  },
+});
+
 async function requireInstructorProfile(ctx: QueryCtx | MutationCtx) {
   const user = await requireUserRole(ctx, ["instructor"]);
   const profile = await ctx.db
@@ -135,8 +278,13 @@ function toDisplayLabel(value: string) {
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 const DEFAULT_AUTO_EXPIRE_MINUTES = 30;
+const BADGE_COUNT_CAP = 99;
 const USE_JOB_APPLICATION_STATS = process.env.ENABLE_JOB_APPLICATION_STATS !== "0";
 const USE_STUDIO_APPLICATIONS_BY_STUDIO = process.env.ENABLE_STUDIO_APPLICATIONS_BY_STUDIO !== "0";
+
+function clampBadgeCount(value: number) {
+  return Math.min(Math.max(value, 0), BADGE_COUNT_CAP);
+}
 
 
 async function enqueueUserNotification(
