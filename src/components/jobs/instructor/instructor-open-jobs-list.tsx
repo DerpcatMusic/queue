@@ -2,6 +2,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { ThemedText } from "@/components/themed-text";
 import { KitSurface } from "@/components/ui/kit";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing, type BrandPalette } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { formatTime, formatDateWithWeekday, getApplicationStatusTranslationKey } from "@/lib/jobs-utils";
@@ -14,8 +15,10 @@ type OpenJob = {
   jobId: Id<"jobs">;
   sport: string;
   studioName: string;
+  studioImageUrl?: string | null;
   applicationStatus?: "pending" | "accepted" | "rejected" | "withdrawn";
   startTime: number;
+  endTime: number;
   zone: string;
   note?: string | null;
   pay: number;
@@ -101,8 +104,21 @@ export function InstructorOpenJobsList({
                   overflow: "hidden",
                 }}
               >
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    right: -14,
+                    top: -18,
+                    width: 30,
+                    height: 96,
+                    transform: [{ rotate: "24deg" }],
+                    backgroundColor: palette.primarySubtle as string,
+                  }}
+                />
+
                 {/* Header Row: Sport & Badges */}
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                   <View style={{ flex: 1, gap: 2 }}>
                     <ThemedText
                       style={{
@@ -122,7 +138,16 @@ export function InstructorOpenJobsList({
                       {job.studioName}
                     </ThemedText>
                   </View>
-                  <JobStatusBadge status={job.applicationStatus} palette={palette} t={t} />
+                  <View style={{ alignItems: "flex-end", gap: 8 }}>
+                    <ProfileAvatar
+                      imageUrl={job.studioImageUrl}
+                      fallbackName={job.studioName}
+                      palette={palette}
+                      size={46}
+                      roundedSquare
+                    />
+                    <JobStatusBadge status={job.applicationStatus} palette={palette} t={t} />
+                  </View>
                 </View>
 
                 {/* Details Row: Time, Zone, Note */}

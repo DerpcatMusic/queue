@@ -6,8 +6,11 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { CalendarList, type DateData } from "react-native-calendars";
 
+import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { LoadingScreen } from "@/components/loading-screen";
+import { useSystemUi } from "@/contexts/system-ui-context";
 import { api } from "@/convex/_generated/api";
+import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { formatTime } from "@/lib/jobs-utils";
@@ -45,8 +48,9 @@ type TimelineListItem =
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CACHE_TTL_MS = 15 * 60 * 1000;
 const CACHE_VERSION = 2;
-const TIMELINE_RANGE_DAYS = 365;
-const TIMELINE_EXTEND_BUFFER_DAYS = 120;
+const TIMELINE_RANGE_DAYS = 30;
+const TIMELINE_EXTEND_BUFFER_DAYS = 30;
+const DAY_SCROLL_VIEW_OFFSET = 2;
 
 function toDayKey(timestamp: number) {
   const d = new Date(timestamp);
@@ -103,10 +107,6 @@ function formatDayContext(dayKey: string, locale: string) {
   return new Date(dayKeyToTimestamp(dayKey)).toLocaleDateString(locale, {
     weekday: "long",
   });
-}
-
-function monthKey(dayKey: string) {
-  return dayKey.slice(0, 7);
 }
 
 function getLessonHeatLevel(lessonCount: number, peakCount: number) {
@@ -176,10 +176,13 @@ function useTimelineCache(role: string | undefined, startTime: number, endTime: 
 export default function CalendarTabScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
+  const { safeBottom } = useAppInsets();
   const { resolvedScheme } = useThemePreference();
   const { width } = useWindowDimensions();
+  const { setTopInsetBackgroundColor } = useSystemUi();
   const currentUser = useQuery(api.users.getCurrentUser);
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
+  const initialCalendarMonthRef = useRef(todayKey);
   const [visibleDay, setVisibleDay] = useState(todayKey);
   const [windowRange, setWindowRange] = useState(() => ({
     start: addDays(todayKey, -TIMELINE_RANGE_DAYS),
@@ -202,7 +205,7 @@ export default function CalendarTabScreen() {
   const endTime = useMemo(() => dayKeyToTimestamp(windowRange.end) + DAY_MS - 1, [windowRange.end]);
   const remoteRows = useQuery(
     api.jobs.getMyCalendarTimeline,
-    role ? { startTime, endTime, limit: 1200 } : "skip",
+    role ? { startTime, endTime, limit: 400 } : "skip",
   );
   const { cachedRows, cacheReady, persist } = useTimelineCache(role, startTime, endTime);
 
@@ -294,6 +297,17 @@ export default function CalendarTabScreen() {
     () => (resolvedScheme === "dark" ? palette.surface : palette.surfaceAlt),
     [palette.surface, palette.surfaceAlt, resolvedScheme],
   );
+  const compactCalendarHeight = useMemo(
+    () => Math.round(Math.max(248, Math.min(286, width * 0.64))),
+    [width],
+  );
+
+  useEffect(() => {
+    setTopInsetBackgroundColor(calendarSurfaceColor);
+    return () => {
+      setTopInsetBackgroundColor(null);
+    };
+  }, [calendarSurfaceColor, setTopInsetBackgroundColor]);
 
   const markedDates = useMemo(() => {
     const marks: Record<string, Record<string, unknown>> = {};
@@ -382,6 +396,7 @@ export default function CalendarTabScreen() {
           index,
           animated,
           viewPosition: 0,
+          viewOffset: DAY_SCROLL_VIEW_OFFSET,
         });
         return "done" as const;
       } catch {
@@ -440,19 +455,6 @@ export default function CalendarTabScreen() {
       setScrollTarget({ dayKey: key, animated: true });
     },
     [ensureDayInWindow],
-  );
-
-  const handleVisibleMonthsChange = useCallback(
-    (months: DateData[]) => {
-      const monthDay = months[0]?.dateString;
-      if (!monthDay || monthKey(monthDay) === monthKey(visibleDay)) {
-        return;
-      }
-      setVisibleDay(monthDay);
-      ensureDayInWindow(monthDay);
-      setScrollTarget({ dayKey: monthDay, animated: false });
-    },
-    [ensureDayInWindow, visibleDay],
   );
 
   const renderItem = useCallback(
@@ -525,39 +527,50 @@ export default function CalendarTabScreen() {
     return <LoadingScreen label={t("calendarTab.loading")} />;
   }
 
+  const calendarTheme = {
+    calendarBackground: calendarSurfaceColor as string,
+    backgroundColor: calendarSurfaceColor as string,
+    textSectionTitleColor: palette.textMuted as string,
+    todayTextColor: palette.primary as string,
+    dayTextColor: palette.text as string,
+    monthTextColor: palette.text as string,
+    arrowColor: palette.primary as string,
+    textDisabledColor: palette.textMicro as string,
+    weekVerticalMargin: 2,
+    "stylesheet.calendar-list.main": {
+      calendar: {
+        paddingLeft: 8,
+        paddingRight: 8,
+      },
+    },
+  } as const;
+
   return (
-    <View style={[styles.root, { backgroundColor: palette.appBg }]}>
+    <TabScreenRoot mode="static" style={{ backgroundColor: palette.appBg }}>
       <View
         style={[
           styles.calendarPanel,
           {
-            borderColor: palette.border as string,
             backgroundColor: calendarSurfaceColor,
+            borderBottomColor: palette.border as string,
           },
         ]}
       >
         <CalendarList
-          current={visibleDay}
-          calendarWidth={Math.max(width - 24, 280)}
+          current={initialCalendarMonthRef.current}
+          calendarWidth={width}
+          calendarHeight={compactCalendarHeight}
           pagingEnabled
           horizontal
           showScrollIndicator={false}
           pastScrollRange={24}
           futureScrollRange={24}
+          hideExtraDays
+          showSixWeeks={false}
           markedDates={markedDates}
           markingType="custom"
           onDayPress={handleDayPress}
-          onVisibleMonthsChange={handleVisibleMonthsChange}
-          theme={{
-            calendarBackground: calendarSurfaceColor as string,
-            backgroundColor: calendarSurfaceColor as string,
-            textSectionTitleColor: palette.textMuted as string,
-            todayTextColor: palette.primary as string,
-            dayTextColor: palette.text as string,
-            monthTextColor: palette.text as string,
-            arrowColor: palette.primary as string,
-            textDisabledColor: palette.textMicro as string,
-          }}
+          theme={calendarTheme as never}
         />
       </View>
 
@@ -567,32 +580,29 @@ export default function CalendarTabScreen() {
         keyExtractor={(item) => item.key}
         renderItem={renderItem}
         getItemType={(item) => item.kind}
-        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         onLayout={() => setListReady(true)}
         onLoad={() => setListReady(true)}
-        ListFooterComponent={<View style={styles.footerSpace} />}
+        ListFooterComponent={<View style={{ height: safeBottom + 28 }} />}
       />
-    </View>
+    </TabScreenRoot>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
   calendarPanel: {
-    marginHorizontal: 12,
-    marginTop: 10,
-    borderRadius: 22,
+    marginHorizontal: 0,
+    marginTop: 0,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
     borderCurve: "continuous",
-    borderWidth: 1,
+    borderBottomWidth: 1,
     overflow: "hidden",
   },
   dayHeader: {
     paddingHorizontal: 16,
-    paddingTop: 18,
-    paddingBottom: 8,
+    paddingTop: 8,
+    paddingBottom: 6,
   },
   dayContext: {
     fontSize: 13,
@@ -635,8 +645,5 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 13,
-  },
-  footerSpace: {
-    height: 28,
   },
 });

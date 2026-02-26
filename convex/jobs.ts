@@ -491,6 +491,7 @@ export const getAvailableJobsForInstructor = query({
       jobId: v.id("jobs"),
       studioId: v.id("studioProfiles"),
       studioName: v.string(),
+      studioImageUrl: v.optional(v.string()),
       sport: v.string(),
       zone: v.string(),
       startTime: v.number(),
@@ -620,11 +621,21 @@ export const getAvailableJobsForInstructor = query({
     const studios = await Promise.all(
       studioIds.map((studioId) => ctx.db.get("studioProfiles", studioId)),
     );
+    const studioImageUrls = await Promise.all(
+      studios.map((studio) =>
+        studio?.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
+      ),
+    );
+    const studioImageUrlById = new Map<string, string>();
     for (let i = 0; i < studioIds.length; i += 1) {
       const studioId = studioIds[i];
       const studio = studios[i];
+      const studioImageUrl = studioImageUrls[i];
       if (studio) {
         studioById.set(String(studioId), studio);
+      }
+      if (studioImageUrl) {
+        studioImageUrlById.set(String(studioId), studioImageUrl);
       }
     }
 
@@ -643,6 +654,7 @@ export const getAvailableJobsForInstructor = query({
         status: job.status,
         postedAt: job.postedAt,
         ...omitUndefined({
+          studioImageUrl: studioImageUrlById.get(String(job.studioId)),
           timeZone: job.timeZone,
           note: job.note,
           requiredLevel: job.requiredLevel,

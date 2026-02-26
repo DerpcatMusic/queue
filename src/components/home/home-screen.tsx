@@ -9,9 +9,9 @@ import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
 
-const HOME_APPLICATIONS_LIMIT = 80;
-const HOME_AVAILABLE_JOBS_LIMIT = 40;
-const HOME_STUDIO_JOBS_LIMIT = 60;
+const HOME_APPLICATIONS_LIMIT = 36;
+const HOME_AVAILABLE_JOBS_LIMIT = 24;
+const HOME_STUDIO_JOBS_LIMIT = 36;
 
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
@@ -20,30 +20,33 @@ export default function HomeScreen() {
   const router = useRouter();
 
   // Use centralized user context - eliminates duplicate getCurrentUser query
-  const { currentUser, effectiveRole } = useUser();
+  const { currentUser, effectiveRole, isAuthLoading, isAuthenticated, isSyncing } = useUser();
+  const resolvedRole = currentUser?.role ?? (isAuthenticated ? effectiveRole : null);
+  const canQueryInstructor = !isAuthLoading && isAuthenticated && currentUser?.role === "instructor";
+  const canQueryStudio = !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
 
   // Role-specific queries - only fetch when user role is known
   const myApplications = useQuery(
     api.jobs.getMyApplications,
-    effectiveRole === "instructor" ? { limit: HOME_APPLICATIONS_LIMIT } : "skip",
+    canQueryInstructor ? { limit: HOME_APPLICATIONS_LIMIT } : "skip",
   );
   const availableJobs = useQuery(
     api.jobs.getAvailableJobsForInstructor,
-    effectiveRole === "instructor" ? { limit: HOME_AVAILABLE_JOBS_LIMIT } : "skip",
+    canQueryInstructor ? { limit: HOME_AVAILABLE_JOBS_LIMIT } : "skip",
   );
   const myStudioJobs = useQuery(
     api.jobs.getMyStudioJobs,
-    effectiveRole === "studio" ? { limit: HOME_STUDIO_JOBS_LIMIT } : "skip",
+    canQueryStudio ? { limit: HOME_STUDIO_JOBS_LIMIT } : "skip",
   );
 
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
-    effectiveRole === "instructor" ? {} : "skip",
+    canQueryInstructor ? {} : "skip",
   );
 
   const studioSettings = useQuery(
     api.users.getMyStudioSettings,
-    effectiveRole === "studio" ? {} : "skip",
+    canQueryStudio ? {} : "skip",
   );
 
   const currencyFormatter = useMemo(
@@ -56,20 +59,31 @@ export default function HomeScreen() {
     [locale],
   );
 
-  // Keep home visible when role is already resolved from cache while currentUser hydrates.
-  if (currentUser === undefined && !effectiveRole) {
+  if (isAuthLoading) {
     return <LoadingScreen label={t("home.loading")} />;
   }
 
-  // Redirect states - these should already be handled by TabLayout, but keep as safety net
-  if (currentUser === null) return <Redirect href="/sign-in" />;
+  if (!isAuthenticated) {
+    return <Redirect href="/sign-in" />;
+  }
+
+  // Keep home visible while auth/user hydration catches up, but do not run protected queries yet.
+  if (currentUser === undefined || isSyncing) {
+    return <LoadingScreen label={t("home.loading")} />;
+  }
+
+  // If auth is valid but user doc is not ready, wait instead of bouncing to sign-in.
+  if (currentUser === null) {
+    return <LoadingScreen label={t("home.loading")} />;
+  }
+
   if (currentUser && (!currentUser.onboardingComplete || currentUser.role === "pending")) {
     return <Redirect href="/onboarding" />;
   }
 
   const firstName = currentUser?.fullName?.trim().split(/\s+/)[0];
   const displayName = firstName && firstName.length > 0 ? firstName : t("home.shared.unknownName");
-  const activeRole = currentUser?.role ?? effectiveRole;
+  const activeRole = currentUser?.role ?? resolvedRole;
 
   if (activeRole === "pending") {
     return <Redirect href="/onboarding" />;
@@ -104,6 +118,7 @@ export default function HomeScreen() {
     return (
       <InstructorHomeContent
         displayName={displayName}
+        profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser.image}
         locale={locale}
         openMatches={openMatches}
         pendingApplications={pendingApplications}
@@ -130,6 +145,7 @@ export default function HomeScreen() {
   return (
     <StudioHomeContent
       displayName={displayName}
+      profileImageUrl={studioSettings?.profileImageUrl ?? currentUser.image}
       locale={locale}
       openJobs={openJobs}
       pendingApplicants={pendingApplicants}

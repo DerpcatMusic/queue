@@ -4,7 +4,11 @@ import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandSpacing } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { BrandPalette } from "@/constants/brand";
-import { HomeHeaderSheet } from "@/components/home/home-header-sheet";
+import {
+  HomeHeaderSheet,
+  getHomeHeaderScrollTopPadding,
+} from "@/components/home/home-header-sheet";
+import { useAppInsets } from "@/hooks/use-app-insets";
 import type { TFunction } from "i18next";
 import { Pressable, Text, View } from "react-native";
 import Animated, {
@@ -25,6 +29,7 @@ type RecentJob = {
 
 type StudioHomeContentProps = {
   displayName: string;
+  profileImageUrl?: string | null | undefined;
   locale: string;
   openJobs: number;
   pendingApplicants: number;
@@ -82,6 +87,7 @@ function MetricTile({ label, value, palette, onPress, accentIcon, accentColor }:
 
 export function StudioHomeContent({
   displayName,
+  profileImageUrl,
   locale,
   openJobs,
   pendingApplicants,
@@ -98,13 +104,14 @@ export function StudioHomeContent({
   const jobsNeedingReview = recentJobs.filter((job) => job.pendingApplicationsCount > 0).slice(0, 3);
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useScrollViewOffset(scrollRef);
-  const SHEET_EXPANDED_HEIGHT = 168; // Match HomeHeaderSheet expansion
-  const sheetTotalHeight = SHEET_EXPANDED_HEIGHT + BrandSpacing.lg;
+  const { safeTop } = useAppInsets();
+  const sheetTopPadding = getHomeHeaderScrollTopPadding(safeTop);
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.appBg }}>
       <HomeHeaderSheet
         displayName={displayName}
+        profileImageUrl={profileImageUrl}
         scrollY={scrollY}
         palette={palette}
         statsLabel={pendingApplicants > 0 ? t("home.shared.pending") : t("home.shared.open")}
@@ -117,7 +124,7 @@ export function StudioHomeContent({
         animatedRef={scrollRef}
         routeKey="studio/index"
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: BrandSpacing.xxl, gap: 0, paddingTop: sheetTotalHeight }}
+        contentContainerStyle={{ paddingBottom: BrandSpacing.xxl, gap: 0, paddingTop: sheetTopPadding }}
       >
       {/* Content starts below sheet — header section removed (handled by HomeHeaderSheet) */}
       <View className="px-6 gap-8">

@@ -1,19 +1,30 @@
 import { toSportLabel } from "@/convex/constants";
 import { BrandSpacing } from "@/constants/brand";
-import { AppSymbol } from "@/components/ui/app-symbol";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { useSystemUi } from "@/contexts/system-ui-context";
+import { useAppInsets } from "@/hooks/use-app-insets";
 import { useEffect } from "react";
-import { Text, View, ScrollView } from "react-native";
+import { Platform, Text, View, ScrollView } from "react-native";
 import Animated, {
   interpolate,
   useAnimatedStyle,
-  SharedValue,
+  type SharedValue,
   Extrapolation,
 } from "react-native-reanimated";
 
-const SHEET_EXPANDED_HEIGHT = 168; // Increased from 136
-const SHEET_CONTRACTED_HEIGHT = 68;
+const SHEET_EXPANDED_CONTENT_HEIGHT = 168;
+const SHEET_CONTRACTED_CONTENT_HEIGHT = 88;
+const SHEET_CONTENT_GAP = BrandSpacing.md;
+
+export function getHomeHeaderExpandedHeight(safeTop: number) {
+  return safeTop + SHEET_EXPANDED_CONTENT_HEIGHT;
+}
+
+export function getHomeHeaderScrollTopPadding(safeTop: number) {
+  const automaticTopInset = Platform.OS === "ios" ? safeTop : 0;
+  return getHomeHeaderExpandedHeight(safeTop) - automaticTopInset + SHEET_CONTENT_GAP;
+}
 
 // Scroll range over which the sheet transitions
 const SCROLL_EXPAND_START = 0;
@@ -21,6 +32,7 @@ const SCROLL_EXPAND_END = 100;
 
 type HomeHeaderSheetProps = {
   displayName: string;
+  profileImageUrl?: string | null | undefined;
   scrollY: SharedValue<number>;
   palette: BrandPalette;
   statsLabel?: string;
@@ -32,6 +44,7 @@ type HomeHeaderSheetProps = {
 
 export function HomeHeaderSheet({
   displayName,
+  profileImageUrl,
   scrollY,
   palette,
   statsLabel,
@@ -41,6 +54,9 @@ export function HomeHeaderSheet({
   sports,
 }: HomeHeaderSheetProps) {
   const { setTopInsetBackgroundColor } = useSystemUi();
+  const { safeTop } = useAppInsets();
+  const expandedHeight = getHomeHeaderExpandedHeight(safeTop);
+  const contractedHeight = safeTop + SHEET_CONTRACTED_CONTENT_HEIGHT;
 
   useEffect(() => {
     setTopInsetBackgroundColor(palette.surface);
@@ -54,7 +70,7 @@ export function HomeHeaderSheet({
     const contentHeight = interpolate(
       scrollY.value,
       [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
-      [SHEET_EXPANDED_HEIGHT, SHEET_CONTRACTED_HEIGHT],
+      [expandedHeight, contractedHeight],
       Extrapolation.CLAMP,
     );
     return {
@@ -63,63 +79,104 @@ export function HomeHeaderSheet({
   });
 
   // Name shrinking animation
+  const identityWrapStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollY.value,
+      [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.72, SCROLL_EXPAND_END],
+      [1, 0.3, 0],
+      Extrapolation.CLAMP,
+    ),
+    transform: [
+      {
+        translateX: interpolate(
+          scrollY.value,
+          [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
+          [0, -10],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
+
   const nameStyle = useAnimatedStyle(() => {
     const fontSize = interpolate(
       scrollY.value,
       [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
-      [42, 18],
+      [42, 30],
       Extrapolation.CLAMP,
     );
     const lineHeight = interpolate(
       scrollY.value,
       [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
-      [52, 26],
-      Extrapolation.CLAMP,
-    );
-    const translateY = interpolate(
-      scrollY.value,
-      [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
-      [0, 0],
+      [52, 36],
       Extrapolation.CLAMP,
     );
     return {
       fontSize,
       lineHeight,
-      transform: [{ translateY }],
     };
   });
 
-  const statsPillStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.8],
-      [1, 0],
-      Extrapolation.CLAMP,
-    );
-    const scale = interpolate(
-      scrollY.value,
-      [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
-      [1, 0.8],
-      Extrapolation.CLAMP,
-    );
-    return { opacity, transform: [{ scale }] };
+  const expandedSubtitleStyle = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(
+        scrollY.value,
+        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.8],
+        [1, 0],
+        Extrapolation.CLAMP,
+      ),
+      maxHeight: interpolate(
+        scrollY.value,
+        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.8],
+        [24, 0],
+        Extrapolation.CLAMP,
+      ),
+      marginTop: interpolate(
+        scrollY.value,
+        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.8],
+        [2, 0],
+        Extrapolation.CLAMP,
+      ),
+      overflow: "hidden" as const,
+    };
   });
 
-  const contractedPillStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [SCROLL_EXPAND_END * 0.4, SCROLL_EXPAND_END],
-      [0, 1],
-      Extrapolation.CLAMP,
-    );
-    const translateX = interpolate(
-      scrollY.value,
-      [SCROLL_EXPAND_END * 0.4, SCROLL_EXPAND_END],
-      [20, 0],
-      Extrapolation.CLAMP,
-    );
-    return { opacity, transform: [{ translateX }] };
+  const expandedSportsStyle = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(
+        scrollY.value,
+        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.75],
+        [1, 0],
+        Extrapolation.CLAMP,
+      ),
+      maxHeight: interpolate(
+        scrollY.value,
+        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.75],
+        [44, 0],
+        Extrapolation.CLAMP,
+      ),
+      marginTop: interpolate(
+        scrollY.value,
+        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.75],
+        [12, 0],
+        Extrapolation.CLAMP,
+      ),
+      overflow: "hidden" as const,
+    };
   });
+
+  const profileAvatarStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        scale: interpolate(
+          scrollY.value,
+          [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
+          [1, 0.9],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
 
   const bg = palette.surface as string;
 
@@ -152,12 +209,12 @@ export function HomeHeaderSheet({
           alignItems: "center",
           justifyContent: "space-between",
           paddingHorizontal: BrandSpacing.xl,
-          paddingTop: BrandSpacing.lg,
+          paddingTop: safeTop + BrandSpacing.sm,
           paddingBottom: BrandSpacing.lg,
         }}
       >
         {/* Name Area (Dynamic Shrinking) */}
-        <View style={{ flex: 1, justifyContent: "center" }}>
+        <Animated.View style={[{ flex: 1, justifyContent: "center" }, identityWrapStyle]}>
           <Animated.Text
             numberOfLines={1}
             style={[
@@ -174,20 +231,37 @@ export function HomeHeaderSheet({
           </Animated.Text>
           
           {/* Expanded Stats Subtitle */}
-          {statsLabel && statsValue && (
-            <Animated.View style={[{ flexDirection: "row", gap: 6, marginTop: 2 }, statsPillStyle]}>
-              <Text style={{ fontFamily: "Rubik_700Bold", fontSize: 13, color: palette.primary as string }}>
-                {statsValue}
-              </Text>
-              <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 13, color: palette.text as string, opacity: 0.8 }}>
-                {statsLabel}
-              </Text>
+          {(statsLabel && statsValue) || (extraStatsLabel && extraStatsValue) ? (
+            <Animated.View style={[{ flexDirection: "row", gap: 6, alignItems: "baseline" }, expandedSubtitleStyle]}>
+              {statsLabel && statsValue ? (
+                <>
+                  <Text style={{ fontFamily: "Rubik_700Bold", fontSize: 13, color: palette.primary as string }}>
+                    {statsValue}
+                  </Text>
+                  <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 13, color: palette.text as string, opacity: 0.8 }}>
+                    {statsLabel}
+                  </Text>
+                </>
+              ) : null}
+              {extraStatsLabel && extraStatsValue ? (
+                <>
+                  <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 12, color: palette.textMuted as string }}>
+                    {"*"}
+                  </Text>
+                  <Text style={{ fontFamily: "Rubik_700Bold", fontSize: 13, color: palette.text as string }}>
+                    {extraStatsValue}
+                  </Text>
+                  <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 12, color: palette.textMuted as string }}>
+                    {extraStatsLabel}
+                  </Text>
+                </>
+              ) : null}
             </Animated.View>
-          )}
+          ) : null}
 
           {/* Sports List (Expanded State Only) */}
           {sports && sports.length > 0 && (
-            <Animated.View style={[{ marginTop: 12 }, statsPillStyle]}>
+            <Animated.View style={expandedSportsStyle}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -213,41 +287,17 @@ export function HomeHeaderSheet({
               </ScrollView>
             </Animated.View>
           )}
-        </View>
+        </Animated.View>
 
-        {/* Contracted Premium Pill */}
-        {extraStatsValue && (
-          <Animated.View
-            style={[
-              {
-                backgroundColor: palette.surfaceAlt as string,
-                borderRadius: 20,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.05)",
-              },
-              contractedPillStyle,
-            ]}
-          >
-            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: palette.primary as string, alignItems: "center", justifyContent: "center" }}>
-              <AppSymbol name="creditcard.fill" size={14} tintColor="#FFFFFF" />
-            </View>
-            <View>
-              <Text style={{ fontFamily: "Rubik_700Bold", fontSize: 15, color: palette.text as string }}>
-                {extraStatsValue}
-              </Text>
-              {extraStatsLabel && (
-                <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 9, color: palette.text as string, opacity: 0.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  {extraStatsLabel}
-                </Text>
-              )}
-            </View>
-          </Animated.View>
-        )}
+        <Animated.View style={profileAvatarStyle}>
+          <ProfileAvatar
+            imageUrl={profileImageUrl}
+            fallbackName={displayName}
+            palette={palette}
+            size={54}
+            roundedSquare
+          />
+        </Animated.View>
       </View>
     </Animated.View>
   );

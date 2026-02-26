@@ -68,7 +68,7 @@ export default function SportsScreen() {
     setDraft((prev) => {
       const current = prev ?? serverSports;
       if (current.includes(sport)) {
-        return current.filter((s) => s !== sport);
+        return current.filter((s: string) => s !== sport);
       }
       return [...current, sport];
     });

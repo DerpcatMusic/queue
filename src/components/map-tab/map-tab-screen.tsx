@@ -4,6 +4,8 @@ import BottomSheet, {
   type BottomSheetBackgroundProps,
 } from "@gorhom/bottom-sheet";
 import { api } from "@/convex/_generated/api";
+import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
+import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
 import { ThemedText } from "@/components/themed-text";
@@ -14,19 +16,16 @@ import { ZONE_OPTIONS, type ZoneOption } from "@/constants/zones";
 import { useBrand } from "@/hooks/use-brand";
 import { useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { type RefObject, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, View } from "react-native";
 import Animated from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const MAX_ZONES = 25;
 
 export default function MapTabScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
-  const insets = useSafeAreaInsets();
   const zoneLanguage = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he")
     ? "he"
     : "en";
@@ -158,9 +157,7 @@ export default function MapTabScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
-      <StatusBar style="auto" />
-
+    <TabScreenRoot mode="static" style={{ backgroundColor: palette.appBg }}>
       <QueueMap
         mode={zoneModeActive ? "zoneSelect" : "pinDrop"}
         pin={null}
@@ -257,38 +254,33 @@ export default function MapTabScreen() {
         </View>
       </BottomSheet>
 
-      <KitFab
-        selected={zoneModeActive}
-        disabled={isSaving}
-        icon={
-          <IconSymbol
-            name={zoneModeActive ? "checkmark.circle.fill" : "slider.horizontal.3"}
-            size={20}
-            color={zoneModeActive ? palette.onPrimary : palette.text}
-          />
-        }
-        style={{
-          position: "absolute",
-          [zoneLanguage === "he" ? "left" : "right"]: BrandSpacing.lg,
-          bottom: Math.max(insets.bottom, 24),
-          zIndex: 30,
-          backgroundColor: zoneModeActive ? palette.primary : palette.surface,
-          borderColor: zoneModeActive ? palette.primaryPressed : palette.borderStrong,
-          borderWidth: 1.4,
-          opacity: 1,
-        }}
-        onPress={() => {
-          void handlePrimaryAction();
-        }}
-      />
-    </View>
+      <TabOverlayAnchor side={zoneLanguage === "he" ? "left" : "right"} offset={BrandSpacing.lg}>
+        <KitFab
+          selected={zoneModeActive}
+          disabled={isSaving}
+          icon={
+            <IconSymbol
+              name={zoneModeActive ? "checkmark.circle.fill" : "slider.horizontal.3"}
+              size={20}
+              color={zoneModeActive ? palette.onPrimary : palette.text}
+            />
+          }
+          style={{
+            backgroundColor: zoneModeActive ? palette.primary : palette.surface,
+            borderColor: zoneModeActive ? palette.primaryPressed : palette.borderStrong,
+            borderWidth: 1.4,
+            opacity: 1,
+          }}
+          onPress={() => {
+            void handlePrimaryAction();
+          }}
+        />
+      </TabOverlayAnchor>
+    </TabScreenRoot>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
   sheetContent: {
     flex: 1,
     paddingTop: 16,

@@ -15,6 +15,7 @@ import { TabBarScrollProvider } from "@/contexts/tab-bar-scroll-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
+import { useThemePreference } from "@/hooks/use-theme-preference";
 
 type RoleTabSpec = {
   key: string;
@@ -30,9 +31,14 @@ type RoleTabSpec = {
 function resolveTabStatusInsetColor(
   pathname: string | null,
   palette: ReturnType<typeof useBrand>,
+  resolvedScheme: "light" | "dark",
 ): ColorValue {
   if (!pathname) {
     return palette.appBg;
+  }
+
+  if (pathname.includes("/calendar")) {
+    return resolvedScheme === "dark" ? palette.surface : palette.surfaceAlt;
   }
 
   if (pathname === "/instructor" || pathname === "/studio") {
@@ -77,12 +83,8 @@ function renderNativeTabTrigger(
 }
 
 function warmRoleTabModules(role: "instructor" | "studio") {
-  void import("@/components/home/home-screen");
-  void import("@/components/calendar/calendar-tab-screen");
-
   if (role === "instructor") {
     void import("@/components/jobs/instructor-feed");
-    void import("@/components/map-tab/map-tab-screen");
     return;
   }
 
@@ -93,10 +95,11 @@ export default function TabLayout() {
   const authActions = useAuthActions();
   const signOut = authActions?.signOut;
   const palette = useBrand();
+  const { resolvedScheme } = useThemePreference();
   const pathname = usePathname();
   const { setTopInsetBackgroundColor } = useSystemUi();
   const { t } = useTranslation();
-  const tabStatusInsetColor = resolveTabStatusInsetColor(pathname, palette);
+  const tabStatusInsetColor = resolveTabStatusInsetColor(pathname, palette, resolvedScheme);
 
   useEffect(() => {
     setTopInsetBackgroundColor(tabStatusInsetColor);
@@ -116,7 +119,7 @@ export default function TabLayout() {
     retrySync,
   } = useUser();
 
-  const resolvedRole = currentUser?.role ?? effectiveRole;
+  const resolvedRole = currentUser?.role ?? (isAuthenticated ? effectiveRole : null);
   const isInstructor = resolvedRole === "instructor";
   const isStudio = resolvedRole === "studio";
   const queryMinuteBucket = Math.floor(Date.now() / (60 * 1000));
@@ -176,7 +179,11 @@ export default function TabLayout() {
     };
   }, [isInstructor, isStudio]);
 
-  if (!isAuthLoading && !isAuthenticated && !effectiveRole) {
+  if (isAuthLoading) {
+    return <LoadingScreen label={t("tabsLayout.loading.loadingAccount")} />;
+  }
+
+  if (!isAuthenticated) {
     return <Redirect href="/sign-in" />;
   }
 

@@ -6,7 +6,7 @@ import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view"
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
 import { CreateJobSheet } from "@/components/jobs/studio/create-job-sheet";
-import BottomSheet from "@gorhom/bottom-sheet";
+import type BottomSheet from "@gorhom/bottom-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { KitButton } from "@/components/ui/kit";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -34,7 +34,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import Animated from "react-native-reanimated";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -100,7 +99,6 @@ export function StudioFeed() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const studioJobsStartedAtRef = useRef<number | null>(null);
 
-  const deviceTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const filteredStudioJobs = useMemo(() => {
     const search = jobsSearchQuery.trim().toLowerCase();
     return (studioJobs ?? []).filter((job) => {
@@ -840,5 +838,4 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-
 

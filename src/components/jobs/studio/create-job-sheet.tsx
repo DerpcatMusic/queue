@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo } from "react";
+import type React from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -7,7 +8,6 @@ import {
   Platform,
 } from "react-native";
 import BottomSheet, {
-  BottomSheetView,
   BottomSheetBackdrop,
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
@@ -237,7 +237,9 @@ export function CreateJobSheet({
               <KitTextField
                 label={t("jobsTab.form.maxParticipants", "Max Participants")}
                 value={String(draft.maxParticipants)}
-                onChangeText={(v) => setDraft(d => ({ ...d, maxParticipants: parseInt(v) || 12 }))}
+                onChangeText={(v) =>
+                  setDraft((d) => ({ ...d, maxParticipants: Number.parseInt(v, 10) || 12 }))
+                }
                 keyboardType="number-pad"
                 placeholder="12"
               />

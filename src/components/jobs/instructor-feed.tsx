@@ -5,6 +5,7 @@ import { InstructorArchiveSheet } from "@/components/jobs/instructor/instructor-
 import { InstructorNeedsDoneList } from "@/components/jobs/instructor/instructor-needs-done-list";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
 import { LoadingScreen } from "@/components/loading-screen";
+import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { ThemedText } from "@/components/themed-text";
@@ -41,7 +42,6 @@ import {
   Pressable,
   TextInput,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type FeedSectionHeaderProps = {
   title: string;
@@ -66,7 +66,6 @@ function FeedSectionHeader({ title, subtitle, palette }: FeedSectionHeaderProps)
 
 export function InstructorFeed() {
   const { t, i18n } = useTranslation();
-  const insets = useSafeAreaInsets();
 
   const palette = useBrand();
   const { resolvedScheme } = useThemePreference();
@@ -497,32 +496,27 @@ export function InstructorFeed() {
       </TabScreenScrollView>
 
       {currentUser.role === "instructor" ? (
-        <KitFab
-          key={`archive-fab-${resolvedScheme}`}
-          selected={archivedSessions.length > 0}
-          disabled={archivedSessions.length === 0}
-          {...(archivedSessions.length > 0
-            ? { badgeLabel: String(archivedSessions.length) }
-            : {})}
-          icon={
-            <MaterialIcons
-              name="history"
-              size={24}
-              color={archivedSessions.length > 0 ? palette.onPrimary : palette.textMuted}
-            />
-          }
-          style={[
-            styles.archiveFab,
-            {
-              bottom: Math.max(insets.bottom, 24),
-              [isRtl ? "left" : "right"]: BrandSpacing.lg,
-            },
-          ]}
-          onPress={() => {
-            if (archivedSessions.length === 0) return;
-            archiveSheetRef.current?.expand();
-          }}
-        />
+        <TabOverlayAnchor side={isRtl ? "left" : "right"} offset={BrandSpacing.lg}>
+          <KitFab
+            key={`archive-fab-${resolvedScheme}`}
+            selected={archivedSessions.length > 0}
+            disabled={archivedSessions.length === 0}
+            {...(archivedSessions.length > 0
+              ? { badgeLabel: String(archivedSessions.length) }
+              : {})}
+            icon={
+              <MaterialIcons
+                name="history"
+                size={24}
+                color={archivedSessions.length > 0 ? palette.onPrimary : palette.textMuted}
+              />
+            }
+            onPress={() => {
+              if (archivedSessions.length === 0) return;
+              archiveSheetRef.current?.expand();
+            }}
+          />
+        </TabOverlayAnchor>
       ) : null}
 
       {currentUser.role === "instructor" ? (
@@ -799,10 +793,6 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-  },
-  archiveFab: {
-    position: "absolute",
-    zIndex: 12,
   },
 });
 

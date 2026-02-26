@@ -32,15 +32,15 @@ import {
   Animated,
   AppState,
   LogBox,
-  StatusBar as NativeStatusBar,
   Platform,
   StyleSheet,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
-import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { AppSafeRoot } from "@/components/layout/app-safe-root";
 import { ThemedText } from "@/components/themed-text";
 import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
 import { UserProvider } from "@/contexts/user-context";
@@ -126,7 +126,6 @@ function isActivityUnavailableError(error: unknown): boolean {
 }
 
 function RootLayoutContent() {
-  const insets = useSafeAreaInsets();
   const { topInsetBackgroundColor } = useSystemUi();
   const { resolvedScheme, stylePreference } = useThemePreference();
   const palette = useBrand();
@@ -338,10 +337,6 @@ function RootLayoutContent() {
 
   const fallbackBackgroundColor = palette.appBg;
   const statusInsetColor = topInsetBackgroundColor ?? fallbackBackgroundColor;
-  const topInsetHeight = Math.max(
-    insets.top,
-    Platform.OS === "android" ? (NativeStatusBar.currentHeight ?? 0) : 0,
-  );
   const statusBarBackgroundColor =
     typeof statusInsetColor === "string" ? statusInsetColor : undefined;
 
@@ -350,15 +345,8 @@ function RootLayoutContent() {
       <ConvexAuthProvider client={convex} {...(nativeStorage ? { storage: nativeStorage } : {})}>
         <UserProvider>
           <ThemeProvider value={navigationTheme}>
-            <View style={styles.root}>
-              <View
-                pointerEvents="none"
-                style={[
-                  styles.topInsetFill,
-                  { height: topInsetHeight, backgroundColor: statusInsetColor },
-                ]}
-              />
-              <View style={[styles.stackContainer, { marginTop: topInsetHeight }]}>
+            <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
+              <View style={styles.stackContainer}>
                 <Stack>
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                   <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -372,7 +360,7 @@ function RootLayoutContent() {
                   />
                 </Stack>
               </View>
-            </View>
+            </AppSafeRoot>
             <StatusBar
               style={resolvedScheme === "dark" ? "light" : "dark"}
               animated
@@ -402,13 +390,6 @@ const styles = StyleSheet.create({
   },
   stackContainer: {
     flex: 1,
-  },
-  topInsetFill: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1,
   },
   errorContainer: {
     flex: 1,

@@ -22,7 +22,11 @@ export function RoleRouteGate({
   const { currentUser, effectiveRole, isAuthLoading, isAuthenticated } = useUser();
 
   if (currentUser === undefined) {
-    if (!isAuthLoading && !isAuthenticated) {
+    if (isAuthLoading) {
+      return <LoadingScreen {...(loadingLabel ? { label: loadingLabel } : {})} />;
+    }
+
+    if (!isAuthenticated) {
       return <Redirect href="/sign-in" />;
     }
 

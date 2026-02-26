@@ -1,6 +1,8 @@
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useQuery } from "convex/react";
 import { useBrand } from "@/hooks/use-brand";
 import { useAppLanguage } from "@/hooks/use-app-language";
+import { useProfileImageUpload } from "@/hooks/use-profile-image-upload";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -14,7 +16,9 @@ import { RoleRouteGate } from "@/components/auth/role-route-gate";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { useUser } from "@/contexts/user-context";
+import { api } from "@/convex/_generated/api";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -34,12 +38,26 @@ export default function StudioProfileScreen() {
   const router = useRouter();
   const isFocused = useIsFocused();
   const [hasActivated, setHasActivated] = useState(false);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null | undefined>(undefined);
+  const [profilePhotoStatus, setProfilePhotoStatus] = useState<string | null>(null);
+  const { isUploading: isUploadingProfilePhoto, pickAndUploadProfileImage } =
+    useProfileImageUpload();
 
   useEffect(() => {
     if (isFocused) {
       setHasActivated(true);
     }
   }, [isFocused]);
+
+  const studioSettings = useQuery(
+    api.users.getMyStudioSettings,
+    currentUser?.role === "studio" && hasActivated ? {} : "skip",
+  );
+
+  useEffect(() => {
+    const nextUrl = studioSettings?.profileImageUrl ?? currentUser?.image;
+    setProfilePhotoUrl(nextUrl);
+  }, [currentUser?.image, studioSettings?.profileImageUrl]);
 
   if (!hasActivated) return <LoadingScreen />;
 
@@ -59,6 +77,22 @@ export default function StudioProfileScreen() {
 
   const chevron = <IconSymbol name="chevron.right" size={14} color={palette.textMicro} />;
 
+  const uploadProfilePhoto = async () => {
+    setProfilePhotoStatus(null);
+    try {
+      const uploadedUrl = await pickAndUploadProfileImage();
+      if (uploadedUrl === undefined) {
+        return;
+      }
+      setProfilePhotoUrl(uploadedUrl);
+      setProfilePhotoStatus("Profile photo updated.");
+    } catch (error) {
+      setProfilePhotoStatus(
+        error instanceof Error ? error.message : "Failed to update profile photo.",
+      );
+    }
+  };
+
   return (
     <RoleRouteGate requiredRole="studio" redirectHref="/(tabs)/instructor/profile">
       <TabScreenScrollView
@@ -69,11 +103,72 @@ export default function StudioProfileScreen() {
       >
       <SectionHeader label={t("profile.account.title")} palette={palette} />
       <View style={[styles.cardGroup, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 14,
+            paddingVertical: 18,
+            paddingHorizontal: 20,
+            borderBottomWidth: 1,
+            borderBottomColor: palette.border,
+          }}
+        >
+          <ProfileAvatar
+            imageUrl={profilePhotoUrl}
+            fallbackName={nameValue}
+            palette={palette}
+            size={58}
+            roundedSquare
+          />
+          <View style={{ flex: 1, gap: 3 }}>
+            <ThemedText
+              style={{ fontSize: 16, fontWeight: "500", color: palette.text, letterSpacing: -0.1 }}
+            >
+              Profile photo
+            </ThemedText>
+            <ThemedText
+              style={{ color: palette.textMuted, fontSize: 13, fontWeight: "400" }}
+            >
+              Used on your home banner and job cards.
+            </ThemedText>
+          </View>
+          <Pressable
+            onPress={() => {
+              void uploadProfilePhoto();
+            }}
+            disabled={isUploadingProfilePhoto}
+            style={({ pressed }) => [
+              {
+                borderWidth: 1,
+                borderColor: palette.borderStrong,
+                backgroundColor: pressed ? (palette.surfaceAlt as string) : "transparent",
+                borderRadius: 999,
+                borderCurve: "continuous",
+                paddingHorizontal: 14,
+                paddingVertical: 9,
+              },
+            ]}
+          >
+            <ThemedText
+              style={{ color: palette.text, fontSize: 13, fontWeight: "500" }}
+            >
+              {isUploadingProfilePhoto ? "Uploading..." : "Change"}
+            </ThemedText>
+          </Pressable>
+        </View>
         <ProfileRow title={t("profile.account.nameLabel")} subtitle={nameValue} palette={palette} />
         <ProfileRow title={t("profile.account.emailLabel")} subtitle={emailValue} palette={palette} />
         <ProfileRow title={t("profile.account.roleLabel")} subtitle={roleValue} palette={palette} isLast={!memberSince} />
         {memberSince && <ProfileRow title={t("profile.account.memberSince")} subtitle={memberSince} palette={palette} isLast />}
       </View>
+      {profilePhotoStatus ? (
+        <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
+          <ThemedText style={{ color: palette.textMuted, fontSize: 13 }}>
+            {profilePhotoStatus}
+          </ThemedText>
+        </View>
+      ) : null}
 
       <SectionHeader label={t("profile.appearance.title")} palette={palette} />
       <View style={[styles.cardGroup, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>

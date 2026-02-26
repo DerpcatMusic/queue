@@ -17,7 +17,9 @@ import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
+import { useProfileImageUpload } from "@/hooks/use-profile-image-upload";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -36,6 +38,10 @@ export default function InstructorProfileScreen() {
   const router = useRouter();
   const isFocused = useIsFocused();
   const [hasActivated, setHasActivated] = useState(false);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null | undefined>(undefined);
+  const [profilePhotoStatus, setProfilePhotoStatus] = useState<string | null>(null);
+  const { isUploading: isUploadingProfilePhoto, pickAndUploadProfileImage } =
+    useProfileImageUpload();
 
   useEffect(() => {
     if (isFocused) {
@@ -55,6 +61,11 @@ export default function InstructorProfileScreen() {
     api.didit.getMyDiditVerification,
     currentUser?.role === "instructor" && hasActivated ? {} : "skip",
   );
+
+  useEffect(() => {
+    const nextUrl = instructorSettings?.profileImageUrl ?? currentUser?.image;
+    setProfilePhotoUrl(nextUrl);
+  }, [currentUser?.image, instructorSettings?.profileImageUrl]);
 
   if (!hasActivated) return <LoadingScreen />;
 
@@ -77,7 +88,9 @@ export default function InstructorProfileScreen() {
     sports.length === 0
       ? t("profile.settings.sports.none")
       : sports.length <= 2
-        ? sports.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(", ")
+        ? sports
+            .map((sport: string) => (isSportType(sport) ? toSportLabel(sport) : sport))
+            .join(", ")
         : t("profile.settings.sports.selected", { count: sports.length });
 
   const addr = instructorSettings?.address;
@@ -111,6 +124,22 @@ export default function InstructorProfileScreen() {
 
   const chevron = <IconSymbol name="chevron.right" size={14} color={palette.textMicro} />;
 
+  const uploadProfilePhoto = async () => {
+    setProfilePhotoStatus(null);
+    try {
+      const uploadedUrl = await pickAndUploadProfileImage();
+      if (uploadedUrl === undefined) {
+        return;
+      }
+      setProfilePhotoUrl(uploadedUrl);
+      setProfilePhotoStatus("Profile photo updated.");
+    } catch (error) {
+      setProfilePhotoStatus(
+        error instanceof Error ? error.message : "Failed to update profile photo.",
+      );
+    }
+  };
+
   return (
     <RoleRouteGate requiredRole="instructor" redirectHref="/(tabs)/studio/profile">
       <TabScreenScrollView
@@ -126,6 +155,60 @@ export default function InstructorProfileScreen() {
             { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
           ]}
         >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 14,
+              paddingVertical: 18,
+              paddingHorizontal: 20,
+              borderBottomWidth: 1,
+              borderBottomColor: palette.border,
+            }}
+          >
+            <ProfileAvatar
+              imageUrl={profilePhotoUrl}
+              fallbackName={nameValue}
+              palette={palette}
+              size={58}
+              roundedSquare
+            />
+            <View style={{ flex: 1, gap: 3 }}>
+              <ThemedText
+                style={{ fontSize: 16, fontWeight: "500", color: palette.text, letterSpacing: -0.1 }}
+              >
+                Profile photo
+              </ThemedText>
+              <ThemedText
+                style={{ color: palette.textMuted, fontSize: 13, fontWeight: "400" }}
+              >
+                Used on your home banner and job cards.
+              </ThemedText>
+            </View>
+            <Pressable
+              onPress={() => {
+                void uploadProfilePhoto();
+              }}
+              disabled={isUploadingProfilePhoto}
+              style={({ pressed }) => [
+                {
+                  borderWidth: 1,
+                  borderColor: palette.borderStrong,
+                  backgroundColor: pressed ? (palette.surfaceAlt as string) : "transparent",
+                  borderRadius: 999,
+                  borderCurve: "continuous",
+                  paddingHorizontal: 14,
+                  paddingVertical: 9,
+                },
+              ]}
+            >
+              <ThemedText
+                style={{ color: palette.text, fontSize: 13, fontWeight: "500" }}
+              >
+                {isUploadingProfilePhoto ? "Uploading..." : "Change"}
+              </ThemedText>
+            </Pressable>
+          </View>
           <ProfileRow
             title={t("profile.account.nameLabel")}
             subtitle={nameValue}
@@ -154,6 +237,13 @@ export default function InstructorProfileScreen() {
             />
           )}
         </View>
+        {profilePhotoStatus ? (
+          <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
+            <ThemedText style={{ color: palette.textMuted, fontSize: 13 }}>
+              {profilePhotoStatus}
+            </ThemedText>
+          </View>
+        ) : null}
 
         <SectionHeader label={t("profile.appearance.title")} palette={palette} />
         <View

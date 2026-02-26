@@ -95,7 +95,9 @@ export default function OnboardingScreen() {
 
   const [step, setStep] = useState<OnboardingStep>(0);
   const [selectedRole, setSelectedRole] = useState<OnboardingRole | null>(null);
-  const effectiveRole = selectedRole ?? (currentUser.role === "pending" ? null : currentUser.role);
+  const effectiveRole: OnboardingRole | null =
+    selectedRole ??
+    (currentUser?.role === "instructor" || currentUser?.role === "studio" ? currentUser.role : null);
   const isInstructorFlow = effectiveRole === "instructor";
   const totalSteps = isInstructorFlow ? 3 : 2;
   const currentStep = step + 1;
@@ -489,6 +491,7 @@ export default function OnboardingScreen() {
         studioName: studioName.trim(),
         address: studioAddress.trim(),
         zone: resolvedZone,
+        sports: [],
         latitude: resolvedLatitude,
         longitude: resolvedLongitude,
         ...omitUndefined({ contactPhone: trimOptional(studioContactPhone) }),

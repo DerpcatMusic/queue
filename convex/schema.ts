@@ -26,6 +26,19 @@ export default defineSchema({
   })
     .index("by_role", ["role"]),
 
+  profileImageUploadSessions: defineTable({
+    userId: v.id("users"),
+    role: v.union(v.literal("instructor"), v.literal("studio")),
+    token: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    consumedAt: v.optional(v.number()),
+    storageId: v.optional(v.id("_storage")),
+  })
+    .index("by_user", ["userId", "createdAt"])
+    .index("by_token", ["token"])
+    .index("by_expiresAt", ["expiresAt"]),
+
   instructorProfiles: defineTable({
     userId: v.id("users"),
     displayName: v.string(),
