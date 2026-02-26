@@ -3,17 +3,19 @@ import { toSportLabel } from "@/convex/constants";
 import { ThemedText } from "@/components/themed-text";
 import { KitButton, KitList, KitListItem } from "@/components/ui/kit";
 import { BrandRadius, type BrandPalette } from "@/constants/brand";
-import { formatDateTime } from "@/lib/jobs-utils";
+import { formatTime, formatDateWithWeekday } from "@/lib/jobs-utils";
 import type { ReactNode } from "react";
 import { View, type StyleProp, type ViewStyle } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import type { TFunction } from "i18next";
+import { AppSymbol } from "@/components/ui/app-symbol";
 
 type NeedsDoneSession = {
   applicationId: string;
   jobId: Id<"jobs">;
   sport: string;
   studioName: string;
+  startTime: number;
   endTime: number;
 };
 
@@ -68,9 +70,18 @@ export function InstructorNeedsDoneList({
                 <ThemedText style={{ color: palette.textMuted }}>
                   {session.studioName}
                 </ThemedText>
-                <ThemedText style={{ color: palette.textMuted }}>
-                  {formatDateTime(session.endTime, locale)}
-                </ThemedText>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <AppSymbol name="calendar.circle.fill" size={14} tintColor={palette.textMuted} />
+                  <ThemedText style={{ color: palette.textMuted }}>
+                    {formatDateWithWeekday(session.startTime, locale)}
+                  </ThemedText>
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <AppSymbol name="clock.fill" size={14} tintColor={palette.textMuted} />
+                  <ThemedText style={{ color: palette.textMuted }}>
+                    {`${formatTime(session.startTime, locale)} - ${formatTime(session.endTime, locale)}`}
+                  </ThemedText>
+                </View>
               </ViewWrap>
               <KitButton
                 label={

@@ -1,4 +1,4 @@
-import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import type { ComponentType } from "react";
 import { View, type ViewProps } from "react-native";
 
 import { BrandRadius } from "@/constants/brand";
@@ -12,6 +12,32 @@ export type KitSurfaceProps = ViewProps & {
   gap?: number;
 };
 
+type GlassModule = {
+  GlassView: ComponentType<
+    ViewProps & {
+      glassEffectStyle?: "regular" | "clear" | "prominent";
+      colorScheme?: "light" | "dark";
+    }
+  >;
+  isLiquidGlassAvailable: () => boolean;
+};
+
+let cachedGlassModule: GlassModule | null | undefined;
+
+function getGlassModule(): GlassModule | null {
+  if (cachedGlassModule !== undefined) {
+    return cachedGlassModule;
+  }
+  try {
+    // Resolve once and gracefully fallback when native module/runtime isn't available.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cachedGlassModule = require("expo-glass-effect") as GlassModule;
+  } catch {
+    cachedGlassModule = null;
+  }
+  return cachedGlassModule;
+}
+
 export function KitSurface({
   tone = "base",
   padding = 16,
@@ -23,6 +49,7 @@ export function KitSurface({
   const { background, border, shadow, scheme, stylePreference } = useKitTheme();
   const isGlass = tone === "glass";
   const allowNativeGlass = stylePreference === "native" && process.env.EXPO_OS === "ios";
+  const glassModule = allowNativeGlass ? getGlassModule() : null;
 
   const baseStyle = [
     {
@@ -46,7 +73,8 @@ export function KitSurface({
     style,
   ];
 
-  if (isGlass && allowNativeGlass && isLiquidGlassAvailable()) {
+  if (isGlass && glassModule && glassModule.isLiquidGlassAvailable()) {
+    const GlassView = glassModule.GlassView;
     return (
       <GlassView
         glassEffectStyle="regular"

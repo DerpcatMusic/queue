@@ -1,23 +1,23 @@
 import { useAuthActions } from "@convex-dev/auth/react";
-import { api } from "@/convex/_generated/api";
-import { isSportType, toSportLabel } from "@/convex/constants";
-import { useBrand } from "@/hooks/use-brand";
-import { useAppLanguage } from "@/hooks/use-app-language";
-import { useThemePreference } from "@/hooks/use-theme-preference";
 import { useIsFocused } from "@react-navigation/native";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, View, Switch, Pressable } from "react-native";
-import type { BrandPalette } from "@/constants/brand";
 import { useTranslation } from "react-i18next";
+import { Pressable, StyleSheet, Switch, View } from "react-native";
 
-import { LoadingScreen } from "@/components/loading-screen";
 import { RoleRouteGate } from "@/components/auth/role-route-gate";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
+import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import type { BrandPalette } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
+import { api } from "@/convex/_generated/api";
+import { isSportType, toSportLabel } from "@/convex/constants";
+import { useAppLanguage } from "@/hooks/use-app-language";
+import { useBrand } from "@/hooks/use-brand";
+import { useThemePreference } from "@/hooks/use-theme-preference";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -30,8 +30,7 @@ export default function InstructorProfileScreen() {
   const { signOut } = useAuthActions();
   const { currentUser } = useUser();
   const { language, setLanguage } = useAppLanguage();
-  const { preference, setPreference, resolvedScheme, stylePreference, setStylePreference } =
-    useThemePreference();
+  const { preference, setPreference, resolvedScheme } = useThemePreference();
   const { t, i18n } = useTranslation();
   const palette = useBrand();
   const router = useRouter();
@@ -48,9 +47,13 @@ export default function InstructorProfileScreen() {
     api.users.getMyInstructorSettings,
     currentUser?.role === "instructor" && hasActivated ? {} : "skip",
   );
-  const paymentPreview = useQuery(
-    api.payments.listMyPayments,
-    currentUser?.role === "instructor" && hasActivated ? { limit: 1 } : "skip",
+  const payoutSummary = useQuery(
+    api.payments.getMyPayoutSummary,
+    currentUser?.role === "instructor" && hasActivated ? {} : "skip",
+  );
+  const diditVerification = useQuery(
+    api.didit.getMyDiditVerification,
+    currentUser?.role === "instructor" && hasActivated ? {} : "skip",
   );
 
   if (!hasActivated) return <LoadingScreen />;
@@ -92,135 +95,192 @@ export default function InstructorProfileScreen() {
         ? "Google"
         : t("profile.roles.unknown");
 
-  const latestPayment = paymentPreview?.[0];
-  const paymentSummary =
-    paymentPreview === undefined
-      ? "Loading..."
-      : !latestPayment
-        ? "No payments yet"
-        : latestPayment.payout
-          ? `Payout ${latestPayment.payout.status}`
-          : `Payment ${latestPayment.payment.status}`;
+  const bankConnected = payoutSummary?.hasVerifiedDestination ?? false;
+  const paymentSummary = bankConnected ? "Bank connected" : "Bank not connected";
+  const identityStatus = diditVerification?.status ?? "not_started";
+  const identityVerified = diditVerification?.isVerified ?? false;
+  const identitySummary = identityVerified
+    ? "Identity verified"
+    : identityStatus === "declined"
+      ? "Verification declined"
+      : identityStatus === "in_review" || identityStatus === "pending"
+        ? "Verification in review"
+        : identityStatus === "in_progress"
+          ? "Verification in progress"
+          : "Not verified";
 
   const chevron = <IconSymbol name="chevron.right" size={14} color={palette.textMicro} />;
 
   return (
-    <RoleRouteGate requiredRole="instructor" redirectHref="/(tabs)/studio/profile/index">
+    <RoleRouteGate requiredRole="instructor" redirectHref="/(tabs)/studio/profile">
       <TabScreenScrollView
         routeKey="instructor/profile"
         key={resolvedScheme}
         style={[styles.screen, { backgroundColor: palette.appBg }]}
         contentContainerStyle={styles.content}
       >
-      <SectionHeader label={t("profile.account.title")} palette={palette} />
-      <View style={{ borderTopWidth: 1, borderTopColor: palette.border }}>
-        <ProfileRow title={t("profile.account.nameLabel")} subtitle={nameValue} palette={palette} />
-        <ProfileRow title={t("profile.account.emailLabel")} subtitle={emailValue} palette={palette} />
-        <ProfileRow title={t("profile.account.roleLabel")} subtitle={roleValue} palette={palette} />
-        {memberSince && <ProfileRow title={t("profile.account.memberSince")} subtitle={memberSince} palette={palette} />}
-      </View>
-
-      <SectionHeader label={t("profile.appearance.title")} palette={palette} />
-      <View style={{ borderTopWidth: 1, borderTopColor: palette.border }}>
-        <ProfileRow
-          title={t("profile.language.title")}
-          subtitle={language === "en" ? t("language.english") : t("language.hebrew")}
-          onPress={() => void setLanguage(language === "en" ? "he" : "en")}
-          palette={palette}
-          accessory={chevron}
-        />
-        <ProfileRow
-          title={t("profile.appearance.themeStyle.title")}
-          subtitle={
-            stylePreference === "native"
-              ? t("profile.appearance.themeStyle.nativeDescription")
-              : t("profile.appearance.themeStyle.customDescription")
-          }
-          palette={palette}
-          accessory={
-            <Switch
-              value={stylePreference === "native"}
-              onValueChange={(val) => setStylePreference(val ? "native" : "custom")}
-              trackColor={{ true: palette.primary, false: palette.borderStrong }}
+        <SectionHeader label={t("profile.account.title")} palette={palette} />
+        <View
+          style={[
+            styles.cardGroup,
+            { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+          ]}
+        >
+          <ProfileRow
+            title={t("profile.account.nameLabel")}
+            subtitle={nameValue}
+            palette={palette}
+          />
+          {identityVerified ? (
+            <ProfileRow title="KYC" subtitle="Verified legal identity" palette={palette} />
+          ) : null}
+          <ProfileRow
+            title={t("profile.account.emailLabel")}
+            subtitle={emailValue}
+            palette={palette}
+          />
+          <ProfileRow
+            title={t("profile.account.roleLabel")}
+            subtitle={roleValue}
+            palette={palette}
+            isLast={!memberSince}
+          />
+          {memberSince && (
+            <ProfileRow
+              title={t("profile.account.memberSince")}
+              subtitle={memberSince}
+              palette={palette}
+              isLast
             />
-          }
-        />
-        <ProfileRow
-          title={t("profile.appearance.systemTheme.title")}
-          subtitle={t("profile.appearance.systemTheme.description")}
-          palette={palette}
-          accessory={
-            <Switch
-              value={preference === "system"}
-              onValueChange={(val) => setPreference(val ? "system" : "light")}
-              trackColor={{ true: palette.primary, false: palette.borderStrong }}
+          )}
+        </View>
+
+        <SectionHeader label={t("profile.appearance.title")} palette={palette} />
+        <View
+          style={[
+            styles.cardGroup,
+            { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+          ]}
+        >
+          <ProfileRow
+            title={t("profile.language.title")}
+            subtitle={language === "en" ? t("language.english") : t("language.hebrew")}
+            onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+            palette={palette}
+            accessory={chevron}
+          />
+          <ProfileRow
+            title={t("profile.appearance.systemTheme.title")}
+            subtitle=""
+            palette={palette}
+            accessory={
+              <Switch
+                value={preference === "system"}
+                onValueChange={(val) => setPreference(val ? "system" : "light")}
+                trackColor={{ true: palette.primary, false: palette.borderStrong }}
+              />
+            }
+          />
+          <ProfileRow
+            title={t("profile.appearance.darkMode.title")}
+            subtitle=""
+            palette={palette}
+            isLast
+            accessory={
+              <Switch
+                disabled={preference === "system"}
+                value={preference === "dark"}
+                onValueChange={(val) => setPreference(val ? "dark" : "light")}
+                trackColor={{ true: palette.primary, false: palette.borderStrong }}
+              />
+            }
+          />
+        </View>
+
+        <SectionHeader label="Payments" palette={palette} />
+        <View
+          style={[
+            styles.cardGroup,
+            { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+          ]}
+        >
+          <ProfileRow
+            title="Payments & payouts"
+            subtitle={paymentSummary}
+            onPress={() => router.push("/(tabs)/instructor/profile/payments")}
+            palette={palette}
+            accessory={
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    backgroundColor: bankConnected ? (palette.success as string) : palette.warning,
+                  }}
+                />
+                {chevron}
+              </View>
+            }
+          />
+          <ProfileRow
+            title="Identity verification"
+            subtitle={identitySummary}
+            onPress={() => router.push("/(tabs)/instructor/profile/identity-verification")}
+            palette={palette}
+            isLast
+            accessory={chevron}
+          />
+        </View>
+
+        <SectionHeader label={t("profile.settings.title")} palette={palette} />
+        <View
+          style={[
+            styles.cardGroup,
+            { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+          ]}
+        >
+          <ProfileRow
+            title={t("profile.settings.sports.title")}
+            subtitle={sportsSummary}
+            onPress={() => router.push("/(tabs)/instructor/profile/sports")}
+            palette={palette}
+            accessory={chevron}
+          />
+          <ProfileRow
+            title={t("profile.settings.location.title")}
+            subtitle={locationSummary}
+            onPress={() => router.push("/(tabs)/instructor/profile/location")}
+            palette={palette}
+            accessory={chevron}
+          />
+          <ProfileRow
+            title={t("profile.settings.calendar.title")}
+            subtitle={calendarSummary}
+            onPress={() => router.push("/(tabs)/instructor/profile/calendar-settings")}
+            palette={palette}
+            isLast
+            accessory={chevron}
+          />
+        </View>
+
+        <View style={{ marginTop: 40, marginBottom: 40 }}>
+          <View
+            style={[
+              styles.cardGroup,
+              { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+            ]}
+          >
+            <ProfileRow
+              title={t("auth.signOutButton")}
+              subtitle=""
+              onPress={() => void signOut()}
+              palette={palette}
+              isLast
+              accessory={<IconSymbol name="arrow.right.square" size={24} color={palette.danger} />}
             />
-          }
-        />
-        <ProfileRow
-          title={t("profile.appearance.darkMode.title")}
-          subtitle={
-            preference === "system"
-              ? t("profile.appearance.darkMode.disableSystemFirst")
-              : t("profile.appearance.darkMode.description")
-          }
-          palette={palette}
-          accessory={
-            <Switch
-              disabled={preference === "system"}
-              value={preference === "dark"}
-              onValueChange={(val) => setPreference(val ? "dark" : "light")}
-              trackColor={{ true: palette.primary, false: palette.borderStrong }}
-            />
-          }
-        />
-      </View>
-
-      <SectionHeader label="Payments" palette={palette} />
-      <View style={{ borderTopWidth: 1, borderTopColor: palette.border }}>
-        <ProfileRow
-          title="Payments & payouts"
-          subtitle={paymentSummary}
-          onPress={() => router.push("/(tabs)/instructor/profile/payments")}
-          palette={palette}
-          accessory={chevron}
-        />
-      </View>
-
-      <SectionHeader label={t("profile.settings.title")} palette={palette} />
-      <View style={{ borderTopWidth: 1, borderTopColor: palette.border }}>
-        <ProfileRow
-          title={t("profile.settings.sports.title")}
-          subtitle={sportsSummary}
-          onPress={() => router.push("/(tabs)/instructor/profile/sports")}
-          palette={palette}
-          accessory={chevron}
-        />
-        <ProfileRow
-          title={t("profile.settings.location.title")}
-          subtitle={locationSummary}
-          onPress={() => router.push("/(tabs)/instructor/profile/location")}
-          palette={palette}
-          accessory={chevron}
-        />
-        <ProfileRow
-          title={t("profile.settings.calendar.title")}
-          subtitle={calendarSummary}
-          onPress={() => router.push("/(tabs)/instructor/profile/calendar-settings")}
-          palette={palette}
-          accessory={chevron}
-        />
-      </View>
-
-      <View style={{ marginTop: 48, marginBottom: 32 }}>
-        <ProfileRow
-          title={t("auth.signOutButton")}
-          subtitle={t("profile.signOut.description")}
-          onPress={() => void signOut()}
-          palette={palette}
-          accessory={<IconSymbol name="arrow.right.square" size={24} color={palette.danger} />}
-        />
-      </View>
+          </View>
+        </View>
       </TabScreenScrollView>
     </RoleRouteGate>
   );
@@ -238,10 +298,9 @@ function SectionHeader({ label, palette }: SectionHeaderProps) {
         type="title"
         style={{
           color: palette.text,
-          textTransform: "uppercase",
-          fontWeight: "900",
-          letterSpacing: -1,
-          fontSize: 32,
+          fontWeight: "600",
+          letterSpacing: -0.2,
+          fontSize: 20,
         }}
       >
         {label}
@@ -256,12 +315,14 @@ function ProfileRow({
   accessory,
   onPress,
   palette,
+  isLast = false,
 }: {
   title: string;
   subtitle?: string;
   accessory?: React.ReactNode;
   onPress?: () => void;
   palette: BrandPalette;
+  isLast?: boolean;
 }) {
   const content = (
     <View
@@ -270,27 +331,40 @@ function ProfileRow({
         alignItems: "center",
         justifyContent: "space-between",
         paddingVertical: 18,
-        paddingHorizontal: 24,
-        borderBottomWidth: 1,
+        paddingHorizontal: 20,
+        borderBottomWidth: isLast ? 0 : 1,
         borderBottomColor: palette.border,
       }}
     >
       <View style={{ flex: 1, paddingRight: 16 }}>
-        <ThemedText style={{ fontSize: 16, fontWeight: "800", color: palette.text, letterSpacing: -0.5, textTransform: "uppercase" }}>
+        <ThemedText
+          style={{ fontSize: 16, fontWeight: "500", color: palette.text, letterSpacing: -0.1 }}
+        >
           {title}
         </ThemedText>
-        {subtitle && (
-          <ThemedText style={{ color: palette.textMuted, fontSize: 14, fontWeight: "600", marginTop: 4 }}>
+        {subtitle ? (
+          <ThemedText
+            style={{ color: palette.textMuted, fontSize: 13, fontWeight: "400", marginTop: 4 }}
+          >
             {subtitle}
           </ThemedText>
-        )}
+        ) : null}
       </View>
       {accessory && <View>{accessory}</View>}
     </View>
   );
 
   if (onPress) {
-    return <Pressable onPress={onPress}>{content}</Pressable>;
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          { backgroundColor: pressed ? (palette.surfaceAlt as string) : "transparent" },
+        ]}
+      >
+        {content}
+      </Pressable>
+    );
   }
   return content;
 }
@@ -301,10 +375,17 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: 0,
+    paddingVertical: 16,
   },
   sectionHeader: {
     paddingHorizontal: 24,
-    paddingTop: 36,
-    paddingBottom: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  cardGroup: {
+    borderWidth: 1,
+    borderRadius: 24,
+    marginHorizontal: 16,
+    overflow: "hidden",
   },
 });

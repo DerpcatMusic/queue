@@ -59,7 +59,7 @@ export function KitSegmentedToggle<T extends string>({
             <Text
               style={{
                 fontSize: 13,
-                fontWeight: "700",
+                fontWeight: "500",
                 color: selected ? foreground.primary : foreground.muted,
                 includeFontPadding: false,
               }}

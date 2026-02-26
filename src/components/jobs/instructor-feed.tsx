@@ -260,10 +260,6 @@ export function InstructorFeed() {
     .filter((row) => row.endTime <= now || row.lifecycle === "completed")
     .sort((a, b) => b.endTime - a.endTime);
 
-  const nonAcceptedApplications = (myApplications ?? [])
-    .filter((row) => row.status !== "accepted")
-    .sort((a, b) => b.appliedAt - a.appliedAt);
-
   const filteredAvailableJobs = useMemo(() => {
     const search = jobsSearchQuery.trim().toLowerCase();
     const nowRef = now;
@@ -390,7 +386,6 @@ export function InstructorFeed() {
         {currentUser.role === "instructor" ? (
           <FeedSectionHeader
             title={t("jobsTab.needsDoneTitle", { count: needsDoneSessions.length })}
-            subtitle={t("jobsTab.instructorSessionsTitle")}
             palette={palette}
           />
         ) : null}
@@ -410,7 +405,6 @@ export function InstructorFeed() {
             <View style={{ flex: 1, paddingTop: BrandSpacing.md }}>
               <FeedSectionHeader
                 title={t("jobsTab.availableJobsTitle")}
-                subtitle={t("jobsTab.timezoneHint", { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
                 palette={palette}
               />
               <View style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.sm, paddingBottom: BrandSpacing.sm }}>
@@ -498,15 +492,6 @@ export function InstructorFeed() {
               )}
             </View>
 
-            {nonAcceptedApplications.length > 0 ? (
-              <View style={{ paddingHorizontal: BrandSpacing.lg, paddingVertical: BrandSpacing.md }}>
-                <ThemedText style={{ color: palette.textMuted, textAlign: "center" }}>
-                  {t("jobsTab.applicationSummary", {
-                    count: nonAcceptedApplications.length,
-                  })}
-                </ThemedText>
-              </View>
-            ) : null}
           </>
         ) : null}
       </TabScreenScrollView>

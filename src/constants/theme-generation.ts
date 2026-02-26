@@ -70,10 +70,10 @@ type LinearRgb = { r: number; g: number; b: number };
 type Rgb = { r: number; g: number; b: number };
 
 const DEFAULT_OPTIONS: ThemeGenerationOptions = {
-  targetTextContrast: 5.2,
-  targetMutedTextContrast: 3.2,
-  minChroma: 0.02,
-  maxChroma: 0.34,
+  targetTextContrast: 7.2,
+  targetMutedTextContrast: 4.2,
+  minChroma: 0.00, // Removed artificial tinting (was 0.04)
+  maxChroma: 0.42,
 };
 
 const TOKEN_ALIAS_MAP: TokenAliasMap = {
@@ -242,10 +242,15 @@ function tuneTextOnBackground(background: string, preferDark: boolean, minRatio:
 }
 
 function derive(base: Oklch, overrides: Partial<Oklch>, options: ThemeGenerationOptions): string {
+  // We carefully clamp chroma to the options minimum, EXCEPT if the caller explicitly requests extremely low chroma
+  // to avoid tinting deep/dark backgrounds with an artificial hue.
+  const targetC = overrides.c ?? base.c;
+  const isNeutralRequested = overrides.c !== undefined && overrides.c < options.minChroma;
+  
   return rgbToHex(
     oklchToRgb({
       l: clamp(overrides.l ?? base.l, 0.02, 0.98),
-      c: clamp(overrides.c ?? base.c, options.minChroma, options.maxChroma),
+      c: isNeutralRequested ? targetC : clamp(targetC, options.minChroma, options.maxChroma),
       h: overrides.h ?? base.h,
     }),
   );
@@ -284,28 +289,28 @@ export function generateThemeTokens(
 
   const surfaceApp = derive(
     baseBackground,
-    { l: isDark ? 0.12 : 0.97, c: baseBackground.c * 0.18 },
+    { l: isDark ? 0.14 : 0.97, c: baseBackground.c * 0.18 },
     options,
   );
   const surfaceBase = derive(
     baseNeutral,
-    { l: isDark ? 0.16 : 0.995, c: baseNeutral.c * 0.22 },
+    { l: isDark ? 0.18 : 0.995, c: baseNeutral.c * 0.22 },
     options,
   );
   const surfaceAlt = derive(
     baseNeutral,
-    { l: isDark ? 0.2 : 0.93, c: baseNeutral.c * 0.3 },
+    { l: isDark ? 0.22 : 0.93, c: baseNeutral.c * 0.3 },
     options,
   );
   const surfaceElevated = derive(
     baseNeutral,
-    { l: isDark ? 0.22 : 1, c: baseNeutral.c * 0.2 },
+    { l: isDark ? 0.24 : 1, c: baseNeutral.c * 0.2 },
     options,
   );
 
   const textPrimary = tuneTextOnBackground(surfaceBase, !isDark, options.targetTextContrast);
   const textSecondary = tuneTextOnBackground(surfaceBase, !isDark, options.targetMutedTextContrast);
-  const textMicro = tuneTextOnBackground(surfaceAlt, !isDark, 2.8);
+  const textMicro = tuneTextOnBackground(surfaceAlt, !isDark, 2.4); // Clearly distinct from textMuted
   const onPrimary = tuneTextOnBackground(
     derive(basePrimary, { l: isDark ? 0.68 : 0.58, c: basePrimary.c }, options),
     isDark,
@@ -382,3 +387,4 @@ export function generateThemeTokens(
   CACHE.set(cacheKey, tokens);
   return tokens;
 }
+

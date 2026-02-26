@@ -368,6 +368,7 @@ export const getMyStudioSettings = query({
       notificationsEnabled: v.boolean(),
       hasExpoPushToken: v.boolean(),
       autoExpireMinutesBefore: v.number(),
+      sports: v.array(v.string()),
     }),
     v.null(),
   ),
@@ -381,13 +382,17 @@ export const getMyStudioSettings = query({
       .query("studioProfiles")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .unique();
-    if (!profile) {
-      return null;
-    }
+    if (!profile) return null;
 
     const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
     const notificationsEnabled =
       Boolean(profile.notificationsEnabled) && hasExpoPushToken;
+
+    const sportsRows = await ctx.db
+      .query("studioSports")
+      .withIndex("by_studio_id", (q) => q.eq("studioId", profile._id))
+      .collect();
+    const sports = [...new Set(sportsRows.map((row) => row.sport))].sort();
 
     return {
       studioId: profile._id,
@@ -402,6 +407,7 @@ export const getMyStudioSettings = query({
       notificationsEnabled,
       hasExpoPushToken,
       autoExpireMinutesBefore: profile.autoExpireMinutesBefore ?? 30,
+      sports,
     };
   },
 });
@@ -415,6 +421,7 @@ export const updateMyStudioSettings = mutation({
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     autoExpireMinutesBefore: v.optional(v.number()),
+    sports: v.optional(v.array(v.string())),
   },
   returns: v.object({
     ok: v.boolean(),
@@ -479,6 +486,24 @@ export const updateMyStudioSettings = mutation({
       }),
       updatedAt: Date.now(),
     });
+
+    if (args.sports) {
+      const existingSports = await ctx.db
+        .query("studioSports")
+        .withIndex("by_studio_id", (q) => q.eq("studioId", profile._id))
+        .collect();
+      await Promise.all(existingSports.map((s) => ctx.db.delete("studioSports", s._id)));
+      const now = Date.now();
+      await Promise.all(
+        args.sports.map((sport) =>
+          ctx.db.insert("studioSports", {
+            studioId: profile._id,
+            sport: normalizeSportType(sport),
+            createdAt: now,
+          }),
+        ),
+      );
+    }
 
     return {
       ok: true,

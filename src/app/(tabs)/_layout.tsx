@@ -1,28 +1,46 @@
-﻿import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useAuthActions } from "@convex-dev/auth/react";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useQuery } from "convex/react";
-import { Redirect, usePathname, useRouter } from "expo-router";
+import { Redirect, usePathname } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { Platform, View } from "react-native";
-
-import { useUser } from "@/contexts/user-context";
-import { api } from "@/convex/_generated/api";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { type ColorValue, Platform, View } from "react-native";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
-import { AndroidFloatingTabBar, type FloatingTabSpec } from "@/components/layout/android-floating-tab-bar";
 import { KitButton, KitSurface } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
-import { FEATURE_FLAGS } from "@/constants/feature-flags";
+import { useSystemUi } from "@/contexts/system-ui-context";
 import { TabBarScrollProvider } from "@/contexts/tab-bar-scroll-context";
+import { useUser } from "@/contexts/user-context";
+import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
-import { useTranslation } from "react-i18next";
 
-type RoleTabSpec = FloatingTabSpec & {
+type RoleTabSpec = {
+  key: string;
+  label: string;
+  iconName: keyof typeof MaterialIcons.glyphMap;
+  badgeCount?: number;
   name: string;
   href: string;
   sfDefault: string;
   sfSelected: string;
 };
+
+function resolveTabStatusInsetColor(
+  pathname: string | null,
+  palette: ReturnType<typeof useBrand>,
+): ColorValue {
+  if (!pathname) {
+    return palette.appBg;
+  }
+
+  if (pathname === "/instructor" || pathname === "/studio") {
+    return palette.surface;
+  }
+
+  return palette.appBg;
+}
 
 function NativeTabBadge({ count }: { count: number }) {
   return (
@@ -30,14 +48,6 @@ function NativeTabBadge({ count }: { count: number }) {
       {count > 99 ? "99+" : String(count)}
     </NativeTabs.Trigger.Badge>
   );
-}
-
-function resolveActiveTabKey(tabs: RoleTabSpec[], pathname: string): string {
-  const normalized = pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-  const found = [...tabs]
-    .sort((a, b) => b.href.length - a.href.length)
-    .find((tab) => normalized.startsWith(tab.href));
-  return found?.key ?? tabs[0]?.key ?? "";
 }
 
 function renderNativeTabTrigger(
@@ -53,30 +63,51 @@ function renderNativeTabTrigger(
       <NativeTabs.Trigger.Label>
         {options.showNativeVisualTabs ? tab.label : " "}
       </NativeTabs.Trigger.Label>
-      {options.showNativeVisualTabs ? (
-        <NativeTabs.Trigger.Icon
-          sf={{ default: tab.sfDefault, selected: tab.sfSelected } as never}
-          src={
-            options.useVectorIcons
-              ? <NativeTabs.Trigger.VectorIcon family={MaterialIcons} name={tab.iconName} />
-              : undefined
-          }
-        />
-      ) : null}
+      <NativeTabs.Trigger.Icon
+        sf={{ default: tab.sfDefault, selected: tab.sfSelected } as never}
+        src={
+          options.useVectorIcons ? (
+            <NativeTabs.Trigger.VectorIcon family={MaterialIcons} name={tab.iconName} />
+          ) : undefined
+        }
+      />
       {options.showNativeVisualTabs ? <NativeTabBadge count={options.badgeCount} /> : null}
     </NativeTabs.Trigger>
   );
 }
 
+function warmRoleTabModules(role: "instructor" | "studio") {
+  void import("@/components/home/home-screen");
+  void import("@/components/calendar/calendar-tab-screen");
+
+  if (role === "instructor") {
+    void import("@/components/jobs/instructor-feed");
+    void import("@/components/map-tab/map-tab-screen");
+    return;
+  }
+
+  void import("@/components/jobs/studio-feed");
+}
+
 export default function TabLayout() {
-  const { signOut } = useAuthActions();
+  const authActions = useAuthActions();
+  const signOut = authActions?.signOut;
   const palette = useBrand();
-  const { t } = useTranslation();
   const pathname = usePathname();
-  const router = useRouter();
+  const { setTopInsetBackgroundColor } = useSystemUi();
+  const { t } = useTranslation();
+  const tabStatusInsetColor = resolveTabStatusInsetColor(pathname, palette);
+
+  useEffect(() => {
+    setTopInsetBackgroundColor(tabStatusInsetColor);
+    return () => {
+      setTopInsetBackgroundColor(null);
+    };
+  }, [setTopInsetBackgroundColor, tabStatusInsetColor]);
 
   const {
     currentUser,
+    effectiveRole,
     isAuthLoading,
     isAuthenticated,
     isSyncing,
@@ -85,22 +116,29 @@ export default function TabLayout() {
     retrySync,
   } = useUser();
 
-  const isInstructor = currentUser?.role === "instructor";
-  const isStudio = currentUser?.role === "studio";
+  const resolvedRole = currentUser?.role ?? effectiveRole;
+  const isInstructor = resolvedRole === "instructor";
+  const isStudio = resolvedRole === "studio";
   const queryMinuteBucket = Math.floor(Date.now() / (60 * 1000));
   const badgeNow = queryMinuteBucket * 60 * 1000;
+  const canQueryRoleCounts =
+    !!currentUser &&
+    isAuthenticated &&
+    !isAuthLoading &&
+    !isSyncing &&
+    currentUser.role !== "pending";
 
   const instructorTabCounts = useQuery(
     api.jobs.getInstructorTabCounts,
-    isInstructor ? { now: badgeNow } : "skip",
+    canQueryRoleCounts && currentUser.role === "instructor" ? { now: badgeNow } : "skip",
   );
   const studioTabCounts = useQuery(
     api.jobs.getStudioTabCounts,
-    isStudio ? { now: badgeNow } : "skip",
+    canQueryRoleCounts && currentUser.role === "studio" ? { now: badgeNow } : "skip",
   );
   const unreadNotificationCount = useQuery(
     api.inbox.getMyUnreadNotificationCount,
-    currentUser ? {} : "skip",
+    canQueryRoleCounts ? {} : "skip",
   );
 
   const unreadNotificationsCount = unreadNotificationCount?.count ?? 0;
@@ -109,25 +147,44 @@ export default function TabLayout() {
   const studioJobsBadgeCount = studioTabCounts?.jobsBadgeCount ?? 0;
   const studioCalendarBadgeCount = studioTabCounts?.calendarBadgeCount ?? 0;
   const useVectorIcons = Platform.OS !== "web";
-  const isAndroidFloatingTabs = Platform.OS === "android" && FEATURE_FLAGS.androidFloatingTabsEnabled;
-  const showNativeVisualTabs = !isAndroidFloatingTabs;
-  const iosMinimizeProps = Platform.OS === "ios" && Number(Platform.Version) >= 26
-    ? ({ minimizeBehavior: "onScrollDown" } as const)
-    : {};
+  const iosMinimizeProps =
+    Platform.OS === "ios" && Number(Platform.Version) >= 26
+      ? ({ minimizeBehavior: "onScrollDown" } as const)
+      : {};
 
-  if (isAuthLoading && currentUser === undefined) {
-    return <LoadingScreen label={t("tabsLayout.loading.negotiatingSession")} />;
-  }
+  useEffect(() => {
+    if (!isInstructor && !isStudio) {
+      return;
+    }
 
-  if (!isAuthLoading && !isAuthenticated) {
+    let cancelled = false;
+    const warmInBackground = async () => {
+      if (typeof globalThis.requestIdleCallback === "function") {
+        await new Promise<void>((resolve) => {
+          globalThis.requestIdleCallback(() => resolve(), { timeout: 1200 });
+        });
+      } else {
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      }
+      if (cancelled) return;
+      warmRoleTabModules(isInstructor ? "instructor" : "studio");
+    };
+
+    void warmInBackground();
+    return () => {
+      cancelled = true;
+    };
+  }, [isInstructor, isStudio]);
+
+  if (!isAuthLoading && !isAuthenticated && !effectiveRole) {
     return <Redirect href="/sign-in" />;
   }
 
-  if (isAuthenticated && currentUser === undefined) {
+  if (currentUser === undefined && !resolvedRole) {
     return <LoadingScreen label={t("tabsLayout.loading.loadingAccount")} />;
   }
 
-  if (currentUser === null && hasAttemptedSync && !isSyncing) {
+  if (currentUser === null && !resolvedRole && hasAttemptedSync && !isSyncing) {
     return (
       <ShellErrorState
         title={t("tabsLayout.errors.accountSetupFailedTitle")}
@@ -143,13 +200,16 @@ export default function TabLayout() {
         <KitButton
           label={t("tabsLayout.actions.signOut")}
           variant="secondary"
-          onPress={() => void signOut()}
+          onPress={() => {
+            if (!signOut) return;
+            void signOut();
+          }}
         />
       </ShellErrorState>
     );
   }
 
-  if (currentUser === null && isSyncing) {
+  if (currentUser === null && !resolvedRole && isSyncing) {
     return <LoadingScreen label={t("tabsLayout.loading.loadingAccount")} />;
   }
 
@@ -163,90 +223,90 @@ export default function TabLayout() {
 
   const roleTabs: RoleTabSpec[] = isInstructor
     ? [
-      {
-        key: "instructor/index",
-        name: "instructor/index",
-        href: "/instructor",
-        label: t("tabs.home"),
-        iconName: "home",
-        sfDefault: "house",
-        sfSelected: "house.fill",
-      },
-      {
-        key: "instructor/calendar/index",
-        name: "instructor/calendar/index",
-        href: "/instructor/calendar",
-        label: t("tabs.calendar"),
-        iconName: "calendar-month",
-        sfDefault: "calendar",
-        sfSelected: "calendar.circle.fill",
-      },
-      {
-        key: "instructor/jobs/index",
-        name: "instructor/jobs/index",
-        href: "/instructor/jobs",
-        label: t("tabs.jobs"),
-        iconName: "work",
-        sfDefault: "briefcase",
-        sfSelected: "briefcase.fill",
-      },
-      {
-        key: "instructor/profile",
-        name: "instructor/profile",
-        href: "/instructor/profile",
-        label: t("tabs.profile"),
-        iconName: "account-circle",
-        sfDefault: "person.crop.circle",
-        sfSelected: "person.crop.circle.fill",
-      },
-      {
-        key: "instructor/map/index",
-        name: "instructor/map/index",
-        href: "/instructor/map",
-        label: t("tabs.map"),
-        iconName: "map",
-        sfDefault: "map",
-        sfSelected: "map.fill",
-      },
-    ]
+        {
+          key: "instructor/index",
+          name: "instructor/index",
+          href: "/instructor",
+          label: t("tabs.home"),
+          iconName: "home",
+          sfDefault: "house",
+          sfSelected: "house.fill",
+        },
+        {
+          key: "instructor/calendar/index",
+          name: "instructor/calendar/index",
+          href: "/instructor/calendar",
+          label: t("tabs.calendar"),
+          iconName: "calendar-month",
+          sfDefault: "calendar",
+          sfSelected: "calendar.circle.fill",
+        },
+        {
+          key: "instructor/jobs/index",
+          name: "instructor/jobs/index",
+          href: "/instructor/jobs",
+          label: t("tabs.jobs"),
+          iconName: "work",
+          sfDefault: "briefcase",
+          sfSelected: "briefcase.fill",
+        },
+        {
+          key: "instructor/profile",
+          name: "instructor/profile",
+          href: "/instructor/profile",
+          label: t("tabs.profile"),
+          iconName: "account-circle",
+          sfDefault: "person.crop.circle",
+          sfSelected: "person.crop.circle.fill",
+        },
+        {
+          key: "instructor/map/index",
+          name: "instructor/map/index",
+          href: "/instructor/map",
+          label: t("tabs.map"),
+          iconName: "map",
+          sfDefault: "map",
+          sfSelected: "map.fill",
+        },
+      ]
     : [
-      {
-        key: "studio/index",
-        name: "studio/index",
-        href: "/studio",
-        label: t("tabs.home"),
-        iconName: "home",
-        sfDefault: "house",
-        sfSelected: "house.fill",
-      },
-      {
-        key: "studio/calendar/index",
-        name: "studio/calendar/index",
-        href: "/studio/calendar",
-        label: t("tabs.calendar"),
-        iconName: "calendar-month",
-        sfDefault: "calendar",
-        sfSelected: "calendar.circle.fill",
-      },
-      {
-        key: "studio/jobs/index",
-        name: "studio/jobs/index",
-        href: "/studio/jobs",
-        label: t("tabs.jobs"),
-        iconName: "work",
-        sfDefault: "briefcase",
-        sfSelected: "briefcase.fill",
-      },
-      {
-        key: "studio/profile",
-        name: "studio/profile",
-        href: "/studio/profile",
-        label: t("tabs.profile"),
-        iconName: "account-circle",
-        sfDefault: "person.crop.circle",
-        sfSelected: "person.crop.circle.fill",
-      },
-    ];
+        {
+          key: "studio/index",
+          name: "studio/index",
+          href: "/studio",
+          label: t("tabs.home"),
+          iconName: "home",
+          sfDefault: "house",
+          sfSelected: "house.fill",
+        },
+        {
+          key: "studio/calendar/index",
+          name: "studio/calendar/index",
+          href: "/studio/calendar",
+          label: t("tabs.calendar"),
+          iconName: "calendar-month",
+          sfDefault: "calendar",
+          sfSelected: "calendar.circle.fill",
+        },
+        {
+          key: "studio/jobs/index",
+          name: "studio/jobs/index",
+          href: "/studio/jobs",
+          label: t("tabs.jobs"),
+          iconName: "work",
+          sfDefault: "briefcase",
+          sfSelected: "briefcase.fill",
+        },
+        {
+          key: "studio/profile",
+          name: "studio/profile",
+          href: "/studio/profile",
+          label: t("tabs.profile"),
+          iconName: "account-circle",
+          sfDefault: "person.crop.circle",
+          sfSelected: "person.crop.circle.fill",
+        },
+      ];
 
   const badgeByTabKey: Record<string, number> = {
     "instructor/calendar/index": instructorCalendarBadgeCount,
@@ -257,41 +317,22 @@ export default function TabLayout() {
     "studio/profile": unreadNotificationsCount,
   };
 
-  const activeKey = resolveActiveTabKey(roleTabs, pathname);
-
   return (
     <TabBarScrollProvider>
       <View style={{ flex: 1 }}>
         <NativeTabs
           {...(iosMinimizeProps as object)}
-          tintColor={palette.text}
+          tintColor={palette.primary}
           disableTransparentOnScrollEdge
         >
           {roleTabs.map((tab) =>
             renderNativeTabTrigger(tab, {
-              showNativeVisualTabs,
+              showNativeVisualTabs: false,
               useVectorIcons,
               badgeCount: badgeByTabKey[tab.key] ?? 0,
             }),
           )}
         </NativeTabs>
-
-        {isAndroidFloatingTabs ? (
-          <AndroidFloatingTabBar
-            tabs={roleTabs.map((tab) => ({
-              key: tab.key,
-              label: tab.label,
-              iconName: tab.iconName,
-              badgeCount: badgeByTabKey[tab.key] ?? 0,
-            }))}
-            activeKey={activeKey}
-            onSelect={(key) => {
-              const tab = roleTabs.find((row) => row.key === key);
-              if (!tab) return;
-              router.navigate(tab.href as never);
-            }}
-          />
-        ) : null}
       </View>
     </TabBarScrollProvider>
   );

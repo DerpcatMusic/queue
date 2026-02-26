@@ -29,11 +29,12 @@ export function useNativeTabLayout() {
     Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
   const nativeTabBarHeight = estimateNativeTabBarHeight();
   const bottomInset = insets.bottom + nativeTabBarHeight;
+  const bottomOverlayInset = bottomInset + BOTTOM_OVERLAY_GAP;
 
   return {
     topInset: Math.max(insets.top, androidStatusBarHeight),
     safeBottomInset: insets.bottom,
     bottomInset,
-    bottomOverlayInset: bottomInset + BOTTOM_OVERLAY_GAP,
+    bottomOverlayInset,
   };
 }

@@ -1,14 +1,13 @@
-import { api } from "@/convex/_generated/api";
-import { LoadingScreen } from "@/components/loading-screen";
-import { useBrand } from "@/hooks/use-brand";
 import { useQuery } from "convex/react";
 import { Redirect, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-
 import { InstructorHomeContent } from "@/components/home/instructor-home-content";
 import { StudioHomeContent } from "@/components/home/studio-home-content";
+import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
+import { api } from "@/convex/_generated/api";
+import { useBrand } from "@/hooks/use-brand";
 
 const HOME_APPLICATIONS_LIMIT = 80;
 const HOME_AVAILABLE_JOBS_LIMIT = 40;
@@ -37,6 +36,16 @@ export default function HomeScreen() {
     effectiveRole === "studio" ? { limit: HOME_STUDIO_JOBS_LIMIT } : "skip",
   );
 
+  const instructorSettings = useQuery(
+    api.users.getMyInstructorSettings,
+    effectiveRole === "instructor" ? {} : "skip",
+  );
+
+  const studioSettings = useQuery(
+    api.users.getMyStudioSettings,
+    effectiveRole === "studio" ? {} : "skip",
+  );
+
   const currencyFormatter = useMemo(
     () =>
       new Intl.NumberFormat(locale, {
@@ -47,69 +56,80 @@ export default function HomeScreen() {
     [locale],
   );
 
-  // Loading state - user context handles the initial auth loading
-  if (currentUser === undefined) return <LoadingScreen label={t("home.loading")} />;
-  
+  // Keep home visible when role is already resolved from cache while currentUser hydrates.
+  if (currentUser === undefined && !effectiveRole) {
+    return <LoadingScreen label={t("home.loading")} />;
+  }
+
   // Redirect states - these should already be handled by TabLayout, but keep as safety net
   if (currentUser === null) return <Redirect href="/sign-in" />;
-  if (!currentUser.onboardingComplete || currentUser.role === "pending") {
+  if (currentUser && (!currentUser.onboardingComplete || currentUser.role === "pending")) {
     return <Redirect href="/onboarding" />;
   }
 
-  const firstName = currentUser.fullName?.trim().split(/\s+/)[0];
+  const firstName = currentUser?.fullName?.trim().split(/\s+/)[0];
   const displayName = firstName && firstName.length > 0 ? firstName : t("home.shared.unknownName");
-  const memberSince = currentUser.createdAt
-    ? t("home.shared.memberSince", {
-        date: new Date(currentUser.createdAt).toLocaleDateString(locale, {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-      })
-    : t("home.loading");
+  const activeRole = currentUser?.role ?? effectiveRole;
 
-  if (currentUser.role === "instructor") {
-    const isDataLoading = myApplications === undefined || availableJobs === undefined;
+  if (activeRole === "pending") {
+    return <Redirect href="/onboarding" />;
+  }
+
+  if (activeRole !== "instructor" && activeRole !== "studio") {
+    return <LoadingScreen label={t("home.loading")} />;
+  }
+
+  if (activeRole === "instructor") {
     const instructorApplications = myApplications ?? [];
     const instructorAvailableJobs = availableJobs ?? [];
     const now = Date.now();
-    const pendingApplications = instructorApplications.filter((record) => record.status === "pending").length;
+
+    // Calculate total earnings from accepted + completed jobs
+    const totalEarnings = instructorApplications.reduce((acc: number, app: any) => {
+      if (app.status === "accepted" || app.jobStatus === "completed") {
+        return acc + app.pay;
+      }
+      return acc;
+    }, 0);
+
+    const pendingApplications = instructorApplications.filter(
+      (app: any) => app.status === "pending",
+    ).length;
     const upcomingSessions = instructorApplications
-      .filter((record) => record.status === "accepted" && record.startTime > now)
-      .sort((a, b) => a.startTime - b.startTime)
+      .filter((app: any) => app.status === "accepted" && app.startTime > now)
+      .sort((a: any, b: any) => a.startTime - b.startTime)
       .slice(0, 3);
-    const openMatches = instructorAvailableJobs.filter((record) => !record.applicationStatus).length;
+    const openMatches = instructorAvailableJobs.filter((job: any) => !job.applicationStatus).length;
 
     return (
       <InstructorHomeContent
         displayName={displayName}
-        memberSince={memberSince}
         locale={locale}
         openMatches={openMatches}
         pendingApplications={pendingApplications}
+        totalEarnings={totalEarnings}
         palette={palette}
         currencyFormatter={currencyFormatter}
         t={t}
         upcomingSessions={upcomingSessions}
-        onOpenCalendar={() => router.push("/(tabs)/instructor/calendar/index")}
+        sports={instructorSettings?.sports}
+        onOpenCalendar={() => router.push("/(tabs)/instructor/calendar")}
         onOpenJobs={() => router.push("/(tabs)/instructor/jobs")}
-        isDataLoading={isDataLoading}
       />
     );
   }
 
   const studioJobs = myStudioJobs ?? [];
-  const isDataLoading = myStudioJobs === undefined;
-  const openJobs = studioJobs.filter((record) => record.status === "open").length;
+  const openJobs = studioJobs.filter((job: any) => job.status === "open").length;
   const pendingApplicants = studioJobs.reduce(
-    (total, record) => total + record.pendingApplicationsCount,
+    (total: number, job: any) => total + job.pendingApplicationsCount,
     0,
   );
+  const jobsFilled = studioJobs.filter((job: any) => job.status === "filled").length;
 
   return (
     <StudioHomeContent
       displayName={displayName}
-      memberSince={memberSince}
       locale={locale}
       openJobs={openJobs}
       pendingApplicants={pendingApplicants}
@@ -117,9 +137,10 @@ export default function HomeScreen() {
       currencyFormatter={currencyFormatter}
       t={t}
       recentJobs={studioJobs}
+      jobsFilled={jobsFilled}
+      sports={studioSettings?.sports}
       onOpenJobs={() => router.push("/(tabs)/studio/jobs")}
-      onOpenCalendar={() => router.push("/(tabs)/studio/calendar/index")}
-      isDataLoading={isDataLoading}
+      onOpenCalendar={() => router.push("/(tabs)/studio/calendar")}
     />
   );
 }

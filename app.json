@@ -10,7 +10,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "userInterfaceStyle": "automatic",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "associatedDomains": [
+        "applinks:join-queue.com"
+      ]
     },
     "android": {
       "package": "com.derpcat.queue",
@@ -21,12 +24,30 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "https",
+              "host": "join-queue.com",
+              "pathPrefix": "/rapyd"
+            }
+          ]
+        }
+      ]
     },
     "androidStatusBar": {
       "translucent": false
     },
     "web": {
+      "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
@@ -94,7 +115,8 @@
             "enableProguardInReleaseBuilds": true
           }
         }
-      ]
+      ],
+      "@didit-protocol/sdk-react-native"
     ],
     "extra": {
       "supportsRTL": true

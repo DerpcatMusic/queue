@@ -74,7 +74,15 @@ export const getInstructorTabCounts = query({
     calendarBadgeCount: v.number(),
   }),
   handler: async (ctx, args) => {
-    const instructor = await requireInstructorProfile(ctx);
+    let instructor: Awaited<ReturnType<typeof requireInstructorProfile>>;
+    try {
+      instructor = await requireInstructorProfile(ctx);
+    } catch (error) {
+      if (error instanceof ConvexError) {
+        return { jobsBadgeCount: 0, calendarBadgeCount: 0 };
+      }
+      throw error;
+    }
     const now = args.now ?? Date.now();
 
     const eligibility = await loadInstructorEligibility(ctx, instructor._id);
@@ -161,7 +169,15 @@ export const getStudioTabCounts = query({
     calendarBadgeCount: v.number(),
   }),
   handler: async (ctx, args) => {
-    const studio = await requireStudioProfile(ctx);
+    let studio: Awaited<ReturnType<typeof requireStudioProfile>>;
+    try {
+      studio = await requireStudioProfile(ctx);
+    } catch (error) {
+      if (error instanceof ConvexError) {
+        return { jobsBadgeCount: 0, calendarBadgeCount: 0 };
+      }
+      throw error;
+    }
     const now = args.now ?? Date.now();
     const jobs = await ctx.db
       .query("jobs")
@@ -666,6 +682,13 @@ export const getMyApplications = query({
       timeZone: v.optional(v.string()),
       pay: v.number(),
       note: v.optional(v.string()),
+      paymentDetails: v.optional(
+        v.object({
+          status: v.string(),
+          payoutStatus: v.optional(v.string()),
+          externalInvoiceUrl: v.optional(v.string()),
+        }),
+      ),
       jobStatus: v.union(
         v.literal("open"),
         v.literal("filled"),
@@ -718,6 +741,43 @@ export const getMyApplications = query({
       if (!job) continue;
       const studio = studioById.get(String(job.studioId));
 
+      let paymentDetails:
+        | {
+          status: Doc<"payments">["status"];
+          payoutStatus?: Doc<"payouts">["status"];
+          externalInvoiceUrl?: string;
+        }
+        | undefined;
+      if (job.status === "completed" || job.status === "filled") {
+        const payment = await ctx.db
+          .query("payments")
+          .withIndex("by_job", (q) => q.eq("jobId", job._id))
+          .order("desc")
+          .first();
+
+        if (payment && payment.instructorUserId === instructor.userId) {
+          const payout = await ctx.db
+            .query("payouts")
+            .withIndex("by_payment", (q) => q.eq("paymentId", payment._id))
+            .order("desc")
+            .first();
+
+          const invoice = await ctx.db
+            .query("invoices")
+            .withIndex("by_payment", (q) => q.eq("paymentId", payment._id))
+            .order("desc")
+            .first();
+
+          paymentDetails = {
+            status: payment.status,
+            ...omitUndefined({
+              payoutStatus: payout?.status,
+              externalInvoiceUrl: invoice?.externalInvoiceUrl,
+            }),
+          };
+        }
+      }
+
       rows.push({
         applicationId: application._id,
         jobId: application.jobId,
@@ -735,6 +795,7 @@ export const getMyApplications = query({
           message: application.message,
           timeZone: job.timeZone,
           note: job.note,
+          paymentDetails,
         }),
       });
     }
@@ -1098,6 +1159,181 @@ export const getMyStudioJobsWithApplications = query({
     }
 
     return rows;
+  },
+});
+
+export const getMyCalendarTimeline = query({
+  args: {
+    startTime: v.number(),
+    endTime: v.number(),
+    limit: v.optional(v.number()),
+    now: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      lessonId: v.id("jobs"),
+      roleView: v.union(v.literal("instructor"), v.literal("studio")),
+      studioId: v.id("studioProfiles"),
+      studioName: v.string(),
+      instructorId: v.optional(v.id("instructorProfiles")),
+      instructorName: v.optional(v.string()),
+      sport: v.string(),
+      zone: v.string(),
+      startTime: v.number(),
+      endTime: v.number(),
+      timeZone: v.optional(v.string()),
+      pay: v.number(),
+      note: v.optional(v.string()),
+      status: v.union(
+        v.literal("open"),
+        v.literal("filled"),
+        v.literal("cancelled"),
+        v.literal("completed"),
+      ),
+      lifecycle: v.union(
+        v.literal("upcoming"),
+        v.literal("live"),
+        v.literal("past"),
+        v.literal("cancelled"),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const getLifecycle = (
+      status: Doc<"jobs">["status"],
+      nowValue: number,
+      startTime: number,
+      endTime: number,
+    ): "upcoming" | "live" | "past" | "cancelled" => {
+      if (status === "cancelled") return "cancelled";
+      if (nowValue < startTime) return "upcoming";
+      if (nowValue <= endTime) return "live";
+      return "past";
+    };
+
+    if (!Number.isFinite(args.startTime) || !Number.isFinite(args.endTime)) {
+      throw new ConvexError("startTime and endTime must be finite numbers");
+    }
+    if (args.endTime < args.startTime) {
+      throw new ConvexError("endTime must be greater than or equal to startTime");
+    }
+
+    const actor = await requireUserRole(ctx, ["instructor", "studio"]);
+    const now = args.now ?? Date.now();
+    const rawLimit = args.limit ?? 400;
+    assertPositiveInteger(rawLimit, "limit");
+    const limit = Math.min(rawLimit, 1000);
+
+    if (actor.role === "instructor") {
+      const instructor = await requireInstructorProfile(ctx);
+      const jobs = await ctx.db
+        .query("jobs")
+        .withIndex("by_filledByInstructor_startTime", (q) =>
+          q
+            .eq("filledByInstructorId", instructor._id)
+            .gte("startTime", args.startTime)
+            .lte("startTime", args.endTime),
+        )
+        .order("asc")
+        .take(limit);
+
+      const studioIds = [...new Set(jobs.map((job) => job.studioId))];
+      const studios = await Promise.all(
+        studioIds.map((studioId) => ctx.db.get("studioProfiles", studioId)),
+      );
+      const studioById = new Map<string, Doc<"studioProfiles">>();
+      for (let i = 0; i < studioIds.length; i += 1) {
+        const studioId = studioIds[i];
+        const studio = studios[i];
+        if (studio) {
+          studioById.set(String(studioId), studio);
+        }
+      }
+
+      return jobs.map((job) => {
+        const studio = studioById.get(String(job.studioId));
+        const lifecycle = getLifecycle(job.status, now, job.startTime, job.endTime);
+        return {
+          lessonId: job._id,
+          roleView: "instructor" as const,
+          studioId: job.studioId,
+          studioName: studio?.studioName ?? "Unknown studio",
+          instructorId: instructor._id,
+          instructorName: instructor.displayName,
+          sport: job.sport,
+          zone: trimOptionalString(job.zone) ?? job.zone,
+          startTime: job.startTime,
+          endTime: job.endTime,
+          pay: job.pay,
+          status: job.status,
+          lifecycle,
+          ...omitUndefined({
+            timeZone: job.timeZone,
+            note: job.note,
+          }),
+        };
+      });
+    }
+
+    const studio = await requireStudioProfile(ctx);
+    const jobs = await ctx.db
+      .query("jobs")
+      .withIndex("by_studio_startTime", (q) =>
+        q
+          .eq("studioId", studio._id)
+          .gte("startTime", args.startTime)
+          .lte("startTime", args.endTime),
+      )
+      .order("asc")
+      .take(limit);
+
+    const instructorIds = [
+      ...new Set(
+        jobs
+          .map((job) => job.filledByInstructorId)
+          .filter((id): id is Id<"instructorProfiles"> => !!id),
+      ),
+    ];
+    const instructors = await Promise.all(
+      instructorIds.map((instructorId) =>
+        ctx.db.get("instructorProfiles", instructorId),
+      ),
+    );
+    const instructorById = new Map<string, Doc<"instructorProfiles">>();
+    for (let i = 0; i < instructorIds.length; i += 1) {
+      const instructorId = instructorIds[i];
+      const profile = instructors[i];
+      if (profile) {
+        instructorById.set(String(instructorId), profile);
+      }
+    }
+
+    return jobs.map((job) => {
+      const instructor = job.filledByInstructorId
+        ? instructorById.get(String(job.filledByInstructorId))
+        : undefined;
+      const lifecycle = getLifecycle(job.status, now, job.startTime, job.endTime);
+
+      return {
+        lessonId: job._id,
+        roleView: "studio" as const,
+        studioId: studio._id,
+        studioName: studio.studioName,
+        sport: job.sport,
+        zone: trimOptionalString(job.zone) ?? job.zone,
+        startTime: job.startTime,
+        endTime: job.endTime,
+        pay: job.pay,
+        status: job.status,
+        lifecycle,
+        ...omitUndefined({
+          instructorId: job.filledByInstructorId,
+          instructorName: instructor?.displayName,
+          timeZone: job.timeZone,
+          note: job.note,
+        }),
+      };
+    });
   },
 });
 

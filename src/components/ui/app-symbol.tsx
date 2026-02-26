@@ -22,6 +22,17 @@ const SYMBOL_TO_MATERIAL: Record<string, React.ComponentProps<typeof MaterialIco
   "figure.yoga": "self-improvement",
   "person.badge.key.fill": "admin-panel-settings",
   "apple.logo": "apple",
+  "person.3.sequence.fill": "groups",
+  "calendar.badge.plus": "edit-calendar",
+  "exclamationmark.circle.fill": "error",
+  calendar: "calendar-today",
+  "mappin.and.ellipse": "location-on",
+  "flame.fill": "local-fire-department",
+  "clock.fill": "schedule",
+  "calendar.badge.clock": "event",
+  "gym.bag.fill": "fitness-center",
+  "building.2.fill": "business",
+  "arrow.right": "arrow-forward",
 };
 
 function getSymbolName(name: unknown): string {

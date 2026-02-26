@@ -193,7 +193,7 @@ export default function MapTabScreen() {
       >
         <View style={styles.sheetContent}>
           <View style={styles.sheetHeader}>
-            <ThemedText style={{ fontSize: 32, fontWeight: "900", color: palette.text, letterSpacing: -1, textTransform: "uppercase" }}>
+            <ThemedText style={{ fontSize: 24, fontWeight: "600", color: palette.text, letterSpacing: -0.2 }}>
               {t("mapTab.title")}
             </ThemedText>
           </View>
@@ -242,10 +242,9 @@ export default function MapTabScreen() {
                     numberOfLines={1}
                     style={{
                       color: selected ? palette.onPrimary : palette.text,
-                      fontSize: 16,
-                      fontWeight: "800",
-                      letterSpacing: -0.5,
-                      textTransform: "uppercase",
+                      fontSize: 15,
+                      fontWeight: "500",
+                      letterSpacing: -0.1,
                     }}
                   >
                     {item.label[zoneLanguage]}
@@ -299,8 +298,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   searchInput: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "500",
     paddingHorizontal: 24,
     paddingVertical: 18,
     borderBottomWidth: 1,

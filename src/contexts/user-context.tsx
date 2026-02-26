@@ -39,7 +39,18 @@ interface UserContextValue {
   retrySync: () => void;
 }
 
-const UserContext = createContext<UserContextValue | null>(null);
+const DEFAULT_USER_CONTEXT: UserContextValue = {
+  currentUser: undefined,
+  effectiveRole: null,
+  isAuthLoading: true,
+  isAuthenticated: false,
+  isSyncing: false,
+  syncError: null,
+  hasAttemptedSync: false,
+  retrySync: () => undefined,
+};
+
+const UserContext = createContext<UserContextValue>(DEFAULT_USER_CONTEXT);
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const { isLoading: isConvexAuthLoading, isAuthenticated } = useConvexAuth();
@@ -81,6 +92,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
       // Ignore role cache write failures.
     });
   }, [currentUser?.role]);
+
+  // Clear optimistic role cache after auth settles to signed-out.
+  useEffect(() => {
+    if (isConvexAuthLoading || isAuthenticated) return;
+
+    setCachedRole(null);
+    void AsyncStorage.removeItem(ROLE_CACHE_KEY).catch(() => {
+      // Ignore role cache clear failures.
+    });
+  }, [isConvexAuthLoading, isAuthenticated]);
 
   // Sync user on first load (only if currentUser is null and authenticated)
   useEffect(() => {
@@ -147,11 +168,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 }
 
 export function useUser(): UserContextValue {
-  const context = useContext(UserContext);
-  if (!context) {
-    throw new Error("useUser must be used within a UserProvider");
-  }
-  return context;
+  return useContext(UserContext);
 }
 
 export { isKnownRole, type KnownRole };

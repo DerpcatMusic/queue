@@ -27,7 +27,7 @@ export default function StudioProfileScreen() {
   const { signOut } = useAuthActions();
   const { currentUser } = useUser();
   const { language, setLanguage } = useAppLanguage();
-  const { preference, setPreference, resolvedScheme, stylePreference, setStylePreference } =
+  const { preference, setPreference, resolvedScheme } =
     useThemePreference();
   const { t, i18n } = useTranslation();
   const palette = useBrand();
@@ -60,7 +60,7 @@ export default function StudioProfileScreen() {
   const chevron = <IconSymbol name="chevron.right" size={14} color={palette.textMicro} />;
 
   return (
-    <RoleRouteGate requiredRole="studio" redirectHref="/(tabs)/instructor/profile/index">
+    <RoleRouteGate requiredRole="studio" redirectHref="/(tabs)/instructor/profile">
       <TabScreenScrollView
         routeKey="studio/profile"
         key={resolvedScheme}
@@ -68,15 +68,15 @@ export default function StudioProfileScreen() {
         contentContainerStyle={styles.content}
       >
       <SectionHeader label={t("profile.account.title")} palette={palette} />
-      <View style={{ borderTopWidth: 1, borderTopColor: palette.border }}>
+      <View style={[styles.cardGroup, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
         <ProfileRow title={t("profile.account.nameLabel")} subtitle={nameValue} palette={palette} />
         <ProfileRow title={t("profile.account.emailLabel")} subtitle={emailValue} palette={palette} />
-        <ProfileRow title={t("profile.account.roleLabel")} subtitle={roleValue} palette={palette} />
-        {memberSince && <ProfileRow title={t("profile.account.memberSince")} subtitle={memberSince} palette={palette} />}
+        <ProfileRow title={t("profile.account.roleLabel")} subtitle={roleValue} palette={palette} isLast={!memberSince} />
+        {memberSince && <ProfileRow title={t("profile.account.memberSince")} subtitle={memberSince} palette={palette} isLast />}
       </View>
 
       <SectionHeader label={t("profile.appearance.title")} palette={palette} />
-      <View style={{ borderTopWidth: 1, borderTopColor: palette.border }}>
+      <View style={[styles.cardGroup, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
         <ProfileRow
           title={t("profile.language.title")}
           subtitle={language === "en" ? t("language.english") : t("language.hebrew")}
@@ -85,24 +85,8 @@ export default function StudioProfileScreen() {
           accessory={chevron}
         />
         <ProfileRow
-          title={t("profile.appearance.themeStyle.title")}
-          subtitle={
-            stylePreference === "native"
-              ? t("profile.appearance.themeStyle.nativeDescription")
-              : t("profile.appearance.themeStyle.customDescription")
-          }
-          palette={palette}
-          accessory={
-            <Switch
-              value={stylePreference === "native"}
-              onValueChange={(val) => setStylePreference(val ? "native" : "custom")}
-              trackColor={{ true: palette.primary, false: palette.borderStrong }}
-            />
-          }
-        />
-        <ProfileRow
           title={t("profile.appearance.systemTheme.title")}
-          subtitle={t("profile.appearance.systemTheme.description")}
+          subtitle=""
           palette={palette}
           accessory={
             <Switch
@@ -114,12 +98,9 @@ export default function StudioProfileScreen() {
         />
         <ProfileRow
           title={t("profile.appearance.darkMode.title")}
-          subtitle={
-            preference === "system"
-              ? t("profile.appearance.darkMode.disableSystemFirst")
-              : t("profile.appearance.darkMode.description")
-          }
+          subtitle=""
           palette={palette}
+          isLast
           accessory={
             <Switch
               disabled={preference === "system"}
@@ -132,23 +113,27 @@ export default function StudioProfileScreen() {
       </View>
 
       <SectionHeader label="Payments" palette={palette} />
-      <View style={{ borderTopWidth: 1, borderTopColor: palette.border }}>
+      <View style={[styles.cardGroup, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
         <ProfileRow
           title="Payments & payouts"
           onPress={() => router.push("/(tabs)/studio/profile/payments")}
           palette={palette}
+          isLast
           accessory={chevron}
         />
       </View>
 
-      <View style={{ marginTop: 48, marginBottom: 32 }}>
-        <ProfileRow
-          title={t("auth.signOutButton")}
-          subtitle={t("profile.signOut.description")}
-          onPress={() => void signOut()}
-          palette={palette}
-          accessory={<IconSymbol name="arrow.right.square" size={24} color={palette.danger} />}
-        />
+      <View style={{ marginTop: 40, marginBottom: 40 }}>
+        <View style={[styles.cardGroup, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
+          <ProfileRow
+            title={t("auth.signOutButton")}
+            subtitle=""
+            onPress={() => void signOut()}
+            palette={palette}
+            isLast
+            accessory={<IconSymbol name="arrow.right.square" size={24} color={palette.danger} />}
+          />
+        </View>
       </View>
       </TabScreenScrollView>
     </RoleRouteGate>
@@ -167,10 +152,9 @@ function SectionHeader({ label, palette }: SectionHeaderProps) {
         type="title"
         style={{
           color: palette.text,
-          textTransform: "uppercase",
-          fontWeight: "900",
-          letterSpacing: -1,
-          fontSize: 32,
+          fontWeight: "600",
+          letterSpacing: -0.2,
+          fontSize: 20,
         }}
       >
         {label}
@@ -185,12 +169,14 @@ function ProfileRow({
   accessory,
   onPress,
   palette,
+  isLast = false,
 }: {
   title: string;
   subtitle?: string;
   accessory?: React.ReactNode;
   onPress?: () => void;
   palette: BrandPalette;
+  isLast?: boolean;
 }) {
   const content = (
     <View
@@ -199,27 +185,36 @@ function ProfileRow({
         alignItems: "center",
         justifyContent: "space-between",
         paddingVertical: 18,
-        paddingHorizontal: 24,
-        borderBottomWidth: 1,
+        paddingHorizontal: 20,
+        borderBottomWidth: isLast ? 0 : 1,
         borderBottomColor: palette.border,
       }}
     >
       <View style={{ flex: 1, paddingRight: 16 }}>
-        <ThemedText style={{ fontSize: 16, fontWeight: "800", color: palette.text, letterSpacing: -0.5, textTransform: "uppercase" }}>
+        <ThemedText style={{ fontSize: 16, fontWeight: "500", color: palette.text, letterSpacing: -0.1 }}>
           {title}
         </ThemedText>
-        {subtitle && (
-          <ThemedText style={{ color: palette.textMuted, fontSize: 14, fontWeight: "600", marginTop: 4 }}>
+        {subtitle ? (
+          <ThemedText style={{ color: palette.textMuted, fontSize: 13, fontWeight: "400", marginTop: 4 }}>
             {subtitle}
           </ThemedText>
-        )}
+        ) : null}
       </View>
       {accessory && <View>{accessory}</View>}
     </View>
   );
 
   if (onPress) {
-    return <Pressable onPress={onPress}>{content}</Pressable>;
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          { backgroundColor: pressed ? (palette.surfaceAlt as string) : "transparent" },
+        ]}
+      >
+        {content}
+      </Pressable>
+    );
   }
   return content;
 }
@@ -230,10 +225,17 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: 0,
+    paddingVertical: 16,
   },
   sectionHeader: {
     paddingHorizontal: 24,
-    paddingTop: 36,
-    paddingBottom: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  cardGroup: {
+    borderWidth: 1,
+    borderRadius: 24,
+    marginHorizontal: 16,
+    overflow: "hidden",
   },
 });

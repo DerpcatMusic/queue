@@ -1,6 +1,21 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFonts } from "expo-font";
+import "../../global.css";
+import {
+  BarlowCondensed_700Bold,
+  BarlowCondensed_800ExtraBold,
+  BarlowCondensed_900Black,
+} from "@expo-google-fonts/barlow-condensed";
+import {
+  Rubik_300Light,
+  Rubik_400Regular,
+  Rubik_500Medium,
+  Rubik_600SemiBold,
+  Rubik_700Bold,
+  Rubik_800ExtraBold,
+  Rubik_900Black,
+} from "@expo-google-fonts/rubik";
 import {
   DarkTheme,
   DefaultTheme,
@@ -9,55 +24,58 @@ import {
 } from "@react-navigation/native";
 import Constants from "expo-constants";
 import { Stack } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Animated,
+  AppState,
   LogBox,
+  StatusBar as NativeStatusBar,
   Platform,
   StyleSheet,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import {
-  configureReanimatedLogger,
-  ReanimatedLogLevel,
-} from "react-native-reanimated";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import * as SecureStore from "expo-secure-store";
+import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
+import { UserProvider } from "@/contexts/user-context";
 import { useBrand } from "@/hooks/use-brand";
 import { ThemePreferenceProvider, useThemePreference } from "@/hooks/use-theme-preference";
 import i18n, { bootstrapLocalization } from "@/i18n";
 import { getConvexClient, isConvexUrlConfigured } from "@/lib/convex";
 import { recordPerfMetric } from "@/lib/perf-telemetry";
-import { UserProvider } from "@/contexts/user-context";
+
+type ExpoNavigationBarModule = typeof import("expo-navigation-bar");
+
+const NavigationBarModule: ExpoNavigationBarModule | null = (() => {
+  try {
+    // Resolve once at startup; if native module is missing we gracefully skip nav-bar theming.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require("expo-navigation-bar") as ExpoNavigationBarModule;
+  } catch {
+    return null;
+  }
+})();
 
 const IGNORED_LOG_MESSAGES = [
   "ProgressBarAndroid has been extracted from react-native core",
   "SafeAreaView has been deprecated and will be removed",
+  "SafeAreaView has been deprecated and will be removed in a future release",
   "Clipboard has been extracted from react-native core",
   "PushNotificationIOS has been extracted from react-native core",
 ];
 
 LogBox.ignoreLogs(IGNORED_LOG_MESSAGES);
 
-if (__DEV__) {
-  try {
-    // Avoid resolving dev-client native modules in Expo Go.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const constantsModule = require("expo-constants") as {
-      default?: { appOwnership?: string };
-    };
-    if (constantsModule.default?.appOwnership !== "expo") {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require("expo-dev-client");
-    }
-  } catch {
-    // Optional in runtimes where dev-client is unavailable.
-  }
+// Global edge-to-edge configuration for Expo 55+
+if (Platform.OS === "android") {
+  // NavigationBar and StatusBar behavior is largely automatic in SDK 55
+  // but we can ensure standard behavior here if needed.
 }
 
 configureReanimatedLogger({
@@ -89,26 +107,53 @@ function waitForInteractions() {
 
 export default function RootLayout() {
   return (
-    <ThemePreferenceProvider>
-      <RootLayoutContent />
-    </ThemePreferenceProvider>
+    <SafeAreaProvider>
+      <ThemePreferenceProvider>
+        <SystemUiProvider>
+          <RootLayoutContent />
+        </SystemUiProvider>
+      </ThemePreferenceProvider>
+    </SafeAreaProvider>
+  );
+}
+
+function isActivityUnavailableError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.message.includes("current activity is no longer available") ||
+    error.message.includes("current activity is not available")
   );
 }
 
 function RootLayoutContent() {
+  const insets = useSafeAreaInsets();
+  const { topInsetBackgroundColor } = useSystemUi();
   const { resolvedScheme, stylePreference } = useThemePreference();
   const palette = useBrand();
-  const [transitionOverlayColor, setTransitionOverlayColor] = useState(
-    palette.appBg as string,
-  );
+  const [transitionOverlayColor, setTransitionOverlayColor] = useState(palette.appBg as string);
   const convex = getConvexClient();
-  useFonts(MaterialIcons.font);
+  useFonts({
+    ...MaterialIcons.font,
+    // Sekuya — sporty display font (local TTF asset)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    "Sekuya-Regular": require("../../assets/fonts/Sekuya-Regular.ttf"),
+    // Barlow Condensed — sporty condensed for headings/titles
+    BarlowCondensed_700Bold,
+    BarlowCondensed_800ExtraBold,
+    BarlowCondensed_900Black,
+    // Rubik — Hebrew-safe body/caption font (all weights)
+    Rubik_300Light,
+    Rubik_400Regular,
+    Rubik_500Medium,
+    Rubik_600SemiBold,
+    Rubik_700Bold,
+    Rubik_800ExtraBold,
+    Rubik_900Black,
+  });
   const transitionOpacity = useMemo(() => new Animated.Value(0), []);
   const currentThemeKey = `${resolvedScheme}:${stylePreference}`;
   const [previousThemeKey, setPreviousThemeKey] = useState(currentThemeKey);
-  const [previousBackgroundColor, setPreviousBackgroundColor] = useState(
-    palette.appBg as string,
-  );
+  const [previousBackgroundColor, setPreviousBackgroundColor] = useState(palette.appBg as string);
 
   const nativeStorage = useMemo(() => {
     const secureStorage = {
@@ -116,9 +161,7 @@ function RootLayoutContent() {
       setItem: SecureStore.setItemAsync,
       removeItem: SecureStore.deleteItemAsync,
     };
-    return Platform.OS === "android" || Platform.OS === "ios"
-      ? secureStorage
-      : null;
+    return Platform.OS === "android" || Platform.OS === "ios" ? secureStorage : null;
   }, []);
 
   useEffect(() => {
@@ -175,6 +218,35 @@ function RootLayoutContent() {
     transitionOpacity,
   ]);
 
+  useEffect(() => {
+    if (Platform.OS !== "android" || !NavigationBarModule) {
+      return;
+    }
+
+    let cancelled = false;
+    const buttonStyle = resolvedScheme === "dark" ? "light" : "dark";
+
+    const applyAndroidNavigationBarTheme = async () => {
+      if (cancelled || AppState.currentState !== "active") {
+        return;
+      }
+
+      try {
+        await NavigationBarModule.setButtonStyleAsync(buttonStyle);
+      } catch (error) {
+        if (isActivityUnavailableError(error)) {
+          return;
+        }
+        // Ignore unsupported configuration on devices/OS modes where nav styling is limited.
+      }
+    };
+
+    void applyAndroidNavigationBarTheme();
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedScheme]);
+
   const navigationTheme = useMemo<NavigationTheme>(() => {
     const base = resolvedScheme === "dark" ? DarkTheme : DefaultTheme;
     if (stylePreference === "native") {
@@ -192,17 +264,22 @@ function RootLayoutContent() {
         notification: palette.danger as string,
       },
     };
-  }, [palette.appBg, palette.border, palette.danger, palette.primary, palette.surface, palette.text, resolvedScheme, stylePreference]);
+  }, [
+    palette.appBg,
+    palette.border,
+    palette.danger,
+    palette.primary,
+    palette.surface,
+    palette.text,
+    resolvedScheme,
+    stylePreference,
+  ]);
 
   useEffect(() => {
-    const startupTiming = (performance as PerformanceWithRnStartupTiming)
-      .rnStartupTiming;
+    const startupTiming = (performance as PerformanceWithRnStartupTiming).rnStartupTiming;
     if (!startupTiming) return;
 
-    if (
-      typeof startupTiming.endTime === "number" &&
-      typeof startupTiming.startTime === "number"
-    ) {
+    if (typeof startupTiming.endTime === "number" && typeof startupTiming.startTime === "number") {
       recordPerfMetric(
         "app.native_startup_runtime",
         startupTiming.endTime - startupTiming.startTime,
@@ -229,21 +306,14 @@ function RootLayoutContent() {
         }
         await waitForInteractions();
         if (cancelled) return;
-        // Keep this non-blocking: render app shell first, reload only after startup settles.
+        // Avoid forced runtime reload at startup; ask for manual restart instead.
         try {
-          const Updates = await import("expo-updates");
-          if (cancelled) return;
-          await Updates.reloadAsync();
+          Alert.alert(
+            i18n.t("language.restartRequiredTitle"),
+            i18n.t("language.restartRequiredMessage"),
+          );
         } catch {
-          if (cancelled) return;
-          try {
-            Alert.alert(
-              i18n.t("language.restartRequiredTitle"),
-              i18n.t("language.restartRequiredMessage"),
-            );
-          } catch {
-            // Ignore alert failures in background/teardown conditions.
-          }
+          // Ignore alert failures in background/teardown conditions.
         }
       } catch {
         // Keep boot resilient if localization bootstrap fails.
@@ -261,43 +331,53 @@ function RootLayoutContent() {
     return (
       <View style={styles.errorContainer}>
         <ThemedText type="title">Configuration Error</ThemedText>
-        <ThemedText>
-          Missing `EXPO_PUBLIC_CONVEX_URL` in your environment.
-        </ThemedText>
+        <ThemedText>Missing `EXPO_PUBLIC_CONVEX_URL` in your environment.</ThemedText>
       </View>
     );
   }
 
+  const fallbackBackgroundColor = palette.appBg;
+  const statusInsetColor = topInsetBackgroundColor ?? fallbackBackgroundColor;
+  const topInsetHeight = Math.max(
+    insets.top,
+    Platform.OS === "android" ? (NativeStatusBar.currentHeight ?? 0) : 0,
+  );
+  const statusBarBackgroundColor =
+    typeof statusInsetColor === "string" ? statusInsetColor : undefined;
+
   return (
     <GestureHandlerRootView style={styles.root}>
-      <SafeAreaProvider>
-        <ConvexAuthProvider
-          client={convex}
-          {...(nativeStorage ? { storage: nativeStorage } : {})}
-        >
-          <UserProvider>
-            <ThemeProvider
-              value={navigationTheme}
-            >
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="onboarding"
-                options={{ headerShown: false }}
+      <ConvexAuthProvider client={convex} {...(nativeStorage ? { storage: nativeStorage } : {})}>
+        <UserProvider>
+          <ThemeProvider value={navigationTheme}>
+            <View style={styles.root}>
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.topInsetFill,
+                  { height: topInsetHeight, backgroundColor: statusInsetColor },
+                ]}
               />
-              <Stack.Screen
-                name="modal"
-                options={{
-                  presentation: "modal",
-                  title: i18n.t("modal.headerTitle"),
-                }}
-              />
-            </Stack>
+              <View style={[styles.stackContainer, { marginTop: topInsetHeight }]}>
+                <Stack>
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                  <Stack.Screen
+                    name="modal"
+                    options={{
+                      presentation: "modal",
+                      title: i18n.t("modal.headerTitle"),
+                    }}
+                  />
+                </Stack>
+              </View>
+            </View>
             <StatusBar
               style={resolvedScheme === "dark" ? "light" : "dark"}
               animated
-              translucent={false}
+              translucent
+              {...(statusBarBackgroundColor ? { backgroundColor: statusBarBackgroundColor } : {})}
             />
             <Animated.View
               pointerEvents="none"
@@ -312,14 +392,23 @@ function RootLayoutContent() {
           </ThemeProvider>
         </UserProvider>
       </ConvexAuthProvider>
-    </SafeAreaProvider>
-  </GestureHandlerRootView>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  stackContainer: {
+    flex: 1,
+  },
+  topInsetFill: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
   },
   errorContainer: {
     flex: 1,

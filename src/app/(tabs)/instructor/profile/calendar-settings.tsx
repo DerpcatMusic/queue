@@ -102,7 +102,7 @@ export default function CalendarSettingsScreen() {
   return (
     <RoleRouteGate
       requiredRole="instructor"
-      redirectHref="/(tabs)/studio/profile/index"
+      redirectHref="/(tabs)/studio/profile"
       loadingLabel={t("profile.settings.loading")}
     >
       <TabScreenScrollView
@@ -111,7 +111,6 @@ export default function CalendarSettingsScreen() {
       >
       <KitHeader
         title={t("profile.settings.calendar.title")}
-        subtitle={t("profile.settings.calendar.description")}
         compact
       />
 

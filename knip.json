@@ -1,41 +1,28 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema-jsonc.json",
   "entry": [
-    "app/**/*.{ts,tsx}",
+    "src/app/**/*.{ts,tsx}",
     "convex/**/*.ts",
     "scripts/**/*.{js,mjs,ts}",
-    "components/maps/instructor-zones-map-component.native.tsx",
-    "components/maps/instructor-zones-map-component.web.tsx",
-    "components/maps/onboarding-location-map.native.tsx",
-    "components/maps/onboarding-location-map.web.tsx",
-    "components/ui/expressive/expressive-button.ios.tsx",
-    "components/ui/expressive/expressive-button.android.tsx",
-    "components/ui/expressive/expressive-chip.ios.tsx",
-    "components/ui/expressive/expressive-chip.android.tsx",
-    "components/ui/expressive/expressive-fab.ios.tsx",
-    "components/ui/expressive/expressive-fab.android.tsx",
-    "components/ui/expressive/expressive-surface.ios.tsx",
-    "components/ui/expressive/expressive-surface.android.tsx",
-    "components/ui/expressive/expressive-text-field.ios.tsx",
-    "components/ui/expressive/expressive-text-field.android.tsx",
-    "hooks/use-color-scheme.web.ts",
-    "components/ui/icon-symbol.ios.tsx",
+    "src/components/maps/queue-map.tsx",
+    "src/hooks/use-color-scheme.web.ts",
+    "src/components/ui/icon-symbol.tsx",
     "babel.config.js",
     "metro.config.js"
   ],
   "project": [
-    "app/**/*.{ts,tsx}",
-    "components/**/*.{ts,tsx}",
-    "constants/**/*.{ts,tsx}",
+    "src/app/**/*.{ts,tsx}",
+    "src/components/**/*.{ts,tsx}",
+    "src/constants/**/*.{ts,tsx}",
     "convex/**/*.ts",
-    "hooks/**/*.{ts,tsx}",
-    "i18n/**/*.{ts,tsx}",
-    "lib/**/*.{ts,tsx}",
+    "src/hooks/**/*.{ts,tsx}",
+    "src/i18n/**/*.{ts,tsx}",
+    "src/lib/**/*.{ts,tsx}",
     "scripts/**/*.{js,mjs,ts}",
-    "types/**/*.d.ts",
+    "src/types/**/*.d.ts",
     "*.config.js",
     "!convex/_generated/**",
-    "!constants/*.generated.ts",
+    "!src/constants/*.generated.ts",
     "!convex/*.generated.ts"
   ],
   "node": false,
@@ -45,5 +32,13 @@
   },
   "ignoreBinaries": [
     "powershell"
+  ],
+  "ignore": [
+    "expo-router/entry",
+    "src/components/maps/queue-map-apple-theme.ts",
+    "src/components/maps/queue-map-zone-polygons.tsx",
+    "src/components/maps/queue-map.native.tsx",
+    "src/components/maps/queue-map.web.tsx",
+    "src/components/ui/icon-symbol.ios.tsx"
   ]
 }

@@ -91,7 +91,7 @@ function JobStatusBadge({
         alignSelf: "flex-start",
       }}
     >
-      <ThemedText type="micro" style={{ color: token.fg, fontWeight: "700", textTransform: "uppercase" }}>
+      <ThemedText type="micro" style={{ color: token.fg, fontWeight: "500" }}>
         {t(JOB_STATUS_TRANSLATION_KEYS[status])}
       </ThemedText>
     </View>
@@ -141,12 +141,11 @@ export function StudioJobsList({
                   <View style={{ flex: 1, gap: 2 }}>
                     <ThemedText
                       style={{
-                        fontSize: 28,
-                        lineHeight: 32,
-                        fontWeight: "900",
+                        fontSize: 24,
+                        lineHeight: 30,
+                        fontWeight: "600",
                         color: palette.text,
-                        letterSpacing: -1,
-                        textTransform: "uppercase",
+                        letterSpacing: -0.2,
                       }}
                     >
                       {toSportLabel(job.sport as never)}
@@ -159,13 +158,13 @@ export function StudioJobsList({
                 <View style={{ gap: 6, marginVertical: 4 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <AppSymbol name="calendar.circle.fill" size={16} tintColor={palette.textMuted} />
-                    <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "600" }}>
+                    <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "400" }}>
                       {formatDateTime(job.startTime, locale)}
                     </ThemedText>
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <AppSymbol name="mappin.circle.fill" size={16} tintColor={palette.textMuted} />
-                    <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "600" }}>
+                    <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "400" }}>
                       {getZoneLabel(job.zone, zoneLanguage)}
                     </ThemedText>
                   </View>
@@ -176,11 +175,11 @@ export function StudioJobsList({
                   <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
                     <ThemedText
                       style={{
-                        fontSize: 32,
-                        fontWeight: "900",
+                        fontSize: 29,
+                        fontWeight: "600",
                         color: palette.text,
                         fontVariant: ["tabular-nums"],
-                        letterSpacing: -1.5,
+                        letterSpacing: -0.4,
                       }}
                     >
                       {t("jobsTab.card.pay", { value: job.pay })}
@@ -189,7 +188,7 @@ export function StudioJobsList({
                   
                   {/* Push application context to the right using marginLeft auto */}
                   <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
-                    <ThemedText style={{ color: palette.textMuted, fontWeight: "700" }}>
+                    <ThemedText style={{ color: palette.textMuted, fontWeight: "500" }}>
                       {t("jobsTab.applicationsCount", {
                         total: job.applicationsCount,
                         pending: job.pendingApplicationsCount,
@@ -221,7 +220,7 @@ export function StudioJobsList({
                         gap: 8,
                       }}
                     >
-                      <ThemedText type="defaultSemiBold" style={{ textTransform: "uppercase", fontSize: 13, letterSpacing: 0.5, color: palette.textMuted }}>Payment</ThemedText>
+                      <ThemedText type="defaultSemiBold" style={{ fontSize: 13, letterSpacing: 0.2, color: palette.textMuted }}>Payment</ThemedText>
                       <View
                         style={{
                           borderWidth: 1,
@@ -254,8 +253,7 @@ export function StudioJobsList({
                         <ThemedText
                           type="micro"
                           style={{
-                            fontWeight: "700",
-                            textTransform: "uppercase",
+                            fontWeight: "500",
                             color:
                               !job.payment
                                 ? palette.textMuted
@@ -304,9 +302,8 @@ export function StudioJobsList({
                           type="defaultSemiBold"
                           style={{ 
                             color: palette.onPrimary,
-                            fontWeight: "800",
-                            textTransform: "uppercase",
-                            letterSpacing: 1,
+                            fontWeight: "600",
+                            letterSpacing: 0.2,
                           }}
                         >
                           {payingJobId === job.jobId
@@ -322,7 +319,7 @@ export function StudioJobsList({
 
                 {/* Applications Section */}
                 <View style={{ gap: BrandSpacing.sm, marginTop: BrandSpacing.md }}>
-                  <ThemedText type="defaultSemiBold" style={{ textTransform: "uppercase", fontSize: 13, letterSpacing: 0.5 }}>
+                  <ThemedText type="defaultSemiBold" style={{ fontSize: 13, letterSpacing: 0.2 }}>
                     {t("jobsTab.studioApplicationsTitle")}
                   </ThemedText>
                   {job.applications.length === 0 ? (
@@ -345,7 +342,7 @@ export function StudioJobsList({
                         }}
                       >
                         <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                          <ThemedText type="defaultSemiBold" style={{ fontSize: 18, letterSpacing: -0.5, fontWeight: "800" }}>
+                          <ThemedText type="defaultSemiBold" style={{ fontSize: 18, letterSpacing: -0.2, fontWeight: "600" }}>
                             {application.instructorName}
                           </ThemedText>
                           <View
@@ -376,8 +373,7 @@ export function StudioJobsList({
                             <ThemedText
                               type="micro"
                               style={{
-                                fontWeight: "700",
-                                textTransform: "uppercase",
+                                fontWeight: "500",
                                 color:
                                   application.status === "accepted"
                                     ? (palette.success as import("react-native").ColorValue)
@@ -392,7 +388,7 @@ export function StudioJobsList({
                             </ThemedText>
                           </View>
                         </View>
-                        <ThemedText style={{ color: palette.textMuted, fontSize: 13, fontWeight: "600" }}>
+                        <ThemedText style={{ color: palette.textMuted, fontSize: 13, fontWeight: "400" }}>
                           {formatDateTime(application.appliedAt, locale)}
                         </ThemedText>
                         {application.message ? <ThemedText style={{ marginTop: 4 }}>{application.message}</ThemedText> : null}
@@ -410,7 +406,7 @@ export function StudioJobsList({
                               disabled={reviewingApplicationId === application.applicationId}
                               onPress={() => onReview(application.applicationId, "accepted")}
                             >
-                              <ThemedText style={{ color: palette.onPrimary, fontWeight: "800", textTransform: "uppercase", fontSize: 13, letterSpacing: 0.5 }}>
+                              <ThemedText style={{ color: palette.onPrimary, fontWeight: "600", fontSize: 13, letterSpacing: 0.2 }}>
                                 {reviewingApplicationId === application.applicationId
                                     ? t("jobsTab.actions.accepting")
                                     : t("jobsTab.actions.accept")}
@@ -430,7 +426,7 @@ export function StudioJobsList({
                               disabled={reviewingApplicationId === application.applicationId}
                               onPress={() => onReview(application.applicationId, "rejected")}
                             >
-                              <ThemedText style={{ color: palette.text, fontWeight: "800", textTransform: "uppercase", fontSize: 13, letterSpacing: 0.5 }}>
+                              <ThemedText style={{ color: palette.text, fontWeight: "600", fontSize: 13, letterSpacing: 0.2 }}>
                                 {reviewingApplicationId === application.applicationId
                                   ? t("jobsTab.actions.rejecting")
                                   : t("jobsTab.actions.reject")}
@@ -450,5 +446,4 @@ export function StudioJobsList({
     </View>
   );
 }
-
 

@@ -4,7 +4,7 @@ import { ThemedText } from "@/components/themed-text";
 import { KitSurface } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing, type BrandPalette } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
-import { formatDateTime, getApplicationStatusTranslationKey } from "@/lib/jobs-utils";
+import { formatTime, formatDateWithWeekday, getApplicationStatusTranslationKey } from "@/lib/jobs-utils";
 import { View, Pressable } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import type { TFunction } from "i18next";
@@ -64,7 +64,7 @@ function JobStatusBadge({
         alignSelf: "flex-start",
       }}
     >
-      <ThemedText type="micro" style={{ color: token.fg, fontWeight: "700", textTransform: "uppercase" }}>
+      <ThemedText type="micro" style={{ color: token.fg, fontWeight: "500" }}>
         {t(getApplicationStatusTranslationKey(status))}
       </ThemedText>
     </View>
@@ -106,19 +106,18 @@ export function InstructorOpenJobsList({
                   <View style={{ flex: 1, gap: 2 }}>
                     <ThemedText
                       style={{
-                        fontSize: 28,
-                        lineHeight: 32,
-                        fontWeight: "900",
+                        fontSize: 24,
+                        lineHeight: 30,
+                        fontWeight: "600",
                         color: palette.text,
-                        letterSpacing: -1,
-                        textTransform: "uppercase",
+                        letterSpacing: -0.2,
                       }}
                     >
                       {toSportLabel(job.sport as never)}
                     </ThemedText>
                     <ThemedText
                       type="bodyStrong"
-                      style={{ color: palette.primary, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}
+                      style={{ color: palette.primary, fontWeight: "500", letterSpacing: 0.1 }}
                     >
                       {job.studioName}
                     </ThemedText>
@@ -130,13 +129,19 @@ export function InstructorOpenJobsList({
                 <View style={{ gap: 6, marginVertical: 4 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <AppSymbol name="calendar.circle.fill" size={16} tintColor={palette.textMuted} />
-                    <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "600" }}>
-                      {formatDateTime(job.startTime, locale)}
+                    <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "400" }}>
+                      {formatDateWithWeekday(job.startTime, locale)}
+                    </ThemedText>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <AppSymbol name="clock.fill" size={16} tintColor={palette.textMuted} />
+                    <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "400" }}>
+                      {`${formatTime(job.startTime, locale)} - ${formatTime(job.endTime, locale)}`}
                     </ThemedText>
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <AppSymbol name="mappin.circle.fill" size={16} tintColor={palette.textMuted} />
-                    <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "600" }}>
+                    <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "400" }}>
                       {getZoneLabel(job.zone, zoneLanguage)}
                     </ThemedText>
                   </View>
@@ -155,11 +160,11 @@ export function InstructorOpenJobsList({
                   <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
                     <ThemedText
                       style={{
-                        fontSize: 32,
-                        fontWeight: "900",
+                        fontSize: 29,
+                        fontWeight: "600",
                         color: palette.text,
                         fontVariant: ["tabular-nums"],
-                        letterSpacing: -1.5,
+                        letterSpacing: -0.5,
                       }}
                     >
                       {t("jobsTab.card.pay", { value: job.pay })}
@@ -194,9 +199,8 @@ export function InstructorOpenJobsList({
                       type="defaultSemiBold"
                       style={{ 
                         color: job.applicationStatus ? palette.textMuted : palette.onPrimary,
-                        fontWeight: "800",
-                        textTransform: "uppercase",
-                        letterSpacing: 1,
+                        fontWeight: "600",
+                        letterSpacing: 0.2,
                       }}
                     >
                       {applyingJobId === job.jobId ? t("jobsTab.actions.applying") : t("jobsTab.actions.apply")}
@@ -212,4 +216,3 @@ export function InstructorOpenJobsList({
     </View>
   );
 }
-

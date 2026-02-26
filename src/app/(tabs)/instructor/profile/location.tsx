@@ -158,7 +158,7 @@ export default function LocationScreen() {
   return (
     <RoleRouteGate
       requiredRole="instructor"
-      redirectHref="/(tabs)/studio/profile/index"
+      redirectHref="/(tabs)/studio/profile"
       loadingLabel={t("profile.settings.loading")}
     >
       <TabScreenScrollView
@@ -168,7 +168,6 @@ export default function LocationScreen() {
       >
       <KitHeader
         title={t("profile.settings.location.title")}
-        subtitle={t("profile.settings.location.instructorDescription")}
         compact
       />
 

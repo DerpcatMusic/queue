@@ -1,12 +1,17 @@
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
-import { LoadingScreen } from "@/components/loading-screen";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { Redirect, useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Pressable, View } from "react-native";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
+import { LoadingScreen } from "@/components/loading-screen";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitButton, KitList, KitListItem, KitSwitchRow, KitTextField } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useBrand } from "@/hooks/use-brand";
 import { formatDateTime } from "@/lib/jobs-utils";
 import {
@@ -14,11 +19,43 @@ import {
   getPaymentStatusLabel,
   getPayoutStatusLabel,
 } from "@/lib/payments-utils";
-import { useMutation, useQuery } from "convex/react";
-import { Redirect, useRouter } from "expo-router";
-import { Pressable, View } from "react-native";
-import { useTranslation } from "react-i18next";
-import { useState } from "react";
+
+WebBrowser.maybeCompleteAuthSession();
+
+const DEFAULT_RAPYD_APP_RETURN_URL = "queue://rapyd/beneficiary-return";
+const DEFAULT_CONVEX_SITE_URL = "https://curious-stingray-854.convex.site";
+
+const ensureAbsoluteUrl = (value: string, fallback: string): string => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    return fallback;
+  }
+};
+
+const resolveConvexSiteUrl = (): string => {
+  const explicit = process.env.EXPO_PUBLIC_CONVEX_SITE_URL?.trim();
+  if (explicit) {
+    return ensureAbsoluteUrl(explicit, DEFAULT_CONVEX_SITE_URL);
+  }
+  const cloud = process.env.EXPO_PUBLIC_CONVEX_URL?.trim() ?? "";
+  try {
+    const parsed = new URL(cloud);
+    if (parsed.hostname.endsWith(".convex.cloud")) {
+      parsed.hostname = parsed.hostname.replace(".convex.cloud", ".convex.site");
+    }
+    parsed.pathname = "";
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return DEFAULT_CONVEX_SITE_URL;
+  }
+};
 
 export default function ProfilePaymentsScreen() {
   const { t, i18n } = useTranslation();
@@ -33,38 +70,21 @@ export default function ProfilePaymentsScreen() {
     api.payments.listMyPayments,
     isInstructorPaymentsRole ? { limit: 40 } : "skip",
   );
-  const payoutDestinations = useQuery(
-    api.payments.listMyPayoutDestinations,
-    currentUser?.role === "instructor" ? {} : "skip",
-  );
   const payoutSummary = useQuery(
     api.payments.getMyPayoutSummary,
     currentUser?.role === "instructor" ? {} : "skip",
   );
-  const upsertPayoutDestination = useMutation(api.payments.upsertMyPayoutDestination);
   const requestPayoutWithdrawal = useMutation(api.payments.requestMyPayoutWithdrawal);
-  const verifyPayoutDestinationForTesting = useMutation(
-    api.payments.verifyMyPayoutDestinationForTesting,
+  const createBeneficiaryOnboardingForInstructor = useAction(
+    api.rapyd.createBeneficiaryOnboardingForInstructor,
   );
-  const [destinationType, setDestinationType] = useState("il_bank");
-  const [destinationRecipientId, setDestinationRecipientId] = useState("");
-  const [destinationLabel, setDestinationLabel] = useState("");
-  const [destinationCountry, setDestinationCountry] = useState("IL");
-  const [destinationCurrency, setDestinationCurrency] = useState("ILS");
-  const [destinationLast4, setDestinationLast4] = useState("");
-  const [destinationIsDefault, setDestinationIsDefault] = useState(true);
-  const [destinationSaveBusy, setDestinationSaveBusy] = useState(false);
-  const [destinationVerifyBusyId, setDestinationVerifyBusyId] = useState<
-    Id<"payoutDestinations"> | null
-  >(null);
   const [destinationError, setDestinationError] = useState<string | null>(null);
   const [destinationInfo, setDestinationInfo] = useState<string | null>(null);
+  const [onboardingBusy, setOnboardingBusy] = useState(false);
   const [withdrawBusy, setWithdrawBusy] = useState(false);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [withdrawInfo, setWithdrawInfo] = useState<string | null>(null);
-  const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"payments"> | null>(
-    null,
-  );
+  const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"payments"> | null>(null);
 
   const selectedPaymentDetail = useQuery(
     api.payments.getMyPaymentDetail,
@@ -90,60 +110,22 @@ export default function ProfilePaymentsScreen() {
 
   const rows = paymentRows ?? [];
   const role = currentUser.role as "studio" | "instructor";
-  const failedCount = rows.filter((row) => row.payment.status === "failed").length;
-  const processedCount = rows.filter((row) =>
-    ["captured", "refunded"].includes(row.payment.status),
-  ).length;
-  const paidOutCount = rows.filter((row) => row.payout?.status === "paid").length;
   const isDetailLoading = selectedPaymentId !== null && selectedPaymentDetail === undefined;
   const isManualPayoutMode = payoutSummary?.payoutReleaseMode !== "automatic";
-
-  const saveDestination = async () => {
-    const recipientId = destinationRecipientId.trim();
-    const payoutMethodType = destinationType.trim();
-    if (!recipientId) {
-      setDestinationError("Recipient ID is required.");
-      return;
-    }
-    if (!payoutMethodType) {
-      setDestinationError("Payout method type is required.");
-      return;
-    }
-
-    setDestinationSaveBusy(true);
-    setDestinationError(null);
-    setDestinationInfo(null);
-    try {
-      await upsertPayoutDestination({
-        provider: "rapyd",
-        type: payoutMethodType,
-        externalRecipientId: recipientId,
-        ...(destinationLabel.trim()
-          ? { label: destinationLabel.trim() }
-          : {}),
-        ...(destinationCountry.trim()
-          ? { country: destinationCountry.trim().toUpperCase() }
-          : {}),
-        ...(destinationCurrency.trim()
-          ? { currency: destinationCurrency.trim().toUpperCase() }
-          : {}),
-        ...(destinationLast4.trim()
-          ? { last4: destinationLast4.trim().slice(-4) }
-          : {}),
-        isDefault: destinationIsDefault,
-      });
-      setDestinationInfo("Destination saved.");
-      setDestinationRecipientId("");
-      setDestinationLabel("");
-      setDestinationLast4("");
-    } catch (error) {
-      setDestinationError(
-        error instanceof Error ? error.message : "Failed to save destination.",
-      );
-    } finally {
-      setDestinationSaveBusy(false);
-    }
+  const isIdentityVerified = payoutSummary?.isIdentityVerified ?? false;
+  const appReturnUrl = ensureAbsoluteUrl(
+    process.env.EXPO_PUBLIC_RAPYD_APP_RETURN_URL ?? "",
+    DEFAULT_RAPYD_APP_RETURN_URL,
+  );
+  const convexSiteUrl = resolveConvexSiteUrl();
+  const buildBridgeUrl = (result: "complete" | "cancel"): string => {
+    const bridge = new URL("/rapyd/beneficiary-return-bridge", convexSiteUrl);
+    bridge.searchParams.set("result", result);
+    bridge.searchParams.set("target", appReturnUrl);
+    return bridge.toString();
   };
+  const beneficiaryCompleteUrl = buildBridgeUrl("complete");
+  const beneficiaryCancelUrl = buildBridgeUrl("cancel");
 
   const withdrawToBank = async () => {
     setWithdrawBusy(true);
@@ -163,29 +145,47 @@ export default function ProfilePaymentsScreen() {
         );
       }
     } catch (error) {
-      setWithdrawError(
-        error instanceof Error ? error.message : "Failed to start withdrawal.",
-      );
+      setWithdrawError(error instanceof Error ? error.message : "Failed to start withdrawal.");
     } finally {
       setWithdrawBusy(false);
     }
   };
 
-  const verifyDestinationForTesting = async (
-    destinationId: Id<"payoutDestinations">,
-  ) => {
-    setDestinationVerifyBusyId(destinationId);
+  const startHostedBankOnboarding = async () => {
+    setOnboardingBusy(true);
     setDestinationError(null);
     setDestinationInfo(null);
     try {
-      await verifyPayoutDestinationForTesting({ destinationId });
-      setDestinationInfo("Destination marked verified (sandbox test mode).");
+      const session = await createBeneficiaryOnboardingForInstructor({
+        beneficiaryCountry: "IL",
+        beneficiaryEntityType: "individual",
+        category: "bank",
+        payoutCurrency: "ILS",
+        completeUrl: beneficiaryCompleteUrl,
+        cancelUrl: beneficiaryCancelUrl,
+      });
+      const authResult = await WebBrowser.openAuthSessionAsync(session.redirectUrl, appReturnUrl);
+      if (authResult.type === "success") {
+        const resultUrl = authResult.url ? new URL(authResult.url) : null;
+        const result = resultUrl?.searchParams.get("result") ?? "complete";
+        if (result === "cancel") {
+          setDestinationInfo("Bank onboarding cancelled.");
+        } else {
+          setDestinationInfo(
+            "Bank onboarding returned successfully. Waiting for provider confirmation.",
+          );
+        }
+      } else if (authResult.type === "dismiss" || authResult.type === "cancel") {
+        setDestinationInfo("Bank onboarding closed before completion.");
+      } else {
+        setDestinationInfo("Bank onboarding opened. Complete it, then return.");
+      }
     } catch (error) {
       setDestinationError(
-        error instanceof Error ? error.message : "Failed to verify destination.",
+        error instanceof Error ? error.message : "Failed to open secure bank onboarding.",
       );
     } finally {
-      setDestinationVerifyBusyId(null);
+      setOnboardingBusy(false);
     }
   };
 
@@ -193,424 +193,430 @@ export default function ProfilePaymentsScreen() {
     <TabScreenScrollView
       routeKey="instructor/profile"
       style={{ flex: 1, backgroundColor: palette.appBg }}
-      contentContainerStyle={{ paddingTop: 12, paddingBottom: 28, gap: 16 }}
+      contentContainerStyle={{ paddingTop: 12, paddingBottom: 40, gap: 24 }}
     >
-      <View style={{ paddingHorizontal: BrandSpacing.lg, gap: 4 }}>
+      <View
+        style={{ paddingHorizontal: BrandSpacing.lg, flexDirection: "row", alignItems: "center" }}
+      >
         <Pressable
           onPress={() => router.back()}
-          style={{ alignSelf: "flex-start", paddingVertical: 4, paddingRight: 4 }}
+          style={{ padding: 8, marginLeft: -8, marginRight: 8 }}
         >
-          <IconSymbol name="chevron.left" size={18} color={palette.textMuted} />
+          <IconSymbol name="chevron.left" size={24} color={palette.text} />
         </Pressable>
-        <ThemedText type="heading">Payments & payouts</ThemedText>
-        <ThemedText type="caption" style={{ color: palette.textMuted }}>
-          Track amounts, payment processing, and payout delivery status.
+        <ThemedText type="heading" style={{ flex: 1, fontSize: 24 }}>
+          Wallet
         </ThemedText>
       </View>
-
-      <View style={{ paddingHorizontal: BrandSpacing.sm }}>
-        <KitList inset>
-          <KitListItem
-            title="Processed payments"
-            accessory={<ThemedText style={{ color: palette.textMuted }}>{processedCount}</ThemedText>}
-          />
-          <KitListItem
-            title="Paid out"
-            accessory={<ThemedText style={{ color: palette.textMuted }}>{paidOutCount}</ThemedText>}
-          />
-          <KitListItem
-            title="Failed"
-            accessory={<ThemedText style={{ color: palette.danger }}>{failedCount}</ThemedText>}
-          />
-        </KitList>
-      </View>
-
-      <PaymentActivityList
-        viewerRole={role}
-        items={rows}
-        locale={locale}
-        palette={palette}
-        title="Recent activity"
-        subtitle={
-          role === "studio"
-            ? "What studios were charged and what instructors should receive."
-            : "What you should receive and payout progress."
-        }
-        emptyLabel="No payments yet."
-        onSelectPaymentId={setSelectedPaymentId}
-      />
-
-      {selectedPaymentId ? (
-        <View style={{ gap: 8, paddingHorizontal: BrandSpacing.sm }}>
-          <View
+      <View style={{ paddingHorizontal: BrandSpacing.lg }}>
+        <View
+          style={{
+            alignSelf: "flex-start",
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 999,
+            backgroundColor: payoutSummary?.hasVerifiedDestination
+              ? palette.successSubtle
+              : palette.warningSubtle,
+          }}
+        >
+          <ThemedText
+            type="micro"
             style={{
-              paddingHorizontal: BrandSpacing.xs,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
+              color: payoutSummary?.hasVerifiedDestination ? palette.success : palette.warning,
+              fontWeight: "700",
             }}
           >
-            <ThemedText type="title">Payment detail</ThemedText>
-            <Pressable onPress={() => setSelectedPaymentId(null)}>
-              <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                Clear
+            {payoutSummary?.hasVerifiedDestination ? "Bank connected" : "Bank not connected"}
+          </ThemedText>
+        </View>
+        <View
+          style={{
+            alignSelf: "flex-start",
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 999,
+            marginTop: 8,
+            backgroundColor: isIdentityVerified ? palette.successSubtle : palette.warningSubtle,
+          }}
+        >
+          <ThemedText
+            type="micro"
+            style={{
+              color: isIdentityVerified ? palette.success : palette.warning,
+              fontWeight: "700",
+            }}
+          >
+            {isIdentityVerified ? "KYC verified" : "KYC required"}
+          </ThemedText>
+        </View>
+        {!isIdentityVerified ? (
+          <ThemedText type="caption" style={{ color: palette.textMuted, marginTop: 6 }}>
+            Complete identity verification in Profile before connecting bank or withdrawing funds.
+          </ThemedText>
+        ) : null}
+        {!payoutSummary?.hasVerifiedDestination && payoutSummary?.onboardingStatus === "pending" ? (
+          <ThemedText type="caption" style={{ color: palette.textMuted, marginTop: 6 }}>
+            Onboarding submitted. Complete hosted flow and wait for provider confirmation.
+          </ThemedText>
+        ) : null}
+        {!payoutSummary?.hasVerifiedDestination && payoutSummary?.onboardingStatus === "failed" ? (
+          <ThemedText type="caption" style={{ color: palette.danger, marginTop: 6 }}>
+            {payoutSummary?.onboardingLastError ?? "Bank onboarding failed. Try again."}
+          </ThemedText>
+        ) : null}
+      </View>
+
+      {/* Hero Balance Card */}
+      <View style={{ paddingHorizontal: BrandSpacing.md }}>
+        <View
+          style={{
+            backgroundColor: palette.primary,
+            borderRadius: 28,
+            padding: 24,
+            gap: 24,
+            borderCurve: "continuous",
+            shadowColor: palette.primary,
+            shadowOffset: { width: 0, height: 12 },
+            shadowOpacity: 0.3,
+            shadowRadius: 24,
+            elevation: 12,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <View>
+              <ThemedText
+                type="caption"
+                style={{
+                  color: "rgba(255,255,255,0.8)",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  fontWeight: "600",
+                }}
+              >
+                Available
+              </ThemedText>
+              <ThemedText
+                style={{
+                  color: "#FFF",
+                  fontSize: 44,
+                  fontWeight: "800",
+                  fontVariant: ["tabular-nums"],
+                  marginTop: 4,
+                  letterSpacing: -1,
+                }}
+              >
+                {formatAgorotCurrency(
+                  payoutSummary?.availableAmountAgorot ?? 0,
+                  locale,
+                  payoutSummary?.currency ?? "ILS",
+                )}
+              </ThemedText>
+            </View>
+            <View
+              style={{
+                backgroundColor: "rgba(255,255,255,0.2)",
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 999,
+              }}
+            >
+              <ThemedText type="micro" style={{ color: "#FFF", fontWeight: "700" }}>
+                {payoutSummary?.currency ?? "ILS"}
+              </ThemedText>
+            </View>
+          </View>
+
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <Pressable
+              style={{
+                flex: 1,
+                backgroundColor:
+                  !isManualPayoutMode ||
+                  !isIdentityVerified ||
+                  !payoutSummary?.hasVerifiedDestination ||
+                  (payoutSummary?.availableAmountAgorot ?? 0) <= 0
+                    ? "rgba(255,255,255,0.1)"
+                    : "rgba(255,255,255,0.25)",
+                borderRadius: 20,
+                padding: 14,
+                alignItems: "center",
+                borderCurve: "continuous",
+                opacity: withdrawBusy ? 0.5 : 1,
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 8,
+              }}
+              onPress={withdrawToBank}
+              disabled={
+                withdrawBusy ||
+                !isManualPayoutMode ||
+                !isIdentityVerified ||
+                !payoutSummary?.hasVerifiedDestination ||
+                (payoutSummary?.availableAmountAgorot ?? 0) <= 0
+              }
+            >
+              <IconSymbol name="arrow.down" size={18} color="#FFF" />
+              <ThemedText type="bodyStrong" style={{ color: "#FFF", fontSize: 16 }}>
+                Withdraw
+              </ThemedText>
+            </Pressable>
+
+            <Pressable
+              style={{
+                flex: 1,
+                backgroundColor: payoutSummary?.hasVerifiedDestination
+                  ? "rgba(255,255,255,0.1)"
+                  : "#000",
+                borderRadius: 20,
+                padding: 14,
+                alignItems: "center",
+                borderCurve: "continuous",
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 8,
+              }}
+              onPress={startHostedBankOnboarding}
+              disabled={onboardingBusy || !isIdentityVerified}
+            >
+              <IconSymbol name="building.columns.fill" size={18} color="#FFF" />
+              <ThemedText type="bodyStrong" style={{ color: "#FFF", fontSize: 16 }}>
+                {payoutSummary?.hasVerifiedDestination ? "Manage bank" : "Connect bank"}
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+
+        {withdrawError || destinationError ? (
+          <ThemedText
+            style={{ color: palette.danger, marginTop: 12, textAlign: "center", fontWeight: "500" }}
+          >
+            {withdrawError || destinationError}
+          </ThemedText>
+        ) : withdrawInfo || destinationInfo ? (
+          <ThemedText style={{ color: palette.textMuted, marginTop: 12, textAlign: "center" }}>
+            {withdrawInfo || destinationInfo}
+          </ThemedText>
+        ) : null}
+      </View>
+
+      {/* Stats Row */}
+      <View style={{ flexDirection: "row", paddingHorizontal: BrandSpacing.md, gap: 12 }}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: palette.surfaceAlt,
+            padding: 16,
+            borderRadius: 24,
+            borderCurve: "continuous",
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: palette.warning as import("react-native").ColorValue,
+              }}
+            />
+            <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "600" }}>
+              Pending
+            </ThemedText>
+          </View>
+          <ThemedText type="title" style={{ fontSize: 22, fontVariant: ["tabular-nums"] }}>
+            {formatAgorotCurrency(
+              payoutSummary?.pendingAmountAgorot ?? 0,
+              locale,
+              payoutSummary?.currency ?? "ILS",
+            )}
+          </ThemedText>
+        </View>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: palette.surfaceAlt,
+            padding: 16,
+            borderRadius: 24,
+            borderCurve: "continuous",
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: palette.success as import("react-native").ColorValue,
+              }}
+            />
+            <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "600" }}>
+              Paid
+            </ThemedText>
+          </View>
+          <ThemedText type="title" style={{ fontSize: 22, fontVariant: ["tabular-nums"] }}>
+            {formatAgorotCurrency(
+              payoutSummary?.paidAmountAgorot ?? 0,
+              locale,
+              payoutSummary?.currency ?? "ILS",
+            )}
+          </ThemedText>
+        </View>
+      </View>
+
+      {selectedPaymentId ? (
+        <View style={{ paddingHorizontal: BrandSpacing.md, gap: 12, marginTop: 8 }}>
+          <View
+            style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+          >
+            <ThemedText type="title">Receipt</ThemedText>
+            <Pressable
+              onPress={() => setSelectedPaymentId(null)}
+              style={{
+                backgroundColor: palette.surfaceAlt,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+              }}
+            >
+              <ThemedText type="caption" style={{ color: palette.text, fontWeight: "600" }}>
+                Close
               </ThemedText>
             </Pressable>
           </View>
           {isDetailLoading ? (
-            <KitList inset>
-              <KitListItem>
-                <ThemedText style={{ color: palette.textMuted }}>
-                  Loading payment detail...
-                </ThemedText>
-              </KitListItem>
-            </KitList>
+            <View
+              style={{
+                backgroundColor: palette.surfaceAlt,
+                padding: 24,
+                borderRadius: 24,
+                alignItems: "center",
+              }}
+            >
+              <ThemedText style={{ color: palette.textMuted }}>Loading receipt...</ThemedText>
+            </View>
           ) : !selectedPaymentDetail ? (
-            <KitList inset>
-              <KitListItem>
-                <ThemedText style={{ color: palette.textMuted }}>
-                  Payment not found or no longer accessible.
-                </ThemedText>
-              </KitListItem>
-            </KitList>
+            <View
+              style={{
+                backgroundColor: palette.surfaceAlt,
+                padding: 24,
+                borderRadius: 24,
+                alignItems: "center",
+              }}
+            >
+              <ThemedText style={{ color: palette.textMuted }}>Payment not found.</ThemedText>
+            </View>
           ) : (
-            <View style={{ gap: 8 }}>
-              <KitList inset>
-                <KitListItem
-                  title="Payment status"
-                  accessory={
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      {getPaymentStatusLabel(selectedPaymentDetail.payment.status)}
+            <View
+              style={{
+                backgroundColor: palette.surfaceAlt,
+                borderRadius: 24,
+                borderCurve: "continuous",
+                overflow: "hidden",
+              }}
+            >
+              <View
+                style={{
+                  padding: 20,
+                  borderBottomWidth: 1,
+                  borderBottomColor: palette.border,
+                  borderStyle: "dashed",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <View
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    backgroundColor: palette.successSubtle,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 4,
+                  }}
+                >
+                  <IconSymbol
+                    name="checkmark"
+                    size={24}
+                    color={palette.success as import("react-native").ColorValue}
+                  />
+                </View>
+                <ThemedText type="title" style={{ fontSize: 32, fontVariant: ["tabular-nums"] }}>
+                  {formatAgorotCurrency(
+                    role === "studio"
+                      ? selectedPaymentDetail.payment.studioChargeAmountAgorot
+                      : selectedPaymentDetail.payment.instructorBaseAmountAgorot,
+                    locale,
+                    selectedPaymentDetail.payment.currency,
+                  )}
+                </ThemedText>
+                <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                  {formatDateTime(selectedPaymentDetail.payment.createdAt, locale)}
+                </ThemedText>
+              </View>
+              <View style={{ padding: 20, gap: 16 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                    Status
+                  </ThemedText>
+                  <ThemedText type="bodyStrong">
+                    {getPaymentStatusLabel(selectedPaymentDetail.payment.status)}
+                  </ThemedText>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                    Payout
+                  </ThemedText>
+                  <ThemedText type="bodyStrong">
+                    {selectedPaymentDetail.payout
+                      ? getPayoutStatusLabel(selectedPaymentDetail.payout.status)
+                      : "Pending"}
+                  </ThemedText>
+                </View>
+                {selectedPaymentDetail.invoice?.externalInvoiceUrl ? (
+                  <Pressable
+                    onPress={() =>
+                      WebBrowser.openBrowserAsync(
+                        selectedPaymentDetail.invoice!.externalInvoiceUrl!,
+                      )
+                    }
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      paddingVertical: 8,
+                    }}
+                  >
+                    <ThemedText type="bodyStrong" style={{ color: palette.primary }}>
+                      Download Invoice
                     </ThemedText>
-                  }
-                />
-                <KitListItem
-                  title="Payout status"
-                  accessory={
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      {selectedPaymentDetail.payout
-                        ? getPayoutStatusLabel(selectedPaymentDetail.payout.status)
-                        : "Not created"}
-                    </ThemedText>
-                  }
-                />
-                <KitListItem
-                  title={role === "studio" ? "Studio charged" : "Instructor amount"}
-                  accessory={
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      {formatAgorotCurrency(
-                        role === "studio"
-                          ? selectedPaymentDetail.payment.studioChargeAmountAgorot
-                          : selectedPaymentDetail.payment.instructorBaseAmountAgorot,
-                        locale,
-                        selectedPaymentDetail.payment.currency,
-                      )}
-                    </ThemedText>
-                  }
-                />
-                <KitListItem
-                  title="Platform markup"
-                  accessory={
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      {formatAgorotCurrency(
-                        selectedPaymentDetail.payment.platformMarkupAmountAgorot,
-                        locale,
-                        selectedPaymentDetail.payment.currency,
-                      )}
-                    </ThemedText>
-                  }
-                />
-                <KitListItem
-                  title="Created"
-                  accessory={
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      {formatDateTime(selectedPaymentDetail.payment.createdAt, locale)}
-                    </ThemedText>
-                  }
-                />
-              </KitList>
-              <KitList inset>
-                {selectedPaymentDetail.timeline.length === 0 ? (
-                  <KitListItem>
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      No provider events recorded yet.
-                    </ThemedText>
-                  </KitListItem>
-                ) : (
-                  selectedPaymentDetail.timeline.map((event) => (
-                    <KitListItem
-                      key={event._id}
-                      title={event.title}
-                      accessory={
-                        <ThemedText style={{ color: palette.textMuted }}>
-                          {formatDateTime(event.createdAt, locale)}
-                        </ThemedText>
-                      }
-                    >
-                      <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                        {event.description}
-                        {event.signatureValid ? "" : " | signature_invalid"}
-                        {event.processed ? "" : " | not_processed"}
-                      </ThemedText>
-                    </KitListItem>
-                  ))
-                )}
-              </KitList>
+                    <IconSymbol name="arrow.up.right" size={16} color={palette.primary} />
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
           )}
         </View>
       ) : null}
 
-      {role === "instructor" ? (
-        <View style={{ gap: 8, paddingHorizontal: BrandSpacing.sm }}>
-          <View style={{ paddingHorizontal: BrandSpacing.xs }}>
-            <ThemedText type="title">Withdraw to bank</ThemedText>
-            <ThemedText type="caption" style={{ color: palette.textMuted }}>
-              Instructor payout amount stays equal to the lesson pay.
-            </ThemedText>
-          </View>
-          <KitList inset>
-            <KitListItem
-              title="Available"
-              accessory={
-                <ThemedText style={{ color: palette.textMuted }}>
-                  {formatAgorotCurrency(
-                    payoutSummary?.availableAmountAgorot ?? 0,
-                    locale,
-                    payoutSummary?.currency ?? "ILS",
-                  )}
-                </ThemedText>
-              }
-            />
-            <KitListItem
-              title="In transit"
-              accessory={
-                <ThemedText style={{ color: palette.textMuted }}>
-                  {formatAgorotCurrency(
-                    payoutSummary?.pendingAmountAgorot ?? 0,
-                    locale,
-                    payoutSummary?.currency ?? "ILS",
-                  )}
-                </ThemedText>
-              }
-            />
-            <KitListItem
-              title="Paid"
-              accessory={
-                <ThemedText style={{ color: palette.textMuted }}>
-                  {formatAgorotCurrency(
-                    payoutSummary?.paidAmountAgorot ?? 0,
-                    locale,
-                    payoutSummary?.currency ?? "ILS",
-                  )}
-                </ThemedText>
-              }
-            />
-            <KitListItem
-              title="Destination"
-              accessory={
-                <ThemedText
-                  style={{
-                    color: payoutSummary?.hasVerifiedDestination
-                      ? palette.textMuted
-                      : palette.danger,
-                  }}
-                >
-                  {payoutSummary?.hasVerifiedDestination
-                    ? "Verified"
-                    : "Not verified"}
-                </ThemedText>
-              }
-            />
-            <KitListItem
-              title="Release mode"
-              accessory={
-                <ThemedText style={{ color: palette.textMuted }}>
-                  {payoutSummary?.payoutReleaseMode === "automatic"
-                    ? "Automatic"
-                    : "Manual"}
-                </ThemedText>
-              }
-            />
-            <KitListItem>
-              <View style={{ gap: 8 }}>
-                {withdrawError ? (
-                  <ThemedText type="caption" style={{ color: palette.danger }}>
-                    {withdrawError}
-                  </ThemedText>
-                ) : null}
-                {withdrawInfo ? (
-                  <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                    {withdrawInfo}
-                  </ThemedText>
-                ) : null}
-                {!isManualPayoutMode ? (
-                  <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                    Payouts are currently automatic in this environment.
-                  </ThemedText>
-                ) : null}
-                <KitButton
-                  label={withdrawBusy ? "Starting withdrawal..." : "Withdraw to bank"}
-                  onPress={() => {
-                    void withdrawToBank();
-                  }}
-                  disabled={
-                    withdrawBusy ||
-                    !isManualPayoutMode ||
-                    !payoutSummary?.hasVerifiedDestination ||
-                    (payoutSummary?.availableAmountAgorot ?? 0) <= 0
-                  }
-                />
-              </View>
-            </KitListItem>
-          </KitList>
-
-          <View style={{ paddingHorizontal: BrandSpacing.xs }}>
-            <ThemedText type="title">Add payout destination</ThemedText>
-            <ThemedText type="caption" style={{ color: palette.textMuted }}>
-              Use Rapyd beneficiary tokenization and save only the recipient reference ID.
-            </ThemedText>
-          </View>
-          <KitList inset>
-            <KitListItem title="Recipient reference">
-              <View style={{ gap: 10, marginTop: 8 }}>
-                <KitTextField
-                  label="Recipient ID (from Rapyd)"
-                  value={destinationRecipientId}
-                  onChangeText={setDestinationRecipientId}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholder="ewallet_xxx or beneficiary_xxx"
-                  helperText="Do not enter raw bank account data here."
-                />
-                <KitTextField
-                  label="Payout method type"
-                  value={destinationType}
-                  onChangeText={setDestinationType}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholder="il_bank"
-                />
-                <KitTextField
-                  label="Label (optional)"
-                  value={destinationLabel}
-                  onChangeText={setDestinationLabel}
-                  autoCorrect={false}
-                  placeholder="Main bank account"
-                />
-                <View style={{ flexDirection: "row", gap: 10 }}>
-                  <View style={{ flex: 1 }}>
-                    <KitTextField
-                      label="Country"
-                      value={destinationCountry}
-                      onChangeText={setDestinationCountry}
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      placeholder="IL"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <KitTextField
-                      label="Currency"
-                      value={destinationCurrency}
-                      onChangeText={setDestinationCurrency}
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      placeholder="ILS"
-                    />
-                  </View>
-                </View>
-                <KitTextField
-                  label="Last 4 (optional)"
-                  value={destinationLast4}
-                  onChangeText={setDestinationLast4}
-                  keyboardType="number-pad"
-                  autoCorrect={false}
-                  placeholder="1234"
-                />
-              </View>
-            </KitListItem>
-            <KitSwitchRow
-              title="Set as default destination"
-              value={destinationIsDefault}
-              onValueChange={setDestinationIsDefault}
-            />
-            <KitListItem>
-              <View style={{ gap: 8 }}>
-                {destinationError ? (
-                  <ThemedText type="caption" style={{ color: palette.danger }}>
-                    {destinationError}
-                  </ThemedText>
-                ) : null}
-                {destinationInfo ? (
-                  <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                    {destinationInfo}
-                  </ThemedText>
-                ) : null}
-                <KitButton
-                  label={destinationSaveBusy ? "Saving..." : "Save destination"}
-                  onPress={() => {
-                    void saveDestination();
-                  }}
-                  disabled={destinationSaveBusy}
-                />
-              </View>
-            </KitListItem>
-          </KitList>
-
-          <View style={{ paddingHorizontal: BrandSpacing.xs }}>
-            <ThemedText type="title">Payout destinations</ThemedText>
-            {payoutSummary?.sandboxSelfVerifyEnabled ? (
-              <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                Sandbox testing: pending destinations can be verified from this screen.
-              </ThemedText>
-            ) : null}
-          </View>
-          <KitList inset>
-            {(payoutDestinations ?? []).length === 0 ? (
-              <KitListItem>
-                <ThemedText style={{ color: palette.textMuted }}>
-                  No payout destination configured yet.
-                </ThemedText>
-              </KitListItem>
-            ) : (
-              (payoutDestinations ?? []).map((destination) => (
-                <KitListItem
-                  key={destination._id}
-                  title={destination.label || destination.type}
-                  accessory={
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      {destination.isDefault ? "Default" : destination.status}
-                    </ThemedText>
-                  }
-                >
-                  <ThemedText style={{ color: palette.textMuted }}>
-                    {destination.country || "IL"} {destination.currency || "ILS"}{" "}
-                    {destination.last4 ? `**** ${destination.last4}` : ""}
-                  </ThemedText>
-                  {payoutSummary?.sandboxSelfVerifyEnabled &&
-                  destination.status !== "verified" ? (
-                    <View style={{ marginTop: 8 }}>
-                      <KitButton
-                        label={
-                          destinationVerifyBusyId === destination._id
-                            ? "Verifying..."
-                            : "Mark verified (sandbox)"
-                        }
-                        variant="secondary"
-                        onPress={() => {
-                          void verifyDestinationForTesting(destination._id);
-                        }}
-                        disabled={destinationVerifyBusyId === destination._id}
-                      />
-                    </View>
-                  ) : null}
-                </KitListItem>
-              ))
-            )}
-          </KitList>
-        </View>
-      ) : null}
+      <View style={{ marginTop: 8 }}>
+        <PaymentActivityList
+          viewerRole={role}
+          items={rows}
+          locale={locale}
+          palette={palette}
+          title="Recent Transactions"
+          emptyLabel="No transactions yet."
+          onSelectPaymentId={setSelectedPaymentId}
+        />
+      </View>
     </TabScreenScrollView>
   );
 }

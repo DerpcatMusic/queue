@@ -46,16 +46,12 @@ export const completeInstructorOnboarding = mutation({
       throw new ConvexError("Only instructor users can complete this flow");
     }
 
-    const displayName = normalizeRequiredString(
+    const requestedDisplayName = normalizeRequiredString(
       args.displayName,
       MAX_DISPLAY_NAME_LENGTH,
       "Display name",
     );
-    const address = normalizeOptionalString(
-      args.address,
-      MAX_ADDRESS_LENGTH,
-      "Address",
-    );
+    const address = normalizeOptionalString(args.address, MAX_ADDRESS_LENGTH, "Address");
     const { latitude, longitude } = normalizeCoordinates(
       omitUndefined({
         latitude: args.latitude,
@@ -94,6 +90,11 @@ export const completeInstructorOnboarding = mutation({
       .query("instructorProfiles")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .unique();
+    const verifiedLegalName =
+      existingProfile?.diditVerificationStatus === "approved"
+        ? trimOptionalString(existingProfile.diditLegalName)
+        : undefined;
+    const displayName = verifiedLegalName ?? requestedDisplayName;
 
     const instructorId = existingProfile
       ? existingProfile._id
@@ -191,6 +192,7 @@ export const completeStudioOnboarding = mutation({
     expoPushToken: v.optional(v.string()),
     notificationsEnabled: v.optional(v.boolean()),
     logoStorageId: v.optional(v.id("_storage")),
+    sports: v.array(v.string()),
   },
   returns: v.id("studioProfiles"),
   handler: async (ctx, args) => {
@@ -248,6 +250,21 @@ export const completeStudioOnboarding = mutation({
         updatedAt: now,
       });
 
+      const existingSports = await ctx.db
+        .query("studioSports")
+        .withIndex("by_studio_id", (q) => q.eq("studioId", existingProfile._id))
+        .collect();
+      await Promise.all(existingSports.map((s) => ctx.db.delete("studioSports", s._id)));
+      await Promise.all(
+        args.sports.map((sport) =>
+          ctx.db.insert("studioSports", {
+            studioId: existingProfile._id,
+            sport: normalizeSportType(sport),
+            createdAt: now,
+          }),
+        ),
+      );
+
       await ctx.db.patch("users", user._id, {
         role: "studio",
         onboardingComplete: true,
@@ -272,6 +289,16 @@ export const completeStudioOnboarding = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await Promise.all(
+      args.sports.map((sport) =>
+        ctx.db.insert("studioSports", {
+          studioId,
+          sport: normalizeSportType(sport),
+          createdAt: now,
+        }),
+      ),
+    );
 
     await ctx.db.patch("users", user._id, {
       role: "studio",

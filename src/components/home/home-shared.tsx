@@ -108,8 +108,8 @@ function HeroMetric({ label, value, palette }: HeroMetricProps) {
           color: palette.text,
           fontSize: 28,
           lineHeight: 30,
-          letterSpacing: -0.8,
-          fontWeight: "800",
+          letterSpacing: -0.4,
+          fontWeight: "600",
           fontVariant: ["tabular-nums"],
         }}
       >
@@ -141,7 +141,7 @@ export function HeroBlock({ title, subtitle, palette, metrics }: HeroBlockProps)
         </ThemedText>
         <ThemedText
           type="heading"
-          style={{ fontSize: 36, lineHeight: 40, letterSpacing: -1.2, fontWeight: "800" }}
+          style={{ fontSize: 34, lineHeight: 38, letterSpacing: -0.4, fontWeight: "600" }}
         >
           {title}
         </ThemedText>
@@ -203,7 +203,7 @@ export function PrimaryActionCard({
         >
           <ThemedText
             type="caption"
-            style={{ color: palette.primary, marginTop: 4, fontWeight: "700" }}
+            style={{ color: palette.primary, marginTop: 4, fontWeight: "500" }}
           >
             {subtitle}
           </ThemedText>

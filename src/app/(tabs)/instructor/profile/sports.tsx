@@ -28,7 +28,7 @@ export default function SportsScreen() {
   const { t } = useTranslation();
   const palette = useBrand();
   const router = useRouter();
-  const { topInset, safeBottomInset } = useNativeTabLayout();
+  const { safeBottomInset } = useNativeTabLayout();
   const { currentUser } = useUser();
 
   const instructorSettings = useQuery(
@@ -110,12 +110,12 @@ export default function SportsScreen() {
   return (
     <RoleRouteGate
       requiredRole="instructor"
-      redirectHref="/(tabs)/studio/profile/index"
+      redirectHref="/(tabs)/studio/profile"
       loadingLabel={t("profile.settings.loading")}
     >
       <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
       {/* Count badge */}
-      <View style={[styles.countRow, { paddingTop: Math.max(topInset, 16) }]}>
+      <View style={[styles.countRow, { paddingTop: 16 }]}>
         <ThemedText type="caption" style={{ color: palette.textMuted }}>
           {sports.length > 0
             ? t("profile.settings.sports.selected", { count: sports.length })

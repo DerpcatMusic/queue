@@ -54,8 +54,7 @@ export function KitHeader({
               type="micro"
               style={{
                 color: foreground.muted,
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
+                letterSpacing: 0.2,
               }}
             >
               {badgeLabel}

@@ -9,6 +9,7 @@ import type { Id } from "./_generated/dataModel";
 import { omitUndefined } from "./lib/validation";
 
 const RAPYD_PROVIDER = "rapyd" as const;
+type RapydSignatureEncoding = "hex_base64" | "raw_base64";
 
 type PayoutStatus =
   | "queued"
@@ -33,6 +34,13 @@ const MAX_RETRY_MS = 30 * 60 * 1000;
 const getOptionalEnv = (name: string): string | undefined => {
   const value = process.env[name]?.trim();
   return value && value.length > 0 ? value : undefined;
+};
+
+const resolvePreferredSignatureEncoding = (): RapydSignatureEncoding => {
+  const value = (process.env.RAPYD_SIGNATURE_ENCODING ?? "hex_base64")
+    .trim()
+    .toLowerCase();
+  return value === "raw_base64" ? "raw_base64" : "hex_base64";
 };
 
 const clampInt = (value: number, min: number, max: number): number =>
@@ -66,6 +74,7 @@ const buildRapydSignature = async ({
   accessKey,
   secretKey,
   body,
+  encoding,
 }: {
   method: string;
   path: string;
@@ -74,6 +83,7 @@ const buildRapydSignature = async ({
   accessKey: string;
   secretKey: string;
   body: string;
+  encoding: RapydSignatureEncoding;
 }): Promise<string> => {
   const toSign = `${method.toLowerCase()}${path}${salt}${timestamp}${accessKey}${secretKey}${body}`;
   const encoder = new TextEncoder();
@@ -86,6 +96,12 @@ const buildRapydSignature = async ({
   );
   const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(toSign));
   const bytes = new Uint8Array(signature);
+  if (encoding === "hex_base64") {
+    const hexDigest = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    return btoa(hexDigest);
+  }
   let binary = "";
   for (const byte of bytes) {
     binary += String.fromCharCode(byte);
@@ -440,30 +456,44 @@ export const executePayoutAttemptAction = internalAction({
     const body = JSON.stringify(bodyPayload);
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const salt = crypto.randomUUID().replace(/-/g, "");
-    const signature = await buildRapydSignature({
-      method: "POST",
-      path: requestPath,
-      salt,
-      timestamp,
-      accessKey,
-      secretKey,
-      body,
-    });
-
     try {
-      const response = await fetch(`${rapydBaseUrl}${requestPath}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          access_key: accessKey,
+      const preferred = resolvePreferredSignatureEncoding();
+      const fallback: RapydSignatureEncoding =
+        preferred === "hex_base64" ? "raw_base64" : "hex_base64";
+      const encodings: RapydSignatureEncoding[] = [preferred, fallback];
+
+      let response: Response | null = null;
+      let responseText = "";
+      let usedEncoding: RapydSignatureEncoding = preferred;
+
+      for (const encoding of encodings) {
+        const signature = await buildRapydSignature({
+          method: "POST",
+          path: requestPath,
           salt,
           timestamp,
-          signature,
-          idempotency: payout.idempotencyKey,
-        },
-        body,
-      });
-      const responseText = await response.text();
+          accessKey,
+          secretKey,
+          body,
+          encoding,
+        });
+        response = await fetch(`${rapydBaseUrl}${requestPath}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            access_key: accessKey,
+            salt,
+            timestamp,
+            signature,
+            idempotency: payout.idempotencyKey,
+          },
+          body,
+        });
+        responseText = await response.text();
+        usedEncoding = encoding;
+        if (response.status !== 401) break;
+      }
+      if (!response) return;
 
       if (!response.ok) {
         await ctx.runMutation(internal.payouts.recordPayoutAttemptResult, {
@@ -472,7 +502,7 @@ export const executePayoutAttemptAction = internalAction({
           mappedStatus: "queued",
           retryable: isRetryableHttpFailure(response.status),
           httpStatus: response.status,
-          message: `Rapyd payout HTTP ${response.status}: ${responseText.slice(0, 500)}`,
+          message: `Rapyd payout HTTP ${response.status} [${usedEncoding}]: ${responseText.slice(0, 500)}`,
         });
         return;
       }

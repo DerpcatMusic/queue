@@ -94,6 +94,23 @@ export function formatDateTime(value: number, locale: string, timeZone = DEVICE_
   });
 }
 
+export function formatTime(value: number, locale: string, timeZone = DEVICE_TIME_ZONE) {
+  return new Date(value).toLocaleString(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone,
+  });
+}
+
+export function formatDateWithWeekday(value: number, locale: string, timeZone = DEVICE_TIME_ZONE) {
+  return new Date(value).toLocaleString(locale, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone,
+  });
+}
+
 export function getJobStatusTone(status: keyof typeof JOB_STATUS_TRANSLATION_KEYS) {
   if (status === "open") return "primary";
   if (status === "filled" || status === "completed") return "success";

@@ -1,10 +1,12 @@
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
+import { toSportLabel } from "@/convex/constants";
 import { LoadingScreen } from "@/components/loading-screen";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
+import { CreateJobSheet } from "@/components/jobs/studio/create-job-sheet";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { KitButton } from "@/components/ui/kit";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,39 +14,27 @@ import { BrandSpacing } from "@/constants/brand";
 import { FEATURE_FLAGS } from "@/constants/feature-flags";
 import { useBrand } from "@/hooks/use-brand";
 import {
-  formatDateTime,
-  createDefaultStudioDraft,
-  trimOptional,
-  sanitizeDecimalInput,
   MINUTE_MS,
   DEVICE_TIME_ZONE,
-  type PickerTarget,
+  trimOptional,
   type StudioDraft,
-  DURATION_PRESETS,
-  PAY_PRESETS,
-  MAX_PARTICIPANTS_MIN,
-  MAX_PARTICIPANTS_MAX,
-  CANCELLATION_PRESETS,
-  APPLICATION_LEAD_PRESETS,
 } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { createPerfTimer, logPerfSummary, recordPerfMetric } from "@/lib/perf-telemetry";
 import { registerForPushNotificationsAsync } from "@/lib/push-notifications";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
-import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as WebBrowser from "expo-web-browser";
 import {
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
 } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -67,128 +57,7 @@ function FeedSectionHeader({ title, subtitle, palette }: FeedSectionHeaderProps)
   );
 }
 
-type DateTimePickerAndroidLike = {
-  open: (options: {
-    value: Date;
-    mode: "date" | "time";
-    is24Hour?: boolean;
-    timeZoneName?: string;
-    onChange?: (event: unknown, date?: Date) => void;
-  }) => void;
-};
 
-let NativeDateTimePicker: ComponentType<Record<string, unknown>> | null = null;
-let NativeDateTimePickerAndroid: DateTimePickerAndroidLike | null = null;
-
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pickerModule = require("@react-native-community/datetimepicker") as {
-    default: ComponentType<Record<string, unknown>>;
-    DateTimePickerAndroid?: DateTimePickerAndroidLike;
-  };
-  NativeDateTimePicker = pickerModule.default;
-  NativeDateTimePickerAndroid = pickerModule.DateTimePickerAndroid ?? null;
-} catch {
-  NativeDateTimePicker = null;
-  NativeDateTimePickerAndroid = null;
-}
-
-
-type OptionChipProps = {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  borderColor: string | import('react-native').ColorValue;
-  selectedBorderColor: string | import('react-native').ColorValue;
-  selectedBackgroundColor: string | import('react-native').ColorValue;
-  selectedTextColor: string | import('react-native').ColorValue;
-};
-
-function OptionChip({
-  label,
-  selected,
-  onPress,
-  borderColor,
-  selectedBorderColor,
-  selectedBackgroundColor,
-  selectedTextColor,
-}: OptionChipProps) {
-  return (
-    <Pressable
-      style={[
-        styles.chip,
-        {
-          borderColor: selected ? selectedBorderColor : borderColor,
-          backgroundColor: selected ? selectedBackgroundColor : undefined,
-        },
-      ]}
-      onPress={onPress}
-    >
-      <ThemedText
-        type="defaultSemiBold"
-        style={{ color: selected ? selectedTextColor : undefined }}
-      >
-        {label}
-      </ThemedText>
-    </Pressable>
-  );
-}
-
-type StudioFormStepSectionProps = {
-  stepLabel: string;
-  title: string;
-  subtitle?: string;
-  palette: ReturnType<typeof useBrand>;
-  delay: number;
-  children: ReactNode;
-};
-
-function StudioFormStepSection({
-  stepLabel,
-  title,
-  subtitle,
-  palette,
-  delay,
-  children,
-}: StudioFormStepSectionProps) {
-  return (
-    <Animated.View
-      entering={FadeInUp.delay(delay).duration(320).springify()}
-      style={[
-        styles.formStepSection,
-        {
-          borderColor: palette.border,
-          backgroundColor: palette.surfaceAlt,
-        },
-      ]}
-    >
-      <View style={styles.formStepHeader}>
-        <View
-          style={[
-            styles.formStepBadge,
-            {
-              borderColor: palette.primary,
-              backgroundColor: palette.primarySubtle,
-            },
-          ]}
-        >
-          <ThemedText type="micro" style={{ color: palette.primary }}>
-            {stepLabel}
-          </ThemedText>
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <ThemedText type="defaultSemiBold">{title}</ThemedText>
-          {subtitle ? (
-            <ThemedText type="caption" style={{ color: palette.textMuted }}>
-              {subtitle}
-            </ThemedText>
-          ) : null}
-        </View>
-      </View>
-      <View style={{ gap: 10 }}>{children}</View>
-    </Animated.View>
-  );
-}
 
 export function StudioFeed() {
   const { t, i18n } = useTranslation();
@@ -218,12 +87,7 @@ export function StudioFeed() {
     currentUser?.role === "studio" ? { limit: 200 } : "skip",
   );
 
-  const [studioDraft, setStudioDraft] = useState<StudioDraft>(
-    createDefaultStudioDraft(),
-  );
-  const [iosPickerTarget, setIosPickerTarget] = useState<PickerTarget | null>(
-    null,
-  );
+  const createJobSheetRef = useRef<BottomSheet>(null);
   const [isSubmittingStudio, setIsSubmittingStudio] = useState(false);
   const [isEnablingStudioPush, setIsEnablingStudioPush] = useState(false);
   const [isReviewingApplicationId, setIsReviewingApplicationId] = useState<Id<"jobApplications"> | null>(null);
@@ -336,140 +200,56 @@ export function StudioFeed() {
     return <Redirect href="/" />;
   }
 
-  const applyDraftDateTime = (target: PickerTarget, nextDate: Date) => {
-    setStudioDraft((current: StudioDraft) => {
-      const nextTimestamp = nextDate.getTime();
-      if (target === "start") {
-        const duration = Math.max(
-          current.endTime - current.startTime,
-          30 * MINUTE_MS,
-        );
-        const adjustedEnd =
-          nextTimestamp >= current.endTime
-            ? nextTimestamp + duration
-            : current.endTime;
-        return {
-          ...current,
-          startTime: nextTimestamp,
-          endTime: adjustedEnd,
-        };
-      }
 
-      const minimumEnd = current.startTime + 15 * MINUTE_MS;
-      return {
-        ...current,
-        endTime: Math.max(nextTimestamp, minimumEnd),
-      };
-    });
-  };
-
-  const openNativeDateTimePicker = (target: PickerTarget) => {
-    if (Platform.OS === "android") {
-      if (!NativeDateTimePickerAndroid) {
-        setErrorMessage(t("jobsTab.errors.datetimePickerUnavailable"));
-        return;
-      }
-
-      const initial = new Date(
-        target === "start" ? studioDraft.startTime : studioDraft.endTime,
-      );
-
-      NativeDateTimePickerAndroid.open({
-        value: initial,
-        mode: "date",
-        is24Hour: true,
-        timeZoneName: DEVICE_TIME_ZONE,
-        onChange: (_dateEvent, selectedDate) => {
-          if (!selectedDate) return;
-          NativeDateTimePickerAndroid?.open({
-            value: selectedDate,
-            mode: "time",
-            is24Hour: true,
-            timeZoneName: DEVICE_TIME_ZONE,
-            onChange: (_timeEvent, selectedTime) => {
-              if (!selectedTime) return;
-              const combined = new Date(selectedDate);
-              combined.setHours(
-                selectedTime.getHours(),
-                selectedTime.getMinutes(),
-                0,
-                0,
-              );
-              applyDraftDateTime(target, combined);
-            },
-          });
-        },
-      });
-
-      return;
-    }
-
-    if (!NativeDateTimePicker) {
-      setErrorMessage(t("jobsTab.errors.datetimePickerUnavailable"));
-      return;
-    }
-
-    setIosPickerTarget(target);
-  };
-
-  const postStudioJob = async () => {
+  const postStudioJob = async (draft: StudioDraft) => {
     if (currentUser.role !== "studio") return;
     const stopTimer = FEATURE_FLAGS.jobsPerfTelemetry
       ? createPerfTimer("jobs.studio.post_job_mutation")
       : null;
     const referenceNow = Date.now();
 
-    if (!studioDraft.sport) {
-      setErrorMessage(t("jobsTab.errors.sportRequired"));
-      return;
-    }
-
-    const pay = Number.parseFloat(studioDraft.payInput);
+    const pay = Number.parseFloat(draft.payInput);
     if (!Number.isFinite(pay) || pay <= 0) {
       setErrorMessage(t("jobsTab.errors.payRequired"));
       return;
     }
 
-    if (studioDraft.startTime <= referenceNow) {
+    if (draft.startTime <= referenceNow) {
       setErrorMessage(t("jobsTab.errors.startMustBeFuture"));
       return;
     }
 
-    if (studioDraft.endTime <= studioDraft.startTime) {
+    if (draft.endTime <= draft.startTime) {
       setErrorMessage(t("jobsTab.errors.endMustBeAfterStart"));
       return;
     }
 
     const applicationDeadline =
-      studioDraft.startTime - studioDraft.applicationLeadMinutes * MINUTE_MS;
-    if (applicationDeadline <= referenceNow) {
-      setErrorMessage(t("jobsTab.errors.applicationDeadlineMustBeFuture"));
-      return;
-    }
+      draft.startTime - draft.applicationLeadMinutes * MINUTE_MS;
+    
+    // Safety check for absolute minimum lead time (15 mins) if not specified
+    const finalApplicationDeadline = Math.min(applicationDeadline, draft.startTime - (15 * MINUTE_MS));
 
     setErrorMessage(null);
     setStatusMessage(null);
     setIsSubmittingStudio(true);
 
     try {
-      const note = trimOptional(studioDraft.note);
+      const note = trimOptional(draft.note);
       await postJob({
-        sport: studioDraft.sport,
-        startTime: studioDraft.startTime,
-        endTime: studioDraft.endTime,
+        sport: draft.sport,
+        startTime: draft.startTime,
+        endTime: draft.endTime,
         timeZone: DEVICE_TIME_ZONE,
         pay,
-        maxParticipants: studioDraft.maxParticipants,
-        cancellationDeadlineHours: studioDraft.cancellationDeadlineHours,
-        applicationDeadline,
+        maxParticipants: draft.maxParticipants,
+        cancellationDeadlineHours: draft.cancellationDeadlineHours,
+        applicationDeadline: finalApplicationDeadline,
         ...omitUndefined({ note }),
       });
 
       setStatusMessage(t("jobsTab.success.posted"));
-      setStudioDraft((current: StudioDraft) => ({
-        ...current,
-        note: "",
-      }));
+      createJobSheetRef.current?.close();
     } catch (error) {
       const message =
         error instanceof Error && error.message
@@ -653,311 +433,13 @@ export function StudioFeed() {
                 palette={palette}
               />
 
-              <StudioFormStepSection
-                stepLabel="01"
-                title={`${t("jobsTab.form.sport")} + ${t("jobsTab.form.startTime")}`}
-                subtitle={t("jobsTab.timezoneHint", { timeZone: deviceTimeZone })}
-                palette={palette}
-                delay={40}
-              >
-                <View style={styles.sectionBlock}>
-                  <ThemedText style={{ color: palette.textMuted }}>
-                    {t("jobsTab.form.sport")}
-                  </ThemedText>
-                  <View style={styles.chipGrid}>
-                    {SPORT_TYPES.map((sport) => (
-                      <OptionChip
-                        key={sport}
-                        label={toSportLabel(sport)}
-                        selected={studioDraft.sport === sport}
-                        onPress={() => {
-                          setStudioDraft((current: StudioDraft) => ({ ...current, sport }));
-                        }}
-                        borderColor={palette.border}
-                        selectedBorderColor={palette.primary}
-                        selectedBackgroundColor={palette.primarySubtle}
-                        selectedTextColor={palette.primary}
-                      />
-                    ))}
-                  </View>
-                </View>
-
-                <View style={styles.timeCardRow}>
-                  <Pressable
-                    style={[styles.timeField, { borderColor: palette.border }]}
-                    onPress={() => {
-                      openNativeDateTimePicker("start");
-                    }}
-                  >
-                    <ThemedText type="defaultSemiBold">
-                      {t("jobsTab.form.startTime")}
-                    </ThemedText>
-                    <ThemedText>{formatDateTime(studioDraft.startTime, locale)}</ThemedText>
-                  </Pressable>
-
-                  <Pressable
-                    style={[styles.timeField, { borderColor: palette.border }]}
-                    onPress={() => {
-                      openNativeDateTimePicker("end");
-                    }}
-                  >
-                    <ThemedText type="defaultSemiBold">
-                      {t("jobsTab.form.endTime")}
-                    </ThemedText>
-                    <ThemedText>{formatDateTime(studioDraft.endTime, locale)}</ThemedText>
-                  </Pressable>
-                </View>
-
-                {Platform.OS === "ios" && iosPickerTarget && NativeDateTimePicker ? (
-                  <View
-                    style={[
-                      styles.inlinePickerWrap,
-                      { borderColor: palette.border, backgroundColor: palette.surface },
-                    ]}
-                  >
-                    <ThemedText type="defaultSemiBold">
-                      {iosPickerTarget === "start"
-                        ? t("jobsTab.form.startTime")
-                        : t("jobsTab.form.endTime")}
-                    </ThemedText>
-                    <NativeDateTimePicker
-                      value={
-                        new Date(
-                          iosPickerTarget === "start"
-                            ? studioDraft.startTime
-                            : studioDraft.endTime,
-                        )
-                      }
-                      mode="datetime"
-                      display="spinner"
-                      timeZoneName={DEVICE_TIME_ZONE}
-                      onChange={(_event: unknown, selectedDate?: Date) => {
-                        if (!selectedDate) return;
-                        applyDraftDateTime(iosPickerTarget, selectedDate);
-                      }}
-                    />
-                    <KitButton
-                      label={t("jobsTab.actions.done")}
-                      variant="secondary"
-                      onPress={() => {
-                        setIosPickerTarget(null);
-                      }}
-                    />
-                  </View>
-                ) : null}
-
-                <View style={styles.sectionBlock}>
-                  <ThemedText style={{ color: palette.textMuted }}>
-                    {t("jobsTab.form.duration")}
-                  </ThemedText>
-                  <View style={styles.chipGrid}>
-                    {DURATION_PRESETS.map((minutes: number) => {
-                      const currentDuration = Math.round(
-                        (studioDraft.endTime - studioDraft.startTime) / MINUTE_MS,
-                      );
-                      return (
-                        <OptionChip
-                          key={minutes}
-                          label={t("jobsTab.form.minutes", { value: minutes })}
-                          selected={currentDuration === minutes}
-                          onPress={() => {
-                            setStudioDraft((current: StudioDraft) => ({
-                              ...current,
-                              endTime: current.startTime + minutes * MINUTE_MS,
-                            }));
-                          }}
-                          borderColor={palette.border}
-                          selectedBorderColor={palette.primary}
-                          selectedBackgroundColor={palette.primarySubtle}
-                          selectedTextColor={palette.primary}
-                        />
-                      );
-                    })}
-                  </View>
-                </View>
-              </StudioFormStepSection>
-
-              <StudioFormStepSection
-                stepLabel="02"
-                title={`${t("jobsTab.form.pay")} + ${t("jobsTab.form.maxParticipants")}`}
-                subtitle={t("jobsTab.form.maxParticipantsHint")}
-                palette={palette}
-                delay={90}
-              >
-                <View style={styles.sectionBlock}>
-                  <ThemedText style={{ color: palette.textMuted }}>
-                    {t("jobsTab.form.pay")}
-                  </ThemedText>
-                  <View style={styles.chipGrid}>
-                    {PAY_PRESETS.map((pay: number) => (
-                      <OptionChip
-                        key={pay}
-                        label={t("jobsTab.card.pay", { value: pay })}
-                        selected={studioDraft.payInput === String(pay)}
-                        onPress={() => {
-                          setStudioDraft((current: StudioDraft) => ({
-                            ...current,
-                            payInput: String(pay),
-                          }));
-                        }}
-                        borderColor={palette.border}
-                        selectedBorderColor={palette.primary}
-                        selectedBackgroundColor={palette.primarySubtle}
-                        selectedTextColor={palette.primary}
-                      />
-                    ))}
-                  </View>
-                  <TextInput
-                    value={studioDraft.payInput}
-                    onChangeText={(value) =>
-                      setStudioDraft((current) => ({
-                        ...current,
-                        payInput: sanitizeDecimalInput(value),
-                      }))
-                    }
-                    keyboardType="decimal-pad"
-                    placeholder={t("jobsTab.form.customPayPlaceholder")}
-                    placeholderTextColor={palette.textMuted}
-                    style={[
-                      styles.input,
-                      { borderColor: palette.border, color: palette.text, backgroundColor: palette.surface },
-                    ]}
-                  />
-                </View>
-
-                <View style={styles.settingRow}>
-                  <View style={styles.settingCopy}>
-                    <ThemedText type="defaultSemiBold">
-                      {t("jobsTab.form.maxParticipants")}
-                    </ThemedText>
-                    <ThemedText style={{ color: palette.textMuted }}>
-                      {t("jobsTab.form.maxParticipantsHint")}
-                    </ThemedText>
-                  </View>
-                  <View style={[styles.stepperWrap, { borderColor: palette.borderStrong, backgroundColor: palette.surface }]}>
-                    <Pressable
-                      style={styles.stepperButton}
-                      onPress={() => {
-                        setStudioDraft((current) => ({
-                          ...current,
-                          maxParticipants: Math.max(
-                            MAX_PARTICIPANTS_MIN,
-                            current.maxParticipants - 1,
-                          ),
-                        }));
-                      }}
-                    >
-                      <ThemedText type="subtitle">-</ThemedText>
-                    </Pressable>
-                    <ThemedText
-                      type="defaultSemiBold"
-                      selectable
-                      style={styles.stepperValue}
-                    >
-                      {studioDraft.maxParticipants}
-                    </ThemedText>
-                    <Pressable
-                      style={styles.stepperButton}
-                      onPress={() => {
-                        setStudioDraft((current) => ({
-                          ...current,
-                          maxParticipants: Math.min(
-                            MAX_PARTICIPANTS_MAX,
-                            current.maxParticipants + 1,
-                          ),
-                        }));
-                      }}
-                    >
-                      <ThemedText type="subtitle">+</ThemedText>
-                    </Pressable>
-                  </View>
-                </View>
-              </StudioFormStepSection>
-
-              <StudioFormStepSection
-                stepLabel="03"
-                title={`${t("jobsTab.form.cancellationDeadlineHours")} + ${t("jobsTab.form.applicationLead")}`}
-                subtitle={t("jobsTab.form.notesPlaceholder")}
-                palette={palette}
-                delay={130}
-              >
-                <View style={styles.sectionBlock}>
-                  <ThemedText style={{ color: palette.textMuted }}>
-                    {t("jobsTab.form.cancellationDeadlineHours")}
-                  </ThemedText>
-                  <View style={styles.chipGrid}>
-                    {CANCELLATION_PRESETS.map((hours: number) => (
-                      <OptionChip
-                        key={hours}
-                        label={t("jobsTab.form.hours", { value: hours })}
-                        selected={studioDraft.cancellationDeadlineHours === hours}
-                        onPress={() => {
-                          setStudioDraft((current: StudioDraft) => ({
-                            ...current,
-                            cancellationDeadlineHours: hours,
-                          }));
-                        }}
-                        borderColor={palette.border}
-                        selectedBorderColor={palette.primary}
-                        selectedBackgroundColor={palette.primarySubtle}
-                        selectedTextColor={palette.primary}
-                      />
-                    ))}
-                  </View>
-                </View>
-
-                <View style={styles.sectionBlock}>
-                  <ThemedText style={{ color: palette.textMuted }}>
-                    {t("jobsTab.form.applicationLead")}
-                  </ThemedText>
-                  <View style={styles.chipGrid}>
-                    {APPLICATION_LEAD_PRESETS.map((minutes: number) => (
-                      <OptionChip
-                        key={minutes}
-                        label={t("jobsTab.form.minutes", { value: minutes })}
-                        selected={studioDraft.applicationLeadMinutes === minutes}
-                        onPress={() => {
-                          setStudioDraft((current: StudioDraft) => ({
-                            ...current,
-                            applicationLeadMinutes: minutes,
-                          }));
-                        }}
-                        borderColor={palette.border}
-                        selectedBorderColor={palette.primary}
-                        selectedBackgroundColor={palette.primarySubtle}
-                        selectedTextColor={palette.primary}
-                      />
-                    ))}
-                  </View>
-                </View>
-
-                <TextInput
-                  value={studioDraft.note}
-                  onChangeText={(value) =>
-                    setStudioDraft((current) => ({ ...current, note: value }))
-                  }
-                  multiline
-                  placeholder={t("jobsTab.form.notesPlaceholder")}
-                  placeholderTextColor={palette.textMuted}
-                  style={[
-                    styles.input,
-                    styles.noteInput,
-                    { borderColor: palette.border, color: palette.text, backgroundColor: palette.surface },
-                  ]}
-                />
-
+              <View style={{ marginTop: 12 }}>
                 <KitButton
-                  label={
-                    isSubmittingStudio
-                      ? t("jobsTab.actions.posting")
-                      : t("jobsTab.actions.post")
-                  }
-                  onPress={() => {
-                    void postStudioJob();
-                  }}
-                  disabled={isSubmittingStudio}
+                  label={t("jobsTab.form.title", "Post New Job")}
+                  icon="plus"
+                  onPress={() => createJobSheetRef.current?.expand()}
                 />
-              </StudioFormStepSection>
+              </View>
             </View>
 
             <View style={{ flex: 1, paddingTop: BrandSpacing.md }}>
@@ -1065,6 +547,14 @@ export function StudioFeed() {
         ) : null}
 
       </TabScreenScrollView>
+
+      <CreateJobSheet
+        innerRef={createJobSheetRef as never}
+        palette={palette}
+        isSubmitting={isSubmittingStudio}
+        onClose={() => createJobSheetRef.current?.close()}
+        onPost={postStudioJob}
+      />
     </View>
   );
 }
@@ -1166,7 +656,7 @@ const styles = StyleSheet.create({
   },
   snapshotValue: {
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "600",
     lineHeight: 24,
   },
   lessonHeader: {
@@ -1185,7 +675,7 @@ const styles = StyleSheet.create({
   },
   lessonTimingText: {
     fontVariant: ["tabular-nums"],
-    fontWeight: "600",
+    fontWeight: "500",
   },
   progressTrack: {
     width: "100%",
@@ -1350,6 +840,5 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-
 
 

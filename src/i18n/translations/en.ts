@@ -318,8 +318,17 @@ const en = {
     back: "Back",
     previous: "Previous",
     next: "Next",
+    continue: "Continue",
     save: "Saving...",
     complete: "Complete onboarding",
+    verification: {
+      title: "Identity verification",
+      subtitle: "Verify your identity",
+      body:
+        "You can verify now to unlock payouts and complete KYC. You can also do this later from your profile.",
+      verifyNow: "Verify now",
+      later: "Later",
+    },
     push: {
       description:
         "Enable push notifications to get new job alerts as soon as studios post them.",
@@ -516,14 +525,15 @@ const en = {
     actions: {
       jobsTitle: "Jobs",
       jobsSubtitle: "{{count}} open matches",
-      jobsSubtitleOverflow: "{{count}}+ open matches",
-      studioJobsSubtitle: "{{count}} open jobs",
-      calendarTitle: "Calendar",
-      calendarSubtitle: "{{count}} tracked sessions",
     },
     shared: {
       unknownName: "Coach",
       memberSince: "Member since {{date}}",
+      totalEarnings: "Total earnings",
+      jobsFilled: "Jobs filled",
+      matches: "matches",
+      pending: "pending",
+      open: "open",
     },
     instructor: {
       title: "Home",

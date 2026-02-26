@@ -289,8 +289,16 @@ const he = {
     "back": "חזרה",
     "previous": "הקודם",
     "next": "הבא",
+    "continue": "המשך",
     "save": "...שומר",
     "complete": "השלמת הגדרת פרופיל",
+    "verification": {
+      "title": "אימות זהות",
+      "subtitle": "אמתו את הזהות שלכם",
+      "body": "אפשר לאמת עכשיו כדי לפתוח משיכות ולהשלים KYC. אפשר גם לעשות את זה מאוחר יותר מהפרופיל.",
+      "verifyNow": "אמתו עכשיו",
+      "later": "אחר כך"
+    },
     "push": {
       "description": "הפעילו התראות Push כדי לקבל התראות על משרות חדשות ברגע שהן מתפרסמות.",
       "requesting": "מבקש הרשאה...",
@@ -483,7 +491,12 @@ const he = {
     },
     "shared": {
       "unknownName": "מאמן/ת",
-      "memberSince": "חבר/ה מאז {{date}}"
+      "memberSince": "חבר/ה מאז {{date}}",
+      "totalEarnings": "סה\"כ הכנסות",
+      "jobsFilled": "משרות שאוישו",
+      "matches": "התאמות",
+      "pending": "בהמתנה",
+      "open": "פתוחות"
     },
     "instructor": {
       "title": "בית",

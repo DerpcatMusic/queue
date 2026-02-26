@@ -42,9 +42,31 @@ export default defineSchema({
     ),
     calendarSyncEnabled: v.optional(v.boolean()),
     calendarConnectedAt: v.optional(v.number()),
+    diditSessionId: v.optional(v.string()),
+    diditVerificationStatus: v.optional(
+      v.union(
+        v.literal("not_started"),
+        v.literal("in_progress"),
+        v.literal("pending"),
+        v.literal("in_review"),
+        v.literal("approved"),
+        v.literal("declined"),
+        v.literal("abandoned"),
+        v.literal("expired"),
+      ),
+    ),
+    diditStatusRaw: v.optional(v.string()),
+    diditDecision: v.optional(v.any()),
+    diditLastEventAt: v.optional(v.number()),
+    diditVerifiedAt: v.optional(v.number()),
+    diditLegalFirstName: v.optional(v.string()),
+    diditLegalLastName: v.optional(v.string()),
+    diditLegalName: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_user_id", ["userId"]),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_didit_session_id", ["diditSessionId"]),
 
   instructorSports: defineTable({
     instructorId: v.id("instructorProfiles"),
@@ -74,6 +96,15 @@ export default defineSchema({
   })
     .index("by_sport_zone", ["sport", "zone"])
     .index("by_instructor_id", ["instructorId"]),
+
+  studioSports: defineTable({
+    studioId: v.id("studioProfiles"),
+    sport: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_studio_id", ["studioId"])
+    .index("by_sport", ["sport"])
+    .index("by_studio_and_sport", ["studioId", "sport"]),
 
   studioProfiles: defineTable({
     userId: v.id("users"),
@@ -134,8 +165,10 @@ export default defineSchema({
   })
     .index("by_studio", ["studioId"])
     .index("by_studio_postedAt", ["studioId", "postedAt"])
+    .index("by_studio_startTime", ["studioId", "startTime"])
     .index("by_status", ["status"])
     .index("by_status_postedAt", ["status", "postedAt"])
+    .index("by_filledByInstructor_startTime", ["filledByInstructorId", "startTime"])
     .index("by_sport_and_status", ["sport", "status"])
     .index("by_sport_zone_status_postedAt", ["sport", "zone", "status", "postedAt"])
     .index("by_zone_and_status", ["zone", "status"]),
@@ -240,6 +273,28 @@ export default defineSchema({
       "createdAt",
     ]),
 
+  invoices: defineTable({
+    paymentId: v.id("payments"),
+    provider: v.union(v.literal("icount"), v.literal("morning")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("issued"),
+      v.literal("failed"),
+    ),
+    currency: v.string(),
+    amountAgorot: v.number(),
+    vatRate: v.number(),
+    externalInvoiceId: v.optional(v.string()),
+    externalInvoiceUrl: v.optional(v.string()),
+    error: v.optional(v.string()),
+    issuedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_payment", ["paymentId", "createdAt"])
+    .index("by_status", ["status", "createdAt"])
+    .index("by_provider_external", ["provider", "externalInvoiceId"]),
+
   payouts: defineTable({
     paymentId: v.id("payments"),
     jobId: v.id("jobs"),
@@ -333,6 +388,81 @@ export default defineSchema({
     .index("by_user", ["userId", "updatedAt"])
     .index("by_user_provider_external", ["userId", "provider", "externalRecipientId"])
     .index("by_user_default", ["userId", "isDefault", "updatedAt"]),
+
+  payoutDestinationOnboarding: defineTable({
+    userId: v.id("users"),
+    provider: v.literal("rapyd"),
+    merchantReferenceId: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("expired"),
+    ),
+    category: v.string(),
+    beneficiaryCountry: v.string(),
+    beneficiaryEntityType: v.union(v.literal("individual"), v.literal("company")),
+    payoutCurrency: v.string(),
+    redirectUrl: v.optional(v.string()),
+    beneficiaryId: v.optional(v.string()),
+    payoutMethodType: v.optional(v.string()),
+    lastError: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId", "createdAt"])
+    .index("by_provider_merchant_reference", ["provider", "merchantReferenceId"]),
+
+  payoutDestinationEvents: defineTable({
+    provider: v.literal("rapyd"),
+    providerEventId: v.string(),
+    eventType: v.optional(v.string()),
+    onboardingId: v.optional(v.id("payoutDestinationOnboarding")),
+    userId: v.optional(v.id("users")),
+    destinationId: v.optional(v.id("payoutDestinations")),
+    merchantReferenceId: v.optional(v.string()),
+    beneficiaryId: v.optional(v.string()),
+    payoutMethodType: v.optional(v.string()),
+    signatureValid: v.boolean(),
+    processed: v.boolean(),
+    payloadHash: v.string(),
+    payload: v.any(),
+    processingError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_provider_eventId", ["provider", "providerEventId"])
+    .index("by_user", ["userId", "createdAt"]),
+
+  diditEvents: defineTable({
+    providerEventId: v.string(),
+    sessionId: v.optional(v.string()),
+    instructorId: v.optional(v.id("instructorProfiles")),
+    vendorData: v.optional(v.string()),
+    statusRaw: v.optional(v.string()),
+    mappedStatus: v.optional(
+      v.union(
+        v.literal("not_started"),
+        v.literal("in_progress"),
+        v.literal("pending"),
+        v.literal("in_review"),
+        v.literal("approved"),
+        v.literal("declined"),
+        v.literal("abandoned"),
+        v.literal("expired"),
+      ),
+    ),
+    signatureValid: v.boolean(),
+    processed: v.boolean(),
+    payloadHash: v.string(),
+    payload: v.any(),
+    processingError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_provider_event_id", ["providerEventId"])
+    .index("by_instructor", ["instructorId", "createdAt"]),
 
   userNotifications: defineTable({
     recipientUserId: v.id("users"),

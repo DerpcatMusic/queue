@@ -19,4 +19,3 @@ export type QueueMapProps = {
   onUseGps?: () => void;
   showGpsButton?: boolean;
 };
-

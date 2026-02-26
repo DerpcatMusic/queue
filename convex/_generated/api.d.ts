@@ -10,9 +10,11 @@
 
 import type * as auth from "../auth.js";
 import type * as constants from "../constants.js";
+import type * as didit from "../didit.js";
 import type * as http from "../http.js";
 import type * as inbox from "../inbox.js";
 import type * as instructorZones from "../instructorZones.js";
+import type * as invoicing from "../invoicing.js";
 import type * as jobs from "../jobs.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_domainValidation from "../lib/domainValidation.js";
@@ -26,6 +28,7 @@ import type * as onboarding from "../onboarding.js";
 import type * as payments from "../payments.js";
 import type * as payouts from "../payouts.js";
 import type * as rapyd from "../rapyd.js";
+import type * as rapydReturnBridge from "../rapydReturnBridge.js";
 import type * as resendOtp from "../resendOtp.js";
 import type * as userPushNotifications from "../userPushNotifications.js";
 import type * as users from "../users.js";
@@ -40,9 +43,11 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   constants: typeof constants;
+  didit: typeof didit;
   http: typeof http;
   inbox: typeof inbox;
   instructorZones: typeof instructorZones;
+  invoicing: typeof invoicing;
   jobs: typeof jobs;
   "lib/auth": typeof lib_auth;
   "lib/domainValidation": typeof lib_domainValidation;
@@ -56,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   payments: typeof payments;
   payouts: typeof payouts;
   rapyd: typeof rapyd;
+  rapydReturnBridge: typeof rapydReturnBridge;
   resendOtp: typeof resendOtp;
   userPushNotifications: typeof userPushNotifications;
   users: typeof users;

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useRef } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 
 type ScrollDirection = "up" | "down" | "idle";
 
@@ -13,15 +13,18 @@ export type TabBarScrollSignal = {
 type TabBarScrollContextValue = {
   publishSignal: (signal: TabBarScrollSignal) => void;
   getSignal: (routeKey: string) => TabBarScrollSignal | null;
+  tick: number;
 };
 
 const TabBarScrollContext = createContext<TabBarScrollContextValue | null>(null);
 
 export function TabBarScrollProvider({ children }: { children: React.ReactNode }) {
   const signalMapRef = useRef<Map<string, TabBarScrollSignal>>(new Map());
+  const [tick, setTick] = useState(0);
 
   const publishSignal = useCallback((signal: TabBarScrollSignal) => {
     signalMapRef.current.set(signal.routeKey, signal);
+    setTick((value) => value + 1);
   }, []);
 
   const getSignal = useCallback((routeKey: string) => {
@@ -29,8 +32,8 @@ export function TabBarScrollProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const value = useMemo<TabBarScrollContextValue>(
-    () => ({ publishSignal, getSignal }),
-    [getSignal, publishSignal],
+    () => ({ publishSignal, getSignal, tick }),
+    [getSignal, publishSignal, tick],
   );
 
   return (

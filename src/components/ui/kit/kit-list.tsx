@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { BrandRadius } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useKitTheme } from "./use-kit-theme";
 
 type KitListProps = {
@@ -33,7 +33,7 @@ export function KitList({ children, style, inset = true }: KitListProps) {
           borderColor: border.primary,
           backgroundColor: background.surfaceElevated,
           borderRadius: inset ? BrandRadius.card : 0,
-          marginHorizontal: inset ? 16 : 0,
+          marginHorizontal: inset ? BrandSpacing.lg : 0,
         },
         style,
       ]}
@@ -53,7 +53,7 @@ export function KitList({ children, style, inset = true }: KitListProps) {
               <View
                 style={{
                   height: 1,
-                  marginLeft: 16,
+                  marginLeft: BrandSpacing.lg,
                   backgroundColor: border.primary,
                 }}
               />
@@ -77,16 +77,16 @@ export function KitListItem({
 
   const content = (
     <>
-      {leading ? <View style={{ marginRight: 12 }}>{leading}</View> : null}
+      {leading ? <View style={{ marginRight: BrandSpacing.md }}>{leading}</View> : null}
       <View style={{ flex: 1, justifyContent: "center", gap: children ? 2 : 0 }}>
         {title ? (
-          <ThemedText type="body" style={{ color: foreground.secondary, fontSize: 17 }}>
+          <ThemedText type="bodyStrong" style={{ color: foreground.secondary }}>
             {title}
           </ThemedText>
         ) : null}
         {children}
       </View>
-      {accessory ? <View style={{ marginLeft: 12 }}>{accessory}</View> : null}
+      {accessory ? <View style={{ marginLeft: BrandSpacing.md }}>{accessory}</View> : null}
     </>
   );
 
@@ -100,8 +100,8 @@ export function KitListItem({
           {
             flexDirection: "row",
             alignItems: "center",
-            paddingHorizontal: 16,
-            paddingVertical: 14,
+            paddingHorizontal: BrandSpacing.lg,
+            paddingVertical: BrandSpacing.md,
             minHeight: 56,
             backgroundColor: pressed
               ? background.surfaceSecondary
@@ -121,8 +121,8 @@ export function KitListItem({
         {
           flexDirection: "row",
           alignItems: "center",
-          paddingHorizontal: 16,
-          paddingVertical: 14,
+          paddingHorizontal: BrandSpacing.lg,
+          paddingVertical: BrandSpacing.md,
           minHeight: 56,
         },
         style,

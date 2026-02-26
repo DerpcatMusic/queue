@@ -1,8 +1,8 @@
-import { LoadingScreen } from "@/components/loading-screen";
-import { useUser } from "@/contexts/user-context";
 import type { Href } from "expo-router";
 import { Redirect } from "expo-router";
 import type { ReactNode } from "react";
+import { LoadingScreen } from "@/components/loading-screen";
+import { useUser } from "@/contexts/user-context";
 
 type Role = "instructor" | "studio";
 
@@ -19,9 +19,21 @@ export function RoleRouteGate({
   children,
   loadingLabel,
 }: RoleRouteGateProps) {
-  const { currentUser } = useUser();
+  const { currentUser, effectiveRole, isAuthLoading, isAuthenticated } = useUser();
 
   if (currentUser === undefined) {
+    if (!isAuthLoading && !isAuthenticated) {
+      return <Redirect href="/sign-in" />;
+    }
+
+    if (effectiveRole === requiredRole) {
+      return <>{children}</>;
+    }
+
+    if (effectiveRole && effectiveRole !== requiredRole) {
+      return <Redirect href={redirectHref} />;
+    }
+
     return <LoadingScreen {...(loadingLabel ? { label: loadingLabel } : {})} />;
   }
 

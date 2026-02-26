@@ -1,8 +1,9 @@
+import { TouchableOpacity, View } from "react-native";
+import { ThemedText } from "@/components/themed-text";
+import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { isSportType, toSportLabel } from "@/convex/constants";
-import { ThemedText } from "@/components/themed-text";
-import { KitList, KitListItem } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing, type BrandPalette } from "@/constants/brand";
+import { formatDateTime } from "@/lib/jobs-utils";
 import {
   formatAgorotCurrency,
   getPaymentStatusLabel,
@@ -13,8 +14,6 @@ import {
   type PayoutStatus,
   type StatusTone,
 } from "@/lib/payments-utils";
-import { formatDateTime } from "@/lib/jobs-utils";
-import { View } from "react-native";
 
 type PaymentActivityItem = {
   payment: {
@@ -134,14 +133,16 @@ export function PaymentActivityList({
         }}
       >
         <View style={{ gap: 2 }}>
-          <ThemedText type="title">{title}</ThemedText>
+          <ThemedText type="title" style={{ fontWeight: "600" }}>
+            {title}
+          </ThemedText>
           {subtitle ? (
             <ThemedText type="caption" style={{ color: palette.textMuted }}>
               {subtitle}
             </ThemedText>
           ) : null}
         </View>
-        <ThemedText type="bodyStrong" style={{ color: palette.textMuted }}>
+        <ThemedText type="bodyStrong" style={{ color: palette.text }}>
           {items.length}
         </ThemedText>
       </View>
@@ -153,12 +154,10 @@ export function PaymentActivityList({
           </ThemedText>
         </View>
       ) : (
-        <KitList inset>
-          {items.map((item) => {
+        <View style={{ paddingHorizontal: BrandSpacing.md, paddingBottom: 16 }}>
+          {items.map((item, index) => {
             const paymentStatus = getPaymentStatusLabel(item.payment.status);
-            const payoutStatus = item.payout
-              ? getPayoutStatusLabel(item.payout.status)
-              : null;
+            const payoutStatus = item.payout ? getPayoutStatusLabel(item.payout.status) : null;
             const sportLabel = item.job
               ? isSportType(item.job.sport)
                 ? toSportLabel(item.job.sport)
@@ -169,28 +168,44 @@ export function PaymentActivityList({
               : {};
 
             return (
-              <KitListItem
+              <View
                 key={item.payment._id}
-                {...listItemPressProps}
+                style={{
+                  marginTop: index === 0 ? 0 : -12,
+                  zIndex: items.length - index,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: -2 },
+                  shadowOpacity: 0.03,
+                  shadowRadius: 8,
+                  elevation: index === 0 ? 1 : 2,
+                }}
               >
-                <View style={{ gap: 6 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "flex-start",
-                      justifyContent: "space-between",
-                      gap: 8,
-                    }}
-                  >
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <ThemedText type="defaultSemiBold">{sportLabel}</ThemedText>
-                      <ThemedText style={{ color: palette.textMuted }}>
-                        {item.job
-                          ? formatDateTime(item.job.startTime, locale)
-                          : formatDateTime(item.payment.createdAt, locale)}
-                      </ThemedText>
-                    </View>
-                    <View style={{ alignItems: "flex-end", gap: 4 }}>
+                <TouchableOpacity
+                  {...listItemPressProps}
+                  style={{
+                    backgroundColor: palette.surface,
+                    padding: 16,
+                    paddingBottom: 24, // extra padding at bottom because of overlap
+                    borderRadius: 24,
+                    borderCurve: "continuous",
+                    borderWidth: 1,
+                    borderColor: palette.border,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                  activeOpacity={0.9}
+                >
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <ThemedText type="bodyStrong" style={{ fontSize: 18 }}>
+                      {sportLabel}
+                    </ThemedText>
+                    <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                      {item.job
+                        ? formatDateTime(item.job.startTime, locale)
+                        : formatDateTime(item.payment.createdAt, locale)}
+                    </ThemedText>
+                    <View style={{ flexDirection: "row", gap: 6, marginTop: 4 }}>
                       <StatusBadge
                         label={paymentStatus}
                         tone={getPaymentStatusTone(item.payment.status)}
@@ -206,43 +221,39 @@ export function PaymentActivityList({
                     </View>
                   </View>
 
-                  <View style={{ gap: 2 }}>
-                    <ThemedText selectable style={{ fontVariant: ["tabular-nums"] }}>
+                  <View style={{ alignItems: "flex-end", gap: 2 }}>
+                    <ThemedText
+                      type="title"
+                      selectable
+                      style={{ fontVariant: ["tabular-nums"], fontSize: 22, fontWeight: "700" }}
+                    >
                       {viewerRole === "studio"
-                        ? `Charged ${formatAgorotCurrency(
+                        ? formatAgorotCurrency(
                             item.payment.studioChargeAmountAgorot,
                             locale,
                             item.payment.currency,
-                          )}`
-                        : `You receive ${formatAgorotCurrency(
+                          )
+                        : formatAgorotCurrency(
                             item.payment.instructorBaseAmountAgorot,
                             locale,
                             item.payment.currency,
-                          )}`}
+                          )}
                     </ThemedText>
                     {viewerRole === "studio" ? (
-                      <ThemedText
-                        type="caption"
-                        selectable
-                        style={{ color: palette.textMuted, fontVariant: ["tabular-nums"] }}
-                      >
-                        {`Instructor payout ${formatAgorotCurrency(
+                      <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                        {`Payout ${formatAgorotCurrency(
                           item.payment.instructorBaseAmountAgorot,
-                          locale,
-                          item.payment.currency,
-                        )} | Markup ${formatAgorotCurrency(
-                          item.payment.platformMarkupAmountAgorot,
                           locale,
                           item.payment.currency,
                         )}`}
                       </ThemedText>
                     ) : null}
                   </View>
-                </View>
-              </KitListItem>
+                </TouchableOpacity>
+              </View>
             );
           })}
-        </KitList>
+        </View>
       )}
     </View>
   );

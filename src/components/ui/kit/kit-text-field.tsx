@@ -23,7 +23,7 @@ export function KitTextField({
         <Text
           style={{
             fontSize: 14,
-            fontWeight: "600",
+            fontWeight: "500",
             color: foreground.secondary,
             includeFontPadding: false,
           }}

@@ -5,7 +5,6 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   applyThemePreference,
   loadThemePreference,
-  loadThemeStylePreference,
   persistThemePreference,
   persistThemeStylePreference,
   type ThemePreference,
@@ -23,7 +22,18 @@ type ThemePreferenceContextValue = {
   setStylePreference: (preference: ThemeStylePreference) => Promise<void>;
 };
 
-const ThemePreferenceContext = createContext<ThemePreferenceContextValue | null>(null);
+const DEFAULT_THEME_PREFERENCE_CONTEXT: ThemePreferenceContextValue = {
+  preference: "system",
+  stylePreference: "custom",
+  resolvedScheme: "light",
+  isReady: false,
+  setPreference: async () => undefined,
+  setStylePreference: async () => undefined,
+};
+
+const ThemePreferenceContext = createContext<ThemePreferenceContextValue>(
+  DEFAULT_THEME_PREFERENCE_CONTEXT,
+);
 
 export function ThemePreferenceProvider({ children }: PropsWithChildren) {
   const systemScheme = useColorScheme();
@@ -35,16 +45,16 @@ export function ThemePreferenceProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let mounted = true;
     const bootstrapPreference = async () => {
-      const [stored, storedStyle] = await Promise.all([
+      const [stored] = await Promise.all([
         loadThemePreference(),
-        loadThemeStylePreference(),
       ]);
       const nextPreference = stored ?? "system";
-      const nextStylePreference = storedStyle ?? "custom";
+      const nextStylePreference: ThemeStylePreference = "custom";
       applyThemePreference(nextPreference);
       if (!mounted) return;
       setPreferenceState(nextPreference);
       setStylePreferenceState(nextStylePreference);
+      await persistThemeStylePreference("custom");
       setIsReady(true);
     };
     void bootstrapPreference();
@@ -61,8 +71,10 @@ export function ThemePreferenceProvider({ children }: PropsWithChildren) {
 
   const setStylePreference = useCallback(
     async (nextPreference: ThemeStylePreference) => {
-      setStylePreferenceState(nextPreference);
-      await persistThemeStylePreference(nextPreference);
+      const resolvedPreference: ThemeStylePreference =
+        nextPreference === "custom" ? "custom" : "custom";
+      setStylePreferenceState(resolvedPreference);
+      await persistThemeStylePreference(resolvedPreference);
     },
     [],
   );
@@ -97,9 +109,5 @@ export function ThemePreferenceProvider({ children }: PropsWithChildren) {
 }
 
 export function useThemePreference() {
-  const context = useContext(ThemePreferenceContext);
-  if (!context) {
-    throw new Error("useThemePreference must be used within ThemePreferenceProvider");
-  }
-  return context;
+  return useContext(ThemePreferenceContext);
 }
