@@ -1,6 +1,8 @@
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { BrandRadius } from "@/constants/brand";
+import { KitPressable } from "./kit-pressable";
+import { getNativeShadowStyle } from "./native-shadow";
 import { useKitTheme } from "./use-kit-theme";
 
 type Option<T extends string> = {
@@ -20,7 +22,7 @@ export function KitSegmentedToggle<T extends string>({
   onChange,
   options,
 }: KitSegmentedToggleProps<T>) {
-  const { color, foreground, border, background, shadow } = useKitTheme();
+  const { color, foreground, border, background } = useKitTheme();
 
   return (
     <View
@@ -38,8 +40,10 @@ export function KitSegmentedToggle<T extends string>({
       {options.map((option) => {
         const selected = option.value === value;
         return (
-          <Pressable
+          <KitPressable
             key={option.value}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: option.disabled, selected }}
             disabled={option.disabled}
             onPress={() => onChange(option.value)}
             style={({ pressed }) => ({
@@ -53,7 +57,7 @@ export function KitSegmentedToggle<T extends string>({
               alignItems: "center",
               justifyContent: "center",
               opacity: option.disabled ? 0.5 : pressed ? 0.86 : 1,
-              boxShadow: selected ? shadow.primaryLift : undefined,
+              ...(selected ? getNativeShadowStyle("surface") : {}),
             })}
           >
             <Text
@@ -66,7 +70,7 @@ export function KitSegmentedToggle<T extends string>({
             >
               {option.label}
             </Text>
-          </Pressable>
+          </KitPressable>
         );
       })}
     </View>

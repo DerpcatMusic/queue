@@ -241,11 +241,15 @@ const he = {
     "identifierLabel": "Email",
     "identifierPlaceholder": "name@example.com",
     "sendCodeButton": "Send code",
+    "sendMagicLinkButton": "Send magic link",
+    "magicLinkSent": "Magic link sent to {{email}}. Open it on this device to continue.",
+    "magicLinkVerified": "Magic link verified. Signing you in...",
     "magicLinkUnavailableNative": "Email magic links are not supported in Expo native apps, so this flow uses one-time codes.",
     "backToSignInMethods": "Back to sign-in methods",
     "backToSignUpDetails": "Back to account details",
     "oauthCancelled": "Google sign-in was cancelled.",
     "oauthFailed": "Google sign-in failed. Please try again.",
+    "noAccountHint": "No account yet? Use email, magic link, or Google and we will create it automatically.",
     "sessionActivationFailed": "Could not activate your session. Please sign in after verification."
   },
   "onboarding": {
@@ -497,6 +501,13 @@ const he = {
       "matches": "התאמות",
       "pending": "בהמתנה",
       "open": "פתוחות"
+    },
+    "performance": {
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "earnings": "Earnings",
+      "lessons": "Lessons"
     },
     "instructor": {
       "title": "בית",

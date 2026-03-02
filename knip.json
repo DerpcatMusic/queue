@@ -33,8 +33,10 @@
   "ignoreBinaries": [
     "powershell"
   ],
+  "ignoreDependencies": [
+    "babel-preset-expo"
+  ],
   "ignore": [
-    "expo-router/entry",
     "src/components/maps/queue-map-apple-theme.ts",
     "src/components/maps/queue-map-zone-polygons.tsx",
     "src/components/maps/queue-map.native.tsx",

@@ -1,17 +1,18 @@
-import { toSportLabel } from "@/convex/constants";
-import { BrandSpacing } from "@/constants/brand";
+import { useEffect } from "react";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import Animated, {
+  Extrapolation,
+  interpolate,
+  type SharedValue,
+  useAnimatedStyle,
+} from "react-native-reanimated";
+import { KitFloatingBadge } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { useSystemUi } from "@/contexts/system-ui-context";
+import { toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useEffect } from "react";
-import { Platform, Text, View, ScrollView } from "react-native";
-import Animated, {
-  interpolate,
-  useAnimatedStyle,
-  type SharedValue,
-  Extrapolation,
-} from "react-native-reanimated";
 
 const SHEET_EXPANDED_CONTENT_HEIGHT = 168;
 const SHEET_CONTRACTED_CONTENT_HEIGHT = 88;
@@ -38,8 +39,10 @@ type HomeHeaderSheetProps = {
   statsLabel?: string;
   statsValue?: string;
   extraStatsLabel?: string;
-  extraStatsValue: string;
+  extraStatsValue?: string;
+  isVerified?: boolean;
   sports?: string[] | undefined;
+  onPressAvatar?: (() => void) | undefined;
 };
 
 export function HomeHeaderSheet({
@@ -51,7 +54,9 @@ export function HomeHeaderSheet({
   statsValue,
   extraStatsLabel,
   extraStatsValue,
+  isVerified = false,
   sports,
+  onPressAvatar,
 }: HomeHeaderSheetProps) {
   const { setTopInsetBackgroundColor } = useSystemUi();
   const { safeTop } = useAppInsets();
@@ -59,11 +64,11 @@ export function HomeHeaderSheet({
   const contractedHeight = safeTop + SHEET_CONTRACTED_CONTENT_HEIGHT;
 
   useEffect(() => {
-    setTopInsetBackgroundColor(palette.surface);
+    setTopInsetBackgroundColor(palette.surfaceAlt);
     return () => {
       setTopInsetBackgroundColor(null);
     };
-  }, [palette.surface, setTopInsetBackgroundColor]);
+  }, [palette.surfaceAlt, setTopInsetBackgroundColor]);
 
   // 0 = expanded, 1 = contracted
   const animatedSheetStyle = useAnimatedStyle(() => {
@@ -171,17 +176,18 @@ export function HomeHeaderSheet({
         scale: interpolate(
           scrollY.value,
           [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
-          [1, 0.9],
+          [1.12, 0.68],
           Extrapolation.CLAMP,
         ),
       },
     ],
   }));
 
-  const bg = palette.surface as string;
+  const bg = palette.surfaceAlt as string;
 
   return (
     <Animated.View
+      pointerEvents="box-none"
       style={[
         {
           backgroundColor: bg,
@@ -196,13 +202,12 @@ export function HomeHeaderSheet({
           borderCurve: "continuous",
           overflow: "hidden",
           zIndex: 10,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
         } as unknown as object,
         animatedSheetStyle,
       ]}
     >
-
       <View
+        pointerEvents="box-none"
         style={{
           flex: 1,
           flexDirection: "row",
@@ -229,29 +234,65 @@ export function HomeHeaderSheet({
           >
             {displayName}
           </Animated.Text>
-          
+
           {/* Expanded Stats Subtitle */}
           {(statsLabel && statsValue) || (extraStatsLabel && extraStatsValue) ? (
-            <Animated.View style={[{ flexDirection: "row", gap: 6, alignItems: "baseline" }, expandedSubtitleStyle]}>
+            <Animated.View
+              style={[
+                { flexDirection: "row", gap: 6, alignItems: "baseline" },
+                expandedSubtitleStyle,
+              ]}
+            >
               {statsLabel && statsValue ? (
                 <>
-                  <Text style={{ fontFamily: "Rubik_700Bold", fontSize: 13, color: palette.primary as string }}>
+                  <Text
+                    style={{
+                      fontFamily: "Rubik_700Bold",
+                      fontSize: 13,
+                      color: palette.primary as string,
+                    }}
+                  >
                     {statsValue}
                   </Text>
-                  <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 13, color: palette.text as string, opacity: 0.8 }}>
+                  <Text
+                    style={{
+                      fontFamily: "Rubik_600SemiBold",
+                      fontSize: 13,
+                      color: palette.text as string,
+                      opacity: 0.8,
+                    }}
+                  >
                     {statsLabel}
                   </Text>
                 </>
               ) : null}
               {extraStatsLabel && extraStatsValue ? (
                 <>
-                  <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 12, color: palette.textMuted as string }}>
+                  <Text
+                    style={{
+                      fontFamily: "Rubik_600SemiBold",
+                      fontSize: 12,
+                      color: palette.textMuted as string,
+                    }}
+                  >
                     {"*"}
                   </Text>
-                  <Text style={{ fontFamily: "Rubik_700Bold", fontSize: 13, color: palette.text as string }}>
+                  <Text
+                    style={{
+                      fontFamily: "Rubik_700Bold",
+                      fontSize: 13,
+                      color: palette.text as string,
+                    }}
+                  >
                     {extraStatsValue}
                   </Text>
-                  <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 12, color: palette.textMuted as string }}>
+                  <Text
+                    style={{
+                      fontFamily: "Rubik_600SemiBold",
+                      fontSize: 12,
+                      color: palette.textMuted as string,
+                    }}
+                  >
                     {extraStatsLabel}
                   </Text>
                 </>
@@ -279,7 +320,13 @@ export function HomeHeaderSheet({
                       paddingVertical: 5,
                     }}
                   >
-                    <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 11, color: palette.textMuted as string }}>
+                    <Text
+                      style={{
+                        fontFamily: "Rubik_500Medium",
+                        fontSize: 11,
+                        color: palette.textMuted as string,
+                      }}
+                    >
                       {toSportLabel(sport as never)}
                     </Text>
                   </View>
@@ -289,15 +336,40 @@ export function HomeHeaderSheet({
           )}
         </Animated.View>
 
-        <Animated.View style={profileAvatarStyle}>
-          <ProfileAvatar
-            imageUrl={profileImageUrl}
-            fallbackName={displayName}
-            palette={palette}
-            size={54}
-            roundedSquare
-          />
-        </Animated.View>
+        <Pressable
+          accessibilityRole={onPressAvatar ? "button" : undefined}
+          accessibilityLabel={onPressAvatar ? "Open profile" : undefined}
+          onPress={onPressAvatar}
+          disabled={!onPressAvatar}
+          style={{ borderRadius: 24 }}
+        >
+          <Animated.View style={[{ position: "relative" }, profileAvatarStyle]}>
+            <ProfileAvatar
+              imageUrl={profileImageUrl}
+              fallbackName={displayName}
+              palette={palette}
+              size={68}
+              roundedSquare
+            />
+            <KitFloatingBadge
+              visible={isVerified}
+              size={22}
+              motion="none"
+              style={{ top: -12, left: 16 }}
+            >
+              <View style={{ transform: [{ rotate: "-18deg" }] }}>
+                <Text
+                  style={{
+                    fontSize: 18,
+                    lineHeight: 18,
+                  }}
+                >
+                  {"\u{1F451}"}
+                </Text>
+              </View>
+            </KitFloatingBadge>
+          </Animated.View>
+        </Pressable>
       </View>
     </Animated.View>
   );

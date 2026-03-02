@@ -14,8 +14,9 @@ export function KitTextField({
   placeholderTextColor,
   ...inputProps
 }: KitTextFieldProps) {
-  const { foreground, background, border } = useKitTheme();
+  const { foreground, background, color } = useKitTheme();
   const hasError = Boolean(errorText);
+  const isMultiline = Boolean(inputProps.multiline);
 
   return (
     <View style={{ gap: 6 }}>
@@ -34,21 +35,22 @@ export function KitTextField({
       <View
         style={{
           minHeight: 50,
-          borderWidth: 1.2,
           borderRadius: BrandRadius.input,
           borderCurve: "continuous",
           paddingHorizontal: 12,
           gap: 8,
           flexDirection: "row",
           alignItems: "center",
-          borderColor: hasError ? foreground.danger : border.secondary,
-          backgroundColor: background.glass,
+          backgroundColor: hasError ? background.dangerSubtle : background.surfaceSecondary,
         }}
       >
         {leading ? <View>{leading}</View> : null}
         <TextInput
           {...inputProps}
           placeholderTextColor={placeholderTextColor ?? (foreground.muted as string)}
+          selectionColor={color.primary as string}
+          cursorColor={color.primary as string}
+          clearButtonMode={!isMultiline ? "while-editing" : "never"}
           style={[
             {
               flex: 1,

@@ -28,7 +28,7 @@ export function TabScreenRoot(props: TabScreenRootProps) {
   if (props.mode === "static") {
     return (
       <SafeAreaView
-        edges={["top", "bottom"]}
+        edges={["top"]}
         style={[
           {
             flex: 1,

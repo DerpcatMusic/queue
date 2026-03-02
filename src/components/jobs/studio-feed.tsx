@@ -1,39 +1,31 @@
+import type BottomSheet from "@gorhom/bottom-sheet";
+import { useIsFocused } from "@react-navigation/native";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { Redirect } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { NoticeBanner } from "@/components/jobs/notice-banner";
+import { CreateJobSheet } from "@/components/jobs/studio/create-job-sheet";
+import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
+import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
+import { LoadingScreen } from "@/components/loading-screen";
+import { ThemedText } from "@/components/themed-text";
+import { EmptyState } from "@/components/ui/empty-state";
+import { KitButton, KitChip } from "@/components/ui/kit";
+import { NativeSearchField } from "@/components/ui/native-search-field";
+import { BrandSpacing } from "@/constants/brand";
+import { FEATURE_FLAGS } from "@/constants/feature-flags";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
-import { LoadingScreen } from "@/components/loading-screen";
-import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { NoticeBanner } from "@/components/jobs/notice-banner";
-import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
-import { CreateJobSheet } from "@/components/jobs/studio/create-job-sheet";
-import type BottomSheet from "@gorhom/bottom-sheet";
-import { ThemedText } from "@/components/themed-text";
-import { KitButton } from "@/components/ui/kit";
-import { EmptyState } from "@/components/ui/empty-state";
-import { BrandSpacing } from "@/constants/brand";
-import { FEATURE_FLAGS } from "@/constants/feature-flags";
 import { useBrand } from "@/hooks/use-brand";
-import {
-  MINUTE_MS,
-  DEVICE_TIME_ZONE,
-  trimOptional,
-  type StudioDraft,
-} from "@/lib/jobs-utils";
+import { DEVICE_TIME_ZONE, MINUTE_MS, type StudioDraft, trimOptional } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { createPerfTimer, logPerfSummary, recordPerfMetric } from "@/lib/perf-telemetry";
 import { registerForPushNotificationsAsync } from "@/lib/push-notifications";
-import { useAction, useMutation, useQuery } from "convex/react";
-import { Redirect } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
-import * as WebBrowser from "expo-web-browser";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from "react-native";
+import { buildRapydBridgeUrl, resolveRapydAppReturnUrl } from "@/lib/rapyd-hosted-flow";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -56,10 +48,9 @@ function FeedSectionHeader({ title, subtitle, palette }: FeedSectionHeaderProps)
   );
 }
 
-
-
 export function StudioFeed() {
   const { t, i18n } = useTranslation();
+  const isFocused = useIsFocused();
 
   const palette = useBrand();
   const locale = i18n.resolvedLanguage ?? "en";
@@ -69,8 +60,11 @@ export function StudioFeed() {
 
   const postJob = useMutation(api.jobs.postJob);
   const reviewApplication = useMutation(api.jobs.reviewApplication);
-  const updateStudioNotificationSettings = useMutation(api.users.updateMyStudioNotificationSettings);
+  const updateStudioNotificationSettings = useMutation(
+    api.users.updateMyStudioNotificationSettings,
+  );
   const createCheckoutForJob = useAction(api.rapyd.createCheckoutForJob);
+  const retrieveCheckoutForPayment = useAction(api.rapyd.retrieveCheckoutForPayment);
 
   const studioJobs = useQuery(
     api.jobs.getMyStudioJobsWithApplications,
@@ -89,8 +83,11 @@ export function StudioFeed() {
   const createJobSheetRef = useRef<BottomSheet>(null);
   const [isSubmittingStudio, setIsSubmittingStudio] = useState(false);
   const [isEnablingStudioPush, setIsEnablingStudioPush] = useState(false);
-  const [isReviewingApplicationId, setIsReviewingApplicationId] = useState<Id<"jobApplications"> | null>(null);
-  const [isStartingCheckoutForJobId, setIsStartingCheckoutForJobId] = useState<Id<"jobs"> | null>(null);
+  const [isReviewingApplicationId, setIsReviewingApplicationId] =
+    useState<Id<"jobApplications"> | null>(null);
+  const [isStartingCheckoutForJobId, setIsStartingCheckoutForJobId] = useState<Id<"jobs"> | null>(
+    null,
+  );
   const [jobsSearchQuery, setJobsSearchQuery] = useState("");
   const [jobsStatusFilter, setJobsStatusFilter] = useState<
     "all" | "needs_review" | "open" | "filled" | "completed"
@@ -114,8 +111,11 @@ export function StudioFeed() {
       }
 
       if (!search) return true;
-      const applicants = job.applications.map((application) => application.instructorName).join(" ");
-      const haystack = `${job.zone} ${toSportLabel(job.sport as never)} ${applicants}`.toLowerCase();
+      const applicants = job.applications
+        .map((application) => application.instructorName)
+        .join(" ");
+      const haystack =
+        `${job.zone} ${toSportLabel(job.sport as never)} ${applicants}`.toLowerCase();
       return haystack.includes(search);
     });
   }, [studioJobs, jobsSearchQuery, jobsStatusFilter]);
@@ -124,7 +124,14 @@ export function StudioFeed() {
       string,
       {
         paymentId: Id<"payments">;
-        status: "created" | "pending" | "authorized" | "captured" | "failed" | "cancelled" | "refunded";
+        status:
+          | "created"
+          | "pending"
+          | "authorized"
+          | "captured"
+          | "failed"
+          | "cancelled"
+          | "refunded";
         payoutStatus:
           | "queued"
           | "processing"
@@ -155,6 +162,10 @@ export function StudioFeed() {
       })),
     [filteredStudioJobs, latestPaymentByJobId],
   );
+  const screenStyle = useMemo(
+    () => StyleSheet.flatten([styles.screen, { backgroundColor: palette.appBg }]),
+    [palette.appBg],
+  );
 
   useEffect(() => {
     if (!FEATURE_FLAGS.jobsPerfTelemetry) return;
@@ -181,7 +192,6 @@ export function StudioFeed() {
     }
   }, [studioJobs]);
 
-
   if (currentUser === undefined) {
     return <LoadingScreen label={t("jobsTab.loading")} />;
   }
@@ -197,7 +207,6 @@ export function StudioFeed() {
   if (currentUser.role !== "instructor" && currentUser.role !== "studio") {
     return <Redirect href="/" />;
   }
-
 
   const postStudioJob = async (draft: StudioDraft) => {
     if (currentUser.role !== "studio") return;
@@ -222,11 +231,13 @@ export function StudioFeed() {
       return;
     }
 
-    const applicationDeadline =
-      draft.startTime - draft.applicationLeadMinutes * MINUTE_MS;
-    
+    const applicationDeadline = draft.startTime - draft.applicationLeadMinutes * MINUTE_MS;
+
     // Safety check for absolute minimum lead time (15 mins) if not specified
-    const finalApplicationDeadline = Math.min(applicationDeadline, draft.startTime - (15 * MINUTE_MS));
+    const finalApplicationDeadline = Math.min(
+      applicationDeadline,
+      draft.startTime - 15 * MINUTE_MS,
+    );
 
     setErrorMessage(null);
     setStatusMessage(null);
@@ -250,17 +261,13 @@ export function StudioFeed() {
       createJobSheetRef.current?.close();
     } catch (error) {
       const message =
-        error instanceof Error && error.message
-          ? error.message
-          : t("jobsTab.errors.failedToPost");
+        error instanceof Error && error.message ? error.message : t("jobsTab.errors.failedToPost");
       setErrorMessage(message);
     } finally {
       stopTimer?.();
       setIsSubmittingStudio(false);
     }
   };
-
-
 
   const reviewStudioApplication = async (
     applicationId: Id<"jobApplications">,
@@ -278,9 +285,7 @@ export function StudioFeed() {
     try {
       await reviewApplication({ applicationId, status });
       setStatusMessage(
-        status === "accepted"
-          ? t("jobsTab.success.accepted")
-          : t("jobsTab.success.rejected"),
+        status === "accepted" ? t("jobsTab.success.accepted") : t("jobsTab.success.rejected"),
       );
     } catch (error) {
       const message =
@@ -330,11 +335,60 @@ export function StudioFeed() {
     setStatusMessage(null);
 
     try {
+      const appReturnUrl = resolveRapydAppReturnUrl("checkout");
+      const completeCheckoutUrl = buildRapydBridgeUrl({
+        bridgePath: "/rapyd/checkout-return-bridge",
+        result: "complete",
+        appReturnUrl,
+        query: {
+          jobId: String(jobId),
+        },
+      });
+      const cancelCheckoutUrl = buildRapydBridgeUrl({
+        bridgePath: "/rapyd/checkout-return-bridge",
+        result: "cancel",
+        appReturnUrl,
+        query: {
+          jobId: String(jobId),
+        },
+      });
       const checkout = await createCheckoutForJob({
         jobId,
+        completeCheckoutUrl,
+        cancelCheckoutUrl,
       });
-      await WebBrowser.openBrowserAsync(checkout.checkoutUrl);
-      setStatusMessage(t("jobsTab.success.checkoutOpened"));
+      const authResult = await WebBrowser.openAuthSessionAsync(checkout.checkoutUrl, appReturnUrl);
+
+      if (authResult.type === "success" && authResult.url) {
+        const resultUrl = new URL(authResult.url);
+        if ((resultUrl.searchParams.get("result") ?? "complete") === "cancel") {
+          setStatusMessage("Checkout cancelled.");
+          return;
+        }
+      }
+
+      const checkoutStatus = await retrieveCheckoutForPayment({
+        paymentId: checkout.paymentId,
+      });
+
+      if (checkoutStatus.paymentStatus === "captured") {
+        setStatusMessage("Payment completed.");
+        return;
+      }
+      if (
+        checkoutStatus.paymentStatus === "pending" ||
+        checkoutStatus.paymentStatus === "authorized" ||
+        checkoutStatus.paymentStatus === "created"
+      ) {
+        setStatusMessage("Payment submitted. Waiting for provider confirmation.");
+        return;
+      }
+      if (checkoutStatus.paymentStatus === "cancelled") {
+        setStatusMessage("Checkout cancelled.");
+        return;
+      }
+
+      setErrorMessage("Payment did not complete.");
     } catch (error) {
       const message =
         error instanceof Error && error.message
@@ -346,10 +400,8 @@ export function StudioFeed() {
     }
   };
 
-
-
   return (
-    <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
+    <View style={screenStyle}>
       <TabScreenScrollView
         routeKey="studio/jobs/index"
         style={styles.screen}
@@ -388,15 +440,11 @@ export function StudioFeed() {
           ) : null}
         </View>
 
-
-
         {currentUser.role === "studio" ? (
           <>
             {studioNotificationSettings !== undefined &&
             !studioNotificationSettings?.hasExpoPushToken ? (
-              <View
-                style={[styles.section, { borderBottomColor: palette.border }]}
-              >
+              <View style={[styles.section, { borderBottomColor: palette.border }]}>
                 <FeedSectionHeader
                   title={t("jobsTab.notificationsTitle")}
                   subtitle={t("jobsTab.studioPushDescription")}
@@ -446,20 +494,17 @@ export function StudioFeed() {
                 subtitle={t("jobsTab.studioApplicationsTitle")}
                 palette={palette}
               />
-              <View style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.sm, paddingBottom: BrandSpacing.sm }}>
-                <TextInput
+              <View
+                style={{
+                  paddingHorizontal: BrandSpacing.lg,
+                  gap: BrandSpacing.sm,
+                  paddingBottom: BrandSpacing.sm,
+                }}
+              >
+                <NativeSearchField
                   value={jobsSearchQuery}
                   onChangeText={setJobsSearchQuery}
                   placeholder="Search jobs"
-                  placeholderTextColor={palette.textMuted}
-                  style={[
-                    styles.input,
-                    {
-                      borderColor: palette.border,
-                      color: palette.text,
-                      backgroundColor: palette.surface,
-                    },
-                  ]}
                 />
                 <ScrollView
                   horizontal
@@ -475,28 +520,16 @@ export function StudioFeed() {
                   ].map((option) => {
                     const selected = jobsStatusFilter === option.key;
                     return (
-                      <Pressable
+                      <KitChip
                         key={option.key}
-                        style={[
-                          styles.chip,
-                          {
-                            borderColor: selected ? palette.primary : palette.border,
-                            backgroundColor: selected ? palette.primarySubtle : palette.surface,
-                          },
-                        ]}
+                        label={option.label}
+                        selected={selected}
                         onPress={() => {
                           setJobsStatusFilter(
                             option.key as "all" | "needs_review" | "open" | "filled" | "completed",
                           );
                         }}
-                      >
-                        <ThemedText
-                          type="micro"
-                          style={{ color: selected ? palette.primary : palette.textMuted }}
-                        >
-                          {option.label}
-                        </ThemedText>
-                      </Pressable>
+                      />
                     );
                   })}
                 </ScrollView>
@@ -509,11 +542,7 @@ export function StudioFeed() {
                 </View>
               ) : studioJobs.length === 0 ? (
                 <View style={{ flex: 1, minHeight: 400, justifyContent: "center" }}>
-                  <EmptyState
-                    icon="bag"
-                    title={t("jobsTab.emptyStudio")}
-                    body=""
-                  />
+                  <EmptyState icon="bag" title={t("jobsTab.emptyStudio")} body="" />
                 </View>
               ) : filteredStudioJobs.length === 0 ? (
                 <View style={{ flex: 1, minHeight: 260, justifyContent: "center" }}>
@@ -543,16 +572,17 @@ export function StudioFeed() {
             </View>
           </>
         ) : null}
-
       </TabScreenScrollView>
 
-      <CreateJobSheet
-        innerRef={createJobSheetRef as never}
-        palette={palette}
-        isSubmitting={isSubmittingStudio}
-        onClose={() => createJobSheetRef.current?.close()}
-        onPost={postStudioJob}
-      />
+      {isFocused ? (
+        <CreateJobSheet
+          innerRef={createJobSheetRef as never}
+          palette={palette}
+          isSubmitting={isSubmittingStudio}
+          onClose={() => createJobSheetRef.current?.close()}
+          onPost={postStudioJob}
+        />
+      ) : null}
     </View>
   );
 }
@@ -755,13 +785,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
   },
-  chip: {
-    borderWidth: 1,
-    borderRadius: 999,
-    borderCurve: "continuous",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
   timeCardRow: {
     flexDirection: "row",
     gap: 8,
@@ -781,14 +804,6 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     padding: 10,
     gap: 8,
-  },
-  input: {
-    minHeight: 46,
-    borderWidth: 1,
-    borderRadius: 12,
-    borderCurve: "continuous",
-    paddingHorizontal: 12,
-    fontSize: 15,
   },
   noteInput: {
     minHeight: 100,
@@ -838,4 +853,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-

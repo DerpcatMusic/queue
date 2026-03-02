@@ -1,9 +1,57 @@
 import Apple from "@auth/core/providers/apple";
 import Google from "@auth/core/providers/google";
 import { convexAuth } from "@convex-dev/auth/server";
+import { ResendMagicLink } from "./resendMagicLink";
 import { ResendOTP } from "./resendOtp";
 
-const providers: any[] = [ResendOTP];
+const providers: any[] = [ResendOTP, ResendMagicLink];
+
+function normalizeEmail(email: string | undefined) {
+  if (!email) return undefined;
+  const value = email.trim().toLowerCase();
+  return value.length > 0 ? value : undefined;
+}
+
+function normalizeOrigin(value: string | undefined) {
+  if (!value) return null;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+function isAllowedRedirectTarget(redirectTo: string) {
+  if (redirectTo.startsWith("/")) {
+    return true;
+  }
+  if (redirectTo.startsWith("queue://") || redirectTo.startsWith("exp://")) {
+    return true;
+  }
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(redirectTo)) {
+    return true;
+  }
+
+  const siteOrigin = normalizeOrigin(process.env.SITE_URL);
+  const convexSiteOrigin = normalizeOrigin(process.env.CONVEX_SITE_URL);
+
+  try {
+    const candidateOrigin = new URL(redirectTo).origin;
+    return (
+      candidateOrigin === siteOrigin || candidateOrigin === convexSiteOrigin
+    );
+  } catch {
+    return false;
+  }
+}
+
+function getFallbackRedirectTarget() {
+  return (
+    process.env.SITE_URL ??
+    process.env.CONVEX_SITE_URL ??
+    "http://localhost:3000"
+  );
+}
 
 if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
   providers.push(Google);
@@ -16,12 +64,19 @@ if (process.env.AUTH_APPLE_ID && process.env.AUTH_APPLE_SECRET) {
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers,
   callbacks: {
+    async redirect({ redirectTo }) {
+      if (isAllowedRedirectTarget(redirectTo)) {
+        return redirectTo;
+      }
+      return getFallbackRedirectTarget();
+    },
     async createOrUpdateUser(ctx, args) {
       const now = Date.now();
       const fullName =
         typeof args.profile.name === "string" ? args.profile.name : undefined;
-      const email =
+      const rawEmail =
         typeof args.profile.email === "string" ? args.profile.email : undefined;
+      const email = normalizeEmail(rawEmail);
       const phone =
         typeof args.profile.phone === "string" ? args.profile.phone : undefined;
       const image =
@@ -35,8 +90,19 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
           ? args.profile.isAnonymous
           : undefined;
 
-      if (args.existingUserId) {
-        await ctx.db.patch(args.existingUserId, {
+      const linkedUserId =
+        args.existingUserId ??
+        (email
+          ? (
+              await ctx.db
+                .query("users")
+                .filter((q) => q.eq(q.field("email"), email))
+                .first()
+            )?._id
+          : undefined);
+
+      if (linkedUserId) {
+        await ctx.db.patch(linkedUserId, {
           isActive: true,
           updatedAt: now,
           ...(fullName ? { fullName } : {}),
@@ -47,7 +113,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
           ...(phoneVerificationTime ? { phoneVerificationTime } : {}),
           ...(isAnonymous !== undefined ? { isAnonymous } : {}),
         });
-        return args.existingUserId;
+        return linkedUserId;
       }
 
       const userId = await ctx.db.insert("users", {

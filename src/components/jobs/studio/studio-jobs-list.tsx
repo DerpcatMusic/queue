@@ -1,9 +1,13 @@
+import type { TFunction } from "i18next";
+import { View } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
+import { ThemedText } from "@/components/themed-text";
+import { AppSymbol } from "@/components/ui/app-symbol";
+import { KitPressable, KitSurface } from "@/components/ui/kit";
+import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
+import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
-import { ThemedText } from "@/components/themed-text";
-import { KitSurface } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing, type BrandPalette } from "@/constants/brand";
-import { getZoneLabel } from "@/constants/zones";
 import {
   formatDateTime,
   getApplicationStatusTranslationKey,
@@ -17,10 +21,6 @@ import {
   type PaymentStatus,
   type PayoutStatus,
 } from "@/lib/payments-utils";
-import { View, Pressable } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
-import type { TFunction } from "i18next";
-import { AppSymbol } from "@/components/ui/app-symbol";
 
 type StudioJobApplication = {
   applicationId: Id<"jobApplications">;
@@ -40,13 +40,11 @@ type StudioJob = {
   applicationsCount: number;
   pendingApplicationsCount: number;
   applications: StudioJobApplication[];
-  payment:
-    | {
-        paymentId: Id<"payments">;
-        status: PaymentStatus;
-        payoutStatus: PayoutStatus | null;
-      }
-    | null;
+  payment: {
+    paymentId: Id<"payments">;
+    status: PaymentStatus;
+    payoutStatus: PayoutStatus | null;
+  } | null;
 };
 
 type StudioJobsListProps = {
@@ -75,7 +73,11 @@ function JobStatusBadge({
     tone === "primary"
       ? { fg: palette.primary, bg: palette.primarySubtle, border: palette.primary }
       : tone === "success"
-        ? { fg: palette.success as import("react-native").ColorValue, bg: palette.successSubtle, border: palette.success as import("react-native").ColorValue }
+        ? {
+            fg: palette.success as import("react-native").ColorValue,
+            bg: palette.successSubtle,
+            border: palette.success as import("react-native").ColorValue,
+          }
         : { fg: palette.textMuted, bg: palette.surfaceAlt, border: palette.borderStrong };
 
   return (
@@ -115,7 +117,14 @@ export function StudioJobsList({
 
   return (
     <View style={{ gap: BrandSpacing.sm, paddingHorizontal: BrandSpacing.lg }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: BrandSpacing.xs }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: BrandSpacing.xs,
+        }}
+      >
         <ThemedText type="title">{t("jobsTab.studioFeedTitle")}</ThemedText>
         <ThemedText type="bodyStrong" style={{ color: palette.textMuted }}>
           {jobs.length}
@@ -125,7 +134,9 @@ export function StudioJobsList({
         {jobs.map((job, index) => (
           <Animated.View
             key={job.jobId}
-            entering={FadeInUp.delay(Math.min(index, 5) * 34).duration(260).springify()}
+            entering={FadeInUp.delay(Math.min(index, 5) * 34)
+              .duration(260)
+              .springify()}
           >
             <View style={{ position: "relative" }}>
               <KitSurface
@@ -137,7 +148,13 @@ export function StudioJobsList({
                 }}
               >
                 {/* Header Row: Sport & Badges */}
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
+                >
                   <View style={{ flex: 1, gap: 2 }}>
                     <ThemedText
                       style={{
@@ -157,21 +174,39 @@ export function StudioJobsList({
                 {/* Details Row: Time & Zone */}
                 <View style={{ gap: 6, marginVertical: 4 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <AppSymbol name="calendar.circle.fill" size={16} tintColor={palette.textMuted} />
-                    <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "400" }}>
+                    <AppSymbol
+                      name="calendar.circle.fill"
+                      size={16}
+                      tintColor={palette.textMuted}
+                    />
+                    <ThemedText
+                      type="caption"
+                      style={{ color: palette.textMuted, fontWeight: "400" }}
+                    >
                       {formatDateTime(job.startTime, locale)}
                     </ThemedText>
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <AppSymbol name="mappin.circle.fill" size={16} tintColor={palette.textMuted} />
-                    <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "400" }}>
+                    <ThemedText
+                      type="caption"
+                      style={{ color: palette.textMuted, fontWeight: "400" }}
+                    >
                       {getZoneLabel(job.zone, zoneLanguage)}
                     </ThemedText>
                   </View>
                 </View>
 
                 {/* Footer Row: Price (Left) & Actions/Count via flex layout */}
-                <View style={{ flexDirection: "row", alignItems: "center", paddingTop: 8, borderTopWidth: 1, borderTopColor: palette.border }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingTop: 8,
+                    borderTopWidth: 1,
+                    borderTopColor: palette.border,
+                  }}
+                >
                   <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
                     <ThemedText
                       style={{
@@ -185,9 +220,16 @@ export function StudioJobsList({
                       {t("jobsTab.card.pay", { value: job.pay })}
                     </ThemedText>
                   </View>
-                  
+
                   {/* Push application context to the right using marginLeft auto */}
-                  <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
+                  <View
+                    style={{
+                      marginLeft: "auto",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: BrandSpacing.xs,
+                    }}
+                  >
                     <ThemedText style={{ color: palette.textMuted, fontWeight: "500" }}>
                       {t("jobsTab.applicationsCount", {
                         total: job.applicationsCount,
@@ -220,32 +262,35 @@ export function StudioJobsList({
                         gap: 8,
                       }}
                     >
-                      <ThemedText type="defaultSemiBold" style={{ fontSize: 13, letterSpacing: 0.2, color: palette.textMuted }}>Payment</ThemedText>
+                      <ThemedText
+                        type="defaultSemiBold"
+                        style={{ fontSize: 13, letterSpacing: 0.2, color: palette.textMuted }}
+                      >
+                        Payment
+                      </ThemedText>
                       <View
                         style={{
                           borderWidth: 1,
                           borderRadius: BrandRadius.pill,
                           borderCurve: "continuous",
-                          borderColor:
-                            !job.payment
-                              ? palette.borderStrong
-                              : getPaymentStatusTone(job.payment.status) === "success"
-                                ? (palette.success as import("react-native").ColorValue)
-                                : getPaymentStatusTone(job.payment.status) === "warning"
-                                  ? (palette.warning as import("react-native").ColorValue)
-                                  : getPaymentStatusTone(job.payment.status) === "danger"
-                                    ? palette.danger
-                                    : palette.primary,
-                          backgroundColor:
-                            !job.payment
-                              ? palette.surfaceAlt
-                              : getPaymentStatusTone(job.payment.status) === "success"
-                                ? palette.successSubtle
-                                : getPaymentStatusTone(job.payment.status) === "warning"
-                                  ? palette.warningSubtle
-                                  : getPaymentStatusTone(job.payment.status) === "danger"
-                                    ? palette.dangerSubtle
-                                    : palette.primarySubtle,
+                          borderColor: !job.payment
+                            ? palette.borderStrong
+                            : getPaymentStatusTone(job.payment.status) === "success"
+                              ? (palette.success as import("react-native").ColorValue)
+                              : getPaymentStatusTone(job.payment.status) === "warning"
+                                ? (palette.warning as import("react-native").ColorValue)
+                                : getPaymentStatusTone(job.payment.status) === "danger"
+                                  ? palette.danger
+                                  : palette.primary,
+                          backgroundColor: !job.payment
+                            ? palette.surfaceAlt
+                            : getPaymentStatusTone(job.payment.status) === "success"
+                              ? palette.successSubtle
+                              : getPaymentStatusTone(job.payment.status) === "warning"
+                                ? palette.warningSubtle
+                                : getPaymentStatusTone(job.payment.status) === "danger"
+                                  ? palette.dangerSubtle
+                                  : palette.primarySubtle,
                           paddingHorizontal: 8,
                           paddingVertical: 3,
                         }}
@@ -254,21 +299,18 @@ export function StudioJobsList({
                           type="micro"
                           style={{
                             fontWeight: "500",
-                            color:
-                              !job.payment
-                                ? palette.textMuted
-                                : getPaymentStatusTone(job.payment.status) === "success"
-                                  ? (palette.success as import("react-native").ColorValue)
-                                  : getPaymentStatusTone(job.payment.status) === "warning"
-                                    ? (palette.warning as import("react-native").ColorValue)
-                                    : getPaymentStatusTone(job.payment.status) === "danger"
-                                      ? palette.danger
-                                      : palette.primary,
+                            color: !job.payment
+                              ? palette.textMuted
+                              : getPaymentStatusTone(job.payment.status) === "success"
+                                ? (palette.success as import("react-native").ColorValue)
+                                : getPaymentStatusTone(job.payment.status) === "warning"
+                                  ? (palette.warning as import("react-native").ColorValue)
+                                  : getPaymentStatusTone(job.payment.status) === "danger"
+                                    ? palette.danger
+                                    : palette.primary,
                           }}
                         >
-                          {job.payment
-                            ? getPaymentStatusLabel(job.payment.status)
-                            : "Not started"}
+                          {job.payment ? getPaymentStatusLabel(job.payment.status) : "Not started"}
                         </ThemedText>
                       </View>
                     </View>
@@ -283,7 +325,7 @@ export function StudioJobsList({
                         job.payment.status,
                       )
                     ) ? (
-                      <Pressable
+                      <KitPressable
                         style={[
                           {
                             minHeight: 44,
@@ -295,12 +337,13 @@ export function StudioJobsList({
                             marginTop: 4,
                           },
                         ]}
+                        haptic="impact"
                         onPress={() => onStartPayment(job.jobId)}
                         disabled={payingJobId === job.jobId}
                       >
-                         <ThemedText
+                        <ThemedText
                           type="defaultSemiBold"
-                          style={{ 
+                          style={{
                             color: palette.onPrimary,
                             fontWeight: "600",
                             letterSpacing: 0.2,
@@ -312,7 +355,7 @@ export function StudioJobsList({
                               ? "Retry payment"
                               : "Pay now"}
                         </ThemedText>
-                      </Pressable>
+                      </KitPressable>
                     ) : null}
                   </View>
                 ) : null}
@@ -330,7 +373,9 @@ export function StudioJobsList({
                     job.applications.map((application, appIndex) => (
                       <Animated.View
                         key={application.applicationId}
-                        entering={FadeInUp.delay(Math.min(appIndex, 4) * 28).duration(220).springify()}
+                        entering={FadeInUp.delay(Math.min(appIndex, 4) * 28)
+                          .duration(220)
+                          .springify()}
                         style={{
                           borderWidth: 1,
                           borderColor: palette.border,
@@ -341,8 +386,18 @@ export function StudioJobsList({
                           gap: BrandSpacing.xs,
                         }}
                       >
-                        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                          <ThemedText type="defaultSemiBold" style={{ fontSize: 18, letterSpacing: -0.2, fontWeight: "600" }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "flex-start",
+                            justifyContent: "space-between",
+                            gap: 8,
+                          }}
+                        >
+                          <ThemedText
+                            type="defaultSemiBold"
+                            style={{ fontSize: 18, letterSpacing: -0.2, fontWeight: "600" }}
+                          >
                             {application.instructorName}
                           </ThemedText>
                           <View
@@ -388,13 +443,19 @@ export function StudioJobsList({
                             </ThemedText>
                           </View>
                         </View>
-                        <ThemedText style={{ color: palette.textMuted, fontSize: 13, fontWeight: "400" }}>
+                        <ThemedText
+                          style={{ color: palette.textMuted, fontSize: 13, fontWeight: "400" }}
+                        >
                           {formatDateTime(application.appliedAt, locale)}
                         </ThemedText>
-                        {application.message ? <ThemedText style={{ marginTop: 4 }}>{application.message}</ThemedText> : null}
+                        {application.message ? (
+                          <ThemedText style={{ marginTop: 4 }}>{application.message}</ThemedText>
+                        ) : null}
                         {application.status === "pending" && job.status === "open" ? (
-                          <View style={{ flexDirection: "row", gap: 8, marginTop: BrandSpacing.sm }}>
-                            <Pressable
+                          <View
+                            style={{ flexDirection: "row", gap: 8, marginTop: BrandSpacing.sm }}
+                          >
+                            <KitPressable
                               style={{
                                 flex: 1,
                                 height: 40,
@@ -404,15 +465,23 @@ export function StudioJobsList({
                                 justifyContent: "center",
                               }}
                               disabled={reviewingApplicationId === application.applicationId}
+                              haptic="impact"
                               onPress={() => onReview(application.applicationId, "accepted")}
                             >
-                              <ThemedText style={{ color: palette.onPrimary, fontWeight: "600", fontSize: 13, letterSpacing: 0.2 }}>
+                              <ThemedText
+                                style={{
+                                  color: palette.onPrimary,
+                                  fontWeight: "600",
+                                  fontSize: 13,
+                                  letterSpacing: 0.2,
+                                }}
+                              >
                                 {reviewingApplicationId === application.applicationId
-                                    ? t("jobsTab.actions.accepting")
-                                    : t("jobsTab.actions.accept")}
+                                  ? t("jobsTab.actions.accepting")
+                                  : t("jobsTab.actions.accept")}
                               </ThemedText>
-                            </Pressable>
-                            <Pressable
+                            </KitPressable>
+                            <KitPressable
                               style={{
                                 flex: 1,
                                 height: 40,
@@ -426,12 +495,19 @@ export function StudioJobsList({
                               disabled={reviewingApplicationId === application.applicationId}
                               onPress={() => onReview(application.applicationId, "rejected")}
                             >
-                              <ThemedText style={{ color: palette.text, fontWeight: "600", fontSize: 13, letterSpacing: 0.2 }}>
+                              <ThemedText
+                                style={{
+                                  color: palette.text,
+                                  fontWeight: "600",
+                                  fontSize: 13,
+                                  letterSpacing: 0.2,
+                                }}
+                              >
                                 {reviewingApplicationId === application.applicationId
                                   ? t("jobsTab.actions.rejecting")
                                   : t("jobsTab.actions.reject")}
                               </ThemedText>
-                            </Pressable>
+                            </KitPressable>
                           </View>
                         ) : null}
                       </Animated.View>
@@ -446,4 +522,3 @@ export function StudioJobsList({
     </View>
   );
 }
-

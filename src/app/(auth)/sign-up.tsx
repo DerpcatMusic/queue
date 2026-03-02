@@ -1,1 +1,5 @@
-export { default } from "./sign-in-screen";
+import { Redirect } from "expo-router";
+
+export default function SignUpRoute() {
+  return <Redirect href="/sign-in" />;
+}

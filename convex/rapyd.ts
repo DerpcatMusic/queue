@@ -73,6 +73,38 @@ const executeRapydSignedPost = async ({
   responseText: string;
   signatureEncoding: RapydSignatureEncoding;
 }> => {
+  return await executeRapydSignedRequest({
+    method: "POST",
+    url,
+    path,
+    accessKey,
+    secretKey,
+    idempotency,
+    body,
+  });
+};
+
+const executeRapydSignedRequest = async ({
+  method,
+  url,
+  path,
+  accessKey,
+  secretKey,
+  idempotency,
+  body,
+}: {
+  method: "GET" | "POST";
+  url: string;
+  path: string;
+  accessKey: string;
+  secretKey: string;
+  idempotency?: string;
+  body: string;
+}): Promise<{
+  response: Response;
+  responseText: string;
+  signatureEncoding: RapydSignatureEncoding;
+}> => {
   const preferred = resolvePreferredSignatureEncoding();
   const fallback: RapydSignatureEncoding = preferred === "hex_base64" ? "raw_base64" : "hex_base64";
   const encodings: RapydSignatureEncoding[] = [preferred, fallback];
@@ -85,7 +117,7 @@ const executeRapydSignedPost = async ({
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const salt = randomUUID().replace(/-/g, "");
     const signature = buildRapydSignature({
-      method: "POST",
+      method,
       path,
       salt,
       timestamp,
@@ -96,16 +128,16 @@ const executeRapydSignedPost = async ({
     });
 
     const response = await fetch(url, {
-      method: "POST",
+      method,
       headers: {
-        "Content-Type": "application/json",
         access_key: accessKey,
         salt,
         timestamp,
         signature,
-        idempotency,
+        ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
+        ...(idempotency ? { idempotency } : {}),
       },
-      body,
+      ...(method === "POST" ? { body } : {}),
     });
     const responseText = await response.text();
     lastResponse = response;
@@ -123,6 +155,26 @@ const executeRapydSignedPost = async ({
     signatureEncoding: lastEncoding,
   };
 };
+
+const executeRapydSignedGet = async ({
+  url,
+  path,
+  accessKey,
+  secretKey,
+}: {
+  url: string;
+  path: string;
+  accessKey: string;
+  secretKey: string;
+}) =>
+  executeRapydSignedRequest({
+    method: "GET",
+    url,
+    path,
+    accessKey,
+    secretKey,
+    body: "",
+  });
 
 const normalizeRapydBaseUrl = (rawValue: string): string => {
   let parsed: URL;
@@ -228,6 +280,22 @@ type BeneficiaryOnboardingResult = {
   onboardingId: Id<"payoutDestinationOnboarding">;
   redirectUrl: string;
   merchantReferenceId: string;
+};
+
+type CheckoutStatusResult = {
+  paymentId: Id<"payments">;
+  checkoutId: string;
+  checkoutStatus: "pending" | "completed" | "cancelled" | "failed";
+  checkoutStatusRaw?: string;
+  paymentStatus:
+    | "created"
+    | "pending"
+    | "authorized"
+    | "captured"
+    | "failed"
+    | "cancelled"
+    | "refunded";
+  providerPaymentId?: string;
 };
 
 export const createCheckoutForJob = action({
@@ -350,6 +418,8 @@ export const createCheckoutForJob = action({
         amount: (studioChargeAmountAgorot / 100).toFixed(2),
         complete_checkout_url: completeCheckoutUrl,
         cancel_checkout_url: cancelCheckoutUrl,
+        complete_payment_url: completeCheckoutUrl,
+        error_payment_url: cancelCheckoutUrl,
         country,
         currency,
         customer: {
@@ -448,6 +518,129 @@ export const createCheckoutForJob = action({
       }
       throw error;
     }
+  },
+});
+
+export const retrieveCheckoutForPayment = action({
+  args: {
+    paymentId: v.id("payments"),
+  },
+  returns: v.object({
+    paymentId: v.id("payments"),
+    checkoutId: v.string(),
+    checkoutStatus: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+      v.literal("failed"),
+    ),
+    checkoutStatusRaw: v.optional(v.string()),
+    paymentStatus: v.union(
+      v.literal("created"),
+      v.literal("pending"),
+      v.literal("authorized"),
+      v.literal("captured"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+      v.literal("refunded"),
+    ),
+    providerPaymentId: v.optional(v.string()),
+  }),
+  handler: async (ctx, args): Promise<CheckoutStatusResult> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+
+    const currentUser = await ctx.runQuery(api.users.getCurrentUser, {});
+    if (!currentUser || currentUser.role !== "studio") {
+      throw new ConvexError("Only studios can check payment status");
+    }
+
+    const payment = await ctx.runQuery(internal.payments.getOwnedStudioPaymentForReconciliation, {
+      paymentId: args.paymentId,
+      studioUserId: currentUser._id,
+    });
+    if (!payment) {
+      throw new ConvexError("Payment not found");
+    }
+    if (!payment.providerCheckoutId) {
+      throw new ConvexError("Payment does not have a Rapyd checkout yet");
+    }
+
+    const accessKey = getRequiredEnv("RAPYD_ACCESS_KEY");
+    const secretKey = getRequiredEnv("RAPYD_SECRET_KEY");
+    const rapydMode = (process.env.RAPYD_MODE ?? "sandbox").trim().toLowerCase();
+    const isProduction = rapydMode === "production";
+    const rapydBaseUrl = normalizeRapydBaseUrl(
+      isProduction
+        ? (process.env.RAPYD_PROD_BASE_URL ?? process.env.RAPYD_BASE_URL ?? "https://api.rapyd.net")
+        : (process.env.RAPYD_SANDBOX_BASE_URL ??
+            process.env.RAPYD_BASE_URL ??
+            "https://sandboxapi.rapyd.net"),
+    );
+
+    const requestPath = `/v1/checkout/${payment.providerCheckoutId}`;
+    const requestUrl = new URL(requestPath, `${rapydBaseUrl}/`);
+    const { response, responseText, signatureEncoding } = await executeRapydSignedGet({
+      url: requestUrl.toString(),
+      path: requestUrl.pathname,
+      accessKey,
+      secretKey,
+    });
+    if (!response.ok) {
+      const snippet = responseText.slice(0, 500);
+      throw new ConvexError(
+        `Rapyd checkout lookup failed (HTTP ${response.status}) [${signatureEncoding}]: ${snippet}`,
+      );
+    }
+
+    const payload = JSON.parse(responseText) as {
+      status?: { status?: string; error_code?: string; message?: string };
+      data?: {
+        id?: string;
+        status?: string;
+        payment?: { id?: string; status?: string };
+      };
+    };
+    const providerStatus = payload.status?.status ?? "ERROR";
+    if (providerStatus !== "SUCCESS" || !payload.data?.id) {
+      const providerReason =
+        payload.status?.message ?? payload.status?.error_code ?? "Unknown error";
+      throw new ConvexError(`Rapyd checkout lookup rejected: ${providerReason}`);
+    }
+
+    const checkoutStatusRaw = payload.data.status?.trim().toUpperCase();
+    const paymentStatusRaw = payload.data.payment?.status?.trim().toUpperCase();
+    const providerPaymentId = payload.data.payment?.id?.trim() || undefined;
+
+    const reconcile = await ctx.runMutation(internal.payments.reconcilePaymentFromCheckoutLookup, {
+      paymentId: payment._id,
+      providerCheckoutId: payload.data.id,
+      ...omitUndefined({
+        providerPaymentId,
+        checkoutStatusRaw,
+        paymentStatusRaw,
+      }),
+    });
+
+    const checkoutStatus =
+      reconcile.paymentStatus === "captured"
+        ? "completed"
+        : reconcile.paymentStatus === "cancelled"
+          ? "cancelled"
+          : reconcile.paymentStatus === "failed" || reconcile.paymentStatus === "refunded"
+            ? "failed"
+            : "pending";
+
+    return {
+      paymentId: payment._id,
+      checkoutId: payload.data.id,
+      checkoutStatus,
+      paymentStatus: reconcile.paymentStatus,
+      ...(checkoutStatusRaw ? { checkoutStatusRaw } : {}),
+      ...(providerPaymentId ? { providerPaymentId } : {}),
+    };
   },
 });
 

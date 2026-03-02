@@ -1,24 +1,10 @@
-import * as Haptics from "expo-haptics";
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  View,
-  type ColorValue,
-  type PressableProps,
-} from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import { ActivityIndicator, type ColorValue, Text, View } from "react-native";
 
-import { BrandRadius, BrandType } from "@/constants/brand";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { useKitTheme } from "./use-kit-theme";
+import { BrandRadius, BrandType } from "@/constants/brand";
+import { KitPressable } from "./kit-pressable";
 import type { KitButtonProps } from "./types";
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import { useKitTheme } from "./use-kit-theme";
 
 type ButtonColors = {
   backgroundColor: ColorValue;
@@ -102,40 +88,22 @@ export function KitButton({
   style,
 }: KitButtonProps) {
   const theme = useKitTheme();
-  const { interaction, isCustomStyle } = theme;
-  const scale = useSharedValue(1);
+  const { isCustomStyle } = theme;
   const colors = getButtonColors(variant, theme);
   const sizing = getButtonSize(size);
   const isDisabled = disabled || loading;
   const symbolTint = toSymbolTint(colors.iconColor, theme.symbol.defaultTint);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const pressableProps: PressableProps = !isCustomStyle
-    ? { android_ripple: { color: interaction.ripple as string } }
-    : {};
-
   return (
-    <AnimatedPressable
+    <KitPressable
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
-      onPressIn={() => {
-        scale.value = withSpring(0.965, { damping: 14, stiffness: 340 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, { damping: 18, stiffness: 280 });
-      }}
-      onPress={(event) => {
-        if (!isDisabled && process.env.EXPO_OS === "ios") {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-        onPress(event);
-      }}
+      onPress={(event) => onPress(event)}
+      haptic="impact"
+      nativeFeedback={!isCustomStyle}
+      pressStyle={isDisabled ? undefined : { transform: [{ scale: 0.985 }] }}
       style={[
-        animatedStyle,
         {
           minHeight: sizing.minHeight,
           borderWidth: variant === "ghost" ? 1 : 1.2,
@@ -155,7 +123,6 @@ export function KitButton({
         },
         style,
       ]}
-      {...pressableProps}
     >
       {variant !== "ghost" ? (
         <View
@@ -177,11 +144,7 @@ export function KitButton({
       {loading ? (
         <ActivityIndicator color={colors.iconColor} />
       ) : icon ? (
-        <AppSymbol
-          name={icon}
-          size={18}
-          {...(symbolTint ? { tintColor: symbolTint } : {})}
-        />
+        <AppSymbol name={icon} size={18} {...(symbolTint ? { tintColor: symbolTint } : {})} />
       ) : leadingIcon ? (
         <View>{leadingIcon}</View>
       ) : null}
@@ -197,6 +160,6 @@ export function KitButton({
         {label}
       </Text>
       {trailingIcon ? <View>{trailingIcon}</View> : null}
-    </AnimatedPressable>
+    </KitPressable>
   );
 }

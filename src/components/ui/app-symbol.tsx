@@ -1,38 +1,13 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Platform } from "react-native";
 import type { OpaqueColorValue, StyleProp, TextStyle } from "react-native";
+import type { SymbolViewProps } from "expo-symbols";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
 type AppSymbolProps = {
   name: unknown;
   size?: number;
   tintColor?: string | OpaqueColorValue;
   style?: StyleProp<TextStyle>;
-};
-
-const SYMBOL_TO_MATERIAL: Record<string, React.ComponentProps<typeof MaterialIcons>["name"]> = {
-  "chevron.right": "chevron-right",
-  "chevron.left": "chevron-left",
-  "briefcase.fill": "work",
-  "calendar.circle.fill": "calendar-today",
-  "calendar.badge.exclamationmark": "event-busy",
-  "bag.badge.plus": "add-shopping-cart",
-  plus: "add",
-  "figure.run": "directions-run",
-  "dumbbell.fill": "fitness-center",
-  "figure.yoga": "self-improvement",
-  "person.badge.key.fill": "admin-panel-settings",
-  "apple.logo": "apple",
-  "person.3.sequence.fill": "groups",
-  "calendar.badge.plus": "edit-calendar",
-  "exclamationmark.circle.fill": "error",
-  calendar: "calendar-today",
-  "mappin.and.ellipse": "location-on",
-  "flame.fill": "local-fire-department",
-  "clock.fill": "schedule",
-  "calendar.badge.clock": "event",
-  "gym.bag.fill": "fitness-center",
-  "building.2.fill": "business",
-  "arrow.right": "arrow-forward",
 };
 
 function getSymbolName(name: unknown): string {
@@ -48,23 +23,19 @@ function getSymbolName(name: unknown): string {
   return "";
 }
 
-function resolveMaterialIconName(rawName: unknown): React.ComponentProps<typeof MaterialIcons>["name"] {
-  const name = getSymbolName(rawName);
-  if (!name) return "help-outline";
-  if (SYMBOL_TO_MATERIAL[name]) return SYMBOL_TO_MATERIAL[name];
-  if (name.endsWith(".fill")) {
-    const base = name.slice(0, -5);
-    if (SYMBOL_TO_MATERIAL[base]) return SYMBOL_TO_MATERIAL[base];
-  }
-  return "help-outline";
-}
-
 export function AppSymbol({ name, size = 20, tintColor, style }: AppSymbolProps) {
+  const resolvedName = getSymbolName(name) as Extract<SymbolViewProps["name"], string>;
+
+  // Fallback if no specific icon name mapped
+  if (!resolvedName) {
+    return null;
+  }
+
   return (
-    <MaterialIcons
-      name={resolveMaterialIconName(name)}
+    <IconSymbol
+      name={resolvedName as any}
       size={size}
-      color={tintColor}
+      color={tintColor as string}
       style={style}
     />
   );

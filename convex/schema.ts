@@ -1,15 +1,20 @@
-import { defineSchema, defineTable } from "convex/server";
 import { authTables } from "@convex-dev/auth/server";
+import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+
+const socialLinksValidator = v.object({
+  instagram: v.optional(v.string()),
+  tiktok: v.optional(v.string()),
+  whatsapp: v.optional(v.string()),
+  facebook: v.optional(v.string()),
+  linkedin: v.optional(v.string()),
+  website: v.optional(v.string()),
+});
 
 export default defineSchema({
   ...authTables,
   users: defineTable({
-    role: v.union(
-      v.literal("pending"),
-      v.literal("instructor"),
-      v.literal("studio"),
-    ),
+    role: v.union(v.literal("pending"), v.literal("instructor"), v.literal("studio")),
     onboardingComplete: v.boolean(),
     email: v.optional(v.string()),
     fullName: v.optional(v.string()),
@@ -24,7 +29,8 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_role", ["role"]),
+    .index("by_role", ["role"])
+    .index("by_email", ["email"]),
 
   profileImageUploadSessions: defineTable({
     userId: v.id("users"),
@@ -43,6 +49,7 @@ export default defineSchema({
     userId: v.id("users"),
     displayName: v.string(),
     bio: v.optional(v.string()),
+    socialLinks: v.optional(socialLinksValidator),
     address: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
@@ -73,6 +80,7 @@ export default defineSchema({
     diditLastEventAt: v.optional(v.number()),
     diditVerifiedAt: v.optional(v.number()),
     diditLegalFirstName: v.optional(v.string()),
+    diditLegalMiddleName: v.optional(v.string()),
     diditLegalLastName: v.optional(v.string()),
     diditLegalName: v.optional(v.string()),
     createdAt: v.number(),
@@ -122,6 +130,8 @@ export default defineSchema({
   studioProfiles: defineTable({
     userId: v.id("users"),
     studioName: v.string(),
+    bio: v.optional(v.string()),
+    socialLinks: v.optional(socialLinksValidator),
     address: v.string(),
     zone: v.string(),
     latitude: v.optional(v.number()),
@@ -165,12 +175,7 @@ export default defineSchema({
     maxParticipants: v.optional(v.number()),
     equipmentProvided: v.optional(v.boolean()),
     sessionLanguage: v.optional(
-      v.union(
-        v.literal("hebrew"),
-        v.literal("english"),
-        v.literal("arabic"),
-        v.literal("russian"),
-      ),
+      v.union(v.literal("hebrew"), v.literal("english"), v.literal("arabic"), v.literal("russian")),
     ),
     isRecurring: v.optional(v.boolean()),
     cancellationDeadlineHours: v.optional(v.number()),
@@ -289,11 +294,7 @@ export default defineSchema({
   invoices: defineTable({
     paymentId: v.id("payments"),
     provider: v.union(v.literal("icount"), v.literal("morning")),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("issued"),
-      v.literal("failed"),
-    ),
+    status: v.union(v.literal("pending"), v.literal("issued"), v.literal("failed")),
     currency: v.string(),
     amountAgorot: v.number(),
     vatRate: v.number(),

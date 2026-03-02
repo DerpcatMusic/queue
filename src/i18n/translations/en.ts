@@ -241,6 +241,7 @@ const en = {
     signInButton: "Sign in",
     signingIn: "Signing in...",
     sendCodeButton: "Send code",
+    sendMagicLinkButton: "Send magic link",
     createAccountButton: "Create account",
     creatingAccount: "Creating account...",
     codeLabel: "Verification code",
@@ -255,12 +256,16 @@ const en = {
     sendingPhoneCode: "Sending code...",
     phoneNumberRequiredForSignUp:
       "Your account requires a phone number. Add it to continue.",
+    magicLinkSent: "Magic link sent to {{email}}. Open it on this device to continue.",
+    magicLinkVerified: "Magic link verified. Signing you in...",
     magicLinkUnavailableNative:
       "Email magic links are not supported in Expo native apps, so this flow uses one-time codes.",
     backToSignInMethods: "Back to sign-in methods",
     backToSignUpDetails: "Back to account details",
     oauthCancelled: "Google sign-in was cancelled.",
     oauthFailed: "Google sign-in failed. Please try again.",
+    noAccountHint:
+      "No account yet? Use email, magic link, or Google and we will create it automatically.",
     goToSignUp: "Need an account? Sign up",
     goToSignIn: "Already have an account? Sign in",
     additionalStepRequired: "Additional verification is required.",
@@ -534,6 +539,13 @@ const en = {
       matches: "matches",
       pending: "pending",
       open: "open",
+    },
+    performance: {
+      weekly: "Weekly",
+      monthly: "Monthly",
+      yearly: "Yearly",
+      earnings: "Earnings",
+      lessons: "Lessons",
     },
     instructor: {
       title: "Home",

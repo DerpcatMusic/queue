@@ -1,16 +1,9 @@
-import * as Haptics from "expo-haptics";
-import { Pressable, Text, View } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import { Text, View } from "react-native";
 
 import { BrandRadius } from "@/constants/brand";
-import { useKitTheme } from "./use-kit-theme";
+import { KitPressable } from "./kit-pressable";
 import type { KitFabProps } from "./types";
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import { useKitTheme } from "./use-kit-theme";
 
 export function KitFab({
   icon,
@@ -20,34 +13,18 @@ export function KitFab({
   disabled = false,
   style,
 }: KitFabProps) {
-  const { color, foreground, background, border, interaction, shadow, isCustomStyle } =
-    useKitTheme();
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const { color, foreground, background, border, shadow, isCustomStyle } = useKitTheme();
 
   return (
-    <AnimatedPressable
+    <KitPressable
       accessibilityRole="button"
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
-      {...(!isCustomStyle ? { android_ripple: { color: interaction.ripple as string } } : {})}
-      onPressIn={() => {
-        scale.value = withSpring(0.97, { damping: 14, stiffness: 340 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, { damping: 18, stiffness: 280 });
-      }}
-      onPress={() => {
-        if (process.env.EXPO_OS === "ios") {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-        onPress();
-      }}
+      onPress={onPress}
+      haptic="impact"
+      nativeFeedback={!isCustomStyle}
+      pressStyle={disabled ? undefined : { transform: [{ scale: 0.985 }] }}
       style={[
-        animatedStyle,
         {
           width: 58,
           height: 58,
@@ -60,7 +37,7 @@ export function KitFab({
           borderColor: selected ? color.primaryPressed : border.secondary,
           opacity: disabled ? 0.55 : 1,
           boxShadow: selected ? shadow.primaryLift : undefined,
-          overflow: "visible",
+          overflow: "hidden",
         },
         style,
       ]}
@@ -70,8 +47,8 @@ export function KitFab({
         <View
           style={{
             position: "absolute",
-            top: -6,
-            right: -6,
+            top: 4,
+            right: 4,
             minWidth: 20,
             height: 20,
             borderRadius: 10,
@@ -95,6 +72,6 @@ export function KitFab({
           </Text>
         </View>
       ) : null}
-    </AnimatedPressable>
+    </KitPressable>
   );
 }

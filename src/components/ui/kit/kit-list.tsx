@@ -1,8 +1,9 @@
 import React from "react";
-import { Pressable, View, type StyleProp, type ViewStyle } from "react-native";
+import { type StyleProp, View, type ViewStyle } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { KitPressable } from "./kit-pressable";
 import { useKitTheme } from "./use-kit-theme";
 
 type KitListProps = {
@@ -73,7 +74,7 @@ export function KitListItem({
   leading,
   onPress,
 }: KitListItemProps) {
-  const { foreground, background, interaction } = useKitTheme();
+  const { foreground, background } = useKitTheme();
 
   const content = (
     <>
@@ -92,9 +93,8 @@ export function KitListItem({
 
   if (onPress) {
     return (
-      <Pressable
+      <KitPressable
         accessibilityRole="button"
-        android_ripple={{ color: interaction.ripple as string }}
         onPress={onPress}
         style={({ pressed }) => [
           {
@@ -103,15 +103,13 @@ export function KitListItem({
             paddingHorizontal: BrandSpacing.lg,
             paddingVertical: BrandSpacing.md,
             minHeight: 56,
-            backgroundColor: pressed
-              ? background.surfaceSecondary
-              : background.transparent,
+            backgroundColor: pressed ? background.surfaceSecondary : background.transparent,
           },
           style,
         ]}
       >
         {content}
-      </Pressable>
+      </KitPressable>
     );
   }
 

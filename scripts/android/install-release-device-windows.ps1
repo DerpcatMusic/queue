@@ -15,13 +15,47 @@ function Get-SdkRoot {
 }
 
 function Get-JavaHome {
+  $androidStudioJbr = "C:\Program Files\Android\Android Studio\jbr"
+
   if ($env:JAVA_HOME -and (Test-Path $env:JAVA_HOME)) {
-    return $env:JAVA_HOME
+    $javaExe = Join-Path $env:JAVA_HOME "bin\java.exe"
+    if (Test-Path $javaExe) {
+      $javaVersionOutput = cmd /c "`"$javaExe`" -version 2>&1"
+      $javaVersionText = ($javaVersionOutput | Select-Object -First 1)
+      if ($javaVersionText -match '"(\d+)(?:\.(\d+))?') {
+        $javaMajor = [int]$Matches[1]
+        if ($javaMajor -ge 17 -and $javaMajor -le 21) {
+          return $env:JAVA_HOME
+        }
+      }
+    }
+    Write-Warning "JAVA_HOME points to an unsupported JDK for Android builds. Falling back to Android Studio JBR (JDK 21)."
   }
 
-  $androidStudioJbr = "C:\Program Files\Android\Android Studio\jbr"
   if (Test-Path $androidStudioJbr) {
     return $androidStudioJbr
+  }
+
+  return $null
+}
+
+function Get-NodeBinary {
+  if ($env:NODE_BINARY -and (Test-Path $env:NODE_BINARY)) {
+    return $env:NODE_BINARY
+  }
+
+  $nodeExe = "C:\Program Files\nodejs\node.exe"
+  if (Test-Path $nodeExe) {
+    return $nodeExe
+  }
+
+  $nodeCommand = Get-Command node -ErrorAction SilentlyContinue
+  $nodeFromPath = $null
+  if ($nodeCommand) {
+    $nodeFromPath = $nodeCommand.Source
+  }
+  if ($nodeFromPath -and (Test-Path $nodeFromPath) -and ($nodeFromPath -notlike "*\.bun\bin\*")) {
+    return $nodeFromPath
   }
 
   return $null
@@ -31,8 +65,8 @@ function Get-DeviceSerial {
   param([string]$AdbExe)
   $lines = & $AdbExe devices | ForEach-Object { $_.Trim() }
   foreach ($line in $lines) {
-    if ($line -match "^(\S+)\s+device$") {
-      $candidate = $Matches[1]
+    if ($line -match "^(.*?)\s+device$") {
+      $candidate = $Matches[1].Trim()
       if ($candidate -notmatch "^emulator-") {
         return $candidate
       }
@@ -99,8 +133,14 @@ try {
   if (-not $javaHome) {
     throw "JAVA_HOME is not set and Android Studio JBR was not found. Set JAVA_HOME to JDK 21."
   }
+  $nodeBinary = Get-NodeBinary
+  if (-not $nodeBinary) {
+    throw "Could not find a real Node.js binary. Install Node.js and ensure NODE_BINARY points to node.exe."
+  }
   $env:JAVA_HOME = $javaHome
-  $env:Path = "$($env:JAVA_HOME)\bin;$($env:Path)"
+  $env:NODE_BINARY = $nodeBinary
+  $nodeBinDir = Split-Path -Parent $nodeBinary
+  $env:Path = "$($env:JAVA_HOME)\bin;$nodeBinDir;$($env:Path)"
 
   & $adbExe start-server | Out-Null
   Remove-StaleEmulatorTransports -AdbExe $adbExe

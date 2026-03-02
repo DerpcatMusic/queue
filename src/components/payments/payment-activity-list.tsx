@@ -1,5 +1,6 @@
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
+import { KitPressable } from "@/components/ui/kit";
 import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { isSportType, toSportLabel } from "@/convex/constants";
@@ -173,15 +174,14 @@ export function PaymentActivityList({
                 style={{
                   marginTop: index === 0 ? 0 : -12,
                   zIndex: items.length - index,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: -2 },
-                  shadowOpacity: 0.03,
-                  shadowRadius: 8,
-                  elevation: index === 0 ? 1 : 2,
                 }}
               >
-                <TouchableOpacity
+                <KitPressable
                   {...listItemPressProps}
+                  accessibilityRole={onSelectPaymentId ? "button" : undefined}
+                  haptic={onSelectPaymentId ? "selection" : "none"}
+                  nativeFeedback={Boolean(onSelectPaymentId)}
+                  pressedOpacity={0.96}
                   style={{
                     backgroundColor: palette.surface,
                     padding: 16,
@@ -194,7 +194,6 @@ export function PaymentActivityList({
                     alignItems: "center",
                     justifyContent: "space-between",
                   }}
-                  activeOpacity={0.9}
                 >
                   <View style={{ flex: 1, gap: 4 }}>
                     <ThemedText type="bodyStrong" style={{ fontSize: 18 }}>
@@ -249,7 +248,7 @@ export function PaymentActivityList({
                       </ThemedText>
                     ) : null}
                   </View>
-                </TouchableOpacity>
+                </KitPressable>
               </View>
             );
           })}

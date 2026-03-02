@@ -1,22 +1,16 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { type ColorValue, StyleSheet, TextInput, View } from "react-native";
+import { ThemedText } from "@/components/themed-text";
+import { KitPressable } from "@/components/ui/kit";
 import { useBrand } from "@/hooks/use-brand";
 import {
   fetchPlaceAutocomplete,
   fetchPlaceCoordinates,
   isGooglePlacesConfigured,
-  resetPlacesSession,
   type PlaceCoordinates,
   type PlacePrediction,
+  resetPlacesSession,
 } from "@/lib/google-places";
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  type ColorValue,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  View,
-} from "react-native";
-
-import { ThemedText } from "@/components/themed-text";
 
 type AddressAutocompleteProps = {
   value: string;
@@ -54,25 +48,28 @@ export function AddressAutocomplete({
   const suppressRef = useRef(false);
   const placesAvailable = isGooglePlacesConfigured();
 
-  const fetchPredictions = useCallback(async (query: string) => {
-    if (query.trim().length < MIN_QUERY_LENGTH || !placesAvailable) {
-      setPredictions([]);
-      setIsOpen(false);
-      return;
-    }
+  const fetchPredictions = useCallback(
+    async (query: string) => {
+      if (query.trim().length < MIN_QUERY_LENGTH || !placesAvailable) {
+        setPredictions([]);
+        setIsOpen(false);
+        return;
+      }
 
-    setIsLoading(true);
-    try {
-      const results = await fetchPlaceAutocomplete(query);
-      setPredictions(results);
-      setIsOpen(results.length > 0);
-    } catch {
-      setPredictions([]);
-      setIsOpen(false);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [placesAvailable]);
+      setIsLoading(true);
+      try {
+        const results = await fetchPlaceAutocomplete(query);
+        setPredictions(results);
+        setIsOpen(results.length > 0);
+      } catch {
+        setPredictions([]);
+        setIsOpen(false);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [placesAvailable],
+  );
 
   useEffect(() => {
     if (suppressRef.current) {
@@ -144,17 +141,13 @@ export function AddressAutocomplete({
         autoComplete="street-address"
         textContentType="fullStreetAddress"
         returnKeyType="search"
+        clearButtonMode="while-editing"
+        selectionColor={palette.primary as string}
+        cursorColor={palette.primary as string}
       />
       {isLoading ? (
-        <View
-          style={[
-            styles.loadingBar,
-            { backgroundColor: palette.primarySubtle },
-          ]}
-        >
-          <ThemedText
-            style={{ color: mutedTextColor ?? palette.textMuted, fontSize: 12 }}
-          >
+        <View style={[styles.loadingBar, { backgroundColor: palette.primarySubtle }]}>
+          <ThemedText style={{ color: mutedTextColor ?? palette.textMuted, fontSize: 12 }}>
             Searching...
           </ThemedText>
         </View>
@@ -170,14 +163,12 @@ export function AddressAutocomplete({
           ]}
         >
           {predictions.map((prediction) => (
-            <Pressable
+            <KitPressable
               key={prediction.placeId}
               style={({ pressed }) => [
                 styles.suggestion,
                 {
-                  backgroundColor: pressed
-                    ? palette.primarySubtle
-                    : "transparent",
+                  backgroundColor: pressed ? palette.primarySubtle : "transparent",
                 },
               ]}
               onPress={() => {
@@ -198,7 +189,7 @@ export function AddressAutocomplete({
                   {prediction.secondaryText}
                 </ThemedText>
               ) : null}
-            </Pressable>
+            </KitPressable>
           ))}
         </View>
       ) : null}

@@ -1,34 +1,43 @@
 import BottomSheet, {
+  type BottomSheetBackgroundProps,
   BottomSheetFlatList,
   BottomSheetTextInput,
-  type BottomSheetBackgroundProps,
 } from "@gorhom/bottom-sheet";
-import { api } from "@/convex/_generated/api";
+import { useIsFocused } from "@react-navigation/native";
+import { useMutation, useQuery } from "convex/react";
+import * as Haptics from "expo-haptics";
+import { Redirect } from "expo-router";
+import {
+  type RefObject,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
+import { Platform, StyleSheet, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
 import { ThemedText } from "@/components/themed-text";
-import { KitFab } from "@/components/ui/kit";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitFab, KitPressable } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { ZONE_OPTIONS, type ZoneOption } from "@/constants/zones";
+import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
-import { useMutation, useQuery } from "convex/react";
-import { Redirect } from "expo-router";
-import { type RefObject, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Pressable, StyleSheet, View } from "react-native";
-import Animated from "react-native-reanimated";
 
 const MAX_ZONES = 25;
 
 export default function MapTabScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
-  const zoneLanguage = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he")
-    ? "he"
-    : "en";
+  const isFocused = useIsFocused();
+  const zoneLanguage = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he") ? "he" : "en";
   const currentUser = useQuery(api.users.getCurrentUser);
   const remoteZones = useQuery(
     api.instructorZones.getMyInstructorZones,
@@ -52,6 +61,9 @@ export default function MapTabScreen() {
   }, [remoteZones]);
 
   const toggleZone = useCallback((zoneId: string) => {
+    if (Platform.OS === "ios") {
+      void Haptics.selectionAsync();
+    }
     setSaveError(null);
     setSelectedZoneIds((current) => {
       if (current.includes(zoneId)) {
@@ -113,9 +125,7 @@ export default function MapTabScreen() {
       await saveZones({ zoneIds: nextZoneIds });
     } catch (error) {
       setSaveError(
-        error instanceof Error && error.message
-          ? error.message
-          : t("mapTab.errors.failedToSave"),
+        error instanceof Error && error.message ? error.message : t("mapTab.errors.failedToSave"),
       );
     } finally {
       setIsSaving(false);
@@ -158,124 +168,162 @@ export default function MapTabScreen() {
 
   return (
     <TabScreenRoot mode="static" style={{ backgroundColor: palette.appBg }}>
-      <QueueMap
-        mode={zoneModeActive ? "zoneSelect" : "pinDrop"}
-        pin={null}
-        selectedZoneIds={selectedZoneIds}
-        focusZoneId={null}
-        {...(zoneModeActive ? { onPressZone: toggleZone } : {})}
-        onPressMap={noopMapPress}
-        onUseGps={noopUseGps}
-        showGpsButton={false}
-      />
-
-      <BottomSheet
-        ref={zoneSheetRef as RefObject<BottomSheet>}
-        index={zoneModeActive ? 0 : -1}
-        snapPoints={sheetSnapPoints}
-        enablePanDownToClose={false}
-        enableContentPanningGesture
-        keyboardBehavior="extend"
-        android_keyboardInputMode="adjustResize"
-        backgroundComponent={backgroundComponent}
-        onChange={(index) => {
-          if (index < 0) {
-            setZoneModeActive(false);
-            setSheetIndex(-1);
-            setZoneSearch("");
-            return;
-          }
-          setSheetIndex(index);
-        }}
-      >
-        <View style={styles.sheetContent}>
-          <View style={styles.sheetHeader}>
-            <ThemedText style={{ fontSize: 24, fontWeight: "600", color: palette.text, letterSpacing: -0.2 }}>
-              {t("mapTab.title")}
-            </ThemedText>
-          </View>
-          <BottomSheetTextInput
-            value={zoneSearch}
-            onChangeText={setZoneSearch}
-            placeholder={t("mapTab.searchPlaceholder")}
-            placeholderTextColor={palette.textMuted}
-            style={[
-              styles.searchInput,
-              {
-                color: palette.text,
-                borderBottomColor: palette.border,
-              },
-            ]}
+      {isFocused ? (
+        <>
+          <QueueMap
+            mode={zoneModeActive ? "zoneSelect" : "pinDrop"}
+            pin={null}
+            selectedZoneIds={selectedZoneIds}
+            focusZoneId={null}
+            {...(zoneModeActive ? { onPressZone: toggleZone } : {})}
+            onPressMap={noopMapPress}
+            onUseGps={noopUseGps}
+            showGpsButton={false}
           />
-          {saveError ? (
-            <ThemedText selectable style={{ color: palette.danger, paddingHorizontal: 24 }}>
-              {saveError}
-            </ThemedText>
-          ) : null}
-          <BottomSheetFlatList<ZoneOption>
-            data={filteredZones}
-            keyExtractor={(item: ZoneOption) => item.id}
-            contentContainerStyle={styles.zoneListContent}
-            keyboardShouldPersistTaps="handled"
-            removeClippedSubviews
-            initialNumToRender={20}
-            maxToRenderPerBatch={28}
-            windowSize={9}
-            updateCellsBatchingPeriod={16}
-            renderItem={({ item }: { item: ZoneOption }) => {
-              const selected = deferredSelectedZoneSet.has(item.id);
-              return (
-                <Pressable
-                  onPress={() => toggleZone(item.id)}
+
+          <BottomSheet
+            ref={zoneSheetRef as RefObject<BottomSheet>}
+            index={zoneModeActive ? 0 : -1}
+            snapPoints={sheetSnapPoints}
+            enablePanDownToClose={false}
+            enableContentPanningGesture
+            keyboardBehavior="extend"
+            android_keyboardInputMode="adjustResize"
+            backgroundComponent={backgroundComponent}
+            onChange={(index) => {
+              if (index < 0) {
+                setZoneModeActive(false);
+                setSheetIndex(-1);
+                setZoneSearch("");
+                return;
+              }
+              setSheetIndex(index);
+            }}
+          >
+            <View style={styles.sheetContent}>
+              <View style={styles.sheetHeader}>
+                <ThemedText
+                  style={{
+                    fontSize: 24,
+                    fontWeight: "600",
+                    color: palette.text,
+                    letterSpacing: -0.2,
+                  }}
+                >
+                  {t("mapTab.title")}
+                </ThemedText>
+              </View>
+              <View style={styles.searchWrap}>
+                <View
                   style={[
-                    styles.zoneRow,
+                    styles.searchInputShell,
                     {
-                      borderBottomColor: palette.border,
-                      backgroundColor: selected ? palette.primary : "transparent",
+                      backgroundColor: palette.surfaceElevated,
+                      borderColor: palette.border,
                     },
                   ]}
                 >
-                  <ThemedText
-                    numberOfLines={1}
-                    style={{
-                      color: selected ? palette.onPrimary : palette.text,
-                      fontSize: 15,
-                      fontWeight: "500",
-                      letterSpacing: -0.1,
-                    }}
-                  >
-                    {item.label[zoneLanguage]}
-                  </ThemedText>
-                  {selected && <IconSymbol name="checkmark" size={16} color={palette.onPrimary} />}
-                </Pressable>
-              );
-            }}
-          />
-        </View>
-      </BottomSheet>
+                  <IconSymbol name="magnifyingglass" size={16} color={palette.textMuted} />
+                  <BottomSheetTextInput
+                    value={zoneSearch}
+                    onChangeText={setZoneSearch}
+                    placeholder={t("mapTab.searchPlaceholder")}
+                    placeholderTextColor={palette.textMuted}
+                    clearButtonMode="while-editing"
+                    returnKeyType="search"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={[styles.searchInput, { color: palette.text }]}
+                  />
+                  {zoneSearch.length > 0 ? (
+                    <KitPressable
+                      accessibilityRole="button"
+                      accessibilityLabel={t("common.clear", { defaultValue: "Clear" })}
+                      hitSlop={8}
+                      onPress={() => setZoneSearch("")}
+                      rippleRadius={16}
+                    >
+                      <IconSymbol name="xmark.circle.fill" size={16} color={palette.textMuted} />
+                    </KitPressable>
+                  ) : null}
+                </View>
+              </View>
+              {saveError ? (
+                <ThemedText selectable style={{ color: palette.danger, paddingHorizontal: 24 }}>
+                  {saveError}
+                </ThemedText>
+              ) : null}
+              <BottomSheetFlatList<ZoneOption>
+                data={filteredZones}
+                keyExtractor={(item: ZoneOption) => item.id}
+                contentContainerStyle={styles.zoneListContent}
+                keyboardShouldPersistTaps="handled"
+                removeClippedSubviews
+                initialNumToRender={20}
+                maxToRenderPerBatch={28}
+                windowSize={9}
+                updateCellsBatchingPeriod={16}
+                renderItem={({ item }: { item: ZoneOption }) => {
+                  const selected = deferredSelectedZoneSet.has(item.id);
+                  return (
+                    <KitPressable
+                      onPress={() => toggleZone(item.id)}
+                      style={[
+                        styles.zoneRow,
+                        {
+                          borderBottomColor: palette.border,
+                          backgroundColor: selected ? palette.primary : "transparent",
+                        },
+                      ]}
+                    >
+                      <ThemedText
+                        numberOfLines={1}
+                        style={{
+                          color: selected ? palette.onPrimary : palette.text,
+                          fontSize: 15,
+                          fontWeight: "500",
+                          letterSpacing: -0.1,
+                        }}
+                      >
+                        {item.label[zoneLanguage]}
+                      </ThemedText>
+                      {selected && (
+                        <IconSymbol name="checkmark" size={16} color={palette.onPrimary} />
+                      )}
+                    </KitPressable>
+                  );
+                }}
+              />
+            </View>
+          </BottomSheet>
 
-      <TabOverlayAnchor side={zoneLanguage === "he" ? "left" : "right"} offset={BrandSpacing.lg}>
-        <KitFab
-          selected={zoneModeActive}
-          disabled={isSaving}
-          icon={
-            <IconSymbol
-              name={zoneModeActive ? "checkmark.circle.fill" : "slider.horizontal.3"}
-              size={20}
-              color={zoneModeActive ? palette.onPrimary : palette.text}
+          <TabOverlayAnchor
+            side={zoneLanguage === "he" ? "left" : "right"}
+            offset={BrandSpacing.lg}
+          >
+            <KitFab
+              selected={zoneModeActive}
+              disabled={isSaving}
+              icon={
+                <IconSymbol
+                  name={zoneModeActive ? "checkmark.circle.fill" : "slider.horizontal.3"}
+                  size={20}
+                  color={zoneModeActive ? palette.onPrimary : palette.text}
+                />
+              }
+              style={{
+                backgroundColor: zoneModeActive ? palette.primary : palette.surface,
+                borderColor: zoneModeActive ? palette.primaryPressed : palette.borderStrong,
+                borderWidth: 1.4,
+                opacity: 1,
+              }}
+              onPress={() => {
+                void handlePrimaryAction();
+              }}
             />
-          }
-          style={{
-            backgroundColor: zoneModeActive ? palette.primary : palette.surface,
-            borderColor: zoneModeActive ? palette.primaryPressed : palette.borderStrong,
-            borderWidth: 1.4,
-            opacity: 1,
-          }}
-          onPress={() => {
-            void handlePrimaryAction();
-          }}
-        />
-      </TabOverlayAnchor>
+          </TabOverlayAnchor>
+        </>
+      ) : null}
     </TabScreenRoot>
   );
 }
@@ -289,12 +337,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 8,
   },
+  searchWrap: {
+    paddingHorizontal: 16,
+    marginBottom: 6,
+  },
+  searchInputShell: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderRadius: 14,
+    borderCurve: "continuous",
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   searchInput: {
+    flex: 1,
+    minHeight: 40,
     fontSize: 16,
-    fontWeight: "500",
-    paddingHorizontal: 24,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
   },
   zoneListContent: {
     paddingBottom: 48,

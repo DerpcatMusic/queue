@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import { View, type ViewProps } from "react-native";
 
 import { BrandRadius } from "@/constants/brand";
+
 import { useKitTheme } from "./use-kit-theme";
 
 export type KitSurfaceTone = "base" | "elevated" | "glass" | "sunken";
@@ -46,7 +47,7 @@ export function KitSurface({
   style,
   ...rest
 }: KitSurfaceProps) {
-  const { background, border, shadow, scheme, stylePreference } = useKitTheme();
+  const { background, scheme, stylePreference } = useKitTheme();
   const isGlass = tone === "glass";
   const allowNativeGlass = stylePreference === "native" && process.env.EXPO_OS === "ios";
   const glassModule = allowNativeGlass ? getGlassModule() : null;
@@ -55,11 +56,9 @@ export function KitSurface({
     {
       borderRadius: BrandRadius.card,
       borderCurve: "continuous" as const,
-      borderWidth: 1,
       padding,
       gap,
       overflow: "hidden" as const,
-      borderColor: tone === "sunken" ? border.secondary : border.primary,
       backgroundColor:
         tone === "elevated"
           ? background.surfaceElevated
@@ -68,7 +67,6 @@ export function KitSurface({
             : isGlass
               ? background.glass
               : background.surface,
-      boxShadow: tone === "sunken" ? undefined : shadow.surface,
     },
     style,
   ];

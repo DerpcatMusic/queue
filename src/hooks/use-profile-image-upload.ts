@@ -1,32 +1,171 @@
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useMutation } from "convex/react";
-import * as ImagePicker from "expo-image-picker";
 import { useCallback, useState } from "react";
+import { Platform } from "react-native";
+
+const PROFILE_IMAGE_EDGE_PX = 512;
+const PROFILE_IMAGE_COMPRESSION = 0.72;
+
+type ProfileImageUploadPhase = "idle" | "selecting" | "compressing" | "uploading";
 
 type UploadResponse = {
   storageId?: string;
 };
 
+type ImagePickerAsset = {
+  uri: string;
+  file?: Blob;
+  mimeType?: string | null;
+};
+
+type ImagePickerResult = {
+  canceled: boolean;
+  assets: ImagePickerAsset[];
+};
+
+type ImagePickerModule = {
+  MediaTypeOptions: { Images: string | number };
+  requestMediaLibraryPermissionsAsync: () => Promise<{ granted: boolean }>;
+  launchImageLibraryAsync: (options: {
+    mediaTypes: string | number;
+    allowsEditing: boolean;
+    aspect: [number, number];
+    quality: number;
+  }) => Promise<ImagePickerResult>;
+};
+
+type SaveFormatValue = "jpeg" | "png" | "webp";
+
+type ImageManipulatorModule = {
+  SaveFormat: {
+    JPEG: SaveFormatValue;
+    PNG: SaveFormatValue;
+    WEBP: SaveFormatValue;
+  };
+  manipulateAsync: (
+    uri: string,
+    actions: Array<{ resize: { width?: number; height?: number } }>,
+    saveOptions?: {
+      compress?: number;
+      format?: SaveFormatValue;
+      base64?: boolean;
+    },
+  ) => Promise<{ uri: string; width: number; height: number }>;
+};
+
+type FileSystemLegacyModule = {
+  FileSystemUploadType: {
+    BINARY_CONTENT: number;
+  };
+  uploadAsync: (
+    url: string,
+    fileUri: string,
+    options: {
+      httpMethod: "POST";
+      uploadType: number;
+      headers?: Record<string, string>;
+    },
+  ) => Promise<{
+    status: number;
+    body: string;
+  }>;
+};
+
+let cachedImagePickerModule: ImagePickerModule | null | undefined;
+let cachedImageManipulatorModule: ImageManipulatorModule | null | undefined;
+let cachedFileSystemLegacyModule: FileSystemLegacyModule | null | undefined;
+
+function resolveImagePickerModule(): ImagePickerModule | null {
+  if (cachedImagePickerModule !== undefined) {
+    return cachedImagePickerModule;
+  }
+
+  if (Platform.OS === "web") {
+    cachedImagePickerModule = null;
+    return cachedImagePickerModule;
+  }
+
+  try {
+    // Resolve at runtime so unsupported native environments don't crash this module on import.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cachedImagePickerModule = require("expo-image-picker") as ImagePickerModule;
+  } catch {
+    cachedImagePickerModule = null;
+  }
+
+  return cachedImagePickerModule;
+}
+
+function resolveImageManipulatorModule(): ImageManipulatorModule | null {
+  if (cachedImageManipulatorModule !== undefined) {
+    return cachedImageManipulatorModule;
+  }
+
+  if (Platform.OS === "web") {
+    cachedImageManipulatorModule = null;
+    return cachedImageManipulatorModule;
+  }
+
+  try {
+    // Resolve at runtime so unsupported native environments don't crash this module on import.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cachedImageManipulatorModule = require("expo-image-manipulator") as ImageManipulatorModule;
+  } catch {
+    cachedImageManipulatorModule = null;
+  }
+
+  return cachedImageManipulatorModule;
+}
+
+function resolveFileSystemLegacyModule(): FileSystemLegacyModule | null {
+  if (cachedFileSystemLegacyModule !== undefined) {
+    return cachedFileSystemLegacyModule;
+  }
+
+  if (Platform.OS === "web") {
+    cachedFileSystemLegacyModule = null;
+    return cachedFileSystemLegacyModule;
+  }
+
+  try {
+    // Resolve at runtime so unsupported native environments don't crash this module on import.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cachedFileSystemLegacyModule = require("expo-file-system/legacy") as FileSystemLegacyModule;
+  } catch {
+    cachedFileSystemLegacyModule = null;
+  }
+
+  return cachedFileSystemLegacyModule;
+}
+
 export function useProfileImageUpload() {
   const createUploadSession = useMutation(api.users.createMyProfileImageUploadSession);
   const completeUpload = useMutation(api.users.completeMyProfileImageUpload);
-  const [isUploading, setIsUploading] = useState(false);
+  const [uploadPhase, setUploadPhase] = useState<ProfileImageUploadPhase>("idle");
+  const isUploading = uploadPhase !== "idle";
 
   const pickAndUploadProfileImage = useCallback(async () => {
     if (isUploading) return undefined;
-    setIsUploading(true);
+    setUploadPhase("selecting");
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const imagePicker = resolveImagePickerModule();
+      if (!imagePicker) {
+        throw new Error(
+          "Image picker is unavailable in this build. Update Expo Go or rebuild your development client.",
+        );
+      }
+
+      const permission = await imagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         throw new Error("Photo library permission is required.");
       }
 
-      const picked = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      const picked = await imagePicker.launchImageLibraryAsync({
+        mediaTypes: imagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.85,
+        quality: 1,
       });
 
       if (picked.canceled || !picked.assets[0]) {
@@ -34,24 +173,44 @@ export function useProfileImageUpload() {
       }
 
       const asset = picked.assets[0];
-      const { uploadUrl, sessionToken } = await createUploadSession({});
+      setUploadPhase("compressing");
+      const imageManipulator = resolveImageManipulatorModule();
+      if (!imageManipulator) {
+        throw new Error(
+          "Image compression is unavailable in this build. Update Expo Go or rebuild your development client.",
+        );
+      }
 
-      const uploadBody = asset.file
-        ? asset.file
-        : await fetch(asset.uri).then((response) => response.blob());
-
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": asset.mimeType ?? "image/jpeg",
+      const processedAsset = await imageManipulator.manipulateAsync(
+        asset.uri,
+        [{ resize: { width: PROFILE_IMAGE_EDGE_PX, height: PROFILE_IMAGE_EDGE_PX } }],
+        {
+          compress: PROFILE_IMAGE_COMPRESSION,
+          format: imageManipulator.SaveFormat.JPEG,
         },
-        body: uploadBody,
+      );
+
+      setUploadPhase("uploading");
+      const { uploadUrl, sessionToken } = await createUploadSession({});
+      const fileSystemLegacy = resolveFileSystemLegacyModule();
+      if (!fileSystemLegacy) {
+        throw new Error(
+          "Native file upload is unavailable in this build. Update Expo Go or rebuild your development client.",
+        );
+      }
+
+      const uploadResponse = await fileSystemLegacy.uploadAsync(uploadUrl, processedAsset.uri, {
+        httpMethod: "POST",
+        uploadType: fileSystemLegacy.FileSystemUploadType.BINARY_CONTENT,
+        headers: {
+          "Content-Type": "image/jpeg",
+        },
       });
-      if (!uploadResponse.ok) {
+      if (uploadResponse.status < 200 || uploadResponse.status >= 300) {
         throw new Error("Failed to upload selected image.");
       }
 
-      const uploadResult = (await uploadResponse.json()) as UploadResponse;
+      const uploadResult = JSON.parse(uploadResponse.body) as UploadResponse;
       if (!uploadResult.storageId) {
         throw new Error("Upload did not return a storage id.");
       }
@@ -63,12 +222,23 @@ export function useProfileImageUpload() {
 
       return completed.imageUrl;
     } finally {
-      setIsUploading(false);
+      setUploadPhase("idle");
     }
   }, [completeUpload, createUploadSession, isUploading]);
 
+  const uploadStatusLabel =
+    uploadPhase === "selecting"
+      ? "Choosing photo..."
+      : uploadPhase === "compressing"
+      ? "Compressing photo..."
+      : uploadPhase === "uploading"
+        ? "Uploading photo..."
+        : null;
+
   return {
     isUploading,
+    uploadPhase,
+    uploadStatusLabel,
     pickAndUploadProfileImage,
   };
 }

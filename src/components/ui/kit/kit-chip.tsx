@@ -1,9 +1,9 @@
-import * as Haptics from "expo-haptics";
-import { Pressable, Text } from "react-native";
+import { Text } from "react-native";
 
 import { BrandRadius } from "@/constants/brand";
-import { useKitTheme } from "./use-kit-theme";
+import { KitPressable } from "./kit-pressable";
 import type { KitChipProps } from "./types";
+import { useKitTheme } from "./use-kit-theme";
 
 export function KitChip({
   label,
@@ -12,24 +12,20 @@ export function KitChip({
   onPress,
   style,
 }: KitChipProps) {
-  const { color, foreground, background, border, interaction, shadow, isCustomStyle } =
-    useKitTheme();
+  const { color, foreground, background, border, shadow, isCustomStyle } = useKitTheme();
 
   return (
-    <Pressable
+    <KitPressable
       accessibilityRole="button"
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
-      {...(!isCustomStyle ? { android_ripple: { color: interaction.ripple as string } } : {})}
-      onPress={() => {
-        if (process.env.EXPO_OS === "ios") {
-          void Haptics.selectionAsync();
-        }
-        onPress();
-      }}
-      style={({ pressed }) => [
+      nativeFeedback={!isCustomStyle}
+      haptic="selection"
+      onPress={onPress}
+      pressStyle={disabled ? undefined : { transform: [{ scale: 0.985 }] }}
+      style={[
         {
-          minHeight: 36,
+          minHeight: 44,
           borderWidth: 1,
           borderRadius: BrandRadius.pill,
           borderCurve: "continuous",
@@ -40,7 +36,6 @@ export function KitChip({
           borderColor: selected ? color.primary : border.secondary,
           backgroundColor: selected ? background.primarySubtle : background.glass,
           opacity: disabled ? 0.55 : 1,
-          transform: [{ scale: pressed ? 0.985 : 1 }],
           boxShadow: selected ? shadow.surface : undefined,
         },
         style,
@@ -56,6 +51,6 @@ export function KitChip({
       >
         {label}
       </Text>
-    </Pressable>
+    </KitPressable>
   );
 }

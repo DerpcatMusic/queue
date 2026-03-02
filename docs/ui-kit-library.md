@@ -30,6 +30,7 @@ Scope: `Queue/src/components/ui/kit/*`
 - `KitChip`
 - `KitFab`
 - `KitSurface`
+- `KitPressable`
 - `KitTextField`
 - `KitList`
 - `KitListItem`
@@ -52,6 +53,7 @@ Exports are centralized in `src/components/ui/kit/index.ts`.
 ## Extension Rules
 
 - New kit components must consume `useKitTheme()` and never declare hardcoded color literals.
+- Interactive controls should build on `KitPressable` so Android ripple, iOS pressed states, and haptics stay consistent.
 - Use semantic token names only (`.primary`, `.secondary`, `.surface`, `.foreground`, `.border`, etc.) instead of direct palette fields inside components.
 - New shadow/glass/overlay treatments must be tokenized in `use-kit-theme.ts`.
 - Feature screens should import from `@/components/ui/kit` and avoid ad-hoc control styling.

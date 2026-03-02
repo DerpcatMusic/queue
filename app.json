@@ -3,7 +3,6 @@
     "name": "queue",
     "slug": "queue",
     "version": "1.0.0",
-    "newArchEnabled": true,
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "queue",
@@ -17,6 +16,7 @@
     },
     "android": {
       "package": "com.derpcat.queue",
+      "softwareKeyboardLayoutMode": "resize",
       "userInterfaceStyle": "automatic",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",

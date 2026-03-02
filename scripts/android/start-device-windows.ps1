@@ -15,11 +15,23 @@ function Get-SdkRoot {
 }
 
 function Get-JavaHome {
+  $androidStudioJbr = "C:\Program Files\Android\Android Studio\jbr"
+
   if ($env:JAVA_HOME -and (Test-Path $env:JAVA_HOME)) {
-    return $env:JAVA_HOME
+    $javaExe = Join-Path $env:JAVA_HOME "bin\java.exe"
+    if (Test-Path $javaExe) {
+      $javaVersionOutput = cmd /c "`"$javaExe`" -version 2>&1"
+      $javaVersionText = ($javaVersionOutput | Select-Object -First 1)
+      if ($javaVersionText -match '"(\d+)(?:\.(\d+))?') {
+        $javaMajor = [int]$Matches[1]
+        if ($javaMajor -ge 17 -and $javaMajor -le 21) {
+          return $env:JAVA_HOME
+        }
+      }
+    }
+    Write-Warning "JAVA_HOME points to an unsupported JDK for Android builds. Falling back to Android Studio JBR (JDK 21)."
   }
 
-  $androidStudioJbr = "C:\Program Files\Android\Android Studio\jbr"
   if (Test-Path $androidStudioJbr) {
     return $androidStudioJbr
   }
@@ -31,8 +43,8 @@ function Get-DeviceSerial {
   param([string]$AdbExe)
   $lines = & $AdbExe devices | ForEach-Object { $_.Trim() }
   foreach ($line in $lines) {
-    if ($line -match "^(\S+)\s+device$") {
-      $candidate = $Matches[1]
+    if ($line -match "^(.*?)\s+device$") {
+      $candidate = $Matches[1].Trim()
       if ($candidate -notmatch "^emulator-") {
         return $candidate
       }

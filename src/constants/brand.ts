@@ -510,14 +510,14 @@ export const BrandType = {
   heading: {
     fontFamily: "BarlowCondensed_700Bold",
     fontSize: 34,
-    fontWeight: "600" as const,
+    fontWeight: "500" as const,
     letterSpacing: -0.5,
     lineHeight: 38,
   },
   title: {
     fontFamily: "Rubik_600SemiBold",
     fontSize: 22,
-    fontWeight: "600" as const,
+    fontWeight: "500" as const,
     letterSpacing: -0.2,
     lineHeight: 28,
   },
@@ -530,7 +530,7 @@ export const BrandType = {
   bodyMedium: {
     fontFamily: "Rubik_500Medium",
     fontSize: 16,
-    fontWeight: "500" as const,
+    fontWeight: "400" as const,
     lineHeight: 23,
   },
   bodyStrong: {

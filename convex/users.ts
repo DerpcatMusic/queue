@@ -22,11 +22,59 @@ const MAX_ZONES = 25;
 const MAX_STUDIO_NAME_LENGTH = 120;
 const MAX_ADDRESS_LENGTH = 220;
 const MAX_PHONE_LENGTH = 20;
+const MAX_PROFILE_BIO_LENGTH = 280;
+const MAX_SOCIAL_LINK_LENGTH = 220;
 const PROFILE_IMAGE_UPLOAD_SESSION_TTL_MS = 10 * 60 * 1000;
+const SOCIAL_LINK_KEYS = [
+  "instagram",
+  "tiktok",
+  "whatsapp",
+  "facebook",
+  "linkedin",
+  "website",
+] as const;
+const socialLinksValidator = v.object({
+  instagram: v.optional(v.string()),
+  tiktok: v.optional(v.string()),
+  whatsapp: v.optional(v.string()),
+  facebook: v.optional(v.string()),
+  linkedin: v.optional(v.string()),
+  website: v.optional(v.string()),
+});
+
+type SocialLinkKey = (typeof SOCIAL_LINK_KEYS)[number];
+type SocialLinksValue = Partial<Record<SocialLinkKey, string>>;
 
 function createUploadSessionToken(userId: Doc<"users">["_id"], now: number) {
   const entropy = Math.random().toString(36).slice(2, 12);
   return `${String(userId)}:${now}:${entropy}`;
+}
+
+function normalizeSocialLinks(socialLinks: SocialLinksValue | undefined): SocialLinksValue {
+  const normalized: SocialLinksValue = {};
+
+  for (const key of SOCIAL_LINK_KEYS) {
+    const value = normalizeOptionalString(
+      socialLinks?.[key],
+      MAX_SOCIAL_LINK_LENGTH,
+      `${key} link`,
+    );
+    if (value) {
+      normalized[key] = value;
+    }
+  }
+
+  return normalized;
+}
+
+function toOptionalSocialLinksPayload(
+  socialLinks: SocialLinksValue | undefined,
+): SocialLinksValue | undefined {
+  if (!socialLinks) {
+    return undefined;
+  }
+
+  return Object.keys(socialLinks).length > 0 ? socialLinks : undefined;
 }
 
 function toCurrentUserPayload(user: Doc<"users">) {
@@ -276,6 +324,7 @@ export const getMyInstructorSettings = query({
       hourlyRateExpectation: v.optional(v.number()),
       sports: v.array(v.string()),
       profileImageUrl: v.optional(v.string()),
+      socialLinks: v.optional(socialLinksValidator),
       address: v.optional(v.string()),
       latitude: v.optional(v.number()),
       longitude: v.optional(v.number()),
@@ -321,6 +370,7 @@ export const getMyInstructorSettings = query({
         bio: profile.bio,
         hourlyRateExpectation: profile.hourlyRateExpectation,
         profileImageUrl,
+        socialLinks: toOptionalSocialLinksPayload(profile.socialLinks),
         address: profile.address,
         latitude: profile.latitude,
         longitude: profile.longitude,
@@ -480,6 +530,83 @@ export const updateMyInstructorSettings = mutation({
   },
 });
 
+export const updateMyInstructorProfileCard = mutation({
+  args: {
+    displayName: v.string(),
+    bio: v.optional(v.string()),
+    sports: v.array(v.string()),
+    socialLinks: v.optional(socialLinksValidator),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    displayName: v.string(),
+    sportsCount: v.number(),
+    socialLinks: v.optional(socialLinksValidator),
+  }),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const user = await requireUserRole(ctx, ["instructor"]);
+    const profile = await ctx.db
+      .query("instructorProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+
+    if (!profile) {
+      throw new ConvexError("Instructor profile not found");
+    }
+
+    const displayName = normalizeRequiredString(
+      args.displayName,
+      MAX_STUDIO_NAME_LENGTH,
+      "Display name",
+    );
+    const bio = normalizeOptionalString(args.bio, MAX_PROFILE_BIO_LENGTH, "Bio");
+    const socialLinks = normalizeSocialLinks(args.socialLinks);
+    const sports = [...new Set(args.sports.map((sport) => normalizeSportType(sport)))];
+
+    if (sports.length === 0) {
+      throw new ConvexError("At least one sport is required");
+    }
+    if (sports.length > MAX_SPORTS) {
+      throw new ConvexError("Too many sports selected");
+    }
+
+    const existingSports = await ctx.db
+      .query("instructorSports")
+      .withIndex("by_instructor_id", (q) => q.eq("instructorId", profile._id))
+      .collect();
+
+    await Promise.all(existingSports.map((row) => ctx.db.delete("instructorSports", row._id)));
+    await Promise.all(
+      sports.map((sport) =>
+        ctx.db.insert("instructorSports", {
+          instructorId: profile._id,
+          sport,
+          createdAt: now,
+        }),
+      ),
+    );
+
+    await ctx.db.patch("instructorProfiles", profile._id, {
+      displayName,
+      bio,
+      socialLinks,
+      updatedAt: now,
+    });
+
+    await rebuildInstructorCoverage(ctx, profile._id);
+
+    return {
+      ok: true,
+      displayName,
+      sportsCount: sports.length,
+      ...omitUndefined({
+        socialLinks: toOptionalSocialLinksPayload(socialLinks),
+      }),
+    };
+  },
+});
+
 export const getMyStudioSettings = query({
   args: {},
   returns: v.union(
@@ -490,10 +617,12 @@ export const getMyStudioSettings = query({
       zone: v.string(),
       latitude: v.optional(v.number()),
       longitude: v.optional(v.number()),
+      bio: v.optional(v.string()),
       contactPhone: v.optional(v.string()),
       notificationsEnabled: v.boolean(),
       hasExpoPushToken: v.boolean(),
       profileImageUrl: v.optional(v.string()),
+      socialLinks: v.optional(socialLinksValidator),
       autoExpireMinutesBefore: v.number(),
       sports: v.array(v.string()),
     }),
@@ -530,10 +659,12 @@ export const getMyStudioSettings = query({
       address: profile.address,
       zone: profile.zone,
       ...omitUndefined({
+        bio: profile.bio,
         latitude: profile.latitude,
         longitude: profile.longitude,
         contactPhone: profile.contactPhone,
         profileImageUrl,
+        socialLinks: toOptionalSocialLinksPayload(profile.socialLinks),
       }),
       notificationsEnabled,
       hasExpoPushToken,
@@ -639,6 +770,88 @@ export const updateMyStudioSettings = mutation({
     return {
       ok: true,
       zone,
+    };
+  },
+});
+
+export const updateMyStudioProfileCard = mutation({
+  args: {
+    studioName: v.string(),
+    bio: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    sports: v.array(v.string()),
+    socialLinks: v.optional(socialLinksValidator),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    studioName: v.string(),
+    sportsCount: v.number(),
+    socialLinks: v.optional(socialLinksValidator),
+  }),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const user = await requireUserRole(ctx, ["studio"]);
+    const profile = await ctx.db
+      .query("studioProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+
+    if (!profile) {
+      throw new ConvexError("Studio profile not found");
+    }
+
+    const studioName = normalizeRequiredString(
+      args.studioName,
+      MAX_STUDIO_NAME_LENGTH,
+      "Studio name",
+    );
+    const bio = normalizeOptionalString(args.bio, MAX_PROFILE_BIO_LENGTH, "Bio");
+    const contactPhone = normalizeOptionalString(
+      args.contactPhone,
+      MAX_PHONE_LENGTH,
+      "Contact phone",
+    );
+    const socialLinks = normalizeSocialLinks(args.socialLinks);
+    const sports = [...new Set(args.sports.map((sport) => normalizeSportType(sport)))];
+
+    if (sports.length === 0) {
+      throw new ConvexError("At least one sport is required");
+    }
+    if (sports.length > MAX_SPORTS) {
+      throw new ConvexError("Too many sports selected");
+    }
+
+    const existingSports = await ctx.db
+      .query("studioSports")
+      .withIndex("by_studio_id", (q) => q.eq("studioId", profile._id))
+      .collect();
+
+    await Promise.all(existingSports.map((row) => ctx.db.delete("studioSports", row._id)));
+    await Promise.all(
+      sports.map((sport) =>
+        ctx.db.insert("studioSports", {
+          studioId: profile._id,
+          sport,
+          createdAt: now,
+        }),
+      ),
+    );
+
+    await ctx.db.patch("studioProfiles", profile._id, {
+      studioName,
+      bio,
+      contactPhone,
+      socialLinks,
+      updatedAt: now,
+    });
+
+    return {
+      ok: true,
+      studioName,
+      sportsCount: sports.length,
+      ...omitUndefined({
+        socialLinks: toOptionalSocialLinksPayload(socialLinks),
+      }),
     };
   },
 });

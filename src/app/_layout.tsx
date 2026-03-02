@@ -27,15 +27,7 @@ import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Alert,
-  Animated,
-  AppState,
-  LogBox,
-  Platform,
-  StyleSheet,
-  View,
-} from "react-native";
+import { Alert, Animated, AppState, LogBox, Platform, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -92,7 +84,7 @@ type PerformanceWithRnStartupTiming = Performance & {
 };
 
 export const unstable_settings = {
-  anchor: "(tabs)",
+  anchor: "(app)",
 };
 
 function waitForInteractions() {
@@ -347,8 +339,13 @@ function RootLayoutContent() {
           <ThemeProvider value={navigationTheme}>
             <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
               <View style={styles.stackContainer}>
-                <Stack>
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack
+                  screenOptions={{
+                    headerTintColor: palette.text as string,
+                    headerTitleStyle: { color: palette.text as string },
+                  }}
+                >
+                  <Stack.Screen name="(app)" options={{ headerShown: false }} />
                   <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                   <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                   <Stack.Screen

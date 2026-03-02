@@ -97,7 +97,9 @@ export default function OnboardingScreen() {
   const [selectedRole, setSelectedRole] = useState<OnboardingRole | null>(null);
   const effectiveRole: OnboardingRole | null =
     selectedRole ??
-    (currentUser?.role === "instructor" || currentUser?.role === "studio" ? currentUser.role : null);
+    (currentUser?.role === "instructor" || currentUser?.role === "studio"
+      ? currentUser.role
+      : null);
   const isInstructorFlow = effectiveRole === "instructor";
   const totalSteps = isInstructorFlow ? 3 : 2;
   const currentStep = step + 1;
@@ -818,7 +820,7 @@ export default function OnboardingScreen() {
             <KitButton
               label={t("onboarding.verification.verifyNow")}
               onPress={() => {
-                router.replace("/(tabs)/instructor/profile/identity-verification");
+                router.replace("/instructor/profile/identity-verification");
               }}
             />
             <KitButton

@@ -34,9 +34,16 @@ type InvoiceInput = {
   issuedAt?: number;
 } | null;
 
-const TERMINAL_PAYMENT_STATUSES = new Set<PaymentStatus>(["failed", "cancelled", "refunded"]);
+const TERMINAL_PAYMENT_STATUSES = new Set<PaymentStatus>([
+  "failed",
+  "cancelled",
+  "refunded",
+]);
 
-const CAPTURED_STICKY_STATUSES = new Set<MappedPaymentStatus>(["pending", "authorized"]);
+const CAPTURED_STICKY_STATUSES = new Set<MappedPaymentStatus>([
+  "pending",
+  "authorized",
+]);
 
 const BLOCK_NEW_CHECKOUT_ACTIVE_STATUSES = new Set<PaymentStatus>([
   "created",
@@ -49,16 +56,21 @@ const DEFAULT_STALE_CHECKOUT_MS = 30 * 60 * 1000;
 const MANUAL_PAYOUT_RELEASE_MODE = "manual";
 const AUTOMATIC_PAYOUT_RELEASE_MODE = "automatic";
 
-type PayoutReleaseMode = typeof MANUAL_PAYOUT_RELEASE_MODE | typeof AUTOMATIC_PAYOUT_RELEASE_MODE;
+type PayoutReleaseMode =
+  | typeof MANUAL_PAYOUT_RELEASE_MODE
+  | typeof AUTOMATIC_PAYOUT_RELEASE_MODE;
 
 const isSandboxMode = (): boolean =>
   (process.env.RAPYD_MODE ?? "sandbox").trim().toLowerCase() !== "production";
 
 const isSandboxDestinationSelfVerifyEnabled = (): boolean =>
-  isSandboxMode() && (process.env.ALLOW_SANDBOX_DESTINATION_SELF_VERIFY ?? "0").trim() === "1";
+  isSandboxMode() &&
+  (process.env.ALLOW_SANDBOX_DESTINATION_SELF_VERIFY ?? "0").trim() === "1";
 
 const readPayoutReleaseMode = (): PayoutReleaseMode => {
-  const rawMode = (process.env.PAYOUT_RELEASE_MODE ?? MANUAL_PAYOUT_RELEASE_MODE)
+  const rawMode = (
+    process.env.PAYOUT_RELEASE_MODE ?? MANUAL_PAYOUT_RELEASE_MODE
+  )
     .trim()
     .toLowerCase();
   return rawMode === AUTOMATIC_PAYOUT_RELEASE_MODE
@@ -91,9 +103,11 @@ const isInstructorKycApproved = async (
   return Boolean(profile.diditLegalName?.trim());
 };
 
-export const toRapydPaymentStatus = (rawStatus: string | undefined): MappedPaymentStatus => {
+export const toRapydPaymentStatus = (
+  rawStatus: string | undefined,
+): MappedPaymentStatus => {
   const status = (rawStatus ?? "").trim().toUpperCase();
-  if (["CLO", "CAPTURED", "SUCCESS", "COMPLETED"].includes(status)) {
+  if (["CLO", "CAPTURED", "SUCCESS", "COMPLETED", "DON"].includes(status)) {
     return "captured";
   }
   if (["AUTH", "AUTHORIZED"].includes(status)) {
@@ -102,11 +116,14 @@ export const toRapydPaymentStatus = (rawStatus: string | undefined): MappedPayme
   if (["ACT", "NEW", "PENDING", "INIT", "OPEN"].includes(status)) {
     return "pending";
   }
-  if (["CAN", "CANCELLED", "CANCELED"].includes(status)) {
+  if (["CAN", "CANCELLED", "CANCELED", "EXP"].includes(status)) {
     return "cancelled";
   }
   if (["REV", "REFUNDED", "PARTIAL_REFUND"].includes(status)) {
     return "refunded";
+  }
+  if (["DEC", "ERROR", "FAILED"].includes(status)) {
+    return "failed";
   }
   return "failed";
 };
@@ -118,13 +135,70 @@ const computeNextWebhookPaymentStatus = (
   if (TERMINAL_PAYMENT_STATUSES.has(currentStatus)) {
     return currentStatus as MappedPaymentStatus;
   }
-  if (currentStatus === "captured" && CAPTURED_STICKY_STATUSES.has(mappedStatus)) {
+  if (
+    currentStatus === "captured" &&
+    CAPTURED_STICKY_STATUSES.has(mappedStatus)
+  ) {
     return "captured";
   }
   if (currentStatus === "authorized" && mappedStatus === "pending") {
     return "authorized";
   }
   return mappedStatus;
+};
+
+const applyResolvedPaymentStatus = async (
+  ctx: MutationCtx,
+  {
+    payment,
+    nextStatus,
+    providerPaymentId,
+    providerCheckoutId,
+  }: {
+    payment: Doc<"payments">;
+    nextStatus: MappedPaymentStatus;
+    providerPaymentId?: string;
+    providerCheckoutId?: string;
+  },
+) => {
+  const transitionedToCaptured =
+    payment.status !== "captured" && nextStatus === "captured";
+  const transitionedToRefunded =
+    payment.status !== "refunded" && nextStatus === "refunded";
+
+  await ctx.db.patch(payment._id, {
+    status: nextStatus,
+    providerPaymentId: providerPaymentId ?? payment.providerPaymentId,
+    providerCheckoutId: providerCheckoutId ?? payment.providerCheckoutId,
+    capturedAt:
+      nextStatus === "captured"
+        ? (payment.capturedAt ?? Date.now())
+        : payment.capturedAt,
+    updatedAt: Date.now(),
+  });
+
+  if (
+    transitionedToCaptured &&
+    readPayoutReleaseMode() === AUTOMATIC_PAYOUT_RELEASE_MODE
+  ) {
+    await ctx.runMutation(internal.payouts.schedulePayoutForCapturedPayment, {
+      paymentId: payment._id,
+      reason: "captured_via_rapyd_status_sync",
+    });
+  }
+
+  if (transitionedToCaptured) {
+    await ctx.scheduler.runAfter(0, internal.invoicing.issueInvoiceForPayment, {
+      paymentId: payment._id,
+    });
+  }
+
+  if (transitionedToRefunded) {
+    await ctx.runMutation(internal.payouts.flagPayoutNeedsAttentionForRefund, {
+      paymentId: payment._id,
+      reason: "payment_refunded_via_rapyd_status_sync",
+    });
+  }
 };
 
 export const getCheckoutContext = internalQuery({
@@ -171,7 +245,9 @@ export const getPaymentByProviderRefs = internalQuery({
       const byPaymentId = await ctx.db
         .query("payments")
         .withIndex("by_provider_paymentId", (q) =>
-          q.eq("provider", RAPYD_PROVIDER).eq("providerPaymentId", args.providerPaymentId),
+          q
+            .eq("provider", RAPYD_PROVIDER)
+            .eq("providerPaymentId", args.providerPaymentId),
         )
         .unique();
       if (byPaymentId) return byPaymentId;
@@ -180,11 +256,31 @@ export const getPaymentByProviderRefs = internalQuery({
       return await ctx.db
         .query("payments")
         .withIndex("by_provider_checkoutId", (q) =>
-          q.eq("provider", RAPYD_PROVIDER).eq("providerCheckoutId", args.providerCheckoutId),
+          q
+            .eq("provider", RAPYD_PROVIDER)
+            .eq("providerCheckoutId", args.providerCheckoutId),
         )
         .unique();
     }
     return null;
+  },
+});
+
+export const getOwnedStudioPaymentForReconciliation = internalQuery({
+  args: {
+    paymentId: v.id("payments"),
+    studioUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.paymentId);
+    if (!payment) return null;
+    if (
+      payment.provider !== RAPYD_PROVIDER ||
+      payment.studioUserId !== args.studioUserId
+    ) {
+      return null;
+    }
+    return payment;
   },
 });
 
@@ -217,12 +313,19 @@ export const createPendingPayment = internalMutation({
     const existing = await ctx.db
       .query("payments")
       .withIndex("by_studio_user_idempotency", (q) =>
-        q.eq("studioUserId", args.studioUserId).eq("idempotencyKey", args.idempotencyKey),
+        q
+          .eq("studioUserId", args.studioUserId)
+          .eq("idempotencyKey", args.idempotencyKey),
       )
       .unique();
     if (existing) {
-      if (existing.jobId !== args.jobId || existing.provider !== args.provider) {
-        throw new ConvexError("Idempotency key already exists with a different job/provider");
+      if (
+        existing.jobId !== args.jobId ||
+        existing.provider !== args.provider
+      ) {
+        throw new ConvexError(
+          "Idempotency key already exists with a different job/provider",
+        );
       }
       return existing;
     }
@@ -233,23 +336,34 @@ export const createPendingPayment = internalMutation({
       .order("desc")
       .take(25);
     const latestSameStudioPayment = sameJobPayments.find(
-      (row) => row.provider === args.provider && row.studioUserId === args.studioUserId,
+      (row) =>
+        row.provider === args.provider &&
+        row.studioUserId === args.studioUserId,
     );
     if (latestSameStudioPayment) {
-      if (BLOCK_NEW_CHECKOUT_ACTIVE_STATUSES.has(latestSameStudioPayment.status)) {
-        const isStale = Date.now() - latestSameStudioPayment.updatedAt >= staleCheckoutMs;
+      if (
+        BLOCK_NEW_CHECKOUT_ACTIVE_STATUSES.has(latestSameStudioPayment.status)
+      ) {
+        const isStale =
+          Date.now() - latestSameStudioPayment.updatedAt >= staleCheckoutMs;
         if (isStale) {
           await ctx.db.patch(latestSameStudioPayment._id, {
             status: "failed",
-            lastError: latestSameStudioPayment.lastError ?? "Marked stale after checkout timeout",
+            lastError:
+              latestSameStudioPayment.lastError ??
+              "Marked stale after checkout timeout",
             updatedAt: Date.now(),
           });
         } else {
-          throw new ConvexError("A payment for this lesson is already processing");
+          throw new ConvexError(
+            "A payment for this lesson is already processing",
+          );
         }
       }
       if (latestSameStudioPayment.status === "captured") {
-        throw new ConvexError("This lesson already has a completed payment record");
+        throw new ConvexError(
+          "This lesson already has a completed payment record",
+        );
       }
       if (latestSameStudioPayment.status === "refunded") {
         throw new ConvexError(
@@ -305,7 +419,8 @@ export const markCheckoutCreated = internalMutation({
       status: payment.status === "created" ? "pending" : payment.status,
       updatedAt: Date.now(),
       ...omitUndefined({
-        providerCheckoutId: args.providerCheckoutId ?? payment.providerCheckoutId,
+        providerCheckoutId:
+          args.providerCheckoutId ?? payment.providerCheckoutId,
         providerPaymentId: args.providerPaymentId ?? payment.providerPaymentId,
       }),
     });
@@ -336,7 +451,9 @@ export const processRapydWebhookEvent = internalMutation({
     const existingEvent = await ctx.db
       .query("paymentEvents")
       .withIndex("by_provider_eventId", (q) =>
-        q.eq("provider", RAPYD_PROVIDER).eq("providerEventId", args.providerEventId),
+        q
+          .eq("provider", RAPYD_PROVIDER)
+          .eq("providerEventId", args.providerEventId),
       )
       .unique();
     if (existingEvent) {
@@ -394,17 +511,17 @@ export const processRapydWebhookEvent = internalMutation({
     }
 
     const mappedStatus = toRapydPaymentStatus(args.statusRaw);
-    const nextStatus = computeNextWebhookPaymentStatus(payment.status, mappedStatus);
-    const transitionedToCaptured = payment.status !== "captured" && nextStatus === "captured";
-    const transitionedToRefunded = payment.status !== "refunded" && nextStatus === "refunded";
-
-    await ctx.db.patch(payment._id, {
-      status: nextStatus,
-      providerPaymentId: args.providerPaymentId ?? payment.providerPaymentId,
-      providerCheckoutId: args.providerCheckoutId ?? payment.providerCheckoutId,
-      capturedAt:
-        nextStatus === "captured" ? (payment.capturedAt ?? Date.now()) : payment.capturedAt,
-      updatedAt: Date.now(),
+    const nextStatus = computeNextWebhookPaymentStatus(
+      payment.status,
+      mappedStatus,
+    );
+    await applyResolvedPaymentStatus(ctx, {
+      payment,
+      nextStatus,
+      ...omitUndefined({
+        providerPaymentId: args.providerPaymentId,
+        providerCheckoutId: args.providerCheckoutId,
+      }),
     });
 
     await ctx.db.patch(eventId, {
@@ -413,27 +530,48 @@ export const processRapydWebhookEvent = internalMutation({
       updatedAt: Date.now(),
     });
 
-    if (transitionedToCaptured && readPayoutReleaseMode() === AUTOMATIC_PAYOUT_RELEASE_MODE) {
-      await ctx.runMutation(internal.payouts.schedulePayoutForCapturedPayment, {
-        paymentId: payment._id,
-        reason: "captured_via_rapyd_webhook",
-      });
-    }
-
-    if (transitionedToCaptured) {
-      await ctx.scheduler.runAfter(0, internal.invoicing.issueInvoiceForPayment, {
-        paymentId: payment._id,
-      });
-    }
-
-    if (transitionedToRefunded) {
-      await ctx.runMutation(internal.payouts.flagPayoutNeedsAttentionForRefund, {
-        paymentId: payment._id,
-        reason: "payment_refunded_via_rapyd_webhook",
-      });
-    }
-
     return { ignored: false, processed: true, eventId, paymentId: payment._id };
+  },
+});
+
+export const reconcilePaymentFromCheckoutLookup = internalMutation({
+  args: {
+    paymentId: v.id("payments"),
+    providerCheckoutId: v.string(),
+    providerPaymentId: v.optional(v.string()),
+    paymentStatusRaw: v.optional(v.string()),
+    checkoutStatusRaw: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.paymentId);
+    if (!payment) {
+      throw new ConvexError("Payment not found");
+    }
+    if (payment.provider !== RAPYD_PROVIDER) {
+      throw new ConvexError("Unsupported payment provider");
+    }
+
+    const rawStatus = args.paymentStatusRaw ?? args.checkoutStatusRaw;
+    const nextStatus = computeNextWebhookPaymentStatus(
+      payment.status,
+      toRapydPaymentStatus(rawStatus),
+    );
+
+    await applyResolvedPaymentStatus(ctx, {
+      payment,
+      nextStatus,
+      ...omitUndefined({
+        providerPaymentId: args.providerPaymentId,
+        providerCheckoutId: args.providerCheckoutId,
+      }),
+    });
+
+    return {
+      paymentId: payment._id,
+      paymentStatus: nextStatus,
+      providerPaymentId: args.providerPaymentId ?? payment.providerPaymentId,
+      providerCheckoutId: args.providerCheckoutId,
+    };
   },
 });
 
@@ -444,7 +582,7 @@ export const listMyPayments = query({
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
     const rawLimit = Math.floor(args.limit ?? 20);
-    const limit = Math.min(Math.max(rawLimit, 1), 50);
+    const limit = Math.min(Math.max(rawLimit, 1), 300);
     let rows: Doc<"payments">[] = [];
 
     if (user.role === "studio") {
@@ -456,7 +594,9 @@ export const listMyPayments = query({
     } else if (user.role === "instructor") {
       rows = await ctx.db
         .query("payments")
-        .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
+        .withIndex("by_instructor_user", (q) =>
+          q.eq("instructorUserId", user._id),
+        )
         .order("desc")
         .take(limit);
     }
@@ -550,7 +690,10 @@ export const getMyPaymentDetail = query({
     const user = await requireCurrentUser(ctx);
     const payment = await ctx.db.get(args.paymentId);
     if (!payment) return null;
-    if (payment.studioUserId !== user._id && payment.instructorUserId !== user._id) {
+    if (
+      payment.studioUserId !== user._id &&
+      payment.instructorUserId !== user._id
+    ) {
       throw new ConvexError("Not authorized");
     }
 
@@ -612,29 +755,34 @@ export const getMyPayoutSummary = query({
   handler: async (ctx) => {
     const user = await requireUserRole(ctx, ["instructor"]);
 
-    const [payments, payouts, destinations, onboardingSessions, kycApproved] = await Promise.all([
-      ctx.db
-        .query("payments")
-        .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
-        .order("desc")
-        .take(400),
-      ctx.db
-        .query("payouts")
-        .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
-        .order("desc")
-        .take(400),
-      ctx.db
-        .query("payoutDestinations")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .order("desc")
-        .take(100),
-      ctx.db
-        .query("payoutDestinationOnboarding")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .order("desc")
-        .take(5),
-      isInstructorKycApproved(ctx, user._id),
-    ]);
+    const [payments, payouts, destinations, onboardingSessions, kycApproved] =
+      await Promise.all([
+        ctx.db
+          .query("payments")
+          .withIndex("by_instructor_user", (q) =>
+            q.eq("instructorUserId", user._id),
+          )
+          .order("desc")
+          .take(400),
+        ctx.db
+          .query("payouts")
+          .withIndex("by_instructor_user", (q) =>
+            q.eq("instructorUserId", user._id),
+          )
+          .order("desc")
+          .take(400),
+        ctx.db
+          .query("payoutDestinations")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .order("desc")
+          .take(100),
+        ctx.db
+          .query("payoutDestinationOnboarding")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .order("desc")
+          .take(5),
+        isInstructorKycApproved(ctx, user._id),
+      ]);
 
     const latestPayoutByPaymentId = new Map<string, Doc<"payouts">>();
     for (const payout of payouts) {
@@ -652,7 +800,8 @@ export const getMyPayoutSummary = query({
     let pendingPaymentsCount = 0;
     let paidPaymentsCount = 0;
     let attentionPaymentsCount = 0;
-    const currency = payments[0]?.currency ?? process.env.PAYMENTS_CURRENCY ?? "ILS";
+    const currency =
+      payments[0]?.currency ?? process.env.PAYMENTS_CURRENCY ?? "ILS";
 
     for (const payment of payments) {
       if (payment.status !== "captured") continue;
@@ -685,7 +834,8 @@ export const getMyPayoutSummary = query({
 
     const verifiedDefaultDestination =
       destinations.find(
-        (destination) => destination.isDefault && destination.status === "verified",
+        (destination) =>
+          destination.isDefault && destination.status === "verified",
       ) ??
       destinations.find((destination) => destination.status === "verified") ??
       null;
@@ -722,6 +872,31 @@ export const getMyPayoutSummary = query({
   },
 });
 
+export const getMyPayoutOnboardingSession = query({
+  args: {
+    sessionId: v.id("payoutDestinationOnboarding"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUserRole(ctx, ["instructor"]);
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || session.userId !== user._id) {
+      throw new ConvexError("Onboarding session not found");
+    }
+
+    return {
+      _id: session._id,
+      status: session.status,
+      redirectUrl: session.redirectUrl,
+      beneficiaryId: session.beneficiaryId,
+      payoutMethodType: session.payoutMethodType,
+      lastError: session.lastError,
+      completedAt: session.completedAt,
+      updatedAt: session.updatedAt,
+      createdAt: session.createdAt,
+    };
+  },
+});
+
 export const requestMyPayoutWithdrawal = mutation({
   args: {
     maxPayments: v.optional(v.number()),
@@ -746,12 +921,16 @@ export const requestMyPayoutWithdrawal = mutation({
         .take(100),
       ctx.db
         .query("payments")
-        .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
+        .withIndex("by_instructor_user", (q) =>
+          q.eq("instructorUserId", user._id),
+        )
         .order("desc")
         .take(500),
       ctx.db
         .query("payouts")
-        .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
+        .withIndex("by_instructor_user", (q) =>
+          q.eq("instructorUserId", user._id),
+        )
         .order("desc")
         .take(500),
     ]);
@@ -776,7 +955,8 @@ export const requestMyPayoutWithdrawal = mutation({
     const eligiblePayments = payments
       .filter(
         (payment) =>
-          payment.status === "captured" && !latestPayoutByPaymentId.has(String(payment._id)),
+          payment.status === "captured" &&
+          !latestPayoutByPaymentId.has(String(payment._id)),
       )
       .sort((a, b) => a.createdAt - b.createdAt)
       .slice(0, maxPayments);
@@ -786,10 +966,13 @@ export const requestMyPayoutWithdrawal = mutation({
     const payoutIds: Id<"payouts">[] = [];
 
     for (const payment of eligiblePayments) {
-      const outcome = await ctx.runMutation(internal.payouts.schedulePayoutForCapturedPayment, {
-        paymentId: payment._id,
-        reason: "manual_withdrawal_requested_by_instructor",
-      });
+      const outcome = await ctx.runMutation(
+        internal.payouts.schedulePayoutForCapturedPayment,
+        {
+          paymentId: payment._id,
+          reason: "manual_withdrawal_requested_by_instructor",
+        },
+      );
 
       if (!outcome.scheduled || !outcome.payoutId) continue;
       scheduledCount += 1;
@@ -839,7 +1022,9 @@ export const upsertMyPayoutDestination = mutation({
     if ((args.isDefault ?? true) === true) {
       const activeDefaults = await ctx.db
         .query("payoutDestinations")
-        .withIndex("by_user_default", (q) => q.eq("userId", user._id).eq("isDefault", true))
+        .withIndex("by_user_default", (q) =>
+          q.eq("userId", user._id).eq("isDefault", true),
+        )
         .collect();
       for (const row of activeDefaults) {
         if (!existing || row._id !== existing._id) {
@@ -891,7 +1076,10 @@ export const createBeneficiaryOnboardingSession = internalMutation({
     merchantReferenceId: v.string(),
     category: v.string(),
     beneficiaryCountry: v.string(),
-    beneficiaryEntityType: v.union(v.literal("individual"), v.literal("company")),
+    beneficiaryEntityType: v.union(
+      v.literal("individual"),
+      v.literal("company"),
+    ),
     payoutCurrency: v.string(),
   },
   handler: async (ctx, args) => {
@@ -955,7 +1143,9 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
     const existing = await ctx.db
       .query("payoutDestinationEvents")
       .withIndex("by_provider_eventId", (q) =>
-        q.eq("provider", RAPYD_PROVIDER).eq("providerEventId", args.providerEventId),
+        q
+          .eq("provider", RAPYD_PROVIDER)
+          .eq("providerEventId", args.providerEventId),
       )
       .unique();
     if (existing) {
@@ -1015,7 +1205,9 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
 
     const defaultRows = await ctx.db
       .query("payoutDestinations")
-      .withIndex("by_user_default", (q) => q.eq("userId", session.userId).eq("isDefault", true))
+      .withIndex("by_user_default", (q) =>
+        q.eq("userId", session.userId).eq("isDefault", true),
+      )
       .collect();
     for (const row of defaultRows) {
       await ctx.db.patch(row._id, {
@@ -1096,7 +1288,9 @@ export const verifyMyPayoutDestinationForTesting = mutation({
   handler: async (ctx, args) => {
     const user = await requireUserRole(ctx, ["instructor"]);
     if (!isSandboxDestinationSelfVerifyEnabled()) {
-      throw new ConvexError("Sandbox destination self-verify is not enabled in this environment");
+      throw new ConvexError(
+        "Sandbox destination self-verify is not enabled in this environment",
+      );
     }
 
     const destination = await ctx.db.get(args.destinationId);
@@ -1180,7 +1374,10 @@ export const markInvoiceIssued = internalMutation({
     externalInvoiceId: v.string(),
     externalInvoiceUrl: v.optional(v.string()),
   },
-  handler: async (ctx, { invoiceId, externalInvoiceId, externalInvoiceUrl }) => {
+  handler: async (
+    ctx,
+    { invoiceId, externalInvoiceId, externalInvoiceUrl },
+  ) => {
     await ctx.db.patch(invoiceId, {
       status: "issued",
       externalInvoiceId,
@@ -1243,7 +1440,10 @@ export const getPaymentsPreflight = query({
       requiredInvoice.map((name) => [name, Boolean(process.env[name]?.trim())]),
     ) as Record<(typeof requiredInvoice)[number], boolean>;
     const rapydOnboarding = Object.fromEntries(
-      optionalRapydOnboarding.map((name) => [name, Boolean(process.env[name]?.trim())]),
+      optionalRapydOnboarding.map((name) => [
+        name,
+        Boolean(process.env[name]?.trim()),
+      ]),
     ) as Record<(typeof optionalRapydOnboarding)[number], boolean>;
 
     return {

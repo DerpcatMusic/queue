@@ -17,8 +17,6 @@ function resolveAlphaColor(base: unknown, alpha: number, fallback: unknown): Col
   return TRANSPARENT;
 }
 
-
-
 function resolveStringColor(...colors: unknown[]) {
   for (const color of colors) {
     if (typeof color === "string") return color;

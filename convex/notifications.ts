@@ -21,6 +21,11 @@ type DeliveryResult = {
   error?: string;
 };
 
+type NotificationRecipient = {
+  instructorId: Id<"instructorProfiles">;
+  expoPushToken: string;
+};
+
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) {
@@ -46,13 +51,11 @@ export const sendJobNotifications = internalAction({
       return { total: 0, sent: 0, failed: 0 };
     }
 
-    const batches = chunk(payload.recipients, PUSH_BATCH_SIZE);
+    const recipients = payload.recipients as NotificationRecipient[];
+    const batches = chunk(recipients, PUSH_BATCH_SIZE);
 
     const sendBatch = async (
-      batch: {
-        instructorId: Id<"instructorProfiles">;
-        expoPushToken: string;
-      }[],
+      batch: NotificationRecipient[],
     ): Promise<DeliveryResult[]> => {
       const messages = batch.map((recipient) => ({
         to: recipient.expoPushToken,
@@ -164,4 +167,3 @@ export const sendJobNotifications = internalAction({
     };
   },
 });
-
