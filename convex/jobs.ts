@@ -47,6 +47,98 @@ function isPresent<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
 }
 
+function getUniqueIdsInOrder<T extends string>(ids: ReadonlyArray<T>) {
+  return [...new Set(ids)];
+}
+
+async function loadLatestPaymentDetailsByJobId(
+  ctx: QueryCtx,
+  args: {
+    jobIds: ReadonlyArray<Id<"jobs">>;
+    instructorUserId: Id<"users">;
+  },
+) {
+  const uniqueJobIds = getUniqueIdsInOrder(args.jobIds);
+  const payments = await Promise.all(
+    uniqueJobIds.map((jobId) =>
+      ctx.db
+        .query("payments")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .order("desc")
+        .first(),
+    ),
+  );
+
+  const paymentByJobId = new Map<string, Doc<"payments">>();
+  for (let index = 0; index < uniqueJobIds.length; index += 1) {
+    const payment = payments[index];
+    if (payment && payment.instructorUserId === args.instructorUserId) {
+      paymentByJobId.set(String(uniqueJobIds[index]), payment);
+    }
+  }
+
+  const paymentIds = [...paymentByJobId.values()].map((payment) => payment._id);
+  const [payouts, invoices] = await Promise.all([
+    Promise.all(
+      paymentIds.map((paymentId) =>
+        ctx.db
+          .query("payouts")
+          .withIndex("by_payment", (q) => q.eq("paymentId", paymentId))
+          .order("desc")
+          .first(),
+      ),
+    ),
+    Promise.all(
+      paymentIds.map((paymentId) =>
+        ctx.db
+          .query("invoices")
+          .withIndex("by_payment", (q) => q.eq("paymentId", paymentId))
+          .order("desc")
+          .first(),
+      ),
+    ),
+  ]);
+
+  const payoutByPaymentId = new Map<string, Doc<"payouts">>();
+  for (let index = 0; index < paymentIds.length; index += 1) {
+    const payout = payouts[index];
+    if (payout) {
+      payoutByPaymentId.set(String(paymentIds[index]), payout);
+    }
+  }
+
+  const invoiceByPaymentId = new Map<string, Doc<"invoices">>();
+  for (let index = 0; index < paymentIds.length; index += 1) {
+    const invoice = invoices[index];
+    if (invoice) {
+      invoiceByPaymentId.set(String(paymentIds[index]), invoice);
+    }
+  }
+
+  const paymentDetailsByJobId = new Map<
+    string,
+    {
+      status: Doc<"payments">["status"];
+      payoutStatus?: Doc<"payouts">["status"];
+      externalInvoiceUrl?: string;
+    }
+  >();
+
+  for (const [jobId, payment] of paymentByJobId.entries()) {
+    const payout = payoutByPaymentId.get(String(payment._id));
+    const invoice = invoiceByPaymentId.get(String(payment._id));
+    paymentDetailsByJobId.set(jobId, {
+      status: payment.status,
+      ...omitUndefined({
+        payoutStatus: payout?.status,
+        externalInvoiceUrl: invoice?.externalInvoiceUrl,
+      }),
+    });
+  }
+
+  return paymentDetailsByJobId;
+}
+
 function ensureOneOf(value: string, validValues: Set<string>, fieldName: string) {
   if (!validValues.has(value)) {
     throw new ConvexError(`Invalid ${fieldName}`);
@@ -696,13 +788,15 @@ export const getMyApplications = query({
       .order("desc")
       .take(limit);
 
-    const jobs = await Promise.all(
-      applications.map((application) => ctx.db.get("jobs", application.jobId)),
+    const applicationJobIds = getUniqueIdsInOrder(
+      applications.map((application) => application.jobId),
     );
+    const jobs = await Promise.all(applicationJobIds.map((jobId) => ctx.db.get("jobs", jobId)));
     const jobById = new Map<string, Doc<"jobs">>();
-    for (const job of jobs) {
+    for (let index = 0; index < applicationJobIds.length; index += 1) {
+      const job = jobs[index];
       if (job) {
-        jobById.set(String(job._id), job);
+        jobById.set(String(applicationJobIds[index]), job);
       }
     }
 
@@ -719,48 +813,22 @@ export const getMyApplications = query({
       }
     }
 
+    const paymentDetailsByJobId = await loadLatestPaymentDetailsByJobId(ctx, {
+      jobIds: applicationJobIds
+        .map((jobId) => jobById.get(String(jobId)))
+        .filter(
+          (job): job is Doc<"jobs"> =>
+            Boolean(job && (job.status === "completed" || job.status === "filled")),
+        )
+        .map((job) => job._id),
+      instructorUserId: instructor.userId,
+    });
+
     const rows = [];
     for (const application of applications) {
       const job = jobById.get(String(application.jobId));
       if (!job) continue;
       const studio = studioById.get(String(job.studioId));
-
-      let paymentDetails:
-        | {
-            status: Doc<"payments">["status"];
-            payoutStatus?: Doc<"payouts">["status"];
-            externalInvoiceUrl?: string;
-          }
-        | undefined;
-      if (job.status === "completed" || job.status === "filled") {
-        const payment = await ctx.db
-          .query("payments")
-          .withIndex("by_job", (q) => q.eq("jobId", job._id))
-          .order("desc")
-          .first();
-
-        if (payment && payment.instructorUserId === instructor.userId) {
-          const payout = await ctx.db
-            .query("payouts")
-            .withIndex("by_payment", (q) => q.eq("paymentId", payment._id))
-            .order("desc")
-            .first();
-
-          const invoice = await ctx.db
-            .query("invoices")
-            .withIndex("by_payment", (q) => q.eq("paymentId", payment._id))
-            .order("desc")
-            .first();
-
-          paymentDetails = {
-            status: payment.status,
-            ...omitUndefined({
-              payoutStatus: payout?.status,
-              externalInvoiceUrl: invoice?.externalInvoiceUrl,
-            }),
-          };
-        }
-      }
 
       rows.push({
         applicationId: application._id,
@@ -779,7 +847,7 @@ export const getMyApplications = query({
           message: application.message,
           timeZone: job.timeZone,
           note: job.note,
-          paymentDetails,
+          paymentDetails: paymentDetailsByJobId.get(String(job._id)),
         }),
       });
     }
