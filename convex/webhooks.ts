@@ -1,6 +1,13 @@
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { httpAction, internalMutation, mutation, query } from "./_generated/server";
+import {
+  httpAction,
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { omitUndefined } from "./lib/validation";
 import { ConvexError, v } from "convex/values";
 
@@ -26,6 +33,56 @@ function requireIntegrationEventsAccessToken(accessToken: string | undefined) {
       "Unauthorized integration-events operation. Set INTEGRATION_EVENTS_ACCESS_TOKEN and pass accessToken.",
     );
   }
+}
+
+async function loadFailedIntegrationEvents(
+  ctx: QueryCtx | MutationCtx,
+  args: {
+    provider?: "rapyd" | "didit";
+    route?: IntegrationRoute;
+    limit: number;
+    order: "asc" | "desc";
+  },
+) {
+  const rows: any[] = [];
+  let cursor: string | null = null;
+
+  while (rows.length < args.limit) {
+    const page: {
+      page: any[];
+      isDone: boolean;
+      continueCursor: string;
+    } = args.provider
+      ? await ctx.db
+          .query("integrationEvents")
+          .withIndex("by_processing_provider_route_createdAt", (q) =>
+            q.eq("processingState", "failed").eq("provider", args.provider as "rapyd" | "didit"),
+          )
+          .order(args.order)
+          .paginate({ cursor, numItems: Math.max(args.limit * 2, 100) })
+      : await ctx.db
+          .query("integrationEvents")
+          .withIndex("by_processing_createdAt", (q) => q.eq("processingState", "failed"))
+          .order(args.order)
+          .paginate({ cursor, numItems: Math.max(args.limit * 2, 100) });
+
+    for (const row of page.page) {
+      if (args.route && row.route !== args.route) {
+        continue;
+      }
+      rows.push(row);
+      if (rows.length >= args.limit) {
+        break;
+      }
+    }
+
+    if (page.isDone) {
+      break;
+    }
+    cursor = page.continueCursor;
+  }
+
+  return rows;
 }
 
 const getHeader = (req: Request, key: string): string | null =>
@@ -497,20 +554,16 @@ export const listFailedIntegrationEvents = query({
 
     const rawLimit = Math.floor(args.limit ?? 50);
     const limit = Math.min(Math.max(rawLimit, 1), 200);
-    const rows = await ctx.db
-      .query("integrationEvents")
-      .order("desc")
-      .take(400);
+    const rows = await loadFailedIntegrationEvents(ctx, {
+      limit,
+      order: "desc",
+      ...omitUndefined({
+        provider: args.provider,
+        route: args.route,
+      }),
+    });
 
-    return rows
-      .filter(
-        (row) =>
-          row.processingState === "failed" &&
-          (!args.provider || row.provider === args.provider) &&
-          (!args.route || row.route === args.route),
-      )
-      .slice(0, limit)
-      .map((row) => ({
+    return rows.map((row) => ({
         _id: row._id,
         provider: row.provider,
         route: row.route,
@@ -572,19 +625,14 @@ export const replayFailedIntegrationEvents = mutation({
 
     const rawLimit = Math.floor(args.limit ?? 25);
     const limit = Math.min(Math.max(rawLimit, 1), 100);
-    const rows = await ctx.db
-      .query("integrationEvents")
-      .order("asc")
-      .take(500);
-
-    const targetRows = rows
-      .filter(
-        (row) =>
-          row.processingState === "failed" &&
-          (!args.provider || row.provider === args.provider) &&
-          (!args.route || row.route === args.route),
-      )
-      .slice(0, limit);
+    const targetRows = await loadFailedIntegrationEvents(ctx, {
+      limit,
+      order: "asc",
+      ...omitUndefined({
+        provider: args.provider,
+        route: args.route,
+      }),
+    });
 
     for (const row of targetRows) {
       await ctx.db.patch(row._id, {

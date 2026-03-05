@@ -510,6 +510,13 @@ export default defineSchema({
   })
     .index("by_provider_eventId", ["provider", "providerEventId"])
     .index("by_provider_processing_createdAt", ["provider", "processingState", "createdAt"])
+    .index("by_processing_createdAt", ["processingState", "createdAt"])
+    .index("by_processing_provider_route_createdAt", [
+      "processingState",
+      "provider",
+      "route",
+      "createdAt",
+    ])
     .index("by_provider_route_createdAt", ["provider", "route", "createdAt"]),
 
   webhookInvalidSignatureThrottle: defineTable({

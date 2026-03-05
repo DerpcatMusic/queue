@@ -164,4 +164,79 @@ describe("integration event operator contracts", () => {
       process.env.INTEGRATION_EVENTS_ACCESS_TOKEN = originalToken;
     }
   });
+
+  it("lists older failed events beyond the first fixed window", async () => {
+    const originalToken = process.env.INTEGRATION_EVENTS_ACCESS_TOKEN;
+    process.env.INTEGRATION_EVENTS_ACCESS_TOKEN = ACCESS_TOKEN;
+    try {
+      const db = new InMemoryConvexDb();
+      for (let index = 0; index < 520; index += 1) {
+        await db.insert("integrationEvents", {
+          provider: "rapyd",
+          route: "payment",
+          providerEventId: `evt-page-${index}`,
+          signatureValid: true,
+          payloadHash: `hash-page-${index}`,
+          payload: {},
+          processingState: index === 0 ? "failed" : "processed",
+          ...(index === 0 ? { processingError: "payment_not_found" } : {}),
+          createdAt: FIXED_NOW + index,
+          updatedAt: FIXED_NOW + index,
+        });
+      }
+
+      const rows = await (listFailedIntegrationEvents as any)._handler(
+        { db },
+        { accessToken: ACCESS_TOKEN, limit: 10 },
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.providerEventId).toBe("evt-page-0");
+    } finally {
+      process.env.INTEGRATION_EVENTS_ACCESS_TOKEN = originalToken;
+    }
+  });
+
+  it("bulk replay reaches old failed events beyond the first fixed window", async () => {
+    const originalToken = process.env.INTEGRATION_EVENTS_ACCESS_TOKEN;
+    process.env.INTEGRATION_EVENTS_ACCESS_TOKEN = ACCESS_TOKEN;
+    try {
+      const db = new InMemoryConvexDb();
+      let oldestFailedId: Id<"integrationEvents"> | null = null;
+      for (let index = 0; index < 520; index += 1) {
+        const id = (await db.insert("integrationEvents", {
+          provider: "rapyd",
+          route: "payment",
+          providerEventId: `evt-replay-${index}`,
+          signatureValid: true,
+          payloadHash: `hash-replay-${index}`,
+          payload: {},
+          processingState: index === 0 ? "failed" : "processed",
+          ...(index === 0 ? { processingError: "payment_not_found" } : {}),
+          createdAt: FIXED_NOW + index,
+          updatedAt: FIXED_NOW + index,
+        })) as Id<"integrationEvents">;
+        if (index === 0) {
+          oldestFailedId = id;
+        }
+      }
+
+      const schedulerCalls: ScheduledCall[] = [];
+      const ctx = createMutationCtx({ db, schedulerCalls });
+      const result = await (replayFailedIntegrationEvents as any)._handler(ctx, {
+        accessToken: ACCESS_TOKEN,
+        provider: "rapyd",
+        route: "payment",
+        limit: 10,
+      });
+
+      const oldestFailed = oldestFailedId ? await db.get(oldestFailedId) : null;
+      expect(result.replayedCount).toBe(1);
+      expect(result.integrationEventIds).toEqual([oldestFailedId]);
+      expect(oldestFailed?.processingState).toBe("pending");
+      expect(schedulerCalls).toHaveLength(1);
+    } finally {
+      process.env.INTEGRATION_EVENTS_ACCESS_TOKEN = originalToken;
+    }
+  });
 });
