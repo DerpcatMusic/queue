@@ -75,7 +75,7 @@ export function ProfileSettingRow({
   return (
     <KitPressable
       accessibilityRole="button"
-      accessibilityLabel={title}
+      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
       onPress={onPress}
       style={({ pressed }) => [
         { backgroundColor: pressed ? (palette.surfaceAlt as string) : "transparent" },

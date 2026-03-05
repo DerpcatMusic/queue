@@ -104,7 +104,9 @@ function withMapPersonality(
         paint["line-color"] = tone.waterLine;
       }
       if (
-        (sourceLayer.includes("park") || sourceLayer.includes("landcover") || id.includes("park")) &&
+        (sourceLayer.includes("park") ||
+          sourceLayer.includes("landcover") ||
+          id.includes("park")) &&
         layerType === "fill"
       ) {
         paint["fill-color"] = tone.landcover;
@@ -209,7 +211,12 @@ export function QueueMap({
     resolvedScheme === "dark" ? APPLE_MAP_THEME.mapStyleDarkUrl : APPLE_MAP_THEME.mapStyleLightUrl;
   const themedMapStyle = useMemo(() => {
     if (!baseMapStyle) return null;
-    return withMapPersonality(baseMapStyle, mapPalette, mode !== "zoneSelect", resolvedScheme === "dark");
+    return withMapPersonality(
+      baseMapStyle,
+      mapPalette,
+      mode !== "zoneSelect",
+      resolvedScheme === "dark",
+    );
   }, [baseMapStyle, mapPalette, mode, resolvedScheme]);
   const mapStyle = styleLoadFailed
     ? {
@@ -299,8 +306,8 @@ export function QueueMap({
         touchRotate={false}
         touchPitch={false}
         compass={false}
-        logo={false}
-        attribution={false}
+        logo
+        attribution
         onDidFailLoadingMap={() => {
           setStyleLoadFailed(true);
         }}
@@ -320,9 +327,7 @@ export function QueueMap({
           maxZoom={sanitizeZoom(APPLE_MAP_THEME.maxZoom, 16)}
           initialViewState={{
             center: pin ? [pin.longitude, pin.latitude] : APPLE_MAP_THEME.defaultCenter,
-            zoom: pin
-              ? APPLE_MAP_THEME.defaultZoomWithPin
-              : APPLE_MAP_THEME.defaultZoomWithoutPin,
+            zoom: pin ? APPLE_MAP_THEME.defaultZoomWithPin : APPLE_MAP_THEME.defaultZoomWithoutPin,
           }}
         />
 

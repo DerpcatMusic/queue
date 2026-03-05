@@ -2,7 +2,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { Redirect } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { CreateJobSheet } from "@/components/jobs/studio/create-job-sheet";
 import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
@@ -18,6 +18,7 @@ import { KitButton, KitChip } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 type FeedSectionHeaderProps = {
   title: string;
@@ -47,6 +48,7 @@ export function StudioFeed() {
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const signInRoute = "/sign-in" as const;
   const onboardingRoute = "/onboarding" as const;
+  const instructorJobsRoute = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
   const {
     createJobSheetRef,
     currentUser,
@@ -88,7 +90,11 @@ export function StudioFeed() {
     return <Redirect href={onboardingRoute} />;
   }
 
-  if (currentUser.role !== "instructor" && currentUser.role !== "studio") {
+  if (currentUser.role === "instructor") {
+    return <Redirect href={instructorJobsRoute} />;
+  }
+
+  if (currentUser.role !== "studio") {
     return <Redirect href={onboardingRoute} />;
   }
 
@@ -239,7 +245,11 @@ export function StudioFeed() {
               </View>
               {studioJobs === undefined ? (
                 <View style={[styles.emptyStateWrap, { minHeight: 300 }]}>
-                  <ThemedText style={{ color: palette.textMuted }}>
+                  <ActivityIndicator
+                    size="small"
+                    color={palette.primary as import("react-native").ColorValue}
+                  />
+                  <ThemedText style={{ color: palette.textMuted, marginTop: BrandSpacing.xs }}>
                     {t("jobsTab.loading")}
                   </ThemedText>
                 </View>

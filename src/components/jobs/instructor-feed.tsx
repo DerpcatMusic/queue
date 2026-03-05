@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, View } from "react-native";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
+import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
@@ -27,6 +28,7 @@ export function InstructorFeed() {
   const [jobsSearchQuery, setJobsSearchQuery] = useState("");
   const [jobsWindowFilter, setJobsWindowFilter] = useState<"all" | "24h" | "72h">("all");
   const [applyingJobId, setApplyingJobId] = useState<Id<"jobs"> | null>(null);
+  const [applyErrorMessage, setApplyErrorMessage] = useState<string | null>(null);
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const applyToJob = useMutation(api.jobs.applyToJob);
@@ -80,9 +82,12 @@ export function InstructorFeed() {
   });
 
   const onApply = async (jobId: Id<"jobs">) => {
+    setApplyErrorMessage(null);
     setApplyingJobId(jobId);
     try {
       await applyToJob({ jobId });
+    } catch {
+      setApplyErrorMessage(t("jobsTab.applyError", { defaultValue: "Couldn't apply. Try again." }));
     } finally {
       setApplyingJobId(null);
     }
@@ -109,6 +114,17 @@ export function InstructorFeed() {
               paddingBottom: BrandSpacing.sm,
             }}
           >
+            {applyErrorMessage ? (
+              <NoticeBanner
+                tone="error"
+                message={applyErrorMessage}
+                onDismiss={() => setApplyErrorMessage(null)}
+                borderColor={palette.borderStrong}
+                backgroundColor={palette.surface}
+                textColor={palette.danger}
+                iconColor={palette.danger}
+              />
+            ) : null}
             <NativeSearchField
               value={jobsSearchQuery}
               onChangeText={setJobsSearchQuery}

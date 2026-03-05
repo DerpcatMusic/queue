@@ -119,6 +119,10 @@ export default function HomeScreen() {
     );
   }
 
+  if (myStudioJobs === undefined) {
+    return <LoadingScreen label={t("home.loading")} />;
+  }
+
   const studioJobs = myStudioJobs ?? [];
   const openJobs = studioJobs.filter((job: any) => job.status === "open").length;
   const pendingApplicants = studioJobs.reduce(

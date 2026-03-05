@@ -7,7 +7,7 @@ import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Switch, View } from "react-native";
+import { Alert, StyleSheet, Switch, View } from "react-native";
 import type Animated from "react-native-reanimated";
 import { useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
 
@@ -186,10 +186,6 @@ export default function InstructorProfileScreen() {
     setIsEditing(true);
   }, []);
 
-  const handleDismissEdit = useCallback(() => {
-    setIsEditing(false);
-  }, []);
-
   if (!hasActivated || (currentUser?.role === "instructor" && instructorSettings === undefined)) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
@@ -228,6 +224,37 @@ export default function InstructorProfileScreen() {
         : "Apple";
   const socialCount = Object.keys(instructorSettings?.socialLinks ?? {}).length;
   const chevron = <IconSymbol name="chevron.right" size={14} color={palette.textMicro} />;
+  const hasUnsavedProfileChanges = (() => {
+    if (!instructorSettings || !isEditing) return false;
+    return (
+      (nameDraft.trim() || nameValue) !== nameValue ||
+      bioDraft.trim() !== (instructorSettings.bio ?? "") ||
+      !areStringArraysEqual(sportsDraft, instructorSettings.sports) ||
+      !areSocialLinksEqual(socialLinksDraft, toSocialLinksDraft(instructorSettings.socialLinks))
+    );
+  })();
+
+  const handleDismissEdit = () => {
+    if (!hasUnsavedProfileChanges) {
+      setIsEditing(false);
+      return;
+    }
+
+    Alert.alert(
+      t("common.discardChanges", { defaultValue: "Discard changes?" }),
+      t("common.discardChangesMessage", {
+        defaultValue: "Your profile edits are not saved yet.",
+      }),
+      [
+        { text: t("common.cancel", { defaultValue: "Cancel" }), style: "cancel" },
+        {
+          text: t("common.discard", { defaultValue: "Discard" }),
+          style: "destructive",
+          onPress: () => setIsEditing(false),
+        },
+      ],
+    );
+  };
 
   const onToggleSport = (sport: string) => {
     setFeedbackLabel(null);

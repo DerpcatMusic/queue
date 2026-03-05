@@ -132,8 +132,8 @@ export default function LocationScreen() {
         ...(addressInput.trim() ? { address: addressInput.trim() } : {}),
         ...(latitude !== undefined ? { latitude } : {}),
         ...(longitude !== undefined ? { longitude } : {}),
-        ...(includeDetectedZone ? { includeDetectedZone } : {}),
-        ...(detectedZone ? { detectedZone } : {}),
+        includeDetectedZone,
+        detectedZone: detectedZone ?? "",
       });
       router.back();
     } catch (err) {

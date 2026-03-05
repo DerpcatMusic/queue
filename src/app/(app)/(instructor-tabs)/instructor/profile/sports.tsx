@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
@@ -84,8 +84,11 @@ export default function SportsScreen() {
           : {}),
       });
       router.back();
-    } catch {
-      // handled silently
+    } catch (error) {
+      Alert.alert(
+        t("profile.settings.errors.saveFailed", { defaultValue: "Failed to save settings." }),
+        error instanceof Error ? error.message : undefined,
+      );
     } finally {
       setIsSaving(false);
     }

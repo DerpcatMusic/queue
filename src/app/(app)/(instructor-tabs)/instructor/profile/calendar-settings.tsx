@@ -3,7 +3,7 @@ import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, StyleSheet, View } from "react-native";
+import { Alert, Platform, StyleSheet, View } from "react-native";
 
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -75,12 +75,10 @@ export default function CalendarSettingsScreen() {
   ) as GoogleCalendarStatus | undefined;
 
   const saveSettings = useMutation(api.users.updateMyInstructorSettings);
-  const disconnectGoogleCalendar = useMutation(
-    calendarApi.disconnectGoogleCalendar as any,
-  ) as (args: Record<string, never>) => Promise<unknown>;
-  const exchangeGoogleCode = useAction(
-    calendarApi.connectGoogleCalendarWithCode as any,
-  ) as (args: {
+  const disconnectGoogleCalendar = useMutation(calendarApi.disconnectGoogleCalendar as any) as (
+    args: Record<string, never>,
+  ) => Promise<unknown>;
+  const exchangeGoogleCode = useAction(calendarApi.connectGoogleCalendarWithCode as any) as (args: {
     code: string;
     codeVerifier: string;
     redirectUri: string;
@@ -169,7 +167,9 @@ export default function CalendarSettingsScreen() {
         ...(instructorSettings.hourlyRateExpectation !== undefined
           ? { hourlyRateExpectation: instructorSettings.hourlyRateExpectation }
           : {}),
-        ...(instructorSettings.address !== undefined ? { address: instructorSettings.address } : {}),
+        ...(instructorSettings.address !== undefined
+          ? { address: instructorSettings.address }
+          : {}),
         ...(instructorSettings.latitude !== undefined
           ? { latitude: instructorSettings.latitude }
           : {}),
@@ -178,8 +178,11 @@ export default function CalendarSettingsScreen() {
           : {}),
       });
       router.back();
-    } catch {
-      // silently handled
+    } catch (error) {
+      Alert.alert(
+        t("profile.settings.errors.saveFailed", { defaultValue: "Failed to save settings." }),
+        error instanceof Error ? error.message : undefined,
+      );
     } finally {
       setIsSaving(false);
     }
@@ -343,7 +346,9 @@ export default function CalendarSettingsScreen() {
         ) : null}
 
         <KitButton
-          label={isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")}
+          label={
+            isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
+          }
           onPress={() => {
             void onSave();
           }}

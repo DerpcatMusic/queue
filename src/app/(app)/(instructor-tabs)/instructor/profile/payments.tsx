@@ -4,7 +4,7 @@ import { Redirect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, View } from "react-native";
+import { Alert, Platform, View } from "react-native";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
@@ -420,7 +420,20 @@ export default function ProfilePaymentsScreen() {
                 overflow: "hidden",
               }}
               onPress={() => {
-                void withdrawToBank();
+                Alert.alert(
+                  "Withdraw to bank?",
+                  "This will start a payout withdrawal for your available balance.",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Withdraw",
+                      style: "destructive",
+                      onPress: () => {
+                        void withdrawToBank();
+                      },
+                    },
+                  ],
+                );
               }}
               disabled={
                 withdrawBusy ||

@@ -2,13 +2,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { FlashList } from "@shopify/flash-list";
 import { useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -25,10 +19,7 @@ import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import { formatTime } from "@/lib/jobs-utils";
-import {
-  useCalendarTabController,
-  type TimelineListItem,
-} from "./use-calendar-tab-controller";
+import { type TimelineListItem, useCalendarTabController } from "./use-calendar-tab-controller";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -157,6 +148,9 @@ function WeekStrip({
   onTodayPress,
   lessonCountByDay,
   locale,
+  todayLabel,
+  monthButtonLabel,
+  dragHandleLabel,
 }: {
   selectedDay: string;
   onDayPress: (dayKey: string) => void;
@@ -165,6 +159,9 @@ function WeekStrip({
   onTodayPress: () => void;
   lessonCountByDay: Map<string, number>;
   locale: string;
+  todayLabel: string;
+  monthButtonLabel: string;
+  dragHandleLabel: string;
 }) {
   const palette = useBrand();
   const { width: screenWidth } = useWindowDimensions();
@@ -181,15 +178,9 @@ function WeekStrip({
   // 3-week triptych: prev, current, next
   const prevWeekStart = addDays(weekStart, -7);
   const nextWeekStart = addDays(weekStart, 7);
-  const prevWeekDays = useMemo(
-    () => getWeekDays(prevWeekStart),
-    [prevWeekStart],
-  );
+  const prevWeekDays = useMemo(() => getWeekDays(prevWeekStart), [prevWeekStart]);
   const currWeekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
-  const nextWeekDays = useMemo(
-    () => getWeekDays(nextWeekStart),
-    [nextWeekStart],
-  );
+  const nextWeekDays = useMemo(() => getWeekDays(nextWeekStart), [nextWeekStart]);
 
   // ─── Single unified pan gesture ──────────────────────────────────────
   const swipeX = useSharedValue(0);
@@ -248,18 +239,12 @@ function WeekStrip({
         const isExpanded = expandProgress.value > 0.5;
         const weekDelta = isExpanded ? 4 : 1; // month vs week navigation
 
-        if (
-          e.translationX < -SWIPE_THRESHOLD ||
-          (e.velocityX < -500 && e.translationX < -20)
-        ) {
+        if (e.translationX < -SWIPE_THRESHOLD || (e.velocityX < -500 && e.translationX < -20)) {
           swipeX.value = withTiming(-panelWidth, { duration: 200 }, () => {
             runOnJS(onWeekChange)(weekDelta);
             swipeX.value = 0;
           });
-        } else if (
-          e.translationX > SWIPE_THRESHOLD ||
-          (e.velocityX > 500 && e.translationX > 20)
-        ) {
+        } else if (e.translationX > SWIPE_THRESHOLD || (e.velocityX > 500 && e.translationX > 20)) {
           swipeX.value = withTiming(panelWidth, { duration: 200 }, () => {
             runOnJS(onWeekChange)(-weekDelta);
             swipeX.value = 0;
@@ -303,12 +288,21 @@ function WeekStrip({
     const isSelected = !isTriptychSide && dayKey === selectedDay;
     const isToday = dayKey === todayKey;
     const hasLessons = (lessonCountByDay.get(dayKey) ?? 0) > 0;
+    const lessonCount = lessonCountByDay.get(dayKey) ?? 0;
     const isCurrentMonth = isSameMonth(dayKey, selectedDay);
     const dimmed = !isCurrentMonth;
+    const dayDateLabel = new Date(dayKeyToTimestamp(dayKey)).toLocaleDateString(locale, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
 
     return (
       <KitPressable
         key={dayKey}
+        accessibilityRole="button"
+        accessibilityState={{ selected: isSelected }}
+        accessibilityLabel={`${dayDateLabel}. ${lessonCount} lessons.`}
         haptic="none"
         onPress={() => {
           onDayPress(dayKey);
@@ -346,12 +340,7 @@ function WeekStrip({
           </Text>
         </View>
         {hasLessons && !isSelected ? (
-          <View
-            style={[
-              wStyles.dot,
-              { backgroundColor: palette.primary as string },
-            ]}
-          />
+          <View style={[wStyles.dot, { backgroundColor: palette.primary as string }]} />
         ) : (
           <View style={wStyles.dotSpacer} />
         )}
@@ -359,7 +348,7 @@ function WeekStrip({
     );
   };
 
-  const firstWeekRow = monthWeeks[0] ?? currWeekDays;
+  const firstWeekRow = currWeekDays;
 
   return (
     <Animated.View
@@ -372,6 +361,8 @@ function WeekStrip({
       {/* Header */}
       <View style={wStyles.headerRow}>
         <KitPressable
+          accessibilityRole="button"
+          accessibilityLabel={monthButtonLabel}
           onPress={onMonthPress}
           style={wStyles.monthButton}
           hitSlop={8}
@@ -379,31 +370,21 @@ function WeekStrip({
           <Text style={[wStyles.monthLabel, { color: palette.text as string }]}>
             {formatMonthYear(selectedDay, locale)}
           </Text>
-          <Text
-            style={[
-              wStyles.monthChevron,
-              { color: palette.textMuted as string },
-            ]}
-          >
-            ▾
-          </Text>
+          <Text style={[wStyles.monthChevron, { color: palette.textMuted as string }]}>▾</Text>
         </KitPressable>
         <View style={wStyles.headerActions}>
           {selectedDay !== todayKey ? (
-            <KitPressable onPress={onTodayPress} hitSlop={6}>
+            <KitPressable
+              accessibilityRole="button"
+              accessibilityLabel={todayLabel}
+              onPress={onTodayPress}
+              hitSlop={6}
+            >
               <View
-                style={[
-                  wStyles.todayPill,
-                  { backgroundColor: palette.primarySubtle as string },
-                ]}
+                style={[wStyles.todayPill, { backgroundColor: palette.primarySubtle as string }]}
               >
-                <Text
-                  style={[
-                    wStyles.todayPillText,
-                    { color: palette.primary as string },
-                  ]}
-                >
-                  Today
+                <Text style={[wStyles.todayPillText, { color: palette.primary as string }]}>
+                  {todayLabel}
                 </Text>
               </View>
             </KitPressable>
@@ -415,12 +396,7 @@ function WeekStrip({
       <View style={wStyles.weekdayLabels}>
         {getWeekDays(getWeekStart(todayKey)).map((d) => (
           <View key={d} style={wStyles.weekdayLabelCell}>
-            <Text
-              style={[
-                wStyles.weekdayLabel,
-                { color: palette.textMuted as string },
-              ]}
-            >
+            <Text style={[wStyles.weekdayLabel, { color: palette.textMuted as string }]}>
               {formatWeekdayLetter(d, locale)}
             </Text>
           </View>
@@ -431,12 +407,7 @@ function WeekStrip({
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[{ overflow: "hidden" }, swipeStyle]}>
           {/* First row: triptych (prev | current | next) */}
-          <View
-            style={[
-              wStyles.triptych,
-              { width: panelWidth * 3, marginLeft: -panelWidth },
-            ]}
-          >
+          <View style={[wStyles.triptych, { width: panelWidth * 3, marginLeft: -panelWidth }]}>
             <View style={[wStyles.weekRow, { width: panelWidth }]}>
               {prevWeekDays.map((d) => renderDayCell(d, true))}
             </View>
@@ -462,6 +433,8 @@ function WeekStrip({
       {/* Drag handle — enlarged touch target */}
       <KitPressable
         style={wStyles.dragHandle}
+        accessibilityRole="button"
+        accessibilityLabel={dragHandleLabel}
         haptic="none"
         onPress={() => {
           // Tap handle to toggle
@@ -480,12 +453,7 @@ function WeekStrip({
         }}
         hitSlop={{ top: 12, bottom: 12, left: 40, right: 40 }}
       >
-        <View
-          style={[
-            wStyles.dragBar,
-            { backgroundColor: palette.border as string },
-          ]}
-        />
+        <View style={[wStyles.dragBar, { backgroundColor: palette.border as string }]} />
       </KitPressable>
     </Animated.View>
   );
@@ -632,9 +600,7 @@ export default function CalendarTabScreen() {
     ({ item }: { item: TimelineListItem }) => {
       if (item.kind === "dayHeader") {
         const isToday = item.dayKey === todayKey;
-        const dotColor = isToday
-          ? (palette.primary as string)
-          : (palette.textMuted as string);
+        const dotColor = isToday ? (palette.primary as string) : (palette.textMuted as string);
 
         return (
           <View style={styles.timelineRow}>
@@ -654,17 +620,10 @@ export default function CalendarTabScreen() {
               />
             </View>
             <View style={styles.dayHeaderContent}>
-              <Text
-                style={[styles.dayHeading, { color: palette.text as string }]}
-              >
+              <Text style={[styles.dayHeading, { color: palette.text as string }]}>
                 {formatDayHeading(item.dayKey, i18n.language)}
               </Text>
-              <Text
-                style={[
-                  styles.daySubtitle,
-                  { color: palette.textMuted as string },
-                ]}
-              >
+              <Text style={[styles.daySubtitle, { color: palette.textMuted as string }]}>
                 {formatDaySubtitle(item.dayKey, i18n.language)}
               </Text>
             </View>
@@ -679,12 +638,7 @@ export default function CalendarTabScreen() {
               <View style={[styles.railLine, { backgroundColor: railColor }]} />
             </View>
             <View style={styles.emptyContent}>
-              <Text
-                style={[
-                  styles.emptyText,
-                  { color: palette.textMuted as string },
-                ]}
-              >
+              <Text style={[styles.emptyText, { color: palette.textMuted as string }]}>
                 {t("calendarTab.timeline.noLessons", {
                   defaultValue: "No lessons",
                 })}
@@ -696,11 +650,8 @@ export default function CalendarTabScreen() {
 
       const row = item.lesson;
       const swatches = palette.calendar.eventSwatches;
-      const swatch =
-        swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ??
-        undefined;
-      const accent =
-        (swatch?.background as string) ?? (palette.primary as string);
+      const swatch = swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ?? undefined;
+      const accent = (swatch?.background as string) ?? (palette.primary as string);
       const counterpart =
         row.roleView === "instructor"
           ? row.studioName
@@ -750,58 +701,44 @@ export default function CalendarTabScreen() {
             <View style={[styles.railLine, { backgroundColor: railColor }]} />
             <View style={[styles.railDotLesson, { backgroundColor: accent }]} />
           </View>
-          <View
-            style={[
-              styles.lessonCard,
-              { backgroundColor: palette.surfaceElevated as string },
-            ]}
+          <KitPressable
+            accessibilityRole="button"
+            accessibilityLabel={t("calendarTab.lessonRowAccessibility", {
+              defaultValue: "{{sport}} from {{start}} to {{end}}",
+              sport: row.sport,
+              start: formatTime(row.startTime, i18n.language),
+              end: formatTime(row.endTime, i18n.language),
+            })}
+            accessibilityHint={t("calendarTab.lessonRowAccessibilityHint", {
+              defaultValue: "Select this day",
+            })}
+            onPress={() => handleDayPress(item.dayKey)}
+            style={[styles.lessonCard, { backgroundColor: palette.surfaceElevated as string }]}
           >
             <View style={styles.lessonContent}>
               <View style={styles.lessonTopRow}>
-                <Text
-                  style={[
-                    styles.lessonTime,
-                    { color: palette.textMuted as string },
-                  ]}
-                >
+                <Text style={[styles.lessonTime, { color: palette.textMuted as string }]}>
                   {formatTime(row.startTime, i18n.language)} –{" "}
                   {formatTime(row.endTime, i18n.language)}
                 </Text>
-                <View
-                  style={[
-                    styles.lifecycleBadge,
-                    { backgroundColor: lifecycleTone.bg },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.lifecycleBadgeText,
-                      { color: lifecycleTone.fg },
-                    ]}
-                  >
+                <View style={[styles.lifecycleBadge, { backgroundColor: lifecycleTone.bg }]}>
+                  <Text style={[styles.lifecycleBadgeText, { color: lifecycleTone.fg }]}>
                     {lifecycleLabel}
                   </Text>
                 </View>
               </View>
-              <Text
-                style={[styles.lessonTitle, { color: palette.text as string }]}
-              >
+              <Text style={[styles.lessonTitle, { color: palette.text as string }]}>
                 {row.sport}
               </Text>
-              <Text
-                style={[
-                  styles.lessonMeta,
-                  { color: palette.textMuted as string },
-                ]}
-              >
+              <Text style={[styles.lessonMeta, { color: palette.textMuted as string }]}>
                 {counterpart}
               </Text>
             </View>
-          </View>
+          </KitPressable>
         </View>
       );
     },
-    [i18n.language, palette, railColor, t, todayKey],
+    [handleDayPress, i18n.language, palette, railColor, t, todayKey],
   );
 
   // ─── Loading ────────────────────────────────────────────────────────────────
@@ -822,6 +759,13 @@ export default function CalendarTabScreen() {
         onTodayPress={handleTodayPress}
         lessonCountByDay={lessonCountByDay}
         locale={i18n.language}
+        todayLabel={t("common.today", { defaultValue: "Today" })}
+        monthButtonLabel={t("calendarTab.openMonthPicker", {
+          defaultValue: "Open month picker",
+        })}
+        dragHandleLabel={t("calendarTab.toggleMonthView", {
+          defaultValue: "Toggle month view",
+        })}
       />
 
       <FlashList

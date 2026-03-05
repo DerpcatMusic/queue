@@ -7,8 +7,7 @@ import { Platform, type ViewToken } from "react-native";
 import { api } from "@/convex/_generated/api";
 import { syncDeviceCalendarEvents } from "@/lib/device-calendar-sync";
 
-const calendarApi = (api as unknown as { calendar: Record<string, unknown> })
-  .calendar as {
+const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).calendar as {
   syncMyGoogleCalendarEvents: unknown;
 };
 
@@ -61,10 +60,7 @@ function buildTimelineRowsSignature(rows: TimelineRow[]) {
     return "0";
   }
   return rows
-    .map(
-      (row) =>
-        `${row.lessonId}:${row.startTime}:${row.endTime}:${row.status}:${row.lifecycle}`,
-    )
+    .map((row) => `${row.lessonId}:${row.startTime}:${row.endTime}:${row.status}:${row.lifecycle}`)
     .sort()
     .join("|");
 }
@@ -79,14 +75,9 @@ function enumerateDays(startKey: string, endKey: string) {
   return out;
 }
 
-function useTimelineCache(
-  role: string | undefined,
-  startTime: number,
-  endTime: number,
-) {
+function useTimelineCache(role: string | undefined, startTime: number, endTime: number) {
   const cacheKey = useMemo(
-    () =>
-      `calendar:timeline:v${CACHE_VERSION}:${role ?? "none"}:${startTime}:${endTime}`,
+    () => `calendar:timeline:v${CACHE_VERSION}:${role ?? "none"}:${startTime}:${endTime}`,
     [role, startTime, endTime],
   );
   const [cachedRows, setCachedRows] = useState<TimelineRow[] | null>(null);
@@ -126,10 +117,7 @@ function useTimelineCache(
   const persist = useCallback(
     async (rows: TimelineRow[]) => {
       try {
-        await AsyncStorage.setItem(
-          cacheKey,
-          JSON.stringify({ fetchedAt: Date.now(), rows }),
-        );
+        await AsyncStorage.setItem(cacheKey, JSON.stringify({ fetchedAt: Date.now(), rows }));
       } catch {
         /* best-effort */
       }
@@ -161,37 +149,22 @@ export function useCalendarTabController() {
       ? currentUser.role
       : undefined;
 
-  const startTime = useMemo(
-    () => dayKeyToTimestamp(windowRange.start),
-    [windowRange.start],
-  );
-  const endTime = useMemo(
-    () => dayKeyToTimestamp(windowRange.end) + DAY_MS - 1,
-    [windowRange.end],
-  );
-  const timelineArgs = useMemo(
-    () => ({ startTime, endTime, limit: 1000 }),
-    [endTime, startTime],
-  );
+  const startTime = useMemo(() => dayKeyToTimestamp(windowRange.start), [windowRange.start]);
+  const endTime = useMemo(() => dayKeyToTimestamp(windowRange.end) + DAY_MS - 1, [windowRange.end]);
+  const timelineArgs = useMemo(() => ({ startTime, endTime, limit: 1000 }), [endTime, startTime]);
 
-  const remoteRows = useQuery(
-    api.jobs.getMyCalendarTimeline,
-    role ? timelineArgs : "skip",
-  );
+  const remoteRows = useQuery(api.jobs.getMyCalendarTimeline, role ? timelineArgs : "skip");
   const remoteTimelineRows = useMemo(
     () => (remoteRows ? (remoteRows as unknown as TimelineRow[]) : null),
     [remoteRows],
   );
   const remoteRowsSignature = useMemo(
-    () =>
-      remoteTimelineRows ? buildTimelineRowsSignature(remoteTimelineRows) : "",
+    () => (remoteTimelineRows ? buildTimelineRowsSignature(remoteTimelineRows) : ""),
     [remoteTimelineRows],
   );
   const lastPersistSignatureRef = useRef<string>("");
 
-  const syncGoogleCalendar = useAction(
-    calendarApi.syncMyGoogleCalendarEvents as any,
-  ) as (args: {
+  const syncGoogleCalendar = useAction(calendarApi.syncMyGoogleCalendarEvents as any) as (args: {
     startTime?: number;
     endTime?: number;
     limit?: number;
@@ -203,11 +176,7 @@ export function useCalendarTabController() {
     currentUser?.role === "instructor" ? emptyArgs : "skip",
   );
 
-  const { cachedRows, cacheReady, persist } = useTimelineCache(
-    role,
-    startTime,
-    endTime,
-  );
+  const { cachedRows, cacheReady, persist } = useTimelineCache(role, startTime, endTime);
 
   useEffect(() => {
     if (!remoteTimelineRows) return;
@@ -255,8 +224,7 @@ export function useCalendarTabController() {
     () =>
       syncEvents
         .map(
-          (event) =>
-            `${event.externalId}:${event.startDate.getTime()}:${event.endDate.getTime()}`,
+          (event) => `${event.externalId}:${event.startDate.getTime()}:${event.endDate.getTime()}`,
         )
         .join("|"),
     [syncEvents],
@@ -265,8 +233,7 @@ export function useCalendarTabController() {
 
   useEffect(() => {
     if (currentUser?.role !== "instructor") return;
-    if (!instructorSettings || instructorSettings.calendarProvider !== "apple")
-      return;
+    if (!instructorSettings || instructorSettings.calendarProvider !== "apple") return;
     if (!instructorSettings.calendarSyncEnabled) return;
     if (syncEvents.length === 0) return;
     if (appleSyncSignature === lastAppleSyncSignatureRef.current) return;
@@ -277,8 +244,7 @@ export function useCalendarTabController() {
   const lastGoogleSyncAtRef = useRef(0);
   useEffect(() => {
     if (currentUser?.role !== "instructor") return;
-    if (!instructorSettings || instructorSettings.calendarProvider !== "google")
-      return;
+    if (!instructorSettings || instructorSettings.calendarProvider !== "google") return;
     if (!instructorSettings.calendarSyncEnabled) return;
     const now = Date.now();
     if (now - lastGoogleSyncAtRef.current < 3 * 60 * 1000) return;
@@ -288,13 +254,7 @@ export function useCalendarTabController() {
       endTime,
       limit: 1000,
     });
-  }, [
-    currentUser?.role,
-    instructorSettings,
-    syncGoogleCalendar,
-    startTime,
-    endTime,
-  ]);
+  }, [currentUser?.role, instructorSettings, syncGoogleCalendar, startTime, endTime]);
 
   const { listItems, dayStartIndexByKey } = useMemo(() => {
     const rowsByDay = new Map<string, TimelineRow[]>();
@@ -313,7 +273,7 @@ export function useCalendarTabController() {
       dayIndexMap.set(dk, items.length);
       items.push({ kind: "dayHeader", key: `${dk}:header`, dayKey: dk });
       const dayRows = rowsByDay.get(dk) ?? [];
-      if (dayRows.length === 0) {
+      if (dayRows.length === 0 && (dk === selectedDay || dk === todayKey)) {
         items.push({ kind: "empty", key: `${dk}:empty`, dayKey: dk });
       } else {
         for (const lesson of dayRows) {
@@ -328,7 +288,7 @@ export function useCalendarTabController() {
     }
 
     return { listItems: items, dayStartIndexByKey: dayIndexMap };
-  }, [filteredRows, windowRange.end, windowRange.start]);
+  }, [filteredRows, selectedDay, todayKey, windowRange.end, windowRange.start]);
 
   const lessonCountByDay = useMemo(() => {
     const counts = new Map<string, number>();
@@ -364,10 +324,8 @@ export function useCalendarTabController() {
     setWindowRange((prev) => {
       let ns = prev.start;
       let ne = prev.end;
-      if (compareDayKey(dayKey, prev.start) < 0)
-        ns = addDays(dayKey, -TIMELINE_EXTEND_BUFFER_DAYS);
-      if (compareDayKey(dayKey, prev.end) > 0)
-        ne = addDays(dayKey, TIMELINE_EXTEND_BUFFER_DAYS);
+      if (compareDayKey(dayKey, prev.start) < 0) ns = addDays(dayKey, -TIMELINE_EXTEND_BUFFER_DAYS);
+      if (compareDayKey(dayKey, prev.end) > 0) ne = addDays(dayKey, TIMELINE_EXTEND_BUFFER_DAYS);
       if (ns === prev.start && ne === prev.end) return prev;
       return { start: ns, end: ne };
     });
@@ -432,14 +390,11 @@ export function useCalendarTabController() {
     [handleDayPress],
   );
 
-  const overrideItemLayout = useCallback(
-    (layout: ItemLayout, item: TimelineListItem) => {
-      if (item.kind === "dayHeader") layout.size = ESTIMATED_DAY_HEADER_SIZE;
-      else if (item.kind === "empty") layout.size = ESTIMATED_EMPTY_SIZE;
-      else layout.size = ESTIMATED_LESSON_SIZE;
-    },
-    [],
-  );
+  const overrideItemLayout = useCallback((layout: ItemLayout, item: TimelineListItem) => {
+    if (item.kind === "dayHeader") layout.size = ESTIMATED_DAY_HEADER_SIZE;
+    else if (item.kind === "empty") layout.size = ESTIMATED_EMPTY_SIZE;
+    else layout.size = ESTIMATED_LESSON_SIZE;
+  }, []);
 
   const isLoading = currentUser === undefined || (!cacheReady && !remoteRows);
 

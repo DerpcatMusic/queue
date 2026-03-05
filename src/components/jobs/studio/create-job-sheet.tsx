@@ -3,7 +3,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
@@ -102,13 +102,18 @@ export function CreateJobSheet({
     }
   };
 
+  const handleCloseSheet = useCallback(() => {
+    setDraft(createDefaultStudioDraft());
+    onClose();
+  }, [onClose]);
+
   return (
     <BottomSheet
       ref={innerRef}
       index={-1}
       snapPoints={snapPoints}
       enablePanDownToClose
-      onClose={onClose}
+      onClose={handleCloseSheet}
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={{ backgroundColor: palette.borderStrong as string }}
       backgroundStyle={{ backgroundColor: palette.appBg as string }}
@@ -120,8 +125,8 @@ export function CreateJobSheet({
           </ThemedText>
           <KitPressable
             accessibilityRole="button"
-            accessibilityLabel="Close create job sheet"
-            onPress={onClose}
+            accessibilityLabel={t("common.close", { defaultValue: "Close" })}
+            onPress={handleCloseSheet}
             style={[styles.closeButton, { backgroundColor: palette.surfaceAlt as string }]}
           >
             <AppSymbol name="xmark" size={18} tintColor={palette.textMuted as string} />
@@ -134,7 +139,7 @@ export function CreateJobSheet({
             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
               {t("jobsTab.form.sport", "Select Sport")}
             </ThemedText>
-            <BottomSheetScrollView
+            <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
@@ -153,7 +158,7 @@ export function CreateJobSheet({
                   />
                 );
               })}
-            </BottomSheetScrollView>
+            </ScrollView>
           </View>
 
           {/* Date & Time Section */}

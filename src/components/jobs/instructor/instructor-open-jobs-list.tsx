@@ -272,18 +272,26 @@ export function InstructorOpenJobsList({
                     haptic="impact"
                     onPress={() => onApply(job.jobId)}
                   >
-                    <ThemedText
-                      type="defaultSemiBold"
-                      style={{
-                        color: job.applicationStatus ? palette.textMuted : palette.onPrimary,
-                        fontWeight: "600",
-                        letterSpacing: 0.2,
-                      }}
-                    >
-                      {applyingJobId === job.jobId
-                        ? t("jobsTab.actions.applying")
-                        : t("jobsTab.actions.apply")}
-                    </ThemedText>
+                    {(() => {
+                      const actionLabel =
+                        applyingJobId === job.jobId
+                          ? t("jobsTab.actions.applying")
+                          : job.applicationStatus
+                            ? t(getApplicationStatusTranslationKey(job.applicationStatus))
+                            : t("jobsTab.actions.apply");
+                      return (
+                        <ThemedText
+                          type="defaultSemiBold"
+                          style={{
+                            color: job.applicationStatus ? palette.textMuted : palette.onPrimary,
+                            fontWeight: "600",
+                            letterSpacing: 0.2,
+                          }}
+                        >
+                          {actionLabel}
+                        </ThemedText>
+                      );
+                    })()}
                     {!job.applicationStatus && (
                       <AppSymbol name="arrow.right" size={16} tintColor={palette.onPrimary} />
                     )}

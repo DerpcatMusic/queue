@@ -51,9 +51,14 @@ export default function MapTabScreen() {
   const [zoneSearch, setZoneSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [focusZoneId, setFocusZoneId] = useState<string | null>(null);
   const zoneSheetRef = useRef<BottomSheet>(null);
   const noopMapPress = useCallback(() => {}, []);
-  const noopUseGps = useCallback(() => {}, []);
+  const handleRecenter = useCallback(() => {
+    const nextFocusZoneId = selectedZoneIds[0] ?? remoteZones?.zoneIds?.[0] ?? null;
+    if (!nextFocusZoneId) return;
+    setFocusZoneId(nextFocusZoneId);
+  }, [remoteZones?.zoneIds, selectedZoneIds]);
 
   useEffect(() => {
     if (!remoteZones) return;
@@ -121,10 +126,6 @@ export default function MapTabScreen() {
     const nextZoneIds = [...selectedZoneIds];
     const shouldSave = hasChanges;
     if (shouldSave && isSaving) return;
-    setZoneModeActive(false);
-    setSheetIndex(-1);
-    setZoneSearch("");
-    zoneSheetRef.current?.close();
 
     if (!shouldSave) return;
 
@@ -132,6 +133,10 @@ export default function MapTabScreen() {
     setSaveError(null);
     try {
       await saveZones({ zoneIds: nextZoneIds });
+      setZoneModeActive(false);
+      setSheetIndex(-1);
+      setZoneSearch("");
+      zoneSheetRef.current?.close();
     } catch (error) {
       setSaveError(
         error instanceof Error && error.message ? error.message : t("mapTab.errors.failedToSave"),
@@ -187,12 +192,33 @@ export default function MapTabScreen() {
             mode={zoneModeActive ? "zoneSelect" : "pinDrop"}
             pin={null}
             selectedZoneIds={selectedZoneIds}
-            focusZoneId={null}
+            focusZoneId={focusZoneId}
             {...(zoneModeActive ? { onPressZone: toggleZone } : {})}
             onPressMap={noopMapPress}
-            onUseGps={noopUseGps}
-            showGpsButton={false}
+            onUseGps={handleRecenter}
+            showGpsButton
           />
+
+          {saveError ? (
+            <TabOverlayAnchor side="left" offset={BrandSpacing.lg}>
+              <View
+                style={{
+                  maxWidth: 280,
+                  borderRadius: 12,
+                  borderCurve: "continuous",
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  backgroundColor: palette.surface,
+                  borderWidth: 1,
+                  borderColor: palette.danger,
+                }}
+              >
+                <ThemedText selectable style={{ color: palette.danger }}>
+                  {saveError}
+                </ThemedText>
+              </View>
+            </TabOverlayAnchor>
+          ) : null}
 
           <BottomSheet
             ref={zoneSheetRef as RefObject<BottomSheet>}
@@ -314,26 +340,33 @@ export default function MapTabScreen() {
             side={zoneLanguage === "he" ? "left" : "right"}
             offset={BrandSpacing.lg}
           >
-            <KitFab
-              selected={zoneModeActive}
-              disabled={isSaving}
-              icon={
-                <IconSymbol
-                  name={zoneModeActive ? "checkmark.circle.fill" : "slider.horizontal.3"}
-                  size={20}
-                  color={zoneModeActive ? palette.onPrimary : palette.text}
-                />
-              }
-              style={{
-                backgroundColor: zoneModeActive ? palette.primary : palette.surface,
-                borderColor: zoneModeActive ? palette.primaryPressed : palette.borderStrong,
-                borderWidth: 1.4,
-                opacity: 1,
-              }}
-              onPress={() => {
-                void handlePrimaryAction();
-              }}
-            />
+            <View style={{ alignItems: "center", gap: 6 }}>
+              <KitFab
+                selected={zoneModeActive}
+                disabled={isSaving}
+                icon={
+                  <IconSymbol
+                    name={zoneModeActive ? "checkmark.circle.fill" : "slider.horizontal.3"}
+                    size={20}
+                    color={zoneModeActive ? palette.onPrimary : palette.text}
+                  />
+                }
+                style={{
+                  backgroundColor: zoneModeActive ? palette.primary : palette.surface,
+                  borderColor: zoneModeActive ? palette.primaryPressed : palette.borderStrong,
+                  borderWidth: 1.4,
+                  opacity: 1,
+                }}
+                onPress={() => {
+                  void handlePrimaryAction();
+                }}
+              />
+              <ThemedText style={{ color: palette.textMuted, fontSize: 12 }}>
+                {zoneModeActive
+                  ? t("mapTab.actions.save", { defaultValue: "Save zones" })
+                  : t("mapTab.actions.edit", { defaultValue: "Edit zones" })}
+              </ThemedText>
+            </View>
           </TabOverlayAnchor>
         </>
       ) : null}
