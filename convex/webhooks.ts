@@ -1,7 +1,18 @@
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { httpAction } from "./_generated/server";
+import { httpAction, internalMutation } from "./_generated/server";
 import { omitUndefined } from "./lib/validation";
+import { v } from "convex/values";
+
+type IntegrationRoute = "payment" | "payout" | "beneficiary" | "kyc";
+
+const integrationProviderValidator = v.union(v.literal("rapyd"), v.literal("didit"));
+const integrationRouteValidator = v.union(
+  v.literal("payment"),
+  v.literal("payout"),
+  v.literal("beneficiary"),
+  v.literal("kyc"),
+);
 
 const getHeader = (req: Request, key: string): string | null =>
   req.headers.get(key) ?? req.headers.get(key.toLowerCase()) ?? null;
@@ -224,6 +235,7 @@ const buildCanonicalRapydPayload = (payload: unknown): Record<string, unknown> =
           metadata: metadata
             ? omitUndefined({
                 payoutId: toTrimmedString(metadata.payoutId),
+                paymentId: toTrimmedString(metadata.paymentId),
                 merchant_reference_id: toTrimmedString(metadata.merchant_reference_id),
               })
             : undefined,
@@ -260,6 +272,204 @@ const buildCanonicalDiditPayload = (payload: unknown): Record<string, unknown> =
       : undefined,
   });
 };
+
+const toOutcomeString = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const normalizeIntegrationProcessorOutcome = (value: unknown) => {
+  const record = toRecord(value) ?? {};
+  const reason = toOutcomeString(record.reason);
+  const ignored = record.ignored === true;
+  const processed = record.processed === true;
+  const sourceEventId = toOutcomeString(record.eventId);
+  const entityId =
+    toOutcomeString(record.paymentId) ??
+    toOutcomeString(record.payoutId) ??
+    toOutcomeString(record.onboardingId) ??
+    toOutcomeString(record.instructorId);
+
+  return {
+    success: processed || (ignored && reason === "duplicate_event"),
+    reason,
+    sourceEventId,
+    entityId,
+  };
+};
+
+export const ingestIntegrationEvent = internalMutation({
+  args: {
+    provider: integrationProviderValidator,
+    route: integrationRouteValidator,
+    providerEventId: v.string(),
+    eventType: v.optional(v.string()),
+    signatureValid: v.boolean(),
+    payloadHash: v.string(),
+    payload: v.any(),
+    metadata: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("integrationEvents")
+      .withIndex("by_provider_eventId", (q) =>
+        q.eq("provider", args.provider).eq("providerEventId", args.providerEventId),
+      )
+      .unique();
+    if (existing) {
+      return {
+        duplicate: true,
+        queued: false,
+        integrationEventId: existing._id,
+      };
+    }
+
+    const now = Date.now();
+    const integrationEventId = await ctx.db.insert("integrationEvents", {
+      provider: args.provider,
+      route: args.route,
+      providerEventId: args.providerEventId,
+      signatureValid: args.signatureValid,
+      payloadHash: args.payloadHash,
+      payload: args.payload,
+      processingState: "pending",
+      createdAt: now,
+      updatedAt: now,
+      ...omitUndefined({
+        eventType: args.eventType,
+        metadata: args.metadata,
+      }),
+    });
+
+    await ctx.scheduler.runAfter(0, internal.webhooks.processIntegrationEvent, {
+      integrationEventId,
+    });
+
+    return {
+      duplicate: false,
+      queued: true,
+      integrationEventId,
+    };
+  },
+});
+
+export const processIntegrationEvent = internalMutation({
+  args: {
+    integrationEventId: v.id("integrationEvents"),
+  },
+  handler: async (ctx, args) => {
+    const integrationEvent = await ctx.db.get(args.integrationEventId);
+    if (!integrationEvent) {
+      return { ignored: true, reason: "integration_event_not_found" as const };
+    }
+    if (integrationEvent.processingState !== "pending") {
+      return {
+        ignored: true,
+        reason: "integration_event_already_processed" as const,
+        processingState: integrationEvent.processingState,
+      };
+    }
+
+    const metadata = toRecord(integrationEvent.metadata) ?? {};
+
+    try {
+      let outcome: unknown;
+      if (integrationEvent.provider === "rapyd" && integrationEvent.route === "beneficiary") {
+        outcome = await ctx.runMutation(internal.payments.processRapydBeneficiaryWebhookEvent, {
+          providerEventId: integrationEvent.providerEventId,
+          signatureValid: integrationEvent.signatureValid,
+          payloadHash: integrationEvent.payloadHash,
+          payload: integrationEvent.payload,
+          ...omitUndefined({
+            eventType: integrationEvent.eventType,
+            merchantReferenceId: toOutcomeString(metadata.merchantReferenceId),
+            beneficiaryId: toOutcomeString(metadata.beneficiaryId),
+            payoutMethodType: toOutcomeString(metadata.payoutMethodType),
+            statusRaw: toOutcomeString(metadata.statusRaw),
+          }),
+        });
+      } else if (integrationEvent.provider === "rapyd" && integrationEvent.route === "payout") {
+        outcome = await ctx.runMutation(internal.payouts.processRapydPayoutWebhookEvent, {
+          providerEventId: integrationEvent.providerEventId,
+          signatureValid: integrationEvent.signatureValid,
+          payloadHash: integrationEvent.payloadHash,
+          payload: integrationEvent.payload,
+          ...omitUndefined({
+            eventType: integrationEvent.eventType,
+            providerPayoutId: toOutcomeString(metadata.providerPayoutId),
+            payoutId: toOutcomeString(metadata.payoutId) as Id<"payouts"> | undefined,
+            statusRaw: toOutcomeString(metadata.statusRaw),
+          }),
+        });
+      } else if (integrationEvent.provider === "rapyd" && integrationEvent.route === "payment") {
+        outcome = await ctx.runMutation(internal.payments.processRapydWebhookEvent, {
+          providerEventId: integrationEvent.providerEventId,
+          signatureValid: integrationEvent.signatureValid,
+          payloadHash: integrationEvent.payloadHash,
+          payload: integrationEvent.payload,
+          ...omitUndefined({
+            eventType: integrationEvent.eventType,
+            providerPaymentId: toOutcomeString(metadata.providerPaymentId),
+            providerCheckoutId: toOutcomeString(metadata.providerCheckoutId),
+            merchantReferenceId: toOutcomeString(metadata.merchantReferenceId),
+            statusRaw: toOutcomeString(metadata.statusRaw),
+          }),
+        });
+      } else if (integrationEvent.provider === "didit" && integrationEvent.route === "kyc") {
+        outcome = await ctx.runMutation(internal.didit.processDiditWebhookEvent, {
+          providerEventId: integrationEvent.providerEventId,
+          signatureValid: integrationEvent.signatureValid,
+          payloadHash: integrationEvent.payloadHash,
+          payload: integrationEvent.payload,
+          ...omitUndefined({
+            sessionId: toOutcomeString(metadata.sessionId),
+            statusRaw: toOutcomeString(metadata.statusRaw),
+            vendorData: toOutcomeString(metadata.vendorData),
+            decision: metadata.decision,
+          }),
+        });
+      } else {
+        await ctx.db.patch(args.integrationEventId, {
+          processingState: "failed",
+          processingError: "unsupported_integration_route",
+          updatedAt: Date.now(),
+        });
+        return { ignored: true, reason: "unsupported_integration_route" as const };
+      }
+
+      const normalized = normalizeIntegrationProcessorOutcome(outcome);
+      await ctx.db.patch(args.integrationEventId, {
+        processingState: normalized.success ? "processed" : "failed",
+        processedAt: Date.now(),
+        updatedAt: Date.now(),
+        ...omitUndefined({
+          processingError: normalized.success ? undefined : normalized.reason,
+          sourceEventId: normalized.sourceEventId,
+          entityId: normalized.entityId,
+        }),
+      });
+
+      return {
+        ignored: false,
+        processed: normalized.success,
+        ...omitUndefined({
+          reason: normalized.reason,
+          sourceEventId: normalized.sourceEventId,
+          entityId: normalized.entityId,
+        }),
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "integration_event_processing_failed";
+      await ctx.db.patch(args.integrationEventId, {
+        processingState: "failed",
+        processingError: message,
+        updatedAt: Date.now(),
+      });
+      throw error;
+    }
+  },
+});
 
 export const rapydWebhook = httpAction(async (ctx, req) => {
   if (req.method !== "POST") {
@@ -434,48 +644,44 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
     }
   }
 
-  if (isBeneficiaryEvent || merchantReferenceIdFromPayload || providerBeneficiaryId) {
-    await ctx.runMutation(internal.payments.processRapydBeneficiaryWebhookEvent, {
-      providerEventId,
-      signatureValid,
-      payloadHash,
-      payload: canonicalPayload,
-      ...omitUndefined({
-        eventType,
-        merchantReferenceId: merchantReferenceIdFromPayload,
-        beneficiaryId: providerBeneficiaryId,
-        payoutMethodType,
-        statusRaw,
-      }),
-    });
-  } else if (isPayoutEvent || providerPayoutId) {
-    await ctx.runMutation(internal.payouts.processRapydPayoutWebhookEvent, {
-      providerEventId,
-      signatureValid,
-      payloadHash,
-      payload: canonicalPayload,
-      ...omitUndefined({
-        eventType,
-        providerPayoutId,
-        payoutId: payoutRefFromPayload as Id<"payouts"> | undefined,
-        statusRaw,
-      }),
-    });
-  } else {
-    await ctx.runMutation(internal.payments.processRapydWebhookEvent, {
-      providerEventId,
-      signatureValid,
-      payloadHash,
-      payload: canonicalPayload,
-      ...omitUndefined({
-        eventType,
-        providerPaymentId,
-        providerCheckoutId,
-        merchantReferenceId: paymentReferenceIdFromPayload,
-        statusRaw,
-      }),
-    });
-  }
+  const route: IntegrationRoute =
+    isBeneficiaryEvent || merchantReferenceIdFromPayload || providerBeneficiaryId
+      ? "beneficiary"
+      : isPayoutEvent || providerPayoutId
+        ? "payout"
+        : "payment";
+
+  await ctx.runMutation(internal.webhooks.ingestIntegrationEvent, {
+    provider: "rapyd",
+    route,
+    providerEventId,
+    signatureValid,
+    payloadHash,
+    payload: canonicalPayload,
+    ...omitUndefined({
+      eventType,
+      metadata:
+        route === "beneficiary"
+          ? omitUndefined({
+              merchantReferenceId: merchantReferenceIdFromPayload,
+              beneficiaryId: providerBeneficiaryId,
+              payoutMethodType,
+              statusRaw,
+            })
+          : route === "payout"
+            ? omitUndefined({
+                providerPayoutId,
+                payoutId: payoutRefFromPayload,
+                statusRaw,
+              })
+            : omitUndefined({
+                providerPaymentId,
+                providerCheckoutId,
+                merchantReferenceId: paymentReferenceIdFromPayload,
+                statusRaw,
+              }),
+    }),
+  });
 
   return new Response(JSON.stringify({ received: true, signatureValid, timestampValid }), {
     status: signatureValid ? 200 : 401,
@@ -624,12 +830,14 @@ export const diditWebhook = httpAction(async (ctx, req) => {
     }
   }
 
-  await ctx.runMutation(internal.didit.processDiditWebhookEvent, {
+  await ctx.runMutation(internal.webhooks.ingestIntegrationEvent, {
+    provider: "didit",
+    route: "kyc",
     providerEventId,
     signatureValid,
     payloadHash,
     payload: canonicalPayload,
-    ...omitUndefined({
+    metadata: omitUndefined({
       sessionId,
       statusRaw,
       vendorData,
