@@ -52,9 +52,25 @@ function resolveZoneId(value: string | undefined): string | undefined {
   return LEGACY_ZONE_TO_ID.get(cleaned.toLowerCase());
 }
 
+const MIGRATIONS_ACCESS_TOKEN_ENV = "MIGRATIONS_ACCESS_TOKEN";
+
+export function isValidMigrationsAccessToken(accessToken: string | undefined): boolean {
+  const expected = process.env[MIGRATIONS_ACCESS_TOKEN_ENV]?.trim();
+  return Boolean(expected) && accessToken?.trim() === expected;
+}
+
+function requireMigrationsAccessToken(accessToken: string | undefined) {
+  if (!isValidMigrationsAccessToken(accessToken)) {
+    throw new Error(
+      "Unauthorized migration operation. Set MIGRATIONS_ACCESS_TOKEN and pass accessToken.",
+    );
+  }
+}
+
 export const getZoneDataQualityReport = query({
   args: {
     sampleLimit: v.optional(v.number()),
+    accessToken: v.optional(v.string()),
   },
   returns: v.object({
     studiosTotal: v.number(),
@@ -83,6 +99,7 @@ export const getZoneDataQualityReport = query({
     ),
   }),
   handler: async (ctx, args) => {
+    requireMigrationsAccessToken(args.accessToken);
     const sampleLimit = Math.min(Math.max(args.sampleLimit ?? 20, 1), 100);
 
     const [studios, jobs] = await Promise.all([
@@ -368,6 +385,7 @@ export const backfillJobApplicationStudioIds = internalMutation({
 export const getJobApplicationStatsConsistencyReport = query({
   args: {
     sampleLimit: v.optional(v.number()),
+    accessToken: v.optional(v.string()),
   },
   returns: v.object({
     jobsTotal: v.number(),
@@ -397,6 +415,7 @@ export const getJobApplicationStatsConsistencyReport = query({
     ),
   }),
   handler: async (ctx, args) => {
+    requireMigrationsAccessToken(args.accessToken);
     const sampleLimit = Math.min(Math.max(args.sampleLimit ?? 20, 1), 200);
     const [jobs, stats, applications] = await Promise.all([
       ctx.db.query("jobs").collect(),
@@ -642,6 +661,7 @@ export const backfillDiditVerificationSnapshots = action({
     cursor: v.optional(v.string()),
     batchSize: v.optional(v.number()),
     onlyNonApproved: v.optional(v.boolean()),
+    accessToken: v.optional(v.string()),
   },
   returns: v.object({
     scanned: v.number(),
@@ -664,6 +684,7 @@ export const backfillDiditVerificationSnapshots = action({
     hasMore: boolean;
     continueCursor?: string;
   }> => {
+    requireMigrationsAccessToken(args.accessToken);
     const batchSize = Math.min(Math.max(args.batchSize ?? 50, 1), 100);
     const onlyNonApproved = args.onlyNonApproved ?? true;
     const diditApiKey = (process.env.DIDIT_API_KEY ?? "").trim();

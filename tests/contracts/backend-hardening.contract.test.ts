@@ -358,3 +358,36 @@ describe("backend hardening contracts", () => {
     });
   });
 });
+
+describe("migration operator access", () => {
+  it("accepts only the configured migration access token", () => {
+    const original = process.env.MIGRATIONS_ACCESS_TOKEN;
+    try {
+      process.env.MIGRATIONS_ACCESS_TOKEN = "secret-token";
+      expect(require("../../convex/migrations").isValidMigrationsAccessToken(undefined)).toBe(false);
+      expect(require("../../convex/migrations").isValidMigrationsAccessToken("wrong")).toBe(false);
+      expect(require("../../convex/migrations").isValidMigrationsAccessToken("secret-token")).toBe(
+        true,
+      );
+    } finally {
+      process.env.MIGRATIONS_ACCESS_TOKEN = original;
+    }
+  });
+
+  it("rejects unauthenticated migration reports", async () => {
+    const original = process.env.MIGRATIONS_ACCESS_TOKEN;
+    try {
+      process.env.MIGRATIONS_ACCESS_TOKEN = "secret-token";
+      await expect(
+        (require("../../convex/migrations").getZoneDataQualityReport as any)._handler(
+          {
+            db: new InMemoryConvexDb(),
+          },
+          { sampleLimit: 5, accessToken: undefined },
+        ),
+      ).rejects.toThrow("Unauthorized migration operation");
+    } finally {
+      process.env.MIGRATIONS_ACCESS_TOKEN = original;
+    }
+  });
+});
