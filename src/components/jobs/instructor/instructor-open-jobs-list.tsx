@@ -282,7 +282,15 @@ export function InstructorOpenJobsList({
                     >
                       {applyingJobId === job.jobId
                         ? t("jobsTab.actions.applying")
-                        : t("jobsTab.actions.apply")}
+                        : job.applicationStatus === "pending"
+                          ? t("jobsTab.actions.applied", { defaultValue: "Applied" })
+                          : job.applicationStatus === "accepted"
+                            ? t("jobsTab.actions.accepted", { defaultValue: "Accepted" })
+                            : job.applicationStatus === "rejected"
+                              ? t("jobsTab.actions.rejected", { defaultValue: "Rejected" })
+                              : job.applicationStatus === "withdrawn"
+                                ? t("jobsTab.actions.withdrawn", { defaultValue: "Withdrawn" })
+                                : t("jobsTab.actions.apply")}
                     </ThemedText>
                     {!job.applicationStatus && (
                       <AppSymbol name="arrow.right" size={16} tintColor={palette.onPrimary} />

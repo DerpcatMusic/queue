@@ -18,6 +18,7 @@ import { KitButton, KitChip } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 type FeedSectionHeaderProps = {
   title: string;
@@ -47,6 +48,7 @@ export function StudioFeed() {
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const signInRoute = "/sign-in" as const;
   const onboardingRoute = "/onboarding" as const;
+  const instructorJobsRoute = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
   const {
     createJobSheetRef,
     currentUser,
@@ -88,7 +90,11 @@ export function StudioFeed() {
     return <Redirect href={onboardingRoute} />;
   }
 
-  if (currentUser.role !== "instructor" && currentUser.role !== "studio") {
+  if (currentUser.role === "instructor") {
+    return <Redirect href={instructorJobsRoute} />;
+  }
+
+  if (currentUser.role !== "studio") {
     return <Redirect href={onboardingRoute} />;
   }
 
@@ -132,9 +138,7 @@ export function StudioFeed() {
           ) : null}
         </View>
 
-        {currentUser.role === "studio" ? (
-          <>
-            {studioNotificationSettings !== undefined &&
+        {studioNotificationSettings !== undefined &&
             !studioNotificationSettings?.hasExpoPushToken ? (
               <View style={[styles.section, { borderBottomColor: palette.border }]}>
                 <FeedSectionHeader
@@ -238,10 +242,8 @@ export function StudioFeed() {
                 </ScrollView>
               </View>
               {studioJobs === undefined ? (
-                <View style={[styles.emptyStateWrap, { minHeight: 300 }]}>
-                  <ThemedText style={{ color: palette.textMuted }}>
-                    {t("jobsTab.loading")}
-                  </ThemedText>
+                <View style={{ minHeight: 320 }}>
+                  <LoadingScreen label={t("jobsTab.loading")} />
                 </View>
               ) : studioJobs.length === 0 ? (
                 <View style={{ flex: 1, minHeight: 400, justifyContent: "center" }}>
@@ -273,8 +275,6 @@ export function StudioFeed() {
                 />
               )}
             </View>
-          </>
-        ) : null}
       </TabScreenScrollView>
 
       {isFocused ? (

@@ -3,7 +3,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
@@ -134,7 +134,7 @@ export function CreateJobSheet({
             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
               {t("jobsTab.form.sport", "Select Sport")}
             </ThemedText>
-            <BottomSheetScrollView
+            <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
@@ -153,7 +153,7 @@ export function CreateJobSheet({
                   />
                 );
               })}
-            </BottomSheetScrollView>
+            </ScrollView>
           </View>
 
           {/* Date & Time Section */}
