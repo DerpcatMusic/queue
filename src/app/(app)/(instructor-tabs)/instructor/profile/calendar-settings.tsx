@@ -7,6 +7,7 @@ import { Platform, StyleSheet, View } from "react-native";
 
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
+import { ThemedText } from "@/components/themed-text";
 import {
   KitButton,
   KitList,
@@ -99,6 +100,7 @@ export default function CalendarSettingsScreen() {
   const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
   const [isDisconnectingGoogle, setIsDisconnectingGoogle] = useState(false);
   const [seeded, setSeeded] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const googleClientId = resolveGoogleClientId();
   const redirectUri =
@@ -143,6 +145,7 @@ export default function CalendarSettingsScreen() {
 
   const onSave = async () => {
     setIsSaving(true);
+    setErrorMessage(null);
     try {
       let nextSyncEnabled = syncEnabled;
 
@@ -178,8 +181,10 @@ export default function CalendarSettingsScreen() {
           : {}),
       });
       router.back();
-    } catch {
-      // silently handled
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : t("profile.settings.errors.saveFailed"),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -296,6 +301,13 @@ export default function CalendarSettingsScreen() {
           ) : null}
         </KitList>
       </View>
+      {errorMessage ? (
+        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+          <ThemedText selectable style={{ color: palette.danger }}>
+            {errorMessage}
+          </ThemedText>
+        </View>
+      ) : null}
 
       <View style={{ paddingHorizontal: 16, paddingTop: BrandSpacing.md, gap: 10 }}>
         {provider === "google" ? (

@@ -7,7 +7,7 @@ import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Switch, View } from "react-native";
+import { Alert, StyleSheet, Switch, View } from "react-native";
 import type Animated from "react-native-reanimated";
 import { useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
 
@@ -186,10 +186,6 @@ export default function InstructorProfileScreen() {
     setIsEditing(true);
   }, []);
 
-  const handleDismissEdit = useCallback(() => {
-    setIsEditing(false);
-  }, []);
-
   if (!hasActivated || (currentUser?.role === "instructor" && instructorSettings === undefined)) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
@@ -213,6 +209,13 @@ export default function InstructorProfileScreen() {
   const identityVerified = diditVerification?.isVerified ?? false;
   const bankConnected = payoutSummary?.hasVerifiedDestination ?? false;
   const profileStatusLabel = profilePhotoUploadLabel ?? feedbackLabel;
+  const hasUnsavedProfileChanges = Boolean(
+    instructorSettings &&
+      (nameDraft !== instructorSettings.displayName ||
+        bioDraft !== (instructorSettings.bio ?? "") ||
+        !areStringArraysEqual(sportsDraft, instructorSettings.sports) ||
+        !areSocialLinksEqual(socialLinksDraft, toSocialLinksDraft(instructorSettings.socialLinks))),
+  );
   const sportsSummary = getSportsSummary(instructorSettings?.sports ?? [], t);
   const locationSummary = instructorSettings?.address
     ? instructorSettings.address.length > 35
@@ -243,6 +246,27 @@ export default function InstructorProfileScreen() {
       [key]: value,
     }));
   };
+
+  const handleDismissEdit = useCallback(() => {
+    if (!hasUnsavedProfileChanges) {
+      setIsEditing(false);
+      return;
+    }
+    Alert.alert(
+      t("profile.settings.discardChangesTitle", { defaultValue: "Discard changes?" }),
+      t("profile.settings.discardChangesBody", {
+        defaultValue: "Your profile edits haven't been saved.",
+      }),
+      [
+        { text: t("common.cancel", { defaultValue: "Cancel" }), style: "cancel" },
+        {
+          text: t("profile.settings.discardChangesAction", { defaultValue: "Discard" }),
+          style: "destructive",
+          onPress: () => setIsEditing(false),
+        },
+      ],
+    );
+  }, [hasUnsavedProfileChanges, t]);
 
   const uploadProfilePhoto = async () => {
     setFeedbackLabel(null);

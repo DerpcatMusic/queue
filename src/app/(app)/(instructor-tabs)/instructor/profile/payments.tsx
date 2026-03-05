@@ -4,7 +4,7 @@ import { Redirect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, View } from "react-native";
+import { Alert, Platform, View } from "react-native";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
@@ -161,6 +161,25 @@ export default function ProfilePaymentsScreen() {
     } finally {
       setWithdrawBusy(false);
     }
+  };
+
+  const confirmWithdrawToBank = () => {
+    Alert.alert(
+      t("profile.payments.withdrawConfirmTitle", { defaultValue: "Withdraw to bank?" }),
+      t("profile.payments.withdrawConfirmBody", {
+        defaultValue: "This will start a payout for your available balance.",
+      }),
+      [
+        { text: t("common.cancel", { defaultValue: "Cancel" }), style: "cancel" },
+        {
+          text: t("profile.payments.withdrawConfirmAction", { defaultValue: "Withdraw" }),
+          style: "default",
+          onPress: () => {
+            void withdrawToBank();
+          },
+        },
+      ],
+    );
   };
 
   const startHostedBankOnboarding = async () => {
@@ -420,7 +439,7 @@ export default function ProfilePaymentsScreen() {
                 overflow: "hidden",
               }}
               onPress={() => {
-                void withdrawToBank();
+                confirmWithdrawToBank();
               }}
               disabled={
                 withdrawBusy ||

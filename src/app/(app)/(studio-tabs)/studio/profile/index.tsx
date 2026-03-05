@@ -7,7 +7,7 @@ import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Switch, View } from "react-native";
+import { Alert, StyleSheet, Switch, View } from "react-native";
 import type Animated from "react-native-reanimated";
 import { useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
 
@@ -176,10 +176,6 @@ export default function StudioProfileScreen() {
     setIsEditing(true);
   }, []);
 
-  const handleDismissEdit = useCallback(() => {
-    setIsEditing(false);
-  }, []);
-
   if (!hasActivated || (currentUser?.role === "studio" && studioSettings === undefined)) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
@@ -200,6 +196,14 @@ export default function StudioProfileScreen() {
     : null;
 
   const profileStatusLabel = profilePhotoUploadLabel ?? feedbackLabel;
+  const hasUnsavedProfileChanges = Boolean(
+    studioSettings &&
+      (nameDraft !== studioSettings.studioName ||
+        bioDraft !== (studioSettings.bio ?? "") ||
+        contactPhoneDraft !== (studioSettings.contactPhone ?? "") ||
+        !areStringArraysEqual(sportsDraft, studioSettings.sports) ||
+        !areSocialLinksEqual(socialLinksDraft, toSocialLinksDraft(studioSettings.socialLinks))),
+  );
   const sportsSummary = getSportsSummary(studioSettings?.sports ?? [], t);
   const socialCount = Object.keys(studioSettings?.socialLinks ?? {}).length;
   const chevron = <IconSymbol name="chevron.right" size={14} color={palette.textMicro} />;
@@ -218,6 +222,27 @@ export default function StudioProfileScreen() {
       [key]: value,
     }));
   };
+
+  const handleDismissEdit = useCallback(() => {
+    if (!hasUnsavedProfileChanges) {
+      setIsEditing(false);
+      return;
+    }
+    Alert.alert(
+      t("profile.settings.discardChangesTitle", { defaultValue: "Discard changes?" }),
+      t("profile.settings.discardChangesBody", {
+        defaultValue: "Your profile edits haven't been saved.",
+      }),
+      [
+        { text: t("common.cancel", { defaultValue: "Cancel" }), style: "cancel" },
+        {
+          text: t("profile.settings.discardChangesAction", { defaultValue: "Discard" }),
+          style: "destructive",
+          onPress: () => setIsEditing(false),
+        },
+      ],
+    );
+  }, [hasUnsavedProfileChanges, t]);
 
   const uploadProfilePhoto = async () => {
     setFeedbackLabel(null);
