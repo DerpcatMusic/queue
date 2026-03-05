@@ -48,6 +48,71 @@ const toInvoiceSummary = (invoice: InvoiceInput) =>
       }
     : null;
 
+function getUniqueIdsInOrder<T extends string>(ids: ReadonlyArray<T>) {
+  return [...new Set(ids)];
+}
+
+async function loadPaymentListRelations(
+  ctx: QueryCtx,
+  payments: ReadonlyArray<Doc<"payments">>,
+) {
+  const jobIds = getUniqueIdsInOrder(payments.map((payment) => payment.jobId));
+  const [jobs, payouts, invoices] = await Promise.all([
+    Promise.all(jobIds.map((jobId) => ctx.db.get("jobs", jobId))),
+    Promise.all(
+      payments.map((payment) =>
+        ctx.db
+          .query("payouts")
+          .withIndex("by_payment", (q) => q.eq("paymentId", payment._id))
+          .order("desc")
+          .first(),
+      ),
+    ),
+    Promise.all(
+      payments.map((payment) =>
+        ctx.db
+          .query("invoices")
+          .withIndex("by_payment", (q) => q.eq("paymentId", payment._id))
+          .order("desc")
+          .first(),
+      ),
+    ),
+  ]);
+
+  const jobById = new Map<string, Doc<"jobs">>();
+  for (let index = 0; index < jobIds.length; index += 1) {
+    const jobId = jobIds[index];
+    const job = jobs[index];
+    if (job) {
+      jobById.set(String(jobId), job);
+    }
+  }
+
+  const latestPayoutByPaymentId = new Map<string, Doc<"payouts">>();
+  for (let index = 0; index < payments.length; index += 1) {
+    const payment = payments[index];
+    const payout = payouts[index];
+    if (payment && payout) {
+      latestPayoutByPaymentId.set(String(payment._id), payout);
+    }
+  }
+
+  const latestInvoiceByPaymentId = new Map<string, Exclude<InvoiceInput, null>>();
+  for (let index = 0; index < payments.length; index += 1) {
+    const payment = payments[index];
+    const invoice = invoices[index];
+    if (payment && invoice) {
+      latestInvoiceByPaymentId.set(String(payment._id), invoice);
+    }
+  }
+
+  return {
+    jobById,
+    latestPayoutByPaymentId,
+    latestInvoiceByPaymentId,
+  };
+}
+
 export const isInstructorKycApproved = async (
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
@@ -197,44 +262,35 @@ export async function listMyPaymentsRead(
     }[];
   }
 
-  return await Promise.all(
-    rows.map(async (payment) => {
-      const [payout, job, invoice] = await Promise.all([
-        ctx.db
-          .query("payouts")
-          .withIndex("by_payment", (q) => q.eq("paymentId", payment._id))
-          .order("desc")
-          .first(),
-        ctx.db.get(payment.jobId),
-        ctx.db
-          .query("invoices")
-          .withIndex("by_payment", (q) => q.eq("paymentId", payment._id))
-          .order("desc")
-          .first(),
-      ]);
+  const { jobById, latestPayoutByPaymentId, latestInvoiceByPaymentId } =
+    await loadPaymentListRelations(ctx, rows);
 
-      return {
-        payment,
-        payout: payout
-          ? {
-              status: payout.status,
-              ...omitUndefined({
-                settledAt: payout.terminalAt,
-              }),
-            }
-          : null,
-        job: job
-          ? {
-              _id: job._id,
-              sport: job.sport,
-              startTime: job.startTime,
-              status: job.status,
-            }
-          : null,
-        invoice: toInvoiceSummary(invoice),
-      };
-    }),
-  );
+  return rows.map((payment) => {
+    const payout = latestPayoutByPaymentId.get(String(payment._id));
+    const job = jobById.get(String(payment.jobId));
+    const invoice = latestInvoiceByPaymentId.get(String(payment._id)) ?? null;
+
+    return {
+      payment,
+      payout: payout
+        ? {
+            status: payout.status,
+            ...omitUndefined({
+              settledAt: payout.terminalAt,
+            }),
+          }
+        : null,
+      job: job
+        ? {
+            _id: job._id,
+            sport: job.sport,
+            startTime: job.startTime,
+            status: job.status,
+          }
+        : null,
+      invoice: toInvoiceSummary(invoice),
+    };
+  });
 }
 
 export async function getMyPaymentForJobRead(

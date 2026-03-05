@@ -4,12 +4,21 @@ import type { Doc } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { requireUserRole } from "./lib/auth";
 import { isKnownZoneId } from "./lib/domainValidation";
-import { hasCoverageKey, loadInstructorEligibility } from "./lib/instructorEligibility";
+import {
+  hasCoverageKey,
+  loadInstructorEligibility,
+  type InstructorEligibility,
+} from "./lib/instructorEligibility";
 import { trimOptionalString } from "./lib/validation";
 
 const HOME_MATCH_COUNT_CAP = 99;
 const HOME_UPCOMING_SESSIONS_LIMIT = 3;
 const HOME_HISTORY_JOB_LIMIT = 1000;
+
+type OpenMatchCandidate = Pick<
+  Doc<"jobs">,
+  "_id" | "sport" | "zone" | "startTime" | "applicationDeadline"
+>;
 
 function toAgorot(amount: number) {
   if (!Number.isFinite(amount)) {
@@ -25,31 +34,68 @@ function getPerformanceWindowStart(now: number) {
   return d.getTime();
 }
 
+export function countEligibleOpenJobMatches(args: {
+  eligibility: InstructorEligibility;
+  jobsByCoveragePair: ReadonlyArray<ReadonlyArray<OpenMatchCandidate>>;
+  now: number;
+  cap?: number;
+}) {
+  const matchingJobIds = new Set<string>();
+  const cap = args.cap ?? HOME_MATCH_COUNT_CAP;
+
+  for (const jobsForPair of args.jobsByCoveragePair) {
+    for (const job of jobsForPair) {
+      const normalizedJobZone = trimOptionalString(job.zone);
+      if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
+        continue;
+      }
+      if (!hasCoverageKey(args.eligibility, job.sport, normalizedJobZone)) {
+        continue;
+      }
+      if (job.startTime <= args.now) {
+        continue;
+      }
+      if (job.applicationDeadline !== undefined && job.applicationDeadline < args.now) {
+        continue;
+      }
+
+      matchingJobIds.add(String(job._id));
+      if (matchingJobIds.size >= cap) {
+        return matchingJobIds.size;
+      }
+    }
+  }
+
+  return matchingJobIds.size;
+}
+
 export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
   const user = await requireUserRole(ctx, ["instructor"]);
-  const [instructorProfile, eligibility] = await Promise.all([
-    ctx.db
-      .query("instructorProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique(),
-    ctx.db
-      .query("instructorProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique()
-      .then(async (profile) => {
-        if (!profile) {
-          throw new ConvexError("Instructor profile not found");
-        }
-        return await loadInstructorEligibility(ctx, profile._id);
-      }),
-  ]);
-
+  const instructorProfile = await ctx.db
+    .query("instructorProfiles")
+    .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+    .unique();
   if (!instructorProfile) {
     throw new ConvexError("Instructor profile not found");
   }
 
   const now = Date.now();
   const performanceWindowStart = getPerformanceWindowStart(now);
+  const [eligibility, applications, assignedJobs] = await Promise.all([
+    loadInstructorEligibility(ctx, instructorProfile._id),
+    ctx.db
+      .query("jobApplications")
+      .withIndex("by_instructor_appliedAt", (q) => q.eq("instructorId", instructorProfile._id))
+      .order("desc")
+      .take(250),
+    ctx.db
+      .query("jobs")
+      .withIndex("by_filledByInstructor_startTime", (q) =>
+        q.eq("filledByInstructorId", instructorProfile._id),
+      )
+      .order("desc")
+      .take(HOME_HISTORY_JOB_LIMIT),
+  ]);
   let openMatches = 0;
 
   if (eligibility.coverageCount > 0) {
@@ -70,41 +116,12 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
       ),
     );
 
-    const matchingJobIds = new Set<string>();
-    for (const jobsForPair of openJobsByCoveragePair) {
-      for (const job of jobsForPair) {
-        const normalizedJobZone = trimOptionalString(job.zone);
-        if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
-          continue;
-        }
-        if (!hasCoverageKey(eligibility, job.sport, normalizedJobZone)) {
-          continue;
-        }
-        if (job.startTime <= now) {
-          continue;
-        }
-        if (job.applicationDeadline !== undefined && job.applicationDeadline < now) {
-          continue;
-        }
-
-        matchingJobIds.add(String(job._id));
-        if (matchingJobIds.size >= HOME_MATCH_COUNT_CAP) {
-          break;
-        }
-      }
-      if (matchingJobIds.size >= HOME_MATCH_COUNT_CAP) {
-        break;
-      }
-    }
-
-    openMatches = matchingJobIds.size;
+    openMatches = countEligibleOpenJobMatches({
+      eligibility,
+      jobsByCoveragePair: openJobsByCoveragePair,
+      now,
+    });
   }
-
-  const applications = await ctx.db
-    .query("jobApplications")
-    .withIndex("by_instructor_appliedAt", (q) => q.eq("instructorId", instructorProfile._id))
-    .order("desc")
-    .take(250);
 
   const pendingApplications = applications.filter(
     (application) => application.status === "pending",
@@ -152,14 +169,6 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
       upcomingStudioById.set(String(studioId), studio);
     }
   }
-
-  const assignedJobs = await ctx.db
-    .query("jobs")
-    .withIndex("by_filledByInstructor_startTime", (q) =>
-      q.eq("filledByInstructorId", instructorProfile._id),
-    )
-    .order("desc")
-    .take(HOME_HISTORY_JOB_LIMIT);
 
   const countableJobs = assignedJobs.filter(
     (job) => job.status !== "cancelled" && (job.status === "completed" || job.endTime <= now),
