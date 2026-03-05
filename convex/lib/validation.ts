@@ -69,3 +69,35 @@ export function assertPositiveInteger(value: number, fieldName: string): void {
     throw new ConvexError(`${fieldName} must be a positive integer`);
   }
 }
+
+export const MIN_JOB_APPLICATION_LEAD_TIME_MS = 5 * 60 * 1000;
+
+export function assertValidJobApplicationDeadline(args: {
+  now: number;
+  startTime: number;
+  applicationDeadline: number | undefined;
+}) {
+  const { now, startTime, applicationDeadline } = args;
+  if (applicationDeadline === undefined) {
+    return;
+  }
+  if (!Number.isFinite(applicationDeadline)) {
+    throw new ConvexError("applicationDeadline must be a finite number");
+  }
+  if (applicationDeadline <= now) {
+    throw new ConvexError("applicationDeadline must be in the future");
+  }
+  if (applicationDeadline > startTime) {
+    throw new ConvexError("applicationDeadline must be before startTime");
+  }
+  if (applicationDeadline - now < MIN_JOB_APPLICATION_LEAD_TIME_MS) {
+    throw new ConvexError(
+      "applicationDeadline must be at least 5 minutes in the future",
+    );
+  }
+  if (startTime - applicationDeadline < MIN_JOB_APPLICATION_LEAD_TIME_MS) {
+    throw new ConvexError(
+      "applicationDeadline must be at least 5 minutes before startTime",
+    );
+  }
+}

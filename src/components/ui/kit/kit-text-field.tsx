@@ -1,8 +1,8 @@
 import { Text, TextInput, View } from "react-native";
 
 import { BrandRadius } from "@/constants/brand";
-import { useKitTheme } from "./use-kit-theme";
 import type { KitTextFieldProps } from "./types";
+import { useKitTheme } from "./use-kit-theme";
 
 export function KitTextField({
   label,
@@ -28,6 +28,7 @@ export function KitTextField({
             color: foreground.secondary,
             includeFontPadding: false,
           }}
+          selectable
         >
           {label}
         </Text>
@@ -66,9 +67,13 @@ export function KitTextField({
         {trailing ? <View>{trailing}</View> : null}
       </View>
       {hasError ? (
-        <Text style={{ fontSize: 12, lineHeight: 16, color: foreground.danger }}>{errorText}</Text>
+        <Text style={{ fontSize: 12, lineHeight: 16, color: foreground.danger }} selectable>
+          {errorText}
+        </Text>
       ) : helperText ? (
-        <Text style={{ fontSize: 12, lineHeight: 16, color: foreground.muted }}>{helperText}</Text>
+        <Text style={{ fontSize: 12, lineHeight: 16, color: foreground.muted }} selectable>
+          {helperText}
+        </Text>
       ) : null}
     </View>
   );

@@ -1,10 +1,11 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useIsFocused } from "@react-navigation/native";
 import { useMutation, useQuery } from "convex/react";
+import type { Href } from "expo-router";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Switch, View } from "react-native";
 import type Animated from "react-native-reanimated";
@@ -32,6 +33,7 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
 import { useProfileImageUpload } from "@/hooks/use-profile-image-upload";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -39,9 +41,32 @@ const ROLE_TRANSLATION_KEYS = {
   studio: "profile.roles.studio",
   admin: "profile.roles.admin",
 } as const;
+const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
+const STUDIO_PAYMENTS_ROUTE = `${STUDIO_PROFILE_ROUTE}/payments` as const;
 
 function toSocialLinksDraft(value: ProfileSocialLinks | undefined) {
   return { ...(value ?? {}) };
+}
+
+function areStringArraysEqual(a: string[], b: string[]) {
+  if (a.length !== b.length) return false;
+  for (let index = 0; index < a.length; index += 1) {
+    if (a[index] !== b[index]) return false;
+  }
+  return true;
+}
+
+function areSocialLinksEqual(a: ProfileSocialLinks, b: ProfileSocialLinks) {
+  const keys = new Set<string>([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if (
+      (a as Record<string, string | undefined>)[key] !==
+      (b as Record<string, string | undefined>)[key]
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function getSportsSummary(sports: string[], t: TFunction) {
@@ -108,23 +133,52 @@ export default function StudioProfileScreen() {
       setIsEditing(true);
     }
   }, [edit]);
+  const emptyArgs = useMemo(() => ({}), []);
+  const shouldLoadSettings = currentUser?.role === "studio" && hasActivated;
 
   const studioSettings = useQuery(
     api.users.getMyStudioSettings,
-    currentUser?.role === "studio" && hasActivated ? {} : "skip",
+    shouldLoadSettings ? emptyArgs : "skip",
   );
 
   useEffect(() => {
     if (!studioSettings) {
       return;
     }
-    setNameDraft(studioSettings.studioName);
-    setBioDraft(studioSettings.bio ?? "");
-    setContactPhoneDraft(studioSettings.contactPhone ?? "");
-    setSportsDraft(studioSettings.sports);
-    setSocialLinksDraft(toSocialLinksDraft(studioSettings.socialLinks));
-    setProfilePhotoUrl(studioSettings.profileImageUrl ?? currentUser?.image);
-  }, [currentUser?.image, studioSettings]);
+    if (isEditing) {
+      return;
+    }
+    const nextSocialLinks = toSocialLinksDraft(studioSettings.socialLinks);
+    const nextProfilePhotoUrl = studioSettings.profileImageUrl ?? currentUser?.image;
+    setNameDraft((current) =>
+      current === studioSettings.studioName ? current : studioSettings.studioName,
+    );
+    setBioDraft((current) =>
+      current === (studioSettings.bio ?? "") ? current : (studioSettings.bio ?? ""),
+    );
+    setContactPhoneDraft((current) =>
+      current === (studioSettings.contactPhone ?? "")
+        ? current
+        : (studioSettings.contactPhone ?? ""),
+    );
+    setSportsDraft((current) =>
+      areStringArraysEqual(current, studioSettings.sports) ? current : studioSettings.sports,
+    );
+    setSocialLinksDraft((current) =>
+      areSocialLinksEqual(current, nextSocialLinks) ? current : nextSocialLinks,
+    );
+    setProfilePhotoUrl((current) =>
+      current === nextProfilePhotoUrl ? current : nextProfilePhotoUrl,
+    );
+  }, [currentUser?.image, isEditing, studioSettings]);
+
+  const handleRequestEdit = useCallback(() => {
+    setIsEditing(true);
+  }, []);
+
+  const handleDismissEdit = useCallback(() => {
+    setIsEditing(false);
+  }, []);
 
   if (!hasActivated || (currentUser?.role === "studio" && studioSettings === undefined)) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
@@ -310,7 +364,7 @@ export default function StudioProfileScreen() {
         <ProfileCardGroup palette={palette}>
           <ProfileSettingRow
             title="Payments & payouts"
-            onPress={() => router.push("/studio/profile/payments")}
+            onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
             palette={palette}
             isLast
             accessory={chevron}
@@ -345,8 +399,8 @@ export default function StudioProfileScreen() {
         palette={palette}
         scrollY={scrollY}
         isEditing={isEditing}
-        onRequestEdit={() => setIsEditing(true)}
-        onDismissEdit={() => setIsEditing(false)}
+        onRequestEdit={handleRequestEdit}
+        onDismissEdit={handleDismissEdit}
         onSave={() => {
           void saveProfile();
         }}

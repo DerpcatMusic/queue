@@ -22,12 +22,11 @@ import {
   type Theme as NavigationTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import Constants from "expo-constants";
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Animated, AppState, LogBox, Platform, StyleSheet, View } from "react-native";
+import { Animated, LogBox, Platform, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -38,21 +37,12 @@ import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
 import { UserProvider } from "@/contexts/user-context";
 import { useBrand } from "@/hooks/use-brand";
 import { ThemePreferenceProvider, useThemePreference } from "@/hooks/use-theme-preference";
-import i18n, { bootstrapLocalization } from "@/i18n";
+import i18n from "@/i18n";
 import { getConvexClient, isConvexUrlConfigured } from "@/lib/convex";
-import { recordPerfMetric } from "@/lib/perf-telemetry";
-
-type ExpoNavigationBarModule = typeof import("expo-navigation-bar");
-
-const NavigationBarModule: ExpoNavigationBarModule | null = (() => {
-  try {
-    // Resolve once at startup; if native module is missing we gracefully skip nav-bar theming.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("expo-navigation-bar") as ExpoNavigationBarModule;
-  } catch {
-    return null;
-  }
-})();
+import { useAndroidNavigationBarTheme } from "@/modules/app-shell/use-android-navigation-bar-theme";
+import { useLocalizationBootstrapPrompt } from "@/modules/app-shell/use-localization-bootstrap-prompt";
+import { useStartupNotificationsSetup } from "@/modules/app-shell/use-startup-notifications-setup";
+import { useStartupPerfMetrics } from "@/modules/app-shell/use-startup-perf-metrics";
 
 const IGNORED_LOG_MESSAGES = [
   "ProgressBarAndroid has been extracted from react-native core",
@@ -75,27 +65,9 @@ configureReanimatedLogger({
   strict: false,
 });
 
-type PerformanceWithRnStartupTiming = Performance & {
-  rnStartupTiming?: {
-    startTime?: number | undefined;
-    executeJavaScriptBundleEntryPointStart?: number | undefined;
-    endTime?: number | undefined;
-  };
-};
-
 export const unstable_settings = {
   anchor: "(app)",
 };
-
-function waitForInteractions() {
-  return new Promise<void>((resolve) => {
-    if (typeof globalThis.requestIdleCallback === "function") {
-      globalThis.requestIdleCallback(() => resolve(), { timeout: 1200 });
-      return;
-    }
-    setTimeout(resolve, 0);
-  });
-}
 
 export default function RootLayout() {
   return (
@@ -106,14 +78,6 @@ export default function RootLayout() {
         </SystemUiProvider>
       </ThemePreferenceProvider>
     </SafeAreaProvider>
-  );
-}
-
-function isActivityUnavailableError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  return (
-    error.message.includes("current activity is no longer available") ||
-    error.message.includes("current activity is not available")
   );
 }
 
@@ -155,37 +119,7 @@ function RootLayoutContent() {
     return Platform.OS === "android" || Platform.OS === "ios" ? secureStorage : null;
   }, []);
 
-  useEffect(() => {
-    if (Platform.OS === "web" || Constants.appOwnership === "expo") {
-      return;
-    }
-
-    let cancelled = false;
-    const setupNotificationsAfterInteractions = async () => {
-      await waitForInteractions();
-      if (cancelled) return;
-      try {
-        const Notifications = await import("expo-notifications");
-        if (cancelled) return;
-
-        Notifications.setNotificationHandler({
-          handleNotification: async () => ({
-            shouldShowBanner: true,
-            shouldShowList: true,
-            shouldPlaySound: true,
-            shouldSetBadge: true,
-          }),
-        });
-      } catch {
-        // Notifications are optional in environments where module/runtime support is unavailable.
-      }
-    };
-
-    void setupNotificationsAfterInteractions();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  useStartupNotificationsSetup();
 
   useEffect(() => {
     if (previousThemeKey === currentThemeKey) {
@@ -209,34 +143,7 @@ function RootLayoutContent() {
     transitionOpacity,
   ]);
 
-  useEffect(() => {
-    if (Platform.OS !== "android" || !NavigationBarModule) {
-      return;
-    }
-
-    let cancelled = false;
-    const buttonStyle = resolvedScheme === "dark" ? "light" : "dark";
-
-    const applyAndroidNavigationBarTheme = async () => {
-      if (cancelled || AppState.currentState !== "active") {
-        return;
-      }
-
-      try {
-        await NavigationBarModule.setButtonStyleAsync(buttonStyle);
-      } catch (error) {
-        if (isActivityUnavailableError(error)) {
-          return;
-        }
-        // Ignore unsupported configuration on devices/OS modes where nav styling is limited.
-      }
-    };
-
-    void applyAndroidNavigationBarTheme();
-    return () => {
-      cancelled = true;
-    };
-  }, [resolvedScheme]);
+  useAndroidNavigationBarTheme(resolvedScheme);
 
   const navigationTheme = useMemo<NavigationTheme>(() => {
     const base = resolvedScheme === "dark" ? DarkTheme : DefaultTheme;
@@ -266,57 +173,8 @@ function RootLayoutContent() {
     stylePreference,
   ]);
 
-  useEffect(() => {
-    const startupTiming = (performance as PerformanceWithRnStartupTiming).rnStartupTiming;
-    if (!startupTiming) return;
-
-    if (typeof startupTiming.endTime === "number" && typeof startupTiming.startTime === "number") {
-      recordPerfMetric(
-        "app.native_startup_runtime",
-        startupTiming.endTime - startupTiming.startTime,
-      );
-    }
-    if (
-      typeof startupTiming.endTime === "number" &&
-      typeof startupTiming.executeJavaScriptBundleEntryPointStart === "number"
-    ) {
-      recordPerfMetric(
-        "app.native_startup_js_bundle",
-        startupTiming.endTime - startupTiming.executeJavaScriptBundleEntryPointStart,
-      );
-    }
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      try {
-        const { directionChanged } = await bootstrapLocalization();
-        if (cancelled || !directionChanged || Platform.OS === "web") {
-          return;
-        }
-        await waitForInteractions();
-        if (cancelled) return;
-        // Avoid forced runtime reload at startup; ask for manual restart instead.
-        try {
-          Alert.alert(
-            i18n.t("language.restartRequiredTitle"),
-            i18n.t("language.restartRequiredMessage"),
-          );
-        } catch {
-          // Ignore alert failures in background/teardown conditions.
-        }
-      } catch {
-        // Keep boot resilient if localization bootstrap fails.
-      }
-    };
-
-    void run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  useStartupPerfMetrics();
+  useLocalizationBootstrapPrompt();
 
   if (!isConvexUrlConfigured || !convex) {
     return (

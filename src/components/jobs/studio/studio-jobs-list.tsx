@@ -59,6 +59,26 @@ type StudioJobsListProps = {
   t: TFunction;
 };
 
+const PAYMENT_STATUS_KEY: Record<PaymentStatus, string> = {
+  created: "jobsTab.checkout.paymentStatus.created",
+  pending: "jobsTab.checkout.paymentStatus.pending",
+  authorized: "jobsTab.checkout.paymentStatus.authorized",
+  captured: "jobsTab.checkout.paymentStatus.captured",
+  failed: "jobsTab.checkout.paymentStatus.failed",
+  cancelled: "jobsTab.checkout.paymentStatus.cancelled",
+  refunded: "jobsTab.checkout.paymentStatus.refunded",
+};
+
+const PAYOUT_STATUS_KEY: Record<PayoutStatus, string> = {
+  queued: "jobsTab.checkout.payoutStatus.queued",
+  processing: "jobsTab.checkout.payoutStatus.processing",
+  pending_provider: "jobsTab.checkout.payoutStatus.pendingProvider",
+  paid: "jobsTab.checkout.payoutStatus.paid",
+  failed: "jobsTab.checkout.payoutStatus.failed",
+  cancelled: "jobsTab.checkout.payoutStatus.cancelled",
+  needs_attention: "jobsTab.checkout.payoutStatus.needsAttention",
+};
+
 function JobStatusBadge({
   status,
   palette,
@@ -266,7 +286,7 @@ export function StudioJobsList({
                         type="defaultSemiBold"
                         style={{ fontSize: 13, letterSpacing: 0.2, color: palette.textMuted }}
                       >
-                        Payment
+                        {t("jobsTab.checkout.payment")}
                       </ThemedText>
                       <View
                         style={{
@@ -310,13 +330,21 @@ export function StudioJobsList({
                                     : palette.primary,
                           }}
                         >
-                          {job.payment ? getPaymentStatusLabel(job.payment.status) : "Not started"}
+                          {job.payment
+                            ? t(PAYMENT_STATUS_KEY[job.payment.status], {
+                                defaultValue: getPaymentStatusLabel(job.payment.status),
+                              })
+                            : t("jobsTab.checkout.notStarted")}
                         </ThemedText>
                       </View>
                     </View>
                     {job.payment?.payoutStatus ? (
                       <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                        {`Payout: ${getPayoutStatusLabel(job.payment.payoutStatus)}`}
+                        {t("jobsTab.checkout.payout", {
+                          status: t(PAYOUT_STATUS_KEY[job.payment.payoutStatus], {
+                            defaultValue: getPayoutStatusLabel(job.payment.payoutStatus),
+                          }),
+                        })}
                       </ThemedText>
                     ) : null}
                     {!(
@@ -350,10 +378,10 @@ export function StudioJobsList({
                           }}
                         >
                           {payingJobId === job.jobId
-                            ? "Starting checkout..."
+                            ? t("jobsTab.checkout.starting")
                             : job.payment && ["failed", "cancelled"].includes(job.payment.status)
-                              ? "Retry payment"
-                              : "Pay now"}
+                              ? t("jobsTab.checkout.retryPayment")
+                              : t("jobsTab.checkout.payNow")}
                         </ThemedText>
                       </KitPressable>
                     ) : null}

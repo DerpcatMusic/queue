@@ -89,6 +89,39 @@ export default defineSchema({
     .index("by_user_id", ["userId"])
     .index("by_didit_session_id", ["diditSessionId"]),
 
+  calendarIntegrations: defineTable({
+    userId: v.id("users"),
+    instructorId: v.id("instructorProfiles"),
+    provider: v.union(v.literal("google"), v.literal("apple")),
+    status: v.union(v.literal("connected"), v.literal("error"), v.literal("revoked")),
+    accountEmail: v.optional(v.string()),
+    oauthClientId: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
+    refreshToken: v.optional(v.string()),
+    accessTokenExpiresAt: v.optional(v.number()),
+    scopes: v.optional(v.array(v.string())),
+    lastSyncedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_provider", ["userId", "provider"])
+    .index("by_instructor_provider", ["instructorId", "provider"]),
+
+  calendarEventMappings: defineTable({
+    integrationId: v.id("calendarIntegrations"),
+    externalEventId: v.string(),
+    providerEventId: v.string(),
+    providerEtag: v.optional(v.string()),
+    startTime: v.number(),
+    endTime: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_integration", ["integrationId"])
+    .index("by_integration_external_event", ["integrationId", "externalEventId"])
+    .index("by_integration_provider_event", ["integrationId", "providerEventId"]),
+
   instructorSports: defineTable({
     instructorId: v.id("instructorProfiles"),
     sport: v.string(),
@@ -448,6 +481,19 @@ export default defineSchema({
   })
     .index("by_provider_eventId", ["provider", "providerEventId"])
     .index("by_user", ["userId", "createdAt"]),
+
+  webhookInvalidSignatureThrottle: defineTable({
+    provider: v.union(v.literal("rapyd"), v.literal("didit")),
+    fingerprint: v.string(),
+    invalidCount: v.number(),
+    windowStartedAt: v.number(),
+    lastInvalidAt: v.number(),
+    blockedUntil: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_provider_fingerprint", ["provider", "fingerprint"])
+    .index("by_provider_blocked_until", ["provider", "blockedUntil"]),
 
   diditEvents: defineTable({
     providerEventId: v.string(),

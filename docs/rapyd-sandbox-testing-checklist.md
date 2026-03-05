@@ -23,7 +23,7 @@ Set these before end-to-end testing:
 Optional for local/sandbox UX:
 
 - `PAYMENTS_ALLOWED_REDIRECT_HOSTS=<comma-separated-https-hosts>`
-- `RAPYD_PAYMENT_METHODS=il_card,apple_pay,google_pay`
+- `RAPYD_PAYMENT_METHODS=<comma-separated-country-valid-method-types>`
 - `ALLOW_SANDBOX_DESTINATION_SELF_VERIFY=1`
 
 Notes:
@@ -31,6 +31,7 @@ Notes:
 - Keep Rapyd base URLs as host-only URLs (no query/hash). Example: `https://sandboxapi.rapyd.net`
 - If you set both `RAPYD_SANDBOX_BASE_URL` and `RAPYD_BASE_URL`, sandbox uses `RAPYD_SANDBOX_BASE_URL`.
 - Hosted page URLs must be public `https` URLs and cannot be `localhost`, `exp://`, `exps://`, or custom app schemes.
+- If `RAPYD_PAYMENT_METHODS` is unset, checkout falls back to Rapyd's default country-valid methods.
 - If you use `join-queue.com`, make sure app config includes universal links (`applinks:join-queue.com`) and Android intent filters for `https://join-queue.com/rapyd/*`.
 
 ## Webhook setup

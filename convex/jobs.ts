@@ -12,7 +12,12 @@ import {
 import { requireUserRole } from "./lib/auth";
 import { isKnownZoneId, normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
 import { hasCoverageKey, loadInstructorEligibility } from "./lib/instructorEligibility";
-import { assertPositiveInteger, omitUndefined, trimOptionalString } from "./lib/validation";
+import {
+  assertPositiveInteger,
+  assertValidJobApplicationDeadline,
+  omitUndefined,
+  trimOptionalString,
+} from "./lib/validation";
 
 const APPLICATION_STATUS_SET = new Set<string>(APPLICATION_STATUSES);
 const REQUIRED_LEVEL_SET = new Set<string>(REQUIRED_LEVELS);
@@ -226,10 +231,14 @@ export const getStudioTabCounts = query({
 
 async function requireInstructorProfile(ctx: QueryCtx | MutationCtx) {
   const user = await requireUserRole(ctx, ["instructor"]);
-  const profile = await ctx.db
+  const profiles = await ctx.db
     .query("instructorProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
+    .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+    .take(2);
+  if (profiles.length > 1) {
+    throw new ConvexError("Multiple instructor profiles found for this account");
+  }
+  const profile = profiles[0];
 
   if (!profile) throw new ConvexError("Instructor profile not found");
 
@@ -238,10 +247,14 @@ async function requireInstructorProfile(ctx: QueryCtx | MutationCtx) {
 
 async function requireStudioProfile(ctx: QueryCtx | MutationCtx) {
   const user = await requireUserRole(ctx, ["studio"]);
-  const studio = await ctx.db
+  const studios = await ctx.db
     .query("studioProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
+    .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+    .take(2);
+  if (studios.length > 1) {
+    throw new ConvexError("Multiple studio profiles found for this account");
+  }
+  const studio = studios[0];
 
   if (!studio) throw new ConvexError("Studio profile not found");
 
@@ -413,17 +426,11 @@ export const postJob = mutation({
         "cancellationDeadlineHours",
       );
     }
-    if (args.applicationDeadline !== undefined) {
-      if (!Number.isFinite(args.applicationDeadline)) {
-        throw new ConvexError("applicationDeadline must be a finite number");
-      }
-      if (args.applicationDeadline <= now) {
-        throw new ConvexError("applicationDeadline must be in the future");
-      }
-      if (args.applicationDeadline > args.startTime) {
-        throw new ConvexError("applicationDeadline must be before startTime");
-      }
-    }
+    assertValidJobApplicationDeadline({
+      now,
+      startTime: args.startTime,
+      applicationDeadline: args.applicationDeadline,
+    });
 
     const jobId = await ctx.db.insert("jobs", {
       studioId: studio._id,
@@ -1362,6 +1369,13 @@ export const reviewApplication = mutation({
     const application = await ctx.db.get("jobApplications", args.applicationId);
     if (!application) throw new ConvexError("Application not found");
 
+    if (application.status === args.status) {
+      return { ok: true };
+    }
+    if (application.status === "accepted" && args.status === "rejected") {
+      throw new ConvexError("Accepted application cannot be rejected");
+    }
+
     if (!APPLICATION_STATUS_SET.has(args.status)) {
       throw new ConvexError("Invalid application status");
     }
@@ -1390,65 +1404,19 @@ export const reviewApplication = mutation({
         .withIndex("by_job", (q) => q.eq("jobId", job._id))
         .collect();
 
-      const uniqueInstructorIds = [
-        ...new Set(competingApplications.map((row) => row.instructorId)),
-      ];
-      const profiles = await Promise.all(
-        uniqueInstructorIds.map((instructorId) =>
-          ctx.db.get("instructorProfiles", instructorId),
-        ),
-      );
-      const profileById = new Map<string, Doc<"instructorProfiles">>();
-      for (let i = 0; i < uniqueInstructorIds.length; i += 1) {
-        const instructorId = uniqueInstructorIds[i];
-        const profile = profiles[i];
-        if (profile) {
-          profileById.set(String(instructorId), profile);
-        }
-      }
-
       for (const row of competingApplications) {
         await ctx.db.patch("jobApplications", row._id, {
           studioId: job.studioId,
           status: row._id === application._id ? "accepted" : "rejected",
           updatedAt: Date.now(),
         });
-
-        const profile = profileById.get(String(row.instructorId));
-        if (!profile) continue;
-
-        const isAccepted = row._id === application._id;
-        await enqueueUserNotification(ctx, {
-          recipientUserId: profile.userId,
-          actorUserId: studio.userId,
-          kind: isAccepted ? "application_accepted" : "application_rejected",
-          title: isAccepted ? "Application accepted" : "Application rejected",
-          body: isAccepted
-            ? `You were assigned to teach ${toDisplayLabel(job.sport)}.`
-            : `Another instructor was selected for ${toDisplayLabel(job.sport)}.`,
-          jobId: job._id,
-          applicationId: row._id,
-        });
       }
 
-      await ctx.scheduler.runAfter(
-        Math.max(job.startTime - now, 0),
-        internal.jobs.emitLessonLifecycleEvent,
-        {
-          jobId: job._id,
-          instructorId: application.instructorId,
-          event: "lesson_started",
-        },
-      );
-      await ctx.scheduler.runAfter(
-        Math.max(job.endTime - now, 0),
-        internal.jobs.emitLessonLifecycleEvent,
-        {
-          jobId: job._id,
-          instructorId: application.instructorId,
-          event: "lesson_completed",
-        },
-      );
+      await ctx.runMutation(internal.jobs.runAcceptedApplicationReviewWorkflow, {
+        jobId: job._id,
+        acceptedApplicationId: application._id,
+        studioUserId: studio.userId,
+      });
 
       await recomputeJobApplicationStats(ctx, job);
     } else {
@@ -1458,24 +1426,142 @@ export const reviewApplication = mutation({
         updatedAt: Date.now(),
       });
 
-      const profile = await ctx.db.get(
-        "instructorProfiles",
-        application.instructorId,
-      );
-      if (profile) {
-        await enqueueUserNotification(ctx, {
-          recipientUserId: profile.userId,
-          actorUserId: studio.userId,
-          kind: "application_rejected",
-          title: "Application rejected",
-          body: `The studio passed on your ${toDisplayLabel(job.sport)} application.`,
-          jobId: job._id,
-          applicationId: application._id,
-        });
-      }
+      await ctx.runMutation(internal.jobs.runRejectedApplicationReviewWorkflow, {
+        jobId: job._id,
+        applicationId: application._id,
+        studioUserId: studio.userId,
+      });
 
       await recomputeJobApplicationStats(ctx, job);
     }
+
+    return { ok: true };
+  },
+});
+
+export const runAcceptedApplicationReviewWorkflow = internalMutation({
+  args: {
+    jobId: v.id("jobs"),
+    acceptedApplicationId: v.id("jobApplications"),
+    studioUserId: v.id("users"),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    const [job, acceptedApplication] = await Promise.all([
+      ctx.db.get("jobs", args.jobId),
+      ctx.db.get("jobApplications", args.acceptedApplicationId),
+    ]);
+    if (!job || !acceptedApplication) {
+      return { ok: false };
+    }
+    if (acceptedApplication.jobId !== job._id) {
+      return { ok: false };
+    }
+    if (
+      job.status !== "filled" ||
+      job.filledByInstructorId !== acceptedApplication.instructorId ||
+      acceptedApplication.status !== "accepted"
+    ) {
+      return { ok: false };
+    }
+
+    const competingApplications = await ctx.db
+      .query("jobApplications")
+      .withIndex("by_job", (q) => q.eq("jobId", job._id))
+      .collect();
+
+    const uniqueInstructorIds = [
+      ...new Set(competingApplications.map((row) => row.instructorId)),
+    ];
+    const profiles = await Promise.all(
+      uniqueInstructorIds.map((instructorId) =>
+        ctx.db.get("instructorProfiles", instructorId),
+      ),
+    );
+    const profileById = new Map<string, Doc<"instructorProfiles">>();
+    for (let i = 0; i < uniqueInstructorIds.length; i += 1) {
+      const instructorId = uniqueInstructorIds[i];
+      const profile = profiles[i];
+      if (profile) {
+        profileById.set(String(instructorId), profile);
+      }
+    }
+
+    for (const row of competingApplications) {
+      const profile = profileById.get(String(row.instructorId));
+      if (!profile) continue;
+
+      const isAccepted = row._id === acceptedApplication._id;
+      await enqueueUserNotification(ctx, {
+        recipientUserId: profile.userId,
+        actorUserId: args.studioUserId,
+        kind: isAccepted ? "application_accepted" : "application_rejected",
+        title: isAccepted ? "Application accepted" : "Application rejected",
+        body: isAccepted
+          ? `You were assigned to teach ${toDisplayLabel(job.sport)}.`
+          : `Another instructor was selected for ${toDisplayLabel(job.sport)}.`,
+        jobId: job._id,
+        applicationId: row._id,
+      });
+    }
+
+    const now = Date.now();
+    await ctx.scheduler.runAfter(
+      Math.max(job.startTime - now, 0),
+      internal.jobs.emitLessonLifecycleEvent,
+      {
+        jobId: job._id,
+        instructorId: acceptedApplication.instructorId,
+        event: "lesson_started",
+      },
+    );
+    await ctx.scheduler.runAfter(
+      Math.max(job.endTime - now, 0),
+      internal.jobs.emitLessonLifecycleEvent,
+      {
+        jobId: job._id,
+        instructorId: acceptedApplication.instructorId,
+        event: "lesson_completed",
+      },
+    );
+
+    return { ok: true };
+  },
+});
+
+export const runRejectedApplicationReviewWorkflow = internalMutation({
+  args: {
+    jobId: v.id("jobs"),
+    applicationId: v.id("jobApplications"),
+    studioUserId: v.id("users"),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    const [job, application] = await Promise.all([
+      ctx.db.get("jobs", args.jobId),
+      ctx.db.get("jobApplications", args.applicationId),
+    ]);
+    if (!job || !application) {
+      return { ok: false };
+    }
+    if (application.jobId !== job._id || application.status !== "rejected") {
+      return { ok: false };
+    }
+
+    const profile = await ctx.db.get("instructorProfiles", application.instructorId);
+    if (!profile) {
+      return { ok: false };
+    }
+
+    await enqueueUserNotification(ctx, {
+      recipientUserId: profile.userId,
+      actorUserId: args.studioUserId,
+      kind: "application_rejected",
+      title: "Application rejected",
+      body: `The studio passed on your ${toDisplayLabel(job.sport)} application.`,
+      jobId: job._id,
+      applicationId: application._id,
+    });
 
     return { ok: true };
   },

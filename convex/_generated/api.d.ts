@@ -35,6 +35,7 @@ import type * as resendOtp from "../resendOtp.js";
 import type * as userPushNotifications from "../userPushNotifications.js";
 import type * as users from "../users.js";
 import type * as webhooks from "../webhooks.js";
+import type * as webhookSecurity from "../webhookSecurity.js";
 
 import type {
   ApiFromModules,
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   userPushNotifications: typeof userPushNotifications;
   users: typeof users;
   webhooks: typeof webhooks;
+  webhookSecurity: typeof webhookSecurity;
 }>;
 
 /**

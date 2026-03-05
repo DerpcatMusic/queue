@@ -3,21 +3,61 @@ import { httpAction } from "./_generated/server";
 const DEFAULT_BENEFICIARY_APP_RETURN_URL = "queue://rapyd/beneficiary-return";
 const DEFAULT_CHECKOUT_APP_RETURN_URL = "queue://rapyd/checkout-return";
 
+const isHttpProtocol = (protocol: string) =>
+  protocol === "http:" || protocol === "https:";
+
 const resolveResult = (raw: string | null): "complete" | "cancel" => {
   const value = (raw ?? "").trim().toLowerCase();
   return value === "cancel" ? "cancel" : "complete";
 };
 
-const resolveAppReturnBase = (raw: string | null): string => {
-  const value = (raw ?? process.env.RAPYD_APP_RETURN_URL ?? "").trim();
-  if (!value) {
-    return DEFAULT_BENEFICIARY_APP_RETURN_URL;
-  }
+const resolveTrustedAppReturnBase = ({
+  requested,
+  configured,
+  fallback,
+}: {
+  requested: string | null;
+  configured: string | undefined;
+  fallback: string;
+}): string => {
+  const configuredValue = (configured ?? "").trim();
+  const baseValue = configuredValue || fallback;
+
+  let trustedBase: URL;
   try {
-    return new URL(value).toString();
+    trustedBase = new URL(baseValue);
   } catch {
-    return DEFAULT_BENEFICIARY_APP_RETURN_URL;
+    return fallback;
   }
+
+  const requestedValue = (requested ?? "").trim();
+  if (!requestedValue) {
+    return trustedBase.toString();
+  }
+
+  let parsedRequested: URL;
+  try {
+    parsedRequested = new URL(requestedValue);
+  } catch {
+    return trustedBase.toString();
+  }
+
+  if (parsedRequested.protocol !== trustedBase.protocol) {
+    return trustedBase.toString();
+  }
+
+  if (isHttpProtocol(trustedBase.protocol)) {
+    if (parsedRequested.origin !== trustedBase.origin) {
+      return trustedBase.toString();
+    }
+    return parsedRequested.toString();
+  }
+
+  if (parsedRequested.host !== trustedBase.host) {
+    return trustedBase.toString();
+  }
+
+  return parsedRequested.toString();
 };
 
 const buildAppReturnUrl = ({
@@ -89,7 +129,11 @@ const buildBridgeHtmlResponse = (appReturnUrl: string) => {
 export const rapydBeneficiaryReturnBridge = httpAction(async (_ctx, req) => {
   const url = new URL(req.url);
   const result = resolveResult(url.searchParams.get("result"));
-  const appReturnBase = resolveAppReturnBase(url.searchParams.get("target"));
+  const appReturnBase = resolveTrustedAppReturnBase({
+    requested: url.searchParams.get("target"),
+    configured: process.env.RAPYD_APP_RETURN_URL,
+    fallback: DEFAULT_BENEFICIARY_APP_RETURN_URL,
+  });
   const appReturnUrl = buildAppReturnUrl({
     appReturnBase,
     result,
@@ -97,22 +141,14 @@ export const rapydBeneficiaryReturnBridge = httpAction(async (_ctx, req) => {
   return buildBridgeHtmlResponse(appReturnUrl);
 });
 
-const resolveCheckoutAppReturnBase = (raw: string | null): string => {
-  const value = (raw ?? process.env.RAPYD_CHECKOUT_APP_RETURN_URL ?? "").trim();
-  if (!value) {
-    return DEFAULT_CHECKOUT_APP_RETURN_URL;
-  }
-  try {
-    return new URL(value).toString();
-  } catch {
-    return DEFAULT_CHECKOUT_APP_RETURN_URL;
-  }
-};
-
 export const rapydCheckoutReturnBridge = httpAction(async (_ctx, req) => {
   const url = new URL(req.url);
   const result = resolveResult(url.searchParams.get("result"));
-  const appReturnBase = resolveCheckoutAppReturnBase(url.searchParams.get("target"));
+  const appReturnBase = resolveTrustedAppReturnBase({
+    requested: url.searchParams.get("target"),
+    configured: process.env.RAPYD_CHECKOUT_APP_RETURN_URL,
+    fallback: DEFAULT_CHECKOUT_APP_RETURN_URL,
+  });
   const appReturnUrl = buildAppReturnUrl({
     appReturnBase,
     result,

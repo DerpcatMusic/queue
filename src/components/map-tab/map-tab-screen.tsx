@@ -60,21 +60,30 @@ export default function MapTabScreen() {
     setSelectedZoneIds(remoteZones.zoneIds ?? []);
   }, [remoteZones]);
 
-  const toggleZone = useCallback((zoneId: string) => {
-    if (Platform.OS === "ios") {
-      void Haptics.selectionAsync();
-    }
-    setSaveError(null);
-    setSelectedZoneIds((current) => {
-      if (current.includes(zoneId)) {
-        return current.filter((id) => id !== zoneId);
+  const toggleZone = useCallback(
+    (zoneId: string) => {
+      if (Platform.OS === "ios") {
+        void Haptics.selectionAsync();
       }
-      if (current.length >= MAX_ZONES) {
-        return current;
-      }
-      return [...current, zoneId];
-    });
-  }, []);
+      setSaveError(null);
+      setSelectedZoneIds((current) => {
+        if (current.includes(zoneId)) {
+          return current.filter((id) => id !== zoneId);
+        }
+        if (current.length >= MAX_ZONES) {
+          setSaveError(
+            t("mapTab.errors.maxZones", {
+              max: MAX_ZONES,
+              defaultValue: `You can select up to ${String(MAX_ZONES)} zones.`,
+            }),
+          );
+          return current;
+        }
+        return [...current, zoneId];
+      });
+    },
+    [t],
+  );
 
   const persistedZoneIds = remoteZones?.zoneIds ?? [];
 
@@ -163,7 +172,11 @@ export default function MapTabScreen() {
   }
 
   if (currentUser.role !== "instructor") {
-    return <Redirect href="/" />;
+    return <Redirect href="/studio" />;
+  }
+
+  if (remoteZones === undefined) {
+    return <LoadingScreen label={t("mapTab.loading", { defaultValue: "Loading map..." })} />;
   }
 
   return (

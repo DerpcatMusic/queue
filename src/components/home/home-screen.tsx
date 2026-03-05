@@ -8,8 +8,14 @@ import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
+const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
+const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile);
+const STUDIO_JOBS_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.jobs);
+const STUDIO_CALENDAR_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.calendar);
+const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
 
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
@@ -107,8 +113,8 @@ export default function HomeScreen() {
         lessonEvents={instructorHomeStats.lessonEvents}
         upcomingSessions={instructorHomeStats.upcomingSessions}
         sports={instructorSettings?.sports}
-        onOpenJobs={() => router.push("/instructor/jobs")}
-        onOpenProfile={() => router.push("/instructor/profile")}
+        onOpenJobs={() => router.push(INSTRUCTOR_JOBS_ROUTE)}
+        onOpenProfile={() => router.push(INSTRUCTOR_PROFILE_ROUTE)}
       />
     );
   }
@@ -136,9 +142,9 @@ export default function HomeScreen() {
       recentJobs={studioJobs}
       jobsFilled={jobsFilled}
       sports={studioSettings?.sports}
-      onOpenJobs={() => router.push("/studio/jobs")}
-      onOpenCalendar={() => router.push("/studio/calendar")}
-      onOpenProfile={() => router.push("/studio/profile")}
+      onOpenJobs={() => router.push(STUDIO_JOBS_ROUTE)}
+      onOpenCalendar={() => router.push(STUDIO_CALENDAR_ROUTE)}
+      onOpenProfile={() => router.push(STUDIO_PROFILE_ROUTE)}
     />
   );
 }

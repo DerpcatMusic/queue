@@ -39,6 +39,15 @@ const he = {
       "permissionDenied": "נדרשת הרשאת יומן",
       "failed": "הסנכרון נכשל"
     },
+    "timeline": {
+      "noLessons": "אין שיעורים",
+      "lifecycle": {
+        "live": "בשידור חי",
+        "upcoming": "קרוב",
+        "cancelled": "בוטל",
+        "past": "עבר"
+      }
+    },
     "footerHint": "האינטראקציות ביומן פעילות. שיעורים יוצגו לחשבונות מדריך/ה."
   },
   "tabsLayout": {
@@ -163,11 +172,22 @@ const he = {
         },
         "autoSync": "הוספה אוטומטית של שיעורים מאושרים",
         "futureNote": "Queue מסנכרנת ליומן ייעודי במכשיר. סנכרון ענן ל-Google או Apple תלוי בהגדרות החשבון במכשיר.",
-        "lastConnected": "חובר בתאריך {{date}}"
+        "googleConnectRequired": "חברו חשבון Google כדי להפעיל סנכרון ישיר ל-Google Calendar.",
+        "googleConnectedAs": "מחובר כ-{{email}}",
+        "applePermissionNote": "סנכרון Apple יבקש הרשאת יומן וישמור אירועים ביומן Queue Sessions ייעודי.",
+        "lastConnected": "חובר בתאריך {{date}}",
+        "actions": {
+          "connectGoogle": "חיבור Google Calendar",
+          "disconnectGoogle": "ניתוק Google Calendar",
+          "syncNow": "סנכרון עכשיו"
+        }
       },
       "actions": {
         "save": "שמירת הגדרות",
-        "saving": "...שומר"
+        "saving": "...שומר",
+        "connecting": "...מתחבר",
+        "syncing": "...מסנכרן",
+        "disconnecting": "...מנתק"
       },
       "unsavedTitle": "יש שינויים שלא נשמרו",
       "unsavedBody": "ביצעתם עדכונים שעדיין לא נשמרו.",
@@ -448,6 +468,36 @@ const he = {
       "markLessonDone": "סימון כהושלם",
       "markingLessonDone": "מסמן..."
     },
+    "checkout": {
+      "payment": "תשלום",
+      "notStarted": "טרם התחיל",
+      "payout": "תשלום למדריך: {{status}}",
+      "payNow": "לתשלום עכשיו",
+      "retryPayment": "ניסיון תשלום חוזר",
+      "starting": "פותח תשלום...",
+      "completed": "התשלום הושלם.",
+      "pendingConfirmation": "התשלום ממתין לאישור.",
+      "cancelled": "התשלום בוטל.",
+      "failed": "התשלום לא הושלם.",
+      "paymentStatus": {
+        "created": "נוצר",
+        "pending": "בהמתנה",
+        "authorized": "אושר",
+        "captured": "נגבה",
+        "failed": "נכשל",
+        "cancelled": "בוטל",
+        "refunded": "הוחזר"
+      },
+      "payoutStatus": {
+        "queued": "בתור",
+        "processing": "בטיפול",
+        "pendingProvider": "ממתין לספק",
+        "paid": "שולם",
+        "failed": "נכשל",
+        "cancelled": "בוטל",
+        "needsAttention": "דורש טיפול"
+      }
+    },
     "success": {
       "posted": "המשרה פורסמה בהצלחה.",
       "applied": "הפנייה נשלחה.",
@@ -455,7 +505,7 @@ const he = {
       "rejected": "הפנייה נדחתה.",
       "pushEnabled": "התראות Push הופעלו.",
       "lessonCompleted": "השיעור סומן כהושלם.",
-      "checkoutOpened": "Checkout opened. You can track updates in Payments."
+      "checkoutOpened": "עמוד התשלום נפתח. אפשר לעקוב אחר העדכונים באזור התשלומים."
     },
     "errors": {
       "sportRequired": "בחרו תחום.",
@@ -472,7 +522,7 @@ const he = {
       "failedToEnablePush": "הפעלת התראות Push לסטודיו נכשלה.",
       "failedToSetReminder": "עדכון תזכורת השיעור נכשל.",
       "failedToMarkLessonDone": "סימון השיעור כהושלם נכשל.",
-      "failedToStartCheckout": "Failed to start checkout."
+      "failedToStartCheckout": "פתיחת התשלום נכשלה."
     },
     "searchPlaceholder": "Search jobs",
     "noJobsFound": "No jobs found",
@@ -565,7 +615,12 @@ const he = {
     "learnMore": "למידע נוסף"
   },
   "common": {
-    "cancel": "Cancel"
+    "cancel": "ביטול",
+    "clear": "ניקוי",
+    "edit": "עריכה",
+    "loading": "טוען...",
+    "address": "כתובת",
+    "searching": "מחפש..."
   }
 };
 

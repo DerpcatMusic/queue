@@ -1,47 +1,51 @@
+import {
+  ROLE_TAB_ROUTE_NAMES,
+  type RoleTabRouteName,
+} from "./role-routes";
 import type { AppRole, FeatureFlagKey, RoleFeatureMatrix, SharedTabId, TabSpec } from "./types";
 
 export const TAB_SPECS: readonly TabSpec[] = [
   {
     id: "home",
     titleKey: "tabs.home",
-    icon: { material: "home", sfDefault: "house", sfSelected: "house.fill" },
-    routeName: "index",
+    icon: { md: "home", sfDefault: "house", sfSelected: "house.fill" },
+    routeName: ROLE_TAB_ROUTE_NAMES.home,
     visibleFor: ["instructor", "studio"],
   },
   {
     id: "jobs",
     titleKey: "tabs.jobs",
-    icon: { material: "work", sfDefault: "briefcase", sfSelected: "briefcase.fill" },
-    routeName: "jobs",
+    icon: { md: "work", sfDefault: "briefcase", sfSelected: "briefcase.fill" },
+    routeName: ROLE_TAB_ROUTE_NAMES.jobs,
     visibleFor: ["instructor", "studio"],
   },
   {
     id: "calendar",
     titleKey: "tabs.calendar",
     icon: {
-      material: "calendar-month",
+      md: "calendar-month",
       sfDefault: "calendar",
       sfSelected: "calendar.circle.fill",
     },
-    routeName: "calendar",
+    routeName: ROLE_TAB_ROUTE_NAMES.calendar,
     visibleFor: ["instructor", "studio"],
   },
   {
     id: "map",
     titleKey: "tabs.map",
-    icon: { material: "map", sfDefault: "map", sfSelected: "map.fill" },
-    routeName: "map",
+    icon: { md: "map", sfDefault: "map", sfSelected: "map.fill" },
+    routeName: ROLE_TAB_ROUTE_NAMES.map,
     visibleFor: ["instructor"],
   },
   {
     id: "profile",
     titleKey: "tabs.profile",
     icon: {
-      material: "account-circle",
+      md: "account-circle",
       sfDefault: "person.crop.circle",
       sfSelected: "person.crop.circle.fill",
     },
-    routeName: "profile",
+    routeName: ROLE_TAB_ROUTE_NAMES.profile,
     visibleFor: ["instructor", "studio"],
   },
 ] as const;
@@ -78,4 +82,8 @@ export function getTabsForRole(role: AppRole): TabSpec[] {
     if (!gatedBy) return true;
     return isFeatureEnabled(role, gatedBy);
   });
+}
+
+export function getRoleRoutes(role: AppRole): RoleTabRouteName[] {
+  return getTabsForRole(role).map((tab) => tab.routeName);
 }

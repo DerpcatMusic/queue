@@ -2,7 +2,11 @@ import { type Href, Link } from "expo-router";
 import type { TFunction } from "i18next";
 import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
-import Animated, { FadeInUp, useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
+import Animated, {
+  FadeInUp,
+  useAnimatedRef,
+  useScrollViewOffset,
+} from "react-native-reanimated";
 import {
   getHomeHeaderScrollTopPadding,
   HomeHeaderSheet,
@@ -123,7 +127,11 @@ function MetricTile({
         </KitPressable>
       </Link.Trigger>
       <Link.Menu>
-        <Link.MenuAction title="Open" icon="arrow.up.forward.app" onPress={onPress} />
+        <Link.MenuAction
+          title="Open"
+          icon="arrow.up.forward.app"
+          onPress={onPress}
+        />
       </Link.Menu>
     </Link>
   );
@@ -148,7 +156,7 @@ export function InstructorHomeContent({
   onOpenProfile,
 }: InstructorHomeContentProps) {
   void totalEarningsAgorot;
-  const now = Date.now();
+  const now = useMemo(() => Date.now(), []);
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const { safeTop } = useAppInsets();
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
@@ -165,11 +173,15 @@ export function InstructorHomeContent({
         const bucketEnd = frameData.bucketEnds[idx]!;
         if (metricMode === "earnings") {
           return earningsEvents
-            .filter((row) => row.timestamp >= bucketStart && row.timestamp < bucketEnd)
+            .filter(
+              (row) =>
+                row.timestamp >= bucketStart && row.timestamp < bucketEnd,
+            )
             .reduce((sum, row) => sum + row.amountAgorot, 0);
         }
-        return lessonEvents.filter((row) => row.endTime >= bucketStart && row.endTime < bucketEnd)
-          .length;
+        return lessonEvents.filter(
+          (row) => row.endTime >= bucketStart && row.endTime < bucketEnd,
+        ).length;
       });
 
       frames[frame] = {
@@ -190,7 +202,10 @@ export function InstructorHomeContent({
       : `${String(frameTotal)} ${t("home.performance.lessons")}`;
 
   return (
-    <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
+    <View
+      collapsable={false}
+      style={{ flex: 1, backgroundColor: palette.appBg }}
+    >
       <HomeHeaderSheet
         displayName={displayName}
         profileImageUrl={profileImageUrl}
@@ -216,7 +231,9 @@ export function InstructorHomeContent({
       >
         {/* Content starts below sheet — header section removed (handled by HomeHeaderSheet) */}
         <View className="px-6 gap-8">
-          <Animated.View entering={FadeInUp.delay(100).duration(450).springify().damping(20)}>
+          <Animated.View
+            entering={FadeInUp.delay(100).duration(450).springify().damping(20)}
+          >
             <PerformanceHeroCard
               palette={palette}
               timeframe={timeframe}
@@ -226,7 +243,9 @@ export function InstructorHomeContent({
               metricLabel={t(`home.performance.${metricMode}`)}
               seriesByTimeframe={timeframeSeries}
               onToggleMetric={() =>
-                setMetricMode((prev) => (prev === "earnings" ? "lessons" : "earnings"))
+                setMetricMode((prev) =>
+                  prev === "earnings" ? "lessons" : "earnings",
+                )
               }
               onSwipeTimeframe={(direction) => {
                 setTimeframe((prev) => getAdjacentTimeframe(prev, direction));
@@ -235,7 +254,10 @@ export function InstructorHomeContent({
           </Animated.View>
 
           {/* 3. Layered Metric Tiles */}
-          <Animated.View entering={FadeInUp.delay(150).duration(450)} className="gap-3">
+          <Animated.View
+            entering={FadeInUp.delay(150).duration(450)}
+            className="gap-3"
+          >
             <View className="flex-row gap-4">
               <MetricTile
                 label={t("home.instructor.stats.matchesLabel")}
@@ -259,9 +281,15 @@ export function InstructorHomeContent({
           </Animated.View>
 
           {/* 4. Bold Upcoming Sessions List */}
-          <Animated.View entering={FadeInUp.delay(200).duration(450)} className="gap-5 pb-10 pt-4">
+          <Animated.View
+            entering={FadeInUp.delay(200).duration(450)}
+            className="gap-5 pb-10 pt-4"
+          >
             <View className="flex-row items-center justify-between">
-              <Text className="font-heading text-3xl" style={{ color: palette.text as string }}>
+              <Text
+                className="font-heading text-3xl"
+                style={{ color: palette.text as string }}
+              >
                 {t("home.instructor.nextTitle")}
               </Text>
               {upcomingSessions.length > 0 && (
@@ -408,7 +436,11 @@ export function InstructorHomeContent({
                             className="font-title text-sm"
                             style={{ color: palette.primary as string }}
                           >
-                            {getRelativeTimeLabel(session.startTime, now, locale)}
+                            {getRelativeTimeLabel(
+                              session.startTime,
+                              now,
+                              locale,
+                            )}
                           </Text>
                         </View>
                       </View>
@@ -423,4 +455,3 @@ export function InstructorHomeContent({
     </View>
   );
 }
-

@@ -1,6 +1,6 @@
+import type { SymbolViewProps } from "expo-symbols";
 import { View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import type { SymbolViewProps } from "expo-symbols";
 
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
@@ -8,10 +8,9 @@ import { KitButton } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 
-
 type EmptyStateAction = {
   label: string;
-  /** SF Symbol name â€” optional; button renders without icon if absent. */
+  /** SF Symbol name - optional; button renders without icon if absent. */
   icon?: SymbolViewProps["name"];
   onPress: () => void;
 };
@@ -20,7 +19,7 @@ type EmptyStateProps = {
   /** SF Symbol name for the illustration. */
   icon: SymbolViewProps["name"];
   title: string;
-  body: string;
+  body?: string;
   action?: EmptyStateAction;
 };
 
@@ -50,24 +49,20 @@ export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
         paddingVertical: BrandSpacing.xxl,
       }}
     >
-      <AppSymbol
-        name={icon}
-        size={52}
-        tintColor={palette.textMicro as string}
-      />
+      <AppSymbol name={icon} size={52} tintColor={palette.textMicro as string} />
       <View style={{ gap: BrandSpacing.xs, alignItems: "center" }}>
-        <ThemedText
-          type="title"
-          style={{ textAlign: "center", color: palette.text }}
-        >
+        <ThemedText type="title" style={{ textAlign: "center", color: palette.text }} selectable>
           {title}
         </ThemedText>
-        <ThemedText
-          type="caption"
-          style={{ textAlign: "center", color: palette.textMuted }}
-        >
-          {body}
-        </ThemedText>
+        {body ? (
+          <ThemedText
+            type="caption"
+            style={{ textAlign: "center", color: palette.textMuted }}
+            selectable
+          >
+            {body}
+          </ThemedText>
+        ) : null}
       </View>
       {action ? (
         <KitButton
@@ -79,4 +74,3 @@ export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
     </Animated.View>
   );
 }
-

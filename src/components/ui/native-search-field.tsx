@@ -7,12 +7,14 @@ import { useBrand } from "@/hooks/use-brand";
 type NativeSearchFieldProps = Omit<TextInputProps, "value" | "onChangeText"> & {
   value: string;
   onChangeText: (value: string) => void;
+  clearAccessibilityLabel?: string;
 };
 
 export function NativeSearchField({
   value,
   onChangeText,
   placeholder,
+  clearAccessibilityLabel = "Clear search",
   style,
   ...rest
 }: NativeSearchFieldProps) {
@@ -61,7 +63,7 @@ export function NativeSearchField({
       {value.length > 0 ? (
         <KitPressable
           accessibilityRole="button"
-          accessibilityLabel="Clear search"
+          accessibilityLabel={clearAccessibilityLabel}
           onPress={() => onChangeText("")}
           hitSlop={8}
           rippleRadius={16}

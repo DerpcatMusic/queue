@@ -1,5 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { ScrollView, Text, type TextInputProps, View } from "react-native";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Platform,
+  ScrollView,
+  Text,
+  type TextInputProps,
+  View,
+} from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -16,11 +23,16 @@ import {
   type ProfileSocialLinks,
   ProfileSocialLinksRow,
 } from "@/components/profile/profile-social-links";
-import { KitButton, KitChip, KitPressable, KitTextField } from "@/components/ui/kit";
+import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
+import { KitButton, KitPressable, KitTextField } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing } from "@/constants/brand";
-import { isSportType, SPORT_TYPES, toSportLabel } from "@/convex/constants";
+import {
+  isSportType,
+  type SPORT_TYPES,
+  toSportLabel,
+} from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 
 const PROFILE_HERO_EXPANDED_CONTENT_HEIGHT = 232;
@@ -94,10 +106,11 @@ export function ProfileHeroSheet({
   isChangingPhoto = false,
   extraField,
 }: ProfileHeroSheetProps) {
+  const { t } = useTranslation();
   const { safeTop } = useAppInsets();
-  const [sportsPickerOpen, setSportsPickerOpen] = useState(false);
-  const [sportSearch, setSportSearch] = useState("");
   const editProgress = useSharedValue(isEditing ? 1 : 0);
+  const pullToEditArmed = useSharedValue(true);
+  const shouldEnablePullToEdit = Platform.OS !== "web";
   const contractedHeight = safeTop + PROFILE_HERO_CONTRACTED_CONTENT_HEIGHT;
   const activeSocialCount = PROFILE_SOCIAL_FIELDS.filter((field) =>
     Boolean(socialLinksDraft[field.key]?.trim()),
@@ -107,41 +120,41 @@ export function ProfileHeroSheet({
     editProgress.value = withTiming(isEditing ? 1 : 0, { duration: 220 });
   }, [editProgress, isEditing]);
 
-  useEffect(() => {
-    if (isEditing) {
-      setSportsPickerOpen(true);
-      return;
-    }
-    setSportsPickerOpen(false);
-    setSportSearch("");
-  }, [isEditing]);
-
   useAnimatedReaction(
-    () => scrollY.value < -58,
-    (shouldOpen, wasOpen) => {
-      if (shouldOpen && !wasOpen && !isEditing) {
+    () => (shouldEnablePullToEdit ? scrollY.value : 0),
+    (offset) => {
+      if (!shouldEnablePullToEdit) {
+        return;
+      }
+      if (isEditing) {
+        pullToEditArmed.value = true;
+        return;
+      }
+      if (offset <= -58 && pullToEditArmed.value) {
+        pullToEditArmed.value = false;
         runOnJS(onRequestEdit)();
+        return;
+      }
+      if (offset >= -12) {
+        pullToEditArmed.value = true;
       }
     },
-    [isEditing, onRequestEdit, scrollY],
+    [
+      isEditing,
+      onRequestEdit,
+      pullToEditArmed,
+      scrollY,
+      shouldEnablePullToEdit,
+    ],
   );
-
-  const filteredSports = useMemo(() => {
-    const search = sportSearch.toLowerCase().trim();
-    return SPORT_TYPES.filter((sport) => {
-      const label = isSportType(sport) ? toSportLabel(sport) : sport;
-      if (!search) {
-        return true;
-      }
-      return label.toLowerCase().includes(search);
-    }).slice(0, 12);
-  }, [sportSearch]);
 
   const sportsLabel =
     sportsDraft.length === 0
-      ? "Add what you teach"
+      ? t("profile.settings.sports.none")
       : sportsDraft.length <= 2
-        ? sportsDraft.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(" * ")
+        ? sportsDraft
+            .map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport))
+            .join(", ")
         : `${isSportType(sportsDraft[0] ?? "") ? toSportLabel(sportsDraft[0] as (typeof SPORT_TYPES)[number]) : sportsDraft[0]} +${String(
             sportsDraft.length - 1,
           )}`;
@@ -154,7 +167,12 @@ export function ProfileHeroSheet({
       [0, PROFILE_HERO_EDIT_CONTENT_HEIGHT],
       Extrapolation.CLAMP,
     ),
-    marginTop: interpolate(editProgress.value, [0, 1], [0, 16], Extrapolation.CLAMP),
+    marginTop: interpolate(
+      editProgress.value,
+      [0, 1],
+      [0, 16],
+      Extrapolation.CLAMP,
+    ),
     overflow: "hidden" as const,
   }));
 
@@ -206,13 +224,21 @@ export function ProfileHeroSheet({
   }));
 
   const animatedSheetStyle = useAnimatedStyle(() => {
-    const pullStretch = interpolate(scrollY.value, [-120, 0], [84, 0], Extrapolation.CLAMP);
+    const pullStretch = interpolate(
+      scrollY.value,
+      [-120, 0],
+      [84, 0],
+      Extrapolation.CLAMP,
+    );
     const expandedHeight =
       safeTop +
       interpolate(
         editProgress.value,
         [0, 1],
-        [PROFILE_HERO_EXPANDED_CONTENT_HEIGHT, PROFILE_HERO_EDIT_CONTENT_HEIGHT],
+        [
+          PROFILE_HERO_EXPANDED_CONTENT_HEIGHT,
+          PROFILE_HERO_EDIT_CONTENT_HEIGHT,
+        ],
         Extrapolation.CLAMP,
       );
     const collapsedBase = interpolate(
@@ -260,7 +286,9 @@ export function ProfileHeroSheet({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
           <KitPressable
             accessibilityRole="button"
-            accessibilityLabel={isEditing ? "Change profile photo" : "Edit profile"}
+            accessibilityLabel={
+              isEditing ? "Change profile photo" : "Edit profile"
+            }
             onPress={isEditing ? onChangePhoto : onRequestEdit}
             haptic="selection"
             style={{ borderRadius: 24 }}
@@ -315,7 +343,12 @@ export function ProfileHeroSheet({
           </Animated.View>
 
           {!isEditing ? (
-            <KitButton label="Edit" onPress={onRequestEdit} variant="ghost" size="sm" />
+            <KitButton
+              label="Edit"
+              onPress={onRequestEdit}
+              variant="ghost"
+              size="sm"
+            />
           ) : null}
         </View>
 
@@ -346,7 +379,10 @@ export function ProfileHeroSheet({
           ) : null}
 
           {activeSocialCount > 0 ? (
-            <ProfileSocialLinksRow socialLinks={socialLinksDraft} palette={palette} />
+            <ProfileSocialLinksRow
+              socialLinks={socialLinksDraft}
+              palette={palette}
+            />
           ) : !isEditing ? (
             <Text
               style={{
@@ -418,7 +454,8 @@ export function ProfileHeroSheet({
                   color: palette.textMuted as string,
                 }}
               >
-                Change your photo, add what you teach, and link the places people already know you.
+                Change your photo, add what you teach, and link the places
+                people already know you.
               </Text>
               <KitButton
                 label={isChangingPhoto ? "Uploading..." : "Photo"}
@@ -459,93 +496,14 @@ export function ProfileHeroSheet({
               />
             ) : null}
 
-            <View
-              style={{
-                borderWidth: 1,
-                borderColor: palette.border as string,
-                borderRadius: 22,
-                borderCurve: "continuous",
-                overflow: "hidden",
-                backgroundColor: palette.surface as string,
-              }}
-            >
-              <KitPressable
-                accessibilityRole="button"
-                accessibilityLabel="Toggle sports picker"
-                onPress={() => setSportsPickerOpen((prev) => !prev)}
-                style={{ paddingHorizontal: 16, paddingVertical: 14 }}
-              >
-                <View style={{ gap: 4 }}>
-                  <Text
-                    style={{
-                      fontFamily: "Rubik_500Medium",
-                      fontSize: 14,
-                      color: palette.textMuted as string,
-                    }}
-                  >
-                    What you teach
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: "Rubik_500Medium",
-                      fontSize: 15,
-                      color: palette.text as string,
-                    }}
-                  >
-                    {sportsDraft.length > 0
-                      ? `${String(sportsDraft.length)} selected`
-                      : "Choose at least one discipline"}
-                  </Text>
-                </View>
-              </KitPressable>
-
-              {sportsPickerOpen ? (
-                <View
-                  style={{
-                    borderTopWidth: 1,
-                    borderTopColor: palette.border as string,
-                    padding: 14,
-                    gap: 12,
-                  }}
-                >
-                  <KitTextField
-                    label="Search sports"
-                    value={sportSearch}
-                    onChangeText={setSportSearch}
-                    placeholder="Pilates, yoga, mobility..."
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-
-                  {sportsDraft.length > 0 ? (
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                      {sportsDraft.map((sport) => (
-                        <KitChip
-                          key={sport}
-                          label={isSportType(sport) ? toSportLabel(sport) : sport}
-                          selected
-                          onPress={() => onToggleSport(sport)}
-                        />
-                      ))}
-                    </View>
-                  ) : null}
-
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                    {filteredSports.map((sport) => {
-                      const selected = sportsDraft.includes(sport);
-                      return (
-                        <KitChip
-                          key={sport}
-                          label={toSportLabel(sport)}
-                          selected={selected}
-                          onPress={() => onToggleSport(sport)}
-                        />
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : null}
-            </View>
+            <SportsMultiSelect
+              palette={palette}
+              selectedSports={sportsDraft}
+              onToggleSport={onToggleSport}
+              searchPlaceholder={t("mapTab.searchPlaceholder")}
+              title={t("profile.settings.sports.title")}
+              emptyHint={t("profile.settings.sports.none")}
+            />
 
             <View
               style={{

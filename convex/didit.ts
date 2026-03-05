@@ -156,6 +156,46 @@ const ensureUrl = (raw: string): string => {
   }
 };
 
+const toRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+const toTrimmedString = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const sanitizeDiditWebhookPayload = (payload: unknown): Record<string, unknown> => {
+  const root = toRecord(payload) ?? {};
+  const data = toRecord(root.data);
+  return omitUndefined({
+    id: toTrimmedString(root.id),
+    event_id: toTrimmedString(root.event_id),
+    session_id: toTrimmedString(root.session_id) ?? toTrimmedString(root.sessionId),
+    status: toTrimmedString(root.status),
+    vendor_data: toTrimmedString(root.vendor_data) ?? toTrimmedString(root.vendorData),
+    webhook_type: toTrimmedString(root.webhook_type),
+    timestamp:
+      typeof root.timestamp === "string" || typeof root.timestamp === "number"
+        ? String(root.timestamp)
+        : undefined,
+    data: data
+      ? omitUndefined({
+          session_id: toTrimmedString(data.session_id),
+          status: toTrimmedString(data.status),
+          vendor_data: toTrimmedString(data.vendor_data),
+          webhook_type: toTrimmedString(data.webhook_type),
+          timestamp:
+            typeof data.timestamp === "string" || typeof data.timestamp === "number"
+              ? String(data.timestamp)
+              : undefined,
+        })
+      : undefined,
+  });
+};
+
 export const getCurrentInstructorVerificationContext = internalQuery({
   args: {},
   handler: async (ctx): Promise<InstructorVerificationContext | null> => {
@@ -353,6 +393,7 @@ export const processDiditWebhookEvent = internalMutation({
     payload: v.any(),
   },
   handler: async (ctx, args) => {
+    const canonicalPayload = sanitizeDiditWebhookPayload(args.payload);
     const existingEvent = await ctx.db
       .query("diditEvents")
       .withIndex("by_provider_event_id", (q) => q.eq("providerEventId", args.providerEventId))
@@ -368,7 +409,7 @@ export const processDiditWebhookEvent = internalMutation({
       signatureValid: args.signatureValid,
       processed: false,
       payloadHash: args.payloadHash,
-      payload: args.payload,
+      payload: canonicalPayload,
       createdAt: now,
       updatedAt: now,
       ...omitUndefined({

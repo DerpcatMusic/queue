@@ -1,8 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { FlashList, type FlashListRef } from "@shopify/flash-list";
-import { useQuery } from "convex/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FlashList } from "@shopify/flash-list";
+import { useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Platform,
@@ -10,7 +8,6 @@ import {
   Text,
   useWindowDimensions,
   View,
-  type ViewToken,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -25,41 +22,17 @@ import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { LoadingScreen } from "@/components/loading-screen";
 import { KitPressable } from "@/components/ui/kit";
 import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
-import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import { formatTime } from "@/lib/jobs-utils";
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type TimelineRow = {
-  lessonId: string;
-  roleView: "instructor" | "studio";
-  studioName: string;
-  instructorName?: string;
-  sport: string;
-  startTime: number;
-  endTime: number;
-  status: "open" | "filled" | "cancelled" | "completed";
-  lifecycle: "upcoming" | "live" | "past" | "cancelled";
-};
-
-type TimelineListItem =
-  | { kind: "dayHeader"; key: string; dayKey: string }
-  | { kind: "empty"; key: string; dayKey: string }
-  | { kind: "lesson"; key: string; dayKey: string; lesson: TimelineRow };
+import {
+  useCalendarTabController,
+  type TimelineListItem,
+} from "./use-calendar-tab-controller";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const CACHE_TTL_MS = 15 * 60 * 1000;
-const CACHE_VERSION = 2;
-const TIMELINE_RANGE_DAYS = 90;
-const TIMELINE_EXTEND_BUFFER_DAYS = 60;
-const EDGE_EXTEND_THRESHOLD_DAYS = 7;
-const ESTIMATED_DAY_HEADER_SIZE = 64;
-const ESTIMATED_LESSON_SIZE = 84;
-const ESTIMATED_EMPTY_SIZE = 40;
 
 const RAIL_LEFT = 24;
 const RAIL_DOT_DAY = 10;
@@ -84,16 +57,6 @@ function addDays(dayKey: string, delta: number) {
 
 function compareDayKey(a: string, b: string) {
   return a < b ? -1 : a > b ? 1 : 0;
-}
-
-function enumerateDays(startKey: string, endKey: string) {
-  const out: string[] = [];
-  let cursor = startKey;
-  while (compareDayKey(cursor, endKey) <= 0) {
-    out.push(cursor);
-    cursor = addDays(cursor, 1);
-  }
-  return out;
 }
 
 function getWeekStart(dayKey: string) {
@@ -179,58 +142,6 @@ function hashSport(sport: string) {
   return Math.abs(h);
 }
 
-// ─── Timeline cache ──────────────────────────────────────────────────────────
-
-function useTimelineCache(role: string | undefined, startTime: number, endTime: number) {
-  const cacheKey = useMemo(
-    () => `calendar:timeline:v${CACHE_VERSION}:${role ?? "none"}:${startTime}:${endTime}`,
-    [role, startTime, endTime],
-  );
-  const [cachedRows, setCachedRows] = useState<TimelineRow[] | null>(null);
-  const [cacheReady, setCacheReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setCachedRows(null);
-    setCacheReady(false);
-    void (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(cacheKey);
-        if (!raw || cancelled) {
-          setCacheReady(true);
-          return;
-        }
-        const payload = JSON.parse(raw) as { fetchedAt: number; rows: TimelineRow[] };
-        if (Date.now() - payload.fetchedAt > CACHE_TTL_MS) {
-          setCacheReady(true);
-          return;
-        }
-        setCachedRows(payload.rows);
-      } catch {
-        /* ignore */
-      } finally {
-        if (!cancelled) setCacheReady(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [cacheKey]);
-
-  const persist = useCallback(
-    async (rows: TimelineRow[]) => {
-      try {
-        await AsyncStorage.setItem(cacheKey, JSON.stringify({ fetchedAt: Date.now(), rows }));
-      } catch {
-        /* best-effort */
-      }
-    },
-    [cacheKey],
-  );
-
-  return { cachedRows, cacheReady, persist };
-}
-
 // ─── WeekStrip (live-sliding, dynamic height) ────────────────────────────────
 
 const WEEK_ROW_HEIGHT = 46; // height of one row of day cells
@@ -270,9 +181,15 @@ function WeekStrip({
   // 3-week triptych: prev, current, next
   const prevWeekStart = addDays(weekStart, -7);
   const nextWeekStart = addDays(weekStart, 7);
-  const prevWeekDays = useMemo(() => getWeekDays(prevWeekStart), [prevWeekStart]);
+  const prevWeekDays = useMemo(
+    () => getWeekDays(prevWeekStart),
+    [prevWeekStart],
+  );
   const currWeekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
-  const nextWeekDays = useMemo(() => getWeekDays(nextWeekStart), [nextWeekStart]);
+  const nextWeekDays = useMemo(
+    () => getWeekDays(nextWeekStart),
+    [nextWeekStart],
+  );
 
   // ─── Single unified pan gesture ──────────────────────────────────────
   const swipeX = useSharedValue(0);
@@ -331,12 +248,18 @@ function WeekStrip({
         const isExpanded = expandProgress.value > 0.5;
         const weekDelta = isExpanded ? 4 : 1; // month vs week navigation
 
-        if (e.translationX < -SWIPE_THRESHOLD || (e.velocityX < -500 && e.translationX < -20)) {
+        if (
+          e.translationX < -SWIPE_THRESHOLD ||
+          (e.velocityX < -500 && e.translationX < -20)
+        ) {
           swipeX.value = withTiming(-panelWidth, { duration: 200 }, () => {
             runOnJS(onWeekChange)(weekDelta);
             swipeX.value = 0;
           });
-        } else if (e.translationX > SWIPE_THRESHOLD || (e.velocityX > 500 && e.translationX > 20)) {
+        } else if (
+          e.translationX > SWIPE_THRESHOLD ||
+          (e.velocityX > 500 && e.translationX > 20)
+        ) {
           swipeX.value = withTiming(panelWidth, { duration: 200 }, () => {
             runOnJS(onWeekChange)(-weekDelta);
             swipeX.value = 0;
@@ -423,7 +346,12 @@ function WeekStrip({
           </Text>
         </View>
         {hasLessons && !isSelected ? (
-          <View style={[wStyles.dot, { backgroundColor: palette.primary as string }]} />
+          <View
+            style={[
+              wStyles.dot,
+              { backgroundColor: palette.primary as string },
+            ]}
+          />
         ) : (
           <View style={wStyles.dotSpacer} />
         )}
@@ -443,19 +371,38 @@ function WeekStrip({
     >
       {/* Header */}
       <View style={wStyles.headerRow}>
-        <KitPressable onPress={onMonthPress} style={wStyles.monthButton} hitSlop={8}>
+        <KitPressable
+          onPress={onMonthPress}
+          style={wStyles.monthButton}
+          hitSlop={8}
+        >
           <Text style={[wStyles.monthLabel, { color: palette.text as string }]}>
             {formatMonthYear(selectedDay, locale)}
           </Text>
-          <Text style={[wStyles.monthChevron, { color: palette.textMuted as string }]}>▾</Text>
+          <Text
+            style={[
+              wStyles.monthChevron,
+              { color: palette.textMuted as string },
+            ]}
+          >
+            ▾
+          </Text>
         </KitPressable>
         <View style={wStyles.headerActions}>
           {selectedDay !== todayKey ? (
             <KitPressable onPress={onTodayPress} hitSlop={6}>
               <View
-                style={[wStyles.todayPill, { backgroundColor: palette.primarySubtle as string }]}
+                style={[
+                  wStyles.todayPill,
+                  { backgroundColor: palette.primarySubtle as string },
+                ]}
               >
-                <Text style={[wStyles.todayPillText, { color: palette.primary as string }]}>
+                <Text
+                  style={[
+                    wStyles.todayPillText,
+                    { color: palette.primary as string },
+                  ]}
+                >
                   Today
                 </Text>
               </View>
@@ -468,7 +415,12 @@ function WeekStrip({
       <View style={wStyles.weekdayLabels}>
         {getWeekDays(getWeekStart(todayKey)).map((d) => (
           <View key={d} style={wStyles.weekdayLabelCell}>
-            <Text style={[wStyles.weekdayLabel, { color: palette.textMuted as string }]}>
+            <Text
+              style={[
+                wStyles.weekdayLabel,
+                { color: palette.textMuted as string },
+              ]}
+            >
               {formatWeekdayLetter(d, locale)}
             </Text>
           </View>
@@ -479,7 +431,12 @@ function WeekStrip({
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[{ overflow: "hidden" }, swipeStyle]}>
           {/* First row: triptych (prev | current | next) */}
-          <View style={[wStyles.triptych, { width: panelWidth * 3, marginLeft: -panelWidth }]}>
+          <View
+            style={[
+              wStyles.triptych,
+              { width: panelWidth * 3, marginLeft: -panelWidth },
+            ]}
+          >
             <View style={[wStyles.weekRow, { width: panelWidth }]}>
               {prevWeekDays.map((d) => renderDayCell(d, true))}
             </View>
@@ -509,15 +466,26 @@ function WeekStrip({
         onPress={() => {
           // Tap handle to toggle
           if (expandProgress.value > 0.5) {
-            expandProgress.value = withSpring(0, { damping: 18, stiffness: 200 });
+            expandProgress.value = withSpring(0, {
+              damping: 18,
+              stiffness: 200,
+            });
           } else {
-            expandProgress.value = withSpring(1, { damping: 18, stiffness: 200 });
+            expandProgress.value = withSpring(1, {
+              damping: 18,
+              stiffness: 200,
+            });
           }
           triggerSelectionHaptic();
         }}
         hitSlop={{ top: 12, bottom: 12, left: 40, right: 40 }}
       >
-        <View style={[wStyles.dragBar, { backgroundColor: palette.border as string }]} />
+        <View
+          style={[
+            wStyles.dragBar,
+            { backgroundColor: palette.border as string },
+          ]}
+        />
       </KitPressable>
     </Animated.View>
   );
@@ -633,190 +601,40 @@ export default function CalendarTabScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
   const { safeBottom } = useAppInsets();
-  const currentUser = useQuery(api.users.getCurrentUser);
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
-  const [selectedDay, setSelectedDay] = useState(todayKey);
-  const [windowRange, setWindowRange] = useState(() => ({
-    start: addDays(todayKey, -TIMELINE_RANGE_DAYS),
-    end: addDays(todayKey, TIMELINE_RANGE_DAYS),
-  }));
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const listRef = useRef<FlashListRef<TimelineListItem>>(null);
-  const programmaticScrollRef = useRef(false);
-
-  const role =
-    currentUser?.role === "instructor" || currentUser?.role === "studio"
-      ? currentUser.role
-      : undefined;
-
-  const startTime = useMemo(() => dayKeyToTimestamp(windowRange.start), [windowRange.start]);
-  const endTime = useMemo(() => dayKeyToTimestamp(windowRange.end) + DAY_MS - 1, [windowRange.end]);
-  const remoteRows = useQuery(
-    api.jobs.getMyCalendarTimeline,
-    role ? { startTime, endTime, limit: 1000 } : "skip",
-  );
-  const { cachedRows, cacheReady, persist } = useTimelineCache(role, startTime, endTime);
-
-  useEffect(() => {
-    if (!remoteRows) return;
-    void persist(remoteRows as unknown as TimelineRow[]);
-  }, [persist, remoteRows]);
-
-  const rows = useMemo(() => {
-    if (remoteRows) return remoteRows as unknown as TimelineRow[];
-    if (cachedRows) return cachedRows;
-    return [];
-  }, [remoteRows, cachedRows]);
-
-  const filteredRows = useMemo(() => {
-    const start = dayKeyToTimestamp(windowRange.start);
-    const end = dayKeyToTimestamp(windowRange.end) + DAY_MS - 1;
-    return rows
-      .filter((row) => row.startTime >= start && row.startTime <= end)
-      .sort((a, b) => a.startTime - b.startTime);
-  }, [rows, windowRange.end, windowRange.start]);
-
-  const { listItems, dayStartIndexByKey } = useMemo(() => {
-    const rowsByDay = new Map<string, TimelineRow[]>();
-    for (const row of filteredRows) {
-      const dk = toDayKey(row.startTime);
-      const existing = rowsByDay.get(dk);
-      if (existing) existing.push(row);
-      else rowsByDay.set(dk, [row]);
-    }
-
-    const items: TimelineListItem[] = [];
-    const dayIndexMap = new Map<string, number>();
-    const days = enumerateDays(windowRange.start, windowRange.end);
-
-    for (const dk of days) {
-      dayIndexMap.set(dk, items.length);
-      items.push({ kind: "dayHeader", key: `${dk}:header`, dayKey: dk });
-      const dayRows = rowsByDay.get(dk) ?? [];
-      if (dayRows.length === 0) {
-        items.push({ kind: "empty", key: `${dk}:empty`, dayKey: dk });
-      } else {
-        for (const lesson of dayRows) {
-          items.push({ kind: "lesson", key: `${dk}:${lesson.lessonId}`, dayKey: dk, lesson });
-        }
-      }
-    }
-    return { listItems: items, dayStartIndexByKey: dayIndexMap };
-  }, [filteredRows, windowRange.end, windowRange.start]);
-
-  const lessonCountByDay = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const row of rows) {
-      const dk = toDayKey(row.startTime);
-      counts.set(dk, (counts.get(dk) ?? 0) + 1);
-    }
-    return counts;
-  }, [rows]);
-
-  // ─── Scroll to day ──────────────────────────────────────────────────────────
-
-  const scrollToDay = useCallback(
-    (dayKey: string) => {
-      const index = dayStartIndexByKey.get(dayKey);
-      if (index === undefined) return;
-      programmaticScrollRef.current = true;
-      try {
-        listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0 });
-      } catch {
-        /* layout not ready */
-      }
-      setTimeout(() => {
-        programmaticScrollRef.current = false;
-      }, 500);
-    },
-    [dayStartIndexByKey],
-  );
-
-  const ensureDayInWindow = useCallback((dayKey: string) => {
-    setWindowRange((prev) => {
-      let ns = prev.start;
-      let ne = prev.end;
-      if (compareDayKey(dayKey, prev.start) < 0) ns = addDays(dayKey, -TIMELINE_EXTEND_BUFFER_DAYS);
-      if (compareDayKey(dayKey, prev.end) > 0) ne = addDays(dayKey, TIMELINE_EXTEND_BUFFER_DAYS);
-      if (ns === prev.start && ne === prev.end) return prev;
-      return { start: ns, end: ne };
-    });
-  }, []);
-
-  // ─── Bi-directional sync ────────────────────────────────────────────────────
-
-  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
-
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (programmaticScrollRef.current) return;
-      const firstHeader = viewableItems.find(
-        (v) => (v.item as TimelineListItem).kind === "dayHeader",
-      );
-      if (firstHeader) {
-        const dk = (firstHeader.item as TimelineListItem).dayKey;
-        setSelectedDay(dk);
-        // Auto-extend range when scrolling near edges
-        ensureDayInWindow(addDays(dk, -EDGE_EXTEND_THRESHOLD_DAYS));
-        ensureDayInWindow(addDays(dk, EDGE_EXTEND_THRESHOLD_DAYS));
-      }
-    },
-    [ensureDayInWindow],
-  );
-
-  // ─── Strip handlers ─────────────────────────────────────────────────────────
-
-  const handleDayPress = useCallback(
-    (dayKey: string) => {
-      setSelectedDay(dayKey);
-      ensureDayInWindow(dayKey);
-      setTimeout(() => scrollToDay(dayKey), 50);
-    },
-    [ensureDayInWindow, scrollToDay],
-  );
-
-  const handleWeekChange = useCallback(
-    (deltaWeeks: number) => {
-      const newDay = addDays(selectedDay, deltaWeeks * 7);
-      handleDayPress(newDay);
-    },
-    [selectedDay, handleDayPress],
-  );
-
-  const handleTodayPress = useCallback(() => {
-    handleDayPress(todayKey);
-  }, [todayKey, handleDayPress]);
-
-  const handleMonthPickerChange = useCallback(
-    (_event: unknown, selectedDate?: Date) => {
-      if (Platform.OS !== "ios") setShowMonthPicker(false);
-      if (!selectedDate) return;
-      setShowMonthPicker(false);
-      handleDayPress(toDayKey(selectedDate.getTime()));
-    },
-    [handleDayPress],
-  );
-
-  // ─── Item sizing ────────────────────────────────────────────────────────────
-
-  const overrideItemLayout = useCallback(
-    (layout: { span?: number; size?: number }, item: TimelineListItem) => {
-      if (item.kind === "dayHeader") layout.size = ESTIMATED_DAY_HEADER_SIZE;
-      else if (item.kind === "empty") layout.size = ESTIMATED_EMPTY_SIZE;
-      else layout.size = ESTIMATED_LESSON_SIZE;
-    },
-    [],
-  );
+  const {
+    selectedDay,
+    showMonthPicker,
+    listRef,
+    listItems,
+    lessonCountByDay,
+    viewabilityConfig,
+    onViewableItemsChanged,
+    handleDayPress,
+    handleWeekChange,
+    handleTodayPress,
+    openMonthPicker,
+    handleMonthPickerChange,
+    overrideItemLayout,
+    selectedDayTimestamp,
+    isLoading,
+  } = useCalendarTabController();
 
   // ─── Render items ───────────────────────────────────────────────────────────
 
   const railColor = (palette.border as string) ?? "#E5E5E5";
+  const listFooterComponent = useMemo(
+    () => <View style={{ height: safeBottom + 28 }} />,
+    [safeBottom],
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: TimelineListItem }) => {
       if (item.kind === "dayHeader") {
         const isToday = item.dayKey === todayKey;
-        const dotColor = isToday ? (palette.primary as string) : (palette.textMuted as string);
+        const dotColor = isToday
+          ? (palette.primary as string)
+          : (palette.textMuted as string);
 
         return (
           <View style={styles.timelineRow}>
@@ -836,10 +654,17 @@ export default function CalendarTabScreen() {
               />
             </View>
             <View style={styles.dayHeaderContent}>
-              <Text style={[styles.dayHeading, { color: palette.text as string }]}>
+              <Text
+                style={[styles.dayHeading, { color: palette.text as string }]}
+              >
                 {formatDayHeading(item.dayKey, i18n.language)}
               </Text>
-              <Text style={[styles.daySubtitle, { color: palette.textMuted as string }]}>
+              <Text
+                style={[
+                  styles.daySubtitle,
+                  { color: palette.textMuted as string },
+                ]}
+              >
                 {formatDaySubtitle(item.dayKey, i18n.language)}
               </Text>
             </View>
@@ -854,8 +679,15 @@ export default function CalendarTabScreen() {
               <View style={[styles.railLine, { backgroundColor: railColor }]} />
             </View>
             <View style={styles.emptyContent}>
-              <Text style={[styles.emptyText, { color: palette.textMuted as string }]}>
-                {t("calendarTab.timeline.noLessons", { defaultValue: "No lessons" })}
+              <Text
+                style={[
+                  styles.emptyText,
+                  { color: palette.textMuted as string },
+                ]}
+              >
+                {t("calendarTab.timeline.noLessons", {
+                  defaultValue: "No lessons",
+                })}
               </Text>
             </View>
           </View>
@@ -864,8 +696,11 @@ export default function CalendarTabScreen() {
 
       const row = item.lesson;
       const swatches = palette.calendar.eventSwatches;
-      const swatch = swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ?? undefined;
-      const accent = (swatch?.background as string) ?? (palette.primary as string);
+      const swatch =
+        swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ??
+        undefined;
+      const accent =
+        (swatch?.background as string) ?? (palette.primary as string);
       const counterpart =
         row.roleView === "instructor"
           ? row.studioName
@@ -873,21 +708,41 @@ export default function CalendarTabScreen() {
 
       const lifecycleLabel =
         row.lifecycle === "live"
-          ? t("calendarTab.timeline.lifecycle.live", { defaultValue: "Live now" })
+          ? t("calendarTab.timeline.lifecycle.live", {
+              defaultValue: "Live now",
+            })
           : row.lifecycle === "upcoming"
-            ? t("calendarTab.timeline.lifecycle.upcoming", { defaultValue: "Upcoming" })
+            ? t("calendarTab.timeline.lifecycle.upcoming", {
+                defaultValue: "Upcoming",
+              })
             : row.lifecycle === "cancelled"
-              ? t("calendarTab.timeline.lifecycle.cancelled", { defaultValue: "Cancelled" })
-              : t("calendarTab.timeline.lifecycle.past", { defaultValue: "Past" });
+              ? t("calendarTab.timeline.lifecycle.cancelled", {
+                  defaultValue: "Cancelled",
+                })
+              : t("calendarTab.timeline.lifecycle.past", {
+                  defaultValue: "Past",
+                });
 
       const lifecycleTone =
         row.lifecycle === "live"
-          ? { fg: palette.success as string, bg: palette.successSubtle as string }
+          ? {
+              fg: palette.success as string,
+              bg: palette.successSubtle as string,
+            }
           : row.lifecycle === "upcoming"
-            ? { fg: palette.primary as string, bg: palette.primarySubtle as string }
+            ? {
+                fg: palette.primary as string,
+                bg: palette.primarySubtle as string,
+              }
             : row.lifecycle === "cancelled"
-              ? { fg: palette.danger as string, bg: palette.dangerSubtle as string }
-              : { fg: palette.textMuted as string, bg: palette.surfaceAlt as string };
+              ? {
+                  fg: palette.danger as string,
+                  bg: palette.dangerSubtle as string,
+                }
+              : {
+                  fg: palette.textMuted as string,
+                  bg: palette.surfaceAlt as string,
+                };
 
       return (
         <View style={styles.timelineRow}>
@@ -895,23 +750,50 @@ export default function CalendarTabScreen() {
             <View style={[styles.railLine, { backgroundColor: railColor }]} />
             <View style={[styles.railDotLesson, { backgroundColor: accent }]} />
           </View>
-          <View style={[styles.lessonCard, { backgroundColor: palette.surfaceElevated as string }]}>
+          <View
+            style={[
+              styles.lessonCard,
+              { backgroundColor: palette.surfaceElevated as string },
+            ]}
+          >
             <View style={styles.lessonContent}>
               <View style={styles.lessonTopRow}>
-                <Text style={[styles.lessonTime, { color: palette.textMuted as string }]}>
+                <Text
+                  style={[
+                    styles.lessonTime,
+                    { color: palette.textMuted as string },
+                  ]}
+                >
                   {formatTime(row.startTime, i18n.language)} –{" "}
                   {formatTime(row.endTime, i18n.language)}
                 </Text>
-                <View style={[styles.lifecycleBadge, { backgroundColor: lifecycleTone.bg }]}>
-                  <Text style={[styles.lifecycleBadgeText, { color: lifecycleTone.fg }]}>
+                <View
+                  style={[
+                    styles.lifecycleBadge,
+                    { backgroundColor: lifecycleTone.bg },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.lifecycleBadgeText,
+                      { color: lifecycleTone.fg },
+                    ]}
+                  >
                     {lifecycleLabel}
                   </Text>
                 </View>
               </View>
-              <Text style={[styles.lessonTitle, { color: palette.text as string }]}>
+              <Text
+                style={[styles.lessonTitle, { color: palette.text as string }]}
+              >
                 {row.sport}
               </Text>
-              <Text style={[styles.lessonMeta, { color: palette.textMuted as string }]}>
+              <Text
+                style={[
+                  styles.lessonMeta,
+                  { color: palette.textMuted as string },
+                ]}
+              >
                 {counterpart}
               </Text>
             </View>
@@ -924,7 +806,7 @@ export default function CalendarTabScreen() {
 
   // ─── Loading ────────────────────────────────────────────────────────────────
 
-  if (currentUser === undefined || (!cacheReady && !remoteRows)) {
+  if (isLoading) {
     return <LoadingScreen label={t("calendarTab.loading")} />;
   }
 
@@ -936,7 +818,7 @@ export default function CalendarTabScreen() {
         selectedDay={selectedDay}
         onDayPress={handleDayPress}
         onWeekChange={handleWeekChange}
-        onMonthPress={() => setShowMonthPicker(true)}
+        onMonthPress={openMonthPicker}
         onTodayPress={handleTodayPress}
         lessonCountByDay={lessonCountByDay}
         locale={i18n.language}
@@ -953,12 +835,12 @@ export default function CalendarTabScreen() {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         contentContainerStyle={styles.timelineContent}
-        ListFooterComponent={<View style={{ height: safeBottom + 28 }} />}
+        ListFooterComponent={listFooterComponent}
       />
 
       {showMonthPicker ? (
         <DateTimePicker
-          value={new Date(dayKeyToTimestamp(selectedDay))}
+          value={new Date(selectedDayTimestamp)}
           mode="date"
           display={Platform.OS === "ios" ? "spinner" : "default"}
           onChange={handleMonthPickerChange}

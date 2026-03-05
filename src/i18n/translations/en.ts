@@ -42,6 +42,15 @@ const en = {
       permissionDenied: "Calendar permission needed",
       failed: "Sync failed",
     },
+    timeline: {
+      noLessons: "No lessons",
+      lifecycle: {
+        live: "Live now",
+        upcoming: "Upcoming",
+        cancelled: "Cancelled",
+        past: "Past",
+      },
+    },
     footerHint:
       "Calendar interactions are enabled. Session events appear for instructor accounts.",
   },
@@ -87,6 +96,11 @@ const en = {
   },
   common: {
     cancel: "Cancel",
+    clear: "Clear",
+    edit: "Edit",
+    loading: "Loading...",
+    address: "Address",
+    searching: "Searching...",
   },
   profile: {
     title: "Profile",
@@ -180,7 +194,17 @@ const en = {
         autoSync: "Auto-add accepted sessions",
         futureNote:
           "Queue syncs to a dedicated device calendar. Cloud sync to Google or Apple depends on your phone account settings.",
+        googleConnectRequired:
+          "Connect your Google account to enable direct Google Calendar sync.",
+        googleConnectedAs: "Connected as {{email}}",
+        applePermissionNote:
+          "Apple sync requests calendar access and writes to a dedicated Queue Sessions calendar.",
         lastConnected: "Connected on {{date}}",
+        actions: {
+          connectGoogle: "Connect Google Calendar",
+          disconnectGoogle: "Disconnect Google Calendar",
+          syncNow: "Sync now",
+        },
       },
       autoExpire: {
         title: "Auto-expire unfilled jobs",
@@ -191,6 +215,9 @@ const en = {
       actions: {
         save: "Save settings",
         saving: "Saving...",
+        connecting: "Connecting...",
+        syncing: "Syncing...",
+        disconnecting: "Disconnecting...",
       },
       unsavedTitle: "Unsaved changes",
       unsavedBody: "You have updates that are not saved yet.",
@@ -494,6 +521,36 @@ const en = {
       updatingReminder: "Updating...",
       markLessonDone: "Mark done",
       markingLessonDone: "Marking...",
+    },
+    checkout: {
+      payment: "Payment",
+      notStarted: "Not started",
+      payout: "Payout: {{status}}",
+      payNow: "Pay now",
+      retryPayment: "Retry payment",
+      starting: "Starting checkout...",
+      completed: "Payment completed.",
+      pendingConfirmation: "Payment is pending confirmation.",
+      cancelled: "Checkout cancelled.",
+      failed: "Payment did not complete.",
+      paymentStatus: {
+        created: "Created",
+        pending: "Pending",
+        authorized: "Authorized",
+        captured: "Captured",
+        failed: "Failed",
+        cancelled: "Cancelled",
+        refunded: "Refunded",
+      },
+      payoutStatus: {
+        queued: "Queued",
+        processing: "Processing",
+        pendingProvider: "Pending provider",
+        paid: "Paid out",
+        failed: "Failed",
+        cancelled: "Cancelled",
+        needsAttention: "Needs attention",
+      },
     },
     success: {
       posted: "Job posted successfully.",

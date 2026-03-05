@@ -16,6 +16,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useBrand } from "@/hooks/use-brand";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 export function InstructorFeed() {
   const { t, i18n } = useTranslation();
@@ -29,6 +30,7 @@ export function InstructorFeed() {
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const applyToJob = useMutation(api.jobs.applyToJob);
+  const studioHomeRoute = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.home);
 
   const now = Date.now();
   const queryMinuteBucket = Math.floor(now / (60 * 1000));
@@ -55,11 +57,11 @@ export function InstructorFeed() {
   }
 
   if (currentUser.role === "studio") {
-    return <Redirect href="/" />;
+    return <Redirect href={studioHomeRoute} />;
   }
 
   if (currentUser.role !== "instructor") {
-    return <Redirect href="/" />;
+    return <Redirect href="/onboarding" />;
   }
 
   const jobs = availableJobs ?? [];
@@ -111,6 +113,7 @@ export function InstructorFeed() {
               value={jobsSearchQuery}
               onChangeText={setJobsSearchQuery}
               placeholder={t("jobsTab.searchPlaceholder")}
+              clearAccessibilityLabel={t("common.clear", { defaultValue: "Clear search" })}
             />
             <View style={styles.segmentRow}>
               {(
