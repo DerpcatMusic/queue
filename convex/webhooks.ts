@@ -304,7 +304,7 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
       payment?: { id?: string; status?: string };
       checkout?: { id?: string };
       merchant_reference_id?: string;
-      metadata?: { payoutId?: string; merchant_reference_id?: string };
+      metadata?: { payoutId?: string; paymentId?: string; merchant_reference_id?: string };
     };
   };
   const eventType =
@@ -344,8 +344,12 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
     : undefined;
   const merchantReferenceIdFromPayload = isBeneficiaryEvent
     ? payload.data?.merchant_reference_id?.toString().trim() ||
-      undefined ||
       payload.data?.metadata?.merchant_reference_id?.toString().trim() ||
+      undefined
+    : undefined;
+  const paymentReferenceIdFromPayload = !isPayoutEvent && !isBeneficiaryEvent
+    ? payload.data?.merchant_reference_id?.toString().trim() ||
+      payload.data?.metadata?.paymentId?.toString().trim() ||
       undefined
     : undefined;
   const payoutMethodType = isBeneficiaryEvent
@@ -441,6 +445,7 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
         merchantReferenceId: merchantReferenceIdFromPayload,
         beneficiaryId: providerBeneficiaryId,
         payoutMethodType,
+        statusRaw,
       }),
     });
   } else if (isPayoutEvent || providerPayoutId) {
@@ -466,6 +471,7 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
         eventType,
         providerPaymentId,
         providerCheckoutId,
+        merchantReferenceId: paymentReferenceIdFromPayload,
         statusRaw,
       }),
     });
