@@ -1,8 +1,8 @@
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { httpAction, internalMutation } from "./_generated/server";
+import { httpAction, internalMutation, mutation, query } from "./_generated/server";
 import { omitUndefined } from "./lib/validation";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 type IntegrationRoute = "payment" | "payout" | "beneficiary" | "kyc";
 
@@ -13,6 +13,20 @@ const integrationRouteValidator = v.union(
   v.literal("beneficiary"),
   v.literal("kyc"),
 );
+const INTEGRATION_EVENTS_ACCESS_TOKEN_ENV = "INTEGRATION_EVENTS_ACCESS_TOKEN";
+
+export function isValidIntegrationEventsAccessToken(accessToken: string | undefined): boolean {
+  const expected = process.env[INTEGRATION_EVENTS_ACCESS_TOKEN_ENV]?.trim();
+  return Boolean(expected) && accessToken?.trim() === expected;
+}
+
+function requireIntegrationEventsAccessToken(accessToken: string | undefined) {
+  if (!isValidIntegrationEventsAccessToken(accessToken)) {
+    throw new ConvexError(
+      "Unauthorized integration-events operation. Set INTEGRATION_EVENTS_ACCESS_TOKEN and pass accessToken.",
+    );
+  }
+}
 
 const getHeader = (req: Request, key: string): string | null =>
   req.headers.get(key) ?? req.headers.get(key.toLowerCase()) ?? null;
@@ -468,6 +482,126 @@ export const processIntegrationEvent = internalMutation({
       });
       throw error;
     }
+  },
+});
+
+export const listFailedIntegrationEvents = query({
+  args: {
+    accessToken: v.optional(v.string()),
+    provider: v.optional(integrationProviderValidator),
+    route: v.optional(integrationRouteValidator),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    requireIntegrationEventsAccessToken(args.accessToken);
+
+    const rawLimit = Math.floor(args.limit ?? 50);
+    const limit = Math.min(Math.max(rawLimit, 1), 200);
+    const rows = await ctx.db
+      .query("integrationEvents")
+      .order("desc")
+      .take(400);
+
+    return rows
+      .filter(
+        (row) =>
+          row.processingState === "failed" &&
+          (!args.provider || row.provider === args.provider) &&
+          (!args.route || row.route === args.route),
+      )
+      .slice(0, limit)
+      .map((row) => ({
+        _id: row._id,
+        provider: row.provider,
+        route: row.route,
+        providerEventId: row.providerEventId,
+        eventType: row.eventType,
+        signatureValid: row.signatureValid,
+        processingError: row.processingError,
+        sourceEventId: row.sourceEventId,
+        entityId: row.entityId,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        processedAt: row.processedAt,
+      }));
+  },
+});
+
+export const replayIntegrationEvent = mutation({
+  args: {
+    integrationEventId: v.id("integrationEvents"),
+    accessToken: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    requireIntegrationEventsAccessToken(args.accessToken);
+
+    const row = await ctx.db.get(args.integrationEventId);
+    if (!row) {
+      throw new ConvexError("Integration event not found");
+    }
+
+    await ctx.db.patch(args.integrationEventId, {
+      processingState: "pending",
+      processingError: undefined,
+      processedAt: undefined,
+      updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, internal.webhooks.processIntegrationEvent, {
+      integrationEventId: args.integrationEventId,
+    });
+
+    return {
+      integrationEventId: args.integrationEventId,
+      replayed: true,
+      provider: row.provider,
+      route: row.route,
+      providerEventId: row.providerEventId,
+    };
+  },
+});
+
+export const replayFailedIntegrationEvents = mutation({
+  args: {
+    accessToken: v.optional(v.string()),
+    provider: v.optional(integrationProviderValidator),
+    route: v.optional(integrationRouteValidator),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    requireIntegrationEventsAccessToken(args.accessToken);
+
+    const rawLimit = Math.floor(args.limit ?? 25);
+    const limit = Math.min(Math.max(rawLimit, 1), 100);
+    const rows = await ctx.db
+      .query("integrationEvents")
+      .order("asc")
+      .take(500);
+
+    const targetRows = rows
+      .filter(
+        (row) =>
+          row.processingState === "failed" &&
+          (!args.provider || row.provider === args.provider) &&
+          (!args.route || row.route === args.route),
+      )
+      .slice(0, limit);
+
+    for (const row of targetRows) {
+      await ctx.db.patch(row._id, {
+        processingState: "pending",
+        processingError: undefined,
+        processedAt: undefined,
+        updatedAt: Date.now(),
+      });
+      await ctx.scheduler.runAfter(0, internal.webhooks.processIntegrationEvent, {
+        integrationEventId: row._id,
+      });
+    }
+
+    return {
+      replayedCount: targetRows.length,
+      integrationEventIds: targetRows.map((row) => row._id),
+    };
   },
 });
 
