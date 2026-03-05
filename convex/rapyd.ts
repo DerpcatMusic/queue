@@ -395,8 +395,8 @@ export const createCheckoutForJob = action({
     const methods = configuredMethods
       ? configuredMethods
           .split(",")
-          .map((item) => item.trim())
-          .filter((item) => item.length > 0)
+          .map((item: string) => item.trim())
+          .filter((item: string) => item.length > 0)
       : [];
     if (configuredMethods && methods.length === 0) {
       throw new ConvexError("RAPYD_PAYMENT_METHODS is set but does not include any valid methods");
