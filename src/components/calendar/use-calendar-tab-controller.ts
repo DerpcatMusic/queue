@@ -314,7 +314,9 @@ export function useCalendarTabController() {
       items.push({ kind: "dayHeader", key: `${dk}:header`, dayKey: dk });
       const dayRows = rowsByDay.get(dk) ?? [];
       if (dayRows.length === 0) {
-        items.push({ kind: "empty", key: `${dk}:empty`, dayKey: dk });
+        if (dk === todayKey || dk === selectedDay) {
+          items.push({ kind: "empty", key: `${dk}:empty`, dayKey: dk });
+        }
       } else {
         for (const lesson of dayRows) {
           items.push({
@@ -328,7 +330,7 @@ export function useCalendarTabController() {
     }
 
     return { listItems: items, dayStartIndexByKey: dayIndexMap };
-  }, [filteredRows, windowRange.end, windowRange.start]);
+  }, [filteredRows, selectedDay, todayKey, windowRange.end, windowRange.start]);
 
   const lessonCountByDay = useMemo(() => {
     const counts = new Map<string, number>();

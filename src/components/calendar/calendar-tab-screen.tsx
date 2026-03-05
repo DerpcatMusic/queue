@@ -157,6 +157,7 @@ function WeekStrip({
   onTodayPress,
   lessonCountByDay,
   locale,
+  todayLabel,
 }: {
   selectedDay: string;
   onDayPress: (dayKey: string) => void;
@@ -165,6 +166,7 @@ function WeekStrip({
   onTodayPress: () => void;
   lessonCountByDay: Map<string, number>;
   locale: string;
+  todayLabel: string;
 }) {
   const palette = useBrand();
   const { width: screenWidth } = useWindowDimensions();
@@ -310,6 +312,9 @@ function WeekStrip({
       <KitPressable
         key={dayKey}
         haptic="none"
+        accessibilityRole="button"
+        accessibilityLabel={formatDayHeading(dayKey, locale)}
+        accessibilityState={{ selected: isSelected }}
         onPress={() => {
           onDayPress(dayKey);
           triggerSelectionHaptic();
@@ -359,7 +364,7 @@ function WeekStrip({
     );
   };
 
-  const firstWeekRow = monthWeeks[0] ?? currWeekDays;
+  const firstWeekRow = currWeekDays;
 
   return (
     <Animated.View
@@ -375,6 +380,9 @@ function WeekStrip({
           onPress={onMonthPress}
           style={wStyles.monthButton}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={formatMonthYear(selectedDay, locale)}
+          accessibilityHint="Open date picker"
         >
           <Text style={[wStyles.monthLabel, { color: palette.text as string }]}>
             {formatMonthYear(selectedDay, locale)}
@@ -390,7 +398,12 @@ function WeekStrip({
         </KitPressable>
         <View style={wStyles.headerActions}>
           {selectedDay !== todayKey ? (
-            <KitPressable onPress={onTodayPress} hitSlop={6}>
+            <KitPressable
+              onPress={onTodayPress}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={todayLabel}
+            >
               <View
                 style={[
                   wStyles.todayPill,
@@ -403,7 +416,7 @@ function WeekStrip({
                     { color: palette.primary as string },
                   ]}
                 >
-                  Today
+                  {todayLabel}
                 </Text>
               </View>
             </KitPressable>
@@ -463,6 +476,8 @@ function WeekStrip({
       <KitPressable
         style={wStyles.dragHandle}
         haptic="none"
+        accessibilityRole="button"
+        accessibilityLabel="Expand or collapse month"
         onPress={() => {
           // Tap handle to toggle
           if (expandProgress.value > 0.5) {
@@ -750,11 +765,14 @@ export default function CalendarTabScreen() {
             <View style={[styles.railLine, { backgroundColor: railColor }]} />
             <View style={[styles.railDotLesson, { backgroundColor: accent }]} />
           </View>
-          <View
+          <KitPressable
             style={[
               styles.lessonCard,
               { backgroundColor: palette.surfaceElevated as string },
             ]}
+            accessibilityRole="button"
+            accessibilityLabel={`${row.sport}, ${formatTime(row.startTime, i18n.language)} to ${formatTime(row.endTime, i18n.language)}`}
+            onPress={() => handleDayPress(item.dayKey)}
           >
             <View style={styles.lessonContent}>
               <View style={styles.lessonTopRow}>
@@ -797,11 +815,11 @@ export default function CalendarTabScreen() {
                 {counterpart}
               </Text>
             </View>
-          </View>
+          </KitPressable>
         </View>
       );
     },
-    [i18n.language, palette, railColor, t, todayKey],
+    [handleDayPress, i18n.language, palette, railColor, t, todayKey],
   );
 
   // ─── Loading ────────────────────────────────────────────────────────────────
@@ -822,6 +840,7 @@ export default function CalendarTabScreen() {
         onTodayPress={handleTodayPress}
         lessonCountByDay={lessonCountByDay}
         locale={i18n.language}
+        todayLabel={t("calendarTab.today", { defaultValue: "Today" })}
       />
 
       <FlashList
