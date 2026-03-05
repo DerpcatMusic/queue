@@ -93,7 +93,7 @@ function MetricTile({
       <Link.Trigger>
         <KitPressable
           accessibilityRole="link"
-          accessibilityLabel={label}
+          accessibilityLabel={`${label}: ${value}`}
           haptic="selection"
           className="active:opacity-80 flex-1 rounded-[32px] p-6 justify-between gap-6"
           style={{

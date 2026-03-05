@@ -1,5 +1,6 @@
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useTabBarScrollSignals } from "@/hooks/use-tab-bar-scroll-signals";
+import { usePathname } from "expo-router";
 import type { PropsWithChildren } from "react";
 import {
   View,
@@ -46,7 +47,9 @@ export function TabScreenScrollView({
   scrollIndicatorInsets,
   ...props
 }: TabScreenScrollViewProps) {
-  const tabBarSignals = useTabBarScrollSignals(routeKey ?? "unknown");
+  const pathname = usePathname();
+  const resolvedRouteKey = routeKey ?? pathname;
+  const tabBarSignals = useTabBarScrollSignals(resolvedRouteKey);
 
   return (
     <TabScreenRoot
@@ -57,9 +60,7 @@ export function TabScreenScrollView({
         ...props,
         ...(animatedRef ? { ref: animatedRef as never } : {}),
         onScroll: (event) => {
-          if (routeKey) {
-            tabBarSignals.onScroll(event);
-          }
+          tabBarSignals.onScroll(event);
           onScroll?.(event);
         },
         scrollEventThrottle: 32,
