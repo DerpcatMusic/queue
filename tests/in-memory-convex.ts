@@ -42,6 +42,18 @@ class InMemoryQuery {
     return this.resolve().slice(0, limit);
   }
 
+  async paginate(args: { cursor: string | null; numItems: number }) {
+    const rows = this.resolve();
+    const start = args.cursor ? Number.parseInt(args.cursor, 10) || 0 : 0;
+    const page = rows.slice(start, start + args.numItems);
+    const next = start + page.length;
+    return {
+      page,
+      isDone: next >= rows.length,
+      continueCursor: next >= rows.length ? String(rows.length) : String(next),
+    };
+  }
+
   async collect() {
     return this.resolve();
   }

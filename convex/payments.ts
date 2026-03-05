@@ -51,6 +51,7 @@ const BLOCK_NEW_CHECKOUT_ACTIVE_STATUSES = new Set<PaymentStatus>([
 ]);
 
 const DEFAULT_STALE_CHECKOUT_MS = 30 * 60 * 1000;
+const MANUAL_WITHDRAWAL_SCAN_BATCH_SIZE = 500;
 
 const toRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -215,6 +216,77 @@ const applyResolvedPaymentStatus = async (
     });
   }
 };
+
+async function loadScheduledPaymentIdsForInstructor(
+  ctx: MutationCtx,
+  instructorUserId: Id<"users">,
+): Promise<Set<string>> {
+  const scheduledPaymentIds = new Set<string>();
+  let cursor: string | null = null;
+
+  while (true) {
+    const page = await ctx.db
+      .query("payouts")
+      .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", instructorUserId))
+      .order("desc")
+      .paginate({
+        cursor,
+        numItems: MANUAL_WITHDRAWAL_SCAN_BATCH_SIZE,
+      });
+
+    for (const payout of page.page) {
+      scheduledPaymentIds.add(String(payout.paymentId));
+    }
+
+    if (page.isDone) {
+      return scheduledPaymentIds;
+    }
+    cursor = page.continueCursor;
+  }
+}
+
+export async function loadEligibleCapturedPaymentsForManualWithdrawal(
+  ctx: MutationCtx,
+  args: {
+    instructorUserId: Id<"users">;
+    maxPayments: number;
+  },
+): Promise<Doc<"payments">[]> {
+  const scheduledPaymentIds = await loadScheduledPaymentIdsForInstructor(ctx, args.instructorUserId);
+  const eligiblePayments: Doc<"payments">[] = [];
+  let cursor: string | null = null;
+
+  while (eligiblePayments.length < args.maxPayments) {
+    const page = await ctx.db
+      .query("payments")
+      .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", args.instructorUserId))
+      .order("asc")
+      .paginate({
+        cursor,
+        numItems: MANUAL_WITHDRAWAL_SCAN_BATCH_SIZE,
+      });
+
+    for (const payment of page.page) {
+      if (payment.status !== "captured") {
+        continue;
+      }
+      if (scheduledPaymentIds.has(String(payment._id))) {
+        continue;
+      }
+      eligiblePayments.push(payment);
+      if (eligiblePayments.length >= args.maxPayments) {
+        break;
+      }
+    }
+
+    if (page.isDone) {
+      break;
+    }
+    cursor = page.continueCursor;
+  }
+
+  return eligiblePayments;
+}
 
 export const getCheckoutContext = internalQuery({
   args: {
@@ -565,23 +637,11 @@ export const requestMyPayoutWithdrawal = mutation({
     const rawMaxPayments = Math.floor(args.maxPayments ?? 20);
     const maxPayments = Math.min(Math.max(rawMaxPayments, 1), 100);
 
-    const [destinations, payments, payouts] = await Promise.all([
-      ctx.db
-        .query("payoutDestinations")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .order("desc")
-        .take(100),
-      ctx.db
-        .query("payments")
-        .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
-        .order("desc")
-        .take(500),
-      ctx.db
-        .query("payouts")
-        .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
-        .order("desc")
-        .take(500),
-    ]);
+    const destinations = await ctx.db
+      .query("payoutDestinations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(100);
 
     const hasVerifiedDestination = destinations.some(
       (destination) => destination.status === "verified",
@@ -592,21 +652,10 @@ export const requestMyPayoutWithdrawal = mutation({
       );
     }
 
-    const latestPayoutByPaymentId = new Map<string, Doc<"payouts">>();
-    for (const payout of payouts) {
-      const key = String(payout.paymentId);
-      if (!latestPayoutByPaymentId.has(key)) {
-        latestPayoutByPaymentId.set(key, payout);
-      }
-    }
-
-    const eligiblePayments = payments
-      .filter(
-        (payment) =>
-          payment.status === "captured" && !latestPayoutByPaymentId.has(String(payment._id)),
-      )
-      .sort((a, b) => a.createdAt - b.createdAt)
-      .slice(0, maxPayments);
+    const eligiblePayments = await loadEligibleCapturedPaymentsForManualWithdrawal(ctx, {
+      instructorUserId: user._id,
+      maxPayments,
+    });
 
     let scheduledCount = 0;
     let totalAmountAgorot = 0;
