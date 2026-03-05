@@ -482,6 +482,36 @@ export default defineSchema({
     .index("by_provider_eventId", ["provider", "providerEventId"])
     .index("by_user", ["userId", "createdAt"]),
 
+  integrationEvents: defineTable({
+    provider: v.union(v.literal("rapyd"), v.literal("didit")),
+    route: v.union(
+      v.literal("payment"),
+      v.literal("payout"),
+      v.literal("beneficiary"),
+      v.literal("kyc"),
+    ),
+    providerEventId: v.string(),
+    eventType: v.optional(v.string()),
+    signatureValid: v.boolean(),
+    payloadHash: v.string(),
+    payload: v.any(),
+    metadata: v.optional(v.any()),
+    processingState: v.union(
+      v.literal("pending"),
+      v.literal("processed"),
+      v.literal("failed"),
+    ),
+    processingError: v.optional(v.string()),
+    sourceEventId: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+    processedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_provider_eventId", ["provider", "providerEventId"])
+    .index("by_provider_processing_createdAt", ["provider", "processingState", "createdAt"])
+    .index("by_provider_route_createdAt", ["provider", "route", "createdAt"]),
+
   webhookInvalidSignatureThrottle: defineTable({
     provider: v.union(v.literal("rapyd"), v.literal("didit")),
     fingerprint: v.string(),
