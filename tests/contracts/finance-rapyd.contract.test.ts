@@ -1,0 +1,145 @@
+import { describe, expect, it } from "bun:test";
+
+import { processRapydBeneficiaryWebhookEvent, resolveRapydBeneficiaryWebhookState } from "../../convex/payments";
+import {
+  getPaymentByProviderRefsRead,
+  getPaymentIdFromMerchantReferenceId,
+} from "../../convex/paymentsRead";
+import type { Id } from "../../convex/_generated/dataModel";
+import { InMemoryConvexDb } from "../in-memory-convex";
+
+const FIXED_NOW = 1_700_000_000_000;
+
+function freezeNow(now: number) {
+  const original = Date.now;
+  Date.now = () => now;
+  return () => {
+    Date.now = original;
+  };
+}
+
+describe("finance rapyd contracts", () => {
+  it("resolves payment ids from merchant reference ids", () => {
+    expect(getPaymentIdFromMerchantReferenceId(undefined)).toBeUndefined();
+    expect(getPaymentIdFromMerchantReferenceId("   ")).toBeUndefined();
+    expect(getPaymentIdFromMerchantReferenceId("payments:123")).toBe("payments:123" as Id<"payments">);
+  });
+
+  it("can reconcile a payment by merchant reference id fallback", async () => {
+    const db = new InMemoryConvexDb();
+    const paymentId = (await db.insert("payments", {
+      provider: "rapyd",
+      jobId: "jobs:1",
+      studioId: "studioProfiles:1",
+      studioUserId: "users:1",
+      status: "pending",
+      currency: "ILS",
+      instructorBaseAmountAgorot: 10000,
+      platformMarkupAmountAgorot: 1500,
+      studioChargeAmountAgorot: 11500,
+      platformMarkupBps: 1500,
+      idempotencyKey: "payment:1",
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    })) as Id<"payments">;
+
+    const payment = await getPaymentByProviderRefsRead(
+      { db } as any,
+      { merchantReferenceId: String(paymentId) },
+    );
+
+    expect(payment?._id).toBe(paymentId);
+  });
+
+  it("keeps beneficiary onboarding pending until the webhook indicates success", async () => {
+    const restore = freezeNow(FIXED_NOW);
+    try {
+      const db = new InMemoryConvexDb();
+      const userId = "users:1" as Id<"users">;
+      await db.insert("payoutDestinationOnboarding", {
+        userId,
+        provider: "rapyd",
+        merchantReferenceId: "beneficiary:users:1:abc",
+        status: "pending",
+        category: "bank",
+        beneficiaryCountry: "IL",
+        beneficiaryEntityType: "individual",
+        payoutCurrency: "ILS",
+        createdAt: FIXED_NOW,
+        updatedAt: FIXED_NOW,
+      });
+
+      const result = await (processRapydBeneficiaryWebhookEvent as any)._handler(
+        { db },
+        {
+          providerEventId: "evt-pending",
+          eventType: "beneficiary.updated",
+          merchantReferenceId: "beneficiary:users:1:abc",
+          beneficiaryId: "beneficiary-1",
+          payoutMethodType: "il_bank",
+          statusRaw: "PENDING",
+          signatureValid: true,
+          payloadHash: "hash-1",
+          payload: { data: { status: "PENDING" } },
+        },
+      );
+
+      const session = db.list("payoutDestinationOnboarding")[0];
+      expect(result.processed).toBe(false);
+      expect(session?.status).toBe("pending");
+      expect(db.list("payoutDestinations")).toHaveLength(0);
+    } finally {
+      restore();
+    }
+  });
+
+  it("marks beneficiary onboarding complete only on explicit success", async () => {
+    const restore = freezeNow(FIXED_NOW);
+    try {
+      const db = new InMemoryConvexDb();
+      const userId = "users:1" as Id<"users">;
+      await db.insert("payoutDestinationOnboarding", {
+        userId,
+        provider: "rapyd",
+        merchantReferenceId: "beneficiary:users:1:done",
+        status: "pending",
+        category: "bank",
+        beneficiaryCountry: "IL",
+        beneficiaryEntityType: "individual",
+        payoutCurrency: "ILS",
+        createdAt: FIXED_NOW,
+        updatedAt: FIXED_NOW,
+      });
+
+      const result = await (processRapydBeneficiaryWebhookEvent as any)._handler(
+        { db },
+        {
+          providerEventId: "evt-success",
+          eventType: "beneficiary.completed",
+          merchantReferenceId: "beneficiary:users:1:done",
+          beneficiaryId: "beneficiary-2",
+          payoutMethodType: "il_bank",
+          statusRaw: "SUCCESS",
+          signatureValid: true,
+          payloadHash: "hash-2",
+          payload: { data: { status: "SUCCESS" } },
+        },
+      );
+
+      const session = db.list("payoutDestinationOnboarding")[0];
+      const destination = db.list("payoutDestinations")[0];
+      expect(result.processed).toBe(true);
+      expect(session?.status).toBe("completed");
+      expect(destination?.status).toBe("verified");
+    } finally {
+      restore();
+    }
+  });
+
+  it("classifies beneficiary webhook states conservatively", () => {
+    expect(resolveRapydBeneficiaryWebhookState({ statusRaw: "SUCCESS" })).toBe("verified");
+    expect(resolveRapydBeneficiaryWebhookState({ statusRaw: "FAILED" })).toBe("failed");
+    expect(resolveRapydBeneficiaryWebhookState({ statusRaw: "EXPIRED" })).toBe("expired");
+    expect(resolveRapydBeneficiaryWebhookState({ statusRaw: "PENDING" })).toBe("pending");
+  });
+});

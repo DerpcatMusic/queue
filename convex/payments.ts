@@ -63,6 +63,27 @@ const toTrimmedString = (value: unknown): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
+export const resolveRapydBeneficiaryWebhookState = (args: {
+  eventType?: string;
+  statusRaw?: string;
+}): "verified" | "pending" | "failed" | "expired" => {
+  const eventType = (args.eventType ?? "").trim().toLowerCase();
+  const status = (args.statusRaw ?? "").trim().toLowerCase();
+  const successSignals = ["success", "succeeded", "completed", "verified", "approved", "active"];
+  const failureSignals = ["failed", "failure", "cancel", "rejected", "declined", "error"];
+  const expirySignals = ["expired", "expire"];
+
+  if (successSignals.some((signal) => status.includes(signal) || eventType.includes(signal))) {
+    return "verified";
+  }
+  if (expirySignals.some((signal) => status.includes(signal) || eventType.includes(signal))) {
+    return "expired";
+  }
+  if (failureSignals.some((signal) => status.includes(signal) || eventType.includes(signal))) {
+    return "failed";
+  }
+  return "pending";
+};
 const sanitizeWebhookPayload = (payload: unknown): Record<string, unknown> => {
   const root = toRecord(payload) ?? {};
   const data = toRecord(root.data);
@@ -101,6 +122,7 @@ const sanitizeWebhookPayload = (payload: unknown): Record<string, unknown> => {
           metadata: metadata
             ? omitUndefined({
                 payoutId: toTrimmedString(metadata.payoutId),
+                paymentId: toTrimmedString(metadata.paymentId),
                 merchant_reference_id: toTrimmedString(metadata.merchant_reference_id),
               })
             : undefined,
@@ -206,6 +228,7 @@ export const getPaymentByProviderRefs = internalQuery({
     providerPaymentId: v.optional(v.string()),
     providerCheckoutId: v.optional(v.string()),
     paymentId: v.optional(v.id("payments")),
+    merchantReferenceId: v.optional(v.string()),
   },
   handler: async (ctx, args) => await getPaymentByProviderRefsRead(ctx, args),
 });
@@ -348,6 +371,7 @@ export const processRapydWebhookEvent = internalMutation({
     eventType: v.optional(v.string()),
     providerPaymentId: v.optional(v.string()),
     providerCheckoutId: v.optional(v.string()),
+    merchantReferenceId: v.optional(v.string()),
     statusRaw: v.optional(v.string()),
     signatureValid: v.boolean(),
     payloadHash: v.string(),
@@ -379,6 +403,7 @@ export const processRapydWebhookEvent = internalMutation({
       omitUndefined({
         providerPaymentId: args.providerPaymentId,
         providerCheckoutId: args.providerCheckoutId,
+        merchantReferenceId: args.merchantReferenceId,
       }),
     );
     const now = Date.now();
@@ -749,6 +774,7 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
     merchantReferenceId: v.optional(v.string()),
     beneficiaryId: v.optional(v.string()),
     payoutMethodType: v.optional(v.string()),
+    statusRaw: v.optional(v.string()),
     signatureValid: v.boolean(),
     payloadHash: v.string(),
     payload: v.any(),
@@ -814,6 +840,37 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
         updatedAt: Date.now(),
       });
       return { ignored: true, reason: "session_not_found" as const };
+    }
+
+    const onboardingState = resolveRapydBeneficiaryWebhookState(
+      omitUndefined({
+        eventType: args.eventType,
+        statusRaw: args.statusRaw,
+      }),
+    );
+    if (onboardingState !== "verified") {
+      await ctx.db.patch(session._id, {
+        ...(onboardingState === "pending"
+          ? {}
+          : {
+              status: onboardingState,
+              lastError:
+                "Rapyd beneficiary webhook reported " +
+                (args.statusRaw ?? args.eventType ?? "pending"),
+            }),
+        updatedAt: now,
+      });
+      await ctx.db.patch(eventId, {
+        processingError: `beneficiary_${onboardingState}`,
+        onboardingId: session._id,
+        userId: session.userId,
+        updatedAt: now,
+      });
+      return {
+        ignored: false,
+        processed: false,
+        reason: `beneficiary_${onboardingState}` as const,
+      };
     }
 
     const defaultRows = await ctx.db

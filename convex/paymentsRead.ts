@@ -86,17 +86,34 @@ export async function getCheckoutContextRead(ctx: QueryCtx, { jobId }: { jobId: 
   };
 }
 
+export function getPaymentIdFromMerchantReferenceId(
+  merchantReferenceId: string | undefined,
+): Id<"payments"> | undefined {
+  const trimmed = merchantReferenceId?.trim();
+  return trimmed ? (trimmed as Id<"payments">) : undefined;
+}
+
 export async function getPaymentByProviderRefsRead(
   ctx: QueryCtx,
   args: {
     providerPaymentId?: string;
     providerCheckoutId?: string;
     paymentId?: Id<"payments">;
+    merchantReferenceId?: string;
   },
 ) {
   if (args.paymentId) {
     const direct = await ctx.db.get(args.paymentId);
     if (direct && direct.provider === RAPYD_PROVIDER) return direct;
+  }
+  const paymentIdFromMerchantReference = getPaymentIdFromMerchantReferenceId(
+    args.merchantReferenceId,
+  );
+  if (paymentIdFromMerchantReference) {
+    const byMerchantReference = await ctx.db.get(paymentIdFromMerchantReference);
+    if (byMerchantReference && byMerchantReference.provider === RAPYD_PROVIDER) {
+      return byMerchantReference;
+    }
   }
   if (args.providerPaymentId) {
     const byPaymentId = await ctx.db
