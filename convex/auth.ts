@@ -114,10 +114,9 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         typeof args.profile.isAnonymous === "boolean" ? args.profile.isAnonymous : undefined;
 
       const emailMatches = canResolveLinkedUserByEmail(email, isEmailVerified)
-        ? await ctx.db
-            .query("users")
-            .filter((q) => q.eq(q.field("email"), email))
-            .take(2)
+        ? await ((ctx.db.query("users") as any)
+            .withIndex("by_email", (q: any) => q.eq("email", email))
+            .take(2) as Promise<Array<{ _id: Id<"users"> }>>)
         : [];
       const linkedUserId = resolveLinkedUserId({
         existingUserId: args.existingUserId,

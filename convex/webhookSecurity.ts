@@ -8,6 +8,12 @@ const DEFAULT_CLEANUP_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const DEFAULT_CLEANUP_BATCH_SIZE = 100;
 
 const webhookProviderValidator = v.union(v.literal("rapyd"), v.literal("didit"));
+const cleanupCursorValidator = v.object({
+  paymentEvents: v.optional(v.string()),
+  payoutDestinationEvents: v.optional(v.string()),
+  diditEvents: v.optional(v.string()),
+  throttleRows: v.optional(v.string()),
+});
 
 const parsePositiveInt = (raw: string | undefined, fallback: number): number => {
   const parsed = Number.parseInt((raw ?? "").trim(), 10);
@@ -55,6 +61,9 @@ const buildPrunedPayload = (payloadHash: string, now: number): Record<string, un
   payloadHash,
   prunedAt: now,
 });
+
+const isAlreadyPruned = (payload: unknown): boolean =>
+  Boolean(payload && typeof payload === "object" && (payload as { pruned?: boolean }).pruned === true);
 
 export const checkInvalidSignatureThrottle = internalMutation({
   args: {
@@ -202,12 +211,15 @@ export const cleanupStaleWebhookArtifacts = internalMutation({
   args: {
     olderThanMs: v.optional(v.number()),
     batchSize: v.optional(v.number()),
+    cursors: v.optional(cleanupCursorValidator),
   },
   returns: v.object({
     paymentEventsPruned: v.number(),
     payoutDestinationEventsPruned: v.number(),
     diditEventsPruned: v.number(),
     throttleRowsDeleted: v.number(),
+    hasMore: v.boolean(),
+    continueCursors: cleanupCursorValidator,
   }),
   handler: async (ctx, args) => {
     const db = ctx.db as any;
@@ -223,18 +235,14 @@ export const cleanupStaleWebhookArtifacts = internalMutation({
     );
     const cutoff = now - olderThanMs;
     const batchSize = normalizeBatchSize(args.batchSize);
+    const cursors = args.cursors ?? {};
 
     let paymentEventsPruned = 0;
-    const paymentEvents = await ctx.db.query("paymentEvents").order("asc").take(batchSize);
-    for (const event of paymentEvents) {
-      if (event.updatedAt > cutoff) continue;
-      if (
-        event.payload &&
-        typeof event.payload === "object" &&
-        (event.payload as { pruned?: boolean }).pruned
-      ) {
-        continue;
-      }
+    const paymentEventsPage = await ctx.db
+      .query("paymentEvents")
+      .paginate({ cursor: cursors.paymentEvents ?? null, numItems: batchSize });
+    for (const event of paymentEventsPage.page) {
+      if (event.updatedAt > cutoff || isAlreadyPruned(event.payload)) continue;
       await ctx.db.patch(event._id, {
         payload: buildPrunedPayload(event.payloadHash, now),
         updatedAt: now,
@@ -243,19 +251,11 @@ export const cleanupStaleWebhookArtifacts = internalMutation({
     }
 
     let payoutDestinationEventsPruned = 0;
-    const payoutDestinationEvents = await ctx.db
+    const payoutDestinationEventsPage = await ctx.db
       .query("payoutDestinationEvents")
-      .order("asc")
-      .take(batchSize);
-    for (const event of payoutDestinationEvents) {
-      if (event.updatedAt > cutoff) continue;
-      if (
-        event.payload &&
-        typeof event.payload === "object" &&
-        (event.payload as { pruned?: boolean }).pruned
-      ) {
-        continue;
-      }
+      .paginate({ cursor: cursors.payoutDestinationEvents ?? null, numItems: batchSize });
+    for (const event of payoutDestinationEventsPage.page) {
+      if (event.updatedAt > cutoff || isAlreadyPruned(event.payload)) continue;
       await ctx.db.patch(event._id, {
         payload: buildPrunedPayload(event.payloadHash, now),
         updatedAt: now,
@@ -264,16 +264,11 @@ export const cleanupStaleWebhookArtifacts = internalMutation({
     }
 
     let diditEventsPruned = 0;
-    const diditEvents = await ctx.db.query("diditEvents").order("asc").take(batchSize);
-    for (const event of diditEvents) {
-      if (event.updatedAt > cutoff) continue;
-      if (
-        event.payload &&
-        typeof event.payload === "object" &&
-        (event.payload as { pruned?: boolean }).pruned
-      ) {
-        continue;
-      }
+    const diditEventsPage = await ctx.db
+      .query("diditEvents")
+      .paginate({ cursor: cursors.diditEvents ?? null, numItems: batchSize });
+    for (const event of diditEventsPage.page) {
+      if (event.updatedAt > cutoff || isAlreadyPruned(event.payload)) continue;
       await ctx.db.patch(event._id, {
         payload: buildPrunedPayload(event.payloadHash, now),
         updatedAt: now,
@@ -282,22 +277,32 @@ export const cleanupStaleWebhookArtifacts = internalMutation({
     }
 
     let throttleRowsDeleted = 0;
-    const throttleRows = await db
+    const throttleRowsPage = await db
       .query("webhookInvalidSignatureThrottle")
-      .order("asc")
-      .take(batchSize);
-    for (const row of throttleRows) {
+      .paginate({ cursor: cursors.throttleRows ?? null, numItems: batchSize });
+    for (const row of throttleRowsPage.page) {
       const blocked = typeof row.blockedUntil === "number" && row.blockedUntil > now;
       if (blocked || row.lastInvalidAt > cutoff) continue;
       await db.delete(row._id);
       throttleRowsDeleted += 1;
     }
 
+    const continueCursors = {
+      ...(paymentEventsPage.isDone ? {} : { paymentEvents: paymentEventsPage.continueCursor }),
+      ...(payoutDestinationEventsPage.isDone
+        ? {}
+        : { payoutDestinationEvents: payoutDestinationEventsPage.continueCursor }),
+      ...(diditEventsPage.isDone ? {} : { diditEvents: diditEventsPage.continueCursor }),
+      ...(throttleRowsPage.isDone ? {} : { throttleRows: throttleRowsPage.continueCursor }),
+    };
+
     return {
       paymentEventsPruned,
       payoutDestinationEventsPruned,
       diditEventsPruned,
       throttleRowsDeleted,
+      hasMore: Object.keys(continueCursors).length > 0,
+      continueCursors,
     };
   },
 });
