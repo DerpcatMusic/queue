@@ -1,11 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import {
-  internalAction,
-  internalMutation,
-  internalQuery,
-} from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { omitUndefined } from "./lib/validation";
 
 const RAPYD_PROVIDER = "rapyd" as const;
@@ -37,9 +33,7 @@ const getOptionalEnv = (name: string): string | undefined => {
 };
 
 const resolvePreferredSignatureEncoding = (): RapydSignatureEncoding => {
-  const value = (process.env.RAPYD_SIGNATURE_ENCODING ?? "hex_base64")
-    .trim()
-    .toLowerCase();
+  const value = (process.env.RAPYD_SIGNATURE_ENCODING ?? "hex_base64").trim().toLowerCase();
   return value === "raw_base64" ? "raw_base64" : "hex_base64";
 };
 
@@ -113,12 +107,7 @@ export const normalizeRapydPayoutStatus = (
   rawStatus: string | undefined,
 ): { status: PayoutStatus; terminal: boolean } => {
   const status = (rawStatus ?? "").toUpperCase().trim();
-  if (
-    status === "CLO" ||
-    status === "PAID" ||
-    status === "COMPLETED" ||
-    status === "SUCCESS"
-  ) {
+  if (status === "CLO" || status === "PAID" || status === "COMPLETED" || status === "SUCCESS") {
     return { status: "paid", terminal: true };
   }
   if (status === "CAN" || status === "CANCELLED" || status === "CANCELED") {
@@ -180,8 +169,7 @@ export const schedulePayoutForCapturedPayment = internalMutation({
 
     const now = Date.now();
     const configuredMaxAttempts = clampInt(
-      Number.parseInt(process.env.PAYOUT_MAX_ATTEMPTS ?? "", 10) ||
-        DEFAULT_MAX_ATTEMPTS,
+      Number.parseInt(process.env.PAYOUT_MAX_ATTEMPTS ?? "", 10) || DEFAULT_MAX_ATTEMPTS,
       1,
       20,
     );
@@ -237,11 +225,9 @@ export const runPayoutAttempt = internalMutation({
 
     const now = Date.now();
     if (payout.nextRetryAt && payout.nextRetryAt > now) {
-      await ctx.scheduler.runAfter(
-        payout.nextRetryAt - now,
-        internal.payouts.runPayoutAttempt,
-        { payoutId },
-      );
+      await ctx.scheduler.runAfter(payout.nextRetryAt - now, internal.payouts.runPayoutAttempt, {
+        payoutId,
+      });
       return { started: false, reason: "not_due" as const };
     }
 
@@ -322,8 +308,7 @@ export const getPayoutExecutionContext = internalQuery({
       .order("desc")
       .take(10);
     const verifiedDefaultDestination =
-      defaultDestinations.find((destination) => destination.status === "verified") ??
-      null;
+      defaultDestinations.find((destination) => destination.status === "verified") ?? null;
 
     const userDestinations = await ctx.db
       .query("payoutDestinations")
@@ -331,8 +316,7 @@ export const getPayoutExecutionContext = internalQuery({
       .order("desc")
       .take(50);
     const verifiedDestination =
-      userDestinations.find((destination) => destination.status === "verified") ??
-      null;
+      userDestinations.find((destination) => destination.status === "verified") ?? null;
     const destination = verifiedDefaultDestination ?? verifiedDestination;
 
     return {
@@ -416,17 +400,13 @@ export const executePayoutAttemptAction = internalAction({
     const isProduction = rapydMode === "production";
     const rapydBaseUrl = (
       isProduction
-        ? (process.env.RAPYD_PROD_BASE_URL ??
-          process.env.RAPYD_BASE_URL ??
-          "https://api.rapyd.net")
+        ? (process.env.RAPYD_PROD_BASE_URL ?? process.env.RAPYD_BASE_URL ?? "https://api.rapyd.net")
         : (process.env.RAPYD_SANDBOX_BASE_URL ??
           process.env.RAPYD_BASE_URL ??
           "https://sandboxapi.rapyd.net")
     ).trim();
     const requestPath = "/v1/payouts";
-    const country = (destination.country ?? process.env.RAPYD_COUNTRY ?? "IL")
-      .trim()
-      .toUpperCase();
+    const country = (destination.country ?? process.env.RAPYD_COUNTRY ?? "IL").trim().toUpperCase();
 
     const bodyPayload: Record<string, unknown> = {
       beneficiary: beneficiaryId,
@@ -569,8 +549,7 @@ export const executePayoutAttemptAction = internalAction({
         mappedStatus: "queued",
         retryable: true,
         errorCode: "request_exception",
-        message:
-          error instanceof Error ? error.message : "Unknown payout request error",
+        message: error instanceof Error ? error.message : "Unknown payout request error",
       });
     }
   },
@@ -673,18 +652,12 @@ export const recordPayoutAttemptResult = internalMutation({
         message: `Retry scheduled in ${nextRetryAt - now}ms`,
         createdAt: now,
       });
-      await ctx.scheduler.runAfter(
-        nextRetryAt - now,
-        internal.payouts.runPayoutAttempt,
-        { payoutId: args.payoutId },
-      );
+      await ctx.scheduler.runAfter(nextRetryAt - now, internal.payouts.runPayoutAttempt, {
+        payoutId: args.payoutId,
+      });
     }
 
-    if (
-      nextStatus === "failed" ||
-      nextStatus === "cancelled" ||
-      nextStatus === "needs_attention"
-    ) {
+    if (nextStatus === "failed" || nextStatus === "cancelled" || nextStatus === "needs_attention") {
       await ctx.db.insert("payoutEvents", {
         payoutId: args.payoutId,
         paymentId: payout.paymentId,
@@ -731,9 +704,7 @@ export const flagPayoutNeedsAttentionForRefund = internalMutation({
     await ctx.db.patch(payout._id, {
       status: nextStatus,
       terminalAt: terminal ? payout.terminalAt : now,
-      lastError:
-        reason ??
-        "Payment moved to refunded; payout requires manual reconciliation",
+      lastError: reason ?? "Payment moved to refunded; payout requires manual reconciliation",
       updatedAt: now,
     });
 
@@ -744,9 +715,7 @@ export const flagPayoutNeedsAttentionForRefund = internalMutation({
       eventType: "terminal_failure",
       attempt: payout.attemptCount,
       mappedStatus: nextStatus,
-      message:
-        reason ??
-        "Payment refund detected; payout flagged for manual reconciliation",
+      message: reason ?? "Payment refund detected; payout flagged for manual reconciliation",
       createdAt: now,
     });
 
@@ -830,8 +799,7 @@ export const processRapydPayoutWebhookEvent = internalMutation({
     const mapped = normalizeRapydPayoutStatus(args.statusRaw);
     const nextStatus = computeNextPayoutWebhookStatus(payout.status, mapped.status);
     const movedToTerminal =
-      !TERMINAL_PAYOUT_STATUSES.has(payout.status) &&
-      TERMINAL_PAYOUT_STATUSES.has(nextStatus);
+      !TERMINAL_PAYOUT_STATUSES.has(payout.status) && TERMINAL_PAYOUT_STATUSES.has(nextStatus);
 
     await ctx.db.patch(payout._id, {
       status: nextStatus,
@@ -870,11 +838,7 @@ export const processRapydPayoutWebhookEvent = internalMutation({
       }),
     });
 
-    if (
-      nextStatus === "failed" ||
-      nextStatus === "cancelled" ||
-      nextStatus === "needs_attention"
-    ) {
+    if (nextStatus === "failed" || nextStatus === "cancelled" || nextStatus === "needs_attention") {
       await ctx.db.insert("payoutEvents", {
         payoutId: payout._id,
         paymentId: payout.paymentId,

@@ -23,10 +23,7 @@ export const APPLICATION_STATUS_TRANSLATION_KEYS = {
 
 export function getApplicationStatusTranslationKey(status: string) {
   const key = status as keyof typeof APPLICATION_STATUS_TRANSLATION_KEYS;
-  return (
-    APPLICATION_STATUS_TRANSLATION_KEYS[key] ??
-    APPLICATION_STATUS_TRANSLATION_KEYS.pending
-  );
+  return APPLICATION_STATUS_TRANSLATION_KEYS[key] ?? APPLICATION_STATUS_TRANSLATION_KEYS.pending;
 }
 
 export type PickerTarget = "start" | "end";
@@ -117,11 +114,7 @@ export function getJobStatusTone(status: keyof typeof JOB_STATUS_TRANSLATION_KEY
   return "muted";
 }
 
-export function formatCompactDateTime(
-  value: number,
-  locale: string,
-  timeZone = DEVICE_TIME_ZONE,
-) {
+export function formatCompactDateTime(value: number, locale: string, timeZone = DEVICE_TIME_ZONE) {
   return new Date(value).toLocaleString(locale, {
     month: "short",
     day: "numeric",

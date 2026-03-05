@@ -19,23 +19,13 @@ const SOURCE_FILES = {
   cities: "cities.json",
 };
 
-const rootDir = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../..",
-);
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const outputDataDir = path.join(rootDir, "assets", "data", "pikud-haoref");
 const outputMetaPath = path.join(outputDataDir, "meta.json");
 const outputZoneIndexPath = path.join(outputDataDir, "zone-index.json");
-const outputZoneCityIndexPath = path.join(
-  outputDataDir,
-  "zone-city-index.json",
-);
+const outputZoneCityIndexPath = path.join(outputDataDir, "zone-city-index.json");
 const outputZonesPath = path.join(rootDir, "src", "constants", "zones.generated.ts");
-const outputConvexZoneIdsPath = path.join(
-  rootDir,
-  "convex",
-  "pikud-zones.generated.ts",
-);
+const outputConvexZoneIdsPath = path.join(rootDir, "convex", "pikud-zones.generated.ts");
 const outputAllJsonPath = path.join(outputDataDir, "all.json");
 const outputCityPolygonsPath = path.join(outputDataDir, "city-polygons.json");
 
@@ -53,9 +43,7 @@ async function fetchJson(url, description) {
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to fetch ${description}: ${response.status} ${response.statusText}`,
-    );
+    throw new Error(`Failed to fetch ${description}: ${response.status} ${response.statusText}`);
   }
 
   return await response.json();
@@ -102,10 +90,7 @@ function getGeometryBounds(geometry) {
 
   const bounds = buildEmptyBounds();
 
-  if (
-    geometry.type === "GeometryCollection" &&
-    Array.isArray(geometry.geometries)
-  ) {
+  if (geometry.type === "GeometryCollection" && Array.isArray(geometry.geometries)) {
     for (const subGeometry of geometry.geometries) {
       const subBounds = getGeometryBounds(subGeometry);
       if (!subBounds) continue;
@@ -130,11 +115,7 @@ function getGeometryBounds(geometry) {
 }
 
 function buildZoneIndex(geojson) {
-  if (
-    !geojson ||
-    geojson.type !== "FeatureCollection" ||
-    !Array.isArray(geojson.features)
-  ) {
+  if (!geojson || geojson.type !== "FeatureCollection" || !Array.isArray(geojson.features)) {
     throw new Error("Invalid GeoJSON payload from zone source");
   }
 
@@ -240,16 +221,13 @@ function normalizeAreasGeoJson(allGeoJson, districtsHeb, districtsEng, cityNameM
       const districtHe = districtHebById.get(id);
       const districtEn = districtEngById.get(id);
 
-      const hebName = String(
-        districtHe?.label_he ?? districtHe?.label ?? hebNameRaw,
-      ).trim();
+      const hebName = String(districtHe?.label_he ?? districtHe?.label ?? hebNameRaw).trim();
       const engName = String(districtEn?.label ?? (engNameRaw || hebName)).trim();
       const seconds = asNumber(districtHe?.migun_time ?? p.seconds, 0);
 
-      const cityHeb = hebName.includes(" - ")
-        ? hebName.split(" - ")[0].trim()
-        : hebName;
-      const cityEng = cityNameMap.get(cityHeb) ??
+      const cityHeb = hebName.includes(" - ") ? hebName.split(" - ")[0].trim() : hebName;
+      const cityEng =
+        cityNameMap.get(cityHeb) ??
         (engName.includes(" - ") ? engName.split(" - ")[0].trim() : engName);
 
       return {
@@ -348,9 +326,7 @@ function buildZoneOptions(geojson) {
     seconds: asNumber(feature.properties.seconds, 0),
   }));
 
-  options.sort((a, b) =>
-    a.label.en.localeCompare(b.label.en, "en", { sensitivity: "base" }),
-  );
+  options.sort((a, b) => a.label.en.localeCompare(b.label.en, "en", { sensitivity: "base" }));
 
   return options;
 }
@@ -409,18 +385,9 @@ async function run() {
 
   const [allGeoJsonRaw, districts, cities, districtsHeb, districtsEng, citiesHeb, citiesEng] =
     await Promise.all([
-      fetchJson(
-        `${PAKARLIB_SOURCE_BASE_URL}/${SOURCE_FILES.geojson}`,
-        "pakarlib all.geojson",
-      ),
-      fetchJson(
-        `${PAKARLIB_SOURCE_BASE_URL}/${SOURCE_FILES.districts}`,
-        "pakarlib districts",
-      ),
-      fetchJson(
-        `${PAKARLIB_SOURCE_BASE_URL}/${SOURCE_FILES.cities}`,
-        "pakarlib cities",
-      ),
+      fetchJson(`${PAKARLIB_SOURCE_BASE_URL}/${SOURCE_FILES.geojson}`, "pakarlib all.geojson"),
+      fetchJson(`${PAKARLIB_SOURCE_BASE_URL}/${SOURCE_FILES.districts}`, "pakarlib districts"),
+      fetchJson(`${PAKARLIB_SOURCE_BASE_URL}/${SOURCE_FILES.cities}`, "pakarlib cities"),
       fetchJson(`${OREF_DISTRICTS_BASE_URL}/districts_heb.json`, "Oref districts_heb"),
       fetchJson(`${OREF_DISTRICTS_BASE_URL}/districts_eng.json`, "Oref districts_eng"),
       fetchJson(`${OREF_DISTRICTS_BASE_URL}/cities_heb.json`, "Oref cities_heb"),
@@ -428,12 +395,7 @@ async function run() {
     ]);
 
   const cityNameMap = buildCityNameMap(citiesHeb, citiesEng);
-  const allGeoJson = normalizeAreasGeoJson(
-    allGeoJsonRaw,
-    districtsHeb,
-    districtsEng,
-    cityNameMap,
-  );
+  const allGeoJson = normalizeAreasGeoJson(allGeoJsonRaw, districtsHeb, districtsEng, cityNameMap);
 
   const cityPolygons = await dissolveCitiesByName(allGeoJson);
   const zoneOptions = buildZoneOptions(allGeoJson);

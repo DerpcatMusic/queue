@@ -13,4 +13,3 @@ export function alphaColor(color: unknown, alpha: number, fallback: string) {
   }
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
-

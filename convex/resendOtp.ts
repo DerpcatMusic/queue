@@ -1,5 +1,5 @@
 import { Email } from "@convex-dev/auth/providers/Email";
-import { type RandomReader, generateRandomString } from "@oslojs/crypto/random";
+import { generateRandomString, type RandomReader } from "@oslojs/crypto/random";
 import { Resend as ResendApi } from "resend";
 
 function resolveRecipient(email: string) {
@@ -40,8 +40,7 @@ export const ResendOTP = Email({
       throw new Error(
         JSON.stringify({
           ...error,
-          hint:
-            "If using Resend test mode, set AUTH_EMAIL_DEV_INBOX to your verified testing inbox or verify a sender domain and use AUTH_EMAIL_FROM.",
+          hint: "If using Resend test mode, set AUTH_EMAIL_DEV_INBOX to your verified testing inbox or verify a sender domain and use AUTH_EMAIL_FROM.",
         }),
       );
     }

@@ -113,7 +113,9 @@ async function refreshGoogleAccessToken(args: {
 
   const payload = (await response.json()) as GoogleTokenResponse;
   if (!response.ok || !payload.access_token) {
-    throw new ConvexError(payload.error_description ?? payload.error ?? "Failed to refresh Google token");
+    throw new ConvexError(
+      payload.error_description ?? payload.error ?? "Failed to refresh Google token",
+    );
   }
 
   return payload;
@@ -151,14 +153,17 @@ async function upsertGoogleEvent(args: {
   const body = JSON.stringify(buildGoogleEventBody(args.row));
 
   if (args.providerEventId) {
-    const updateResponse = await fetch(`${GOOGLE_EVENTS_BASE}/${encodeURIComponent(args.providerEventId)}`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${args.accessToken}`,
-        "Content-Type": "application/json",
+    const updateResponse = await fetch(
+      `${GOOGLE_EVENTS_BASE}/${encodeURIComponent(args.providerEventId)}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${args.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body,
       },
-      body,
-    });
+    );
 
     if (updateResponse.ok) {
       const payload = (await updateResponse.json()) as { id?: string; etag?: string };
@@ -198,10 +203,13 @@ async function upsertGoogleEvent(args: {
 }
 
 async function deleteGoogleEvent(args: { accessToken: string; providerEventId: string }) {
-  const response = await fetch(`${GOOGLE_EVENTS_BASE}/${encodeURIComponent(args.providerEventId)}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${args.accessToken}` },
-  });
+  const response = await fetch(
+    `${GOOGLE_EVENTS_BASE}/${encodeURIComponent(args.providerEventId)}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${args.accessToken}` },
+    },
+  );
   if (response.ok || response.status === 404) {
     return;
   }
@@ -226,7 +234,9 @@ export const getMyGoogleCalendarStatus = query({
 
     const integration = await ctx.db
       .query("calendarIntegrations")
-      .withIndex("by_user_provider", (q) => q.eq("userId", user._id).eq("provider", GOOGLE_PROVIDER))
+      .withIndex("by_user_provider", (q) =>
+        q.eq("userId", user._id).eq("provider", GOOGLE_PROVIDER),
+      )
       .unique();
 
     if (!integration || integration.status !== "connected") {
@@ -261,7 +271,9 @@ export const disconnectGoogleCalendar = mutation({
 
     const integration = await ctx.db
       .query("calendarIntegrations")
-      .withIndex("by_user_provider", (q) => q.eq("userId", user._id).eq("provider", GOOGLE_PROVIDER))
+      .withIndex("by_user_provider", (q) =>
+        q.eq("userId", user._id).eq("provider", GOOGLE_PROVIDER),
+      )
       .unique();
 
     if (integration) {
@@ -512,7 +524,9 @@ export const getGoogleIntegrationForUser = internalQuery({
   handler: async (ctx, args) => {
     const integration = await ctx.db
       .query("calendarIntegrations")
-      .withIndex("by_user_provider", (q) => q.eq("userId", args.userId).eq("provider", GOOGLE_PROVIDER))
+      .withIndex("by_user_provider", (q) =>
+        q.eq("userId", args.userId).eq("provider", GOOGLE_PROVIDER),
+      )
       .unique();
     if (!integration) {
       return null;
@@ -568,7 +582,9 @@ export const upsertGoogleIntegration = internalMutation({
     const now = Date.now();
     const existing = await ctx.db
       .query("calendarIntegrations")
-      .withIndex("by_user_provider", (q) => q.eq("userId", args.userId).eq("provider", GOOGLE_PROVIDER))
+      .withIndex("by_user_provider", (q) =>
+        q.eq("userId", args.userId).eq("provider", GOOGLE_PROVIDER),
+      )
       .unique();
 
     const patch = {

@@ -38,9 +38,7 @@ export async function rebuildInstructorCoverage(
     existingByKey.set(`${row.sport}::${row.zone}`, row);
   }
 
-  const toDelete = coverageRows.filter(
-    (row) => !desiredKeys.has(`${row.sport}::${row.zone}`),
-  );
+  const toDelete = coverageRows.filter((row) => !desiredKeys.has(`${row.sport}::${row.zone}`));
 
   const now = Date.now();
   const toInsert: {

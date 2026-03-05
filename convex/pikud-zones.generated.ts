@@ -1429,7 +1429,7 @@ export const PIKUD_HAOREF_ZONE_IDS = [
   "5001840",
   "5000232",
   "5000860",
-  "5001079"
+  "5001079",
 ] as const;
 
 export type PikudHaorefZoneId = (typeof PIKUD_HAOREF_ZONE_IDS)[number];

@@ -156,7 +156,10 @@ const normalizeConfiguredWebhookCandidates = (req: Request): string[] => {
     new URL("/webhooks/rapyd", process.env.SITE_URL ?? requestUrl.origin).toString()
   ).trim();
 
-  const candidates = new Set<string>([requestUrl.pathname, `${requestUrl.pathname}${requestUrl.search}`]);
+  const candidates = new Set<string>([
+    requestUrl.pathname,
+    `${requestUrl.pathname}${requestUrl.search}`,
+  ]);
 
   try {
     const parsed = new URL(configured);
@@ -351,10 +354,13 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
       undefined
     : undefined;
   const fingerprint = await buildFingerprint("rapyd", req);
-  const throttleState = await ctx.runMutation(internal.webhookSecurity.checkInvalidSignatureThrottle, {
-    provider: "rapyd",
-    fingerprint,
-  });
+  const throttleState = await ctx.runMutation(
+    internal.webhookSecurity.checkInvalidSignatureThrottle,
+    {
+      provider: "rapyd",
+      fingerprint,
+    },
+  );
   const canonicalPayload = buildCanonicalRapydPayload(parsedPayload);
 
   const expectedAccessKey = (process.env.RAPYD_ACCESS_KEY ?? "").trim();
@@ -406,15 +412,21 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
   }
 
   if (!signatureValid) {
-    const throttleUpdate = await ctx.runMutation(internal.webhookSecurity.recordInvalidSignatureAttempt, {
-      provider: "rapyd",
-      fingerprint,
-    });
+    const throttleUpdate = await ctx.runMutation(
+      internal.webhookSecurity.recordInvalidSignatureAttempt,
+      {
+        provider: "rapyd",
+        fingerprint,
+      },
+    );
     if (throttleState.blocked || throttleUpdate.blocked) {
-      return new Response(JSON.stringify({ received: true, signatureValid, timestampValid, throttled: true }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ received: true, signatureValid, timestampValid, throttled: true }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
   }
 
@@ -573,17 +585,23 @@ export const diditWebhook = httpAction(async (ctx, req) => {
     payload.data?.vendor_data?.toString().trim() ||
     undefined;
   const fingerprint = await buildFingerprint("didit", req);
-  const throttleState = await ctx.runMutation(internal.webhookSecurity.checkInvalidSignatureThrottle, {
-    provider: "didit",
-    fingerprint,
-  });
+  const throttleState = await ctx.runMutation(
+    internal.webhookSecurity.checkInvalidSignatureThrottle,
+    {
+      provider: "didit",
+      fingerprint,
+    },
+  );
   const canonicalPayload = buildCanonicalDiditPayload(parsedPayload);
 
   if (!signatureValid) {
-    const throttleUpdate = await ctx.runMutation(internal.webhookSecurity.recordInvalidSignatureAttempt, {
-      provider: "didit",
-      fingerprint,
-    });
+    const throttleUpdate = await ctx.runMutation(
+      internal.webhookSecurity.recordInvalidSignatureAttempt,
+      {
+        provider: "didit",
+        fingerprint,
+      },
+    );
     if (throttleState.blocked || throttleUpdate.blocked) {
       return new Response(
         JSON.stringify({

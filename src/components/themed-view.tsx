@@ -8,26 +8,16 @@ export type ThemedViewProps = ViewProps & {
   darkColor?: string;
 };
 
-export function ThemedView({
-  style,
-  lightColor,
-  darkColor,
-  ...otherProps
-}: ThemedViewProps) {
+export function ThemedView({ style, lightColor, darkColor, ...otherProps }: ThemedViewProps) {
   const palette = useBrand();
-  const backgroundColor = useThemeColor(
-    {
-      light: lightColor ?? (palette.surface as string),
-      dark: darkColor ?? (palette.surface as string),
-    }
-  );
+  const backgroundColor = useThemeColor({
+    light: lightColor ?? (palette.surface as string),
+    dark: darkColor ?? (palette.surface as string),
+  });
 
   return (
     <View
-      style={[
-        { backgroundColor, direction: I18nManager.isRTL ? "rtl" : "ltr" },
-        style,
-      ]}
+      style={[{ backgroundColor, direction: I18nManager.isRTL ? "rtl" : "ltr" }, style]}
       {...otherProps}
     />
   );

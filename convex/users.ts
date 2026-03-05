@@ -123,10 +123,7 @@ async function getUniqueInstructorProfileByUserId(
   return profiles[0] ?? null;
 }
 
-async function requireInstructorProfileByUserId(
-  ctx: UserProfileCtx,
-  userId: Doc<"users">["_id"],
-) {
+async function requireInstructorProfileByUserId(ctx: UserProfileCtx, userId: Doc<"users">["_id"]) {
   const profile = await getUniqueInstructorProfileByUserId(ctx, userId);
   if (!profile) {
     throw new ConvexError("Instructor profile not found");
@@ -134,10 +131,7 @@ async function requireInstructorProfileByUserId(
   return profile;
 }
 
-async function getUniqueStudioProfileByUserId(
-  ctx: UserProfileCtx,
-  userId: Doc<"users">["_id"],
-) {
+async function getUniqueStudioProfileByUserId(ctx: UserProfileCtx, userId: Doc<"users">["_id"]) {
   const profiles = await ctx.db
     .query("studioProfiles")
     .withIndex("by_user_id", (q) => q.eq("userId", userId))
@@ -148,10 +142,7 @@ async function getUniqueStudioProfileByUserId(
   return profiles[0] ?? null;
 }
 
-async function requireStudioProfileByUserId(
-  ctx: UserProfileCtx,
-  userId: Doc<"users">["_id"],
-) {
+async function requireStudioProfileByUserId(ctx: UserProfileCtx, userId: Doc<"users">["_id"]) {
   const profile = await getUniqueStudioProfileByUserId(ctx, userId);
   if (!profile) {
     throw new ConvexError("Studio profile not found");
@@ -170,12 +161,8 @@ export const syncCurrentUser = mutation({
     const normalizedCurrentEmail = normalizeEmail(user.email);
     const nextEmail = normalizedCurrentEmail ?? normalizedIdentityEmail;
 
-    const derivedName = [identity.givenName, identity.familyName]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
-    const fullName =
-      identity.name ?? (derivedName.length > 0 ? derivedName : undefined);
+    const derivedName = [identity.givenName, identity.familyName].filter(Boolean).join(" ").trim();
+    const fullName = identity.name ?? (derivedName.length > 0 ? derivedName : undefined);
 
     await ctx.db.patch("users", user._id, {
       ...omitUndefined({
@@ -197,11 +184,7 @@ export const getCurrentUser = query({
     v.object({
       _id: v.id("users"),
       _creationTime: v.number(),
-      role: v.union(
-        v.literal("pending"),
-        v.literal("instructor"),
-        v.literal("studio"),
-      ),
+      role: v.union(v.literal("pending"), v.literal("instructor"), v.literal("studio")),
       onboardingComplete: v.boolean(),
       email: v.optional(v.string()),
       fullName: v.optional(v.string()),
@@ -328,7 +311,9 @@ export const completeMyProfileImageUpload = mutation({
       throw new ConvexError("Only image uploads are allowed");
     }
 
-    let previousStorageId: Doc<"instructorProfiles">["profileImageStorageId"] | Doc<"studioProfiles">["logoStorageId"];
+    let previousStorageId:
+      | Doc<"instructorProfiles">["profileImageStorageId"]
+      | Doc<"studioProfiles">["logoStorageId"];
     if (user.role === "instructor") {
       const profile = await requireInstructorProfileByUserId(ctx, user._id);
       previousStorageId = profile.profileImageStorageId;
@@ -378,11 +363,7 @@ export const getMyInstructorSettings = query({
       address: v.optional(v.string()),
       latitude: v.optional(v.number()),
       longitude: v.optional(v.number()),
-      calendarProvider: v.union(
-        v.literal("none"),
-        v.literal("google"),
-        v.literal("apple"),
-      ),
+      calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
       calendarSyncEnabled: v.boolean(),
       calendarConnectedAt: v.optional(v.number()),
     }),
@@ -404,7 +385,7 @@ export const getMyInstructorSettings = query({
 
     const sports = [...new Set(sportsRows.map((row) => row.sport))].sort();
     const profileImageUrl = profile.profileImageStorageId
-      ? (await ctx.storage.getUrl(profile.profileImageStorageId)) ?? undefined
+      ? ((await ctx.storage.getUrl(profile.profileImageStorageId)) ?? undefined)
       : undefined;
 
     return {
@@ -439,22 +420,14 @@ export const updateMyInstructorSettings = mutation({
     longitude: v.optional(v.number()),
     includeDetectedZone: v.optional(v.boolean()),
     detectedZone: v.optional(v.string()),
-    calendarProvider: v.union(
-      v.literal("none"),
-      v.literal("google"),
-      v.literal("apple"),
-    ),
+    calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
     calendarSyncEnabled: v.boolean(),
   },
   returns: v.object({
     ok: v.boolean(),
     sportsCount: v.number(),
     notificationsEnabled: v.boolean(),
-    calendarProvider: v.union(
-      v.literal("none"),
-      v.literal("google"),
-      v.literal("apple"),
-    ),
+    calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
     calendarSyncEnabled: v.boolean(),
     zoneAdded: v.boolean(),
   }),
@@ -478,31 +451,22 @@ export const updateMyInstructorSettings = mutation({
     if (sports.length > MAX_SPORTS) {
       throw new ConvexError("Too many sports selected");
     }
-    const address = normalizeOptionalString(
-      args.address,
-      MAX_ADDRESS_LENGTH,
-      "Address",
-    );
+    const address = normalizeOptionalString(args.address, MAX_ADDRESS_LENGTH, "Address");
     const { latitude, longitude } = normalizeCoordinates(
       omitUndefined({
         latitude: args.latitude,
         longitude: args.longitude,
       }),
     );
-    const detectedZone = args.detectedZone
-      ? normalizeZoneId(args.detectedZone)
-      : undefined;
+    const detectedZone = args.detectedZone ? normalizeZoneId(args.detectedZone) : undefined;
 
     const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
     const notificationsEnabled = args.notificationsEnabled && hasExpoPushToken;
 
     const calendarProvider = args.calendarProvider;
-    const calendarSyncEnabled =
-      calendarProvider !== "none" && args.calendarSyncEnabled;
+    const calendarSyncEnabled = calendarProvider !== "none" && args.calendarSyncEnabled;
     const calendarConnectedAt =
-      calendarProvider === "none"
-        ? undefined
-        : profile.calendarConnectedAt ?? now;
+      calendarProvider === "none" ? undefined : (profile.calendarConnectedAt ?? now);
 
     const [existingSports, existingZones] = await Promise.all([
       ctx.db
@@ -515,9 +479,7 @@ export const updateMyInstructorSettings = mutation({
         .collect(),
     ]);
 
-    await Promise.all(
-      existingSports.map((row) => ctx.db.delete("instructorSports", row._id)),
-    );
+    await Promise.all(existingSports.map((row) => ctx.db.delete("instructorSports", row._id)));
     await Promise.all(
       sports.map((sport) =>
         ctx.db.insert("instructorSports", {
@@ -672,8 +634,7 @@ export const getMyStudioSettings = query({
     if (!profile) return null;
 
     const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
-    const notificationsEnabled =
-      Boolean(profile.notificationsEnabled) && hasExpoPushToken;
+    const notificationsEnabled = Boolean(profile.notificationsEnabled) && hasExpoPushToken;
 
     const sportsRows = await ctx.db
       .query("studioSports")
@@ -681,7 +642,7 @@ export const getMyStudioSettings = query({
       .collect();
     const sports = [...new Set(sportsRows.map((row) => row.sport))].sort();
     const profileImageUrl = profile.logoStorageId
-      ? (await ctx.storage.getUrl(profile.logoStorageId)) ?? undefined
+      ? ((await ctx.storage.getUrl(profile.logoStorageId)) ?? undefined)
       : undefined;
 
     return {
@@ -753,9 +714,7 @@ export const updateMyStudioSettings = mutation({
         val > 120 ||
         val % 5 !== 0
       ) {
-        throw new ConvexError(
-          "autoExpireMinutesBefore must be 5\u2013120 in 5-min increments",
-        );
+        throw new ConvexError("autoExpireMinutesBefore must be 5\u2013120 in 5-min increments");
       }
       autoExpireMinutesBefore = val;
     }
@@ -895,8 +854,7 @@ export const getMyStudioNotificationSettings = query({
     }
 
     const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
-    const notificationsEnabled =
-      Boolean(profile.notificationsEnabled) && hasExpoPushToken;
+    const notificationsEnabled = Boolean(profile.notificationsEnabled) && hasExpoPushToken;
 
     return {
       studioId: profile._id,
@@ -920,8 +878,7 @@ export const updateMyStudioNotificationSettings = mutation({
     const user = await requireUserRole(ctx, ["studio"]);
     const profile = await requireStudioProfileByUserId(ctx, user._id);
 
-    const nextPushToken =
-      trimOptionalString(args.expoPushToken) ?? profile.expoPushToken;
+    const nextPushToken = trimOptionalString(args.expoPushToken) ?? profile.expoPushToken;
     const hasExpoPushToken = Boolean(trimOptionalString(nextPushToken));
     const notificationsEnabled = args.notificationsEnabled && hasExpoPushToken;
 

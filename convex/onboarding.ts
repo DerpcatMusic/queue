@@ -35,10 +35,7 @@ export function resolveGetOrCreateProfileAction(
   return profileCount === 0 ? "create" : "reuse";
 }
 
-async function getUniqueInstructorProfileByUserId(
-  ctx: MutationCtx,
-  userId: Doc<"users">["_id"],
-) {
+async function getUniqueInstructorProfileByUserId(ctx: MutationCtx, userId: Doc<"users">["_id"]) {
   const profiles = await ctx.db
     .query("instructorProfiles")
     .withIndex("by_user_id", (q) => q.eq("userId", userId))
@@ -52,10 +49,7 @@ async function getOrCreateInstructorProfileWithGuard(args: {
   userId: Doc<"users">["_id"];
   create: () => Promise<Doc<"instructorProfiles">["_id"]>;
 }) {
-  const existingProfile = await getUniqueInstructorProfileByUserId(
-    args.ctx,
-    args.userId,
-  );
+  const existingProfile = await getUniqueInstructorProfileByUserId(args.ctx, args.userId);
   if (existingProfile) {
     return { profile: existingProfile, created: false as const };
   }
@@ -67,10 +61,7 @@ async function getOrCreateInstructorProfileWithGuard(args: {
   return { profile: created, created: true as const };
 }
 
-async function getUniqueStudioProfileByUserId(
-  ctx: MutationCtx,
-  userId: Doc<"users">["_id"],
-) {
+async function getUniqueStudioProfileByUserId(ctx: MutationCtx, userId: Doc<"users">["_id"]) {
   const profiles = await ctx.db
     .query("studioProfiles")
     .withIndex("by_user_id", (q) => q.eq("userId", userId))

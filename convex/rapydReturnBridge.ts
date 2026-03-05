@@ -3,8 +3,7 @@ import { httpAction } from "./_generated/server";
 const DEFAULT_BENEFICIARY_APP_RETURN_URL = "queue://rapyd/beneficiary-return";
 const DEFAULT_CHECKOUT_APP_RETURN_URL = "queue://rapyd/checkout-return";
 
-const isHttpProtocol = (protocol: string) =>
-  protocol === "http:" || protocol === "https:";
+const isHttpProtocol = (protocol: string) => protocol === "http:" || protocol === "https:";
 
 const resolveResult = (raw: string | null): "complete" | "cancel" => {
   const value = (raw ?? "").trim().toLowerCase();

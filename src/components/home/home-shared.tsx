@@ -1,12 +1,12 @@
-import { ThemedText } from "@/components/themed-text";
-import { KitList, KitListItem } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import type { BrandPalette } from "@/constants/brand";
-import { getJobStatusTokens } from "@/lib/status-tokens";
-import type { JobStatus } from "@/lib/status-tokens";
-import { AppSymbol } from "@/components/ui/app-symbol";
 import { View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { ThemedText } from "@/components/themed-text";
+import { AppSymbol } from "@/components/ui/app-symbol";
+import { KitList, KitListItem } from "@/components/ui/kit";
+import type { BrandPalette } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import type { JobStatus } from "@/lib/status-tokens";
+import { getJobStatusTokens } from "@/lib/status-tokens";
 
 export const CONTENT_VERTICAL_PADDING = 20;
 
@@ -42,7 +42,8 @@ export function getRelativeTimeLabel(targetTime: number, now: number, locale: st
   const formatter = getRelativeTimeFormatter(locale);
   const deltaMs = targetTime - now;
   const deltaMinutesRaw = deltaMs / (60 * 1000);
-  const deltaMinutes = deltaMinutesRaw < 0 ? Math.ceil(deltaMinutesRaw) : Math.floor(deltaMinutesRaw);
+  const deltaMinutes =
+    deltaMinutesRaw < 0 ? Math.ceil(deltaMinutesRaw) : Math.floor(deltaMinutesRaw);
   const fmt = (value: number, unit: RelativeUnit, deltaDays: number) =>
     formatter?.format(value, unit) ?? formatRelativeFallback(targetTime, deltaDays, locale);
 
@@ -212,4 +213,3 @@ export function PrimaryActionCard({
     </Animated.View>
   );
 }
-

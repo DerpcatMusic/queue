@@ -10,9 +10,7 @@
     "ios": {
       "userInterfaceStyle": "automatic",
       "supportsTablet": true,
-      "associatedDomains": [
-        "applinks:join-queue.com"
-      ]
+      "associatedDomains": ["applinks:join-queue.com"]
     },
     "android": {
       "package": "com.derpcat.queue",
@@ -29,10 +27,7 @@
         {
           "action": "VIEW",
           "autoVerify": true,
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ],
+          "category": ["BROWSABLE", "DEFAULT"],
           "data": [
             {
               "scheme": "https",
@@ -80,14 +75,8 @@
         "expo-localization",
         {
           "supportedLocales": {
-            "ios": [
-              "en",
-              "he"
-            ],
-            "android": [
-              "en",
-              "he"
-            ]
+            "ios": ["en", "he"],
+            "android": ["en", "he"]
           }
         }
       ],

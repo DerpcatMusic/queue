@@ -1,7 +1,4 @@
-import {
-  ROLE_TAB_ROUTE_NAMES,
-  type RoleTabRouteName,
-} from "./role-routes";
+import { ROLE_TAB_ROUTE_NAMES, type RoleTabRouteName } from "./role-routes";
 import type { AppRole, FeatureFlagKey, RoleFeatureMatrix, SharedTabId, TabSpec } from "./types";
 
 export const TAB_SPECS: readonly TabSpec[] = [

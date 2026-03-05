@@ -1,5 +1,5 @@
-import { ConvexError } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { ConvexError } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
@@ -47,10 +47,7 @@ export async function requireCurrentUser(ctx: Ctx): Promise<Doc<"users">> {
   return user;
 }
 
-export async function requireUserRole(
-  ctx: Ctx,
-  roles: UserRole[],
-): Promise<Doc<"users">> {
+export async function requireUserRole(ctx: Ctx, roles: UserRole[]): Promise<Doc<"users">> {
   const user = await requireCurrentUser(ctx);
 
   if (!roles.includes(user.role)) {

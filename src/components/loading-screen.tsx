@@ -1,6 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { useTranslation } from "react-i18next";
 
 import { ThemedText } from "@/components/themed-text";
 import { useBrand } from "@/hooks/use-brand";

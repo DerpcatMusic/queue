@@ -1,16 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, DevSettings, Platform } from "react-native";
-
-import i18n, {
-  getCurrentLanguage,
-  normalizeLanguage,
-  setAppLanguage,
-} from "@/i18n";
 import type { AppLanguage } from "@/i18n";
+import i18n, { getCurrentLanguage, normalizeLanguage, setAppLanguage } from "@/i18n";
 
 export function useAppLanguage() {
-  const [language, setLanguageState] =
-    useState<AppLanguage>(getCurrentLanguage());
+  const [language, setLanguageState] = useState<AppLanguage>(getCurrentLanguage());
 
   useEffect(() => {
     const handleLanguageChanged = (nextLanguage: string) => {

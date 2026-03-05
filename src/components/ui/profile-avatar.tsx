@@ -1,7 +1,7 @@
-import { AppSymbol } from "@/components/ui/app-symbol";
-import type { BrandPalette } from "@/constants/brand";
 import { useMemo, useState } from "react";
 import { Image, Text, View } from "react-native";
+import { AppSymbol } from "@/components/ui/app-symbol";
+import type { BrandPalette } from "@/constants/brand";
 
 type ProfileAvatarProps = {
   imageUrl?: string | null | undefined;
@@ -38,8 +38,7 @@ export function ProfileAvatar({
   const initials = useMemo(() => toInitials(fallbackName), [fallbackName]);
   const borderRadius = roundedSquare ? Math.round(size * 0.3) : Math.round(size / 2);
   const normalizedImageUrl = imageUrl ?? undefined;
-  const canRenderImage =
-    Boolean(normalizedImageUrl) && failedImageUrl !== normalizedImageUrl;
+  const canRenderImage = Boolean(normalizedImageUrl) && failedImageUrl !== normalizedImageUrl;
 
   return (
     <View

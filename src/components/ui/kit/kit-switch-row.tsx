@@ -39,9 +39,7 @@ export function KitSwitchRow({
             true: interaction.switchTrackOn,
           }}
           thumbColor={
-            value
-              ? (interaction.switchThumbOn as string)
-              : (interaction.switchThumbOff as string)
+            value ? (interaction.switchThumbOn as string) : (interaction.switchThumbOff as string)
           }
           ios_backgroundColor={interaction.switchTrackOff as string}
         />

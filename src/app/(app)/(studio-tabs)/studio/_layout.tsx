@@ -11,10 +11,7 @@ export default function StudioTabsLayout() {
   const emptyArgs = useMemo(() => ({}), []);
 
   const studioTabCounts = useQuery(api.jobs.getStudioTabCounts, tabCountsArgs);
-  const unreadNotificationCount = useQuery(
-    api.inbox.getMyUnreadNotificationCount,
-    emptyArgs,
-  );
+  const unreadNotificationCount = useQuery(api.inbox.getMyUnreadNotificationCount, emptyArgs);
 
   const jobsBadgeCount = studioTabCounts?.jobsBadgeCount ?? 0;
   const calendarBadgeCount = studioTabCounts?.calendarBadgeCount ?? 0;
@@ -28,7 +25,5 @@ export default function StudioTabsLayout() {
     [calendarBadgeCount, jobsBadgeCount, profileBadgeCount],
   );
 
-  return (
-    <RoleTabsLayout appRole="studio" badgeCountByRoute={badgeCountByRoute} />
-  );
+  return <RoleTabsLayout appRole="studio" badgeCountByRoute={badgeCountByRoute} />;
 }

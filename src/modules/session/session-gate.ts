@@ -1,10 +1,6 @@
 import { useUser } from "@/contexts/user-context";
-import {
-  buildRoleTabRoute,
-  isRolePath,
-  ROLE_TAB_ROUTE_NAMES,
-} from "@/navigation/role-routes";
 import type { getRoleTabBasePath } from "@/navigation/role-routes";
+import { buildRoleTabRoute, isRolePath, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import type { AppRole } from "@/navigation/types";
 
 type UserLike = {
@@ -25,9 +21,7 @@ export type SessionGateRedirectHref =
   | ReturnType<typeof getRoleTabBasePath>;
 
 type SessionGateDecisionMap = {
-  index:
-    | { status: "loading" }
-    | { status: "redirect"; href: SessionGateRedirectHref };
+  index: { status: "loading" } | { status: "redirect"; href: SessionGateRedirectHref };
   app_layout:
     | { status: "loading" }
     | { status: "allow" }
@@ -64,9 +58,7 @@ export function resolveSessionState(input: {
   return { status: "ready", role };
 }
 
-export function resolveSessionGateDecision<
-  T extends SessionGateEntryPoint,
->(input: {
+export function resolveSessionGateDecision<T extends SessionGateEntryPoint>(input: {
   entryPoint: T;
   pathname?: string;
   session: SessionState;
@@ -90,10 +82,7 @@ export function resolveSessionGateDecision<
     } as SessionGateDecisionMap[T];
   }
 
-  if (
-    input.entryPoint === "app_layout" &&
-    isRolePath(input.pathname ?? "", session.role)
-  ) {
+  if (input.entryPoint === "app_layout" && isRolePath(input.pathname ?? "", session.role)) {
     return { status: "allow" } as SessionGateDecisionMap[T];
   }
 

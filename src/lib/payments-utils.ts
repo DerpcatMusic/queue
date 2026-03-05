@@ -18,11 +18,7 @@ export type PayoutStatus =
 
 export type StatusTone = "primary" | "success" | "warning" | "danger" | "muted";
 
-export function formatAgorotCurrency(
-  amountAgorot: number,
-  locale: string,
-  currency: string,
-) {
+export function formatAgorotCurrency(amountAgorot: number, locale: string, currency: string) {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,

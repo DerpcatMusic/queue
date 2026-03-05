@@ -40,16 +40,9 @@ type PaymentStatus =
 
 type MappedPaymentStatus = Exclude<PaymentStatus, "created">;
 
-const TERMINAL_PAYMENT_STATUSES = new Set<PaymentStatus>([
-  "failed",
-  "cancelled",
-  "refunded",
-]);
+const TERMINAL_PAYMENT_STATUSES = new Set<PaymentStatus>(["failed", "cancelled", "refunded"]);
 
-const CAPTURED_STICKY_STATUSES = new Set<MappedPaymentStatus>([
-  "pending",
-  "authorized",
-]);
+const CAPTURED_STICKY_STATUSES = new Set<MappedPaymentStatus>(["pending", "authorized"]);
 
 const BLOCK_NEW_CHECKOUT_ACTIVE_STATUSES = new Set<PaymentStatus>([
   "created",
@@ -116,9 +109,7 @@ const sanitizeWebhookPayload = (payload: unknown): Record<string, unknown> => {
   });
 };
 
-export const toRapydPaymentStatus = (
-  rawStatus: string | undefined,
-): MappedPaymentStatus => {
+export const toRapydPaymentStatus = (rawStatus: string | undefined): MappedPaymentStatus => {
   const status = (rawStatus ?? "").trim().toUpperCase();
   if (["CLO", "CAPTURED", "SUCCESS", "COMPLETED", "DON"].includes(status)) {
     return "captured";
@@ -148,10 +139,7 @@ const computeNextWebhookPaymentStatus = (
   if (TERMINAL_PAYMENT_STATUSES.has(currentStatus)) {
     return currentStatus as MappedPaymentStatus;
   }
-  if (
-    currentStatus === "captured" &&
-    CAPTURED_STICKY_STATUSES.has(mappedStatus)
-  ) {
+  if (currentStatus === "captured" && CAPTURED_STICKY_STATUSES.has(mappedStatus)) {
     return "captured";
   }
   if (currentStatus === "authorized" && mappedStatus === "pending") {
@@ -174,26 +162,18 @@ const applyResolvedPaymentStatus = async (
     providerCheckoutId?: string;
   },
 ) => {
-  const transitionedToCaptured =
-    payment.status !== "captured" && nextStatus === "captured";
-  const transitionedToRefunded =
-    payment.status !== "refunded" && nextStatus === "refunded";
+  const transitionedToCaptured = payment.status !== "captured" && nextStatus === "captured";
+  const transitionedToRefunded = payment.status !== "refunded" && nextStatus === "refunded";
 
   await ctx.db.patch(payment._id, {
     status: nextStatus,
     providerPaymentId: providerPaymentId ?? payment.providerPaymentId,
     providerCheckoutId: providerCheckoutId ?? payment.providerCheckoutId,
-    capturedAt:
-      nextStatus === "captured"
-        ? (payment.capturedAt ?? Date.now())
-        : payment.capturedAt,
+    capturedAt: nextStatus === "captured" ? (payment.capturedAt ?? Date.now()) : payment.capturedAt,
     updatedAt: Date.now(),
   });
 
-  if (
-    transitionedToCaptured &&
-    readPayoutReleaseMode() === "automatic"
-  ) {
+  if (transitionedToCaptured && readPayoutReleaseMode() === "automatic") {
     await ctx.runMutation(internal.payouts.schedulePayoutForCapturedPayment, {
       paymentId: payment._id,
       reason: "captured_via_rapyd_status_sync",
@@ -235,8 +215,7 @@ export const getOwnedStudioPaymentForReconciliation = internalQuery({
     paymentId: v.id("payments"),
     studioUserId: v.id("users"),
   },
-  handler: async (ctx, args) =>
-    await getOwnedStudioPaymentForReconciliationRead(ctx, args),
+  handler: async (ctx, args) => await getOwnedStudioPaymentForReconciliationRead(ctx, args),
 });
 
 export const createPendingPayment = internalMutation({
@@ -268,19 +247,12 @@ export const createPendingPayment = internalMutation({
     const existing = await ctx.db
       .query("payments")
       .withIndex("by_studio_user_idempotency", (q) =>
-        q
-          .eq("studioUserId", args.studioUserId)
-          .eq("idempotencyKey", args.idempotencyKey),
+        q.eq("studioUserId", args.studioUserId).eq("idempotencyKey", args.idempotencyKey),
       )
       .unique();
     if (existing) {
-      if (
-        existing.jobId !== args.jobId ||
-        existing.provider !== args.provider
-      ) {
-        throw new ConvexError(
-          "Idempotency key already exists with a different job/provider",
-        );
+      if (existing.jobId !== args.jobId || existing.provider !== args.provider) {
+        throw new ConvexError("Idempotency key already exists with a different job/provider");
       }
       return existing;
     }
@@ -291,34 +263,23 @@ export const createPendingPayment = internalMutation({
       .order("desc")
       .take(25);
     const latestSameStudioPayment = sameJobPayments.find(
-      (row) =>
-        row.provider === args.provider &&
-        row.studioUserId === args.studioUserId,
+      (row) => row.provider === args.provider && row.studioUserId === args.studioUserId,
     );
     if (latestSameStudioPayment) {
-      if (
-        BLOCK_NEW_CHECKOUT_ACTIVE_STATUSES.has(latestSameStudioPayment.status)
-      ) {
-        const isStale =
-          Date.now() - latestSameStudioPayment.updatedAt >= staleCheckoutMs;
+      if (BLOCK_NEW_CHECKOUT_ACTIVE_STATUSES.has(latestSameStudioPayment.status)) {
+        const isStale = Date.now() - latestSameStudioPayment.updatedAt >= staleCheckoutMs;
         if (isStale) {
           await ctx.db.patch(latestSameStudioPayment._id, {
             status: "failed",
-            lastError:
-              latestSameStudioPayment.lastError ??
-              "Marked stale after checkout timeout",
+            lastError: latestSameStudioPayment.lastError ?? "Marked stale after checkout timeout",
             updatedAt: Date.now(),
           });
         } else {
-          throw new ConvexError(
-            "A payment for this lesson is already processing",
-          );
+          throw new ConvexError("A payment for this lesson is already processing");
         }
       }
       if (latestSameStudioPayment.status === "captured") {
-        throw new ConvexError(
-          "This lesson already has a completed payment record",
-        );
+        throw new ConvexError("This lesson already has a completed payment record");
       }
       if (latestSameStudioPayment.status === "refunded") {
         throw new ConvexError(
@@ -374,8 +335,7 @@ export const markCheckoutCreated = internalMutation({
       status: payment.status === "created" ? "pending" : payment.status,
       updatedAt: Date.now(),
       ...omitUndefined({
-        providerCheckoutId:
-          args.providerCheckoutId ?? payment.providerCheckoutId,
+        providerCheckoutId: args.providerCheckoutId ?? payment.providerCheckoutId,
         providerPaymentId: args.providerPaymentId ?? payment.providerPaymentId,
       }),
     });
@@ -407,9 +367,7 @@ export const processRapydWebhookEvent = internalMutation({
     const existingEvent = await ctx.db
       .query("paymentEvents")
       .withIndex("by_provider_eventId", (q) =>
-        q
-          .eq("provider", RAPYD_PROVIDER)
-          .eq("providerEventId", args.providerEventId),
+        q.eq("provider", RAPYD_PROVIDER).eq("providerEventId", args.providerEventId),
       )
       .unique();
     if (existingEvent) {
@@ -467,10 +425,7 @@ export const processRapydWebhookEvent = internalMutation({
     }
 
     const mappedStatus = toRapydPaymentStatus(args.statusRaw);
-    const nextStatus = computeNextWebhookPaymentStatus(
-      payment.status,
-      mappedStatus,
-    );
+    const nextStatus = computeNextWebhookPaymentStatus(payment.status, mappedStatus);
     await applyResolvedPaymentStatus(ctx, {
       payment,
       nextStatus,
@@ -593,16 +548,12 @@ export const requestMyPayoutWithdrawal = mutation({
         .take(100),
       ctx.db
         .query("payments")
-        .withIndex("by_instructor_user", (q) =>
-          q.eq("instructorUserId", user._id),
-        )
+        .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
         .order("desc")
         .take(500),
       ctx.db
         .query("payouts")
-        .withIndex("by_instructor_user", (q) =>
-          q.eq("instructorUserId", user._id),
-        )
+        .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
         .order("desc")
         .take(500),
     ]);
@@ -627,8 +578,7 @@ export const requestMyPayoutWithdrawal = mutation({
     const eligiblePayments = payments
       .filter(
         (payment) =>
-          payment.status === "captured" &&
-          !latestPayoutByPaymentId.has(String(payment._id)),
+          payment.status === "captured" && !latestPayoutByPaymentId.has(String(payment._id)),
       )
       .sort((a, b) => a.createdAt - b.createdAt)
       .slice(0, maxPayments);
@@ -638,13 +588,10 @@ export const requestMyPayoutWithdrawal = mutation({
     const payoutIds: Id<"payouts">[] = [];
 
     for (const payment of eligiblePayments) {
-      const outcome = await ctx.runMutation(
-        internal.payouts.schedulePayoutForCapturedPayment,
-        {
-          paymentId: payment._id,
-          reason: "manual_withdrawal_requested_by_instructor",
-        },
-      );
+      const outcome = await ctx.runMutation(internal.payouts.schedulePayoutForCapturedPayment, {
+        paymentId: payment._id,
+        reason: "manual_withdrawal_requested_by_instructor",
+      });
 
       if (!outcome.scheduled || !outcome.payoutId) continue;
       scheduledCount += 1;
@@ -694,9 +641,7 @@ export const upsertMyPayoutDestination = mutation({
     if ((args.isDefault ?? true) === true) {
       const activeDefaults = await ctx.db
         .query("payoutDestinations")
-        .withIndex("by_user_default", (q) =>
-          q.eq("userId", user._id).eq("isDefault", true),
-        )
+        .withIndex("by_user_default", (q) => q.eq("userId", user._id).eq("isDefault", true))
         .collect();
       for (const row of activeDefaults) {
         if (!existing || row._id !== existing._id) {
@@ -748,10 +693,7 @@ export const createBeneficiaryOnboardingSession = internalMutation({
     merchantReferenceId: v.string(),
     category: v.string(),
     beneficiaryCountry: v.string(),
-    beneficiaryEntityType: v.union(
-      v.literal("individual"),
-      v.literal("company"),
-    ),
+    beneficiaryEntityType: v.union(v.literal("individual"), v.literal("company")),
     payoutCurrency: v.string(),
   },
   handler: async (ctx, args) => {
@@ -816,9 +758,7 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
     const existing = await ctx.db
       .query("payoutDestinationEvents")
       .withIndex("by_provider_eventId", (q) =>
-        q
-          .eq("provider", RAPYD_PROVIDER)
-          .eq("providerEventId", args.providerEventId),
+        q.eq("provider", RAPYD_PROVIDER).eq("providerEventId", args.providerEventId),
       )
       .unique();
     if (existing) {
@@ -878,9 +818,7 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
 
     const defaultRows = await ctx.db
       .query("payoutDestinations")
-      .withIndex("by_user_default", (q) =>
-        q.eq("userId", session.userId).eq("isDefault", true),
-      )
+      .withIndex("by_user_default", (q) => q.eq("userId", session.userId).eq("isDefault", true))
       .collect();
     for (const row of defaultRows) {
       await ctx.db.patch(row._id, {
@@ -961,9 +899,7 @@ export const verifyMyPayoutDestinationForTesting = mutation({
   handler: async (ctx, args) => {
     const user = await requireUserRole(ctx, ["instructor"]);
     if (!isSandboxDestinationSelfVerifyEnabled()) {
-      throw new ConvexError(
-        "Sandbox destination self-verify is not enabled in this environment",
-      );
+      throw new ConvexError("Sandbox destination self-verify is not enabled in this environment");
     }
 
     const destination = await ctx.db.get(args.destinationId);
@@ -1028,10 +964,7 @@ export const markInvoiceIssued = internalMutation({
     externalInvoiceId: v.string(),
     externalInvoiceUrl: v.optional(v.string()),
   },
-  handler: async (
-    ctx,
-    { invoiceId, externalInvoiceId, externalInvoiceUrl },
-  ) => {
+  handler: async (ctx, { invoiceId, externalInvoiceId, externalInvoiceUrl }) => {
     await ctx.db.patch(invoiceId, {
       status: "issued",
       externalInvoiceId,

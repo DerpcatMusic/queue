@@ -1,12 +1,6 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Platform,
-  ScrollView,
-  Text,
-  type TextInputProps,
-  View,
-} from "react-native";
+import { Platform, ScrollView, Text, type TextInputProps, View } from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -28,11 +22,7 @@ import { KitButton, KitPressable, KitTextField } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing } from "@/constants/brand";
-import {
-  isSportType,
-  type SPORT_TYPES,
-  toSportLabel,
-} from "@/convex/constants";
+import { isSportType, type SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 
 const PROFILE_HERO_EXPANDED_CONTENT_HEIGHT = 232;
@@ -139,22 +129,14 @@ export function ProfileHeroSheet({
         pullToEditArmed.value = true;
       }
     },
-    [
-      isEditing,
-      onRequestEdit,
-      pullToEditArmed,
-      scrollY,
-      shouldEnablePullToEdit,
-    ],
+    [isEditing, onRequestEdit, pullToEditArmed, scrollY, shouldEnablePullToEdit],
   );
 
   const sportsLabel =
     sportsDraft.length === 0
       ? t("profile.settings.sports.none")
       : sportsDraft.length <= 2
-        ? sportsDraft
-            .map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport))
-            .join(", ")
+        ? sportsDraft.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(", ")
         : `${isSportType(sportsDraft[0] ?? "") ? toSportLabel(sportsDraft[0] as (typeof SPORT_TYPES)[number]) : sportsDraft[0]} +${String(
             sportsDraft.length - 1,
           )}`;
@@ -167,12 +149,7 @@ export function ProfileHeroSheet({
       [0, PROFILE_HERO_EDIT_CONTENT_HEIGHT],
       Extrapolation.CLAMP,
     ),
-    marginTop: interpolate(
-      editProgress.value,
-      [0, 1],
-      [0, 16],
-      Extrapolation.CLAMP,
-    ),
+    marginTop: interpolate(editProgress.value, [0, 1], [0, 16], Extrapolation.CLAMP),
     overflow: "hidden" as const,
   }));
 
@@ -224,21 +201,13 @@ export function ProfileHeroSheet({
   }));
 
   const animatedSheetStyle = useAnimatedStyle(() => {
-    const pullStretch = interpolate(
-      scrollY.value,
-      [-120, 0],
-      [84, 0],
-      Extrapolation.CLAMP,
-    );
+    const pullStretch = interpolate(scrollY.value, [-120, 0], [84, 0], Extrapolation.CLAMP);
     const expandedHeight =
       safeTop +
       interpolate(
         editProgress.value,
         [0, 1],
-        [
-          PROFILE_HERO_EXPANDED_CONTENT_HEIGHT,
-          PROFILE_HERO_EDIT_CONTENT_HEIGHT,
-        ],
+        [PROFILE_HERO_EXPANDED_CONTENT_HEIGHT, PROFILE_HERO_EDIT_CONTENT_HEIGHT],
         Extrapolation.CLAMP,
       );
     const collapsedBase = interpolate(
@@ -286,9 +255,7 @@ export function ProfileHeroSheet({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
           <KitPressable
             accessibilityRole="button"
-            accessibilityLabel={
-              isEditing ? "Change profile photo" : "Edit profile"
-            }
+            accessibilityLabel={isEditing ? "Change profile photo" : "Edit profile"}
             onPress={isEditing ? onChangePhoto : onRequestEdit}
             haptic="selection"
             style={{ borderRadius: 24 }}
@@ -343,12 +310,7 @@ export function ProfileHeroSheet({
           </Animated.View>
 
           {!isEditing ? (
-            <KitButton
-              label="Edit"
-              onPress={onRequestEdit}
-              variant="ghost"
-              size="sm"
-            />
+            <KitButton label="Edit" onPress={onRequestEdit} variant="ghost" size="sm" />
           ) : null}
         </View>
 
@@ -379,10 +341,7 @@ export function ProfileHeroSheet({
           ) : null}
 
           {activeSocialCount > 0 ? (
-            <ProfileSocialLinksRow
-              socialLinks={socialLinksDraft}
-              palette={palette}
-            />
+            <ProfileSocialLinksRow socialLinks={socialLinksDraft} palette={palette} />
           ) : !isEditing ? (
             <Text
               style={{
@@ -454,8 +413,7 @@ export function ProfileHeroSheet({
                   color: palette.textMuted as string,
                 }}
               >
-                Change your photo, add what you teach, and link the places
-                people already know you.
+                Change your photo, add what you teach, and link the places people already know you.
               </Text>
               <KitButton
                 label={isChangingPhoto ? "Uploading..." : "Photo"}

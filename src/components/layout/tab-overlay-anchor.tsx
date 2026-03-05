@@ -1,6 +1,6 @@
-import { useAppInsets } from "@/hooks/use-app-insets";
 import type { PropsWithChildren } from "react";
-import { View, type StyleProp, type ViewStyle } from "react-native";
+import { type StyleProp, View, type ViewStyle } from "react-native";
+import { useAppInsets } from "@/hooks/use-app-insets";
 
 export type TabOverlayAnchorProps = PropsWithChildren<{
   side?: "left" | "right";

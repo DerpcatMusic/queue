@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 import type { ViewStyle } from "react-native";
 import Animated, {
-  ZoomIn,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
   withTiming,
+  ZoomIn,
 } from "react-native-reanimated";
 
 import type { KitFloatingBadgeProps } from "./types";
@@ -29,10 +29,7 @@ export function KitFloatingBadge({
     }
 
     floatOffset.value = withRepeat(
-      withSequence(
-        withTiming(-3, { duration: 900 }),
-        withTiming(0, { duration: 900 }),
-      ),
+      withSequence(withTiming(-3, { duration: 900 }), withTiming(0, { duration: 900 })),
       -1,
       false,
     );

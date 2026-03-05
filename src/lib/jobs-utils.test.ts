@@ -2,7 +2,6 @@ import { describe, expect, it } from "bun:test";
 
 import {
   APPLICATION_STATUS_TRANSLATION_KEYS,
-  JOB_STATUS_TRANSLATION_KEYS,
   clamp,
   formatDateTime,
   formatDateWithWeekday,
@@ -11,6 +10,7 @@ import {
   getApplicationStatusTranslationKey,
   getJobStatusTone,
   getLessonProgress,
+  JOB_STATUS_TRANSLATION_KEYS,
   sanitizeDecimalInput,
   trimOptional,
 } from "./jobs-utils";
@@ -47,8 +47,12 @@ describe("jobs-utils", () => {
   });
 
   it("falls back to pending translation key for unknown status", () => {
-    expect(getApplicationStatusTranslationKey("accepted")).toBe("jobsTab.status.application.accepted");
-    expect(getApplicationStatusTranslationKey("withdrawn")).toBe("jobsTab.status.application.withdrawn");
+    expect(getApplicationStatusTranslationKey("accepted")).toBe(
+      "jobsTab.status.application.accepted",
+    );
+    expect(getApplicationStatusTranslationKey("withdrawn")).toBe(
+      "jobsTab.status.application.withdrawn",
+    );
     expect(getApplicationStatusTranslationKey("bogus")).toBe("jobsTab.status.application.pending");
   });
 
@@ -59,9 +63,15 @@ describe("jobs-utils", () => {
     expect(JOB_STATUS_TRANSLATION_KEYS.cancelled).toBe("jobsTab.status.job.cancelled");
 
     expect(APPLICATION_STATUS_TRANSLATION_KEYS.pending).toBe("jobsTab.status.application.pending");
-    expect(APPLICATION_STATUS_TRANSLATION_KEYS.accepted).toBe("jobsTab.status.application.accepted");
-    expect(APPLICATION_STATUS_TRANSLATION_KEYS.rejected).toBe("jobsTab.status.application.rejected");
-    expect(APPLICATION_STATUS_TRANSLATION_KEYS.withdrawn).toBe("jobsTab.status.application.withdrawn");
+    expect(APPLICATION_STATUS_TRANSLATION_KEYS.accepted).toBe(
+      "jobsTab.status.application.accepted",
+    );
+    expect(APPLICATION_STATUS_TRANSLATION_KEYS.rejected).toBe(
+      "jobsTab.status.application.rejected",
+    );
+    expect(APPLICATION_STATUS_TRANSLATION_KEYS.withdrawn).toBe(
+      "jobsTab.status.application.withdrawn",
+    );
 
     expect(getJobStatusTone("open")).toBe("primary");
     expect(getJobStatusTone("filled")).toBe("success");

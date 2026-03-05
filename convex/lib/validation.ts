@@ -9,9 +9,7 @@ type DefinedProps<T extends Record<string, unknown>> = {
   [K in keyof T]?: Exclude<T[K], undefined>;
 };
 
-export function omitUndefined<T extends Record<string, unknown>>(
-  value: T,
-): DefinedProps<T> {
+export function omitUndefined<T extends Record<string, unknown>>(value: T): DefinedProps<T> {
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined),
   ) as DefinedProps<T>;
@@ -45,10 +43,10 @@ export function normalizeOptionalString(
   return trimmed;
 }
 
-export function normalizeCoordinates(args: {
-  latitude?: number;
-  longitude?: number;
-}): { latitude: number | undefined; longitude: number | undefined } {
+export function normalizeCoordinates(args: { latitude?: number; longitude?: number }): {
+  latitude: number | undefined;
+  longitude: number | undefined;
+} {
   if (args.latitude === undefined && args.longitude === undefined) {
     return { latitude: undefined, longitude: undefined };
   }
@@ -91,13 +89,9 @@ export function assertValidJobApplicationDeadline(args: {
     throw new ConvexError("applicationDeadline must be before startTime");
   }
   if (applicationDeadline - now < MIN_JOB_APPLICATION_LEAD_TIME_MS) {
-    throw new ConvexError(
-      "applicationDeadline must be at least 5 minutes in the future",
-    );
+    throw new ConvexError("applicationDeadline must be at least 5 minutes in the future");
   }
   if (startTime - applicationDeadline < MIN_JOB_APPLICATION_LEAD_TIME_MS) {
-    throw new ConvexError(
-      "applicationDeadline must be at least 5 minutes before startTime",
-    );
+    throw new ConvexError("applicationDeadline must be at least 5 minutes before startTime");
   }
 }

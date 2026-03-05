@@ -35,13 +35,19 @@ const getInvalidSignatureMaxAttempts = (): number =>
 const getInvalidSignatureBlockMs = (): number =>
   Math.min(
     24 * 60 * 60 * 1000,
-    parsePositiveInt(process.env.WEBHOOK_INVALID_SIGNATURE_BLOCK_MS, DEFAULT_INVALID_SIGNATURE_BLOCK_MS),
+    parsePositiveInt(
+      process.env.WEBHOOK_INVALID_SIGNATURE_BLOCK_MS,
+      DEFAULT_INVALID_SIGNATURE_BLOCK_MS,
+    ),
   );
 
 const normalizeBatchSize = (batchSize: number | undefined): number =>
   Math.min(
     500,
-    Math.max(1, Number.isFinite(batchSize) ? Math.floor(batchSize as number) : DEFAULT_CLEANUP_BATCH_SIZE),
+    Math.max(
+      1,
+      Number.isFinite(batchSize) ? Math.floor(batchSize as number) : DEFAULT_CLEANUP_BATCH_SIZE,
+    ),
   );
 
 const buildPrunedPayload = (payloadHash: string, now: number): Record<string, unknown> => ({
@@ -222,7 +228,11 @@ export const cleanupStaleWebhookArtifacts = internalMutation({
     const paymentEvents = await ctx.db.query("paymentEvents").order("asc").take(batchSize);
     for (const event of paymentEvents) {
       if (event.updatedAt > cutoff) continue;
-      if (event.payload && typeof event.payload === "object" && (event.payload as { pruned?: boolean }).pruned) {
+      if (
+        event.payload &&
+        typeof event.payload === "object" &&
+        (event.payload as { pruned?: boolean }).pruned
+      ) {
         continue;
       }
       await ctx.db.patch(event._id, {
@@ -239,7 +249,11 @@ export const cleanupStaleWebhookArtifacts = internalMutation({
       .take(batchSize);
     for (const event of payoutDestinationEvents) {
       if (event.updatedAt > cutoff) continue;
-      if (event.payload && typeof event.payload === "object" && (event.payload as { pruned?: boolean }).pruned) {
+      if (
+        event.payload &&
+        typeof event.payload === "object" &&
+        (event.payload as { pruned?: boolean }).pruned
+      ) {
         continue;
       }
       await ctx.db.patch(event._id, {
@@ -253,7 +267,11 @@ export const cleanupStaleWebhookArtifacts = internalMutation({
     const diditEvents = await ctx.db.query("diditEvents").order("asc").take(batchSize);
     for (const event of diditEvents) {
       if (event.updatedAt > cutoff) continue;
-      if (event.payload && typeof event.payload === "object" && (event.payload as { pruned?: boolean }).pruned) {
+      if (
+        event.payload &&
+        typeof event.payload === "object" &&
+        (event.payload as { pruned?: boolean }).pruned
+      ) {
         continue;
       }
       await ctx.db.patch(event._id, {

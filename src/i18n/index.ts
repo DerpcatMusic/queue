@@ -1,8 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getLocales } from "expo-localization";
 import { createInstance } from "i18next";
-import { I18nManager, Platform } from "react-native";
 import { initReactI18next } from "react-i18next";
+import { I18nManager, Platform } from "react-native";
 
 import en from "@/i18n/translations/en";
 import he from "@/i18n/translations/he";
@@ -73,9 +73,7 @@ export async function bootstrapLocalization(): Promise<{
     savedLanguage = null;
   }
 
-  const language = savedLanguage
-    ? normalizeLanguage(savedLanguage)
-    : getDeviceLanguage();
+  const language = savedLanguage ? normalizeLanguage(savedLanguage) : getDeviceLanguage();
   const directionChanged = syncRtlPreference(language);
   await i18n.changeLanguage(language);
   return { directionChanged };

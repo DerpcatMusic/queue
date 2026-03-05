@@ -114,17 +114,7 @@ export function QueueMapZonePolygons({
         layout={{
           "symbol-placement": "point",
           "text-field": ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]] as any,
-          "text-size": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            9.5,
-            10,
-            11,
-            12,
-            14,
-            14,
-          ] as any,
+          "text-size": ["interpolate", ["linear"], ["zoom"], 9.5, 10, 11, 12, 14, 14] as any,
           "text-allow-overlap": false,
           "text-font": ["Noto Sans Regular"] as any,
         }}
@@ -142,17 +132,7 @@ export function QueueMapZonePolygons({
         layout={{
           "symbol-placement": "point",
           "text-field": ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]] as any,
-          "text-size": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            9.5,
-            10,
-            11,
-            12,
-            14,
-            14,
-          ] as any,
+          "text-size": ["interpolate", ["linear"], ["zoom"], 9.5, 10, 11, 12, 14, 14] as any,
           "text-allow-overlap": false,
           "text-font": ["Noto Sans Regular"] as any,
         }}

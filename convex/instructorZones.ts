@@ -52,9 +52,7 @@ export const setMyInstructorZones = mutation({
   }),
   handler: async (ctx, args) => {
     const instructorId = await requireInstructorProfileId(ctx);
-    const uniqueZoneIds = [
-      ...new Set(args.zoneIds.map((zoneId) => normalizeZoneId(zoneId))),
-    ];
+    const uniqueZoneIds = [...new Set(args.zoneIds.map((zoneId) => normalizeZoneId(zoneId)))];
 
     if (uniqueZoneIds.length > MAX_INSTRUCTOR_ZONES) {
       throw new ConvexError("Too many zones selected");

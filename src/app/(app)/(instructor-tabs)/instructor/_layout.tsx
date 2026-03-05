@@ -10,14 +10,8 @@ export default function InstructorTabsLayout() {
   const tabCountsArgs = useMemo(() => ({ now }), [now]);
   const emptyArgs = useMemo(() => ({}), []);
 
-  const instructorTabCounts = useQuery(
-    api.jobs.getInstructorTabCounts,
-    tabCountsArgs,
-  );
-  const unreadNotificationCount = useQuery(
-    api.inbox.getMyUnreadNotificationCount,
-    emptyArgs,
-  );
+  const instructorTabCounts = useQuery(api.jobs.getInstructorTabCounts, tabCountsArgs);
+  const unreadNotificationCount = useQuery(api.inbox.getMyUnreadNotificationCount, emptyArgs);
 
   const jobsBadgeCount = instructorTabCounts?.jobsBadgeCount ?? 0;
   const calendarBadgeCount = instructorTabCounts?.calendarBadgeCount ?? 0;
@@ -31,10 +25,5 @@ export default function InstructorTabsLayout() {
     [calendarBadgeCount, jobsBadgeCount, profileBadgeCount],
   );
 
-  return (
-    <RoleTabsLayout
-      appRole="instructor"
-      badgeCountByRoute={badgeCountByRoute}
-    />
-  );
+  return <RoleTabsLayout appRole="instructor" badgeCountByRoute={badgeCountByRoute} />;
 }

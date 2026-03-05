@@ -11,23 +11,17 @@ import {
 
 describe("role-routes", () => {
   it("maps each role to the expected tab group", () => {
-    expect(getRoleTabGroup("instructor")).toBe(
-      ROLE_TAB_GROUP_BY_ROLE.instructor,
-    );
+    expect(getRoleTabGroup("instructor")).toBe(ROLE_TAB_GROUP_BY_ROLE.instructor);
     expect(getRoleTabGroup("studio")).toBe(ROLE_TAB_GROUP_BY_ROLE.studio);
   });
 
   it("builds stable role tab routes", () => {
     expect(getRoleTabBasePath("instructor")).toBe("/instructor");
-    expect(buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.home)).toBe(
-      "/instructor",
-    );
+    expect(buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.home)).toBe("/instructor");
     expect(buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile)).toBe(
       "/instructor/profile",
     );
-    expect(buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.calendar)).toBe(
-      "/studio/calendar",
-    );
+    expect(buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.calendar)).toBe("/studio/calendar");
   });
 
   it("builds role tab file paths including profile index route", () => {

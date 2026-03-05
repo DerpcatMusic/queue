@@ -36,8 +36,7 @@ export const ResendMagicLink = Email({
       throw new Error(
         JSON.stringify({
           ...error,
-          hint:
-            "If using Resend test mode, set AUTH_EMAIL_DEV_INBOX to your verified testing inbox or verify a sender domain and use AUTH_EMAIL_FROM.",
+          hint: "If using Resend test mode, set AUTH_EMAIL_DEV_INBOX to your verified testing inbox or verify a sender domain and use AUTH_EMAIL_FROM.",
         }),
       );
     }

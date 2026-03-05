@@ -1,8 +1,8 @@
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { useCallback, useState } from "react";
 import { Platform } from "react-native";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 
 const PROFILE_IMAGE_EDGE_PX = 512;
 const PROFILE_IMAGE_COMPRESSION = 0.72;
@@ -230,10 +230,10 @@ export function useProfileImageUpload() {
     uploadPhase === "selecting"
       ? "Choosing photo..."
       : uploadPhase === "compressing"
-      ? "Compressing photo..."
-      : uploadPhase === "uploading"
-        ? "Uploading photo..."
-        : null;
+        ? "Compressing photo..."
+        : uploadPhase === "uploading"
+          ? "Uploading photo..."
+          : null;
 
   return {
     isUploading,

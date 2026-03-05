@@ -72,7 +72,7 @@ type Rgb = { r: number; g: number; b: number };
 const DEFAULT_OPTIONS: ThemeGenerationOptions = {
   targetTextContrast: 7.2,
   targetMutedTextContrast: 4.2,
-  minChroma: 0.00, // Removed artificial tinting (was 0.04)
+  minChroma: 0.0, // Removed artificial tinting (was 0.04)
   maxChroma: 0.42,
 };
 
@@ -109,12 +109,13 @@ function clamp(value: number, min: number, max: number): number {
 
 function parseHexColor(hex: string): Rgb {
   const normalized = hex.trim().replace("#", "");
-  const full = normalized.length === 3
-    ? normalized
-      .split("")
-      .map((part) => `${part}${part}`)
-      .join("")
-    : normalized;
+  const full =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((part) => `${part}${part}`)
+          .join("")
+      : normalized;
   if (full.length !== 6) {
     throw new Error(`Invalid hex color: ${hex}`);
   }
@@ -246,7 +247,7 @@ function derive(base: Oklch, overrides: Partial<Oklch>, options: ThemeGeneration
   // to avoid tinting deep/dark backgrounds with an artificial hue.
   const targetC = overrides.c ?? base.c;
   const isNeutralRequested = overrides.c !== undefined && overrides.c < options.minChroma;
-  
+
   return rgbToHex(
     oklchToRgb({
       l: clamp(overrides.l ?? base.l, 0.02, 0.98),
@@ -256,7 +257,11 @@ function derive(base: Oklch, overrides: Partial<Oklch>, options: ThemeGeneration
   );
 }
 
-function createKey(seed: ThemeSeed, scheme: ResolvedThemeScheme, options: ThemeGenerationOptions): string {
+function createKey(
+  seed: ThemeSeed,
+  scheme: ResolvedThemeScheme,
+  options: ThemeGenerationOptions,
+): string {
   return JSON.stringify({ seed, scheme, options });
 }
 
@@ -317,26 +322,70 @@ export function generateThemeTokens(
     4.5,
   );
 
-  const borderSubtle = derive(baseNeutral, { l: isDark ? 0.32 : 0.84, c: baseNeutral.c * 0.35 }, options);
-  const borderStrong = derive(baseNeutral, { l: isDark ? 0.42 : 0.73, c: baseNeutral.c * 0.42 }, options);
+  const borderSubtle = derive(
+    baseNeutral,
+    { l: isDark ? 0.32 : 0.84, c: baseNeutral.c * 0.35 },
+    options,
+  );
+  const borderStrong = derive(
+    baseNeutral,
+    { l: isDark ? 0.42 : 0.73, c: baseNeutral.c * 0.42 },
+    options,
+  );
   const focus = derive(basePrimary, { l: isDark ? 0.76 : 0.64, c: basePrimary.c * 0.9 }, options);
 
   const primary = derive(basePrimary, { l: isDark ? 0.68 : 0.58, c: basePrimary.c }, options);
-  const primaryPressed = derive(basePrimary, { l: isDark ? 0.6 : 0.5, c: basePrimary.c * 1.03 }, options);
-  const primarySubtle = derive(basePrimary, { l: isDark ? 0.28 : 0.92, c: basePrimary.c * 0.42 }, options);
+  const primaryPressed = derive(
+    basePrimary,
+    { l: isDark ? 0.6 : 0.5, c: basePrimary.c * 1.03 },
+    options,
+  );
+  const primarySubtle = derive(
+    basePrimary,
+    { l: isDark ? 0.28 : 0.92, c: basePrimary.c * 0.42 },
+    options,
+  );
   const accent = derive(baseAccent, { l: isDark ? 0.72 : 0.6, c: baseAccent.c }, options);
 
   const success = derive(baseSuccess, { l: isDark ? 0.72 : 0.55, c: baseSuccess.c }, options);
-  const successSubtle = derive(baseSuccess, { l: isDark ? 0.27 : 0.9, c: baseSuccess.c * 0.35 }, options);
+  const successSubtle = derive(
+    baseSuccess,
+    { l: isDark ? 0.27 : 0.9, c: baseSuccess.c * 0.35 },
+    options,
+  );
   const warning = derive(baseWarning, { l: isDark ? 0.74 : 0.66, c: baseWarning.c }, options);
-  const warningSubtle = derive(baseWarning, { l: isDark ? 0.3 : 0.92, c: baseWarning.c * 0.36 }, options);
+  const warningSubtle = derive(
+    baseWarning,
+    { l: isDark ? 0.3 : 0.92, c: baseWarning.c * 0.36 },
+    options,
+  );
   const danger = derive(baseDanger, { l: isDark ? 0.68 : 0.58, c: baseDanger.c }, options);
-  const dangerSubtle = derive(baseDanger, { l: isDark ? 0.28 : 0.91, c: baseDanger.c * 0.35 }, options);
+  const dangerSubtle = derive(
+    baseDanger,
+    { l: isDark ? 0.28 : 0.91, c: baseDanger.c * 0.35 },
+    options,
+  );
 
-  const stateDisabled = derive(baseNeutral, { l: isDark ? 0.34 : 0.85, c: baseNeutral.c * 0.15 }, options);
-  const stateOverlay = derive(baseNeutral, { l: isDark ? 0.25 : 0.9, c: baseNeutral.c * 0.2 }, options);
-  const stateRipple = derive(basePrimary, { l: isDark ? 0.3 : 0.86, c: basePrimary.c * 0.48 }, options);
-  const stateSelected = derive(basePrimary, { l: isDark ? 0.34 : 0.9, c: basePrimary.c * 0.53 }, options);
+  const stateDisabled = derive(
+    baseNeutral,
+    { l: isDark ? 0.34 : 0.85, c: baseNeutral.c * 0.15 },
+    options,
+  );
+  const stateOverlay = derive(
+    baseNeutral,
+    { l: isDark ? 0.25 : 0.9, c: baseNeutral.c * 0.2 },
+    options,
+  );
+  const stateRipple = derive(
+    basePrimary,
+    { l: isDark ? 0.3 : 0.86, c: basePrimary.c * 0.48 },
+    options,
+  );
+  const stateSelected = derive(
+    basePrimary,
+    { l: isDark ? 0.34 : 0.9, c: basePrimary.c * 0.53 },
+    options,
+  );
 
   const tokens: GeneratedThemeTokens = {
     surface: {
@@ -380,11 +429,14 @@ export function generateThemeTokens(
     },
     overlay: {
       tabBar: derive(baseNeutral, { l: isDark ? 0.18 : 0.985, c: baseNeutral.c * 0.18 }, options),
-      tabBarBorder: derive(baseNeutral, { l: isDark ? 0.36 : 0.82, c: baseNeutral.c * 0.3 }, options),
+      tabBarBorder: derive(
+        baseNeutral,
+        { l: isDark ? 0.36 : 0.82, c: baseNeutral.c * 0.3 },
+        options,
+      ),
     },
   };
 
   CACHE.set(cacheKey, tokens);
   return tokens;
 }
-

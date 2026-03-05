@@ -1,7 +1,6 @@
 import { describe, expect, it } from "bun:test";
-
-import { resolveSessionState } from "./session-guard";
 import { resolveSessionGateDecision } from "@/modules/session/session-gate";
+import { resolveSessionState } from "./session-guard";
 
 describe("resolveSessionState edge cases", () => {
   it("treats undefined currentUser as loading even when auth loading flag is false", () => {

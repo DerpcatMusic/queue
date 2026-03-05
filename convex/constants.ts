@@ -1,7 +1,4 @@
-import {
-  PIKUD_HAOREF_ZONE_IDS,
-  type PikudHaorefZoneId,
-} from "./pikud-zones.generated";
+import { PIKUD_HAOREF_ZONE_IDS, type PikudHaorefZoneId } from "./pikud-zones.generated";
 
 export const PIKUD_HAOREF_ZONES = PIKUD_HAOREF_ZONE_IDS;
 export type PikudHaorefZone = PikudHaorefZoneId;
@@ -41,21 +38,11 @@ export const REQUIRED_LEVELS = [
 
 export type RequiredLevel = (typeof REQUIRED_LEVELS)[number];
 
-export const SESSION_LANGUAGES = [
-  "hebrew",
-  "english",
-  "arabic",
-  "russian",
-] as const;
+export const SESSION_LANGUAGES = ["hebrew", "english", "arabic", "russian"] as const;
 
 export type SessionLanguage = (typeof SESSION_LANGUAGES)[number];
 
-export const APPLICATION_STATUSES = [
-  "pending",
-  "accepted",
-  "rejected",
-  "withdrawn",
-] as const;
+export const APPLICATION_STATUSES = ["pending", "accepted", "rejected", "withdrawn"] as const;
 
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 

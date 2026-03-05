@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import { createElement, memo, type ComponentType } from "react";
+import { type ComponentType, createElement, memo } from "react";
 import { Platform } from "react-native";
 
 import type { QueueMapProps } from "./queue-map.types";

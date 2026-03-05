@@ -106,7 +106,9 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
     .order("desc")
     .take(250);
 
-  const pendingApplications = applications.filter((application) => application.status === "pending").length;
+  const pendingApplications = applications.filter(
+    (application) => application.status === "pending",
+  ).length;
 
   const applicationJobIds = [...new Set(applications.map((application) => application.jobId))];
   const applicationJobs = await Promise.all(
@@ -160,15 +162,10 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
     .take(HOME_HISTORY_JOB_LIMIT);
 
   const countableJobs = assignedJobs.filter(
-    (job) =>
-      job.status !== "cancelled" &&
-      (job.status === "completed" || job.endTime <= now),
+    (job) => job.status !== "cancelled" && (job.status === "completed" || job.endTime <= now),
   );
 
-  const totalEarningsAgorot = countableJobs.reduce(
-    (sum, job) => sum + toAgorot(job.pay),
-    0,
-  );
+  const totalEarningsAgorot = countableJobs.reduce((sum, job) => sum + toAgorot(job.pay), 0);
 
   const earningsEvents = countableJobs
     .filter((job) => job.endTime >= performanceWindowStart)
@@ -195,8 +192,7 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
     upcomingSessions: upcomingApplications.map(({ application, job }) => ({
       applicationId: application._id,
       sport: job.sport,
-      studioName:
-        upcomingStudioById.get(String(job.studioId))?.studioName ?? "Unknown studio",
+      studioName: upcomingStudioById.get(String(job.studioId))?.studioName ?? "Unknown studio",
       zone: trimOptionalString(job.zone) ?? job.zone,
       startTime: job.startTime,
       pay: job.pay,

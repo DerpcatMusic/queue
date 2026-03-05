@@ -73,20 +73,14 @@ function isAllowedRedirectTarget(redirectTo: string) {
 
   try {
     const candidateOrigin = new URL(redirectTo).origin;
-    return (
-      candidateOrigin === siteOrigin || candidateOrigin === convexSiteOrigin
-    );
+    return candidateOrigin === siteOrigin || candidateOrigin === convexSiteOrigin;
   } catch {
     return false;
   }
 }
 
 function getFallbackRedirectTarget() {
-  return (
-    process.env.SITE_URL ??
-    process.env.CONVEX_SITE_URL ??
-    "http://localhost:3000"
-  );
+  return process.env.SITE_URL ?? process.env.CONVEX_SITE_URL ?? "http://localhost:3000";
 }
 
 if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
@@ -108,24 +102,16 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
     },
     async createOrUpdateUser(ctx, args) {
       const now = Date.now();
-      const fullName =
-        typeof args.profile.name === "string" ? args.profile.name : undefined;
-      const rawEmail =
-        typeof args.profile.email === "string" ? args.profile.email : undefined;
+      const fullName = typeof args.profile.name === "string" ? args.profile.name : undefined;
+      const rawEmail = typeof args.profile.email === "string" ? args.profile.email : undefined;
       const email = normalizeEmail(rawEmail);
-      const phone =
-        typeof args.profile.phone === "string" ? args.profile.phone : undefined;
-      const image =
-        typeof args.profile.image === "string" ? args.profile.image : undefined;
-      const emailVerificationTime =
-        args.profile.emailVerified === true ? now : undefined;
+      const phone = typeof args.profile.phone === "string" ? args.profile.phone : undefined;
+      const image = typeof args.profile.image === "string" ? args.profile.image : undefined;
+      const emailVerificationTime = args.profile.emailVerified === true ? now : undefined;
       const isEmailVerified = args.profile.emailVerified === true;
-      const phoneVerificationTime =
-        args.profile.phoneVerified === true ? now : undefined;
+      const phoneVerificationTime = args.profile.phoneVerified === true ? now : undefined;
       const isAnonymous =
-        typeof args.profile.isAnonymous === "boolean"
-          ? args.profile.isAnonymous
-          : undefined;
+        typeof args.profile.isAnonymous === "boolean" ? args.profile.isAnonymous : undefined;
 
       const emailMatches = canResolveLinkedUserByEmail(email, isEmailVerified)
         ? await ctx.db

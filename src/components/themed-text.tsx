@@ -50,16 +50,11 @@ export function ThemedText({
   const typeStyle =
     resolved === "link"
       ? { ...BrandType.body, fontWeight: "600" as const, color: linkColor }
-      : BrandType[resolved as keyof typeof BrandType] ?? BrandType.body;
+      : (BrandType[resolved as keyof typeof BrandType] ?? BrandType.body);
 
   return (
     <Text
-      style={[
-        { color },
-        { writingDirection: I18nManager.isRTL ? "rtl" : "ltr" },
-        typeStyle,
-        style,
-      ]}
+      style={[{ color }, { writingDirection: I18nManager.isRTL ? "rtl" : "ltr" }, typeStyle, style]}
       {...rest}
     />
   );

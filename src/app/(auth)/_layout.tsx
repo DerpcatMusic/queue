@@ -8,11 +8,7 @@ export default function AuthLayout() {
   const palette = useBrand();
   const gate = useSessionGate("index");
 
-  if (
-    isAuthenticated &&
-    gate.status === "redirect" &&
-    gate.href !== "/sign-in"
-  ) {
+  if (isAuthenticated && gate.status === "redirect" && gate.href !== "/sign-in") {
     return <Redirect href={gate.href} />;
   }
 

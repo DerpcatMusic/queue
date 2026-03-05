@@ -2,8 +2,8 @@ import { ConvexError } from "convex/values";
 
 import {
   PIKUD_HAOREF_ZONES,
-  SPORT_TYPES,
   type PikudHaorefZone,
+  SPORT_TYPES,
   type SportType,
 } from "../constants";
 

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import { fetchJsonWithPolicy, FetchRequestError, isFetchRequestError } from "./fetch-json";
+import { FetchRequestError, fetchJsonWithPolicy, isFetchRequestError } from "./fetch-json";
 
 const originalFetch = globalThis.fetch;
 
@@ -32,7 +32,11 @@ describe("fetchJsonWithPolicy", () => {
     });
 
     await expect(
-      fetchJsonWithPolicy<{ ok: boolean }>("https://example.test", {}, { retries: 1, retryDelayMs: 0 }),
+      fetchJsonWithPolicy<{ ok: boolean }>(
+        "https://example.test",
+        {},
+        { retries: 1, retryDelayMs: 0 },
+      ),
     ).resolves.toEqual({ ok: true });
     expect(attempt).toBe(2);
   });
@@ -64,12 +68,14 @@ describe("fetchJsonWithPolicy", () => {
   });
 
   it("throws timeout when request exceeds timeoutMs", async () => {
-    setFetchMock((_: string, init?: RequestInit) =>
-      new Promise<Response>((_, reject) => {
-        init?.signal?.addEventListener("abort", () => {
-          reject(new DOMException("Aborted", "AbortError"));
-        });
-      }));
+    setFetchMock(
+      (_: string, init?: RequestInit) =>
+        new Promise<Response>((_, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
 
     await expect(
       fetchJsonWithPolicy("https://example.test", {}, { timeoutMs: 5, retries: 0 }),

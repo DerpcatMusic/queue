@@ -1,6 +1,6 @@
-import { Platform } from "react-native";
-import type { OpaqueColorValue, StyleProp, TextStyle } from "react-native";
 import type { SymbolViewProps } from "expo-symbols";
+import type { OpaqueColorValue, StyleProp, TextStyle } from "react-native";
+import { Platform } from "react-native";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
 type AppSymbolProps = {
@@ -32,11 +32,6 @@ export function AppSymbol({ name, size = 20, tintColor, style }: AppSymbolProps)
   }
 
   return (
-    <IconSymbol
-      name={resolvedName as any}
-      size={size}
-      color={tintColor as string}
-      style={style}
-    />
+    <IconSymbol name={resolvedName as any} size={size} color={tintColor as string} style={style} />
   );
 }

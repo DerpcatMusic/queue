@@ -9,14 +9,7 @@ type InvoiceProvider = "icount" | "morning";
 type InvoicingContext = {
   payment: {
     _id: Id<"payments">;
-    status:
-      | "created"
-      | "pending"
-      | "authorized"
-      | "captured"
-      | "failed"
-      | "cancelled"
-      | "refunded";
+    status: "created" | "pending" | "authorized" | "captured" | "failed" | "cancelled" | "refunded";
     currency: string;
     studioChargeAmountAgorot: number;
   };
@@ -40,8 +33,7 @@ type InvoiceIssueResult =
       externalInvoiceId: string;
     };
 
-const toAmount = (amountAgorot: number): number =>
-  Number((amountAgorot / 100).toFixed(2));
+const toAmount = (amountAgorot: number): number => Number((amountAgorot / 100).toFixed(2));
 
 const normalizeBaseUrl = (raw: string, provider: InvoiceProvider): string => {
   let parsed: URL;

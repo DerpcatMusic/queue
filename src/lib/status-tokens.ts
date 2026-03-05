@@ -12,10 +12,7 @@ export type StatusTokens = {
 type Palette = BrandPalette;
 
 /** Single source of truth for job status → display colors. */
-export function getJobStatusTokens(
-  status: JobStatus,
-  palette: Palette,
-): StatusTokens {
+export function getJobStatusTokens(status: JobStatus, palette: Palette): StatusTokens {
   switch (status) {
     case "open":
       return {

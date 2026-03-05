@@ -28,11 +28,9 @@ const en = {
     },
     empty: {
       nonInstructorTitle: "Instructor schedule only",
-      nonInstructorBody:
-        "This calendar shows accepted teaching sessions for instructor accounts.",
+      nonInstructorBody: "This calendar shows accepted teaching sessions for instructor accounts.",
       noSessionsTitle: "No accepted sessions yet",
-      noSessionsBody:
-        "Accept a job from the Jobs tab and it will appear here automatically.",
+      noSessionsBody: "Accept a job from the Jobs tab and it will appear here automatically.",
     },
     sync: {
       disabled: "Sync off",
@@ -51,8 +49,7 @@ const en = {
         past: "Past",
       },
     },
-    footerHint:
-      "Calendar interactions are enabled. Session events appear for instructor accounts.",
+    footerHint: "Calendar interactions are enabled. Session events appear for instructor accounts.",
   },
   tabsLayout: {
     loading: {
@@ -91,8 +88,7 @@ const en = {
     english: "English",
     hebrew: "Hebrew",
     restartRequiredTitle: "Restart required",
-    restartRequiredMessage:
-      "The app needs to reload to apply right-to-left layout changes.",
+    restartRequiredMessage: "The app needs to reload to apply right-to-left layout changes.",
   },
   common: {
     cancel: "Cancel",
@@ -151,8 +147,7 @@ const en = {
       notifications: {
         title: "Push notifications",
         description: "Get notified when matching jobs are posted.",
-        pushMissing:
-          "Push is not configured on this device yet. Re-enable from onboarding first.",
+        pushMissing: "Push is not configured on this device yet. Re-enable from onboarding first.",
       },
       hourly: {
         title: "Hourly expectation",
@@ -184,8 +179,7 @@ const en = {
       },
       calendar: {
         title: "Calendar sync",
-        description:
-          "Choose how accepted sessions sync into your device calendar.",
+        description: "Choose how accepted sessions sync into your device calendar.",
         provider: {
           none: "No sync",
           google: "Google Calendar",
@@ -194,8 +188,7 @@ const en = {
         autoSync: "Auto-add accepted sessions",
         futureNote:
           "Queue syncs to a dedicated device calendar. Cloud sync to Google or Apple depends on your phone account settings.",
-        googleConnectRequired:
-          "Connect your Google account to enable direct Google Calendar sync.",
+        googleConnectRequired: "Connect your Google account to enable direct Google Calendar sync.",
         googleConnectedAs: "Connected as {{email}}",
         applePermissionNote:
           "Apple sync requests calendar access and writes to a dedicated Queue Sessions calendar.",
@@ -236,8 +229,7 @@ const en = {
           "Location services are disabled on this device. Enable GPS and try again.",
         locationTimeout: "Location request timed out. Try again.",
         locationAddressNotFound: "Address was not found.",
-        locationOutsideSupportedZone:
-          "This location is outside supported service zones.",
+        locationOutsideSupportedZone: "This location is outside supported service zones.",
         studioNameRequired: "Studio name is required.",
         saveFailed: "Failed to save settings.",
       },
@@ -281,8 +273,7 @@ const en = {
     phoneNumberPlaceholder: "+972501234567",
     sendPhoneCodeButton: "Send phone code",
     sendingPhoneCode: "Sending code...",
-    phoneNumberRequiredForSignUp:
-      "Your account requires a phone number. Add it to continue.",
+    phoneNumberRequiredForSignUp: "Your account requires a phone number. Add it to continue.",
     magicLinkSent: "Magic link sent to {{email}}. Open it on this device to continue.",
     magicLinkVerified: "Magic link verified. Signing you in...",
     magicLinkUnavailableNative:
@@ -296,12 +287,9 @@ const en = {
     goToSignUp: "Need an account? Sign up",
     goToSignIn: "Already have an account? Sign in",
     additionalStepRequired: "Additional verification is required.",
-    additionalStepRequiredWithStatus:
-      "Additional verification is required (status: {{status}}).",
-    sessionTaskPending:
-      "Your session needs one more step (task: {{task}}).",
-    sessionActivationFailed:
-      "Could not activate your session. Please sign in after verification.",
+    additionalStepRequiredWithStatus: "Additional verification is required (status: {{status}}).",
+    sessionTaskPending: "Your session needs one more step (task: {{task}}).",
+    sessionActivationFailed: "Could not activate your session. Please sign in after verification.",
     secondFactorUnavailable:
       "Second-factor verification is required, but no supported method is available.",
     unexpectedError: "Something went wrong. Please try again.",
@@ -343,8 +331,7 @@ const en = {
       detectedZone: "Detected zone: {{zone}}",
       addDetectedZone: "Add detected zone",
       zonePending: "Zone will be set automatically from address or GPS.",
-      zoneOptionalHint:
-        "Optional: detect your current zone and add it to your service zones.",
+      zoneOptionalHint: "Optional: detect your current zone and add it to your service zones.",
     },
     zoneSearchPlaceholder: "Search zones",
     back: "Back",
@@ -356,20 +343,17 @@ const en = {
     verification: {
       title: "Identity verification",
       subtitle: "Verify your identity",
-      body:
-        "You can verify now to unlock payouts and complete KYC. You can also do this later from your profile.",
+      body: "You can verify now to unlock payouts and complete KYC. You can also do this later from your profile.",
       verifyNow: "Verify now",
       later: "Later",
     },
     push: {
-      description:
-        "Enable push notifications to get new job alerts as soon as studios post them.",
+      description: "Enable push notifications to get new job alerts as soon as studios post them.",
       requesting: "Requesting permission...",
       enabled: "Push enabled",
       requestPermission: "Enable push notifications",
       tokenSaved: "Push token saved.",
-      permissionNotGranted:
-        "Push permission is not granted. You can continue and enable it later.",
+      permissionNotGranted: "Push permission is not granted. You can continue and enable it later.",
       requestFailed: "Failed to request push permission.",
     },
     errors: {
@@ -392,8 +376,7 @@ const en = {
         "Location services are disabled on this device. Enable GPS and try again.",
       locationTimeout: "Location request timed out. Try again.",
       locationAddressNotFound: "Address was not found.",
-      locationOutsideSupportedZone:
-        "This location is outside supported service zones.",
+      locationOutsideSupportedZone: "This location is outside supported service zones.",
       tooManyZones: "You selected too many zones.",
       failedToComplete: "Failed to complete onboarding.",
     },
@@ -436,8 +419,7 @@ const en = {
     studioCreateTitle: "Create a job fast",
     studioSubtitle: "Create a job and notify matching instructors instantly.",
     studioPushTitle: "Enable studio push alerts",
-    studioPushDescription:
-      "Get notified immediately when instructors apply to your lessons.",
+    studioPushDescription: "Get notified immediately when instructors apply to your lessons.",
     studioFeedTitle: "Your recent jobs",
     studioApplicationsTitle: "Applications",
     instructorSubtitle: "Live zone-matched jobs. No manual refresh needed.",
@@ -566,16 +548,14 @@ const en = {
       payRequired: "Enter a valid pay amount.",
       startMustBeFuture: "Start time must be in the future.",
       endMustBeAfterStart: "End time must be after start time.",
-      applicationDeadlineMustBeFuture:
-        "Application deadline must still be in the future.",
+      applicationDeadlineMustBeFuture: "Application deadline must still be in the future.",
       datetimePickerUnavailable:
         "Native date/time picker is unavailable in this build. Rebuild the Android/iOS dev client.",
       failedToPost: "Failed to post job.",
       failedToApply: "Failed to apply for this job.",
       failedToReview: "Failed to review this application.",
       failedToMarkAlertsRead: "Failed to mark alerts as read.",
-      pushPermissionRequired:
-        "Notification permission is required to enable studio push alerts.",
+      pushPermissionRequired: "Notification permission is required to enable studio push alerts.",
       failedToEnablePush: "Failed to enable studio push notifications.",
       failedToSetReminder: "Failed to update lesson reminder.",
       failedToMarkLessonDone: "Failed to mark lesson as complete.",
@@ -660,8 +640,7 @@ const en = {
     sectionAnimationsTitle: "Animations",
     sectionAnimationsBody:
       "This template includes an animated component using react-native-reanimated.",
-    sectionAnimationsIos:
-      "ParallaxScrollView provides the parallax effect used in the header.",
+    sectionAnimationsIos: "ParallaxScrollView provides the parallax effect used in the header.",
     learnMore: "Learn more",
   },
 };

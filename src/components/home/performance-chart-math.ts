@@ -56,8 +56,13 @@ export function getTimeframeData(timeframe: Timeframe, now: number, locale: stri
   const today = startOfDay(now);
 
   if (timeframe === "weekly") {
-    const bucketStarts = Array.from({ length: 7 }, (_, idx) => today - (6 - idx) * 24 * 60 * 60 * 1000);
-    const bucketEnds = bucketStarts.map((_s, idx) => (idx === bucketStarts.length - 1 ? now + 1 : bucketStarts[idx + 1]!));
+    const bucketStarts = Array.from(
+      { length: 7 },
+      (_, idx) => today - (6 - idx) * 24 * 60 * 60 * 1000,
+    );
+    const bucketEnds = bucketStarts.map((_s, idx) =>
+      idx === bucketStarts.length - 1 ? now + 1 : bucketStarts[idx + 1]!,
+    );
     const bucketLabels = bucketStarts.map((s) => toShortWeekday(s, locale));
     return {
       bucketStarts,
@@ -69,12 +74,20 @@ export function getTimeframeData(timeframe: Timeframe, now: number, locale: stri
   }
 
   if (timeframe === "monthly") {
-    const bucketStarts = Array.from({ length: 30 }, (_, idx) => today - (29 - idx) * 24 * 60 * 60 * 1000);
-    const bucketEnds = bucketStarts.map((_s, idx) => (idx === bucketStarts.length - 1 ? now + 1 : bucketStarts[idx + 1]!));
+    const bucketStarts = Array.from(
+      { length: 30 },
+      (_, idx) => today - (29 - idx) * 24 * 60 * 60 * 1000,
+    );
+    const bucketEnds = bucketStarts.map((_s, idx) =>
+      idx === bucketStarts.length - 1 ? now + 1 : bucketStarts[idx + 1]!,
+    );
     const bucketLabels = bucketStarts.map((s, idx) => {
       const date = new Date(s);
       const shouldShowMonth = idx === 0 || date.getDate() === 1;
-      return date.toLocaleDateString(locale, shouldShowMonth ? { month: "short", day: "numeric" } : { day: "numeric" });
+      return date.toLocaleDateString(
+        locale,
+        shouldShowMonth ? { month: "short", day: "numeric" } : { day: "numeric" },
+      );
     });
     return {
       bucketStarts,
@@ -91,7 +104,9 @@ export function getTimeframeData(timeframe: Timeframe, now: number, locale: stri
     d.setHours(0, 0, 0, 0);
     return d.getTime();
   });
-  const bucketEnds = bucketStarts.map((_s, idx) => (idx === bucketStarts.length - 1 ? now + 1 : bucketStarts[idx + 1]!));
+  const bucketEnds = bucketStarts.map((_s, idx) =>
+    idx === bucketStarts.length - 1 ? now + 1 : bucketStarts[idx + 1]!,
+  );
   const bucketLabels = bucketStarts.map((s) => toShortMonth(s, locale));
   return {
     bucketStarts,
@@ -165,7 +180,8 @@ function toChartPoints(values: number[], width: number, height: number, padding:
 function smoothQuadraticPath(points: Point[]) {
   if (points.length === 0) return "";
   if (points.length === 1) return `M ${points[0]!.x} ${points[0]!.y}`;
-  if (points.length === 2) return `M ${points[0]!.x} ${points[0]!.y} L ${points[1]!.x} ${points[1]!.y}`;
+  if (points.length === 2)
+    return `M ${points[0]!.x} ${points[0]!.y} L ${points[1]!.x} ${points[1]!.y}`;
 
   let d = `M ${points[0]!.x} ${points[0]!.y}`;
   for (let i = 1; i < points.length - 1; i += 1) {

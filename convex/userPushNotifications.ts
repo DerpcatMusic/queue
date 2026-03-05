@@ -24,14 +24,10 @@ export const sendUserPushNotification = internalAction({
     sent: v.boolean(),
     reason: v.optional(v.string()),
   }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{ sent: boolean; reason?: string }> => {
-    const recipient = await ctx.runQuery(
-      internal.notificationsCore.getPushRecipientForUser,
-      { userId: args.userId },
-    );
+  handler: async (ctx, args): Promise<{ sent: boolean; reason?: string }> => {
+    const recipient = await ctx.runQuery(internal.notificationsCore.getPushRecipientForUser, {
+      userId: args.userId,
+    });
 
     if (!recipient) {
       return { sent: false, reason: "push_not_configured" };
@@ -75,10 +71,7 @@ export const sendUserPushNotification = internalAction({
     } catch (error) {
       return {
         sent: false,
-        reason:
-          error instanceof Error && error.message
-            ? error.message
-            : "expo_push_network_error",
+        reason: error instanceof Error && error.message ? error.message : "expo_push_network_error",
       };
     }
   },

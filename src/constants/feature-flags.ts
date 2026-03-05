@@ -11,18 +11,9 @@ function readBooleanFlag(value: string | undefined, defaultValue: boolean): bool
 }
 
 export const FEATURE_FLAGS = {
-  mapPerfTelemetry: readBooleanFlag(
-    process.env.EXPO_PUBLIC_ENABLE_MAP_PERF_TELEMETRY,
-    false,
-  ),
-  jobsPerfTelemetry: readBooleanFlag(
-    process.env.EXPO_PUBLIC_ENABLE_JOBS_PERF_TELEMETRY,
-    false,
-  ),
-  generatedThemeEnabled: readBooleanFlag(
-    process.env.EXPO_PUBLIC_THEME_GENERATED_ENABLED,
-    true,
-  ),
+  mapPerfTelemetry: readBooleanFlag(process.env.EXPO_PUBLIC_ENABLE_MAP_PERF_TELEMETRY, false),
+  jobsPerfTelemetry: readBooleanFlag(process.env.EXPO_PUBLIC_ENABLE_JOBS_PERF_TELEMETRY, false),
+  generatedThemeEnabled: readBooleanFlag(process.env.EXPO_PUBLIC_THEME_GENERATED_ENABLED, true),
   generatedThemeAliasStrictMode: readBooleanFlag(
     process.env.EXPO_PUBLIC_THEME_ALIAS_STRICT_MODE,
     false,

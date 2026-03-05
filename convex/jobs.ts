@@ -1,14 +1,9 @@
 import { ConvexError, v } from "convex/values";
-
-import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalMutation, mutation, query } from "./_generated/server";
-import {
-  APPLICATION_STATUSES,
-  REQUIRED_LEVELS,
-  SESSION_LANGUAGES,
-} from "./constants";
+import { APPLICATION_STATUSES, REQUIRED_LEVELS, SESSION_LANGUAGES } from "./constants";
 import { requireUserRole } from "./lib/auth";
 import { isKnownZoneId, normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
 import { hasCoverageKey, loadInstructorEligibility } from "./lib/instructorEligibility";
@@ -189,8 +184,7 @@ export const getStudioTabCounts = query({
       .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
       .collect();
     const activeJobs = jobs.filter(
-      (job) =>
-        (job.status === "open" || job.status === "filled") && job.endTime > now,
+      (job) => (job.status === "open" || job.status === "filled") && job.endTime > now,
     );
     const activeJobIdSet = new Set(activeJobs.map((job) => String(job._id)));
     const calendarBadgeCount = clampBadgeCount(activeJobs.length);
@@ -261,10 +255,7 @@ async function requireStudioProfile(ctx: QueryCtx | MutationCtx) {
   return studio;
 }
 
-async function recomputeJobApplicationStats(
-  ctx: MutationCtx,
-  job: Doc<"jobs">,
-) {
+async function recomputeJobApplicationStats(ctx: MutationCtx, job: Doc<"jobs">) {
   if (!USE_JOB_APPLICATION_STATS) return;
 
   const applications = await ctx.db
@@ -315,7 +306,6 @@ function clampBadgeCount(value: number) {
   return Math.min(Math.max(value, 0), BADGE_COUNT_CAP);
 }
 
-
 async function enqueueUserNotification(
   ctx: MutationCtx,
   args: {
@@ -342,22 +332,18 @@ async function enqueueUserNotification(
     createdAt,
   });
 
-  await ctx.scheduler.runAfter(
-    0,
-    internal.userPushNotifications.sendUserPushNotification,
-    {
-      userId: args.recipientUserId,
-      title: args.title,
-      body: args.body,
-      data: {
-        type: args.kind,
-        ...omitUndefined({
-          jobId: args.jobId ? String(args.jobId) : undefined,
-          applicationId: args.applicationId ? String(args.applicationId) : undefined,
-        }),
-      },
+  await ctx.scheduler.runAfter(0, internal.userPushNotifications.sendUserPushNotification, {
+    userId: args.recipientUserId,
+    title: args.title,
+    body: args.body,
+    data: {
+      type: args.kind,
+      ...omitUndefined({
+        jobId: args.jobId ? String(args.jobId) : undefined,
+        applicationId: args.applicationId ? String(args.applicationId) : undefined,
+      }),
     },
-  );
+  });
 }
 
 export const postJob = mutation({
@@ -379,12 +365,7 @@ export const postJob = mutation({
     maxParticipants: v.optional(v.number()),
     equipmentProvided: v.optional(v.boolean()),
     sessionLanguage: v.optional(
-      v.union(
-        v.literal("hebrew"),
-        v.literal("english"),
-        v.literal("arabic"),
-        v.literal("russian"),
-      ),
+      v.union(v.literal("hebrew"), v.literal("english"), v.literal("arabic"), v.literal("russian")),
     ),
     isRecurring: v.optional(v.boolean()),
     cancellationDeadlineHours: v.optional(v.number()),
@@ -398,9 +379,7 @@ export const postJob = mutation({
     const now = Date.now();
 
     const sport = normalizeSportType(args.sport);
-    const studioZone = normalizeZoneId(
-      normalizeRequired(studio.zone, "studio zone"),
-    );
+    const studioZone = normalizeZoneId(normalizeRequired(studio.zone, "studio zone"));
     const timeZone = normalizeTimeZone(args.timeZone);
 
     assertPositiveNumber(args.pay, "pay");
@@ -421,10 +400,7 @@ export const postJob = mutation({
       assertPositiveInteger(args.maxParticipants, "maxParticipants");
     }
     if (args.cancellationDeadlineHours !== undefined) {
-      assertPositiveInteger(
-        args.cancellationDeadlineHours,
-        "cancellationDeadlineHours",
-      );
+      assertPositiveInteger(args.cancellationDeadlineHours, "cancellationDeadlineHours");
     }
     assertValidJobApplicationDeadline({
       now,
@@ -461,27 +437,18 @@ export const postJob = mutation({
       });
     }
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.notifications.sendJobNotifications,
-      { jobId },
-    );
+    await ctx.scheduler.runAfter(0, internal.notifications.sendJobNotifications, { jobId });
     await ctx.scheduler.runAfter(
       Math.max(args.endTime - now, 0),
       internal.jobs.closeJobIfStillOpen,
       { jobId },
     );
 
-    const expireMinutes =
-      studio.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
+    const expireMinutes = studio.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
     const expireAt = args.startTime - expireMinutes * 60 * 1000;
     const expireDelay = Math.max(expireAt - now, 0);
     if (expireAt > now) {
-      await ctx.scheduler.runAfter(
-        expireDelay,
-        internal.jobs.autoExpireUnfilledJob,
-        { jobId },
-      );
+      await ctx.scheduler.runAfter(expireDelay, internal.jobs.autoExpireUnfilledJob, { jobId });
     }
 
     return { jobId };
@@ -725,9 +692,7 @@ export const getMyApplications = query({
 
     const applications = await ctx.db
       .query("jobApplications")
-      .withIndex("by_instructor_appliedAt", (q) =>
-        q.eq("instructorId", instructor._id),
-      )
+      .withIndex("by_instructor_appliedAt", (q) => q.eq("instructorId", instructor._id))
       .order("desc")
       .take(limit);
 
@@ -762,10 +727,10 @@ export const getMyApplications = query({
 
       let paymentDetails:
         | {
-          status: Doc<"payments">["status"];
-          payoutStatus?: Doc<"payouts">["status"];
-          externalInvoiceUrl?: string;
-        }
+            status: Doc<"payments">["status"];
+            payoutStatus?: Doc<"payouts">["status"];
+            externalInvoiceUrl?: string;
+          }
         | undefined;
       if (job.status === "completed" || job.status === "filled") {
         const payment = await ctx.db
@@ -1081,17 +1046,19 @@ export const getMyStudioJobsWithApplications = query({
 
     const studioApplications = USE_STUDIO_APPLICATIONS_BY_STUDIO
       ? await ctx.db
-        .query("jobApplications")
-        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
-        .collect()
-      : (await Promise.all(
-        jobs.map((job) =>
-          ctx.db
-            .query("jobApplications")
-            .withIndex("by_job", (q) => q.eq("jobId", job._id))
-            .collect(),
-        ),
-      )).flat();
+          .query("jobApplications")
+          .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+          .collect()
+      : (
+          await Promise.all(
+            jobs.map((job) =>
+              ctx.db
+                .query("jobApplications")
+                .withIndex("by_job", (q) => q.eq("jobId", job._id))
+                .collect(),
+            ),
+          )
+        ).flat();
     const applicationsByJobId = new Map<string, Doc<"jobApplications">[]>();
     for (const application of studioApplications) {
       const jobId = String(application.jobId);
@@ -1112,9 +1079,7 @@ export const getMyStudioJobsWithApplications = query({
       ),
     ];
     const profiles = await Promise.all(
-      instructorIds.map((instructorId) =>
-        ctx.db.get("instructorProfiles", instructorId),
-      ),
+      instructorIds.map((instructorId) => ctx.db.get("instructorProfiles", instructorId)),
     );
     const profileById = new Map<string, Doc<"instructorProfiles">>();
     for (let i = 0; i < instructorIds.length; i += 1) {
@@ -1314,9 +1279,7 @@ export const getMyCalendarTimeline = query({
       ),
     ];
     const instructors = await Promise.all(
-      instructorIds.map((instructorId) =>
-        ctx.db.get("instructorProfiles", instructorId),
-      ),
+      instructorIds.map((instructorId) => ctx.db.get("instructorProfiles", instructorId)),
     );
     const instructorById = new Map<string, Doc<"instructorProfiles">>();
     for (let i = 0; i < instructorIds.length; i += 1) {
@@ -1470,13 +1433,9 @@ export const runAcceptedApplicationReviewWorkflow = internalMutation({
       .withIndex("by_job", (q) => q.eq("jobId", job._id))
       .collect();
 
-    const uniqueInstructorIds = [
-      ...new Set(competingApplications.map((row) => row.instructorId)),
-    ];
+    const uniqueInstructorIds = [...new Set(competingApplications.map((row) => row.instructorId))];
     const profiles = await Promise.all(
-      uniqueInstructorIds.map((instructorId) =>
-        ctx.db.get("instructorProfiles", instructorId),
-      ),
+      uniqueInstructorIds.map((instructorId) => ctx.db.get("instructorProfiles", instructorId)),
     );
     const profileById = new Map<string, Doc<"instructorProfiles">>();
     for (let i = 0; i < uniqueInstructorIds.length; i += 1) {
@@ -1698,8 +1657,7 @@ export const autoExpireUnfilledJob = internalMutation({
     }
 
     const studio = await ctx.db.get("studioProfiles", job.studioId);
-    const expireMinutes =
-      studio?.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
+    const expireMinutes = studio?.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
     const expireCutoff = job.startTime - expireMinutes * 60 * 1000;
 
     if (Date.now() < expireCutoff) {

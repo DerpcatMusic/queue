@@ -33,9 +33,7 @@ export const getMyNotifications = query({
 
     const rows = await ctx.db
       .query("userNotifications")
-      .withIndex("by_recipient_createdAt", (q) =>
-        q.eq("recipientUserId", user._id),
-      )
+      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientUserId", user._id))
       .order("desc")
       .take(limit);
 
@@ -107,18 +105,14 @@ export const markAllMyNotificationsRead = mutation({
 
     const rows = await ctx.db
       .query("userNotifications")
-      .withIndex("by_recipient_createdAt", (q) =>
-        q.eq("recipientUserId", user._id),
-      )
+      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientUserId", user._id))
       .order("desc")
       .take(limit);
 
     const now = Date.now();
     const unreadRows = rows.filter((row) => row.readAt === undefined);
     await Promise.all(
-      unreadRows.map((row) =>
-        ctx.db.patch("userNotifications", row._id, { readAt: now }),
-      ),
+      unreadRows.map((row) => ctx.db.patch("userNotifications", row._id, { readAt: now })),
     );
 
     return { updated: unreadRows.length };

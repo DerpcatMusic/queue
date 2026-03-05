@@ -1,11 +1,11 @@
-import zoneGeoJsonRaw from "../../assets/data/pikud-haoref/all.json";
-import cityGeoJsonRaw from "../../assets/data/pikud-haoref/city-polygons.json";
-import zoneIndexFileRaw from "../../assets/data/pikud-haoref/zone-index.json";
 import {
   getZoneCityMeta as getZoneCityMetaFromIndex,
   getZoneIdsForCity as getZoneIdsForCityFromIndex,
   type ZoneCityMeta,
 } from "@/constants/zones-city";
+import zoneGeoJsonRaw from "../../assets/data/pikud-haoref/all.json";
+import cityGeoJsonRaw from "../../assets/data/pikud-haoref/city-polygons.json";
+import zoneIndexFileRaw from "../../assets/data/pikud-haoref/zone-index.json";
 
 type ZoneGeometry = GeoJSON.Polygon | GeoJSON.MultiPolygon;
 type LngLatPoint = { longitude: number; latitude: number };
@@ -21,10 +21,7 @@ type ZoneFeatureProperties = {
 };
 
 type ZoneFeature = GeoJSON.Feature<ZoneGeometry, ZoneFeatureProperties>;
-type ZoneFeatureCollection = GeoJSON.FeatureCollection<
-  ZoneGeometry,
-  ZoneFeatureProperties
->;
+type ZoneFeatureCollection = GeoJSON.FeatureCollection<ZoneGeometry, ZoneFeatureProperties>;
 
 type AreaFeatureProperties = {
   id: string;
@@ -33,10 +30,7 @@ type AreaFeatureProperties = {
 };
 
 type AreaFeature = GeoJSON.Feature<ZoneGeometry, AreaFeatureProperties>;
-type AreaFeatureCollection = GeoJSON.FeatureCollection<
-  ZoneGeometry,
-  AreaFeatureProperties
->;
+type AreaFeatureCollection = GeoJSON.FeatureCollection<ZoneGeometry, AreaFeatureProperties>;
 
 type CityFeatureProperties = {
   id: string;
@@ -44,10 +38,7 @@ type CityFeatureProperties = {
   cityEng: string;
 };
 
-type CityFeatureCollection = GeoJSON.FeatureCollection<
-  ZoneGeometry,
-  CityFeatureProperties
->;
+type CityFeatureCollection = GeoJSON.FeatureCollection<ZoneGeometry, CityFeatureProperties>;
 
 type ZoneIndexEntry = {
   id: string;
@@ -78,14 +69,8 @@ const PIKUD_ZONE_INDEX = zoneIndexFile.zones ?? [];
 const ISRAEL_MAP_BOUNDS = zoneIndexFile.bounds;
 // Keep the camera inside Israel bounds and reduce drift into empty ocean space.
 export const ISRAEL_MAP_INTERACTION_BOUNDS = {
-  sw: [ISRAEL_MAP_BOUNDS.sw[0] + 0.32, ISRAEL_MAP_BOUNDS.sw[1]] as [
-    number,
-    number,
-  ],
-  ne: [ISRAEL_MAP_BOUNDS.ne[0] - 0.03, ISRAEL_MAP_BOUNDS.ne[1]] as [
-    number,
-    number,
-  ],
+  sw: [ISRAEL_MAP_BOUNDS.sw[0] + 0.32, ISRAEL_MAP_BOUNDS.sw[1]] as [number, number],
+  ne: [ISRAEL_MAP_BOUNDS.ne[0] - 0.03, ISRAEL_MAP_BOUNDS.ne[1]] as [number, number],
 };
 
 export const PIKUD_AREA_GEOJSON: AreaFeatureCollection = {
@@ -93,8 +78,7 @@ export const PIKUD_AREA_GEOJSON: AreaFeatureCollection = {
   features: PIKUD_ZONE_FEATURES.map((feature) => {
     const id = String(feature.properties?.id ?? "").trim();
     const hebName = String(feature.properties?.hebName ?? id).trim() || id;
-    const engName =
-      String(feature.properties?.engName ?? hebName).trim() || hebName;
+    const engName = String(feature.properties?.engName ?? hebName).trim() || hebName;
 
     return {
       type: "Feature",
@@ -108,14 +92,16 @@ export const PIKUD_AREA_GEOJSON: AreaFeatureCollection = {
   }).filter(
     (feature): feature is AreaFeature =>
       Boolean(feature.properties.id) &&
-      (feature.geometry.type === "Polygon" ||
-        feature.geometry.type === "MultiPolygon"),
+      (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon"),
   ),
 };
 
 const zoneIndexById = new Map<string, ZoneIndexEntry>();
 const zoneFeatureById = new Map<string, ZoneFeature>();
-const cityFeatureByCityKey = new Map<string, GeoJSON.Feature<ZoneGeometry, CityFeatureProperties>>();
+const cityFeatureByCityKey = new Map<
+  string,
+  GeoJSON.Feature<ZoneGeometry, CityFeatureProperties>
+>();
 
 for (const zone of PIKUD_ZONE_INDEX) {
   zoneIndexById.set(zone.id, zone);
@@ -147,9 +133,7 @@ function getZoneFeature(zoneId: string): ZoneFeature | undefined {
   return PIKUD_ZONE_FEATURES[zone.featureIndex] as ZoneFeature | undefined;
 }
 
-export function buildZoneFeatureCollection(
-  zoneIds: string[],
-): ZoneFeatureCollection {
+export function buildZoneFeatureCollection(zoneIds: string[]): ZoneFeatureCollection {
   const uniqueIds = [...new Set(zoneIds)];
   const features = uniqueIds
     .map((zoneId) => getZoneFeature(zoneId))
@@ -169,9 +153,7 @@ export function getZoneIdsForCity(cityKey: string): string[] {
   return getZoneIdsForCityFromIndex(cityKey);
 }
 
-export function buildCityFeatureCollectionFromZoneIds(
-  zoneIds: string[],
-): CityFeatureCollection {
+export function buildCityFeatureCollectionFromZoneIds(zoneIds: string[]): CityFeatureCollection {
   const seen = new Set<string>();
   const features: GeoJSON.Feature<ZoneGeometry, CityFeatureProperties>[] = [];
 
@@ -212,8 +194,7 @@ function isPointInsideRing(point: LngLatPoint, ring: number[][]): boolean {
     }
 
     const intersects =
-      yi > y !== yj > y &&
-      x < ((xj - xi) * (y - yi)) / ((yj - yi) || Number.EPSILON) + xi;
+      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi || Number.EPSILON) + xi;
     if (intersects) {
       inside = !inside;
     }

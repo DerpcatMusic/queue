@@ -5,8 +5,8 @@ import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitChip, KitPressable } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
-import { BrandRadius } from "@/constants/brand";
 import type { BrandPalette } from "@/constants/brand";
+import { BrandRadius } from "@/constants/brand";
 import { isSportType, SPORT_TYPES, toSportLabel } from "@/convex/constants";
 
 type SportsMultiSelectProps = {

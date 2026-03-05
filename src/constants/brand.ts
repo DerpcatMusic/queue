@@ -1,14 +1,14 @@
-﻿import { FEATURE_FLAGS } from "@/constants/feature-flags";
+﻿import { Color } from "expo-router";
+import type { ColorValue } from "react-native";
+import { Platform } from "react-native";
+import { FEATURE_FLAGS } from "@/constants/feature-flags";
 import {
+  type GeneratedThemeTokens,
   generateThemeTokens,
   getTokenAliasMap,
   mapLegacyTokenPath,
-  type GeneratedThemeTokens,
   type ThemeSeed,
 } from "@/constants/theme-generation";
-import { Color } from "expo-router";
-import { Platform } from "react-native";
-import type { ColorValue } from "react-native";
 
 import type { ThemeStylePreference } from "@/lib/theme-preference";
 
@@ -382,7 +382,11 @@ function maybeWrapDeprecatedTokenWarnings(palette: BrandPalette): BrandPalette {
 
   return new Proxy(palette, {
     get(target, prop, receiver) {
-      if (typeof prop === "string" && DEPRECATED_TOKEN_KEYS.has(prop) && !warnedDeprecatedTokenKeys.has(prop)) {
+      if (
+        typeof prop === "string" &&
+        DEPRECATED_TOKEN_KEYS.has(prop) &&
+        !warnedDeprecatedTokenKeys.has(prop)
+      ) {
         warnedDeprecatedTokenKeys.add(prop);
         const mapped = mapLegacyTokenPath(prop);
         if (mapped) {

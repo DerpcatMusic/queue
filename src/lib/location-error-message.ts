@@ -31,8 +31,5 @@ export function getLocationResolveErrorMessage(input: {
     return input.t(`${input.translationPrefix}.${mappedKey}`);
   }
 
-  return (
-    input.fallbackMessage ??
-    input.t(`${input.translationPrefix}.${input.fallbackKey}`)
-  );
+  return input.fallbackMessage ?? input.t(`${input.translationPrefix}.${input.fallbackKey}`);
 }

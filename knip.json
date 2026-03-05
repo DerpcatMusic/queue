@@ -30,12 +30,8 @@
     "interface": true,
     "type": true
   },
-  "ignoreBinaries": [
-    "powershell"
-  ],
-  "ignoreDependencies": [
-    "babel-preset-expo"
-  ],
+  "ignoreBinaries": ["powershell"],
+  "ignoreDependencies": ["babel-preset-expo"],
   "ignore": [
     "src/components/maps/queue-map-apple-theme.ts",
     "src/components/maps/queue-map-zone-polygons.tsx",

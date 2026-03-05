@@ -1,11 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "./role-routes";
-import {
-  getTabsForRole,
-  isFeatureEnabled,
-  ROLE_FEATURE_FLAGS,
-} from "./tab-registry";
+import { getTabsForRole, isFeatureEnabled, ROLE_FEATURE_FLAGS } from "./tab-registry";
 
 describe("tab-registry", () => {
   it("shows map tab only for instructor", () => {
@@ -24,15 +20,11 @@ describe("tab-registry", () => {
   });
 
   it("keeps tab routes aligned with route constants", () => {
-    const instructorRoutes = getTabsForRole("instructor").map(
-      (tab) => tab.routeName,
-    );
+    const instructorRoutes = getTabsForRole("instructor").map((tab) => tab.routeName);
     const studioRoutes = getTabsForRole("studio").map((tab) => tab.routeName);
 
     expect(instructorRoutes).toContain(ROLE_TAB_ROUTE_NAMES.map);
     expect(studioRoutes).not.toContain(ROLE_TAB_ROUTE_NAMES.map);
-    expect(buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.home)).toBe(
-      "/studio",
-    );
+    expect(buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.home)).toBe("/studio");
   });
 });

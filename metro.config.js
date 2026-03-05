@@ -15,9 +15,7 @@ const blockDirs = [
 ];
 
 const blockListPatterns = blockDirs.map((dir) => {
-  const escaped = escapeForRegex(
-    normalizePathForRegex(path.resolve(__dirname, dir)),
-  );
+  const escaped = escapeForRegex(normalizePathForRegex(path.resolve(__dirname, dir)));
   return new RegExp(`^${escaped}([/\\\\].*)?$`);
 });
 

@@ -25,20 +25,20 @@ const MAPPING = {
   "briefcase.fill": "work",
   "building.2.fill": "business",
   "building.columns.fill": "account-balance",
-  "calendar": "calendar-today",
+  calendar: "calendar-today",
   "calendar.badge.clock": "event",
   "calendar.circle.fill": "event",
-  "checkmark": "check",
+  checkmark: "check",
   "house.fill": "home",
   "map.fill": "map",
-  "clock": "schedule",
+  clock: "schedule",
   "clock.fill": "schedule",
   "exclamationmark.circle.fill": "error",
   "flame.fill": "local-fire-department",
   "gym.bag.fill": "fitness-center",
   "mappin.and.ellipse": "place",
   "mappin.circle.fill": "location-on",
-  "magnifyingglass": "search",
+  magnifyingglass: "search",
   "person.crop.circle.fill": "account-circle",
   "person.3.sequence.fill": "groups",
   "quote.bubble.fill": "format-quote",
@@ -48,7 +48,7 @@ const MAPPING = {
   "paperplane.fill": "send",
   "chevron.left.forwardslash.chevron.right": "code",
   "chevron.right": "chevron-right",
-  "xmark": "close",
+  xmark: "close",
   "xmark.circle.fill": "cancel",
 } as IconMapping;
 
@@ -69,12 +69,5 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return (
-    <MaterialIcons
-      color={color}
-      size={size}
-      name={MAPPING[name]}
-      style={style}
-    />
-  );
+  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
 }

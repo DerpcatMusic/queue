@@ -17,9 +17,7 @@ const deprecatedSafeAreaInteropPattern =
   /\(0,\s*api_1\.cssInterop\)\(react_native_1\.SafeAreaView,\s*\{\s*className:\s*"style"\s*\}\);\r?\n/;
 
 if (!existsSync(targetFile)) {
-  console.warn(
-    "[postinstall] Skipping react-native-css-interop patch: target file not found.",
-  );
+  console.warn("[postinstall] Skipping react-native-css-interop patch: target file not found.");
   process.exit(0);
 }
 

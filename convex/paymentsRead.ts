@@ -20,21 +20,16 @@ type InvoiceInput = {
 const MANUAL_PAYOUT_RELEASE_MODE = "manual";
 const AUTOMATIC_PAYOUT_RELEASE_MODE = "automatic";
 
-type PayoutReleaseMode =
-  | typeof MANUAL_PAYOUT_RELEASE_MODE
-  | typeof AUTOMATIC_PAYOUT_RELEASE_MODE;
+type PayoutReleaseMode = typeof MANUAL_PAYOUT_RELEASE_MODE | typeof AUTOMATIC_PAYOUT_RELEASE_MODE;
 
 export const isSandboxMode = (): boolean =>
   (process.env.RAPYD_MODE ?? "sandbox").trim().toLowerCase() !== "production";
 
 export const isSandboxDestinationSelfVerifyEnabled = (): boolean =>
-  isSandboxMode() &&
-  (process.env.ALLOW_SANDBOX_DESTINATION_SELF_VERIFY ?? "0").trim() === "1";
+  isSandboxMode() && (process.env.ALLOW_SANDBOX_DESTINATION_SELF_VERIFY ?? "0").trim() === "1";
 
 export const readPayoutReleaseMode = (): PayoutReleaseMode => {
-  const rawMode = (
-    process.env.PAYOUT_RELEASE_MODE ?? MANUAL_PAYOUT_RELEASE_MODE
-  )
+  const rawMode = (process.env.PAYOUT_RELEASE_MODE ?? MANUAL_PAYOUT_RELEASE_MODE)
     .trim()
     .toLowerCase();
   return rawMode === AUTOMATIC_PAYOUT_RELEASE_MODE
@@ -67,10 +62,7 @@ export const isInstructorKycApproved = async (
   return Boolean(profile.diditLegalName?.trim());
 };
 
-export async function getCheckoutContextRead(
-  ctx: QueryCtx,
-  { jobId }: { jobId: Id<"jobs"> },
-) {
+export async function getCheckoutContextRead(ctx: QueryCtx, { jobId }: { jobId: Id<"jobs"> }) {
   const user = await requireUserRole(ctx, ["studio"]);
   const studio = await ctx.db
     .query("studioProfiles")
@@ -110,9 +102,7 @@ export async function getPaymentByProviderRefsRead(
     const byPaymentId = await ctx.db
       .query("payments")
       .withIndex("by_provider_paymentId", (q) =>
-        q
-          .eq("provider", RAPYD_PROVIDER)
-          .eq("providerPaymentId", args.providerPaymentId as string),
+        q.eq("provider", RAPYD_PROVIDER).eq("providerPaymentId", args.providerPaymentId as string),
       )
       .unique();
     if (byPaymentId) return byPaymentId;
@@ -139,10 +129,7 @@ export async function getOwnedStudioPaymentForReconciliationRead(
 ) {
   const payment = await ctx.db.get(args.paymentId);
   if (!payment) return null;
-  if (
-    payment.provider !== RAPYD_PROVIDER ||
-    payment.studioUserId !== args.studioUserId
-  ) {
+  if (payment.provider !== RAPYD_PROVIDER || payment.studioUserId !== args.studioUserId) {
     return null;
   }
   return payment;
@@ -168,9 +155,7 @@ export async function listMyPaymentsRead(
   } else if (user.role === "instructor") {
     rows = await ctx.db
       .query("payments")
-      .withIndex("by_instructor_user", (q) =>
-        q.eq("instructorUserId", user._id),
-      )
+      .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
       .order("desc")
       .take(limit);
   }
@@ -264,10 +249,7 @@ export async function getMyPaymentDetailRead(
   const user = await requireCurrentUser(ctx);
   const payment = await ctx.db.get(args.paymentId);
   if (!payment) return null;
-  if (
-    payment.studioUserId !== user._id &&
-    payment.instructorUserId !== user._id
-  ) {
+  if (payment.studioUserId !== user._id && payment.instructorUserId !== user._id) {
     throw new ConvexError("Not authorized");
   }
 
@@ -323,34 +305,29 @@ export async function listMyPayoutDestinationsRead(ctx: QueryCtx) {
 export async function getMyPayoutSummaryRead(ctx: QueryCtx) {
   const user = await requireUserRole(ctx, ["instructor"]);
 
-  const [payments, payouts, destinations, onboardingSessions, kycApproved] =
-    await Promise.all([
-      ctx.db
-        .query("payments")
-        .withIndex("by_instructor_user", (q) =>
-          q.eq("instructorUserId", user._id),
-        )
-        .order("desc")
-        .take(400),
-      ctx.db
-        .query("payouts")
-        .withIndex("by_instructor_user", (q) =>
-          q.eq("instructorUserId", user._id),
-        )
-        .order("desc")
-        .take(400),
-      ctx.db
-        .query("payoutDestinations")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .order("desc")
-        .take(100),
-      ctx.db
-        .query("payoutDestinationOnboarding")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .order("desc")
-        .take(5),
-      isInstructorKycApproved(ctx, user._id),
-    ]);
+  const [payments, payouts, destinations, onboardingSessions, kycApproved] = await Promise.all([
+    ctx.db
+      .query("payments")
+      .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
+      .order("desc")
+      .take(400),
+    ctx.db
+      .query("payouts")
+      .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
+      .order("desc")
+      .take(400),
+    ctx.db
+      .query("payoutDestinations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(100),
+    ctx.db
+      .query("payoutDestinationOnboarding")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(5),
+    isInstructorKycApproved(ctx, user._id),
+  ]);
 
   const latestPayoutByPaymentId = new Map<string, Doc<"payouts">>();
   for (const payout of payouts) {
@@ -368,8 +345,7 @@ export async function getMyPayoutSummaryRead(ctx: QueryCtx) {
   let pendingPaymentsCount = 0;
   let paidPaymentsCount = 0;
   let attentionPaymentsCount = 0;
-  const currency =
-    payments[0]?.currency ?? process.env.PAYMENTS_CURRENCY ?? "ILS";
+  const currency = payments[0]?.currency ?? process.env.PAYMENTS_CURRENCY ?? "ILS";
 
   for (const payment of payments) {
     if (payment.status !== "captured") continue;
@@ -402,8 +378,7 @@ export async function getMyPayoutSummaryRead(ctx: QueryCtx) {
 
   const verifiedDefaultDestination =
     destinations.find(
-      (destination) =>
-        destination.isDefault && destination.status === "verified",
+      (destination) => destination.isDefault && destination.status === "verified",
     ) ??
     destinations.find((destination) => destination.status === "verified") ??
     null;
@@ -512,10 +487,7 @@ export async function getPaymentsPreflightRead(ctx: QueryCtx) {
     requiredInvoice.map((name) => [name, Boolean(process.env[name]?.trim())]),
   ) as Record<(typeof requiredInvoice)[number], boolean>;
   const rapydOnboarding = Object.fromEntries(
-    optionalRapydOnboarding.map((name) => [
-      name,
-      Boolean(process.env[name]?.trim()),
-    ]),
+    optionalRapydOnboarding.map((name) => [name, Boolean(process.env[name]?.trim())]),
   ) as Record<(typeof optionalRapydOnboarding)[number], boolean>;
 
   return {

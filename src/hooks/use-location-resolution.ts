@@ -2,12 +2,12 @@ import { useCallback, useState } from "react";
 
 import {
   isLocationResolveError,
+  type LocationResolveErrorCode,
   normalizeLocationResolveError,
+  type ResolvedLocation,
   resolveAddressToZone,
   resolveCoordinatesToZone,
   resolveCurrentLocationToZone,
-  type LocationResolveErrorCode,
-  type ResolvedLocation,
 } from "@/lib/location-zone";
 
 type ResolveAction = "address" | "gps" | "coordinates";
@@ -28,9 +28,7 @@ export type LocationResolveResult =
 
 export function useLocationResolution() {
   const [isResolving, setIsResolving] = useState(false);
-  const [lastErrorCode, setLastErrorCode] = useState<LocationResolveErrorCode | null>(
-    null,
-  );
+  const [lastErrorCode, setLastErrorCode] = useState<LocationResolveErrorCode | null>(null);
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState<ResolveAction | null>(null);
 
@@ -91,10 +89,7 @@ export function useLocationResolution() {
   );
 
   const resolveFromCoordinates = useCallback(
-    async (input: {
-      latitude: number;
-      longitude: number;
-    }): Promise<LocationResolveResult> =>
+    async (input: { latitude: number; longitude: number }): Promise<LocationResolveResult> =>
       executeResolution("coordinates", () => resolveCoordinatesToZone(input)),
     [executeResolution],
   );

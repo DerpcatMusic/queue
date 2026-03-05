@@ -50,10 +50,7 @@ export function recordPerfMetric(
   });
 }
 
-export function createPerfTimer(
-  key: string,
-  metadata?: Record<string, string | number | boolean>,
-) {
+export function createPerfTimer(key: string, metadata?: Record<string, string | number | boolean>) {
   const startedAt = performance.now();
   return () => {
     const durationMs = performance.now() - startedAt;

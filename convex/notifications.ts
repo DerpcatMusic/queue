@@ -42,10 +42,9 @@ export const sendJobNotifications = internalAction({
     failed: v.number(),
   }),
   handler: async (ctx, args) => {
-    const payload = await ctx.runQuery(
-      internal.notificationsCore.getJobAndEligibleInstructors,
-      { jobId: args.jobId },
-    );
+    const payload = await ctx.runQuery(internal.notificationsCore.getJobAndEligibleInstructors, {
+      jobId: args.jobId,
+    });
 
     if (!payload || payload.recipients.length === 0) {
       return { total: 0, sent: 0, failed: 0 };
@@ -54,9 +53,7 @@ export const sendJobNotifications = internalAction({
     const recipients = payload.recipients as NotificationRecipient[];
     const batches = chunk(recipients, PUSH_BATCH_SIZE);
 
-    const sendBatch = async (
-      batch: NotificationRecipient[],
-    ): Promise<DeliveryResult[]> => {
+    const sendBatch = async (batch: NotificationRecipient[]): Promise<DeliveryResult[]> => {
       const messages = batch.map((recipient) => ({
         to: recipient.expoPushToken,
         sound: "default",
@@ -119,9 +116,7 @@ export const sendJobNotifications = internalAction({
         return batchResults;
       } catch (error) {
         const message =
-          error instanceof Error && error.message
-            ? error.message
-            : "expo_push_network_error";
+          error instanceof Error && error.message ? error.message : "expo_push_network_error";
 
         return batch.map((recipient) => ({
           jobId: payload.jobId,
@@ -136,9 +131,7 @@ export const sendJobNotifications = internalAction({
     const results: DeliveryResult[] = [];
     for (let i = 0; i < batches.length; i += PUSH_BATCH_CONCURRENCY) {
       const window = batches.slice(i, i + PUSH_BATCH_CONCURRENCY);
-      const windowResults = await Promise.all(
-        window.map((batch) => sendBatch(batch)),
-      );
+      const windowResults = await Promise.all(window.map((batch) => sendBatch(batch)));
       for (const batchResults of windowResults) {
         results.push(...batchResults);
       }
@@ -151,9 +144,7 @@ export const sendJobNotifications = internalAction({
       await ctx.runMutation(internal.notificationsCore.logDeliveryBatch, {
         results: results.map((row) => {
           if (row.deliveryStatus !== "sent" && !row.error) {
-            throw new ConvexError(
-              "Failed notification rows must include an error",
-            );
+            throw new ConvexError("Failed notification rows must include an error");
           }
           return row;
         }),
