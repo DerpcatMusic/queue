@@ -29,7 +29,16 @@ if [[ ! -x "$ANDROID_HOME/emulator/emulator" ]]; then
   exit 1
 fi
 
+ensure_android_project() {
+  if [[ -d "$PROJECT_ROOT/android" ]]; then
+    return 0
+  fi
+  echo "Android project not found. Generating native Android project via Expo prebuild..."
+  npx expo prebuild --platform android --non-interactive
+}
+
 # Keep Gradle aligned with this SDK path.
+ensure_android_project
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" > "$PROJECT_ROOT/android/local.properties"
 
 adb start-server >/dev/null

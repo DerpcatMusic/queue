@@ -25,6 +25,14 @@ if [[ ! -x "$ANDROID_HOME/platform-tools/adb" ]]; then
   exit 1
 fi
 
+ensure_android_project() {
+  if [[ -d "$PROJECT_ROOT/android" ]]; then
+    return 0
+  fi
+  echo "Android project not found. Generating native Android project via Expo prebuild..."
+  npx expo prebuild --platform android --non-interactive
+}
+
 run_autolinking_probe() {
   (
     cd "$PROJECT_ROOT/android"
@@ -75,6 +83,7 @@ quarantine_stale_node_module_android_outputs() {
   fi
 }
 
+ensure_android_project
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" > "$PROJECT_ROOT/android/local.properties"
 
 # Avoid stale global daemon/lock issues and cross-filesystem cache behavior.
@@ -161,6 +170,8 @@ fi
   cd android
   NODE_ENV=production ./gradlew app:assembleRelease \
     -PreactNativeArchitectures=arm64-v8a \
+    -x lintVitalAnalyzeRelease \
+    --max-workers=4 \
     --no-daemon \
     --no-configuration-cache \
     --no-build-cache \

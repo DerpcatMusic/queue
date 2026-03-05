@@ -25,6 +25,25 @@ if [[ ! -x "$ANDROID_HOME/platform-tools/adb" ]]; then
   exit 1
 fi
 
+ensure_android_project() {
+  if [[ -d "$PROJECT_ROOT/android" ]]; then
+    return 0
+  fi
+  echo "Android project not found. Generating native Android project via Expo prebuild..."
+  npx expo prebuild --platform android --non-interactive
+}
+
+normalize_serial() {
+  local raw="$1"
+  local normalized="$raw"
+
+  normalized="${normalized%._adb-tls-connect._tcp}"
+  normalized="${normalized%._adb-tls-pairing._tcp}"
+  normalized="$(echo "$normalized" | sed -E 's/[[:space:]]+\([0-9]+\)$//')"
+  echo "$normalized"
+}
+
+ensure_android_project
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" > "$PROJECT_ROOT/android/local.properties"
 
 adb start-server >/dev/null
@@ -53,6 +72,7 @@ get_device_serial() {
 
 SERIAL="${ANDROID_SERIAL:-}"
 if [[ -n "$SERIAL" ]]; then
+  SERIAL="$(normalize_serial "$SERIAL")"
   ENV_STATE="$(adb -s "$SERIAL" get-state 2>/dev/null | tr -d '\r\n' || true)"
   if [[ "$ENV_STATE" != "device" ]]; then
     SERIAL=""
@@ -60,6 +80,9 @@ if [[ -n "$SERIAL" ]]; then
 fi
 if [[ -z "$SERIAL" ]]; then
   SERIAL="$(get_device_serial || true)"
+fi
+if [[ -n "$SERIAL" ]]; then
+  SERIAL="$(normalize_serial "$SERIAL")"
 fi
 if [[ -z "$SERIAL" ]]; then
   cat << 'MSG'
