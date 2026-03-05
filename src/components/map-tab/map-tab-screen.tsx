@@ -23,6 +23,7 @@ import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
+import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitFab, KitPressable } from "@/components/ui/kit";
@@ -118,20 +119,23 @@ export default function MapTabScreen() {
       return;
     }
 
-    const nextZoneIds = [...selectedZoneIds];
-    const shouldSave = hasChanges;
-    if (shouldSave && isSaving) return;
-    setZoneModeActive(false);
-    setSheetIndex(-1);
-    setZoneSearch("");
-    zoneSheetRef.current?.close();
-
-    if (!shouldSave) return;
+    if (isSaving) return;
+    if (!hasChanges) {
+      setZoneModeActive(false);
+      setSheetIndex(-1);
+      setZoneSearch("");
+      zoneSheetRef.current?.close();
+      return;
+    }
 
     setIsSaving(true);
     setSaveError(null);
     try {
-      await saveZones({ zoneIds: nextZoneIds });
+      await saveZones({ zoneIds: [...selectedZoneIds] });
+      setZoneModeActive(false);
+      setSheetIndex(-1);
+      setZoneSearch("");
+      zoneSheetRef.current?.close();
     } catch (error) {
       setSaveError(
         error instanceof Error && error.message ? error.message : t("mapTab.errors.failedToSave"),
@@ -191,8 +195,21 @@ export default function MapTabScreen() {
             {...(zoneModeActive ? { onPressZone: toggleZone } : {})}
             onPressMap={noopMapPress}
             onUseGps={noopUseGps}
-            showGpsButton={false}
+            showGpsButton
           />
+          {saveError ? (
+            <View style={styles.saveBannerWrap}>
+              <NoticeBanner
+                tone="error"
+                message={saveError}
+                onDismiss={() => setSaveError(null)}
+                borderColor={palette.borderStrong}
+                backgroundColor={palette.surface}
+                textColor={palette.danger}
+                iconColor={palette.danger}
+              />
+            </View>
+          ) : null}
 
           <BottomSheet
             ref={zoneSheetRef as RefObject<BottomSheet>}
@@ -334,6 +351,21 @@ export default function MapTabScreen() {
                 void handlePrimaryAction();
               }}
             />
+            <View
+              style={[
+                styles.modeHint,
+                {
+                  backgroundColor: palette.surface,
+                  borderColor: palette.border,
+                },
+              ]}
+            >
+              <ThemedText style={{ color: palette.textMuted }}>
+                {zoneModeActive
+                  ? t("mapTab.actions.saveChanges", { defaultValue: "Save zones" })
+                  : t("mapTab.actions.editZones", { defaultValue: "Edit zones" })}
+              </ThemedText>
+            </View>
           </TabOverlayAnchor>
         </>
       ) : null}
@@ -379,5 +411,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingHorizontal: 24,
     paddingVertical: 18,
+  },
+  saveBannerWrap: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    right: 16,
+    zIndex: 50,
+  },
+  modeHint: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderRadius: 999,
+    borderCurve: "continuous",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignSelf: "flex-end",
   },
 });

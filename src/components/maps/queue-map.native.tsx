@@ -231,6 +231,17 @@ export function QueueMap({
     [selectedZoneIds, zoneIdProperty],
   );
   const pinShape = useMemo(() => createPinShape(pin), [pin]);
+  const handleRecenter = useMemo(
+    () => () => {
+      cameraRef.current?.setStop({
+        center: pin ? [pin.longitude, pin.latitude] : APPLE_MAP_THEME.defaultCenter,
+        zoom: pin ? APPLE_MAP_THEME.defaultZoomWithPin : APPLE_MAP_THEME.defaultZoomWithoutPin,
+        duration: 300,
+      });
+      onUseGps?.();
+    },
+    [onUseGps, pin],
+  );
 
   useEffect(() => {
     void ensureVectorOfflinePack();
@@ -299,8 +310,8 @@ export function QueueMap({
         touchRotate={false}
         touchPitch={false}
         compass={false}
-        logo={false}
-        attribution={false}
+        logo
+        attribution
         onDidFailLoadingMap={() => {
           setStyleLoadFailed(true);
         }}
@@ -349,10 +360,10 @@ export function QueueMap({
         </GeoJSONSource>
       </MapLibreMap>
 
-      {showGpsButton && onUseGps ? (
+      {showGpsButton ? (
         <KitFab
           icon={<IconSymbol name="location.fill" size={20} color={palette.text} />}
-          onPress={onUseGps}
+          onPress={handleRecenter}
           style={styles.gps}
         />
       ) : null}
