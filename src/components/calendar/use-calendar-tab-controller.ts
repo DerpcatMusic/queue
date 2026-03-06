@@ -1,8 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { FlashListRef } from "@shopify/flash-list";
 import { useAction, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ViewToken } from "react-native";
+import type { SectionList, ViewToken } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { syncDeviceCalendarEvents } from "@/lib/device-calendar-sync";
@@ -23,42 +22,78 @@ export type TimelineRow = {
   lifecycle: "upcoming" | "live" | "past" | "cancelled";
 };
 
-export type TimelineListItem =
-  | { kind: "dayHeader"; key: string; dayKey: string }
+export type AgendaItem =
   | { kind: "empty"; key: string; dayKey: string }
   | { kind: "lesson"; key: string; dayKey: string; lesson: TimelineRow };
+
+export type AgendaSection = {
+  key: string;
+  dayKey: string;
+  data: AgendaItem[];
+};
+
+type AgendaViewToken = ViewToken & {
+  item?: AgendaItem;
+  section?: AgendaSection;
+};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CACHE_TTL_MS = 15 * 60 * 1000;
 const CACHE_VERSION = 2;
-const TIMELINE_RANGE_DAYS = 90;
-const TIMELINE_EXTEND_BUFFER_DAYS = 60;
-const ESTIMATED_DAY_HEADER_SIZE = 64;
-const ESTIMATED_LESSON_SIZE = 84;
-const ESTIMATED_EMPTY_SIZE = 40;
+const TIMELINE_RANGE_DAYS = 120;
+const TIMELINE_EXTEND_BUFFER_DAYS = 45;
 
-function toDayKey(timestamp: number) {
+export function toDayKey(timestamp: number) {
   const d = new Date(timestamp);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function dayKeyToTimestamp(dayKey: string) {
+export function dayKeyToTimestamp(dayKey: string) {
   const [y, m, d] = dayKey.split("-").map(Number) as [number, number, number];
   return new Date(y, m - 1, d).getTime();
 }
 
-function addDays(dayKey: string, delta: number) {
+export function addDays(dayKey: string, delta: number) {
   return toDayKey(dayKeyToTimestamp(dayKey) + delta * DAY_MS);
 }
 
-function compareDayKey(a: string, b: string) {
+export function compareDayKey(a: string, b: string) {
   return a < b ? -1 : a > b ? 1 : 0;
+}
+
+export function resolveFirstDayOfWeek(locale: string) {
+  try {
+    const localeInfo = new Intl.Locale(locale) as Intl.Locale & {
+      weekInfo?: { firstDay?: number };
+    };
+    const firstDay = localeInfo.weekInfo?.firstDay;
+    if (typeof firstDay === "number") {
+      return firstDay % 7;
+    }
+  } catch {
+    // Fall back below.
+  }
+
+  return locale.toLowerCase().startsWith("en-us") ? 0 : 1;
+}
+
+export function getWeekStart(dayKey: string, firstDayOfWeek: number) {
+  const timestamp = dayKeyToTimestamp(dayKey);
+  const date = new Date(timestamp);
+  const dayOfWeek = date.getDay();
+  const offset = (7 + dayOfWeek - firstDayOfWeek) % 7;
+  return toDayKey(timestamp - offset * DAY_MS);
+}
+
+export function getWeekDays(weekStartKey: string) {
+  return Array.from({ length: 7 }, (_, index) => addDays(weekStartKey, index));
 }
 
 function buildTimelineRowsSignature(rows: TimelineRow[]) {
   if (rows.length === 0) {
     return "0";
   }
+
   return rows
     .map((row) => `${row.lessonId}:${row.startTime}:${row.endTime}:${row.status}:${row.lifecycle}`)
     .sort()
@@ -87,6 +122,7 @@ function useTimelineCache(role: string | undefined, startTime: number, endTime: 
     let cancelled = false;
     setCachedRows(null);
     setCacheReady(false);
+
     void (async () => {
       try {
         const raw = await AsyncStorage.getItem(cacheKey);
@@ -94,6 +130,7 @@ function useTimelineCache(role: string | undefined, startTime: number, endTime: 
           setCacheReady(true);
           return;
         }
+
         const payload = JSON.parse(raw) as {
           fetchedAt: number;
           rows: TimelineRow[];
@@ -104,11 +141,14 @@ function useTimelineCache(role: string | undefined, startTime: number, endTime: 
         }
         setCachedRows(payload.rows);
       } catch {
-        /* ignore */
+        // Ignore cache read failures.
       } finally {
-        if (!cancelled) setCacheReady(true);
+        if (!cancelled) {
+          setCacheReady(true);
+        }
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -119,7 +159,7 @@ function useTimelineCache(role: string | undefined, startTime: number, endTime: 
       try {
         await AsyncStorage.setItem(cacheKey, JSON.stringify({ fetchedAt: Date.now(), rows }));
       } catch {
-        /* best-effort */
+        // Ignore cache write failures.
       }
     },
     [cacheKey],
@@ -128,13 +168,7 @@ function useTimelineCache(role: string | undefined, startTime: number, endTime: 
   return { cachedRows, cacheReady, persist };
 }
 
-type ItemLayout = { span?: number; size?: number };
-
-export function useCalendarTabController({
-  freezeSelectedDayFromView = false,
-}: {
-  freezeSelectedDayFromView?: boolean;
-} = {}) {
+export function useCalendarTabController({ locale }: { locale: string }) {
   const currentUser = useQuery(api.users.getCurrentUser);
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
   const [selectedDay, setSelectedDay] = useState(todayKey);
@@ -143,14 +177,9 @@ export function useCalendarTabController({
     start: addDays(todayKey, -TIMELINE_RANGE_DAYS),
     end: addDays(todayKey, TIMELINE_RANGE_DAYS),
   }));
-  const listRef = useRef<FlashListRef<TimelineListItem>>(null);
+  const listRef = useRef<SectionList<AgendaItem, AgendaSection>>(null);
   const programmaticScrollRef = useRef(false);
   const lastViewSyncAtRef = useRef(0);
-  const freezeSelectedDayFromViewRef = useRef(freezeSelectedDayFromView);
-
-  useEffect(() => {
-    freezeSelectedDayFromViewRef.current = freezeSelectedDayFromView;
-  }, [freezeSelectedDayFromView]);
 
   const role =
     currentUser?.role === "instructor" || currentUser?.role === "studio"
@@ -170,9 +199,11 @@ export function useCalendarTabController({
     () => (remoteTimelineRows ? buildTimelineRowsSignature(remoteTimelineRows) : ""),
     [remoteTimelineRows],
   );
-  const lastPersistSignatureRef = useRef<string>("");
+  const lastPersistSignatureRef = useRef("");
 
-  const syncGoogleCalendar = useAction(calendarApi.syncMyGoogleCalendarEvents as any) as (args: {
+  const syncGoogleCalendar = useAction(
+    calendarApi.syncMyGoogleCalendarEvents as never,
+  ) as unknown as (args: {
     startTime?: number;
     endTime?: number;
     limit?: number;
@@ -183,7 +214,6 @@ export function useCalendarTabController({
     api.users.getMyInstructorSettings,
     currentUser?.role === "instructor" ? emptyArgs : "skip",
   );
-
   const { cachedRows, cacheReady, persist } = useTimelineCache(role, startTime, endTime);
 
   useEffect(() => {
@@ -197,7 +227,7 @@ export function useCalendarTabController({
     if (remoteTimelineRows) return remoteTimelineRows;
     if (cachedRows) return cachedRows;
     return [];
-  }, [remoteTimelineRows, cachedRows]);
+  }, [cachedRows, remoteTimelineRows]);
 
   const filteredRows = useMemo(() => {
     const start = dayKeyToTimestamp(windowRange.start);
@@ -209,8 +239,7 @@ export function useCalendarTabController({
 
   const syncEvents = useMemo(() => {
     if (currentUser?.role !== "instructor") return [];
-    const now = Date.now();
-    const staleCutoff = now - 7 * DAY_MS;
+    const staleCutoff = Date.now() - 7 * DAY_MS;
     return rows
       .filter((row) => row.status !== "cancelled" && row.endTime >= staleCutoff)
       .sort(
@@ -237,7 +266,7 @@ export function useCalendarTabController({
         .join("|"),
     [syncEvents],
   );
-  const lastAppleSyncSignatureRef = useRef<string>("");
+  const lastAppleSyncSignatureRef = useRef("");
 
   useEffect(() => {
     if (currentUser?.role !== "instructor") return;
@@ -257,108 +286,108 @@ export function useCalendarTabController({
     const now = Date.now();
     if (now - lastGoogleSyncAtRef.current < 3 * 60 * 1000) return;
     lastGoogleSyncAtRef.current = now;
-    void syncGoogleCalendar({
-      startTime,
-      endTime,
-      limit: 1000,
-    });
-  }, [currentUser?.role, instructorSettings, syncGoogleCalendar, startTime, endTime]);
-
-  const { listItems, dayStartIndexByKey } = useMemo(() => {
-    const rowsByDay = new Map<string, TimelineRow[]>();
-    for (const row of filteredRows) {
-      const dk = toDayKey(row.startTime);
-      const existing = rowsByDay.get(dk);
-      if (existing) existing.push(row);
-      else rowsByDay.set(dk, [row]);
-    }
-
-    const items: TimelineListItem[] = [];
-    const dayIndexMap = new Map<string, number>();
-    const days = enumerateDays(windowRange.start, windowRange.end);
-
-    for (const dk of days) {
-      dayIndexMap.set(dk, items.length);
-      items.push({ kind: "dayHeader", key: `${dk}:header`, dayKey: dk });
-      const dayRows = rowsByDay.get(dk) ?? [];
-      if (dayRows.length === 0 && (dk === selectedDay || dk === todayKey)) {
-        items.push({ kind: "empty", key: `${dk}:empty`, dayKey: dk });
-      } else {
-        for (const lesson of dayRows) {
-          items.push({
-            kind: "lesson",
-            key: `${dk}:${lesson.lessonId}`,
-            dayKey: dk,
-            lesson,
-          });
-        }
-      }
-    }
-
-    return { listItems: items, dayStartIndexByKey: dayIndexMap };
-  }, [filteredRows, selectedDay, todayKey, windowRange.end, windowRange.start]);
+    void syncGoogleCalendar({ startTime, endTime, limit: 1000 });
+  }, [currentUser?.role, endTime, instructorSettings, startTime, syncGoogleCalendar]);
 
   const lessonCountByDay = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const row of rows) {
-      const dk = toDayKey(row.startTime);
-      counts.set(dk, (counts.get(dk) ?? 0) + 1);
+    for (const row of filteredRows) {
+      const dayKey = toDayKey(row.startTime);
+      counts.set(dayKey, (counts.get(dayKey) ?? 0) + 1);
     }
     return counts;
-  }, [rows]);
+  }, [filteredRows]);
 
-  const scrollToDay = useCallback(
-    (dayKey: string) => {
-      const index = dayStartIndexByKey.get(dayKey);
-      if (index === undefined) return;
-      programmaticScrollRef.current = true;
-      try {
-        listRef.current?.scrollToIndex({
-          index,
-          animated: true,
-          viewPosition: 0,
-        });
-      } catch {
-        /* layout not ready */
+  const { sections, sectionIndexByDay } = useMemo(() => {
+    const rowsByDay = new Map<string, TimelineRow[]>();
+    for (const row of filteredRows) {
+      const dayKey = toDayKey(row.startTime);
+      const existing = rowsByDay.get(dayKey);
+      if (existing) {
+        existing.push(row);
+      } else {
+        rowsByDay.set(dayKey, [row]);
       }
-      setTimeout(() => {
-        programmaticScrollRef.current = false;
-      }, 500);
-    },
-    [dayStartIndexByKey],
-  );
+    }
+
+    const nextSections = enumerateDays(windowRange.start, windowRange.end).map((dayKey) => {
+      const dayRows = rowsByDay.get(dayKey) ?? [];
+      const data: AgendaItem[] =
+        dayRows.length > 0
+          ? dayRows.map((lesson) => ({
+              kind: "lesson",
+              key: `${dayKey}:${lesson.lessonId}`,
+              dayKey,
+              lesson,
+            }))
+          : [{ kind: "empty", key: `${dayKey}:empty`, dayKey }];
+
+      return {
+        key: dayKey,
+        dayKey,
+        data,
+      };
+    });
+
+    return {
+      sections: nextSections,
+      sectionIndexByDay: new Map(nextSections.map((section, index) => [section.dayKey, index])),
+    };
+  }, [filteredRows, windowRange.end, windowRange.start]);
 
   const ensureDayInWindow = useCallback((dayKey: string) => {
     setWindowRange((prev) => {
-      let ns = prev.start;
-      let ne = prev.end;
-      if (compareDayKey(dayKey, prev.start) < 0) ns = addDays(dayKey, -TIMELINE_EXTEND_BUFFER_DAYS);
-      if (compareDayKey(dayKey, prev.end) > 0) ne = addDays(dayKey, TIMELINE_EXTEND_BUFFER_DAYS);
-      if (ns === prev.start && ne === prev.end) return prev;
-      return { start: ns, end: ne };
+      let nextStart = prev.start;
+      let nextEnd = prev.end;
+      if (compareDayKey(dayKey, prev.start) < 0) {
+        nextStart = addDays(dayKey, -TIMELINE_EXTEND_BUFFER_DAYS);
+      }
+      if (compareDayKey(dayKey, prev.end) > 0) {
+        nextEnd = addDays(dayKey, TIMELINE_EXTEND_BUFFER_DAYS);
+      }
+      if (nextStart === prev.start && nextEnd === prev.end) return prev;
+      return { start: nextStart, end: nextEnd };
     });
   }, []);
 
+  const scrollToDay = useCallback(
+    (dayKey: string, animated = true) => {
+      const sectionIndex = sectionIndexByDay.get(dayKey);
+      if (sectionIndex === undefined) return;
+      programmaticScrollRef.current = true;
+      try {
+        listRef.current?.scrollToLocation({
+          sectionIndex,
+          itemIndex: 0,
+          animated,
+          viewOffset: 8,
+        });
+      } catch {
+        // List layout may not be ready yet.
+      }
+      setTimeout(() => {
+        programmaticScrollRef.current = false;
+      }, 420);
+    },
+    [sectionIndexByDay],
+  );
+
   const viewabilityConfig = useRef({
-    viewAreaCoveragePercentThreshold: 50,
+    itemVisiblePercentThreshold: 60,
+    minimumViewTime: 80,
   }).current;
 
   const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (freezeSelectedDayFromViewRef.current) return;
+    ({ viewableItems }: { viewableItems: AgendaViewToken[] }) => {
       if (programmaticScrollRef.current) return;
       const now = Date.now();
-      if (now - lastViewSyncAtRef.current < 180) return;
-      const firstHeader = viewableItems.find(
-        (v) => (v.item as TimelineListItem).kind === "dayHeader",
-      );
-      if (firstHeader) {
-        const dk = (firstHeader.item as TimelineListItem).dayKey;
-        if (selectedDayRef.current === dk) return;
-        lastViewSyncAtRef.current = now;
-        selectedDayRef.current = dk;
-        setSelectedDay(dk);
-      }
+      if (now - lastViewSyncAtRef.current < 160) return;
+      const firstVisible = viewableItems.find((item) => item.isViewable);
+      const dayKey = firstVisible?.section?.dayKey ?? firstVisible?.item?.dayKey;
+      if (!dayKey || selectedDayRef.current === dayKey) return;
+      lastViewSyncAtRef.current = now;
+      selectedDayRef.current = dayKey;
+      setSelectedDay(dayKey);
     },
     [],
   );
@@ -368,42 +397,44 @@ export function useCalendarTabController({
       selectedDayRef.current = dayKey;
       setSelectedDay(dayKey);
       ensureDayInWindow(dayKey);
-      setTimeout(() => scrollToDay(dayKey), 50);
+      setTimeout(() => {
+        scrollToDay(dayKey);
+      }, 48);
     },
     [ensureDayInWindow, scrollToDay],
   );
 
   const handleWeekChange = useCallback(
     (deltaWeeks: number) => {
-      const newDay = addDays(selectedDay, deltaWeeks * 7);
-      handleDayPress(newDay);
+      handleDayPress(addDays(selectedDayRef.current, deltaWeeks * 7));
     },
-    [selectedDay, handleDayPress],
+    [handleDayPress],
   );
 
   const handleTodayPress = useCallback(() => {
     handleDayPress(todayKey);
-  }, [todayKey, handleDayPress]);
+  }, [handleDayPress, todayKey]);
 
-  const overrideItemLayout = useCallback((layout: ItemLayout, item: TimelineListItem) => {
-    if (item.kind === "dayHeader") layout.size = ESTIMATED_DAY_HEADER_SIZE;
-    else if (item.kind === "empty") layout.size = ESTIMATED_EMPTY_SIZE;
-    else layout.size = ESTIMATED_LESSON_SIZE;
-  }, []);
+  const firstDayOfWeek = useMemo(() => resolveFirstDayOfWeek(locale), [locale]);
+  const selectedWeekStart = useMemo(
+    () => getWeekStart(selectedDay, firstDayOfWeek),
+    [firstDayOfWeek, selectedDay],
+  );
+  const selectedWeekDays = useMemo(() => getWeekDays(selectedWeekStart), [selectedWeekStart]);
 
   const isLoading = currentUser === undefined || (!cacheReady && !remoteRows);
 
   return {
     selectedDay,
+    selectedWeekDays,
     listRef,
-    listItems,
+    sections,
     lessonCountByDay,
     viewabilityConfig,
     onViewableItemsChanged,
     handleDayPress,
     handleWeekChange,
     handleTodayPress,
-    overrideItemLayout,
     isLoading,
   };
 }
