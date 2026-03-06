@@ -20,7 +20,7 @@ export const TAB_SPECS: readonly TabSpec[] = [
     id: "calendar",
     titleKey: "tabs.calendar",
     icon: {
-      md: "calendar-month",
+      md: "calendar_month",
       sfDefault: "calendar",
       sfSelected: "calendar.circle.fill",
     },
@@ -38,7 +38,7 @@ export const TAB_SPECS: readonly TabSpec[] = [
     id: "profile",
     titleKey: "tabs.profile",
     icon: {
-      md: "account-circle",
+      md: "account_circle",
       sfDefault: "person.crop.circle",
       sfSelected: "person.crop.circle.fill",
     },

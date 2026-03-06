@@ -16,6 +16,11 @@ export type PerformanceTimeframeSeries = {
   axisTicks: AxisTick[];
 };
 
+export type PerformanceTimeframeOption = {
+  value: Timeframe;
+  label: string;
+};
+
 type PerformanceHeroCardProps = {
   palette: BrandPalette;
   timeframe: Timeframe;
@@ -23,8 +28,11 @@ type PerformanceHeroCardProps = {
   timeframeLabel: string;
   totalLabel: string;
   metricLabel: string;
+  nextMetricLabel: string;
+  timeframeOptions: readonly PerformanceTimeframeOption[];
   seriesByTimeframe: Record<Timeframe, PerformanceTimeframeSeries>;
   onToggleMetric: () => void;
+  onSelectTimeframe: (value: Timeframe) => void;
   onSwipeTimeframe: (direction: "inc" | "dec") => void;
 };
 
@@ -46,8 +54,11 @@ export function PerformanceHeroCard({
   timeframeLabel,
   totalLabel,
   metricLabel,
+  nextMetricLabel,
+  timeframeOptions,
   seriesByTimeframe,
   onToggleMetric,
+  onSelectTimeframe,
   onSwipeTimeframe,
 }: PerformanceHeroCardProps) {
   const swipeDistance = 120;
@@ -202,13 +213,13 @@ export function PerformanceHeroCard({
           onPress={() => {
             onToggleMetric();
           }}
-          className="h-12 w-12 items-center justify-center rounded-full active:opacity-85"
+          className="min-h-12 items-center justify-center rounded-full active:opacity-85"
           nativeFeedback={false}
           pressStyle={{ opacity: 0.85, transform: [{ scale: 0.97 }] }}
-          style={{ backgroundColor: "rgba(0,0,0,0.18)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.18)", paddingHorizontal: 14 }}
         >
-          <Text className="font-title text-base" style={{ color: "rgba(255,255,255,0.98)" }}>
-            {metricMode === "earnings" ? "L" : "\u20AA"}
+          <Text className="font-title text-sm" style={{ color: "rgba(255,255,255,0.98)" }}>
+            {nextMetricLabel}
           </Text>
         </KitPressable>
       </View>
@@ -277,6 +288,40 @@ export function PerformanceHeroCard({
             </Text>
           ))}
         </View>
+      </View>
+
+      <View className="mt-4 flex-row items-center justify-between gap-3">
+        <View className="flex-row gap-2">
+          {timeframeOptions.map((option) => {
+            const selected = option.value === timeframe;
+            return (
+              <KitPressable
+                key={option.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => onSelectTimeframe(option.value)}
+                className="rounded-full px-3 py-2"
+                nativeFeedback={false}
+                style={{
+                  backgroundColor: selected ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.12)",
+                }}
+              >
+                <Text
+                  className="font-title text-xs"
+                  style={{
+                    color: "rgba(255,255,255,0.96)",
+                    opacity: selected ? 1 : 0.74,
+                  }}
+                >
+                  {option.label}
+                </Text>
+              </KitPressable>
+            );
+          })}
+        </View>
+        <Text className="font-title text-[11px]" style={{ color: "rgba(255,255,255,0.78)" }}>
+          Swipe
+        </Text>
       </View>
     </View>
   );

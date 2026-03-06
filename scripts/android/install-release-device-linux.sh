@@ -149,6 +149,25 @@ export ANDROID_SERIAL="$SERIAL"
 APP_ID="$(node -e "const fs=require('fs');let id='com.derpcat.queue';try{const j=JSON.parse(fs.readFileSync('app.json','utf8'));id=(j.expo&&j.expo.android&&j.expo.android.package)||id;}catch{};process.stdout.write(id)")"
 
 echo "Building release APK (NODE_ENV=production, arm64-v8a only)..."
+echo "This can be quiet for a few minutes during createBundleReleaseJsAndAssets, processReleaseResources, and minifyReleaseWithR8."
+
+GRADLE_ARGS=(
+  app:assembleRelease
+  -PreactNativeArchitectures=arm64-v8a
+  -x
+  lintVitalAnalyzeRelease
+  --max-workers=4
+  --no-daemon
+  --no-configuration-cache
+  --no-build-cache
+  -Dorg.gradle.vfs.watch=false
+  --console=plain
+)
+
+if [[ "${QUEUE_ANDROID_RELEASE_VERBOSE:-0}" == "1" ]]; then
+  echo "Verbose Gradle logging enabled via QUEUE_ANDROID_RELEASE_VERBOSE=1"
+  GRADLE_ARGS+=(--info --stacktrace)
+fi
 
 # Expo autolinking can hang when stale native build outputs exist in node_modules.
 if ! run_autolinking_probe; then
@@ -168,15 +187,7 @@ fi
 
 (
   cd android
-  NODE_ENV=production ./gradlew app:assembleRelease \
-    -PreactNativeArchitectures=arm64-v8a \
-    -x lintVitalAnalyzeRelease \
-    --max-workers=4 \
-    --no-daemon \
-    --no-configuration-cache \
-    --no-build-cache \
-    -Dorg.gradle.vfs.watch=false \
-    --console=plain
+  NODE_ENV=production ./gradlew "${GRADLE_ARGS[@]}"
 )
 
 APK_PATH="$PROJECT_ROOT/android/app/build/outputs/apk/release/app-release.apk"

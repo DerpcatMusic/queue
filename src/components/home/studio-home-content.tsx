@@ -15,6 +15,7 @@ import {
 } from "@/components/home/performance-chart-math";
 import {
   PerformanceHeroCard,
+  type PerformanceTimeframeOption,
   type PerformanceTimeframeSeries,
 } from "@/components/home/performance-hero-card";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
@@ -185,6 +186,14 @@ export function StudioHomeContent({
     metricMode === "earnings"
       ? currencyFormatter.format(frameTotal / 100)
       : `${String(frameTotal)} ${t("home.performance.lessons")}`;
+  const timeframeOptions = useMemo<PerformanceTimeframeOption[]>(
+    () => [
+      { value: "weekly", label: t("home.performance.weekly") },
+      { value: "monthly", label: t("home.performance.monthly") },
+      { value: "yearly", label: t("home.performance.yearly") },
+    ],
+    [t],
+  );
 
   return (
     <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
@@ -220,10 +229,17 @@ export function StudioHomeContent({
               timeframeLabel={timeframeLabel}
               totalLabel={summaryValue}
               metricLabel={t(`home.performance.${metricMode}`)}
+              nextMetricLabel={
+                metricMode === "earnings"
+                  ? t("home.performance.lessons")
+                  : t("home.performance.earnings")
+              }
+              timeframeOptions={timeframeOptions}
               seriesByTimeframe={timeframeSeries}
               onToggleMetric={() =>
                 setMetricMode((prev) => (prev === "earnings" ? "lessons" : "earnings"))
               }
+              onSelectTimeframe={setTimeframe}
               onSwipeTimeframe={(direction) => {
                 setTimeframe((prev) => getAdjacentTimeframe(prev, direction));
               }}

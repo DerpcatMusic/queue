@@ -1,0 +1,259 @@
+import { useMemo, useState } from "react";
+import { ScrollView, Text, type TextInputProps, View } from "react-native";
+
+import {
+  PROFILE_SOCIAL_FIELDS,
+  type ProfileSocialKey,
+  type ProfileSocialLinks,
+} from "@/components/profile/profile-social-links";
+import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
+import { KitButton, KitSurface, KitTextField } from "@/components/ui/kit";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
+import type { BrandPalette } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
+
+type EditableExtraField = {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  keyboardType?: TextInputProps["keyboardType"];
+};
+
+type ProfileEditorFormProps = {
+  palette: BrandPalette;
+  profileName: string;
+  roleLabel: string;
+  profileImageUrl?: string | null | undefined;
+  nameDraft: string;
+  onNameDraftChange: (value: string) => void;
+  bioDraft: string;
+  onBioDraftChange: (value: string) => void;
+  socialLinksDraft: ProfileSocialLinks;
+  onSocialLinkChange: (key: ProfileSocialKey, value: string) => void;
+  sportsDraft: string[];
+  onToggleSport: (sport: string) => void;
+  onChangePhoto: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+  isSaving?: boolean;
+  isChangingPhoto?: boolean;
+  statusLabel?: string | null;
+  searchPlaceholder: string;
+  sportsTitle: string;
+  sportsEmptyHint: string;
+  extraField?: EditableExtraField;
+};
+
+export function ProfileEditorForm({
+  palette,
+  profileName,
+  roleLabel,
+  profileImageUrl,
+  nameDraft,
+  onNameDraftChange,
+  bioDraft,
+  onBioDraftChange,
+  socialLinksDraft,
+  onSocialLinkChange,
+  sportsDraft,
+  onToggleSport,
+  onChangePhoto,
+  onCancel,
+  onSave,
+  isSaving = false,
+  isChangingPhoto = false,
+  statusLabel,
+  searchPlaceholder,
+  sportsTitle,
+  sportsEmptyHint,
+  extraField,
+}: ProfileEditorFormProps) {
+  const activeSocialCount = useMemo(
+    () =>
+      PROFILE_SOCIAL_FIELDS.filter((field) => Boolean(socialLinksDraft[field.key]?.trim())).length,
+    [socialLinksDraft],
+  );
+  const [showSocialFields, setShowSocialFields] = useState(activeSocialCount > 0);
+
+  return (
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{
+        paddingHorizontal: BrandSpacing.lg,
+        paddingTop: BrandSpacing.lg,
+        paddingBottom: BrandSpacing.xxl,
+        gap: BrandSpacing.lg,
+      }}
+    >
+      <KitSurface tone="elevated" padding={20} gap={16}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+          <ProfileAvatar
+            imageUrl={profileImageUrl}
+            fallbackName={profileName}
+            palette={palette}
+            size={72}
+            roundedSquare
+          />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text
+              style={{
+                fontFamily: "Rubik_500Medium",
+                fontSize: 13,
+                color: palette.textMuted as string,
+                includeFontPadding: false,
+              }}
+            >
+              {roleLabel}
+            </Text>
+            <Text
+              style={{
+                fontFamily: "Rubik_600SemiBold",
+                fontSize: 20,
+                color: palette.text as string,
+                includeFontPadding: false,
+              }}
+            >
+              {profileName}
+            </Text>
+          </View>
+          <KitButton
+            label={isChangingPhoto ? "Uploading..." : "Photo"}
+            onPress={onChangePhoto}
+            variant="secondary"
+            size="sm"
+            disabled={isChangingPhoto}
+            fullWidth={false}
+          />
+        </View>
+
+        <KitTextField
+          label="Display name"
+          value={nameDraft}
+          onChangeText={onNameDraftChange}
+          placeholder="Name people should see"
+          autoCapitalize="words"
+          autoCorrect={false}
+        />
+
+        <KitTextField
+          label="Bio"
+          value={bioDraft}
+          onChangeText={onBioDraftChange}
+          placeholder="What kind of classes, vibe, or training you bring"
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+          style={{ minHeight: 92 }}
+        />
+
+        {extraField ? (
+          <KitTextField
+            label={extraField.label}
+            value={extraField.value}
+            onChangeText={extraField.onChangeText}
+            placeholder={extraField.placeholder}
+            keyboardType={extraField.keyboardType}
+          />
+        ) : null}
+      </KitSurface>
+
+      <SportsMultiSelect
+        palette={palette}
+        selectedSports={sportsDraft}
+        onToggleSport={onToggleSport}
+        searchPlaceholder={searchPlaceholder}
+        title={sportsTitle}
+        emptyHint={sportsEmptyHint}
+      />
+
+      <KitSurface tone="base" padding={20} gap={14}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text
+              style={{
+                fontFamily: "Rubik_600SemiBold",
+                fontSize: 16,
+                color: palette.text as string,
+                includeFontPadding: false,
+              }}
+            >
+              Social links
+            </Text>
+            <Text
+              style={{
+                fontFamily: "Rubik_400Regular",
+                fontSize: 13,
+                color: palette.textMuted as string,
+                includeFontPadding: false,
+              }}
+            >
+              {activeSocialCount > 0
+                ? `${String(activeSocialCount)} linked`
+                : "Add only the links you actually use."}
+            </Text>
+          </View>
+          <KitButton
+            label={showSocialFields ? "Hide" : "Edit"}
+            onPress={() => setShowSocialFields((value) => !value)}
+            variant="ghost"
+            size="sm"
+            fullWidth={false}
+          />
+        </View>
+
+        {showSocialFields ? (
+          <View style={{ gap: 12 }}>
+            {PROFILE_SOCIAL_FIELDS.map((field) => (
+              <KitTextField
+                key={field.key}
+                label={field.label}
+                value={socialLinksDraft[field.key] ?? ""}
+                onChangeText={(value) => onSocialLinkChange(field.key, value)}
+                placeholder={`${field.label} link`}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            ))}
+          </View>
+        ) : null}
+      </KitSurface>
+
+      {statusLabel ? (
+        <Text
+          style={{
+            fontFamily: "Rubik_400Regular",
+            fontSize: 13,
+            lineHeight: 18,
+            color: palette.textMuted as string,
+            includeFontPadding: false,
+          }}
+        >
+          {statusLabel}
+        </Text>
+      ) : null}
+
+      <View style={{ flexDirection: "row", gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <KitButton
+            label={isSaving ? "Saving..." : "Save profile"}
+            onPress={onSave}
+            disabled={isSaving}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <KitButton label="Cancel" onPress={onCancel} variant="secondary" disabled={isSaving} />
+        </View>
+      </View>
+    </ScrollView>
+  );
+}

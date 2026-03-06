@@ -18,6 +18,7 @@ export default function ProfileLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="edit" options={{ title: "Edit profile", presentation: "modal" }} />
       <Stack.Screen name="payments" options={{ title: "Payments & payouts" }} />
     </Stack>
   );

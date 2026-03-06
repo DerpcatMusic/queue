@@ -1,8 +1,7 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { FlashList } from "@shopify/flash-list";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -46,23 +45,49 @@ function addDays(dayKey: string, delta: number) {
   return toDayKey(dayKeyToTimestamp(dayKey) + delta * DAY_MS);
 }
 
+function addMonths(dayKey: string, delta: number) {
+  const currentDate = new Date(dayKeyToTimestamp(dayKey));
+  const nextDate = new Date(currentDate);
+  nextDate.setDate(1);
+  nextDate.setMonth(nextDate.getMonth() + delta);
+  const lastDayOfMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+  nextDate.setDate(Math.min(currentDate.getDate(), lastDayOfMonth));
+  return toDayKey(nextDate.getTime());
+}
+
 function compareDayKey(a: string, b: string) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-function getWeekStart(dayKey: string) {
+function resolveFirstDayOfWeek(locale: string) {
+  try {
+    const localeInfo = new Intl.Locale(locale as string) as Intl.Locale & {
+      weekInfo?: { firstDay?: number };
+    };
+    const firstDay = localeInfo.weekInfo?.firstDay;
+    if (typeof firstDay === "number") {
+      return firstDay % 7;
+    }
+  } catch {
+    // Fallback below.
+  }
+
+  return locale.toLowerCase().startsWith("en-us") ? 0 : 1;
+}
+
+function getWeekStart(dayKey: string, firstDayOfWeek: number) {
   const ts = dayKeyToTimestamp(dayKey);
   const d = new Date(ts);
-  const dow = d.getDay(); // 0=Sun
-  const mondayOffset = dow === 0 ? -6 : 1 - dow;
-  return toDayKey(ts + mondayOffset * DAY_MS);
+  const dow = d.getDay();
+  const offset = (7 + dow - firstDayOfWeek) % 7;
+  return toDayKey(ts - offset * DAY_MS);
 }
 
 function getWeekDays(weekStartKey: string): string[] {
   return Array.from({ length: 7 }, (_, i) => addDays(weekStartKey, i));
 }
 
-function getMonthWeeks(monthDayKey: string): string[][] {
+function getMonthWeeks(monthDayKey: string, firstDayOfWeek: number): string[][] {
   const ts = dayKeyToTimestamp(monthDayKey);
   const d = new Date(ts);
   const year = d.getFullYear();
@@ -70,7 +95,7 @@ function getMonthWeeks(monthDayKey: string): string[][] {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const weeks: string[][] = [];
-  let cursor = getWeekStart(toDayKey(firstDay.getTime()));
+  let cursor = getWeekStart(toDayKey(firstDay.getTime()), firstDayOfWeek);
   const lastDayKey = toDayKey(lastDay.getTime());
   while (true) {
     const week = getWeekDays(cursor);
@@ -110,11 +135,17 @@ function formatMonthYear(dayKey: string, locale: string) {
   });
 }
 
-function formatWeekdayLetter(dayKey: string, locale: string) {
-  return new Date(dayKeyToTimestamp(dayKey))
-    .toLocaleDateString(locale, { weekday: "narrow" })
-    .charAt(0)
-    .toUpperCase();
+function formatWeekdayLabel(dayKey: string, locale: string) {
+  const label = new Date(dayKeyToTimestamp(dayKey))
+    .toLocaleDateString(locale, { weekday: "short" })
+    .replace(/\./g, "")
+    .replace(/\s+/g, "");
+
+  const glyphs = Array.from(label);
+  if (glyphs.length <= 2) {
+    return label.toUpperCase();
+  }
+  return glyphs.slice(0, 2).join("").toUpperCase();
 }
 
 function formatDayNumber(dayKey: string) {
@@ -142,45 +173,56 @@ const LABELS_HEIGHT = 20; // weekday letter labels
 
 function WeekStrip({
   selectedDay,
+  isExpanded,
+  onExpandedChange,
   onDayPress,
   onWeekChange,
-  onMonthPress,
+  onMonthChange,
   onTodayPress,
   lessonCountByDay,
   locale,
   todayLabel,
   monthButtonLabel,
   dragHandleLabel,
+  weekViewLabel,
+  monthViewLabel,
 }: {
   selectedDay: string;
+  isExpanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   onDayPress: (dayKey: string) => void;
   onWeekChange: (delta: number) => void;
-  onMonthPress: () => void;
+  onMonthChange: (delta: number) => void;
   onTodayPress: () => void;
   lessonCountByDay: Map<string, number>;
   locale: string;
   todayLabel: string;
   monthButtonLabel: string;
   dragHandleLabel: string;
+  weekViewLabel: string;
+  monthViewLabel: string;
 }) {
   const palette = useBrand();
-  const { width: screenWidth } = useWindowDimensions();
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
-  const weekStart = getWeekStart(selectedDay);
+  const firstDayOfWeek = useMemo(() => resolveFirstDayOfWeek(locale), [locale]);
   const monthStart = getMonthStart(selectedDay);
-  const monthWeeks = useMemo(() => getMonthWeeks(monthStart), [monthStart]);
+  const monthWeeks = useMemo(
+    () => getMonthWeeks(monthStart, firstDayOfWeek),
+    [firstDayOfWeek, monthStart],
+  );
+  const selectedWeekIndex = useMemo(
+    () =>
+      Math.max(
+        0,
+        monthWeeks.findIndex((week) => week.includes(selectedDay)),
+      ),
+    [monthWeeks, selectedDay],
+  );
 
   // How many extra rows beyond 1 does this month need?
   const extraRows = monthWeeks.length - 1;
   const weekHeight = WEEK_ROW_HEIGHT;
   const monthExtraHeight = extraRows * WEEK_ROW_HEIGHT;
-
-  // 3-week triptych: prev, current, next
-  const prevWeekStart = addDays(weekStart, -7);
-  const nextWeekStart = addDays(weekStart, 7);
-  const prevWeekDays = useMemo(() => getWeekDays(prevWeekStart), [prevWeekStart]);
-  const currWeekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
-  const nextWeekDays = useMemo(() => getWeekDays(nextWeekStart), [nextWeekStart]);
 
   // ─── Single unified pan gesture ──────────────────────────────────────
   const swipeX = useSharedValue(0);
@@ -188,7 +230,13 @@ function WeekStrip({
   const expandStartRef = useSharedValue(0);
   const gestureDirection = useSharedValue<"none" | "h" | "v">("none");
   const hapticFiredRef = useRef(false);
-  const panelWidth = screenWidth;
+
+  const setExpanded = useCallback(
+    (nextExpanded: boolean) => {
+      onExpandedChange(nextExpanded);
+    },
+    [onExpandedChange],
+  );
 
   const fireHapticOnce = useCallback(() => {
     if (!hapticFiredRef.current) {
@@ -199,6 +247,18 @@ function WeekStrip({
   const resetHaptic = useCallback(() => {
     hapticFiredRef.current = false;
   }, []);
+
+  const toggleExpanded = useCallback(() => {
+    triggerSelectionHaptic();
+    setExpanded(!isExpanded);
+  }, [isExpanded, setExpanded]);
+
+  useEffect(() => {
+    expandProgress.value = withSpring(isExpanded ? 1 : 0, {
+      damping: 18,
+      stiffness: 200,
+    });
+  }, [expandProgress, isExpanded]);
 
   const panGesture = Gesture.Pan()
     .minDistance(5)
@@ -237,27 +297,32 @@ function WeekStrip({
 
       if (gestureDirection.value === "h") {
         const isExpanded = expandProgress.value > 0.5;
-        const weekDelta = isExpanded ? 4 : 1; // month vs week navigation
+        const animatedDistance = Math.sign(e.translationX || e.velocityX || 0) * 120;
 
         if (e.translationX < -SWIPE_THRESHOLD || (e.velocityX < -500 && e.translationX < -20)) {
-          swipeX.value = withTiming(-panelWidth, { duration: 200 }, () => {
-            runOnJS(onWeekChange)(weekDelta);
+          swipeX.value = withTiming(animatedDistance, { duration: 200 }, () => {
+            if (isExpanded) {
+              runOnJS(onMonthChange)(1);
+            } else {
+              runOnJS(onWeekChange)(1);
+            }
             swipeX.value = 0;
           });
         } else if (e.translationX > SWIPE_THRESHOLD || (e.velocityX > 500 && e.translationX > 20)) {
-          swipeX.value = withTiming(panelWidth, { duration: 200 }, () => {
-            runOnJS(onWeekChange)(-weekDelta);
+          swipeX.value = withTiming(animatedDistance, { duration: 200 }, () => {
+            if (isExpanded) {
+              runOnJS(onMonthChange)(-1);
+            } else {
+              runOnJS(onWeekChange)(-1);
+            }
             swipeX.value = 0;
           });
         } else {
           swipeX.value = withSpring(0, { damping: 20, stiffness: 300 });
         }
       } else if (gestureDirection.value === "v") {
-        if (expandProgress.value > 0.35) {
-          expandProgress.value = withSpring(1, { damping: 18, stiffness: 200 });
-        } else {
-          expandProgress.value = withSpring(0, { damping: 18, stiffness: 200 });
-        }
+        const nextExpanded = expandProgress.value > 0.35;
+        runOnJS(setExpanded)(nextExpanded);
         runOnJS(triggerSelectionHaptic)();
       }
 
@@ -266,30 +331,27 @@ function WeekStrip({
 
   // Animated styles
   const swipeStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: swipeX.value }],
+    transform: [
+      { translateX: swipeX.value },
+      {
+        translateY: (1 - expandProgress.value) * -selectedWeekIndex * WEEK_ROW_HEIGHT,
+      },
+    ],
   }));
+
+  const collapsedHeight = HEADER_HEIGHT + LABELS_HEIGHT + weekHeight + DRAG_HANDLE_HEIGHT;
+  const expandedHeight = collapsedHeight + monthExtraHeight;
 
   const containerAnimStyle = useAnimatedStyle(() => ({
-    height:
-      HEADER_HEIGHT +
-      LABELS_HEIGHT +
-      weekHeight +
-      expandProgress.value * monthExtraHeight +
-      DRAG_HANDLE_HEIGHT,
+    height: collapsedHeight + expandProgress.value * monthExtraHeight,
   }));
 
-  const extraRowsContainerStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(expandProgress.value > 0.06 ? 1 : 0, { duration: 120 }),
-    height: expandProgress.value * monthExtraHeight,
-    overflow: "hidden" as const,
-  }));
-
-  const renderDayCell = (dayKey: string, isTriptychSide = false) => {
-    const isSelected = !isTriptychSide && dayKey === selectedDay;
+  const renderDayCell = (dayKey: string) => {
+    const isSelected = dayKey === selectedDay;
     const isToday = dayKey === todayKey;
     const hasLessons = (lessonCountByDay.get(dayKey) ?? 0) > 0;
     const lessonCount = lessonCountByDay.get(dayKey) ?? 0;
-    const isCurrentMonth = isSameMonth(dayKey, selectedDay);
+    const isCurrentMonth = isSameMonth(dayKey, monthStart);
     const dimmed = !isCurrentMonth;
     const dayDateLabel = new Date(dayKeyToTimestamp(dayKey)).toLocaleDateString(locale, {
       weekday: "long",
@@ -348,14 +410,14 @@ function WeekStrip({
     );
   };
 
-  const firstWeekRow = currWeekDays;
-
   return (
     <Animated.View
       style={[
         wStyles.container,
         { backgroundColor: palette.surface as string },
-        containerAnimStyle,
+        Platform.OS === "web"
+          ? { height: isExpanded ? expandedHeight : collapsedHeight }
+          : containerAnimStyle,
       ]}
     >
       {/* Header */}
@@ -363,16 +425,28 @@ function WeekStrip({
         <KitPressable
           accessibilityRole="button"
           accessibilityLabel={monthButtonLabel}
-          onPress={onMonthPress}
+          onPress={toggleExpanded}
           style={wStyles.monthButton}
           hitSlop={8}
         >
           <Text style={[wStyles.monthLabel, { color: palette.text as string }]}>
             {formatMonthYear(selectedDay, locale)}
           </Text>
-          <Text style={[wStyles.monthChevron, { color: palette.textMuted as string }]}>▾</Text>
         </KitPressable>
         <View style={wStyles.headerActions}>
+          <View
+            style={[
+              wStyles.modePill,
+              {
+                backgroundColor: palette.surfaceElevated as string,
+                borderColor: palette.border as string,
+              },
+            ]}
+          >
+            <Text style={[wStyles.modePillText, { color: palette.textMuted as string }]}>
+              {isExpanded ? monthViewLabel : weekViewLabel}
+            </Text>
+          </View>
           {selectedDay !== todayKey ? (
             <KitPressable
               accessibilityRole="button"
@@ -394,39 +468,24 @@ function WeekStrip({
 
       {/* Weekday labels */}
       <View style={wStyles.weekdayLabels}>
-        {getWeekDays(getWeekStart(todayKey)).map((d) => (
+        {getWeekDays(getWeekStart(selectedDay, firstDayOfWeek)).map((d) => (
           <View key={d} style={wStyles.weekdayLabelCell}>
             <Text style={[wStyles.weekdayLabel, { color: palette.textMuted as string }]}>
-              {formatWeekdayLetter(d, locale)}
+              {formatWeekdayLabel(d, locale)}
             </Text>
           </View>
         ))}
       </View>
 
-      {/* Gesture area — swipe wraps EVERYTHING so month grid moves too */}
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[{ overflow: "hidden" }, swipeStyle]}>
-          {/* First row: triptych (prev | current | next) */}
-          <View style={[wStyles.triptych, { width: panelWidth * 3, marginLeft: -panelWidth }]}>
-            <View style={[wStyles.weekRow, { width: panelWidth }]}>
-              {prevWeekDays.map((d) => renderDayCell(d, true))}
-            </View>
-            <View style={[wStyles.weekRow, { width: panelWidth }]}>
-              {firstWeekRow.map((d) => renderDayCell(d))}
-            </View>
-            <View style={[wStyles.weekRow, { width: panelWidth }]}>
-              {nextWeekDays.map((d) => renderDayCell(d, true))}
-            </View>
-          </View>
-
-          {/* Extra month rows (revealed by vertical drag) */}
-          <Animated.View style={extraRowsContainerStyle}>
-            {monthWeeks.slice(1).map((week) => (
-              <View key={`extra-${week[0]}`} style={wStyles.weekRow}>
+          <View>
+            {monthWeeks.map((week) => (
+              <View key={`week-${week[0]}`} style={wStyles.weekRow}>
                 {week.map((d) => renderDayCell(d))}
               </View>
             ))}
-          </Animated.View>
+          </View>
         </Animated.View>
       </GestureDetector>
 
@@ -436,21 +495,7 @@ function WeekStrip({
         accessibilityRole="button"
         accessibilityLabel={dragHandleLabel}
         haptic="none"
-        onPress={() => {
-          // Tap handle to toggle
-          if (expandProgress.value > 0.5) {
-            expandProgress.value = withSpring(0, {
-              damping: 18,
-              stiffness: 200,
-            });
-          } else {
-            expandProgress.value = withSpring(1, {
-              damping: 18,
-              stiffness: 200,
-            });
-          }
-          triggerSelectionHaptic();
-        }}
+        onPress={toggleExpanded}
         hitSlop={{ top: 12, bottom: 12, left: 40, right: 40 }}
       >
         <View style={[wStyles.dragBar, { backgroundColor: palette.border as string }]} />
@@ -476,20 +521,26 @@ const wStyles = StyleSheet.create({
   monthButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
   },
   monthLabel: {
     fontSize: 18,
     fontWeight: "600",
   },
-  monthChevron: {
-    fontSize: 11,
-    marginTop: 2,
-  },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  modePill: {
+    minHeight: 28,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: "center",
+  },
+  modePillText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   todayPill: {
     paddingHorizontal: 12,
@@ -514,9 +565,6 @@ const wStyles = StyleSheet.create({
   weekdayLabel: {
     fontSize: 11,
     fontWeight: "500",
-  },
-  triptych: {
-    flexDirection: "row",
   },
   weekRow: {
     flexDirection: "row",
@@ -568,11 +616,13 @@ const wStyles = StyleSheet.create({
 export default function CalendarTabScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
-  const { safeBottom } = useAppInsets();
+  const { tabContentBottom } = useAppInsets();
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
+  const [isMonthExpanded, setIsMonthExpanded] = useState(false);
+  const [isMonthTransitioning, setIsMonthTransitioning] = useState(false);
+  const monthTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
     selectedDay,
-    showMonthPicker,
     listRef,
     listItems,
     lessonCountByDay,
@@ -581,19 +631,44 @@ export default function CalendarTabScreen() {
     handleDayPress,
     handleWeekChange,
     handleTodayPress,
-    openMonthPicker,
-    handleMonthPickerChange,
     overrideItemLayout,
-    selectedDayTimestamp,
     isLoading,
-  } = useCalendarTabController();
+  } = useCalendarTabController({
+    freezeSelectedDayFromView: isMonthExpanded || isMonthTransitioning,
+  });
+  const handleExpandedChange = useCallback((expanded: boolean) => {
+    setIsMonthTransitioning(true);
+    setIsMonthExpanded(expanded);
+    if (monthTransitionTimeoutRef.current) {
+      clearTimeout(monthTransitionTimeoutRef.current);
+    }
+    monthTransitionTimeoutRef.current = setTimeout(() => {
+      setIsMonthTransitioning(false);
+      monthTransitionTimeoutRef.current = null;
+    }, 360);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (monthTransitionTimeoutRef.current) {
+        clearTimeout(monthTransitionTimeoutRef.current);
+      }
+    },
+    [],
+  );
+  const handleMonthChange = useCallback(
+    (deltaMonths: number) => {
+      handleDayPress(addMonths(selectedDay, deltaMonths));
+    },
+    [handleDayPress, selectedDay],
+  );
 
   // ─── Render items ───────────────────────────────────────────────────────────
 
   const railColor = (palette.border as string) ?? "#E5E5E5";
   const listFooterComponent = useMemo(
-    () => <View style={{ height: safeBottom + 28 }} />,
-    [safeBottom],
+    () => <View style={{ height: tabContentBottom + 28 }} />,
+    [tabContentBottom],
   );
 
   const renderItem = useCallback(
@@ -753,19 +828,23 @@ export default function CalendarTabScreen() {
     <TabScreenRoot mode="static" style={{ backgroundColor: palette.appBg }}>
       <WeekStrip
         selectedDay={selectedDay}
+        isExpanded={isMonthExpanded}
+        onExpandedChange={handleExpandedChange}
         onDayPress={handleDayPress}
         onWeekChange={handleWeekChange}
-        onMonthPress={openMonthPicker}
+        onMonthChange={handleMonthChange}
         onTodayPress={handleTodayPress}
         lessonCountByDay={lessonCountByDay}
         locale={i18n.language}
         todayLabel={t("common.today", { defaultValue: "Today" })}
-        monthButtonLabel={t("calendarTab.openMonthPicker", {
-          defaultValue: "Open month picker",
+        monthButtonLabel={t("calendarTab.toggleMonthView", {
+          defaultValue: "Toggle month view",
         })}
         dragHandleLabel={t("calendarTab.toggleMonthView", {
           defaultValue: "Toggle month view",
         })}
+        weekViewLabel={t("calendarTab.mode.week", { defaultValue: "Week" })}
+        monthViewLabel={t("calendarTab.mode.month", { defaultValue: "Month" })}
       />
 
       <FlashList
@@ -781,15 +860,6 @@ export default function CalendarTabScreen() {
         contentContainerStyle={styles.timelineContent}
         ListFooterComponent={listFooterComponent}
       />
-
-      {showMonthPicker ? (
-        <DateTimePicker
-          value={new Date(selectedDayTimestamp)}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleMonthPickerChange}
-        />
-      ) : null}
     </TabScreenRoot>
   );
 }

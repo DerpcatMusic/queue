@@ -34,8 +34,11 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
             <NativeTabs.Trigger key={tab.id} name={tab.routeName}>
               <NativeTabs.Trigger.Label>{t(tab.titleKey)}</NativeTabs.Trigger.Label>
               <NativeTabs.Trigger.Icon
-                sf={{ default: tab.icon.sfDefault, selected: tab.icon.sfSelected } as never}
-                md={tab.icon.md as never}
+                sf={{
+                  default: tab.icon.sfDefault as never,
+                  selected: tab.icon.sfSelected as never,
+                }}
+                md={tab.icon.md}
               />
               <NativeTabBadge count={badgeCountByRoute[tab.routeName] ?? 0} />
             </NativeTabs.Trigger>

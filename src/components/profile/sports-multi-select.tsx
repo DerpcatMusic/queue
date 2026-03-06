@@ -2,8 +2,7 @@ import { useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitChip, KitPressable } from "@/components/ui/kit";
+import { KitButton, KitChip, KitPressable } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius } from "@/constants/brand";
@@ -16,6 +15,7 @@ type SportsMultiSelectProps = {
   searchPlaceholder: string;
   title: string;
   emptyHint: string;
+  defaultOpen?: boolean;
 };
 
 export function SportsMultiSelect({
@@ -25,8 +25,9 @@ export function SportsMultiSelect({
   searchPlaceholder,
   title,
   emptyHint,
+  defaultOpen = false,
 }: SportsMultiSelectProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const [query, setQuery] = useState("");
 
   const filteredSports = useMemo(() => {
@@ -59,10 +60,12 @@ export function SportsMultiSelect({
             {selectedSports.length > 0 ? `${String(selectedSports.length)} selected` : emptyHint}
           </ThemedText>
         </View>
-        <IconSymbol
-          name={isOpen ? "chevron.up" : "chevron.down"}
-          size={14}
-          color={palette.textMuted}
+        <KitButton
+          label={isOpen ? "Done" : "Edit"}
+          onPress={() => setIsOpen((value) => !value)}
+          variant="ghost"
+          size="sm"
+          fullWidth={false}
         />
       </KitPressable>
 

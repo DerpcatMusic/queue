@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { FlashListRef } from "@shopify/flash-list";
 import { useAction, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, type ViewToken } from "react-native";
+import type { ViewToken } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { syncDeviceCalendarEvents } from "@/lib/device-calendar-sync";
@@ -130,7 +130,11 @@ function useTimelineCache(role: string | undefined, startTime: number, endTime: 
 
 type ItemLayout = { span?: number; size?: number };
 
-export function useCalendarTabController() {
+export function useCalendarTabController({
+  freezeSelectedDayFromView = false,
+}: {
+  freezeSelectedDayFromView?: boolean;
+} = {}) {
   const currentUser = useQuery(api.users.getCurrentUser);
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
   const [selectedDay, setSelectedDay] = useState(todayKey);
@@ -139,10 +143,14 @@ export function useCalendarTabController() {
     start: addDays(todayKey, -TIMELINE_RANGE_DAYS),
     end: addDays(todayKey, TIMELINE_RANGE_DAYS),
   }));
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
   const listRef = useRef<FlashListRef<TimelineListItem>>(null);
   const programmaticScrollRef = useRef(false);
   const lastViewSyncAtRef = useRef(0);
+  const freezeSelectedDayFromViewRef = useRef(freezeSelectedDayFromView);
+
+  useEffect(() => {
+    freezeSelectedDayFromViewRef.current = freezeSelectedDayFromView;
+  }, [freezeSelectedDayFromView]);
 
   const role =
     currentUser?.role === "instructor" || currentUser?.role === "studio"
@@ -337,6 +345,7 @@ export function useCalendarTabController() {
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (freezeSelectedDayFromViewRef.current) return;
       if (programmaticScrollRef.current) return;
       const now = Date.now();
       if (now - lastViewSyncAtRef.current < 180) return;
@@ -376,20 +385,6 @@ export function useCalendarTabController() {
     handleDayPress(todayKey);
   }, [todayKey, handleDayPress]);
 
-  const openMonthPicker = useCallback(() => {
-    setShowMonthPicker(true);
-  }, []);
-
-  const handleMonthPickerChange = useCallback(
-    (_event: unknown, selectedDate?: Date) => {
-      if (Platform.OS !== "ios") setShowMonthPicker(false);
-      if (!selectedDate) return;
-      setShowMonthPicker(false);
-      handleDayPress(toDayKey(selectedDate.getTime()));
-    },
-    [handleDayPress],
-  );
-
   const overrideItemLayout = useCallback((layout: ItemLayout, item: TimelineListItem) => {
     if (item.kind === "dayHeader") layout.size = ESTIMATED_DAY_HEADER_SIZE;
     else if (item.kind === "empty") layout.size = ESTIMATED_EMPTY_SIZE;
@@ -400,7 +395,6 @@ export function useCalendarTabController() {
 
   return {
     selectedDay,
-    showMonthPicker,
     listRef,
     listItems,
     lessonCountByDay,
@@ -409,10 +403,7 @@ export function useCalendarTabController() {
     handleDayPress,
     handleWeekChange,
     handleTodayPress,
-    openMonthPicker,
-    handleMonthPickerChange,
     overrideItemLayout,
-    selectedDayTimestamp: dayKeyToTimestamp(selectedDay),
     isLoading,
   };
 }

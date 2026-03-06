@@ -55,7 +55,9 @@ export function CreateJobSheet({
   );
 
   const handleDateChange = (_event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
+    if (Platform.OS !== "ios") {
+      setShowDatePicker(false);
+    }
     if (selectedDate) {
       const newDate = new Date(selectedDate);
       const currentStart = new Date(draft.startTime);
@@ -73,7 +75,9 @@ export function CreateJobSheet({
   };
 
   const handleStartTimeChange = (_event: any, selectedTime?: Date) => {
-    setShowStartTimePicker(false);
+    if (Platform.OS !== "ios") {
+      setShowStartTimePicker(false);
+    }
     if (selectedTime) {
       const newStart = new Date(draft.startTime);
       newStart.setHours(selectedTime.getHours(), selectedTime.getMinutes());
@@ -90,7 +94,9 @@ export function CreateJobSheet({
   };
 
   const handleEndTimeChange = (_event: any, selectedTime?: Date) => {
-    setShowEndTimePicker(false);
+    if (Platform.OS !== "ios") {
+      setShowEndTimePicker(false);
+    }
     if (selectedTime) {
       const newEnd = new Date(draft.endTime);
       newEnd.setHours(selectedTime.getHours(), selectedTime.getMinutes());
@@ -212,7 +218,13 @@ export function CreateJobSheet({
                 </View>
               </KitPressable>
 
-              <View style={{ width: 12, alignItems: "center", justifyContent: "center" }}>
+              <View
+                style={{
+                  width: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <AppSymbol name="arrow.right" size={12} tintColor={palette.textMuted as string} />
               </View>
 
@@ -258,7 +270,10 @@ export function CreateJobSheet({
                 label={t("jobsTab.form.maxParticipants", "Max Participants")}
                 value={String(draft.maxParticipants)}
                 onChangeText={(v) =>
-                  setDraft((d) => ({ ...d, maxParticipants: Number.parseInt(v, 10) || 12 }))
+                  setDraft((d) => ({
+                    ...d,
+                    maxParticipants: Number.parseInt(v, 10) || 12,
+                  }))
                 }
                 keyboardType="number-pad"
                 placeholder="12"
@@ -290,30 +305,60 @@ export function CreateJobSheet({
 
       {/* Native Pickers */}
       {showDatePicker && (
-        <DateTimePicker
-          value={new Date(draft.startTime)}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleDateChange}
-          minimumDate={new Date()}
-        />
+        <View style={styles.pickerDock}>
+          <DateTimePicker
+            value={new Date(draft.startTime)}
+            mode="date"
+            display={Platform.OS === "ios" ? "inline" : "default"}
+            onChange={handleDateChange}
+            minimumDate={new Date()}
+          />
+          {Platform.OS === "ios" ? (
+            <KitButton
+              label={t("common.done", { defaultValue: "Done" })}
+              onPress={() => setShowDatePicker(false)}
+              variant="secondary"
+              size="sm"
+            />
+          ) : null}
+        </View>
       )}
       {showStartTimePicker && (
-        <DateTimePicker
-          value={new Date(draft.startTime)}
-          mode="time"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleStartTimeChange}
-        />
+        <View style={styles.pickerDock}>
+          <DateTimePicker
+            value={new Date(draft.startTime)}
+            mode="time"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={handleStartTimeChange}
+          />
+          {Platform.OS === "ios" ? (
+            <KitButton
+              label={t("common.done", { defaultValue: "Done" })}
+              onPress={() => setShowStartTimePicker(false)}
+              variant="secondary"
+              size="sm"
+            />
+          ) : null}
+        </View>
       )}
       {showEndTimePicker && (
-        <DateTimePicker
-          value={new Date(draft.endTime)}
-          mode="time"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleEndTimeChange}
-          minimumDate={new Date(draft.startTime)}
-        />
+        <View style={styles.pickerDock}>
+          <DateTimePicker
+            value={new Date(draft.endTime)}
+            mode="time"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={handleEndTimeChange}
+            minimumDate={new Date(draft.startTime)}
+          />
+          {Platform.OS === "ios" ? (
+            <KitButton
+              label={t("common.done", { defaultValue: "Done" })}
+              onPress={() => setShowEndTimePicker(false)}
+              variant="secondary"
+              size="sm"
+            />
+          ) : null}
+        </View>
       )}
     </BottomSheet>
   );
@@ -379,5 +424,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.6,
     marginBottom: 2,
+  },
+  pickerDock: {
+    gap: 12,
+    paddingHorizontal: BrandSpacing.lg,
+    paddingBottom: BrandSpacing.lg,
   },
 });
