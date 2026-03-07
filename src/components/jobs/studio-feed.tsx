@@ -138,9 +138,7 @@ export function StudioFeed() {
           ) : null}
         </View>
 
-        {currentUser.role === "studio" ? (
-          <>
-            {studioNotificationSettings !== undefined &&
+        {studioNotificationSettings !== undefined &&
             !studioNotificationSettings?.hasExpoPushToken ? (
               <View style={[styles.section, { borderBottomColor: palette.border }]}>
                 <FeedSectionHeader
@@ -283,8 +281,6 @@ export function StudioFeed() {
                 />
               )}
             </View>
-          </>
-        ) : null}
       </TabScreenScrollView>
 
       {isFocused ? (
