@@ -1,4 +1,4 @@
-﻿import { Color } from "expo-router";
+import { Color } from "expo-router";
 import type { ColorValue } from "react-native";
 import { Platform } from "react-native";
 import { FEATURE_FLAGS } from "@/constants/feature-flags";
@@ -230,22 +230,22 @@ export const NativeBrand: BrandPalette = {
 
 const CustomSeed: Record<ResolvedBrandScheme, ThemeSeed> = {
   light: {
-    primary: "#FF4D00", // Vibrant Electric Orange
-    background: "#FFFFFF", // Pure White
-    neutral: "#F5F5F5", // Neutral Light Gray (no hue)
+    primary: "#FF5A1F", // Kinetic orange
+    background: "#FFF6EE", // Warm chalk
+    neutral: "#F1E4D6", // Warm athletic neutral
     success: "#16A34A",
     warning: "#D97706",
     danger: "#DC2626",
-    accent: "#FF6A21", // Brighter Orange
+    accent: "#0F7BFF", // Sport-tech blue
   },
   dark: {
-    primary: "#FF5500", // Blazing Orange
-    background: "#000000", // Pure Deep Black
-    neutral: "#111111", // Very Dark Natural Gray
+    primary: "#FF6A2D", // Heated orange
+    background: "#0C0A08", // Warm ink black
+    neutral: "#18130F", // Warm dark neutral
     success: "#22C55E",
     warning: "#F59E0B",
     danger: "#EF4444",
-    accent: "#FF7326", // Brighter Orange
+    accent: "#46A1FF", // Brighter electric blue
   },
 };
 
@@ -492,9 +492,9 @@ export function getThemeTokenAliasMap() {
 }
 
 export const BrandRadius = {
-  card: 28,
-  button: 16,
-  input: 14,
+  card: 24,
+  button: 20,
+  input: 20,
   pill: 999,
 } as const;
 
@@ -520,10 +520,10 @@ export const BrandType = {
   },
   title: {
     fontFamily: "Rubik_600SemiBold",
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: "500" as const,
-    letterSpacing: -0.2,
-    lineHeight: 28,
+    letterSpacing: -0.3,
+    lineHeight: 27,
   },
   body: {
     fontFamily: "Rubik_400Regular",
@@ -553,7 +553,7 @@ export const BrandType = {
     fontFamily: "Rubik_500Medium",
     fontSize: 12,
     fontWeight: "500" as const,
-    letterSpacing: 0.2,
+    letterSpacing: 0.5,
     lineHeight: 16,
   },
 } as const;

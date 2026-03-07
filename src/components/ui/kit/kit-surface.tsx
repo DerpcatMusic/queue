@@ -30,7 +30,6 @@ function getGlassModule(): GlassModule | null {
     return cachedGlassModule;
   }
   try {
-    // Resolve once and gracefully fallback when native module/runtime isn't available.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     cachedGlassModule = require("expo-glass-effect") as GlassModule;
   } catch {
@@ -58,15 +57,15 @@ export function KitSurface({
       borderCurve: "continuous" as const,
       padding,
       gap,
-      overflow: "hidden" as const,
-      backgroundColor:
-        tone === "elevated"
-          ? background.surfaceElevated
-          : tone === "sunken"
-            ? background.surfaceSecondary
-            : isGlass
-              ? background.glass
-              : background.surface,
+      ...(tone === "elevated"
+        ? {
+            backgroundColor: background.surfaceElevated,
+          }
+        : tone === "sunken"
+          ? { backgroundColor: background.panel }
+          : isGlass
+            ? { backgroundColor: background.glass }
+            : { backgroundColor: background.panel }),
     },
     style,
   ];

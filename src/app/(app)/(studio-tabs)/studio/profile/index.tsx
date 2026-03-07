@@ -1,13 +1,20 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useIsFocused } from "@react-navigation/native";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, StyleSheet, Switch, View } from "react-native";
+import {
+  type StyleProp,
+  StyleSheet,
+  Switch,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from "react-native";
 import type Animated from "react-native-reanimated";
 import { useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
 
@@ -15,14 +22,14 @@ import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view"
 import { LoadingScreen } from "@/components/loading-screen";
 import {
   getProfileHeroScrollTopPadding,
+  ProfileDesktopHeroPanel,
   ProfileHeroSheet,
 } from "@/components/profile/profile-hero-sheet";
+import { ProfileReadinessStrip } from "@/components/profile/profile-readiness-strip";
 import {
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
-import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
-import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import type { BrandPalette } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
@@ -31,7 +38,6 @@ import { isSportType, toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
-import { useProfileImageUpload } from "@/hooks/use-profile-image-upload";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
@@ -43,31 +49,7 @@ const ROLE_TRANSLATION_KEYS = {
 } as const;
 const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
 const STUDIO_PAYMENTS_ROUTE = `${STUDIO_PROFILE_ROUTE}/payments` as const;
-
-function toSocialLinksDraft(value: ProfileSocialLinks | undefined) {
-  return { ...(value ?? {}) };
-}
-
-function areStringArraysEqual(a: string[], b: string[]) {
-  if (a.length !== b.length) return false;
-  for (let index = 0; index < a.length; index += 1) {
-    if (a[index] !== b[index]) return false;
-  }
-  return true;
-}
-
-function areSocialLinksEqual(a: ProfileSocialLinks, b: ProfileSocialLinks) {
-  const keys = new Set<string>([...Object.keys(a), ...Object.keys(b)]);
-  for (const key of keys) {
-    if (
-      (a as Record<string, string | undefined>)[key] !==
-      (b as Record<string, string | undefined>)[key]
-    ) {
-      return false;
-    }
-  }
-  return true;
-}
+const STUDIO_EDIT_ROUTE = `${STUDIO_PROFILE_ROUTE}/edit` as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
   if (sports.length === 0) {
@@ -79,16 +61,17 @@ function getSportsSummary(sports: string[], t: TFunction) {
   return t("profile.settings.sports.selected", { count: sports.length });
 }
 
-function ProfileCardGroup({ children, palette }: { children: ReactNode; palette: BrandPalette }) {
+function ProfileCardGroup({
+  children,
+  palette,
+  style,
+}: {
+  children: ReactNode;
+  palette: BrandPalette;
+  style?: StyleProp<ViewStyle>;
+}) {
   return (
-    <View
-      style={[
-        styles.cardGroup,
-        { backgroundColor: palette.surfaceAlt, borderColor: palette.border },
-      ]}
-    >
-      {children}
-    </View>
+    <View style={[styles.cardGroup, { backgroundColor: palette.appBg }, style]}>{children}</View>
   );
 }
 
@@ -102,25 +85,11 @@ export default function StudioProfileScreen() {
   const palette = useBrand();
   const router = useRouter();
   const isFocused = useIsFocused();
+  const { width } = useWindowDimensions();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useScrollViewOffset(scrollRef);
   const [hasActivated, setHasActivated] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [nameDraft, setNameDraft] = useState("");
-  const [bioDraft, setBioDraft] = useState("");
-  const [contactPhoneDraft, setContactPhoneDraft] = useState("");
-  const [sportsDraft, setSportsDraft] = useState<string[]>([]);
-  const [socialLinksDraft, setSocialLinksDraft] = useState<ProfileSocialLinks>({});
-  const [feedbackLabel, setFeedbackLabel] = useState<string | null>(null);
-  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null | undefined>(undefined);
-  const {
-    isUploading: isUploadingProfilePhoto,
-    uploadStatusLabel: profilePhotoUploadLabel,
-    pickAndUploadProfileImage,
-  } = useProfileImageUpload();
-  const saveProfileCard = useMutation(api.users.updateMyStudioProfileCard);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
     if (isFocused) {
@@ -130,9 +99,9 @@ export default function StudioProfileScreen() {
 
   useEffect(() => {
     if (edit === "1") {
-      setIsEditing(true);
+      router.replace(STUDIO_EDIT_ROUTE as Href);
     }
-  }, [edit]);
+  }, [edit, router]);
   const emptyArgs = useMemo(() => ({}), []);
   const shouldLoadSettings = currentUser?.role === "studio" && hasActivated;
 
@@ -141,40 +110,9 @@ export default function StudioProfileScreen() {
     shouldLoadSettings ? emptyArgs : "skip",
   );
 
-  useEffect(() => {
-    if (!studioSettings) {
-      return;
-    }
-    if (isEditing) {
-      return;
-    }
-    const nextSocialLinks = toSocialLinksDraft(studioSettings.socialLinks);
-    const nextProfilePhotoUrl = studioSettings.profileImageUrl ?? currentUser?.image;
-    setNameDraft((current) =>
-      current === studioSettings.studioName ? current : studioSettings.studioName,
-    );
-    setBioDraft((current) =>
-      current === (studioSettings.bio ?? "") ? current : (studioSettings.bio ?? ""),
-    );
-    setContactPhoneDraft((current) =>
-      current === (studioSettings.contactPhone ?? "")
-        ? current
-        : (studioSettings.contactPhone ?? ""),
-    );
-    setSportsDraft((current) =>
-      areStringArraysEqual(current, studioSettings.sports) ? current : studioSettings.sports,
-    );
-    setSocialLinksDraft((current) =>
-      areSocialLinksEqual(current, nextSocialLinks) ? current : nextSocialLinks,
-    );
-    setProfilePhotoUrl((current) =>
-      current === nextProfilePhotoUrl ? current : nextProfilePhotoUrl,
-    );
-  }, [currentUser?.image, isEditing, studioSettings]);
-
   const handleRequestEdit = useCallback(() => {
-    setIsEditing(true);
-  }, []);
+    router.push(STUDIO_EDIT_ROUTE as Href);
+  }, [router]);
 
   if (!hasActivated || (currentUser?.role === "studio" && studioSettings === undefined)) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
@@ -195,92 +133,52 @@ export default function StudioProfileScreen() {
       })
     : null;
 
-  const profileStatusLabel = profilePhotoUploadLabel ?? feedbackLabel;
   const sportsSummary = getSportsSummary(studioSettings?.sports ?? [], t);
+  const isDesktopWeb = process.env.EXPO_OS === "web" && width >= 1180;
   const socialCount = Object.keys(studioSettings?.socialLinks ?? {}).length;
-  const chevron = <IconSymbol name="chevron.right" size={14} color={palette.textMicro} />;
-  const hasUnsavedProfileChanges = (() => {
-    if (!studioSettings || !isEditing) return false;
-    return (
-      (nameDraft.trim() || profileName) !== profileName ||
-      bioDraft.trim() !== (studioSettings.bio ?? "") ||
-      contactPhoneDraft.trim() !== (studioSettings.contactPhone ?? "") ||
-      !areStringArraysEqual(sportsDraft, studioSettings.sports) ||
-      !areSocialLinksEqual(socialLinksDraft, toSocialLinksDraft(studioSettings.socialLinks))
-    );
-  })();
-
-  const handleDismissEdit = () => {
-    if (!hasUnsavedProfileChanges) {
-      setIsEditing(false);
-      return;
-    }
-
-    Alert.alert(
-      t("common.discardChanges", { defaultValue: "Discard changes?" }),
-      t("common.discardChangesMessage", {
-        defaultValue: "Your profile edits are not saved yet.",
-      }),
-      [
-        { text: t("common.cancel", { defaultValue: "Cancel" }), style: "cancel" },
-        {
-          text: t("common.discard", { defaultValue: "Discard" }),
-          style: "destructive",
-          onPress: () => setIsEditing(false),
-        },
-      ],
-    );
-  };
-
-  const onToggleSport = (sport: string) => {
-    setFeedbackLabel(null);
-    setSportsDraft((current) =>
-      current.includes(sport) ? current.filter((entry) => entry !== sport) : [...current, sport],
-    );
-  };
-
-  const onSocialLinkChange = (key: keyof ProfileSocialLinks, value: string) => {
-    setFeedbackLabel(null);
-    setSocialLinksDraft((current) => ({
-      ...current,
-      [key]: value,
-    }));
-  };
-
-  const uploadProfilePhoto = async () => {
-    setFeedbackLabel(null);
-    try {
-      const uploadedUrl = await pickAndUploadProfileImage();
-      if (uploadedUrl === undefined) {
-        return;
-      }
-      setProfilePhotoUrl(uploadedUrl);
-      setFeedbackLabel("Profile photo updated.");
-    } catch (error) {
-      setFeedbackLabel(error instanceof Error ? error.message : "Failed to update profile photo.");
-    }
-  };
-
-  const saveProfile = async () => {
-    setFeedbackLabel(null);
-    setIsSavingProfile(true);
-    try {
-      await saveProfileCard({
-        studioName: nameDraft.trim() || profileName,
-        bio: bioDraft.trim(),
-        contactPhone: contactPhoneDraft.trim(),
-        socialLinks: socialLinksDraft,
-        sports: sportsDraft,
-      });
-      setFeedbackLabel("Profile updated.");
-      setIsEditing(false);
-    } catch (error) {
-      setFeedbackLabel(error instanceof Error ? error.message : "Failed to save profile.");
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
-
+  const sportsCount = studioSettings?.sports?.length ?? 0;
+  const setupActions = [
+    !studioSettings?.address ? { label: "Add studio details", onPress: handleRequestEdit } : null,
+    !studioSettings?.zone ? { label: "Set coverage zone", onPress: handleRequestEdit } : null,
+    sportsCount === 0 ? { label: "Pick sports", onPress: handleRequestEdit } : null,
+    socialCount === 0 ? { label: "Add contact links", onPress: handleRequestEdit } : null,
+  ].filter((item): item is { label: string; onPress: () => void } => item !== null);
+  const setupStatusLabel =
+    setupActions.length === 0
+      ? "Ready to run jobs"
+      : `${String(setupActions.length)} polish moves left`;
+  const publicProfileSummary =
+    studioSettings?.bio?.trim() ||
+    (socialCount > 0
+      ? `${String(socialCount)} public links are live for applicants and instructors.`
+      : "Shape the studio identity people scan before they apply or accept.");
+  const primarySetupAction = setupActions[0] ?? null;
+  const readinessItems = [
+    {
+      label: "Action queue",
+      value: setupActions.length === 0 ? "Profile ready" : `${String(setupActions.length)} open`,
+      caption: primarySetupAction?.label ?? "Coverage, profile, and defaults are lined up.",
+      accent: setupActions.length === 0 ? (palette.success as string) : (palette.warning as string),
+      ...(primarySetupAction ? { onPress: primarySetupAction.onPress } : {}),
+    },
+    {
+      label: "Public profile",
+      value: sportsCount === 0 ? "Needs shape" : `${String(sportsCount)} sports`,
+      caption: socialCount > 0 ? `${String(socialCount)} links live` : "Photo, bio, and links",
+      onPress: handleRequestEdit,
+    },
+    {
+      label: "Coverage",
+      value: studioSettings?.zone ?? "Unset",
+      caption: studioSettings?.address ?? "Add your studio address and operating area",
+      onPress: handleRequestEdit,
+    },
+    {
+      label: "Defaults",
+      value: `${String(studioSettings?.autoExpireMinutesBefore ?? 30)} min`,
+      caption: "Auto-expire before start",
+    },
+  ];
   return (
     <View collapsable={false} style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <TabScreenScrollView
@@ -288,181 +186,346 @@ export default function StudioProfileScreen() {
         routeKey="studio/profile"
         style={styles.screen}
         contentContainerStyle={{
-          paddingTop: getProfileHeroScrollTopPadding(safeTop),
+          paddingTop: isDesktopWeb ? 24 : getProfileHeroScrollTopPadding(safeTop),
+          paddingHorizontal: isDesktopWeb ? 24 : 0,
           paddingBottom: 40,
+          gap: isDesktopWeb ? 24 : 0,
         }}
       >
-        <ProfileSectionHeader label="Profile" palette={palette} />
-        <ProfileCardGroup palette={palette}>
-          <ProfileSettingRow
-            title="Public profile"
-            subtitle={`${sportsSummary}${socialCount > 0 ? ` * ${String(socialCount)} links` : ""}`}
-            onPress={() => setIsEditing(true)}
-            palette={palette}
-            accessory={chevron}
-          />
-          <ProfileSettingRow
-            title="Studio details"
-            subtitle={studioSettings?.address ?? "Complete onboarding to set your address"}
-            palette={palette}
-          />
-          <ProfileSettingRow
-            title="Coverage zone"
-            subtitle={studioSettings?.zone ?? "No zone"}
-            palette={palette}
-          />
-          <ProfileSettingRow
-            title="Auto-expire jobs"
-            subtitle={`${String(studioSettings?.autoExpireMinutesBefore ?? 30)} minutes before start`}
-            palette={palette}
-            isLast
-          />
-        </ProfileCardGroup>
-
-        <ProfileSectionHeader label={t("profile.account.title")} palette={palette} />
-        <ProfileCardGroup palette={palette}>
-          <ProfileSettingRow
-            title={t("profile.account.nameLabel")}
-            subtitle={currentUser?.fullName ?? profileName}
-            palette={palette}
-          />
-          <ProfileSettingRow
-            title={t("profile.account.emailLabel")}
-            subtitle={emailValue}
-            palette={palette}
-          />
-          <ProfileSettingRow
-            title={t("profile.account.roleLabel")}
-            subtitle={roleValue}
-            palette={palette}
-            isLast={!memberSince}
-          />
-          {memberSince ? (
-            <ProfileSettingRow
-              title={t("profile.account.memberSince")}
-              subtitle={memberSince}
-              palette={palette}
-              isLast
-            />
-          ) : null}
-        </ProfileCardGroup>
-
-        <ProfileSectionHeader label={t("profile.appearance.title")} palette={palette} />
-        <ProfileCardGroup palette={palette}>
-          <ProfileSettingRow
-            title={t("profile.language.title")}
-            subtitle={language === "en" ? t("language.english") : t("language.hebrew")}
-            onPress={() => void setLanguage(language === "en" ? "he" : "en")}
-            palette={palette}
-            accessory={chevron}
-          />
-          <ProfileSettingRow
-            title={t("profile.appearance.systemTheme.title")}
-            palette={palette}
-            accessory={
-              <Switch
-                value={preference === "system"}
-                onValueChange={(value) => setPreference(value ? "system" : "light")}
-                trackColor={{
-                  true: palette.primary as string,
-                  false: palette.borderStrong as string,
-                }}
+        {isDesktopWeb ? (
+          <View style={styles.desktopShell}>
+            <View style={styles.desktopRail}>
+              <ProfileDesktopHeroPanel
+                profileName={profileName}
+                roleLabel="Studio profile"
+                profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
+                palette={palette}
+                summary={publicProfileSummary}
+                statusLabel={setupStatusLabel}
+                metaLabel={memberSince ? `Member since ${memberSince}` : sportsSummary}
+                primaryAction={{ label: "Edit profile", onPress: handleRequestEdit }}
+                {...(primarySetupAction ? { secondaryAction: primarySetupAction } : {})}
+                highlights={readinessItems}
               />
-            }
-          />
-          <ProfileSettingRow
-            title={t("profile.appearance.darkMode.title")}
-            palette={palette}
-            isLast
-            accessory={
-              <Switch
-                disabled={preference === "system"}
-                value={preference === "dark"}
-                onValueChange={(value) => setPreference(value ? "dark" : "light")}
-                trackColor={{
-                  true: palette.primary as string,
-                  false: palette.borderStrong as string,
-                }}
-              />
-            }
-          />
-        </ProfileCardGroup>
+            </View>
 
-        <ProfileSectionHeader label="Payments" palette={palette} />
-        <ProfileCardGroup palette={palette}>
-          <ProfileSettingRow
-            title="Payments & payouts"
-            onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
-            palette={palette}
-            isLast
-            accessory={chevron}
-          />
-        </ProfileCardGroup>
+            <View style={styles.desktopContent}>
+              <View style={styles.desktopMainColumn}>
+                <ProfileSectionHeader
+                  label="Studio"
+                  description="The identity and operating defaults people scan first."
+                  palette={palette}
+                  flush
+                />
+                <ProfileCardGroup palette={palette} style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    eyebrow="Command"
+                    title="Public profile"
+                    subtitle={publicProfileSummary}
+                    onPress={handleRequestEdit}
+                    palette={palette}
+                  />
+                  <ProfileSettingRow
+                    eyebrow="Location"
+                    title="Studio details"
+                    subtitle={studioSettings?.address ?? "Complete onboarding to set your address"}
+                    onPress={handleRequestEdit}
+                    palette={palette}
+                  />
+                  <ProfileSettingRow
+                    eyebrow="Coverage"
+                    title="Coverage zone"
+                    subtitle={studioSettings?.zone ?? "No zone"}
+                    onPress={handleRequestEdit}
+                    palette={palette}
+                  />
+                  <ProfileSettingRow
+                    eyebrow="Scheduling"
+                    title="Auto-expire jobs"
+                    subtitle={`${String(studioSettings?.autoExpireMinutesBefore ?? 30)} minutes before start`}
+                    palette={palette}
+                    isLast
+                  />
+                </ProfileCardGroup>
+              </View>
 
-        {profileStatusLabel ? (
-          <View style={{ paddingHorizontal: 24, paddingTop: 12 }}>
-            <ThemedText style={{ color: palette.textMuted, fontSize: 13 }}>
-              {profileStatusLabel}
-            </ThemedText>
+              <View style={styles.desktopSideColumn}>
+                <ProfileSectionHeader
+                  label={t("profile.account.title")}
+                  description="Identity, role, and membership details."
+                  palette={palette}
+                  flush
+                />
+                <ProfileCardGroup palette={palette} style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title={t("profile.account.nameLabel")}
+                    subtitle={currentUser?.fullName ?? profileName}
+                    palette={palette}
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.account.emailLabel")}
+                    subtitle={emailValue}
+                    palette={palette}
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.account.roleLabel")}
+                    subtitle={roleValue}
+                    palette={palette}
+                    isLast={!memberSince}
+                  />
+                  {memberSince ? (
+                    <ProfileSettingRow
+                      title={t("profile.account.memberSince")}
+                      subtitle={memberSince}
+                      palette={palette}
+                      isLast
+                    />
+                  ) : null}
+                </ProfileCardGroup>
+
+                <ProfileSectionHeader
+                  label={t("profile.appearance.title")}
+                  description="Language and theme controls."
+                  palette={palette}
+                  flush
+                />
+                <ProfileCardGroup palette={palette} style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title={t("profile.language.title")}
+                    subtitle={language === "en" ? t("language.english") : t("language.hebrew")}
+                    onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                    palette={palette}
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.appearance.systemTheme.title")}
+                    palette={palette}
+                    accessory={
+                      <Switch
+                        value={preference === "system"}
+                        onValueChange={(value) => setPreference(value ? "system" : "light")}
+                        trackColor={{
+                          true: palette.primary as string,
+                          false: palette.borderStrong as string,
+                        }}
+                      />
+                    }
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.appearance.darkMode.title")}
+                    palette={palette}
+                    isLast
+                    accessory={
+                      <Switch
+                        disabled={preference === "system"}
+                        value={preference === "dark"}
+                        onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                        trackColor={{
+                          true: palette.primary as string,
+                          false: palette.borderStrong as string,
+                        }}
+                      />
+                    }
+                  />
+                </ProfileCardGroup>
+
+                <ProfileSectionHeader
+                  label="Payments"
+                  description="Manage the payout destination for this studio."
+                  palette={palette}
+                  flush
+                />
+                <ProfileCardGroup palette={palette} style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title="Payments & payouts"
+                    subtitle="Open payout settings and manage destination details."
+                    onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
+                    palette={palette}
+                    isLast
+                  />
+                </ProfileCardGroup>
+
+                <ProfileCardGroup palette={palette} style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title={t("auth.signOutButton")}
+                    subtitle="End the current session on this device."
+                    onPress={() => void signOut()}
+                    palette={palette}
+                    tone="danger"
+                    isLast
+                    accessory={
+                      <IconSymbol name="arrow.right.square" size={24} color={palette.danger} />
+                    }
+                  />
+                </ProfileCardGroup>
+              </View>
+            </View>
           </View>
-        ) : null}
+        ) : (
+          <>
+            <ProfileReadinessStrip palette={palette} items={readinessItems} />
 
-        <View style={{ marginTop: 32, marginBottom: 40 }}>
-          <ProfileCardGroup palette={palette}>
-            <ProfileSettingRow
-              title={t("auth.signOutButton")}
-              onPress={() => void signOut()}
+            <ProfileSectionHeader
+              label="Studio"
+              description="The identity and operating defaults people scan first."
               palette={palette}
-              isLast
-              accessory={<IconSymbol name="arrow.right.square" size={24} color={palette.danger} />}
             />
-          </ProfileCardGroup>
-        </View>
+            <ProfileCardGroup palette={palette}>
+              <ProfileSettingRow
+                eyebrow="Command"
+                title="Public profile"
+                subtitle={publicProfileSummary}
+                onPress={handleRequestEdit}
+                palette={palette}
+              />
+              <ProfileSettingRow
+                eyebrow="Location"
+                title="Studio details"
+                subtitle={studioSettings?.address ?? "Complete onboarding to set your address"}
+                onPress={handleRequestEdit}
+                palette={palette}
+              />
+              <ProfileSettingRow
+                eyebrow="Coverage"
+                title="Coverage zone"
+                subtitle={studioSettings?.zone ?? "No zone"}
+                onPress={handleRequestEdit}
+                palette={palette}
+              />
+              <ProfileSettingRow
+                eyebrow="Scheduling"
+                title="Auto-expire jobs"
+                subtitle={`${String(studioSettings?.autoExpireMinutesBefore ?? 30)} minutes before start`}
+                palette={palette}
+                isLast
+              />
+            </ProfileCardGroup>
+
+            <ProfileSectionHeader
+              label={t("profile.account.title")}
+              description="Identity, role, and membership details."
+              palette={palette}
+            />
+            <ProfileCardGroup palette={palette}>
+              <ProfileSettingRow
+                title={t("profile.account.nameLabel")}
+                subtitle={currentUser?.fullName ?? profileName}
+                palette={palette}
+              />
+              <ProfileSettingRow
+                title={t("profile.account.emailLabel")}
+                subtitle={emailValue}
+                palette={palette}
+              />
+              <ProfileSettingRow
+                title={t("profile.account.roleLabel")}
+                subtitle={roleValue}
+                palette={palette}
+                isLast={!memberSince}
+              />
+              {memberSince ? (
+                <ProfileSettingRow
+                  title={t("profile.account.memberSince")}
+                  subtitle={memberSince}
+                  palette={palette}
+                  isLast
+                />
+              ) : null}
+            </ProfileCardGroup>
+
+            <ProfileSectionHeader
+              label={t("profile.appearance.title")}
+              description="Language and theme controls."
+              palette={palette}
+            />
+            <ProfileCardGroup palette={palette}>
+              <ProfileSettingRow
+                title={t("profile.language.title")}
+                subtitle={language === "en" ? t("language.english") : t("language.hebrew")}
+                onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                palette={palette}
+              />
+              <ProfileSettingRow
+                title={t("profile.appearance.systemTheme.title")}
+                palette={palette}
+                accessory={
+                  <Switch
+                    value={preference === "system"}
+                    onValueChange={(value) => setPreference(value ? "system" : "light")}
+                    trackColor={{
+                      true: palette.primary as string,
+                      false: palette.borderStrong as string,
+                    }}
+                  />
+                }
+              />
+              <ProfileSettingRow
+                title={t("profile.appearance.darkMode.title")}
+                palette={palette}
+                isLast
+                accessory={
+                  <Switch
+                    disabled={preference === "system"}
+                    value={preference === "dark"}
+                    onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                    trackColor={{
+                      true: palette.primary as string,
+                      false: palette.borderStrong as string,
+                    }}
+                  />
+                }
+              />
+            </ProfileCardGroup>
+
+            <ProfileSectionHeader
+              label="Payments"
+              description="Manage the payout destination for this studio."
+              palette={palette}
+            />
+            <ProfileCardGroup palette={palette}>
+              <ProfileSettingRow
+                title="Payments & payouts"
+                subtitle="Open payout settings and manage destination details."
+                onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
+                palette={palette}
+                isLast
+              />
+            </ProfileCardGroup>
+
+            <View style={{ marginTop: 32, marginBottom: 40 }}>
+              <ProfileCardGroup palette={palette}>
+                <ProfileSettingRow
+                  title={t("auth.signOutButton")}
+                  subtitle="End the current session on this device."
+                  onPress={() => void signOut()}
+                  palette={palette}
+                  tone="danger"
+                  isLast
+                  accessory={
+                    <IconSymbol name="arrow.right.square" size={24} color={palette.danger} />
+                  }
+                />
+              </ProfileCardGroup>
+            </View>
+          </>
+        )}
       </TabScreenScrollView>
 
-      <ProfileHeroSheet
-        profileName={nameDraft || profileName}
-        roleLabel="Studio profile"
-        profileImageUrl={profilePhotoUrl}
-        palette={palette}
-        scrollY={scrollY}
-        isEditing={isEditing}
-        onRequestEdit={handleRequestEdit}
-        onDismissEdit={handleDismissEdit}
-        onSave={() => {
-          void saveProfile();
-        }}
-        isSaving={isSavingProfile}
-        statusLabel={profileStatusLabel}
-        bioDraft={bioDraft}
-        onBioDraftChange={(value) => {
-          setFeedbackLabel(null);
-          setBioDraft(value);
-        }}
-        nameDraft={nameDraft}
-        onNameDraftChange={(value) => {
-          setFeedbackLabel(null);
-          setNameDraft(value);
-        }}
-        socialLinksDraft={socialLinksDraft}
-        onSocialLinkChange={onSocialLinkChange}
-        sportsDraft={sportsDraft}
-        onToggleSport={onToggleSport}
-        onChangePhoto={() => {
-          void uploadProfilePhoto();
-        }}
-        isChangingPhoto={isUploadingProfilePhoto}
-        extraField={{
-          label: "Contact phone",
-          placeholder: "Best number for instructors",
-          value: contactPhoneDraft,
-          onChangeText: (value) => {
-            setFeedbackLabel(null);
-            setContactPhoneDraft(value);
-          },
-          keyboardType: "phone-pad",
-        }}
-      />
+      {isDesktopWeb ? null : (
+        <ProfileHeroSheet
+          profileName={profileName}
+          roleLabel="Studio profile"
+          profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
+          palette={palette}
+          scrollY={scrollY}
+          onRequestEdit={handleRequestEdit}
+          primaryActionLabel="Edit profile"
+          {...(primarySetupAction ? { secondaryAction: primarySetupAction } : {})}
+          statusLabel={setupStatusLabel}
+          bio={studioSettings?.bio}
+          socialLinks={studioSettings?.socialLinks}
+          sports={studioSettings?.sports ?? []}
+        />
+      )}
     </View>
   );
 }
@@ -472,9 +535,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardGroup: {
-    borderWidth: 1,
-    borderRadius: 24,
-    marginHorizontal: 16,
-    overflow: "hidden",
+    gap: 10,
+    marginHorizontal: 24,
+  },
+  desktopShell: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 24,
+  },
+  desktopRail: {
+    width: 360,
+  },
+  desktopContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 24,
+  },
+  desktopMainColumn: {
+    flex: 1,
+    minWidth: 0,
+  },
+  desktopSideColumn: {
+    width: 340,
+  },
+  desktopCardGroup: {
+    marginHorizontal: 0,
   },
 });

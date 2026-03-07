@@ -1,6 +1,0 @@
-﻿src/components/home/home-screen.tsx(119,7): error TS2322: Type '{ timeZone?: string; note?: string; jobId: Id<"jobs">; sport: string; zone: string; startTime: number; endTime: number; pay: number; status: "open" | "completed" | "cancelled" | "filled"; postedAt: number; applicationsCount: number; pendingApplicationsCount: number; }[]' is not assignable to type 'RecentJob[]'.
-  Type '{ timeZone?: string; note?: string; jobId: Id<"jobs">; sport: string; zone: string; startTime: number; endTime: number; pay: number; status: "open" | "completed" | "cancelled" | "filled"; postedAt: number; applicationsCount: number; pendingApplicationsCount: number; }' is not assignable to type 'RecentJob'.
-    Types of property 'status' are incompatible.
-      Type '"open" | "completed" | "cancelled" | "filled"' is not assignable to type '"open" | "assigned" | "completed" | "cancelled"'.
-        Type '"filled"' is not assignable to type '"open" | "assigned" | "completed" | "cancelled"'.
-src/components/home/instructor-home-content.tsx(4,10): error TS6133: 'BrandRadius' is declared but its value is never read.

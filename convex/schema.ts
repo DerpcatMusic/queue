@@ -496,11 +496,7 @@ export default defineSchema({
     payloadHash: v.string(),
     payload: v.any(),
     metadata: v.optional(v.any()),
-    processingState: v.union(
-      v.literal("pending"),
-      v.literal("processed"),
-      v.literal("failed"),
-    ),
+    processingState: v.union(v.literal("pending"), v.literal("processed"), v.literal("failed")),
     processingError: v.optional(v.string()),
     sourceEventId: v.optional(v.string()),
     entityId: v.optional(v.string()),

@@ -54,8 +54,6 @@ export function KitStatusBadge({
           paddingVertical: 6,
           borderRadius: 999,
           borderCurve: "continuous",
-          borderWidth: 1,
-          borderColor: resolvedTone.accent,
           backgroundColor: resolvedTone.backgroundColor,
         },
         style,

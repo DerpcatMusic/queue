@@ -1,12 +1,13 @@
-import { type Href, Link } from "expo-router";
 import type { TFunction } from "i18next";
 import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
-import Animated, { FadeInUp, useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
+import Animated, { FadeInUp, useAnimatedRef } from "react-native-reanimated";
+
 import {
-  getHomeHeaderScrollTopPadding,
-  HomeHeaderSheet,
-} from "@/components/home/home-header-sheet";
+  HomeSectionHeading,
+  HomeSurface,
+  useHomeDashboardLayout,
+} from "@/components/home/home-dashboard-layout";
 import {
   getAdjacentTimeframe,
   getTimeframeData,
@@ -15,16 +16,19 @@ import {
 } from "@/components/home/performance-chart-math";
 import {
   PerformanceHeroCard,
+  type PerformanceMetricOption,
+  type PerformanceTimeframeOption,
   type PerformanceTimeframeSeries,
 } from "@/components/home/performance-hero-card";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { AppSymbol } from "@/components/ui/app-symbol";
-import { KitPressable } from "@/components/ui/kit";
+import { KitButton, KitPressable } from "@/components/ui/kit";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
+import { formatDateTime } from "@/lib/jobs-utils";
 
 type RecentJob = {
   jobId: string;
@@ -54,71 +58,6 @@ type StudioHomeContentProps = {
   onOpenProfile: () => void;
 };
 
-type MetricTileProps = {
-  label: string;
-  value: number;
-  palette: BrandPalette;
-  href: Href;
-  onPress: () => void;
-  accentIcon: string;
-  accentColor: string;
-};
-
-function MetricTile({
-  label,
-  value,
-  palette,
-  href,
-  onPress,
-  accentIcon,
-  accentColor,
-}: MetricTileProps) {
-  return (
-    <Link href={href} asChild>
-      <Link.Trigger>
-        <KitPressable
-          accessibilityRole="link"
-          accessibilityLabel={`${label}: ${String(value)}`}
-          accessibilityValue={{ text: String(value) }}
-          haptic="selection"
-          className="active:opacity-80 flex-1 rounded-[32px] p-6 justify-between gap-6"
-          style={{
-            backgroundColor: palette.surfaceAlt as string,
-            borderCurve: "continuous",
-          }}
-        >
-          <View className="flex-row items-start justify-between">
-            <Text
-              className="font-heading text-5xl"
-              style={{
-                color: palette.text as string,
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {value}
-            </Text>
-            <View
-              className="h-12 w-12 items-center justify-center rounded-full"
-              style={{ backgroundColor: palette.surface as string }}
-            >
-              <AppSymbol name={accentIcon} size={20} tintColor={accentColor} />
-            </View>
-          </View>
-          <Text
-            className="font-bodyStrong text-sm opacity-80"
-            style={{ color: palette.text as string }}
-          >
-            {label}
-          </Text>
-        </KitPressable>
-      </Link.Trigger>
-      <Link.Menu>
-        <Link.MenuAction title="Open" icon="arrow.up.forward.app" onPress={onPress} />
-      </Link.Menu>
-    </Link>
-  );
-}
-
 export function StudioHomeContent({
   displayName,
   profileImageUrl,
@@ -135,39 +74,47 @@ export function StudioHomeContent({
   onOpenCalendar,
   onOpenProfile,
 }: StudioHomeContentProps) {
-  void jobsFilled;
   const { safeTop } = useAppInsets();
+  const layout = useHomeDashboardLayout();
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const jobsNeedingReview = recentJobs
     .filter((job) => job.pendingApplicationsCount > 0)
-    .slice(0, 3);
+    .slice(0, 4);
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const scrollY = useScrollViewOffset(scrollRef);
   const now = useMemo(() => Date.now(), []);
   const [timeframe, setTimeframe] = useState<Timeframe>("weekly");
   const [metricMode, setMetricMode] = useState<MetricMode>("earnings");
+
   const timeframeSeries = useMemo(() => {
     const frames = {} as Record<Timeframe, PerformanceTimeframeSeries>;
 
     (["weekly", "monthly", "yearly"] as const).forEach((frame) => {
       const frameData = getTimeframeData(frame, now, locale);
-      const values = frameData.bucketStarts.map((bucketStart, idx) => {
-        const bucketEnd = frameData.bucketEnds[idx]!;
-        if (metricMode === "earnings") {
-          return recentJobs
-            .filter(
-              (row) =>
-                row.startTime >= bucketStart &&
-                row.startTime < bucketEnd &&
-                row.status !== "cancelled",
-            )
-            .reduce((sum, row) => sum + row.pay * 100, 0);
+      const values = Array.from({ length: frameData.bucketStarts.length }, () => 0);
+
+      for (const row of recentJobs) {
+        const metricValue =
+          metricMode === "earnings"
+            ? row.status === "cancelled"
+              ? 0
+              : row.pay * 100
+            : row.status === "completed"
+              ? 1
+              : 0;
+        if (metricValue === 0) {
+          continue;
         }
-        return recentJobs.filter(
-          (row) =>
-            row.status === "completed" && row.endTime >= bucketStart && row.endTime < bucketEnd,
-        ).length;
-      });
+
+        const metricTime = metricMode === "earnings" ? row.startTime : row.endTime;
+        for (let index = 0; index < frameData.bucketStarts.length; index += 1) {
+          const bucketStart = frameData.bucketStarts[index]!;
+          const bucketEnd = frameData.bucketEnds[index]!;
+          if (metricTime >= bucketStart && metricTime < bucketEnd) {
+            values[index] = (values[index] ?? 0) + metricValue;
+            break;
+          }
+        }
+      }
 
       frames[frame] = {
         values,
@@ -178,101 +125,248 @@ export function StudioHomeContent({
     return frames;
   }, [metricMode, recentJobs, now, locale]);
 
-  const activeSeries = timeframeSeries[timeframe];
-  const frameTotal = activeSeries.values.reduce((sum, value) => sum + value, 0);
+  const frameTotal = timeframeSeries[timeframe].values.reduce((sum, value) => sum + value, 0);
   const timeframeLabel = t(`home.performance.${timeframe}`);
   const summaryValue =
     metricMode === "earnings"
       ? currencyFormatter.format(frameTotal / 100)
       : `${String(frameTotal)} ${t("home.performance.lessons")}`;
+  const timeframeOptions = useMemo<PerformanceTimeframeOption[]>(
+    () => [
+      { value: "weekly", label: t("home.performance.weekly") },
+      { value: "monthly", label: t("home.performance.monthly") },
+      { value: "yearly", label: t("home.performance.yearly") },
+    ],
+    [t],
+  );
+  const metricOptions = useMemo<PerformanceMetricOption[]>(
+    () => [
+      { value: "earnings", label: "Spend" },
+      { value: "lessons", label: "Sessions" },
+    ],
+    [],
+  );
+  const priorityJob = jobsNeedingReview[0] ?? recentJobs[0] ?? null;
+  const heroTitle =
+    jobsNeedingReview.length > 0
+      ? "Decisions are waiting"
+      : `${String(openJobs)} active jobs on the board`;
+  const heroSubtitle = priorityJob
+    ? [
+        toSportLabel(priorityJob.sport as never),
+        formatDateTime(priorityJob.startTime, locale),
+        getZoneLabel(priorityJob.zone, zoneLanguage),
+      ].join("  ·  ")
+    : "Hiring, scheduling, and payout flow stay in one lane here.";
+  const heroSecondaryLabel =
+    jobsNeedingReview.length > 0 ? "Pending applicants" : "Recently filled";
+  const heroSecondaryValue =
+    jobsNeedingReview.length > 0
+      ? `${String(pendingApplicants)} waiting`
+      : `${String(jobsFilled)} closed`;
+  const visibleRecentJobs = recentJobs.slice(0, layout.isWideWeb ? 6 : 4);
 
   return (
     <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
-      <HomeHeaderSheet
-        displayName={displayName}
-        profileImageUrl={profileImageUrl}
-        scrollY={scrollY}
-        palette={palette}
-        statsLabel={t("home.studio.stats.openLabel")}
-        statsValue={String(openJobs)}
-        extraStatsLabel={t("home.studio.stats.pendingLabel")}
-        extraStatsValue={String(pendingApplicants)}
-        sports={sports}
-        onPressAvatar={onOpenProfile}
-      />
       <TabScreenScrollView
         animatedRef={scrollRef}
         routeKey="studio/index"
         style={{ flex: 1 }}
         contentContainerStyle={{
+          paddingHorizontal: BrandSpacing.xl,
+          paddingTop: safeTop + BrandSpacing.md,
           paddingBottom: BrandSpacing.xxl,
-          gap: 0,
-          paddingTop: getHomeHeaderScrollTopPadding(safeTop),
+          gap: layout.sectionGap,
         }}
       >
-        {/* Content starts below sheet — header section removed (handled by HomeHeaderSheet) */}
-        <View className="px-6 gap-8">
-          <Animated.View entering={FadeInUp.delay(100).duration(450).springify().damping(20)}>
+        <Animated.View
+          entering={FadeInUp.duration(260)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+          }}
+        >
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
+              {jobsNeedingReview.length > 0 ? "Needs review now" : "Studio command"}
+            </Text>
+            <Text
+              style={{
+                ...BrandType.display,
+                fontSize: 42,
+                lineHeight: 44,
+                color: palette.text as string,
+              }}
+              numberOfLines={1}
+            >
+              {displayName}
+            </Text>
+            {sports && sports.length > 0 ? (
+              <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+                {sports
+                  .slice(0, 3)
+                  .map((sport) => toSportLabel(sport as never))
+                  .join("  ·  ")}
+              </Text>
+            ) : null}
+          </View>
+          <KitPressable
+            accessibilityRole="button"
+            accessibilityLabel="Open profile"
+            onPress={onOpenProfile}
+            style={{ borderRadius: BrandRadius.card }}
+          >
+            <ProfileAvatar
+              imageUrl={profileImageUrl}
+              fallbackName={displayName}
+              palette={palette}
+              size={66}
+              roundedSquare
+            />
+          </KitPressable>
+        </Animated.View>
+
+        <View
+          style={{
+            flexDirection: layout.isWideWeb ? "row" : "column",
+            alignItems: "stretch",
+            gap: layout.topRowGap,
+          }}
+        >
+          <Animated.View
+            entering={FadeInUp.delay(80).duration(300)}
+            style={{ flex: layout.heroFlex }}
+          >
+            <HomeSurface
+              palette={palette}
+              style={{
+                minHeight: layout.railMinHeight,
+                padding: layout.isWideWeb ? 28 : 22,
+                gap: 22,
+                justifyContent: "space-between",
+              }}
+            >
+              <View style={{ gap: 18 }}>
+                <View style={{ gap: 6 }}>
+                  <Text
+                    style={{
+                      ...BrandType.micro,
+                      color: palette.textMuted as string,
+                      letterSpacing: 0.8,
+                    }}
+                  >
+                    {jobsNeedingReview.length > 0 ? "REVIEW QUEUE" : "OPERATIONS"}
+                  </Text>
+                  <Text
+                    style={{
+                      ...BrandType.heading,
+                      fontSize: layout.isWideWeb ? 38 : 34,
+                      lineHeight: layout.isWideWeb ? 40 : 36,
+                      color: palette.text as string,
+                    }}
+                  >
+                    {heroTitle}
+                  </Text>
+                  <Text style={{ ...BrandType.body, color: palette.textMuted as string }}>
+                    {heroSubtitle}
+                  </Text>
+                </View>
+
+                <View style={{ gap: 8 }}>
+                  <Text style={{ ...BrandType.micro, color: palette.primary as string }}>
+                    {heroSecondaryLabel}
+                  </Text>
+                  <Text
+                    style={{
+                      ...BrandType.title,
+                      fontSize: 28,
+                      lineHeight: 30,
+                      color: palette.text as string,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {heroSecondaryValue}
+                  </Text>
+                </View>
+              </View>
+
+              <View
+                style={{
+                  flexDirection: layout.isWideWeb ? "row" : "column",
+                  alignItems: layout.isWideWeb ? "flex-end" : "stretch",
+                  gap: 16,
+                }}
+              >
+                <View style={{ flex: 1, gap: 8 }}>
+                  <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
+                    {jobsNeedingReview.length > 0
+                      ? "Review applicants first, then lock the schedule."
+                      : "Calendar stays one tap away when you need to place the next session."}
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    width: layout.actionColumnWidth ?? "100%",
+                    gap: 8,
+                  }}
+                >
+                  <KitButton label="Open Jobs" onPress={onOpenJobs} size="sm" fullWidth />
+                  <KitButton
+                    label="Calendar"
+                    onPress={onOpenCalendar}
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                    style={{ backgroundColor: palette.appBg as string }}
+                  />
+                </View>
+              </View>
+            </HomeSurface>
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInUp.delay(120).duration(320)}
+            style={{ flex: layout.chartFlex }}
+          >
             <PerformanceHeroCard
               palette={palette}
               timeframe={timeframe}
               metricMode={metricMode}
               timeframeLabel={timeframeLabel}
               totalLabel={summaryValue}
-              metricLabel={t(`home.performance.${metricMode}`)}
+              metricOptions={metricOptions}
+              timeframeOptions={timeframeOptions}
               seriesByTimeframe={timeframeSeries}
-              onToggleMetric={() =>
-                setMetricMode((prev) => (prev === "earnings" ? "lessons" : "earnings"))
-              }
+              onSelectMetric={setMetricMode}
+              onSelectTimeframe={setTimeframe}
               onSwipeTimeframe={(direction) => {
                 setTimeframe((prev) => getAdjacentTimeframe(prev, direction));
               }}
             />
           </Animated.View>
+        </View>
 
-          {/* 3. Layered Metric Tiles */}
-          <Animated.View entering={FadeInUp.delay(150).duration(450)} className="gap-3">
-            <View className="flex-row gap-4">
-              <MetricTile
-                label={t("home.studio.stats.openLabel")}
-                value={openJobs}
-                palette={palette}
-                href="/studio/jobs"
-                onPress={onOpenJobs}
-                accentIcon="briefcase.fill"
-                accentColor={palette.primary as string}
-              />
-              <MetricTile
-                label={t("home.studio.stats.pendingLabel")}
-                value={pendingApplicants}
-                palette={palette}
-                href="/studio/calendar"
-                onPress={onOpenCalendar}
-                accentIcon="person.3.sequence.fill"
-                accentColor={palette.warning as string}
-              />
-            </View>
-          </Animated.View>
-
-          {/* 4. Attention Required Stack */}
-          {jobsNeedingReview.length > 0 && (
-            <Animated.View entering={FadeInUp.delay(200).duration(450)} className="gap-5 pt-4">
-              <View className="flex-row items-center justify-between">
-                <Text className="font-heading text-3xl" style={{ color: palette.text as string }}>
-                  {t("jobsTab.studioApplicationsTitle")}
-                </Text>
-                <AppSymbol
-                  name="exclamationmark.circle.fill"
-                  size={24}
-                  tintColor={palette.warning as string}
-                />
-              </View>
-              <View className="gap-6">
+        <View
+          style={{
+            flexDirection: layout.isWideWeb && jobsNeedingReview.length > 0 ? "row" : "column",
+            alignItems: "stretch",
+            gap: layout.sectionGap,
+          }}
+        >
+          {jobsNeedingReview.length > 0 ? (
+            <Animated.View
+              entering={FadeInUp.delay(180).duration(320)}
+              style={{ flex: layout.isWideWeb ? 1.08 : undefined, gap: 12 }}
+            >
+              <HomeSectionHeading title="Needs review" eyebrow="QUEUE" palette={palette} />
+              <View style={{ gap: 10 }}>
                 {jobsNeedingReview.map((job, index) => (
                   <Animated.View
-                    key={`review-${job.jobId}`}
-                    entering={FadeInUp.delay(250 + index * 50)
-                      .duration(400)
+                    key={job.jobId}
+                    entering={FadeInUp.delay(220 + index * 35)
+                      .duration(260)
                       .springify()
                       .damping(18)}
                   >
@@ -280,237 +374,113 @@ export function StudioHomeContent({
                       accessibilityRole="button"
                       accessibilityLabel={t("home.actions.jobsTitle")}
                       onPress={onOpenJobs}
-                      className="active:opacity-80 rounded-[32px] p-6 border-l-8"
-                      style={[
-                        {
-                          backgroundColor: palette.surface as string,
-                          borderCurve: "continuous",
-                          borderLeftColor: palette.primary as string,
-                          borderColor: palette.border as string,
-                        },
-                      ]}
                     >
-                      <View className="mb-4">
-                        <Text
-                          className="font-heading text-4xl mb-1"
-                          style={{ color: palette.text as string }}
-                        >
-                          {toSportLabel(job.sport as never)}
-                        </Text>
-                      </View>
-
-                      <View className="mb-5 flex-row flex-wrap gap-3">
+                      <HomeSurface palette={palette} style={{ padding: 16 }}>
                         <View
-                          className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5"
                           style={{
-                            backgroundColor: palette.surfaceAlt as string,
+                            flexDirection: "row",
+                            alignItems: "flex-start",
+                            justifyContent: "space-between",
+                            gap: 12,
                           }}
                         >
-                          <AppSymbol name="calendar" size={12} tintColor={palette.text as string} />
+                          <View style={{ flex: 1, gap: 3 }}>
+                            <Text style={{ ...BrandType.title, color: palette.text as string }}>
+                              {toSportLabel(job.sport as never)}
+                            </Text>
+                            <Text
+                              style={{ ...BrandType.caption, color: palette.textMuted as string }}
+                            >
+                              {[
+                                formatDateTime(job.startTime, locale),
+                                getZoneLabel(job.zone, zoneLanguage),
+                              ].join("  ·  ")}
+                            </Text>
+                          </View>
                           <Text
-                            className="font-title text-sm"
-                            style={{ color: palette.text as string }}
-                          >
-                            {new Date(job.startTime).toLocaleDateString(locale)}
-                          </Text>
-                        </View>
-                        <View
-                          className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5"
-                          style={{
-                            backgroundColor: palette.surfaceAlt as string,
-                          }}
-                        >
-                          <AppSymbol
-                            name="mappin.and.ellipse"
-                            size={12}
-                            tintColor={palette.text as string}
-                          />
-                          <Text
-                            className="font-title text-sm"
-                            style={{ color: palette.text as string }}
-                          >
-                            {getZoneLabel(job.zone, zoneLanguage)}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View
-                        className="flex-row items-end justify-between border-t border-dashed pt-5"
-                        style={{ borderColor: palette.primarySubtle as string }}
-                      >
-                        <View className="flex-row items-center gap-3">
-                          <AppSymbol
-                            name="person.3.sequence.fill"
-                            size={28}
-                            tintColor={palette.primary as string}
-                          />
-                          <Text
-                            className="font-heading text-5xl"
                             style={{
+                              ...BrandType.heading,
+                              fontSize: 28,
+                              lineHeight: 28,
                               color: palette.primary as string,
                               fontVariant: ["tabular-nums"],
                             }}
                           >
-                            {job.pendingApplicationsCount}
+                            {String(job.pendingApplicationsCount)}
                           </Text>
                         </View>
-                        <View
-                          className="rounded-2xl px-4 py-2"
-                          style={{
-                            backgroundColor: palette.primarySubtle as string,
-                            borderCurve: "continuous",
-                          }}
-                        >
-                          <Text
-                            className="font-title text-sm"
-                            style={{ color: palette.primary as string }}
-                          >
-                            {t("home.studio.stats.pendingLabel")}
-                          </Text>
-                        </View>
-                      </View>
+                      </HomeSurface>
                     </KitPressable>
                   </Animated.View>
                 ))}
               </View>
             </Animated.View>
-          )}
+          ) : null}
 
-          {/* 5. Bold Recent Jobs List */}
           <Animated.View
-            entering={FadeInUp.delay(jobsNeedingReview.length > 0 ? 300 : 200).duration(450)}
-            className="gap-5 pb-10 pt-4"
+            entering={FadeInUp.delay(jobsNeedingReview.length > 0 ? 220 : 180).duration(320)}
+            style={{
+              flex: layout.isWideWeb && jobsNeedingReview.length > 0 ? 0.92 : undefined,
+              gap: 12,
+            }}
           >
-            <View className="flex-row items-center justify-between">
-              <Text className="font-heading text-3xl" style={{ color: palette.text as string }}>
-                {t("home.studio.recentTitle")}
-              </Text>
-              {recentJobs.length > 0 && (
-                <AppSymbol
-                  name="bag.badge.plus"
-                  size={24}
-                  tintColor={palette.textMuted as string}
-                />
-              )}
-            </View>
-
+            <HomeSectionHeading
+              title={t("home.studio.recentTitle")}
+              eyebrow="LIVE BOARD"
+              palette={palette}
+            />
             {recentJobs.length === 0 ? (
-              <View
-                className="items-center gap-4 rounded-[32px] p-10 border-2 border-dashed"
-                style={{
-                  backgroundColor: palette.surface as string,
-                  borderColor: palette.border as string,
-                  borderCurve: "continuous",
-                }}
-              >
-                <View
-                  className="h-20 w-20 items-center justify-center rounded-full"
-                  style={{ backgroundColor: palette.surfaceAlt as string }}
-                >
-                  <AppSymbol
-                    name="bag.badge.plus"
-                    size={36}
-                    tintColor={palette.textMuted as string}
-                  />
-                </View>
-                <Text
-                  className="font-title text-xl text-center"
-                  style={{ color: palette.text as string }}
-                >
+              <HomeSurface palette={palette} style={{ padding: 18, gap: 6 }}>
+                <Text style={{ ...BrandType.title, color: palette.text as string }}>
                   {t("home.studio.noRecent")}
                 </Text>
-              </View>
+                <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+                  Post a shift and start filling your upcoming schedule.
+                </Text>
+              </HomeSurface>
             ) : (
-              <View className="gap-6">
-                {recentJobs.slice(0, 3).map((job, index) => (
+              <View style={{ gap: 10 }}>
+                {visibleRecentJobs.map((job, index) => (
                   <Animated.View
                     key={job.jobId}
-                    entering={FadeInUp.delay((jobsNeedingReview.length ? 350 : 250) + index * 50)
-                      .duration(400)
+                    entering={FadeInUp.delay(260 + index * 35)
+                      .duration(260)
                       .springify()
                       .damping(18)}
                   >
-                    <View
-                      className="rounded-[32px] p-6 border border-b-4"
-                      style={{
-                        backgroundColor: palette.surfaceElevated as string,
-                        borderColor: palette.border as string,
-                        borderCurve: "continuous",
-                      }}
-                    >
-                      <View className="mb-4">
-                        <Text
-                          className="font-heading text-4xl mb-1"
-                          style={{ color: palette.text as string }}
-                        >
-                          {toSportLabel(job.sport as never)}
-                        </Text>
-                      </View>
-
-                      <View className="mb-5 flex-row flex-wrap gap-3">
-                        <View
-                          className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5"
-                          style={{
-                            backgroundColor: palette.surfaceAlt as string,
-                          }}
-                        >
-                          <AppSymbol name="calendar" size={12} tintColor={palette.text as string} />
-                          <Text
-                            className="font-title text-sm"
-                            style={{ color: palette.text as string }}
-                          >
-                            {new Date(job.startTime).toLocaleDateString(locale)}
-                          </Text>
-                        </View>
-                        <View
-                          className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5"
-                          style={{
-                            backgroundColor: palette.surfaceAlt as string,
-                          }}
-                        >
-                          <AppSymbol
-                            name="mappin.and.ellipse"
-                            size={12}
-                            tintColor={palette.text as string}
-                          />
-                          <Text
-                            className="font-title text-sm"
-                            style={{ color: palette.text as string }}
-                          >
-                            {getZoneLabel(job.zone, zoneLanguage)}
-                          </Text>
-                        </View>
-                      </View>
-
+                    <HomeSurface palette={palette} style={{ padding: 16, gap: 4 }}>
                       <View
-                        className="flex-row items-end justify-between border-t border-dashed pt-5"
-                        style={{ borderColor: palette.borderStrong as string }}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "flex-start",
+                          justifyContent: "space-between",
+                          gap: 12,
+                        }}
                       >
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <Text style={{ ...BrandType.title, color: palette.text as string }}>
+                            {toSportLabel(job.sport as never)}
+                          </Text>
+                          <Text
+                            style={{ ...BrandType.caption, color: palette.textMuted as string }}
+                          >
+                            {[
+                              formatDateTime(job.startTime, locale),
+                              getZoneLabel(job.zone, zoneLanguage),
+                            ].join("  ·  ")}
+                          </Text>
+                        </View>
                         <Text
-                          className="font-heading text-5xl"
                           style={{
+                            ...BrandType.title,
                             color: palette.text as string,
                             fontVariant: ["tabular-nums"],
                           }}
                         >
                           {currencyFormatter.format(job.pay)}
                         </Text>
-                        <View
-                          className="rounded-2xl px-4 py-2"
-                          style={{
-                            backgroundColor: palette.surfaceAlt as string,
-                            borderCurve: "continuous",
-                          }}
-                        >
-                          <Text
-                            className="font-title text-sm"
-                            style={{ color: palette.text as string }}
-                          >
-                            {t(`jobsTab.status.job.${job.status}`)}
-                          </Text>
-                        </View>
                       </View>
-                    </View>
+                    </HomeSurface>
                   </Animated.View>
                 ))}
               </View>

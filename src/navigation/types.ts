@@ -1,4 +1,4 @@
-import type MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import type { AndroidSymbol } from "expo-symbols";
 
 import type { RoleTabRouteName } from "./role-routes";
 
@@ -19,7 +19,7 @@ export type TabSpec = {
   id: SharedTabId;
   titleKey: string;
   icon: {
-    md: keyof typeof MaterialIcons.glyphMap;
+    md: AndroidSymbol;
     sfDefault: string;
     sfSelected: string;
   };

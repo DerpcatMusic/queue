@@ -23,16 +23,15 @@ export function NativeSearchField({
   return (
     <View
       style={{
-        minHeight: 46,
-        borderWidth: 1,
+        minHeight: 50,
+        borderWidth: 0,
         borderRadius: BrandRadius.input,
         borderCurve: "continuous",
-        borderColor: palette.border,
-        backgroundColor: palette.surfaceElevated,
-        paddingHorizontal: 12,
+        backgroundColor: palette.surfaceAlt,
+        paddingHorizontal: 14,
         flexDirection: "row",
         alignItems: "center",
-        gap: 8,
+        gap: 10,
       }}
     >
       <MaterialIcons name="search" size={19} color={palette.textMuted as string} />
@@ -51,9 +50,10 @@ export function NativeSearchField({
         style={[
           {
             flex: 1,
-            minHeight: 42,
+            minHeight: 46,
             color: palette.text,
             fontSize: 16,
+            fontWeight: "500",
             includeFontPadding: false,
           },
           style,

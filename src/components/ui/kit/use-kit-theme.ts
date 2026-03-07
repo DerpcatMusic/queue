@@ -47,6 +47,7 @@ export type KitThemeTokens = {
     surface: ColorValue;
     surfaceSecondary: ColorValue;
     surfaceElevated: ColorValue;
+    panel: ColorValue;
     glass: ColorValue;
     primary: ColorValue;
     primarySubtle: ColorValue;
@@ -90,24 +91,25 @@ export function useKitTheme() {
     const isCustomStyle = stylePreference === "custom";
     const glassBackground = resolveAlphaColor(
       palette.surface as unknown,
-      isCustomStyle ? 0.9 : 0.84,
+      isCustomStyle ? 0.94 : 0.88,
       palette.surfaceElevated as unknown,
     );
-    const highlightBorder = resolveAlphaColor(
-      palette.onPrimary as unknown,
-      scheme === "dark" ? 0.24 : 0.36,
-      palette.border as unknown,
+    const panelBackground = resolveAlphaColor(
+      palette.surfaceAlt as unknown,
+      scheme === "dark" ? 0.94 : 0.82,
+      palette.surface as unknown,
     );
+    const highlightBorder = TRANSPARENT;
     const primaryLiftShadow = "none";
     const surfaceShadow = "none";
     const switchTrackOff = resolveAlphaColor(
       palette.borderStrong as unknown,
-      0.5,
+      0.24,
       palette.border as unknown,
     );
     const switchTrackOn = resolveAlphaColor(
       palette.primary as unknown,
-      0.56,
+      0.74,
       palette.primarySubtle as unknown,
     );
 
@@ -128,6 +130,7 @@ export function useKitTheme() {
         surface: palette.surface,
         surfaceSecondary: palette.surfaceAlt,
         surfaceElevated: palette.surfaceElevated,
+        panel: panelBackground,
         glass: glassBackground,
         primary: palette.primary,
         primarySubtle: palette.primarySubtle,
@@ -142,8 +145,8 @@ export function useKitTheme() {
         danger: palette.danger,
       },
       border: {
-        primary: palette.border,
-        secondary: palette.borderStrong,
+        primary: TRANSPARENT,
+        secondary: TRANSPARENT,
         highlight: highlightBorder,
         transparent: TRANSPARENT,
       },

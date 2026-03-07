@@ -28,7 +28,7 @@ function getButtonColors(
   if (variant === "primary") {
     return {
       backgroundColor: color.primary,
-      borderColor: color.primaryPressed,
+      borderColor: "transparent",
       textColor: foreground.primary,
       iconColor: foreground.primary,
       highlight: border.highlight,
@@ -38,17 +38,17 @@ function getButtonColors(
   if (variant === "danger") {
     return {
       backgroundColor: color.danger,
-      borderColor: color.danger,
+      borderColor: "transparent",
       textColor: foreground.primary,
       iconColor: foreground.primary,
       highlight: border.highlight,
-      shadow: shadow.surface,
+      shadow: "none",
     };
   }
   if (variant === "secondary") {
     return {
-      backgroundColor: background.glass,
-      borderColor: border.secondary,
+      backgroundColor: background.panel,
+      borderColor: "transparent",
       textColor: foreground.secondary,
       iconColor: color.primary,
       highlight: border.primary,
@@ -57,7 +57,7 @@ function getButtonColors(
   }
   return {
     backgroundColor: background.transparent,
-    borderColor: border.secondary,
+    borderColor: "transparent",
     textColor: color.primary,
     iconColor: color.primary,
     highlight: border.transparent,
@@ -66,12 +66,12 @@ function getButtonColors(
 
 function getButtonSize(size: NonNullable<KitButtonProps["size"]>) {
   if (size === "sm") {
-    return { minHeight: 44, horizontal: 14, fontSize: 14 };
+    return { minHeight: 42, horizontal: 14, fontSize: 13 };
   }
   if (size === "lg") {
-    return { minHeight: 58, horizontal: 18, fontSize: 17 };
+    return { minHeight: 56, horizontal: 20, fontSize: 16 };
   }
-  return { minHeight: 52, horizontal: 16, fontSize: 15 };
+  return { minHeight: 48, horizontal: 18, fontSize: 14 };
 }
 
 export function KitButton({
@@ -106,7 +106,7 @@ export function KitButton({
       style={[
         {
           minHeight: sizing.minHeight,
-          borderWidth: variant === "ghost" ? 1 : 1.2,
+          borderWidth: 0,
           borderRadius: BrandRadius.button,
           borderCurve: "continuous",
           borderColor: colors.borderColor,
@@ -124,23 +124,7 @@ export function KitButton({
         style,
       ]}
     >
-      {variant !== "ghost" ? (
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 1,
-            right: 1,
-            height: "48%",
-            borderTopLeftRadius: BrandRadius.button,
-            borderTopRightRadius: BrandRadius.button,
-            borderTopWidth: 1,
-            borderColor: colors.highlight,
-            opacity: 0.8,
-          }}
-        />
-      ) : null}
+      {/* Removed the fake 3D highlight View for a flatter editorial aesthetic */}
       {loading ? (
         <ActivityIndicator color={colors.iconColor} />
       ) : icon ? (
@@ -153,7 +137,8 @@ export function KitButton({
           ...BrandType.bodyStrong,
           color: colors.textColor,
           fontSize: sizing.fontSize,
-          letterSpacing: 0.22,
+          letterSpacing: 0.4,
+          textTransform: "uppercase",
           includeFontPadding: false,
         }}
       >
