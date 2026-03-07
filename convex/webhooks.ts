@@ -1,15 +1,17 @@
+import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
   httpAction,
   internalMutation,
-  mutation,
-  query,
   type MutationCtx,
+  mutation,
   type QueryCtx,
+  query,
 } from "./_generated/server";
+import { buildRapydWebhookSignature } from "./integrations/rapyd/client";
+import { buildCanonicalRapydPayload } from "./integrations/rapyd/payloads";
 import { omitUndefined } from "./lib/validation";
-import { ConvexError, v } from "convex/values";
 
 type IntegrationRoute = "payment" | "payout" | "beneficiary" | "kyc";
 
@@ -179,58 +181,6 @@ const shortenFloatsRecursively = (value: unknown): unknown => {
   return value;
 };
 
-const buildRapydSignature = async ({
-  method,
-  path,
-  salt,
-  timestamp,
-  accessKey,
-  secretKey,
-  body,
-  encoding,
-}: {
-  method: string;
-  path: string;
-  salt: string;
-  timestamp: string;
-  accessKey: string;
-  secretKey: string;
-  body: string;
-  encoding: "hex_base64" | "raw_base64";
-}): Promise<string> => {
-  const toSign = `${method.toLowerCase()}${path}${salt}${timestamp}${accessKey}${secretKey}${body}`;
-  if (encoding === "hex_base64") {
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      "raw",
-      encoder.encode(secretKey),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"],
-    );
-    const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(toSign));
-    const hex = Array.from(new Uint8Array(signature))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    return btoa(hex);
-  }
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secretKey),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(toSign));
-  const bytes = new Uint8Array(signature);
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary);
-};
-
 const normalizeConfiguredWebhookCandidates = (req: Request): string[] => {
   const requestUrl = new URL(req.url);
   const configured = (
@@ -266,53 +216,6 @@ const toTrimmedString = (value: unknown): string | undefined => {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
-};
-
-const buildCanonicalRapydPayload = (payload: unknown): Record<string, unknown> => {
-  const root = toRecord(payload) ?? {};
-  const data = toRecord(root.data);
-  const payment = toRecord(data?.payment);
-  const payout = toRecord(data?.payout);
-  const checkout = toRecord(data?.checkout);
-  const metadata = toRecord(data?.metadata);
-
-  return omitUndefined({
-    id: toTrimmedString(root.id),
-    type: toTrimmedString(root.type) ?? toTrimmedString(root.event),
-    data: data
-      ? omitUndefined({
-          id: toTrimmedString(data.id),
-          status: toTrimmedString(data.status),
-          merchant_reference_id: toTrimmedString(data.merchant_reference_id),
-          payout_method_type: toTrimmedString(data.payout_method_type),
-          default_payout_method_type: toTrimmedString(data.default_payout_method_type),
-          payment: payment
-            ? omitUndefined({
-                id: toTrimmedString(payment.id),
-                status: toTrimmedString(payment.status),
-              })
-            : undefined,
-          payout: payout
-            ? omitUndefined({
-                id: toTrimmedString(payout.id),
-                status: toTrimmedString(payout.status),
-              })
-            : undefined,
-          checkout: checkout
-            ? omitUndefined({
-                id: toTrimmedString(checkout.id),
-              })
-            : undefined,
-          metadata: metadata
-            ? omitUndefined({
-                payoutId: toTrimmedString(metadata.payoutId),
-                paymentId: toTrimmedString(metadata.paymentId),
-                merchant_reference_id: toTrimmedString(metadata.merchant_reference_id),
-              })
-            : undefined,
-        })
-      : undefined,
-  });
 };
 
 const buildCanonicalDiditPayload = (payload: unknown): Record<string, unknown> => {
@@ -506,7 +409,10 @@ export const processIntegrationEvent = internalMutation({
           processingError: "unsupported_integration_route",
           updatedAt: Date.now(),
         });
-        return { ignored: true, reason: "unsupported_integration_route" as const };
+        return {
+          ignored: true,
+          reason: "unsupported_integration_route" as const,
+        };
       }
 
       const normalized = normalizeIntegrationProcessorOutcome(outcome);
@@ -531,7 +437,8 @@ export const processIntegrationEvent = internalMutation({
         }),
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "integration_event_processing_failed";
+      const message =
+        error instanceof Error ? error.message : "integration_event_processing_failed";
       await ctx.db.patch(args.integrationEventId, {
         processingState: "failed",
         processingError: message,
@@ -564,19 +471,19 @@ export const listFailedIntegrationEvents = query({
     });
 
     return rows.map((row) => ({
-        _id: row._id,
-        provider: row.provider,
-        route: row.route,
-        providerEventId: row.providerEventId,
-        eventType: row.eventType,
-        signatureValid: row.signatureValid,
-        processingError: row.processingError,
-        sourceEventId: row.sourceEventId,
-        entityId: row.entityId,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-        processedAt: row.processedAt,
-      }));
+      _id: row._id,
+      provider: row.provider,
+      route: row.route,
+      providerEventId: row.providerEventId,
+      eventType: row.eventType,
+      signatureValid: row.signatureValid,
+      processingError: row.processingError,
+      sourceEventId: row.sourceEventId,
+      entityId: row.entityId,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      processedAt: row.processedAt,
+    }));
   },
 });
 
@@ -696,7 +603,11 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
       payment?: { id?: string; status?: string };
       checkout?: { id?: string };
       merchant_reference_id?: string;
-      metadata?: { payoutId?: string; paymentId?: string; merchant_reference_id?: string };
+      metadata?: {
+        payoutId?: string;
+        paymentId?: string;
+        merchant_reference_id?: string;
+      };
     };
   };
   const eventType =
@@ -739,11 +650,12 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
       payload.data?.metadata?.merchant_reference_id?.toString().trim() ||
       undefined
     : undefined;
-  const paymentReferenceIdFromPayload = !isPayoutEvent && !isBeneficiaryEvent
-    ? payload.data?.merchant_reference_id?.toString().trim() ||
-      payload.data?.metadata?.paymentId?.toString().trim() ||
-      undefined
-    : undefined;
+  const paymentReferenceIdFromPayload =
+    !isPayoutEvent && !isBeneficiaryEvent
+      ? payload.data?.merchant_reference_id?.toString().trim() ||
+        payload.data?.metadata?.paymentId?.toString().trim() ||
+        undefined
+      : undefined;
   const payoutMethodType = isBeneficiaryEvent
     ? payload.data?.payout_method_type?.toString().trim() ||
       payload.data?.default_payout_method_type?.toString().trim() ||
@@ -778,8 +690,7 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
   ) {
     const pathCandidates = normalizeConfiguredWebhookCandidates(req);
     for (const pathCandidate of pathCandidates) {
-      const expectedHex = await buildRapydSignature({
-        method: req.method,
+      const expectedHex = await buildRapydWebhookSignature({
         path: pathCandidate,
         salt,
         timestamp,
@@ -788,8 +699,7 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
         body: bodyText,
         encoding: "hex_base64",
       });
-      const expectedRaw = await buildRapydSignature({
-        method: req.method,
+      const expectedRaw = await buildRapydWebhookSignature({
         path: pathCandidate,
         salt,
         timestamp,
@@ -817,7 +727,12 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
     );
     if (throttleState.blocked || throttleUpdate.blocked) {
       return new Response(
-        JSON.stringify({ received: true, signatureValid, timestampValid, throttled: true }),
+        JSON.stringify({
+          received: true,
+          signatureValid,
+          timestampValid,
+          throttled: true,
+        }),
         {
           status: 401,
           headers: { "Content-Type": "application/json" },

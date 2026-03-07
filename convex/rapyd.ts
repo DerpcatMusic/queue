@@ -1,253 +1,26 @@
 "use node";
 
-import { createHmac, randomUUID } from "node:crypto";
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action } from "./_generated/server";
+import {
+  executeRapydSignedGet,
+  executeRapydSignedPost,
+  extractRapydErrorCode,
+  resolveRapydCheckoutMethodSelection,
+  resolveRapydRequestCredentials,
+} from "./integrations/rapyd/client";
+import {
+  resolveHostedPageUrl,
+  resolvePaymentsCurrency,
+  resolveRapydCountry,
+} from "./integrations/rapyd/config";
 import { omitUndefined } from "./lib/validation";
 
 const RAPYD_PROVIDER = "rapyd" as const;
 
 const toAgorot = (amount: number): number => Math.max(0, Math.round(amount * 100));
-
-const getRequiredEnv = (name: string): string => {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new ConvexError(`Missing required environment variable: ${name}`);
-  }
-  return value;
-};
-
-type RapydSignatureEncoding = "hex_base64" | "raw_base64";
-
-const resolvePreferredSignatureEncoding = (): RapydSignatureEncoding => {
-  const value = (process.env.RAPYD_SIGNATURE_ENCODING ?? "hex_base64").trim().toLowerCase();
-  return value === "raw_base64" ? "raw_base64" : "hex_base64";
-};
-
-const buildRapydSignature = ({
-  method,
-  path,
-  salt,
-  timestamp,
-  accessKey,
-  secretKey,
-  body,
-  encoding,
-}: {
-  method: string;
-  path: string;
-  salt: string;
-  timestamp: string;
-  accessKey: string;
-  secretKey: string;
-  body: string;
-  encoding: RapydSignatureEncoding;
-}): string => {
-  const toSign = `${method.toLowerCase()}${path}${salt}${timestamp}${accessKey}${secretKey}${body}`;
-  const digest = createHmac("sha256", secretKey).update(toSign);
-  if (encoding === "raw_base64") {
-    return digest.digest("base64");
-  }
-  const hexDigest = digest.digest("hex");
-  return Buffer.from(hexDigest, "utf8").toString("base64");
-};
-
-const executeRapydSignedPost = async ({
-  url,
-  path,
-  accessKey,
-  secretKey,
-  idempotency,
-  body,
-}: {
-  url: string;
-  path: string;
-  accessKey: string;
-  secretKey: string;
-  idempotency: string;
-  body: string;
-}): Promise<{
-  response: Response;
-  responseText: string;
-  signatureEncoding: RapydSignatureEncoding;
-}> => {
-  return await executeRapydSignedRequest({
-    method: "POST",
-    url,
-    path,
-    accessKey,
-    secretKey,
-    idempotency,
-    body,
-  });
-};
-
-const executeRapydSignedRequest = async ({
-  method,
-  url,
-  path,
-  accessKey,
-  secretKey,
-  idempotency,
-  body,
-}: {
-  method: "GET" | "POST";
-  url: string;
-  path: string;
-  accessKey: string;
-  secretKey: string;
-  idempotency?: string;
-  body: string;
-}): Promise<{
-  response: Response;
-  responseText: string;
-  signatureEncoding: RapydSignatureEncoding;
-}> => {
-  const preferred = resolvePreferredSignatureEncoding();
-  const fallback: RapydSignatureEncoding = preferred === "hex_base64" ? "raw_base64" : "hex_base64";
-  const encodings: RapydSignatureEncoding[] = [preferred, fallback];
-
-  let lastResponse: Response | null = null;
-  let lastText = "";
-  let lastEncoding: RapydSignatureEncoding = preferred;
-
-  for (const encoding of encodings) {
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const salt = randomUUID().replace(/-/g, "");
-    const signature = buildRapydSignature({
-      method,
-      path,
-      salt,
-      timestamp,
-      accessKey,
-      secretKey,
-      body,
-      encoding,
-    });
-
-    const response = await fetch(url, {
-      method,
-      headers: {
-        access_key: accessKey,
-        salt,
-        timestamp,
-        signature,
-        ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
-        ...(idempotency ? { idempotency } : {}),
-      },
-      ...(method === "POST" ? { body } : {}),
-    });
-    const responseText = await response.text();
-    lastResponse = response;
-    lastText = responseText;
-    lastEncoding = encoding;
-
-    if (response.status !== 401) {
-      return { response, responseText, signatureEncoding: encoding };
-    }
-  }
-
-  return {
-    response: lastResponse as Response,
-    responseText: lastText,
-    signatureEncoding: lastEncoding,
-  };
-};
-
-const executeRapydSignedGet = async ({
-  url,
-  path,
-  accessKey,
-  secretKey,
-}: {
-  url: string;
-  path: string;
-  accessKey: string;
-  secretKey: string;
-}) =>
-  executeRapydSignedRequest({
-    method: "GET",
-    url,
-    path,
-    accessKey,
-    secretKey,
-    body: "",
-  });
-
-const normalizeRapydBaseUrl = (rawValue: string): string => {
-  let parsed: URL;
-  try {
-    parsed = new URL(rawValue);
-  } catch {
-    throw new ConvexError("Rapyd base URL must be a valid absolute URL");
-  }
-  if (parsed.protocol !== "https:") {
-    throw new ConvexError("Rapyd base URL must use https");
-  }
-  if (parsed.username || parsed.password) {
-    throw new ConvexError("Rapyd base URL must not include credentials");
-  }
-  if (parsed.search || parsed.hash) {
-    throw new ConvexError("Rapyd base URL must not include query or hash");
-  }
-  // Keep only origin + optional path prefix without trailing slash.
-  const path = parsed.pathname.replace(/\/+$/, "");
-  return `${parsed.origin}${path === "/" ? "" : path}`;
-};
-
-const normalizeHostedPageUrl = (rawUrl: string, fieldName: string): string => {
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    throw new ConvexError(`${fieldName} must be a valid absolute URL`);
-  }
-
-  const protocol = parsed.protocol.toLowerCase();
-  if (protocol !== "https:" && protocol !== "http:") {
-    throw new ConvexError(`${fieldName} must use http or https`);
-  }
-
-  const host = parsed.hostname.toLowerCase();
-  const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
-  if (isLocalHost) {
-    throw new ConvexError(`${fieldName} cannot use localhost`);
-  }
-
-  return parsed.toString();
-};
-
-const extractRapydErrorCode = (responseText: string): string | undefined => {
-  try {
-    const payload = JSON.parse(responseText) as {
-      status?: { error_code?: string };
-    };
-    const errorCode = payload.status?.error_code?.trim();
-    return errorCode || undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-const resolveHostedPageUrl = ({
-  provided,
-  envName,
-  fieldName,
-}: {
-  provided: string | undefined;
-  envName: string;
-  fieldName: string;
-}): string => {
-  const raw = (provided?.trim() || process.env[envName]?.trim() || "").trim();
-  if (!raw) {
-    throw new ConvexError(
-      `${fieldName} is required. Set ${envName} in Convex env to a public https URL.`,
-    );
-  }
-  return normalizeHostedPageUrl(raw, fieldName);
-};
 
 type CheckoutContext = {
   user: {
@@ -364,7 +137,7 @@ export const createCheckoutForJob = action({
       fieldName: "cancelCheckoutUrl",
     });
 
-    const currency = (process.env.PAYMENTS_CURRENCY ?? "ILS").trim().toUpperCase();
+    const currency = resolvePaymentsCurrency();
     const markupBps = Math.min(
       5000,
       Math.max(0, Number.parseInt(process.env.QUICKFIT_PLATFORM_MARKUP_BPS ?? "1500", 10)),
@@ -377,32 +150,24 @@ export const createCheckoutForJob = action({
     const platformMarkupAmountAgorot = Math.floor((instructorBaseAmountAgorot * markupBps) / 10000);
     const studioChargeAmountAgorot = instructorBaseAmountAgorot + platformMarkupAmountAgorot;
 
-    const accessKey = getRequiredEnv("RAPYD_ACCESS_KEY");
-    const secretKey = getRequiredEnv("RAPYD_SECRET_KEY");
-    const rapydMode = (process.env.RAPYD_MODE ?? "sandbox").trim().toLowerCase();
-    const isProduction = rapydMode === "production";
-    const rapydBaseUrl = normalizeRapydBaseUrl(
-      isProduction
-        ? (process.env.RAPYD_PROD_BASE_URL ?? process.env.RAPYD_BASE_URL ?? "https://api.rapyd.net")
-        : (process.env.RAPYD_SANDBOX_BASE_URL ??
-            process.env.RAPYD_BASE_URL ??
-            "https://sandboxapi.rapyd.net"),
-    );
+    const { accessKey, secretKey, baseUrl: rapydBaseUrl } = resolveRapydRequestCredentials();
 
     const requestPath = "/v1/checkout";
-    const country = (process.env.RAPYD_COUNTRY ?? "IL").trim().toUpperCase();
-    const configuredMethods = process.env.RAPYD_PAYMENT_METHODS?.trim() ?? "";
-    const methods = configuredMethods
-      ? configuredMethods
-          .split(",")
-          .map((item: string) => item.trim())
-          .filter((item: string) => item.length > 0)
-      : [];
-    if (configuredMethods && methods.length === 0) {
-      throw new ConvexError("RAPYD_PAYMENT_METHODS is set but does not include any valid methods");
+    const country = resolveRapydCountry();
+    const configuredMethods = process.env.RAPYD_PAYMENT_METHODS;
+    const checkoutMethodSelection = await resolveRapydCheckoutMethodSelection({
+      configured: configuredMethods,
+      country,
+      currency,
+      accessKey,
+      secretKey,
+      baseUrl: rapydBaseUrl,
+    });
+    if (checkoutMethodSelection.warnings.length > 0) {
+      throw new ConvexError(checkoutMethodSelection.warnings.join(" | "));
     }
 
-    const effectiveIdempotencyKey = `${RAPYD_PROVIDER}:${user._id}:${job._id}:${randomUUID()}`;
+    const effectiveIdempotencyKey = `${RAPYD_PROVIDER}:${user._id}:${job._id}:${crypto.randomUUID()}`;
     let pendingPayment: { _id: Id<"payments"> } | null = null;
 
     try {
@@ -454,13 +219,14 @@ export const createCheckoutForJob = action({
           startTime: String(job.startTime),
         },
       };
-      if (methods.length > 0) {
-        bodyPayload.payment_method_types_include = methods;
+      if (checkoutMethodSelection.paymentMethodTypesInclude?.length) {
+        bodyPayload.payment_method_types_include =
+          checkoutMethodSelection.paymentMethodTypesInclude;
       }
 
       const requestUrl = new URL(requestPath, `${rapydBaseUrl}/`);
       const body = JSON.stringify(bodyPayload);
-      let { response, responseText, signatureEncoding } = await executeRapydSignedPost({
+      const { response, responseText, signatureEncoding } = await executeRapydSignedPost({
         url: requestUrl.toString(),
         path: requestUrl.pathname,
         accessKey,
@@ -469,41 +235,15 @@ export const createCheckoutForJob = action({
         body,
       });
 
-      if (!response.ok && methods.length > 0) {
-        const rapydErrorCode = extractRapydErrorCode(responseText);
-        const shouldRetryWithoutMethodFilter =
-          response.status === 400 &&
-          rapydErrorCode?.includes(
-            "ERROR_HOSTED_PAGE_UNRECOGNIZED_PAYMENT_METHOD_TYPES_TO_INCLUDE",
-          );
-        if (shouldRetryWithoutMethodFilter) {
-          const fallbackPayload = {
-            ...bodyPayload,
-          };
-          delete fallbackPayload.payment_method_types_include;
-          const fallbackBody = JSON.stringify(fallbackPayload);
-          const fallbackResult = await executeRapydSignedPost({
-            url: requestUrl.toString(),
-            path: requestUrl.pathname,
-            accessKey,
-            secretKey,
-            idempotency: `${effectiveIdempotencyKey}:payment-method-fallback`,
-            body: fallbackBody,
-          });
-          response = fallbackResult.response;
-          responseText = fallbackResult.responseText;
-          signatureEncoding = fallbackResult.signatureEncoding;
-        }
-      }
-
       if (!response.ok) {
         const responseSnippet = responseText.slice(0, 500);
+        const rapydErrorCode = extractRapydErrorCode(responseText);
         await ctx.runMutation(internal.payments.markPaymentError, {
           paymentId: pendingPayment._id,
-          error: `Rapyd checkout HTTP ${response.status} [${signatureEncoding}]: ${responseSnippet}`,
+          error: `Rapyd checkout HTTP ${response.status} [${signatureEncoding}]${rapydErrorCode ? ` (${rapydErrorCode})` : ""}: ${responseSnippet}`,
         });
         throw new ConvexError(
-          `Rapyd checkout failed (HTTP ${response.status}) [${signatureEncoding}]: ${responseSnippet}`,
+          `Rapyd checkout failed (HTTP ${response.status}) [${signatureEncoding}]${rapydErrorCode ? ` (${rapydErrorCode})` : ""}: ${responseSnippet}`,
         );
       }
 
@@ -532,6 +272,8 @@ export const createCheckoutForJob = action({
         providerCheckoutId: payload.data.id,
         metadata: {
           rapydProviderStatus: providerStatus,
+          rapydRequestedPaymentMethodSelectors: checkoutMethodSelection.requestedSelectors,
+          rapydResolvedPaymentMethodTypes: checkoutMethodSelection.paymentMethodTypesInclude,
         },
         ...omitUndefined({
           providerPaymentId: payload.data.payment?.id,
@@ -613,17 +355,7 @@ export const retrieveCheckoutForPayment = action({
       throw new ConvexError("Payment does not have a Rapyd checkout yet");
     }
 
-    const accessKey = getRequiredEnv("RAPYD_ACCESS_KEY");
-    const secretKey = getRequiredEnv("RAPYD_SECRET_KEY");
-    const rapydMode = (process.env.RAPYD_MODE ?? "sandbox").trim().toLowerCase();
-    const isProduction = rapydMode === "production";
-    const rapydBaseUrl = normalizeRapydBaseUrl(
-      isProduction
-        ? (process.env.RAPYD_PROD_BASE_URL ?? process.env.RAPYD_BASE_URL ?? "https://api.rapyd.net")
-        : (process.env.RAPYD_SANDBOX_BASE_URL ??
-            process.env.RAPYD_BASE_URL ??
-            "https://sandboxapi.rapyd.net"),
-    );
+    const { accessKey, secretKey, baseUrl: rapydBaseUrl } = resolveRapydRequestCredentials();
 
     const requestPath = `/v1/checkout/${payment.providerCheckoutId}`;
     const requestUrl = new URL(requestPath, `${rapydBaseUrl}/`);
@@ -726,26 +458,16 @@ export const createBeneficiaryOnboardingForInstructor = action({
       );
     }
 
-    const accessKey = getRequiredEnv("RAPYD_ACCESS_KEY");
-    const secretKey = getRequiredEnv("RAPYD_SECRET_KEY");
-    const rapydMode = (process.env.RAPYD_MODE ?? "sandbox").trim().toLowerCase();
-    const isProduction = rapydMode === "production";
-    const rapydBaseUrl = normalizeRapydBaseUrl(
-      isProduction
-        ? (process.env.RAPYD_PROD_BASE_URL ?? process.env.RAPYD_BASE_URL ?? "https://api.rapyd.net")
-        : (process.env.RAPYD_SANDBOX_BASE_URL ??
-            process.env.RAPYD_BASE_URL ??
-            "https://sandboxapi.rapyd.net"),
-    );
+    const { accessKey, secretKey, baseUrl: rapydBaseUrl } = resolveRapydRequestCredentials();
 
-    const beneficiaryCountry = (args.beneficiaryCountry ?? process.env.RAPYD_COUNTRY ?? "IL")
-      .trim()
-      .toUpperCase();
+    const beneficiaryCountry = resolveRapydCountry(
+      args.beneficiaryCountry ?? process.env.RAPYD_COUNTRY,
+    );
     const beneficiaryEntityType = args.beneficiaryEntityType ?? "individual";
     const category = (args.category ?? "bank").trim().toLowerCase();
-    const payoutCurrency = (args.payoutCurrency ?? process.env.PAYMENTS_CURRENCY ?? "ILS")
-      .trim()
-      .toUpperCase();
+    const payoutCurrency = resolvePaymentsCurrency(
+      args.payoutCurrency ?? process.env.PAYMENTS_CURRENCY,
+    );
     const completeUrl = resolveHostedPageUrl({
       provided: args.completeUrl ?? process.env.RAPYD_COMPLETE_CHECKOUT_URL,
       envName: "RAPYD_BENEFICIARY_COMPLETE_URL",
@@ -757,7 +479,7 @@ export const createBeneficiaryOnboardingForInstructor = action({
       fieldName: "cancelUrl",
     });
 
-    const merchantReferenceId = `beneficiary:${currentUser._id}:${randomUUID()}`;
+    const merchantReferenceId = `beneficiary:${currentUser._id}:${crypto.randomUUID()}`;
     const pendingSession = await ctx.runMutation(
       internal.payments.createBeneficiaryOnboardingSession,
       {
@@ -779,7 +501,7 @@ export const createBeneficiaryOnboardingForInstructor = action({
     const bodyPayload: Record<string, unknown> = {
       category,
       sender_entity_type: "company",
-      sender_country: (process.env.RAPYD_COUNTRY ?? "IL").trim().toUpperCase(),
+      sender_country: resolveRapydCountry(),
       sender_currency: payoutCurrency,
       merchant_reference_id: merchantReferenceId,
       complete_url: completeUrl,

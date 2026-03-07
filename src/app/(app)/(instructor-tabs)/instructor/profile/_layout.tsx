@@ -18,6 +18,7 @@ export default function ProfileLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="edit" options={{ title: "Edit profile", presentation: "modal" }} />
       <Stack.Screen name="sports" options={{ title: "Sports" }} />
       <Stack.Screen name="location" options={{ title: "Location" }} />
       <Stack.Screen name="calendar-settings" options={{ title: "Calendar" }} />

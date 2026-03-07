@@ -14,7 +14,7 @@ export function KitTextField({
   placeholderTextColor,
   ...inputProps
 }: KitTextFieldProps) {
-  const { foreground, background, color } = useKitTheme();
+  const { foreground, background, color, border } = useKitTheme();
   const hasError = Boolean(errorText);
   const isMultiline = Boolean(inputProps.multiline);
 
@@ -42,7 +42,9 @@ export function KitTextField({
           gap: 8,
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: hasError ? background.dangerSubtle : background.surfaceSecondary,
+          backgroundColor: hasError ? background.dangerSubtle : "transparent",
+          borderBottomWidth: 1,
+          borderBottomColor: hasError ? color.danger : border.primary,
         }}
       >
         {leading ? <View>{leading}</View> : null}

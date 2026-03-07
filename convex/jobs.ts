@@ -816,9 +816,8 @@ export const getMyApplications = query({
     const paymentDetailsByJobId = await loadLatestPaymentDetailsByJobId(ctx, {
       jobIds: applicationJobIds
         .map((jobId) => jobById.get(String(jobId)))
-        .filter(
-          (job): job is Doc<"jobs"> =>
-            Boolean(job && (job.status === "completed" || job.status === "filled")),
+        .filter((job): job is Doc<"jobs"> =>
+          Boolean(job && (job.status === "completed" || job.status === "filled")),
         )
         .map((job) => job._id),
       instructorUserId: instructor.userId,

@@ -2,6 +2,11 @@ import { ConvexError } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import {
+  getRapydEnvPresence,
+  resolvePaymentsCurrency,
+  resolveRapydMode,
+} from "./integrations/rapyd/config";
 import { requireCurrentUser, requireUserRole } from "./lib/auth";
 import { omitUndefined } from "./lib/validation";
 
@@ -22,8 +27,7 @@ const AUTOMATIC_PAYOUT_RELEASE_MODE = "automatic";
 
 type PayoutReleaseMode = typeof MANUAL_PAYOUT_RELEASE_MODE | typeof AUTOMATIC_PAYOUT_RELEASE_MODE;
 
-export const isSandboxMode = (): boolean =>
-  (process.env.RAPYD_MODE ?? "sandbox").trim().toLowerCase() !== "production";
+export const isSandboxMode = (): boolean => resolveRapydMode() !== "production";
 
 export const isSandboxDestinationSelfVerifyEnabled = (): boolean =>
   isSandboxMode() && (process.env.ALLOW_SANDBOX_DESTINATION_SELF_VERIFY ?? "0").trim() === "1";
@@ -52,10 +56,7 @@ function getUniqueIdsInOrder<T extends string>(ids: ReadonlyArray<T>) {
   return [...new Set(ids)];
 }
 
-async function loadPaymentListRelations(
-  ctx: QueryCtx,
-  payments: ReadonlyArray<Doc<"payments">>,
-) {
+async function loadPaymentListRelations(ctx: QueryCtx, payments: ReadonlyArray<Doc<"payments">>) {
   const jobIds = getUniqueIdsInOrder(payments.map((payment) => payment.jobId));
   const [jobs, payouts, invoices] = await Promise.all([
     Promise.all(jobIds.map((jobId) => ctx.db.get("jobs", jobId))),
@@ -539,42 +540,29 @@ export async function getPaymentForInvoicingRead(
 export async function getPaymentsPreflightRead(ctx: QueryCtx) {
   await requireCurrentUser(ctx);
 
-  const requiredRapyd = [
-    "RAPYD_ACCESS_KEY",
-    "RAPYD_SECRET_KEY",
-    "RAPYD_COUNTRY",
-    "RAPYD_COMPLETE_CHECKOUT_URL",
-    "RAPYD_CANCEL_CHECKOUT_URL",
-    "RAPYD_EWALLET",
-  ] as const;
-  const optionalRapydOnboarding = [
-    "RAPYD_BENEFICIARY_COMPLETE_URL",
-    "RAPYD_BENEFICIARY_CANCEL_URL",
-  ] as const;
   const requiredInvoice = ["INVOICE_PROVIDER"] as const;
 
-  const rapyd = Object.fromEntries(
-    requiredRapyd.map((name) => [name, Boolean(process.env[name]?.trim())]),
-  ) as Record<(typeof requiredRapyd)[number], boolean>;
+  const rapydStatus = getRapydEnvPresence();
   const invoice = Object.fromEntries(
     requiredInvoice.map((name) => [name, Boolean(process.env[name]?.trim())]),
   ) as Record<(typeof requiredInvoice)[number], boolean>;
-  const rapydOnboarding = Object.fromEntries(
-    optionalRapydOnboarding.map((name) => [name, Boolean(process.env[name]?.trim())]),
-  ) as Record<(typeof optionalRapydOnboarding)[number], boolean>;
 
   return {
-    mode: (process.env.RAPYD_MODE ?? "sandbox").trim().toLowerCase(),
+    mode: rapydStatus.mode,
     payoutReleaseMode: readPayoutReleaseMode(),
-    currency: (process.env.PAYMENTS_CURRENCY ?? "ILS").trim().toUpperCase(),
+    currency: resolvePaymentsCurrency(),
     webhookMaxSkewSeconds: Number.parseInt(
       (process.env.RAPYD_WEBHOOK_MAX_SKEW_SECONDS ?? "300").trim(),
       10,
     ),
-    rapyd,
-    rapydOnboarding,
+    rapyd: rapydStatus.rapyd,
+    rapydOnboarding: rapydStatus.rapydOptional,
+    effectiveBaseUrlEnvName: rapydStatus.effectiveBaseUrlEnvName,
+    hasExplicitWebhookSecret: rapydStatus.hasExplicitWebhookSecret,
+    readyForOnboarding: rapydStatus.readyForOnboarding,
+    readyForPayouts: rapydStatus.readyForPayouts,
     invoice,
-    readyForCheckout: Object.values(rapyd).every(Boolean),
+    readyForCheckout: rapydStatus.readyForCheckout,
     readyForInvoicing: Object.values(invoice).every(Boolean),
   };
 }

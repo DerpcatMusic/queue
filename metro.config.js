@@ -4,6 +4,14 @@ const { withNativeWind } = require("nativewind/metro");
 
 const config = getDefaultConfig(__dirname);
 
+const reactNavigationPackages = [
+  "@react-navigation/bottom-tabs",
+  "@react-navigation/core",
+  "@react-navigation/elements",
+  "@react-navigation/native",
+  "@react-navigation/native-stack",
+];
+
 const escapeForRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const normalizePathForRegex = (value) => value.replace(/[\\/]+/g, "[/\\\\]");
 
@@ -20,6 +28,15 @@ const blockListPatterns = blockDirs.map((dir) => {
 });
 
 config.resolver.blockList = blockListPatterns;
+config.resolver.extraNodeModules = {
+  ...(config.resolver.extraNodeModules ?? {}),
+  ...Object.fromEntries(
+    reactNavigationPackages.map((pkg) => [
+      pkg,
+      path.dirname(require.resolve(`${pkg}/package.json`)),
+    ]),
+  ),
+};
 
 config.transformer.getTransformOptions = async () => ({
   transform: {

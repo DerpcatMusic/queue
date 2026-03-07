@@ -55,7 +55,9 @@ export function CreateJobSheet({
   );
 
   const handleDateChange = (_event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
+    if (Platform.OS !== "ios") {
+      setShowDatePicker(false);
+    }
     if (selectedDate) {
       const newDate = new Date(selectedDate);
       const currentStart = new Date(draft.startTime);
@@ -73,7 +75,9 @@ export function CreateJobSheet({
   };
 
   const handleStartTimeChange = (_event: any, selectedTime?: Date) => {
-    setShowStartTimePicker(false);
+    if (Platform.OS !== "ios") {
+      setShowStartTimePicker(false);
+    }
     if (selectedTime) {
       const newStart = new Date(draft.startTime);
       newStart.setHours(selectedTime.getHours(), selectedTime.getMinutes());
@@ -90,7 +94,9 @@ export function CreateJobSheet({
   };
 
   const handleEndTimeChange = (_event: any, selectedTime?: Date) => {
-    setShowEndTimePicker(false);
+    if (Platform.OS !== "ios") {
+      setShowEndTimePicker(false);
+    }
     if (selectedTime) {
       const newEnd = new Date(draft.endTime);
       newEnd.setHours(selectedTime.getHours(), selectedTime.getMinutes());
@@ -120,9 +126,14 @@ export function CreateJobSheet({
     >
       <BottomSheetScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <ThemedText type="title" style={{ fontSize: 28 }}>
-            {t("jobsTab.form.title", "Post New Job")}
-          </ThemedText>
+          <View style={{ gap: 4 }}>
+            <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+              STUDIO COMMAND
+            </ThemedText>
+            <ThemedText type="title" style={{ fontSize: 28 }}>
+              {t("jobsTab.form.title", "Post New Job")}
+            </ThemedText>
+          </View>
           <KitPressable
             accessibilityRole="button"
             accessibilityLabel={t("common.close", { defaultValue: "Close" })}
@@ -134,6 +145,43 @@ export function CreateJobSheet({
         </View>
 
         <View style={styles.form}>
+          <View
+            style={{
+              borderRadius: 28,
+              borderCurve: "continuous",
+              backgroundColor: palette.primarySubtle as string,
+              paddingHorizontal: 16,
+              paddingVertical: 16,
+              gap: 10,
+            }}
+          >
+            <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+              SHIFT SNAPSHOT
+            </ThemedText>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {[
+                draft.sport ? toSportLabel(draft.sport as never) : "Pick sport",
+                formatDateWithWeekday(draft.startTime, locale),
+                `${formatTime(draft.startTime, locale)}-${formatTime(draft.endTime, locale)}`,
+                draft.payInput ? `₪${draft.payInput}` : "Set pay",
+              ].map((item) => (
+                <View
+                  key={item}
+                  style={{
+                    borderRadius: 999,
+                    backgroundColor: palette.surface as string,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                  }}
+                >
+                  <ThemedText type="micro" style={{ color: palette.text as string }}>
+                    {item}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          </View>
+
           {/* Sport Selection */}
           <View style={styles.section}>
             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
@@ -176,7 +224,6 @@ export function CreateJobSheet({
                   styles.pickerTrigger,
                   {
                     backgroundColor: palette.surfaceAlt as string,
-                    borderColor: palette.border as string,
                   },
                 ]}
               >
@@ -197,7 +244,6 @@ export function CreateJobSheet({
                   {
                     flex: 1,
                     backgroundColor: palette.surfaceAlt as string,
-                    borderColor: palette.border as string,
                   },
                 ]}
               >
@@ -212,7 +258,13 @@ export function CreateJobSheet({
                 </View>
               </KitPressable>
 
-              <View style={{ width: 12, alignItems: "center", justifyContent: "center" }}>
+              <View
+                style={{
+                  width: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <AppSymbol name="arrow.right" size={12} tintColor={palette.textMuted as string} />
               </View>
 
@@ -225,7 +277,6 @@ export function CreateJobSheet({
                   {
                     flex: 1,
                     backgroundColor: palette.surfaceAlt as string,
-                    borderColor: palette.border as string,
                   },
                 ]}
               >
@@ -258,7 +309,10 @@ export function CreateJobSheet({
                 label={t("jobsTab.form.maxParticipants", "Max Participants")}
                 value={String(draft.maxParticipants)}
                 onChangeText={(v) =>
-                  setDraft((d) => ({ ...d, maxParticipants: Number.parseInt(v, 10) || 12 }))
+                  setDraft((d) => ({
+                    ...d,
+                    maxParticipants: Number.parseInt(v, 10) || 12,
+                  }))
                 }
                 keyboardType="number-pad"
                 placeholder="12"
@@ -290,30 +344,60 @@ export function CreateJobSheet({
 
       {/* Native Pickers */}
       {showDatePicker && (
-        <DateTimePicker
-          value={new Date(draft.startTime)}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleDateChange}
-          minimumDate={new Date()}
-        />
+        <View style={styles.pickerDock}>
+          <DateTimePicker
+            value={new Date(draft.startTime)}
+            mode="date"
+            display={Platform.OS === "ios" ? "inline" : "default"}
+            onChange={handleDateChange}
+            minimumDate={new Date()}
+          />
+          {Platform.OS === "ios" ? (
+            <KitButton
+              label={t("common.done", { defaultValue: "Done" })}
+              onPress={() => setShowDatePicker(false)}
+              variant="secondary"
+              size="sm"
+            />
+          ) : null}
+        </View>
       )}
       {showStartTimePicker && (
-        <DateTimePicker
-          value={new Date(draft.startTime)}
-          mode="time"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleStartTimeChange}
-        />
+        <View style={styles.pickerDock}>
+          <DateTimePicker
+            value={new Date(draft.startTime)}
+            mode="time"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={handleStartTimeChange}
+          />
+          {Platform.OS === "ios" ? (
+            <KitButton
+              label={t("common.done", { defaultValue: "Done" })}
+              onPress={() => setShowStartTimePicker(false)}
+              variant="secondary"
+              size="sm"
+            />
+          ) : null}
+        </View>
       )}
       {showEndTimePicker && (
-        <DateTimePicker
-          value={new Date(draft.endTime)}
-          mode="time"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleEndTimeChange}
-          minimumDate={new Date(draft.startTime)}
-        />
+        <View style={styles.pickerDock}>
+          <DateTimePicker
+            value={new Date(draft.endTime)}
+            mode="time"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={handleEndTimeChange}
+            minimumDate={new Date(draft.startTime)}
+          />
+          {Platform.OS === "ios" ? (
+            <KitButton
+              label={t("common.done", { defaultValue: "Done" })}
+              onPress={() => setShowEndTimePicker(false)}
+              variant="secondary"
+              size="sm"
+            />
+          ) : null}
+        </View>
       )}
     </BottomSheet>
   );
@@ -354,7 +438,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    borderWidth: 1.5,
     borderCurve: "continuous",
   },
   row: {
@@ -368,7 +451,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: BrandRadius.input,
-    borderWidth: 1.2,
     borderCurve: "continuous",
   },
   pickerText: {
@@ -379,5 +461,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.6,
     marginBottom: 2,
+  },
+  pickerDock: {
+    gap: 12,
+    paddingHorizontal: BrandSpacing.lg,
+    paddingBottom: BrandSpacing.lg,
   },
 });
