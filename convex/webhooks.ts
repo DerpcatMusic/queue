@@ -542,6 +542,7 @@ export const processIntegrationEvent = internalMutation({
   },
 });
 
+<<<<<<< HEAD
 export const listFailedIntegrationEvents = query({
   args: {
     accessToken: v.optional(v.string()),
@@ -653,6 +654,8 @@ export const replayFailedIntegrationEvents = mutation({
   },
 });
 
+=======
+>>>>>>> feat/integration-events
 export const rapydWebhook = httpAction(async (ctx, req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
