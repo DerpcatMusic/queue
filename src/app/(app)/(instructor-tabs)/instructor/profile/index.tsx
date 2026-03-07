@@ -1,13 +1,13 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useIsFocused } from "@react-navigation/native";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Switch, View } from "react-native";
+import { Alert, StyleSheet, Switch, View } from "react-native";
 import type Animated from "react-native-reanimated";
 import { useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
 
@@ -22,6 +22,8 @@ import {
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
+import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
+import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import type { BrandPalette } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
@@ -30,6 +32,7 @@ import { isSportType, toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
+import { useProfileImageUpload } from "@/hooks/use-profile-image-upload";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
@@ -46,7 +49,31 @@ const INSTRUCTOR_SPORTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/sports` as const;
 const INSTRUCTOR_LOCATION_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/location` as const;
 const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
 const INSTRUCTOR_PAYMENTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
-const INSTRUCTOR_EDIT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/edit` as const;
+
+function toSocialLinksDraft(value: ProfileSocialLinks | undefined) {
+  return { ...(value ?? {}) };
+}
+
+function areStringArraysEqual(a: string[], b: string[]) {
+  if (a.length !== b.length) return false;
+  for (let index = 0; index < a.length; index += 1) {
+    if (a[index] !== b[index]) return false;
+  }
+  return true;
+}
+
+function areSocialLinksEqual(a: ProfileSocialLinks, b: ProfileSocialLinks) {
+  const keys = new Set<string>([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if (
+      (a as Record<string, string | undefined>)[key] !==
+      (b as Record<string, string | undefined>)[key]
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
 
 function getSportsSummary(sports: string[], t: TFunction) {
   if (sports.length === 0) {
@@ -85,6 +112,20 @@ export default function InstructorProfileScreen() {
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useScrollViewOffset(scrollRef);
   const [hasActivated, setHasActivated] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [bioDraft, setBioDraft] = useState("");
+  const [sportsDraft, setSportsDraft] = useState<string[]>([]);
+  const [socialLinksDraft, setSocialLinksDraft] = useState<ProfileSocialLinks>({});
+  const [feedbackLabel, setFeedbackLabel] = useState<string | null>(null);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null | undefined>(undefined);
+  const {
+    isUploading: isUploadingProfilePhoto,
+    uploadStatusLabel: profilePhotoUploadLabel,
+    pickAndUploadProfileImage,
+  } = useProfileImageUpload();
+  const saveProfileCard = useMutation(api.users.updateMyInstructorProfileCard);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
     if (isFocused) {
@@ -94,9 +135,9 @@ export default function InstructorProfileScreen() {
 
   useEffect(() => {
     if (edit === "1") {
-      router.replace(INSTRUCTOR_EDIT_ROUTE as Href);
+      setIsEditing(true);
     }
-  }, [edit, router]);
+  }, [edit]);
   const emptyArgs = useMemo(() => ({}), []);
   const shouldLoadSettings = currentUser?.role === "instructor" && hasActivated;
 
@@ -113,9 +154,37 @@ export default function InstructorProfileScreen() {
     shouldLoadSettings ? emptyArgs : "skip",
   );
 
+  useEffect(() => {
+    if (!instructorSettings) {
+      return;
+    }
+    if (isEditing) {
+      return;
+    }
+    const nextSocialLinks = toSocialLinksDraft(instructorSettings.socialLinks);
+    const nextProfilePhotoUrl = instructorSettings.profileImageUrl ?? currentUser?.image;
+    setNameDraft((current) =>
+      current === instructorSettings.displayName ? current : instructorSettings.displayName,
+    );
+    setBioDraft((current) =>
+      current === (instructorSettings.bio ?? "") ? current : (instructorSettings.bio ?? ""),
+    );
+    setSportsDraft((current) =>
+      areStringArraysEqual(current, instructorSettings.sports)
+        ? current
+        : instructorSettings.sports,
+    );
+    setSocialLinksDraft((current) =>
+      areSocialLinksEqual(current, nextSocialLinks) ? current : nextSocialLinks,
+    );
+    setProfilePhotoUrl((current) =>
+      current === nextProfilePhotoUrl ? current : nextProfilePhotoUrl,
+    );
+  }, [currentUser?.image, instructorSettings, isEditing]);
+
   const handleRequestEdit = useCallback(() => {
-    router.push(INSTRUCTOR_EDIT_ROUTE as Href);
-  }, [router]);
+    setIsEditing(true);
+  }, []);
 
   if (!hasActivated || (currentUser?.role === "instructor" && instructorSettings === undefined)) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
@@ -139,6 +208,14 @@ export default function InstructorProfileScreen() {
   const identityStatus = diditVerification?.status ?? "not_started";
   const identityVerified = diditVerification?.isVerified ?? false;
   const bankConnected = payoutSummary?.hasVerifiedDestination ?? false;
+  const profileStatusLabel = profilePhotoUploadLabel ?? feedbackLabel;
+  const hasUnsavedProfileChanges = Boolean(
+    instructorSettings &&
+      (nameDraft !== instructorSettings.displayName ||
+        bioDraft !== (instructorSettings.bio ?? "") ||
+        !areStringArraysEqual(sportsDraft, instructorSettings.sports) ||
+        !areSocialLinksEqual(socialLinksDraft, toSocialLinksDraft(instructorSettings.socialLinks))),
+  );
   const sportsSummary = getSportsSummary(instructorSettings?.sports ?? [], t);
   const locationSummary = instructorSettings?.address
     ? instructorSettings.address.length > 35
@@ -153,6 +230,76 @@ export default function InstructorProfileScreen() {
         ? "Google"
         : "Apple";
   const socialCount = Object.keys(instructorSettings?.socialLinks ?? {}).length;
+  const chevron = <IconSymbol name="chevron.right" size={14} color={palette.textMicro} />;
+
+  const onToggleSport = (sport: string) => {
+    setFeedbackLabel(null);
+    setSportsDraft((current) =>
+      current.includes(sport) ? current.filter((entry) => entry !== sport) : [...current, sport],
+    );
+  };
+
+  const onSocialLinkChange = (key: keyof ProfileSocialLinks, value: string) => {
+    setFeedbackLabel(null);
+    setSocialLinksDraft((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
+  const handleDismissEdit = useCallback(() => {
+    if (!hasUnsavedProfileChanges) {
+      setIsEditing(false);
+      return;
+    }
+    Alert.alert(
+      t("profile.settings.discardChangesTitle", { defaultValue: "Discard changes?" }),
+      t("profile.settings.discardChangesBody", {
+        defaultValue: "Your profile edits haven't been saved.",
+      }),
+      [
+        { text: t("common.cancel", { defaultValue: "Cancel" }), style: "cancel" },
+        {
+          text: t("profile.settings.discardChangesAction", { defaultValue: "Discard" }),
+          style: "destructive",
+          onPress: () => setIsEditing(false),
+        },
+      ],
+    );
+  }, [hasUnsavedProfileChanges, t]);
+
+  const uploadProfilePhoto = async () => {
+    setFeedbackLabel(null);
+    try {
+      const uploadedUrl = await pickAndUploadProfileImage();
+      if (uploadedUrl === undefined) {
+        return;
+      }
+      setProfilePhotoUrl(uploadedUrl);
+      setFeedbackLabel("Profile photo updated.");
+    } catch (error) {
+      setFeedbackLabel(error instanceof Error ? error.message : "Failed to update profile photo.");
+    }
+  };
+
+  const saveProfile = async () => {
+    setFeedbackLabel(null);
+    setIsSavingProfile(true);
+    try {
+      await saveProfileCard({
+        displayName: nameDraft.trim() || nameValue,
+        bio: bioDraft.trim(),
+        socialLinks: socialLinksDraft,
+        sports: sportsDraft,
+      });
+      setFeedbackLabel("Profile updated.");
+      setIsEditing(false);
+    } catch (error) {
+      setFeedbackLabel(error instanceof Error ? error.message : "Failed to save profile.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   return (
     <View collapsable={false} style={[styles.screen, { backgroundColor: palette.appBg }]}>
@@ -169,30 +316,36 @@ export default function InstructorProfileScreen() {
         <ProfileCardGroup palette={palette}>
           <ProfileSettingRow
             title="Public profile"
-            subtitle={
-              socialCount > 0 ? `${sportsSummary}. ${String(socialCount)} links` : sportsSummary
-            }
-            onPress={handleRequestEdit}
+            subtitle={`${sportsSummary}${socialCount > 0 ? ` * ${String(socialCount)} links` : ""}`}
+            onPress={() => setIsEditing(true)}
             palette={palette}
+            accessory={chevron}
           />
           <ProfileSettingRow
             title="Identity"
             subtitle={identityVerified ? "Verified and ready" : "Manage your Didit verification"}
             onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
             palette={palette}
-            accessory={<IdentityStatusBadge status={identityStatus} palette={palette} />}
+            accessory={
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <IdentityStatusBadge status={identityStatus} palette={palette} />
+                {chevron}
+              </View>
+            }
           />
           <ProfileSettingRow
             title={t("profile.settings.sports.title")}
-            subtitle={sportsSummary}
+            subtitle={`${sportsSummary} * ${t("common.edit")}`}
             onPress={() => router.push(INSTRUCTOR_SPORTS_ROUTE as Href)}
             palette={palette}
+            accessory={chevron}
           />
           <ProfileSettingRow
             title={t("profile.settings.location.title")}
             subtitle={locationSummary}
             onPress={() => router.push(INSTRUCTOR_LOCATION_ROUTE as Href)}
             palette={palette}
+            accessory={chevron}
           />
           <ProfileSettingRow
             title={t("profile.settings.calendar.title")}
@@ -200,6 +353,7 @@ export default function InstructorProfileScreen() {
             onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
             palette={palette}
             isLast
+            accessory={chevron}
           />
         </ProfileCardGroup>
 
@@ -238,6 +392,7 @@ export default function InstructorProfileScreen() {
             subtitle={language === "en" ? t("language.english") : t("language.hebrew")}
             onPress={() => void setLanguage(language === "en" ? "he" : "en")}
             palette={palette}
+            accessory={chevron}
           />
           <ProfileSettingRow
             title={t("profile.appearance.systemTheme.title")}
@@ -280,19 +435,30 @@ export default function InstructorProfileScreen() {
             palette={palette}
             isLast
             accessory={
-              <View
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  backgroundColor: bankConnected
-                    ? (palette.success as string)
-                    : (palette.warning as string),
-                }}
-              />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    backgroundColor: bankConnected
+                      ? (palette.success as string)
+                      : (palette.warning as string),
+                  }}
+                />
+                {chevron}
+              </View>
             }
           />
         </ProfileCardGroup>
+
+        {profileStatusLabel ? (
+          <View style={{ paddingHorizontal: 24, paddingTop: 12 }}>
+            <ThemedText style={{ color: palette.textMuted, fontSize: 13 }}>
+              {profileStatusLabel}
+            </ThemedText>
+          </View>
+        ) : null}
 
         <View style={{ marginTop: 32, marginBottom: 40 }}>
           <ProfileCardGroup palette={palette}>
@@ -308,15 +474,37 @@ export default function InstructorProfileScreen() {
       </TabScreenScrollView>
 
       <ProfileHeroSheet
-        profileName={nameValue}
+        profileName={nameDraft || nameValue}
         roleLabel={identityVerified ? "Verified instructor" : "Instructor profile"}
-        profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+        profileImageUrl={profilePhotoUrl}
         palette={palette}
         scrollY={scrollY}
+        isEditing={isEditing}
         onRequestEdit={handleRequestEdit}
-        bio={instructorSettings?.bio}
-        socialLinks={instructorSettings?.socialLinks}
-        sports={instructorSettings?.sports ?? []}
+        onDismissEdit={handleDismissEdit}
+        onSave={() => {
+          void saveProfile();
+        }}
+        isSaving={isSavingProfile}
+        statusLabel={profileStatusLabel}
+        bioDraft={bioDraft}
+        onBioDraftChange={(value) => {
+          setFeedbackLabel(null);
+          setBioDraft(value);
+        }}
+        nameDraft={nameDraft}
+        onNameDraftChange={(value) => {
+          setFeedbackLabel(null);
+          setNameDraft(value);
+        }}
+        socialLinksDraft={socialLinksDraft}
+        onSocialLinkChange={onSocialLinkChange}
+        sportsDraft={sportsDraft}
+        onToggleSport={onToggleSport}
+        onChangePhoto={() => {
+          void uploadProfilePhoto();
+        }}
+        isChangingPhoto={isUploadingProfilePhoto}
       />
     </View>
   );
