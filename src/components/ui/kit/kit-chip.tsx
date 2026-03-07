@@ -1,6 +1,6 @@
 import { Text } from "react-native";
 
-import { BrandRadius } from "@/constants/brand";
+import { BrandRadius, BrandType } from "@/constants/brand";
 import { KitPressable } from "./kit-pressable";
 import type { KitChipProps } from "./types";
 import { useKitTheme } from "./use-kit-theme";
@@ -12,7 +12,7 @@ export function KitChip({
   onPress,
   style,
 }: KitChipProps) {
-  const { color, foreground, background, border, shadow, isCustomStyle } = useKitTheme();
+  const { color, foreground, background, isCustomStyle } = useKitTheme();
 
   return (
     <KitPressable
@@ -25,27 +25,26 @@ export function KitChip({
       pressStyle={disabled ? undefined : { transform: [{ scale: 0.985 }] }}
       style={[
         {
-          minHeight: 44,
-          borderWidth: 1,
+          minHeight: 40,
+          borderWidth: 0,
           borderRadius: BrandRadius.pill,
           borderCurve: "continuous",
           alignItems: "center",
           justifyContent: "center",
-          paddingHorizontal: 12,
+          paddingHorizontal: 14,
           paddingVertical: 8,
-          borderColor: selected ? color.primary : border.secondary,
-          backgroundColor: selected ? background.primarySubtle : background.glass,
+          backgroundColor: selected ? color.primary : background.panel,
           opacity: disabled ? 0.55 : 1,
-          boxShadow: selected ? shadow.surface : undefined,
         },
         style,
       ]}
     >
       <Text
         style={{
-          color: selected ? color.primary : foreground.secondary,
-          fontWeight: "700",
-          fontSize: 13,
+          ...BrandType.micro,
+          color: selected ? foreground.primary : foreground.secondary,
+          letterSpacing: 0.7,
+          textTransform: "uppercase",
           includeFontPadding: false,
         }}
       >

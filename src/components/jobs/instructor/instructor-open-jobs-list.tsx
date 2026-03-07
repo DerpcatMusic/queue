@@ -1,11 +1,9 @@
 import type { TFunction } from "i18next";
-import { View } from "react-native";
+import { Platform, Text, useWindowDimensions, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { ThemedText } from "@/components/themed-text";
-import { AppSymbol } from "@/components/ui/app-symbol";
-import { KitPressable, KitSurface } from "@/components/ui/kit";
+import { KitButton, KitSurface } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -38,46 +36,99 @@ type InstructorOpenJobsListProps = {
   t: TFunction;
 };
 
-function JobStatusBadge({
-  status,
-  palette,
-  t,
+const WIDE_WEB_BREAKPOINT = 1180;
+
+const STATUS_DOT: Record<
+  NonNullable<OpenJob["applicationStatus"]>,
+  { color: keyof BrandPalette; background: keyof BrandPalette }
+> = {
+  pending: { color: "warning", background: "warningSubtle" },
+  accepted: { color: "success", background: "successSubtle" },
+  rejected: { color: "danger", background: "dangerSubtle" },
+  withdrawn: { color: "textMuted", background: "surface" },
+};
+
+function StatusPill({
+  backgroundColor,
+  color,
+  label,
 }: {
-  status: OpenJob["applicationStatus"];
-  palette: BrandPalette;
-  t: TFunction;
+  backgroundColor: string;
+  color: string;
+  label: string;
 }) {
-  if (!status) return null;
-
-  const token =
-    status === "accepted"
-      ? {
-          fg: palette.success as import("react-native").ColorValue,
-          bg: palette.successSubtle,
-          border: palette.success as import("react-native").ColorValue,
-        }
-      : status === "rejected"
-        ? { fg: palette.danger, bg: palette.dangerSubtle, border: palette.danger }
-        : status === "pending"
-          ? { fg: palette.primary, bg: palette.primarySubtle, border: palette.primary }
-          : { fg: palette.textMuted, bg: palette.surfaceAlt, border: palette.borderStrong };
-
   return (
     <View
       style={{
-        borderWidth: 1,
-        borderRadius: BrandRadius.pill,
-        borderCurve: "continuous",
-        borderColor: token.border,
-        backgroundColor: token.bg,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        alignSelf: "flex-start",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        borderRadius: 999,
+        backgroundColor,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
       }}
     >
-      <ThemedText type="micro" style={{ color: token.fg, fontWeight: "500" }}>
-        {t(getApplicationStatusTranslationKey(status))}
-      </ThemedText>
+      <View
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: 3.5,
+          backgroundColor: color,
+        }}
+      />
+      <Text
+        style={{
+          ...BrandType.micro,
+          fontSize: 11,
+          letterSpacing: 0.6,
+          textTransform: "uppercase",
+          color,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function MetricCell({
+  align = "flex-start",
+  label,
+  value,
+  valueColor,
+}: {
+  align?: "flex-start" | "flex-end";
+  label: string;
+  value: string;
+  valueColor: string;
+}) {
+  return (
+    <View style={{ gap: 3, alignItems: align }}>
+      <Text
+        style={{
+          ...BrandType.micro,
+          letterSpacing: 0.8,
+          textTransform: "uppercase",
+          color: valueColor,
+          opacity: 0.7,
+        }}
+      >
+        {label}
+      </Text>
+      <Text
+        style={{
+          ...BrandType.bodyStrong,
+          fontSize: 15,
+          lineHeight: 18,
+          color: valueColor,
+          textAlign: align === "flex-end" ? "right" : "left",
+          fontVariant: ["tabular-nums"],
+        }}
+        numberOfLines={2}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -91,217 +142,177 @@ export function InstructorOpenJobsList({
   onApply,
   t,
 }: InstructorOpenJobsListProps) {
-  if (jobs.length === 0) {
-    return null;
-  }
+  const { width } = useWindowDimensions();
+  const isWideWeb = Platform.OS === "web" && width >= WIDE_WEB_BREAKPOINT;
+
+  if (jobs.length === 0) return null;
 
   return (
-    <View style={{ gap: BrandSpacing.sm, paddingHorizontal: BrandSpacing.lg }}>
-      <View style={{ gap: BrandSpacing.md }}>
-        {jobs.map((job, index) => (
+    <View
+      style={{
+        gap: isWideWeb ? 10 : BrandSpacing.md,
+        paddingHorizontal: BrandSpacing.lg,
+      }}
+    >
+      {jobs.map((job, index) => {
+        const tone = job.applicationStatus ? STATUS_DOT[job.applicationStatus] : null;
+        const dotColor = tone ? (palette[tone.color] as string) : undefined;
+        const pillBackground = tone ? (palette[tone.background] as string) : undefined;
+        const shiftWindow = `${formatDateWithWeekday(job.startTime, locale)} · ${formatTime(
+          job.startTime,
+          locale,
+        )}-${formatTime(job.endTime, locale)}`;
+
+        return (
           <Animated.View
             key={`animated-${job.jobId}`}
             entering={FadeInUp.delay(Math.min(index, 6) * 36)
-              .duration(260)
-              .springify()}
+              .duration(280)
+              .springify()
+              .damping(18)}
           >
-            <View style={{ position: "relative" }}>
-              <KitSurface
-                tone="elevated"
+            <KitSurface
+              tone="base"
+              padding={BrandSpacing.lg}
+              gap={0}
+              style={{
+                borderRadius: isWideWeb ? 28 : BrandRadius.card,
+                borderCurve: "continuous",
+                backgroundColor: tone
+                  ? ((palette.surface as string) ?? "#fff")
+                  : (palette.surfaceAlt as string),
+                paddingHorizontal: isWideWeb ? 18 : BrandSpacing.lg,
+                paddingVertical: isWideWeb ? 18 : 16,
+              }}
+            >
+              <View
                 style={{
-                  padding: BrandSpacing.lg,
-                  gap: BrandSpacing.sm,
-                  overflow: "hidden",
+                  flexDirection: isWideWeb ? "row" : "column",
+                  alignItems: isWideWeb ? "center" : "stretch",
+                  gap: isWideWeb ? 16 : 12,
                 }}
               >
                 <View
-                  pointerEvents="none"
                   style={{
-                    position: "absolute",
-                    right: -14,
-                    top: -18,
-                    width: 30,
-                    height: 96,
-                    transform: [{ rotate: "24deg" }],
-                    backgroundColor: palette.primarySubtle as string,
-                  }}
-                />
-
-                {/* Header Row: Sport & Badges */}
-                <View
-                  style={{
+                    flex: isWideWeb ? 1.7 : undefined,
+                    minWidth: 0,
                     flexDirection: "row",
-                    justifyContent: "space-between",
                     alignItems: "flex-start",
                     gap: 12,
                   }}
                 >
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <ThemedText
+                  <ProfileAvatar
+                    imageUrl={job.studioImageUrl}
+                    fallbackName={job.studioName}
+                    palette={palette}
+                    size={isWideWeb ? 46 : 44}
+                    roundedSquare
+                  />
+
+                  <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      <Text
+                        style={{
+                          ...BrandType.heading,
+                          fontSize: isWideWeb ? 24 : 22,
+                          lineHeight: isWideWeb ? 26 : 25,
+                          color: palette.text as string,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {toSportLabel(job.sport as never)}
+                      </Text>
+                      {dotColor && pillBackground ? (
+                        <StatusPill
+                          backgroundColor={pillBackground}
+                          color={dotColor}
+                          label={t(getApplicationStatusTranslationKey(job.applicationStatus!))}
+                        />
+                      ) : null}
+                    </View>
+
+                    <Text
                       style={{
-                        fontSize: 24,
-                        lineHeight: 30,
-                        fontWeight: "600",
-                        color: palette.text,
-                        letterSpacing: -0.2,
+                        ...BrandType.bodyStrong,
+                        fontSize: 14,
+                        lineHeight: 17,
+                        color: palette.primary as string,
                       }}
-                    >
-                      {toSportLabel(job.sport as never)}
-                    </ThemedText>
-                    <ThemedText
-                      type="bodyStrong"
-                      style={{ color: palette.primary, fontWeight: "500", letterSpacing: 0.1 }}
+                      numberOfLines={1}
                     >
                       {job.studioName}
-                    </ThemedText>
-                  </View>
-                  <View style={{ alignItems: "flex-end", gap: 8 }}>
-                    <ProfileAvatar
-                      imageUrl={job.studioImageUrl}
-                      fallbackName={job.studioName}
-                      palette={palette}
-                      size={46}
-                      roundedSquare
-                    />
-                    <JobStatusBadge status={job.applicationStatus} palette={palette} t={t} />
-                  </View>
-                </View>
+                    </Text>
 
-                {/* Details Row: Time, Zone, Note */}
-                <View style={{ gap: 6, marginVertical: 4 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <AppSymbol
-                      name="calendar.circle.fill"
-                      size={16}
-                      tintColor={palette.textMuted}
-                    />
-                    <ThemedText
-                      type="caption"
-                      style={{ color: palette.textMuted, fontWeight: "400" }}
-                    >
-                      {formatDateWithWeekday(job.startTime, locale)}
-                    </ThemedText>
-                  </View>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <AppSymbol name="clock.fill" size={16} tintColor={palette.textMuted} />
-                    <ThemedText
-                      type="caption"
-                      style={{ color: palette.textMuted, fontWeight: "400" }}
-                    >
-                      {`${formatTime(job.startTime, locale)} - ${formatTime(job.endTime, locale)}`}
-                    </ThemedText>
-                  </View>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <AppSymbol name="mappin.circle.fill" size={16} tintColor={palette.textMuted} />
-                    <ThemedText
-                      type="caption"
-                      style={{ color: palette.textMuted, fontWeight: "400" }}
-                    >
-                      {getZoneLabel(job.zone, zoneLanguage)}
-                    </ThemedText>
-                  </View>
-                  {job.note ? (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "flex-start",
-                        gap: 6,
-                        marginTop: 2,
-                      }}
-                    >
-                      <AppSymbol name="quote.bubble.fill" size={16} tintColor={palette.textMuted} />
-                      <ThemedText
-                        type="caption"
-                        style={{ color: palette.textMuted, flex: 1 }}
-                        numberOfLines={2}
+                    {job.note ? (
+                      <Text
+                        style={{ ...BrandType.caption, color: palette.textMuted as string }}
+                        numberOfLines={isWideWeb ? 1 : 2}
                       >
                         {job.note}
-                      </ThemedText>
-                    </View>
-                  ) : null}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
 
-                {/* Footer Row: Price (Left) & Apply (Right) via margin-left: auto flex trick */}
+                <View style={{ width: isWideWeb ? 220 : undefined }}>
+                  <MetricCell
+                    label="Shift"
+                    value={shiftWindow}
+                    valueColor={palette.text as string}
+                  />
+                </View>
+
+                <View style={{ width: isWideWeb ? 150 : undefined }}>
+                  <MetricCell
+                    label="Zone"
+                    value={getZoneLabel(job.zone, zoneLanguage)}
+                    valueColor={palette.text as string}
+                  />
+                </View>
+
+                <View style={{ width: isWideWeb ? 135 : undefined }}>
+                  <MetricCell
+                    align={isWideWeb ? "flex-end" : "flex-start"}
+                    label="Pay"
+                    value={t("jobsTab.card.pay", { value: job.pay })}
+                    valueColor={palette.text as string}
+                  />
+                </View>
+
                 <View
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingTop: 8,
-                    borderTopWidth: 1,
-                    borderTopColor: palette.border,
+                    width: isWideWeb ? 154 : undefined,
+                    marginLeft: isWideWeb ? "auto" : undefined,
+                    alignItems: isWideWeb ? "flex-end" : "flex-start",
                   }}
                 >
-                  <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
-                    <ThemedText
-                      style={{
-                        fontSize: 29,
-                        fontWeight: "600",
-                        color: palette.text,
-                        fontVariant: ["tabular-nums"],
-                        letterSpacing: -0.5,
-                      }}
-                    >
-                      {t("jobsTab.card.pay", { value: job.pay })}
-                    </ThemedText>
-                  </View>
-
-                  {/* Pushes button to right */}
-                  <KitPressable
-                    style={[
-                      {
-                        marginLeft: "auto",
-                        minHeight: 44,
-                        minWidth: 100,
-                        borderRadius: BrandRadius.card,
-                        borderCurve: "continuous",
-                        paddingHorizontal: BrandSpacing.lg,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexDirection: "row",
-                        gap: 6,
-                      },
-                      {
-                        backgroundColor: job.applicationStatus
-                          ? palette.surfaceAlt
-                          : palette.primary,
-                        borderColor: job.applicationStatus ? palette.border : palette.primary,
-                        borderWidth: 1,
-                      },
-                    ]}
-                    disabled={Boolean(job.applicationStatus) || applyingJobId === job.jobId}
-                    haptic="impact"
-                    onPress={() => onApply(job.jobId)}
-                  >
-                    {(() => {
-                      const actionLabel =
+                  {job.applicationStatus ? (
+                    <StatusPill
+                      backgroundColor={pillBackground ?? (palette.surface as string)}
+                      color={dotColor ?? (palette.textMuted as string)}
+                      label={t(getApplicationStatusTranslationKey(job.applicationStatus))}
+                    />
+                  ) : (
+                    <KitButton
+                      label={
                         applyingJobId === job.jobId
                           ? t("jobsTab.actions.applying")
-                          : job.applicationStatus
-                            ? t(getApplicationStatusTranslationKey(job.applicationStatus))
-                            : t("jobsTab.actions.apply");
-                      return (
-                        <ThemedText
-                          type="defaultSemiBold"
-                          style={{
-                            color: job.applicationStatus ? palette.textMuted : palette.onPrimary,
-                            fontWeight: "600",
-                            letterSpacing: 0.2,
-                          }}
-                        >
-                          {actionLabel}
-                        </ThemedText>
-                      );
-                    })()}
-                    {!job.applicationStatus && (
-                      <AppSymbol name="arrow.right" size={16} tintColor={palette.onPrimary} />
-                    )}
-                  </KitPressable>
+                          : t("jobsTab.actions.apply")
+                      }
+                      onPress={() => onApply(job.jobId)}
+                      variant="primary"
+                      size="sm"
+                      fullWidth={false}
+                      loading={applyingJobId === job.jobId}
+                      icon="arrow.right"
+                    />
+                  )}
                 </View>
-              </KitSurface>
-            </View>
+              </View>
+            </KitSurface>
           </Animated.View>
-        ))}
-      </View>
+        );
+      })}
     </View>
   );
 }

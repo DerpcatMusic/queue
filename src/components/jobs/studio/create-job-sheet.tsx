@@ -126,9 +126,14 @@ export function CreateJobSheet({
     >
       <BottomSheetScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <ThemedText type="title" style={{ fontSize: 28 }}>
-            {t("jobsTab.form.title", "Post New Job")}
-          </ThemedText>
+          <View style={{ gap: 4 }}>
+            <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+              STUDIO COMMAND
+            </ThemedText>
+            <ThemedText type="title" style={{ fontSize: 28 }}>
+              {t("jobsTab.form.title", "Post New Job")}
+            </ThemedText>
+          </View>
           <KitPressable
             accessibilityRole="button"
             accessibilityLabel={t("common.close", { defaultValue: "Close" })}
@@ -140,6 +145,43 @@ export function CreateJobSheet({
         </View>
 
         <View style={styles.form}>
+          <View
+            style={{
+              borderRadius: 28,
+              borderCurve: "continuous",
+              backgroundColor: palette.primarySubtle as string,
+              paddingHorizontal: 16,
+              paddingVertical: 16,
+              gap: 10,
+            }}
+          >
+            <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+              SHIFT SNAPSHOT
+            </ThemedText>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {[
+                draft.sport ? toSportLabel(draft.sport as never) : "Pick sport",
+                formatDateWithWeekday(draft.startTime, locale),
+                `${formatTime(draft.startTime, locale)}-${formatTime(draft.endTime, locale)}`,
+                draft.payInput ? `₪${draft.payInput}` : "Set pay",
+              ].map((item) => (
+                <View
+                  key={item}
+                  style={{
+                    borderRadius: 999,
+                    backgroundColor: palette.surface as string,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                  }}
+                >
+                  <ThemedText type="micro" style={{ color: palette.text as string }}>
+                    {item}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          </View>
+
           {/* Sport Selection */}
           <View style={styles.section}>
             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
@@ -182,7 +224,6 @@ export function CreateJobSheet({
                   styles.pickerTrigger,
                   {
                     backgroundColor: palette.surfaceAlt as string,
-                    borderColor: palette.border as string,
                   },
                 ]}
               >
@@ -203,7 +244,6 @@ export function CreateJobSheet({
                   {
                     flex: 1,
                     backgroundColor: palette.surfaceAlt as string,
-                    borderColor: palette.border as string,
                   },
                 ]}
               >
@@ -237,7 +277,6 @@ export function CreateJobSheet({
                   {
                     flex: 1,
                     backgroundColor: palette.surfaceAlt as string,
-                    borderColor: palette.border as string,
                   },
                 ]}
               >
@@ -399,7 +438,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    borderWidth: 1.5,
     borderCurve: "continuous",
   },
   row: {
@@ -413,7 +451,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: BrandRadius.input,
-    borderWidth: 1.2,
     borderCurve: "continuous",
   },
   pickerText: {

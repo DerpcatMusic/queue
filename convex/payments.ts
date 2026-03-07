@@ -8,6 +8,13 @@ import {
   mutation,
   query,
 } from "./_generated/server";
+import {
+  normalizeCurrencyCode,
+  normalizeIsoCountryCode,
+  normalizeRapydExternalRecipientId,
+  normalizeRapydPayoutMethodType,
+} from "./integrations/rapyd/config";
+import { buildCanonicalRapydPayload } from "./integrations/rapyd/payloads";
 import { requireUserRole } from "./lib/auth";
 import { omitUndefined } from "./lib/validation";
 import {
@@ -53,17 +60,6 @@ const BLOCK_NEW_CHECKOUT_ACTIVE_STATUSES = new Set<PaymentStatus>([
 const DEFAULT_STALE_CHECKOUT_MS = 30 * 60 * 1000;
 const MANUAL_WITHDRAWAL_SCAN_BATCH_SIZE = 500;
 
-const toRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-
-const toTrimmedString = (value: unknown): string | undefined => {
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
-
 export const resolveRapydBeneficiaryWebhookState = (args: {
   eventType?: string;
   statusRaw?: string;
@@ -84,52 +80,6 @@ export const resolveRapydBeneficiaryWebhookState = (args: {
     return "failed";
   }
   return "pending";
-};
-const sanitizeWebhookPayload = (payload: unknown): Record<string, unknown> => {
-  const root = toRecord(payload) ?? {};
-  const data = toRecord(root.data);
-  const payment = toRecord(data?.payment);
-  const payout = toRecord(data?.payout);
-  const checkout = toRecord(data?.checkout);
-  const metadata = toRecord(data?.metadata);
-
-  return omitUndefined({
-    id: toTrimmedString(root.id),
-    type: toTrimmedString(root.type) ?? toTrimmedString(root.event),
-    data: data
-      ? omitUndefined({
-          id: toTrimmedString(data.id),
-          status: toTrimmedString(data.status),
-          merchant_reference_id: toTrimmedString(data.merchant_reference_id),
-          payout_method_type: toTrimmedString(data.payout_method_type),
-          default_payout_method_type: toTrimmedString(data.default_payout_method_type),
-          payment: payment
-            ? omitUndefined({
-                id: toTrimmedString(payment.id),
-                status: toTrimmedString(payment.status),
-              })
-            : undefined,
-          payout: payout
-            ? omitUndefined({
-                id: toTrimmedString(payout.id),
-                status: toTrimmedString(payout.status),
-              })
-            : undefined,
-          checkout: checkout
-            ? omitUndefined({
-                id: toTrimmedString(checkout.id),
-              })
-            : undefined,
-          metadata: metadata
-            ? omitUndefined({
-                payoutId: toTrimmedString(metadata.payoutId),
-                paymentId: toTrimmedString(metadata.paymentId),
-                merchant_reference_id: toTrimmedString(metadata.merchant_reference_id),
-              })
-            : undefined,
-        })
-      : undefined,
-  });
 };
 
 export const toRapydPaymentStatus = (rawStatus: string | undefined): MappedPaymentStatus => {
@@ -252,7 +202,10 @@ export async function loadEligibleCapturedPaymentsForManualWithdrawal(
     maxPayments: number;
   },
 ): Promise<Doc<"payments">[]> {
-  const scheduledPaymentIds = await loadScheduledPaymentIdsForInstructor(ctx, args.instructorUserId);
+  const scheduledPaymentIds = await loadScheduledPaymentIdsForInstructor(
+    ctx,
+    args.instructorUserId,
+  );
   const eligiblePayments: Doc<"payments">[] = [];
   let cursor: string | null = null;
 
@@ -459,7 +412,7 @@ export const processRapydWebhookEvent = internalMutation({
     eventId?: Id<"paymentEvents">;
     paymentId?: Id<"payments">;
   }> => {
-    const canonicalPayload = sanitizeWebhookPayload(args.payload);
+    const canonicalPayload = buildCanonicalRapydPayload(args.payload);
     const existingEvent = await ctx.db
       .query("paymentEvents")
       .withIndex("by_provider_eventId", (q) =>
@@ -697,10 +650,13 @@ export const upsertMyPayoutDestination = mutation({
   handler: async (ctx, args) => {
     const user = await requireUserRole(ctx, ["instructor"]);
     const now = Date.now();
-    const externalRecipientId = args.externalRecipientId.trim();
-    if (!externalRecipientId) {
-      throw new ConvexError("externalRecipientId is required");
-    }
+    const externalRecipientId = normalizeRapydExternalRecipientId(
+      args.externalRecipientId,
+      "externalRecipientId",
+    );
+    const payoutMethodType = normalizeRapydPayoutMethodType(args.type, "type");
+    const country = args.country ? normalizeIsoCountryCode(args.country, "country") : undefined;
+    const currency = args.currency ? normalizeCurrencyCode(args.currency, "currency") : undefined;
 
     const existing = await ctx.db
       .query("payoutDestinations")
@@ -729,10 +685,10 @@ export const upsertMyPayoutDestination = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        type: args.type,
+        type: payoutMethodType,
         label: args.label ?? existing.label,
-        country: args.country ?? existing.country,
-        currency: args.currency ?? existing.currency,
+        country: country ?? existing.country,
+        currency: currency ?? existing.currency,
         last4: args.last4 ?? existing.last4,
         isDefault: args.isDefault ?? existing.isDefault,
         updatedAt: now,
@@ -743,7 +699,7 @@ export const upsertMyPayoutDestination = mutation({
     const destinationId = await ctx.db.insert("payoutDestinations", {
       userId: user._id,
       provider: args.provider,
-      type: args.type,
+      type: payoutMethodType,
       externalRecipientId,
       isDefault: args.isDefault ?? true,
       status: "pending_verification",
@@ -751,8 +707,8 @@ export const upsertMyPayoutDestination = mutation({
       updatedAt: now,
       ...omitUndefined({
         label: args.label,
-        country: args.country,
-        currency: args.currency,
+        country,
+        currency,
         last4: args.last4,
       }),
     });
@@ -829,7 +785,7 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
     payload: v.any(),
   },
   handler: async (ctx, args) => {
-    const canonicalPayload = sanitizeWebhookPayload(args.payload);
+    const canonicalPayload = buildCanonicalRapydPayload(args.payload);
     const existing = await ctx.db
       .query("payoutDestinationEvents")
       .withIndex("by_provider_eventId", (q) =>
@@ -933,9 +889,11 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
       });
     }
 
-    const payoutMethodType =
-      args.payoutMethodType?.trim() ||
-      (process.env.RAPYD_DEFAULT_BANK_PAYOUT_METHOD_TYPE ?? "il_bank").trim();
+    const beneficiaryId = normalizeRapydExternalRecipientId(args.beneficiaryId, "beneficiaryId");
+    const payoutMethodType = normalizeRapydPayoutMethodType(
+      args.payoutMethodType ?? process.env.RAPYD_DEFAULT_BANK_PAYOUT_METHOD_TYPE ?? "il_bank",
+      "payoutMethodType",
+    );
 
     const existingDestination = await ctx.db
       .query("payoutDestinations")
@@ -943,7 +901,7 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
         q
           .eq("userId", session.userId)
           .eq("provider", RAPYD_PROVIDER)
-          .eq("externalRecipientId", args.beneficiaryId as string),
+          .eq("externalRecipientId", beneficiaryId),
       )
       .unique();
 
@@ -963,7 +921,7 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
         userId: session.userId,
         provider: RAPYD_PROVIDER,
         type: payoutMethodType,
-        externalRecipientId: args.beneficiaryId,
+        externalRecipientId: beneficiaryId,
         label: "Bank account",
         country: session.beneficiaryCountry,
         currency: session.payoutCurrency,
@@ -976,7 +934,7 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
 
     await ctx.db.patch(session._id, {
       status: "completed",
-      beneficiaryId: args.beneficiaryId,
+      beneficiaryId,
       payoutMethodType,
       completedAt: now,
       updatedAt: now,
@@ -1014,6 +972,18 @@ export const verifyMyPayoutDestinationForTesting = mutation({
     }
     if (destination.provider !== RAPYD_PROVIDER) {
       throw new ConvexError("Unsupported payout destination provider");
+    }
+
+    normalizeRapydPayoutMethodType(destination.type, "destination.type");
+    normalizeRapydExternalRecipientId(
+      destination.externalRecipientId,
+      "destination.externalRecipientId",
+    );
+    if (destination.country) {
+      normalizeIsoCountryCode(destination.country, "destination.country");
+    }
+    if (destination.currency) {
+      normalizeCurrencyCode(destination.currency, "destination.currency");
     }
 
     await ctx.db.patch(destination._id, {

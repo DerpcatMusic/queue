@@ -45,7 +45,7 @@ export function KitPressable({
   pressStyle,
   onPress,
   disabled = false,
-  haptic = "selection",
+  haptic = "impact",
   nativeFeedback = true,
   pressedOpacity = 0.92,
   rippleRadius,

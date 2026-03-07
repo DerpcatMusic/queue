@@ -63,7 +63,9 @@ const buildPrunedPayload = (payloadHash: string, now: number): Record<string, un
 });
 
 const isAlreadyPruned = (payload: unknown): boolean =>
-  Boolean(payload && typeof payload === "object" && (payload as { pruned?: boolean }).pruned === true);
+  Boolean(
+    payload && typeof payload === "object" && (payload as { pruned?: boolean }).pruned === true,
+  );
 
 export const checkInvalidSignatureThrottle = internalMutation({
   args: {

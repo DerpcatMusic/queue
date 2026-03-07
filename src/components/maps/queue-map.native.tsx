@@ -287,7 +287,18 @@ export function QueueMap({
 
   if (Constants.appOwnership === "expo") {
     return (
-      <KitSurface tone="elevated" style={styles.fallback}>
+      <KitSurface
+        tone="base"
+        style={[
+          styles.fallback,
+          {
+            backgroundColor: palette.surfaceAlt as string,
+            borderRadius: 28,
+            borderCurve: "continuous",
+            margin: 18,
+          },
+        ]}
+      >
         <ThemedText type="defaultSemiBold">MapLibre needs a development build.</ThemedText>
         <ThemedText style={{ color: palette.textMuted }}>
           Run `bunx expo run:android` then open the dev client.
@@ -358,7 +369,14 @@ export function QueueMap({
         <KitFab
           icon={<IconSymbol name="location.fill" size={20} color={palette.text} />}
           onPress={onUseGps}
-          style={styles.gps}
+          style={[
+            styles.gps,
+            {
+              borderWidth: 0,
+              backgroundColor: palette.surface as string,
+              boxShadow: "none",
+            },
+          ]}
         />
       ) : null}
     </View>

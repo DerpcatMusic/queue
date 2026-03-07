@@ -9,7 +9,7 @@ import Animated, {
 import { KitFloatingBadge } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useSystemUi } from "@/contexts/system-ui-context";
 import { toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -195,13 +195,10 @@ export function HomeHeaderSheet({
           top: 0,
           left: 0,
           right: 0,
-          borderBottomLeftRadius: 32,
-          borderBottomRightRadius: 32,
-          borderBottomWidth: 1,
-          borderBottomColor: "rgba(255,255,255,0.08)",
-          borderCurve: "continuous",
           overflow: "hidden",
           zIndex: 10,
+          borderBottomWidth: 1,
+          borderColor: palette.border as string,
         } as unknown as object,
         animatedSheetStyle,
       ]}
@@ -308,27 +305,27 @@ export function HomeHeaderSheet({
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: 8 }}
               >
-                {sports.map((sport) => (
-                  <View
-                    key={sport}
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.06)",
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.1)",
-                      borderRadius: 12,
-                      paddingHorizontal: 10,
-                      paddingVertical: 5,
-                    }}
-                  >
+                {sports.map((sport, index) => (
+                  <View key={sport} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                     <Text
                       style={{
-                        fontFamily: "Rubik_500Medium",
-                        fontSize: 11,
+                        ...BrandType.caption,
+                        fontWeight: "600",
                         color: palette.textMuted as string,
                       }}
                     >
                       {toSportLabel(sport as never)}
                     </Text>
+                    {index < sports.length - 1 && (
+                      <View
+                        style={{
+                          width: 4,
+                          height: 4,
+                          borderRadius: 2,
+                          backgroundColor: palette.border as string,
+                        }}
+                      />
+                    )}
                   </View>
                 ))}
               </ScrollView>

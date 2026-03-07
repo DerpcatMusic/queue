@@ -2,6 +2,7 @@ import type { PropsWithChildren } from "react";
 import type { ScrollViewProps, StyleProp, ViewStyle } from "react-native";
 import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
 import { BrandSpacing } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
 
@@ -54,10 +55,9 @@ export function TabScreenRoot(props: TabScreenRootProps) {
         {
           paddingBottom: Math.max(BrandSpacing.lg, insets.tabContentBottom + BrandSpacing.md),
         },
-        contentContainerStyle,
       ]}
     >
-      {children}
+      <DesktopDashboardFrame contentStyle={contentContainerStyle}>{children}</DesktopDashboardFrame>
     </Animated.ScrollView>
   );
 }

@@ -2,10 +2,17 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
+import { executeRapydSignedPost } from "./integrations/rapyd/client";
+import {
+  getOptionalEnv,
+  normalizeIsoCountryCode,
+  normalizeRapydExternalRecipientId,
+  normalizeRapydPayoutMethodType,
+  resolveRapydBaseUrl,
+} from "./integrations/rapyd/config";
 import { omitUndefined } from "./lib/validation";
 
 const RAPYD_PROVIDER = "rapyd" as const;
-type RapydSignatureEncoding = "hex_base64" | "raw_base64";
 
 type PayoutStatus =
   | "queued"
@@ -26,16 +33,6 @@ const TERMINAL_PAYOUT_STATUSES = new Set<PayoutStatus>([
 const DEFAULT_MAX_ATTEMPTS = 6;
 const BASE_RETRY_MS = 30_000;
 const MAX_RETRY_MS = 30 * 60 * 1000;
-
-const getOptionalEnv = (name: string): string | undefined => {
-  const value = process.env[name]?.trim();
-  return value && value.length > 0 ? value : undefined;
-};
-
-const resolvePreferredSignatureEncoding = (): RapydSignatureEncoding => {
-  const value = (process.env.RAPYD_SIGNATURE_ENCODING ?? "hex_base64").trim().toLowerCase();
-  return value === "raw_base64" ? "raw_base64" : "hex_base64";
-};
 
 const clampInt = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, Math.floor(value)));
@@ -58,49 +55,6 @@ const isLikelyPermanentRapydError = (errorCode: string | undefined): boolean => 
     code.includes("PERMISSION") ||
     code.includes("INSUFFICIENT_FUNDS")
   );
-};
-
-const buildRapydSignature = async ({
-  method,
-  path,
-  salt,
-  timestamp,
-  accessKey,
-  secretKey,
-  body,
-  encoding,
-}: {
-  method: string;
-  path: string;
-  salt: string;
-  timestamp: string;
-  accessKey: string;
-  secretKey: string;
-  body: string;
-  encoding: RapydSignatureEncoding;
-}): Promise<string> => {
-  const toSign = `${method.toLowerCase()}${path}${salt}${timestamp}${accessKey}${secretKey}${body}`;
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secretKey),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(toSign));
-  const bytes = new Uint8Array(signature);
-  if (encoding === "hex_base64") {
-    const hexDigest = Array.from(bytes)
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    return btoa(hexDigest);
-  }
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary);
 };
 
 export const normalizeRapydPayoutStatus = (
@@ -382,8 +336,36 @@ export const executePayoutAttemptAction = internalAction({
     const accessKey = getOptionalEnv("RAPYD_ACCESS_KEY") ?? "";
     const secretKey = getOptionalEnv("RAPYD_SECRET_KEY") ?? "";
     const ewalletId = getOptionalEnv("RAPYD_EWALLET") ?? "";
-    const payoutMethodType = destination.type.trim();
-    const beneficiaryId = destination.externalRecipientId.trim();
+    let payoutMethodType = "";
+    let beneficiaryId = "";
+    let rapydBaseUrl = "";
+    let country = "";
+    try {
+      payoutMethodType = destination.type
+        ? normalizeRapydPayoutMethodType(destination.type, "destination.type")
+        : "";
+      beneficiaryId = destination.externalRecipientId
+        ? normalizeRapydExternalRecipientId(
+            destination.externalRecipientId,
+            "destination.externalRecipientId",
+          )
+        : "";
+      rapydBaseUrl = resolveRapydBaseUrl();
+      country = normalizeIsoCountryCode(
+        destination.country ?? process.env.RAPYD_COUNTRY ?? "IL",
+        "destination.country",
+      );
+    } catch (error) {
+      await ctx.runMutation(internal.payouts.recordPayoutAttemptResult, {
+        payoutId,
+        attempt,
+        mappedStatus: "needs_attention",
+        retryable: false,
+        errorCode: "configuration_error",
+        message: error instanceof Error ? error.message : "Invalid Rapyd payout configuration",
+      });
+      return;
+    }
     if (!accessKey || !secretKey || !ewalletId || !beneficiaryId || !payoutMethodType) {
       await ctx.runMutation(internal.payouts.recordPayoutAttemptResult, {
         payoutId,
@@ -395,18 +377,7 @@ export const executePayoutAttemptAction = internalAction({
       });
       return;
     }
-
-    const rapydMode = (process.env.RAPYD_MODE ?? "sandbox").trim().toLowerCase();
-    const isProduction = rapydMode === "production";
-    const rapydBaseUrl = (
-      isProduction
-        ? (process.env.RAPYD_PROD_BASE_URL ?? process.env.RAPYD_BASE_URL ?? "https://api.rapyd.net")
-        : (process.env.RAPYD_SANDBOX_BASE_URL ??
-          process.env.RAPYD_BASE_URL ??
-          "https://sandboxapi.rapyd.net")
-    ).trim();
     const requestPath = "/v1/payouts";
-    const country = (destination.country ?? process.env.RAPYD_COUNTRY ?? "IL").trim().toUpperCase();
 
     const bodyPayload: Record<string, unknown> = {
       beneficiary: beneficiaryId,
@@ -434,46 +405,16 @@ export const executePayoutAttemptAction = internalAction({
     }
 
     const body = JSON.stringify(bodyPayload);
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const salt = crypto.randomUUID().replace(/-/g, "");
     try {
-      const preferred = resolvePreferredSignatureEncoding();
-      const fallback: RapydSignatureEncoding =
-        preferred === "hex_base64" ? "raw_base64" : "hex_base64";
-      const encodings: RapydSignatureEncoding[] = [preferred, fallback];
-
-      let response: Response | null = null;
-      let responseText = "";
-      let usedEncoding: RapydSignatureEncoding = preferred;
-
-      for (const encoding of encodings) {
-        const signature = await buildRapydSignature({
-          method: "POST",
-          path: requestPath,
-          salt,
-          timestamp,
-          accessKey,
-          secretKey,
-          body,
-          encoding,
-        });
-        response = await fetch(`${rapydBaseUrl}${requestPath}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            access_key: accessKey,
-            salt,
-            timestamp,
-            signature,
-            idempotency: payout.idempotencyKey,
-          },
-          body,
-        });
-        responseText = await response.text();
-        usedEncoding = encoding;
-        if (response.status !== 401) break;
-      }
-      if (!response) return;
+      const requestUrl = new URL(requestPath, `${rapydBaseUrl}/`);
+      const { response, responseText, signatureEncoding } = await executeRapydSignedPost({
+        url: requestUrl.toString(),
+        path: requestUrl.pathname,
+        accessKey,
+        secretKey,
+        idempotency: payout.idempotencyKey,
+        body,
+      });
 
       if (!response.ok) {
         await ctx.runMutation(internal.payouts.recordPayoutAttemptResult, {
@@ -482,7 +423,7 @@ export const executePayoutAttemptAction = internalAction({
           mappedStatus: "queued",
           retryable: isRetryableHttpFailure(response.status),
           httpStatus: response.status,
-          message: `Rapyd payout HTTP ${response.status} [${usedEncoding}]: ${responseText.slice(0, 500)}`,
+          message: `Rapyd payout HTTP ${response.status} [${signatureEncoding}]: ${responseText.slice(0, 500)}`,
         });
         return;
       }

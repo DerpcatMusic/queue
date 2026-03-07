@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAction, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { SectionList, ViewToken } from "react-native";
+import { InteractionManager, type SectionList } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { syncDeviceCalendarEvents } from "@/lib/device-calendar-sync";
@@ -30,11 +30,6 @@ export type AgendaSection = {
   key: string;
   dayKey: string;
   data: AgendaItem[];
-};
-
-type AgendaViewToken = ViewToken & {
-  item?: AgendaItem;
-  section?: AgendaSection;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -98,16 +93,6 @@ function buildTimelineRowsSignature(rows: TimelineRow[]) {
     .map((row) => `${row.lessonId}:${row.startTime}:${row.endTime}:${row.status}:${row.lifecycle}`)
     .sort()
     .join("|");
-}
-
-function enumerateDays(startKey: string, endKey: string) {
-  const out: string[] = [];
-  let cursor = startKey;
-  while (compareDayKey(cursor, endKey) <= 0) {
-    out.push(cursor);
-    cursor = addDays(cursor, 1);
-  }
-  return out;
 }
 
 function useTimelineCache(role: string | undefined, startTime: number, endTime: number) {
@@ -178,8 +163,10 @@ export function useCalendarTabController({ locale }: { locale: string }) {
     end: addDays(todayKey, TIMELINE_RANGE_DAYS),
   }));
   const listRef = useRef<SectionList<AgendaItem, AgendaSection>>(null);
-  const programmaticScrollRef = useRef(false);
-  const lastViewSyncAtRef = useRef(0);
+  const pendingScrollRequestRef = useRef<{
+    dayKey: string;
+    animated: boolean;
+  } | null>(null);
 
   const role =
     currentUser?.role === "instructor" || currentUser?.role === "studio"
@@ -279,15 +266,29 @@ export function useCalendarTabController({ locale }: { locale: string }) {
   }, [appleSyncSignature, currentUser?.role, instructorSettings, syncEvents]);
 
   const lastGoogleSyncAtRef = useRef(0);
+  const googleSyncSignature = useMemo(
+    () => `${startTime}:${endTime}:${remoteRowsSignature}`,
+    [endTime, remoteRowsSignature, startTime],
+  );
+  const lastGoogleSyncSignatureRef = useRef("");
   useEffect(() => {
     if (currentUser?.role !== "instructor") return;
     if (!instructorSettings || instructorSettings.calendarProvider !== "google") return;
     if (!instructorSettings.calendarSyncEnabled) return;
+    if (googleSyncSignature === lastGoogleSyncSignatureRef.current) return;
     const now = Date.now();
     if (now - lastGoogleSyncAtRef.current < 3 * 60 * 1000) return;
     lastGoogleSyncAtRef.current = now;
+    lastGoogleSyncSignatureRef.current = googleSyncSignature;
     void syncGoogleCalendar({ startTime, endTime, limit: 1000 });
-  }, [currentUser?.role, endTime, instructorSettings, startTime, syncGoogleCalendar]);
+  }, [
+    currentUser?.role,
+    endTime,
+    googleSyncSignature,
+    instructorSettings,
+    startTime,
+    syncGoogleCalendar,
+  ]);
 
   const lessonCountByDay = useMemo(() => {
     const counts = new Map<string, number>();
@@ -310,7 +311,17 @@ export function useCalendarTabController({ locale }: { locale: string }) {
       }
     }
 
-    const nextSections = enumerateDays(windowRange.start, windowRange.end).map((dayKey) => {
+    const agendaDayKeys = Array.from(rowsByDay.keys()).sort(compareDayKey);
+    if (!rowsByDay.has(selectedDay)) {
+      agendaDayKeys.push(selectedDay);
+      agendaDayKeys.sort(compareDayKey);
+    }
+
+    if (agendaDayKeys.length === 0) {
+      agendaDayKeys.push(selectedDay);
+    }
+
+    const nextSections = agendaDayKeys.map((dayKey) => {
       const dayRows = rowsByDay.get(dayKey) ?? [];
       const data: AgendaItem[] =
         dayRows.length > 0
@@ -333,7 +344,7 @@ export function useCalendarTabController({ locale }: { locale: string }) {
       sections: nextSections,
       sectionIndexByDay: new Map(nextSections.map((section, index) => [section.dayKey, index])),
     };
-  }, [filteredRows, windowRange.end, windowRange.start]);
+  }, [filteredRows, selectedDay]);
 
   const ensureDayInWindow = useCallback((dayKey: string) => {
     setWindowRange((prev) => {
@@ -353,8 +364,9 @@ export function useCalendarTabController({ locale }: { locale: string }) {
   const scrollToDay = useCallback(
     (dayKey: string, animated = true) => {
       const sectionIndex = sectionIndexByDay.get(dayKey);
-      if (sectionIndex === undefined) return;
-      programmaticScrollRef.current = true;
+      if (sectionIndex === undefined) {
+        return false;
+      }
       try {
         listRef.current?.scrollToLocation({
           sectionIndex,
@@ -362,44 +374,53 @@ export function useCalendarTabController({ locale }: { locale: string }) {
           animated,
           viewOffset: 8,
         });
+        return true;
       } catch {
-        // List layout may not be ready yet.
+        return false;
       }
-      setTimeout(() => {
-        programmaticScrollRef.current = false;
-      }, 420);
     },
     [sectionIndexByDay],
   );
 
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 60,
-    minimumViewTime: 80,
-  }).current;
+  useEffect(() => {
+    const pendingRequest = pendingScrollRequestRef.current;
+    if (!pendingRequest) {
+      return;
+    }
+    if (!sectionIndexByDay.has(pendingRequest.dayKey)) {
+      return;
+    }
 
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: AgendaViewToken[] }) => {
-      if (programmaticScrollRef.current) return;
-      const now = Date.now();
-      if (now - lastViewSyncAtRef.current < 160) return;
-      const firstVisible = viewableItems.find((item) => item.isViewable);
-      const dayKey = firstVisible?.section?.dayKey ?? firstVisible?.item?.dayKey;
-      if (!dayKey || selectedDayRef.current === dayKey) return;
-      lastViewSyncAtRef.current = now;
-      selectedDayRef.current = dayKey;
-      setSelectedDay(dayKey);
-    },
-    [],
-  );
+    const task = InteractionManager.runAfterInteractions(() => {
+      const request = pendingScrollRequestRef.current;
+      if (!request) {
+        return;
+      }
+      const didScroll = scrollToDay(request.dayKey, request.animated);
+      if (didScroll) {
+        pendingScrollRequestRef.current = null;
+      }
+    });
+
+    return () => {
+      task.cancel();
+    };
+  }, [scrollToDay, sectionIndexByDay]);
 
   const handleDayPress = useCallback(
-    (dayKey: string) => {
+    (dayKey: string, options?: { animated?: boolean }) => {
+      const animated = options?.animated ?? true;
       selectedDayRef.current = dayKey;
       setSelectedDay(dayKey);
       ensureDayInWindow(dayKey);
-      setTimeout(() => {
-        scrollToDay(dayKey);
-      }, 48);
+      pendingScrollRequestRef.current = {
+        dayKey,
+        animated,
+      };
+      if (!scrollToDay(dayKey, animated)) {
+        return;
+      }
+      pendingScrollRequestRef.current = null;
     },
     [ensureDayInWindow, scrollToDay],
   );
@@ -412,7 +433,7 @@ export function useCalendarTabController({ locale }: { locale: string }) {
   );
 
   const handleTodayPress = useCallback(() => {
-    handleDayPress(todayKey);
+    handleDayPress(todayKey, { animated: false });
   }, [handleDayPress, todayKey]);
 
   const firstDayOfWeek = useMemo(() => resolveFirstDayOfWeek(locale), [locale]);
@@ -430,8 +451,6 @@ export function useCalendarTabController({ locale }: { locale: string }) {
     listRef,
     sections,
     lessonCountByDay,
-    viewabilityConfig,
-    onViewableItemsChanged,
     handleDayPress,
     handleWeekChange,
     handleTodayPress,

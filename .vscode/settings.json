@@ -5,6 +5,36 @@
     "source.organizeImports.biome": "explicit",
     "source.sortMembers": "explicit"
   },
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/node_modules.*": true,
+    "**/.expo": true,
+    "**/.gradle-user-home": true,
+    "android/.gradle": true,
+    "android/build": true,
+    "android/app/build": true,
+    "android/app/.cxx": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/node_modules.*": true,
+    "**/.expo": true,
+    "**/.gradle-user-home": true,
+    "android/.gradle": true,
+    "android/build": true,
+    "android/app/build": true,
+    "android/app/.cxx": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/node_modules.*/**": true,
+    "**/.expo/**": true,
+    "**/.gradle-user-home/**": true,
+    "android/.gradle/**": true,
+    "android/build/**": true,
+    "android/app/build/**": true,
+    "android/app/.cxx/**": true
+  },
   "[javascript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
@@ -19,5 +49,6 @@
   },
   "[json]": {
     "editor.defaultFormatter": "biomejs.biome"
-  }
+  },
+  "git.ignoreLimitWarning": true
 }
