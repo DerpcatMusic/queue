@@ -1,9 +1,8 @@
 import type { PropsWithChildren } from "react";
 import type { ScrollViewProps, StyleProp, ViewStyle } from "react-native";
 import Animated from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { BrandSpacing } from "@/constants/brand";
-import { useAppInsets } from "@/hooks/use-app-insets";
 
 type BaseProps = {
   style?: StyleProp<ViewStyle>;
@@ -24,7 +23,7 @@ export type TabScreenRootProps = PropsWithChildren<
 >;
 
 export function TabScreenRoot(props: TabScreenRootProps) {
-  const insets = useAppInsets();
+  const insets = useSafeAreaInsets();
 
   if (props.mode === "static") {
     return (
@@ -52,7 +51,7 @@ export function TabScreenRoot(props: TabScreenRootProps) {
       style={[{ flex: 1 }, style]}
       contentContainerStyle={[
         {
-          paddingBottom: Math.max(BrandSpacing.lg, insets.tabContentBottom + BrandSpacing.md),
+          paddingBottom: Math.max(BrandSpacing.xl, BrandSpacing.lg + insets.bottom),
         },
         contentContainerStyle,
       ]}
