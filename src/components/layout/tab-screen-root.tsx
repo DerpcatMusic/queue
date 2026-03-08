@@ -1,12 +1,8 @@
-import { BrandSpacing } from "@/constants/brand";
 import type { PropsWithChildren } from "react";
-import {
-  ScrollView,
-  type ScrollViewProps,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
+import type { ScrollViewProps, StyleProp, ViewStyle } from "react-native";
+import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { BrandSpacing } from "@/constants/brand";
 
 type BaseProps = {
   style?: StyleProp<ViewStyle>;
@@ -22,7 +18,9 @@ type TabScreenRootStaticProps = BaseProps & {
   mode: "static";
 };
 
-export type TabScreenRootProps = PropsWithChildren<TabScreenRootScrollProps | TabScreenRootStaticProps>;
+export type TabScreenRootProps = PropsWithChildren<
+  TabScreenRootScrollProps | TabScreenRootStaticProps
+>;
 
 export function TabScreenRoot(props: TabScreenRootProps) {
   if (props.mode === "static") {
@@ -44,7 +42,7 @@ export function TabScreenRoot(props: TabScreenRootProps) {
   const { contentContainerStyle, scrollProps, style, children } = props;
 
   return (
-    <ScrollView
+    <Animated.ScrollView
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
       {...scrollProps}
@@ -57,6 +55,6 @@ export function TabScreenRoot(props: TabScreenRootProps) {
       ]}
     >
       {children}
-    </ScrollView>
+    </Animated.ScrollView>
   );
 }

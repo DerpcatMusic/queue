@@ -1,5 +1,7 @@
 import type MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
+import type { RoleTabRouteName } from "./role-routes";
+
 export type AppRole = "instructor" | "studio";
 
 export type SharedTabId = "home" | "jobs" | "calendar" | "map" | "profile";
@@ -17,10 +19,10 @@ export type TabSpec = {
   id: SharedTabId;
   titleKey: string;
   icon: {
-    material: keyof typeof MaterialIcons.glyphMap;
+    md: keyof typeof MaterialIcons.glyphMap;
     sfDefault: string;
     sfSelected: string;
   };
-  routeName: string;
+  routeName: RoleTabRouteName;
   visibleFor: AppRole[];
 };

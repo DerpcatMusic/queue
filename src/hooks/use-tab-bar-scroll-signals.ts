@@ -1,7 +1,14 @@
 import { useCallback, useMemo, useRef } from "react";
-import type { NativeScrollEvent, NativeSyntheticEvent, ScrollViewProps } from "react-native";
+import type {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  ScrollViewProps,
+} from "react-native";
 
-import { useTabBarScrollContext, type TabBarScrollSignal } from "@/contexts/tab-bar-scroll-context";
+import {
+  useTabBarScrollContext,
+  type TabBarScrollSignal,
+} from "@/contexts/tab-bar-scroll-context";
 
 type ScrollDirection = TabBarScrollSignal["direction"];
 
@@ -15,10 +22,14 @@ type UseTabBarScrollSignalsResult = {
   getLatestSignal: () => TabBarScrollSignal | null;
 };
 
-export function useTabBarScrollSignals(routeKey: string): UseTabBarScrollSignalsResult {
+export function useTabBarScrollSignals(
+  routeKey: string,
+): UseTabBarScrollSignalsResult {
   const { publishSignal, getSignal } = useTabBarScrollContext();
   const previousOffsetRef = useRef(0);
   const previousAtRef = useRef<number | null>(null);
+  const previousDirectionRef = useRef<ScrollDirection>("idle");
+  const previousVelocityRef = useRef(0);
 
   const onScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -27,12 +38,28 @@ export function useTabBarScrollSignals(routeKey: string): UseTabBarScrollSignals
       const previousOffset = previousOffsetRef.current;
       const delta = offset - previousOffset;
       const previousAt = previousAtRef.current;
-      const elapsedMs = previousAt === null ? 16 : Math.max(1, now - previousAt);
+      const elapsedMs =
+        previousAt === null ? 16 : Math.max(1, now - previousAt);
       const velocity = Math.abs(delta) / elapsedMs;
       const direction = resolveDirection(delta);
 
       previousOffsetRef.current = offset;
       previousAtRef.current = now;
+      const previousDirection = previousDirectionRef.current;
+      const previousVelocity = previousVelocityRef.current;
+      const velocityDelta = Math.abs(velocity - previousVelocity);
+      const shouldPublish =
+        Math.abs(delta) >= 3 ||
+        direction !== previousDirection ||
+        velocityDelta >= 0.04 ||
+        previousAt === null;
+
+      if (!shouldPublish) {
+        return;
+      }
+
+      previousDirectionRef.current = direction;
+      previousVelocityRef.current = velocity;
       publishSignal({
         routeKey,
         offset,
@@ -44,7 +71,10 @@ export function useTabBarScrollSignals(routeKey: string): UseTabBarScrollSignals
     [publishSignal, routeKey],
   );
 
-  const getLatestSignal = useCallback(() => getSignal(routeKey), [getSignal, routeKey]);
+  const getLatestSignal = useCallback(
+    () => getSignal(routeKey),
+    [getSignal, routeKey],
+  );
 
   return useMemo(
     () => ({ onScroll, getLatestSignal }),

@@ -64,7 +64,9 @@ const resolveDiditSdkModule = async (): Promise<DiditSdkModule | null> => {
     global as typeof global & { __turboModuleProxy?: (name: string) => unknown }
   ).__turboModuleProxy;
   const turboDiditModule =
-    typeof turboModuleProxy === "function" ? turboModuleProxy("SdkReactNative") : undefined;
+    typeof turboModuleProxy === "function"
+      ? turboModuleProxy("SdkReactNative")
+      : undefined;
 
   if (!nativeDiditModule && !turboDiditModule) {
     cachedDiditSdkModule = null;
@@ -72,7 +74,8 @@ const resolveDiditSdkModule = async (): Promise<DiditSdkModule | null> => {
   }
 
   try {
-    cachedDiditSdkModule = (await import("@didit-protocol/sdk-react-native")) as DiditSdkModule;
+    cachedDiditSdkModule =
+      (await import("@didit-protocol/sdk-react-native")) as DiditSdkModule;
     return cachedDiditSdkModule;
   } catch {
     cachedDiditSdkModule = null;
@@ -138,7 +141,10 @@ function LoaderDot({ delay, color }: { delay: number; color: string }) {
     pulse.value = withDelay(
       delay,
       withRepeat(
-        withSequence(withTiming(1, { duration: 420 }), withTiming(0.45, { duration: 420 })),
+        withSequence(
+          withTiming(1, { duration: 420 }),
+          withTiming(0.45, { duration: 420 }),
+        ),
         -1,
         false,
       ),
@@ -175,17 +181,26 @@ function VerificationResolvingState({ label }: { label: string }) {
   useEffect(() => {
     settle.value = withTiming(1, { duration: 320 });
     halo.value = withRepeat(
-      withSequence(withTiming(1.18, { duration: 850 }), withTiming(0.8, { duration: 850 })),
+      withSequence(
+        withTiming(1.18, { duration: 850 }),
+        withTiming(0.8, { duration: 850 }),
+      ),
       -1,
       false,
     );
     cardFloat.value = withRepeat(
-      withSequence(withTiming(-5, { duration: 1200 }), withTiming(0, { duration: 1200 })),
+      withSequence(
+        withTiming(-5, { duration: 1200 }),
+        withTiming(0, { duration: 1200 }),
+      ),
       -1,
       false,
     );
     bubbleFloat.value = withRepeat(
-      withSequence(withTiming(-10, { duration: 1400 }), withTiming(0, { duration: 1400 })),
+      withSequence(
+        withTiming(-10, { duration: 1400 }),
+        withTiming(0, { duration: 1400 }),
+      ),
       -1,
       false,
     );
@@ -198,17 +213,26 @@ function VerificationResolvingState({ label }: { label: string }) {
 
   const cardStyle = useAnimatedStyle(() => ({
     opacity: 0.72 + settle.value * 0.28,
-    transform: [{ translateY: cardFloat.value }, { scale: 0.96 + settle.value * 0.04 }],
+    transform: [
+      { translateY: cardFloat.value },
+      { scale: 0.96 + settle.value * 0.04 },
+    ],
   }));
 
   const bubbleLeftStyle = useAnimatedStyle(() => ({
     opacity: 0.16 + settle.value * 0.1,
-    transform: [{ translateY: bubbleFloat.value }, { scale: 0.92 + settle.value * 0.08 }],
+    transform: [
+      { translateY: bubbleFloat.value },
+      { scale: 0.92 + settle.value * 0.08 },
+    ],
   }));
 
   const bubbleRightStyle = useAnimatedStyle(() => ({
     opacity: 0.14 + settle.value * 0.1,
-    transform: [{ translateY: bubbleFloat.value * -0.7 }, { scale: 0.9 + settle.value * 0.1 }],
+    transform: [
+      { translateY: bubbleFloat.value * -0.7 },
+      { scale: 0.9 + settle.value * 0.1 },
+    ],
   }));
 
   return (
@@ -302,7 +326,9 @@ function VerificationResolvingState({ label }: { label: string }) {
               backgroundColor: palette.surface as string,
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
               <LoaderDot delay={0} color={palette.primary as string} />
               <LoaderDot delay={140} color={palette.primary as string} />
               <LoaderDot delay={280} color={palette.primary as string} />
@@ -316,7 +342,10 @@ function VerificationResolvingState({ label }: { label: string }) {
             <ThemedText type="title" style={{ textAlign: "center" }}>
               Finalizing your verification
             </ThemedText>
-            <ThemedText type="caption" style={{ color: palette.textMuted, textAlign: "center" }}>
+            <ThemedText
+              type="caption"
+              style={{ color: palette.textMuted, textAlign: "center" }}
+            >
               {label}
             </ThemedText>
           </Animated.View>
@@ -333,8 +362,12 @@ export default function IdentityVerificationScreen() {
     api.didit.getMyDiditVerification,
     currentUser?.role === "instructor" ? {} : "skip",
   );
-  const createSessionForCurrentInstructor = useAction(api.didit.createSessionForCurrentInstructor);
-  const refreshMyDiditVerification = useAction(api.didit.refreshMyDiditVerification);
+  const createSessionForCurrentInstructor = useAction(
+    api.didit.createSessionForCurrentInstructor,
+  );
+  const refreshMyDiditVerification = useAction(
+    api.didit.refreshMyDiditVerification,
+  );
 
   const diditReturnUrl = useMemo(
     () =>
@@ -370,7 +403,9 @@ export default function IdentityVerificationScreen() {
     if (status === "approved" && previousStatusRef.current !== "approved") {
       setShowApprovalBurst(true);
       if (Platform.OS === "ios") {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        void Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        );
       }
     }
     previousStatusRef.current = status;
@@ -391,8 +426,12 @@ export default function IdentityVerificationScreen() {
       return;
     }
 
+    const MAX_PROCESSING_POLL_ATTEMPTS = 120;
+    const MAX_ERROR_POLL_ATTEMPTS = 20;
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let processingPollAttempts = 0;
+    let errorPollAttempts = 0;
 
     const poll = async () => {
       try {
@@ -404,6 +443,15 @@ export default function IdentityVerificationScreen() {
         setLocalStatus(latest.status);
 
         if (isProcessingStatus(latest.status)) {
+          processingPollAttempts += 1;
+          if (processingPollAttempts >= MAX_PROCESSING_POLL_ATTEMPTS) {
+            setAwaitingFinalResult(false);
+            setErrorMessage(
+              "Verification is taking longer than expected. Pull to refresh or try again shortly.",
+            );
+            setInfoMessage(null);
+            return;
+          }
           timeoutId = setTimeout(() => {
             void poll();
           }, 1500);
@@ -427,6 +475,15 @@ export default function IdentityVerificationScreen() {
         }
       } catch {
         if (cancelled) {
+          return;
+        }
+        errorPollAttempts += 1;
+        if (errorPollAttempts >= MAX_ERROR_POLL_ATTEMPTS) {
+          setAwaitingFinalResult(false);
+          setErrorMessage(
+            "We could not confirm your latest verification status. Please try again.",
+          );
+          setInfoMessage(null);
           return;
         }
         timeoutId = setTimeout(() => {
@@ -478,7 +535,9 @@ export default function IdentityVerificationScreen() {
     setInfoMessage(null);
 
     try {
-      const session = await createSessionForCurrentInstructor({ callback: diditReturnUrl });
+      const session = await createSessionForCurrentInstructor({
+        callback: diditReturnUrl,
+      });
       const sdk = await resolveDiditSdkModule();
 
       if (sdk) {
@@ -488,7 +547,10 @@ export default function IdentityVerificationScreen() {
         } else if (result.type === "cancelled") {
           setInfoMessage("Verification flow was cancelled.");
         } else {
-          setErrorMessage(result.error?.message ?? "Didit could not complete this verification.");
+          setErrorMessage(
+            result.error?.message ??
+              "Didit could not complete this verification.",
+          );
         }
         return;
       }
@@ -500,14 +562,19 @@ export default function IdentityVerificationScreen() {
 
       if (browserResult.type === "success") {
         beginAwaitingFinalResult("in_review");
-      } else if (browserResult.type === "cancel" || browserResult.type === "dismiss") {
+      } else if (
+        browserResult.type === "cancel" ||
+        browserResult.type === "dismiss"
+      ) {
         setInfoMessage("Verification flow was cancelled.");
       } else {
         setErrorMessage("Didit did not return a valid completion signal.");
       }
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Failed to start Didit verification.",
+        error instanceof Error
+          ? error.message
+          : "Failed to start Didit verification.",
       );
     } finally {
       setBusy(false);
@@ -534,7 +601,9 @@ export default function IdentityVerificationScreen() {
       style={{ flex: 1, backgroundColor: palette.appBg }}
       contentContainerStyle={{ paddingTop: 16, paddingBottom: 44, gap: 22 }}
     >
-      <View style={{ paddingHorizontal: BrandSpacing.md, gap: BrandSpacing.md }}>
+      <View
+        style={{ paddingHorizontal: BrandSpacing.md, gap: BrandSpacing.md }}
+      >
         {showApprovalBurst ? <KitSuccessBurst /> : null}
 
         <View
@@ -619,12 +688,17 @@ export default function IdentityVerificationScreen() {
                 : (palette.primary as string),
             }}
           >
-            <ThemedText type="bodyStrong" style={{ color: palette.onPrimary as string }}>
+            <ThemedText
+              type="bodyStrong"
+              style={{ color: palette.onPrimary as string }}
+            >
               {busy
                 ? "Starting verification..."
                 : isProcessing
                   ? "Resume verification"
-                  : status === "declined" || status === "expired" || status === "abandoned"
+                  : status === "declined" ||
+                      status === "expired" ||
+                      status === "abandoned"
                     ? "Start a fresh verification"
                     : "Start Didit verification"}
             </ThemedText>
@@ -632,13 +706,21 @@ export default function IdentityVerificationScreen() {
         ) : null}
 
         {errorMessage ? (
-          <ThemedText type="caption" selectable style={{ color: palette.danger }}>
+          <ThemedText
+            type="caption"
+            selectable
+            style={{ color: palette.danger }}
+          >
             {errorMessage}
           </ThemedText>
         ) : null}
 
         {infoMessage ? (
-          <ThemedText type="caption" selectable style={{ color: palette.textMuted }}>
+          <ThemedText
+            type="caption"
+            selectable
+            style={{ color: palette.textMuted }}
+          >
             {infoMessage}
           </ThemedText>
         ) : null}

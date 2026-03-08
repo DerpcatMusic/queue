@@ -1,7 +1,12 @@
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useTabBarScrollSignals } from "@/hooks/use-tab-bar-scroll-signals";
 import type { PropsWithChildren } from "react";
-import { View, type ScrollViewProps, type StyleProp, type ViewStyle } from "react-native";
+import {
+  View,
+  type ScrollViewProps,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import type Animated from "react-native-reanimated";
 import type { AnimatedRef } from "react-native-reanimated";
 
@@ -10,14 +15,20 @@ type TabScreenContainerProps = PropsWithChildren<{
 }>;
 
 type TabScreenScrollViewProps = PropsWithChildren<
-  Omit<ScrollViewProps, "contentContainerStyle" | "contentInsetAdjustmentBehavior" | "ref"> & {
+  Omit<
+    ScrollViewProps,
+    "contentContainerStyle" | "contentInsetAdjustmentBehavior" | "ref"
+  > & {
     contentContainerStyle?: StyleProp<ViewStyle>;
     routeKey?: string;
     animatedRef?: AnimatedRef<Animated.ScrollView>;
   }
 >;
 
-export function TabScreenContainer({ children, style }: TabScreenContainerProps) {
+export function TabScreenContainer({
+  children,
+  style,
+}: TabScreenContainerProps) {
   return (
     <View style={[{ flex: 1 }, style]}>
       <TabScreenRoot mode="static">{children}</TabScreenRoot>
@@ -51,7 +62,7 @@ export function TabScreenScrollView({
           }
           onScroll?.(event);
         },
-        scrollEventThrottle: 16,
+        scrollEventThrottle: 32,
         scrollIndicatorInsets,
       }}
     >

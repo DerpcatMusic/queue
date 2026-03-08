@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 
+import { FetchRequestError, fetchJsonWithPolicy } from "@/lib/fetch-json";
+
 export type ResolvedLocation = {
   address: string;
   latitude: number;
@@ -33,10 +35,7 @@ export function isLocationResolveError(error: unknown): error is LocationResolve
 }
 
 type LocationModule = typeof import("expo-location");
-type FindZoneIdForCoordinate = (point: {
-  latitude: number;
-  longitude: number;
-}) => string | null;
+type FindZoneIdForCoordinate = (point: { latitude: number; longitude: number }) => string | null;
 
 let locationModulePromise: Promise<LocationModule> | null = null;
 let findZoneIdForCoordinatePromise: Promise<FindZoneIdForCoordinate> | null = null;
@@ -44,6 +43,11 @@ const addressResolutionCache = new Map<string, ResolvedLocation>();
 const reverseAddressCache = new Map<string, string>();
 const WEB_GEOCODER_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
 const WEB_GEOCODER_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
+const WEB_GEOCODER_TIMEOUT_MS = 12000;
+
+function isFetchTimeout(error: unknown): boolean {
+  return error instanceof FetchRequestError && error.code === "timeout";
+}
 
 function createLocationError(code: LocationResolveErrorCode, message: string) {
   return new LocationResolveError(code, message);
@@ -83,10 +87,7 @@ export function normalizeLocationResolveError(error: unknown): LocationResolveEr
     return createLocationError("permission_denied", "Location permission was denied.");
   }
 
-  if (
-    lowered.includes("cannot find native module") &&
-    lowered.includes("expolocation")
-  ) {
+  if (lowered.includes("cannot find native module") && lowered.includes("expolocation")) {
     return createLocationError(
       "native_module_missing",
       "Expo Location native module is unavailable. Rebuild and reinstall the dev client.",
@@ -99,8 +100,7 @@ export function normalizeLocationResolveError(error: unknown): LocationResolveEr
 async function getLocationModule() {
   if (!locationModulePromise) {
     locationModulePromise = import("expo-location").catch((error: unknown) => {
-      const message =
-        error instanceof Error ? error.message : "Unknown location module error";
+      const message = error instanceof Error ? error.message : "Unknown location module error";
       throw createLocationError(
         "native_module_missing",
         `Expo Location native module is unavailable. Rebuild/reinstall the Android app and relaunch the dev client. (${message})`,
@@ -115,48 +115,57 @@ async function geocodeAddressOnWeb(address: string): Promise<{
   latitude: number;
   longitude: number;
 }> {
-  const url = `${WEB_GEOCODER_SEARCH_URL}?format=jsonv2&limit=1&q=${encodeURIComponent(address)}`;
-  const response = await withTimeout(
-    fetch(url, {
-      headers: {
-        "Accept-Language": "en",
+  try {
+    const url = `${WEB_GEOCODER_SEARCH_URL}?format=jsonv2&limit=1&q=${encodeURIComponent(address)}`;
+    const results = await fetchJsonWithPolicy<
+      Array<{
+        lat?: string;
+        lon?: string;
+      }>
+    >(
+      url,
+      {
+        headers: {
+          "Accept-Language": "en",
+        },
       },
-    }),
-    12000,
-  );
+      { timeoutMs: WEB_GEOCODER_TIMEOUT_MS, retries: 1 },
+    );
 
-  if (!response.ok) {
-    throw createLocationError("address_not_found", "Address not found.");
+    const first = results[0];
+    const latitude = Number.parseFloat(first?.lat ?? "");
+    const longitude = Number.parseFloat(first?.lon ?? "");
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      throw createLocationError("address_not_found", "Address not found.");
+    }
+    return { latitude, longitude };
+  } catch (error) {
+    if (isFetchTimeout(error)) {
+      throw createLocationError("timeout", "Location request timed out.");
+    }
+    if (error instanceof FetchRequestError && error.code === "http") {
+      throw createLocationError("address_not_found", "Address not found.");
+    }
+    throw error;
   }
-
-  const results = (await response.json()) as Array<{
-    lat?: string;
-    lon?: string;
-  }>;
-  const first = results[0];
-  const latitude = Number.parseFloat(first?.lat ?? "");
-  const longitude = Number.parseFloat(first?.lon ?? "");
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    throw createLocationError("address_not_found", "Address not found.");
-  }
-  return { latitude, longitude };
 }
 
 async function reverseGeocodeOnWeb(latitude: number, longitude: number): Promise<string> {
-  const url = `${WEB_GEOCODER_REVERSE_URL}?format=jsonv2&lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`;
-  const response = await withTimeout(
-    fetch(url, {
-      headers: {
-        "Accept-Language": "en",
+  try {
+    const url = `${WEB_GEOCODER_REVERSE_URL}?format=jsonv2&lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`;
+    const data = await fetchJsonWithPolicy<{ display_name?: string }>(
+      url,
+      {
+        headers: {
+          "Accept-Language": "en",
+        },
       },
-    }),
-    12000,
-  );
-  if (!response.ok) {
+      { timeoutMs: WEB_GEOCODER_TIMEOUT_MS, retries: 1 },
+    );
+    return data.display_name?.trim() || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+  } catch {
     return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
   }
-  const data = (await response.json()) as { display_name?: string };
-  return data.display_name?.trim() || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
 }
 
 async function getCurrentCoordinatesOnWeb(): Promise<{
@@ -181,12 +190,7 @@ async function getCurrentCoordinatesOnWeb(): Promise<{
         },
         (error) => {
           if (error.code === error.PERMISSION_DENIED) {
-            reject(
-              createLocationError(
-                "permission_denied",
-                "Location permission was denied.",
-              ),
-            );
+            reject(createLocationError("permission_denied", "Location permission was denied."));
             return;
           }
           if (error.code === error.TIMEOUT) {
@@ -233,10 +237,7 @@ function formatAddress(parts: {
   region?: string | null;
   postalCode?: string | null;
 }) {
-  const lineOne = [parts.name, parts.streetNumber, parts.street]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  const lineOne = [parts.name, parts.streetNumber, parts.street].filter(Boolean).join(" ").trim();
   const lineTwo = [parts.city, parts.subregion, parts.region, parts.postalCode]
     .filter(Boolean)
     .join(", ")

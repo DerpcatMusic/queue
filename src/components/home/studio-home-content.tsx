@@ -2,7 +2,11 @@ import { type Href, Link } from "expo-router";
 import type { TFunction } from "i18next";
 import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
-import Animated, { FadeInUp, useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
+import Animated, {
+  FadeInUp,
+  useAnimatedRef,
+  useScrollViewOffset,
+} from "react-native-reanimated";
 import {
   getHomeHeaderScrollTopPadding,
   HomeHeaderSheet,
@@ -112,7 +116,11 @@ function MetricTile({
         </KitPressable>
       </Link.Trigger>
       <Link.Menu>
-        <Link.MenuAction title="Open" icon="arrow.up.forward.app" onPress={onPress} />
+        <Link.MenuAction
+          title="Open"
+          icon="arrow.up.forward.app"
+          onPress={onPress}
+        />
       </Link.Menu>
     </Link>
   );
@@ -142,7 +150,7 @@ export function StudioHomeContent({
     .slice(0, 3);
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useScrollViewOffset(scrollRef);
-  const now = Date.now();
+  const now = useMemo(() => Date.now(), []);
   const [timeframe, setTimeframe] = useState<Timeframe>("weekly");
   const [metricMode, setMetricMode] = useState<MetricMode>("earnings");
   const timeframeSeries = useMemo(() => {
@@ -164,7 +172,9 @@ export function StudioHomeContent({
         }
         return recentJobs.filter(
           (row) =>
-            row.status === "completed" && row.endTime >= bucketStart && row.endTime < bucketEnd,
+            row.status === "completed" &&
+            row.endTime >= bucketStart &&
+            row.endTime < bucketEnd,
         ).length;
       });
 
@@ -186,7 +196,10 @@ export function StudioHomeContent({
       : `${String(frameTotal)} ${t("home.performance.lessons")}`;
 
   return (
-    <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
+    <View
+      collapsable={false}
+      style={{ flex: 1, backgroundColor: palette.appBg }}
+    >
       <HomeHeaderSheet
         displayName={displayName}
         profileImageUrl={profileImageUrl}
@@ -211,7 +224,9 @@ export function StudioHomeContent({
       >
         {/* Content starts below sheet — header section removed (handled by HomeHeaderSheet) */}
         <View className="px-6 gap-8">
-          <Animated.View entering={FadeInUp.delay(100).duration(450).springify().damping(20)}>
+          <Animated.View
+            entering={FadeInUp.delay(100).duration(450).springify().damping(20)}
+          >
             <PerformanceHeroCard
               palette={palette}
               timeframe={timeframe}
@@ -221,7 +236,9 @@ export function StudioHomeContent({
               metricLabel={t(`home.performance.${metricMode}`)}
               seriesByTimeframe={timeframeSeries}
               onToggleMetric={() =>
-                setMetricMode((prev) => (prev === "earnings" ? "lessons" : "earnings"))
+                setMetricMode((prev) =>
+                  prev === "earnings" ? "lessons" : "earnings",
+                )
               }
               onSwipeTimeframe={(direction) => {
                 setTimeframe((prev) => getAdjacentTimeframe(prev, direction));
@@ -230,7 +247,10 @@ export function StudioHomeContent({
           </Animated.View>
 
           {/* 3. Layered Metric Tiles */}
-          <Animated.View entering={FadeInUp.delay(150).duration(450)} className="gap-3">
+          <Animated.View
+            entering={FadeInUp.delay(150).duration(450)}
+            className="gap-3"
+          >
             <View className="flex-row gap-4">
               <MetricTile
                 label={t("home.studio.stats.openLabel")}
@@ -255,9 +275,15 @@ export function StudioHomeContent({
 
           {/* 4. Attention Required Stack */}
           {jobsNeedingReview.length > 0 && (
-            <Animated.View entering={FadeInUp.delay(200).duration(450)} className="gap-5 pt-4">
+            <Animated.View
+              entering={FadeInUp.delay(200).duration(450)}
+              className="gap-5 pt-4"
+            >
               <View className="flex-row items-center justify-between">
-                <Text className="font-heading text-3xl" style={{ color: palette.text as string }}>
+                <Text
+                  className="font-heading text-3xl"
+                  style={{ color: palette.text as string }}
+                >
                   {t("jobsTab.studioApplicationsTitle")}
                 </Text>
                 <AppSymbol
@@ -305,7 +331,11 @@ export function StudioHomeContent({
                             backgroundColor: palette.surfaceAlt as string,
                           }}
                         >
-                          <AppSymbol name="calendar" size={12} tintColor={palette.text as string} />
+                          <AppSymbol
+                            name="calendar"
+                            size={12}
+                            tintColor={palette.text as string}
+                          />
                           <Text
                             className="font-title text-sm"
                             style={{ color: palette.text as string }}
@@ -377,11 +407,16 @@ export function StudioHomeContent({
 
           {/* 5. Bold Recent Jobs List */}
           <Animated.View
-            entering={FadeInUp.delay(jobsNeedingReview.length > 0 ? 300 : 200).duration(450)}
+            entering={FadeInUp.delay(
+              jobsNeedingReview.length > 0 ? 300 : 200,
+            ).duration(450)}
             className="gap-5 pb-10 pt-4"
           >
             <View className="flex-row items-center justify-between">
-              <Text className="font-heading text-3xl" style={{ color: palette.text as string }}>
+              <Text
+                className="font-heading text-3xl"
+                style={{ color: palette.text as string }}
+              >
                 {t("home.studio.recentTitle")}
               </Text>
               {recentJobs.length > 0 && (
@@ -424,7 +459,9 @@ export function StudioHomeContent({
                 {recentJobs.slice(0, 3).map((job, index) => (
                   <Animated.View
                     key={job.jobId}
-                    entering={FadeInUp.delay((jobsNeedingReview.length ? 350 : 250) + index * 50)
+                    entering={FadeInUp.delay(
+                      (jobsNeedingReview.length ? 350 : 250) + index * 50,
+                    )
                       .duration(400)
                       .springify()
                       .damping(18)}
@@ -453,7 +490,11 @@ export function StudioHomeContent({
                             backgroundColor: palette.surfaceAlt as string,
                           }}
                         >
-                          <AppSymbol name="calendar" size={12} tintColor={palette.text as string} />
+                          <AppSymbol
+                            name="calendar"
+                            size={12}
+                            tintColor={palette.text as string}
+                          />
                           <Text
                             className="font-title text-sm"
                             style={{ color: palette.text as string }}
@@ -520,4 +561,3 @@ export function StudioHomeContent({
     </View>
   );
 }
-

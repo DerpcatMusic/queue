@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { type ColorValue, StyleSheet, TextInput, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { KitPressable } from "@/components/ui/kit";
@@ -41,6 +42,7 @@ export function AddressAutocomplete({
   surfaceColor,
   mutedTextColor,
 }: AddressAutocompleteProps) {
+  const { t } = useTranslation();
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -126,7 +128,7 @@ export function AddressAutocomplete({
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        placeholder={placeholder ?? "Address"}
+        placeholder={placeholder ?? t("common.address")}
         placeholderTextColor={placeholderTextColor ?? palette.textMuted}
         style={[
           styles.input,
@@ -148,7 +150,7 @@ export function AddressAutocomplete({
       {isLoading ? (
         <View style={[styles.loadingBar, { backgroundColor: palette.primarySubtle }]}>
           <ThemedText style={{ color: mutedTextColor ?? palette.textMuted, fontSize: 12 }}>
-            Searching...
+            {t("common.searching")}
           </ThemedText>
         </View>
       ) : null}

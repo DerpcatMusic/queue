@@ -6,6 +6,37 @@ import { omitUndefined } from "./lib/validation";
 const getHeader = (req: Request, key: string): string | null =>
   req.headers.get(key) ?? req.headers.get(key.toLowerCase()) ?? null;
 
+const normalizeText = (value: string | null | undefined, maxLength = 160): string => {
+  const trimmed = (value ?? "").trim();
+  return trimmed.length > maxLength ? trimmed.slice(0, maxLength) : trimmed;
+};
+
+const extractClientIp = (req: Request): string => {
+  const forwardedFor = getHeader(req, "x-forwarded-for");
+  if (forwardedFor) {
+    const first = forwardedFor.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return (
+    getHeader(req, "cf-connecting-ip") ??
+    getHeader(req, "x-real-ip") ??
+    getHeader(req, "x-client-ip") ??
+    "unknown"
+  )
+    .trim()
+    .slice(0, 80);
+};
+
+const buildFingerprint = async (provider: "rapyd" | "didit", req: Request): Promise<string> => {
+  const source = [
+    provider,
+    extractClientIp(req),
+    normalizeText(getHeader(req, "user-agent"), 200),
+    normalizeText(getHeader(req, "x-forwarded-proto"), 20),
+  ].join("|");
+  return sha256Hex(source);
+};
+
 const safeEqual = (a: string, b: string): boolean => {
   if (a.length !== b.length) return false;
   let mismatch = 0;
@@ -141,6 +172,92 @@ const normalizeConfiguredWebhookCandidates = (req: Request): string[] => {
   return Array.from(candidates).filter((value) => value.length > 0);
 };
 
+const toRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+const toTrimmedString = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const buildCanonicalRapydPayload = (payload: unknown): Record<string, unknown> => {
+  const root = toRecord(payload) ?? {};
+  const data = toRecord(root.data);
+  const payment = toRecord(data?.payment);
+  const payout = toRecord(data?.payout);
+  const checkout = toRecord(data?.checkout);
+  const metadata = toRecord(data?.metadata);
+
+  return omitUndefined({
+    id: toTrimmedString(root.id),
+    type: toTrimmedString(root.type) ?? toTrimmedString(root.event),
+    data: data
+      ? omitUndefined({
+          id: toTrimmedString(data.id),
+          status: toTrimmedString(data.status),
+          merchant_reference_id: toTrimmedString(data.merchant_reference_id),
+          payout_method_type: toTrimmedString(data.payout_method_type),
+          default_payout_method_type: toTrimmedString(data.default_payout_method_type),
+          payment: payment
+            ? omitUndefined({
+                id: toTrimmedString(payment.id),
+                status: toTrimmedString(payment.status),
+              })
+            : undefined,
+          payout: payout
+            ? omitUndefined({
+                id: toTrimmedString(payout.id),
+                status: toTrimmedString(payout.status),
+              })
+            : undefined,
+          checkout: checkout
+            ? omitUndefined({
+                id: toTrimmedString(checkout.id),
+              })
+            : undefined,
+          metadata: metadata
+            ? omitUndefined({
+                payoutId: toTrimmedString(metadata.payoutId),
+                merchant_reference_id: toTrimmedString(metadata.merchant_reference_id),
+              })
+            : undefined,
+        })
+      : undefined,
+  });
+};
+
+const buildCanonicalDiditPayload = (payload: unknown): Record<string, unknown> => {
+  const root = toRecord(payload) ?? {};
+  const data = toRecord(root.data);
+  return omitUndefined({
+    id: toTrimmedString(root.id),
+    event_id: toTrimmedString(root.event_id),
+    session_id: toTrimmedString(root.session_id) ?? toTrimmedString(root.sessionId),
+    status: toTrimmedString(root.status),
+    vendor_data: toTrimmedString(root.vendor_data) ?? toTrimmedString(root.vendorData),
+    webhook_type: toTrimmedString(root.webhook_type),
+    timestamp:
+      typeof root.timestamp === "string" || typeof root.timestamp === "number"
+        ? String(root.timestamp)
+        : undefined,
+    data: data
+      ? omitUndefined({
+          session_id: toTrimmedString(data.session_id),
+          status: toTrimmedString(data.status),
+          vendor_data: toTrimmedString(data.vendor_data),
+          webhook_type: toTrimmedString(data.webhook_type),
+          timestamp:
+            typeof data.timestamp === "string" || typeof data.timestamp === "number"
+              ? String(data.timestamp)
+              : undefined,
+        })
+      : undefined,
+  });
+};
+
 export const rapydWebhook = httpAction(async (ctx, req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -233,6 +350,12 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
       payload.data?.default_payout_method_type?.toString().trim() ||
       undefined
     : undefined;
+  const fingerprint = await buildFingerprint("rapyd", req);
+  const throttleState = await ctx.runMutation(internal.webhookSecurity.checkInvalidSignatureThrottle, {
+    provider: "rapyd",
+    fingerprint,
+  });
+  const canonicalPayload = buildCanonicalRapydPayload(parsedPayload);
 
   const expectedAccessKey = (process.env.RAPYD_ACCESS_KEY ?? "").trim();
   const webhookSecret = (
@@ -282,12 +405,25 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
     }
   }
 
+  if (!signatureValid) {
+    const throttleUpdate = await ctx.runMutation(internal.webhookSecurity.recordInvalidSignatureAttempt, {
+      provider: "rapyd",
+      fingerprint,
+    });
+    if (throttleState.blocked || throttleUpdate.blocked) {
+      return new Response(JSON.stringify({ received: true, signatureValid, timestampValid, throttled: true }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+
   if (isBeneficiaryEvent || merchantReferenceIdFromPayload || providerBeneficiaryId) {
     await ctx.runMutation(internal.payments.processRapydBeneficiaryWebhookEvent, {
       providerEventId,
       signatureValid,
       payloadHash,
-      payload: parsedPayload,
+      payload: canonicalPayload,
       ...omitUndefined({
         eventType,
         merchantReferenceId: merchantReferenceIdFromPayload,
@@ -300,7 +436,7 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
       providerEventId,
       signatureValid,
       payloadHash,
-      payload: parsedPayload,
+      payload: canonicalPayload,
       ...omitUndefined({
         eventType,
         providerPayoutId,
@@ -313,7 +449,7 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
       providerEventId,
       signatureValid,
       payloadHash,
-      payload: parsedPayload,
+      payload: canonicalPayload,
       ...omitUndefined({
         eventType,
         providerPaymentId,
@@ -436,12 +572,39 @@ export const diditWebhook = httpAction(async (ctx, req) => {
     payload.vendorData?.toString().trim() ||
     payload.data?.vendor_data?.toString().trim() ||
     undefined;
+  const fingerprint = await buildFingerprint("didit", req);
+  const throttleState = await ctx.runMutation(internal.webhookSecurity.checkInvalidSignatureThrottle, {
+    provider: "didit",
+    fingerprint,
+  });
+  const canonicalPayload = buildCanonicalDiditPayload(parsedPayload);
+
+  if (!signatureValid) {
+    const throttleUpdate = await ctx.runMutation(internal.webhookSecurity.recordInvalidSignatureAttempt, {
+      provider: "didit",
+      fingerprint,
+    });
+    if (throttleState.blocked || throttleUpdate.blocked) {
+      return new Response(
+        JSON.stringify({
+          received: true,
+          signatureValid,
+          timestampValid,
+          throttled: true,
+        }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+  }
 
   await ctx.runMutation(internal.didit.processDiditWebhookEvent, {
     providerEventId,
     signatureValid,
     payloadHash,
-    payload: parsedPayload,
+    payload: canonicalPayload,
     ...omitUndefined({
       sessionId,
       statusRaw,

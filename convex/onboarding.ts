@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 
+import type { MutationCtx } from "./_generated/server";
 import { mutation } from "./_generated/server";
 import { requireCurrentUser } from "./lib/auth";
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
@@ -19,6 +21,80 @@ const MAX_ADDRESS_LENGTH = 220;
 const MAX_PHONE_LENGTH = 20;
 const MAX_SPORTS = 12;
 const MAX_ZONES = 25;
+
+export function resolveGetOrCreateProfileAction(
+  profileCount: number,
+  profileType: "instructor" | "studio",
+) {
+  if (!Number.isInteger(profileCount) || profileCount < 0) {
+    throw new ConvexError("Invalid profile count");
+  }
+  if (profileCount > 1) {
+    throw new ConvexError(`Multiple ${profileType} profiles found for this account`);
+  }
+  return profileCount === 0 ? "create" : "reuse";
+}
+
+async function getUniqueInstructorProfileByUserId(
+  ctx: MutationCtx,
+  userId: Doc<"users">["_id"],
+) {
+  const profiles = await ctx.db
+    .query("instructorProfiles")
+    .withIndex("by_user_id", (q) => q.eq("userId", userId))
+    .take(2);
+  resolveGetOrCreateProfileAction(profiles.length, "instructor");
+  return profiles[0] ?? null;
+}
+
+async function getOrCreateInstructorProfileWithGuard(args: {
+  ctx: MutationCtx;
+  userId: Doc<"users">["_id"];
+  create: () => Promise<Doc<"instructorProfiles">["_id"]>;
+}) {
+  const existingProfile = await getUniqueInstructorProfileByUserId(
+    args.ctx,
+    args.userId,
+  );
+  if (existingProfile) {
+    return { profile: existingProfile, created: false as const };
+  }
+  const profileId = await args.create();
+  const created = await args.ctx.db.get("instructorProfiles", profileId);
+  if (!created) {
+    throw new ConvexError("Failed to create instructor profile");
+  }
+  return { profile: created, created: true as const };
+}
+
+async function getUniqueStudioProfileByUserId(
+  ctx: MutationCtx,
+  userId: Doc<"users">["_id"],
+) {
+  const profiles = await ctx.db
+    .query("studioProfiles")
+    .withIndex("by_user_id", (q) => q.eq("userId", userId))
+    .take(2);
+  resolveGetOrCreateProfileAction(profiles.length, "studio");
+  return profiles[0] ?? null;
+}
+
+async function getOrCreateStudioProfileWithGuard(args: {
+  ctx: MutationCtx;
+  userId: Doc<"users">["_id"];
+  create: () => Promise<Doc<"studioProfiles">["_id"]>;
+}) {
+  const existingProfile = await getUniqueStudioProfileByUserId(args.ctx, args.userId);
+  if (existingProfile) {
+    return { profile: existingProfile, created: false as const };
+  }
+  const profileId = await args.create();
+  const created = await args.ctx.db.get("studioProfiles", profileId);
+  if (!created) {
+    throw new ConvexError("Failed to create studio profile");
+  }
+  return { profile: created, created: true as const };
+}
 
 export const completeInstructorOnboarding = mutation({
   args: {
@@ -86,21 +162,13 @@ export const completeInstructorOnboarding = mutation({
 
     const notificationsEnabled = args.notificationsEnabled && Boolean(pushToken);
 
-    const existingProfile = await ctx.db
-      .query("instructorProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
-    const verifiedLegalName =
-      existingProfile?.diditVerificationStatus === "approved"
-        ? trimOptionalString(existingProfile.diditLegalName)
-        : undefined;
-    const displayName = verifiedLegalName ?? requestedDisplayName;
-
-    const instructorId = existingProfile
-      ? existingProfile._id
-      : await ctx.db.insert("instructorProfiles", {
+    const profileResolution = await getOrCreateInstructorProfileWithGuard({
+      ctx,
+      userId: user._id,
+      create: () =>
+        ctx.db.insert("instructorProfiles", {
           userId: user._id,
-          displayName,
+          displayName: requestedDisplayName,
           ...omitUndefined({
             bio,
             expoPushToken: pushToken,
@@ -114,9 +182,17 @@ export const completeInstructorOnboarding = mutation({
           calendarSyncEnabled: false,
           createdAt: now,
           updatedAt: now,
-        });
+        }),
+    });
+    const existingProfile = profileResolution.created ? null : profileResolution.profile;
+    const verifiedLegalName =
+      existingProfile?.diditVerificationStatus === "approved"
+        ? trimOptionalString(existingProfile.diditLegalName)
+        : undefined;
+    const displayName = verifiedLegalName ?? requestedDisplayName;
+    const instructorId = profileResolution.profile._id;
 
-    if (existingProfile) {
+    if (!profileResolution.created) {
       await ctx.db.patch("instructorProfiles", instructorId, {
         displayName,
         ...omitUndefined({
@@ -128,9 +204,9 @@ export const completeInstructorOnboarding = mutation({
           hourlyRateExpectation: args.hourlyRateExpectation,
         }),
         notificationsEnabled,
-        calendarProvider: existingProfile.calendarProvider ?? "none",
-        calendarSyncEnabled: existingProfile.calendarSyncEnabled ?? false,
-        calendarConnectedAt: existingProfile.calendarConnectedAt,
+        calendarProvider: profileResolution.profile.calendarProvider ?? "none",
+        calendarSyncEnabled: profileResolution.profile.calendarSyncEnabled ?? false,
+        calendarConnectedAt: profileResolution.profile.calendarConnectedAt,
         updatedAt: now,
       });
     }
@@ -230,13 +306,30 @@ export const completeStudioOnboarding = mutation({
       );
     }
 
-    const existingProfile = await ctx.db
-      .query("studioProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
+    const profileResolution = await getOrCreateStudioProfileWithGuard({
+      ctx,
+      userId: user._id,
+      create: () =>
+        ctx.db.insert("studioProfiles", {
+          userId: user._id,
+          studioName,
+          address,
+          zone,
+          ...omitUndefined({
+            contactPhone,
+            latitude,
+            longitude,
+            expoPushToken,
+          }),
+          notificationsEnabled,
+          createdAt: now,
+          updatedAt: now,
+        }),
+    });
+    const studioId = profileResolution.profile._id;
 
-    if (existingProfile) {
-      await ctx.db.patch("studioProfiles", existingProfile._id, {
+    if (!profileResolution.created) {
+      await ctx.db.patch("studioProfiles", studioId, {
         studioName,
         address,
         zone,
@@ -252,13 +345,13 @@ export const completeStudioOnboarding = mutation({
 
       const existingSports = await ctx.db
         .query("studioSports")
-        .withIndex("by_studio_id", (q) => q.eq("studioId", existingProfile._id))
+        .withIndex("by_studio_id", (q) => q.eq("studioId", studioId))
         .collect();
       await Promise.all(existingSports.map((s) => ctx.db.delete("studioSports", s._id)));
       await Promise.all(
         args.sports.map((sport) =>
           ctx.db.insert("studioSports", {
-            studioId: existingProfile._id,
+            studioId,
             sport: normalizeSportType(sport),
             createdAt: now,
           }),
@@ -271,24 +364,8 @@ export const completeStudioOnboarding = mutation({
         updatedAt: now,
       });
 
-      return existingProfile._id;
+      return studioId;
     }
-
-    const studioId = await ctx.db.insert("studioProfiles", {
-      userId: user._id,
-      studioName,
-      address,
-      zone,
-      ...omitUndefined({
-        contactPhone,
-        latitude,
-        longitude,
-        expoPushToken,
-      }),
-      notificationsEnabled,
-      createdAt: now,
-      updatedAt: now,
-    });
 
     await Promise.all(
       args.sports.map((sport) =>

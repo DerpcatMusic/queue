@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import {
   getCurrentUser as getCurrentUserDoc,
@@ -44,6 +45,12 @@ const socialLinksValidator = v.object({
 
 type SocialLinkKey = (typeof SOCIAL_LINK_KEYS)[number];
 type SocialLinksValue = Partial<Record<SocialLinkKey, string>>;
+
+function normalizeEmail(email: string | undefined): string | undefined {
+  if (!email) return undefined;
+  const value = email.trim().toLowerCase();
+  return value.length > 0 ? value : undefined;
+}
 
 function createUploadSessionToken(userId: Doc<"users">["_id"], now: number) {
   const entropy = Math.random().toString(36).slice(2, 12);
@@ -100,6 +107,58 @@ function toCurrentUserPayload(user: Doc<"users">) {
   };
 }
 
+type UserProfileCtx = QueryCtx | MutationCtx;
+
+async function getUniqueInstructorProfileByUserId(
+  ctx: UserProfileCtx,
+  userId: Doc<"users">["_id"],
+) {
+  const profiles = await ctx.db
+    .query("instructorProfiles")
+    .withIndex("by_user_id", (q) => q.eq("userId", userId))
+    .take(2);
+  if (profiles.length > 1) {
+    throw new ConvexError("Multiple instructor profiles found for this account");
+  }
+  return profiles[0] ?? null;
+}
+
+async function requireInstructorProfileByUserId(
+  ctx: UserProfileCtx,
+  userId: Doc<"users">["_id"],
+) {
+  const profile = await getUniqueInstructorProfileByUserId(ctx, userId);
+  if (!profile) {
+    throw new ConvexError("Instructor profile not found");
+  }
+  return profile;
+}
+
+async function getUniqueStudioProfileByUserId(
+  ctx: UserProfileCtx,
+  userId: Doc<"users">["_id"],
+) {
+  const profiles = await ctx.db
+    .query("studioProfiles")
+    .withIndex("by_user_id", (q) => q.eq("userId", userId))
+    .take(2);
+  if (profiles.length > 1) {
+    throw new ConvexError("Multiple studio profiles found for this account");
+  }
+  return profiles[0] ?? null;
+}
+
+async function requireStudioProfileByUserId(
+  ctx: UserProfileCtx,
+  userId: Doc<"users">["_id"],
+) {
+  const profile = await getUniqueStudioProfileByUserId(ctx, userId);
+  if (!profile) {
+    throw new ConvexError("Studio profile not found");
+  }
+  return profile;
+}
+
 export const syncCurrentUser = mutation({
   args: {},
   returns: v.id("users"),
@@ -107,6 +166,9 @@ export const syncCurrentUser = mutation({
     const identity = await requireIdentity(ctx);
     const user = await requireCurrentUser(ctx);
     const now = Date.now();
+    const normalizedIdentityEmail = normalizeEmail(identity.email);
+    const normalizedCurrentEmail = normalizeEmail(user.email);
+    const nextEmail = normalizedCurrentEmail ?? normalizedIdentityEmail;
 
     const derivedName = [identity.givenName, identity.familyName]
       .filter(Boolean)
@@ -117,7 +179,7 @@ export const syncCurrentUser = mutation({
 
     await ctx.db.patch("users", user._id, {
       ...omitUndefined({
-        email: identity.email,
+        email: nextEmail,
         fullName: user.fullName ?? fullName,
         phoneE164: identity.phoneNumber ?? user.phoneE164,
       }),
@@ -268,26 +330,14 @@ export const completeMyProfileImageUpload = mutation({
 
     let previousStorageId: Doc<"instructorProfiles">["profileImageStorageId"] | Doc<"studioProfiles">["logoStorageId"];
     if (user.role === "instructor") {
-      const profile = await ctx.db
-        .query("instructorProfiles")
-        .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-        .unique();
-      if (!profile) {
-        throw new ConvexError("Instructor profile not found");
-      }
+      const profile = await requireInstructorProfileByUserId(ctx, user._id);
       previousStorageId = profile.profileImageStorageId;
       await ctx.db.patch("instructorProfiles", profile._id, {
         profileImageStorageId: args.storageId,
         updatedAt: now,
       });
     } else {
-      const profile = await ctx.db
-        .query("studioProfiles")
-        .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-        .unique();
-      if (!profile) {
-        throw new ConvexError("Studio profile not found");
-      }
+      const profile = await requireStudioProfileByUserId(ctx, user._id);
       previousStorageId = profile.logoStorageId;
       await ctx.db.patch("studioProfiles", profile._id, {
         logoStorageId: args.storageId,
@@ -344,10 +394,7 @@ export const getMyInstructorSettings = query({
       return null;
     }
 
-    const profile = await ctx.db
-      .query("instructorProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
+    const profile = await getUniqueInstructorProfileByUserId(ctx, user._id);
     if (!profile) return null;
 
     const sportsRows = await ctx.db
@@ -415,13 +462,7 @@ export const updateMyInstructorSettings = mutation({
     const now = Date.now();
     const user = await requireUserRole(ctx, ["instructor"]);
 
-    const profile = await ctx.db
-      .query("instructorProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
-    if (!profile) {
-      throw new ConvexError("Instructor profile not found");
-    }
+    const profile = await requireInstructorProfileByUserId(ctx, user._id);
 
     if (
       args.hourlyRateExpectation !== undefined &&
@@ -546,14 +587,7 @@ export const updateMyInstructorProfileCard = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const user = await requireUserRole(ctx, ["instructor"]);
-    const profile = await ctx.db
-      .query("instructorProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
-
-    if (!profile) {
-      throw new ConvexError("Instructor profile not found");
-    }
+    const profile = await requireInstructorProfileByUserId(ctx, user._id);
 
     const displayName = normalizeRequiredString(
       args.displayName,
@@ -634,10 +668,7 @@ export const getMyStudioSettings = query({
       return null;
     }
 
-    const profile = await ctx.db
-      .query("studioProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
+    const profile = await getUniqueStudioProfileByUserId(ctx, user._id);
     if (!profile) return null;
 
     const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
@@ -691,14 +722,7 @@ export const updateMyStudioSettings = mutation({
   }),
   handler: async (ctx, args) => {
     const user = await requireUserRole(ctx, ["studio"]);
-    const profile = await ctx.db
-      .query("studioProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
-
-    if (!profile) {
-      throw new ConvexError("Studio profile not found");
-    }
+    const profile = await requireStudioProfileByUserId(ctx, user._id);
 
     const studioName = normalizeRequiredString(
       args.studioName,
@@ -791,14 +815,7 @@ export const updateMyStudioProfileCard = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const user = await requireUserRole(ctx, ["studio"]);
-    const profile = await ctx.db
-      .query("studioProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
-
-    if (!profile) {
-      throw new ConvexError("Studio profile not found");
-    }
+    const profile = await requireStudioProfileByUserId(ctx, user._id);
 
     const studioName = normalizeRequiredString(
       args.studioName,
@@ -872,10 +889,7 @@ export const getMyStudioNotificationSettings = query({
       return null;
     }
 
-    const profile = await ctx.db
-      .query("studioProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
+    const profile = await getUniqueStudioProfileByUserId(ctx, user._id);
     if (!profile) {
       return null;
     }
@@ -904,14 +918,7 @@ export const updateMyStudioNotificationSettings = mutation({
   }),
   handler: async (ctx, args) => {
     const user = await requireUserRole(ctx, ["studio"]);
-    const profile = await ctx.db
-      .query("studioProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
-
-    if (!profile) {
-      throw new ConvexError("Studio profile not found");
-    }
+    const profile = await requireStudioProfileByUserId(ctx, user._id);
 
     const nextPushToken =
       trimOptionalString(args.expoPushToken) ?? profile.expoPushToken;
