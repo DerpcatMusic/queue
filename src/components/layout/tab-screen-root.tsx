@@ -53,11 +53,17 @@ export function TabScreenRoot(props: TabScreenRootProps) {
       style={[{ flex: 1 }, style]}
       contentContainerStyle={[
         {
-          paddingBottom: Math.max(BrandSpacing.lg, insets.tabContentBottom + BrandSpacing.md),
+          paddingBottom: Math.max(
+            BrandSpacing.lg,
+            insets.tabContentBottom + BrandSpacing.md,
+          ),
         },
+        contentContainerStyle,
       ]}
     >
-      <DesktopDashboardFrame contentStyle={contentContainerStyle}>{children}</DesktopDashboardFrame>
+      <DesktopDashboardFrame contentStyle={contentContainerStyle}>
+        {children}
+      </DesktopDashboardFrame>
     </Animated.ScrollView>
   );
 }

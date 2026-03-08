@@ -163,6 +163,25 @@ export default function ProfilePaymentsScreen() {
     }
   };
 
+  const confirmWithdrawToBank = () => {
+    Alert.alert(
+      t("profile.payments.withdrawConfirmTitle", { defaultValue: "Withdraw to bank?" }),
+      t("profile.payments.withdrawConfirmBody", {
+        defaultValue: "This will start a payout for your available balance.",
+      }),
+      [
+        { text: t("common.cancel", { defaultValue: "Cancel" }), style: "cancel" },
+        {
+          text: t("profile.payments.withdrawConfirmAction", { defaultValue: "Withdraw" }),
+          style: "default",
+          onPress: () => {
+            void withdrawToBank();
+          },
+        },
+      ],
+    );
+  };
+
   const startHostedBankOnboarding = async () => {
     setOnboardingBusy(true);
     setIsFinalizingOnboarding(false);
@@ -420,20 +439,7 @@ export default function ProfilePaymentsScreen() {
                 overflow: "hidden",
               }}
               onPress={() => {
-                Alert.alert(
-                  "Withdraw to bank?",
-                  "This will start a payout withdrawal for your available balance.",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Withdraw",
-                      style: "destructive",
-                      onPress: () => {
-                        void withdrawToBank();
-                      },
-                    },
-                  ],
-                );
+                confirmWithdrawToBank();
               }}
               disabled={
                 withdrawBusy ||

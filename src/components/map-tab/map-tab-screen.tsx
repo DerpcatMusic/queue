@@ -23,6 +23,7 @@ import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
+import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitButton, KitPressable } from "@/components/ui/kit";
@@ -167,7 +168,13 @@ export default function MapTabScreen() {
     const shouldSave = hasChanges;
     if (shouldSave && isSaving) return;
 
-    if (!shouldSave) return;
+    if (!hasChanges) {
+      setZoneModeActive(false);
+      setSheetIndex(-1);
+      setZoneSearch("");
+      zoneSheetRef.current?.close();
+      return;
+    }
 
     setIsSaving(true);
     setSaveError(null);
@@ -763,6 +770,19 @@ export default function MapTabScreen() {
             onUseGps={handleRecenter}
             showGpsButton
           />
+          {saveError ? (
+            <View style={styles.saveBannerWrap}>
+              <NoticeBanner
+                tone="error"
+                message={saveError}
+                onDismiss={() => setSaveError(null)}
+                borderColor={palette.borderStrong}
+                backgroundColor={palette.surface}
+                textColor={palette.danger}
+                iconColor={palette.danger}
+              />
+            </View>
+          ) : null}
 
           <View
             pointerEvents="box-none"
@@ -1070,5 +1090,21 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     marginHorizontal: 16,
     marginBottom: 8,
+  },
+  saveBannerWrap: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    right: 16,
+    zIndex: 50,
+  },
+  modeHint: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderRadius: 999,
+    borderCurve: "continuous",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignSelf: "flex-end",
   },
 });

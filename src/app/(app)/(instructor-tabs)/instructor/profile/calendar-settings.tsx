@@ -3,10 +3,11 @@ import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Platform, StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
+import { ThemedText } from "@/components/themed-text";
 import {
   KitButton,
   KitList,
@@ -75,10 +76,12 @@ export default function CalendarSettingsScreen() {
   ) as GoogleCalendarStatus | undefined;
 
   const saveSettings = useMutation(api.users.updateMyInstructorSettings);
-  const disconnectGoogleCalendar = useMutation(calendarApi.disconnectGoogleCalendar as any) as (
-    args: Record<string, never>,
-  ) => Promise<unknown>;
-  const exchangeGoogleCode = useAction(calendarApi.connectGoogleCalendarWithCode as any) as (args: {
+  const disconnectGoogleCalendar = useMutation(
+    calendarApi.disconnectGoogleCalendar as any,
+  ) as (args: Record<string, never>) => Promise<unknown>;
+  const exchangeGoogleCode = useAction(
+    calendarApi.connectGoogleCalendarWithCode as any,
+  ) as (args: {
     code: string;
     codeVerifier: string;
     redirectUri: string;
@@ -97,6 +100,7 @@ export default function CalendarSettingsScreen() {
   const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
   const [isDisconnectingGoogle, setIsDisconnectingGoogle] = useState(false);
   const [seeded, setSeeded] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const googleClientId = resolveGoogleClientId();
   const redirectUri =
@@ -141,6 +145,7 @@ export default function CalendarSettingsScreen() {
 
   const onSave = async () => {
     setIsSaving(true);
+    setErrorMessage(null);
     try {
       let nextSyncEnabled = syncEnabled;
 
@@ -167,9 +172,7 @@ export default function CalendarSettingsScreen() {
         ...(instructorSettings.hourlyRateExpectation !== undefined
           ? { hourlyRateExpectation: instructorSettings.hourlyRateExpectation }
           : {}),
-        ...(instructorSettings.address !== undefined
-          ? { address: instructorSettings.address }
-          : {}),
+        ...(instructorSettings.address !== undefined ? { address: instructorSettings.address } : {}),
         ...(instructorSettings.latitude !== undefined
           ? { latitude: instructorSettings.latitude }
           : {}),
@@ -179,9 +182,8 @@ export default function CalendarSettingsScreen() {
       });
       router.back();
     } catch (error) {
-      Alert.alert(
-        t("profile.settings.errors.saveFailed", { defaultValue: "Failed to save settings." }),
-        error instanceof Error ? error.message : undefined,
+      setErrorMessage(
+        error instanceof Error ? error.message : t("profile.settings.errors.saveFailed"),
       );
     } finally {
       setIsSaving(false);
@@ -299,6 +301,13 @@ export default function CalendarSettingsScreen() {
           ) : null}
         </KitList>
       </View>
+      {errorMessage ? (
+        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+          <ThemedText selectable style={{ color: palette.danger }}>
+            {errorMessage}
+          </ThemedText>
+        </View>
+      ) : null}
 
       <View style={{ paddingHorizontal: 16, paddingTop: BrandSpacing.md, gap: 10 }}>
         {provider === "google" ? (
@@ -346,9 +355,7 @@ export default function CalendarSettingsScreen() {
         ) : null}
 
         <KitButton
-          label={
-            isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
-          }
+          label={isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")}
           onPress={() => {
             void onSave();
           }}
