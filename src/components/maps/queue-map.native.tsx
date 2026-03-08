@@ -13,7 +13,10 @@ import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons";
 import { ThemedText } from "@/components/themed-text";
 import { getMapBrandPalette } from "@/constants/brand";
-import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
+import {
+  getZoneIndexEntry,
+  ISRAEL_MAP_INTERACTION_BOUNDS,
+} from "@/constants/zones-map";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { IconSymbol } from "../ui/icon-symbol";
@@ -37,12 +40,22 @@ function sanitizeZoom(value: number, fallback: number) {
   return Math.max(0, Math.min(22, value));
 }
 
-function createZoneFilter(zoneIds: readonly string[], propertyName: string): Expression {
+function createZoneFilter(
+  zoneIds: readonly string[],
+  propertyName: string,
+): Expression {
   if (zoneIds.length === 0) return NO_MATCH_ZONE_FILTER;
-  return ["in", ["get", propertyName], ["literal", zoneIds as string[]]] as Expression;
+  return [
+    "in",
+    ["get", propertyName],
+    ["literal", zoneIds as string[]],
+  ] as Expression;
 }
 
-function toBounds(sw: [number, number], ne: [number, number]): [number, number, number, number] {
+function toBounds(
+  sw: [number, number],
+  ne: [number, number],
+): [number, number, number, number] {
   return [sw[0], sw[1], ne[0], ne[1]];
 }
 
@@ -54,7 +67,9 @@ function isRoadNumberLayer(layer: AnyStyleLayer) {
   if (id.includes("highway-number")) return true;
   if (id.includes("route-number")) return true;
   if (sourceLayer.includes("shield")) return true;
-  const textField = JSON.stringify(layer?.layout?.["text-field"] ?? "").toLowerCase();
+  const textField = JSON.stringify(
+    layer?.layout?.["text-field"] ?? "",
+  ).toLowerCase();
   if (textField.includes("ref")) return true;
   return false;
 }
@@ -67,7 +82,9 @@ function withMapPersonality(
 ) {
   const layers = (style.layers ?? [])
     .filter((layer) => !isRoadNumberLayer(layer))
-    .filter((layer) => (showBaseLabels ? true : String(layer?.type ?? "") !== "symbol"))
+    .filter((layer) =>
+      showBaseLabels ? true : String(layer?.type ?? "") !== "symbol",
+    )
     .map((layer) => {
       const nextLayer = { ...layer };
       const id = String(nextLayer.id ?? "").toLowerCase();
@@ -95,12 +112,20 @@ function withMapPersonality(
       const tone = isDark ? dark : light;
 
       if (layerType === "background") {
-        paint["background-color"] = isDark ? tone.background : palette.surfaceAlt;
+        paint["background-color"] = isDark
+          ? tone.background
+          : palette.surfaceAlt;
       }
-      if ((sourceLayer.includes("water") || id.includes("water")) && layerType === "fill") {
+      if (
+        (sourceLayer.includes("water") || id.includes("water")) &&
+        layerType === "fill"
+      ) {
         paint["fill-color"] = tone.waterFill;
       }
-      if ((sourceLayer.includes("water") || id.includes("water")) && layerType === "line") {
+      if (
+        (sourceLayer.includes("water") || id.includes("water")) &&
+        layerType === "line"
+      ) {
         paint["line-color"] = tone.waterLine;
       }
       if (
@@ -149,11 +174,16 @@ async function ensureVectorOfflinePack() {
       );
       if (existingPack) return;
 
-      OfflineManager.setProgressEventThrottle(APPLE_MAP_THEME.offlinePack.progressThrottleMs);
+      OfflineManager.setProgressEventThrottle(
+        APPLE_MAP_THEME.offlinePack.progressThrottleMs,
+      );
       await OfflineManager.createPack(
         {
           mapStyle: APPLE_MAP_THEME.mapStyleLightUrl,
-          bounds: toBounds(ISRAEL_MAP_INTERACTION_BOUNDS.sw, ISRAEL_MAP_INTERACTION_BOUNDS.ne),
+          bounds: toBounds(
+            ISRAEL_MAP_INTERACTION_BOUNDS.sw,
+            ISRAEL_MAP_INTERACTION_BOUNDS.ne,
+          ),
           minZoom: zoomStart,
           maxZoom: zoomEnd,
           metadata: {
@@ -208,7 +238,9 @@ export function QueueMap({
   const [styleLoadFailed, setStyleLoadFailed] = useState(false);
   const [baseMapStyle, setBaseMapStyle] = useState<AnyStyleSpec | null>(null);
   const preferredStyleUrl =
-    resolvedScheme === "dark" ? APPLE_MAP_THEME.mapStyleDarkUrl : APPLE_MAP_THEME.mapStyleLightUrl;
+    resolvedScheme === "dark"
+      ? APPLE_MAP_THEME.mapStyleDarkUrl
+      : APPLE_MAP_THEME.mapStyleLightUrl;
   const themedMapStyle = useMemo(() => {
     if (!baseMapStyle) return null;
     return withMapPersonality(
@@ -249,7 +281,9 @@ export function QueueMap({
 
     (async () => {
       try {
-        const response = await fetch(preferredStyleUrl, { signal: controller.signal });
+        const response = await fetch(preferredStyleUrl, {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           if (!cancelled) setBaseMapStyle(null);
           return;
@@ -299,7 +333,9 @@ export function QueueMap({
           },
         ]}
       >
-        <ThemedText type="defaultSemiBold">MapLibre needs a development build.</ThemedText>
+        <ThemedText type="defaultSemiBold">
+          MapLibre needs a development build.
+        </ThemedText>
         <ThemedText style={{ color: palette.textMuted }}>
           Run `bunx expo run:android` then open the dev client.
         </ThemedText>
@@ -333,12 +369,19 @@ export function QueueMap({
       >
         <Camera
           ref={cameraRef as any}
-          maxBounds={toBounds(ISRAEL_MAP_INTERACTION_BOUNDS.sw, ISRAEL_MAP_INTERACTION_BOUNDS.ne)}
+          maxBounds={toBounds(
+            ISRAEL_MAP_INTERACTION_BOUNDS.sw,
+            ISRAEL_MAP_INTERACTION_BOUNDS.ne,
+          )}
           minZoom={sanitizeZoom(APPLE_MAP_THEME.minZoom, 7.5)}
           maxZoom={sanitizeZoom(APPLE_MAP_THEME.maxZoom, 16)}
           initialViewState={{
-            center: pin ? [pin.longitude, pin.latitude] : APPLE_MAP_THEME.defaultCenter,
-            zoom: pin ? APPLE_MAP_THEME.defaultZoomWithPin : APPLE_MAP_THEME.defaultZoomWithoutPin,
+            center: pin
+              ? [pin.longitude, pin.latitude]
+              : APPLE_MAP_THEME.defaultCenter,
+            zoom: pin
+              ? APPLE_MAP_THEME.defaultZoomWithPin
+              : APPLE_MAP_THEME.defaultZoomWithoutPin,
           }}
         />
 
@@ -367,8 +410,10 @@ export function QueueMap({
 
       {showGpsButton && onUseGps ? (
         <KitFab
-          icon={<IconSymbol name="location.fill" size={20} color={palette.text} />}
-          onPress={onUseGps}
+          icon={
+            <IconSymbol name="location.fill" size={20} color={palette.text} />
+          }
+          onPress={handleRecenter}
           style={[
             styles.gps,
             {

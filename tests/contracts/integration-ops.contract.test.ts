@@ -164,7 +164,6 @@ describe("integration event operator contracts", () => {
       process.env.INTEGRATION_EVENTS_ACCESS_TOKEN = originalToken;
     }
   });
-
   it("lists older failed events beyond the first fixed window", async () => {
     const originalToken = process.env.INTEGRATION_EVENTS_ACCESS_TOKEN;
     process.env.INTEGRATION_EVENTS_ACCESS_TOKEN = ACCESS_TOKEN;

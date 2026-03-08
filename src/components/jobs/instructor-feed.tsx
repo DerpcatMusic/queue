@@ -118,8 +118,13 @@ export function InstructorFeed() {
     setApplyingJobId(jobId);
     try {
       await applyToJob({ jobId });
-    } catch {
-      setApplyErrorMessage(t("jobsTab.applyError", { defaultValue: "Couldn't apply. Try again." }));
+    } catch (error) {
+      console.error("[jobs] apply failed", error);
+      setApplyErrorMessage(
+        t("jobsTab.actions.applyError", {
+          defaultValue: "Couldn't apply right now. Please try again.",
+        }),
+      );
     } finally {
       setApplyingJobId(null);
     }

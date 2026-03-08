@@ -133,7 +133,7 @@ export default function LocationScreen() {
         ...(latitude !== undefined ? { latitude } : {}),
         ...(longitude !== undefined ? { longitude } : {}),
         includeDetectedZone,
-        detectedZone: detectedZone ?? "",
+        ...(detectedZone ? { detectedZone } : {}),
       });
       router.back();
     } catch (err) {

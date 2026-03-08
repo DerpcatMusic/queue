@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
@@ -30,6 +30,7 @@ export default function SportsScreen() {
 
   const [draft, setDraft] = useState<string[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (instructorSettings === undefined) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
@@ -64,6 +65,7 @@ export default function SportsScreen() {
   const onSave = async () => {
     if (!hasChanges || !draft) return;
     setIsSaving(true);
+    setErrorMessage(null);
     try {
       await saveSettings({
         notificationsEnabled: instructorSettings.notificationsEnabled,
@@ -85,9 +87,8 @@ export default function SportsScreen() {
       });
       router.back();
     } catch (error) {
-      Alert.alert(
-        t("profile.settings.errors.saveFailed", { defaultValue: "Failed to save settings." }),
-        error instanceof Error ? error.message : undefined,
+      setErrorMessage(
+        error instanceof Error ? error.message : t("profile.settings.errors.saveFailed"),
       );
     } finally {
       setIsSaving(false);
@@ -113,6 +114,11 @@ export default function SportsScreen() {
           title={t("profile.settings.sports.title")}
           emptyHint={t("profile.settings.sports.none")}
         />
+        {errorMessage ? (
+          <ThemedText selectable style={{ color: palette.danger }}>
+            {errorMessage}
+          </ThemedText>
+        ) : null}
         <View style={{ height: BrandSpacing.md }} />
       </TabScreenScrollView>
 
