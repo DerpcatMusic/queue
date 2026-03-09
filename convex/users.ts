@@ -621,6 +621,9 @@ export const getMyStudioSettings = query({
       socialLinks: v.optional(socialLinksValidator),
       autoExpireMinutesBefore: v.number(),
       sports: v.array(v.string()),
+      calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
+      calendarSyncEnabled: v.boolean(),
+      calendarConnectedAt: v.optional(v.number()),
     }),
     v.null(),
   ),
@@ -662,6 +665,46 @@ export const getMyStudioSettings = query({
       hasExpoPushToken,
       autoExpireMinutesBefore: profile.autoExpireMinutesBefore ?? 30,
       sports,
+      calendarProvider: profile.calendarProvider ?? "none",
+      calendarSyncEnabled: profile.calendarSyncEnabled ?? false,
+      ...(profile.calendarConnectedAt !== undefined
+        ? { calendarConnectedAt: profile.calendarConnectedAt }
+        : {}),
+    };
+  },
+});
+
+export const updateMyStudioCalendarSettings = mutation({
+  args: {
+    calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
+    calendarSyncEnabled: v.boolean(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
+    calendarSyncEnabled: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await requireUserRole(ctx, ["studio"]);
+    const profile = await requireStudioProfileByUserId(ctx, user._id);
+    const now = Date.now();
+
+    const calendarProvider = args.calendarProvider;
+    const calendarSyncEnabled = calendarProvider !== "none" && args.calendarSyncEnabled;
+    const calendarConnectedAt =
+      calendarProvider === "none" ? undefined : (profile.calendarConnectedAt ?? now);
+
+    await ctx.db.patch("studioProfiles", profile._id, {
+      calendarProvider,
+      calendarSyncEnabled,
+      ...(calendarConnectedAt !== undefined ? { calendarConnectedAt } : {}),
+      updatedAt: now,
+    });
+
+    return {
+      ok: true,
+      calendarProvider,
+      calendarSyncEnabled,
     };
   },
 });

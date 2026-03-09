@@ -6,7 +6,7 @@ import {
   OfflineManager,
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
@@ -265,6 +265,9 @@ export function QueueMap({
     : (themedMapStyle ?? preferredStyleUrl);
 
   const cameraRef = useRef<{ setStop: (config: unknown) => void } | null>(null);
+  const handleRecenter = useCallback(() => {
+    void onUseGps?.();
+  }, [onUseGps]);
   const selectedZoneFilter = useMemo(
     () => createZoneFilter(selectedZoneIds, zoneIdProperty),
     [selectedZoneIds, zoneIdProperty],

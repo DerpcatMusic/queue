@@ -48,6 +48,7 @@ const ROLE_TRANSLATION_KEYS = {
   admin: "profile.roles.admin",
 } as const;
 const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
+const STUDIO_CALENDAR_SETTINGS_ROUTE = `${STUDIO_PROFILE_ROUTE}/calendar-settings` as const;
 const STUDIO_PAYMENTS_ROUTE = `${STUDIO_PROFILE_ROUTE}/payments` as const;
 const STUDIO_EDIT_ROUTE = `${STUDIO_PROFILE_ROUTE}/edit` as const;
 
@@ -134,6 +135,13 @@ export default function StudioProfileScreen() {
     : null;
 
   const sportsSummary = getSportsSummary(studioSettings?.sports ?? [], t);
+  const provider = studioSettings?.calendarProvider;
+  const calendarSummary =
+    !provider || provider === "none"
+      ? t("profile.settings.calendar.provider.none")
+      : provider === "google"
+        ? "Google"
+        : "Apple";
   const isDesktopWeb = process.env.EXPO_OS === "web" && width >= 1180;
   const socialCount = Object.keys(studioSettings?.socialLinks ?? {}).length;
   const sportsCount = studioSettings?.sports?.length ?? 0;
@@ -329,6 +337,22 @@ export default function StudioProfileScreen() {
                 </ProfileCardGroup>
 
                 <ProfileSectionHeader
+                  label={t("profile.settings.calendar.title")}
+                  description="Choose whether posted jobs sync into your calendar."
+                  palette={palette}
+                  flush
+                />
+                <ProfileCardGroup palette={palette} style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title={t("profile.settings.calendar.title")}
+                    subtitle={calendarSummary}
+                    onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
+                    palette={palette}
+                    isLast
+                  />
+                </ProfileCardGroup>
+
+                <ProfileSectionHeader
                   label="Payments"
                   description="Manage the payout destination for this studio."
                   palette={palette}
@@ -473,6 +497,21 @@ export default function StudioProfileScreen() {
                     }}
                   />
                 }
+              />
+            </ProfileCardGroup>
+
+            <ProfileSectionHeader
+              label={t("profile.settings.calendar.title")}
+              description="Choose whether posted jobs sync into your calendar."
+              palette={palette}
+            />
+            <ProfileCardGroup palette={palette}>
+              <ProfileSettingRow
+                title={t("profile.settings.calendar.title")}
+                subtitle={calendarSummary}
+                onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
+                palette={palette}
+                isLast
               />
             </ProfileCardGroup>
 

@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as calendar from "../calendar.js";
 import type * as constants from "../constants.js";
 import type * as didit from "../didit.js";
 import type * as home from "../home.js";
@@ -45,6 +46,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  calendar: typeof calendar;
   constants: typeof constants;
   didit: typeof didit;
   home: typeof home;

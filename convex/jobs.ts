@@ -51,6 +51,19 @@ function getUniqueIdsInOrder<T extends string>(ids: ReadonlyArray<T>) {
   return [...new Set(ids)];
 }
 
+async function scheduleGoogleCalendarSyncForUser(
+  ctx: MutationCtx,
+  userId: Id<"users"> | undefined,
+) {
+  if (!userId) {
+    return;
+  }
+
+  await ctx.scheduler.runAfter(0, internal.calendar.syncGoogleCalendarForUser, {
+    userId,
+  });
+}
+
 async function loadLatestPaymentDetailsByJobId(
   ctx: QueryCtx,
   args: {
@@ -542,6 +555,8 @@ export const postJob = mutation({
     if (expireAt > now) {
       await ctx.scheduler.runAfter(expireDelay, internal.jobs.autoExpireUnfilledJob, { jobId });
     }
+
+    await scheduleGoogleCalendarSyncForUser(ctx, studio.userId);
 
     return { jobId };
   },
@@ -1550,6 +1565,11 @@ export const runAcceptedApplicationReviewWorkflow = internalMutation({
         event: "lesson_completed",
       },
     );
+    const acceptedInstructorProfile = profileById.get(String(acceptedApplication.instructorId));
+    await Promise.all([
+      scheduleGoogleCalendarSyncForUser(ctx, args.studioUserId),
+      scheduleGoogleCalendarSyncForUser(ctx, acceptedInstructorProfile?.userId),
+    ]);
 
     return { ok: true };
   },
@@ -1705,6 +1725,8 @@ export const closeJobIfStillOpen = internalMutation({
     }
 
     await ctx.db.patch("jobs", job._id, { status: "cancelled" });
+    const studio = await ctx.db.get("studioProfiles", job.studioId);
+    await scheduleGoogleCalendarSyncForUser(ctx, studio?.userId);
     return { updated: true };
   },
 });
@@ -1732,6 +1754,7 @@ export const autoExpireUnfilledJob = internalMutation({
     }
 
     await ctx.db.patch("jobs", job._id, { status: "cancelled" });
+    await scheduleGoogleCalendarSyncForUser(ctx, studio?.userId);
 
     if (studio) {
       await enqueueUserNotification(ctx, {

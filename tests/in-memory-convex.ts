@@ -6,6 +6,7 @@ type AnyDoc = Record<string, unknown> & {
 };
 
 type EqCondition = {
+  kind: "eq" | "gte" | "lte";
   field: string;
   value: unknown;
 };
@@ -14,6 +15,7 @@ class InMemoryQuery {
   private readonly table: AnyDoc[];
   private readonly conditions: EqCondition[] = [];
   private sortDirection: "asc" | "desc" | null = null;
+  private sortField: string | null = null;
 
   constructor(table: AnyDoc[]) {
     this.table = table;
@@ -21,11 +23,25 @@ class InMemoryQuery {
 
   withIndex(
     _indexName: string,
-    builder: (q: { eq(field: string, value: unknown): unknown }) => unknown,
+    builder: (q: {
+      eq(field: string, value: unknown): unknown;
+      gte(field: string, value: unknown): unknown;
+      lte(field: string, value: unknown): unknown;
+    }) => unknown,
   ) {
     const queryBuilder = {
       eq: (field: string, value: unknown) => {
-        this.conditions.push({ field, value });
+        this.conditions.push({ kind: "eq", field, value });
+        return queryBuilder;
+      },
+      gte: (field: string, value: unknown) => {
+        this.conditions.push({ kind: "gte", field, value });
+        this.sortField ??= field;
+        return queryBuilder;
+      },
+      lte: (field: string, value: unknown) => {
+        this.conditions.push({ kind: "lte", field, value });
+        this.sortField ??= field;
         return queryBuilder;
       },
     };
@@ -65,12 +81,26 @@ class InMemoryQuery {
 
   private resolve() {
     let rows = this.table.filter((row) =>
-      this.conditions.every((condition) => row[condition.field] === condition.value),
+      this.conditions.every((condition) => {
+        const left = row[condition.field];
+        const right = condition.value;
+        if (condition.kind === "eq") {
+          return left === right;
+        }
+        if (left === undefined || left === null) {
+          return false;
+        }
+        if (condition.kind === "gte") {
+          return (left as any) >= (right as any);
+        }
+        return (left as any) <= (right as any);
+      }),
     );
     if (this.sortDirection) {
       rows = [...rows].sort((a, b) => {
-        const left = Number(a._creationTime);
-        const right = Number(b._creationTime);
+        const sortField = this.sortField;
+        const left = Number(sortField ? a[sortField] : a._creationTime);
+        const right = Number(sortField ? b[sortField] : b._creationTime);
         return this.sortDirection === "asc" ? left - right : right - left;
       });
     }
