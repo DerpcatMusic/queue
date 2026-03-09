@@ -10,8 +10,12 @@ bun install
 
 ## Run
 
+- Full dev stack with Bun:
+  - `bun run dev`
 - Start Expo:
   - `bun run start`
+- Start Convex with on-the-fly `_generated` updates:
+  - `bun run convex:dev`
 - Android (native Windows emulator flow):
   - `bun run android`
 - Android doctor:
@@ -24,4 +28,5 @@ bun install
 ## Notes
 
 - Android workflow is Windows-first (no WSL requirement).
+- Convex updates `convex/_generated` automatically while `bun run convex:dev` is running. Keep `_generated` committed; `bunx convex codegen` is only for explicit regeneration and CI validation.
 - See `docs/android-windows-setup.md` for details.

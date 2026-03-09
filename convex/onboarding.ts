@@ -313,6 +313,8 @@ export const completeStudioOnboarding = mutation({
             expoPushToken,
           }),
           notificationsEnabled,
+          calendarProvider: "none",
+          calendarSyncEnabled: false,
           createdAt: now,
           updatedAt: now,
         }),
@@ -331,6 +333,9 @@ export const completeStudioOnboarding = mutation({
           expoPushToken,
         }),
         notificationsEnabled,
+        calendarProvider: profileResolution.profile.calendarProvider ?? "none",
+        calendarSyncEnabled: profileResolution.profile.calendarSyncEnabled ?? false,
+        calendarConnectedAt: profileResolution.profile.calendarConnectedAt,
         updatedAt: now,
       });
 

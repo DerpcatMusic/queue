@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "dev": "bun run ./scripts/dev/dev.ts",
     "postinstall": "node ./scripts/patches/patch-react-native-css-interop-safe-area.mjs && node ./scripts/patches/patch-expo-devtools-keep-awake.mjs && node ./scripts/patches/patch-expo-router-react-navigation-dedupe.mjs",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",

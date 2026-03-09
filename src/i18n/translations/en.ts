@@ -41,13 +41,19 @@ const en = {
       failed: "Sync failed",
     },
     timeline: {
-      noLessons: "No lessons",
+      noLessons: "No events",
+      allDay: "All day",
+      googleBadge: "Google",
       lifecycle: {
         live: "Live now",
         upcoming: "Upcoming",
         cancelled: "Cancelled",
         past: "Past",
       },
+    },
+    filters: {
+      jobsOnly: "Jobs only",
+      jobsAndGoogle: "Jobs + Google",
     },
     footerHint: "Calendar interactions are enabled. Session events appear for instructor accounts.",
   },
@@ -193,6 +199,9 @@ const en = {
         applePermissionNote:
           "Apple sync requests calendar access and writes to a dedicated Queue Sessions calendar.",
         lastConnected: "Connected on {{date}}",
+        disconnectCleanupWarningTitle: "Google disconnect completed with warnings",
+        disconnectCleanupWarningBody:
+          "Queue removed the local connection, but some Queue-created Google events could not be deleted automatically.",
         actions: {
           connectGoogle: "Connect Google Calendar",
           disconnectGoogle: "Disconnect Google Calendar",

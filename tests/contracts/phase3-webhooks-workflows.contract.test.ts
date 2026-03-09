@@ -1,8 +1,11 @@
 import { describe, expect, it } from "bun:test";
 
+import { internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { processDiditWebhookEvent } from "../../convex/didit";
 import {
+  closeJobIfStillOpen,
+  postJob,
   reviewApplication,
   runAcceptedApplicationReviewWorkflow,
   runRejectedApplicationReviewWorkflow,
@@ -274,6 +277,8 @@ describe("phase-3 reviewApplication workflow parity contracts", () => {
       jobId,
       applicationA,
       applicationB,
+      instructorUserA,
+      instructorUserB,
       instructorA,
       instructorB,
     };
@@ -361,6 +366,22 @@ describe("phase-3 reviewApplication workflow parity contracts", () => {
         30 * 60 * 1000,
         90 * 60 * 1000,
       ]);
+      const calendarSyncCalls = schedulerCalls.filter(
+        (call) =>
+          call.args &&
+          typeof call.args === "object" &&
+          "userId" in (call.args as Record<string, unknown>) &&
+          !("data" in (call.args as Record<string, unknown>)) &&
+          !("event" in (call.args as Record<string, unknown>)),
+      );
+      expect(calendarSyncCalls).toHaveLength(2);
+      expect(calendarSyncCalls.every((call) => call.delayMs === 0)).toBe(true);
+      expect(calendarSyncCalls.map((call) => call.args)).toContainEqual({
+        userId: seeded.instructorUserA,
+      });
+      expect(calendarSyncCalls.map((call) => call.args)).toContainEqual({
+        userId: seeded.studioUserId,
+      });
       expect(runMutationCalls).toHaveLength(1);
       expect(
         runMutationCalls[0] &&
@@ -464,6 +485,106 @@ describe("phase-3 reviewApplication workflow parity contracts", () => {
       expect(stats).toHaveLength(1);
       expect(stats[0]?.applicationsCount).toBe(2);
       expect(stats[0]?.pendingApplicationsCount).toBe(1);
+    } finally {
+      restoreNow();
+    }
+  });
+
+  it("create job schedules a Google Calendar sync for the posting studio", async () => {
+    const restoreNow = freezeNow(FIXED_NOW);
+    try {
+      const db = new InMemoryConvexDb();
+      const studioUserId = (await db.insert("users", {
+        role: "studio",
+        onboardingComplete: true,
+        isActive: true,
+        createdAt: FIXED_NOW,
+        updatedAt: FIXED_NOW,
+      })) as Id<"users">;
+      await db.insert("studioProfiles", {
+        userId: studioUserId,
+        studioName: "Studio",
+        address: "Main st",
+        zone: "5001557",
+        notificationsEnabled: true,
+        autoExpireMinutesBefore: 30,
+        createdAt: FIXED_NOW,
+        updatedAt: FIXED_NOW,
+      });
+
+      const schedulerCalls: ScheduledCall[] = [];
+      const ctx = createMutationCtx({
+        db,
+        userId: studioUserId,
+        schedulerCalls,
+      });
+
+      await expect(
+        (postJob as any)._handler(ctx, {
+          sport: "hiit",
+          startTime: FIXED_NOW + 2 * 60 * 60 * 1000,
+          endTime: FIXED_NOW + 3 * 60 * 60 * 1000,
+          pay: 250,
+        }),
+      ).resolves.toEqual({
+        jobId: expect.any(String),
+      });
+
+      expect(schedulerCalls).toContainEqual({
+        delayMs: 0,
+        fn: internal.calendar.syncGoogleCalendarForUser,
+        args: { userId: studioUserId },
+      });
+    } finally {
+      restoreNow();
+    }
+  });
+
+  it("closing an open job schedules a Google Calendar removal sync for the studio", async () => {
+    const restoreNow = freezeNow(FIXED_NOW);
+    try {
+      const db = new InMemoryConvexDb();
+      const studioUserId = (await db.insert("users", {
+        role: "studio",
+        onboardingComplete: true,
+        isActive: true,
+        createdAt: FIXED_NOW,
+        updatedAt: FIXED_NOW,
+      })) as Id<"users">;
+      const studioId = (await db.insert("studioProfiles", {
+        userId: studioUserId,
+        studioName: "Studio",
+        address: "Main st",
+        zone: "5001557",
+        notificationsEnabled: true,
+        createdAt: FIXED_NOW,
+        updatedAt: FIXED_NOW,
+      })) as Id<"studioProfiles">;
+      const jobId = (await db.insert("jobs", {
+        studioId,
+        zone: "5001557",
+        sport: "hiit",
+        startTime: FIXED_NOW - 2 * 60 * 60 * 1000,
+        endTime: FIXED_NOW - 60 * 60 * 1000,
+        pay: 250,
+        status: "open",
+        postedAt: FIXED_NOW - 3 * 60 * 60 * 1000,
+      })) as Id<"jobs">;
+
+      const schedulerCalls: ScheduledCall[] = [];
+      const ctx = createMutationCtx({ db, schedulerCalls });
+
+      await expect((closeJobIfStillOpen as any)._handler(ctx, { jobId })).resolves.toEqual({
+        updated: true,
+      });
+
+      const job = await db.get("jobs", jobId);
+      expect(job?.status).toBe("cancelled");
+      expect(schedulerCalls).toContainEqual({
+        delayMs: 0,
+        fn: internal.calendar.syncGoogleCalendarForUser,
+        args: { userId: studioUserId },
+      });
     } finally {
       restoreNow();
     }

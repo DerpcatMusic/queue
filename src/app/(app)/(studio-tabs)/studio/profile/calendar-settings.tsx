@@ -44,6 +44,12 @@ const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).ca
   syncMyGoogleCalendarEvents: unknown;
 };
 
+type StudioSettings = {
+  calendarProvider: CalendarProvider;
+  calendarSyncEnabled: boolean;
+  calendarConnectedAt?: number | undefined;
+};
+
 type GoogleCalendarStatus = {
   connected: boolean;
   accountEmail?: string | undefined;
@@ -67,22 +73,22 @@ function resolveGoogleClientId() {
   return process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID_WEB;
 }
 
-export default function CalendarSettingsScreen() {
+export default function StudioCalendarSettingsScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
   const router = useRouter();
   const { currentUser } = useUser();
 
-  const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
-    currentUser?.role === "instructor" ? {} : "skip",
-  );
+  const studioSettings = useQuery(
+    api.users.getMyStudioSettings,
+    currentUser?.role === "studio" ? {} : "skip",
+  ) as StudioSettings | null | undefined;
   const googleStatus = useQuery(
     calendarApi.getMyGoogleCalendarStatus as any,
-    currentUser?.role === "instructor" ? {} : "skip",
+    currentUser?.role === "studio" ? {} : "skip",
   ) as GoogleCalendarStatus | undefined;
 
-  const saveSettings = useMutation(api.users.updateMyInstructorSettings);
+  const saveSettings = useMutation(api.users.updateMyStudioCalendarSettings);
   const disconnectGoogleCalendar = useAction(calendarApi.disconnectGoogleCalendar as any) as (
     args: Record<string, never>,
   ) => Promise<DisconnectGoogleCalendarResult>;
@@ -128,31 +134,31 @@ export default function CalendarSettingsScreen() {
   );
 
   useEffect(() => {
-    if (instructorSettings && !seeded) {
-      setProvider((instructorSettings.calendarProvider as CalendarProvider) ?? "none");
-      setSyncEnabled(instructorSettings.calendarSyncEnabled ?? false);
+    if (studioSettings && !seeded) {
+      setProvider(studioSettings.calendarProvider ?? "none");
+      setSyncEnabled(studioSettings.calendarSyncEnabled ?? false);
       setSeeded(true);
     }
-  }, [instructorSettings, seeded]);
+  }, [seeded, studioSettings]);
 
-  if (instructorSettings === undefined) {
+  if (studioSettings === undefined) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
-  if (instructorSettings === null) {
+  if (studioSettings === null) {
     return <LoadingScreen label={t("profile.settings.unavailable")} />;
   }
 
   const hasGoogleConnection = Boolean(googleStatus?.connected);
   const hasChanges =
-    provider !== (instructorSettings.calendarProvider ?? "none") ||
-    syncEnabled !== (instructorSettings.calendarSyncEnabled ?? false);
+    provider !== (studioSettings.calendarProvider ?? "none") ||
+    syncEnabled !== (studioSettings.calendarSyncEnabled ?? false);
 
   const onSave = async () => {
     setIsSaving(true);
     try {
       let nextSyncEnabled = syncEnabled;
       const switchingAwayFromGoogle =
-        instructorSettings.calendarProvider === "google" &&
+        studioSettings.calendarProvider === "google" &&
         hasGoogleConnection &&
         provider !== "google";
 
@@ -171,9 +177,8 @@ export default function CalendarSettingsScreen() {
         setSyncEnabled(nextSyncEnabled);
       }
 
-      let disconnectResult: DisconnectGoogleCalendarResult | null = null;
       if (switchingAwayFromGoogle) {
-        disconnectResult = await disconnectGoogleCalendar({});
+        const disconnectResult = await disconnectGoogleCalendar({});
         if (!disconnectResult.deletedRemoteEvents) {
           Alert.alert(
             t("profile.settings.calendar.disconnectCleanupWarningTitle", {
@@ -193,22 +198,8 @@ export default function CalendarSettingsScreen() {
       }
 
       await saveSettings({
-        notificationsEnabled: instructorSettings.notificationsEnabled,
-        sports: instructorSettings.sports,
         calendarProvider: provider,
         calendarSyncEnabled: nextSyncEnabled,
-        ...(instructorSettings.hourlyRateExpectation !== undefined
-          ? { hourlyRateExpectation: instructorSettings.hourlyRateExpectation }
-          : {}),
-        ...(instructorSettings.address !== undefined
-          ? { address: instructorSettings.address }
-          : {}),
-        ...(instructorSettings.latitude !== undefined
-          ? { latitude: instructorSettings.latitude }
-          : {}),
-        ...(instructorSettings.longitude !== undefined
-          ? { longitude: instructorSettings.longitude }
-          : {}),
       });
       router.back();
     } catch (error) {
@@ -278,18 +269,15 @@ export default function CalendarSettingsScreen() {
     }
   };
 
-  const connectedDate = instructorSettings.calendarConnectedAt
-    ? new Date(instructorSettings.calendarConnectedAt).toLocaleDateString(
+  const connectedDate = studioSettings.calendarConnectedAt
+    ? new Date(studioSettings.calendarConnectedAt).toLocaleDateString(
         i18n.resolvedLanguage ?? "en",
         { month: "short", day: "numeric", year: "numeric" },
       )
     : null;
 
   return (
-    <TabScreenScrollView
-      routeKey="instructor/profile"
-      style={[styles.screen, { backgroundColor: palette.appBg }]}
-    >
+    <TabScreenScrollView routeKey="studio/profile" style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <KitList inset>
         <KitListItem title={t("profile.settings.calendar.provider.none")}>
           <View style={{ marginTop: 8 }}>

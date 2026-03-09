@@ -40,13 +40,19 @@ const he = {
       failed: "הסנכרון נכשל",
     },
     timeline: {
-      noLessons: "אין שיעורים",
+      noLessons: "אין אירועים",
+      allDay: "כל היום",
+      googleBadge: "Google",
       lifecycle: {
         live: "בשידור חי",
         upcoming: "קרוב",
         cancelled: "בוטל",
         past: "עבר",
       },
+    },
+    filters: {
+      jobsOnly: "רק עבודות",
+      jobsAndGoogle: "עבודות + Google",
     },
     footerHint: "האינטראקציות ביומן פעילות. שיעורים יוצגו לחשבונות מדריך/ה.",
   },
@@ -180,6 +186,9 @@ const he = {
         applePermissionNote:
           "סנכרון Apple יבקש הרשאת יומן וישמור אירועים ביומן Queue Sessions ייעודי.",
         lastConnected: "חובר בתאריך {{date}}",
+        disconnectCleanupWarningTitle: "ניתוק Google הושלם עם אזהרות",
+        disconnectCleanupWarningBody:
+          "Queue הסירה את החיבור המקומי, אבל לא הצליחה למחוק אוטומטית חלק מאירועי Google שנוצרו על ידי Queue.",
         actions: {
           connectGoogle: "חיבור Google Calendar",
           disconnectGoogle: "ניתוק Google Calendar",
