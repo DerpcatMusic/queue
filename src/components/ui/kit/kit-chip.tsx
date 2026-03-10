@@ -43,8 +43,7 @@ export function KitChip({
         style={{
           ...BrandType.micro,
           color: selected ? foreground.primary : foreground.secondary,
-          letterSpacing: 0.7,
-          textTransform: "uppercase",
+          letterSpacing: 0.15,
           includeFontPadding: false,
         }}
       >

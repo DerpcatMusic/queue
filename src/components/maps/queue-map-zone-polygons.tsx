@@ -42,7 +42,7 @@ export function QueueMapZonePolygons({
   const zoneOutlineWidth = showAllZones
     ? Math.max(APPLE_MAP_THEME.overlay.baseOutlineWidth, 1.35)
     : APPLE_MAP_THEME.overlay.baseOutlineWidth;
-  const selectedLabelOpacity = showAllZones ? 0 : 1;
+  const selectedLabelOpacity = 1;
   const allZoneLabelOpacity = showAllZones ? 0.92 : 0;
 
   return (
@@ -110,12 +110,13 @@ export function QueueMapZonePolygons({
         id="queue-zone-selected-labels"
         type="symbol"
         filter={selectedZoneFilter as any}
-        minzoom={9.5 as any}
+        minzoom={6 as any}
         layout={{
           "symbol-placement": "point",
           "text-field": ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]] as any,
-          "text-size": ["interpolate", ["linear"], ["zoom"], 9.5, 10, 11, 12, 14, 14] as any,
-          "text-allow-overlap": false,
+          "text-size": ["interpolate", ["linear"], ["zoom"], 6, 10, 9.5, 11, 12, 13, 14, 14] as any,
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
           "text-font": ["Noto Sans Regular"] as any,
         }}
         paint={{

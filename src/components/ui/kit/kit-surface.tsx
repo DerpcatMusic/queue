@@ -5,7 +5,7 @@ import { BrandRadius } from "@/constants/brand";
 
 import { useKitTheme } from "./use-kit-theme";
 
-export type KitSurfaceTone = "base" | "elevated" | "glass" | "sunken";
+export type KitSurfaceTone = "base" | "elevated" | "glass" | "sheet" | "sunken";
 
 export type KitSurfaceProps = ViewProps & {
   tone?: KitSurfaceTone;
@@ -57,10 +57,14 @@ export function KitSurface({
       borderCurve: "continuous" as const,
       padding,
       gap,
-      ...(tone === "elevated"
+        ...(tone === "elevated"
         ? {
             backgroundColor: background.surfaceElevated,
           }
+        : tone === "sheet"
+          ? {
+              backgroundColor: background.sheet,
+            }
         : tone === "sunken"
           ? { backgroundColor: background.panel }
           : isGlass

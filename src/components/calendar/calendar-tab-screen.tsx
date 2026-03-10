@@ -1,6 +1,6 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { FlashList } from "@shopify/flash-list";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -170,8 +170,13 @@ function WeekStrip({
   const palette = useBrand();
   const { width: screenWidth } = useWindowDimensions();
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
-  const weekStart = getWeekStart(selectedDay);
-  const monthStart = getMonthStart(selectedDay);
+  const selectedWeekStart = useMemo(() => getWeekStart(selectedDay), [selectedDay]);
+  const [displayedWeekStart, setDisplayedWeekStart] = useState(selectedWeekStart);
+  const displayedWeekStartRef = useRef(selectedWeekStart);
+  const [displayedSelectedDay, setDisplayedSelectedDay] = useState(selectedDay);
+  const displayedSelectedDayRef = useRef(selectedDay);
+  const weekStart = displayedWeekStart;
+  const monthStart = getMonthStart(displayedSelectedDay);
   const monthWeeks = useMemo(() => getMonthWeeks(monthStart), [monthStart]);
 
   // How many extra rows beyond 1 does this month need?
@@ -203,6 +208,32 @@ function WeekStrip({
   const resetHaptic = useCallback(() => {
     hapticFiredRef.current = false;
   }, []);
+  const commitWeekSwipe = useCallback(
+    (deltaWeeks: number) => {
+      const nextWeekStart = addDays(displayedWeekStartRef.current, deltaWeeks * 7);
+      displayedWeekStartRef.current = nextWeekStart;
+      setDisplayedWeekStart(nextWeekStart);
+
+      const nextSelectedDay = addDays(displayedSelectedDayRef.current, deltaWeeks * 7);
+      displayedSelectedDayRef.current = nextSelectedDay;
+      setDisplayedSelectedDay(nextSelectedDay);
+
+      swipeX.value = 0;
+      onWeekChange(deltaWeeks);
+    },
+    [onWeekChange, swipeX],
+  );
+
+  useEffect(() => {
+    displayedSelectedDayRef.current = selectedDay;
+    setDisplayedSelectedDay(selectedDay);
+
+    if (displayedWeekStartRef.current === selectedWeekStart) {
+      return;
+    }
+    displayedWeekStartRef.current = selectedWeekStart;
+    setDisplayedWeekStart(selectedWeekStart);
+  }, [selectedDay, selectedWeekStart]);
 
   const panGesture = Gesture.Pan()
     .minDistance(5)
@@ -245,13 +276,11 @@ function WeekStrip({
 
         if (e.translationX < -SWIPE_THRESHOLD || (e.velocityX < -500 && e.translationX < -20)) {
           swipeX.value = withTiming(-panelWidth, { duration: 200 }, () => {
-            runOnJS(onWeekChange)(weekDelta);
-            swipeX.value = 0;
+            runOnJS(commitWeekSwipe)(weekDelta);
           });
         } else if (e.translationX > SWIPE_THRESHOLD || (e.velocityX > 500 && e.translationX > 20)) {
           swipeX.value = withTiming(panelWidth, { duration: 200 }, () => {
-            runOnJS(onWeekChange)(-weekDelta);
-            swipeX.value = 0;
+            runOnJS(commitWeekSwipe)(-weekDelta);
           });
         } else {
           swipeX.value = withSpring(0, { damping: 20, stiffness: 300 });
@@ -289,11 +318,11 @@ function WeekStrip({
   }));
 
   const renderDayCell = (dayKey: string, isTriptychSide = false) => {
-    const isSelected = !isTriptychSide && dayKey === selectedDay;
+    const isSelected = !isTriptychSide && dayKey === displayedSelectedDay;
     const isToday = dayKey === todayKey;
     const hasLessons = (lessonCountByDay.get(dayKey) ?? 0) > 0;
     const lessonCount = lessonCountByDay.get(dayKey) ?? 0;
-    const isCurrentMonth = isSameMonth(dayKey, selectedDay);
+    const isCurrentMonth = isSameMonth(dayKey, displayedSelectedDay);
     const dimmed = !isCurrentMonth;
     const dayDateLabel = new Date(dayKeyToTimestamp(dayKey)).toLocaleDateString(locale, {
       weekday: "long",
@@ -372,12 +401,12 @@ function WeekStrip({
           hitSlop={8}
         >
           <Text style={[wStyles.monthLabel, { color: palette.text as string }]}>
-            {formatMonthYear(selectedDay, locale)}
+            {formatMonthYear(displayedSelectedDay, locale)}
           </Text>
           <Text style={[wStyles.monthChevron, { color: palette.textMuted as string }]}>▾</Text>
         </KitPressable>
         <View style={wStyles.headerActions}>
-          {selectedDay !== todayKey ? (
+          {displayedSelectedDay !== todayKey ? (
             <KitPressable
               accessibilityRole="button"
               accessibilityLabel={todayLabel}

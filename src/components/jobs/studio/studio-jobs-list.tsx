@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
-import { Platform, Text, useWindowDimensions, View } from "react-native";
+import { Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { DotStatusPill, MetricCell } from "@/components/home/home-shared";
 import { KitButton, KitSurface } from "@/components/ui/kit";
 import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
@@ -19,6 +20,7 @@ import {
   type PaymentStatus,
   type PayoutStatus,
 } from "@/lib/payments-utils";
+import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 
 type StudioJobApplication = {
   applicationId: Id<"jobApplications">;
@@ -56,8 +58,6 @@ type StudioJobsListProps = {
   onStartPayment: (jobId: Id<"jobs">) => void;
   t: TFunction;
 };
-
-const WIDE_WEB_BREAKPOINT = 1180;
 
 const PAYMENT_STATUS_KEY: Record<PaymentStatus, string> = {
   created: "jobsTab.checkout.paymentStatus.created",
@@ -102,90 +102,6 @@ function appStatusDot(status: StudioJobApplication["status"], palette: BrandPale
   return palette.textMuted as string;
 }
 
-function StatusPill({
-  backgroundColor,
-  color,
-  label,
-}: {
-  backgroundColor: string;
-  color: string;
-  label: string;
-}) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        borderRadius: 999,
-        backgroundColor,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-      }}
-    >
-      <View
-        style={{
-          width: 7,
-          height: 7,
-          borderRadius: 3.5,
-          backgroundColor: color,
-        }}
-      />
-      <Text
-        style={{
-          ...BrandType.micro,
-          fontSize: 11,
-          letterSpacing: 0.6,
-          textTransform: "uppercase",
-          color,
-        }}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-function MetricCell({
-  align = "flex-start",
-  label,
-  value,
-  valueColor,
-}: {
-  align?: "flex-start" | "flex-end";
-  label: string;
-  value: string;
-  valueColor: string;
-}) {
-  return (
-    <View style={{ gap: 3, alignItems: align }}>
-      <Text
-        style={{
-          ...BrandType.micro,
-          letterSpacing: 0.8,
-          textTransform: "uppercase",
-          color: valueColor,
-          opacity: 0.68,
-        }}
-      >
-        {label}
-      </Text>
-      <Text
-        style={{
-          ...BrandType.bodyStrong,
-          fontSize: 15,
-          lineHeight: 18,
-          color: valueColor,
-          textAlign: align === "flex-end" ? "right" : "left",
-          fontVariant: ["tabular-nums"],
-        }}
-      >
-        {value}
-      </Text>
-    </View>
-  );
-}
-
 type ApplicationRowProps = {
   application: StudioJobApplication;
   isWideWeb: boolean;
@@ -220,7 +136,7 @@ function ApplicationRow({
           flexDirection: isWideWeb ? "row" : "column",
           alignItems: isWideWeb ? "center" : "stretch",
           gap: isWideWeb ? 14 : 10,
-          borderRadius: 22,
+          borderRadius: BrandRadius.card,
           borderCurve: "continuous",
           backgroundColor: palette.surface as string,
           paddingHorizontal: 14,
@@ -251,14 +167,14 @@ function ApplicationRow({
 
         <View style={{ width: isWideWeb ? 150 : undefined }}>
           <MetricCell
-            label="Applied"
+            label={t("jobsTab.card.applied", { defaultValue: "Applied" })}
             value={formatDateTime(application.appliedAt, locale)}
-            valueColor={palette.text as string}
+            palette={palette}
           />
         </View>
 
         <View style={{ width: isWideWeb ? 130 : undefined }}>
-          <StatusPill
+          <DotStatusPill
             backgroundColor={palette.surfaceAlt as string}
             color={appDot}
             label={t(getApplicationStatusTranslationKey(application.status))}
@@ -309,8 +225,7 @@ export function StudioJobsList({
   onStartPayment,
   t,
 }: StudioJobsListProps) {
-  const { width } = useWindowDimensions();
-  const isWideWeb = Platform.OS === "web" && width >= WIDE_WEB_BREAKPOINT;
+  const { isDesktopWeb: isWideWeb } = useLayoutBreakpoint();
 
   if (jobs.length === 0) return null;
 
@@ -337,10 +252,16 @@ export function StudioJobsList({
         );
         const pendingLabel =
           job.pendingApplicationsCount > 0
-            ? `${String(job.pendingApplicationsCount)} pending`
+            ? t("jobsTab.card.pendingCount", {
+                count: job.pendingApplicationsCount,
+                defaultValue: `${String(job.pendingApplicationsCount)} pending`,
+              })
             : job.applicationsCount > 0
-              ? `${String(job.applicationsCount)} reviewed`
-              : "No applicants";
+              ? t("jobsTab.card.reviewedCount", {
+                  count: job.applicationsCount,
+                  defaultValue: `${String(job.applicationsCount)} reviewed`,
+                })
+              : t("jobsTab.card.noApplicants", { defaultValue: "No applicants" });
         const listTone =
           job.pendingApplicationsCount > 0
             ? (palette.primarySubtle as string)
@@ -387,16 +308,19 @@ export function StudioJobsList({
                       >
                         {toSportLabel(job.sport as never)}
                       </Text>
-                      <StatusPill
+                      <DotStatusPill
                         backgroundColor={palette.surface as string}
                         color={dotColor}
                         label={t(JOB_STATUS_TRANSLATION_KEYS[job.status])}
                       />
                       {job.pendingApplicationsCount > 0 ? (
-                        <StatusPill
+                        <DotStatusPill
                           backgroundColor={palette.surface as string}
                           color={palette.primary as string}
-                          label={`${String(job.pendingApplicationsCount)} to review`}
+                          label={t("jobsTab.card.toReview", {
+                            count: job.pendingApplicationsCount,
+                            defaultValue: `${String(job.pendingApplicationsCount)} to review`,
+                          })}
                         />
                       ) : null}
                     </View>
@@ -413,33 +337,36 @@ export function StudioJobsList({
                         style={{ ...BrandType.caption, color: palette.textMuted as string }}
                         numberOfLines={1}
                       >
-                        Assigned instructor: {acceptedApplication.instructorName}
+                        {t("jobsTab.card.assignedInstructor", {
+                          name: acceptedApplication.instructorName,
+                          defaultValue: `Assigned: ${acceptedApplication.instructorName}`,
+                        })}
                       </Text>
                     ) : null}
                   </View>
 
                   <View style={{ width: isWideWeb ? 200 : undefined }}>
                     <MetricCell
-                      label="Shift"
+                      label={t("jobsTab.card.shift", { defaultValue: "Shift" })}
                       value={formatDateTime(job.startTime, locale)}
-                      valueColor={palette.text as string}
+                      palette={palette}
                     />
                   </View>
 
                   <View style={{ width: isWideWeb ? 150 : undefined }}>
                     <MetricCell
-                      label="Zone"
+                      label={t("jobsTab.card.zone", { defaultValue: "Zone" })}
                       value={getZoneLabel(job.zone, zoneLanguage)}
-                      valueColor={palette.text as string}
+                      palette={palette}
                     />
                   </View>
 
                   <View style={{ width: isWideWeb ? 150 : undefined }}>
                     <MetricCell
                       align={isWideWeb ? "flex-end" : "flex-start"}
-                      label="Pay"
+                      label={t("jobsTab.card.payLabel", { defaultValue: "Pay" })}
                       value={t("jobsTab.card.pay", { value: job.pay })}
-                      valueColor={palette.text as string}
+                      palette={palette}
                     />
                   </View>
                 </View>
@@ -450,7 +377,7 @@ export function StudioJobsList({
                       flexDirection: isWideWeb ? "row" : "column",
                       alignItems: isWideWeb ? "center" : "stretch",
                       gap: 10,
-                      borderRadius: 22,
+                      borderRadius: BrandRadius.card,
                       borderCurve: "continuous",
                       backgroundColor: palette.surface as string,
                       paddingHorizontal: 14,
@@ -468,15 +395,14 @@ export function StudioJobsList({
                     >
                       <Text
                         style={{
-                          ...BrandType.micro,
-                          letterSpacing: 0.8,
-                          textTransform: "uppercase",
+                          ...BrandType.caption,
+                          letterSpacing: 0.1,
                           color: palette.textMuted as string,
                         }}
                       >
-                        Settlement
+                        {t("jobsTab.card.settlement", { defaultValue: "Settlement" })}
                       </Text>
-                      <StatusPill
+                      <DotStatusPill
                         backgroundColor={palette.surfaceAlt as string}
                         color={payDotColor}
                         label={
@@ -488,7 +414,7 @@ export function StudioJobsList({
                         }
                       />
                       {job.payment?.payoutStatus ? (
-                        <StatusPill
+                        <DotStatusPill
                           backgroundColor={palette.surfaceAlt as string}
                           color={palette.text as string}
                           label={t(PAYOUT_STATUS_KEY[job.payment.payoutStatus], {
@@ -529,13 +455,12 @@ export function StudioJobsList({
                     >
                       <Text
                         style={{
-                          ...BrandType.micro,
-                          letterSpacing: 0.8,
-                          textTransform: "uppercase",
+                          ...BrandType.caption,
+                          letterSpacing: 0.1,
                           color: palette.textMuted as string,
                         }}
                       >
-                        Review queue
+                        {t("jobsTab.card.reviewQueue", { defaultValue: "Review queue" })}
                       </Text>
                       <Text
                         style={{
@@ -544,7 +469,10 @@ export function StudioJobsList({
                           fontVariant: ["tabular-nums"],
                         }}
                       >
-                        {String(job.pendingApplicationsCount)} waiting
+                        {t("jobsTab.card.waitingCount", {
+                          count: job.pendingApplicationsCount,
+                          defaultValue: `${String(job.pendingApplicationsCount)} waiting`,
+                        })}
                       </Text>
                     </View>
 
@@ -565,7 +493,7 @@ export function StudioJobsList({
                 ) : acceptedApplication ? (
                   <View
                     style={{
-                      borderRadius: 20,
+                      borderRadius: BrandRadius.card,
                       borderCurve: "continuous",
                       backgroundColor: palette.surface as string,
                       paddingHorizontal: 14,
@@ -573,14 +501,16 @@ export function StudioJobsList({
                     }}
                   >
                     <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                      Assigned to {acceptedApplication.instructorName}. Historical applicant detail
-                      is compressed once the review queue is clear.
+                      {t("jobsTab.card.assignedTo", {
+                        name: acceptedApplication.instructorName,
+                        defaultValue: `Assigned to ${acceptedApplication.instructorName}`,
+                      })}
                     </Text>
                   </View>
                 ) : job.applicationsCount > 0 ? (
                   <View
                     style={{
-                      borderRadius: 20,
+                      borderRadius: BrandRadius.card,
                       borderCurve: "continuous",
                       backgroundColor: palette.surface as string,
                       paddingHorizontal: 14,
@@ -588,14 +518,16 @@ export function StudioJobsList({
                     }}
                   >
                     <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                      {String(job.applicationsCount)} applicants processed. Reopen the role or post
-                      a new slot if you need another instructor.
+                      {t("jobsTab.card.applicantsProcessed", {
+                        count: job.applicationsCount,
+                        defaultValue: `${String(job.applicationsCount)} applicants processed`,
+                      })}
                     </Text>
                   </View>
                 ) : job.status === "open" ? (
                   <View
                     style={{
-                      borderRadius: 20,
+                      borderRadius: BrandRadius.card,
                       borderCurve: "continuous",
                       backgroundColor: palette.surface as string,
                       paddingHorizontal: 14,
@@ -603,7 +535,9 @@ export function StudioJobsList({
                     }}
                   >
                     <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                      Live on the board. New applicants will land in the review lane first.
+                      {t("jobsTab.card.liveOnBoard", {
+                        defaultValue: "Live on the board — new applicants arrive here.",
+                      })}
                     </Text>
                   </View>
                 ) : null}

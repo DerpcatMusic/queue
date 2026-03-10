@@ -44,6 +44,7 @@ export type KitThemeTokens = {
   };
   background: {
     app: ColorValue;
+    sheet: ColorValue;
     surface: ColorValue;
     surfaceSecondary: ColorValue;
     surfaceElevated: ColorValue;
@@ -88,18 +89,22 @@ export function useKitTheme() {
   const palette = useBrand();
 
   return useMemo<KitThemeTokens>(() => {
-    const isCustomStyle = stylePreference === "custom";
+    const isCustomStyle = false;
     const glassBackground = resolveAlphaColor(
       palette.surface as unknown,
-      isCustomStyle ? 0.94 : 0.88,
+      scheme === "dark" ? 0.9 : 0.84,
       palette.surfaceElevated as unknown,
     );
     const panelBackground = resolveAlphaColor(
       palette.surfaceAlt as unknown,
-      scheme === "dark" ? 0.94 : 0.82,
+      scheme === "dark" ? 0.96 : 0.88,
       palette.surface as unknown,
     );
-    const highlightBorder = TRANSPARENT;
+    const highlightBorder = resolveAlphaColor(
+      palette.borderStrong as unknown,
+      scheme === "dark" ? 0.45 : 0.36,
+      palette.border as unknown,
+    );
     const primaryLiftShadow = "none";
     const surfaceShadow = "none";
     const switchTrackOff = resolveAlphaColor(
@@ -127,6 +132,7 @@ export function useKitTheme() {
       },
       background: {
         app: palette.appBg,
+        sheet: palette.surfaceAlt,
         surface: palette.surface,
         surfaceSecondary: palette.surfaceAlt,
         surfaceElevated: palette.surfaceElevated,
@@ -145,8 +151,16 @@ export function useKitTheme() {
         danger: palette.danger,
       },
       border: {
-        primary: TRANSPARENT,
-        secondary: TRANSPARENT,
+        primary: resolveAlphaColor(
+          palette.borderStrong as unknown,
+          scheme === "dark" ? 0.4 : 0.28,
+          palette.border as unknown,
+        ),
+        secondary: resolveAlphaColor(
+          palette.border as unknown,
+          scheme === "dark" ? 0.28 : 0.18,
+          palette.border as unknown,
+        ),
         highlight: highlightBorder,
         transparent: TRANSPARENT,
       },

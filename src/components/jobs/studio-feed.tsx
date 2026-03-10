@@ -22,9 +22,10 @@ import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view"
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { EmptyState } from "@/components/ui/empty-state";
-import { KitButton, KitChip } from "@/components/ui/kit";
+import { KitButton, KitChip, KitSurface } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
@@ -34,12 +35,17 @@ type FeedSectionHeaderProps = {
   palette: ReturnType<typeof useBrand>;
 };
 
+type StudioFeedJobSummary = {
+  pendingApplicationsCount: number;
+  status: string;
+};
+
 function FeedSectionHeader({ title, subtitle, palette }: FeedSectionHeaderProps) {
   return (
     <View style={styles.sectionHeader}>
-      <ThemedText type="title">{title}</ThemedText>
+      <ThemedText type="sectionTitle">{title}</ThemedText>
       {subtitle ? (
-        <ThemedText type="caption" style={{ color: palette.textMuted }}>
+        <ThemedText type="meta" style={{ color: palette.textMuted }}>
           {subtitle}
         </ThemedText>
       ) : null}
@@ -53,9 +59,11 @@ export function StudioFeed() {
   const { width } = useWindowDimensions();
 
   const palette = useBrand();
+  const { safeTop } = useAppInsets();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const isWideWeb = Platform.OS === "web" && width >= 1180;
+  const mobileContentPaddingTop = Platform.OS === "android" ? safeTop + BrandSpacing.sm : 0;
   const signInRoute = "/sign-in" as const;
   const onboardingRoute = "/onboarding" as const;
   const instructorJobsRoute = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
@@ -88,14 +96,19 @@ export function StudioFeed() {
     [palette.appBg],
   );
   const reviewCount =
-    studioJobs?.reduce((total, job) => total + job.pendingApplicationsCount, 0) ?? 0;
-  const openCount = studioJobs?.filter((job) => job.status === "open").length ?? 0;
-  const filledCount = studioJobs?.filter((job) => job.status === "filled").length ?? 0;
+    studioJobs?.reduce(
+      (total: number, job: StudioFeedJobSummary) => total + job.pendingApplicationsCount,
+      0,
+    ) ?? 0;
+  const openCount =
+    studioJobs?.filter((job: StudioFeedJobSummary) => job.status === "open").length ?? 0;
+  const filledCount =
+    studioJobs?.filter((job: StudioFeedJobSummary) => job.status === "filled").length ?? 0;
   const reviewQueueJobs = filteredStudioJobsWithPayments.filter(
-    (job) => job.pendingApplicationsCount > 0,
+    (job: StudioFeedJobSummary) => job.pendingApplicationsCount > 0,
   );
   const boardJobs = filteredStudioJobsWithPayments.filter(
-    (job) => job.pendingApplicationsCount === 0,
+    (job: StudioFeedJobSummary) => job.pendingApplicationsCount === 0,
   );
   const filterOptions = [
     {
@@ -166,8 +179,7 @@ export function StudioFeed() {
                   ...BrandType.micro,
                   color: palette.onPrimary as string,
                   opacity: 0.8,
-                  letterSpacing: 1.1,
-                  textTransform: "uppercase",
+                  letterSpacing: 0.2,
                 }}
               >
                 Studio operations
@@ -244,8 +256,7 @@ export function StudioFeed() {
                     style={{
                       ...BrandType.micro,
                       color: palette.textMuted as string,
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
+                      letterSpacing: 0.2,
                     }}
                   >
                     {metric.label}
@@ -515,7 +526,8 @@ export function StudioFeed() {
       <TabScreenScrollView
         routeKey="studio/jobs/index"
         style={styles.screen}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: mobileContentPaddingTop }]}
+        topInsetTone="sheet"
         keyboardShouldPersistTaps="handled"
       >
         <View>
@@ -552,45 +564,64 @@ export function StudioFeed() {
 
         {currentUser.role === "studio" ? (
           <>
-            <View
-              style={{ paddingHorizontal: BrandSpacing.lg, paddingTop: BrandSpacing.lg, gap: 10 }}
+            <KitSurface
+              tone="sheet"
+              padding={BrandSpacing.lg}
+              gap={BrandSpacing.md}
+              style={{
+                marginHorizontal: BrandSpacing.lg,
+              }}
             >
               <View
                 style={{
                   flexDirection: "row",
                   gap: 10,
-                  borderRadius: BrandRadius.card,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.surfaceAlt as string,
-                  padding: 14,
                 }}
               >
                 {[
                   {
                     label: "Open",
-                    value: String(studioJobs?.filter((job) => job.status === "open").length ?? 0),
+                    value: String(
+                      studioJobs?.filter((job: StudioFeedJobSummary) => job.status === "open")
+                        .length ?? 0,
+                    ),
                     accent: palette.primary as string,
                   },
                   {
                     label: "Review",
                     value: String(
-                      studioJobs?.reduce((total, job) => total + job.pendingApplicationsCount, 0) ??
+                      studioJobs?.reduce(
+                        (total: number, job: StudioFeedJobSummary) =>
+                          total + job.pendingApplicationsCount,
                         0,
+                      ) ?? 0,
                     ),
                   },
                   {
                     label: "Filled",
-                    value: String(studioJobs?.filter((job) => job.status === "filled").length ?? 0),
+                    value: String(
+                      studioJobs?.filter((job: StudioFeedJobSummary) => job.status === "filled")
+                        .length ?? 0,
+                    ),
                     accent: palette.success as string,
                   },
-                ].map((item, index) => (
-                  <View key={item.label} style={{ flex: 1, gap: 2 }}>
+                ].map((item) => (
+                  <View
+                    key={item.label}
+                    style={{
+                      flex: 1,
+                      gap: 4,
+                      borderRadius: BrandRadius.card,
+                      borderCurve: "continuous",
+                      backgroundColor: palette.surface as string,
+                      paddingHorizontal: BrandSpacing.md,
+                      paddingVertical: BrandSpacing.md,
+                    }}
+                  >
                     <Text
                       style={{
-                        ...BrandType.micro,
+                        ...BrandType.caption,
                         color: palette.textMuted as string,
-                        letterSpacing: 0.8,
-                        textTransform: "uppercase",
                       }}
                     >
                       {item.label}
@@ -604,18 +635,6 @@ export function StudioFeed() {
                     >
                       {item.value}
                     </Text>
-                    {index < 2 ? (
-                      <View
-                        style={{
-                          position: "absolute",
-                          right: -5,
-                          top: 4,
-                          bottom: 4,
-                          width: 1,
-                          backgroundColor: palette.appBg as string,
-                        }}
-                      />
-                    ) : null}
                   </View>
                 ))}
               </View>
@@ -624,7 +643,7 @@ export function StudioFeed() {
                 style={{
                   borderRadius: BrandRadius.card,
                   borderCurve: "continuous",
-                  backgroundColor: palette.primary as string,
+                  backgroundColor: palette.surface as string,
                   padding: 18,
                   gap: 14,
                 }}
@@ -633,18 +652,17 @@ export function StudioFeed() {
                   <Text
                     style={{
                       ...BrandType.micro,
-                      color: palette.onPrimary as string,
-                      opacity: 0.78,
+                      color: palette.textMuted as string,
                     }}
                   >
-                    COMMAND
+                    Operations
                   </Text>
                   <Text
                     style={{
-                      ...BrandType.heading,
-                      fontSize: 30,
-                      lineHeight: 32,
-                      color: palette.onPrimary as string,
+                      ...BrandType.title,
+                      fontSize: 24,
+                      lineHeight: 30,
+                      color: palette.text as string,
                     }}
                   >
                     {jobsStatusFilter === "needs_review"
@@ -654,8 +672,7 @@ export function StudioFeed() {
                   <Text
                     style={{
                       ...BrandType.caption,
-                      color: palette.onPrimary as string,
-                      opacity: 0.9,
+                      color: palette.textMuted as string,
                     }}
                   >
                     Create shifts, review applicants, and move payment work from one lane.
@@ -665,12 +682,11 @@ export function StudioFeed() {
                   label={t("jobsTab.form.title", "Post New Job")}
                   icon="plus"
                   onPress={() => createJobSheetRef.current?.expand()}
-                  variant="secondary"
+                  variant="primary"
                   fullWidth={false}
-                  style={{ backgroundColor: palette.onPrimary as string }}
                 />
               </View>
-            </View>
+            </KitSurface>
 
             {studioNotificationSettings !== undefined &&
             !studioNotificationSettings?.hasExpoPushToken ? (

@@ -1,8 +1,5 @@
-import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const OVERLAY_GAP = Platform.OS === "ios" ? 16 : 18;
-const ESTIMATED_NATIVE_TAB_BAR_HEIGHT = Platform.OS === "ios" ? 52 : 64;
+import { BrandSpacing } from "@/constants/brand";
 
 export type AppInsets = {
   safeTop: number;
@@ -16,10 +13,10 @@ export function useAppInsets(): AppInsets {
 
   const safeTop = insets.top;
   const safeBottom = insets.bottom;
-  // NativeTabs applies safe-area handling, but floating UI and manual content padding still need
-  // to stay visually above the persistent native tab bar.
-  const tabContentBottom = safeBottom + ESTIMATED_NATIVE_TAB_BAR_HEIGHT;
-  const overlayBottom = tabContentBottom + OVERLAY_GAP;
+  // Native tab bars handle most insetting for normal content. We only add a shared clearance
+  // token for floating controls and screens that need breathing room above the bottom chrome.
+  const tabContentBottom = safeBottom + BrandSpacing.xxl;
+  const overlayBottom = tabContentBottom + BrandSpacing.sm;
 
   return {
     safeTop,

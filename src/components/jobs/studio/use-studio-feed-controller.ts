@@ -21,6 +21,24 @@ type UseStudioFeedControllerArgs = {
   t: TFunction;
 };
 
+type StudioControllerJob = {
+  applications: Array<{
+    applicationId: Id<"jobApplications">;
+    appliedAt: number;
+    instructorName: string;
+    message?: string | null;
+    status: "pending" | "accepted" | "rejected" | "withdrawn";
+  }>;
+  applicationsCount: number;
+  jobId: Id<"jobs">;
+  pendingApplicationsCount: number;
+  pay: number;
+  sport: string;
+  startTime: number;
+  status: "open" | "filled" | "cancelled" | "completed";
+  zone: string;
+};
+
 export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
   const currentUser = useQuery(api.users.getCurrentUser);
 
@@ -62,7 +80,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
 
   const filteredStudioJobs = useMemo(() => {
     const search = jobsSearchQuery.trim().toLowerCase();
-    return (studioJobs ?? []).filter((job) => {
+    return (studioJobs ?? []).filter((job: StudioControllerJob) => {
       if (jobsStatusFilter === "needs_review" && job.pendingApplicationsCount === 0) {
         return false;
       }
@@ -76,7 +94,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
 
       if (!search) return true;
       const applicants = job.applications
-        .map((application) => application.instructorName)
+        .map((application: { instructorName: string }) => application.instructorName)
         .join(" ");
       const haystack =
         `${job.zone} ${toSportLabel(job.sport as never)} ${applicants}`.toLowerCase();
@@ -122,7 +140,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
 
   const filteredStudioJobsWithPayments = useMemo(
     () =>
-      filteredStudioJobs.map((job) => ({
+      filteredStudioJobs.map((job: StudioControllerJob) => ({
         ...job,
         payment: latestPaymentByJobId.get(String(job.jobId)) ?? null,
       })),
