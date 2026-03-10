@@ -29,6 +29,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
     <View style={{ flex: 1 }}>
       <NativeTabs
         tintColor={palette.primary}
+        backgroundColor={palette.surface as string}
         disableTransparentOnScrollEdge
         minimizeBehavior="onScrollDown"
       >
