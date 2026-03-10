@@ -554,7 +554,6 @@ export default function IdentityVerificationScreen() {
 
   return (
     <TabScreenScrollView
-      routeKey="instructor/profile"
       style={{ flex: 1, backgroundColor: palette.appBg }}
       contentContainerStyle={{ paddingTop: 16, paddingBottom: 44, gap: 22 }}
     >

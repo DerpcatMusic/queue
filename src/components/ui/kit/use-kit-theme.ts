@@ -32,8 +32,6 @@ function resolveColorValue(primary: unknown, fallback: unknown, final: ColorValu
 
 export type KitThemeTokens = {
   scheme: "light" | "dark";
-  stylePreference: "native" | "custom";
-  isCustomStyle: boolean;
   color: {
     primary: ColorValue;
     primaryPressed: ColorValue;
@@ -85,11 +83,10 @@ export type KitThemeTokens = {
 };
 
 export function useKitTheme() {
-  const { resolvedScheme: scheme, stylePreference } = useThemePreference();
+  const { resolvedScheme: scheme } = useThemePreference();
   const palette = useBrand();
 
   return useMemo<KitThemeTokens>(() => {
-    const isCustomStyle = false;
     const glassBackground = resolveAlphaColor(
       palette.surface as unknown,
       scheme === "dark" ? 0.9 : 0.84,
@@ -120,8 +117,6 @@ export function useKitTheme() {
 
     return {
       scheme,
-      stylePreference,
-      isCustomStyle,
       color: {
         primary: palette.primary,
         primaryPressed: palette.primaryPressed,
@@ -179,5 +174,5 @@ export function useKitTheme() {
         defaultTint: resolveStringColor(palette.primary, palette.text, palette.onPrimary),
       },
     };
-  }, [palette, scheme, stylePreference]);
+  }, [palette, scheme]);
 }

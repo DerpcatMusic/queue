@@ -162,7 +162,6 @@ export default function StudioProfileScreen() {
     <View collapsable={false} style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <TabScreenScrollView
         animatedRef={scrollRef}
-        routeKey="studio/profile"
         topInsetTone="sheet"
         style={styles.screen}
         contentContainerStyle={{

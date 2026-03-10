@@ -206,8 +206,8 @@ export function QueueMap({
 }: QueueMapProps) {
   const { t } = useTranslation();
   const palette = useBrand();
-  const { resolvedScheme, stylePreference } = useThemePreference();
-  const mapPalette = getMapBrandPalette(stylePreference, resolvedScheme);
+  const { resolvedScheme } = useThemePreference();
+  const mapPalette = getMapBrandPalette(resolvedScheme);
   const [mapLoadState, setMapLoadState] = useState<MapLoadState>("loading");
   const [retryNonce, setRetryNonce] = useState(0);
   const [mapErrorMessage, setMapErrorMessage] = useState<string | null>(null);

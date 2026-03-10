@@ -205,7 +205,6 @@ export default function InstructorProfileScreen() {
     <View collapsable={false} style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <TabScreenScrollView
         animatedRef={scrollRef}
-        routeKey="instructor/profile"
         topInsetTone="sheet"
         style={styles.screen}
         contentContainerStyle={{

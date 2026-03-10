@@ -65,7 +65,6 @@ export default function ProfilePaymentsScreen() {
 
   return (
     <TabScreenScrollView
-      routeKey="studio/profile"
       style={{ flex: 1, backgroundColor: palette.appBg }}
       contentContainerStyle={{ paddingTop: 12, paddingBottom: 28, gap: 16 }}
     >

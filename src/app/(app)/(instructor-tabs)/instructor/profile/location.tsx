@@ -144,11 +144,7 @@ export default function LocationScreen() {
   };
 
   return (
-    <TabScreenScrollView
-      routeKey="instructor/profile"
-      style={screenStyle}
-      keyboardShouldPersistTaps="handled"
-    >
+    <TabScreenScrollView style={screenStyle} keyboardShouldPersistTaps="handled">
       <KitList inset>
         <KitListItem title={t("profile.settings.location.addressPlaceholder")}>
           <View style={{ gap: 8, marginTop: 8 }}>

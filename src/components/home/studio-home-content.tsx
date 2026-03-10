@@ -12,12 +12,12 @@ import {
   getHomeHeaderScrollTopPadding,
   HomeHeaderSheet,
 } from "@/components/home/home-header-sheet";
+import { HomeStatsRow } from "@/components/home/home-stats-row";
 import {
   getTimeframeData,
   type MetricMode,
   type Timeframe,
 } from "@/components/home/performance-chart-math";
-import { HomeStatsRow } from "@/components/home/home-stats-row";
 import {
   PerformanceHeroCard,
   type PerformanceTimeframeSeries,
@@ -134,12 +134,13 @@ export function StudioHomeContent({
     t,
   });
 
-  const heroTitle = jobsNeedingReview.length > 0
-    ? t("home.studio.heroReview", { defaultValue: "Decisions are waiting" })
-    : t("home.studio.heroActive", {
-        count: openJobs,
-        defaultValue: `${String(openJobs)} active jobs on the board`,
-      });
+  const heroTitle =
+    jobsNeedingReview.length > 0
+      ? t("home.studio.heroReview", { defaultValue: "Decisions are waiting" })
+      : t("home.studio.heroActive", {
+          count: openJobs,
+          defaultValue: `${String(openJobs)} active jobs on the board`,
+        });
 
   const heroSecondaryLabel =
     jobsNeedingReview.length > 0
@@ -171,7 +172,6 @@ export function StudioHomeContent({
       />
       <TabScreenScrollView
         animatedRef={scrollRef}
-        routeKey="studio/index"
         style={{ flex: 1 }}
         topInsetTone="sheet"
         contentContainerStyle={{
@@ -373,7 +373,9 @@ export function StudioHomeContent({
                   {t("home.studio.noRecent")}
                 </Text>
                 <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                  {t("home.studio.emptyBoard", { defaultValue: "Post a shift to start filling your schedule." })}
+                  {t("home.studio.emptyBoard", {
+                    defaultValue: "Post a shift to start filling your schedule.",
+                  })}
                 </Text>
               </HomeSurface>
             ) : (

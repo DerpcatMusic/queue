@@ -2,7 +2,7 @@ import { I18nManager, Text, type TextProps } from "react-native";
 
 import { BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useThemePreference } from "@/hooks/use-theme-preference";
 
 export type ThemedTextType =
   | "display"
@@ -61,11 +61,10 @@ export function ThemedText({
 }: ThemedTextProps) {
   const resolved = (LEGACY_TYPE_MAP[type as string] ?? type) as ThemedTextType;
   const palette = useBrand();
+  const { resolvedScheme } = useThemePreference();
 
-  const color = useThemeColor({
-    light: lightColor ?? (palette.text as string),
-    dark: darkColor ?? (palette.text as string),
-  });
+  const color =
+    resolvedScheme === "dark" ? (darkColor ?? palette.text) : (lightColor ?? palette.text);
 
   const linkColor = palette.primary;
   const mappedType = SEMANTIC_TYPE_MAP[resolved];

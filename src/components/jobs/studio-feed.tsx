@@ -152,7 +152,6 @@ export function StudioFeed() {
     return (
       <View style={screenStyle}>
         <TabScreenScrollView
-          routeKey="studio/jobs/index"
           style={styles.screen}
           contentContainerStyle={{
             paddingHorizontal: BrandSpacing.xl,
@@ -524,7 +523,6 @@ export function StudioFeed() {
   return (
     <View style={screenStyle}>
       <TabScreenScrollView
-        routeKey="studio/jobs/index"
         style={styles.screen}
         contentContainerStyle={[styles.content, { paddingTop: mobileContentPaddingTop }]}
         topInsetTone="sheet"

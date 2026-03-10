@@ -13,7 +13,7 @@ export function KitFab({
   disabled = false,
   style,
 }: KitFabProps) {
-  const { color, foreground, background, border, shadow, isCustomStyle } = useKitTheme();
+  const { color, foreground, background, border, shadow } = useKitTheme();
 
   return (
     <KitPressable
@@ -22,7 +22,7 @@ export function KitFab({
       disabled={disabled}
       onPress={onPress}
       haptic="impact"
-      nativeFeedback={!isCustomStyle}
+      nativeFeedback
       pressStyle={disabled ? undefined : { transform: [{ scale: 0.985 }] }}
       style={[
         {

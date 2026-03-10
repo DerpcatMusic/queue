@@ -13,9 +13,6 @@ import { useThemePreference } from "@/hooks/use-theme-preference";
  * sets at the hook level.
  */
 export function useBrand() {
-  const { resolvedScheme, stylePreference } = useThemePreference();
-  return useMemo(
-    () => getBrandPalette(stylePreference, resolvedScheme),
-    [resolvedScheme, stylePreference],
-  );
+  const { resolvedScheme } = useThemePreference();
+  return useMemo(() => getBrandPalette(resolvedScheme), [resolvedScheme]);
 }

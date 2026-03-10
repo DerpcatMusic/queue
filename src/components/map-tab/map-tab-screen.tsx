@@ -21,8 +21,8 @@ import { useTranslation } from "react-i18next";
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
+import { ScreenScaffold } from "@/components/layout/screen-scaffold";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
-import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
 import type { QueueMapPin } from "@/components/maps/queue-map.types";
@@ -79,7 +79,7 @@ export default function MapTabScreen() {
         throw new Error(
           t("mapTab.errors.locationPermission", {
             defaultValue: "Permission to access location was denied.",
-          })
+          }),
         );
       }
       const location = await Location.getCurrentPositionAsync({});
@@ -90,7 +90,11 @@ export default function MapTabScreen() {
       const resolved = await resolveCurrentLocationToZone();
       setFocusZoneId(resolved.zoneId);
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : t("mapTab.errors.failedToSave", { defaultValue: "Failed to load location" }));
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : t("mapTab.errors.failedToSave", { defaultValue: "Failed to load location" }),
+      );
     }
   }, [t]);
 
@@ -261,7 +265,7 @@ export default function MapTabScreen() {
 
   if (Platform.OS === "web") {
     return (
-      <TabScreenRoot
+      <ScreenScaffold
         mode="static"
         style={{ backgroundColor: palette.surface as string }}
         topInsetTone="card"
@@ -786,7 +790,7 @@ export default function MapTabScreen() {
             </View>
           </View>
         </View>
-      </TabScreenRoot>
+      </ScreenScaffold>
     );
   }
 

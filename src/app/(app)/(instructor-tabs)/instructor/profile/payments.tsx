@@ -229,7 +229,6 @@ export default function ProfilePaymentsScreen() {
   if (isFinalizingOnboarding) {
     return (
       <TabScreenScrollView
-        routeKey="instructor/profile"
         style={{ flex: 1, backgroundColor: palette.appBg }}
         contentContainerStyle={{ flexGrow: 1, padding: BrandSpacing.lg, justifyContent: "center" }}
       >
@@ -255,7 +254,6 @@ export default function ProfilePaymentsScreen() {
   if (showOnboardingSuccess) {
     return (
       <TabScreenScrollView
-        routeKey="instructor/profile"
         style={{ flex: 1, backgroundColor: palette.appBg }}
         contentContainerStyle={{ flexGrow: 1, padding: BrandSpacing.lg, justifyContent: "center" }}
       >
@@ -281,7 +279,6 @@ export default function ProfilePaymentsScreen() {
 
   return (
     <TabScreenScrollView
-      routeKey="instructor/profile"
       style={{ flex: 1, backgroundColor: palette.appBg }}
       contentContainerStyle={{ paddingTop: 12, paddingBottom: 40, gap: 24 }}
     >

@@ -1,20 +1,29 @@
 import { Link } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { StyleSheet } from "react-native";
+import { I18nManager, StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+import { useBrand } from "@/hooks/use-brand";
 
 export default function ModalScreen() {
   const { t } = useTranslation();
+  const palette = useBrand();
 
   return (
-    <ThemedView style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: palette.surface as string,
+          direction: I18nManager.isRTL ? "rtl" : "ltr",
+        },
+      ]}
+    >
       <ThemedText type="title">{t("modal.title")}</ThemedText>
       <Link href="/" dismissTo style={styles.link}>
         <ThemedText type="link">{t("modal.goHome")}</ThemedText>
       </Link>
-    </ThemedView>
+    </View>
   );
 }
 

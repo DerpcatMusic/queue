@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   I18nManager,
+  type LayoutChangeEvent,
   Platform,
   StyleSheet,
   Text,
-  type LayoutChangeEvent,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -21,9 +21,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-
+import { ScreenScaffold } from "@/components/layout/screen-scaffold";
 import { TopSheetSurface } from "@/components/layout/top-sheet-surface";
-import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { LoadingScreen } from "@/components/loading-screen";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { KitButton, KitPressable, KitSegmentedToggle } from "@/components/ui/kit";
@@ -192,7 +191,10 @@ function WeekRail({
   const translateX = useSharedValue(-1);
   const railWidth = useSharedValue(1);
   const isRtl = I18nManager.isRTL;
-  const previousWeekDays = useMemo(() => weekDays.map((dayKey) => shiftDayKey(dayKey, -7)), [weekDays]);
+  const previousWeekDays = useMemo(
+    () => weekDays.map((dayKey) => shiftDayKey(dayKey, -7)),
+    [weekDays],
+  );
   const nextWeekDays = useMemo(() => weekDays.map((dayKey) => shiftDayKey(dayKey, 7)), [weekDays]);
 
   const handleSwipeWeek = useCallback(
@@ -232,7 +234,8 @@ function WeekRail({
         .onEnd((event) => {
           const width = railWidth.value || 1;
           const shouldAdvance =
-            event.translationX <= -Math.max(SWIPE_THRESHOLD, width * 0.2) || event.velocityX <= -650;
+            event.translationX <= -Math.max(SWIPE_THRESHOLD, width * 0.2) ||
+            event.velocityX <= -650;
           const shouldRewind =
             event.translationX >= Math.max(SWIPE_THRESHOLD, width * 0.2) || event.velocityX >= 650;
 
@@ -384,7 +387,7 @@ function WeekRail({
         })}
       </View>
     ),
-    [handleSelectDay, isRtl, lessonCountByDay, locale, palette, selectedDay, todayKey],
+    [handleSelectDay, lessonCountByDay, locale, palette, selectedDay, todayKey],
   );
 
   return (
@@ -938,7 +941,13 @@ export default function CalendarTabScreen() {
 
   const agendaHeaderComponent = useMemo(
     () => (
-      <View style={{ gap: BrandSpacing.sm, paddingTop: BrandSpacing.sm, paddingBottom: BrandSpacing.xs }}>
+      <View
+        style={{
+          gap: BrandSpacing.sm,
+          paddingTop: BrandSpacing.sm,
+          paddingBottom: BrandSpacing.xs,
+        }}
+      >
         <View
           style={{
             flexDirection: "row",
@@ -986,7 +995,6 @@ export default function CalendarTabScreen() {
             </Text>
           </View>
         </View>
-
       </View>
     ),
     [i18n.language, palette, selectedDay, selectedLessonCount, t],
@@ -1064,8 +1072,8 @@ export default function CalendarTabScreen() {
         row.source === "google"
           ? (row.location ?? "Google Calendar")
           : row.roleView === "instructor"
-          ? row.studioName
-          : (row.instructorName ?? "Unassigned instructor");
+            ? row.studioName
+            : (row.instructorName ?? "Unassigned instructor");
       const timeLabel = row.isAllDay
         ? t("calendarTab.timeline.allDay", { defaultValue: "All day" })
         : `${formatTime(row.startTime, i18n.language)} – ${formatTime(row.endTime, i18n.language)}`;
@@ -1141,9 +1149,7 @@ export default function CalendarTabScreen() {
                         { backgroundColor: palette.primarySubtle as string },
                       ]}
                     >
-                      <Text
-                        style={[styles.sourceBadgeText, { color: palette.primary as string }]}
-                      >
+                      <Text style={[styles.sourceBadgeText, { color: palette.primary as string }]}>
                         {t("calendarTab.timeline.googleBadge", { defaultValue: "Google" })}
                       </Text>
                     </View>
@@ -1177,7 +1183,7 @@ export default function CalendarTabScreen() {
 
   if (isDesktopWeb) {
     return (
-      <TabScreenRoot mode="static" style={{ backgroundColor: palette.surface as string }}>
+      <ScreenScaffold mode="static" style={{ backgroundColor: palette.surface as string }}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
           <Text style={{ ...BrandType.bodyStrong, color: palette.textMuted as string }}>
             {t("calendarTab.desktopSoon", {
@@ -1185,14 +1191,14 @@ export default function CalendarTabScreen() {
             })}
           </Text>
         </View>
-      </TabScreenRoot>
+      </ScreenScaffold>
     );
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
+    <ScreenScaffold mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
       <TopSheetSurface
         style={{
           paddingHorizontal: BrandSpacing.lg,
@@ -1378,7 +1384,7 @@ export default function CalendarTabScreen() {
         ListHeaderComponent={agendaHeaderComponent}
         ListFooterComponent={listFooterComponent}
       />
-    </TabScreenRoot>
+    </ScreenScaffold>
   );
 }
 

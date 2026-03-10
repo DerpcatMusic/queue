@@ -1,4 +1,3 @@
-import { Color } from "expo-router";
 import type { ColorValue } from "react-native";
 import { Platform } from "react-native";
 import { FEATURE_FLAGS } from "@/constants/feature-flags";
@@ -9,8 +8,6 @@ import {
   mapLegacyTokenPath,
   type ThemeSeed,
 } from "@/constants/theme-generation";
-
-import type { ThemeStylePreference } from "@/lib/theme-preference";
 
 export type ResolvedBrandScheme = "light" | "dark";
 
@@ -47,185 +44,6 @@ export type BrandPalette = {
   tabBarBorder: ColorValue;
   calendar: BrandCalendar;
   generated?: GeneratedThemeTokens;
-};
-
-// Native-first semantic color palette.
-// On iOS this uses system adaptive colors.
-// On Android this uses Material 3 dynamic colors.
-// On web/fallback this uses static values.
-export const NativeBrand: BrandPalette = {
-  appBg: Platform.select({
-    ios: Color.ios.systemGroupedBackground,
-    android: Color.android.dynamic.background,
-    default: "#f2f5f2",
-  }),
-  surface: Platform.select({
-    ios: Color.ios.secondarySystemGroupedBackground,
-    android: Color.android.dynamic.surface,
-    default: "#ffffff",
-  }),
-  surfaceAlt: Platform.select({
-    ios: Color.ios.tertiarySystemGroupedBackground,
-    android: Color.android.dynamic.surfaceVariant,
-    default: "#ecf1ec",
-  }),
-  surfaceElevated: Platform.select({
-    ios: Color.ios.systemBackground,
-    android: Color.android.dynamic.surface,
-    default: "#f7faf7",
-  }),
-  border: Platform.select({
-    ios: Color.ios.separator,
-    android: Color.android.dynamic.outlineVariant,
-    default: "#d3dbd3",
-  }),
-  borderStrong: Platform.select({
-    ios: Color.ios.opaqueSeparator,
-    android: Color.android.dynamic.outline,
-    default: "#b6c3b6",
-  }),
-  text: Platform.select({
-    ios: Color.ios.label,
-    android: Color.android.dynamic.onBackground,
-    default: "#131913",
-  }),
-  textMuted: Platform.select({
-    ios: Color.ios.secondaryLabel,
-    android: Color.android.dynamic.onSurfaceVariant,
-    default: "#5b685b",
-  }),
-  textMicro: Platform.select({
-    ios: Color.ios.tertiaryLabel,
-    android: Color.android.dynamic.onSurfaceVariant,
-    default: "#879387",
-  }),
-  primary: Platform.select({
-    ios: Color.ios.systemGreen,
-    android: Color.android.dynamic.primary,
-    default: "#9be12c",
-  }),
-  primaryPressed: Platform.select({
-    ios: Color.ios.systemGreen,
-    android: Color.android.dynamic.primary,
-    default: "#84c120",
-  }),
-  primarySubtle: Platform.select({
-    ios: Color.ios.systemMint,
-    android: Color.android.dynamic.primaryContainer,
-    default: "#e9f8d1",
-  }),
-  onPrimary: Platform.select({
-    ios: "#ffffff",
-    android: Color.android.dynamic.onPrimary,
-    default: "#ffffff",
-  }),
-  success: Platform.select({
-    ios: Color.ios.systemGreen,
-    android: Color.android.attr.colorSuccess,
-    default: "#168a4a",
-  }) as string,
-  successSubtle: Platform.select({
-    ios: Color.ios.systemMint,
-    android: Color.android.attr.colorSuccessContainer,
-    default: "#d4f0e2",
-  }) as string,
-  danger: Platform.select({
-    ios: Color.ios.systemRed,
-    android: Color.android.dynamic.error,
-    default: "#c5333e",
-  }),
-  dangerSubtle: Platform.select({
-    ios: Color.ios.systemPink,
-    android: Color.android.dynamic.errorContainer,
-    default: "#fce8ea",
-  }),
-  warning: Platform.select({
-    ios: Color.ios.systemOrange,
-    android: Color.android.attr.colorWarning,
-    default: "#996b00",
-  }) as string,
-  warningSubtle: Platform.select({
-    ios: Color.ios.systemYellow,
-    android: Color.android.attr.colorWarningContainer,
-    default: "#fff3cc",
-  }) as string,
-  focusRing: Platform.select({
-    ios: Color.ios.systemGreen,
-    android: Color.android.dynamic.primary,
-    default: "#96d92f",
-  }),
-  tabBar: Platform.select({
-    ios: "transparent",
-    android: Color.android.dynamic.surfaceContainer,
-    default: "#ffffff",
-  }),
-  tabBarBorder: Platform.select({
-    ios: "transparent",
-    android: Color.android.dynamic.outlineVariant,
-    default: "#c9d5c9",
-  }),
-  calendar: {
-    accent: Platform.select({
-      ios: Color.ios.systemPink,
-      android: Color.android.dynamic.tertiary,
-      default: "#f6118f",
-    }) as string,
-    accentSubtle: Platform.select({
-      ios: Color.ios.systemPink,
-      android: Color.android.dynamic.tertiaryContainer,
-      default: "#fce8ea",
-    }) as string,
-    eventSwatches: [
-      {
-        background: Platform.select({
-          ios: Color.ios.systemMint,
-          android: Color.android.dynamic.primaryContainer,
-          default: "#e9f8d1",
-        }) as string,
-        title: Platform.select({
-          ios: Color.ios.systemGreen,
-          android: Color.android.dynamic.onPrimaryContainer,
-          default: "#4f6d12",
-        }) as string,
-      },
-      {
-        background: Platform.select({
-          ios: Color.ios.systemMint,
-          android: Color.android.attr.colorSuccessContainer,
-          default: "#d4f0e2",
-        }) as string,
-        title: Platform.select({
-          ios: Color.ios.systemGreen,
-          android: Color.android.attr.colorSuccess,
-          default: "#168a4a",
-        }) as string,
-      },
-      {
-        background: Platform.select({
-          ios: Color.ios.systemYellow,
-          android: Color.android.attr.colorWarningContainer,
-          default: "#fff3cc",
-        }) as string,
-        title: Platform.select({
-          ios: Color.ios.systemOrange,
-          android: Color.android.attr.colorWarning,
-          default: "#996b00",
-        }) as string,
-      },
-      {
-        background: Platform.select({
-          ios: Color.ios.systemPink,
-          android: Color.android.dynamic.errorContainer,
-          default: "#fce8ea",
-        }) as string,
-        title: Platform.select({
-          ios: Color.ios.systemRed,
-          android: Color.android.dynamic.onErrorContainer,
-          default: "#c5333e",
-        }) as string,
-      },
-    ],
-  },
 };
 
 const CustomSeed: Record<ResolvedBrandScheme, ThemeSeed> = {
@@ -398,37 +216,6 @@ function maybeWrapDeprecatedTokenWarnings(palette: BrandPalette): BrandPalette {
   });
 }
 
-const NativeMapBrandPalette = {
-  light: {
-    styleBackground: "#f1ebe2",
-    zoneOutline: "#817561",
-    zoneOutlineOpacity: 0.6,
-    previewFill: "#dfe5d1",
-    previewFillOpacity: 0.26,
-    previewOutline: "#7b8761",
-    previewOutlineOpacity: 0.68,
-    selectedOutline: "#69744f",
-    selectedOutlineOpacity: 1.0,
-    surfaceAlt: "#efe5d7",
-    primary: "#6f7a58",
-    text: "#231f1a",
-  },
-  dark: {
-    styleBackground: "#1c1813",
-    zoneOutline: "#887a66",
-    zoneOutlineOpacity: 0.72,
-    previewFill: "#394430",
-    previewFillOpacity: 0.3,
-    previewOutline: "#a5b38a",
-    previewOutlineOpacity: 0.8,
-    selectedOutline: "#c3d1a5",
-    selectedOutlineOpacity: 1.0,
-    surfaceAlt: "#2a241e",
-    primary: "#98a57e",
-    text: "#f5f0e7",
-  },
-} as const;
-
 const CustomMapBrandPalette = {
   light: {
     styleBackground: "#f1ebe2",
@@ -460,11 +247,7 @@ const CustomMapBrandPalette = {
   },
 } as const;
 
-export function getBrandPalette(
-  stylePreference: ThemeStylePreference,
-  scheme: ResolvedBrandScheme,
-): BrandPalette {
-  void stylePreference;
+export function getBrandPalette(scheme: ResolvedBrandScheme): BrandPalette {
   let custom: BrandPalette;
   try {
     custom = buildGeneratedCustomBrand(scheme);
@@ -475,17 +258,9 @@ export function getBrandPalette(
   return maybeWrapDeprecatedTokenWarnings(custom);
 }
 
-export function getMapBrandPalette(
-  stylePreference: ThemeStylePreference,
-  scheme: ResolvedBrandScheme,
-) {
-  return stylePreference === "custom"
-    ? CustomMapBrandPalette[scheme]
-    : NativeMapBrandPalette[scheme];
+export function getMapBrandPalette(scheme: ResolvedBrandScheme) {
+  return CustomMapBrandPalette[scheme];
 }
-
-export const Brand = getBrandPalette("custom", "light");
-export const MapBrandPalette = NativeMapBrandPalette;
 
 export function getThemeTokenAliasMap() {
   return getTokenAliasMap();

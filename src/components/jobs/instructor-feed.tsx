@@ -18,8 +18,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 function SectionHeader({
   title,
@@ -139,7 +139,6 @@ export function InstructorFeed() {
     return (
       <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
         <TabScreenScrollView
-          routeKey="instructor/jobs/index"
           style={styles.screen}
           contentContainerStyle={{
             paddingHorizontal: BrandSpacing.xl,
@@ -397,7 +396,6 @@ export function InstructorFeed() {
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <TabScreenScrollView
-        routeKey="instructor/jobs/index"
         style={styles.screen}
         contentContainerStyle={[styles.content, { paddingTop: mobileContentPaddingTop }]}
         topInsetTone="sheet"
