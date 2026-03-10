@@ -277,7 +277,7 @@ export default function StudioCalendarSettingsScreen() {
     : null;
 
   return (
-    <TabScreenScrollView routeKey="studio/profile" style={[styles.screen, { backgroundColor: palette.appBg }]}>
+    <TabScreenScrollView style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <KitList inset>
         <KitListItem title={t("profile.settings.calendar.provider.none")}>
           <View style={{ marginTop: 8 }}>

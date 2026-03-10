@@ -6,6 +6,7 @@ import BottomSheet, {
 import { useIsFocused } from "@react-navigation/native";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import { Redirect } from "expo-router";
 import {
   type RefObject,
@@ -19,11 +20,12 @@ import {
 import { useTranslation } from "react-i18next";
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
+import { NoticeBanner } from "@/components/jobs/notice-banner";
+import { ScreenScaffold } from "@/components/layout/screen-scaffold";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
-import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
-import { NoticeBanner } from "@/components/jobs/notice-banner";
+import type { QueueMapPin } from "@/components/maps/queue-map.types";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitButton, KitPressable } from "@/components/ui/kit";
@@ -33,6 +35,7 @@ import { ZONE_OPTIONS, type ZoneOption } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
+import { resolveCurrentLocationToZone } from "@/lib/location-zone";
 
 const MAX_ZONES = 25;
 
@@ -56,13 +59,44 @@ export default function MapTabScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [focusZoneId, setFocusZoneId] = useState<string | null>(null);
+  const [mapPin, setMapPin] = useState<QueueMapPin | null>(null);
   const zoneSheetRef = useRef<BottomSheet>(null);
   const noopMapPress = useCallback(() => {}, []);
-  const handleRecenter = useCallback(() => {
+  const handleFocusSelection = useCallback(() => {
     const nextFocusZoneId = focusZoneId ?? selectedZoneIds[0] ?? remoteZones?.zoneIds?.[0] ?? null;
     if (!nextFocusZoneId) return;
     setFocusZoneId(nextFocusZoneId);
   }, [focusZoneId, remoteZones?.zoneIds, selectedZoneIds]);
+
+  const handleUseGps = useCallback(async () => {
+    setSaveError(null);
+    try {
+      if (Platform.OS === "ios") {
+        void Haptics.selectionAsync();
+      }
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        throw new Error(
+          t("mapTab.errors.locationPermission", {
+            defaultValue: "Permission to access location was denied.",
+          }),
+        );
+      }
+      const location = await Location.getCurrentPositionAsync({});
+      setMapPin({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+      const resolved = await resolveCurrentLocationToZone();
+      setFocusZoneId(resolved.zoneId);
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : t("mapTab.errors.failedToSave", { defaultValue: "Failed to load location" }),
+      );
+    }
+  }, [t]);
 
   useEffect(() => {
     if (!remoteZones) return;
@@ -99,7 +133,7 @@ export default function MapTabScreen() {
     [focusZoneId, t],
   );
 
-  const persistedZoneIds = remoteZones?.zoneIds ?? [];
+  const persistedZoneIds = (remoteZones?.zoneIds ?? []) as string[];
 
   const hasChanges = useMemo(() => {
     if (persistedZoneIds.length !== selectedZoneIds.length) return true;
@@ -231,7 +265,11 @@ export default function MapTabScreen() {
 
   if (Platform.OS === "web") {
     return (
-      <TabScreenRoot mode="static" style={{ backgroundColor: palette.surface as string }}>
+      <ScreenScaffold
+        mode="static"
+        style={{ backgroundColor: palette.surface as string }}
+        topInsetTone="card"
+      >
         <View
           style={{
             flex: 1,
@@ -427,12 +465,12 @@ export default function MapTabScreen() {
             >
               <QueueMap
                 mode="zoneSelect"
-                pin={null}
+                pin={mapPin}
                 selectedZoneIds={selectedZoneIds}
                 focusZoneId={focusZoneId}
                 onPressZone={toggleZone}
                 onPressMap={noopMapPress}
-                onUseGps={handleRecenter}
+                onUseGps={handleFocusSelection}
                 showGpsButton={false}
               />
             </View>
@@ -752,22 +790,22 @@ export default function MapTabScreen() {
             </View>
           </View>
         </View>
-      </TabScreenRoot>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <TabScreenRoot mode="static" style={{ backgroundColor: palette.appBg }}>
+    <View style={{ flex: 1, backgroundColor: palette.appBg as string }}>
       {isFocused ? (
         <>
           <QueueMap
             mode="zoneSelect"
-            pin={null}
+            pin={mapPin}
             selectedZoneIds={selectedZoneIds}
             focusZoneId={focusZoneId}
             {...(zoneModeActive ? { onPressZone: toggleZone } : {})}
             onPressMap={noopMapPress}
-            onUseGps={handleRecenter}
+            onUseGps={handleUseGps}
             showGpsButton
           />
           {saveError ? (
@@ -784,68 +822,64 @@ export default function MapTabScreen() {
             </View>
           ) : null}
 
-          <View
-            pointerEvents="box-none"
-            style={{
-              position: "absolute",
-              top: safeTop + 16,
-              left: BrandSpacing.lg,
-              right: BrandSpacing.lg,
-              zIndex: 30,
-            }}
-          >
+          {zoneModeActive ? (
             <View
+              pointerEvents="box-none"
               style={{
-                alignSelf: "flex-start",
-                maxWidth: 260,
-                borderRadius: 24,
-                borderCurve: "continuous",
-                backgroundColor: zoneModeActive
-                  ? (palette.primary as string)
-                  : (palette.surface as string),
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                gap: 4,
+                position: "absolute",
+                top: safeTop + BrandSpacing.lg,
+                left: BrandSpacing.lg,
+                right: BrandSpacing.lg,
+                zIndex: 30,
               }}
             >
-              <Text
+              <View
                 style={{
-                  ...BrandType.micro,
-                  color: zoneModeActive
-                    ? (palette.onPrimary as string)
-                    : (palette.primary as string),
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                  opacity: zoneModeActive ? 0.78 : 1,
+                  alignSelf: "flex-start",
+                  maxWidth: 260,
+                  borderRadius: 24,
+                  borderCurve: "continuous",
+                  backgroundColor: palette.primary as string,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  gap: 4,
                 }}
               >
-                {zoneModeActive ? "Editing coverage" : "Coverage live"}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: "BarlowCondensed_800ExtraBold",
-                  fontSize: 28,
-                  lineHeight: 26,
-                  letterSpacing: -0.6,
-                  color: zoneModeActive ? (palette.onPrimary as string) : (palette.text as string),
-                }}
-              >
-                {String(selectedZoneIds.length)} active zones
-              </Text>
-              <Text
-                style={{
-                  ...BrandType.caption,
-                  color: zoneModeActive ? "rgba(255,255,255,0.78)" : (palette.textMuted as string),
-                }}
-              >
-                {zoneModeActive
-                  ? hasChanges
+                <Text
+                  style={{
+                    ...BrandType.micro,
+                    color: palette.onPrimary as string,
+                    letterSpacing: 1,
+                    textTransform: "uppercase",
+                    opacity: 0.78,
+                  }}
+                >
+                  Editing coverage
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: "BarlowCondensed_800ExtraBold",
+                    fontSize: 28,
+                    lineHeight: 26,
+                    letterSpacing: -0.6,
+                    color: palette.onPrimary as string,
+                  }}
+                >
+                  {String(selectedZoneIds.length)} active zones
+                </Text>
+                <Text
+                  style={{
+                    ...BrandType.caption,
+                    color: "rgba(255,255,255,0.78)",
+                  }}
+                >
+                  {hasChanges
                     ? `${String(pendingChangeCount)} staged edits ready to save.`
-                    : "Tap the map or list to stage coverage changes."
-                  : "Open edit mode to add or trim your territory."}
-              </Text>
+                    : "Tap the map or list to stage coverage changes."}
+                </Text>
+              </View>
             </View>
-          </View>
+          ) : null}
 
           {saveError ? (
             <TabOverlayAnchor side="left" offset={BrandSpacing.lg}>
@@ -1047,7 +1081,7 @@ export default function MapTabScreen() {
           </View>
         </>
       ) : null}
-    </TabScreenRoot>
+    </View>
   );
 }
 

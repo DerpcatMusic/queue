@@ -83,6 +83,22 @@ quarantine_stale_node_module_android_outputs() {
   fi
 }
 
+clean_stale_app_release_outputs() {
+  rm -rf \
+    "$PROJECT_ROOT/android/app/build/intermediates/incremental/packageRelease" \
+    "$PROJECT_ROOT/android/app/build/intermediates/incremental/assembleRelease" \
+    "$PROJECT_ROOT/android/app/build/intermediates/apk/release" \
+    "$PROJECT_ROOT/android/app/build/intermediates/packaged_manifests/release" \
+    "$PROJECT_ROOT/android/app/build/outputs/apk/release"
+}
+
+run_release_build() {
+  (
+    cd android
+    NODE_ENV=production ./gradlew "${GRADLE_ARGS[@]}"
+  )
+}
+
 ensure_android_project
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" > "$PROJECT_ROOT/android/local.properties"
 
@@ -185,10 +201,12 @@ if ! run_autolinking_probe; then
   fi
 fi
 
-(
-  cd android
-  NODE_ENV=production ./gradlew "${GRADLE_ARGS[@]}"
-)
+if ! run_release_build; then
+  echo "Release build failed. Cleaning stale release packaging outputs and retrying once..."
+  clean_stale_app_release_outputs
+  quarantine_stale_node_module_android_outputs
+  run_release_build
+fi
 
 APK_PATH="$PROJECT_ROOT/android/app/build/outputs/apk/release/app-release.apk"
 if [[ ! -f "$APK_PATH" ]]; then

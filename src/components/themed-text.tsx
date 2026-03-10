@@ -2,7 +2,7 @@ import { I18nManager, Text, type TextProps } from "react-native";
 
 import { BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useThemePreference } from "@/hooks/use-theme-preference";
 
 export type ThemedTextType =
   | "display"
@@ -10,8 +10,18 @@ export type ThemedTextType =
   | "title"
   | "body"
   | "bodyStrong"
+  | "bodyMedium"
   | "caption"
   | "micro"
+  | "screenTitle"
+  | "sheetTitle"
+  | "sectionLabel"
+  | "sectionTitle"
+  | "cardTitle"
+  | "meta"
+  | "pillLabel"
+  | "buttonLabel"
+  | "statValue"
   // Legacy aliases — kept for backwards compatibility
   | "default"
   | "defaultSemiBold"
@@ -30,6 +40,18 @@ const LEGACY_TYPE_MAP: Partial<Record<string, ThemedTextType>> = {
   subtitle: "title",
 };
 
+const SEMANTIC_TYPE_MAP: Partial<Record<ThemedTextType, keyof typeof BrandType>> = {
+  screenTitle: "heading",
+  sheetTitle: "title",
+  sectionLabel: "micro",
+  sectionTitle: "title",
+  cardTitle: "bodyStrong",
+  meta: "caption",
+  pillLabel: "micro",
+  buttonLabel: "bodyMedium",
+  statValue: "heading",
+};
+
 export function ThemedText({
   style,
   lightColor,
@@ -39,18 +61,20 @@ export function ThemedText({
 }: ThemedTextProps) {
   const resolved = (LEGACY_TYPE_MAP[type as string] ?? type) as ThemedTextType;
   const palette = useBrand();
+  const { resolvedScheme } = useThemePreference();
 
-  const color = useThemeColor({
-    light: lightColor ?? (palette.text as string),
-    dark: darkColor ?? (palette.text as string),
-  });
+  const color =
+    resolvedScheme === "dark" ? (darkColor ?? palette.text) : (lightColor ?? palette.text);
 
   const linkColor = palette.primary;
+  const mappedType = SEMANTIC_TYPE_MAP[resolved];
 
   const typeStyle =
     resolved === "link"
       ? { ...BrandType.body, fontWeight: "600" as const, color: linkColor }
-      : (BrandType[resolved as keyof typeof BrandType] ?? BrandType.body);
+      : mappedType
+        ? BrandType[mappedType]
+        : (BrandType[resolved as keyof typeof BrandType] ?? BrandType.body);
 
   return (
     <Text

@@ -2,23 +2,24 @@ import { useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
+import { ThemedText } from "@/components/themed-text";
 import { EmptyState } from "@/components/ui/empty-state";
-import { KitChip } from "@/components/ui/kit";
+import { KitChip, KitSurface } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
+import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
+import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
-
-const WIDE_WEB_BREAKPOINT = 1180;
 
 function SectionHeader({
   title,
@@ -31,17 +32,12 @@ function SectionHeader({
 }) {
   return (
     <View style={{ gap: 4 }}>
-      <Text
-        style={{
-          ...BrandType.heading,
-          fontSize: 24,
-          lineHeight: 26,
-          color: palette.text as string,
-        }}
-      >
+      <ThemedText type="sectionTitle" style={{ color: palette.text as string }}>
         {title}
-      </Text>
-      <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>{subtitle}</Text>
+      </ThemedText>
+      <ThemedText type="meta" style={{ color: palette.textMuted as string }}>
+        {subtitle}
+      </ThemedText>
     </View>
   );
 }
@@ -49,10 +45,11 @@ function SectionHeader({
 export function InstructorFeed() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
-  const { width } = useWindowDimensions();
+  const { safeTop } = useAppInsets();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
-  const isWideWeb = Platform.OS === "web" && width >= WIDE_WEB_BREAKPOINT;
+  const { isDesktopWeb: isWideWeb } = useLayoutBreakpoint();
+  const mobileContentPaddingTop = Platform.OS === "android" ? safeTop + BrandSpacing.sm : 0;
 
   const [jobsSearchQuery, setJobsSearchQuery] = useState("");
   const [jobsWindowFilter, setJobsWindowFilter] = useState<"all" | "24h" | "72h">("all");
@@ -95,7 +92,9 @@ export function InstructorFeed() {
     return <Redirect href="/onboarding" />;
   }
 
-  const jobs = availableJobs ?? [];
+  type AvailableJob = NonNullable<typeof availableJobs>[number];
+
+  const jobs = (availableJobs ?? []) as AvailableJob[];
   const hotNowCount = jobs.filter((job) => job.startTime <= now + 24 * 60 * 60 * 1000).length;
   const pendingCount = jobs.filter((job) => job.applicationStatus === "pending").length;
   const acceptedCount = jobs.filter((job) => job.applicationStatus === "accepted").length;
@@ -140,7 +139,6 @@ export function InstructorFeed() {
     return (
       <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
         <TabScreenScrollView
-          routeKey="instructor/jobs/index"
           style={styles.screen}
           contentContainerStyle={{
             paddingHorizontal: BrandSpacing.xl,
@@ -167,8 +165,7 @@ export function InstructorFeed() {
                   ...BrandType.micro,
                   color: palette.onPrimary as string,
                   opacity: 0.8,
-                  letterSpacing: 1.1,
-                  textTransform: "uppercase",
+                  letterSpacing: 0.2,
                 }}
               >
                 Instructor queue
@@ -213,8 +210,7 @@ export function InstructorFeed() {
                       style={{
                         ...BrandType.micro,
                         color: palette.onPrimary as string,
-                        letterSpacing: 0.7,
-                        textTransform: "uppercase",
+                        letterSpacing: 0.2,
                       }}
                     >
                       {label}
@@ -255,8 +251,7 @@ export function InstructorFeed() {
                     style={{
                       ...BrandType.micro,
                       color: palette.textMuted as string,
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
+                      letterSpacing: 0.2,
                     }}
                   >
                     {metric.label}
@@ -401,21 +396,31 @@ export function InstructorFeed() {
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <TabScreenScrollView
-        routeKey="instructor/jobs/index"
         style={styles.screen}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: mobileContentPaddingTop }]}
+        topInsetTone="sheet"
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ flex: 1 }}>
-          <View style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.sm }}>
+        <View style={{ flex: 1, gap: BrandSpacing.md }}>
+          <KitSurface
+            tone="sheet"
+            padding={BrandSpacing.lg}
+            gap={BrandSpacing.md}
+            style={{
+              marginHorizontal: BrandSpacing.lg,
+            }}
+          >
+            <SectionHeader
+              title={t("jobsTab.title", { defaultValue: "Jobs near you" })}
+              subtitle={t("jobsTab.subtitle", {
+                defaultValue: "Scan new openings, filter quickly, and stay above the queue.",
+              })}
+              palette={palette}
+            />
             <View
               style={{
                 flexDirection: "row",
                 gap: 10,
-                borderRadius: BrandRadius.card,
-                borderCurve: "continuous",
-                backgroundColor: palette.surfaceAlt as string,
-                padding: 14,
               }}
             >
               {[
@@ -426,14 +431,23 @@ export function InstructorFeed() {
                   value: String(acceptedCount),
                   accent: palette.success as string,
                 },
-              ].map((item, index) => (
-                <View key={item.label} style={{ flex: 1, gap: 2 }}>
+              ].map((item) => (
+                <View
+                  key={item.label}
+                  style={{
+                    flex: 1,
+                    gap: 4,
+                    borderRadius: BrandRadius.card,
+                    borderCurve: "continuous",
+                    backgroundColor: palette.surface as string,
+                    paddingHorizontal: BrandSpacing.md,
+                    paddingVertical: BrandSpacing.md,
+                  }}
+                >
                   <Text
                     style={{
-                      ...BrandType.micro,
+                      ...BrandType.caption,
                       color: palette.textMuted as string,
-                      letterSpacing: 0.8,
-                      textTransform: "uppercase",
                     }}
                   >
                     {item.label}
@@ -447,21 +461,10 @@ export function InstructorFeed() {
                   >
                     {item.value}
                   </Text>
-                  {index < 2 ? (
-                    <View
-                      style={{
-                        position: "absolute",
-                        right: -5,
-                        top: 4,
-                        bottom: 4,
-                        width: 1,
-                        backgroundColor: palette.appBg as string,
-                      }}
-                    />
-                  ) : null}
                 </View>
               ))}
             </View>
+
             <View
               style={{
                 gap: BrandSpacing.sm,
@@ -499,7 +502,7 @@ export function InstructorFeed() {
                 ))}
               </View>
             </View>
-          </View>
+          </KitSurface>
 
           {jobs.length === 0 ? (
             <View style={{ minHeight: 260, justifyContent: "center" }}>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { type LayoutChangeEvent, PanResponder, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { useHomeDashboardLayout } from "@/components/home/home-dashboard-layout";
@@ -27,6 +27,7 @@ type PerformanceHeroCardProps = {
   timeframe: Timeframe;
   metricMode: MetricMode;
   timeframeLabel: string;
+  insightLabel: string;
   totalLabel: string;
   metricOptions: readonly PerformanceMetricOption[];
   timeframeOptions: readonly PerformanceTimeframeOption[];
@@ -47,6 +48,7 @@ export function PerformanceHeroCard({
   timeframe,
   metricMode,
   timeframeLabel,
+  insightLabel,
   totalLabel,
   metricOptions,
   timeframeOptions,
@@ -59,7 +61,7 @@ export function PerformanceHeroCard({
   const chartHeight = layout.isWideWeb ? 220 : 176;
   const chartPadding = 12;
   const [chartWidth, setChartWidth] = useState(0);
-  const gradientId = useMemo(() => `hero-fill-${Math.random().toString(36).slice(2)}`, []);
+  const gradientId = `hero-fill-${useId()}`;
 
   const currentSeries = seriesByTimeframe[timeframe];
   const currentMetricLabel =
@@ -87,35 +89,6 @@ export function PerformanceHeroCard({
 
     return labels;
   }, [chartWidth, currentSeries.axisTicks, pointXs]);
-
-  const insightLabel = useMemo(() => {
-    const values = currentSeries.values;
-    if (values.length === 0 || values.every((value) => value === 0)) {
-      return "No activity yet";
-    }
-
-    let peakIndex = 0;
-    let peakValue = values[0] ?? 0;
-    values.forEach((value, index) => {
-      if (value > peakValue) {
-        peakValue = value;
-        peakIndex = index;
-      }
-    });
-
-    const peakTick =
-      currentSeries.axisTicks.reduce<AxisTick | null>((closest, tick) => {
-        if (closest === null) {
-          return tick;
-        }
-        return Math.abs(tick.index - peakIndex) < Math.abs(closest.index - peakIndex)
-          ? tick
-          : closest;
-      }, null) ?? null;
-
-    const activePoints = values.filter((value) => value > 0).length;
-    return `Peak ${peakTick?.label ?? `#${String(peakIndex + 1)}`}  ·  ${String(activePoints)} active`;
-  }, [currentSeries.axisTicks, currentSeries.values]);
 
   const panResponder = useMemo(
     () =>

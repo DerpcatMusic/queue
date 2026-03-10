@@ -98,7 +98,6 @@ export default function SportsScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <TabScreenScrollView
-        routeKey="instructor/profile"
         contentContainerStyle={{ padding: 16, paddingBottom: hasChanges ? 120 : 100, gap: 12 }}
       >
         <ThemedText type="caption" style={{ color: palette.textMuted }}>

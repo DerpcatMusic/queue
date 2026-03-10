@@ -121,16 +121,16 @@ const he = {
       darkMode: {
         title: "מצב כהה",
         description: "מעבר בין ערכת נושא בהירה לכהה.",
-        disableSystemFirst: "Disable System theme first to set a manual mode.",
+        disableSystemFirst: "בטלו קודם את מצב המערכת כדי לבחור מצב ידני.",
       },
       themeStyle: {
-        title: "Theme style",
-        nativeDescription: "Use iOS/Android semantic dynamic colors.",
-        customDescription: "Use Queue custom brand colors across the app.",
+        title: "סגנון ערכת נושא",
+        nativeDescription: "שימוש בצבעים סמנטיים של iOS ו-Android.",
+        customDescription: "שימוש בשפת המותג של Queue בכל האפליקציה.",
       },
       systemTheme: {
-        title: "System theme",
-        description: "Follow iOS/Android appearance automatically.",
+        title: "ערכת נושא של המערכת",
+        description: "התאמה אוטומטית למצב התצוגה של iOS או Android.",
       },
     },
     settings: {
@@ -152,8 +152,8 @@ const he = {
       sports: {
         title: "תחומי ההדרכה שלכם",
         description: "בחרו את התחומים הפעילים שאתם מלמדים.",
-        none: "No sports selected",
-        selected: "{{count}} selected",
+        none: "לא נבחרו תחומים",
+        selected: "{{count}} נבחרו",
       },
       location: {
         title: "מיקום ואזור",

@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { ScrollView, Text, type TextInputProps, useWindowDimensions, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { ScrollView, Text, type TextInputProps, View } from "react-native";
+import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 
 import {
   PROFILE_SOCIAL_FIELDS,
@@ -10,7 +12,7 @@ import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
 import { KitButton, KitSurface, KitTextField } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 
 type EditableExtraField = {
   label: string;
@@ -69,25 +71,25 @@ export function ProfileEditorForm({
   sportsEmptyHint,
   extraField,
 }: ProfileEditorFormProps) {
-  const { width } = useWindowDimensions();
-  const isDesktopWeb = process.env.EXPO_OS === "web" && width >= 1180;
+  const { isDesktopWeb } = useLayoutBreakpoint();
   const activeSocialCount = useMemo(
     () =>
       PROFILE_SOCIAL_FIELDS.filter((field) => Boolean(socialLinksDraft[field.key]?.trim())).length,
     [socialLinksDraft],
   );
   const [showSocialFields, setShowSocialFields] = useState(activeSocialCount > 0);
+  const { t } = useTranslation();
   const saveActions = (
     <View style={{ flexDirection: "row", gap: 12 }}>
       <View style={{ flex: 1 }}>
         <KitButton
-          label={isSaving ? "Saving..." : "Save profile"}
+          label={isSaving ? t("profile.editor.saving", { defaultValue: "Saving..." }) : t("profile.editor.save", { defaultValue: "Save profile" })}
           onPress={onSave}
           disabled={isSaving}
         />
       </View>
       <View style={{ flex: 1 }}>
-        <KitButton label="Cancel" onPress={onCancel} variant="secondary" disabled={isSaving} />
+        <KitButton label={t("profile.editor.cancel", { defaultValue: "Cancel" })} onPress={onCancel} variant="secondary" disabled={isSaving} />
       </View>
     </View>
   );
@@ -116,7 +118,7 @@ export function ProfileEditorForm({
         <View style={{ flex: 1, gap: 4 }}>
           <Text
             style={{
-              fontFamily: "Rubik_500Medium",
+              ...BrandType.bodyMedium,
               fontSize: 13,
               color: isDesktopWeb ? (palette.onPrimary as string) : (palette.textMuted as string),
               includeFontPadding: false,
@@ -127,7 +129,7 @@ export function ProfileEditorForm({
           </Text>
           <Text
             style={{
-              fontFamily: isDesktopWeb ? "BarlowCondensed_700Bold" : "Rubik_600SemiBold",
+              ...(isDesktopWeb ? BrandType.display : BrandType.title),
               fontSize: isDesktopWeb ? 32 : 20,
               lineHeight: isDesktopWeb ? 30 : undefined,
               color: isDesktopWeb ? (palette.onPrimary as string) : (palette.text as string),
@@ -140,7 +142,7 @@ export function ProfileEditorForm({
           {statusLabel ? (
             <Text
               style={{
-                fontFamily: "Rubik_500Medium",
+                ...BrandType.bodyMedium,
                 fontSize: 13,
                 color: isDesktopWeb ? (palette.onPrimary as string) : (palette.textMuted as string),
                 includeFontPadding: false,
@@ -152,7 +154,7 @@ export function ProfileEditorForm({
           ) : null}
         </View>
         <KitButton
-          label={isChangingPhoto ? "Uploading..." : "Photo"}
+          label={isChangingPhoto ? t("profile.editor.uploading", { defaultValue: "Uploading..." }) : t("profile.editor.photo", { defaultValue: "Photo" })}
           onPress={onChangePhoto}
           variant="secondary"
           size="sm"
@@ -182,19 +184,19 @@ export function ProfileEditorForm({
       }}
     >
       <KitTextField
-        label="Display name"
+        label={t("profile.editor.nameLabel", { defaultValue: "Display name" })}
         value={nameDraft}
         onChangeText={onNameDraftChange}
-        placeholder="Name people should see"
+        placeholder={t("profile.editor.namePlaceholder", { defaultValue: "Name people should see" })}
         autoCapitalize="words"
         autoCorrect={false}
       />
 
       <KitTextField
-        label="Bio"
+        label={t("profile.editor.bioLabel", { defaultValue: "Bio" })}
         value={bioDraft}
         onChangeText={onBioDraftChange}
-        placeholder="What kind of classes, vibe, or training you bring"
+        placeholder={t("profile.editor.bioPlaceholder", { defaultValue: "What kind of classes, vibe, or training you bring" })}
         multiline
         numberOfLines={4}
         textAlignVertical="top"
@@ -226,29 +228,28 @@ export function ProfileEditorForm({
         <View style={{ flex: 1, gap: 2 }}>
           <Text
             style={{
-              fontFamily: "Rubik_600SemiBold",
+              ...BrandType.title,
               fontSize: 16,
               color: palette.text as string,
               includeFontPadding: false,
             }}
           >
-            Social links
+            {t("profile.editor.socialLinks", { defaultValue: "Social links" })}
           </Text>
           <Text
             style={{
-              fontFamily: "Rubik_400Regular",
-              fontSize: 13,
+              ...BrandType.caption,
               color: palette.textMuted as string,
               includeFontPadding: false,
             }}
           >
             {activeSocialCount > 0
-              ? `${String(activeSocialCount)} linked`
-              : "Add only the links you actually use."}
+              ? t("profile.editor.linked", { count: activeSocialCount, defaultValue: `${String(activeSocialCount)} linked` })
+              : t("profile.editor.addLinks", { defaultValue: "Add only the links you actually use." })}
           </Text>
         </View>
         <KitButton
-          label={showSocialFields ? "Hide" : "Edit"}
+          label={showSocialFields ? t("profile.editor.hide", { defaultValue: "Hide" }) : t("profile.editor.edit", { defaultValue: "Edit" })}
           onPress={() => setShowSocialFields((value) => !value)}
           variant="ghost"
           size="sm"
@@ -322,8 +323,7 @@ export function ProfileEditorForm({
           {statusLabel ? (
             <Text
               style={{
-                fontFamily: "Rubik_400Regular",
-                fontSize: 13,
+                ...BrandType.caption,
                 lineHeight: 18,
                 color: palette.textMuted as string,
                 includeFontPadding: false,

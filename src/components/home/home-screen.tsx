@@ -105,14 +105,12 @@ export default function HomeScreen() {
         locale={locale}
         openMatches={instructorHomeStats.openMatches}
         pendingApplications={instructorHomeStats.pendingApplications}
-        totalEarningsAgorot={instructorHomeStats.totalEarningsAgorot}
         palette={palette}
         currencyFormatter={currencyFormatter}
         t={t}
         earningsEvents={instructorHomeStats.earningsEvents}
         lessonEvents={instructorHomeStats.lessonEvents}
         upcomingSessions={instructorHomeStats.upcomingSessions}
-        sports={instructorSettings?.sports}
         onOpenJobs={() => router.push(INSTRUCTOR_JOBS_ROUTE)}
         onOpenProfile={() => router.push(INSTRUCTOR_PROFILE_ROUTE)}
       />
@@ -145,7 +143,6 @@ export default function HomeScreen() {
       t={t}
       recentJobs={studioJobs}
       jobsFilled={jobsFilled}
-      sports={studioSettings?.sports}
       onOpenJobs={() => router.push(STUDIO_JOBS_ROUTE)}
       onOpenCalendar={() => router.push(STUDIO_CALENDAR_ROUTE)}
       onOpenProfile={() => router.push(STUDIO_PROFILE_ROUTE)}

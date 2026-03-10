@@ -12,14 +12,14 @@ export function KitChip({
   onPress,
   style,
 }: KitChipProps) {
-  const { color, foreground, background, isCustomStyle } = useKitTheme();
+  const { color, foreground, background } = useKitTheme();
 
   return (
     <KitPressable
       accessibilityRole="button"
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
-      nativeFeedback={!isCustomStyle}
+      nativeFeedback
       haptic="selection"
       onPress={onPress}
       pressStyle={disabled ? undefined : { transform: [{ scale: 0.985 }] }}
@@ -43,8 +43,7 @@ export function KitChip({
         style={{
           ...BrandType.micro,
           color: selected ? foreground.primary : foreground.secondary,
-          letterSpacing: 0.7,
-          textTransform: "uppercase",
+          letterSpacing: 0.15,
           includeFontPadding: false,
         }}
       >

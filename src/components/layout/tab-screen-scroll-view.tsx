@@ -3,7 +3,8 @@ import { type ScrollViewProps, type StyleProp, View, type ViewStyle } from "reac
 import type Animated from "react-native-reanimated";
 import type { AnimatedRef } from "react-native-reanimated";
 import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
-import { TabScreenRoot } from "@/components/layout/tab-screen-root";
+import { ScreenScaffold } from "@/components/layout/screen-scaffold";
+import type { InsetTone } from "@/contexts/system-ui-context";
 
 type TabScreenContainerProps = PropsWithChildren<{
   style?: StyleProp<ViewStyle>;
@@ -12,17 +13,18 @@ type TabScreenContainerProps = PropsWithChildren<{
 type TabScreenScrollViewProps = PropsWithChildren<
   Omit<ScrollViewProps, "contentContainerStyle" | "contentInsetAdjustmentBehavior" | "ref"> & {
     contentContainerStyle?: StyleProp<ViewStyle>;
-    routeKey: string;
     animatedRef?: AnimatedRef<Animated.ScrollView>;
+    topInsetTone?: InsetTone;
+    useDesktopFrame?: boolean;
   }
 >;
 
 export function TabScreenContainer({ children, style }: TabScreenContainerProps) {
   return (
     <View style={[{ flex: 1 }, style]}>
-      <TabScreenRoot mode="static">
+      <ScreenScaffold mode="static">
         <DesktopDashboardFrame>{children}</DesktopDashboardFrame>
-      </TabScreenRoot>
+      </ScreenScaffold>
     </View>
   );
 }
@@ -30,20 +32,21 @@ export function TabScreenContainer({ children, style }: TabScreenContainerProps)
 export function TabScreenScrollView({
   children,
   contentContainerStyle,
-  routeKey,
   onScroll,
   animatedRef,
   style,
   scrollIndicatorInsets,
+  topInsetTone,
+  useDesktopFrame,
   ...props
 }: TabScreenScrollViewProps) {
-  void routeKey;
-
   return (
-    <TabScreenRoot
+    <ScreenScaffold
       mode="scroll"
       style={style}
       contentContainerStyle={contentContainerStyle}
+      {...(topInsetTone ? { topInsetTone } : {})}
+      {...(useDesktopFrame !== undefined ? { useDesktopFrame } : {})}
       scrollProps={{
         ...props,
         ...(animatedRef ? { ref: animatedRef as never } : {}),
@@ -53,6 +56,6 @@ export function TabScreenScrollView({
       }}
     >
       {children}
-    </TabScreenRoot>
+    </ScreenScaffold>
   );
 }

@@ -1,7 +1,5 @@
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useFonts } from "expo-font";
-import "../../global.css";
 import {
   BarlowCondensed_700Bold,
   BarlowCondensed_800ExtraBold,
@@ -22,6 +20,7 @@ import {
   type Theme as NavigationTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
@@ -82,8 +81,8 @@ export default function RootLayout() {
 }
 
 function RootLayoutContent() {
-  const { topInsetBackgroundColor } = useSystemUi();
-  const { resolvedScheme, stylePreference } = useThemePreference();
+  const { topInsetBackgroundColor, topInsetTone } = useSystemUi();
+  const { resolvedScheme } = useThemePreference();
   const palette = useBrand();
   const [transitionOverlayColor, setTransitionOverlayColor] = useState(palette.appBg as string);
   const convex = getConvexClient();
@@ -106,7 +105,7 @@ function RootLayoutContent() {
     Rubik_900Black,
   });
   const transitionOpacity = useMemo(() => new Animated.Value(0), []);
-  const currentThemeKey = `${resolvedScheme}:${stylePreference}`;
+  const currentThemeKey = resolvedScheme;
   const [previousThemeKey, setPreviousThemeKey] = useState(currentThemeKey);
   const [previousBackgroundColor, setPreviousBackgroundColor] = useState(palette.appBg as string);
 
@@ -147,9 +146,6 @@ function RootLayoutContent() {
 
   const navigationTheme = useMemo<NavigationTheme>(() => {
     const base = resolvedScheme === "dark" ? DarkTheme : DefaultTheme;
-    if (stylePreference === "native") {
-      return base;
-    }
     return {
       ...base,
       colors: {
@@ -170,7 +166,6 @@ function RootLayoutContent() {
     palette.surface,
     palette.text,
     resolvedScheme,
-    stylePreference,
   ]);
 
   useStartupPerfMetrics();
@@ -185,10 +180,15 @@ function RootLayoutContent() {
     );
   }
 
-  const fallbackBackgroundColor = palette.appBg;
+  const fallbackBackgroundColor =
+    topInsetTone === "sheet"
+      ? palette.surfaceAlt
+      : topInsetTone === "card"
+        ? palette.surface
+        : topInsetTone === "transparent"
+          ? "transparent"
+          : palette.appBg;
   const statusInsetColor = topInsetBackgroundColor ?? fallbackBackgroundColor;
-  const statusBarBackgroundColor =
-    typeof statusInsetColor === "string" ? statusInsetColor : undefined;
 
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -216,12 +216,7 @@ function RootLayoutContent() {
                 </Stack>
               </View>
             </AppSafeRoot>
-            <StatusBar
-              style={resolvedScheme === "dark" ? "light" : "dark"}
-              animated
-              translucent
-              {...(statusBarBackgroundColor ? { backgroundColor: statusBarBackgroundColor } : {})}
-            />
+            <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
             <Animated.View
               pointerEvents="none"
               style={[

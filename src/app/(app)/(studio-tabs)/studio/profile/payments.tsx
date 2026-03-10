@@ -51,7 +51,10 @@ export default function ProfilePaymentsScreen() {
     return <Redirect href="/" />;
   }
 
-  const rows = paymentRows ?? [];
+  type PaymentListRow = NonNullable<typeof paymentRows>[number];
+  type PaymentTimelineEvent = NonNullable<typeof selectedPaymentDetail>["timeline"][number];
+
+  const rows = (paymentRows ?? []) as PaymentListRow[];
   const role = currentUser.role as "studio" | "instructor";
   const failedCount = rows.filter((row) => row.payment.status === "failed").length;
   const processedCount = rows.filter((row) =>
@@ -62,7 +65,6 @@ export default function ProfilePaymentsScreen() {
 
   return (
     <TabScreenScrollView
-      routeKey="studio/profile"
       style={{ flex: 1, backgroundColor: palette.appBg }}
       contentContainerStyle={{ paddingTop: 12, paddingBottom: 28, gap: 16 }}
     >
@@ -234,7 +236,7 @@ export default function ProfilePaymentsScreen() {
                     </ThemedText>
                   </KitListItem>
                 ) : (
-                  selectedPaymentDetail.timeline.map((event) => (
+                  selectedPaymentDetail.timeline.map((event: PaymentTimelineEvent) => (
                     <KitListItem
                       key={event._id}
                       title={event.title}

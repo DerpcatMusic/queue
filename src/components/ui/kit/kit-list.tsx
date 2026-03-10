@@ -54,7 +54,7 @@ export function KitList({ children, style, inset = true }: KitListProps) {
               <View
                 style={{
                   height: 1,
-                  marginLeft: BrandSpacing.lg,
+                  marginStart: BrandSpacing.lg,
                   backgroundColor: border.primary,
                 }}
               />
@@ -78,7 +78,7 @@ export function KitListItem({
 
   const content = (
     <>
-      {leading ? <View style={{ marginRight: BrandSpacing.md }}>{leading}</View> : null}
+      {leading ? <View style={{ marginEnd: BrandSpacing.md }}>{leading}</View> : null}
       <View style={{ flex: 1, justifyContent: "center", gap: children ? 2 : 0 }}>
         {title ? (
           <ThemedText type="bodyStrong" style={{ color: foreground.secondary }}>
@@ -87,7 +87,7 @@ export function KitListItem({
         ) : null}
         {children}
       </View>
-      {accessory ? <View style={{ marginLeft: BrandSpacing.md }}>{accessory}</View> : null}
+      {accessory ? <View style={{ marginStart: BrandSpacing.md }}>{accessory}</View> : null}
     </>
   );
 

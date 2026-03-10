@@ -5,7 +5,7 @@ import { BrandRadius } from "@/constants/brand";
 
 import { useKitTheme } from "./use-kit-theme";
 
-export type KitSurfaceTone = "base" | "elevated" | "glass" | "sunken";
+export type KitSurfaceTone = "base" | "elevated" | "glass" | "sheet" | "sunken";
 
 export type KitSurfaceProps = ViewProps & {
   tone?: KitSurfaceTone;
@@ -46,9 +46,9 @@ export function KitSurface({
   style,
   ...rest
 }: KitSurfaceProps) {
-  const { background, scheme, stylePreference } = useKitTheme();
+  const { background, scheme } = useKitTheme();
   const isGlass = tone === "glass";
-  const allowNativeGlass = stylePreference === "native" && process.env.EXPO_OS === "ios";
+  const allowNativeGlass = process.env.EXPO_OS === "ios";
   const glassModule = allowNativeGlass ? getGlassModule() : null;
 
   const baseStyle = [
@@ -61,11 +61,15 @@ export function KitSurface({
         ? {
             backgroundColor: background.surfaceElevated,
           }
-        : tone === "sunken"
-          ? { backgroundColor: background.panel }
-          : isGlass
-            ? { backgroundColor: background.glass }
-            : { backgroundColor: background.panel }),
+        : tone === "sheet"
+          ? {
+              backgroundColor: background.sheet,
+            }
+          : tone === "sunken"
+            ? { backgroundColor: background.panel }
+            : isGlass
+              ? { backgroundColor: background.glass }
+              : { backgroundColor: background.panel }),
     },
     style,
   ];

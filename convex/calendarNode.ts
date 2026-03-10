@@ -645,8 +645,19 @@ export const syncMyGoogleCalendarEventsInternal = internalAction({
     importedCount: v.number(),
     importedRemovedCount: v.number(),
   }),
-  handler: async (ctx, args) => {
-    const currentUser = await ctx.runQuery(api.users.getCurrentUser as any, {});
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    ok: boolean;
+    syncedCount: number;
+    removedCount: number;
+    importedCount: number;
+    importedRemovedCount: number;
+  }> => {
+    const currentUser = (await ctx.runQuery(api.users.getCurrentUser as any, {})) as
+      | { _id: Id<"users">; role: string }
+      | null;
     if (!currentUser || (currentUser.role !== "instructor" && currentUser.role !== "studio")) {
       throw new ConvexError("Only instructors and studios can sync Google Calendar");
     }

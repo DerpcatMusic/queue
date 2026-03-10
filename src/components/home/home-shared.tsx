@@ -1,10 +1,7 @@
-import { View } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
+import { Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
-import { AppSymbol } from "@/components/ui/app-symbol";
-import { KitList, KitListItem } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandType } from "@/constants/brand";
 import type { JobStatus } from "@/lib/status-tokens";
 import { getJobStatusTokens } from "@/lib/status-tokens";
 
@@ -58,11 +55,6 @@ export function getRelativeTimeLabel(targetTime: number, now: number, locale: st
   return fmt(deltaDays, "day", deltaDays);
 }
 
-function formatCount(value: number): string {
-  if (value >= 100) return "99+";
-  return String(value);
-}
-
 type StatusPillProps = {
   label: string;
   status: JobStatus | "upcoming";
@@ -94,122 +86,82 @@ export function StatusPill({ label, status, palette }: StatusPillProps) {
   );
 }
 
-type HeroMetricProps = {
+// ─── Jobs-list shared components ──────────────────────────────────────────────
+
+type DotStatusPillProps = {
+  backgroundColor: string;
+  color: string;
   label: string;
-  value: number;
-  palette: BrandPalette;
 };
 
-function HeroMetric({ label, value, palette }: HeroMetricProps) {
+/** Colored-dot status pill used in job cards. */
+export function DotStatusPill({ backgroundColor, color, label }: DotStatusPillProps) {
   return (
-    <View style={{ flex: 1, gap: 2 }}>
-      <ThemedText
-        selectable
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        borderRadius: 999,
+        backgroundColor,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+      }}
+    >
+      <View
         style={{
-          color: palette.text,
-          fontSize: 28,
-          lineHeight: 30,
-          letterSpacing: -0.4,
-          fontWeight: "600",
-          fontVariant: ["tabular-nums"],
+          width: 7,
+          height: 7,
+          borderRadius: 3.5,
+          backgroundColor: color,
+        }}
+      />
+      <Text
+        style={{
+          ...BrandType.caption,
+          letterSpacing: 0.1,
+          color,
         }}
       >
-        {formatCount(value)}
-      </ThemedText>
-      <ThemedText type="micro" style={{ color: palette.textMuted }}>
         {label}
-      </ThemedText>
+      </Text>
     </View>
   );
 }
 
-type HeroBlockProps = {
-  title: string;
-  subtitle: string;
-  palette: BrandPalette;
-  metrics: { label: string; value: number }[];
-};
-
-export function HeroBlock({ title, subtitle, palette, metrics }: HeroBlockProps) {
-  return (
-    <Animated.View
-      entering={FadeInUp.delay(40).duration(360).springify()}
-      style={{ paddingHorizontal: BrandSpacing.xs, gap: BrandSpacing.md, paddingTop: 10 }}
-    >
-      <View style={{ gap: BrandSpacing.xs }}>
-        <ThemedText type="micro" style={{ color: palette.textMuted }}>
-          {subtitle}
-        </ThemedText>
-        <ThemedText
-          type="heading"
-          style={{ fontSize: 34, lineHeight: 38, letterSpacing: -0.4, fontWeight: "600" }}
-        >
-          {title}
-        </ThemedText>
-      </View>
-
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-        {metrics.map((metric, index) => (
-          <View
-            key={`${metric.label}-${index}`}
-            style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 14 }}
-          >
-            <HeroMetric label={metric.label} value={metric.value} palette={palette} />
-            {index < metrics.length - 1 ? (
-              <View style={{ width: 1, alignSelf: "stretch", backgroundColor: palette.border }} />
-            ) : null}
-          </View>
-        ))}
-      </View>
-    </Animated.View>
-  );
-}
-
-type PrimaryActionCardProps = {
-  title: string;
-  subtitle: string;
-  icon: "briefcase.fill" | "calendar.circle.fill";
-  onPress: () => void;
+type MetricCellProps = {
+  align?: "flex-start" | "flex-end";
+  label: string;
+  value: string;
   palette: BrandPalette;
 };
 
-export function PrimaryActionCard({
-  title,
-  subtitle,
-  icon,
-  onPress,
-  palette,
-}: PrimaryActionCardProps) {
+/** Label + value metric pair used in job cards. */
+export function MetricCell({ align = "flex-start", label, value, palette }: MetricCellProps) {
   return (
-    <Animated.View entering={FadeInUp.delay(100).duration(360).springify()}>
-      <KitList inset>
-        <KitListItem
-          title={title}
-          leading={
-            <View
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: palette.primarySubtle,
-              }}
-            >
-              <AppSymbol name={icon} tintColor={palette.primary} />
-            </View>
-          }
-          accessory={<AppSymbol name="chevron.right" tintColor={palette.textMuted} />}
-          onPress={onPress}
-        >
-          <ThemedText
-            type="caption"
-            style={{ color: palette.primary, marginTop: 4, fontWeight: "500" }}
-          >
-            {subtitle}
-          </ThemedText>
-        </KitListItem>
-      </KitList>
-    </Animated.View>
+    <View style={{ gap: 3, alignItems: align }}>
+      <Text
+        style={{
+          ...BrandType.caption,
+          letterSpacing: 0.1,
+          color: palette.textMuted as string,
+        }}
+      >
+        {label}
+      </Text>
+      <Text
+        selectable
+        style={{
+          ...BrandType.bodyStrong,
+          fontSize: 15,
+          lineHeight: 18,
+          color: palette.text as string,
+          textAlign: align === "flex-end" ? "right" : "left",
+          fontVariant: ["tabular-nums"],
+        }}
+      >
+        {value}
+      </Text>
+    </View>
   );
 }

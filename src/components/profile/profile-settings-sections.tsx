@@ -1,9 +1,11 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Text, View } from "react-native";
 
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitPressable } from "@/components/ui/kit";
-import { type BrandPalette, BrandSpacing, BrandType } from "@/constants/brand";
+import { KitPressable, KitSurface } from "@/components/ui/kit";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+
+type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
 export function ProfileSectionHeader({
   label,
@@ -29,8 +31,7 @@ export function ProfileSectionHeader({
         style={{
           ...BrandType.micro,
           color: palette.textMuted as string,
-          letterSpacing: 1.0,
-          textTransform: "uppercase",
+          letterSpacing: 0.4,
         }}
       >
         {label}
@@ -40,7 +41,7 @@ export function ProfileSectionHeader({
           style={{
             ...BrandType.caption,
             color: palette.textMuted as string,
-            maxWidth: 520,
+            maxWidth: 540,
           }}
         >
           {description}
@@ -50,107 +51,168 @@ export function ProfileSectionHeader({
   );
 }
 
+export function ProfileSectionCard({
+  children,
+  palette,
+  style,
+}: {
+  children: ReactNode;
+  palette: BrandPalette;
+  style?: ComponentProps<typeof View>["style"];
+}) {
+  return (
+    <KitSurface
+      tone="base"
+      padding={0}
+      gap={0}
+      style={[
+        {
+          marginHorizontal: BrandSpacing.xl,
+          overflow: "hidden",
+          borderRadius: BrandRadius.card,
+          borderCurve: "continuous",
+          borderWidth: 1,
+          borderColor: palette.border as string,
+        },
+        style,
+      ]}
+    >
+      {children}
+    </KitSurface>
+  );
+}
+
+export function ProfileIconButton({
+  icon,
+  label,
+  onPress,
+  palette,
+  tone = "neutral",
+}: {
+  icon: ProfileSymbolName;
+  label: string;
+  onPress: () => void;
+  palette: BrandPalette;
+  tone?: "neutral" | "accent";
+}) {
+  const backgroundColor =
+    tone === "accent" ? (palette.primarySubtle as string) : (palette.surface as string);
+  const iconColor = tone === "accent" ? (palette.primary as string) : (palette.text as string);
+
+  return (
+    <KitPressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          borderCurve: "continuous",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor,
+          borderWidth: 1,
+          borderColor: palette.border as string,
+          opacity: pressed ? 0.82 : 1,
+        },
+      ]}
+    >
+      <IconSymbol name={icon} size={18} color={iconColor} />
+    </KitPressable>
+  );
+}
+
 export function ProfileSettingRow({
-  eyebrow,
   title,
   subtitle,
+  value,
+  icon,
   accessory,
   onPress,
   palette,
-  isLast = false,
   tone = "default",
+  showDivider = false,
 }: {
-  eyebrow?: string;
   title: string;
   subtitle?: string;
+  value?: string;
+  icon?: ProfileSymbolName;
   accessory?: ReactNode;
   onPress?: () => void;
   palette: BrandPalette;
-  isLast?: boolean;
   tone?: "default" | "danger";
+  showDivider?: boolean;
 }) {
-  const rowBackgroundColor =
-    tone === "danger"
-      ? (palette.dangerSubtle as string)
-      : onPress
-        ? (palette.surface as string)
-        : (palette.surfaceAlt as string);
   const titleColor = tone === "danger" ? (palette.danger as string) : (palette.text as string);
-  const subtitleColor =
+  const secondaryColor =
     tone === "danger" ? (palette.danger as string) : (palette.textMuted as string);
+  const iconBackground =
+    tone === "danger" ? (palette.dangerSubtle as string) : (palette.surfaceAlt as string);
+  const iconColor = tone === "danger" ? (palette.danger as string) : (palette.primary as string);
+  const borderColor = tone === "danger" ? "transparent" : (palette.border as string);
 
   const content = (
     <View
       style={{
         flexDirection: "row",
-        alignItems: "flex-start",
-        justifyContent: "space-between",
-        paddingVertical: 18,
-        paddingHorizontal: 18,
-        borderRadius: 26,
-        borderCurve: "continuous",
-        backgroundColor: rowBackgroundColor,
-        opacity: isLast ? 1 : 1,
+        alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
+        gap: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 15,
+        borderBottomWidth: showDivider ? 1 : 0,
+        borderBottomColor: borderColor,
       }}
     >
-      <View style={{ flex: 1, paddingRight: 16 }}>
-        {eyebrow ? (
-          <Text
-            style={{
-              ...BrandType.micro,
-              color: palette.textMuted as string,
-              letterSpacing: 0.9,
-              textTransform: "uppercase",
-              marginBottom: 4,
-            }}
-          >
-            {eyebrow}
-          </Text>
-        ) : null}
+      {icon ? (
+        <View
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 19,
+            borderCurve: "continuous",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: iconBackground,
+          }}
+        >
+          <IconSymbol name={icon} size={18} color={iconColor} />
+        </View>
+      ) : null}
+
+      <View style={{ flex: 1, gap: subtitle ? 3 : 0, minWidth: 0 }}>
         <Text style={{ ...BrandType.bodyStrong, color: titleColor, letterSpacing: -0.1 }}>
           {title}
         </Text>
         {subtitle ? (
-          <Text
-            style={{
-              ...BrandType.caption,
-              color: subtitleColor,
-              marginTop: 4,
-            }}
-          >
-            {subtitle}
-          </Text>
+          <Text style={{ ...BrandType.caption, color: secondaryColor }}>{subtitle}</Text>
         ) : null}
       </View>
+
       <View
         style={{
-          minHeight: 28,
-          alignItems: "flex-end",
-          justifyContent: "center",
-          paddingTop: subtitle ? 2 : 0,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 10,
+          maxWidth: "44%",
         }}
       >
+        {value ? (
+          <Text
+            numberOfLines={1}
+            style={{
+              ...BrandType.bodyMedium,
+              color: secondaryColor,
+              textAlign: "right",
+            }}
+          >
+            {value}
+          </Text>
+        ) : null}
         {accessory ??
-          (onPress ? (
-            <View
-              style={{
-                minWidth: 46,
-                height: 32,
-                borderRadius: 999,
-                borderCurve: "continuous",
-                backgroundColor:
-                  tone === "danger" ? "rgba(0,0,0,0.08)" : (palette.primarySubtle as string),
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <IconSymbol
-                name="arrow.up.right"
-                size={16}
-                color={tone === "danger" ? palette.danger : palette.primary}
-              />
-            </View>
-          ) : null)}
+          (onPress ? <IconSymbol name="chevron.right" size={18} color={secondaryColor} /> : null)}
       </View>
     </View>
   );
@@ -162,9 +224,9 @@ export function ProfileSettingRow({
   return (
     <KitPressable
       accessibilityRole="button"
-      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
+      accessibilityLabel={[title, subtitle, value].filter(Boolean).join(". ")}
       onPress={onPress}
-      style={({ pressed }) => [{ opacity: pressed ? 0.82 : 1 }]}
+      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
     >
       {content}
     </KitPressable>

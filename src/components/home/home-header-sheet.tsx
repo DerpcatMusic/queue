@@ -1,21 +1,19 @@
-import { useEffect } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
   type SharedValue,
   useAnimatedStyle,
 } from "react-native-reanimated";
+import { TopSheetSurface } from "@/components/layout/top-sheet-surface";
 import { KitFloatingBadge } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
-import { useSystemUi } from "@/contexts/system-ui-context";
-import { toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 
-const SHEET_EXPANDED_CONTENT_HEIGHT = 168;
-const SHEET_CONTRACTED_CONTENT_HEIGHT = 88;
+const SHEET_EXPANDED_CONTENT_HEIGHT = 92;
+const SHEET_CONTRACTED_CONTENT_HEIGHT = 82;
 const SHEET_CONTENT_GAP = BrandSpacing.md;
 
 export function getHomeHeaderExpandedHeight(safeTop: number) {
@@ -23,52 +21,36 @@ export function getHomeHeaderExpandedHeight(safeTop: number) {
 }
 
 export function getHomeHeaderScrollTopPadding(safeTop: number) {
-  const automaticTopInset = Platform.OS === "ios" ? safeTop : 0;
+  const automaticTopInset = process.env.EXPO_OS === "ios" ? safeTop : 0;
   return getHomeHeaderExpandedHeight(safeTop) - automaticTopInset + SHEET_CONTENT_GAP;
 }
 
 // Scroll range over which the sheet transitions
 const SCROLL_EXPAND_START = 0;
-const SCROLL_EXPAND_END = 100;
+const SCROLL_EXPAND_END = 80;
 
 type HomeHeaderSheetProps = {
   displayName: string;
+  subtitle?: string;
   profileImageUrl?: string | null | undefined;
   scrollY: SharedValue<number>;
   palette: BrandPalette;
-  statsLabel?: string;
-  statsValue?: string;
-  extraStatsLabel?: string;
-  extraStatsValue?: string;
   isVerified?: boolean;
-  sports?: string[] | undefined;
   onPressAvatar?: (() => void) | undefined;
 };
 
 export function HomeHeaderSheet({
   displayName,
+  subtitle,
   profileImageUrl,
   scrollY,
   palette,
-  statsLabel,
-  statsValue,
-  extraStatsLabel,
-  extraStatsValue,
   isVerified = false,
-  sports,
   onPressAvatar,
 }: HomeHeaderSheetProps) {
-  const { setTopInsetBackgroundColor } = useSystemUi();
   const { safeTop } = useAppInsets();
   const expandedHeight = getHomeHeaderExpandedHeight(safeTop);
   const contractedHeight = safeTop + SHEET_CONTRACTED_CONTENT_HEIGHT;
-
-  useEffect(() => {
-    setTopInsetBackgroundColor(palette.surfaceAlt);
-    return () => {
-      setTopInsetBackgroundColor(null);
-    };
-  }, [palette.surfaceAlt, setTopInsetBackgroundColor]);
 
   // 0 = expanded, 1 = contracted
   const animatedSheetStyle = useAnimatedStyle(() => {
@@ -87,8 +69,8 @@ export function HomeHeaderSheet({
   const identityWrapStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
       scrollY.value,
-      [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.72, SCROLL_EXPAND_END],
-      [1, 0.3, 0],
+      [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 1.5],
+      [1, 0.4],
       Extrapolation.CLAMP,
     ),
     transform: [
@@ -96,7 +78,15 @@ export function HomeHeaderSheet({
         translateX: interpolate(
           scrollY.value,
           [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
-          [0, -10],
+          [0, -6],
+          Extrapolation.CLAMP,
+        ),
+      },
+      {
+        translateY: interpolate(
+          scrollY.value,
+          [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
+          [0, -4],
           Extrapolation.CLAMP,
         ),
       },
@@ -107,13 +97,13 @@ export function HomeHeaderSheet({
     const fontSize = interpolate(
       scrollY.value,
       [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
-      [42, 30],
+      [32, 26],
       Extrapolation.CLAMP,
     );
     const lineHeight = interpolate(
       scrollY.value,
       [SCROLL_EXPAND_START, SCROLL_EXPAND_END],
-      [52, 36],
+      [36, 30],
       Extrapolation.CLAMP,
     );
     return {
@@ -122,48 +112,24 @@ export function HomeHeaderSheet({
     };
   });
 
-  const expandedSubtitleStyle = useAnimatedStyle(() => {
+  const subtitleStyle = useAnimatedStyle(() => {
     return {
       opacity: interpolate(
         scrollY.value,
-        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.8],
+        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.7],
         [1, 0],
         Extrapolation.CLAMP,
       ),
-      maxHeight: interpolate(
+      height: interpolate(
         scrollY.value,
-        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.8],
-        [24, 0],
+        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.7],
+        [18, 0],
         Extrapolation.CLAMP,
       ),
       marginTop: interpolate(
         scrollY.value,
-        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.8],
+        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.7],
         [2, 0],
-        Extrapolation.CLAMP,
-      ),
-      overflow: "hidden" as const,
-    };
-  });
-
-  const expandedSportsStyle = useAnimatedStyle(() => {
-    return {
-      opacity: interpolate(
-        scrollY.value,
-        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.75],
-        [1, 0],
-        Extrapolation.CLAMP,
-      ),
-      maxHeight: interpolate(
-        scrollY.value,
-        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.75],
-        [44, 0],
-        Extrapolation.CLAMP,
-      ),
-      marginTop: interpolate(
-        scrollY.value,
-        [SCROLL_EXPAND_START, SCROLL_EXPAND_END * 0.75],
-        [12, 0],
         Extrapolation.CLAMP,
       ),
       overflow: "hidden" as const,
@@ -186,8 +152,9 @@ export function HomeHeaderSheet({
   const bg = palette.surfaceAlt as string;
 
   return (
-    <Animated.View
+    <TopSheetSurface
       pointerEvents="box-none"
+      backgroundColor={bg}
       style={[
         {
           backgroundColor: bg,
@@ -198,6 +165,9 @@ export function HomeHeaderSheet({
           overflow: "hidden",
           zIndex: 10,
           borderBottomWidth: 1,
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
+          borderCurve: "continuous",
           borderColor: palette.border as string,
         } as unknown as object,
         animatedSheetStyle,
@@ -218,12 +188,12 @@ export function HomeHeaderSheet({
         {/* Name Area (Dynamic Shrinking) */}
         <Animated.View style={[{ flex: 1, justifyContent: "center" }, identityWrapStyle]}>
           <Animated.Text
-            numberOfLines={1}
+            numberOfLines={2}
             style={[
               {
-                fontFamily: "Sekuya-Regular",
+                ...BrandType.display,
                 color: palette.text as string,
-                letterSpacing: -0.5,
+                letterSpacing: -0.6,
                 paddingTop: 2,
               },
               nameStyle,
@@ -232,105 +202,18 @@ export function HomeHeaderSheet({
             {displayName}
           </Animated.Text>
 
-          {/* Expanded Stats Subtitle */}
-          {(statsLabel && statsValue) || (extraStatsLabel && extraStatsValue) ? (
-            <Animated.View
-              style={[
-                { flexDirection: "row", gap: 6, alignItems: "baseline" },
-                expandedSubtitleStyle,
-              ]}
-            >
-              {statsLabel && statsValue ? (
-                <>
-                  <Text
-                    style={{
-                      fontFamily: "Rubik_700Bold",
-                      fontSize: 13,
-                      color: palette.primary as string,
-                    }}
-                  >
-                    {statsValue}
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: "Rubik_600SemiBold",
-                      fontSize: 13,
-                      color: palette.text as string,
-                      opacity: 0.8,
-                    }}
-                  >
-                    {statsLabel}
-                  </Text>
-                </>
-              ) : null}
-              {extraStatsLabel && extraStatsValue ? (
-                <>
-                  <Text
-                    style={{
-                      fontFamily: "Rubik_600SemiBold",
-                      fontSize: 12,
-                      color: palette.textMuted as string,
-                    }}
-                  >
-                    {"*"}
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: "Rubik_700Bold",
-                      fontSize: 13,
-                      color: palette.text as string,
-                    }}
-                  >
-                    {extraStatsValue}
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: "Rubik_600SemiBold",
-                      fontSize: 12,
-                      color: palette.textMuted as string,
-                    }}
-                  >
-                    {extraStatsLabel}
-                  </Text>
-                </>
-              ) : null}
+          {subtitle ? (
+            <Animated.View style={subtitleStyle}>
+              <Text
+                style={{
+                  ...BrandType.caption,
+                  color: palette.textMuted as string,
+                }}
+              >
+                {subtitle}
+              </Text>
             </Animated.View>
           ) : null}
-
-          {/* Sports List (Expanded State Only) */}
-          {sports && sports.length > 0 && (
-            <Animated.View style={expandedSportsStyle}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8 }}
-              >
-                {sports.map((sport, index) => (
-                  <View key={sport} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <Text
-                      style={{
-                        ...BrandType.caption,
-                        fontWeight: "600",
-                        color: palette.textMuted as string,
-                      }}
-                    >
-                      {toSportLabel(sport as never)}
-                    </Text>
-                    {index < sports.length - 1 && (
-                      <View
-                        style={{
-                          width: 4,
-                          height: 4,
-                          borderRadius: 2,
-                          backgroundColor: palette.border as string,
-                        }}
-                      />
-                    )}
-                  </View>
-                ))}
-              </ScrollView>
-            </Animated.View>
-          )}
         </Animated.View>
 
         <Pressable
@@ -368,6 +251,6 @@ export function HomeHeaderSheet({
           </Animated.View>
         </Pressable>
       </View>
-    </Animated.View>
+    </TopSheetSurface>
   );
 }

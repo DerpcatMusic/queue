@@ -24,7 +24,7 @@ function getButtonColors(
   variant: NonNullable<KitButtonProps["variant"]>,
   theme: ReturnType<typeof useKitTheme>,
 ): ButtonColors {
-  const { color, background, foreground, border, shadow, isCustomStyle } = theme;
+  const { color, background, foreground, border, shadow } = theme;
   if (variant === "primary") {
     return {
       backgroundColor: color.primary,
@@ -52,7 +52,7 @@ function getButtonColors(
       textColor: foreground.secondary,
       iconColor: color.primary,
       highlight: border.primary,
-      shadow: isCustomStyle ? shadow.surface : undefined,
+      shadow: shadow.surface,
     };
   }
   return {
@@ -69,7 +69,7 @@ function getButtonSize(size: NonNullable<KitButtonProps["size"]>) {
     return { minHeight: 42, horizontal: 14, fontSize: 13 };
   }
   if (size === "lg") {
-    return { minHeight: 56, horizontal: 20, fontSize: 16 };
+    return { minHeight: 54, horizontal: 20, fontSize: 16 };
   }
   return { minHeight: 48, horizontal: 18, fontSize: 14 };
 }
@@ -88,7 +88,6 @@ export function KitButton({
   style,
 }: KitButtonProps) {
   const theme = useKitTheme();
-  const { isCustomStyle } = theme;
   const colors = getButtonColors(variant, theme);
   const sizing = getButtonSize(size);
   const isDisabled = disabled || loading;
@@ -101,7 +100,7 @@ export function KitButton({
       disabled={isDisabled}
       onPress={(event) => onPress(event)}
       haptic="impact"
-      nativeFeedback={!isCustomStyle}
+      nativeFeedback
       pressStyle={isDisabled ? undefined : { transform: [{ scale: 0.985 }] }}
       style={[
         {
@@ -134,11 +133,10 @@ export function KitButton({
       ) : null}
       <Text
         style={{
-          ...BrandType.bodyStrong,
+          ...BrandType.bodyMedium,
           color: colors.textColor,
           fontSize: sizing.fontSize,
-          letterSpacing: 0.4,
-          textTransform: "uppercase",
+          letterSpacing: -0.1,
           includeFontPadding: false,
         }}
       >

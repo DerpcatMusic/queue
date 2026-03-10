@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Text, View } from "react-native";
-import Animated, { FadeInUp, useAnimatedRef } from "react-native-reanimated";
+import Animated, { FadeInUp, useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
 
 import {
   HomeSectionHeading,
@@ -9,22 +9,24 @@ import {
   useHomeDashboardLayout,
 } from "@/components/home/home-dashboard-layout";
 import {
-  getAdjacentTimeframe,
+  getHomeHeaderScrollTopPadding,
+  HomeHeaderSheet,
+} from "@/components/home/home-header-sheet";
+import { HomeStatsRow } from "@/components/home/home-stats-row";
+import {
   getTimeframeData,
   type MetricMode,
   type Timeframe,
 } from "@/components/home/performance-chart-math";
 import {
   PerformanceHeroCard,
-  type PerformanceMetricOption,
-  type PerformanceTimeframeOption,
   type PerformanceTimeframeSeries,
 } from "@/components/home/performance-hero-card";
+import { usePerformanceChart } from "@/components/home/use-performance-chart";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { KitButton, KitPressable } from "@/components/ui/kit";
-import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -52,7 +54,6 @@ type StudioHomeContentProps = {
   currencyFormatter: Intl.NumberFormat;
   t: TFunction;
   recentJobs: RecentJob[];
-  sports: string[] | undefined;
   onOpenJobs: () => void;
   onOpenCalendar: () => void;
   onOpenProfile: () => void;
@@ -69,7 +70,6 @@ export function StudioHomeContent({
   currencyFormatter,
   t,
   recentJobs,
-  sports,
   onOpenJobs,
   onOpenCalendar,
   onOpenProfile,
@@ -81,153 +81,106 @@ export function StudioHomeContent({
     .filter((job) => job.pendingApplicationsCount > 0)
     .slice(0, 4);
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const scrollY = useScrollViewOffset(scrollRef);
   const now = useMemo(() => Date.now(), []);
-  const [timeframe, setTimeframe] = useState<Timeframe>("weekly");
-  const [metricMode, setMetricMode] = useState<MetricMode>("earnings");
 
-  const timeframeSeries = useMemo(() => {
-    const frames = {} as Record<Timeframe, PerformanceTimeframeSeries>;
+  const computeSeries = useMemo(() => {
+    return (currentMetricMode: MetricMode) => {
+      const frames = {} as Record<Timeframe, PerformanceTimeframeSeries>;
 
-    (["weekly", "monthly", "yearly"] as const).forEach((frame) => {
-      const frameData = getTimeframeData(frame, now, locale);
-      const values = Array.from({ length: frameData.bucketStarts.length }, () => 0);
+      (["weekly", "monthly", "yearly"] as const).forEach((frame) => {
+        const frameData = getTimeframeData(frame, now, locale);
+        const values = Array.from({ length: frameData.bucketStarts.length }, () => 0);
 
-      for (const row of recentJobs) {
-        const metricValue =
-          metricMode === "earnings"
-            ? row.status === "cancelled"
-              ? 0
-              : row.pay * 100
-            : row.status === "completed"
-              ? 1
-              : 0;
-        if (metricValue === 0) {
-          continue;
-        }
+        for (const row of recentJobs) {
+          const metricValue =
+            currentMetricMode === "earnings"
+              ? row.status === "cancelled"
+                ? 0
+                : row.pay * 100
+              : row.status === "completed"
+                ? 1
+                : 0;
+          if (metricValue === 0) continue;
 
-        const metricTime = metricMode === "earnings" ? row.startTime : row.endTime;
-        for (let index = 0; index < frameData.bucketStarts.length; index += 1) {
-          const bucketStart = frameData.bucketStarts[index]!;
-          const bucketEnd = frameData.bucketEnds[index]!;
-          if (metricTime >= bucketStart && metricTime < bucketEnd) {
-            values[index] = (values[index] ?? 0) + metricValue;
-            break;
+          const metricTime = currentMetricMode === "earnings" ? row.startTime : row.endTime;
+          for (let index = 0; index < frameData.bucketStarts.length; index += 1) {
+            const bucketStart = frameData.bucketStarts[index]!;
+            const bucketEnd = frameData.bucketEnds[index]!;
+            if (metricTime >= bucketStart && metricTime < bucketEnd) {
+              values[index] = (values[index] ?? 0) + metricValue;
+              break;
+            }
           }
         }
-      }
 
-      frames[frame] = {
-        values,
-        axisTicks: frameData.axisTicks,
-      };
-    });
+        frames[frame] = {
+          values,
+          axisTicks: frameData.axisTicks,
+        };
+      });
 
-    return frames;
-  }, [metricMode, recentJobs, now, locale]);
+      return frames;
+    };
+  }, [recentJobs, locale, now]);
 
-  const frameTotal = timeframeSeries[timeframe].values.reduce((sum, value) => sum + value, 0);
-  const timeframeLabel = t(`home.performance.${timeframe}`);
-  const summaryValue =
-    metricMode === "earnings"
-      ? currencyFormatter.format(frameTotal / 100)
-      : `${String(frameTotal)} ${t("home.performance.lessons")}`;
-  const timeframeOptions = useMemo<PerformanceTimeframeOption[]>(
-    () => [
-      { value: "weekly", label: t("home.performance.weekly") },
-      { value: "monthly", label: t("home.performance.monthly") },
-      { value: "yearly", label: t("home.performance.yearly") },
-    ],
-    [t],
-  );
-  const metricOptions = useMemo<PerformanceMetricOption[]>(
-    () => [
-      { value: "earnings", label: "Spend" },
-      { value: "lessons", label: "Sessions" },
-    ],
-    [],
-  );
-  const priorityJob = jobsNeedingReview[0] ?? recentJobs[0] ?? null;
+  const chart = usePerformanceChart({
+    computeSeries,
+    currencyFormatter,
+    metricLabels: {
+      earnings: t("home.performance.spend", { defaultValue: "Spend" }),
+      lessons: t("home.performance.sessions", { defaultValue: "Sessions" }),
+    },
+    t,
+  });
+
   const heroTitle =
     jobsNeedingReview.length > 0
-      ? "Decisions are waiting"
-      : `${String(openJobs)} active jobs on the board`;
-  const heroSubtitle = priorityJob
-    ? [
-        toSportLabel(priorityJob.sport as never),
-        formatDateTime(priorityJob.startTime, locale),
-        getZoneLabel(priorityJob.zone, zoneLanguage),
-      ].join("  ·  ")
-    : "Hiring, scheduling, and payout flow stay in one lane here.";
+      ? t("home.studio.heroReview", { defaultValue: "Decisions are waiting" })
+      : t("home.studio.heroActive", {
+          count: openJobs,
+          defaultValue: `${String(openJobs)} active jobs on the board`,
+        });
+
   const heroSecondaryLabel =
-    jobsNeedingReview.length > 0 ? "Pending applicants" : "Recently filled";
+    jobsNeedingReview.length > 0
+      ? t("home.studio.pendingApplicants", { defaultValue: "Pending applicants" })
+      : t("home.studio.recentlyFilled", { defaultValue: "Recently filled" });
+
   const heroSecondaryValue =
     jobsNeedingReview.length > 0
-      ? `${String(pendingApplicants)} waiting`
-      : `${String(jobsFilled)} closed`;
+      ? t("home.studio.waitingCount", {
+          count: pendingApplicants,
+          defaultValue: `${String(pendingApplicants)} waiting`,
+        })
+      : t("home.studio.closedCount", {
+          count: jobsFilled,
+          defaultValue: `${String(jobsFilled)} closed`,
+        });
+
   const visibleRecentJobs = recentJobs.slice(0, layout.isWideWeb ? 6 : 4);
 
   return (
     <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
+      <HomeHeaderSheet
+        displayName={displayName}
+        subtitle={t("home.studio.role", { defaultValue: "Studio" })}
+        profileImageUrl={profileImageUrl}
+        scrollY={scrollY}
+        palette={palette}
+        onPressAvatar={onOpenProfile}
+      />
       <TabScreenScrollView
         animatedRef={scrollRef}
-        routeKey="studio/index"
         style={{ flex: 1 }}
+        topInsetTone="sheet"
         contentContainerStyle={{
           paddingHorizontal: BrandSpacing.xl,
-          paddingTop: safeTop + BrandSpacing.md,
+          paddingTop: getHomeHeaderScrollTopPadding(safeTop),
           paddingBottom: BrandSpacing.xxl,
           gap: layout.sectionGap,
         }}
       >
-        <Animated.View
-          entering={FadeInUp.duration(260)}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-          }}
-        >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
-              {jobsNeedingReview.length > 0 ? "Needs review now" : "Studio command"}
-            </Text>
-            <Text
-              style={{
-                ...BrandType.display,
-                fontSize: 42,
-                lineHeight: 44,
-                color: palette.text as string,
-              }}
-              numberOfLines={1}
-            >
-              {displayName}
-            </Text>
-            {sports && sports.length > 0 ? (
-              <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                {sports
-                  .slice(0, 3)
-                  .map((sport) => toSportLabel(sport as never))
-                  .join("  ·  ")}
-              </Text>
-            ) : null}
-          </View>
-          <KitPressable
-            accessibilityRole="button"
-            accessibilityLabel="Open profile"
-            onPress={onOpenProfile}
-            style={{ borderRadius: BrandRadius.card }}
-          >
-            <ProfileAvatar
-              imageUrl={profileImageUrl}
-              fallbackName={displayName}
-              palette={palette}
-              size={66}
-              roundedSquare
-            />
-          </KitPressable>
-        </Animated.View>
-
         <View
           style={{
             flexDirection: layout.isWideWeb ? "row" : "column",
@@ -237,93 +190,74 @@ export function StudioHomeContent({
         >
           <Animated.View
             entering={FadeInUp.delay(80).duration(300)}
-            style={{ flex: layout.heroFlex }}
+            style={{ flex: layout.heroFlex, gap: layout.sectionGap }}
           >
+            {/* Collapsed Hero Card */}
             <HomeSurface
               palette={palette}
               style={{
-                minHeight: layout.railMinHeight,
-                padding: layout.isWideWeb ? 28 : 22,
-                gap: 22,
+                padding: BrandSpacing.lg,
+                flexDirection: "row",
+                alignItems: "center",
                 justifyContent: "space-between",
+                gap: BrandSpacing.md,
+                minHeight: layout.railMinHeight,
               }}
             >
-              <View style={{ gap: 18 }}>
-                <View style={{ gap: 6 }}>
-                  <Text
-                    style={{
-                      ...BrandType.micro,
-                      color: palette.textMuted as string,
-                      letterSpacing: 0.8,
-                    }}
-                  >
-                    {jobsNeedingReview.length > 0 ? "REVIEW QUEUE" : "OPERATIONS"}
-                  </Text>
-                  <Text
-                    style={{
-                      ...BrandType.heading,
-                      fontSize: layout.isWideWeb ? 38 : 34,
-                      lineHeight: layout.isWideWeb ? 40 : 36,
-                      color: palette.text as string,
-                    }}
-                  >
-                    {heroTitle}
-                  </Text>
-                  <Text style={{ ...BrandType.body, color: palette.textMuted as string }}>
-                    {heroSubtitle}
-                  </Text>
-                </View>
-
-                <View style={{ gap: 8 }}>
-                  <Text style={{ ...BrandType.micro, color: palette.primary as string }}>
-                    {heroSecondaryLabel}
-                  </Text>
-                  <Text
-                    style={{
-                      ...BrandType.title,
-                      fontSize: 28,
-                      lineHeight: 30,
-                      color: palette.text as string,
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {heroSecondaryValue}
-                  </Text>
-                </View>
-              </View>
-
-              <View
-                style={{
-                  flexDirection: layout.isWideWeb ? "row" : "column",
-                  alignItems: layout.isWideWeb ? "flex-end" : "stretch",
-                  gap: 16,
-                }}
-              >
-                <View style={{ flex: 1, gap: 8 }}>
-                  <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
-                    {jobsNeedingReview.length > 0
-                      ? "Review applicants first, then lock the schedule."
-                      : "Calendar stays one tap away when you need to place the next session."}
-                  </Text>
-                </View>
-                <View
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text
                   style={{
-                    width: layout.actionColumnWidth ?? "100%",
-                    gap: 8,
+                    ...BrandType.micro,
+                    color: palette.textMuted as string,
+                    letterSpacing: 0.8,
                   }}
                 >
-                  <KitButton label="Open Jobs" onPress={onOpenJobs} size="sm" fullWidth />
-                  <KitButton
-                    label="Calendar"
-                    onPress={onOpenCalendar}
-                    variant="secondary"
-                    size="sm"
-                    fullWidth
-                    style={{ backgroundColor: palette.appBg as string }}
-                  />
-                </View>
+                  {jobsNeedingReview.length > 0
+                    ? t("home.studio.eyebrowReview", { defaultValue: "REVIEW QUEUE" })
+                    : t("home.studio.eyebrowOps", { defaultValue: "OPERATIONS" })}
+                </Text>
+                <Text
+                  style={{
+                    ...BrandType.heading,
+                    fontSize: 20,
+                    color: palette.text as string,
+                  }}
+                  numberOfLines={1}
+                >
+                  {heroTitle}
+                </Text>
               </View>
+              <KitButton
+                label={
+                  jobsNeedingReview.length > 0
+                    ? t("home.actions.jobsTitle", { defaultValue: "Open Jobs" })
+                    : t("home.actions.calendarTitle", { defaultValue: "Calendar" })
+                }
+                onPress={jobsNeedingReview.length > 0 ? onOpenJobs : onOpenCalendar}
+                size="sm"
+              />
             </HomeSurface>
+
+            {/* Inline Stats Row */}
+            <View style={{ marginHorizontal: -BrandSpacing.xl }}>
+              <HomeStatsRow
+                palette={palette}
+                stats={[
+                  {
+                    label: t("jobsTab.title", { defaultValue: "Open jobs" }),
+                    value: String(openJobs),
+                  },
+                  {
+                    label: t("jobsTab.pending", { defaultValue: "Pending" }),
+                    value: String(pendingApplicants),
+                  },
+                  {
+                    label: heroSecondaryLabel,
+                    value: heroSecondaryValue,
+                  },
+                ]}
+              />
+            </View>
           </Animated.View>
 
           <Animated.View
@@ -332,18 +266,17 @@ export function StudioHomeContent({
           >
             <PerformanceHeroCard
               palette={palette}
-              timeframe={timeframe}
-              metricMode={metricMode}
-              timeframeLabel={timeframeLabel}
-              totalLabel={summaryValue}
-              metricOptions={metricOptions}
-              timeframeOptions={timeframeOptions}
-              seriesByTimeframe={timeframeSeries}
-              onSelectMetric={setMetricMode}
-              onSelectTimeframe={setTimeframe}
-              onSwipeTimeframe={(direction) => {
-                setTimeframe((prev) => getAdjacentTimeframe(prev, direction));
-              }}
+              timeframe={chart.timeframe}
+              metricMode={chart.metricMode}
+              timeframeLabel={chart.timeframeLabel}
+              insightLabel={chart.insightLabel}
+              totalLabel={chart.summaryValue}
+              metricOptions={chart.metricOptions}
+              timeframeOptions={chart.timeframeOptions}
+              seriesByTimeframe={chart.seriesByTimeframe}
+              onSelectMetric={chart.setMetricMode}
+              onSelectTimeframe={chart.setTimeframe}
+              onSwipeTimeframe={chart.handleSwipeTimeframe}
             />
           </Animated.View>
         </View>
@@ -360,7 +293,11 @@ export function StudioHomeContent({
               entering={FadeInUp.delay(180).duration(320)}
               style={{ flex: layout.isWideWeb ? 1.08 : undefined, gap: 12 }}
             >
-              <HomeSectionHeading title="Needs review" eyebrow="QUEUE" palette={palette} />
+              <HomeSectionHeading
+                title={t("home.studio.needsReview", { defaultValue: "Needs review" })}
+                eyebrow={t("home.studio.queueEyebrow", { defaultValue: "QUEUE" })}
+                palette={palette}
+              />
               <View style={{ gap: 10 }}>
                 {jobsNeedingReview.map((job, index) => (
                   <Animated.View
@@ -398,6 +335,7 @@ export function StudioHomeContent({
                             </Text>
                           </View>
                           <Text
+                            selectable
                             style={{
                               ...BrandType.heading,
                               fontSize: 28,
@@ -426,7 +364,7 @@ export function StudioHomeContent({
           >
             <HomeSectionHeading
               title={t("home.studio.recentTitle")}
-              eyebrow="LIVE BOARD"
+              eyebrow={t("home.studio.boardEyebrow", { defaultValue: "LIVE BOARD" })}
               palette={palette}
             />
             {recentJobs.length === 0 ? (
@@ -435,7 +373,9 @@ export function StudioHomeContent({
                   {t("home.studio.noRecent")}
                 </Text>
                 <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                  Post a shift and start filling your upcoming schedule.
+                  {t("home.studio.emptyBoard", {
+                    defaultValue: "Post a shift to start filling your schedule.",
+                  })}
                 </Text>
               </HomeSurface>
             ) : (
@@ -471,6 +411,7 @@ export function StudioHomeContent({
                           </Text>
                         </View>
                         <Text
+                          selectable
                           style={{
                             ...BrandType.title,
                             color: palette.text as string,

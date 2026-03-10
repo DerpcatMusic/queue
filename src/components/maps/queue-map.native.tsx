@@ -7,20 +7,18 @@ import {
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { ActivityIndicator, InteractionManager, StyleSheet, View } from "react-native";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons";
 import { ThemedText } from "@/components/themed-text";
-import { getMapBrandPalette } from "@/constants/brand";
-import {
-  getZoneIndexEntry,
-  ISRAEL_MAP_INTERACTION_BOUNDS,
-} from "@/constants/zones-map";
+import { BrandSpacing, getMapBrandPalette } from "@/constants/brand";
+import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { IconSymbol } from "../ui/icon-symbol";
-import { KitFab, KitSurface } from "../ui/kit";
+import { KitButton, KitFab, KitSurface } from "../ui/kit";
 import type { QueueMapPin, QueueMapProps } from "./queue-map.types";
 
 type Expression = unknown;
@@ -31,6 +29,7 @@ type AnyStyleSpec = {
   layers: AnyStyleLayer[];
   [key: string]: unknown;
 };
+type MapLoadState = "loading" | "ready" | "error";
 
 const NO_MATCH_ZONE_FILTER: Expression = ["==", ["get", "id"], "__none__"];
 let offlinePackBootstrapPromise: Promise<void> | null = null;
@@ -40,22 +39,12 @@ function sanitizeZoom(value: number, fallback: number) {
   return Math.max(0, Math.min(22, value));
 }
 
-function createZoneFilter(
-  zoneIds: readonly string[],
-  propertyName: string,
-): Expression {
+function createZoneFilter(zoneIds: readonly string[], propertyName: string): Expression {
   if (zoneIds.length === 0) return NO_MATCH_ZONE_FILTER;
-  return [
-    "in",
-    ["get", propertyName],
-    ["literal", zoneIds as string[]],
-  ] as Expression;
+  return ["in", ["get", propertyName], ["literal", zoneIds as string[]]] as Expression;
 }
 
-function toBounds(
-  sw: [number, number],
-  ne: [number, number],
-): [number, number, number, number] {
+function toBounds(sw: [number, number], ne: [number, number]): [number, number, number, number] {
   return [sw[0], sw[1], ne[0], ne[1]];
 }
 
@@ -67,9 +56,7 @@ function isRoadNumberLayer(layer: AnyStyleLayer) {
   if (id.includes("highway-number")) return true;
   if (id.includes("route-number")) return true;
   if (sourceLayer.includes("shield")) return true;
-  const textField = JSON.stringify(
-    layer?.layout?.["text-field"] ?? "",
-  ).toLowerCase();
+  const textField = JSON.stringify(layer?.layout?.["text-field"] ?? "").toLowerCase();
   if (textField.includes("ref")) return true;
   return false;
 }
@@ -82,9 +69,7 @@ function withMapPersonality(
 ) {
   const layers = (style.layers ?? [])
     .filter((layer) => !isRoadNumberLayer(layer))
-    .filter((layer) =>
-      showBaseLabels ? true : String(layer?.type ?? "") !== "symbol",
-    )
+    .filter((layer) => (showBaseLabels ? true : String(layer?.type ?? "") !== "symbol"))
     .map((layer) => {
       const nextLayer = { ...layer };
       const id = String(nextLayer.id ?? "").toLowerCase();
@@ -112,20 +97,12 @@ function withMapPersonality(
       const tone = isDark ? dark : light;
 
       if (layerType === "background") {
-        paint["background-color"] = isDark
-          ? tone.background
-          : palette.surfaceAlt;
+        paint["background-color"] = isDark ? tone.background : palette.surfaceAlt;
       }
-      if (
-        (sourceLayer.includes("water") || id.includes("water")) &&
-        layerType === "fill"
-      ) {
+      if ((sourceLayer.includes("water") || id.includes("water")) && layerType === "fill") {
         paint["fill-color"] = tone.waterFill;
       }
-      if (
-        (sourceLayer.includes("water") || id.includes("water")) &&
-        layerType === "line"
-      ) {
+      if ((sourceLayer.includes("water") || id.includes("water")) && layerType === "line") {
         paint["line-color"] = tone.waterLine;
       }
       if (
@@ -174,16 +151,11 @@ async function ensureVectorOfflinePack() {
       );
       if (existingPack) return;
 
-      OfflineManager.setProgressEventThrottle(
-        APPLE_MAP_THEME.offlinePack.progressThrottleMs,
-      );
+      OfflineManager.setProgressEventThrottle(APPLE_MAP_THEME.offlinePack.progressThrottleMs);
       await OfflineManager.createPack(
         {
           mapStyle: APPLE_MAP_THEME.mapStyleLightUrl,
-          bounds: toBounds(
-            ISRAEL_MAP_INTERACTION_BOUNDS.sw,
-            ISRAEL_MAP_INTERACTION_BOUNDS.ne,
-          ),
+          bounds: toBounds(ISRAEL_MAP_INTERACTION_BOUNDS.sw, ISRAEL_MAP_INTERACTION_BOUNDS.ne),
           minZoom: zoomStart,
           maxZoom: zoomEnd,
           metadata: {
@@ -232,15 +204,20 @@ export function QueueMap({
   onUseGps,
   showGpsButton = true,
 }: QueueMapProps) {
+  const { t } = useTranslation();
   const palette = useBrand();
-  const { resolvedScheme, stylePreference } = useThemePreference();
-  const mapPalette = getMapBrandPalette(stylePreference, resolvedScheme);
-  const [styleLoadFailed, setStyleLoadFailed] = useState(false);
+  const { resolvedScheme } = useThemePreference();
+  const mapPalette = getMapBrandPalette(resolvedScheme);
+  const [mapLoadState, setMapLoadState] = useState<MapLoadState>("loading");
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [mapErrorMessage, setMapErrorMessage] = useState<string | null>(null);
   const [baseMapStyle, setBaseMapStyle] = useState<AnyStyleSpec | null>(null);
   const preferredStyleUrl =
-    resolvedScheme === "dark"
-      ? APPLE_MAP_THEME.mapStyleDarkUrl
-      : APPLE_MAP_THEME.mapStyleLightUrl;
+    resolvedScheme === "dark" ? APPLE_MAP_THEME.mapStyleDarkUrl : APPLE_MAP_THEME.mapStyleLightUrl;
+  const styleFetchUrl =
+    retryNonce === 0
+      ? preferredStyleUrl
+      : `${preferredStyleUrl}${preferredStyleUrl.includes("?") ? "&" : "?"}queueRetry=${String(retryNonce)}`;
   const themedMapStyle = useMemo(() => {
     if (!baseMapStyle) return null;
     return withMapPersonality(
@@ -250,51 +227,66 @@ export function QueueMap({
       resolvedScheme === "dark",
     );
   }, [baseMapStyle, mapPalette, mode, resolvedScheme]);
-  const mapStyle = styleLoadFailed
-    ? {
-        version: 8,
-        sources: {},
-        layers: [
-          {
-            id: "background",
-            type: "background",
-            paint: { "background-color": mapPalette.surfaceAlt },
-          },
-        ],
-      }
-    : (themedMapStyle ?? preferredStyleUrl);
+  const mapStyle = themedMapStyle ?? preferredStyleUrl;
+  const mapKey = `${resolvedScheme}:${retryNonce}:${themedMapStyle ? "themed" : "url"}`;
 
-  const cameraRef = useRef<{ setStop: (config: unknown) => void } | null>(null);
-  const handleRecenter = useCallback(() => {
-    void onUseGps?.();
-  }, [onUseGps]);
+  const cameraRef = useRef<{
+    setStop: (config: unknown) => void;
+    flyTo: (options: { center: [number, number]; zoom?: number; duration?: number }) => void;
+  } | null>(null);
   const selectedZoneFilter = useMemo(
     () => createZoneFilter(selectedZoneIds, zoneIdProperty),
     [selectedZoneIds, zoneIdProperty],
   );
   const pinShape = useMemo(() => createPinShape(pin), [pin]);
+  const handleRetry = useCallback(() => {
+    setBaseMapStyle(null);
+    setMapErrorMessage(null);
+    setMapLoadState("loading");
+    setRetryNonce((current) => current + 1);
+  }, []);
 
   useEffect(() => {
-    void ensureVectorOfflinePack();
-  }, []);
+    if (mapLoadState !== "ready") return;
+
+    let cancelled = false;
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (cancelled) return;
+      void ensureVectorOfflinePack().catch(() => {});
+    });
+
+    return () => {
+      cancelled = true;
+      task.cancel();
+    };
+  }, [mapLoadState]);
 
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
 
     (async () => {
+      if (!cancelled) {
+        setBaseMapStyle(null);
+      }
       try {
-        const response = await fetch(preferredStyleUrl, {
+        const response = await fetch(styleFetchUrl, {
           signal: controller.signal,
         });
         if (!response.ok) {
-          if (!cancelled) setBaseMapStyle(null);
+          if (!cancelled) {
+            setBaseMapStyle(null);
+          }
           return;
         }
         const baseStyle = (await response.json()) as AnyStyleSpec;
-        if (!cancelled) setBaseMapStyle(baseStyle);
+        if (!cancelled) {
+          setBaseMapStyle(baseStyle);
+        }
       } catch {
-        if (!cancelled) setBaseMapStyle(null);
+        if (!cancelled) {
+          setBaseMapStyle(null);
+        }
       }
     })();
 
@@ -302,7 +294,7 @@ export function QueueMap({
       cancelled = true;
       controller.abort();
     };
-  }, [preferredStyleUrl]);
+  }, [styleFetchUrl]);
 
   useEffect(() => {
     if (!focusZoneId) return;
@@ -322,6 +314,15 @@ export function QueueMap({
     });
   }, [focusZoneId]);
 
+  useEffect(() => {
+    if (!pin) return;
+    cameraRef.current?.flyTo({
+      center: [pin.longitude, pin.latitude],
+      zoom: APPLE_MAP_THEME.defaultZoomWithPin,
+      duration: 800,
+    });
+  }, [pin]);
+
   if (Constants.appOwnership === "expo") {
     return (
       <KitSurface
@@ -336,9 +337,7 @@ export function QueueMap({
           },
         ]}
       >
-        <ThemedText type="defaultSemiBold">
-          MapLibre needs a development build.
-        </ThemedText>
+        <ThemedText type="defaultSemiBold">MapLibre needs a development build.</ThemedText>
         <ThemedText style={{ color: palette.textMuted }}>
           Run `bunx expo run:android` then open the dev client.
         </ThemedText>
@@ -349,6 +348,7 @@ export function QueueMap({
   return (
     <View style={styles.wrap}>
       <MapLibreMap
+        key={mapKey}
         style={styles.map}
         mapStyle={mapStyle as any}
         dragPan
@@ -358,8 +358,19 @@ export function QueueMap({
         compass={false}
         logo
         attribution
+        onWillStartLoadingMap={() => {
+          setMapLoadState("loading");
+          setMapErrorMessage(null);
+        }}
+        onDidFinishLoadingMap={() => {
+          setMapLoadState("ready");
+          setMapErrorMessage(null);
+        }}
         onDidFailLoadingMap={() => {
-          setStyleLoadFailed(true);
+          setMapLoadState("error");
+          setMapErrorMessage(
+            "The map could not finish loading. Check your connection and try again.",
+          );
         }}
         onPress={(event: any) => {
           if (mode !== "pinDrop") return;
@@ -372,19 +383,12 @@ export function QueueMap({
       >
         <Camera
           ref={cameraRef as any}
-          maxBounds={toBounds(
-            ISRAEL_MAP_INTERACTION_BOUNDS.sw,
-            ISRAEL_MAP_INTERACTION_BOUNDS.ne,
-          )}
+          maxBounds={toBounds(ISRAEL_MAP_INTERACTION_BOUNDS.sw, ISRAEL_MAP_INTERACTION_BOUNDS.ne)}
           minZoom={sanitizeZoom(APPLE_MAP_THEME.minZoom, 7.5)}
           maxZoom={sanitizeZoom(APPLE_MAP_THEME.maxZoom, 16)}
           initialViewState={{
-            center: pin
-              ? [pin.longitude, pin.latitude]
-              : APPLE_MAP_THEME.defaultCenter,
-            zoom: pin
-              ? APPLE_MAP_THEME.defaultZoomWithPin
-              : APPLE_MAP_THEME.defaultZoomWithoutPin,
+            center: pin ? [pin.longitude, pin.latitude] : APPLE_MAP_THEME.defaultCenter,
+            zoom: pin ? APPLE_MAP_THEME.defaultZoomWithPin : APPLE_MAP_THEME.defaultZoomWithoutPin,
           }}
         />
 
@@ -411,12 +415,76 @@ export function QueueMap({
         </GeoJSONSource>
       </MapLibreMap>
 
+      {mapLoadState === "loading" ? (
+        <View
+          style={[
+            styles.stateOverlay,
+            {
+              backgroundColor: palette.appBg as string,
+            },
+          ]}
+        >
+          <KitSurface
+            tone="sheet"
+            style={[
+              styles.stateCard,
+              {
+                backgroundColor: palette.surface as string,
+                borderColor: palette.border as string,
+              },
+            ]}
+          >
+            <ActivityIndicator color={palette.text as string} />
+            <ThemedText type="cardTitle">
+              {t("mapTab.loading", { defaultValue: "Loading your map..." })}
+            </ThemedText>
+            <ThemedText type="meta" style={{ color: palette.textMuted }}>
+              {t("mapTab.subtitle", {
+                defaultValue: "Adjust your active zones directly on the map.",
+              })}
+            </ThemedText>
+          </KitSurface>
+        </View>
+      ) : null}
+
+      {mapLoadState === "error" ? (
+        <View
+          style={[
+            styles.stateOverlay,
+            {
+              backgroundColor: palette.appBg as string,
+            },
+          ]}
+        >
+          <KitSurface
+            tone="sheet"
+            style={[
+              styles.stateCard,
+              {
+                backgroundColor: palette.surface as string,
+                borderColor: palette.border as string,
+              },
+            ]}
+          >
+            <ThemedText type="cardTitle">Map unavailable</ThemedText>
+            <ThemedText type="meta" style={{ color: palette.textMuted }}>
+              {mapErrorMessage ??
+                "The map could not finish loading. Check your connection and try again."}
+            </ThemedText>
+            <KitButton
+              label={t("tabsLayout.actions.retry", { defaultValue: "Retry" })}
+              onPress={handleRetry}
+              fullWidth={false}
+              variant="secondary"
+            />
+          </KitSurface>
+        </View>
+      ) : null}
+
       {showGpsButton && onUseGps ? (
         <KitFab
-          icon={
-            <IconSymbol name="location.fill" size={20} color={palette.text} />
-          }
-          onPress={handleRecenter}
+          icon={<IconSymbol name="location.fill" size={20} color={palette.text} />}
+          onPress={onUseGps}
           style={[
             styles.gps,
             {
@@ -436,8 +504,8 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   gps: {
     position: "absolute",
-    right: 16,
-    bottom: 16,
+    right: BrandSpacing.lg,
+    bottom: BrandSpacing.lg,
   },
   fallback: {
     alignItems: "center",
@@ -445,5 +513,20 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 18,
     paddingVertical: 16,
+  },
+  stateOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 18,
+  },
+  stateCard: {
+    width: "100%",
+    maxWidth: 360,
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });
