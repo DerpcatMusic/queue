@@ -1,9 +1,6 @@
-"use node";
-
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { ConvexError, v } from "convex/values";
 
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
   action,
@@ -13,92 +10,11 @@ import {
   query,
 } from "./_generated/server";
 import { getCurrentUser as getCurrentUserDoc } from "./lib/auth";
+import { GOOGLE_PROVIDER, type CalendarOwnerRole } from "./lib/calendarShared";
 import { omitUndefined } from "./lib/validation";
 
-const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
-const GOOGLE_USERINFO_ENDPOINT = "https://openidconnect.googleapis.com/v1/userinfo";
-const GOOGLE_EVENTS_BASE = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
-const GOOGLE_PROVIDER = "google" as const;
-const GOOGLE_EVENT_SOURCE_KEY = "queueSource";
-const GOOGLE_EVENT_SOURCE_VALUE = "queue-job";
-const GOOGLE_EVENT_EXTERNAL_ID_KEY = "queueExternalEventId";
-const GOOGLE_EVENTS_LIST_PAGE_SIZE = 250;
-const CALENDAR_TOKEN_ENCRYPTION_PREFIX = "enc:v1:";
-const CALENDAR_TOKEN_ENCRYPTION_SECRET_ENV = "CALENDAR_TOKEN_ENCRYPTION_SECRET";
-const calendarInternal = (internal as unknown as { calendar: Record<string, unknown> })
-  .calendar as any;
-type CalendarOwnerRole = "instructor" | "studio";
-
-type GoogleTokenResponse = {
-  access_token?: string;
-  expires_in?: number;
-  refresh_token?: string;
-  scope?: string;
-  token_type?: string;
-  error?: string;
-  error_description?: string;
-};
-
-type TimelineRow = {
-  lessonId: string;
-  roleView: CalendarOwnerRole;
-  studioName: string;
-  instructorName?: string;
-  sport: string;
-  startTime: number;
-  endTime: number;
-  timeZone?: string;
-  status: "open" | "filled" | "cancelled" | "completed";
-};
-
-type GoogleCalendarEvent = {
-  id?: string;
-  etag?: string;
-  status?: string;
-  summary?: string;
-  location?: string;
-  htmlLink?: string;
-  updated?: string;
-  start?: {
-    date?: string;
-    dateTime?: string;
-    timeZone?: string;
-  };
-  end?: {
-    date?: string;
-    dateTime?: string;
-    timeZone?: string;
-  };
-  extendedProperties?: {
-    private?: Record<string, string | undefined>;
-  };
-};
-
-type ImportedGoogleCalendarEvent = {
-  providerEventId: string;
-  title: string;
-  status: "confirmed" | "tentative" | "cancelled";
-  startTime: number;
-  endTime: number;
-  isAllDay: boolean;
-  location?: string;
-  htmlLink?: string;
-  timeZone?: string;
-  providerUpdatedAt?: number;
-};
-
-type GoogleIntegrationRecord = {
-  _id: Id<"calendarIntegrations">;
-  role: CalendarOwnerRole;
-  status: "connected" | "error" | "revoked";
-  instructorId?: Id<"instructorProfiles">;
-  studioId?: Id<"studioProfiles">;
-  accessToken?: string;
-  refreshToken?: string;
-  oauthClientId?: string;
-  accessTokenExpiresAt?: number;
-  agendaSyncToken?: string;
-};
+const calendarNodeInternal = (internal as unknown as { calendarNode: Record<string, unknown> })
+  .calendarNode as any;
 
 type CalendarOwnerProfile = {
   role: CalendarOwnerRole;
@@ -108,657 +24,6 @@ type CalendarOwnerProfile = {
   instructorId?: Id<"instructorProfiles">;
   studioId?: Id<"studioProfiles">;
 };
-
-function parseScopes(scope: string | undefined): string[] {
-  if (!scope) {
-    return [];
-  }
-  return scope
-    .split(" ")
-    .map((entry: string) => entry.trim())
-    .filter((entry: string) => entry.length > 0);
-}
-
-function getAllowedGoogleClientIds() {
-  const csv = process.env.GOOGLE_CALENDAR_CLIENT_IDS?.trim();
-  if (!csv) {
-    return [];
-  }
-  return csv
-    .split(",")
-    .map((entry: string) => entry.trim())
-    .filter((entry: string) => entry.length > 0);
-}
-
-function getCalendarTokenEncryptionSecret(): string | undefined {
-  const secret = process.env[CALENDAR_TOKEN_ENCRYPTION_SECRET_ENV]?.trim();
-  return secret ? secret : undefined;
-}
-
-function deriveCalendarTokenKey(secret: string): Buffer {
-  return createHash("sha256").update(secret).digest();
-}
-
-export function isEncryptedCalendarToken(value: string | undefined): boolean {
-  return Boolean(value?.startsWith(CALENDAR_TOKEN_ENCRYPTION_PREFIX));
-}
-
-export function encryptCalendarToken(value: string | undefined): string | undefined {
-  if (!value) {
-    return value;
-  }
-  if (isEncryptedCalendarToken(value)) {
-    return value;
-  }
-  const secret = getCalendarTokenEncryptionSecret();
-  if (!secret) {
-    return value;
-  }
-
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", deriveCalendarTokenKey(secret), iv);
-  const ciphertext = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
-  const authTag = cipher.getAuthTag();
-  const payload = Buffer.concat([iv, authTag, ciphertext]).toString("base64url");
-  return `${CALENDAR_TOKEN_ENCRYPTION_PREFIX}${payload}`;
-}
-
-function encryptRequiredCalendarToken(value: string): string {
-  return encryptCalendarToken(value) ?? value;
-}
-
-export function decryptCalendarToken(value: string | undefined): string | undefined {
-  if (!value) {
-    return value;
-  }
-  if (!isEncryptedCalendarToken(value)) {
-    return value;
-  }
-
-  const secret = getCalendarTokenEncryptionSecret();
-  if (!secret) {
-    throw new ConvexError(
-      "Calendar token encryption secret is required to decrypt stored calendar credentials",
-    );
-  }
-
-  const encoded = value.slice(CALENDAR_TOKEN_ENCRYPTION_PREFIX.length);
-  const raw = Buffer.from(encoded, "base64url");
-  if (raw.length <= 28) {
-    throw new ConvexError("Stored calendar token ciphertext is invalid");
-  }
-
-  const iv = raw.subarray(0, 12);
-  const authTag = raw.subarray(12, 28);
-  const ciphertext = raw.subarray(28);
-
-  try {
-    const decipher = createDecipheriv("aes-256-gcm", deriveCalendarTokenKey(secret), iv);
-    decipher.setAuthTag(authTag);
-    return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
-  } catch {
-    throw new ConvexError("Stored calendar token could not be decrypted");
-  }
-}
-
-function assertGoogleClientIdAllowed(clientId: string) {
-  const allowed = getAllowedGoogleClientIds();
-  if (allowed.length === 0) {
-    return;
-  }
-  if (!allowed.includes(clientId)) {
-    throw new ConvexError("Google client ID is not allowed for this environment");
-  }
-}
-
-async function exchangeGoogleAuthorizationCode(args: {
-  code: string;
-  codeVerifier: string;
-  redirectUri: string;
-  clientId: string;
-}): Promise<GoogleTokenResponse> {
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    code: args.code,
-    code_verifier: args.codeVerifier,
-    redirect_uri: args.redirectUri,
-    client_id: args.clientId,
-  });
-
-  const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
-  });
-
-  const payload = (await response.json()) as GoogleTokenResponse;
-  if (!response.ok || !payload.access_token) {
-    throw new ConvexError(
-      payload.error_description ?? payload.error ?? "Failed to exchange Google authorization code",
-    );
-  }
-
-  return payload;
-}
-
-async function refreshGoogleAccessToken(args: {
-  refreshToken: string;
-  clientId: string;
-}): Promise<GoogleTokenResponse> {
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: args.refreshToken,
-    client_id: args.clientId,
-  });
-
-  const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
-  });
-
-  const payload = (await response.json()) as GoogleTokenResponse;
-  if (!response.ok || !payload.access_token) {
-    throw new ConvexError(
-      payload.error_description ?? payload.error ?? "Failed to refresh Google token",
-    );
-  }
-
-  return payload;
-}
-
-async function fetchGoogleAccountEmail(accessToken: string): Promise<string | undefined> {
-  const response = await fetch(GOOGLE_USERINFO_ENDPOINT, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!response.ok) {
-    return undefined;
-  }
-  const payload = (await response.json()) as { email?: string };
-  return payload.email?.trim() || undefined;
-}
-
-function buildGoogleEventBody(row: TimelineRow) {
-  const descriptionLines = [
-    row.roleView === "studio" ? "Queue posted job" : "Queue accepted job",
-    `Studio: ${row.studioName}`,
-    ...(row.instructorName ? [`Instructor: ${row.instructorName}`] : []),
-  ];
-
-  return {
-    summary: `${row.sport} lesson`,
-    description: descriptionLines.join("\n"),
-    start: {
-      dateTime: new Date(row.startTime).toISOString(),
-      ...(row.timeZone ? { timeZone: row.timeZone } : {}),
-    },
-    end: {
-      dateTime: new Date(row.endTime).toISOString(),
-      ...(row.timeZone ? { timeZone: row.timeZone } : {}),
-    },
-    extendedProperties: {
-      private: {
-        [GOOGLE_EVENT_SOURCE_KEY]: GOOGLE_EVENT_SOURCE_VALUE,
-        [GOOGLE_EVENT_EXTERNAL_ID_KEY]: row.lessonId,
-      },
-    },
-  };
-}
-
-function parseGoogleEventTimestamp(value: string | undefined) {
-  if (!value) {
-    return undefined;
-  }
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? timestamp : undefined;
-}
-
-export function normalizeImportedGoogleEvent(
-  event: GoogleCalendarEvent,
-): ImportedGoogleCalendarEvent | null {
-  const providerEventId = event.id?.trim();
-  if (!providerEventId) {
-    return null;
-  }
-
-  const isAllDay = Boolean(event.start?.date && !event.start?.dateTime);
-  const startTime = parseGoogleEventTimestamp(event.start?.dateTime ?? event.start?.date);
-  const endTime = parseGoogleEventTimestamp(event.end?.dateTime ?? event.end?.date);
-  if (startTime === undefined || endTime === undefined || endTime <= startTime) {
-    return null;
-  }
-
-  const status =
-    event.status === "cancelled"
-      ? "cancelled"
-      : event.status === "tentative"
-        ? "tentative"
-        : "confirmed";
-  const title = event.summary?.trim() || "Google Calendar event";
-  const providerUpdatedAt = parseGoogleEventTimestamp(event.updated);
-
-  return {
-    providerEventId,
-    title,
-    status,
-    startTime,
-    endTime,
-    isAllDay,
-    ...omitUndefined({
-      location: event.location?.trim() || undefined,
-      htmlLink: event.htmlLink?.trim() || undefined,
-      timeZone: event.start?.timeZone ?? event.end?.timeZone,
-      providerUpdatedAt,
-    }),
-  };
-}
-
-export function isQueueManagedGoogleEvent(
-  event: GoogleCalendarEvent,
-  mappedProviderEventIds: ReadonlySet<string>,
-) {
-  const providerEventId = event.id?.trim();
-  if (providerEventId && mappedProviderEventIds.has(providerEventId)) {
-    return true;
-  }
-
-  return (
-    event.extendedProperties?.private?.[GOOGLE_EVENT_SOURCE_KEY] === GOOGLE_EVENT_SOURCE_VALUE
-  );
-}
-
-async function upsertGoogleEvent(args: {
-  accessToken: string;
-  providerEventId?: string;
-  row: TimelineRow;
-}): Promise<{ eventId: string; etag?: string }> {
-  const body = JSON.stringify(buildGoogleEventBody(args.row));
-
-  if (args.providerEventId) {
-    const updateResponse = await fetch(
-      `${GOOGLE_EVENTS_BASE}/${encodeURIComponent(args.providerEventId)}`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${args.accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body,
-      },
-    );
-
-    if (updateResponse.ok) {
-      const payload = (await updateResponse.json()) as { id?: string; etag?: string };
-      if (payload.id) {
-        return {
-          eventId: payload.id,
-          ...omitUndefined({ etag: payload.etag }),
-        };
-      }
-    } else if (updateResponse.status !== 404) {
-      const message = await updateResponse.text();
-      throw new ConvexError(`Google update failed: ${message}`);
-    }
-  }
-
-  const createResponse = await fetch(GOOGLE_EVENTS_BASE, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${args.accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body,
-  });
-  if (!createResponse.ok) {
-    const message = await createResponse.text();
-    throw new ConvexError(`Google create failed: ${message}`);
-  }
-
-  const payload = (await createResponse.json()) as { id?: string; etag?: string };
-  if (!payload.id) {
-    throw new ConvexError("Google event creation returned no event id");
-  }
-  return {
-    eventId: payload.id,
-    ...omitUndefined({ etag: payload.etag }),
-  };
-}
-
-async function deleteGoogleEvent(args: { accessToken: string; providerEventId: string }) {
-  const response = await fetch(
-    `${GOOGLE_EVENTS_BASE}/${encodeURIComponent(args.providerEventId)}`,
-    {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${args.accessToken}` },
-    },
-  );
-  if (response.ok || response.status === 404) {
-    return;
-  }
-  const message = await response.text();
-  throw new ConvexError(`Google delete failed: ${message}`);
-}
-
-async function listGoogleAgendaChanges(args: {
-  accessToken: string;
-  syncToken?: string;
-}): Promise<{
-  events: GoogleCalendarEvent[];
-  nextSyncToken?: string;
-  resetImportedEvents: boolean;
-}> {
-  let syncToken = args.syncToken;
-  let resetImportedEvents = !syncToken;
-
-  while (true) {
-    const params = new URLSearchParams({
-      maxResults: String(GOOGLE_EVENTS_LIST_PAGE_SIZE),
-      showDeleted: "true",
-      singleEvents: "true",
-    });
-    if (syncToken) {
-      params.set("syncToken", syncToken);
-    }
-
-    let pageToken: string | undefined;
-    const events: GoogleCalendarEvent[] = [];
-    let nextSyncToken: string | undefined;
-
-    while (true) {
-      const pageParams = new URLSearchParams(params);
-      if (pageToken) {
-        pageParams.set("pageToken", pageToken);
-      }
-
-      const response = await fetch(`${GOOGLE_EVENTS_BASE}?${pageParams.toString()}`, {
-        headers: { Authorization: `Bearer ${args.accessToken}` },
-      });
-      if (response.status === 410 && syncToken) {
-        syncToken = undefined;
-        resetImportedEvents = true;
-        break;
-      }
-      if (!response.ok) {
-        const message = await response.text();
-        throw new ConvexError(`Google agenda import failed: ${message}`);
-      }
-
-      const payload = (await response.json()) as {
-        items?: GoogleCalendarEvent[];
-        nextPageToken?: string;
-        nextSyncToken?: string;
-      };
-      events.push(...(payload.items ?? []));
-      if (payload.nextPageToken) {
-        pageToken = payload.nextPageToken;
-        continue;
-      }
-
-	      nextSyncToken = payload.nextSyncToken;
-	      return nextSyncToken
-	        ? { events, nextSyncToken, resetImportedEvents }
-	        : { events, resetImportedEvents };
-    }
-  }
-}
-
-async function getGoogleAccessToken(
-  ctx: any,
-  integration: GoogleIntegrationRecord,
-  now: number,
-) {
-  let accessToken = integration.accessToken ?? "";
-  let accessTokenExpiresAt = integration.accessTokenExpiresAt ?? 0;
-  if (!accessToken || accessTokenExpiresAt < now + 60_000) {
-    if (!integration.refreshToken || !integration.oauthClientId) {
-      throw new ConvexError("Google Calendar integration is missing refresh credentials");
-    }
-    const refreshed = await refreshGoogleAccessToken({
-      refreshToken: integration.refreshToken,
-      clientId: integration.oauthClientId,
-    });
-    accessToken = refreshed.access_token ?? "";
-    accessTokenExpiresAt = now + Math.max(60, refreshed.expires_in ?? 3600) * 1000;
-
-    await ctx.runMutation(calendarInternal.updateGoogleAccessToken, {
-      integrationId: integration._id,
-      accessToken,
-      accessTokenExpiresAt,
-      scopes: parseScopes(refreshed.scope),
-    });
-  }
-
-  return accessToken;
-}
-
-async function syncQueueEventsToGoogle(args: {
-  ctx: any;
-  userId: Id<"users">;
-  integrationId: Id<"calendarIntegrations">;
-  accessToken: string;
-  now: number;
-  startTime?: number;
-  endTime?: number;
-  limit?: number;
-}) {
-  const startTime = args.startTime ?? args.now - 7 * 24 * 60 * 60 * 1000;
-  const endTime = args.endTime ?? args.now + 90 * 24 * 60 * 60 * 1000;
-  const limit = Math.max(50, Math.min(1000, args.limit ?? 400));
-  const timeline = (await args.ctx.runQuery(calendarInternal.getCalendarTimelineForUser, {
-    userId: args.userId,
-    startTime,
-    endTime,
-    limit,
-  })) as TimelineRow[];
-
-  const targetRows = timeline
-    .filter((row) => row.status !== "cancelled" && row.endTime >= args.now - 7 * 24 * 60 * 60 * 1000)
-    .sort((a, b) => a.startTime - b.startTime);
-
-  const existingMappings = (await args.ctx.runQuery(calendarInternal.getEventMappingsForIntegration, {
-    integrationId: args.integrationId,
-  })) as Array<{ externalEventId: string; providerEventId: string }>;
-  const mappingByExternalId = new Map(
-    existingMappings.map((mapping) => [mapping.externalEventId, mapping.providerEventId]),
-  );
-
-  const nextMappings: Array<{
-    externalEventId: string;
-    providerEventId: string;
-    providerEtag?: string;
-    startTime: number;
-    endTime: number;
-  }> = [];
-
-  for (const row of targetRows) {
-    const updated = await upsertGoogleEvent({
-      accessToken: args.accessToken,
-      ...omitUndefined({ providerEventId: mappingByExternalId.get(row.lessonId) }),
-      row,
-    });
-    nextMappings.push({
-      externalEventId: row.lessonId,
-      providerEventId: updated.eventId,
-      ...omitUndefined({ providerEtag: updated.etag }),
-      startTime: row.startTime,
-      endTime: row.endTime,
-    });
-  }
-
-  const activeExternalIds = new Set(nextMappings.map((mapping) => mapping.externalEventId));
-  let removedCount = 0;
-  for (const mapping of existingMappings) {
-    if (activeExternalIds.has(mapping.externalEventId)) {
-      continue;
-    }
-    await deleteGoogleEvent({ accessToken: args.accessToken, providerEventId: mapping.providerEventId });
-    removedCount += 1;
-  }
-
-  await args.ctx.runMutation(calendarInternal.replaceEventMappingsForIntegration, {
-    integrationId: args.integrationId,
-    mappings: nextMappings,
-  });
-
-  return {
-    syncedCount: nextMappings.length,
-    removedCount,
-    mappedProviderEventIds: new Set(nextMappings.map((mapping) => mapping.providerEventId)),
-  };
-}
-
-async function syncGoogleAgendaIntoConvex(args: {
-  ctx: any;
-  integration: GoogleIntegrationRecord;
-  accessToken: string;
-  mappedProviderEventIds: ReadonlySet<string>;
-}) {
-  const imported = await listGoogleAgendaChanges({
-    accessToken: args.accessToken,
-    ...(args.integration.agendaSyncToken
-      ? { syncToken: args.integration.agendaSyncToken }
-      : {}),
-  });
-
-  const nextEvents: ImportedGoogleCalendarEvent[] = [];
-  const deletedProviderEventIds = new Set<string>();
-  for (const event of imported.events) {
-    const providerEventId = event.id?.trim();
-    if (!providerEventId) {
-      continue;
-    }
-    if (event.status === "cancelled") {
-      deletedProviderEventIds.add(providerEventId);
-      continue;
-    }
-    if (isQueueManagedGoogleEvent(event, args.mappedProviderEventIds)) {
-      deletedProviderEventIds.add(providerEventId);
-      continue;
-    }
-
-    const normalized = normalizeImportedGoogleEvent(event);
-    if (!normalized) {
-      deletedProviderEventIds.add(providerEventId);
-      continue;
-    }
-    nextEvents.push(normalized);
-  }
-
-  const result = (await args.ctx.runMutation(calendarInternal.applyGoogleAgendaSyncResult, {
-    integrationId: args.integration._id,
-    nextSyncToken: imported.nextSyncToken,
-    resetImportedEvents: imported.resetImportedEvents,
-    events: nextEvents,
-    deletedProviderEventIds: Array.from(deletedProviderEventIds),
-  })) as {
-    importedCount: number;
-    removedCount: number;
-  };
-
-  return {
-    importedCount: result.importedCount,
-    importedRemovedCount: result.removedCount,
-  };
-}
-
-async function runGoogleCalendarSync(
-  ctx: any,
-  args: {
-    userId: Id<"users">;
-    startTime?: number;
-    endTime?: number;
-    limit?: number;
-    requireConnected: boolean;
-  },
-) {
-  const integration = (await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {
-    userId: args.userId,
-  })) as GoogleIntegrationRecord | null;
-  if (!integration || integration.status !== "connected") {
-    if (args.requireConnected) {
-      throw new ConvexError("Google Calendar is not connected");
-    }
-    return {
-      ok: true,
-      syncedCount: 0,
-      removedCount: 0,
-      importedCount: 0,
-      importedRemovedCount: 0,
-    };
-  }
-
-  const profile = (await ctx.runQuery(calendarInternal.getCalendarProfileForUser, {
-    userId: args.userId,
-  })) as CalendarOwnerProfile | null;
-  if (!profile) {
-    if (args.requireConnected) {
-      throw new ConvexError("Calendar profile not found");
-    }
-    return {
-      ok: true,
-      syncedCount: 0,
-      removedCount: 0,
-      importedCount: 0,
-      importedRemovedCount: 0,
-    };
-  }
-
-  const now = Date.now();
-  try {
-    const accessToken = await getGoogleAccessToken(ctx, integration, now);
-    const existingMappings = (await ctx.runQuery(calendarInternal.getEventMappingsForIntegration, {
-      integrationId: integration._id,
-    })) as Array<{ externalEventId: string; providerEventId: string }>;
-    let pushResult = {
-      syncedCount: 0,
-      removedCount: 0,
-      mappedProviderEventIds: new Set(existingMappings.map((mapping) => mapping.providerEventId)),
-    };
-
-    if (profile.calendarProvider === "google" && profile.calendarSyncEnabled) {
-      pushResult = await syncQueueEventsToGoogle({
-        ctx,
-        userId: args.userId,
-        integrationId: integration._id,
-        accessToken,
-        now,
-        ...omitUndefined({
-          startTime: args.startTime,
-          endTime: args.endTime,
-          limit: args.limit,
-        }),
-      });
-    }
-
-    const agendaResult = await syncGoogleAgendaIntoConvex({
-      ctx,
-      integration,
-      accessToken,
-      mappedProviderEventIds: pushResult.mappedProviderEventIds,
-    });
-
-    await ctx.runMutation(calendarInternal.markGoogleSyncResult, {
-      integrationId: integration._id,
-      lastSyncedAt: Date.now(),
-      lastError: undefined,
-    });
-
-    return {
-      ok: true,
-      syncedCount: pushResult.syncedCount,
-      removedCount: pushResult.removedCount,
-      importedCount: agendaResult.importedCount,
-      importedRemovedCount: agendaResult.importedRemovedCount,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Google Calendar sync failed";
-    await ctx.runMutation(calendarInternal.markGoogleSyncResult, {
-      integrationId: integration._id,
-      lastError: message,
-    });
-    throw error;
-  }
-}
 
 export const getMyGoogleCalendarStatus = query({
   args: {},
@@ -887,63 +152,7 @@ export const connectGoogleCalendarWithCode = action({
     accountEmail: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    const currentUser = await ctx.runQuery(api.users.getCurrentUser, {});
-    if (!currentUser || (currentUser.role !== "instructor" && currentUser.role !== "studio")) {
-      throw new ConvexError("Only instructors and studios can connect Google Calendar");
-    }
-
-    assertGoogleClientIdAllowed(args.clientId);
-
-    const profile = (await ctx.runQuery(calendarInternal.getCalendarProfileForUser, {
-      userId: currentUser._id,
-    })) as CalendarOwnerProfile | null;
-    if (!profile) {
-      throw new ConvexError("Calendar profile not found");
-    }
-
-    const existingIntegration = await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {
-      userId: currentUser._id,
-    });
-
-    const token = await exchangeGoogleAuthorizationCode({
-      code: args.code,
-      codeVerifier: args.codeVerifier,
-      redirectUri: args.redirectUri,
-      clientId: args.clientId,
-    });
-
-    const refreshToken = token.refresh_token ?? existingIntegration?.refreshToken;
-    const accessToken = token.access_token;
-    if (!accessToken) {
-      throw new ConvexError("Google access token was missing from authorization response");
-    }
-    const accountEmail = await fetchGoogleAccountEmail(accessToken);
-
-    await ctx.runMutation(calendarInternal.upsertGoogleIntegration, {
-      userId: currentUser._id,
-      role: profile.role,
-      ...(profile.instructorId ? { instructorId: profile.instructorId } : {}),
-      ...(profile.studioId ? { studioId: profile.studioId } : {}),
-      accountEmail,
-      oauthClientId: args.clientId,
-      accessToken,
-      refreshToken,
-      accessTokenExpiresAt: Date.now() + Math.max(60, token.expires_in ?? 3600) * 1000,
-      scopes: parseScopes(token.scope),
-      enableSync: true,
-      clearError: true,
-    });
-
-    await runGoogleCalendarSync(ctx, {
-      userId: currentUser._id,
-      requireConnected: true,
-    });
-
-    return {
-      ok: true,
-      connected: true,
-      ...omitUndefined({ accountEmail }),
-    };
+    return await ctx.runAction(calendarNodeInternal.connectGoogleCalendarWithCodeInternal, args);
   },
 });
 
@@ -960,30 +169,8 @@ export const syncMyGoogleCalendarEvents = action({
     importedCount: v.number(),
     importedRemovedCount: v.number(),
   }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{
-    ok: boolean;
-    syncedCount: number;
-    removedCount: number;
-    importedCount: number;
-    importedRemovedCount: number;
-  }> => {
-    const currentUser = await ctx.runQuery(api.users.getCurrentUser as any, {});
-    if (!currentUser || (currentUser.role !== "instructor" && currentUser.role !== "studio")) {
-      throw new ConvexError("Only instructors and studios can sync Google Calendar");
-    }
-
-    return await runGoogleCalendarSync(ctx, {
-      userId: currentUser._id,
-      ...omitUndefined({
-        startTime: args.startTime,
-        endTime: args.endTime,
-        limit: args.limit,
-      }),
-      requireConnected: true,
-    });
+  handler: async (ctx, args) => {
+    return await ctx.runAction(calendarNodeInternal.syncMyGoogleCalendarEventsInternal, args);
   },
 });
 
@@ -994,47 +181,7 @@ export const disconnectGoogleCalendar = action({
     deletedRemoteEvents: v.boolean(),
   }),
   handler: async (ctx) => {
-    const currentUser = await ctx.runQuery(api.users.getCurrentUser, {});
-    if (!currentUser || (currentUser.role !== "instructor" && currentUser.role !== "studio")) {
-      throw new ConvexError("Only instructors and studios can disconnect Google Calendar");
-    }
-
-    const integration = (await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {
-      userId: currentUser._id,
-    })) as GoogleIntegrationRecord | null;
-    if (!integration) {
-      await ctx.runMutation(calendarInternal.disconnectGoogleIntegrationLocally, {
-        userId: currentUser._id,
-      });
-      return { ok: true, deletedRemoteEvents: true };
-    }
-
-    let deletedRemoteEvents = true;
-    try {
-      const accessToken = await getGoogleAccessToken(ctx, integration, Date.now());
-      const mappings = (await ctx.runQuery(calendarInternal.getEventMappingsForIntegration, {
-        integrationId: integration._id,
-      })) as Array<{ providerEventId: string }>;
-
-      for (const mapping of mappings) {
-        try {
-          await deleteGoogleEvent({ accessToken, providerEventId: mapping.providerEventId });
-        } catch {
-          deletedRemoteEvents = false;
-        }
-      }
-    } catch {
-      deletedRemoteEvents = false;
-    }
-
-    await ctx.runMutation(calendarInternal.disconnectGoogleIntegrationLocally, {
-      userId: currentUser._id,
-    });
-
-    return {
-      ok: true,
-      deletedRemoteEvents,
-    };
+    return await ctx.runAction(calendarNodeInternal.disconnectGoogleCalendarInternal, {});
   },
 });
 
@@ -1053,15 +200,7 @@ export const syncGoogleCalendarForUser = internalAction({
     importedRemovedCount: v.number(),
   }),
   handler: async (ctx, args) => {
-    return await runGoogleCalendarSync(ctx, {
-      userId: args.userId,
-      ...omitUndefined({
-        startTime: args.startTime,
-        endTime: args.endTime,
-        limit: args.limit,
-      }),
-      requireConnected: false,
-    });
+    return await ctx.runAction(calendarNodeInternal.syncGoogleCalendarForUserInternal, args);
   },
 });
 
@@ -1222,7 +361,10 @@ export const getCalendarTimelineForUser = internalQuery({
     const jobs = await ctx.db
       .query("jobs")
       .withIndex("by_studio_startTime", (q) =>
-        q.eq("studioId", studioProfile._id).gte("startTime", args.startTime).lte("startTime", args.endTime),
+        q
+          .eq("studioId", studioProfile._id)
+          .gte("startTime", args.startTime)
+          .lte("startTime", args.endTime),
       )
       .order("asc")
       .take(limit);
@@ -1234,7 +376,9 @@ export const getCalendarTimelineForUser = internalQuery({
           .filter((id): id is Id<"instructorProfiles"> => Boolean(id)),
       ),
     ];
-    const instructors = await Promise.all(instructorIds.map((instructorId) => ctx.db.get(instructorId)));
+    const instructors = await Promise.all(
+      instructorIds.map((instructorId) => ctx.db.get(instructorId)),
+    );
     const instructorNameById = new Map<string, string>();
     for (let index = 0; index < instructorIds.length; index += 1) {
       const instructorId = instructorIds[index];
@@ -1299,8 +443,8 @@ export const getGoogleIntegrationForUser = internalQuery({
       ...omitUndefined({
         instructorId: integration.instructorId,
         studioId: integration.studioId,
-        accessToken: decryptCalendarToken(integration.accessToken),
-        refreshToken: decryptCalendarToken(integration.refreshToken),
+        accessToken: integration.accessToken,
+        refreshToken: integration.refreshToken,
         oauthClientId: integration.oauthClientId,
         accessTokenExpiresAt: integration.accessTokenExpiresAt,
         agendaSyncToken: integration.agendaSyncToken,
@@ -1358,7 +502,7 @@ export const upsertGoogleIntegration = internalMutation({
       status: "connected" as const,
       role: args.role,
       oauthClientId: args.oauthClientId,
-      accessToken: encryptRequiredCalendarToken(args.accessToken),
+      accessToken: args.accessToken,
       accessTokenExpiresAt: args.accessTokenExpiresAt,
       scopes: args.scopes,
       agendaSyncToken: undefined,
@@ -1366,7 +510,7 @@ export const upsertGoogleIntegration = internalMutation({
         accountEmail: args.accountEmail,
         instructorId: args.instructorId,
         studioId: args.studioId,
-        refreshToken: encryptCalendarToken(args.refreshToken),
+        refreshToken: args.refreshToken,
       }),
       ...(args.clearError ? { lastError: undefined } : {}),
       updatedAt: now,
@@ -1386,10 +530,10 @@ export const upsertGoogleIntegration = internalMutation({
           instructorId: args.instructorId,
           studioId: args.studioId,
           accountEmail: args.accountEmail,
-          refreshToken: encryptCalendarToken(args.refreshToken),
+          refreshToken: args.refreshToken,
         }),
         oauthClientId: args.oauthClientId,
-        accessToken: encryptRequiredCalendarToken(args.accessToken),
+        accessToken: args.accessToken,
         accessTokenExpiresAt: args.accessTokenExpiresAt,
         scopes: args.scopes,
         createdAt: now,
@@ -1433,7 +577,7 @@ export const updateGoogleAccessToken = internalMutation({
   returns: v.object({ ok: v.boolean() }),
   handler: async (ctx, args) => {
     await ctx.db.patch(args.integrationId, {
-      accessToken: encryptRequiredCalendarToken(args.accessToken),
+      accessToken: args.accessToken,
       accessTokenExpiresAt: args.accessTokenExpiresAt,
       scopes: args.scopes,
       updatedAt: Date.now(),
@@ -1619,7 +763,7 @@ export const disconnectGoogleIntegrationLocally = internalMutation({
   args: { userId: v.id("users") },
   returns: v.object({ ok: v.boolean() }),
   handler: async (ctx, args) => {
-    const profile = (await ctx.runQuery(calendarInternal.getCalendarProfileForUser, {
+    const profile = (await ctx.runQuery(internal.calendar.getCalendarProfileForUser, {
       userId: args.userId,
     })) as CalendarOwnerProfile | null;
     if (!profile) {
