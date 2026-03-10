@@ -10,15 +10,22 @@
 
 import type * as auth from "../auth.js";
 import type * as calendar from "../calendar.js";
+import type * as calendarNode from "../calendarNode.js";
 import type * as constants from "../constants.js";
 import type * as didit from "../didit.js";
 import type * as home from "../home.js";
+import type * as homeRead from "../homeRead.js";
 import type * as http from "../http.js";
 import type * as inbox from "../inbox.js";
 import type * as instructorZones from "../instructorZones.js";
+import type * as integrations_rapyd_client from "../integrations/rapyd/client.js";
+import type * as integrations_rapyd_config from "../integrations/rapyd/config.js";
+import type * as integrations_rapyd_payloads from "../integrations/rapyd/payloads.js";
 import type * as invoicing from "../invoicing.js";
 import type * as jobs from "../jobs.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_calendarCrypto from "../lib/calendarCrypto.js";
+import type * as lib_calendarShared from "../lib/calendarShared.js";
 import type * as lib_domainValidation from "../lib/domainValidation.js";
 import type * as lib_instructorCoverage from "../lib/instructorCoverage.js";
 import type * as lib_instructorEligibility from "../lib/instructorEligibility.js";
@@ -28,6 +35,7 @@ import type * as notifications from "../notifications.js";
 import type * as notificationsCore from "../notificationsCore.js";
 import type * as onboarding from "../onboarding.js";
 import type * as payments from "../payments.js";
+import type * as paymentsRead from "../paymentsRead.js";
 import type * as payouts from "../payouts.js";
 import type * as rapyd from "../rapyd.js";
 import type * as rapydReturnBridge from "../rapydReturnBridge.js";
@@ -35,8 +43,8 @@ import type * as resendMagicLink from "../resendMagicLink.js";
 import type * as resendOtp from "../resendOtp.js";
 import type * as userPushNotifications from "../userPushNotifications.js";
 import type * as users from "../users.js";
-import type * as webhooks from "../webhooks.js";
 import type * as webhookSecurity from "../webhookSecurity.js";
+import type * as webhooks from "../webhooks.js";
 
 import type {
   ApiFromModules,
@@ -47,15 +55,22 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   calendar: typeof calendar;
+  calendarNode: typeof calendarNode;
   constants: typeof constants;
   didit: typeof didit;
   home: typeof home;
+  homeRead: typeof homeRead;
   http: typeof http;
   inbox: typeof inbox;
   instructorZones: typeof instructorZones;
+  "integrations/rapyd/client": typeof integrations_rapyd_client;
+  "integrations/rapyd/config": typeof integrations_rapyd_config;
+  "integrations/rapyd/payloads": typeof integrations_rapyd_payloads;
   invoicing: typeof invoicing;
   jobs: typeof jobs;
   "lib/auth": typeof lib_auth;
+  "lib/calendarCrypto": typeof lib_calendarCrypto;
+  "lib/calendarShared": typeof lib_calendarShared;
   "lib/domainValidation": typeof lib_domainValidation;
   "lib/instructorCoverage": typeof lib_instructorCoverage;
   "lib/instructorEligibility": typeof lib_instructorEligibility;
@@ -65,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   notificationsCore: typeof notificationsCore;
   onboarding: typeof onboarding;
   payments: typeof payments;
+  paymentsRead: typeof paymentsRead;
   payouts: typeof payouts;
   rapyd: typeof rapyd;
   rapydReturnBridge: typeof rapydReturnBridge;
@@ -72,8 +88,8 @@ declare const fullApi: ApiFromModules<{
   resendOtp: typeof resendOtp;
   userPushNotifications: typeof userPushNotifications;
   users: typeof users;
-  webhooks: typeof webhooks;
   webhookSecurity: typeof webhookSecurity;
+  webhooks: typeof webhooks;
 }>;
 
 /**
