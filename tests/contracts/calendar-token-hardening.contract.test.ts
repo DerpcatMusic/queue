@@ -4,7 +4,7 @@ import {
   decryptCalendarToken,
   encryptCalendarToken,
   isEncryptedCalendarToken,
-} from "../../convex/calendar";
+} from "../../convex/lib/calendarCrypto";
 
 describe("calendar token hardening contracts", () => {
   it("keeps plaintext tokens readable when no encryption secret is configured", () => {

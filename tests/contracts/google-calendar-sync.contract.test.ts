@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test";
 import {
   isQueueManagedGoogleEvent,
   normalizeImportedGoogleEvent,
-} from "../../convex/calendar";
+} from "../../convex/lib/calendarShared";
 
 describe("google calendar sync contracts", () => {
   it("normalizes timed Google events into agenda rows", () => {
