@@ -82,8 +82,8 @@ export default function RootLayout() {
 }
 
 function RootLayoutContent() {
-  const { topInsetBackgroundColor } = useSystemUi();
-  const { resolvedScheme, stylePreference } = useThemePreference();
+  const { topInsetBackgroundColor, topInsetTone } = useSystemUi();
+  const { resolvedScheme } = useThemePreference();
   const palette = useBrand();
   const [transitionOverlayColor, setTransitionOverlayColor] = useState(palette.appBg as string);
   const convex = getConvexClient();
@@ -106,7 +106,7 @@ function RootLayoutContent() {
     Rubik_900Black,
   });
   const transitionOpacity = useMemo(() => new Animated.Value(0), []);
-  const currentThemeKey = `${resolvedScheme}:${stylePreference}`;
+  const currentThemeKey = resolvedScheme;
   const [previousThemeKey, setPreviousThemeKey] = useState(currentThemeKey);
   const [previousBackgroundColor, setPreviousBackgroundColor] = useState(palette.appBg as string);
 
@@ -147,9 +147,6 @@ function RootLayoutContent() {
 
   const navigationTheme = useMemo<NavigationTheme>(() => {
     const base = resolvedScheme === "dark" ? DarkTheme : DefaultTheme;
-    if (stylePreference === "native") {
-      return base;
-    }
     return {
       ...base,
       colors: {
@@ -170,7 +167,6 @@ function RootLayoutContent() {
     palette.surface,
     palette.text,
     resolvedScheme,
-    stylePreference,
   ]);
 
   useStartupPerfMetrics();
@@ -185,10 +181,15 @@ function RootLayoutContent() {
     );
   }
 
-  const fallbackBackgroundColor = palette.appBg;
+  const fallbackBackgroundColor =
+    topInsetTone === "sheet"
+      ? palette.surfaceAlt
+      : topInsetTone === "card"
+        ? palette.surface
+        : topInsetTone === "transparent"
+          ? "transparent"
+          : palette.appBg;
   const statusInsetColor = topInsetBackgroundColor ?? fallbackBackgroundColor;
-  const statusBarBackgroundColor =
-    typeof statusInsetColor === "string" ? statusInsetColor : undefined;
 
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -219,8 +220,6 @@ function RootLayoutContent() {
             <StatusBar
               style={resolvedScheme === "dark" ? "light" : "dark"}
               animated
-              translucent
-              {...(statusBarBackgroundColor ? { backgroundColor: statusBarBackgroundColor } : {})}
             />
             <Animated.View
               pointerEvents="none"

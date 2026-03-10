@@ -69,7 +69,7 @@ function getButtonSize(size: NonNullable<KitButtonProps["size"]>) {
     return { minHeight: 42, horizontal: 14, fontSize: 13 };
   }
   if (size === "lg") {
-    return { minHeight: 56, horizontal: 20, fontSize: 16 };
+    return { minHeight: 54, horizontal: 20, fontSize: 16 };
   }
   return { minHeight: 48, horizontal: 18, fontSize: 14 };
 }
@@ -134,11 +134,10 @@ export function KitButton({
       ) : null}
       <Text
         style={{
-          ...BrandType.bodyStrong,
+          ...BrandType.bodyMedium,
           color: colors.textColor,
           fontSize: sizing.fontSize,
-          letterSpacing: 0.4,
-          textTransform: "uppercase",
+          letterSpacing: -0.1,
           includeFontPadding: false,
         }}
       >

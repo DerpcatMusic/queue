@@ -6,7 +6,6 @@ import {
   applyThemePreference,
   loadThemePreference,
   persistThemePreference,
-  persistThemeStylePreference,
   type ThemePreference,
   type ThemeStylePreference,
 } from "@/lib/theme-preference";
@@ -24,7 +23,7 @@ type ThemePreferenceContextValue = {
 
 const DEFAULT_THEME_PREFERENCE_CONTEXT: ThemePreferenceContextValue = {
   preference: "system",
-  stylePreference: "custom",
+  stylePreference: "native",
   resolvedScheme: "light",
   isReady: false,
   setPreference: async () => undefined,
@@ -38,7 +37,7 @@ const ThemePreferenceContext = createContext<ThemePreferenceContextValue>(
 export function ThemePreferenceProvider({ children }: PropsWithChildren) {
   const systemScheme = useColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>("system");
-  const [stylePreference, setStylePreferenceState] = useState<ThemeStylePreference>("custom");
+  const [stylePreference, setStylePreferenceState] = useState<ThemeStylePreference>("native");
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -46,12 +45,11 @@ export function ThemePreferenceProvider({ children }: PropsWithChildren) {
     const bootstrapPreference = async () => {
       const [stored] = await Promise.all([loadThemePreference()]);
       const nextPreference = stored ?? "system";
-      const nextStylePreference: ThemeStylePreference = "custom";
+      const nextStylePreference: ThemeStylePreference = "native";
       applyThemePreference(nextPreference);
       if (!mounted) return;
       setPreferenceState(nextPreference);
       setStylePreferenceState(nextStylePreference);
-      await persistThemeStylePreference("custom");
       setIsReady(true);
     };
     void bootstrapPreference();
@@ -68,9 +66,8 @@ export function ThemePreferenceProvider({ children }: PropsWithChildren) {
 
   const setStylePreference = useCallback(async (nextPreference: ThemeStylePreference) => {
     const resolvedPreference: ThemeStylePreference =
-      nextPreference === "custom" ? "custom" : "custom";
+      nextPreference === "native" ? "native" : "native";
     setStylePreferenceState(resolvedPreference);
-    await persistThemeStylePreference(resolvedPreference);
   }, []);
 
   const resolvedScheme: ResolvedScheme =

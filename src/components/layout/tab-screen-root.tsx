@@ -1,19 +1,19 @@
 import type { PropsWithChildren } from "react";
 import type { ScrollViewProps, StyleProp, ViewStyle } from "react-native";
-import Animated from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
-import { BrandSpacing } from "@/constants/brand";
-import { useAppInsets } from "@/hooks/use-app-insets";
+
+import type { InsetTone } from "@/contexts/system-ui-context";
+import { ScreenScaffold } from "./screen-scaffold";
 
 type BaseProps = {
   style?: StyleProp<ViewStyle>;
+  topInsetTone?: InsetTone;
 };
 
 type TabScreenRootScrollProps = BaseProps & {
   mode: "scroll";
   scrollProps?: Omit<ScrollViewProps, "contentContainerStyle">;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  useDesktopFrame?: boolean;
 };
 
 type TabScreenRootStaticProps = BaseProps & {
@@ -25,45 +25,31 @@ export type TabScreenRootProps = PropsWithChildren<
 >;
 
 export function TabScreenRoot(props: TabScreenRootProps) {
-  const insets = useAppInsets();
-
   if (props.mode === "static") {
     return (
-      <SafeAreaView
-        edges={["top", "bottom"]}
-        style={[
-          {
-            flex: 1,
-          },
-          props.style,
-        ]}
+      <ScreenScaffold
+        mode="static"
+        style={props.style}
+        {...(props.topInsetTone ? { topInsetTone: props.topInsetTone } : {})}
       >
         {props.children}
-      </SafeAreaView>
+      </ScreenScaffold>
     );
   }
 
-  const { contentContainerStyle, scrollProps, style, children } = props;
+  const { contentContainerStyle, scrollProps, style, children, topInsetTone, useDesktopFrame } =
+    props;
 
   return (
-    <Animated.ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      showsVerticalScrollIndicator={false}
-      {...scrollProps}
-      style={[{ flex: 1 }, style]}
-      contentContainerStyle={[
-        {
-          paddingBottom: Math.max(
-            BrandSpacing.lg,
-            insets.tabContentBottom + BrandSpacing.md,
-          ),
-        },
-        contentContainerStyle,
-      ]}
+    <ScreenScaffold
+      mode="scroll"
+      style={style}
+      {...(topInsetTone ? { topInsetTone } : {})}
+      {...(contentContainerStyle ? { contentContainerStyle } : {})}
+      {...(scrollProps ? { scrollProps } : {})}
+      {...(useDesktopFrame !== undefined ? { useDesktopFrame } : {})}
     >
-      <DesktopDashboardFrame contentStyle={contentContainerStyle}>
-        {children}
-      </DesktopDashboardFrame>
-    </Animated.ScrollView>
+      {children}
+    </ScreenScaffold>
   );
 }

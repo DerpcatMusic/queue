@@ -1,33 +1,35 @@
 import type { TFunction } from "i18next";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Text, View } from "react-native";
-import Animated, { FadeInUp, useAnimatedRef } from "react-native-reanimated";
+import Animated, { FadeInUp, useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
 
 import {
   HomeSectionHeading,
   HomeSurface,
   useHomeDashboardLayout,
 } from "@/components/home/home-dashboard-layout";
-import { getRelativeTimeLabel } from "@/components/home/home-shared";
 import {
-  getAdjacentTimeframe,
+  getHomeHeaderScrollTopPadding,
+  HomeHeaderSheet,
+} from "@/components/home/home-header-sheet";
+import {
   getTimeframeData,
   type MetricMode,
   type Timeframe,
 } from "@/components/home/performance-chart-math";
+import { HomeStatsRow } from "@/components/home/home-stats-row";
 import {
   PerformanceHeroCard,
-  type PerformanceMetricOption,
-  type PerformanceTimeframeOption,
   type PerformanceTimeframeSeries,
 } from "@/components/home/performance-hero-card";
+import { usePerformanceChart } from "@/components/home/use-performance-chart";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { KitButton, KitPressable } from "@/components/ui/kit";
-import { ProfileAvatar } from "@/components/ui/profile-avatar";
+import { KitButton } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { toSportLabel } from "@/convex/constants";
+import { getRelativeTimeLabel } from "@/components/home/home-shared";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { formatDateTime } from "@/lib/jobs-utils";
 
@@ -56,14 +58,13 @@ type InstructorHomeContentProps = {
   locale: string;
   openMatches: number;
   pendingApplications: number;
-  totalEarningsAgorot: number;
   palette: BrandPalette;
   currencyFormatter: Intl.NumberFormat;
   t: TFunction;
   earningsEvents: InstructorPaymentRow[];
   lessonEvents: InstructorApplicationRow[];
   upcomingSessions: UpcomingSession[];
-  sports: string[] | undefined;
+
   onOpenJobs: () => void;
   onOpenProfile: () => void;
 };
@@ -75,170 +76,125 @@ export function InstructorHomeContent({
   locale,
   openMatches,
   pendingApplications,
-  totalEarningsAgorot,
   palette,
   currencyFormatter,
   t,
   earningsEvents,
   lessonEvents,
   upcomingSessions,
-  sports,
   onOpenJobs,
   onOpenProfile,
 }: InstructorHomeContentProps) {
-  void totalEarningsAgorot;
   const now = useMemo(() => Date.now(), []);
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const { safeTop } = useAppInsets();
   const layout = useHomeDashboardLayout();
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const [timeframe, setTimeframe] = useState<Timeframe>("weekly");
-  const [metricMode, setMetricMode] = useState<MetricMode>("earnings");
+  const scrollY = useScrollViewOffset(scrollRef);
 
-  const timeframeSeries = useMemo(() => {
-    const frames = {} as Record<Timeframe, PerformanceTimeframeSeries>;
+  const computeSeries = useMemo(() => {
+    return (currentMetricMode: MetricMode) => {
+      const frames = {} as Record<Timeframe, PerformanceTimeframeSeries>;
 
-    (["weekly", "monthly", "yearly"] as const).forEach((frame) => {
-      const frameData = getTimeframeData(frame, now, locale);
-      const values = Array.from({ length: frameData.bucketStarts.length }, () => 0);
+      (["weekly", "monthly", "yearly"] as const).forEach((frame) => {
+        const frameData = getTimeframeData(frame, now, locale);
+        const values = Array.from({ length: frameData.bucketStarts.length }, () => 0);
 
-      if (metricMode === "earnings") {
-        for (const row of earningsEvents) {
-          for (let index = 0; index < frameData.bucketStarts.length; index += 1) {
-            const bucketStart = frameData.bucketStarts[index]!;
-            const bucketEnd = frameData.bucketEnds[index]!;
-            if (row.timestamp >= bucketStart && row.timestamp < bucketEnd) {
-              values[index] = (values[index] ?? 0) + row.amountAgorot;
-              break;
+        if (currentMetricMode === "earnings") {
+          for (const row of earningsEvents) {
+            for (let index = 0; index < frameData.bucketStarts.length; index += 1) {
+              const bucketStart = frameData.bucketStarts[index]!;
+              const bucketEnd = frameData.bucketEnds[index]!;
+              if (row.timestamp >= bucketStart && row.timestamp < bucketEnd) {
+                values[index] = (values[index] ?? 0) + row.amountAgorot;
+                break;
+              }
+            }
+          }
+        } else {
+          for (const row of lessonEvents) {
+            for (let index = 0; index < frameData.bucketStarts.length; index += 1) {
+              const bucketStart = frameData.bucketStarts[index]!;
+              const bucketEnd = frameData.bucketEnds[index]!;
+              if (row.endTime >= bucketStart && row.endTime < bucketEnd) {
+                values[index] = (values[index] ?? 0) + 1;
+                break;
+              }
             }
           }
         }
-      } else {
-        for (const row of lessonEvents) {
-          for (let index = 0; index < frameData.bucketStarts.length; index += 1) {
-            const bucketStart = frameData.bucketStarts[index]!;
-            const bucketEnd = frameData.bucketEnds[index]!;
-            if (row.endTime >= bucketStart && row.endTime < bucketEnd) {
-              values[index] = (values[index] ?? 0) + 1;
-              break;
-            }
-          }
-        }
-      }
 
-      frames[frame] = {
-        values,
-        axisTicks: frameData.axisTicks,
-      };
-    });
+        frames[frame] = {
+          values,
+          axisTicks: frameData.axisTicks,
+        };
+      });
 
-    return frames;
-  }, [earningsEvents, lessonEvents, metricMode, locale, now]);
+      return frames;
+    };
+  }, [earningsEvents, lessonEvents, locale, now]);
 
-  const frameTotal = timeframeSeries[timeframe].values.reduce((sum, value) => sum + value, 0);
-  const timeframeLabel = t(`home.performance.${timeframe}`);
-  const summaryValue =
-    metricMode === "earnings"
-      ? currencyFormatter.format(frameTotal / 100)
-      : `${String(frameTotal)} ${t("home.performance.lessons")}`;
-  const timeframeOptions = useMemo<PerformanceTimeframeOption[]>(
-    () => [
-      { value: "weekly", label: t("home.performance.weekly") },
-      { value: "monthly", label: t("home.performance.monthly") },
-      { value: "yearly", label: t("home.performance.yearly") },
-    ],
-    [t],
-  );
-  const metricOptions = useMemo<PerformanceMetricOption[]>(
-    () => [
-      { value: "earnings", label: "Earnings" },
-      { value: "lessons", label: "Lessons" },
-    ],
-    [],
-  );
+  const chart = usePerformanceChart({
+    computeSeries,
+    currencyFormatter,
+    metricLabels: {
+      earnings: t("home.performance.earnings", { defaultValue: "Earnings" }),
+      lessons: t("home.performance.lessonLabel", { defaultValue: "Lessons" }),
+    },
+    t,
+  });
+
   const nextSession = upcomingSessions[0] ?? null;
-  const readinessLabel = isVerified ? "Verified and ready" : "Needs profile polish";
+  const readinessLabel = isVerified
+    ? t("home.instructor.verified", { defaultValue: "Verified and ready" })
+    : t("home.instructor.needsPolish", { defaultValue: "Polish your profile" });
   const heroTitle = nextSession
-    ? `${toSportLabel(nextSession.sport as never)} at ${nextSession.studioName}`
-    : `${String(openMatches)} open matches near you`;
-  const heroSubtitle = nextSession
-    ? [
-        formatDateTime(nextSession.startTime, locale),
-        getZoneLabel(nextSession.zone, zoneLanguage),
-        currencyFormatter.format(nextSession.pay),
-      ].join("  ·  ")
-    : "Fresh sessions are moving on the board right now.";
-  const heroSecondaryLabel = pendingApplications > 0 ? "Pending applications" : "Ready state";
+    ? t("home.instructor.heroSession", {
+        sport: toSportLabel(nextSession.sport as never),
+        studio: nextSession.studioName,
+        defaultValue: `${toSportLabel(nextSession.sport as never)} at ${nextSession.studioName}`,
+      })
+    : t("home.instructor.heroMatches", {
+        count: openMatches,
+        defaultValue: `${String(openMatches)} open matches near you`,
+      });
+  const heroSecondaryLabel = pendingApplications > 0
+    ? t("home.instructor.pendingApps", { defaultValue: "Pending applications" })
+    : t("home.instructor.readyState", { defaultValue: "Ready state" });
   const heroSecondaryValue =
     pendingApplications > 0
-      ? `${String(pendingApplications)} waiting`
+      ? t("home.instructor.waitingCount", {
+          count: pendingApplications,
+          defaultValue: `${String(pendingApplications)} waiting`,
+        })
       : nextSession
         ? getRelativeTimeLabel(nextSession.startTime, now, locale)
-        : "Profile set";
+        : t("home.instructor.profileSet", { defaultValue: "Profile set" });
   const visibleSessions = upcomingSessions.slice(0, layout.isWideWeb ? 6 : 4);
 
   return (
     <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
+      <HomeHeaderSheet
+        displayName={displayName}
+        subtitle={readinessLabel}
+        profileImageUrl={profileImageUrl}
+        scrollY={scrollY}
+        palette={palette}
+        isVerified={isVerified}
+        onPressAvatar={onOpenProfile}
+      />
       <TabScreenScrollView
         animatedRef={scrollRef}
         routeKey="instructor/index"
         style={{ flex: 1 }}
+        topInsetTone="sheet"
         contentContainerStyle={{
           paddingHorizontal: BrandSpacing.xl,
-          paddingTop: safeTop + BrandSpacing.md,
+          paddingTop: getHomeHeaderScrollTopPadding(safeTop),
           paddingBottom: BrandSpacing.xxl,
           gap: layout.sectionGap,
         }}
       >
-        <Animated.View
-          entering={FadeInUp.duration(260)}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-          }}
-        >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
-              {readinessLabel}
-            </Text>
-            <Text
-              style={{
-                ...BrandType.display,
-                fontSize: 42,
-                lineHeight: 44,
-                color: palette.text as string,
-              }}
-              numberOfLines={1}
-            >
-              {displayName}
-            </Text>
-            {sports && sports.length > 0 ? (
-              <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                {sports
-                  .slice(0, 3)
-                  .map((sport) => toSportLabel(sport as never))
-                  .join("  ·  ")}
-              </Text>
-            ) : null}
-          </View>
-          <KitPressable
-            accessibilityRole="button"
-            accessibilityLabel="Open profile"
-            onPress={onOpenProfile}
-            style={{ borderRadius: BrandRadius.card }}
-          >
-            <ProfileAvatar
-              imageUrl={profileImageUrl}
-              fallbackName={displayName}
-              palette={palette}
-              size={66}
-              roundedSquare
-            />
-          </KitPressable>
-        </Animated.View>
-
         <View
           style={{
             flexDirection: layout.isWideWeb ? "row" : "column",
@@ -248,99 +204,74 @@ export function InstructorHomeContent({
         >
           <Animated.View
             entering={FadeInUp.delay(80).duration(300)}
-            style={{ flex: layout.heroFlex }}
+            style={{ flex: layout.heroFlex, gap: layout.sectionGap }}
           >
+            {/* Collapsed Hero Card */}
             <HomeSurface
               palette={palette}
               style={{
-                minHeight: layout.railMinHeight,
-                padding: layout.isWideWeb ? 28 : 22,
-                gap: 22,
+                padding: BrandSpacing.lg,
+                flexDirection: "row",
+                alignItems: "center",
                 justifyContent: "space-between",
+                gap: BrandSpacing.md,
+                minHeight: layout.railMinHeight,
               }}
             >
-              <View style={{ gap: 18 }}>
-                <View style={{ gap: 6 }}>
-                  <Text
-                    style={{
-                      ...BrandType.micro,
-                      color: palette.textMuted as string,
-                      letterSpacing: 0.8,
-                    }}
-                  >
-                    {nextSession ? "NEXT LESSON" : "JOBS BOARD"}
-                  </Text>
-                  <Text
-                    style={{
-                      ...BrandType.heading,
-                      fontSize: layout.isWideWeb ? 38 : 34,
-                      lineHeight: layout.isWideWeb ? 40 : 36,
-                      color: palette.text as string,
-                    }}
-                  >
-                    {heroTitle}
-                  </Text>
-                  <Text style={{ ...BrandType.body, color: palette.textMuted as string }}>
-                    {heroSubtitle}
-                  </Text>
-                </View>
-
-                <View style={{ gap: 8 }}>
-                  <Text style={{ ...BrandType.micro, color: palette.primary as string }}>
-                    {heroSecondaryLabel}
-                  </Text>
-                  <Text
-                    style={{
-                      ...BrandType.title,
-                      fontSize: 28,
-                      lineHeight: 30,
-                      color: palette.text as string,
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {heroSecondaryValue}
-                  </Text>
-                </View>
-              </View>
-
-              <View
-                style={{
-                  flexDirection: layout.isWideWeb ? "row" : "column",
-                  alignItems: layout.isWideWeb ? "flex-end" : "stretch",
-                  gap: 16,
-                }}
-              >
-                <View style={{ flex: 1, gap: 8 }}>
-                  <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
-                    {readinessLabel}
-                  </Text>
-                  {sports && sports.length > 0 ? (
-                    <Text style={{ ...BrandType.caption, color: palette.text as string }}>
-                      {sports
-                        .slice(0, 4)
-                        .map((sport) => toSportLabel(sport as never))
-                        .join("  ·  ")}
-                    </Text>
-                  ) : null}
-                </View>
-                <View
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text
                   style={{
-                    width: layout.actionColumnWidth ?? "100%",
-                    gap: 8,
+                    ...BrandType.micro,
+                    color: palette.textMuted as string,
+                    letterSpacing: 0.8,
                   }}
                 >
-                  <KitButton label="Open Jobs" onPress={onOpenJobs} size="sm" fullWidth />
-                  <KitButton
-                    label="Profile"
-                    onPress={onOpenProfile}
-                    variant="secondary"
-                    size="sm"
-                    fullWidth
-                    style={{ backgroundColor: palette.appBg as string }}
-                  />
-                </View>
+                  {nextSession
+                    ? t("home.instructor.eyebrowNext", { defaultValue: "NEXT LESSON" })
+                    : t("home.instructor.eyebrowBoard", { defaultValue: "JOBS BOARD" })}
+                </Text>
+                <Text
+                  style={{
+                    ...BrandType.heading,
+                    fontSize: 20,
+                    color: palette.text as string,
+                  }}
+                  numberOfLines={1}
+                >
+                  {heroTitle}
+                </Text>
               </View>
+              <KitButton
+                label={
+                  nextSession
+                    ? t("home.actions.profileTitle", { defaultValue: "Profile" })
+                    : t("home.actions.jobsTitle", { defaultValue: "Open Jobs" })
+                }
+                onPress={nextSession ? onOpenProfile : onOpenJobs}
+                size="sm"
+              />
             </HomeSurface>
+
+            {/* Inline Stats Row */}
+            <View style={{ marginHorizontal: -BrandSpacing.xl }}>
+              <HomeStatsRow
+                palette={palette}
+                stats={[
+                  {
+                    label: t("jobsTab.title", { defaultValue: "Open matches" }),
+                    value: String(openMatches),
+                  },
+                  {
+                    label: t("jobsTab.pending", { defaultValue: "Pending" }),
+                    value: String(pendingApplications),
+                  },
+                  {
+                    label: heroSecondaryLabel,
+                    value: heroSecondaryValue,
+                  },
+                ]}
+              />
+            </View>
           </Animated.View>
 
           <Animated.View
@@ -349,18 +280,17 @@ export function InstructorHomeContent({
           >
             <PerformanceHeroCard
               palette={palette}
-              timeframe={timeframe}
-              metricMode={metricMode}
-              timeframeLabel={timeframeLabel}
-              totalLabel={summaryValue}
-              metricOptions={metricOptions}
-              timeframeOptions={timeframeOptions}
-              seriesByTimeframe={timeframeSeries}
-              onSelectMetric={setMetricMode}
-              onSelectTimeframe={setTimeframe}
-              onSwipeTimeframe={(direction) => {
-                setTimeframe((prev) => getAdjacentTimeframe(prev, direction));
-              }}
+              timeframe={chart.timeframe}
+              metricMode={chart.metricMode}
+              timeframeLabel={chart.timeframeLabel}
+              insightLabel={chart.insightLabel}
+              totalLabel={chart.summaryValue}
+              metricOptions={chart.metricOptions}
+              timeframeOptions={chart.timeframeOptions}
+              seriesByTimeframe={chart.seriesByTimeframe}
+              onSelectMetric={chart.setMetricMode}
+              onSelectTimeframe={chart.setTimeframe}
+              onSwipeTimeframe={chart.handleSwipeTimeframe}
             />
           </Animated.View>
         </View>
@@ -368,7 +298,7 @@ export function InstructorHomeContent({
         <Animated.View entering={FadeInUp.delay(180).duration(320)} style={{ gap: 12 }}>
           <HomeSectionHeading
             title={t("home.instructor.nextTitle")}
-            eyebrow="SCHEDULE"
+            eyebrow={t("home.instructor.scheduleEyebrow", { defaultValue: "SCHEDULE" })}
             palette={palette}
           />
           {upcomingSessions.length === 0 ? (
@@ -377,7 +307,7 @@ export function InstructorHomeContent({
                 {t("home.instructor.noUpcoming")}
               </Text>
               <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                The jobs board is still live when you want the next one.
+                {t("home.instructor.emptySchedule", { defaultValue: "The jobs board is live when you want the next one." })}
               </Text>
             </HomeSurface>
           ) : (
@@ -414,6 +344,7 @@ export function InstructorHomeContent({
                       }}
                     >
                       <Text
+                        selectable
                         style={{
                           ...BrandType.heading,
                           fontSize: 24,
@@ -455,6 +386,7 @@ export function InstructorHomeContent({
                           </Text>
                         </View>
                         <Text
+                          selectable
                           style={{
                             ...BrandType.title,
                             color: palette.text as string,

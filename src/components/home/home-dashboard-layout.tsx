@@ -1,16 +1,12 @@
 import type { PropsWithChildren } from "react";
-import { type StyleProp, Text, useWindowDimensions, View, type ViewStyle } from "react-native";
+import { type StyleProp, Text, View, type ViewStyle } from "react-native";
 
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-
-const HOME_WIDE_BREAKPOINT = 1180;
-const HOME_EXPANDED_BREAKPOINT = 1380;
+import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 
 export function useHomeDashboardLayout() {
-  const { width } = useWindowDimensions();
-  const isWideWeb = process.env.EXPO_OS === "web" && width >= HOME_WIDE_BREAKPOINT;
-  const isExpandedWeb = process.env.EXPO_OS === "web" && width >= HOME_EXPANDED_BREAKPOINT;
+  const { isDesktopWeb: isWideWeb, isExpandedWeb } = useLayoutBreakpoint();
 
   return {
     isWideWeb,
