@@ -5,10 +5,13 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { action, internalMutation, internalQuery, query } from "./_generated/server";
 import { isKnownZoneId } from "./lib/domainValidation";
+import { mapLegacyPaymentStatusToOrderStatus, summarizeLedgerBalances } from "./lib/marketplace";
 import { omitUndefined } from "./lib/validation";
 
 const DEFAULT_BATCH_SIZE = 200;
 const MAX_BATCH_SIZE = 500;
+const DEFAULT_FINANCE_BACKFILL_BATCH_SIZE = 100;
+const MAX_FINANCE_BACKFILL_BATCH_SIZE = 250;
 
 type DiditBackfillBatchPageItem = {
   instructorId: Id<"instructorProfiles">;
@@ -66,6 +69,1038 @@ function requireMigrationsAccessToken(accessToken: string | undefined) {
     );
   }
 }
+
+function getFinanceBackfillBatchSize(batchSize: number | undefined) {
+  return Math.min(
+    Math.max(Math.floor(batchSize ?? DEFAULT_FINANCE_BACKFILL_BATCH_SIZE), 1),
+    MAX_FINANCE_BACKFILL_BATCH_SIZE,
+  );
+}
+
+function buildLegacyPaymentOrderCorrelationToken(paymentId: Id<"payments">) {
+  return `legacy-payment:${String(paymentId)}`;
+}
+
+function isInstructorKycApprovedForMigration(
+  profile: Pick<Doc<"instructorProfiles">, "diditVerificationStatus" | "diditLegalName"> | null,
+) {
+  return (
+    profile?.diditVerificationStatus === "approved" && Boolean(profile.diditLegalName?.trim())
+  );
+}
+
+async function insertMarketplaceLedgerEntryIfMissing(
+  ctx: Parameters<
+    Parameters<typeof internalMutation>[0]["handler"]
+  >[0],
+  args: {
+    paymentOrderId: Id<"paymentOrders">;
+    jobId: Id<"jobs">;
+    studioUserId: Id<"users">;
+    instructorUserId?: Id<"users">;
+    payoutScheduleId?: Id<"payoutSchedules">;
+    payoutId?: Id<"payouts">;
+    dedupeKey: string;
+    entryType: Doc<"ledgerEntries">["entryType"];
+    balanceBucket: Doc<"ledgerEntries">["balanceBucket"];
+    amountAgorot: number;
+    currency: string;
+    referenceType: Doc<"ledgerEntries">["referenceType"];
+    referenceId: string;
+    createdAt: number;
+  }) {
+  const existing = await ctx.db
+    .query("ledgerEntries")
+    .withIndex("by_dedupe_key", (q) => q.eq("dedupeKey", args.dedupeKey))
+    .unique();
+  if (existing) {
+    return { created: false, id: existing._id };
+  }
+
+  const id = await ctx.db.insert(
+    "ledgerEntries",
+    omitUndefined({
+      paymentOrderId: args.paymentOrderId,
+      jobId: args.jobId,
+      studioUserId: args.studioUserId,
+      instructorUserId: args.instructorUserId,
+      payoutScheduleId: args.payoutScheduleId,
+      payoutId: args.payoutId,
+      dedupeKey: args.dedupeKey,
+      entryType: args.entryType,
+      balanceBucket: args.balanceBucket,
+      amountAgorot: args.amountAgorot,
+      currency: args.currency,
+      referenceType: args.referenceType,
+      referenceId: args.referenceId,
+      createdAt: args.createdAt,
+    }) as Doc<"ledgerEntries">,
+  );
+  return { created: true, id };
+}
+
+async function upsertPaymentProviderLinkForMigration(
+  ctx: Parameters<
+    Parameters<typeof internalMutation>[0]["handler"]
+  >[0],
+  args: {
+    paymentOrderId: Id<"paymentOrders">;
+    legacyPaymentId: Id<"payments">;
+    providerObjectType: "merchant_reference" | "checkout" | "payment";
+    providerObjectId?: string;
+    correlationToken?: string;
+  },
+) {
+  const providerObjectId = args.providerObjectId?.trim();
+  if (!providerObjectId) {
+    return false;
+  }
+
+  const existing = await ctx.db
+    .query("paymentProviderLinks")
+    .withIndex("by_provider_object", (q) =>
+      q
+        .eq("provider", "rapyd")
+        .eq("providerObjectType", args.providerObjectType)
+        .eq("providerObjectId", providerObjectId),
+    )
+    .unique();
+  const now = Date.now();
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      paymentOrderId: args.paymentOrderId,
+      legacyPaymentId: args.legacyPaymentId,
+      correlationToken: args.correlationToken ?? existing.correlationToken,
+      updatedAt: now,
+    });
+    return false;
+  }
+
+  await ctx.db.insert("paymentProviderLinks", {
+    provider: "rapyd",
+    paymentOrderId: args.paymentOrderId,
+    legacyPaymentId: args.legacyPaymentId,
+    providerObjectType: args.providerObjectType,
+    providerObjectId,
+    correlationToken: args.correlationToken,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return true;
+}
+
+async function upsertPayoutProviderLinkForMigration(
+  ctx: Parameters<
+    Parameters<typeof internalMutation>[0]["handler"]
+  >[0],
+  args: {
+    payoutScheduleId: Id<"payoutSchedules">;
+    payoutId: Id<"payouts">;
+    merchantReferenceId: string;
+    providerPayoutId?: string;
+    correlationToken?: string;
+  },
+) {
+  const existing =
+    (await ctx.db
+      .query("payoutProviderLinks")
+      .withIndex("by_payout", (q) => q.eq("payoutId", args.payoutId))
+      .order("desc")
+      .first()) ??
+    (await ctx.db
+      .query("payoutProviderLinks")
+      .withIndex("by_merchant_reference", (q) =>
+        q.eq("provider", "rapyd").eq("merchantReferenceId", args.merchantReferenceId),
+      )
+      .unique());
+  const now = Date.now();
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      payoutScheduleId: args.payoutScheduleId,
+      payoutId: args.payoutId,
+      providerPayoutId: args.providerPayoutId ?? existing.providerPayoutId,
+      correlationToken: args.correlationToken ?? existing.correlationToken,
+      updatedAt: now,
+    });
+    return false;
+  }
+
+  await ctx.db.insert("payoutProviderLinks", {
+    provider: "rapyd",
+    payoutScheduleId: args.payoutScheduleId,
+    payoutId: args.payoutId,
+    providerPayoutId: args.providerPayoutId,
+    merchantReferenceId: args.merchantReferenceId,
+    correlationToken: args.correlationToken,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return true;
+}
+
+function mapLegacyPayoutToScheduleStatus(
+  status: Doc<"payouts">["status"],
+): Doc<"payoutSchedules">["status"] {
+  switch (status) {
+    case "queued":
+      return "scheduled";
+    case "processing":
+    case "pending_provider":
+      return "processing";
+    case "paid":
+      return "paid";
+    case "failed":
+      return "failed";
+    case "cancelled":
+      return "cancelled";
+    case "needs_attention":
+    default:
+      return "needs_attention";
+  }
+}
+
+async function ensurePaymentOrderForLegacyPayment(
+  ctx: Parameters<
+    Parameters<typeof internalMutation>[0]["handler"]
+  >[0],
+  payment: Doc<"payments">,
+) {
+  const legacyCorrelationToken = buildLegacyPaymentOrderCorrelationToken(payment._id);
+  let paymentOrder =
+    (payment.paymentOrderId ? await ctx.db.get(payment.paymentOrderId) : null) ??
+    null;
+
+  if (!paymentOrder) {
+    const providerLink = await ctx.db
+      .query("paymentProviderLinks")
+      .withIndex("by_legacy_payment", (q) => q.eq("legacyPaymentId", payment._id))
+      .order("desc")
+      .first();
+    paymentOrder = providerLink ? ((await ctx.db.get(providerLink.paymentOrderId)) ?? null) : null;
+  }
+
+  if (!paymentOrder) {
+    paymentOrder =
+      (await ctx.db
+        .query("paymentOrders")
+        .withIndex("by_correlation_token", (q) => q.eq("correlationToken", legacyCorrelationToken))
+        .unique()) ?? null;
+  }
+
+  const now = Date.now();
+  const paymentOrderPatch = omitUndefined({
+    jobId: payment.jobId,
+    studioId: payment.studioId,
+    studioUserId: payment.studioUserId,
+    instructorId: payment.instructorId,
+    instructorUserId: payment.instructorUserId,
+    provider: payment.provider,
+    status: mapLegacyPaymentStatusToOrderStatus(payment.status),
+    currency: payment.currency,
+    instructorGrossAmountAgorot: payment.instructorBaseAmountAgorot,
+    platformFeeAmountAgorot: payment.platformMarkupAmountAgorot,
+    studioChargeAmountAgorot: payment.studioChargeAmountAgorot,
+    platformFeeBps: payment.platformMarkupBps,
+    providerCheckoutId: payment.providerCheckoutId,
+    providerPaymentId: payment.providerPaymentId,
+    latestError: payment.lastError,
+    capturedAt:
+      payment.status === "captured" || payment.status === "refunded"
+        ? (payment.capturedAt ?? payment.updatedAt ?? payment.createdAt)
+        : undefined,
+    updatedAt: now,
+  });
+
+  let created = false;
+  if (!paymentOrder) {
+    const paymentOrderId = await ctx.db.insert("paymentOrders", {
+      jobId: payment.jobId,
+      studioId: payment.studioId,
+      studioUserId: payment.studioUserId,
+      provider: payment.provider,
+      correlationToken: legacyCorrelationToken,
+      status: mapLegacyPaymentStatusToOrderStatus(payment.status),
+      currency: payment.currency,
+      instructorGrossAmountAgorot: payment.instructorBaseAmountAgorot,
+      platformFeeAmountAgorot: payment.platformMarkupAmountAgorot,
+      studioChargeAmountAgorot: payment.studioChargeAmountAgorot,
+      platformFeeBps: payment.platformMarkupBps,
+      providerCheckoutId: payment.providerCheckoutId,
+      providerPaymentId: payment.providerPaymentId,
+      latestError: payment.lastError,
+      capturedAt:
+        payment.status === "captured" || payment.status === "refunded"
+          ? (payment.capturedAt ?? payment.updatedAt ?? payment.createdAt)
+          : undefined,
+      createdAt: payment.createdAt,
+      updatedAt: now,
+      ...omitUndefined({
+        instructorId: payment.instructorId,
+        instructorUserId: payment.instructorUserId,
+      }),
+    });
+    paymentOrder = await ctx.db.get(paymentOrderId);
+    created = true;
+  } else {
+    await ctx.db.patch(paymentOrder._id, paymentOrderPatch);
+    paymentOrder = await ctx.db.get(paymentOrder._id);
+  }
+
+  if (!paymentOrder) {
+    throw new Error(`Failed to ensure payment order for ${String(payment._id)}`);
+  }
+
+  let paymentLinked = false;
+  if (payment.paymentOrderId !== paymentOrder._id) {
+    await ctx.db.patch(payment._id, {
+      paymentOrderId: paymentOrder._id,
+      updatedAt: now,
+    });
+    paymentLinked = true;
+  }
+
+  return { paymentOrder, created, paymentLinked };
+}
+
+async function ensureReleaseLedgerForPaymentOrder(
+  ctx: Parameters<
+    Parameters<typeof internalMutation>[0]["handler"]
+  >[0],
+  args: {
+    payment: Doc<"payments">;
+    paymentOrder: Doc<"paymentOrders">;
+    shouldRelease: boolean;
+    releaseReferenceType: Doc<"ledgerEntries">["referenceType"];
+    releaseReferenceId: string;
+    releaseAt: number;
+  },
+) {
+  if (
+    !args.shouldRelease ||
+    !args.paymentOrder.instructorId ||
+    !args.paymentOrder.instructorUserId ||
+    args.paymentOrder.instructorGrossAmountAgorot <= 0
+  ) {
+    return { ledgerEntriesInserted: 0, releasedNow: false };
+  }
+
+  let ledgerEntriesInserted = 0;
+  const heldEntry = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+    paymentOrderId: args.paymentOrder._id,
+    jobId: args.paymentOrder.jobId,
+    studioUserId: args.paymentOrder.studioUserId,
+    instructorUserId: args.paymentOrder.instructorUserId,
+    dedupeKey: `release:${args.paymentOrder._id}:held`,
+    entryType: "adjustment",
+    balanceBucket: "instructor_held",
+    amountAgorot: -args.paymentOrder.instructorGrossAmountAgorot,
+    currency: args.paymentOrder.currency,
+    referenceType: args.releaseReferenceType,
+    referenceId: args.releaseReferenceId,
+    createdAt: args.releaseAt,
+  });
+  if (heldEntry.created) {
+    ledgerEntriesInserted += 1;
+  }
+  const availableEntry = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+    paymentOrderId: args.paymentOrder._id,
+    jobId: args.paymentOrder.jobId,
+    studioUserId: args.paymentOrder.studioUserId,
+    instructorUserId: args.paymentOrder.instructorUserId,
+    dedupeKey: `release:${args.paymentOrder._id}:available`,
+    entryType: "adjustment",
+    balanceBucket: "instructor_available",
+    amountAgorot: args.paymentOrder.instructorGrossAmountAgorot,
+    currency: args.paymentOrder.currency,
+    referenceType: args.releaseReferenceType,
+    referenceId: args.releaseReferenceId,
+    createdAt: args.releaseAt,
+  });
+  if (availableEntry.created) {
+    ledgerEntriesInserted += 1;
+  }
+
+  if (!args.paymentOrder.releasedAt) {
+    await ctx.db.patch(args.paymentOrder._id, {
+      releasedAt: args.releaseAt,
+      updatedAt: Date.now(),
+    });
+  }
+
+  return {
+    ledgerEntriesInserted,
+    releasedNow: heldEntry.created || availableEntry.created,
+  };
+}
+
+async function ensureRefundLedgerForPaymentOrder(
+  ctx: Parameters<
+    Parameters<typeof internalMutation>[0]["handler"]
+  >[0],
+  args: {
+    payment: Doc<"payments">;
+    paymentOrder: Doc<"paymentOrders">;
+  },
+) {
+  if (args.payment.status !== "refunded") {
+    return 0;
+  }
+
+  const existingEntries = await ctx.db
+    .query("ledgerEntries")
+    .withIndex("by_payment_order", (q) => q.eq("paymentOrderId", args.paymentOrder._id))
+    .collect();
+  const balances = summarizeLedgerBalances(existingEntries);
+  const instructorRefundBucket =
+    balances.instructor_available > 0
+      ? "instructor_available"
+      : balances.instructor_held > 0
+        ? "instructor_held"
+        : "adjustments";
+  const refundAt = args.payment.updatedAt ?? args.payment.capturedAt ?? args.payment.createdAt;
+
+  let ledgerEntriesInserted = 0;
+  const grossRefund = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+    paymentOrderId: args.paymentOrder._id,
+    jobId: args.paymentOrder.jobId,
+    studioUserId: args.paymentOrder.studioUserId,
+    instructorUserId: args.paymentOrder.instructorUserId,
+    dedupeKey: `refund:${args.paymentOrder._id}:gross`,
+    entryType: "refund",
+    balanceBucket: "provider_clearing",
+    amountAgorot: -args.paymentOrder.studioChargeAmountAgorot,
+    currency: args.paymentOrder.currency,
+    referenceType: "refund",
+    referenceId: String(args.paymentOrder._id),
+    createdAt: refundAt,
+  });
+  if (grossRefund.created) {
+    ledgerEntriesInserted += 1;
+  }
+  const feeRefund = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+    paymentOrderId: args.paymentOrder._id,
+    jobId: args.paymentOrder.jobId,
+    studioUserId: args.paymentOrder.studioUserId,
+    instructorUserId: args.paymentOrder.instructorUserId,
+    dedupeKey: `refund:${args.paymentOrder._id}:platform_fee`,
+    entryType: "refund_fee_impact",
+    balanceBucket: "platform_available",
+    amountAgorot: -args.paymentOrder.platformFeeAmountAgorot,
+    currency: args.paymentOrder.currency,
+    referenceType: "refund",
+    referenceId: String(args.paymentOrder._id),
+    createdAt: refundAt,
+  });
+  if (feeRefund.created) {
+    ledgerEntriesInserted += 1;
+  }
+  const instructorRefund = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+    paymentOrderId: args.paymentOrder._id,
+    jobId: args.paymentOrder.jobId,
+    studioUserId: args.paymentOrder.studioUserId,
+    instructorUserId: args.paymentOrder.instructorUserId,
+    dedupeKey: `refund:${args.paymentOrder._id}:instructor`,
+    entryType: "adjustment",
+    balanceBucket: instructorRefundBucket,
+    amountAgorot: -args.paymentOrder.instructorGrossAmountAgorot,
+    currency: args.paymentOrder.currency,
+    referenceType: "refund",
+    referenceId: String(args.paymentOrder._id),
+    createdAt: refundAt,
+  });
+  if (instructorRefund.created) {
+    ledgerEntriesInserted += 1;
+  }
+
+  return ledgerEntriesInserted;
+}
+
+export const getMarketplaceFinanceBackfillReport = query({
+  args: {
+    sampleLimit: v.optional(v.number()),
+    accessToken: v.optional(v.string()),
+  },
+  returns: v.object({
+    paymentsTotal: v.number(),
+    paymentsMissingPaymentOrder: v.number(),
+    paymentsMissingProviderLinks: v.number(),
+    capturedOrRefundedPaymentsMissingLedger: v.number(),
+    capturedOrRefundedPaymentsMissingSchedule: v.number(),
+    paymentsWithMultiplePayouts: v.number(),
+    payoutsTotal: v.number(),
+    payoutsMissingBackfillLinks: v.number(),
+    samplePaymentIdsMissingOrder: v.array(v.id("payments")),
+    samplePaymentIdsMissingLedger: v.array(v.id("payments")),
+    samplePayoutIdsMissingLinks: v.array(v.id("payouts")),
+  }),
+  handler: async (ctx, args) => {
+    requireMigrationsAccessToken(args.accessToken);
+    const sampleLimit = Math.min(Math.max(args.sampleLimit ?? 20, 1), 100);
+
+    const [payments, paymentProviderLinks, ledgerEntries, payoutSchedules, payouts, payoutProviderLinks] =
+      await Promise.all([
+        ctx.db.query("payments").collect(),
+        ctx.db.query("paymentProviderLinks").collect(),
+        ctx.db.query("ledgerEntries").collect(),
+        ctx.db.query("payoutSchedules").collect(),
+        ctx.db.query("payouts").collect(),
+        ctx.db.query("payoutProviderLinks").collect(),
+      ]);
+
+    const paymentOrderIdsWithLedger = new Set(ledgerEntries.map((entry) => String(entry.paymentOrderId)));
+    const paymentOrderIdsWithSchedules = new Set(
+      payoutSchedules.map((schedule) => String(schedule.paymentOrderId)),
+    );
+    const legacyPaymentLinkIds = new Set(
+      paymentProviderLinks
+        .filter((link) => Boolean(link.legacyPaymentId))
+        .map((link) => String(link.legacyPaymentId)),
+    );
+    const payoutIdsWithLinks = new Set(
+      payoutProviderLinks
+        .filter((link) => Boolean(link.payoutId))
+        .map((link) => String(link.payoutId)),
+    );
+    const payoutCountByPaymentId = new Map<string, number>();
+
+    for (const payout of payouts) {
+      const key = String(payout.paymentId);
+      payoutCountByPaymentId.set(key, (payoutCountByPaymentId.get(key) ?? 0) + 1);
+    }
+
+    let paymentsMissingPaymentOrder = 0;
+    let paymentsMissingProviderLinks = 0;
+    let capturedOrRefundedPaymentsMissingLedger = 0;
+    let capturedOrRefundedPaymentsMissingSchedule = 0;
+    let paymentsWithMultiplePayouts = 0;
+    const samplePaymentIdsMissingOrder: Id<"payments">[] = [];
+    const samplePaymentIdsMissingLedger: Id<"payments">[] = [];
+
+    for (const payment of payments) {
+      const hasOrder = Boolean(payment.paymentOrderId);
+      const hasLegacyLink = legacyPaymentLinkIds.has(String(payment._id));
+      const linkedOrderId = payment.paymentOrderId ? String(payment.paymentOrderId) : undefined;
+      const capturedOrRefunded = payment.status === "captured" || payment.status === "refunded";
+
+      if (!hasOrder) {
+        paymentsMissingPaymentOrder += 1;
+        if (samplePaymentIdsMissingOrder.length < sampleLimit) {
+          samplePaymentIdsMissingOrder.push(payment._id);
+        }
+      }
+      if (!hasLegacyLink) {
+        paymentsMissingProviderLinks += 1;
+      }
+      if (
+        capturedOrRefunded &&
+        (!linkedOrderId || !paymentOrderIdsWithLedger.has(linkedOrderId))
+      ) {
+        capturedOrRefundedPaymentsMissingLedger += 1;
+        if (samplePaymentIdsMissingLedger.length < sampleLimit) {
+          samplePaymentIdsMissingLedger.push(payment._id);
+        }
+      }
+      if (
+        capturedOrRefunded &&
+        payment.instructorUserId &&
+        (!linkedOrderId || !paymentOrderIdsWithSchedules.has(linkedOrderId))
+      ) {
+        capturedOrRefundedPaymentsMissingSchedule += 1;
+      }
+      if ((payoutCountByPaymentId.get(String(payment._id)) ?? 0) > 1) {
+        paymentsWithMultiplePayouts += 1;
+      }
+    }
+
+    let payoutsMissingBackfillLinks = 0;
+    const samplePayoutIdsMissingLinks: Id<"payouts">[] = [];
+    for (const payout of payouts) {
+      if (!payout.paymentOrderId || !payout.payoutScheduleId || !payoutIdsWithLinks.has(String(payout._id))) {
+        payoutsMissingBackfillLinks += 1;
+        if (samplePayoutIdsMissingLinks.length < sampleLimit) {
+          samplePayoutIdsMissingLinks.push(payout._id);
+        }
+      }
+    }
+
+    return {
+      paymentsTotal: payments.length,
+      paymentsMissingPaymentOrder,
+      paymentsMissingProviderLinks,
+      capturedOrRefundedPaymentsMissingLedger,
+      capturedOrRefundedPaymentsMissingSchedule,
+      paymentsWithMultiplePayouts,
+      payoutsTotal: payouts.length,
+      payoutsMissingBackfillLinks,
+      samplePaymentIdsMissingOrder,
+      samplePaymentIdsMissingLedger,
+      samplePayoutIdsMissingLinks,
+    };
+  },
+});
+
+export const backfillMarketplaceFinance = action({
+  args: {
+    cursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
+    accessToken: v.optional(v.string()),
+  },
+  returns: v.object({
+    scanned: v.number(),
+    paymentOrdersCreated: v.number(),
+    paymentsLinked: v.number(),
+    paymentProviderLinksCreated: v.number(),
+    payoutSchedulesCreated: v.number(),
+    payoutsLinked: v.number(),
+    payoutProviderLinksCreated: v.number(),
+    ledgerEntriesInserted: v.number(),
+    paymentsWithMultiplePayouts: v.number(),
+    hasMore: v.boolean(),
+    continueCursor: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    requireMigrationsAccessToken(args.accessToken);
+    return await ctx.runMutation(internal.migrations.backfillMarketplaceFinanceBatch, {
+      cursor: args.cursor,
+      batchSize: args.batchSize,
+    });
+  },
+});
+
+export const backfillMarketplaceFinanceBatch = internalMutation({
+  args: {
+    cursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
+  },
+  returns: v.object({
+    scanned: v.number(),
+    paymentOrdersCreated: v.number(),
+    paymentsLinked: v.number(),
+    paymentProviderLinksCreated: v.number(),
+    payoutSchedulesCreated: v.number(),
+    payoutsLinked: v.number(),
+    payoutProviderLinksCreated: v.number(),
+    ledgerEntriesInserted: v.number(),
+    paymentsWithMultiplePayouts: v.number(),
+    hasMore: v.boolean(),
+    continueCursor: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const batchSize = getFinanceBackfillBatchSize(args.batchSize);
+    const page = await ctx.db
+      .query("payments")
+      .paginate({ cursor: args.cursor ?? null, numItems: batchSize });
+
+    let paymentOrdersCreated = 0;
+    let paymentsLinked = 0;
+    let paymentProviderLinksCreated = 0;
+    let payoutSchedulesCreated = 0;
+    let payoutsLinked = 0;
+    let payoutProviderLinksCreated = 0;
+    let ledgerEntriesInserted = 0;
+    let paymentsWithMultiplePayouts = 0;
+
+    for (const payment of page.page) {
+      const { paymentOrder, created, paymentLinked } = await ensurePaymentOrderForLegacyPayment(
+        ctx,
+        payment,
+      );
+      if (created) {
+        paymentOrdersCreated += 1;
+      }
+      if (paymentLinked) {
+        paymentsLinked += 1;
+      }
+
+      if (
+        await upsertPaymentProviderLinkForMigration(ctx, {
+          paymentOrderId: paymentOrder._id,
+          legacyPaymentId: payment._id,
+          providerObjectType: "merchant_reference",
+          providerObjectId: String(payment._id),
+          correlationToken: paymentOrder.correlationToken,
+        })
+      ) {
+        paymentProviderLinksCreated += 1;
+      }
+      if (
+        await upsertPaymentProviderLinkForMigration(ctx, {
+          paymentOrderId: paymentOrder._id,
+          legacyPaymentId: payment._id,
+          providerObjectType: "checkout",
+          providerObjectId: payment.providerCheckoutId,
+          correlationToken: paymentOrder.correlationToken,
+        })
+      ) {
+        paymentProviderLinksCreated += 1;
+      }
+      if (
+        await upsertPaymentProviderLinkForMigration(ctx, {
+          paymentOrderId: paymentOrder._id,
+          legacyPaymentId: payment._id,
+          providerObjectType: "payment",
+          providerObjectId: payment.providerPaymentId,
+          correlationToken: paymentOrder.correlationToken,
+        })
+      ) {
+        paymentProviderLinksCreated += 1;
+      }
+
+      const capturedAt = payment.capturedAt ?? payment.updatedAt ?? payment.createdAt;
+      if (payment.status === "captured" || payment.status === "refunded") {
+        const captureGross = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+          paymentOrderId: paymentOrder._id,
+          jobId: paymentOrder.jobId,
+          studioUserId: paymentOrder.studioUserId,
+          instructorUserId: paymentOrder.instructorUserId,
+          dedupeKey: `capture:${paymentOrder._id}:gross`,
+          entryType: "charge_gross",
+          balanceBucket: "provider_clearing",
+          amountAgorot: paymentOrder.studioChargeAmountAgorot,
+          currency: paymentOrder.currency,
+          referenceType: "payment_order",
+          referenceId: String(paymentOrder._id),
+          createdAt: capturedAt,
+        });
+        if (captureGross.created) {
+          ledgerEntriesInserted += 1;
+        }
+        const captureFee = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+          paymentOrderId: paymentOrder._id,
+          jobId: paymentOrder.jobId,
+          studioUserId: paymentOrder.studioUserId,
+          instructorUserId: paymentOrder.instructorUserId,
+          dedupeKey: `capture:${paymentOrder._id}:platform_fee`,
+          entryType: "platform_fee",
+          balanceBucket: "platform_available",
+          amountAgorot: paymentOrder.platformFeeAmountAgorot,
+          currency: paymentOrder.currency,
+          referenceType: "payment_order",
+          referenceId: String(paymentOrder._id),
+          createdAt: capturedAt,
+        });
+        if (captureFee.created) {
+          ledgerEntriesInserted += 1;
+        }
+        const captureInstructor = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+          paymentOrderId: paymentOrder._id,
+          jobId: paymentOrder.jobId,
+          studioUserId: paymentOrder.studioUserId,
+          instructorUserId: paymentOrder.instructorUserId,
+          dedupeKey: `capture:${paymentOrder._id}:instructor_gross`,
+          entryType: "instructor_gross",
+          balanceBucket: "instructor_held",
+          amountAgorot: paymentOrder.instructorGrossAmountAgorot,
+          currency: paymentOrder.currency,
+          referenceType: "payment_order",
+          referenceId: String(paymentOrder._id),
+          createdAt: capturedAt,
+        });
+        if (captureInstructor.created) {
+          ledgerEntriesInserted += 1;
+        }
+      }
+
+      const [job, instructorProfile, legacyPayouts] = await Promise.all([
+        ctx.db.get(payment.jobId),
+        payment.instructorId ? ctx.db.get(payment.instructorId) : Promise.resolve(null),
+        ctx.db
+          .query("payouts")
+          .withIndex("by_payment", (q) => q.eq("paymentId", payment._id))
+          .order("desc")
+          .take(10),
+      ]);
+      if (legacyPayouts.length > 1) {
+        paymentsWithMultiplePayouts += 1;
+      }
+      const primaryPayout = legacyPayouts[0] ?? null;
+      const jobCompleted = job?.status === "completed";
+      const kycApproved = isInstructorKycApprovedForMigration(instructorProfile);
+
+      const releaseResult = await ensureReleaseLedgerForPaymentOrder(ctx, {
+        payment,
+        paymentOrder,
+        shouldRelease:
+          Boolean(primaryPayout) ||
+          Boolean(paymentOrder.releasedAt) ||
+          ((payment.status === "captured" || payment.status === "refunded") &&
+            jobCompleted &&
+            kycApproved),
+        releaseReferenceType: primaryPayout ? "adjustment" : "job_completion",
+        releaseReferenceId: primaryPayout ? `migration:release:${String(payment._id)}` : String(payment.jobId),
+        releaseAt:
+          paymentOrder.releasedAt ??
+          primaryPayout?.createdAt ??
+          payment.capturedAt ??
+          payment.updatedAt ??
+          payment.createdAt,
+      });
+      ledgerEntriesInserted += releaseResult.ledgerEntriesInserted;
+
+      if (paymentOrder.instructorId && paymentOrder.instructorUserId) {
+        let payoutSchedule =
+          (primaryPayout?.payoutScheduleId ? await ctx.db.get(primaryPayout.payoutScheduleId) : null) ??
+          (await ctx.db
+            .query("payoutSchedules")
+            .withIndex("by_payment_order", (q) => q.eq("paymentOrderId", paymentOrder._id))
+            .order("desc")
+            .first());
+
+        const nextScheduleStatus = primaryPayout
+          ? mapLegacyPayoutToScheduleStatus(primaryPayout.status)
+          : payment.status === "refunded"
+            ? "cancelled"
+            : jobCompleted && kycApproved
+              ? "available"
+              : payment.status === "captured"
+                ? "blocked"
+                : "pending_eligibility";
+        const scheduleFailureReason =
+          primaryPayout?.lastError ??
+          (payment.status === "refunded"
+            ? "Payment refunded"
+            : payment.status === "captured" && !jobCompleted
+              ? "Job is not completed yet"
+              : payment.status === "captured" && !kycApproved
+                ? "Instructor identity verification is required"
+                : undefined);
+
+        if (!payoutSchedule && (payment.status === "captured" || payment.status === "refunded" || primaryPayout)) {
+          const payoutScheduleId = await ctx.db.insert("payoutSchedules", {
+            paymentOrderId: paymentOrder._id,
+            sourcePaymentId: payment._id,
+            payoutId: primaryPayout?._id,
+            jobId: payment.jobId,
+            studioId: payment.studioId,
+            studioUserId: payment.studioUserId,
+            instructorId: paymentOrder.instructorId,
+            instructorUserId: paymentOrder.instructorUserId,
+            destinationId: primaryPayout?.destinationId,
+            status: nextScheduleStatus,
+            amountAgorot: paymentOrder.instructorGrossAmountAgorot,
+            currency: paymentOrder.currency,
+            releaseAfter: nextScheduleStatus === "scheduled" ? primaryPayout?.createdAt : undefined,
+            readyAt:
+              nextScheduleStatus === "available" || nextScheduleStatus === "scheduled" || nextScheduleStatus === "processing"
+                ? (paymentOrder.releasedAt ?? primaryPayout?.createdAt ?? payment.capturedAt ?? payment.createdAt)
+                : undefined,
+            executedAt:
+              nextScheduleStatus === "paid"
+                ? (primaryPayout?.terminalAt ?? primaryPayout?.updatedAt ?? primaryPayout?.createdAt)
+                : undefined,
+            failureReason: scheduleFailureReason,
+            createdAt: primaryPayout?.createdAt ?? payment.createdAt,
+            updatedAt: Date.now(),
+          });
+          payoutSchedule = await ctx.db.get(payoutScheduleId);
+          payoutSchedulesCreated += 1;
+        } else if (payoutSchedule) {
+          await ctx.db.patch(payoutSchedule._id, {
+            sourcePaymentId: payment._id,
+            payoutId: primaryPayout?._id ?? payoutSchedule.payoutId,
+            destinationId: primaryPayout?.destinationId ?? payoutSchedule.destinationId,
+            status: nextScheduleStatus,
+            amountAgorot: paymentOrder.instructorGrossAmountAgorot,
+            currency: paymentOrder.currency,
+            releaseAfter: nextScheduleStatus === "scheduled" ? primaryPayout?.createdAt : payoutSchedule.releaseAfter,
+            readyAt:
+              nextScheduleStatus === "available" || nextScheduleStatus === "scheduled" || nextScheduleStatus === "processing"
+                ? (payoutSchedule.readyAt ??
+                  paymentOrder.releasedAt ??
+                  primaryPayout?.createdAt ??
+                  payment.capturedAt ??
+                  payment.createdAt)
+                : payoutSchedule.readyAt,
+            executedAt:
+              nextScheduleStatus === "paid"
+                ? (payoutSchedule.executedAt ??
+                  primaryPayout?.terminalAt ??
+                  primaryPayout?.updatedAt ??
+                  primaryPayout?.createdAt)
+                : payoutSchedule.executedAt,
+            failureReason: scheduleFailureReason,
+            updatedAt: Date.now(),
+          });
+          payoutSchedule = await ctx.db.get(payoutSchedule._id);
+        }
+
+        if (payoutSchedule && primaryPayout) {
+          for (const payout of legacyPayouts) {
+            if (payout.paymentOrderId !== paymentOrder._id || payout.payoutScheduleId !== payoutSchedule._id) {
+              await ctx.db.patch(payout._id, {
+                paymentOrderId: paymentOrder._id,
+                payoutScheduleId: payoutSchedule._id,
+                updatedAt: Date.now(),
+              });
+              payoutsLinked += 1;
+            }
+
+            if (
+              await upsertPayoutProviderLinkForMigration(ctx, {
+                payoutScheduleId: payoutSchedule._id,
+                payoutId: payout._id,
+                merchantReferenceId: String(payout._id),
+                providerPayoutId: payout.providerPayoutId,
+                correlationToken: `legacy-payout:${String(payout._id)}`,
+              })
+            ) {
+              payoutProviderLinksCreated += 1;
+            }
+          }
+
+          const reserveAt = primaryPayout.createdAt;
+          const reserveAvailable = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+            paymentOrderId: paymentOrder._id,
+            jobId: paymentOrder.jobId,
+            studioUserId: paymentOrder.studioUserId,
+            instructorUserId: payoutSchedule.instructorUserId,
+            payoutScheduleId: payoutSchedule._id,
+            payoutId: primaryPayout._id,
+            dedupeKey: `reserve:${payoutSchedule._id}:available`,
+            entryType: "payout_reserved",
+            balanceBucket: "instructor_available",
+            amountAgorot: -payoutSchedule.amountAgorot,
+            currency: payoutSchedule.currency,
+            referenceType: "payout_schedule",
+            referenceId: String(payoutSchedule._id),
+            createdAt: reserveAt,
+          });
+          if (reserveAvailable.created) {
+            ledgerEntriesInserted += 1;
+          }
+          const reserveHeld = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+            paymentOrderId: paymentOrder._id,
+            jobId: paymentOrder.jobId,
+            studioUserId: paymentOrder.studioUserId,
+            instructorUserId: payoutSchedule.instructorUserId,
+            payoutScheduleId: payoutSchedule._id,
+            payoutId: primaryPayout._id,
+            dedupeKey: `reserve:${payoutSchedule._id}:reserved`,
+            entryType: "payout_reserved",
+            balanceBucket: "instructor_reserved",
+            amountAgorot: payoutSchedule.amountAgorot,
+            currency: payoutSchedule.currency,
+            referenceType: "payout_schedule",
+            referenceId: String(payoutSchedule._id),
+            createdAt: reserveAt,
+          });
+          if (reserveHeld.created) {
+            ledgerEntriesInserted += 1;
+          }
+
+          if (primaryPayout.status === "paid") {
+            const paidReserved = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+              paymentOrderId: paymentOrder._id,
+              jobId: paymentOrder.jobId,
+              studioUserId: paymentOrder.studioUserId,
+              instructorUserId: payoutSchedule.instructorUserId,
+              payoutScheduleId: payoutSchedule._id,
+              payoutId: primaryPayout._id,
+              dedupeKey: `paid:${payoutSchedule._id}:reserved`,
+              entryType: "payout_sent",
+              balanceBucket: "instructor_reserved",
+              amountAgorot: -payoutSchedule.amountAgorot,
+              currency: payoutSchedule.currency,
+              referenceType: "payout",
+              referenceId: String(primaryPayout._id),
+              createdAt: primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
+            });
+            if (paidReserved.created) {
+              ledgerEntriesInserted += 1;
+            }
+            const paidOut = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+              paymentOrderId: paymentOrder._id,
+              jobId: paymentOrder.jobId,
+              studioUserId: paymentOrder.studioUserId,
+              instructorUserId: payoutSchedule.instructorUserId,
+              payoutScheduleId: payoutSchedule._id,
+              payoutId: primaryPayout._id,
+              dedupeKey: `paid:${payoutSchedule._id}:paid`,
+              entryType: "payout_sent",
+              balanceBucket: "instructor_paid",
+              amountAgorot: payoutSchedule.amountAgorot,
+              currency: payoutSchedule.currency,
+              referenceType: "payout",
+              referenceId: String(primaryPayout._id),
+              createdAt: primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
+            });
+            if (paidOut.created) {
+              ledgerEntriesInserted += 1;
+            }
+          }
+
+          if (
+            primaryPayout.status === "failed" ||
+            primaryPayout.status === "cancelled" ||
+            primaryPayout.status === "needs_attention"
+          ) {
+            const failedReserved = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+              paymentOrderId: paymentOrder._id,
+              jobId: paymentOrder.jobId,
+              studioUserId: paymentOrder.studioUserId,
+              instructorUserId: payoutSchedule.instructorUserId,
+              payoutScheduleId: payoutSchedule._id,
+              payoutId: primaryPayout._id,
+              dedupeKey: `failed:${payoutSchedule._id}:reserved`,
+              entryType: "payout_failed",
+              balanceBucket: "instructor_reserved",
+              amountAgorot: -payoutSchedule.amountAgorot,
+              currency: payoutSchedule.currency,
+              referenceType: "payout",
+              referenceId: String(primaryPayout._id),
+              createdAt: primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
+            });
+            if (failedReserved.created) {
+              ledgerEntriesInserted += 1;
+            }
+            const failedAvailable = await insertMarketplaceLedgerEntryIfMissing(ctx, {
+              paymentOrderId: paymentOrder._id,
+              jobId: paymentOrder.jobId,
+              studioUserId: paymentOrder.studioUserId,
+              instructorUserId: payoutSchedule.instructorUserId,
+              payoutScheduleId: payoutSchedule._id,
+              payoutId: primaryPayout._id,
+              dedupeKey: `failed:${payoutSchedule._id}:available`,
+              entryType: "payout_failed",
+              balanceBucket: "instructor_available",
+              amountAgorot: payoutSchedule.amountAgorot,
+              currency: payoutSchedule.currency,
+              referenceType: "payout",
+              referenceId: String(primaryPayout._id),
+              createdAt: primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
+            });
+            if (failedAvailable.created) {
+              ledgerEntriesInserted += 1;
+            }
+          }
+        }
+      }
+
+      ledgerEntriesInserted += await ensureRefundLedgerForPaymentOrder(ctx, {
+        payment,
+        paymentOrder,
+      });
+    }
+
+    return {
+      scanned: page.page.length,
+      paymentOrdersCreated,
+      paymentsLinked,
+      paymentProviderLinksCreated,
+      payoutSchedulesCreated,
+      payoutsLinked,
+      payoutProviderLinksCreated,
+      ledgerEntriesInserted,
+      paymentsWithMultiplePayouts,
+      hasMore: !page.isDone,
+      ...omitUndefined({
+        continueCursor: page.isDone ? undefined : page.continueCursor,
+      }),
+    };
+  },
+});
 
 export const getZoneDataQualityReport = query({
   args: {
