@@ -488,9 +488,9 @@ export function QueueMap({
           style={[
             styles.gps,
             {
-              borderWidth: 0,
               backgroundColor: palette.surface as string,
-              boxShadow: "none",
+              borderColor: palette.borderStrong as string,
+              boxShadow: "0 16px 30px rgba(15, 23, 15, 0.14)",
             },
           ]}
         />

@@ -8,10 +8,13 @@ import {
   executeRapydSignedGet,
   executeRapydSignedPost,
   extractRapydErrorCode,
+  listRapydPaymentMethodsByCountry,
   resolveRapydCheckoutMethodSelection,
   resolveRapydRequestCredentials,
 } from "./integrations/rapyd/client";
 import {
+  normalizeCurrencyCode,
+  normalizeIsoCountryCode,
   resolveHostedPageUrl,
   resolvePaymentsCurrency,
   resolveRapydCountry,
@@ -82,6 +85,16 @@ type CheckoutStatusResult = {
     | "refunded";
   providerPaymentId?: string;
 };
+
+const buildProviderMethodCacheKey = (
+  kind: "payment_methods_country" | "payout_method_types" | "payout_required_fields",
+  params: Record<string, string | number | undefined>,
+): string =>
+  `${kind}:${Object.entries(params)
+    .filter(([, value]) => value !== undefined && value !== "")
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join("&")}`;
 
 export const createCheckoutForJob = action({
   args: {
@@ -171,7 +184,25 @@ export const createCheckoutForJob = action({
     let pendingPayment: { _id: Id<"payments"> } | null = null;
 
     try {
+      const paymentOrder = await ctx.runMutation(internal.payments.createPaymentOrder, {
+        jobId: job._id,
+        studioId: studio._id,
+        studioUserId: user._id,
+        instructorId: instructorProfile._id,
+        instructorUserId: instructorProfile.userId,
+        provider: RAPYD_PROVIDER,
+        currency,
+        instructorGrossAmountAgorot: instructorBaseAmountAgorot,
+        platformFeeAmountAgorot: platformMarkupAmountAgorot,
+        studioChargeAmountAgorot,
+        platformFeeBps: markupBps,
+      });
+      if (!paymentOrder?._id) {
+        throw new ConvexError("Failed to create payment order");
+      }
+
       pendingPayment = (await ctx.runMutation(internal.payments.createPendingPayment, {
+        paymentOrderId: paymentOrder._id,
         jobId: job._id,
         studioId: studio._id,
         studioUserId: user._id,
@@ -206,9 +237,10 @@ export const createCheckoutForJob = action({
           email: user.email ?? undefined,
           name: studio.studioName || user.fullName || "Studio",
         },
-        merchant_reference_id: pendingPayment._id,
+        merchant_reference_id: paymentOrder.correlationToken,
         metadata: {
           paymentId: pendingPayment._id,
+          paymentOrderId: paymentOrder._id,
           jobId: job._id,
           studioId: studio._id,
           studioUserId: user._id,
@@ -270,6 +302,8 @@ export const createCheckoutForJob = action({
       await ctx.runMutation(internal.payments.markCheckoutCreated, {
         paymentId: pendingPayment._id,
         providerCheckoutId: payload.data.id,
+        checkoutUrl:
+          payload.data.redirect_url ?? payload.data.complete_checkout_url ?? completeCheckoutUrl,
         metadata: {
           rapydProviderStatus: providerStatus,
           rapydRequestedPaymentMethodSelectors: checkoutMethodSelection.requestedSelectors,
@@ -418,6 +452,442 @@ export const retrieveCheckoutForPayment = action({
       ...(checkoutStatusRaw ? { checkoutStatusRaw } : {}),
       ...(providerPaymentId ? { providerPaymentId } : {}),
     };
+  },
+});
+
+export const listAvailablePaymentMethods = action({
+  args: {
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
+  },
+  returns: v.array(
+    v.object({
+      type: v.string(),
+      category: v.optional(v.string()),
+      paymentFlowType: v.optional(v.string()),
+      supportedDigitalWalletProviders: v.array(v.string()),
+      status: v.optional(v.number()),
+    }),
+  ),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    Array<{
+      type: string;
+      category?: string;
+      paymentFlowType?: string;
+      supportedDigitalWalletProviders: string[];
+      status?: number;
+    }>
+  > => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+
+    const country = resolveRapydCountry(args.country);
+    const currency = resolvePaymentsCurrency(args.currency);
+    const cacheKey = buildProviderMethodCacheKey("payment_methods_country", {
+      country,
+      currency,
+    });
+    const cached = (await ctx.runQuery(internal.payments.getProviderMethodCache, {
+      kind: "payment_methods_country",
+      cacheKey,
+    })) as
+      | {
+          expiresAt: number;
+          payload: {
+            methods?: Array<{
+              type: string;
+              category?: string;
+              paymentFlowType?: string;
+              supportedDigitalWalletProviders?: string[];
+              status?: string | number;
+            }>;
+          };
+        }
+      | null;
+    if (cached && cached.expiresAt > Date.now() && cached.payload.methods) {
+      return cached.payload.methods.map((method: (typeof cached.payload.methods)[number]) =>
+        omitUndefined({
+          type: method.type,
+          category: method.category,
+          paymentFlowType: method.paymentFlowType,
+          supportedDigitalWalletProviders: method.supportedDigitalWalletProviders ?? [],
+          status: typeof method.status === "number" ? method.status : undefined,
+        }) as {
+          type: string;
+          category?: string;
+          paymentFlowType?: string;
+          supportedDigitalWalletProviders: string[];
+          status?: number;
+        },
+      );
+    }
+
+    const { accessKey, secretKey, baseUrl } = resolveRapydRequestCredentials();
+    const methods = await listRapydPaymentMethodsByCountry({
+      accessKey,
+      secretKey,
+      baseUrl,
+      country,
+      currency,
+    });
+    await ctx.runMutation(internal.payments.upsertProviderMethodCache, {
+      kind: "payment_methods_country",
+      cacheKey,
+      country,
+      currency,
+      methods: methods.map((method) => ({
+        type: method.type,
+        ...omitUndefined({
+          category: method.category,
+          paymentFlowType: method.paymentFlowType,
+          supportedDigitalWalletProviders: method.supportedDigitalWalletProviders,
+          status: method.status,
+        }),
+      })) as any,
+    });
+    return methods;
+  },
+});
+
+export const listAvailablePayoutMethodTypes = action({
+  args: {
+    beneficiaryCountry: v.string(),
+    payoutCurrency: v.string(),
+    category: v.optional(v.string()),
+    beneficiaryEntityType: v.optional(v.union(v.literal("individual"), v.literal("company"))),
+    senderCountry: v.optional(v.string()),
+    senderCurrency: v.optional(v.string()),
+    senderEntityType: v.optional(v.union(v.literal("individual"), v.literal("company"))),
+  },
+  returns: v.array(
+    v.object({
+      payoutMethodType: v.string(),
+      name: v.optional(v.string()),
+      category: v.optional(v.string()),
+      status: v.optional(v.union(v.string(), v.number())),
+      countries: v.optional(v.array(v.string())),
+      currencies: v.optional(v.array(v.string())),
+    }),
+  ),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    Array<{
+      payoutMethodType: string;
+      name?: string;
+      category?: string;
+      status?: string | number;
+      countries?: string[];
+      currencies?: string[];
+    }>
+  > => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+
+    const beneficiaryCountry = normalizeIsoCountryCode(
+      args.beneficiaryCountry,
+      "beneficiaryCountry",
+    );
+    const payoutCurrency = normalizeCurrencyCode(args.payoutCurrency, "payoutCurrency");
+    const category = (args.category ?? "bank").trim().toLowerCase();
+    const senderCountry = resolveRapydCountry(args.senderCountry);
+    const senderCurrency = resolvePaymentsCurrency(args.senderCurrency);
+    const senderEntityType = args.senderEntityType ?? "company";
+    const beneficiaryEntityType = args.beneficiaryEntityType ?? "individual";
+    const cacheKey = buildProviderMethodCacheKey("payout_method_types", {
+      beneficiaryCountry,
+      payoutCurrency,
+      category,
+      senderCountry,
+      senderCurrency,
+      senderEntityType,
+      beneficiaryEntityType,
+    });
+    const cached = (await ctx.runQuery(internal.payments.getProviderMethodCache, {
+      kind: "payout_method_types",
+      cacheKey,
+    })) as
+      | {
+          expiresAt: number;
+          payload: {
+            methods?: Array<{
+              type: string;
+              payoutMethodType?: string;
+              name?: string;
+              category?: string;
+              status?: string | number;
+              countries?: string[];
+              currencies?: string[];
+            }>;
+          };
+        }
+      | null;
+    if (cached && cached.expiresAt > Date.now() && cached.payload.methods) {
+      return cached.payload.methods.map((method: (typeof cached.payload.methods)[number]) =>
+        omitUndefined({
+          payoutMethodType: method.payoutMethodType ?? method.type,
+          name: method.name,
+          category: method.category,
+          status: method.status,
+          countries: method.countries,
+          currencies: method.currencies,
+        }) as {
+          payoutMethodType: string;
+          name?: string;
+          category?: string;
+          status?: string | number;
+          countries?: string[];
+          currencies?: string[];
+        },
+      );
+    }
+
+    const { accessKey, secretKey, baseUrl } = resolveRapydRequestCredentials();
+    const params = new URLSearchParams({
+      beneficiary_country: beneficiaryCountry,
+      payout_currency: payoutCurrency,
+      category,
+      sender_country: senderCountry,
+      sender_currency: senderCurrency,
+      sender_entity_type: senderEntityType,
+      beneficiary_entity_type: beneficiaryEntityType,
+    });
+    const requestPath = `/v1/payout_method_types?${params.toString()}`;
+    const requestUrl = new URL(requestPath, `${baseUrl}/`);
+    const { response, responseText, signatureEncoding } = await executeRapydSignedGet({
+      url: requestUrl.toString(),
+      path: `${requestUrl.pathname}${requestUrl.search}`,
+      accessKey,
+      secretKey,
+    });
+    if (!response.ok) {
+      throw new ConvexError(
+        `Rapyd payout method lookup failed (HTTP ${response.status}) [${signatureEncoding}]: ${responseText.slice(0, 300)}`,
+      );
+    }
+    const payload = JSON.parse(responseText) as {
+      status?: { status?: string; message?: string; error_code?: string };
+      data?: Array<{
+        payout_method_type?: string;
+        name?: string;
+        category?: string;
+        status?: string | number;
+        beneficiary_countries?: string[];
+        payout_currencies?: string[];
+      }>;
+    };
+    if ((payload.status?.status ?? "ERROR") !== "SUCCESS" || !Array.isArray(payload.data)) {
+      throw new ConvexError(
+        `Rapyd payout method lookup rejected: ${payload.status?.message ?? payload.status?.error_code ?? "Unknown error"}`,
+      );
+    }
+    const methods: Array<{
+      payoutMethodType: string;
+      name?: string;
+      category?: string;
+      status?: string | number;
+      countries?: string[];
+      currencies?: string[];
+    }> = payload.data
+      .filter((row) => typeof row.payout_method_type === "string" && row.payout_method_type.trim())
+      .map((row) =>
+        omitUndefined({
+          payoutMethodType: row.payout_method_type!.trim(),
+          name: row.name?.trim(),
+          category: row.category?.trim(),
+          status: row.status,
+          countries: row.beneficiary_countries,
+          currencies: row.payout_currencies,
+        }) as {
+          payoutMethodType: string;
+          name?: string;
+          category?: string;
+          status?: string | number;
+          countries?: string[];
+          currencies?: string[];
+        },
+      );
+    await ctx.runMutation(internal.payments.upsertProviderMethodCache, {
+      kind: "payout_method_types",
+      cacheKey,
+      country: beneficiaryCountry,
+      currency: payoutCurrency,
+      methods: methods.map((method) => ({
+        type: method.payoutMethodType,
+        ...omitUndefined({
+          payoutMethodType: method.payoutMethodType,
+          name: method.name,
+          category: method.category,
+          status: method.status,
+          countries: method.countries,
+          currencies: method.currencies,
+        }),
+      })) as any,
+    });
+    return methods;
+  },
+});
+
+export const getPayoutRequiredFields = action({
+  args: {
+    payoutMethodType: v.string(),
+    beneficiaryCountry: v.string(),
+    payoutCurrency: v.string(),
+    payoutAmount: v.number(),
+    beneficiaryEntityType: v.optional(v.union(v.literal("individual"), v.literal("company"))),
+    senderCountry: v.optional(v.string()),
+    senderCurrency: v.optional(v.string()),
+    senderEntityType: v.optional(v.union(v.literal("individual"), v.literal("company"))),
+  },
+  returns: v.array(
+    v.object({
+      name: v.string(),
+      type: v.optional(v.string()),
+      required: v.optional(v.boolean()),
+      description: v.optional(v.string()),
+    }),
+  ),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    Array<{
+      name: string;
+      type?: string;
+      required?: boolean;
+      description?: string;
+    }>
+  > => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+
+    const payoutMethodType = args.payoutMethodType.trim().toLowerCase();
+    const beneficiaryCountry = normalizeIsoCountryCode(
+      args.beneficiaryCountry,
+      "beneficiaryCountry",
+    );
+    const payoutCurrency = normalizeCurrencyCode(args.payoutCurrency, "payoutCurrency");
+    const senderCountry = resolveRapydCountry(args.senderCountry);
+    const senderCurrency = resolvePaymentsCurrency(args.senderCurrency);
+    const senderEntityType = args.senderEntityType ?? "company";
+    const beneficiaryEntityType = args.beneficiaryEntityType ?? "individual";
+    const payoutAmount = Math.max(1, Math.round(args.payoutAmount));
+    const cacheKey = buildProviderMethodCacheKey("payout_required_fields", {
+      payoutMethodType,
+      beneficiaryCountry,
+      payoutCurrency,
+      payoutAmount,
+      beneficiaryEntityType,
+      senderCountry,
+      senderCurrency,
+      senderEntityType,
+    });
+    const cached = (await ctx.runQuery(internal.payments.getProviderMethodCache, {
+      kind: "payout_required_fields",
+      cacheKey,
+    })) as
+      | {
+          expiresAt: number;
+          payload: {
+            requiredFields?: Array<{
+              name: string;
+              type?: string;
+              required?: boolean;
+              description?: string;
+            }>;
+          };
+        }
+      | null;
+    if (cached && cached.expiresAt > Date.now() && cached.payload.requiredFields) {
+      return cached.payload.requiredFields;
+    }
+
+    const { accessKey, secretKey, baseUrl } = resolveRapydRequestCredentials();
+    const params = new URLSearchParams({
+      beneficiary_country: beneficiaryCountry,
+      beneficiary_entity_type: beneficiaryEntityType,
+      payout_amount: String(payoutAmount),
+      payout_currency: payoutCurrency,
+      sender_country: senderCountry,
+      sender_currency: senderCurrency,
+      sender_entity_type: senderEntityType,
+    });
+    const requestPath = `/v1/payout_methods/${payoutMethodType}/required_fields?${params.toString()}`;
+    const requestUrl = new URL(requestPath, `${baseUrl}/`);
+    const { response, responseText, signatureEncoding } = await executeRapydSignedGet({
+      url: requestUrl.toString(),
+      path: `${requestUrl.pathname}${requestUrl.search}`,
+      accessKey,
+      secretKey,
+    });
+    if (!response.ok) {
+      throw new ConvexError(
+        `Rapyd payout field lookup failed (HTTP ${response.status}) [${signatureEncoding}]: ${responseText.slice(0, 300)}`,
+      );
+    }
+    const payload = JSON.parse(responseText) as {
+      status?: { status?: string; message?: string; error_code?: string };
+      data?: {
+        beneficiary_required_fields?: Array<{
+          name?: string;
+          type?: string;
+          required?: boolean;
+          description?: string;
+        }>;
+        sender_required_fields?: Array<{
+          name?: string;
+          type?: string;
+          required?: boolean;
+          description?: string;
+        }>;
+      };
+    };
+    if ((payload.status?.status ?? "ERROR") !== "SUCCESS") {
+      throw new ConvexError(
+        `Rapyd payout field lookup rejected: ${payload.status?.message ?? payload.status?.error_code ?? "Unknown error"}`,
+      );
+    }
+    const requiredFields: Array<{
+      name: string;
+      type?: string;
+      required?: boolean;
+      description?: string;
+    }> = [
+      ...(payload.data?.beneficiary_required_fields ?? []),
+      ...(payload.data?.sender_required_fields ?? []),
+    ]
+      .filter((row) => typeof row.name === "string" && row.name.trim())
+      .map((row) =>
+        omitUndefined({
+          name: row.name!.trim(),
+          type: row.type?.trim(),
+          required: row.required,
+          description: row.description?.trim(),
+        }) as {
+          name: string;
+          type?: string;
+          required?: boolean;
+          description?: string;
+        },
+      );
+    await ctx.runMutation(internal.payments.upsertProviderMethodCache, {
+      kind: "payout_required_fields",
+      cacheKey,
+      country: beneficiaryCountry,
+      currency: payoutCurrency,
+      requiredFields,
+    });
+    return requiredFields;
   },
 });
 

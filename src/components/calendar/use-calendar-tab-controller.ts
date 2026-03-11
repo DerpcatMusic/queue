@@ -39,13 +39,7 @@ export type TimelineRow = {
   sport: string;
   startTime: number;
   endTime: number;
-  status:
-    | "open"
-    | "filled"
-    | "cancelled"
-    | "completed"
-    | "confirmed"
-    | "tentative";
+  status: "open" | "filled" | "cancelled" | "completed" | "confirmed" | "tentative";
   lifecycle: "upcoming" | "live" | "past" | "cancelled";
   isAllDay?: boolean;
   location?: string;
@@ -70,6 +64,7 @@ const CACHE_TTL_MS = 15 * 60 * 1000;
 const CACHE_VERSION = 3;
 const TIMELINE_RANGE_DAYS = 90;
 const TIMELINE_EXTEND_BUFFER_DAYS = 60;
+const TIMELINE_PREFETCH_THRESHOLD_DAYS = 21;
 const ESTIMATED_DAY_HEADER_SIZE = 64;
 const ESTIMATED_LESSON_SIZE = 84;
 const ESTIMATED_EMPTY_SIZE = 40;
@@ -212,6 +207,8 @@ export function useCalendarTabController() {
   const listRef = useRef<FlashListRef<TimelineListItem>>(null);
   const programmaticScrollRef = useRef(false);
   const lastViewSyncAtRef = useRef(0);
+  const hasInitialViewportSyncRef = useRef(false);
+  const hasUserScrolledTimelineRef = useRef(false);
 
   const role =
     currentUser?.role === "instructor" || currentUser?.role === "studio"
@@ -223,10 +220,9 @@ export function useCalendarTabController() {
   const timelineArgs = useMemo(() => ({ startTime, endTime, limit: 1000 }), [endTime, startTime]);
 
   const remoteRows = useQuery(api.jobs.getMyCalendarTimeline, role ? timelineArgs : "skip");
-  const googleStatus = useQuery(
-    calendarApi.getMyGoogleCalendarStatus as any,
-    role ? {} : "skip",
-  ) as GoogleCalendarStatus | undefined;
+  const googleStatus = useQuery(calendarApi.getMyGoogleCalendarStatus as any, role ? {} : "skip") as
+    | GoogleCalendarStatus
+    | undefined;
 
   const emptyArgs = useMemo(() => ({}), []);
   const instructorSettings = useQuery(
@@ -241,9 +237,7 @@ export function useCalendarTabController() {
 
   const googleAgendaRows = useQuery(
     calendarApi.getMyGoogleCalendarAgenda as any,
-    role && viewMode === "jobs_and_google" && googleStatus?.connected
-      ? timelineArgs
-      : "skip",
+    role && viewMode === "jobs_and_google" && googleStatus?.connected ? timelineArgs : "skip",
   ) as GoogleAgendaRow[] | undefined;
 
   const syncGoogleCalendar = useAction(calendarApi.syncMyGoogleCalendarEvents as any) as (args: {
@@ -326,9 +320,7 @@ export function useCalendarTabController() {
     }
     return [...remoteJobTimelineRows, ...(remoteGoogleTimelineRows ?? [])].sort(
       (a, b) =>
-        a.startTime - b.startTime ||
-        a.endTime - b.endTime ||
-        a.lessonId.localeCompare(b.lessonId),
+        a.startTime - b.startTime || a.endTime - b.endTime || a.lessonId.localeCompare(b.lessonId),
     );
   }, [remoteGoogleTimelineRows, remoteJobTimelineRows]);
 
@@ -482,7 +474,7 @@ export function useCalendarTabController() {
       dayIndexMap.set(dk, items.length);
       items.push({ kind: "dayHeader", key: `${dk}:header`, dayKey: dk });
       const dayRows = rowsByDay.get(dk) ?? [];
-      if (dayRows.length === 0 && (dk === selectedDay || dk === todayKey)) {
+      if (dayRows.length === 0) {
         items.push({ kind: "empty", key: `${dk}:empty`, dayKey: dk });
       } else {
         for (const lesson of dayRows) {
@@ -497,7 +489,12 @@ export function useCalendarTabController() {
     }
 
     return { listItems: items, dayStartIndexByKey: dayIndexMap };
-  }, [filteredRows, selectedDay, todayKey, windowRange.end, windowRange.start]);
+  }, [filteredRows, windowRange.end, windowRange.start]);
+
+  const initialScrollIndex = useMemo(
+    () => dayStartIndexByKey.get(selectedDay) ?? dayStartIndexByKey.get(todayKey) ?? 0,
+    [dayStartIndexByKey, selectedDay, todayKey],
+  );
 
   const lessonCountByDay = useMemo(() => {
     const counts = new Map<string, number>();
@@ -526,7 +523,7 @@ export function useCalendarTabController() {
       }
       setTimeout(() => {
         programmaticScrollRef.current = false;
-      }, 500);
+      }, 320);
     },
     [dayStartIndexByKey],
   );
@@ -539,6 +536,26 @@ export function useCalendarTabController() {
         nextStart = addDays(dayKey, -TIMELINE_EXTEND_BUFFER_DAYS);
       }
       if (compareDayKey(dayKey, prev.end) > 0) {
+        nextEnd = addDays(dayKey, TIMELINE_EXTEND_BUFFER_DAYS);
+      }
+      if (nextStart === prev.start && nextEnd === prev.end) {
+        return prev;
+      }
+      return { start: nextStart, end: nextEnd };
+    });
+  }, []);
+
+  const prefetchWindowAroundDay = useCallback((dayKey: string) => {
+    setWindowRange((prev) => {
+      let nextStart = prev.start;
+      let nextEnd = prev.end;
+      const startBoundary = addDays(prev.start, TIMELINE_PREFETCH_THRESHOLD_DAYS);
+      const endBoundary = addDays(prev.end, -TIMELINE_PREFETCH_THRESHOLD_DAYS);
+
+      if (compareDayKey(dayKey, startBoundary) <= 0) {
+        nextStart = addDays(dayKey, -TIMELINE_EXTEND_BUFFER_DAYS);
+      }
+      if (compareDayKey(dayKey, endBoundary) >= 0) {
         nextEnd = addDays(dayKey, TIMELINE_EXTEND_BUFFER_DAYS);
       }
       if (nextStart === prev.start && nextEnd === prev.end) {
@@ -569,15 +586,31 @@ export function useCalendarTabController() {
       }
 
       const dayKey = (firstHeader.item as TimelineListItem).dayKey;
-      if (selectedDayRef.current === dayKey) {
+
+      if (!hasInitialViewportSyncRef.current) {
+        if (dayKey !== selectedDayRef.current) {
+          return;
+        }
+        hasInitialViewportSyncRef.current = true;
+        lastViewSyncAtRef.current = now;
         return;
       }
+
       lastViewSyncAtRef.current = now;
-      selectedDayRef.current = dayKey;
-      setSelectedDay(dayKey);
+      if (hasUserScrolledTimelineRef.current) {
+        prefetchWindowAroundDay(dayKey);
+      }
+      if (selectedDayRef.current !== dayKey) {
+        selectedDayRef.current = dayKey;
+        setSelectedDay(dayKey);
+      }
     },
-    [],
+    [prefetchWindowAroundDay],
   );
+
+  const handleTimelineScrollBegin = useCallback(() => {
+    hasUserScrolledTimelineRef.current = true;
+  }, []);
 
   const handleDayPress = useCallback(
     (dayKey: string) => {
@@ -640,9 +673,11 @@ export function useCalendarTabController() {
     showMonthPicker,
     listRef,
     listItems,
+    initialScrollIndex,
     lessonCountByDay,
     viewabilityConfig,
     onViewableItemsChanged,
+    handleTimelineScrollBegin,
     handleDayPress,
     handleWeekChange,
     handleTodayPress,

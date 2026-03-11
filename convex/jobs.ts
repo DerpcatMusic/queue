@@ -1647,6 +1647,9 @@ export const emitLessonLifecycleEvent = internalMutation({
 
     if (args.event === "lesson_completed" && job.status === "filled") {
       await ctx.db.patch("jobs", job._id, { status: "completed" });
+      await ctx.scheduler.runAfter(0, internal.payouts.evaluatePayoutEligibility, {
+        jobId: job._id,
+      });
     }
 
     await enqueueUserNotification(ctx, {
@@ -1690,6 +1693,9 @@ export const markLessonCompleted = mutation({
     }
 
     await ctx.db.patch("jobs", job._id, { status: "completed" });
+    await ctx.scheduler.runAfter(0, internal.payouts.evaluatePayoutEligibility, {
+      jobId: job._id,
+    });
 
     const studio = await ctx.db.get("studioProfiles", job.studioId);
     if (studio) {

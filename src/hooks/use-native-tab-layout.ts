@@ -9,7 +9,7 @@ export function useNativeTabLayout() {
   return {
     topInset: insets.safeTop,
     safeBottomInset: insets.safeBottom,
-    bottomInset: insets.tabContentBottom,
+    bottomInset: insets.overlayBottom,
     bottomOverlayInset: insets.overlayBottom,
   };
 }

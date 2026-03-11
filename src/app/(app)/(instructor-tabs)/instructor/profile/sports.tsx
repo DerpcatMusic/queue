@@ -12,14 +12,14 @@ import { KitButton } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
+import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
-import { useNativeTabLayout } from "@/hooks/use-native-tab-layout";
 
 export default function SportsScreen() {
   const { t } = useTranslation();
   const palette = useBrand();
   const router = useRouter();
-  const { safeBottomInset } = useNativeTabLayout();
+  const { overlayBottom } = useAppInsets();
   const { currentUser } = useUser();
 
   const instructorSettings = useQuery(
@@ -104,15 +104,16 @@ export default function SportsScreen() {
         <ThemedText type="caption" style={{ color: palette.textMuted }}>
           {sports.length > 0
             ? t("profile.settings.sports.selected", { count: sports.length })
-            : t("profile.settings.sports.none")}
+            : t("profile.settings.sports.description")}
         </ThemedText>
         <SportsMultiSelect
           palette={palette}
           selectedSports={sports}
           onToggleSport={toggleSport}
-          searchPlaceholder={t("mapTab.searchPlaceholder")}
+          searchPlaceholder={t("profile.settings.sports.searchPlaceholder")}
           title={t("profile.settings.sports.title")}
           emptyHint={t("profile.settings.sports.none")}
+          defaultOpen
         />
         {errorMessage ? (
           <ThemedText selectable style={{ color: palette.danger }}>
@@ -124,7 +125,7 @@ export default function SportsScreen() {
 
       {/* Save FAB */}
       {hasChanges ? (
-        <View style={[styles.saveFabArea, { bottom: Math.max(safeBottomInset, 16) }]}>
+        <View style={[styles.saveFabArea, { bottom: overlayBottom }]}>
           <KitButton
             label={
               isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")

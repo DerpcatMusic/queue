@@ -124,20 +124,28 @@ export default function StudioProfileScreen() {
   const sportsCount = studioSettings?.sports?.length ?? 0;
   const setupActions = [
     !studioSettings?.address
-      ? { label: "Add studio details", onPress: handleRequestEdit, icon: "sparkles" as const }
+      ? {
+          label: t("profile.setup.addStudioDetails"),
+          onPress: handleRequestEdit,
+          icon: "sparkles" as const,
+        }
       : null,
     !studioSettings?.zone
       ? {
-          label: "Set coverage zone",
+          label: t("profile.setup.setCoverageZone"),
           onPress: handleRequestEdit,
           icon: "mappin.and.ellipse" as const,
         }
       : null,
     sportsCount === 0
-      ? { label: "Pick sports", onPress: handleRequestEdit, icon: "sparkles" as const }
+      ? { label: t("profile.setup.chooseSports"), onPress: handleRequestEdit, icon: "sparkles" as const }
       : null,
     socialCount === 0
-      ? { label: "Add contact links", onPress: handleRequestEdit, icon: "sparkles" as const }
+      ? {
+          label: t("profile.setup.addContactLinks"),
+          onPress: handleRequestEdit,
+          icon: "sparkles" as const,
+        }
       : null,
   ].filter(
     (
@@ -150,13 +158,13 @@ export default function StudioProfileScreen() {
   );
   const setupStatusLabel =
     setupActions.length === 0
-      ? "Ready to run jobs"
-      : `${String(setupActions.length)} polish moves left`;
+      ? t("profile.setup.statusReady")
+      : t("profile.setup.statusPending", { count: setupActions.length });
   const publicProfileSummary =
     studioSettings?.bio?.trim() ||
     (socialCount > 0
-      ? `${String(socialCount)} public links are live for applicants and instructors.`
-      : "Shape the studio identity people scan before they apply or accept.");
+      ? t("profile.settings.publicProfileActive", { count: socialCount })
+      : t("profile.settings.publicProfilePrompt"));
   const primarySetupAction = setupActions[0] ?? null;
   return (
     <View collapsable={false} style={[styles.screen, { backgroundColor: palette.appBg }]}>
@@ -177,13 +185,17 @@ export default function StudioProfileScreen() {
             <View style={styles.desktopRail}>
               <ProfileDesktopHeroPanel
                 profileName={profileName}
-                roleLabel="Studio profile"
+                roleLabel={t("profile.hero.studioProfile")}
                 profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
                 palette={palette}
                 summary={publicProfileSummary}
                 statusLabel={setupStatusLabel}
-                metaLabel={memberSince ? `Member since ${memberSince}` : sportsSummary}
-                primaryAction={{ label: "Edit profile", onPress: handleRequestEdit }}
+                metaLabel={
+                  memberSince
+                    ? t("profile.account.memberSinceValue", { date: memberSince })
+                    : sportsSummary
+                }
+                primaryAction={{ label: t("profile.actions.edit"), onPress: handleRequestEdit }}
                 {...(primarySetupAction ? { secondaryAction: primarySetupAction } : {})}
               />
             </View>
@@ -196,20 +208,22 @@ export default function StudioProfileScreen() {
                   statusLabel={setupStatusLabel}
                   subtitleLabel={
                     primarySetupAction
-                      ? `Next: ${primarySetupAction.label.toLowerCase()}`
-                      : "Your studio profile is fully configured."
+                      ? t("profile.setup.nextStep", {
+                          step: primarySetupAction.label.toLowerCase(),
+                        })
+                      : t("profile.setup.allClear")
                   }
                 />
 
                 <ProfileSectionHeader
-                  label="Studio"
-                  description="The identity and operating defaults people scan first."
+                  label={t("profile.sections.studio")}
+                  description={t("profile.sections.studioDesc")}
                   palette={palette}
                   flush
                 />
                 <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                   <ProfileSettingRow
-                    title="Public profile"
+                    title={t("profile.settings.publicProfile")}
                     subtitle={publicProfileSummary}
                     icon="person.crop.circle.fill"
                     onPress={handleRequestEdit}
@@ -217,24 +231,28 @@ export default function StudioProfileScreen() {
                     showDivider
                   />
                   <ProfileSettingRow
-                    title="Studio details"
-                    subtitle={studioSettings?.address ?? "Complete onboarding to set your address"}
+                    title={t("profile.settings.studioDetails")}
+                    subtitle={
+                      studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
+                    }
                     icon="building.2.fill"
                     onPress={handleRequestEdit}
                     palette={palette}
                     showDivider
                   />
                   <ProfileSettingRow
-                    title="Coverage zone"
-                    subtitle={studioSettings?.zone ?? "No zone"}
+                    title={t("profile.settings.coverageZone")}
+                    subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
                     icon="mappin.and.ellipse"
                     onPress={handleRequestEdit}
                     palette={palette}
                     showDivider
                   />
                   <ProfileSettingRow
-                    title="Auto-expire jobs"
-                    value={`${String(studioSettings?.autoExpireMinutesBefore ?? 30)} min`}
+                    title={t("profile.settings.autoExpireJobs")}
+                    value={t("profile.settings.autoExpire.value", {
+                      minutes: studioSettings?.autoExpireMinutesBefore ?? 30,
+                    })}
                     icon="clock.fill"
                     palette={palette}
                   />
@@ -244,7 +262,7 @@ export default function StudioProfileScreen() {
               <View style={styles.desktopSideColumn}>
                 <ProfileSectionHeader
                   label={t("profile.account.title")}
-                  description="Identity, role, and membership details."
+                  description={t("profile.sections.accountDesc")}
                   palette={palette}
                   flush
                 />
@@ -282,7 +300,7 @@ export default function StudioProfileScreen() {
 
                 <ProfileSectionHeader
                   label={t("profile.appearance.title")}
-                  description="Language and theme controls."
+                  description={t("profile.sections.appearanceDesc")}
                   palette={palette}
                   flush
                 />
@@ -331,7 +349,7 @@ export default function StudioProfileScreen() {
 
                 <ProfileSectionHeader
                   label={t("profile.settings.calendar.title")}
-                  description="Choose whether posted jobs sync into your calendar."
+                  description={t("profile.sections.calendarDesc")}
                   palette={palette}
                   flush
                 />
@@ -346,15 +364,15 @@ export default function StudioProfileScreen() {
                 </ProfileSectionCard>
 
                 <ProfileSectionHeader
-                  label="Payments"
-                  description="Manage the payout destination for this studio."
+                  label={t("profile.sections.payments")}
+                  description={t("profile.sections.paymentsDesc")}
                   palette={palette}
                   flush
                 />
                 <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                   <ProfileSettingRow
-                    title="Payments & payouts"
-                    subtitle="Open payout settings and manage destination details."
+                    title={t("profile.settings.paymentsPayouts")}
+                    subtitle={t("profile.sections.paymentsDesc")}
                     icon="creditcard.fill"
                     onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
                     palette={palette}
@@ -364,7 +382,7 @@ export default function StudioProfileScreen() {
                 <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                   <ProfileSettingRow
                     title={t("auth.signOutButton")}
-                    subtitle="End the current session on this device."
+                    subtitle={t("profile.settings.signOutDesc")}
                     icon="arrow.right.square"
                     onPress={() => void signOut()}
                     palette={palette}
@@ -383,20 +401,20 @@ export default function StudioProfileScreen() {
                 statusLabel={setupStatusLabel}
                 subtitleLabel={
                   primarySetupAction
-                    ? `Next: ${primarySetupAction.label.toLowerCase()}`
-                    : "Your studio profile is fully configured."
+                    ? t("profile.setup.nextStep", { step: primarySetupAction.label.toLowerCase() })
+                    : t("profile.setup.allClear")
                 }
               />
             </View>
             <View style={styles.mobileSectionsContainer}>
               <ProfileSectionHeader
-                label="Studio"
-                description="The identity and operating defaults people scan first."
+                label={t("profile.sections.studio")}
+                description={t("profile.sections.studioDesc")}
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
                 <ProfileSettingRow
-                  title="Public profile"
+                  title={t("profile.settings.publicProfile")}
                   subtitle={publicProfileSummary}
                   icon="person.crop.circle.fill"
                   onPress={handleRequestEdit}
@@ -404,24 +422,28 @@ export default function StudioProfileScreen() {
                   showDivider
                 />
                 <ProfileSettingRow
-                  title="Studio details"
-                  subtitle={studioSettings?.address ?? "Complete onboarding to set your address"}
+                  title={t("profile.settings.studioDetails")}
+                  subtitle={
+                    studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
+                  }
                   icon="building.2.fill"
                   onPress={handleRequestEdit}
                   palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
-                  title="Coverage zone"
-                  subtitle={studioSettings?.zone ?? "No zone"}
+                  title={t("profile.settings.coverageZone")}
+                  subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
                   icon="mappin.and.ellipse"
                   onPress={handleRequestEdit}
                   palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
-                  title="Auto-expire jobs"
-                  value={`${String(studioSettings?.autoExpireMinutesBefore ?? 30)} min`}
+                  title={t("profile.settings.autoExpireJobs")}
+                  value={t("profile.settings.autoExpire.value", {
+                    minutes: studioSettings?.autoExpireMinutesBefore ?? 30,
+                  })}
                   icon="clock.fill"
                   palette={palette}
                 />
@@ -429,7 +451,7 @@ export default function StudioProfileScreen() {
 
               <ProfileSectionHeader
                 label={t("profile.account.title")}
-                description="Identity, role, and membership details."
+                description={t("profile.sections.accountDesc")}
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -466,7 +488,7 @@ export default function StudioProfileScreen() {
 
               <ProfileSectionHeader
                 label={t("profile.appearance.title")}
-                description="Language and theme controls."
+                description={t("profile.sections.appearanceDesc")}
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -514,7 +536,7 @@ export default function StudioProfileScreen() {
 
               <ProfileSectionHeader
                 label={t("profile.settings.calendar.title")}
-                description="Choose whether posted jobs sync into your calendar."
+                description={t("profile.sections.calendarDesc")}
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -528,14 +550,14 @@ export default function StudioProfileScreen() {
               </ProfileSectionCard>
 
               <ProfileSectionHeader
-                label="Payments"
-                description="Manage the payout destination for this studio."
+                label={t("profile.sections.payments")}
+                description={t("profile.sections.paymentsDesc")}
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
                 <ProfileSettingRow
-                  title="Payments & payouts"
-                  subtitle="Open payout settings and manage destination details."
+                  title={t("profile.settings.paymentsPayouts")}
+                  subtitle={t("profile.sections.paymentsDesc")}
                   icon="creditcard.fill"
                   onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
                   palette={palette}
@@ -546,7 +568,7 @@ export default function StudioProfileScreen() {
                 <ProfileSectionCard palette={palette}>
                   <ProfileSettingRow
                     title={t("auth.signOutButton")}
-                    subtitle="End the current session on this device."
+                    subtitle={t("profile.settings.signOutDesc")}
                     icon="arrow.right.square"
                     onPress={() => void signOut()}
                     palette={palette}
@@ -562,12 +584,12 @@ export default function StudioProfileScreen() {
       {isDesktopWeb ? null : (
         <ProfileHeroSheet
           profileName={profileName}
-          roleLabel="Studio profile"
+          roleLabel={t("profile.hero.studioProfile")}
           profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
           palette={palette}
           scrollY={scrollY}
           onRequestEdit={handleRequestEdit}
-          primaryActionLabel="Edit profile"
+          primaryActionLabel={t("profile.actions.edit")}
           {...(primarySetupAction ? { secondaryAction: primarySetupAction } : {})}
           statusLabel={setupStatusLabel}
           bio={studioSettings?.bio}

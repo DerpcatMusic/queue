@@ -24,9 +24,10 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   const palette = useBrand();
   const { t } = useTranslation();
   const tabs = getTabsForRole(appRole);
+  const sceneBackgroundColor = palette.appBg as string;
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: sceneBackgroundColor }}>
       <NativeTabs
         tintColor={palette.primary}
         backgroundColor={palette.surface as string}
@@ -34,7 +35,11 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
         minimizeBehavior="onScrollDown"
       >
         {tabs.map((tab) => (
-          <NativeTabs.Trigger key={tab.id} name={tab.routeName}>
+          <NativeTabs.Trigger
+            key={tab.id}
+            name={tab.routeName}
+            contentStyle={{ backgroundColor: sceneBackgroundColor }}
+          >
             <NativeTabs.Trigger.Label>{t(tab.titleKey)}</NativeTabs.Trigger.Label>
             <NativeTabs.Trigger.Icon
               sf={{

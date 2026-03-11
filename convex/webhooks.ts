@@ -328,6 +328,76 @@ export const ingestIntegrationEvent = internalMutation({
   },
 });
 
+export const recordWebhookDelivery = internalMutation({
+  args: {
+    provider: integrationProviderValidator,
+    route: integrationRouteValidator,
+    providerEventId: v.string(),
+    deliveryKey: v.string(),
+    eventType: v.optional(v.string()),
+    signatureValid: v.boolean(),
+    timestampValid: v.boolean(),
+    payloadHash: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("webhookDeliveries")
+      .withIndex("by_delivery_key", (q) =>
+        q.eq("provider", args.provider).eq("deliveryKey", args.deliveryKey),
+      )
+      .unique();
+    const now = Date.now();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        signatureValid: args.signatureValid,
+        timestampValid: args.timestampValid,
+        payloadHash: args.payloadHash,
+        updatedAt: now,
+        ...omitUndefined({
+          eventType: args.eventType ?? existing.eventType,
+        }),
+      });
+      return existing;
+    }
+
+    const deliveryId = await ctx.db.insert("webhookDeliveries", {
+      provider: args.provider,
+      route: args.route,
+      providerEventId: args.providerEventId,
+      deliveryKey: args.deliveryKey,
+      signatureValid: args.signatureValid,
+      timestampValid: args.timestampValid,
+      payloadHash: args.payloadHash,
+      processingState: "pending",
+      createdAt: now,
+      updatedAt: now,
+      ...omitUndefined({
+        eventType: args.eventType,
+      }),
+    });
+    return await ctx.db.get(deliveryId);
+  },
+});
+
+export const linkWebhookDeliveryToIntegrationEvent = internalMutation({
+  args: {
+    deliveryId: v.id("webhookDeliveries"),
+    integrationEventId: v.optional(v.id("integrationEvents")),
+    processingState: v.optional(v.union(v.literal("pending"), v.literal("processed"), v.literal("failed"))),
+    processingError: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.deliveryId, {
+      updatedAt: Date.now(),
+      ...omitUndefined({
+        integrationEventId: args.integrationEventId,
+        processingState: args.processingState,
+        processingError: args.processingError,
+      }),
+    });
+  },
+});
+
 export const processIntegrationEvent = internalMutation({
   args: {
     integrationEventId: v.id("integrationEvents"),
@@ -373,24 +443,16 @@ export const processIntegrationEvent = internalMutation({
             eventType: integrationEvent.eventType,
             providerPayoutId: toOutcomeString(metadata.providerPayoutId),
             payoutId: toOutcomeString(metadata.payoutId) as Id<"payouts"> | undefined,
-            statusRaw: toOutcomeString(metadata.statusRaw),
-          }),
-        });
-      } else if (integrationEvent.provider === "rapyd" && integrationEvent.route === "payment") {
-        outcome = await ctx.runMutation(internal.payments.processRapydWebhookEvent, {
-          providerEventId: integrationEvent.providerEventId,
-          signatureValid: integrationEvent.signatureValid,
-          payloadHash: integrationEvent.payloadHash,
-          payload: integrationEvent.payload,
-          ...omitUndefined({
-            eventType: integrationEvent.eventType,
-            providerPaymentId: toOutcomeString(metadata.providerPaymentId),
-            providerCheckoutId: toOutcomeString(metadata.providerCheckoutId),
             merchantReferenceId: toOutcomeString(metadata.merchantReferenceId),
             statusRaw: toOutcomeString(metadata.statusRaw),
           }),
         });
+      } else if (integrationEvent.provider === "rapyd" && integrationEvent.route === "payment") {
+        outcome = await ctx.runMutation(internal.payments.finalizeChargeFromWebhook, {
+          integrationEventId: args.integrationEventId,
+        });
       } else if (integrationEvent.provider === "didit" && integrationEvent.route === "kyc") {
+        const decisionJson = toOutcomeString(metadata.decisionJson);
         outcome = await ctx.runMutation(internal.didit.processDiditWebhookEvent, {
           providerEventId: integrationEvent.providerEventId,
           signatureValid: integrationEvent.signatureValid,
@@ -400,7 +462,7 @@ export const processIntegrationEvent = internalMutation({
             sessionId: toOutcomeString(metadata.sessionId),
             statusRaw: toOutcomeString(metadata.statusRaw),
             vendorData: toOutcomeString(metadata.vendorData),
-            decision: metadata.decision,
+            decision: decisionJson ? JSON.parse(decisionJson) : undefined,
           }),
         });
       } else {
@@ -631,10 +693,11 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
     (isPayoutEvent ? undefined : payload.data?.id?.toString().trim()) ||
     undefined;
   const providerCheckoutId = payload.data?.checkout?.id?.toString().trim() || undefined;
-  const payoutRefFromPayload = isPayoutEvent
-    ? payload.data?.merchant_reference_id?.toString().trim() ||
-      payload.data?.metadata?.payoutId?.toString().trim() ||
-      undefined
+  const payoutIdFromMetadata = isPayoutEvent
+    ? payload.data?.metadata?.payoutId?.toString().trim() || undefined
+    : undefined;
+  const payoutMerchantReferenceId = isPayoutEvent
+    ? payload.data?.merchant_reference_id?.toString().trim() || undefined
     : undefined;
   const statusRaw =
     payload.data?.payout?.status?.toString().trim() ||
@@ -671,11 +734,7 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
   const canonicalPayload = buildCanonicalRapydPayload(parsedPayload);
 
   const expectedAccessKey = (process.env.RAPYD_ACCESS_KEY ?? "").trim();
-  const webhookSecret = (
-    process.env.RAPYD_WEBHOOK_SECRET ??
-    process.env.RAPYD_SECRET_KEY ??
-    ""
-  ).trim();
+  const webhookSecret = (process.env.RAPYD_WEBHOOK_SECRET ?? "").trim();
 
   let signatureValid = false;
   if (
@@ -747,7 +806,20 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
         ? "payout"
         : "payment";
 
-  await ctx.runMutation(internal.webhooks.ingestIntegrationEvent, {
+  const delivery = await ctx.runMutation(internal.webhooks.recordWebhookDelivery, {
+    provider: "rapyd",
+    route,
+    providerEventId,
+    deliveryKey: `${route}:${providerEventId}:${payloadHash}`,
+    signatureValid,
+    timestampValid,
+    payloadHash,
+    ...omitUndefined({
+      eventType,
+    }),
+  });
+
+  const ingested = await ctx.runMutation(internal.webhooks.ingestIntegrationEvent, {
     provider: "rapyd",
     route,
     providerEventId,
@@ -767,17 +839,26 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
           : route === "payout"
             ? omitUndefined({
                 providerPayoutId,
-                payoutId: payoutRefFromPayload,
+                payoutId: payoutIdFromMetadata,
+                merchantReferenceId: payoutMerchantReferenceId,
                 statusRaw,
               })
             : omitUndefined({
                 providerPaymentId,
                 providerCheckoutId,
-                merchantReferenceId: paymentReferenceIdFromPayload,
-                statusRaw,
-              }),
+              merchantReferenceId: paymentReferenceIdFromPayload,
+              statusRaw,
+            }),
     }),
   });
+
+  if (delivery?._id) {
+    await ctx.runMutation(internal.webhooks.linkWebhookDeliveryToIntegrationEvent, {
+      deliveryId: delivery._id,
+      integrationEventId: ingested.integrationEventId,
+      processingState: "pending",
+    });
+  }
 
   return new Response(JSON.stringify({ received: true, signatureValid, timestampValid }), {
     status: signatureValid ? 200 : 401,
@@ -937,7 +1018,10 @@ export const diditWebhook = httpAction(async (ctx, req) => {
       sessionId,
       statusRaw,
       vendorData,
-      decision: payload.decision ?? payload.data?.decision,
+      decisionJson:
+        payload.decision !== undefined || payload.data?.decision !== undefined
+          ? JSON.stringify(payload.decision ?? payload.data?.decision)
+          : undefined,
     }),
   });
 

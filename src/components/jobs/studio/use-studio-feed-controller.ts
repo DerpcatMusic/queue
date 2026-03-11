@@ -4,6 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import type { TFunction } from "i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FEATURE_FLAGS } from "@/constants/feature-flags";
+import { useRapydReturn } from "@/contexts/rapyd-return-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -41,6 +42,8 @@ type StudioControllerJob = {
 
 export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
   const currentUser = useQuery(api.users.getCurrentUser);
+  const { consumeReturn: consumeCheckoutReturn, latestReturn: latestCheckoutReturn } =
+    useRapydReturn("checkout");
 
   const postJob = useMutation(api.jobs.postJob);
   const reviewApplication = useMutation(api.jobs.reviewApplication);
@@ -77,6 +80,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const studioJobsStartedAtRef = useRef<number | null>(null);
+  const lastHandledCheckoutReturnRef = useRef<string | null>(null);
 
   const filteredStudioJobs = useMemo(() => {
     const search = jobsSearchQuery.trim().toLowerCase();
@@ -171,6 +175,107 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
       studioJobsStartedAtRef.current = null;
     }
   }, [studioJobs]);
+
+  const applyCheckoutOutcome = useMemo(
+    () =>
+      (paymentStatus:
+        | "created"
+        | "pending"
+        | "authorized"
+        | "captured"
+        | "failed"
+        | "cancelled"
+        | "refunded") => {
+        if (paymentStatus === "captured") {
+          setStatusMessage(t("jobsTab.checkout.completed", { defaultValue: "Payment completed." }));
+          return;
+        }
+        if (
+          paymentStatus === "pending" ||
+          paymentStatus === "authorized" ||
+          paymentStatus === "created"
+        ) {
+          setStatusMessage(
+            t("jobsTab.checkout.pendingConfirmation", {
+              defaultValue: "Payment submitted. Waiting for provider confirmation.",
+            }),
+          );
+          return;
+        }
+        if (paymentStatus === "cancelled") {
+          setStatusMessage(
+            t("jobsTab.checkout.cancelled", { defaultValue: "Checkout cancelled." }),
+          );
+          return;
+        }
+
+        setErrorMessage(t("jobsTab.checkout.failed", { defaultValue: "Payment did not complete." }));
+      },
+    [t],
+  );
+
+  useEffect(() => {
+    if (currentUser?.role !== "studio" || !latestCheckoutReturn) {
+      return;
+    }
+
+    if (latestCheckoutReturn.result === "cancel") {
+      consumeCheckoutReturn();
+      setErrorMessage(null);
+      setStatusMessage(t("jobsTab.checkout.cancelled", { defaultValue: "Checkout cancelled." }));
+      return;
+    }
+
+    const jobId = latestCheckoutReturn.jobId;
+    if (!jobId) {
+      consumeCheckoutReturn();
+      setErrorMessage(null);
+      setStatusMessage(
+        t("jobsTab.checkout.pendingConfirmation", {
+          defaultValue: "Payment submitted. Waiting for provider confirmation.",
+        }),
+      );
+      return;
+    }
+
+    const latestPayment = latestPaymentByJobId.get(jobId);
+    if (!latestPayment) {
+      return;
+    }
+
+    const handledKey = `${latestCheckoutReturn.url}:${latestPayment.paymentId}`;
+    if (lastHandledCheckoutReturnRef.current === handledKey) {
+      return;
+    }
+    lastHandledCheckoutReturnRef.current = handledKey;
+
+    setErrorMessage(null);
+    void (async () => {
+      try {
+        const checkoutStatus = await retrieveCheckoutForPayment({
+          paymentId: latestPayment.paymentId,
+        });
+        applyCheckoutOutcome(checkoutStatus.paymentStatus);
+      } catch (error) {
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : t("jobsTab.errors.failedToStartCheckout");
+        setErrorMessage(message);
+      } finally {
+        consumeCheckoutReturn();
+        lastHandledCheckoutReturnRef.current = null;
+      }
+    })();
+  }, [
+    applyCheckoutOutcome,
+    consumeCheckoutReturn,
+    currentUser?.role,
+    latestCheckoutReturn,
+    latestPaymentByJobId,
+    retrieveCheckoutForPayment,
+    t,
+  ]);
 
   const postStudioJob = async (draft: StudioDraft) => {
     if (currentUser?.role !== "studio") return;
@@ -337,28 +442,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
         paymentId: checkout.paymentId,
       });
 
-      if (checkoutStatus.paymentStatus === "captured") {
-        setStatusMessage(t("jobsTab.checkout.completed", { defaultValue: "Payment completed." }));
-        return;
-      }
-      if (
-        checkoutStatus.paymentStatus === "pending" ||
-        checkoutStatus.paymentStatus === "authorized" ||
-        checkoutStatus.paymentStatus === "created"
-      ) {
-        setStatusMessage(
-          t("jobsTab.checkout.pendingConfirmation", {
-            defaultValue: "Payment submitted. Waiting for provider confirmation.",
-          }),
-        );
-        return;
-      }
-      if (checkoutStatus.paymentStatus === "cancelled") {
-        setStatusMessage(t("jobsTab.checkout.cancelled", { defaultValue: "Checkout cancelled." }));
-        return;
-      }
-
-      setErrorMessage(t("jobsTab.checkout.failed", { defaultValue: "Payment did not complete." }));
+      applyCheckoutOutcome(checkoutStatus.paymentStatus);
     } catch (error) {
       const message =
         error instanceof Error && error.message

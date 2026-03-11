@@ -11,6 +11,120 @@ const socialLinksValidator = v.object({
   website: v.optional(v.string()),
 });
 
+const rapydCanonicalPayloadValidator = v.object({
+  id: v.optional(v.string()),
+  type: v.optional(v.string()),
+  data: v.optional(
+    v.object({
+      id: v.optional(v.string()),
+      status: v.optional(v.string()),
+      merchant_reference_id: v.optional(v.string()),
+      payout_method_type: v.optional(v.string()),
+      default_payout_method_type: v.optional(v.string()),
+      payment: v.optional(
+        v.object({
+          id: v.optional(v.string()),
+          status: v.optional(v.string()),
+        }),
+      ),
+      payout: v.optional(
+        v.object({
+          id: v.optional(v.string()),
+          status: v.optional(v.string()),
+        }),
+      ),
+      checkout: v.optional(
+        v.object({
+          id: v.optional(v.string()),
+        }),
+      ),
+      metadata: v.optional(
+        v.object({
+          payoutId: v.optional(v.string()),
+          paymentId: v.optional(v.string()),
+          merchant_reference_id: v.optional(v.string()),
+        }),
+      ),
+    }),
+  ),
+});
+
+const rapydProviderResponsePayloadValidator = v.object({
+  status: v.optional(
+    v.object({
+      status: v.optional(v.string()),
+      error_code: v.optional(v.string()),
+      message: v.optional(v.string()),
+    }),
+  ),
+  data: v.optional(
+    v.object({
+      id: v.optional(v.string()),
+      status: v.optional(v.string()),
+    }),
+  ),
+});
+
+const diditCanonicalPayloadValidator = v.object({
+  id: v.optional(v.string()),
+  event_id: v.optional(v.string()),
+  session_id: v.optional(v.string()),
+  status: v.optional(v.string()),
+  vendor_data: v.optional(v.string()),
+  webhook_type: v.optional(v.string()),
+  timestamp: v.optional(v.string()),
+  data: v.optional(
+    v.object({
+      session_id: v.optional(v.string()),
+      status: v.optional(v.string()),
+      vendor_data: v.optional(v.string()),
+      webhook_type: v.optional(v.string()),
+      timestamp: v.optional(v.string()),
+    }),
+  ),
+});
+
+const paymentMetadataValidator = v.object({
+  sport: v.optional(v.string()),
+  startTime: v.optional(v.number()),
+  rapydProviderStatus: v.optional(v.string()),
+  rapydRequestedPaymentMethodSelectors: v.optional(v.array(v.string())),
+  rapydResolvedPaymentMethodTypes: v.optional(v.array(v.string())),
+});
+
+const integrationMetadataValidator = v.object({
+  providerPaymentId: v.optional(v.string()),
+  providerCheckoutId: v.optional(v.string()),
+  merchantReferenceId: v.optional(v.string()),
+  statusRaw: v.optional(v.string()),
+  providerPayoutId: v.optional(v.string()),
+  payoutId: v.optional(v.string()),
+  beneficiaryId: v.optional(v.string()),
+  payoutMethodType: v.optional(v.string()),
+  sessionId: v.optional(v.string()),
+  vendorData: v.optional(v.string()),
+  decisionJson: v.optional(v.string()),
+});
+
+const providerMethodDescriptorValidator = v.object({
+  type: v.string(),
+  category: v.optional(v.string()),
+  paymentFlowType: v.optional(v.string()),
+  payoutMethodType: v.optional(v.string()),
+  name: v.optional(v.string()),
+  status: v.optional(v.union(v.string(), v.number())),
+  countries: v.optional(v.array(v.string())),
+  currencies: v.optional(v.array(v.string())),
+  supportedDigitalWalletProviders: v.optional(v.array(v.string())),
+});
+
+const providerRequiredFieldValidator = v.object({
+  name: v.string(),
+  type: v.optional(v.string()),
+  required: v.optional(v.boolean()),
+  description: v.optional(v.string()),
+});
+
 export default defineSchema({
   ...authTables,
   users: defineTable({
@@ -286,6 +400,7 @@ export default defineSchema({
     .index("by_studio", ["studioId"]),
 
   payments: defineTable({
+    paymentOrderId: v.optional(v.id("paymentOrders")),
     jobId: v.id("jobs"),
     studioId: v.id("studioProfiles"),
     studioUserId: v.id("users"),
@@ -309,7 +424,7 @@ export default defineSchema({
     studioChargeAmountAgorot: v.number(),
     platformMarkupBps: v.number(),
     idempotencyKey: v.string(),
-    metadata: v.optional(v.any()),
+    metadata: v.optional(paymentMetadataValidator),
     lastError: v.optional(v.string()),
     capturedAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -321,6 +436,7 @@ export default defineSchema({
     .index("by_job", ["jobId", "createdAt"])
     .index("by_status", ["status", "createdAt"])
     .index("by_studio_user_idempotency", ["studioUserId", "idempotencyKey"])
+    .index("by_payment_order", ["paymentOrderId", "createdAt"])
     .index("by_provider_checkoutId", ["provider", "providerCheckoutId"])
     .index("by_provider_paymentId", ["provider", "providerPaymentId"]),
 
@@ -335,7 +451,7 @@ export default defineSchema({
     signatureValid: v.boolean(),
     processed: v.boolean(),
     payloadHash: v.string(),
-    payload: v.any(),
+    payload: rapydCanonicalPayloadValidator,
     processingError: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -374,6 +490,8 @@ export default defineSchema({
     .index("by_provider_external", ["provider", "externalInvoiceId"]),
 
   payouts: defineTable({
+    paymentOrderId: v.optional(v.id("paymentOrders")),
+    payoutScheduleId: v.optional(v.id("payoutSchedules")),
     paymentId: v.id("payments"),
     jobId: v.id("jobs"),
     studioId: v.id("studioProfiles"),
@@ -406,6 +524,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_payment", ["paymentId", "createdAt"])
+    .index("by_payment_order", ["paymentOrderId", "createdAt"])
+    .index("by_schedule", ["payoutScheduleId", "createdAt"])
     .index("by_instructor_user", ["instructorUserId", "createdAt"])
     .index("by_destination", ["destinationId", "createdAt"])
     .index("by_status_retryAt", ["status", "nextRetryAt"])
@@ -442,7 +562,7 @@ export default defineSchema({
     httpStatus: v.optional(v.number()),
     errorCode: v.optional(v.string()),
     message: v.optional(v.string()),
-    payload: v.optional(v.any()),
+    payload: v.optional(rapydProviderResponsePayloadValidator),
     createdAt: v.number(),
   })
     .index("by_payout", ["payoutId", "createdAt"])
@@ -452,14 +572,31 @@ export default defineSchema({
   payoutDestinations: defineTable({
     userId: v.id("users"),
     provider: v.literal("rapyd"),
+    railCategory: v.union(
+      v.literal("bank"),
+      v.literal("card"),
+      v.literal("ewallet"),
+      v.literal("rapyd_wallet"),
+    ),
     type: v.string(),
     externalRecipientId: v.string(),
     label: v.optional(v.string()),
     country: v.optional(v.string()),
     currency: v.optional(v.string()),
     last4: v.optional(v.string()),
+    beneficiaryEntityType: v.optional(v.union(v.literal("individual"), v.literal("company"))),
+    senderProfileId: v.optional(v.string()),
     isDefault: v.boolean(),
-    status: v.string(),
+    status: v.union(
+      v.literal("pending_verification"),
+      v.literal("verified"),
+      v.literal("failed"),
+      v.literal("expired"),
+    ),
+    verifiedAt: v.optional(v.number()),
+    lastProviderSyncState: v.optional(
+      v.union(v.literal("pending"), v.literal("verified"), v.literal("failed"), v.literal("expired")),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -505,7 +642,7 @@ export default defineSchema({
     signatureValid: v.boolean(),
     processed: v.boolean(),
     payloadHash: v.string(),
-    payload: v.any(),
+    payload: rapydCanonicalPayloadValidator,
     processingError: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -525,8 +662,8 @@ export default defineSchema({
     eventType: v.optional(v.string()),
     signatureValid: v.boolean(),
     payloadHash: v.string(),
-    payload: v.any(),
-    metadata: v.optional(v.any()),
+    payload: v.union(rapydCanonicalPayloadValidator, diditCanonicalPayloadValidator),
+    metadata: v.optional(integrationMetadataValidator),
     processingState: v.union(v.literal("pending"), v.literal("processed"), v.literal("failed")),
     processingError: v.optional(v.string()),
     sourceEventId: v.optional(v.string()),
@@ -580,13 +717,227 @@ export default defineSchema({
     signatureValid: v.boolean(),
     processed: v.boolean(),
     payloadHash: v.string(),
-    payload: v.any(),
+    payload: diditCanonicalPayloadValidator,
     processingError: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_provider_event_id", ["providerEventId"])
     .index("by_instructor", ["instructorId", "createdAt"]),
+
+  paymentOrders: defineTable({
+    jobId: v.id("jobs"),
+    studioId: v.id("studioProfiles"),
+    studioUserId: v.id("users"),
+    instructorId: v.optional(v.id("instructorProfiles")),
+    instructorUserId: v.optional(v.id("users")),
+    provider: v.literal("rapyd"),
+    correlationToken: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("checkout_pending"),
+      v.literal("payment_pending"),
+      v.literal("authorized"),
+      v.literal("captured"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+      v.literal("refunded"),
+    ),
+    currency: v.string(),
+    instructorGrossAmountAgorot: v.number(),
+    platformFeeAmountAgorot: v.number(),
+    studioChargeAmountAgorot: v.number(),
+    platformFeeBps: v.number(),
+    providerCheckoutId: v.optional(v.string()),
+    providerPaymentId: v.optional(v.string()),
+    latestCheckoutUrl: v.optional(v.string()),
+    latestError: v.optional(v.string()),
+    capturedAt: v.optional(v.number()),
+    releasedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_job", ["jobId", "createdAt"])
+    .index("by_studio_user", ["studioUserId", "createdAt"])
+    .index("by_instructor_user", ["instructorUserId", "createdAt"])
+    .index("by_correlation_token", ["correlationToken"])
+    .index("by_provider_checkout", ["provider", "providerCheckoutId"])
+    .index("by_provider_payment", ["provider", "providerPaymentId"]),
+
+  paymentProviderLinks: defineTable({
+    provider: v.literal("rapyd"),
+    paymentOrderId: v.id("paymentOrders"),
+    legacyPaymentId: v.optional(v.id("payments")),
+    providerObjectType: v.union(
+      v.literal("merchant_reference"),
+      v.literal("checkout"),
+      v.literal("payment"),
+    ),
+    providerObjectId: v.string(),
+    correlationToken: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_provider_object", ["provider", "providerObjectType", "providerObjectId"])
+    .index("by_payment_order", ["paymentOrderId", "createdAt"])
+    .index("by_legacy_payment", ["legacyPaymentId", "createdAt"])
+    .index("by_correlation_token", ["correlationToken"]),
+
+  ledgerEntries: defineTable({
+    paymentOrderId: v.id("paymentOrders"),
+    jobId: v.id("jobs"),
+    studioUserId: v.id("users"),
+    instructorUserId: v.optional(v.id("users")),
+    payoutScheduleId: v.optional(v.id("payoutSchedules")),
+    payoutId: v.optional(v.id("payouts")),
+    dedupeKey: v.string(),
+    entryType: v.union(
+      v.literal("charge_gross"),
+      v.literal("platform_fee"),
+      v.literal("instructor_gross"),
+      v.literal("provider_fee"),
+      v.literal("refund"),
+      v.literal("refund_fee_impact"),
+      v.literal("payout_reserved"),
+      v.literal("payout_sent"),
+      v.literal("payout_failed"),
+      v.literal("adjustment"),
+    ),
+    balanceBucket: v.union(
+      v.literal("provider_clearing"),
+      v.literal("platform_available"),
+      v.literal("instructor_held"),
+      v.literal("instructor_available"),
+      v.literal("instructor_reserved"),
+      v.literal("instructor_paid"),
+      v.literal("adjustments"),
+    ),
+    amountAgorot: v.number(),
+    currency: v.string(),
+    referenceType: v.union(
+      v.literal("payment_order"),
+      v.literal("provider_event"),
+      v.literal("job_completion"),
+      v.literal("payout_schedule"),
+      v.literal("payout"),
+      v.literal("refund"),
+      v.literal("adjustment"),
+    ),
+    referenceId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_payment_order", ["paymentOrderId", "createdAt"])
+    .index("by_instructor_bucket", ["instructorUserId", "balanceBucket", "createdAt"])
+    .index("by_reference", ["referenceType", "referenceId", "createdAt"])
+    .index("by_dedupe_key", ["dedupeKey"]),
+
+  payoutReleaseRules: defineTable({
+    userId: v.id("users"),
+    preferenceMode: v.union(
+      v.literal("immediate_when_eligible"),
+      v.literal("scheduled_date"),
+      v.literal("manual_hold"),
+    ),
+    scheduledDate: v.optional(v.number()),
+    destinationId: v.optional(v.id("payoutDestinations")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  payoutSchedules: defineTable({
+    paymentOrderId: v.id("paymentOrders"),
+    sourcePaymentId: v.optional(v.id("payments")),
+    payoutId: v.optional(v.id("payouts")),
+    jobId: v.id("jobs"),
+    studioId: v.id("studioProfiles"),
+    studioUserId: v.id("users"),
+    instructorId: v.id("instructorProfiles"),
+    instructorUserId: v.id("users"),
+    destinationId: v.optional(v.id("payoutDestinations")),
+    status: v.union(
+      v.literal("blocked"),
+      v.literal("pending_eligibility"),
+      v.literal("available"),
+      v.literal("scheduled"),
+      v.literal("processing"),
+      v.literal("paid"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+      v.literal("needs_attention"),
+    ),
+    amountAgorot: v.number(),
+    currency: v.string(),
+    releaseAfter: v.optional(v.number()),
+    readyAt: v.optional(v.number()),
+    executedAt: v.optional(v.number()),
+    failureReason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_payment_order", ["paymentOrderId", "createdAt"])
+    .index("by_instructor_user", ["instructorUserId", "createdAt"])
+    .index("by_status_readyAt", ["status", "readyAt"])
+    .index("by_payout", ["payoutId", "createdAt"]),
+
+  payoutProviderLinks: defineTable({
+    provider: v.literal("rapyd"),
+    payoutScheduleId: v.id("payoutSchedules"),
+    payoutId: v.optional(v.id("payouts")),
+    providerPayoutId: v.optional(v.string()),
+    merchantReferenceId: v.string(),
+    correlationToken: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_schedule", ["payoutScheduleId", "createdAt"])
+    .index("by_payout", ["payoutId", "createdAt"])
+    .index("by_provider_payout", ["provider", "providerPayoutId"])
+    .index("by_merchant_reference", ["provider", "merchantReferenceId"]),
+
+  webhookDeliveries: defineTable({
+    provider: v.union(v.literal("rapyd"), v.literal("didit")),
+    route: v.union(
+      v.literal("payment"),
+      v.literal("payout"),
+      v.literal("beneficiary"),
+      v.literal("kyc"),
+    ),
+    providerEventId: v.string(),
+    deliveryKey: v.string(),
+    eventType: v.optional(v.string()),
+    signatureValid: v.boolean(),
+    timestampValid: v.boolean(),
+    payloadHash: v.string(),
+    processingState: v.union(v.literal("pending"), v.literal("processed"), v.literal("failed")),
+    integrationEventId: v.optional(v.id("integrationEvents")),
+    processingError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_delivery_key", ["provider", "deliveryKey"])
+    .index("by_provider_event", ["provider", "providerEventId", "createdAt"])
+    .index("by_processing", ["processingState", "createdAt"]),
+
+  providerMethodCache: defineTable({
+    provider: v.literal("rapyd"),
+    kind: v.union(
+      v.literal("payment_methods_country"),
+      v.literal("payout_method_types"),
+      v.literal("payout_required_fields"),
+    ),
+    cacheKey: v.string(),
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    expiresAt: v.number(),
+    payload: v.object({
+      methods: v.optional(v.array(providerMethodDescriptorValidator)),
+      requiredFields: v.optional(v.array(providerRequiredFieldValidator)),
+    }),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_kind_cache_key", ["provider", "kind", "cacheKey"])
+    .index("by_expiresAt", ["expiresAt"]),
 
   userNotifications: defineTable({
     recipientUserId: v.id("users"),

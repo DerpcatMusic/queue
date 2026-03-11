@@ -8,6 +8,7 @@ import {
   resolveRapydMode,
 } from "./integrations/rapyd/config";
 import { requireCurrentUser, requireUserRole } from "./lib/auth";
+import { summarizeLedgerBalances } from "./lib/marketplace";
 import { omitUndefined } from "./lib/validation";
 
 const RAPYD_PROVIDER = "rapyd" as const;
@@ -172,13 +173,42 @@ export async function getPaymentByProviderRefsRead(
     const direct = await ctx.db.get(args.paymentId);
     if (direct && direct.provider === RAPYD_PROVIDER) return direct;
   }
-  const paymentIdFromMerchantReference = getPaymentIdFromMerchantReferenceId(
-    args.merchantReferenceId,
-  );
-  if (paymentIdFromMerchantReference) {
-    const byMerchantReference = await ctx.db.get(paymentIdFromMerchantReference);
-    if (byMerchantReference && byMerchantReference.provider === RAPYD_PROVIDER) {
-      return byMerchantReference;
+  const providerObjectCandidates = [
+    args.providerPaymentId
+      ? ({
+          providerObjectType: "payment" as const,
+          providerObjectId: args.providerPaymentId,
+        })
+      : null,
+    args.providerCheckoutId
+      ? ({
+          providerObjectType: "checkout" as const,
+          providerObjectId: args.providerCheckoutId,
+        })
+      : null,
+    args.merchantReferenceId
+      ? ({
+          providerObjectType: "merchant_reference" as const,
+          providerObjectId: args.merchantReferenceId,
+        })
+      : null,
+  ].filter((value): value is NonNullable<typeof value> => value !== null);
+
+  for (const candidate of providerObjectCandidates) {
+    const link = await ctx.db
+      .query("paymentProviderLinks")
+      .withIndex("by_provider_object", (q) =>
+        q
+          .eq("provider", RAPYD_PROVIDER)
+          .eq("providerObjectType", candidate.providerObjectType)
+          .eq("providerObjectId", candidate.providerObjectId),
+      )
+      .unique();
+    if (link?.legacyPaymentId) {
+      const payment = await ctx.db.get(link.legacyPaymentId);
+      if (payment && payment.provider === RAPYD_PROVIDER) {
+        return payment;
+      }
     }
   }
   if (args.providerPaymentId) {
@@ -347,7 +377,15 @@ export async function getMyPaymentDetailRead(
   ]);
 
   return {
-    payment,
+    payment: {
+      _id: payment._id,
+      status: payment.status,
+      currency: payment.currency,
+      studioChargeAmountAgorot: payment.studioChargeAmountAgorot,
+      instructorBaseAmountAgorot: payment.instructorBaseAmountAgorot,
+      platformMarkupAmountAgorot: payment.platformMarkupAmountAgorot,
+      createdAt: payment.createdAt,
+    },
     job,
     payout: payout
       ? {
@@ -379,7 +417,21 @@ export async function listMyPayoutDestinationsRead(ctx: QueryCtx) {
 export async function getMyPayoutSummaryRead(ctx: QueryCtx) {
   const user = await requireUserRole(ctx, ["instructor"]);
 
-  const [payments, payouts, destinations, onboardingSessions, kycApproved] = await Promise.all([
+  const [
+    paymentOrders,
+    payments,
+    payouts,
+    payoutSchedules,
+    payoutReleaseRule,
+    destinations,
+    onboardingSessions,
+    kycApproved,
+  ] = await Promise.all([
+    ctx.db
+      .query("paymentOrders")
+      .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
+      .order("desc")
+      .take(400),
     ctx.db
       .query("payments")
       .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
@@ -390,6 +442,15 @@ export async function getMyPayoutSummaryRead(ctx: QueryCtx) {
       .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
       .order("desc")
       .take(400),
+    ctx.db
+      .query("payoutSchedules")
+      .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
+      .order("desc")
+      .take(400),
+    ctx.db
+      .query("payoutReleaseRules")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique(),
     ctx.db
       .query("payoutDestinations")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -419,35 +480,86 @@ export async function getMyPayoutSummaryRead(ctx: QueryCtx) {
   let pendingPaymentsCount = 0;
   let paidPaymentsCount = 0;
   let attentionPaymentsCount = 0;
-  const currency = payments[0]?.currency ?? process.env.PAYMENTS_CURRENCY ?? "ILS";
+  const currency =
+    paymentOrders[0]?.currency ?? payments[0]?.currency ?? process.env.PAYMENTS_CURRENCY ?? "ILS";
 
-  for (const payment of payments) {
-    if (payment.status !== "captured") continue;
-    const latestPayout = latestPayoutByPaymentId.get(String(payment._id));
-    if (!latestPayout) {
-      availableAmountAgorot += payment.instructorBaseAmountAgorot;
-      availablePaymentsCount += 1;
-      continue;
+  if (paymentOrders.length > 0) {
+    const latestScheduleByOrderId = new Map<string, Doc<"payoutSchedules">>();
+    for (const schedule of payoutSchedules) {
+      const key = String(schedule.paymentOrderId);
+      if (!latestScheduleByOrderId.has(key)) {
+        latestScheduleByOrderId.set(key, schedule);
+      }
     }
 
-    if (latestPayout.status === "paid") {
-      paidAmountAgorot += latestPayout.amountAgorot;
-      paidPaymentsCount += 1;
-      continue;
-    }
+    const ledgerEntriesByOrder = await Promise.all(
+      paymentOrders.map((order) =>
+        ctx.db
+          .query("ledgerEntries")
+          .withIndex("by_payment_order", (q) => q.eq("paymentOrderId", order._id))
+          .collect(),
+      ),
+    );
 
-    if (
-      latestPayout.status === "queued" ||
-      latestPayout.status === "processing" ||
-      latestPayout.status === "pending_provider"
-    ) {
-      pendingAmountAgorot += latestPayout.amountAgorot;
-      pendingPaymentsCount += 1;
-      continue;
-    }
+    for (let index = 0; index < paymentOrders.length; index += 1) {
+      const order = paymentOrders[index];
+      if (!order) continue;
+      const balances = summarizeLedgerBalances(ledgerEntriesByOrder[index] ?? []);
+      const latestSchedule = latestScheduleByOrderId.get(String(order._id));
 
-    attentionAmountAgorot += latestPayout.amountAgorot;
-    attentionPaymentsCount += 1;
+      if (balances.instructor_available > 0) {
+        availableAmountAgorot += balances.instructor_available;
+        availablePaymentsCount += 1;
+      }
+      if (balances.instructor_reserved > 0) {
+        pendingAmountAgorot += balances.instructor_reserved;
+        pendingPaymentsCount += 1;
+      }
+      if (balances.instructor_paid > 0) {
+        paidAmountAgorot += balances.instructor_paid;
+        paidPaymentsCount += 1;
+      }
+      if (
+        balances.adjustments < 0 ||
+        latestSchedule?.status === "needs_attention" ||
+        latestSchedule?.status === "failed"
+      ) {
+        attentionAmountAgorot += Math.max(
+          Math.abs(balances.adjustments),
+          latestSchedule?.amountAgorot ?? 0,
+        );
+        attentionPaymentsCount += 1;
+      }
+    }
+  } else {
+    for (const payment of payments) {
+      if (payment.status !== "captured") continue;
+      const latestPayout = latestPayoutByPaymentId.get(String(payment._id));
+      if (!latestPayout) {
+        availableAmountAgorot += payment.instructorBaseAmountAgorot;
+        availablePaymentsCount += 1;
+        continue;
+      }
+
+      if (latestPayout.status === "paid") {
+        paidAmountAgorot += latestPayout.amountAgorot;
+        paidPaymentsCount += 1;
+        continue;
+      }
+
+      if (
+        latestPayout.status === "queued" ||
+        latestPayout.status === "processing" ||
+        latestPayout.status === "pending_provider"
+      ) {
+        pendingAmountAgorot += latestPayout.amountAgorot;
+        pendingPaymentsCount += 1;
+        continue;
+      }
+
+      attentionAmountAgorot += latestPayout.amountAgorot;
+      attentionPaymentsCount += 1;
+    }
   }
 
   const verifiedDefaultDestination =
@@ -461,6 +573,8 @@ export async function getMyPayoutSummaryRead(ctx: QueryCtx) {
   return {
     payoutReleaseMode: readPayoutReleaseMode(),
     sandboxSelfVerifyEnabled: isSandboxDestinationSelfVerifyEnabled(),
+    payoutPreferenceMode: payoutReleaseRule?.preferenceMode ?? "immediate_when_eligible",
+    payoutPreferenceScheduledDate: payoutReleaseRule?.scheduledDate ?? null,
     currency,
     hasVerifiedDestination: Boolean(verifiedDefaultDestination),
     isIdentityVerified: kycApproved,

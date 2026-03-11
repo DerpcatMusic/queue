@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useBrand } from "@/hooks/use-brand";
 
 /**
@@ -7,6 +8,7 @@ import { useBrand } from "@/hooks/use-brand";
  * profile settings list while the tab bar remains visible.
  */
 export default function ProfileLayout() {
+  const { t } = useTranslation();
   const palette = useBrand();
 
   return (
@@ -18,9 +20,18 @@ export default function ProfileLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="calendar-settings" options={{ title: "Calendar" }} />
-      <Stack.Screen name="edit" options={{ title: "Edit profile", presentation: "modal" }} />
-      <Stack.Screen name="payments" options={{ title: "Payments & payouts" }} />
+      <Stack.Screen
+        name="calendar-settings"
+        options={{ title: t("profile.navigation.calendar") }}
+      />
+      <Stack.Screen
+        name="edit"
+        options={{ title: t("profile.navigation.edit"), presentation: "modal" }}
+      />
+      <Stack.Screen
+        name="payments"
+        options={{ title: t("profile.navigation.paymentsPayouts") }}
+      />
     </Stack>
   );
 }

@@ -72,24 +72,29 @@ export function ProfileEditorForm({
   extraField,
 }: ProfileEditorFormProps) {
   const { isDesktopWeb } = useLayoutBreakpoint();
+  const { t } = useTranslation();
   const activeSocialCount = useMemo(
     () =>
       PROFILE_SOCIAL_FIELDS.filter((field) => Boolean(socialLinksDraft[field.key]?.trim())).length,
     [socialLinksDraft],
   );
   const [showSocialFields, setShowSocialFields] = useState(activeSocialCount > 0);
-  const { t } = useTranslation();
   const saveActions = (
     <View style={{ flexDirection: "row", gap: 12 }}>
       <View style={{ flex: 1 }}>
         <KitButton
-          label={isSaving ? t("profile.editor.saving", { defaultValue: "Saving..." }) : t("profile.editor.save", { defaultValue: "Save profile" })}
+          label={isSaving ? t("profile.editor.saving") : t("profile.editor.save")}
           onPress={onSave}
           disabled={isSaving}
         />
       </View>
       <View style={{ flex: 1 }}>
-        <KitButton label={t("profile.editor.cancel", { defaultValue: "Cancel" })} onPress={onCancel} variant="secondary" disabled={isSaving} />
+        <KitButton
+          label={t("profile.editor.cancel")}
+          onPress={onCancel}
+          variant="secondary"
+          disabled={isSaving}
+        />
       </View>
     </View>
   );
@@ -154,7 +159,7 @@ export function ProfileEditorForm({
           ) : null}
         </View>
         <KitButton
-          label={isChangingPhoto ? t("profile.editor.uploading", { defaultValue: "Uploading..." }) : t("profile.editor.photo", { defaultValue: "Photo" })}
+          label={isChangingPhoto ? t("profile.editor.uploading") : t("profile.editor.photo")}
           onPress={onChangePhoto}
           variant="secondary"
           size="sm"
@@ -184,19 +189,19 @@ export function ProfileEditorForm({
       }}
     >
       <KitTextField
-        label={t("profile.editor.nameLabel", { defaultValue: "Display name" })}
+        label={t("profile.editor.nameLabel")}
         value={nameDraft}
         onChangeText={onNameDraftChange}
-        placeholder={t("profile.editor.namePlaceholder", { defaultValue: "Name people should see" })}
+        placeholder={t("profile.editor.namePlaceholder")}
         autoCapitalize="words"
         autoCorrect={false}
       />
 
       <KitTextField
-        label={t("profile.editor.bioLabel", { defaultValue: "Bio" })}
+        label={t("profile.editor.bioLabel")}
         value={bioDraft}
         onChangeText={onBioDraftChange}
-        placeholder={t("profile.editor.bioPlaceholder", { defaultValue: "What kind of classes, vibe, or training you bring" })}
+        placeholder={t("profile.editor.bioPlaceholder")}
         multiline
         numberOfLines={4}
         textAlignVertical="top"
@@ -234,7 +239,7 @@ export function ProfileEditorForm({
               includeFontPadding: false,
             }}
           >
-            {t("profile.editor.socialLinks", { defaultValue: "Social links" })}
+            {t("profile.editor.socialLinks")}
           </Text>
           <Text
             style={{
@@ -244,12 +249,12 @@ export function ProfileEditorForm({
             }}
           >
             {activeSocialCount > 0
-              ? t("profile.editor.linked", { count: activeSocialCount, defaultValue: `${String(activeSocialCount)} linked` })
-              : t("profile.editor.addLinks", { defaultValue: "Add only the links you actually use." })}
+              ? t("profile.editor.linked", { count: activeSocialCount })
+              : t("profile.editor.addLinks")}
           </Text>
         </View>
         <KitButton
-          label={showSocialFields ? t("profile.editor.hide", { defaultValue: "Hide" }) : t("profile.editor.edit", { defaultValue: "Edit" })}
+          label={showSocialFields ? t("profile.editor.hide") : t("common.edit")}
           onPress={() => setShowSocialFields((value) => !value)}
           variant="ghost"
           size="sm"
@@ -265,7 +270,7 @@ export function ProfileEditorForm({
               label={field.label}
               value={socialLinksDraft[field.key] ?? ""}
               onChangeText={(value) => onSocialLinkChange(field.key, value)}
-              placeholder={`${field.label} link`}
+              placeholder={field.label}
               autoCapitalize="none"
               autoCorrect={false}
             />

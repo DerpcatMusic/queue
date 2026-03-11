@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import { Redirect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { NativeModules, Platform, View } from "react-native";
 import Animated, {
   FadeIn,
@@ -84,45 +85,45 @@ function isProcessingStatus(status: string) {
   return PROCESSING_STATUSES.has(status);
 }
 
-function getStatusHeadline(status: string) {
+function getStatusHeadline(status: string, t: ReturnType<typeof useTranslation>["t"]) {
   switch (status) {
     case "approved":
-      return "You are verified";
+      return t("profile.identityVerification.headline.approved");
     case "declined":
-      return "Verification needs attention";
+      return t("profile.identityVerification.headline.declined");
     case "in_review":
-      return "Review in progress";
+      return t("profile.identityVerification.headline.in_review");
     case "pending":
-      return "Verification submitted";
+      return t("profile.identityVerification.headline.pending");
     case "in_progress":
-      return "Finish your check";
+      return t("profile.identityVerification.headline.in_progress");
     case "abandoned":
-      return "Verification was cancelled";
+      return t("profile.identityVerification.headline.abandoned");
     case "expired":
-      return "Verification expired";
+      return t("profile.identityVerification.headline.expired");
     default:
-      return "Verify your identity";
+      return t("profile.identityVerification.headline.default");
   }
 }
 
-function getStatusBody(status: string) {
+function getStatusBody(status: string, t: ReturnType<typeof useTranslation>["t"]) {
   switch (status) {
     case "approved":
-      return "Your KYC is complete and your verified identity is active across payouts and account review.";
+      return t("profile.identityVerification.body.approved");
     case "declined":
-      return "Didit declined this attempt. Start a fresh verification and double-check your legal document details.";
+      return t("profile.identityVerification.body.declined");
     case "in_review":
-      return "Didit has your submission and is reviewing it now. This screen will keep checking once you return from the flow.";
+      return t("profile.identityVerification.body.in_review");
     case "pending":
-      return "Your submission was received. We are waiting for a final review result from Didit.";
+      return t("profile.identityVerification.body.pending");
     case "in_progress":
-      return "Your verification session is active. Resume the flow and we will keep this screen locked until the final result arrives.";
+      return t("profile.identityVerification.body.in_progress");
     case "abandoned":
-      return "The verification flow was cancelled before completion. Start again when you are ready.";
+      return t("profile.identityVerification.body.abandoned");
     case "expired":
-      return "This verification session expired. Start a new one to continue.";
+      return t("profile.identityVerification.body.expired");
     default:
-      return "Complete identity verification to unlock KYC and payout access.";
+      return t("profile.identityVerification.body.default");
   }
 }
 
@@ -166,6 +167,7 @@ function LoaderDot({ delay, color }: { delay: number; color: string }) {
 }
 
 function VerificationResolvingState({ label }: { label: string }) {
+  const { t } = useTranslation();
   const palette = useBrand();
   const halo = useSharedValue(0.8);
   const settle = useSharedValue(0);
@@ -314,7 +316,7 @@ function VerificationResolvingState({ label }: { label: string }) {
             style={{ gap: 8, alignItems: "center" }}
           >
             <ThemedText type="title" style={{ textAlign: "center" }}>
-              Finalizing your verification
+              {t("profile.identityVerification.resolvingTitle")}
             </ThemedText>
             <ThemedText type="caption" style={{ color: palette.textMuted, textAlign: "center" }}>
               {label}
@@ -327,6 +329,7 @@ function VerificationResolvingState({ label }: { label: string }) {
 }
 
 export default function IdentityVerificationScreen() {
+  const { t } = useTranslation();
   const palette = useBrand();
   const currentUser = useQuery(api.users.getCurrentUser);
   const diditVerification = useQuery(
@@ -411,9 +414,7 @@ export default function IdentityVerificationScreen() {
           processingPollAttempts += 1;
           if (processingPollAttempts >= MAX_PROCESSING_POLL_ATTEMPTS) {
             setAwaitingFinalResult(false);
-            setErrorMessage(
-              "Verification is taking longer than expected. Pull to refresh or try again shortly.",
-            );
+            setErrorMessage(t("profile.identityVerification.slow"));
             setInfoMessage(null);
             return;
           }
@@ -425,16 +426,16 @@ export default function IdentityVerificationScreen() {
 
         setAwaitingFinalResult(false);
         if (latest.status === "approved") {
-          setInfoMessage("Identity verified. Your KYC is now active.");
+          setInfoMessage(t("profile.identityVerification.approvedInfo"));
           setErrorMessage(null);
         } else if (latest.status === "declined") {
-          setErrorMessage(
-            "Didit declined this attempt. Review your document details and try again.",
-          );
+          setErrorMessage(t("profile.identityVerification.declinedInfo"));
           setInfoMessage(null);
         } else {
           setInfoMessage(
-            `Verification finished with status: ${getIdentityStatusLabel(latest.status)}.`,
+            t("profile.identityVerification.finishedWithStatus", {
+              status: getIdentityStatusLabel(latest.status),
+            }),
           );
           setErrorMessage(null);
         }
@@ -445,9 +446,7 @@ export default function IdentityVerificationScreen() {
         errorPollAttempts += 1;
         if (errorPollAttempts >= MAX_ERROR_POLL_ATTEMPTS) {
           setAwaitingFinalResult(false);
-          setErrorMessage(
-            "We could not confirm your latest verification status. Please try again.",
-          );
+          setErrorMessage(t("profile.identityVerification.confirmFailed"));
           setInfoMessage(null);
           return;
         }
@@ -465,13 +464,13 @@ export default function IdentityVerificationScreen() {
         clearTimeout(timeoutId);
       }
     };
-  }, [awaitingFinalResult, currentUser?.role, refreshMyDiditVerification]);
+  }, [awaitingFinalResult, currentUser?.role, refreshMyDiditVerification, t]);
 
   if (
     currentUser === undefined ||
     (currentUser?.role === "instructor" && diditVerification === undefined)
   ) {
-    return <LoadingScreen label="Loading verification status..." />;
+    return <LoadingScreen label={t("profile.identityVerification.loadingStatus")} />;
   }
   if (currentUser === null) {
     return <Redirect href="/sign-in" />;
@@ -510,9 +509,9 @@ export default function IdentityVerificationScreen() {
         if (result.type === "completed") {
           beginAwaitingFinalResult("in_review");
         } else if (result.type === "cancelled") {
-          setInfoMessage("Verification flow was cancelled.");
+          setInfoMessage(t("profile.identityVerification.cancelled"));
         } else {
-          setErrorMessage(result.error?.message ?? "Didit could not complete this verification.");
+          setErrorMessage(result.error?.message ?? t("profile.identityVerification.startFailed"));
         }
         return;
       }
@@ -525,14 +524,12 @@ export default function IdentityVerificationScreen() {
       if (browserResult.type === "success") {
         beginAwaitingFinalResult("in_review");
       } else if (browserResult.type === "cancel" || browserResult.type === "dismiss") {
-        setInfoMessage("Verification flow was cancelled.");
+        setInfoMessage(t("profile.identityVerification.cancelled"));
       } else {
-        setErrorMessage("Didit did not return a valid completion signal.");
+        setErrorMessage(t("profile.identityVerification.invalidReturn"));
       }
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to start Didit verification.",
-      );
+      setErrorMessage(error instanceof Error ? error.message : t("profile.identityVerification.startFailed"));
     } finally {
       setBusy(false);
     }
@@ -548,7 +545,7 @@ export default function IdentityVerificationScreen() {
 
   if (awaitingFinalResult) {
     return (
-      <VerificationResolvingState label="Waiting for Didit to confirm your result. Keep this screen open." />
+      <VerificationResolvingState label={t("profile.identityVerification.resolvingLabel")} />
     );
   }
 
@@ -582,15 +579,15 @@ export default function IdentityVerificationScreen() {
           >
             <View style={{ flex: 1, gap: 6 }}>
               <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                Identity verification
+                {t("profile.identityVerification.title")}
               </ThemedText>
-              <ThemedText type="title">{getStatusHeadline(status)}</ThemedText>
+              <ThemedText type="title">{getStatusHeadline(status, t)}</ThemedText>
             </View>
             <IdentityStatusBadge status={status} palette={palette} />
           </View>
 
           <ThemedText type="caption" style={{ color: palette.textMuted }}>
-            {getStatusBody(status)}
+            {getStatusBody(status, t)}
           </ThemedText>
 
           {legalName ? (
@@ -603,7 +600,7 @@ export default function IdentityVerificationScreen() {
               }}
             >
               <ThemedText type="micro" style={{ color: palette.textMuted }}>
-                Verified legal name
+                {t("profile.identityVerification.verifiedLegalName")}
               </ThemedText>
               <ThemedText type="bodyStrong">{legalName}</ThemedText>
             </View>
@@ -613,12 +610,12 @@ export default function IdentityVerificationScreen() {
             <View style={{ gap: 4 }}>
               {verifiedAtLabel ? (
                 <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                  Verified at {verifiedAtLabel}
+                  {t("profile.identityVerification.verifiedAt", { date: verifiedAtLabel })}
                 </ThemedText>
               ) : null}
               {lastEventAtLabel ? (
                 <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                  Last update {lastEventAtLabel}
+                  {t("profile.identityVerification.lastUpdate", { date: lastEventAtLabel })}
                 </ThemedText>
               ) : null}
             </View>
@@ -645,12 +642,12 @@ export default function IdentityVerificationScreen() {
           >
             <ThemedText type="bodyStrong" style={{ color: palette.onPrimary as string }}>
               {busy
-                ? "Starting verification..."
+                ? t("profile.identityVerification.starting")
                 : isProcessing
-                  ? "Resume verification"
+                  ? t("profile.identityVerification.resume")
                   : status === "declined" || status === "expired" || status === "abandoned"
-                    ? "Start a fresh verification"
-                    : "Start Didit verification"}
+                    ? t("profile.identityVerification.restart")
+                    : t("profile.identityVerification.start")}
             </ThemedText>
           </KitPressable>
         ) : null}

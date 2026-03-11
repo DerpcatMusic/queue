@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useBrand } from "@/hooks/use-brand";
 
 /**
@@ -7,6 +8,7 @@ import { useBrand } from "@/hooks/use-brand";
  * profile settings list while the tab bar remains visible.
  */
 export default function ProfileLayout() {
+  const { t } = useTranslation();
   const palette = useBrand();
 
   return (
@@ -18,12 +20,21 @@ export default function ProfileLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="edit" options={{ title: "Edit profile", presentation: "modal" }} />
-      <Stack.Screen name="sports" options={{ title: "Sports" }} />
-      <Stack.Screen name="location" options={{ title: "Location" }} />
-      <Stack.Screen name="calendar-settings" options={{ title: "Calendar" }} />
-      <Stack.Screen name="payments" options={{ title: "Wallet" }} />
-      <Stack.Screen name="identity-verification" options={{ title: "Identity Verification" }} />
+      <Stack.Screen
+        name="edit"
+        options={{ title: t("profile.navigation.edit"), presentation: "modal" }}
+      />
+      <Stack.Screen name="sports" options={{ title: t("profile.navigation.sports") }} />
+      <Stack.Screen name="location" options={{ title: t("profile.navigation.location") }} />
+      <Stack.Screen
+        name="calendar-settings"
+        options={{ title: t("profile.navigation.calendar") }}
+      />
+      <Stack.Screen name="payments" options={{ title: t("profile.navigation.wallet") }} />
+      <Stack.Screen
+        name="identity-verification"
+        options={{ title: t("profile.navigation.identityVerification") }}
+      />
     </Stack>
   );
 }

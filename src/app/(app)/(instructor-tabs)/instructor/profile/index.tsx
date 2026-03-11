@@ -59,6 +59,39 @@ function getSportsSummary(sports: string[], t: TFunction) {
   return t("profile.settings.sports.selected", { count: sports.length });
 }
 
+function getIdentityVerificationSummary(
+  status:
+    | "approved"
+    | "declined"
+    | "in_review"
+    | "pending"
+    | "in_progress"
+    | "abandoned"
+    | "expired"
+    | "not_started"
+    | undefined,
+  t: TFunction,
+) {
+  switch (status) {
+    case "approved":
+      return t("profile.identityVerification.headline.approved");
+    case "declined":
+      return t("profile.identityVerification.headline.declined");
+    case "in_review":
+      return t("profile.identityVerification.headline.in_review");
+    case "pending":
+      return t("profile.identityVerification.headline.pending");
+    case "in_progress":
+      return t("profile.identityVerification.headline.in_progress");
+    case "abandoned":
+      return t("profile.identityVerification.headline.abandoned");
+    case "expired":
+      return t("profile.identityVerification.headline.expired");
+    default:
+      return t("profile.identityVerification.headline.default");
+  }
+}
+
 export default function InstructorProfileScreen() {
   const { signOut } = useAuthActions();
   const { currentUser } = useUser();
@@ -126,6 +159,7 @@ export default function InstructorProfileScreen() {
     : null;
 
   const identityVerified = diditVerification?.isVerified ?? false;
+  const identityVerificationSummary = getIdentityVerificationSummary(diditVerification?.status, t);
   const bankConnected = payoutSummary?.hasVerifiedDestination ?? false;
   const sportsSummary = getSportsSummary(instructorSettings?.sports ?? [], t);
   const locationSummary = instructorSettings?.address
@@ -145,28 +179,28 @@ export default function InstructorProfileScreen() {
   const setupActions = [
     !identityVerified
       ? {
-          label: t("profile.setup.verifyIdentity", { defaultValue: "Verify identity" }),
+          label: t("profile.setup.verifyIdentity"),
           onPress: () => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href),
           icon: "checkmark.circle.fill" as const,
         }
       : null,
     !bankConnected
       ? {
-          label: t("profile.setup.connectPayouts", { defaultValue: "Connect payouts" }),
+          label: t("profile.setup.connectPayouts"),
           onPress: () => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href),
           icon: "sparkles" as const,
         }
       : null,
     sportsCount === 0
       ? {
-          label: t("profile.setup.chooseSports", { defaultValue: "Choose sports" }),
+          label: t("profile.setup.chooseSports"),
           onPress: () => router.push(INSTRUCTOR_SPORTS_ROUTE as Href),
           icon: "sparkles" as const,
         }
       : null,
     !provider || provider === "none"
       ? {
-          label: t("profile.setup.linkCalendar", { defaultValue: "Link calendar" }),
+          label: t("profile.setup.linkCalendar"),
           onPress: () => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href),
           icon: "calendar.badge.clock" as const,
         }
@@ -184,22 +218,16 @@ export default function InstructorProfileScreen() {
 
   const setupStatusLabel =
     setupActions.length === 0
-      ? t("profile.setup.statusReady", { defaultValue: "Ready to run jobs" })
+      ? t("profile.setup.statusReady")
       : t("profile.setup.statusPending", {
-          count: setupActions.length,
-          defaultValue: `${String(setupActions.length)} polish moves left`,
-        });
+        count: setupActions.length,
+      });
 
   const publicProfileSummary =
     instructorSettings?.bio?.trim() ||
     (socialCount > 0
-      ? t("profile.settings.publicProfileActive", {
-          count: socialCount,
-          defaultValue: `${String(socialCount)} public links are live.`,
-        })
-      : t("profile.settings.publicProfilePrompt", {
-          defaultValue: "Shape the identity people scan before they apply or accept.",
-        }));
+      ? t("profile.settings.publicProfileActive", { count: socialCount })
+      : t("profile.settings.publicProfilePrompt"));
 
   return (
     <View collapsable={false} style={[styles.screen, { backgroundColor: palette.appBg }]}>
@@ -222,8 +250,8 @@ export default function InstructorProfileScreen() {
                 profileName={nameValue}
                 roleLabel={
                   identityVerified
-                    ? t("profile.hero.verifiedInstructor", { defaultValue: "Verified instructor" })
-                    : t("profile.hero.instructorProfile", { defaultValue: "Instructor profile" })
+                    ? t("profile.hero.verifiedInstructor")
+                    : t("profile.hero.instructorProfile")
                 }
                 profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
                 palette={palette}
@@ -231,14 +259,11 @@ export default function InstructorProfileScreen() {
                 statusLabel={setupStatusLabel}
                 metaLabel={
                   memberSince
-                    ? t("profile.account.memberSinceValue", {
-                        date: memberSince,
-                        defaultValue: `Member since ${memberSince}`,
-                      })
+                    ? t("profile.account.memberSinceValue", { date: memberSince })
                     : sportsSummary
                 }
                 primaryAction={{
-                  label: t("profile.actions.edit", { defaultValue: "Edit profile" }),
+                  label: t("profile.actions.edit"),
                   onPress: handleRequestEdit,
                 }}
                 {...(primarySetupAction ? { secondaryAction: primarySetupAction } : {})}
@@ -253,27 +278,20 @@ export default function InstructorProfileScreen() {
                   statusLabel={setupStatusLabel}
                   subtitleLabel={
                     primarySetupAction
-                      ? t("profile.setup.nextStep", {
-                          step: primarySetupAction.label.toLowerCase(),
-                          defaultValue: `Next: ${primarySetupAction.label.toLowerCase()}`,
-                        })
-                      : t("profile.setup.allClear", {
-                          defaultValue: "Your profile is fully configured.",
-                        })
+                      ? t("profile.setup.nextStep", { step: primarySetupAction.label.toLowerCase() })
+                      : t("profile.setup.allClear")
                   }
                 />
 
                 <ProfileSectionHeader
-                  label={t("profile.sections.professional", { defaultValue: "Professional" })}
-                  description={t("profile.sections.professionalDesc", {
-                    defaultValue: "What studios scan before they book you.",
-                  })}
+                  label={t("profile.sections.professional")}
+                  description={t("profile.sections.professionalDesc")}
                   palette={palette}
                   flush
                 />
                 <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                   <ProfileSettingRow
-                    title={t("profile.settings.publicProfile", { defaultValue: "Public profile" })}
+                    title={t("profile.settings.publicProfile")}
                     subtitle={publicProfileSummary}
                     icon="person.crop.circle.fill"
                     onPress={handleRequestEdit}
@@ -309,9 +327,7 @@ export default function InstructorProfileScreen() {
               <View style={styles.desktopSideColumn}>
                 <ProfileSectionHeader
                   label={t("profile.account.title")}
-                  description={t("profile.sections.accountDesc", {
-                    defaultValue: "Identity, role, and membership details.",
-                  })}
+                  description={t("profile.sections.accountDesc")}
                   palette={palette}
                   flush
                 />
@@ -349,9 +365,7 @@ export default function InstructorProfileScreen() {
 
                 <ProfileSectionHeader
                   label={t("profile.appearance.title")}
-                  description={t("profile.sections.appearanceDesc", {
-                    defaultValue: "Language and theme controls.",
-                  })}
+                  description={t("profile.sections.appearanceDesc")}
                   palette={palette}
                   flush
                 />
@@ -399,26 +413,26 @@ export default function InstructorProfileScreen() {
                 </ProfileSectionCard>
 
                 <ProfileSectionHeader
-                  label={t("profile.sections.payments", { defaultValue: "Payments" })}
-                  description={t("profile.sections.paymentsDesc", {
-                    defaultValue: "Destination and payout readiness.",
-                  })}
+                  label={t("profile.sections.payments")}
+                  description={t("profile.sections.paymentsDesc")}
                   palette={palette}
                   flush
                 />
                 <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                   <ProfileSettingRow
-                    title={t("profile.settings.paymentsPayouts", {
-                      defaultValue: "Payments & payouts",
-                    })}
+                    title={t("profile.navigation.identityVerification")}
+                    subtitle={identityVerificationSummary}
+                    icon="checkmark.circle.fill"
+                    onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
+                    palette={palette}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.settings.paymentsPayouts")}
                     subtitle={
                       bankConnected
-                        ? t("profile.settings.payoutsConnected", {
-                            defaultValue: "Verified destination connected.",
-                          })
-                        : t("profile.settings.payoutsNeeded", {
-                            defaultValue: "Add a verified bank destination.",
-                          })
+                        ? t("profile.settings.payoutsConnected")
+                        : t("profile.settings.payoutsNeeded")
                     }
                     icon="creditcard.fill"
                     onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
@@ -429,9 +443,7 @@ export default function InstructorProfileScreen() {
                 <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                   <ProfileSettingRow
                     title={t("auth.signOutButton")}
-                    subtitle={t("profile.settings.signOutDesc", {
-                      defaultValue: "End session on this device.",
-                    })}
+                    subtitle={t("profile.settings.signOutDesc")}
                     icon="arrow.right.square"
                     onPress={() => void signOut()}
                     palette={palette}
@@ -450,27 +462,20 @@ export default function InstructorProfileScreen() {
                 statusLabel={setupStatusLabel}
                 subtitleLabel={
                   primarySetupAction
-                    ? t("profile.setup.nextStep", {
-                        step: primarySetupAction.label.toLowerCase(),
-                        defaultValue: `Next: ${primarySetupAction.label.toLowerCase()}`,
-                      })
-                    : t("profile.setup.allClear", {
-                        defaultValue: "Your profile is fully configured.",
-                      })
+                    ? t("profile.setup.nextStep", { step: primarySetupAction.label.toLowerCase() })
+                    : t("profile.setup.allClear")
                 }
               />
             </View>
             <View style={styles.mobileSectionsContainer}>
               <ProfileSectionHeader
-                label={t("profile.sections.professional", { defaultValue: "Professional" })}
-                description={t("profile.sections.professionalDesc", {
-                  defaultValue: "What studios scan before they book you.",
-                })}
+                label={t("profile.sections.professional")}
+                description={t("profile.sections.professionalDesc")}
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
                 <ProfileSettingRow
-                  title={t("profile.settings.publicProfile", { defaultValue: "Public profile" })}
+                  title={t("profile.settings.publicProfile")}
                   subtitle={publicProfileSummary}
                   icon="person.crop.circle.fill"
                   onPress={handleRequestEdit}
@@ -504,9 +509,7 @@ export default function InstructorProfileScreen() {
 
               <ProfileSectionHeader
                 label={t("profile.account.title")}
-                description={t("profile.sections.accountDesc", {
-                  defaultValue: "Identity, role, and membership details.",
-                })}
+                description={t("profile.sections.accountDesc")}
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -543,9 +546,7 @@ export default function InstructorProfileScreen() {
 
               <ProfileSectionHeader
                 label={t("profile.appearance.title")}
-                description={t("profile.sections.appearanceDesc", {
-                  defaultValue: "Language and theme controls.",
-                })}
+                description={t("profile.sections.appearanceDesc")}
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -592,25 +593,25 @@ export default function InstructorProfileScreen() {
               </ProfileSectionCard>
 
               <ProfileSectionHeader
-                label={t("profile.sections.payments", { defaultValue: "Payments" })}
-                description={t("profile.sections.paymentsDesc", {
-                  defaultValue: "Destination and payout readiness.",
-                })}
+                label={t("profile.sections.payments")}
+                description={t("profile.sections.paymentsDesc")}
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
                 <ProfileSettingRow
-                  title={t("profile.settings.paymentsPayouts", {
-                    defaultValue: "Payments & payouts",
-                  })}
+                  title={t("profile.navigation.identityVerification")}
+                  subtitle={identityVerificationSummary}
+                  icon="checkmark.circle.fill"
+                  onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
+                  palette={palette}
+                  showDivider
+                />
+                <ProfileSettingRow
+                  title={t("profile.settings.paymentsPayouts")}
                   subtitle={
                     bankConnected
-                      ? t("profile.settings.payoutsConnected", {
-                          defaultValue: "Verified destination connected.",
-                        })
-                      : t("profile.settings.payoutsNeeded", {
-                          defaultValue: "Add a verified bank destination.",
-                        })
+                      ? t("profile.settings.payoutsConnected")
+                      : t("profile.settings.payoutsNeeded")
                   }
                   icon="creditcard.fill"
                   onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
@@ -622,9 +623,7 @@ export default function InstructorProfileScreen() {
                 <ProfileSectionCard palette={palette}>
                   <ProfileSettingRow
                     title={t("auth.signOutButton")}
-                    subtitle={t("profile.settings.signOutDesc", {
-                      defaultValue: "End session on this device.",
-                    })}
+                    subtitle={t("profile.settings.signOutDesc")}
                     icon="arrow.right.square"
                     onPress={() => void signOut()}
                     palette={palette}
@@ -642,14 +641,14 @@ export default function InstructorProfileScreen() {
           profileName={nameValue}
           roleLabel={
             identityVerified
-              ? t("profile.role.verifiedInstructor", { defaultValue: "Verified instructor" })
-              : t("profile.role.instructorProfile", { defaultValue: "Instructor profile" })
+              ? t("profile.hero.verifiedInstructor")
+              : t("profile.hero.instructorProfile")
           }
           profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
           palette={palette}
           scrollY={scrollY}
           onRequestEdit={handleRequestEdit}
-          primaryActionLabel={t("profile.actions.edit", { defaultValue: "Edit profile" })}
+          primaryActionLabel={t("profile.actions.edit")}
           {...(primarySetupAction ? { secondaryAction: primarySetupAction } : {})}
           statusLabel={setupStatusLabel}
           bio={instructorSettings?.bio}

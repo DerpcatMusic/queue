@@ -33,6 +33,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AppSafeRoot } from "@/components/layout/app-safe-root";
 import { ThemedText } from "@/components/themed-text";
+import { RapydReturnProvider } from "@/contexts/rapyd-return-context";
 import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
 import { UserProvider } from "@/contexts/user-context";
 import { useBrand } from "@/hooks/use-brand";
@@ -175,8 +176,8 @@ function RootLayoutContent() {
   if (!isConvexUrlConfigured || !convex) {
     return (
       <View style={styles.errorContainer}>
-        <ThemedText type="title">Configuration Error</ThemedText>
-        <ThemedText>Missing `EXPO_PUBLIC_CONVEX_URL` in your environment.</ThemedText>
+        <ThemedText type="title">{i18n.t("errors.configuration.title")}</ThemedText>
+        <ThemedText>{i18n.t("errors.configuration.body")}</ThemedText>
       </View>
     );
   }
@@ -195,43 +196,42 @@ function RootLayoutContent() {
     <GestureHandlerRootView style={styles.root}>
       <ConvexAuthProvider client={convex} {...(nativeStorage ? { storage: nativeStorage } : {})}>
         <UserProvider>
-          <ThemeProvider value={navigationTheme}>
-            <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
-              <View style={styles.stackContainer}>
-                <Stack
-                  screenOptions={{
-                    headerTintColor: palette.text as string,
-                    headerTitleStyle: { color: palette.text as string },
-                  }}
-                >
-                  <Stack.Screen name="(app)" options={{ headerShown: false }} />
-                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                  <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                  <Stack.Screen
-                    name="modal"
-                    options={{
-                      presentation: "modal",
-                      title: i18n.t("modal.headerTitle"),
+          <RapydReturnProvider>
+            <ThemeProvider value={navigationTheme}>
+              <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
+                <View style={styles.stackContainer}>
+                  <Stack
+                    screenOptions={{
+                      headerTintColor: palette.text as string,
+                      headerTitleStyle: { color: palette.text as string },
                     }}
-                  />
-                </Stack>
-              </View>
-            </AppSafeRoot>
-            <StatusBar
-              style={resolvedScheme === "dark" ? "light" : "dark"}
-              animated
-            />
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFillObject,
-                {
-                  backgroundColor: transitionOverlayColor,
-                  opacity: transitionOpacity,
-                },
-              ]}
-            />
-          </ThemeProvider>
+                  >
+                    <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                    <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                    <Stack.Screen
+                      name="modal"
+                      options={{
+                        presentation: "modal",
+                        title: i18n.t("modal.headerTitle"),
+                      }}
+                    />
+                  </Stack>
+                </View>
+              </AppSafeRoot>
+              <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  {
+                    backgroundColor: transitionOverlayColor,
+                    opacity: transitionOpacity,
+                  },
+                ]}
+              />
+            </ThemeProvider>
+          </RapydReturnProvider>
         </UserProvider>
       </ConvexAuthProvider>
     </GestureHandlerRootView>
