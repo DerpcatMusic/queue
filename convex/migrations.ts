@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { ZONE_OPTIONS } from "../src/constants/zones.generated";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { action, internalMutation, internalQuery, query } from "./_generated/server";
+import { action, internalMutation, internalQuery, type MutationCtx, query } from "./_generated/server";
 import { isKnownZoneId } from "./lib/domainValidation";
 import { mapLegacyPaymentStatusToOrderStatus, summarizeLedgerBalances } from "./lib/marketplace";
 import { omitUndefined } from "./lib/validation";
@@ -90,16 +90,14 @@ function isInstructorKycApprovedForMigration(
 }
 
 async function insertMarketplaceLedgerEntryIfMissing(
-  ctx: Parameters<
-    Parameters<typeof internalMutation>[0]["handler"]
-  >[0],
+  ctx: MutationCtx,
   args: {
     paymentOrderId: Id<"paymentOrders">;
     jobId: Id<"jobs">;
     studioUserId: Id<"users">;
-    instructorUserId?: Id<"users">;
-    payoutScheduleId?: Id<"payoutSchedules">;
-    payoutId?: Id<"payouts">;
+    instructorUserId: Id<"users"> | undefined;
+    payoutScheduleId: Id<"payoutSchedules"> | undefined;
+    payoutId: Id<"payouts"> | undefined;
     dedupeKey: string;
     entryType: Doc<"ledgerEntries">["entryType"];
     balanceBucket: Doc<"ledgerEntries">["balanceBucket"];
@@ -111,7 +109,7 @@ async function insertMarketplaceLedgerEntryIfMissing(
   }) {
   const existing = await ctx.db
     .query("ledgerEntries")
-    .withIndex("by_dedupe_key", (q) => q.eq("dedupeKey", args.dedupeKey))
+    .withIndex("by_dedupe_key", (q: any) => q.eq("dedupeKey", args.dedupeKey))
     .unique();
   if (existing) {
     return { created: false, id: existing._id };
@@ -140,15 +138,13 @@ async function insertMarketplaceLedgerEntryIfMissing(
 }
 
 async function upsertPaymentProviderLinkForMigration(
-  ctx: Parameters<
-    Parameters<typeof internalMutation>[0]["handler"]
-  >[0],
+  ctx: MutationCtx,
   args: {
     paymentOrderId: Id<"paymentOrders">;
     legacyPaymentId: Id<"payments">;
     providerObjectType: "merchant_reference" | "checkout" | "payment";
-    providerObjectId?: string;
-    correlationToken?: string;
+    providerObjectId: string | undefined;
+    correlationToken: string | undefined;
   },
 ) {
   const providerObjectId = args.providerObjectId?.trim();
@@ -158,7 +154,7 @@ async function upsertPaymentProviderLinkForMigration(
 
   const existing = await ctx.db
     .query("paymentProviderLinks")
-    .withIndex("by_provider_object", (q) =>
+    .withIndex("by_provider_object", (q: any) =>
       q
         .eq("provider", "rapyd")
         .eq("providerObjectType", args.providerObjectType)
@@ -191,26 +187,24 @@ async function upsertPaymentProviderLinkForMigration(
 }
 
 async function upsertPayoutProviderLinkForMigration(
-  ctx: Parameters<
-    Parameters<typeof internalMutation>[0]["handler"]
-  >[0],
+  ctx: MutationCtx,
   args: {
     payoutScheduleId: Id<"payoutSchedules">;
     payoutId: Id<"payouts">;
     merchantReferenceId: string;
-    providerPayoutId?: string;
-    correlationToken?: string;
+    providerPayoutId: string | undefined;
+    correlationToken: string | undefined;
   },
 ) {
   const existing =
     (await ctx.db
       .query("payoutProviderLinks")
-      .withIndex("by_payout", (q) => q.eq("payoutId", args.payoutId))
+      .withIndex("by_payout", (q: any) => q.eq("payoutId", args.payoutId))
       .order("desc")
       .first()) ??
     (await ctx.db
       .query("payoutProviderLinks")
-      .withIndex("by_merchant_reference", (q) =>
+      .withIndex("by_merchant_reference", (q: any) =>
         q.eq("provider", "rapyd").eq("merchantReferenceId", args.merchantReferenceId),
       )
       .unique());
@@ -262,9 +256,7 @@ function mapLegacyPayoutToScheduleStatus(
 }
 
 async function ensurePaymentOrderForLegacyPayment(
-  ctx: Parameters<
-    Parameters<typeof internalMutation>[0]["handler"]
-  >[0],
+  ctx: MutationCtx,
   payment: Doc<"payments">,
 ) {
   const legacyCorrelationToken = buildLegacyPaymentOrderCorrelationToken(payment._id);
@@ -275,7 +267,7 @@ async function ensurePaymentOrderForLegacyPayment(
   if (!paymentOrder) {
     const providerLink = await ctx.db
       .query("paymentProviderLinks")
-      .withIndex("by_legacy_payment", (q) => q.eq("legacyPaymentId", payment._id))
+      .withIndex("by_legacy_payment", (q: any) => q.eq("legacyPaymentId", payment._id))
       .order("desc")
       .first();
     paymentOrder = providerLink ? ((await ctx.db.get(providerLink.paymentOrderId)) ?? null) : null;
@@ -285,7 +277,9 @@ async function ensurePaymentOrderForLegacyPayment(
     paymentOrder =
       (await ctx.db
         .query("paymentOrders")
-        .withIndex("by_correlation_token", (q) => q.eq("correlationToken", legacyCorrelationToken))
+        .withIndex("by_correlation_token", (q: any) =>
+          q.eq("correlationToken", legacyCorrelationToken),
+        )
         .unique()) ?? null;
   }
 
@@ -365,9 +359,7 @@ async function ensurePaymentOrderForLegacyPayment(
 }
 
 async function ensureReleaseLedgerForPaymentOrder(
-  ctx: Parameters<
-    Parameters<typeof internalMutation>[0]["handler"]
-  >[0],
+  ctx: MutationCtx,
   args: {
     payment: Doc<"payments">;
     paymentOrder: Doc<"paymentOrders">;
@@ -436,9 +428,7 @@ async function ensureReleaseLedgerForPaymentOrder(
 }
 
 async function ensureRefundLedgerForPaymentOrder(
-  ctx: Parameters<
-    Parameters<typeof internalMutation>[0]["handler"]
-  >[0],
+  ctx: MutationCtx,
   args: {
     payment: Doc<"payments">;
     paymentOrder: Doc<"paymentOrders">;
@@ -450,7 +440,7 @@ async function ensureRefundLedgerForPaymentOrder(
 
   const existingEntries = await ctx.db
     .query("ledgerEntries")
-    .withIndex("by_payment_order", (q) => q.eq("paymentOrderId", args.paymentOrder._id))
+    .withIndex("by_payment_order", (q: any) => q.eq("paymentOrderId", args.paymentOrder._id))
     .collect();
   const balances = summarizeLedgerBalances(existingEntries);
   const instructorRefundBucket =
