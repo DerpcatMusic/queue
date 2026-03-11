@@ -1,4 +1,5 @@
 import { useAction, useMutation, useQuery } from "convex/react";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
@@ -11,7 +12,7 @@ import { LoadingScreen } from "@/components/loading-screen";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitPressable, KitSuccessBurst } from "@/components/ui/kit";
+import { KitPressable, KitSegmentedToggle, KitSuccessBurst } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useRapydReturn } from "@/contexts/rapyd-return-context";
 import { api } from "@/convex/_generated/api";
@@ -28,6 +29,17 @@ import { buildRapydBridgeUrl, resolveRapydAppReturnUrl } from "@/lib/rapyd-hoste
 WebBrowser.maybeCompleteAuthSession();
 
 const INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE = "/instructor/profile/identity-verification" as const;
+type PayoutPreferenceMode = "immediate_when_eligible" | "scheduled_date" | "manual_hold";
+
+function buildDefaultScheduledDate(timestamp?: number | null) {
+  if (timestamp && Number.isFinite(timestamp) && timestamp > Date.now()) {
+    return new Date(timestamp);
+  }
+  const next = new Date();
+  next.setDate(next.getDate() + 1);
+  next.setHours(9, 0, 0, 0);
+  return next;
+}
 
 export default function ProfilePaymentsScreen() {
   const { t, i18n } = useTranslation();
@@ -49,6 +61,7 @@ export default function ProfilePaymentsScreen() {
     currentUser?.role === "instructor" ? {} : "skip",
   );
   const requestPayoutWithdrawal = useMutation(api.payments.requestMyPayoutWithdrawal);
+  const upsertMyPayoutPreference = useMutation(api.payments.upsertMyPayoutPreference);
   const createBeneficiaryOnboardingForInstructor = useAction(
     api.rapyd.createBeneficiaryOnboardingForInstructor,
   );
@@ -62,6 +75,14 @@ export default function ProfilePaymentsScreen() {
   const [withdrawBusy, setWithdrawBusy] = useState(false);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [withdrawInfo, setWithdrawInfo] = useState<string | null>(null);
+  const [preferenceBusy, setPreferenceBusy] = useState(false);
+  const [preferenceError, setPreferenceError] = useState<string | null>(null);
+  const [preferenceInfo, setPreferenceInfo] = useState<string | null>(null);
+  const [pendingPreferenceMode, setPendingPreferenceMode] = useState<PayoutPreferenceMode | null>(
+    null,
+  );
+  const [showSchedulePicker, setShowSchedulePicker] = useState(false);
+  const [scheduleDraft, setScheduleDraft] = useState<Date>(buildDefaultScheduledDate());
   const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"payments"> | null>(null);
 
   const selectedPaymentDetail = useQuery(
@@ -160,6 +181,13 @@ export default function ProfilePaymentsScreen() {
     return () => clearTimeout(timeout);
   }, [showOnboardingSuccess]);
 
+  useEffect(() => {
+    if (!payoutSummary || pendingPreferenceMode === "scheduled_date") {
+      return;
+    }
+    setScheduleDraft(buildDefaultScheduledDate(payoutSummary.payoutPreferenceScheduledDate));
+  }, [payoutSummary, pendingPreferenceMode]);
+
   if (
     currentUser === undefined ||
     (isInstructorPaymentsRole && paymentRows === undefined) ||
@@ -183,6 +211,11 @@ export default function ProfilePaymentsScreen() {
   const isDetailLoading = selectedPaymentId !== null && selectedPaymentDetail === undefined;
   const isManualPayoutMode = payoutSummary?.payoutReleaseMode !== "automatic";
   const isIdentityVerified = payoutSummary?.isIdentityVerified ?? false;
+  const savedPreferenceMode =
+    (payoutSummary?.payoutPreferenceMode as PayoutPreferenceMode | undefined) ??
+    "immediate_when_eligible";
+  const effectivePreferenceMode = pendingPreferenceMode ?? savedPreferenceMode;
+  const scheduledAtLabel = formatDateTime(scheduleDraft.getTime(), locale);
   const appReturnUrl = resolveRapydAppReturnUrl("beneficiary");
   const buildBridgeUrl = (result: "complete" | "cancel"): string => {
     return buildRapydBridgeUrl({
@@ -271,6 +304,61 @@ export default function ProfilePaymentsScreen() {
     } finally {
       setOnboardingBusy(false);
     }
+  };
+
+  const savePayoutPreference = async (
+    preferenceMode: PayoutPreferenceMode,
+    scheduledDate?: number,
+  ) => {
+    setPreferenceBusy(true);
+    setPreferenceError(null);
+    setPreferenceInfo(null);
+    try {
+      if (preferenceMode === "scheduled_date") {
+        if (!scheduledDate || scheduledDate <= Date.now()) {
+          throw new Error(t("profile.payments.preferenceScheduleInvalid"));
+        }
+      }
+
+      await upsertMyPayoutPreference({
+        preferenceMode,
+        ...(preferenceMode === "scheduled_date" && scheduledDate
+          ? { scheduledDate }
+          : {}),
+      });
+      setPendingPreferenceMode(null);
+      setPreferenceInfo(
+        preferenceMode === "scheduled_date"
+          ? t("profile.payments.preferenceSavedScheduled")
+          : preferenceMode === "manual_hold"
+            ? t("profile.payments.preferenceSavedHold")
+            : t("profile.payments.preferenceSavedImmediate"),
+      );
+      if (Platform.OS === "ios") {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      setPreferenceError(
+        error instanceof Error ? error.message : t("profile.payments.preferenceSaveFailed"),
+      );
+    } finally {
+      setPreferenceBusy(false);
+    }
+  };
+
+  const handlePreferenceModeChange = (mode: PayoutPreferenceMode) => {
+    setPreferenceError(null);
+    setPreferenceInfo(null);
+    if (mode === "scheduled_date") {
+      setPendingPreferenceMode(mode);
+      setScheduleDraft(buildDefaultScheduledDate(payoutSummary?.payoutPreferenceScheduledDate));
+      setShowSchedulePicker(true);
+      return;
+    }
+
+    setPendingPreferenceMode(null);
+    setShowSchedulePicker(false);
+    void savePayoutPreference(mode);
   };
 
   if (isFinalizingOnboarding) {
@@ -584,6 +672,189 @@ export default function ProfilePaymentsScreen() {
             {withdrawInfo || destinationInfo}
           </ThemedText>
         ) : null}
+      </View>
+
+      <View style={{ paddingHorizontal: BrandSpacing.md }}>
+        <View
+          style={{
+            backgroundColor: palette.surfaceAlt,
+            borderRadius: 24,
+            borderCurve: "continuous",
+            padding: 20,
+            gap: 16,
+          }}
+        >
+          <View style={{ gap: 6 }}>
+            <ThemedText type="title">{t("profile.payments.preferenceTitle")}</ThemedText>
+            <ThemedText type="caption" style={{ color: palette.textMuted }}>
+              {t("profile.payments.preferenceSubtitle")}
+            </ThemedText>
+          </View>
+
+          <KitSegmentedToggle<PayoutPreferenceMode>
+            value={effectivePreferenceMode}
+            onChange={handlePreferenceModeChange}
+            options={[
+              {
+                label: t("profile.payments.preferenceImmediate"),
+                value: "immediate_when_eligible",
+              },
+              {
+                label: t("profile.payments.preferenceScheduled"),
+                value: "scheduled_date",
+              },
+              {
+                label: t("profile.payments.preferenceHold"),
+                value: "manual_hold",
+              },
+            ]}
+          />
+
+          <ThemedText type="caption" style={{ color: palette.textMuted }}>
+            {effectivePreferenceMode === "scheduled_date"
+              ? t("profile.payments.preferenceScheduledHint")
+              : effectivePreferenceMode === "manual_hold"
+                ? t("profile.payments.preferenceHoldHint")
+                : t("profile.payments.preferenceImmediateHint")}
+          </ThemedText>
+
+          {effectivePreferenceMode === "scheduled_date" ? (
+            <View style={{ gap: 12 }}>
+              <KitPressable
+                accessibilityRole="button"
+                accessibilityLabel={t("profile.payments.preferenceChooseDate")}
+                pressedOpacity={0.95}
+                onPress={() => setShowSchedulePicker((value) => !value)}
+                style={({ pressed }) => ({
+                  borderRadius: 18,
+                  borderCurve: "continuous",
+                  borderWidth: 1,
+                  borderColor: palette.border as string,
+                  backgroundColor: pressed ? palette.surface : palette.appBg,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  gap: 4,
+                })}
+              >
+                <ThemedText type="micro" style={{ color: palette.textMuted }}>
+                  {t("profile.payments.preferenceScheduleAt")}
+                </ThemedText>
+                <ThemedText type="bodyStrong">{scheduledAtLabel}</ThemedText>
+              </KitPressable>
+
+              {showSchedulePicker ? (
+                <View
+                  style={{
+                    borderRadius: 20,
+                    borderCurve: "continuous",
+                    borderWidth: 1,
+                    borderColor: palette.border as string,
+                    backgroundColor: palette.appBg,
+                    padding: 12,
+                    gap: 10,
+                  }}
+                >
+                  <DateTimePicker
+                    value={scheduleDraft}
+                    mode="datetime"
+                    display={Platform.OS === "ios" ? "inline" : "default"}
+                    minimumDate={new Date(Date.now() + 60_000)}
+                    onChange={(event, value) => {
+                      if (Platform.OS !== "ios") {
+                        setShowSchedulePicker(false);
+                      }
+                      if (event.type === "dismissed" || !value) {
+                        return;
+                      }
+                      setScheduleDraft(value);
+                    }}
+                  />
+                  {Platform.OS === "ios" ? (
+                    <KitPressable
+                      accessibilityRole="button"
+                      accessibilityLabel={t("common.done")}
+                      onPress={() => setShowSchedulePicker(false)}
+                      style={({ pressed }) => ({
+                        alignSelf: "flex-start",
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 999,
+                        borderCurve: "continuous",
+                        backgroundColor: pressed ? palette.surface : palette.primarySubtle,
+                      })}
+                    >
+                      <ThemedText type="bodyStrong" style={{ color: palette.primary }}>
+                        {t("common.done")}
+                      </ThemedText>
+                    </KitPressable>
+                  ) : null}
+                </View>
+              ) : null}
+
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <KitPressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("common.cancel")}
+                  onPress={() => {
+                    setPendingPreferenceMode(null);
+                    setShowSchedulePicker(false);
+                    setScheduleDraft(
+                      buildDefaultScheduledDate(payoutSummary?.payoutPreferenceScheduledDate),
+                    );
+                  }}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minHeight: 46,
+                    borderRadius: 18,
+                    borderCurve: "continuous",
+                    borderWidth: 1,
+                    borderColor: palette.border as string,
+                    backgroundColor: pressed ? palette.surface : palette.appBg,
+                  })}
+                >
+                  <ThemedText type="bodyStrong">{t("common.cancel")}</ThemedText>
+                </KitPressable>
+                <KitPressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("profile.payments.preferenceSaveSchedule")}
+                  onPress={() => {
+                    void savePayoutPreference("scheduled_date", scheduleDraft.getTime());
+                  }}
+                  disabled={preferenceBusy}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minHeight: 46,
+                    borderRadius: 18,
+                    borderCurve: "continuous",
+                    backgroundColor: palette.primary,
+                    opacity: preferenceBusy ? 0.6 : 1,
+                    transform: [{ scale: pressed ? 0.985 : 1 }],
+                  })}
+                >
+                  <ThemedText type="bodyStrong" style={{ color: palette.onPrimary as string }}>
+                    {preferenceBusy
+                      ? t("profile.payments.preferenceSaving")
+                      : t("profile.payments.preferenceSaveSchedule")}
+                  </ThemedText>
+                </KitPressable>
+              </View>
+            </View>
+          ) : null}
+
+          {preferenceError ? (
+            <ThemedText type="caption" style={{ color: palette.danger }}>
+              {preferenceError}
+            </ThemedText>
+          ) : preferenceInfo ? (
+            <ThemedText type="caption" style={{ color: palette.textMuted }}>
+              {preferenceInfo}
+            </ThemedText>
+          ) : null}
+        </View>
       </View>
 
       {/* Stats Row */}

@@ -35,6 +35,20 @@ type DiditBackfillBatchResult = {
   continueCursor: string;
 };
 
+type MarketplaceFinanceBackfillResult = {
+  scanned: number;
+  paymentOrdersCreated: number;
+  paymentsLinked: number;
+  paymentProviderLinksCreated: number;
+  payoutSchedulesCreated: number;
+  payoutsLinked: number;
+  payoutProviderLinksCreated: number;
+  ledgerEntriesInserted: number;
+  paymentsWithMultiplePayouts: number;
+  hasMore: boolean;
+  continueCursor?: string;
+};
+
 function toCleanZone(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
@@ -173,16 +187,19 @@ async function upsertPaymentProviderLinkForMigration(
     return false;
   }
 
-  await ctx.db.insert("paymentProviderLinks", {
-    provider: "rapyd",
-    paymentOrderId: args.paymentOrderId,
-    legacyPaymentId: args.legacyPaymentId,
-    providerObjectType: args.providerObjectType,
-    providerObjectId,
-    correlationToken: args.correlationToken,
-    createdAt: now,
-    updatedAt: now,
-  });
+  await ctx.db.insert(
+    "paymentProviderLinks",
+    omitUndefined({
+      provider: "rapyd",
+      paymentOrderId: args.paymentOrderId,
+      legacyPaymentId: args.legacyPaymentId,
+      providerObjectType: args.providerObjectType,
+      providerObjectId,
+      correlationToken: args.correlationToken,
+      createdAt: now,
+      updatedAt: now,
+    }) as Doc<"paymentProviderLinks">,
+  );
   return true;
 }
 
@@ -221,16 +238,19 @@ async function upsertPayoutProviderLinkForMigration(
     return false;
   }
 
-  await ctx.db.insert("payoutProviderLinks", {
-    provider: "rapyd",
-    payoutScheduleId: args.payoutScheduleId,
-    payoutId: args.payoutId,
-    providerPayoutId: args.providerPayoutId,
-    merchantReferenceId: args.merchantReferenceId,
-    correlationToken: args.correlationToken,
-    createdAt: now,
-    updatedAt: now,
-  });
+  await ctx.db.insert(
+    "payoutProviderLinks",
+    omitUndefined({
+      provider: "rapyd",
+      payoutScheduleId: args.payoutScheduleId,
+      payoutId: args.payoutId,
+      providerPayoutId: args.providerPayoutId,
+      merchantReferenceId: args.merchantReferenceId,
+      correlationToken: args.correlationToken,
+      createdAt: now,
+      updatedAt: now,
+    }) as Doc<"payoutProviderLinks">,
+  );
   return true;
 }
 
@@ -309,32 +329,33 @@ async function ensurePaymentOrderForLegacyPayment(
 
   let created = false;
   if (!paymentOrder) {
-    const paymentOrderId = await ctx.db.insert("paymentOrders", {
-      jobId: payment.jobId,
-      studioId: payment.studioId,
-      studioUserId: payment.studioUserId,
-      provider: payment.provider,
-      correlationToken: legacyCorrelationToken,
-      status: mapLegacyPaymentStatusToOrderStatus(payment.status),
-      currency: payment.currency,
-      instructorGrossAmountAgorot: payment.instructorBaseAmountAgorot,
-      platformFeeAmountAgorot: payment.platformMarkupAmountAgorot,
-      studioChargeAmountAgorot: payment.studioChargeAmountAgorot,
-      platformFeeBps: payment.platformMarkupBps,
-      providerCheckoutId: payment.providerCheckoutId,
-      providerPaymentId: payment.providerPaymentId,
-      latestError: payment.lastError,
-      capturedAt:
-        payment.status === "captured" || payment.status === "refunded"
-          ? (payment.capturedAt ?? payment.updatedAt ?? payment.createdAt)
-          : undefined,
-      createdAt: payment.createdAt,
-      updatedAt: now,
-      ...omitUndefined({
+    const paymentOrderId = await ctx.db.insert(
+      "paymentOrders",
+      omitUndefined({
+        jobId: payment.jobId,
+        studioId: payment.studioId,
+        studioUserId: payment.studioUserId,
+        provider: payment.provider,
+        correlationToken: legacyCorrelationToken,
+        status: mapLegacyPaymentStatusToOrderStatus(payment.status),
+        currency: payment.currency,
+        instructorGrossAmountAgorot: payment.instructorBaseAmountAgorot,
+        platformFeeAmountAgorot: payment.platformMarkupAmountAgorot,
+        studioChargeAmountAgorot: payment.studioChargeAmountAgorot,
+        platformFeeBps: payment.platformMarkupBps,
+        providerCheckoutId: payment.providerCheckoutId,
+        providerPaymentId: payment.providerPaymentId,
+        latestError: payment.lastError,
+        capturedAt:
+          payment.status === "captured" || payment.status === "refunded"
+            ? (payment.capturedAt ?? payment.updatedAt ?? payment.createdAt)
+            : undefined,
+        createdAt: payment.createdAt,
+        updatedAt: now,
         instructorId: payment.instructorId,
         instructorUserId: payment.instructorUserId,
-      }),
-    });
+      }) as Doc<"paymentOrders">,
+    );
     paymentOrder = await ctx.db.get(paymentOrderId);
     created = true;
   } else {
@@ -384,6 +405,8 @@ async function ensureReleaseLedgerForPaymentOrder(
     jobId: args.paymentOrder.jobId,
     studioUserId: args.paymentOrder.studioUserId,
     instructorUserId: args.paymentOrder.instructorUserId,
+    payoutScheduleId: undefined,
+    payoutId: undefined,
     dedupeKey: `release:${args.paymentOrder._id}:held`,
     entryType: "adjustment",
     balanceBucket: "instructor_held",
@@ -401,6 +424,8 @@ async function ensureReleaseLedgerForPaymentOrder(
     jobId: args.paymentOrder.jobId,
     studioUserId: args.paymentOrder.studioUserId,
     instructorUserId: args.paymentOrder.instructorUserId,
+    payoutScheduleId: undefined,
+    payoutId: undefined,
     dedupeKey: `release:${args.paymentOrder._id}:available`,
     entryType: "adjustment",
     balanceBucket: "instructor_available",
@@ -457,6 +482,8 @@ async function ensureRefundLedgerForPaymentOrder(
     jobId: args.paymentOrder.jobId,
     studioUserId: args.paymentOrder.studioUserId,
     instructorUserId: args.paymentOrder.instructorUserId,
+    payoutScheduleId: undefined,
+    payoutId: undefined,
     dedupeKey: `refund:${args.paymentOrder._id}:gross`,
     entryType: "refund",
     balanceBucket: "provider_clearing",
@@ -474,6 +501,8 @@ async function ensureRefundLedgerForPaymentOrder(
     jobId: args.paymentOrder.jobId,
     studioUserId: args.paymentOrder.studioUserId,
     instructorUserId: args.paymentOrder.instructorUserId,
+    payoutScheduleId: undefined,
+    payoutId: undefined,
     dedupeKey: `refund:${args.paymentOrder._id}:platform_fee`,
     entryType: "refund_fee_impact",
     balanceBucket: "platform_available",
@@ -491,6 +520,8 @@ async function ensureRefundLedgerForPaymentOrder(
     jobId: args.paymentOrder.jobId,
     studioUserId: args.paymentOrder.studioUserId,
     instructorUserId: args.paymentOrder.instructorUserId,
+    payoutScheduleId: undefined,
+    payoutId: undefined,
     dedupeKey: `refund:${args.paymentOrder._id}:instructor`,
     entryType: "adjustment",
     balanceBucket: instructorRefundBucket,
@@ -650,12 +681,16 @@ export const backfillMarketplaceFinance = action({
     hasMore: v.boolean(),
     continueCursor: v.optional(v.string()),
   }),
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<MarketplaceFinanceBackfillResult> => {
     requireMigrationsAccessToken(args.accessToken);
-    return await ctx.runMutation(internal.migrations.backfillMarketplaceFinanceBatch, {
-      cursor: args.cursor,
-      batchSize: args.batchSize,
-    });
+    const result = await ctx.runMutation(
+      internal.migrations.backfillMarketplaceFinanceBatch as any,
+      omitUndefined({
+        cursor: args.cursor,
+        batchSize: args.batchSize,
+      }),
+    );
+    return result as MarketplaceFinanceBackfillResult;
   },
 });
 
@@ -745,6 +780,8 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
           jobId: paymentOrder.jobId,
           studioUserId: paymentOrder.studioUserId,
           instructorUserId: paymentOrder.instructorUserId,
+          payoutScheduleId: undefined,
+          payoutId: undefined,
           dedupeKey: `capture:${paymentOrder._id}:gross`,
           entryType: "charge_gross",
           balanceBucket: "provider_clearing",
@@ -762,6 +799,8 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
           jobId: paymentOrder.jobId,
           studioUserId: paymentOrder.studioUserId,
           instructorUserId: paymentOrder.instructorUserId,
+          payoutScheduleId: undefined,
+          payoutId: undefined,
           dedupeKey: `capture:${paymentOrder._id}:platform_fee`,
           entryType: "platform_fee",
           balanceBucket: "platform_available",
@@ -779,6 +818,8 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
           jobId: paymentOrder.jobId,
           studioUserId: paymentOrder.studioUserId,
           instructorUserId: paymentOrder.instructorUserId,
+          payoutScheduleId: undefined,
+          payoutId: undefined,
           dedupeKey: `capture:${paymentOrder._id}:instructor_gross`,
           entryType: "instructor_gross",
           balanceBucket: "instructor_held",
@@ -798,7 +839,7 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
         payment.instructorId ? ctx.db.get(payment.instructorId) : Promise.resolve(null),
         ctx.db
           .query("payouts")
-          .withIndex("by_payment", (q) => q.eq("paymentId", payment._id))
+          .withIndex("by_payment", (q: any) => q.eq("paymentId", payment._id))
           .order("desc")
           .take(10),
       ]);
@@ -834,7 +875,7 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
           (primaryPayout?.payoutScheduleId ? await ctx.db.get(primaryPayout.payoutScheduleId) : null) ??
           (await ctx.db
             .query("payoutSchedules")
-            .withIndex("by_payment_order", (q) => q.eq("paymentOrderId", paymentOrder._id))
+            .withIndex("by_payment_order", (q: any) => q.eq("paymentOrderId", paymentOrder._id))
             .order("desc")
             .first());
 
@@ -858,61 +899,79 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
                 : undefined);
 
         if (!payoutSchedule && (payment.status === "captured" || payment.status === "refunded" || primaryPayout)) {
-          const payoutScheduleId = await ctx.db.insert("payoutSchedules", {
-            paymentOrderId: paymentOrder._id,
-            sourcePaymentId: payment._id,
-            payoutId: primaryPayout?._id,
-            jobId: payment.jobId,
-            studioId: payment.studioId,
-            studioUserId: payment.studioUserId,
-            instructorId: paymentOrder.instructorId,
-            instructorUserId: paymentOrder.instructorUserId,
-            destinationId: primaryPayout?.destinationId,
-            status: nextScheduleStatus,
-            amountAgorot: paymentOrder.instructorGrossAmountAgorot,
-            currency: paymentOrder.currency,
-            releaseAfter: nextScheduleStatus === "scheduled" ? primaryPayout?.createdAt : undefined,
-            readyAt:
-              nextScheduleStatus === "available" || nextScheduleStatus === "scheduled" || nextScheduleStatus === "processing"
-                ? (paymentOrder.releasedAt ?? primaryPayout?.createdAt ?? payment.capturedAt ?? payment.createdAt)
-                : undefined,
-            executedAt:
-              nextScheduleStatus === "paid"
-                ? (primaryPayout?.terminalAt ?? primaryPayout?.updatedAt ?? primaryPayout?.createdAt)
-                : undefined,
-            failureReason: scheduleFailureReason,
-            createdAt: primaryPayout?.createdAt ?? payment.createdAt,
-            updatedAt: Date.now(),
-          });
+          const payoutScheduleId = await ctx.db.insert(
+            "payoutSchedules",
+            omitUndefined({
+              paymentOrderId: paymentOrder._id,
+              sourcePaymentId: payment._id,
+              payoutId: primaryPayout?._id,
+              jobId: payment.jobId,
+              studioId: payment.studioId,
+              studioUserId: payment.studioUserId,
+              instructorId: paymentOrder.instructorId,
+              instructorUserId: paymentOrder.instructorUserId,
+              destinationId: primaryPayout?.destinationId,
+              status: nextScheduleStatus,
+              amountAgorot: paymentOrder.instructorGrossAmountAgorot,
+              currency: paymentOrder.currency,
+              releaseAfter: nextScheduleStatus === "scheduled" ? primaryPayout?.createdAt : undefined,
+              readyAt:
+                nextScheduleStatus === "available" ||
+                nextScheduleStatus === "scheduled" ||
+                nextScheduleStatus === "processing"
+                  ? (paymentOrder.releasedAt ??
+                    primaryPayout?.createdAt ??
+                    payment.capturedAt ??
+                    payment.createdAt)
+                  : undefined,
+              executedAt:
+                nextScheduleStatus === "paid"
+                  ? (primaryPayout?.terminalAt ??
+                    primaryPayout?.updatedAt ??
+                    primaryPayout?.createdAt)
+                  : undefined,
+              failureReason: scheduleFailureReason,
+              createdAt: primaryPayout?.createdAt ?? payment.createdAt,
+              updatedAt: Date.now(),
+            }) as Doc<"payoutSchedules">,
+          );
           payoutSchedule = await ctx.db.get(payoutScheduleId);
           payoutSchedulesCreated += 1;
         } else if (payoutSchedule) {
-          await ctx.db.patch(payoutSchedule._id, {
-            sourcePaymentId: payment._id,
-            payoutId: primaryPayout?._id ?? payoutSchedule.payoutId,
-            destinationId: primaryPayout?.destinationId ?? payoutSchedule.destinationId,
-            status: nextScheduleStatus,
-            amountAgorot: paymentOrder.instructorGrossAmountAgorot,
-            currency: paymentOrder.currency,
-            releaseAfter: nextScheduleStatus === "scheduled" ? primaryPayout?.createdAt : payoutSchedule.releaseAfter,
-            readyAt:
-              nextScheduleStatus === "available" || nextScheduleStatus === "scheduled" || nextScheduleStatus === "processing"
-                ? (payoutSchedule.readyAt ??
-                  paymentOrder.releasedAt ??
-                  primaryPayout?.createdAt ??
-                  payment.capturedAt ??
-                  payment.createdAt)
-                : payoutSchedule.readyAt,
-            executedAt:
-              nextScheduleStatus === "paid"
-                ? (payoutSchedule.executedAt ??
-                  primaryPayout?.terminalAt ??
-                  primaryPayout?.updatedAt ??
-                  primaryPayout?.createdAt)
-                : payoutSchedule.executedAt,
-            failureReason: scheduleFailureReason,
-            updatedAt: Date.now(),
-          });
+          await ctx.db.patch(
+            payoutSchedule._id,
+            omitUndefined({
+              sourcePaymentId: payment._id,
+              payoutId: primaryPayout?._id ?? payoutSchedule.payoutId,
+              destinationId: primaryPayout?.destinationId ?? payoutSchedule.destinationId,
+              status: nextScheduleStatus,
+              amountAgorot: paymentOrder.instructorGrossAmountAgorot,
+              currency: paymentOrder.currency,
+              releaseAfter:
+                nextScheduleStatus === "scheduled"
+                  ? primaryPayout?.createdAt
+                  : payoutSchedule.releaseAfter,
+              readyAt:
+                nextScheduleStatus === "available" ||
+                nextScheduleStatus === "scheduled" ||
+                nextScheduleStatus === "processing"
+                  ? (payoutSchedule.readyAt ??
+                    paymentOrder.releasedAt ??
+                    primaryPayout?.createdAt ??
+                    payment.capturedAt ??
+                    payment.createdAt)
+                  : payoutSchedule.readyAt,
+              executedAt:
+                nextScheduleStatus === "paid"
+                  ? (payoutSchedule.executedAt ??
+                    primaryPayout?.terminalAt ??
+                    primaryPayout?.updatedAt ??
+                    primaryPayout?.createdAt)
+                  : payoutSchedule.executedAt,
+              failureReason: scheduleFailureReason,
+              updatedAt: Date.now(),
+            }),
+          );
           payoutSchedule = await ctx.db.get(payoutSchedule._id);
         }
 

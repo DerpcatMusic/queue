@@ -1232,6 +1232,20 @@ export const upsertMyPayoutPreference = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUserRole(ctx, ["instructor"]);
+    const normalizedPreferenceMode = normalizePayoutPreferenceMode(args.preferenceMode);
+    const now = Date.now();
+    const scheduledDate =
+      normalizedPreferenceMode === "scheduled_date" ? args.scheduledDate : undefined;
+
+    if (normalizedPreferenceMode === "scheduled_date") {
+      if (!Number.isFinite(scheduledDate) || !scheduledDate) {
+        throw new ConvexError("A scheduled payout date is required");
+      }
+      if (scheduledDate <= now) {
+        throw new ConvexError("Scheduled payout date must be in the future");
+      }
+    }
+
     if (args.destinationId) {
       const destination = await ctx.db.get(args.destinationId);
       if (!destination || destination.userId !== user._id) {
@@ -1243,30 +1257,71 @@ export const upsertMyPayoutPreference = mutation({
       .query("payoutReleaseRules")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
-    const now = Date.now();
     if (existing) {
       await ctx.db.patch(existing._id, {
-        preferenceMode: normalizePayoutPreferenceMode(args.preferenceMode),
-        scheduledDate:
-          args.preferenceMode === "scheduled_date" ? args.scheduledDate : undefined,
+        preferenceMode: normalizedPreferenceMode,
+        scheduledDate,
         destinationId: args.destinationId ?? existing.destinationId,
         updatedAt: now,
       });
-      return await ctx.db.get(existing._id);
+      const updatedRule = await ctx.db.get(existing._id);
+
+      if (normalizedPreferenceMode === "manual_hold") {
+        const scheduledRows = await ctx.db
+          .query("payoutSchedules")
+          .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
+          .order("desc")
+          .take(200);
+        await Promise.all(
+          scheduledRows
+            .filter((schedule) => schedule.status === "scheduled")
+            .map((schedule) =>
+              ctx.db.patch(schedule._id, {
+                status: "available",
+                readyAt: undefined,
+                releaseAfter: undefined,
+                failureReason: undefined,
+                updatedAt: now,
+              }),
+            ),
+        );
+      } else {
+        await ctx.runMutation(internal.payouts.scheduleInstructorPayout, {
+          instructorUserId: user._id,
+          payoutPreference: normalizedPreferenceMode,
+          ...omitUndefined({
+            scheduledDate,
+          }),
+        });
+      }
+
+      return updatedRule;
     }
 
     const ruleId = await ctx.db.insert(
       "payoutReleaseRules",
       omitUndefined({
         userId: user._id,
-        preferenceMode: normalizePayoutPreferenceMode(args.preferenceMode),
-        scheduledDate: args.preferenceMode === "scheduled_date" ? args.scheduledDate : undefined,
+        preferenceMode: normalizedPreferenceMode,
+        scheduledDate,
         destinationId: args.destinationId,
         createdAt: now,
         updatedAt: now,
       }) as any,
     );
-    return await ctx.db.get(ruleId);
+    const createdRule = await ctx.db.get(ruleId);
+
+    if (normalizedPreferenceMode !== "manual_hold") {
+      await ctx.runMutation(internal.payouts.scheduleInstructorPayout, {
+        instructorUserId: user._id,
+        payoutPreference: normalizedPreferenceMode,
+        ...omitUndefined({
+          scheduledDate,
+        }),
+      });
+    }
+
+    return createdRule;
   },
 });
 
