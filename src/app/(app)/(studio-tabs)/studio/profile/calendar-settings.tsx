@@ -181,13 +181,8 @@ export default function StudioCalendarSettingsScreen() {
         const disconnectResult = await disconnectGoogleCalendar({});
         if (!disconnectResult.deletedRemoteEvents) {
           Alert.alert(
-            t("profile.settings.calendar.disconnectCleanupWarningTitle", {
-              defaultValue: "Google disconnect completed with warnings",
-            }),
-            t("profile.settings.calendar.disconnectCleanupWarningBody", {
-              defaultValue:
-                "Queue removed the local connection, but some Queue-created Google events could not be deleted automatically.",
-            }),
+            t("profile.settings.calendar.disconnectCleanupWarningTitle"),
+            t("profile.settings.calendar.disconnectCleanupWarningBody"),
           );
         }
       }
@@ -204,7 +199,7 @@ export default function StudioCalendarSettingsScreen() {
       router.back();
     } catch (error) {
       Alert.alert(
-        t("profile.settings.errors.saveFailed", { defaultValue: "Failed to save settings." }),
+        t("profile.settings.errors.saveFailed"),
         error instanceof Error ? error.message : undefined,
       );
     } finally {
@@ -253,13 +248,8 @@ export default function StudioCalendarSettingsScreen() {
       const result = await disconnectGoogleCalendar({});
       if (!result.deletedRemoteEvents) {
         Alert.alert(
-          t("profile.settings.calendar.disconnectCleanupWarningTitle", {
-            defaultValue: "Google disconnect completed with warnings",
-          }),
-          t("profile.settings.calendar.disconnectCleanupWarningBody", {
-            defaultValue:
-              "Queue removed the local connection, but some Queue-created Google events could not be deleted automatically.",
-          }),
+          t("profile.settings.calendar.disconnectCleanupWarningTitle"),
+          t("profile.settings.calendar.disconnectCleanupWarningBody"),
         );
       }
       setProvider("none");

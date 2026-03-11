@@ -5,9 +5,7 @@ import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
-import { useSystemUi, type InsetTone } from "@/contexts/system-ui-context";
-import { BrandSpacing } from "@/constants/brand";
-import { useAppInsets } from "@/hooks/use-app-insets";
+import { type InsetTone, useSystemUi } from "@/contexts/system-ui-context";
 
 type BaseScreenScaffoldProps = {
   style?: StyleProp<ViewStyle>;
@@ -30,7 +28,6 @@ export type ScreenScaffoldProps = PropsWithChildren<
 >;
 
 export function ScreenScaffold(props: ScreenScaffoldProps) {
-  const insets = useAppInsets();
   const { setTopInsetTone } = useSystemUi();
   const topInsetTone = props.topInsetTone ?? "app";
 
@@ -57,13 +54,7 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
     );
   }
 
-  const {
-    contentContainerStyle,
-    scrollProps,
-    style,
-    children,
-    useDesktopFrame = true,
-  } = props;
+  const { contentContainerStyle, scrollProps, style, children, useDesktopFrame = true } = props;
 
   const content = useDesktopFrame ? (
     <DesktopDashboardFrame contentStyle={contentContainerStyle}>{children}</DesktopDashboardFrame>
@@ -78,12 +69,7 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
       showsVerticalScrollIndicator={false}
       {...scrollProps}
       style={[{ flex: 1 }, style]}
-      contentContainerStyle={[
-        {
-          paddingBottom: Math.max(BrandSpacing.xl, insets.safeBottom + BrandSpacing.xl),
-        },
-        !useDesktopFrame ? contentContainerStyle : null,
-      ]}
+      contentContainerStyle={!useDesktopFrame ? contentContainerStyle : undefined}
     >
       {content}
     </Animated.ScrollView>

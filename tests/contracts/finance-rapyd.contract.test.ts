@@ -25,9 +25,25 @@ describe("finance rapyd contracts", () => {
     expect(getPaymentIdFromMerchantReferenceId("payments:123")).toBe("payments:123" as Id<"payments">);
   });
 
-  it("can reconcile a payment by merchant reference id fallback", async () => {
+  it("resolves a payment by provider link instead of raw merchant reference casting", async () => {
     const db = new InMemoryConvexDb();
+    const paymentOrderId = (await db.insert("paymentOrders", {
+      provider: "rapyd",
+      correlationToken: "payord:users:1:abc",
+      jobId: "jobs:1",
+      studioId: "studioProfiles:1",
+      studioUserId: "users:1",
+      status: "payment_pending",
+      currency: "ILS",
+      instructorGrossAmountAgorot: 10000,
+      platformFeeAmountAgorot: 1500,
+      studioChargeAmountAgorot: 11500,
+      platformFeeBps: 1500,
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    })) as Id<"paymentOrders">;
     const paymentId = (await db.insert("payments", {
+      paymentOrderId,
       provider: "rapyd",
       jobId: "jobs:1",
       studioId: "studioProfiles:1",
@@ -42,10 +58,20 @@ describe("finance rapyd contracts", () => {
       createdAt: FIXED_NOW,
       updatedAt: FIXED_NOW,
     })) as Id<"payments">;
+    await db.insert("paymentProviderLinks", {
+      provider: "rapyd",
+      paymentOrderId,
+      legacyPaymentId: paymentId,
+      providerObjectType: "merchant_reference",
+      providerObjectId: "payord:users:1:abc",
+      correlationToken: "payord:users:1:abc",
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    });
 
     const payment = await getPaymentByProviderRefsRead(
       { db } as any,
-      { merchantReferenceId: String(paymentId) },
+      { merchantReferenceId: "payord:users:1:abc" },
     );
 
     expect(payment?._id).toBe(paymentId);

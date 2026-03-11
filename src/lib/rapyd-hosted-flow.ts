@@ -1,6 +1,17 @@
 const DEFAULT_BENEFICIARY_APP_RETURN_URL = "queue://rapyd/beneficiary-return";
 const DEFAULT_CHECKOUT_APP_RETURN_URL = "queue://rapyd/checkout-return";
 
+export type RapydReturnKind = "beneficiary" | "checkout";
+export type RapydReturnResult = "cancel" | "complete";
+
+export type RapydReturnPayload = {
+  kind: RapydReturnKind;
+  result: RapydReturnResult;
+  url: string;
+  receivedAt: number;
+  jobId?: string;
+};
+
 const ensureAbsoluteUrl = (value: string, label: string): string => {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -52,6 +63,49 @@ export const resolveRapydAppReturnUrl = (kind: "beneficiary" | "checkout"): stri
     );
   }
   return kind === "checkout" ? DEFAULT_CHECKOUT_APP_RETURN_URL : DEFAULT_BENEFICIARY_APP_RETURN_URL;
+};
+
+const normalizeRapydReturnPath = (url: URL): string => {
+  const host = url.hostname.trim().toLowerCase();
+  const pathname = url.pathname.trim().toLowerCase();
+  if (url.protocol === "queue:" && host === "rapyd") {
+    return pathname || "/";
+  }
+  return pathname;
+};
+
+export const parseRapydReturnUrl = (url: string): RapydReturnPayload | null => {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+
+  const path = normalizeRapydReturnPath(parsed);
+  const kind: RapydReturnKind | null =
+    path === "/beneficiary-return"
+      ? "beneficiary"
+      : path === "/checkout-return" || path === "/rapyd/checkout-return"
+        ? "checkout"
+        : path === "/rapyd/beneficiary-return"
+          ? "beneficiary"
+          : null;
+  if (!kind) {
+    return null;
+  }
+
+  const rawResult = parsed.searchParams.get("result")?.trim().toLowerCase();
+  const result: RapydReturnResult = rawResult === "cancel" ? "cancel" : "complete";
+  const jobId = parsed.searchParams.get("jobId")?.trim() || undefined;
+
+  return {
+    kind,
+    result,
+    url: parsed.toString(),
+    receivedAt: Date.now(),
+    ...(jobId ? { jobId } : {}),
+  };
 };
 
 export const buildRapydBridgeUrl = ({

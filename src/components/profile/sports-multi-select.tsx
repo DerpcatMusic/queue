@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, View } from "react-native";
-
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
-import { KitButton, KitChip, KitPressable } from "@/components/ui/kit";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitButton, KitPressable } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { isSportType, SPORT_TYPES, toSportLabel } from "@/convex/constants";
 
 type SportsMultiSelectProps = {
@@ -37,6 +37,14 @@ export function SportsMultiSelect({
     }
     return SPORT_TYPES.filter((sport) => toSportLabel(sport).toLowerCase().includes(normalized));
   }, [query]);
+  const selectedSportsList = useMemo(
+    () => SPORT_TYPES.filter((sport) => selectedSports.includes(sport)),
+    [selectedSports],
+  );
+  const availableSportsList = useMemo(
+    () => filteredSports.filter((sport) => !selectedSports.includes(sport)),
+    [filteredSports, selectedSports],
+  );
 
   return (
     <View
@@ -76,27 +84,84 @@ export function SportsMultiSelect({
             onChangeText={setQuery}
             placeholder={searchPlaceholder}
           />
-          {selectedSports.length > 0 ? (
-            <View style={styles.chips}>
-              {selectedSports.map((sport) => (
-                <KitChip
-                  key={`selected-${sport}`}
-                  label={isSportType(sport) ? toSportLabel(sport) : sport}
-                  selected
-                  onPress={() => onToggleSport(sport)}
-                />
-              ))}
+          {selectedSportsList.length > 0 ? (
+            <View style={styles.section}>
+              <Text style={[styles.sectionLabel, { color: palette.textMuted as string }]}>
+                Selected sports
+              </Text>
+              <View style={styles.resultsList}>
+                {selectedSportsList.map((sport) => (
+                  <KitPressable
+                    key={`selected-${sport}`}
+                    accessibilityRole="button"
+                    onPress={() => onToggleSport(sport)}
+                    style={[styles.resultRow, { backgroundColor: palette.primarySubtle as string }]}
+                  >
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={[styles.resultTitle, { color: palette.text as string }]}>
+                        {isSportType(sport) ? toSportLabel(sport) : sport}
+                      </Text>
+                      <Text style={[styles.resultMeta, { color: palette.primary as string }]}>
+                        Added to your teaching profile
+                      </Text>
+                    </View>
+                    <IconSymbol
+                      name="checkmark.circle.fill"
+                      size={18}
+                      color={palette.primary as string}
+                    />
+                  </KitPressable>
+                ))}
+              </View>
             </View>
           ) : null}
-          <View style={styles.chips}>
-            {filteredSports.map((sport) => (
-              <KitChip
-                key={sport}
-                label={toSportLabel(sport)}
-                selected={selectedSports.includes(sport)}
-                onPress={() => onToggleSport(sport)}
-              />
-            ))}
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: palette.textMuted as string }]}>
+              {query.trim().length > 0 ? "Matching sports" : "All sports"}
+            </Text>
+            <ScrollView
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.resultsList}
+              style={styles.resultsViewport}
+            >
+              {availableSportsList.length > 0 ? (
+                availableSportsList.map((sport) => (
+                  <KitPressable
+                    key={sport}
+                    accessibilityRole="button"
+                    onPress={() => onToggleSport(sport)}
+                    style={[styles.resultRow, { backgroundColor: palette.surface as string }]}
+                  >
+                    <Text style={[styles.resultTitle, { color: palette.text as string }]}>
+                      {toSportLabel(sport)}
+                    </Text>
+                    <IconSymbol
+                      name="plus.circle.fill"
+                      size={18}
+                      color={palette.textMuted as string}
+                    />
+                  </KitPressable>
+                ))
+              ) : (
+                <View
+                  style={[
+                    styles.emptyState,
+                    {
+                      backgroundColor: palette.surface as string,
+                      borderColor: palette.border as string,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.resultTitle, { color: palette.text as string }]}>
+                    No matching sports
+                  </Text>
+                  <Text style={[styles.resultMeta, { color: palette.textMuted as string }]}>
+                    Try a different sport name.
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       ) : null}
@@ -128,9 +193,42 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     gap: 12,
   },
-  chips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  section: {
     gap: 8,
+  },
+  sectionLabel: {
+    ...BrandType.micro,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  resultsViewport: {
+    maxHeight: 260,
+  },
+  resultsList: {
+    gap: 8,
+  },
+  resultRow: {
+    minHeight: 56,
+    borderRadius: BrandRadius.card - 6,
+    borderCurve: "continuous",
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  resultTitle: {
+    ...BrandType.bodyStrong,
+  },
+  resultMeta: {
+    ...BrandType.micro,
+  },
+  emptyState: {
+    borderWidth: 1,
+    borderRadius: BrandRadius.card - 6,
+    borderCurve: "continuous",
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.md,
+    gap: 4,
   },
 });

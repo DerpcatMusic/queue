@@ -24,6 +24,11 @@ import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { LoadingScreen } from "@/components/loading-screen";
+import {
+  buildZoneCityGroups,
+  buildZoneCityListItems,
+  type ZoneCityListItem,
+} from "@/components/map-tab/zone-city-tree";
 import { QueueMap } from "@/components/maps/queue-map";
 import type { QueueMapPin } from "@/components/maps/queue-map.types";
 import { ThemedText } from "@/components/themed-text";
@@ -31,7 +36,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitButton, KitPressable } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing, BrandType } from "@/constants/brand";
-import { ZONE_OPTIONS, type ZoneOption } from "@/constants/zones";
+import { ZONE_OPTIONS } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
@@ -56,6 +61,7 @@ export default function MapTabScreen() {
   const [zoneModeActive, setZoneModeActive] = useState(false);
   const [, setSheetIndex] = useState(-1);
   const [zoneSearch, setZoneSearch] = useState("");
+  const [expandedCityKeys, setExpandedCityKeys] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [focusZoneId, setFocusZoneId] = useState<string | null>(null);
@@ -79,7 +85,7 @@ export default function MapTabScreen() {
         throw new Error(
           t("mapTab.errors.locationPermission", {
             defaultValue: "Permission to access location was denied.",
-          })
+          }),
         );
       }
       const location = await Location.getCurrentPositionAsync({});
@@ -90,7 +96,11 @@ export default function MapTabScreen() {
       const resolved = await resolveCurrentLocationToZone();
       setFocusZoneId(resolved.zoneId);
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : t("mapTab.errors.failedToSave", { defaultValue: "Failed to load location" }));
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : t("mapTab.errors.failedToSave", { defaultValue: "Failed to load location" }),
+      );
     }
   }, [t]);
 
@@ -99,34 +109,48 @@ export default function MapTabScreen() {
     setSelectedZoneIds(remoteZones.zoneIds ?? []);
   }, [remoteZones]);
 
+  const applySelectedZoneIds = useCallback(
+    (nextZoneIds: string[], preferredFocusZoneId?: string | null) => {
+      const dedupedZoneIds = [...new Set(nextZoneIds)];
+      if (dedupedZoneIds.length > MAX_ZONES) {
+        setSaveError(
+          t("mapTab.errors.maxZones", {
+            max: MAX_ZONES,
+            defaultValue: `You can select up to ${String(MAX_ZONES)} zones.`,
+          }),
+        );
+        return false;
+      }
+
+      setSaveError(null);
+      setSelectedZoneIds(dedupedZoneIds);
+      setFocusZoneId((currentFocusZoneId) => {
+        if (preferredFocusZoneId && dedupedZoneIds.includes(preferredFocusZoneId)) {
+          return preferredFocusZoneId;
+        }
+        if (currentFocusZoneId && dedupedZoneIds.includes(currentFocusZoneId)) {
+          return currentFocusZoneId;
+        }
+        return dedupedZoneIds[0] ?? null;
+      });
+      return true;
+    },
+    [t],
+  );
+
   const toggleZone = useCallback(
     (zoneId: string) => {
       if (Platform.OS === "ios") {
         void Haptics.selectionAsync();
       }
-      setSaveError(null);
-      setSelectedZoneIds((current) => {
-        if (current.includes(zoneId)) {
-          const next = current.filter((id) => id !== zoneId);
-          if (focusZoneId === zoneId) {
-            setFocusZoneId(next[0] ?? null);
-          }
-          return next;
-        }
-        if (current.length >= MAX_ZONES) {
-          setSaveError(
-            t("mapTab.errors.maxZones", {
-              max: MAX_ZONES,
-              defaultValue: `You can select up to ${String(MAX_ZONES)} zones.`,
-            }),
-          );
-          return current;
-        }
-        setFocusZoneId(zoneId);
-        return [...current, zoneId];
-      });
+      const isSelected = selectedZoneIds.includes(zoneId);
+      const nextZoneIds = isSelected
+        ? selectedZoneIds.filter((id) => id !== zoneId)
+        : [...selectedZoneIds, zoneId];
+      const preferredFocusZoneId = isSelected && focusZoneId === zoneId ? null : zoneId;
+      applySelectedZoneIds(nextZoneIds, preferredFocusZoneId);
     },
-    [focusZoneId, t],
+    [applySelectedZoneIds, focusZoneId, selectedZoneIds],
   );
 
   const persistedZoneIds = (remoteZones?.zoneIds ?? []) as string[];
@@ -141,7 +165,22 @@ export default function MapTabScreen() {
     () => new Set(deferredSelectedZoneIds),
     [deferredSelectedZoneIds],
   );
+  const expandedCityKeySet = useMemo(() => new Set(expandedCityKeys), [expandedCityKeys]);
   const deferredZoneSearch = useDeferredValue(zoneSearch);
+  const zoneCityGroups = useMemo(() => buildZoneCityGroups(ZONE_OPTIONS), []);
+  const zoneCityByZoneId = useMemo(() => {
+    const entries = new Map<string, string>();
+    for (const group of zoneCityGroups) {
+      for (const zone of group.zones) {
+        entries.set(zone.id, group.cityKey);
+      }
+    }
+    return entries;
+  }, [zoneCityGroups]);
+  const zoneCityGroupByKey = useMemo(
+    () => new Map(zoneCityGroups.map((group) => [group.cityKey, group])),
+    [zoneCityGroups],
+  );
   const filteredZones = useMemo(() => {
     const q = deferredZoneSearch.trim().toLowerCase();
     if (!q) return ZONE_OPTIONS;
@@ -152,6 +191,17 @@ export default function MapTabScreen() {
       return label.includes(q) || fallback.includes(q) || id.includes(q);
     });
   }, [deferredZoneSearch, zoneLanguage]);
+  const zoneCityItems = useMemo(
+    () =>
+      buildZoneCityListItems({
+        groups: zoneCityGroups,
+        language: zoneLanguage,
+        query: deferredZoneSearch,
+        expandedCityKeys: expandedCityKeySet,
+        selectedZoneIds: deferredSelectedZoneSet,
+      }),
+    [deferredSelectedZoneSet, deferredZoneSearch, expandedCityKeySet, zoneCityGroups, zoneLanguage],
+  );
   const selectedZones = useMemo(
     () => ZONE_OPTIONS.filter((zone) => deferredSelectedZoneSet.has(zone.id)),
     [deferredSelectedZoneSet],
@@ -175,6 +225,60 @@ export default function MapTabScreen() {
     return delta;
   }, [persistedZoneIds, selectedZoneIds]);
   const sheetSnapPoints = useMemo(() => ["24%", "82%"], []);
+
+  useEffect(() => {
+    if (!zoneModeActive) {
+      return;
+    }
+    setExpandedCityKeys((current) => {
+      const next = new Set(current);
+      for (const zoneId of selectedZoneIds) {
+        const cityKey = zoneCityByZoneId.get(zoneId);
+        if (cityKey) {
+          next.add(cityKey);
+        }
+      }
+      if (focusZoneId) {
+        const cityKey = zoneCityByZoneId.get(focusZoneId);
+        if (cityKey) {
+          next.add(cityKey);
+        }
+      }
+      return next.size === current.length ? current : [...next];
+    });
+  }, [focusZoneId, selectedZoneIds, zoneCityByZoneId, zoneModeActive]);
+
+  const toggleCityExpanded = useCallback((cityKey: string) => {
+    setExpandedCityKeys((current) =>
+      current.includes(cityKey)
+        ? current.filter((entry) => entry !== cityKey)
+        : [...current, cityKey],
+    );
+  }, []);
+
+  const toggleCity = useCallback(
+    (cityKey: string) => {
+      const group = zoneCityGroupByKey.get(cityKey);
+      if (!group) return;
+      if (Platform.OS === "ios") {
+        void Haptics.selectionAsync();
+      }
+
+      const cityZoneIds = group.zones.map((zone) => zone.id);
+      const isFullySelected = cityZoneIds.every((zoneId) => selectedZoneIds.includes(zoneId));
+      const nextZoneIds = isFullySelected
+        ? selectedZoneIds.filter((zoneId) => !cityZoneIds.includes(zoneId))
+        : [...selectedZoneIds, ...cityZoneIds];
+      const preferredFocusZoneId = isFullySelected ? null : (cityZoneIds[0] ?? null);
+
+      if (applySelectedZoneIds(nextZoneIds, preferredFocusZoneId) && !isFullySelected) {
+        setExpandedCityKeys((current) =>
+          current.includes(cityKey) ? current : [...current, cityKey],
+        );
+      }
+    },
+    [applySelectedZoneIds, selectedZoneIds, zoneCityGroupByKey],
+  );
 
   const openZoneEditor = useCallback(() => {
     setSaveError(null);
@@ -979,49 +1083,174 @@ export default function MapTabScreen() {
                   {saveError}
                 </ThemedText>
               ) : null}
-              <BottomSheetFlatList<ZoneOption>
-                data={filteredZones}
-                keyExtractor={(item: ZoneOption) => item.id}
+              <BottomSheetFlatList<ZoneCityListItem>
+                data={zoneCityItems}
+                keyExtractor={(item: ZoneCityListItem) => item.key}
                 contentContainerStyle={styles.zoneListContent}
                 keyboardShouldPersistTaps="handled"
-                removeClippedSubviews
+                removeClippedSubviews={false}
                 initialNumToRender={20}
                 maxToRenderPerBatch={28}
                 windowSize={9}
                 updateCellsBatchingPeriod={16}
-                renderItem={({ item }: { item: ZoneOption }) => {
-                  const selected = deferredSelectedZoneSet.has(item.id);
+                ListEmptyComponent={
+                  <View
+                    style={[
+                      styles.emptyZoneSearchState,
+                      { backgroundColor: palette.surfaceAlt as string },
+                    ]}
+                  >
+                    <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
+                      No matching cities
+                    </Text>
+                    <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+                      Try a city name, a zone variant, or a zone ID.
+                    </Text>
+                  </View>
+                }
+                renderItem={({ item }: { item: ZoneCityListItem }) => {
+                  if (item.kind === "zone") {
+                    return (
+                      <KitPressable
+                        onPress={() => toggleZone(item.zone.id)}
+                        style={[
+                          styles.zoneChildRow,
+                          {
+                            backgroundColor: item.selected
+                              ? (palette.primarySubtle as string)
+                              : (palette.surface as string),
+                          },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.zoneChildBullet,
+                            {
+                              backgroundColor: item.selected
+                                ? (palette.primary as string)
+                                : (palette.borderStrong as string),
+                            },
+                          ]}
+                        />
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <Text
+                            style={{
+                              ...BrandType.bodyStrong,
+                              color: palette.text as string,
+                            }}
+                          >
+                            {item.zone.variantLabel[zoneLanguage]}
+                          </Text>
+                          <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
+                            {item.zone.id}
+                          </Text>
+                        </View>
+                        {item.selected ? (
+                          <IconSymbol
+                            name="checkmark.circle.fill"
+                            size={18}
+                            color={palette.primary as string}
+                          />
+                        ) : null}
+                      </KitPressable>
+                    );
+                  }
+
+                  const zoneCount = item.group.zones.length;
+                  const isFullySelected = item.selectedCount === zoneCount;
+                  const isPartiallySelected = item.selectedCount > 0 && !isFullySelected;
+                  const summary =
+                    zoneCount === 1
+                      ? (item.group.zones[0]?.id ?? item.group.cityKey)
+                      : isFullySelected
+                        ? `All ${String(zoneCount)} live`
+                        : isPartiallySelected
+                          ? `${String(item.selectedCount)} of ${String(zoneCount)} live`
+                          : `${String(zoneCount)} zones`;
+
                   return (
                     <KitPressable
-                      onPress={() => toggleZone(item.id)}
+                      onPress={() => toggleCity(item.group.cityKey)}
                       style={[
-                        styles.zoneRow,
+                        styles.zoneCityRow,
                         {
-                          backgroundColor: selected ? palette.primary : palette.surfaceAlt,
+                          backgroundColor: isFullySelected
+                            ? (palette.primary as string)
+                            : isPartiallySelected
+                              ? (palette.primarySubtle as string)
+                              : (palette.surfaceAlt as string),
                         },
                       ]}
                     >
-                      <ThemedText
-                        numberOfLines={1}
-                        style={{
-                          color: selected ? palette.onPrimary : palette.text,
-                          fontSize: 15,
-                          fontWeight: "500",
-                          letterSpacing: -0.1,
-                        }}
-                      >
-                        {item.label[zoneLanguage]}
-                      </ThemedText>
-                      <ThemedText
-                        style={{
-                          color: selected ? "rgba(255,255,255,0.72)" : palette.textMuted,
-                          fontSize: 12,
-                          textTransform: "uppercase",
-                          letterSpacing: 0.7,
-                        }}
-                      >
-                        {selected ? "Live" : "Add"}
-                      </ThemedText>
+                      <View style={{ flex: 1, gap: 4 }}>
+                        <Text
+                          numberOfLines={1}
+                          style={{
+                            ...BrandType.heading,
+                            fontSize: 21,
+                            lineHeight: 24,
+                            color: isFullySelected
+                              ? (palette.onPrimary as string)
+                              : (palette.text as string),
+                          }}
+                        >
+                          {item.group.cityLabel[zoneLanguage]}
+                        </Text>
+                        <Text
+                          style={{
+                            ...BrandType.micro,
+                            color: isFullySelected
+                              ? "rgba(255,255,255,0.78)"
+                              : isPartiallySelected
+                                ? (palette.primary as string)
+                                : (palette.textMuted as string),
+                            letterSpacing: 0.2,
+                          }}
+                        >
+                          {summary}
+                        </Text>
+                      </View>
+                      <View style={styles.zoneCityActions}>
+                        {isFullySelected ? (
+                          <IconSymbol
+                            name="checkmark.circle.fill"
+                            size={20}
+                            color={palette.onPrimary as string}
+                          />
+                        ) : isPartiallySelected ? (
+                          <IconSymbol
+                            name="minus.circle.fill"
+                            size={20}
+                            color={palette.primary as string}
+                          />
+                        ) : null}
+                        {item.showChevron ? (
+                          <KitPressable
+                            accessibilityRole="button"
+                            accessibilityLabel={
+                              item.expanded
+                                ? `Collapse ${item.group.cityLabel[zoneLanguage]}`
+                                : `Expand ${item.group.cityLabel[zoneLanguage]}`
+                            }
+                            hitSlop={8}
+                            onPress={(event) => {
+                              event.stopPropagation();
+                              toggleCityExpanded(item.group.cityKey);
+                            }}
+                            style={styles.zoneChevronButton}
+                          >
+                            <IconSymbol
+                              name={item.expanded ? "chevron.down" : "chevron.right"}
+                              size={16}
+                              color={
+                                isFullySelected
+                                  ? (palette.onPrimary as string)
+                                  : (palette.textMuted as string)
+                              }
+                            />
+                          </KitPressable>
+                        ) : null}
+                      </View>
                     </KitPressable>
                   );
                 }}
@@ -1111,7 +1340,16 @@ const styles = StyleSheet.create({
   zoneListContent: {
     paddingBottom: 48,
   },
-  zoneRow: {
+  emptyZoneSearchState: {
+    borderRadius: 20,
+    borderCurve: "continuous",
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    gap: 4,
+    marginHorizontal: 16,
+    marginTop: 4,
+  },
+  zoneCityRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1120,6 +1358,36 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     marginHorizontal: 16,
     marginBottom: 8,
+  },
+  zoneCityActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginLeft: 12,
+  },
+  zoneChevronButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  zoneChildRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 16,
+    paddingLeft: 22,
+    paddingRight: 18,
+    paddingVertical: 14,
+    marginLeft: 34,
+    marginRight: 16,
+    marginBottom: 8,
+    gap: 12,
+  },
+  zoneChildBullet: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   saveBannerWrap: {
     position: "absolute",

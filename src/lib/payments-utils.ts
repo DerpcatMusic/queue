@@ -1,3 +1,5 @@
+import i18n from "@/i18n";
+
 export type PaymentStatus =
   | "created"
   | "pending"
@@ -29,42 +31,42 @@ export function formatAgorotCurrency(amountAgorot: number, locale: string, curre
 export function getPaymentStatusLabel(status: PaymentStatus): string {
   switch (status) {
     case "created":
-      return "Created";
+      return i18n.t("jobsTab.checkout.paymentStatus.created");
     case "pending":
-      return "Pending";
+      return i18n.t("jobsTab.checkout.paymentStatus.pending");
     case "authorized":
-      return "Authorized";
+      return i18n.t("jobsTab.checkout.paymentStatus.authorized");
     case "captured":
-      return "Captured";
+      return i18n.t("jobsTab.checkout.paymentStatus.captured");
     case "failed":
-      return "Failed";
+      return i18n.t("jobsTab.checkout.paymentStatus.failed");
     case "cancelled":
-      return "Cancelled";
+      return i18n.t("jobsTab.checkout.paymentStatus.cancelled");
     case "refunded":
-      return "Refunded";
+      return i18n.t("jobsTab.checkout.paymentStatus.refunded");
     default:
-      return "Unknown";
+      return i18n.t("profile.roles.unknown");
   }
 }
 
 export function getPayoutStatusLabel(status: PayoutStatus): string {
   switch (status) {
     case "queued":
-      return "Queued";
+      return i18n.t("jobsTab.checkout.payoutStatus.queued");
     case "processing":
-      return "Processing";
+      return i18n.t("jobsTab.checkout.payoutStatus.processing");
     case "pending_provider":
-      return "Pending provider";
+      return i18n.t("jobsTab.checkout.payoutStatus.pendingProvider");
     case "paid":
-      return "Paid out";
+      return i18n.t("jobsTab.checkout.payoutStatus.paid");
     case "failed":
-      return "Failed";
+      return i18n.t("jobsTab.checkout.payoutStatus.failed");
     case "cancelled":
-      return "Cancelled";
+      return i18n.t("jobsTab.checkout.payoutStatus.cancelled");
     case "needs_attention":
-      return "Needs attention";
+      return i18n.t("jobsTab.checkout.payoutStatus.needsAttention");
     default:
-      return "Unknown";
+      return i18n.t("profile.roles.unknown");
   }
 }
 

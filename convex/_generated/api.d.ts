@@ -29,6 +29,7 @@ import type * as lib_calendarShared from "../lib/calendarShared.js";
 import type * as lib_domainValidation from "../lib/domainValidation.js";
 import type * as lib_instructorCoverage from "../lib/instructorCoverage.js";
 import type * as lib_instructorEligibility from "../lib/instructorEligibility.js";
+import type * as lib_marketplace from "../lib/marketplace.js";
 import type * as lib_validation from "../lib/validation.js";
 import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   "lib/domainValidation": typeof lib_domainValidation;
   "lib/instructorCoverage": typeof lib_instructorCoverage;
   "lib/instructorEligibility": typeof lib_instructorEligibility;
+  "lib/marketplace": typeof lib_marketplace;
   "lib/validation": typeof lib_validation;
   migrations: typeof migrations;
   notifications: typeof notifications;

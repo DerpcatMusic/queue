@@ -91,9 +91,11 @@ export default function InstructorProfileEditScreen() {
         return;
       }
       setProfilePhotoUrl(uploadedUrl);
-      setFeedbackLabel("Profile photo updated.");
+      setFeedbackLabel(t("profile.editor.photoUpdated"));
     } catch (error) {
-      setFeedbackLabel(error instanceof Error ? error.message : "Failed to update profile photo.");
+      setFeedbackLabel(
+        error instanceof Error ? error.message : t("profile.editor.photoUpdateFailed"),
+      );
     }
   };
 
@@ -109,7 +111,7 @@ export default function InstructorProfileEditScreen() {
       });
       router.back();
     } catch (error) {
-      setFeedbackLabel(error instanceof Error ? error.message : "Failed to save profile.");
+      setFeedbackLabel(error instanceof Error ? error.message : t("profile.editor.saveFailed"));
     } finally {
       setIsSavingProfile(false);
     }
@@ -121,23 +123,17 @@ export default function InstructorProfileEditScreen() {
       return;
     }
 
-    Alert.alert(
-      t("common.discardChanges", { defaultValue: "Discard changes?" }),
-      t("common.discardChangesMessage", {
-        defaultValue: "Your profile edits are not saved yet.",
-      }),
-      [
-        {
-          text: t("common.cancel", { defaultValue: "Cancel" }),
-          style: "cancel",
-        },
-        {
-          text: t("common.discard", { defaultValue: "Discard" }),
-          style: "destructive",
-          onPress: () => router.back(),
-        },
-      ],
-    );
+    Alert.alert(t("common.discardChanges"), t("common.discardChangesMessage"), [
+      {
+        text: t("common.cancel"),
+        style: "cancel",
+      },
+      {
+        text: t("common.discard"),
+        style: "destructive",
+        onPress: () => router.back(),
+      },
+    ]);
   };
 
   return (
@@ -145,7 +141,7 @@ export default function InstructorProfileEditScreen() {
       <ProfileEditorForm
         palette={palette}
         profileName={nameDraft || instructorSettings.displayName}
-        roleLabel="Instructor profile"
+        roleLabel={t("profile.hero.instructorProfile")}
         profileImageUrl={profilePhotoUrl}
         nameDraft={nameDraft}
         onNameDraftChange={(value) => {
@@ -181,7 +177,7 @@ export default function InstructorProfileEditScreen() {
         isSaving={isSavingProfile}
         isChangingPhoto={isUploadingProfilePhoto}
         statusLabel={profilePhotoUploadLabel ?? feedbackLabel}
-        searchPlaceholder={t("mapTab.searchPlaceholder")}
+        searchPlaceholder={t("profile.settings.sports.searchPlaceholder")}
         sportsTitle={t("profile.settings.sports.title")}
         sportsEmptyHint={t("profile.settings.sports.none")}
       />

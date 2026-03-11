@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   I18nManager,
+  type LayoutChangeEvent,
   Platform,
   StyleSheet,
   Text,
-  type LayoutChangeEvent,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -21,9 +21,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-
-import { TopSheetSurface } from "@/components/layout/top-sheet-surface";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
+import { TopSheetSurface } from "@/components/layout/top-sheet-surface";
 import { LoadingScreen } from "@/components/loading-screen";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { KitButton, KitPressable, KitSegmentedToggle } from "@/components/ui/kit";
@@ -192,7 +191,10 @@ function WeekRail({
   const translateX = useSharedValue(-1);
   const railWidth = useSharedValue(1);
   const isRtl = I18nManager.isRTL;
-  const previousWeekDays = useMemo(() => weekDays.map((dayKey) => shiftDayKey(dayKey, -7)), [weekDays]);
+  const previousWeekDays = useMemo(
+    () => weekDays.map((dayKey) => shiftDayKey(dayKey, -7)),
+    [weekDays],
+  );
   const nextWeekDays = useMemo(() => weekDays.map((dayKey) => shiftDayKey(dayKey, 7)), [weekDays]);
 
   const handleSwipeWeek = useCallback(
@@ -232,7 +234,8 @@ function WeekRail({
         .onEnd((event) => {
           const width = railWidth.value || 1;
           const shouldAdvance =
-            event.translationX <= -Math.max(SWIPE_THRESHOLD, width * 0.2) || event.velocityX <= -650;
+            event.translationX <= -Math.max(SWIPE_THRESHOLD, width * 0.2) ||
+            event.velocityX <= -650;
           const shouldRewind =
             event.translationX >= Math.max(SWIPE_THRESHOLD, width * 0.2) || event.velocityX >= 650;
 
@@ -318,13 +321,12 @@ function WeekRail({
                   </Text>
                   <View
                     style={{
-                      minWidth: 40,
-                      height: 40,
+                      width: 48,
+                      height: 48,
                       borderRadius: 999,
                       borderCurve: "continuous",
                       alignItems: "center",
                       justifyContent: "center",
-                      paddingHorizontal: 12,
                       backgroundColor: selected ? (palette.text as string) : "transparent",
                       borderWidth: today && !selected ? 1 : 0,
                       borderColor: today ? (palette.borderStrong as string) : "transparent",
@@ -332,8 +334,10 @@ function WeekRail({
                   >
                     <Text
                       style={{
-                        ...BrandType.heading,
-                        fontSize: 20,
+                        ...BrandType.bodyStrong,
+                        fontSize: 19,
+                        lineHeight: 22,
+                        fontVariant: ["tabular-nums"],
                         includeFontPadding: false,
                         color: selected ? (palette.surface as string) : (palette.text as string),
                       }}
@@ -384,7 +388,7 @@ function WeekRail({
         })}
       </View>
     ),
-    [handleSelectDay, isRtl, lessonCountByDay, locale, palette, selectedDay, todayKey],
+    [handleSelectDay, lessonCountByDay, locale, palette, selectedDay, todayKey],
   );
 
   return (
@@ -870,19 +874,21 @@ const wStyles = StyleSheet.create({
 export default function CalendarTabScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
-  const { safeTop, tabContentBottom } = useAppInsets();
+  const { safeTop, safeBottom } = useAppInsets();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
   const {
     selectedDay,
     listRef,
     listItems,
+    initialScrollIndex,
     lessonCountByDay,
     canShowGoogleAgenda,
     viewMode,
     setViewMode,
     viewabilityConfig,
     onViewableItemsChanged,
+    handleTimelineScrollBegin,
     handleDayPress,
     handleWeekChange,
     handleTodayPress,
@@ -899,10 +905,6 @@ export default function CalendarTabScreen() {
   // ─── Render items ───────────────────────────────────────────────────────────
 
   const railColor = (palette.border as string) ?? "#E5E5E5";
-  const listFooterComponent = useMemo(
-    () => <View style={{ height: tabContentBottom + BrandSpacing.xl }} />,
-    [tabContentBottom],
-  );
 
   useEffect(() => {
     setPickerDate(new Date(selectedDayTimestamp));
@@ -938,7 +940,13 @@ export default function CalendarTabScreen() {
 
   const agendaHeaderComponent = useMemo(
     () => (
-      <View style={{ gap: BrandSpacing.sm, paddingTop: BrandSpacing.sm, paddingBottom: BrandSpacing.xs }}>
+      <View
+        style={{
+          gap: BrandSpacing.sm,
+          paddingTop: BrandSpacing.sm,
+          paddingBottom: BrandSpacing.xs,
+        }}
+      >
         <View
           style={{
             flexDirection: "row",
@@ -986,7 +994,6 @@ export default function CalendarTabScreen() {
             </Text>
           </View>
         </View>
-
       </View>
     ),
     [i18n.language, palette, selectedDay, selectedLessonCount, t],
@@ -1064,8 +1071,8 @@ export default function CalendarTabScreen() {
         row.source === "google"
           ? (row.location ?? "Google Calendar")
           : row.roleView === "instructor"
-          ? row.studioName
-          : (row.instructorName ?? "Unassigned instructor");
+            ? row.studioName
+            : (row.instructorName ?? "Unassigned instructor");
       const timeLabel = row.isAllDay
         ? t("calendarTab.timeline.allDay", { defaultValue: "All day" })
         : `${formatTime(row.startTime, i18n.language)} – ${formatTime(row.endTime, i18n.language)}`;
@@ -1141,9 +1148,7 @@ export default function CalendarTabScreen() {
                         { backgroundColor: palette.primarySubtle as string },
                       ]}
                     >
-                      <Text
-                        style={[styles.sourceBadgeText, { color: palette.primary as string }]}
-                      >
+                      <Text style={[styles.sourceBadgeText, { color: palette.primary as string }]}>
                         {t("calendarTab.timeline.googleBadge", { defaultValue: "Google" })}
                       </Text>
                     </View>
@@ -1364,20 +1369,36 @@ export default function CalendarTabScreen() {
         ) : null}
       </TopSheetSurface>
 
-      <FlashList
-        ref={listRef}
-        data={listItems}
-        keyExtractor={(item) => item.key}
-        renderItem={renderItem}
-        getItemType={(item) => item.kind}
-        overrideItemLayout={overrideItemLayout}
-        showsVerticalScrollIndicator={false}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        contentContainerStyle={[styles.timelineContent, { paddingHorizontal: BrandSpacing.lg }]}
-        ListHeaderComponent={agendaHeaderComponent}
-        ListFooterComponent={listFooterComponent}
-      />
+      <View style={[styles.timelineViewport, { backgroundColor: palette.appBg as string }]}>
+        <FlashList
+          ref={listRef}
+          data={listItems}
+          initialScrollIndex={initialScrollIndex}
+          keyExtractor={(item) => item.key}
+          renderItem={renderItem}
+          getItemType={(item) => item.kind}
+          drawDistance={900}
+          overrideItemLayout={overrideItemLayout}
+          removeClippedSubviews={false}
+          onScrollBeginDrag={handleTimelineScrollBegin}
+          showsVerticalScrollIndicator={false}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          scrollIndicatorInsets={{ bottom: safeBottom + BrandSpacing.md }}
+          contentContainerStyle={[
+            styles.timelineContent,
+            {
+              paddingHorizontal: BrandSpacing.lg,
+              paddingBottom: safeBottom + BrandSpacing.xl,
+            },
+          ]}
+          ListHeaderComponent={agendaHeaderComponent}
+        />
+        <View
+          pointerEvents="none"
+          style={[styles.timelineBottomMask, { backgroundColor: palette.appBg as string }]}
+        />
+      </View>
     </TabScreenRoot>
   );
 }
@@ -1385,8 +1406,20 @@ export default function CalendarTabScreen() {
 // ─── Timeline Styles ─────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  timelineViewport: {
+    flex: 1,
+    position: "relative",
+  },
   timelineContent: {
     paddingTop: 4,
+  },
+  timelineBottomMask: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 28,
+    opacity: 0.96,
   },
   filterBar: {
     paddingHorizontal: 16,

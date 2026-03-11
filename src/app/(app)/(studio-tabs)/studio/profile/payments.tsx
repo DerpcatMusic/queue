@@ -71,24 +71,24 @@ export default function ProfilePaymentsScreen() {
     >
       <View style={{ paddingHorizontal: BrandSpacing.lg, gap: 4 }}>
         <ThemedText type="caption" style={{ color: palette.textMuted }}>
-          Track amounts, payment processing, and payout delivery status.
+          {t("profile.payments.summarySubtitle")}
         </ThemedText>
       </View>
 
       <View style={{ paddingHorizontal: BrandSpacing.sm }}>
         <KitList inset>
           <KitListItem
-            title="Processed payments"
+            title={t("profile.payments.processedPayments")}
             accessory={
               <ThemedText style={{ color: palette.textMuted }}>{processedCount}</ThemedText>
             }
           />
           <KitListItem
-            title="Paid out"
+            title={t("profile.payments.paidOut")}
             accessory={<ThemedText style={{ color: palette.textMuted }}>{paidOutCount}</ThemedText>}
           />
           <KitListItem
-            title="Failed"
+            title={t("profile.payments.failed")}
             accessory={<ThemedText style={{ color: palette.danger }}>{failedCount}</ThemedText>}
           />
         </KitList>
@@ -99,13 +99,13 @@ export default function ProfilePaymentsScreen() {
         items={rows}
         locale={locale}
         palette={palette}
-        title="Recent activity"
+        title={t("profile.payments.recentActivity")}
         subtitle={
           role === "studio"
-            ? "What studios were charged and what instructors should receive."
-            : "What you should receive and payout progress."
+            ? t("profile.payments.studioSubtitle")
+            : t("profile.payments.instructorSubtitle")
         }
-        emptyLabel="No payments yet."
+        emptyLabel={t("profile.payments.empty")}
         onSelectPaymentId={setSelectedPaymentId}
       />
 
@@ -119,14 +119,14 @@ export default function ProfilePaymentsScreen() {
               justifyContent: "space-between",
             }}
           >
-            <ThemedText type="title">Payment detail</ThemedText>
+            <ThemedText type="title">{t("profile.payments.detailTitle")}</ThemedText>
             <KitPressable
               accessibilityRole="button"
-              accessibilityLabel="Clear payment detail"
+              accessibilityLabel={t("profile.payments.clearDetail")}
               onPress={() => setSelectedPaymentId(null)}
             >
               <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                Clear
+                {t("common.clear")}
               </ThemedText>
             </KitPressable>
           </View>
@@ -134,7 +134,7 @@ export default function ProfilePaymentsScreen() {
             <KitList inset>
               <KitListItem>
                 <ThemedText style={{ color: palette.textMuted }}>
-                  Loading payment detail...
+                  {t("profile.payments.loadingDetail")}
                 </ThemedText>
               </KitListItem>
             </KitList>
@@ -142,7 +142,7 @@ export default function ProfilePaymentsScreen() {
             <KitList inset>
               <KitListItem>
                 <ThemedText style={{ color: palette.textMuted }}>
-                  Payment not found or no longer accessible.
+                  {t("profile.payments.detailUnavailable")}
                 </ThemedText>
               </KitListItem>
             </KitList>
@@ -150,7 +150,7 @@ export default function ProfilePaymentsScreen() {
             <View style={{ gap: 8 }}>
               <KitList inset>
                 <KitListItem
-                  title="Payment status"
+                  title={t("profile.payments.paymentStatus")}
                   accessory={
                     <ThemedText style={{ color: palette.textMuted }}>
                       {getPaymentStatusLabel(selectedPaymentDetail.payment.status)}
@@ -158,17 +158,17 @@ export default function ProfilePaymentsScreen() {
                   }
                 />
                 <KitListItem
-                  title="Payout status"
+                  title={t("profile.payments.payoutStatus")}
                   accessory={
                     <ThemedText style={{ color: palette.textMuted }}>
                       {selectedPaymentDetail.payout
                         ? getPayoutStatusLabel(selectedPaymentDetail.payout.status)
-                        : "Not created"}
+                        : t("profile.payments.notCreated")}
                     </ThemedText>
                   }
                 />
                 <KitListItem
-                  title="Invoice status"
+                  title={t("profile.payments.invoiceStatus")}
                   accessory={
                     <ThemedText
                       style={{
@@ -180,13 +180,13 @@ export default function ProfilePaymentsScreen() {
                     >
                       {selectedPaymentDetail.invoice
                         ? selectedPaymentDetail.invoice.status
-                        : "Not issued"}
+                        : t("profile.payments.notIssued")}
                     </ThemedText>
                   }
                 />
                 {selectedPaymentDetail.invoice?.externalInvoiceId ? (
                   <KitListItem
-                    title="Invoice ID"
+                    title={t("profile.payments.invoiceId")}
                     accessory={
                       <ThemedText style={{ color: palette.textMuted }}>
                         {selectedPaymentDetail.invoice.externalInvoiceId}
@@ -195,7 +195,11 @@ export default function ProfilePaymentsScreen() {
                   />
                 ) : null}
                 <KitListItem
-                  title={role === "studio" ? "Studio charged" : "Instructor amount"}
+                  title={
+                    role === "studio"
+                      ? t("profile.payments.studioCharged")
+                      : t("profile.payments.instructorAmount")
+                  }
                   accessory={
                     <ThemedText style={{ color: palette.textMuted }}>
                       {formatAgorotCurrency(
@@ -209,7 +213,7 @@ export default function ProfilePaymentsScreen() {
                   }
                 />
                 <KitListItem
-                  title="Platform markup"
+                  title={t("profile.payments.platformMarkup")}
                   accessory={
                     <ThemedText style={{ color: palette.textMuted }}>
                       {formatAgorotCurrency(
@@ -221,7 +225,7 @@ export default function ProfilePaymentsScreen() {
                   }
                 />
                 <KitListItem
-                  title="Created"
+                  title={t("profile.payments.created")}
                   accessory={
                     <ThemedText style={{ color: palette.textMuted }}>
                       {formatDateTime(selectedPaymentDetail.payment.createdAt, locale)}
@@ -233,7 +237,7 @@ export default function ProfilePaymentsScreen() {
                 {selectedPaymentDetail.timeline.length === 0 ? (
                   <KitListItem>
                     <ThemedText style={{ color: palette.textMuted }}>
-                      No provider events recorded yet.
+                      {t("profile.payments.noProviderEvents")}
                     </ThemedText>
                   </KitListItem>
                 ) : (

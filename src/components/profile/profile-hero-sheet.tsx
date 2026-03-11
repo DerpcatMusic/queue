@@ -74,13 +74,8 @@ function getProfileSummary(
   return (
     bio?.trim() ||
     (activeSocialCount > 0
-      ? t("profile.hero.linksReady", {
-          count: activeSocialCount,
-          defaultValue: `${String(activeSocialCount)} links ready for your public profile`,
-        })
-      : t("profile.hero.focused", {
-          defaultValue: "Keep your public profile focused and easy to scan.",
-        }))
+      ? t("profile.hero.linksReady", { count: activeSocialCount })
+      : t("profile.hero.focused"))
   );
 }
 
@@ -91,7 +86,7 @@ export function ProfileHeroSheet({
   palette,
   scrollY,
   onRequestEdit,
-  primaryActionLabel = "Edit profile",
+  primaryActionLabel,
   secondaryAction,
   statusLabel,
   bio,
@@ -104,6 +99,7 @@ export function ProfileHeroSheet({
   const activeSocialCount = Object.values(socialLinks ?? {}).filter((value) =>
     Boolean(value?.trim()),
   ).length;
+  const resolvedPrimaryActionLabel = primaryActionLabel ?? t("profile.actions.edit");
   const sportsLabel = getSportsLabel(sports, t);
   const summaryLabel = getProfileSummary(bio, activeSocialCount, t);
 
@@ -263,7 +259,7 @@ export function ProfileHeroSheet({
           <View style={{ flexDirection: "row", gap: 8 }}>
             <ProfileIconButton
               icon="pencil"
-              label={primaryActionLabel}
+              label={resolvedPrimaryActionLabel}
               onPress={onRequestEdit}
               palette={palette}
               tone="accent"

@@ -1,6 +1,7 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
-import { Redirect } from "expo-router";
+import type { Href } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +13,7 @@ import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitPressable, KitSuccessBurst } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
+import { useRapydReturn } from "@/contexts/rapyd-return-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useBrand } from "@/hooks/use-brand";
@@ -25,13 +27,18 @@ import { buildRapydBridgeUrl, resolveRapydAppReturnUrl } from "@/lib/rapyd-hoste
 
 WebBrowser.maybeCompleteAuthSession();
 
+const INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE = "/instructor/profile/identity-verification" as const;
+
 export default function ProfilePaymentsScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
   const locale = i18n.resolvedLanguage ?? "en";
+  const router = useRouter();
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const isInstructorPaymentsRole = currentUser?.role === "instructor";
+  const { consumeReturn: consumeBeneficiaryReturn, latestReturn: latestBeneficiaryReturn } =
+    useRapydReturn("beneficiary");
 
   const paymentRows = useQuery(
     api.payments.listMyPayments,
@@ -73,7 +80,7 @@ export default function ProfilePaymentsScreen() {
       setIsFinalizingOnboarding(false);
       setActiveOnboardingId(null);
       setDestinationError(null);
-      setDestinationInfo("Bank account connected.");
+      setDestinationInfo(t("profile.payments.connectSuccess"));
       setShowOnboardingSuccess(true);
       if (Platform.OS === "ios") {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -91,11 +98,59 @@ export default function ProfilePaymentsScreen() {
       setDestinationError(
         activeOnboardingSession.lastError ??
           (activeOnboardingSession.status === "expired"
-            ? "Bank onboarding expired."
-            : "Bank onboarding failed."),
+            ? t("profile.payments.expired")
+            : t("profile.payments.onboardingFailed")),
       );
     }
-  }, [activeOnboardingSession, isFinalizingOnboarding]);
+  }, [activeOnboardingSession, isFinalizingOnboarding, t]);
+
+  useEffect(() => {
+    if (!latestBeneficiaryReturn) return;
+
+    consumeBeneficiaryReturn();
+    if (latestBeneficiaryReturn.result === "cancel") {
+      setActiveOnboardingId(null);
+      setIsFinalizingOnboarding(false);
+      setDestinationError(null);
+      setDestinationInfo(t("profile.payments.cancelled"));
+      return;
+    }
+
+    setDestinationError(null);
+    setDestinationInfo(t("profile.payments.finalizingTitle"));
+    setIsFinalizingOnboarding(true);
+  }, [consumeBeneficiaryReturn, latestBeneficiaryReturn, t]);
+
+  useEffect(() => {
+    if (!isFinalizingOnboarding || activeOnboardingId !== null || !payoutSummary) {
+      return;
+    }
+
+    if (payoutSummary.hasVerifiedDestination || payoutSummary.onboardingStatus === "completed") {
+      setIsFinalizingOnboarding(false);
+      setDestinationError(null);
+      setDestinationInfo(t("profile.payments.connectSuccess"));
+      setShowOnboardingSuccess(true);
+      if (Platform.OS === "ios") {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      return;
+    }
+
+    if (
+      payoutSummary.onboardingStatus === "failed" ||
+      payoutSummary.onboardingStatus === "expired"
+    ) {
+      setIsFinalizingOnboarding(false);
+      setDestinationInfo(null);
+      setDestinationError(
+        payoutSummary.onboardingLastError ??
+          (payoutSummary.onboardingStatus === "expired"
+            ? t("profile.payments.expired")
+            : t("profile.payments.onboardingFailed")),
+      );
+    }
+  }, [activeOnboardingId, isFinalizingOnboarding, payoutSummary, t]);
 
   useEffect(() => {
     if (!showOnboardingSuccess) return;
@@ -148,16 +203,16 @@ export default function ProfilePaymentsScreen() {
         maxPayments: 25,
       });
       if (result.scheduledCount === 0) {
-        setWithdrawInfo("No available balance to withdraw right now.");
+        setWithdrawInfo(t("profile.payments.availableBalanceEmpty"));
       } else {
         setWithdrawInfo(
-          `Withdrawal started for ${result.scheduledCount} payment${
-            result.scheduledCount === 1 ? "" : "s"
-          }.`,
+          t("profile.payments.withdrawalStarted", {
+            count: result.scheduledCount,
+          }),
         );
       }
     } catch (error) {
-      setWithdrawError(error instanceof Error ? error.message : "Failed to start withdrawal.");
+      setWithdrawError(error instanceof Error ? error.message : t("profile.payments.withdrawalFailed"));
     } finally {
       setWithdrawBusy(false);
     }
@@ -165,14 +220,12 @@ export default function ProfilePaymentsScreen() {
 
   const confirmWithdrawToBank = () => {
     Alert.alert(
-      t("profile.payments.withdrawConfirmTitle", { defaultValue: "Withdraw to bank?" }),
-      t("profile.payments.withdrawConfirmBody", {
-        defaultValue: "This will start a payout for your available balance.",
-      }),
+      t("profile.payments.withdrawConfirmTitle"),
+      t("profile.payments.withdrawConfirmBody"),
       [
-        { text: t("common.cancel", { defaultValue: "Cancel" }), style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: t("profile.payments.withdrawConfirmAction", { defaultValue: "Withdraw" }),
+          text: t("profile.payments.withdrawConfirmAction"),
           style: "default",
           onPress: () => {
             void withdrawToBank();
@@ -191,10 +244,6 @@ export default function ProfilePaymentsScreen() {
     setDestinationInfo(null);
     try {
       const session = await createBeneficiaryOnboardingForInstructor({
-        beneficiaryCountry: "IL",
-        beneficiaryEntityType: "individual",
-        category: "bank",
-        payoutCurrency: "ILS",
         completeUrl: beneficiaryCompleteUrl,
         cancelUrl: beneficiaryCancelUrl,
       });
@@ -205,22 +254,20 @@ export default function ProfilePaymentsScreen() {
         const result = resultUrl?.searchParams.get("result") ?? "complete";
         if (result === "cancel") {
           setActiveOnboardingId(null);
-          setDestinationInfo("Bank onboarding cancelled.");
+          setDestinationInfo(t("profile.payments.cancelled"));
         } else {
-          setDestinationInfo("Finalizing bank connection...");
+          setDestinationInfo(t("profile.payments.finalizingTitle"));
           setIsFinalizingOnboarding(true);
         }
       } else if (authResult.type === "dismiss" || authResult.type === "cancel") {
         setActiveOnboardingId(null);
-        setDestinationInfo("Bank onboarding closed before completion.");
+        setDestinationInfo(t("profile.payments.closed"));
       } else {
-        setDestinationInfo("Bank onboarding opened. Complete it, then return.");
+        setDestinationInfo(t("profile.payments.opened"));
       }
     } catch (error) {
       setActiveOnboardingId(null);
-      setDestinationError(
-        error instanceof Error ? error.message : "Failed to open secure bank onboarding.",
-      );
+      setDestinationError(error instanceof Error ? error.message : t("profile.payments.openFailed"));
     } finally {
       setOnboardingBusy(false);
     }
@@ -243,9 +290,9 @@ export default function ProfilePaymentsScreen() {
             alignItems: "center",
           }}
         >
-          <ThemedText type="title">Finalizing bank connection</ThemedText>
+          <ThemedText type="title">{t("profile.payments.finalizingTitle")}</ThemedText>
           <ThemedText type="caption" style={{ color: palette.textMuted, textAlign: "center" }}>
-            Waiting for Rapyd to confirm your payout destination.
+            {t("profile.payments.finalizingBody")}
           </ThemedText>
         </View>
       </TabScreenScrollView>
@@ -270,9 +317,9 @@ export default function ProfilePaymentsScreen() {
           }}
         >
           <KitSuccessBurst iconName="building.columns.fill" />
-          <ThemedText type="title">Bank connected</ThemedText>
+          <ThemedText type="title">{t("profile.payments.successTitle")}</ThemedText>
           <ThemedText type="caption" style={{ color: palette.textMuted, textAlign: "center" }}>
-            Your payout destination is ready.
+            {t("profile.payments.successBody")}
           </ThemedText>
         </View>
       </TabScreenScrollView>
@@ -304,7 +351,9 @@ export default function ProfilePaymentsScreen() {
               fontWeight: "700",
             }}
           >
-            {payoutSummary?.hasVerifiedDestination ? "Bank connected" : "Bank not connected"}
+            {payoutSummary?.hasVerifiedDestination
+              ? t("profile.payments.bankConnected")
+              : t("profile.payments.bankNotConnected")}
           </ThemedText>
         </View>
         <View
@@ -324,22 +373,44 @@ export default function ProfilePaymentsScreen() {
               fontWeight: "700",
             }}
           >
-            {isIdentityVerified ? "KYC verified" : "KYC required"}
+            {isIdentityVerified ? t("profile.payments.kycVerified") : t("profile.payments.kycRequired")}
           </ThemedText>
         </View>
         {!isIdentityVerified ? (
-          <ThemedText type="caption" style={{ color: palette.textMuted, marginTop: 6 }}>
-            Complete identity verification in Profile before connecting bank or withdrawing funds.
-          </ThemedText>
+          <View style={{ marginTop: 8, gap: 10, alignItems: "flex-start" }}>
+            <ThemedText type="caption" style={{ color: palette.textMuted }}>
+              {t("profile.payments.kycRequiredHint")}
+            </ThemedText>
+            <KitPressable
+              accessibilityRole="button"
+              accessibilityLabel={t("profile.setup.verifyIdentity")}
+              haptic="impact"
+              pressedOpacity={0.9}
+              onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
+              style={({ pressed }) => ({
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                borderRadius: 999,
+                borderCurve: "continuous",
+                backgroundColor: pressed ? palette.surfaceAlt : palette.primarySubtle,
+                borderWidth: 1,
+                borderColor: palette.primary as string,
+              })}
+            >
+              <ThemedText type="bodyStrong" style={{ color: palette.primary }}>
+                {t("profile.setup.verifyIdentity")}
+              </ThemedText>
+            </KitPressable>
+          </View>
         ) : null}
         {!payoutSummary?.hasVerifiedDestination && payoutSummary?.onboardingStatus === "pending" ? (
           <ThemedText type="caption" style={{ color: palette.textMuted, marginTop: 6 }}>
-            Onboarding submitted. Complete hosted flow and wait for provider confirmation.
+            {t("profile.payments.onboardingPending")}
           </ThemedText>
         ) : null}
         {!payoutSummary?.hasVerifiedDestination && payoutSummary?.onboardingStatus === "failed" ? (
           <ThemedText type="caption" style={{ color: palette.danger, marginTop: 6 }}>
-            {payoutSummary?.onboardingLastError ?? "Bank onboarding failed. Try again."}
+            {payoutSummary?.onboardingLastError ?? t("profile.payments.onboardingFailed")}
           </ThemedText>
         ) : null}
       </View>
@@ -373,7 +444,7 @@ export default function ProfilePaymentsScreen() {
                   fontWeight: "600",
                 }}
               >
-                Available
+                {t("profile.payments.available")}
               </ThemedText>
               <ThemedText
                 numberOfLines={1}
@@ -414,7 +485,7 @@ export default function ProfilePaymentsScreen() {
           <View style={{ flexDirection: "row", gap: 12 }}>
             <KitPressable
               accessibilityRole="button"
-              accessibilityLabel="Withdraw to bank"
+              accessibilityLabel={t("profile.payments.withdrawToBank")}
               haptic="impact"
               pressedOpacity={0.96}
               pressStyle={{ transform: [{ scale: 0.985 }] }}
@@ -451,7 +522,7 @@ export default function ProfilePaymentsScreen() {
             >
               <IconSymbol name="arrow.down" size={18} color="#FFF" />
               <ThemedText type="bodyStrong" style={{ color: "#FFF", fontSize: 16 }}>
-                Withdraw
+                {t("profile.payments.withdraw")}
               </ThemedText>
             </KitPressable>
 
@@ -459,8 +530,8 @@ export default function ProfilePaymentsScreen() {
               accessibilityRole="button"
               accessibilityLabel={
                 payoutSummary?.hasVerifiedDestination
-                  ? "Manage bank account"
-                  : "Connect bank account"
+                  ? t("profile.payments.manageBank")
+                  : t("profile.payments.connectBank")
               }
               pressedOpacity={0.96}
               pressStyle={{ transform: [{ scale: 0.985 }] }}
@@ -494,7 +565,9 @@ export default function ProfilePaymentsScreen() {
             >
               <IconSymbol name="building.columns.fill" size={18} color="#FFF" />
               <ThemedText type="bodyStrong" style={{ color: "#FFF", fontSize: 16 }}>
-                {payoutSummary?.hasVerifiedDestination ? "Manage bank" : "Connect bank"}
+                {payoutSummary?.hasVerifiedDestination
+                  ? t("profile.payments.manageBank")
+                  : t("profile.payments.connectBank")}
               </ThemedText>
             </KitPressable>
           </View>
@@ -534,7 +607,7 @@ export default function ProfilePaymentsScreen() {
               }}
             />
             <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "600" }}>
-              Pending
+              {t("profile.payments.pending")}
             </ThemedText>
           </View>
           <ThemedText type="title" style={{ fontSize: 22, fontVariant: ["tabular-nums"] }}>
@@ -564,7 +637,7 @@ export default function ProfilePaymentsScreen() {
               }}
             />
             <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "600" }}>
-              Paid
+              {t("profile.payments.paid")}
             </ThemedText>
           </View>
           <ThemedText type="title" style={{ fontSize: 22, fontVariant: ["tabular-nums"] }}>
@@ -582,10 +655,10 @@ export default function ProfilePaymentsScreen() {
           <View
             style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
           >
-            <ThemedText type="title">Receipt</ThemedText>
+            <ThemedText type="title">{t("profile.payments.receipt")}</ThemedText>
             <KitPressable
               accessibilityRole="button"
-              accessibilityLabel="Close payment detail"
+              accessibilityLabel={t("profile.payments.close")}
               onPress={() => setSelectedPaymentId(null)}
               pressedOpacity={0.94}
               style={{
@@ -596,7 +669,7 @@ export default function ProfilePaymentsScreen() {
               }}
             >
               <ThemedText type="caption" style={{ color: palette.text, fontWeight: "600" }}>
-                Close
+                {t("profile.payments.close")}
               </ThemedText>
             </KitPressable>
           </View>
@@ -609,7 +682,9 @@ export default function ProfilePaymentsScreen() {
                 alignItems: "center",
               }}
             >
-              <ThemedText style={{ color: palette.textMuted }}>Loading receipt...</ThemedText>
+              <ThemedText style={{ color: palette.textMuted }}>
+                {t("profile.payments.loadingReceipt")}
+              </ThemedText>
             </View>
           ) : !selectedPaymentDetail ? (
             <View
@@ -620,7 +695,9 @@ export default function ProfilePaymentsScreen() {
                 alignItems: "center",
               }}
             >
-              <ThemedText style={{ color: palette.textMuted }}>Payment not found.</ThemedText>
+              <ThemedText style={{ color: palette.textMuted }}>
+                {t("profile.payments.paymentNotFound")}
+              </ThemedText>
             </View>
           ) : (
             <View
@@ -674,7 +751,7 @@ export default function ProfilePaymentsScreen() {
               <View style={{ padding: 20, gap: 16 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                    Status
+                    {t("profile.payments.status")}
                   </ThemedText>
                   <ThemedText type="bodyStrong">
                     {getPaymentStatusLabel(selectedPaymentDetail.payment.status)}
@@ -682,18 +759,18 @@ export default function ProfilePaymentsScreen() {
                 </View>
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                    Payout
+                    {t("profile.payments.payout")}
                   </ThemedText>
                   <ThemedText type="bodyStrong">
                     {selectedPaymentDetail.payout
                       ? getPayoutStatusLabel(selectedPaymentDetail.payout.status)
-                      : "Pending"}
+                      : t("profile.payments.pending")}
                   </ThemedText>
                 </View>
                 {selectedPaymentDetail.invoice?.externalInvoiceUrl ? (
                   <KitPressable
                     accessibilityRole="button"
-                    accessibilityLabel="Download invoice"
+                    accessibilityLabel={t("profile.payments.downloadInvoice")}
                     onPress={() => {
                       void WebBrowser.openBrowserAsync(
                         selectedPaymentDetail.invoice!.externalInvoiceUrl!,
@@ -706,9 +783,9 @@ export default function ProfilePaymentsScreen() {
                       justifyContent: "space-between",
                       paddingVertical: 8,
                     }}
-                  >
+                    >
                     <ThemedText type="bodyStrong" style={{ color: palette.primary }}>
-                      Download Invoice
+                      {t("profile.payments.downloadInvoice")}
                     </ThemedText>
                     <IconSymbol name="arrow.up.right" size={16} color={palette.primary} />
                   </KitPressable>
@@ -725,8 +802,8 @@ export default function ProfilePaymentsScreen() {
           items={rows}
           locale={locale}
           palette={palette}
-          title="Recent Transactions"
-          emptyLabel="No transactions yet."
+          title={t("profile.payments.recentTransactions")}
+          emptyLabel={t("profile.payments.noTransactions")}
           onSelectPaymentId={setSelectedPaymentId}
         />
       </View>

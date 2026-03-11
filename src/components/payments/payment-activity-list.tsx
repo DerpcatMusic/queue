@@ -1,4 +1,5 @@
 import { View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { ThemedText } from "@/components/themed-text";
 import { KitPressable } from "@/components/ui/kit";
 import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -123,6 +124,7 @@ export function PaymentActivityList({
   emptyLabel,
   onSelectPaymentId,
 }: PaymentActivityListProps) {
+  const { t } = useTranslation();
   return (
     <View style={{ gap: BrandSpacing.sm, paddingHorizontal: BrandSpacing.sm }}>
       <View
@@ -163,7 +165,7 @@ export function PaymentActivityList({
               ? isSportType(item.job.sport)
                 ? toSportLabel(item.job.sport)
                 : item.job.sport
-              : "Lesson";
+              : t("jobsTab.currentLessonTitle");
             const listItemPressProps = onSelectPaymentId
               ? { onPress: () => onSelectPaymentId(item.payment._id) }
               : {};
