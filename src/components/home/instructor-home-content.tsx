@@ -12,12 +12,13 @@ import {
   getHomeHeaderScrollTopPadding,
   HomeHeaderSheet,
 } from "@/components/home/home-header-sheet";
+import { getRelativeTimeLabel } from "@/components/home/home-shared";
+import { HomeStatsRow } from "@/components/home/home-stats-row";
 import {
   getTimeframeData,
   type MetricMode,
   type Timeframe,
 } from "@/components/home/performance-chart-math";
-import { HomeStatsRow } from "@/components/home/home-stats-row";
 import {
   PerformanceHeroCard,
   type PerformanceTimeframeSeries,
@@ -29,7 +30,6 @@ import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { toSportLabel } from "@/convex/constants";
-import { getRelativeTimeLabel } from "@/components/home/home-shared";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { formatDateTime } from "@/lib/jobs-utils";
 
@@ -158,9 +158,10 @@ export function InstructorHomeContent({
         count: openMatches,
         defaultValue: `${String(openMatches)} open matches near you`,
       });
-  const heroSecondaryLabel = pendingApplications > 0
-    ? t("home.instructor.pendingApps", { defaultValue: "Pending applications" })
-    : t("home.instructor.readyState", { defaultValue: "Ready state" });
+  const heroSecondaryLabel =
+    pendingApplications > 0
+      ? t("home.instructor.pendingApps", { defaultValue: "Pending applications" })
+      : t("home.instructor.readyState", { defaultValue: "Ready state" });
   const heroSecondaryValue =
     pendingApplications > 0
       ? t("home.instructor.waitingCount", {
@@ -252,26 +253,31 @@ export function InstructorHomeContent({
               />
             </HomeSurface>
 
-            {/* Inline Stats Row */}
-            <View style={{ marginHorizontal: -BrandSpacing.xl }}>
-              <HomeStatsRow
-                palette={palette}
-                stats={[
-                  {
-                    label: t("jobsTab.title", { defaultValue: "Open matches" }),
-                    value: String(openMatches),
-                  },
-                  {
-                    label: t("jobsTab.pending", { defaultValue: "Pending" }),
-                    value: String(pendingApplications),
-                  },
-                  {
-                    label: heroSecondaryLabel,
-                    value: heroSecondaryValue,
-                  },
-                ]}
-              />
-            </View>
+            <HomeStatsRow
+              palette={palette}
+              stats={[
+                {
+                  icon: "briefcase.fill",
+                  label: t("jobsTab.title", { defaultValue: "Open matches" }),
+                  value: String(openMatches),
+                },
+                {
+                  icon: "clock.fill",
+                  label: t("home.shared.pending"),
+                  value: String(pendingApplications),
+                },
+                {
+                  icon:
+                    pendingApplications > 0
+                      ? "clock.fill"
+                      : nextSession
+                        ? "calendar.badge.clock"
+                        : "checkmark.circle.fill",
+                  label: heroSecondaryLabel,
+                  value: heroSecondaryValue,
+                },
+              ]}
+            />
           </Animated.View>
 
           <Animated.View
@@ -307,7 +313,9 @@ export function InstructorHomeContent({
                 {t("home.instructor.noUpcoming")}
               </Text>
               <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                {t("home.instructor.emptySchedule", { defaultValue: "The jobs board is live when you want the next one." })}
+                {t("home.instructor.emptySchedule", {
+                  defaultValue: "The jobs board is live when you want the next one.",
+                })}
               </Text>
             </HomeSurface>
           ) : (

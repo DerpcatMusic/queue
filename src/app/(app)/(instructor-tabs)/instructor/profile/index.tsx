@@ -172,8 +172,8 @@ export default function InstructorProfileScreen() {
     !provider || provider === "none"
       ? t("profile.settings.calendar.provider.none")
       : provider === "google"
-        ? "Google"
-        : "Apple";
+        ? t("profile.settings.calendar.provider.google")
+        : t("profile.settings.calendar.provider.apple");
   const sportsCount = instructorSettings?.sports?.length ?? 0;
   const socialCount = Object.keys(instructorSettings?.socialLinks ?? {}).length;
   const setupActions = [
@@ -220,8 +220,8 @@ export default function InstructorProfileScreen() {
     setupActions.length === 0
       ? t("profile.setup.statusReady")
       : t("profile.setup.statusPending", {
-        count: setupActions.length,
-      });
+          count: setupActions.length,
+        });
 
   const publicProfileSummary =
     instructorSettings?.bio?.trim() ||
@@ -278,7 +278,9 @@ export default function InstructorProfileScreen() {
                   statusLabel={setupStatusLabel}
                   subtitleLabel={
                     primarySetupAction
-                      ? t("profile.setup.nextStep", { step: primarySetupAction.label.toLowerCase() })
+                      ? t("profile.setup.nextStep", {
+                          step: primarySetupAction.label.toLowerCase(),
+                        })
                       : t("profile.setup.allClear")
                   }
                 />
@@ -286,6 +288,7 @@ export default function InstructorProfileScreen() {
                 <ProfileSectionHeader
                   label={t("profile.sections.professional")}
                   description={t("profile.sections.professionalDesc")}
+                  icon="person.crop.circle.fill"
                   palette={palette}
                   flush
                 />
@@ -314,13 +317,6 @@ export default function InstructorProfileScreen() {
                     palette={palette}
                     showDivider
                   />
-                  <ProfileSettingRow
-                    title={t("profile.settings.calendar.title")}
-                    subtitle={calendarSummary}
-                    icon="calendar.badge.clock"
-                    onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
-                    palette={palette}
-                  />
                 </ProfileSectionCard>
               </View>
 
@@ -328,6 +324,7 @@ export default function InstructorProfileScreen() {
                 <ProfileSectionHeader
                   label={t("profile.account.title")}
                   description={t("profile.sections.accountDesc")}
+                  icon="person.crop.circle.fill"
                   palette={palette}
                   flush
                 />
@@ -364,8 +361,9 @@ export default function InstructorProfileScreen() {
                 </ProfileSectionCard>
 
                 <ProfileSectionHeader
-                  label={t("profile.appearance.title")}
-                  description={t("profile.sections.appearanceDesc")}
+                  label={t("profile.sections.preferences")}
+                  description={t("profile.sections.preferencesDesc")}
+                  icon="globe"
                   palette={palette}
                   flush
                 />
@@ -413,8 +411,9 @@ export default function InstructorProfileScreen() {
                 </ProfileSectionCard>
 
                 <ProfileSectionHeader
-                  label={t("profile.sections.payments")}
-                  description={t("profile.sections.paymentsDesc")}
+                  label={t("profile.sections.operations")}
+                  description={t("profile.sections.operationsDesc")}
+                  icon="slider.horizontal.3"
                   palette={palette}
                   flush
                 />
@@ -424,6 +423,14 @@ export default function InstructorProfileScreen() {
                     subtitle={identityVerificationSummary}
                     icon="checkmark.circle.fill"
                     onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
+                    palette={palette}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.settings.calendar.title")}
+                    subtitle={calendarSummary}
+                    icon="calendar.badge.clock"
+                    onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
                     palette={palette}
                     showDivider
                   />
@@ -471,6 +478,7 @@ export default function InstructorProfileScreen() {
               <ProfileSectionHeader
                 label={t("profile.sections.professional")}
                 description={t("profile.sections.professionalDesc")}
+                icon="person.crop.circle.fill"
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -498,18 +506,12 @@ export default function InstructorProfileScreen() {
                   palette={palette}
                   showDivider
                 />
-                <ProfileSettingRow
-                  title={t("profile.settings.calendar.title")}
-                  subtitle={calendarSummary}
-                  icon="calendar.badge.clock"
-                  onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
-                  palette={palette}
-                />
               </ProfileSectionCard>
 
               <ProfileSectionHeader
                 label={t("profile.account.title")}
                 description={t("profile.sections.accountDesc")}
+                icon="person.crop.circle.fill"
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -545,8 +547,9 @@ export default function InstructorProfileScreen() {
               </ProfileSectionCard>
 
               <ProfileSectionHeader
-                label={t("profile.appearance.title")}
-                description={t("profile.sections.appearanceDesc")}
+                label={t("profile.sections.preferences")}
+                description={t("profile.sections.preferencesDesc")}
+                icon="globe"
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -593,8 +596,9 @@ export default function InstructorProfileScreen() {
               </ProfileSectionCard>
 
               <ProfileSectionHeader
-                label={t("profile.sections.payments")}
-                description={t("profile.sections.paymentsDesc")}
+                label={t("profile.sections.operations")}
+                description={t("profile.sections.operationsDesc")}
+                icon="slider.horizontal.3"
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -603,6 +607,14 @@ export default function InstructorProfileScreen() {
                   subtitle={identityVerificationSummary}
                   icon="checkmark.circle.fill"
                   onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
+                  palette={palette}
+                  showDivider
+                />
+                <ProfileSettingRow
+                  title={t("profile.settings.calendar.title")}
+                  subtitle={calendarSummary}
+                  icon="calendar.badge.clock"
+                  onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
                   palette={palette}
                   showDivider
                 />

@@ -1,9 +1,12 @@
-import { ScrollView, Text } from "react-native";
-import { HomeSurface } from "@/components/home/home-dashboard-layout";
+import type { ComponentProps } from "react";
+import { Text, View } from "react-native";
+import { HomeSurface, useHomeDashboardLayout } from "@/components/home/home-dashboard-layout";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 
 type StatItem = {
+  icon: ComponentProps<typeof IconSymbol>["name"];
   label: string;
   value: string;
 };
@@ -14,43 +17,62 @@ type HomeStatsRowProps = {
 };
 
 export function HomeStatsRow({ palette, stats }: HomeStatsRowProps) {
+  const layout = useHomeDashboardLayout();
+
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: BrandSpacing.sm, paddingHorizontal: BrandSpacing.xl }}
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: BrandSpacing.sm,
+      }}
     >
       {stats.map((stat) => (
-        <HomeSurface
+        <View
           key={stat.label}
-          palette={palette}
+          accessible
+          accessibilityLabel={`${stat.label}: ${stat.value}`}
           style={{
-            padding: BrandSpacing.lg,
-            minWidth: 140,
-            gap: BrandSpacing.xs,
+            minWidth: layout.isWideWeb ? 0 : 140,
+            flexBasis: layout.isWideWeb ? 0 : 140,
+            flexGrow: 1,
           }}
         >
-          <Text
+          <HomeSurface
+            palette={palette}
             style={{
-              ...BrandType.micro,
-               color: palette.textMuted as string,
-               textTransform: "uppercase",
+              padding: BrandSpacing.lg,
+              gap: BrandSpacing.xs,
+              minHeight: 108,
             }}
           >
-            {stat.label}
-          </Text>
-          <Text
-            style={{
-              ...BrandType.title,
-              fontSize: 24,
-              color: palette.text as string,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {stat.value}
-          </Text>
-        </HomeSurface>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <IconSymbol name={stat.icon} size={16} color={palette.textMuted as string} />
+              <Text
+                style={{
+                  ...BrandType.micro,
+                  color: palette.textMuted as string,
+                  textTransform: "uppercase",
+                  flexShrink: 1,
+                }}
+              >
+                {stat.label}
+              </Text>
+            </View>
+            <Text
+              style={{
+                ...BrandType.title,
+                fontSize: 24,
+                color: palette.text as string,
+                fontVariant: ["tabular-nums"],
+              }}
+              numberOfLines={1}
+            >
+              {stat.value}
+            </Text>
+          </HomeSurface>
+        </View>
       ))}
-    </ScrollView>
+    </View>
   );
 }

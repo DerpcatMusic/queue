@@ -337,9 +337,9 @@ export function QueueMap({
           },
         ]}
       >
-        <ThemedText type="defaultSemiBold">MapLibre needs a development build.</ThemedText>
+        <ThemedText type="defaultSemiBold">{t("mapTab.devBuildRequiredTitle")}</ThemedText>
         <ThemedText style={{ color: palette.textMuted }}>
-          Run `bunx expo run:android` then open the dev client.
+          {t("mapTab.devBuildRequiredBody")}
         </ThemedText>
       </KitSurface>
     );
@@ -435,13 +435,9 @@ export function QueueMap({
             ]}
           >
             <ActivityIndicator color={palette.text as string} />
-            <ThemedText type="cardTitle">
-              {t("mapTab.loading", { defaultValue: "Loading your map..." })}
-            </ThemedText>
+            <ThemedText type="cardTitle">{t("mapTab.loading")}</ThemedText>
             <ThemedText type="meta" style={{ color: palette.textMuted }}>
-              {t("mapTab.subtitle", {
-                defaultValue: "Adjust your active zones directly on the map.",
-              })}
+              {t("mapTab.native.loadingBody")}
             </ThemedText>
           </KitSurface>
         </View>
@@ -466,13 +462,12 @@ export function QueueMap({
               },
             ]}
           >
-            <ThemedText type="cardTitle">Map unavailable</ThemedText>
+            <ThemedText type="cardTitle">{t("mapTab.native.unavailableTitle")}</ThemedText>
             <ThemedText type="meta" style={{ color: palette.textMuted }}>
-              {mapErrorMessage ??
-                "The map could not finish loading. Check your connection and try again."}
+              {mapErrorMessage ?? t("mapTab.native.unavailableBody")}
             </ThemedText>
             <KitButton
-              label={t("tabsLayout.actions.retry", { defaultValue: "Retry" })}
+              label={t("tabsLayout.actions.retry")}
               onPress={handleRetry}
               fullWidth={false}
               variant="secondary"

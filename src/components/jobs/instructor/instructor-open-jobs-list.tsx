@@ -8,12 +8,12 @@ import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/const
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
+import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import {
   formatDateWithWeekday,
   formatTime,
   getApplicationStatusTranslationKey,
 } from "@/lib/jobs-utils";
-import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 
 type OpenJob = {
   jobId: Id<"jobs">;
@@ -170,6 +170,7 @@ export function InstructorOpenJobsList({
 
                 <View style={{ width: isWideWeb ? 220 : undefined }}>
                   <MetricCell
+                    icon="calendar.badge.clock"
                     label={t("jobsTab.card.shift", { defaultValue: "Shift" })}
                     value={shiftWindow}
                     palette={palette}
@@ -178,6 +179,7 @@ export function InstructorOpenJobsList({
 
                 <View style={{ width: isWideWeb ? 150 : undefined }}>
                   <MetricCell
+                    icon="mappin.and.ellipse"
                     label={t("jobsTab.card.zone", { defaultValue: "Zone" })}
                     value={getZoneLabel(job.zone, zoneLanguage)}
                     palette={palette}
@@ -187,6 +189,7 @@ export function InstructorOpenJobsList({
                 <View style={{ width: isWideWeb ? 135 : undefined }}>
                   <MetricCell
                     align={isWideWeb ? "flex-end" : "flex-start"}
+                    icon="creditcard.fill"
                     label={t("jobsTab.card.payLabel", { defaultValue: "Pay" })}
                     value={t("jobsTab.card.pay", { value: job.pay })}
                     palette={palette}
