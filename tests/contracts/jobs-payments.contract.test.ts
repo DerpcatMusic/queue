@@ -1,18 +1,47 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, mock } from "bun:test";
+import type { PaymentStatus, PayoutStatus } from "../../src/lib/payments-utils";
 
-import {
+mock.module("@/i18n", () => ({
+  default: {
+    t(key: string) {
+      return (
+        (
+          {
+            "jobsTab.checkout.paymentStatus.created": "Created",
+            "jobsTab.checkout.paymentStatus.pending": "Pending",
+            "jobsTab.checkout.paymentStatus.authorized": "Authorized",
+            "jobsTab.checkout.paymentStatus.captured": "Captured",
+            "jobsTab.checkout.paymentStatus.failed": "Failed",
+            "jobsTab.checkout.paymentStatus.cancelled": "Cancelled",
+            "jobsTab.checkout.paymentStatus.refunded": "Refunded",
+            "jobsTab.checkout.payoutStatus.queued": "Queued",
+            "jobsTab.checkout.payoutStatus.processing": "Processing",
+            "jobsTab.checkout.payoutStatus.pendingProvider": "Pending provider",
+            "jobsTab.checkout.payoutStatus.paid": "Paid out",
+            "jobsTab.checkout.payoutStatus.failed": "Failed",
+            "jobsTab.checkout.payoutStatus.cancelled": "Cancelled",
+            "jobsTab.checkout.payoutStatus.needsAttention": "Needs attention",
+            "profile.roles.unknown": "Unknown",
+          } as const satisfies Record<string, string>
+        )[key] ?? key
+      );
+    },
+  },
+}));
+
+const {
   APPLICATION_STATUS_TRANSLATION_KEYS,
   JOB_STATUS_TRANSLATION_KEYS,
   getApplicationStatusTranslationKey,
   getJobStatusTone,
-} from "../../src/lib/jobs-utils";
-import type { PaymentStatus, PayoutStatus } from "../../src/lib/payments-utils";
-import {
+} = await import("../../src/lib/jobs-utils");
+
+const {
   getPaymentStatusLabel,
   getPaymentStatusTone,
   getPayoutStatusLabel,
   getPayoutStatusTone,
-} from "../../src/lib/payments-utils";
+} = await import("../../src/lib/payments-utils");
 
 const PAYMENT_LABEL_BY_STATUS = {
   created: "Created",
@@ -56,7 +85,9 @@ const PAYOUT_TONE_BY_STATUS = {
 
 describe("jobs/payments contracts", () => {
   it("keeps application status translation key contract stable", () => {
-    for (const [status, key] of Object.entries(APPLICATION_STATUS_TRANSLATION_KEYS)) {
+    for (const [status, key] of Object.entries(
+      APPLICATION_STATUS_TRANSLATION_KEYS,
+    )) {
       expect(getApplicationStatusTranslationKey(status)).toBe(key);
     }
     expect(getApplicationStatusTranslationKey("not_a_status")).toBe(
@@ -69,16 +100,25 @@ describe("jobs/payments contracts", () => {
     expect(getJobStatusTone("filled")).toBe("success");
     expect(getJobStatusTone("completed")).toBe("success");
     expect(getJobStatusTone("cancelled")).toBe("muted");
-    expect(Object.keys(JOB_STATUS_TRANSLATION_KEYS).sort()).toEqual(
-      ["cancelled", "completed", "filled", "open"],
-    );
+    expect(Object.keys(JOB_STATUS_TRANSLATION_KEYS).sort()).toEqual([
+      "cancelled",
+      "completed",
+      "filled",
+      "open",
+    ]);
   });
 
   it("keeps payment status label/tone mappings exhaustive and stable", () => {
-    for (const [status, expectedLabel] of Object.entries(PAYMENT_LABEL_BY_STATUS)) {
-      expect(getPaymentStatusLabel(status as PaymentStatus)).toBe(expectedLabel);
+    for (const [status, expectedLabel] of Object.entries(
+      PAYMENT_LABEL_BY_STATUS,
+    )) {
+      expect(getPaymentStatusLabel(status as PaymentStatus)).toBe(
+        expectedLabel,
+      );
     }
-    for (const [status, expectedTone] of Object.entries(PAYMENT_TONE_BY_STATUS)) {
+    for (const [status, expectedTone] of Object.entries(
+      PAYMENT_TONE_BY_STATUS,
+    )) {
       expect(getPaymentStatusTone(status as PaymentStatus)).toBe(expectedTone);
     }
     expect(getPaymentStatusLabel("unmapped" as never)).toBe("Unknown");
@@ -86,10 +126,14 @@ describe("jobs/payments contracts", () => {
   });
 
   it("keeps payout status label/tone mappings exhaustive and stable", () => {
-    for (const [status, expectedLabel] of Object.entries(PAYOUT_LABEL_BY_STATUS)) {
+    for (const [status, expectedLabel] of Object.entries(
+      PAYOUT_LABEL_BY_STATUS,
+    )) {
       expect(getPayoutStatusLabel(status as PayoutStatus)).toBe(expectedLabel);
     }
-    for (const [status, expectedTone] of Object.entries(PAYOUT_TONE_BY_STATUS)) {
+    for (const [status, expectedTone] of Object.entries(
+      PAYOUT_TONE_BY_STATUS,
+    )) {
       expect(getPayoutStatusTone(status as PayoutStatus)).toBe(expectedTone);
     }
     expect(getPayoutStatusLabel("unmapped" as never)).toBe("Unknown");
