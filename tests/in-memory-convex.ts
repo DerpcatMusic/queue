@@ -79,6 +79,11 @@ class InMemoryQuery {
     return rows[0] ?? null;
   }
 
+  async first() {
+    const rows = this.resolve();
+    return rows[0] ?? null;
+  }
+
   private resolve() {
     let rows = this.table.filter((row) =>
       this.conditions.every((condition) => {
@@ -230,7 +235,11 @@ export function createMutationCtx(args: {
         args: runArgs,
       });
       if (args.runMutationImpl) {
-        return await args.runMutationImpl(fn, runArgs, ctx as ReturnType<typeof createMutationCtx>);
+        return await args.runMutationImpl(
+          fn,
+          runArgs,
+          ctx as ReturnType<typeof createMutationCtx>,
+        );
       }
       return undefined;
     },
