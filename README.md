@@ -2,6 +2,12 @@
 
 Expo app for the QuickFit migration target.
 
+## License
+
+This repository is source-available under `PolyForm Noncommercial 1.0.0`.
+You may not use copied source from this repository for commercial or monetized use.
+See [LICENSE](./LICENSE).
+
 ## Setup
 
 ```bash
