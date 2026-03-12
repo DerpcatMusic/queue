@@ -52,7 +52,7 @@ const resolveDiditSdkModule = async (): Promise<DiditSdkModule | null> => {
     return cachedDiditSdkModule;
   }
 
-  if (Platform.OS === "web" || Constants.appOwnership === "expo") {
+  if (Platform.OS === "web" || Platform.OS === "android" || Constants.appOwnership === "expo") {
     cachedDiditSdkModule = null;
     return cachedDiditSdkModule;
   }
