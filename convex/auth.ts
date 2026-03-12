@@ -3,16 +3,11 @@ import Google from "@auth/core/providers/google";
 import { convexAuth } from "@convex-dev/auth/server";
 import { ConvexError } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { dedupeUsersByEmail, normalizeEmail } from "./lib/authDedupe";
 import { ResendMagicLink } from "./resendMagicLink";
 import { ResendOTP } from "./resendOtp";
 
 const providers: any[] = [ResendOTP, ResendMagicLink];
-
-function normalizeEmail(email: string | undefined) {
-  if (!email) return undefined;
-  const value = email.trim().toLowerCase();
-  return value.length > 0 ? value : undefined;
-}
 
 export function resolveLinkedUserId(args: {
   existingUserId: Id<"users"> | null | undefined;
@@ -116,11 +111,23 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       const emailMatches = canResolveLinkedUserByEmail(email, isEmailVerified)
         ? await ((ctx.db.query("users") as any)
             .withIndex("by_email", (q: any) => q.eq("email", email))
-            .take(2) as Promise<Array<{ _id: Id<"users"> }>>)
+            .collect() as Promise<Array<{ _id: Id<"users"> }>>)
         : [];
+      const dedupedUserId =
+        canResolveLinkedUserByEmail(email, isEmailVerified) && emailMatches.length > 1
+          ? await dedupeUsersByEmail({
+              ctx,
+              normalizedEmail: email!,
+              preferredUserId: args.existingUserId,
+              now,
+              requireVerifiedUser: true,
+            })
+          : null;
       const linkedUserId = resolveLinkedUserId({
-        existingUserId: args.existingUserId,
-        matchedUserIdsByEmail: emailMatches.map((row) => row._id),
+        existingUserId: dedupedUserId ?? args.existingUserId,
+        matchedUserIdsByEmail: dedupedUserId
+          ? [dedupedUserId]
+          : emailMatches.map((row) => row._id),
         email,
       });
 

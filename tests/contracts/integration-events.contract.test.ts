@@ -2,7 +2,10 @@ import { describe, expect, it } from "bun:test";
 
 import { internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { processRapydWebhookEvent } from "../../convex/payments";
+import {
+  finalizeChargeFromWebhook,
+  processRapydWebhookEvent,
+} from "../../convex/payments";
 import { getPaymentByProviderRefsRead } from "../../convex/paymentsRead";
 import {
   ingestIntegrationEvent,
@@ -52,8 +55,10 @@ describe("integration event contracts", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.processingState).toBe("pending");
     expect(schedulerCalls).toHaveLength(1);
-    expect((schedulerCalls[0]?.args as { integrationEventId?: string } | undefined)?.integrationEventId)
-      .toBe(first.integrationEventId);
+    expect(
+      (schedulerCalls[0]?.args as { integrationEventId?: string } | undefined)
+        ?.integrationEventId,
+    ).toBe(first.integrationEventId);
   });
 
   it("processes queued Rapyd payment events through the canonical integration log", async () => {
@@ -108,26 +113,39 @@ describe("integration event contracts", () => {
               schedulerCalls.push({ delayMs, fn, args });
             },
           },
-          runMutation: async (_fn: unknown, args: unknown) => {
-            return await (processRapydWebhookEvent as any)._handler(
+          runMutation: async (_fn: unknown, mutationArgs: unknown) =>
+            await (finalizeChargeFromWebhook as any)._handler(
               {
                 db,
-                scheduler: {
-                  runAfter: async (delayMs: number, scheduledFn: unknown, scheduledArgs: unknown) => {
-                    schedulerCalls.push({
-                      delayMs,
-                      fn: scheduledFn,
-                      args: scheduledArgs,
-                    });
-                  },
-                },
-                runMutation: async () => undefined,
-                runQuery: async (_queryFn: unknown, queryArgs: unknown) =>
-                  await getPaymentByProviderRefsRead({ db } as any, queryArgs as any),
+                runMutation: async (_innerFn: unknown, innerArgs: unknown) =>
+                  await (processRapydWebhookEvent as any)._handler(
+                    {
+                      db,
+                      scheduler: {
+                        runAfter: async (
+                          delayMs: number,
+                          scheduledFn: unknown,
+                          scheduledArgs: unknown,
+                        ) => {
+                          schedulerCalls.push({
+                            delayMs,
+                            fn: scheduledFn,
+                            args: scheduledArgs,
+                          });
+                        },
+                      },
+                      runMutation: async () => undefined,
+                      runQuery: async (_queryFn: unknown, queryArgs: unknown) =>
+                        await getPaymentByProviderRefsRead(
+                          { db } as any,
+                          queryArgs as any,
+                        ),
+                    },
+                    innerArgs,
+                  ),
               },
-              args,
-            );
-          },
+              mutationArgs,
+            ),
         },
         { integrationEventId },
       );
@@ -189,8 +207,10 @@ describe("integration event contracts", () => {
     );
 
     expect(response.status).toBe(401);
-    expect(runMutationCalls).toHaveLength(3);
-    const enqueueCall = runMutationCalls[2] as { args: Record<string, unknown> };
+    expect(runMutationCalls).toHaveLength(4);
+    const enqueueCall = runMutationCalls[3] as {
+      args: Record<string, unknown>;
+    };
     expect(enqueueCall.args.provider).toBe("rapyd");
     expect(enqueueCall.args.route).toBe("payment");
     expect(enqueueCall.args.providerEventId).toBe("rapyd-event-2");

@@ -1,12 +1,44 @@
-import { describe, expect, it } from "bun:test";
+import { beforeAll, describe, expect, it, mock } from "bun:test";
 
-import {
-  formatAgorotCurrency,
-  getPaymentStatusLabel,
-  getPaymentStatusTone,
-  getPayoutStatusLabel,
-  getPayoutStatusTone,
-} from "./payments-utils";
+mock.module("@/i18n", () => ({
+  default: {
+    t: (key: string) => {
+      const labels: Record<string, string> = {
+        "jobsTab.checkout.paymentStatus.created": "Created",
+        "jobsTab.checkout.paymentStatus.pending": "Pending",
+        "jobsTab.checkout.paymentStatus.authorized": "Authorized",
+        "jobsTab.checkout.paymentStatus.captured": "Captured",
+        "jobsTab.checkout.paymentStatus.failed": "Failed",
+        "jobsTab.checkout.paymentStatus.cancelled": "Cancelled",
+        "jobsTab.checkout.paymentStatus.refunded": "Refunded",
+        "jobsTab.checkout.payoutStatus.queued": "Queued",
+        "jobsTab.checkout.payoutStatus.processing": "Processing",
+        "jobsTab.checkout.payoutStatus.pendingProvider": "Pending provider",
+        "jobsTab.checkout.payoutStatus.paid": "Paid out",
+        "jobsTab.checkout.payoutStatus.failed": "Failed",
+        "jobsTab.checkout.payoutStatus.cancelled": "Cancelled",
+        "jobsTab.checkout.payoutStatus.needsAttention": "Needs attention",
+        "profile.roles.unknown": "Unknown",
+      };
+      return labels[key] ?? key;
+    },
+  },
+}));
+
+let formatAgorotCurrency: typeof import("./payments-utils").formatAgorotCurrency;
+let getPaymentStatusLabel: typeof import("./payments-utils").getPaymentStatusLabel;
+let getPaymentStatusTone: typeof import("./payments-utils").getPaymentStatusTone;
+let getPayoutStatusLabel: typeof import("./payments-utils").getPayoutStatusLabel;
+let getPayoutStatusTone: typeof import("./payments-utils").getPayoutStatusTone;
+
+beforeAll(async () => {
+  const utils = await import("./payments-utils");
+  formatAgorotCurrency = utils.formatAgorotCurrency;
+  getPaymentStatusLabel = utils.getPaymentStatusLabel;
+  getPaymentStatusTone = utils.getPaymentStatusTone;
+  getPayoutStatusLabel = utils.getPayoutStatusLabel;
+  getPayoutStatusTone = utils.getPayoutStatusTone;
+});
 
 describe("payments-utils", () => {
   it("formats agorot currency", () => {

@@ -4,6 +4,7 @@ import { ZONE_OPTIONS } from "../src/constants/zones.generated";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { action, internalMutation, internalQuery, type MutationCtx, query } from "./_generated/server";
+import { dedupeUsersByEmail, normalizeEmail } from "./lib/authDedupe";
 import { isKnownZoneId } from "./lib/domainValidation";
 import { mapLegacyPaymentStatusToOrderStatus, summarizeLedgerBalances } from "./lib/marketplace";
 import { omitUndefined } from "./lib/validation";
@@ -1875,6 +1876,87 @@ export const backfillDiditVerificationSnapshots = action({
         continueCursor: page.isDone ? undefined : page.continueCursor,
       }),
     };
+  },
+});
+
+export const dedupeDuplicateUsersByEmail = action({
+  args: {
+    email: v.optional(v.string()),
+    limit: v.optional(v.number()),
+    accessToken: v.optional(v.string()),
+  },
+  returns: v.object({
+    scannedEmails: v.number(),
+    dedupedEmails: v.number(),
+    canonicalUserIds: v.array(v.id("users")),
+    duplicateEmails: v.array(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    requireMigrationsAccessToken(args.accessToken);
+    const normalizedTargetEmail = normalizeEmail(args.email);
+    const duplicateEmails: string[] = normalizedTargetEmail
+      ? [normalizedTargetEmail]
+      : await ctx.runQuery(internal.migrations.getDuplicateUserEmails, {});
+    const targetEmails = duplicateEmails.slice(0, Math.max(args.limit ?? duplicateEmails.length, 0));
+    const canonicalUserIds: Id<"users">[] = [];
+
+    for (const email of targetEmails) {
+      const canonicalUserId = await ctx.runMutation(internal.migrations.dedupeUsersForEmail, {
+        email,
+      });
+      if (canonicalUserId) {
+        canonicalUserIds.push(canonicalUserId);
+      }
+    }
+
+    return {
+      scannedEmails: targetEmails.length,
+      dedupedEmails: canonicalUserIds.length,
+      canonicalUserIds,
+      duplicateEmails: targetEmails,
+    };
+  },
+});
+
+export const getDuplicateUserEmails = internalQuery({
+  args: {},
+  returns: v.array(v.string()),
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const counts = new Map<string, { total: number; verified: number }>();
+    for (const user of users) {
+      const email = normalizeEmail(user.email);
+      if (!email) {
+        continue;
+      }
+      const current = counts.get(email) ?? { total: 0, verified: 0 };
+      counts.set(email, {
+        total: current.total + 1,
+        verified: current.verified + (user.emailVerificationTime !== undefined ? 1 : 0),
+      });
+    }
+    return Array.from(counts.entries())
+      .filter(([, count]) => count.total > 1 && count.verified > 0)
+      .map(([email]) => email)
+      .sort();
+  },
+});
+
+export const dedupeUsersForEmail = internalMutation({
+  args: {
+    email: v.string(),
+  },
+  returns: v.union(v.id("users"), v.null()),
+  handler: async (ctx, args) => {
+    const normalizedEmail = normalizeEmail(args.email);
+    if (!normalizedEmail) {
+      return null;
+    }
+    return await dedupeUsersByEmail({
+      ctx,
+      normalizedEmail,
+      requireVerifiedUser: true,
+    });
   },
 });
 
