@@ -173,24 +173,31 @@ export async function getPaymentByProviderRefsRead(
     const direct = await ctx.db.get(args.paymentId);
     if (direct && direct.provider === RAPYD_PROVIDER) return direct;
   }
+  const merchantReferencePaymentId = getPaymentIdFromMerchantReferenceId(args.merchantReferenceId);
+  if (merchantReferencePaymentId) {
+    const directFromMerchantReference = await ctx.db.get(merchantReferencePaymentId);
+    if (directFromMerchantReference && directFromMerchantReference.provider === RAPYD_PROVIDER) {
+      return directFromMerchantReference;
+    }
+  }
   const providerObjectCandidates = [
     args.providerPaymentId
-      ? ({
+      ? {
           providerObjectType: "payment" as const,
           providerObjectId: args.providerPaymentId,
-        })
+        }
       : null,
     args.providerCheckoutId
-      ? ({
+      ? {
           providerObjectType: "checkout" as const,
           providerObjectId: args.providerCheckoutId,
-        })
+        }
       : null,
     args.merchantReferenceId
-      ? ({
+      ? {
           providerObjectType: "merchant_reference" as const,
           providerObjectId: args.merchantReferenceId,
-        })
+        }
       : null,
   ].filter((value): value is NonNullable<typeof value> => value !== null);
 
