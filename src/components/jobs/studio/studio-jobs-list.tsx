@@ -7,6 +7,7 @@ import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/const
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
+import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import {
   formatDateTime,
   getApplicationStatusTranslationKey,
@@ -20,7 +21,6 @@ import {
   type PaymentStatus,
   type PayoutStatus,
 } from "@/lib/payments-utils";
-import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 
 type StudioJobApplication = {
   applicationId: Id<"jobApplications">;
@@ -167,6 +167,7 @@ function ApplicationRow({
 
         <View style={{ width: isWideWeb ? 150 : undefined }}>
           <MetricCell
+            icon="calendar.badge.clock"
             label={t("jobsTab.card.applied", { defaultValue: "Applied" })}
             value={formatDateTime(application.appliedAt, locale)}
             palette={palette}
@@ -347,6 +348,7 @@ export function StudioJobsList({
 
                   <View style={{ width: isWideWeb ? 200 : undefined }}>
                     <MetricCell
+                      icon="calendar.badge.clock"
                       label={t("jobsTab.card.shift", { defaultValue: "Shift" })}
                       value={formatDateTime(job.startTime, locale)}
                       palette={palette}
@@ -355,6 +357,7 @@ export function StudioJobsList({
 
                   <View style={{ width: isWideWeb ? 150 : undefined }}>
                     <MetricCell
+                      icon="mappin.and.ellipse"
                       label={t("jobsTab.card.zone", { defaultValue: "Zone" })}
                       value={getZoneLabel(job.zone, zoneLanguage)}
                       palette={palette}
@@ -364,6 +367,7 @@ export function StudioJobsList({
                   <View style={{ width: isWideWeb ? 150 : undefined }}>
                     <MetricCell
                       align={isWideWeb ? "flex-end" : "flex-start"}
+                      icon="creditcard.fill"
                       label={t("jobsTab.card.payLabel", { defaultValue: "Pay" })}
                       value={t("jobsTab.card.pay", { value: job.pay })}
                       palette={palette}

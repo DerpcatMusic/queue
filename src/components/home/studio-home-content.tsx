@@ -12,12 +12,12 @@ import {
   getHomeHeaderScrollTopPadding,
   HomeHeaderSheet,
 } from "@/components/home/home-header-sheet";
+import { HomeStatsRow } from "@/components/home/home-stats-row";
 import {
   getTimeframeData,
   type MetricMode,
   type Timeframe,
 } from "@/components/home/performance-chart-math";
-import { HomeStatsRow } from "@/components/home/home-stats-row";
 import {
   PerformanceHeroCard,
   type PerformanceTimeframeSeries,
@@ -134,12 +134,13 @@ export function StudioHomeContent({
     t,
   });
 
-  const heroTitle = jobsNeedingReview.length > 0
-    ? t("home.studio.heroReview", { defaultValue: "Decisions are waiting" })
-    : t("home.studio.heroActive", {
-        count: openJobs,
-        defaultValue: `${String(openJobs)} active jobs on the board`,
-      });
+  const heroTitle =
+    jobsNeedingReview.length > 0
+      ? t("home.studio.heroReview", { defaultValue: "Decisions are waiting" })
+      : t("home.studio.heroActive", {
+          count: openJobs,
+          defaultValue: `${String(openJobs)} active jobs on the board`,
+        });
 
   const heroSecondaryLabel =
     jobsNeedingReview.length > 0
@@ -238,26 +239,26 @@ export function StudioHomeContent({
               />
             </HomeSurface>
 
-            {/* Inline Stats Row */}
-            <View style={{ marginHorizontal: -BrandSpacing.xl }}>
-              <HomeStatsRow
-                palette={palette}
-                stats={[
-                  {
-                    label: t("jobsTab.title", { defaultValue: "Open jobs" }),
-                    value: String(openJobs),
-                  },
-                  {
-                    label: t("jobsTab.pending", { defaultValue: "Pending" }),
-                    value: String(pendingApplicants),
-                  },
-                  {
-                    label: heroSecondaryLabel,
-                    value: heroSecondaryValue,
-                  },
-                ]}
-              />
-            </View>
+            <HomeStatsRow
+              palette={palette}
+              stats={[
+                {
+                  icon: "briefcase.fill",
+                  label: t("jobsTab.title", { defaultValue: "Open jobs" }),
+                  value: String(openJobs),
+                },
+                {
+                  icon: "clock.fill",
+                  label: t("home.shared.pending"),
+                  value: String(pendingApplicants),
+                },
+                {
+                  icon: jobsNeedingReview.length > 0 ? "clock.fill" : "checkmark.circle.fill",
+                  label: heroSecondaryLabel,
+                  value: heroSecondaryValue,
+                },
+              ]}
+            />
           </Animated.View>
 
           <Animated.View
@@ -373,7 +374,9 @@ export function StudioHomeContent({
                   {t("home.studio.noRecent")}
                 </Text>
                 <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                  {t("home.studio.emptyBoard", { defaultValue: "Post a shift to start filling your schedule." })}
+                  {t("home.studio.emptyBoard", {
+                    defaultValue: "Post a shift to start filling your schedule.",
+                  })}
                 </Text>
               </HomeSurface>
             ) : (

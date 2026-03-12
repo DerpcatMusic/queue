@@ -1,5 +1,7 @@
+import type { ComponentProps } from "react";
 import { Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandType } from "@/constants/brand";
 import type { JobStatus } from "@/lib/status-tokens";
@@ -131,24 +133,28 @@ export function DotStatusPill({ backgroundColor, color, label }: DotStatusPillPr
 
 type MetricCellProps = {
   align?: "flex-start" | "flex-end";
+  icon?: ComponentProps<typeof IconSymbol>["name"];
   label: string;
   value: string;
   palette: BrandPalette;
 };
 
 /** Label + value metric pair used in job cards. */
-export function MetricCell({ align = "flex-start", label, value, palette }: MetricCellProps) {
+export function MetricCell({ align = "flex-start", icon, label, value, palette }: MetricCellProps) {
   return (
     <View style={{ gap: 3, alignItems: align }}>
-      <Text
-        style={{
-          ...BrandType.caption,
-          letterSpacing: 0.1,
-          color: palette.textMuted as string,
-        }}
-      >
-        {label}
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        {icon ? <IconSymbol name={icon} size={12} color={palette.textMuted as string} /> : null}
+        <Text
+          style={{
+            ...BrandType.caption,
+            letterSpacing: 0.1,
+            color: palette.textMuted as string,
+          }}
+        >
+          {label}
+        </Text>
+      </View>
       <Text
         selectable
         style={{

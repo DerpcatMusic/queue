@@ -118,8 +118,8 @@ export default function StudioProfileScreen() {
     !provider || provider === "none"
       ? t("profile.settings.calendar.provider.none")
       : provider === "google"
-        ? "Google"
-        : "Apple";
+        ? t("profile.settings.calendar.provider.google")
+        : t("profile.settings.calendar.provider.apple");
   const socialCount = Object.keys(studioSettings?.socialLinks ?? {}).length;
   const sportsCount = studioSettings?.sports?.length ?? 0;
   const setupActions = [
@@ -138,7 +138,11 @@ export default function StudioProfileScreen() {
         }
       : null,
     sportsCount === 0
-      ? { label: t("profile.setup.chooseSports"), onPress: handleRequestEdit, icon: "sparkles" as const }
+      ? {
+          label: t("profile.setup.chooseSports"),
+          onPress: handleRequestEdit,
+          icon: "sparkles" as const,
+        }
       : null,
     socialCount === 0
       ? {
@@ -218,6 +222,7 @@ export default function StudioProfileScreen() {
                 <ProfileSectionHeader
                   label={t("profile.sections.studio")}
                   description={t("profile.sections.studioDesc")}
+                  icon="building.2.fill"
                   palette={palette}
                   flush
                 />
@@ -246,15 +251,6 @@ export default function StudioProfileScreen() {
                     icon="mappin.and.ellipse"
                     onPress={handleRequestEdit}
                     palette={palette}
-                    showDivider
-                  />
-                  <ProfileSettingRow
-                    title={t("profile.settings.autoExpireJobs")}
-                    value={t("profile.settings.autoExpire.value", {
-                      minutes: studioSettings?.autoExpireMinutesBefore ?? 30,
-                    })}
-                    icon="clock.fill"
-                    palette={palette}
                   />
                 </ProfileSectionCard>
               </View>
@@ -263,6 +259,7 @@ export default function StudioProfileScreen() {
                 <ProfileSectionHeader
                   label={t("profile.account.title")}
                   description={t("profile.sections.accountDesc")}
+                  icon="person.crop.circle.fill"
                   palette={palette}
                   flush
                 />
@@ -299,8 +296,9 @@ export default function StudioProfileScreen() {
                 </ProfileSectionCard>
 
                 <ProfileSectionHeader
-                  label={t("profile.appearance.title")}
-                  description={t("profile.sections.appearanceDesc")}
+                  label={t("profile.sections.preferences")}
+                  description={t("profile.sections.preferencesDesc")}
+                  icon="globe"
                   palette={palette}
                   flush
                 />
@@ -348,28 +346,30 @@ export default function StudioProfileScreen() {
                 </ProfileSectionCard>
 
                 <ProfileSectionHeader
-                  label={t("profile.settings.calendar.title")}
-                  description={t("profile.sections.calendarDesc")}
+                  label={t("profile.sections.operations")}
+                  description={t("profile.sections.operationsDesc")}
+                  icon="slider.horizontal.3"
                   palette={palette}
                   flush
                 />
                 <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title={t("profile.settings.autoExpireJobs")}
+                    value={t("profile.settings.autoExpire.value", {
+                      minutes: studioSettings?.autoExpireMinutesBefore ?? 30,
+                    })}
+                    icon="clock.fill"
+                    palette={palette}
+                    showDivider
+                  />
                   <ProfileSettingRow
                     title={t("profile.settings.calendar.title")}
                     subtitle={calendarSummary}
                     icon="calendar.circle.fill"
                     onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
                     palette={palette}
+                    showDivider
                   />
-                </ProfileSectionCard>
-
-                <ProfileSectionHeader
-                  label={t("profile.sections.payments")}
-                  description={t("profile.sections.paymentsDesc")}
-                  palette={palette}
-                  flush
-                />
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                   <ProfileSettingRow
                     title={t("profile.settings.paymentsPayouts")}
                     subtitle={t("profile.sections.paymentsDesc")}
@@ -410,6 +410,7 @@ export default function StudioProfileScreen() {
               <ProfileSectionHeader
                 label={t("profile.sections.studio")}
                 description={t("profile.sections.studioDesc")}
+                icon="building.2.fill"
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -437,21 +438,13 @@ export default function StudioProfileScreen() {
                   icon="mappin.and.ellipse"
                   onPress={handleRequestEdit}
                   palette={palette}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.settings.autoExpireJobs")}
-                  value={t("profile.settings.autoExpire.value", {
-                    minutes: studioSettings?.autoExpireMinutesBefore ?? 30,
-                  })}
-                  icon="clock.fill"
-                  palette={palette}
                 />
               </ProfileSectionCard>
 
               <ProfileSectionHeader
                 label={t("profile.account.title")}
                 description={t("profile.sections.accountDesc")}
+                icon="person.crop.circle.fill"
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -487,8 +480,9 @@ export default function StudioProfileScreen() {
               </ProfileSectionCard>
 
               <ProfileSectionHeader
-                label={t("profile.appearance.title")}
-                description={t("profile.sections.appearanceDesc")}
+                label={t("profile.sections.preferences")}
+                description={t("profile.sections.preferencesDesc")}
+                icon="globe"
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
@@ -535,26 +529,29 @@ export default function StudioProfileScreen() {
               </ProfileSectionCard>
 
               <ProfileSectionHeader
-                label={t("profile.settings.calendar.title")}
-                description={t("profile.sections.calendarDesc")}
+                label={t("profile.sections.operations")}
+                description={t("profile.sections.operationsDesc")}
+                icon="slider.horizontal.3"
                 palette={palette}
               />
               <ProfileSectionCard palette={palette}>
+                <ProfileSettingRow
+                  title={t("profile.settings.autoExpireJobs")}
+                  value={t("profile.settings.autoExpire.value", {
+                    minutes: studioSettings?.autoExpireMinutesBefore ?? 30,
+                  })}
+                  icon="clock.fill"
+                  palette={palette}
+                  showDivider
+                />
                 <ProfileSettingRow
                   title={t("profile.settings.calendar.title")}
                   subtitle={calendarSummary}
                   icon="calendar.circle.fill"
                   onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
                   palette={palette}
+                  showDivider
                 />
-              </ProfileSectionCard>
-
-              <ProfileSectionHeader
-                label={t("profile.sections.payments")}
-                description={t("profile.sections.paymentsDesc")}
-                palette={palette}
-              />
-              <ProfileSectionCard palette={palette}>
                 <ProfileSettingRow
                   title={t("profile.settings.paymentsPayouts")}
                   subtitle={t("profile.sections.paymentsDesc")}

@@ -957,7 +957,7 @@ export default function CalendarTabScreen() {
         >
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={{ ...BrandType.title, color: palette.text as string }}>
-              {t("calendarTab.agenda.title", { defaultValue: "Agenda" })}
+              {t("calendarTab.agenda.title")}
             </Text>
             <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
               {formatSelectedDayLabel(selectedDay, i18n.language)}
@@ -986,11 +986,8 @@ export default function CalendarTabScreen() {
               }}
             >
               {selectedLessonCount === 1
-                ? t("calendarTab.agenda.oneSession", { defaultValue: "1 session" })
-                : t("calendarTab.agenda.sessionCount", {
-                    count: selectedLessonCount,
-                    defaultValue: `${String(selectedLessonCount)} sessions`,
-                  })}
+                ? t("calendarTab.agenda.oneSession")
+                : t("calendarTab.agenda.sessionCount", { count: selectedLessonCount })}
             </Text>
           </View>
         </View>
@@ -1048,14 +1045,10 @@ export default function CalendarTabScreen() {
                   tintColor={palette.textMuted as string}
                 />
                 <Text style={[styles.emptyStateTitle, { color: palette.textMuted as string }]}>
-                  {t("calendarTab.timeline.noLessons", {
-                    defaultValue: "No lessons",
-                  })}
+                  {t("calendarTab.timeline.noLessons")}
                 </Text>
                 <Text style={[styles.emptyStateBody, { color: palette.textMuted as string }]}>
-                  {t("calendarTab.timeline.noLessonsHint", {
-                    defaultValue: "Nothing is scheduled for this day yet.",
-                  })}
+                  {t("calendarTab.timeline.noLessonsHint")}
                 </Text>
               </View>
             </View>
@@ -1069,30 +1062,22 @@ export default function CalendarTabScreen() {
       const accent = (swatch?.background as string) ?? (palette.primary as string);
       const counterpart =
         row.source === "google"
-          ? (row.location ?? "Google Calendar")
+          ? (row.location ?? t("calendarTab.googleCalendar"))
           : row.roleView === "instructor"
             ? row.studioName
-            : (row.instructorName ?? "Unassigned instructor");
+            : (row.instructorName ?? t("calendarTab.unassignedInstructor"));
       const timeLabel = row.isAllDay
-        ? t("calendarTab.timeline.allDay", { defaultValue: "All day" })
+        ? t("calendarTab.timeline.allDay")
         : `${formatTime(row.startTime, i18n.language)} – ${formatTime(row.endTime, i18n.language)}`;
 
       const lifecycleLabel =
         row.lifecycle === "live"
-          ? t("calendarTab.timeline.lifecycle.live", {
-              defaultValue: "Live now",
-            })
+          ? t("calendarTab.timeline.lifecycle.live")
           : row.lifecycle === "upcoming"
-            ? t("calendarTab.timeline.lifecycle.upcoming", {
-                defaultValue: "Upcoming",
-              })
+            ? t("calendarTab.timeline.lifecycle.upcoming")
             : row.lifecycle === "cancelled"
-              ? t("calendarTab.timeline.lifecycle.cancelled", {
-                  defaultValue: "Cancelled",
-                })
-              : t("calendarTab.timeline.lifecycle.past", {
-                  defaultValue: "Past",
-                });
+              ? t("calendarTab.timeline.lifecycle.cancelled")
+              : t("calendarTab.timeline.lifecycle.past");
 
       const lifecycleTone =
         row.lifecycle === "live"
@@ -1124,14 +1109,11 @@ export default function CalendarTabScreen() {
           <KitPressable
             accessibilityRole="button"
             accessibilityLabel={t("calendarTab.lessonRowAccessibility", {
-              defaultValue: "{{sport}} from {{start}} to {{end}}",
               sport: row.sport,
               start: formatTime(row.startTime, i18n.language),
               end: formatTime(row.endTime, i18n.language),
             })}
-            accessibilityHint={t("calendarTab.lessonRowAccessibilityHint", {
-              defaultValue: "Select this day",
-            })}
+            accessibilityHint={t("calendarTab.lessonRowAccessibilityHint")}
             onPress={() => handleDayPress(item.dayKey)}
             style={[styles.lessonCard, { backgroundColor: palette.surfaceElevated as string }]}
           >
@@ -1149,7 +1131,7 @@ export default function CalendarTabScreen() {
                       ]}
                     >
                       <Text style={[styles.sourceBadgeText, { color: palette.primary as string }]}>
-                        {t("calendarTab.timeline.googleBadge", { defaultValue: "Google" })}
+                        {t("calendarTab.timeline.googleBadge")}
                       </Text>
                     </View>
                   ) : null}
@@ -1185,9 +1167,7 @@ export default function CalendarTabScreen() {
       <TabScreenRoot mode="static" style={{ backgroundColor: palette.surface as string }}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
           <Text style={{ ...BrandType.bodyStrong, color: palette.textMuted as string }}>
-            {t("calendarTab.desktopSoon", {
-              defaultValue: "Desktop calendar board is temporarily unavailable in this merge.",
-            })}
+            {t("calendarTab.desktopSoon")}
           </Text>
         </View>
       </TabScreenRoot>
@@ -1235,7 +1215,7 @@ export default function CalendarTabScreen() {
             <View style={{ alignItems: "flex-end", gap: BrandSpacing.sm }}>
               {selectedDay !== todayKey ? (
                 <KitButton
-                  label={t("common.today", { defaultValue: "Today" })}
+                  label={t("common.today")}
                   onPress={handleTodayPress}
                   variant="secondary"
                   size="sm"
@@ -1243,11 +1223,7 @@ export default function CalendarTabScreen() {
                 />
               ) : null}
               <KitButton
-                label={
-                  showDatePicker
-                    ? t("common.done", { defaultValue: "Done" })
-                    : t("calendarTab.header.chooseDate", { defaultValue: "Choose date" })
-                }
+                label={showDatePicker ? t("common.done") : t("calendarTab.header.chooseDate")}
                 onPress={() => {
                   if (showDatePicker) {
                     handleDoneWithDatePicker();
@@ -1300,11 +1276,8 @@ export default function CalendarTabScreen() {
                 }}
               >
                 {selectedLessonCount === 1
-                  ? t("calendarTab.agenda.oneSession", { defaultValue: "1 session" })
-                  : t("calendarTab.agenda.sessionCount", {
-                      count: selectedLessonCount,
-                      defaultValue: `${String(selectedLessonCount)} sessions`,
-                    })}
+                  ? t("calendarTab.agenda.oneSession")
+                  : t("calendarTab.agenda.sessionCount", { count: selectedLessonCount })}
               </Text>
             </View>
           </View>
@@ -1327,13 +1300,11 @@ export default function CalendarTabScreen() {
             options={[
               {
                 value: "jobs_only",
-                label: t("calendarTab.filters.jobsOnly", { defaultValue: "Jobs only" }),
+                label: t("calendarTab.filters.jobsOnly"),
               },
               {
                 value: "jobs_and_google",
-                label: t("calendarTab.filters.jobsAndGoogle", {
-                  defaultValue: "Jobs + Google",
-                }),
+                label: t("calendarTab.filters.jobsAndGoogle"),
               },
             ]}
           />
@@ -1358,7 +1329,7 @@ export default function CalendarTabScreen() {
             {Platform.OS === "ios" ? (
               <View style={{ alignItems: "flex-end", paddingHorizontal: 14, paddingBottom: 14 }}>
                 <KitButton
-                  label={t("common.done", { defaultValue: "Done" })}
+                  label={t("common.done")}
                   onPress={handleDoneWithDatePicker}
                   size="sm"
                   fullWidth={false}

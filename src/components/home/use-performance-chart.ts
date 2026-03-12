@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
 import type { TFunction } from "i18next";
+import { useMemo, useState } from "react";
 import {
-  getAdjacentTimeframe,
   type AxisTick,
+  getAdjacentTimeframe,
   type MetricMode,
   type Timeframe,
 } from "@/components/home/performance-chart-math";
@@ -36,10 +36,7 @@ export function usePerformanceChart({
   const [timeframe, setTimeframe] = useState<Timeframe>("weekly");
   const [metricMode, setMetricMode] = useState<MetricMode>("earnings");
 
-  const seriesByTimeframe = useMemo(
-    () => computeSeries(metricMode),
-    [computeSeries, metricMode],
-  );
+  const seriesByTimeframe = useMemo(() => computeSeries(metricMode), [computeSeries, metricMode]);
 
   const currentSeries = seriesByTimeframe[timeframe];
   const frameTotal = currentSeries.values.reduce((sum, value) => sum + value, 0);
@@ -71,7 +68,7 @@ export function usePerformanceChart({
 
     const activePoints = values.filter((value) => value > 0).length;
     const peakStr = peakTick?.label ?? `#${String(peakIndex + 1)}`;
-    
+
     return t("home.performance.peakActivity", {
       peak: peakStr,
       active: activePoints,
@@ -82,7 +79,7 @@ export function usePerformanceChart({
   const summaryValue =
     metricMode === "earnings"
       ? currencyFormatter.format(frameTotal / 100)
-      : `${String(frameTotal)} ${t("home.performance.lessons")}`;
+      : `${String(frameTotal)} ${metricLabels.lessons}`;
 
   const timeframeOptions = useMemo<PerformanceTimeframeOption[]>(
     () => [

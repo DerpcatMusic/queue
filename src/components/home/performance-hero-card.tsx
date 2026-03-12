@@ -1,9 +1,11 @@
 import { useId, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { type LayoutChangeEvent, PanResponder, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { useHomeDashboardLayout } from "@/components/home/home-dashboard-layout";
 import type { AxisTick, MetricMode, Timeframe } from "@/components/home/performance-chart-math";
 import { buildSplinePaths, getAdjacentTimeframe } from "@/components/home/performance-chart-math";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitPressable } from "@/components/ui/kit";
 import { type BrandPalette, BrandRadius, BrandType } from "@/constants/brand";
 
@@ -43,6 +45,11 @@ type AxisLabelEntry = {
   x: number;
 };
 
+const METRIC_ICONS: Record<MetricMode, "creditcard.fill" | "calendar.badge.clock"> = {
+  earnings: "creditcard.fill",
+  lessons: "calendar.badge.clock",
+};
+
 export function PerformanceHeroCard({
   palette,
   timeframe,
@@ -57,6 +64,7 @@ export function PerformanceHeroCard({
   onSelectTimeframe,
   onSwipeTimeframe,
 }: PerformanceHeroCardProps) {
+  const { t } = useTranslation();
   const layout = useHomeDashboardLayout();
   const chartHeight = layout.isWideWeb ? 220 : 176;
   const chartPadding = 12;
@@ -64,8 +72,8 @@ export function PerformanceHeroCard({
   const gradientId = `hero-fill-${useId()}`;
 
   const currentSeries = seriesByTimeframe[timeframe];
-  const currentMetricLabel =
-    metricOptions.find((option) => option.value === metricMode)?.label ?? timeframeLabel;
+  const currentMetricOption = metricOptions.find((option) => option.value === metricMode);
+  const currentMetricLabel = currentMetricOption?.label ?? t(`home.performance.${metricMode}`);
   const { linePath, areaPath, separators, pointXs, hasActivity } = useMemo(
     () => buildSplinePaths(currentSeries.values, chartWidth, chartHeight, chartPadding),
     [chartHeight, chartWidth, currentSeries.values],
@@ -128,22 +136,50 @@ export function PerformanceHeroCard({
       <View
         style={{
           flexDirection: layout.isWideWeb ? "row" : "column",
-          alignItems: layout.isWideWeb ? "flex-start" : "stretch",
+          alignItems: layout.isWideWeb ? "center" : "stretch",
           gap: 14,
         }}
       >
-        <View style={{ flex: 1, gap: 6 }}>
+        <View style={{ flex: 1, gap: 10 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                borderRadius: BrandRadius.pill,
+                backgroundColor: "rgba(255,255,255,0.12)",
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+              }}
+            >
+              <IconSymbol
+                name={METRIC_ICONS[metricMode]}
+                size={14}
+                color={palette.onPrimary as string}
+              />
+              <Text
+                style={{
+                  ...BrandType.micro,
+                  color: palette.onPrimary as string,
+                  opacity: 0.88,
+                }}
+              >
+                {currentMetricLabel}
+              </Text>
+            </View>
+            <Text
+              style={{
+                ...BrandType.micro,
+                color: palette.onPrimary as string,
+                opacity: 0.72,
+              }}
+            >
+              {timeframeLabel}
+            </Text>
+          </View>
           <Text
-            style={{
-              ...BrandType.micro,
-              color: palette.onPrimary as string,
-              opacity: 0.72,
-              letterSpacing: 0.8,
-            }}
-          >
-            {currentMetricLabel}
-          </Text>
-          <Text
+            accessibilityRole="header"
             style={{
               ...BrandType.display,
               fontSize: layout.isWideWeb ? 40 : 34,
@@ -154,17 +190,23 @@ export function PerformanceHeroCard({
           >
             {totalLabel}
           </Text>
-          <Text
-            style={{
-              ...BrandType.micro,
-              color: palette.onPrimary as string,
-              opacity: 0.76,
-            }}
-          >
-            {timeframeLabel} · {insightLabel}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <IconSymbol name="sparkles" size={14} color={palette.onPrimary as string} />
+            <Text
+              style={{
+                ...BrandType.micro,
+                color: palette.onPrimary as string,
+                opacity: 0.76,
+                flex: 1,
+              }}
+              numberOfLines={2}
+            >
+              {insightLabel}
+            </Text>
+          </View>
         </View>
         <View
+          accessibilityLabel={t("home.performance.metricSelector")}
           style={{
             width: layout.isWideWeb ? 232 : "100%",
             borderRadius: BrandRadius.pill,
@@ -181,7 +223,9 @@ export function PerformanceHeroCard({
                 key={option.value}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
-                accessibilityLabel={`Show ${option.label}`}
+                accessibilityLabel={t("home.performance.showMetric", {
+                  metric: option.label,
+                })}
                 onPress={() => onSelectMetric(option.value)}
                 nativeFeedback={false}
                 pressStyle={{ opacity: 0.9, transform: [{ scale: 0.98 }] }}
@@ -189,8 +233,10 @@ export function PerformanceHeroCard({
                   minHeight: 36,
                   minWidth: 82,
                   flex: layout.isWideWeb ? undefined : 1,
+                  flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "center",
+                  gap: 6,
                   borderRadius: BrandRadius.pill,
                   paddingHorizontal: 12,
                   backgroundColor: selected
@@ -198,6 +244,11 @@ export function PerformanceHeroCard({
                     : "rgba(255,255,255,0.08)",
                 }}
               >
+                <IconSymbol
+                  name={METRIC_ICONS[option.value]}
+                  size={14}
+                  color={selected ? (palette.primary as string) : (palette.onPrimary as string)}
+                />
                 <Text
                   style={{
                     ...BrandType.micro,
@@ -216,6 +267,14 @@ export function PerformanceHeroCard({
       <View
         {...panResponder.panHandlers}
         onLayout={onChartLayout}
+        accessibilityLabel={t("home.performance.chartSummary", {
+          metric: currentMetricLabel,
+          timeframe: timeframeLabel,
+          total: totalLabel,
+          insight: insightLabel,
+        })}
+        accessibilityHint={t("home.performance.chartSwipeHint")}
+        accessible
         style={{
           height: chartHeight,
           overflow: "hidden",
@@ -226,7 +285,7 @@ export function PerformanceHeroCard({
           paddingTop: 10,
         }}
       >
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }} importantForAccessibility="no-hide-descendants">
           {separators.map((x, idx) => (
             <View
               key={`separator-${String(idx)}`}
@@ -260,7 +319,10 @@ export function PerformanceHeroCard({
         </View>
       </View>
 
-      <View style={{ marginTop: 2, height: 16, position: "relative" }}>
+      <View
+        style={{ marginTop: 2, height: 16, position: "relative" }}
+        importantForAccessibility="no-hide-descendants"
+      >
         {axisLabels.map((entry) => (
           <Text
             key={entry.key}
@@ -281,6 +343,7 @@ export function PerformanceHeroCard({
       </View>
 
       <View
+        accessibilityLabel={t("home.performance.timeframeSelector")}
         style={{
           marginTop: 4,
           flexDirection: "row",

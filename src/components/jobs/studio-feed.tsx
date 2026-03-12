@@ -113,15 +113,15 @@ export function StudioFeed() {
   const filterOptions = [
     {
       key: "all",
-      label: t("jobsTab.filters.allJobs", { defaultValue: "All jobs" }),
+      label: t("jobsTab.studioFeed.filterAll"),
     },
     {
       key: "needs_review",
-      label: t("jobsTab.filters.needsReview", { defaultValue: "Needs review" }),
+      label: t("jobsTab.studioFeed.filterNeedsReview"),
     },
-    { key: "open", label: "Active" },
-    { key: "filled", label: "Filled" },
-    { key: "completed", label: "Completed" },
+    { key: "open", label: t("jobsTab.studioFeed.filterOpen") },
+    { key: "filled", label: t("jobsTab.studioFeed.filterFilled") },
+    { key: "completed", label: t("jobsTab.studioFeed.filterCompleted") },
   ] as const;
   const shouldSplitMobileBoard =
     jobsStatusFilter === "all" && reviewQueueJobs.length > 0 && boardJobs.length > 0;
@@ -182,7 +182,7 @@ export function StudioFeed() {
                   letterSpacing: 0.2,
                 }}
               >
-                Studio operations
+                {t("jobsTab.studioFeed.eyebrow")}
               </Text>
               <Text
                 style={{
@@ -193,7 +193,7 @@ export function StudioFeed() {
                   color: palette.onPrimary as string,
                 }}
               >
-                Work the queue without losing the board
+                {t("jobsTab.studioFeed.title")}
               </Text>
               <Text
                 style={{
@@ -203,8 +203,7 @@ export function StudioFeed() {
                   maxWidth: 620,
                 }}
               >
-                Web now treats review, posting, and active jobs as one operating desk instead of a
-                stretched phone feed.
+                {t("jobsTab.studioFeed.body")}
               </Text>
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <KitButton
@@ -216,7 +215,11 @@ export function StudioFeed() {
                   style={{ backgroundColor: palette.onPrimary as string }}
                 />
                 <KitButton
-                  label={reviewCount > 0 ? `${String(reviewCount)} awaiting review` : "Queue clear"}
+                  label={
+                    reviewCount > 0
+                      ? t("jobsTab.studioFeed.reviewAction", { count: reviewCount })
+                      : t("jobsTab.studioFeed.queueClear")
+                  }
                   onPress={() => setJobsStatusFilter("needs_review")}
                   variant="secondary"
                   fullWidth={false}
@@ -237,9 +240,21 @@ export function StudioFeed() {
               }}
             >
               {[
-                { label: "Review", value: reviewCount, accent: palette.primary as string },
-                { label: "Open", value: openCount, accent: palette.text as string },
-                { label: "Filled", value: filledCount, accent: palette.success as string },
+                {
+                  label: t("jobsTab.studioFeed.metricReview"),
+                  value: reviewCount,
+                  accent: palette.primary as string,
+                },
+                {
+                  label: t("jobsTab.studioFeed.metricOpen"),
+                  value: openCount,
+                  accent: palette.text as string,
+                },
+                {
+                  label: t("jobsTab.studioFeed.metricFilled"),
+                  value: filledCount,
+                  accent: palette.success as string,
+                },
               ].map((metric) => (
                 <View
                   key={metric.label}
@@ -315,12 +330,10 @@ export function StudioFeed() {
                 >
                   <View style={{ paddingHorizontal: 18 }}>
                     <FeedSectionHeader
-                      title="Needs review"
-                      subtitle={
-                        reviewQueueJobs.length === 1
-                          ? "1 job has applicants waiting for a decision."
-                          : `${String(reviewQueueJobs.length)} jobs have applicants waiting for a decision.`
-                      }
+                      title={t("jobsTab.studioFeed.needsReviewTitle")}
+                      subtitle={t("jobsTab.studioFeed.needsReviewSubtitle", {
+                        count: reviewQueueJobs.length,
+                      })}
                       palette={palette}
                     />
                   </View>
@@ -353,12 +366,8 @@ export function StudioFeed() {
               >
                 <View style={{ paddingHorizontal: 18 }}>
                   <FeedSectionHeader
-                    title="Board"
-                    subtitle={
-                      boardJobs.length === 1
-                        ? "1 job sits outside the review lane."
-                        : `${String(boardJobs.length)} jobs sit outside the review lane.`
-                    }
+                    title={t("jobsTab.studioFeed.boardTitle")}
+                    subtitle={t("jobsTab.studioFeed.boardSubtitle", { count: boardJobs.length })}
                     palette={palette}
                   />
                 </View>
@@ -405,8 +414,8 @@ export function StudioFeed() {
                   <View style={{ flex: 1, minHeight: 240, justifyContent: "center" }}>
                     <EmptyState
                       icon="checkmark.circle"
-                      title="Nothing outside review"
-                      body="Your remaining jobs are all in the review queue above."
+                      title={t("jobsTab.boardEmptyTitle")}
+                      body={t("jobsTab.boardEmptyBody")}
                     />
                   </View>
                 )}
@@ -425,8 +434,8 @@ export function StudioFeed() {
                 }}
               >
                 <FeedSectionHeader
-                  title="Filter desk"
-                  subtitle="Route the board without shrinking the working lane."
+                  title={t("jobsTab.studioFeed.filterDeskTitle")}
+                  subtitle={t("jobsTab.studioFeed.filterDeskSubtitle")}
                   palette={palette}
                 />
                 <NativeSearchField
@@ -722,16 +731,16 @@ export function StudioFeed() {
               <FeedSectionHeader
                 title={
                   shouldSplitMobileBoard
-                    ? "Review lane and board"
+                    ? t("jobsTab.studioFeed.mobileSplitTitle")
                     : jobsStatusFilter === "needs_review"
-                      ? "Needs review"
-                      : t("jobsTab.studioFeedTitle")
+                      ? t("jobsTab.studioFeed.needsReviewTitle")
+                      : t("jobsTab.studioFeed.boardTitle")
                 }
                 subtitle={
                   shouldSplitMobileBoard
-                    ? "Handle waiting applicants first, then scan the remaining board."
+                    ? t("jobsTab.studioFeed.mobileSplitSubtitle")
                     : jobsStatusFilter === "needs_review"
-                      ? "Only jobs with pending applicants are shown."
+                      ? t("jobsTab.studioFeed.mobileNeedsReviewSubtitle")
                       : t("jobsTab.studioApplicationsTitle")
                 }
                 palette={palette}
@@ -795,12 +804,10 @@ export function StudioFeed() {
                 <View style={{ gap: BrandSpacing.md }}>
                   <View style={{ gap: BrandSpacing.xs }}>
                     <FeedSectionHeader
-                      title="Needs review"
-                      subtitle={
-                        reviewQueueJobs.length === 1
-                          ? "1 job is waiting for a decision."
-                          : `${String(reviewQueueJobs.length)} jobs are waiting for a decision.`
-                      }
+                      title={t("jobsTab.studioFeed.needsReviewTitle")}
+                      subtitle={t("jobsTab.studioFeed.mobileDecisionWaiting", {
+                        count: reviewQueueJobs.length,
+                      })}
                       palette={palette}
                     />
                     <StudioJobsList
@@ -822,12 +829,8 @@ export function StudioFeed() {
 
                   <View style={{ gap: BrandSpacing.xs }}>
                     <FeedSectionHeader
-                      title="Board"
-                      subtitle={
-                        boardJobs.length === 1
-                          ? "1 job sits outside the review lane."
-                          : `${String(boardJobs.length)} jobs sit outside the review lane.`
-                      }
+                      title={t("jobsTab.studioFeed.boardTitle")}
+                      subtitle={t("jobsTab.studioFeed.boardSubtitle", { count: boardJobs.length })}
                       palette={palette}
                     />
                     <StudioJobsList

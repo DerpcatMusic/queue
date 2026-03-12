@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
@@ -82,15 +83,29 @@ function buildCoverageNodes(selectedZoneIds: string[], focusZoneId: string | nul
   }, []);
 }
 
-function getResponseLabel(seconds: number) {
-  if (seconds <= 0) return "Instant";
-  if (seconds <= 30) return "30 sec";
-  if (seconds <= 60) return "1 min";
-  return "90 sec";
+function getResponseLabel(
+  seconds: number,
+  labels: Record<"instant" | "thirtySeconds" | "oneMinute" | "ninetySeconds", string>,
+) {
+  if (seconds <= 0) return labels.instant;
+  if (seconds <= 30) return labels.thirtySeconds;
+  if (seconds <= 60) return labels.oneMinute;
+  return labels.ninetySeconds;
 }
 
 export function QueueMap(props: QueueMapProps) {
+  const { t, i18n } = useTranslation();
   const palette = useBrand();
+  const zoneLanguage = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he") ? "he" : "en";
+  const responseLabels = useMemo(
+    () => ({
+      instant: t("mapTab.web.instant"),
+      thirtySeconds: t("mapTab.web.thirtySeconds"),
+      oneMinute: t("mapTab.web.oneMinute"),
+      ninetySeconds: t("mapTab.web.ninetySeconds"),
+    }),
+    [t],
+  );
   const selectedCount = props.selectedZoneIds.length;
   const coverageNodes = useMemo(
     () => buildCoverageNodes(props.selectedZoneIds, props.focusZoneId),
@@ -145,7 +160,7 @@ export function QueueMap(props: QueueMapProps) {
                     textTransform: "uppercase",
                   }}
                 >
-                  Web map canvas
+                  {t("mapTab.web.workspaceEyebrow")}
                 </Text>
                 <Text
                   style={{
@@ -156,7 +171,7 @@ export function QueueMap(props: QueueMapProps) {
                     color: palette.text as string,
                   }}
                 >
-                  Territory board
+                  {t("mapTab.web.workspaceTitle")}
                 </Text>
               </View>
 
@@ -181,8 +196,7 @@ export function QueueMap(props: QueueMapProps) {
                 maxWidth: 560,
               }}
             >
-              The board is live, not decorative. Selected territories stay bold, the current focus
-              is pinned, and every block can be staged directly from the canvas.
+              {t("mapTab.web.workspaceBody")}
             </Text>
           </View>
 
@@ -289,7 +303,7 @@ export function QueueMap(props: QueueMapProps) {
                     textTransform: "uppercase",
                   }}
                 >
-                  Current focus
+                  {t("mapTab.web.currentFocus")}
                 </Text>
                 <Text
                   numberOfLines={1}
@@ -298,12 +312,10 @@ export function QueueMap(props: QueueMapProps) {
                     color: palette.text as string,
                   }}
                 >
-                  {focusedZone ? focusedZone.label.en : "No focus locked"}
+                  {focusedZone ? focusedZone.label[zoneLanguage] : t("mapTab.web.noFocusLocked")}
                 </Text>
                 <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                  {focusedZone
-                    ? "Use the command rail to refocus or trim coverage."
-                    : "Pick a live territory in the rail to pin it here."}
+                  {focusedZone ? t("mapTab.web.focusHelp") : t("mapTab.web.focusEmpty")}
                 </Text>
               </View>
 
@@ -326,7 +338,7 @@ export function QueueMap(props: QueueMapProps) {
                     textTransform: "uppercase",
                   }}
                 >
-                  Live zones
+                  {t("mapTab.web.liveZones")}
                 </Text>
                 <Text
                   style={{
@@ -399,17 +411,17 @@ export function QueueMap(props: QueueMapProps) {
                       }}
                     >
                       {node.focused
-                        ? "Focused"
+                        ? t("mapTab.web.focused")
                         : node.selected
-                          ? "Live territory"
-                          : "Reference zone"}
+                          ? t("mapTab.web.liveTerritory")
+                          : t("mapTab.web.referenceZone")}
                     </Text>
                     <Text style={{ ...BrandType.caption, color: metaColor }}>
                       {isEditable
                         ? node.selected
-                          ? "Tap to remove"
-                          : "Tap to add"
-                        : getResponseLabel(node.seconds)}
+                          ? t("mapTab.web.tapToRemove")
+                          : t("mapTab.web.tapToAdd")
+                        : getResponseLabel(node.seconds, responseLabels)}
                     </Text>
                   </View>
                 </KitPressable>
@@ -444,7 +456,7 @@ export function QueueMap(props: QueueMapProps) {
                   textTransform: "uppercase",
                 }}
               >
-                Canvas mode
+                {t("mapTab.web.canvasMode")}
               </Text>
               <Text
                 style={{
@@ -454,7 +466,7 @@ export function QueueMap(props: QueueMapProps) {
                   color: palette.onPrimary as string,
                 }}
               >
-                {props.onPressZone ? "Interactive" : "Preview"}
+                {props.onPressZone ? t("mapTab.web.interactive") : t("mapTab.web.preview")}
               </Text>
             </View>
 
@@ -477,7 +489,7 @@ export function QueueMap(props: QueueMapProps) {
                   textTransform: "uppercase",
                 }}
               >
-                Territory snapshot
+                {t("mapTab.web.territorySnapshot")}
               </Text>
 
               {selectedPreview.length > 0 ? (
@@ -510,7 +522,7 @@ export function QueueMap(props: QueueMapProps) {
                 </View>
               ) : (
                 <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                  Add zones from the command rail or the board to build your live territory.
+                  {t("mapTab.web.emptySnapshot")}
                 </Text>
               )}
             </View>

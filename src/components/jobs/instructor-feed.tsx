@@ -18,8 +18,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 function SectionHeader({
   title,
@@ -119,20 +119,16 @@ export function InstructorFeed() {
       await applyToJob({ jobId });
     } catch (error) {
       console.error("[jobs] apply failed", error);
-      setApplyErrorMessage(
-        t("jobsTab.actions.applyError", {
-          defaultValue: "Couldn't apply right now. Please try again.",
-        }),
-      );
+      setApplyErrorMessage(t("jobsTab.errors.applyError"));
     } finally {
       setApplyingJobId(null);
     }
   };
 
   const filterOptions = [
-    { key: "all", label: "Any time" },
-    { key: "24h", label: "Now" },
-    { key: "72h", label: "This week" },
+    { key: "all", label: t("jobsTab.instructorFeed.filterAnyTime") },
+    { key: "24h", label: t("jobsTab.instructorFeed.filterNow") },
+    { key: "72h", label: t("jobsTab.instructorFeed.filterThisWeek") },
   ] as const;
 
   if (isWideWeb) {
@@ -169,7 +165,7 @@ export function InstructorFeed() {
                   letterSpacing: 0.2,
                 }}
               >
-                Instructor queue
+                {t("jobsTab.instructorFeed.eyebrow")}
               </Text>
               <Text
                 style={{
@@ -180,7 +176,7 @@ export function InstructorFeed() {
                   color: palette.onPrimary as string,
                 }}
               >
-                Move on the best openings before the board gets noisy
+                {t("jobsTab.instructorFeed.title")}
               </Text>
               <Text
                 style={{
@@ -190,13 +186,14 @@ export function InstructorFeed() {
                   maxWidth: 620,
                 }}
               >
-                Web uses a real scanning layout now: filter in one rail, compare openings in one
-                line, and keep submitted jobs visible without turning them into fake buttons.
+                {t("jobsTab.instructorFeed.body")}
               </Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {[
-                  `${String(filteredAvailableJobs.length)} matches`,
-                  hotNowCount > 0 ? `${String(hotNowCount)} hot now` : "Fresh board",
+                  t("jobsTab.instructorFeed.matchesCount", { count: filteredAvailableJobs.length }),
+                  hotNowCount > 0
+                    ? t("jobsTab.instructorFeed.hotNow", { count: hotNowCount })
+                    : t("jobsTab.instructorFeed.freshBoard"),
                 ].map((label) => (
                   <View
                     key={label}
@@ -233,9 +230,21 @@ export function InstructorFeed() {
               }}
             >
               {[
-                { label: "Hot now", value: hotNowCount, accent: palette.primary as string },
-                { label: "Pending", value: pendingCount, accent: palette.warning as string },
-                { label: "Accepted", value: acceptedCount, accent: palette.success as string },
+                {
+                  label: t("jobsTab.instructorFeed.metricHotNow"),
+                  value: hotNowCount,
+                  accent: palette.primary as string,
+                },
+                {
+                  label: t("jobsTab.instructorFeed.metricPending"),
+                  value: pendingCount,
+                  accent: palette.warning as string,
+                },
+                {
+                  label: t("jobsTab.instructorFeed.metricAccepted"),
+                  value: acceptedCount,
+                  accent: palette.success as string,
+                },
               ].map((metric) => (
                 <View
                   key={metric.label}
@@ -298,12 +307,10 @@ export function InstructorFeed() {
             >
               <View style={{ paddingHorizontal: 18 }}>
                 <SectionHeader
-                  title="Openings"
-                  subtitle={
-                    filteredAvailableJobs.length === 1
-                      ? "1 opening after your current filters."
-                      : `${String(filteredAvailableJobs.length)} openings after your current filters.`
-                  }
+                  title={t("jobsTab.instructorFeed.openingsTitle")}
+                  subtitle={t("jobsTab.instructorFeed.openingsFiltered", {
+                    count: filteredAvailableJobs.length,
+                  })}
                   palette={palette}
                 />
               </View>
@@ -347,8 +354,8 @@ export function InstructorFeed() {
                 }}
               >
                 <SectionHeader
-                  title="Filter desk"
-                  subtitle="Trim the queue without collapsing the board."
+                  title={t("jobsTab.instructorFeed.filterDeskTitle")}
+                  subtitle={t("jobsTab.instructorFeed.filterDeskSubtitle")}
                   palette={palette}
                 />
                 <NativeSearchField
@@ -380,11 +387,10 @@ export function InstructorFeed() {
                 }}
               >
                 <Text style={{ ...BrandType.heading, fontSize: 24, color: palette.text as string }}>
-                  Pipeline
+                  {t("jobsTab.instructorFeed.pipelineTitle")}
                 </Text>
                 <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                  Pending and accepted jobs remain visible as passive status states. Only the real
-                  apply action reads like a button.
+                  {t("jobsTab.instructorFeed.pipelineSubtitle")}
                 </Text>
               </View>
             </View>
@@ -413,10 +419,8 @@ export function InstructorFeed() {
             }}
           >
             <SectionHeader
-              title={t("jobsTab.title", { defaultValue: "Jobs near you" })}
-              subtitle={t("jobsTab.subtitle", {
-                defaultValue: "Scan new openings, filter quickly, and stay above the queue.",
-              })}
+              title={t("jobsTab.instructorFeed.mobileTitle")}
+              subtitle={t("jobsTab.instructorFeed.mobileSubtitle")}
               palette={palette}
             />
             <View
@@ -426,10 +430,14 @@ export function InstructorFeed() {
               }}
             >
               {[
-                { label: "Hot now", value: String(hotNowCount), accent: palette.primary as string },
-                { label: "Pending", value: String(pendingCount) },
                 {
-                  label: "Accepted",
+                  label: t("jobsTab.instructorFeed.metricHotNow"),
+                  value: String(hotNowCount),
+                  accent: palette.primary as string,
+                },
+                { label: t("jobsTab.instructorFeed.metricPending"), value: String(pendingCount) },
+                {
+                  label: t("jobsTab.instructorFeed.metricAccepted"),
                   value: String(acceptedCount),
                   accent: palette.success as string,
                 },

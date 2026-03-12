@@ -10,11 +10,13 @@ type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 export function ProfileSectionHeader({
   label,
   description,
+  icon,
   palette,
   flush = false,
 }: {
   label: string;
   description?: string;
+  icon?: ProfileSymbolName;
   palette: BrandPalette;
   flush?: boolean;
 }) {
@@ -27,15 +29,18 @@ export function ProfileSectionHeader({
         gap: 4,
       }}
     >
-      <Text
-        style={{
-          ...BrandType.micro,
-          color: palette.textMuted as string,
-          letterSpacing: 0.4,
-        }}
-      >
-        {label}
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        {icon ? <IconSymbol name={icon} size={14} color={palette.textMuted as string} /> : null}
+        <Text
+          style={{
+            ...BrandType.micro,
+            color: palette.textMuted as string,
+            letterSpacing: 0.4,
+          }}
+        >
+          {label}
+        </Text>
+      </View>
       {description ? (
         <Text
           style={{
