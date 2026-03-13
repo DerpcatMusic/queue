@@ -538,6 +538,12 @@ Replace with consequence and momentum:
 - simplified week, date-picker, and agenda selection controls without changing calendar behavior
 - kept the slice mechanical so remaining map-tab and payments cleanup can stay isolated
 
+### Slice 10
+
+- removed kit action wrappers from the main map tab screen across web and mobile
+- simplified territory selection, list rows, and bottom-sheet controls to plain pressables and action buttons
+- reduced map editing ceremony without changing zone selection or save flow
+
 ## Final Verdict
 
 The app is not ugly.
