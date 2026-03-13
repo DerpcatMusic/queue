@@ -586,6 +586,12 @@ Replace with consequence and momentum:
 - replaced soft dashboard copy with stronger signal tiles, direct action rails, and tighter queue language
 - kept the redesign on shared semantic tokens only so the new home pass does not introduce another color or styling pocket
 
+### Slice 18
+
+- rebuilt the instructor location page from a generic settings form into a status-first command surface
+- removed the remaining `KitList` and `KitSwitchRow` shell in favor of shared profile cards, one address lane, one zone lane, and a fixed save rail
+- normalized the page onto semantic palette tokens only while tightening the zone-resolution feedback and error messaging
+
 ## Final Verdict
 
 The app is not ugly.
