@@ -16,7 +16,10 @@ import {
   getHomeHeaderScrollTopPadding,
   HomeHeaderSheet,
 } from "@/components/home/home-header-sheet";
-import { getRelativeTimeLabel } from "@/components/home/home-shared";
+import {
+  getRelativeTimeLabel,
+  HomeSignalTile,
+} from "@/components/home/home-shared";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
@@ -74,7 +77,9 @@ export function InstructorHomeContent({
   const nextSession = upcomingSessions[0] ?? null;
   const readinessLabel = isVerified
     ? t("home.instructor.verified", { defaultValue: "Verified and ready" })
-    : t("home.instructor.needsPolish", { defaultValue: "Polish your profile" });
+    : t("home.instructor.needsPolish", {
+        defaultValue: "Polish your profile",
+      });
   const heroTitle = nextSession
     ? t("home.instructor.heroSession", {
         sport: toSportLabel(nextSession.sport as never),
@@ -85,12 +90,12 @@ export function InstructorHomeContent({
         count: openMatches,
         defaultValue: `${String(openMatches)} open matches near you`,
       });
-  const heroSecondaryLabel =
-    pendingApplications > 0
-      ? t("home.instructor.pendingApps", {
-          defaultValue: "Pending applications",
-        })
-      : t("home.instructor.readyState", { defaultValue: "Ready state" });
+  const heroSummary = nextSession
+    ? [
+        formatDateTime(nextSession.startTime, locale),
+        getZoneLabel(nextSession.zone, zoneLanguage),
+      ].join("  ·  ")
+    : readinessLabel;
   const heroSecondaryValue =
     pendingApplications > 0
       ? t("home.instructor.waitingCount", {
@@ -100,10 +105,6 @@ export function InstructorHomeContent({
       : nextSession
         ? getRelativeTimeLabel(nextSession.startTime, now, locale)
         : t("home.instructor.profileSet", { defaultValue: "Profile set" });
-  const leadAction = !isVerified ? onOpenProfile : onOpenJobs;
-  const leadActionHint = !isVerified
-    ? t("home.actions.profileTitle", { defaultValue: "Open profile" })
-    : t("home.actions.jobsTitle", { defaultValue: "Open jobs" });
   const visibleSessions = upcomingSessions.slice(0, layout.isWideWeb ? 6 : 4);
 
   return (
@@ -133,74 +134,127 @@ export function InstructorHomeContent({
         }}
       >
         <Animated.View entering={FadeInUp.delay(80).duration(280)}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={leadActionHint}
-            onPress={leadAction}
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.94 : 1,
-              transform: [{ scale: pressed ? 0.995 : 1 }],
-            })}
+          <HomeSurface
+            palette={palette}
+            tone="primary"
+            style={{
+              padding: BrandSpacing.xl,
+              gap: BrandSpacing.lg,
+            }}
           >
-            <HomeSurface
-              palette={palette}
-              tone="surface"
+            <View style={{ gap: 6 }}>
+              <Text
+                style={{
+                  ...BrandType.micro,
+                  color: palette.onPrimary as string,
+                  letterSpacing: 0.8,
+                  opacity: 0.76,
+                }}
+              >
+                {nextSession
+                  ? t("home.instructor.eyebrowNext", {
+                      defaultValue: "NEXT LESSON",
+                    })
+                  : t("home.instructor.eyebrowBoard", {
+                      defaultValue: "JOBS BOARD",
+                    })}
+              </Text>
+              <Text
+                style={{
+                  ...BrandType.heading,
+                  fontSize: layout.isWideWeb ? 34 : 28,
+                  lineHeight: layout.isWideWeb ? 36 : 30,
+                  color: palette.onPrimary as string,
+                }}
+              >
+                {heroTitle}
+              </Text>
+              <Text
+                style={{
+                  ...BrandType.body,
+                  color: palette.onPrimary as string,
+                  opacity: 0.84,
+                }}
+              >
+                {heroSummary}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <HomeSignalTile
+                label={t("home.actions.jobsTitle", {
+                  defaultValue: "Open jobs",
+                })}
+                value={String(openMatches)}
+                detail={t("home.instructor.heroMatches", {
+                  count: openMatches,
+                  defaultValue: `${String(openMatches)} live now`,
+                })}
+                palette={palette}
+              />
+              <HomeSignalTile
+                label={t("home.instructor.pendingApps", {
+                  defaultValue: "Pending applications",
+                })}
+                value={heroSecondaryValue}
+                detail={readinessLabel}
+                palette={palette}
+                tone="accent"
+              />
+            </View>
+
+            <View
               style={{
-                padding: BrandSpacing.xl,
-                gap: BrandSpacing.md,
+                flexDirection: layout.isWideWeb ? "row" : "column",
+                gap: 10,
               }}
             >
-              <View style={{ gap: 6 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("home.actions.jobsTitle", {
+                  defaultValue: "Open jobs",
+                })}
+                onPress={onOpenJobs}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  minHeight: 50,
+                  borderRadius: 18,
+                  borderCurve: "continuous",
+                  backgroundColor: palette.surface as string,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 16,
+                  opacity: pressed ? 0.92 : 1,
+                })}
+              >
                 <Text
                   style={{
-                    ...BrandType.micro,
-                    color: palette.textMuted as string,
-                    letterSpacing: 0.8,
-                  }}
-                >
-                  {nextSession
-                    ? t("home.instructor.eyebrowNext", {
-                        defaultValue: "NEXT LESSON",
-                      })
-                    : t("home.instructor.eyebrowBoard", {
-                        defaultValue: "JOBS BOARD",
-                      })}
-                </Text>
-                <Text
-                  style={{
-                    ...BrandType.heading,
-                    fontSize: layout.isWideWeb ? 30 : 24,
-                    lineHeight: layout.isWideWeb ? 32 : 26,
+                    ...BrandType.bodyStrong,
                     color: palette.text as string,
                   }}
                 >
-                  {heroTitle}
+                  {t("home.actions.jobsTitle", { defaultValue: "Open jobs" })}
                 </Text>
-                <Text
-                  style={{
-                    ...BrandType.body,
-                    color: palette.textMuted as string,
-                  }}
-                >
-                  {nextSession
-                    ? [
-                        formatDateTime(nextSession.startTime, locale),
-                        getZoneLabel(nextSession.zone, zoneLanguage),
-                      ].join("  ·  ")
-                    : t("home.instructor.heroMatches", {
-                        count: openMatches,
-                        defaultValue: `${String(openMatches)} open matches near you`,
-                      })}
-                </Text>
-              </View>
-
-              <View
-                style={{
-                  flexDirection: layout.isWideWeb ? "row" : "column",
-                  alignItems: layout.isWideWeb ? "center" : "stretch",
-                  justifyContent: "space-between",
-                  gap: BrandSpacing.md,
-                }}
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("home.actions.profileTitle", {
+                  defaultValue: "Open profile",
+                })}
+                onPress={onOpenProfile}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  minHeight: 50,
+                  borderRadius: 18,
+                  borderCurve: "continuous",
+                  backgroundColor: palette.primarySubtle as string,
+                  borderWidth: 1,
+                  borderColor: palette.borderStrong as string,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 16,
+                  opacity: pressed ? 0.9 : 1,
+                })}
               >
                 <Text
                   style={{
@@ -208,21 +262,13 @@ export function InstructorHomeContent({
                     color: palette.primary as string,
                   }}
                 >
-                  {`${heroSecondaryLabel}: ${heroSecondaryValue}`}
+                  {t("home.actions.profileTitle", {
+                    defaultValue: "Open profile",
+                  })}
                 </Text>
-                <Text
-                  style={{
-                    ...BrandType.micro,
-                    color: palette.textMuted as string,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.6,
-                  }}
-                >
-                  {leadActionHint}
-                </Text>
-              </View>
-            </HomeSurface>
-          </Pressable>
+              </Pressable>
+            </View>
+          </HomeSurface>
         </Animated.View>
 
         <Animated.View
@@ -288,6 +334,18 @@ export function InstructorHomeContent({
                         paddingVertical: 2,
                       }}
                     >
+                      <Text
+                        style={{
+                          ...BrandType.micro,
+                          color: palette.primary as string,
+                          letterSpacing: 0.6,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {t("home.instructor.scheduleEyebrow", {
+                          defaultValue: "Schedule",
+                        })}
+                      </Text>
                       <Text
                         selectable
                         style={{
