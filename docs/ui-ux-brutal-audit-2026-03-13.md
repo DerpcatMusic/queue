@@ -604,6 +604,12 @@ Replace with consequence and momentum:
 - added a content-only selector mode so the route no longer stacks redundant edit chrome inside a dedicated editing page
 - kept the sports selection surface on shared semantic tokens while tightening the hierarchy and save flow
 
+### Slice 21
+
+- rebuilt the sign-in screen into a stronger front-door surface with a clearer hero, faster method hierarchy, and less generic form-stack energy
+- removed the auth route's dependency on `KitTextField` in favor of native token-driven fields and cleaner provider actions
+- kept the redesign on semantic palette tokens only while making the entry flow feel more branded and immediate
+
 ## Final Verdict
 
 The app is not ugly.
