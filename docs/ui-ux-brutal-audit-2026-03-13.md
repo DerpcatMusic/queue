@@ -482,6 +482,26 @@ Replace with consequence and momentum:
 - simplify map control layering
 - replace calendar gesture cleverness with clearer date navigation
 
+## Execution Log
+
+### Slice 01
+
+- removed the fake dual-style theme split
+- deleted dead kit pieces that only existed to support that fiction
+- reduced theme logic to one honest path
+
+### Slice 02
+
+- stripped home back toward action-first content
+- removed chart-first and stat-heavy lead sections
+- replaced feed actions that depended on `KitButton` and `KitPressable`
+
+### Slice 03
+
+- rebuilt jobs feeds into one native-first page shape per role
+- deleted wide-web hero cards, metric rails, workflow panels, and duplicate mobile ops blocks
+- kept the jobs surface focused on filters, queue state, and the actual list
+
 ## Final Verdict
 
 The app is not ugly.
