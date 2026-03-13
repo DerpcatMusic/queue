@@ -532,6 +532,12 @@ Replace with consequence and momentum:
 - kept the slice tactical so the remaining work is concentrated in the largest screen files
 - reduced more interaction plumbing without expanding the abstraction surface
 
+### Slice 09
+
+- removed kit action wrappers from the main calendar screens on native and web
+- simplified week, date-picker, and agenda selection controls without changing calendar behavior
+- kept the slice mechanical so remaining map-tab and payments cleanup can stay isolated
+
 ## Final Verdict
 
 The app is not ugly.
