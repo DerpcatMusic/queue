@@ -544,6 +544,12 @@ Replace with consequence and momentum:
 - simplified territory selection, list rows, and bottom-sheet controls to plain pressables and action buttons
 - reduced map editing ceremony without changing zone selection or save flow
 
+### Slice 11
+
+- removed kit pressable usage from the instructor payments screen
+- simplified payout, bank, schedule, and receipt actions to native pressables while keeping payout logic intact
+- reduced one of the heaviest profile screens without changing payment state or hosted onboarding flow
+
 ## Final Verdict
 
 The app is not ugly.
