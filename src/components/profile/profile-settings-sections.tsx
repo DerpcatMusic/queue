@@ -1,9 +1,14 @@
 import type { ComponentProps, ReactNode } from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitPressable, KitSurface } from "@/components/ui/kit";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { KitSurface } from "@/components/ui/kit";
+import {
+  type BrandPalette,
+  BrandRadius,
+  BrandSpacing,
+  BrandType,
+} from "@/constants/brand";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
@@ -30,7 +35,13 @@ export function ProfileSectionHeader({
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        {icon ? <IconSymbol name={icon} size={14} color={palette.textMuted as string} /> : null}
+        {icon ? (
+          <IconSymbol
+            name={icon}
+            size={14}
+            color={palette.textMuted as string}
+          />
+        ) : null}
         <Text
           style={{
             ...BrandType.micro,
@@ -101,11 +112,14 @@ export function ProfileIconButton({
   tone?: "neutral" | "accent";
 }) {
   const backgroundColor =
-    tone === "accent" ? (palette.primarySubtle as string) : (palette.surface as string);
-  const iconColor = tone === "accent" ? (palette.primary as string) : (palette.text as string);
+    tone === "accent"
+      ? (palette.primarySubtle as string)
+      : (palette.surface as string);
+  const iconColor =
+    tone === "accent" ? (palette.primary as string) : (palette.text as string);
 
   return (
-    <KitPressable
+    <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
@@ -125,7 +139,7 @@ export function ProfileIconButton({
       ]}
     >
       <IconSymbol name={icon} size={18} color={iconColor} />
-    </KitPressable>
+    </Pressable>
   );
 }
 
@@ -150,13 +164,22 @@ export function ProfileSettingRow({
   tone?: "default" | "danger";
   showDivider?: boolean;
 }) {
-  const titleColor = tone === "danger" ? (palette.danger as string) : (palette.text as string);
+  const titleColor =
+    tone === "danger" ? (palette.danger as string) : (palette.text as string);
   const secondaryColor =
-    tone === "danger" ? (palette.danger as string) : (palette.textMuted as string);
+    tone === "danger"
+      ? (palette.danger as string)
+      : (palette.textMuted as string);
   const iconBackground =
-    tone === "danger" ? (palette.dangerSubtle as string) : (palette.surfaceAlt as string);
-  const iconColor = tone === "danger" ? (palette.danger as string) : (palette.primary as string);
-  const borderColor = tone === "danger" ? "transparent" : (palette.border as string);
+    tone === "danger"
+      ? (palette.dangerSubtle as string)
+      : (palette.surfaceAlt as string);
+  const iconColor =
+    tone === "danger"
+      ? (palette.danger as string)
+      : (palette.primary as string);
+  const borderColor =
+    tone === "danger" ? "transparent" : (palette.border as string);
 
   const content = (
     <View
@@ -187,11 +210,19 @@ export function ProfileSettingRow({
       ) : null}
 
       <View style={{ flex: 1, gap: subtitle ? 3 : 0, minWidth: 0 }}>
-        <Text style={{ ...BrandType.bodyStrong, color: titleColor, letterSpacing: -0.1 }}>
+        <Text
+          style={{
+            ...BrandType.bodyStrong,
+            color: titleColor,
+            letterSpacing: -0.1,
+          }}
+        >
           {title}
         </Text>
         {subtitle ? (
-          <Text style={{ ...BrandType.caption, color: secondaryColor }}>{subtitle}</Text>
+          <Text style={{ ...BrandType.caption, color: secondaryColor }}>
+            {subtitle}
+          </Text>
         ) : null}
       </View>
 
@@ -217,7 +248,9 @@ export function ProfileSettingRow({
           </Text>
         ) : null}
         {accessory ??
-          (onPress ? <IconSymbol name="chevron.right" size={18} color={secondaryColor} /> : null)}
+          (onPress ? (
+            <IconSymbol name="chevron.right" size={18} color={secondaryColor} />
+          ) : null)}
       </View>
     </View>
   );
@@ -227,13 +260,13 @@ export function ProfileSettingRow({
   }
 
   return (
-    <KitPressable
+    <Pressable
       accessibilityRole="button"
       accessibilityLabel={[title, subtitle, value].filter(Boolean).join(". ")}
       onPress={onPress}
       style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
     >
       {content}
-    </KitPressable>
+    </Pressable>
   );
 }

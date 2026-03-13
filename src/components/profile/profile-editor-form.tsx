@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, Text, type TextInputProps, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  type TextInputProps,
+  View,
+} from "react-native";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 
 import {
@@ -9,7 +15,8 @@ import {
   type ProfileSocialLinks,
 } from "@/components/profile/profile-social-links";
 import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
-import { KitButton, KitSurface, KitTextField } from "@/components/ui/kit";
+import { ActionButton } from "@/components/ui/action-button";
+import { KitSurface, KitTextField } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
@@ -75,25 +82,35 @@ export function ProfileEditorForm({
   const { t } = useTranslation();
   const activeSocialCount = useMemo(
     () =>
-      PROFILE_SOCIAL_FIELDS.filter((field) => Boolean(socialLinksDraft[field.key]?.trim())).length,
+      PROFILE_SOCIAL_FIELDS.filter((field) =>
+        Boolean(socialLinksDraft[field.key]?.trim()),
+      ).length,
     [socialLinksDraft],
   );
-  const [showSocialFields, setShowSocialFields] = useState(activeSocialCount > 0);
+  const [showSocialFields, setShowSocialFields] = useState(
+    activeSocialCount > 0,
+  );
   const saveActions = (
     <View style={{ flexDirection: "row", gap: 12 }}>
       <View style={{ flex: 1 }}>
-        <KitButton
-          label={isSaving ? t("profile.editor.saving") : t("profile.editor.save")}
+        <ActionButton
+          label={
+            isSaving ? t("profile.editor.saving") : t("profile.editor.save")
+          }
           onPress={onSave}
           disabled={isSaving}
+          palette={palette}
+          fullWidth
         />
       </View>
       <View style={{ flex: 1 }}>
-        <KitButton
+        <ActionButton
           label={t("profile.editor.cancel")}
           onPress={onCancel}
-          variant="secondary"
           disabled={isSaving}
+          palette={palette}
+          tone="secondary"
+          fullWidth
         />
       </View>
     </View>
@@ -125,7 +142,9 @@ export function ProfileEditorForm({
             style={{
               ...BrandType.bodyMedium,
               fontSize: 13,
-              color: isDesktopWeb ? (palette.onPrimary as string) : (palette.textMuted as string),
+              color: isDesktopWeb
+                ? (palette.onPrimary as string)
+                : (palette.textMuted as string),
               includeFontPadding: false,
               opacity: isDesktopWeb ? 0.76 : 1,
             }}
@@ -137,7 +156,9 @@ export function ProfileEditorForm({
               ...(isDesktopWeb ? BrandType.display : BrandType.title),
               fontSize: isDesktopWeb ? 32 : 20,
               lineHeight: isDesktopWeb ? 30 : undefined,
-              color: isDesktopWeb ? (palette.onPrimary as string) : (palette.text as string),
+              color: isDesktopWeb
+                ? (palette.onPrimary as string)
+                : (palette.text as string),
               includeFontPadding: false,
               letterSpacing: isDesktopWeb ? -0.8 : 0,
             }}
@@ -149,7 +170,9 @@ export function ProfileEditorForm({
               style={{
                 ...BrandType.bodyMedium,
                 fontSize: 13,
-                color: isDesktopWeb ? (palette.onPrimary as string) : (palette.textMuted as string),
+                color: isDesktopWeb
+                  ? (palette.onPrimary as string)
+                  : (palette.textMuted as string),
                 includeFontPadding: false,
                 opacity: isDesktopWeb ? 0.76 : 1,
               }}
@@ -158,20 +181,16 @@ export function ProfileEditorForm({
             </Text>
           ) : null}
         </View>
-        <KitButton
-          label={isChangingPhoto ? t("profile.editor.uploading") : t("profile.editor.photo")}
-          onPress={onChangePhoto}
-          variant="secondary"
-          size="sm"
-          disabled={isChangingPhoto}
-          fullWidth={false}
-          style={
-            isDesktopWeb
-              ? {
-                  backgroundColor: palette.surface as string,
-                }
-              : undefined
+        <ActionButton
+          label={
+            isChangingPhoto
+              ? t("profile.editor.uploading")
+              : t("profile.editor.photo")
           }
+          onPress={onChangePhoto}
+          disabled={isChangingPhoto}
+          palette={palette}
+          tone="secondary"
         />
       </View>
 
@@ -253,13 +272,28 @@ export function ProfileEditorForm({
               : t("profile.editor.addLinks")}
           </Text>
         </View>
-        <KitButton
-          label={showSocialFields ? t("profile.editor.hide") : t("common.edit")}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            showSocialFields ? t("profile.editor.hide") : t("common.edit")
+          }
           onPress={() => setShowSocialFields((value) => !value)}
-          variant="ghost"
-          size="sm"
-          fullWidth={false}
-        />
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.68 : 1,
+            paddingHorizontal: 6,
+            paddingVertical: 4,
+          })}
+        >
+          <Text
+            style={{
+              ...BrandType.bodyMedium,
+              color: palette.primary as string,
+              includeFontPadding: false,
+            }}
+          >
+            {showSocialFields ? t("profile.editor.hide") : t("common.edit")}
+          </Text>
+        </Pressable>
       </View>
 
       {showSocialFields ? (
@@ -293,7 +327,13 @@ export function ProfileEditorForm({
       }}
     >
       {isDesktopWeb ? (
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: BrandSpacing.xl }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: BrandSpacing.xl,
+          }}
+        >
           <View style={{ width: 380, gap: BrandSpacing.lg }}>
             {identityPanel}
             {basicsPanel}
