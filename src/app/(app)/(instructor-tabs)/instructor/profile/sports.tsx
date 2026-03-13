@@ -8,7 +8,7 @@ import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view"
 import { LoadingScreen } from "@/components/loading-screen";
 import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
 import { ThemedText } from "@/components/themed-text";
-import { KitButton } from "@/components/ui/kit";
+import { ActionButton } from "@/components/ui/action-button";
 import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -88,7 +88,9 @@ export default function SportsScreen() {
       router.back();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : t("profile.settings.errors.saveFailed"),
+        error instanceof Error
+          ? error.message
+          : t("profile.settings.errors.saveFailed"),
       );
     } finally {
       setIsSaving(false);
@@ -99,7 +101,11 @@ export default function SportsScreen() {
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <TabScreenScrollView
         routeKey="instructor/profile"
-        contentContainerStyle={{ padding: 16, paddingBottom: hasChanges ? 120 : 100, gap: 12 }}
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: hasChanges ? 120 : 100,
+          gap: 12,
+        }}
       >
         <ThemedText type="caption" style={{ color: palette.textMuted }}>
           {sports.length > 0
@@ -126,14 +132,18 @@ export default function SportsScreen() {
       {/* Save FAB */}
       {hasChanges ? (
         <View style={[styles.saveFabArea, { bottom: overlayBottom }]}>
-          <KitButton
+          <ActionButton
             label={
-              isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
+              isSaving
+                ? t("profile.settings.actions.saving")
+                : t("profile.settings.actions.save")
             }
             onPress={() => {
               void onSave();
             }}
             disabled={isSaving}
+            palette={palette}
+            fullWidth
           />
         </View>
       ) : null}
