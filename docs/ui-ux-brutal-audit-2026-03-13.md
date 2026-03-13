@@ -568,6 +568,12 @@ Replace with consequence and momentum:
 - removed repeated section descriptions and extra sign-out cards that were adding boilerplate without helping task flow
 - moved profile closer to one completion rail plus one account/settings area while keeping the existing routes and actions intact
 
+### Slice 15
+
+- reduced the web tab shell closer to navigation plus content instead of a mini dashboard
+- removed alert theater, extra summary cards, and redundant explanatory copy from the desktop frame
+- tightened the navigation rail and top workspace bar so the page gets to real content faster
+
 ## Final Verdict
 
 The app is not ugly.
