@@ -4,14 +4,12 @@ import Animated, { FadeIn } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { KitButton } from "@/components/ui/kit";
+import { ActionButton } from "@/components/ui/action-button";
 import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 
 type EmptyStateAction = {
   label: string;
-  /** SF Symbol name - optional; button renders without icon if absent. */
-  icon?: SymbolViewProps["name"];
   onPress: () => void;
 };
 
@@ -32,7 +30,7 @@ type EmptyStateProps = {
  *   icon="calendar.badge.exclamationmark"
  *   title="Nothing booked yet"
  *   body="18 open jobs match your zone right now."
- *   action={{ label: "Browse Jobs", icon: "briefcase", onPress: () => router.push('/jobs') }}
+ *   action={{ label: "Browse Jobs", onPress: () => router.push('/jobs') }}
  * />
  */
 export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
@@ -49,9 +47,17 @@ export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
         paddingVertical: BrandSpacing.xxl,
       }}
     >
-      <AppSymbol name={icon} size={52} tintColor={palette.textMicro as string} />
+      <AppSymbol
+        name={icon}
+        size={52}
+        tintColor={palette.textMicro as string}
+      />
       <View style={{ gap: BrandSpacing.xs, alignItems: "center" }}>
-        <ThemedText type="title" style={{ textAlign: "center", color: palette.text }} selectable>
+        <ThemedText
+          type="title"
+          style={{ textAlign: "center", color: palette.text }}
+          selectable
+        >
           {title}
         </ThemedText>
         {body ? (
@@ -65,10 +71,10 @@ export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
         ) : null}
       </View>
       {action ? (
-        <KitButton
+        <ActionButton
           label={action.label}
-          {...(action.icon !== undefined ? { icon: action.icon } : {})}
           onPress={action.onPress}
+          palette={palette}
         />
       ) : null}
     </Animated.View>
