@@ -10,8 +10,6 @@ import {
   type ThemeSeed,
 } from "@/constants/theme-generation";
 
-import type { ThemeStylePreference } from "@/lib/theme-preference";
-
 export type ResolvedBrandScheme = "light" | "dark";
 
 type CalendarSwatch = { background: string; title: string };
@@ -390,7 +388,9 @@ function maybeWrapDeprecatedTokenWarnings(palette: BrandPalette): BrandPalette {
         warnedDeprecatedTokenKeys.add(prop);
         const mapped = mapLegacyTokenPath(prop);
         if (mapped) {
-          console.warn(`[theme] legacy token \`${prop}\` used; prefer \`${mapped}\``);
+          console.warn(
+            `[theme] legacy token \`${prop}\` used; prefer \`${mapped}\``,
+          );
         }
       }
       return Reflect.get(target, prop, receiver);
@@ -429,42 +429,7 @@ const NativeMapBrandPalette = {
   },
 } as const;
 
-const CustomMapBrandPalette = {
-  light: {
-    styleBackground: "#f1ebe2",
-    zoneOutline: "#817561",
-    zoneOutlineOpacity: 0.64,
-    previewFill: "#dfe5d1",
-    previewFillOpacity: 0.25,
-    previewOutline: "#7b8761",
-    previewOutlineOpacity: 0.72,
-    selectedOutline: "#69744f",
-    selectedOutlineOpacity: 1.0,
-    surfaceAlt: "#efe5d7",
-    primary: "#6f7a58",
-    text: "#231f1a",
-  },
-  dark: {
-    styleBackground: "#1c1813",
-    zoneOutline: "#887a66",
-    zoneOutlineOpacity: 0.74,
-    previewFill: "#394430",
-    previewFillOpacity: 0.3,
-    previewOutline: "#a5b38a",
-    previewOutlineOpacity: 0.84,
-    selectedOutline: "#c3d1a5",
-    selectedOutlineOpacity: 1.0,
-    surfaceAlt: "#2a241e",
-    primary: "#98a57e",
-    text: "#f5f0e7",
-  },
-} as const;
-
-export function getBrandPalette(
-  stylePreference: ThemeStylePreference,
-  scheme: ResolvedBrandScheme,
-): BrandPalette {
-  void stylePreference;
+export function getBrandPalette(scheme: ResolvedBrandScheme): BrandPalette {
   let custom: BrandPalette;
   try {
     custom = buildGeneratedCustomBrand(scheme);
@@ -475,16 +440,11 @@ export function getBrandPalette(
   return maybeWrapDeprecatedTokenWarnings(custom);
 }
 
-export function getMapBrandPalette(
-  stylePreference: ThemeStylePreference,
-  scheme: ResolvedBrandScheme,
-) {
-  return stylePreference === "custom"
-    ? CustomMapBrandPalette[scheme]
-    : NativeMapBrandPalette[scheme];
+export function getMapBrandPalette(scheme: ResolvedBrandScheme) {
+  return NativeMapBrandPalette[scheme];
 }
 
-export const Brand = getBrandPalette("custom", "light");
+export const Brand = getBrandPalette("light");
 export const MapBrandPalette = NativeMapBrandPalette;
 
 export function getThemeTokenAliasMap() {

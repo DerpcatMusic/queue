@@ -7,7 +7,11 @@ import { alphaColor } from "./color-utils";
 
 const TRANSPARENT = "transparent";
 
-function resolveAlphaColor(base: unknown, alpha: number, fallback: unknown): ColorValue {
+function resolveAlphaColor(
+  base: unknown,
+  alpha: number,
+  fallback: unknown,
+): ColorValue {
   const fromBase = alphaColor(base, alpha, TRANSPARENT);
   if (fromBase !== TRANSPARENT) return fromBase;
   const fromFallback = alphaColor(fallback, alpha, TRANSPARENT);
@@ -24,16 +28,19 @@ function resolveStringColor(...colors: unknown[]) {
   return undefined;
 }
 
-function resolveColorValue(primary: unknown, fallback: unknown, final: ColorValue): ColorValue {
+function resolveColorValue(
+  primary: unknown,
+  fallback: unknown,
+  final: ColorValue,
+): ColorValue {
   if (primary !== undefined && primary !== null) return primary as ColorValue;
-  if (fallback !== undefined && fallback !== null) return fallback as ColorValue;
+  if (fallback !== undefined && fallback !== null)
+    return fallback as ColorValue;
   return final;
 }
 
 export type KitThemeTokens = {
   scheme: "light" | "dark";
-  stylePreference: "native" | "custom";
-  isCustomStyle: boolean;
   color: {
     primary: ColorValue;
     primaryPressed: ColorValue;
@@ -85,11 +92,10 @@ export type KitThemeTokens = {
 };
 
 export function useKitTheme() {
-  const { resolvedScheme: scheme, stylePreference } = useThemePreference();
+  const { resolvedScheme: scheme } = useThemePreference();
   const palette = useBrand();
 
   return useMemo<KitThemeTokens>(() => {
-    const isCustomStyle = false;
     const glassBackground = resolveAlphaColor(
       palette.surface as unknown,
       scheme === "dark" ? 0.9 : 0.84,
@@ -120,15 +126,21 @@ export function useKitTheme() {
 
     return {
       scheme,
-      stylePreference,
-      isCustomStyle,
       color: {
         primary: palette.primary,
         primaryPressed: palette.primaryPressed,
         secondary: palette.text,
         danger: palette.danger,
-        warning: resolveColorValue(palette.warning, palette.primary, palette.text),
-        success: resolveColorValue(palette.success, palette.primary, palette.text),
+        warning: resolveColorValue(
+          palette.warning,
+          palette.primary,
+          palette.text,
+        ),
+        success: resolveColorValue(
+          palette.success,
+          palette.primary,
+          palette.text,
+        ),
       },
       background: {
         app: palette.appBg,
@@ -176,8 +188,12 @@ export function useKitTheme() {
         switchThumbOff: palette.surface,
       },
       symbol: {
-        defaultTint: resolveStringColor(palette.primary, palette.text, palette.onPrimary),
+        defaultTint: resolveStringColor(
+          palette.primary,
+          palette.text,
+          palette.onPrimary,
+        ),
       },
     };
-  }, [palette, scheme, stylePreference]);
+  }, [palette, scheme]);
 }
