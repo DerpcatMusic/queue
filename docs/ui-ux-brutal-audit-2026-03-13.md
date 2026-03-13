@@ -574,6 +574,12 @@ Replace with consequence and momentum:
 - removed alert theater, extra summary cards, and redundant explanatory copy from the desktop frame
 - tightened the navigation rail and top workspace bar so the page gets to real content faster
 
+### Slice 16
+
+- removed repeated caption chrome from onboarding cards so each step leads with the real form action instead of duplicate labels
+- took push permission out of the instructor detail step and moved it behind the core onboarding save path
+- kept the onboarding structure intact while reducing first-run ceremony and making the main flow faster to finish
+
 ## Final Verdict
 
 The app is not ugly.
