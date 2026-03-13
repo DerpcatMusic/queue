@@ -1,6 +1,5 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { TextInput, type TextInputProps, View } from "react-native";
-import { KitPressable } from "@/components/ui/kit";
+import { Pressable, TextInput, type TextInputProps, View } from "react-native";
 import { BrandRadius } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 
@@ -34,7 +33,11 @@ export function NativeSearchField({
         gap: 10,
       }}
     >
-      <MaterialIcons name="search" size={19} color={palette.textMuted as string} />
+      <MaterialIcons
+        name="search"
+        size={19}
+        color={palette.textMuted as string}
+      />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -61,16 +64,19 @@ export function NativeSearchField({
         {...rest}
       />
       {value.length > 0 ? (
-        <KitPressable
+        <Pressable
           accessibilityRole="button"
           accessibilityLabel={clearAccessibilityLabel}
           onPress={() => onChangeText("")}
           hitSlop={8}
-          rippleRadius={16}
           style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
         >
-          <MaterialIcons name="close" size={18} color={palette.textMuted as string} />
-        </KitPressable>
+          <MaterialIcons
+            name="close"
+            size={18}
+            color={palette.textMuted as string}
+          />
+        </Pressable>
       ) : null}
     </View>
   );

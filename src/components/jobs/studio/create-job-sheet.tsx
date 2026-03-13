@@ -1,15 +1,23 @@
-import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetScrollView,
+} from "@gorhom/bottom-sheet";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, ScrollView, StyleSheet, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { KitButton } from "@/components/ui/kit/kit-button";
+import { ActionButton } from "@/components/ui/action-button";
 import { KitChip } from "@/components/ui/kit/kit-chip";
-import { KitPressable } from "@/components/ui/kit/kit-pressable";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -49,7 +57,12 @@ export function CreateJobSheet({
 
   const renderBackdrop = useCallback(
     (props: any) => (
-      <BottomSheetBackdrop {...props} disappearsAt={-1} appearsAt={0} opacity={0.5} />
+      <BottomSheetBackdrop
+        {...props}
+        disappearsAt={-1}
+        appearsAt={0}
+        opacity={0.5}
+      />
     ),
     [],
   );
@@ -126,22 +139,27 @@ export function CreateJobSheet({
     >
       <BottomSheetScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <View style={{ gap: 4 }}>
-            <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
-              STUDIO COMMAND
-            </ThemedText>
-            <ThemedText type="title" style={{ fontSize: 28 }}>
-              {t("jobsTab.form.title", "Post New Job")}
-            </ThemedText>
-          </View>
-          <KitPressable
+          <ThemedText type="title" style={{ fontSize: 28 }}>
+            {t("jobsTab.form.title", "Post New Job")}
+          </ThemedText>
+          <Pressable
             accessibilityRole="button"
             accessibilityLabel={t("common.close", { defaultValue: "Close" })}
             onPress={handleCloseSheet}
-            style={[styles.closeButton, { backgroundColor: palette.surfaceAlt as string }]}
+            style={({ pressed }) => [
+              styles.closeButton,
+              {
+                backgroundColor: palette.surfaceAlt as string,
+                opacity: pressed ? 0.72 : 1,
+              },
+            ]}
           >
-            <AppSymbol name="xmark" size={18} tintColor={palette.textMuted as string} />
-          </KitPressable>
+            <AppSymbol
+              name="xmark"
+              size={18}
+              tintColor={palette.textMuted as string}
+            />
+          </Pressable>
         </View>
 
         <View style={styles.form}>
@@ -155,9 +173,6 @@ export function CreateJobSheet({
               gap: 10,
             }}
           >
-            <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
-              SHIFT SNAPSHOT
-            </ThemedText>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {[
                 draft.sport ? toSportLabel(draft.sport as never) : "Pick sport",
@@ -174,7 +189,10 @@ export function CreateJobSheet({
                     paddingVertical: 8,
                   }}
                 >
-                  <ThemedText type="micro" style={{ color: palette.text as string }}>
+                  <ThemedText
+                    type="micro"
+                    style={{ color: palette.text as string }}
+                  >
                     {item}
                   </ThemedText>
                 </View>
@@ -216,47 +234,60 @@ export function CreateJobSheet({
             </ThemedText>
 
             <View style={styles.row}>
-              <KitPressable
+              <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t("jobsTab.form.schedule", "Schedule")}
                 onPress={() => setShowDatePicker(true)}
-                style={[
+                style={({ pressed }) => [
                   styles.pickerTrigger,
                   {
                     backgroundColor: palette.surfaceAlt as string,
+                    opacity: pressed ? 0.78 : 1,
                   },
                 ]}
               >
-                <AppSymbol name="calendar" size={16} tintColor={palette.primary as string} />
+                <AppSymbol
+                  name="calendar"
+                  size={16}
+                  tintColor={palette.primary as string}
+                />
                 <ThemedText style={styles.pickerText}>
                   {formatDateWithWeekday(draft.startTime, locale)}
                 </ThemedText>
-              </KitPressable>
+              </Pressable>
             </View>
 
             <View style={[styles.row, { marginTop: 12 }]}>
-              <KitPressable
+              <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t("jobsTab.form.startTime")}
                 onPress={() => setShowStartTimePicker(true)}
-                style={[
+                style={({ pressed }) => [
                   styles.pickerTrigger,
                   {
                     flex: 1,
                     backgroundColor: palette.surfaceAlt as string,
+                    opacity: pressed ? 0.78 : 1,
                   },
                 ]}
               >
-                <AppSymbol name="clock" size={16} tintColor={palette.primary as string} />
+                <AppSymbol
+                  name="clock"
+                  size={16}
+                  tintColor={palette.primary as string}
+                />
                 <View>
-                  <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+                  <ThemedText
+                    type="micro"
+                    style={{ color: palette.textMuted as string }}
+                  >
                     {t("jobsTab.form.startTime")}
                   </ThemedText>
                   <ThemedText style={styles.pickerText}>
                     {formatTime(draft.startTime, locale)}
                   </ThemedText>
                 </View>
-              </KitPressable>
+              </Pressable>
 
               <View
                 style={{
@@ -265,31 +296,43 @@ export function CreateJobSheet({
                   justifyContent: "center",
                 }}
               >
-                <AppSymbol name="arrow.right" size={12} tintColor={palette.textMuted as string} />
+                <AppSymbol
+                  name="arrow.right"
+                  size={12}
+                  tintColor={palette.textMuted as string}
+                />
               </View>
 
-              <KitPressable
+              <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t("jobsTab.form.endTime")}
                 onPress={() => setShowEndTimePicker(true)}
-                style={[
+                style={({ pressed }) => [
                   styles.pickerTrigger,
                   {
                     flex: 1,
                     backgroundColor: palette.surfaceAlt as string,
+                    opacity: pressed ? 0.78 : 1,
                   },
                 ]}
               >
-                <AppSymbol name="clock" size={16} tintColor={palette.primary as string} />
+                <AppSymbol
+                  name="clock"
+                  size={16}
+                  tintColor={palette.primary as string}
+                />
                 <View>
-                  <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+                  <ThemedText
+                    type="micro"
+                    style={{ color: palette.textMuted as string }}
+                  >
                     {t("jobsTab.form.endTime")}
                   </ThemedText>
                   <ThemedText style={styles.pickerText}>
                     {formatTime(draft.endTime, locale)}
                   </ThemedText>
                 </View>
-              </KitPressable>
+              </Pressable>
             </View>
           </View>
 
@@ -299,7 +342,9 @@ export function CreateJobSheet({
               <KitTextField
                 label={t("jobsTab.form.pay", "Pay (₪)")}
                 value={draft.payInput}
-                onChangeText={(v) => setDraft((d) => ({ ...d, payInput: sanitizeDecimalInput(v) }))}
+                onChangeText={(v) =>
+                  setDraft((d) => ({ ...d, payInput: sanitizeDecimalInput(v) }))
+                }
                 keyboardType="decimal-pad"
                 placeholder="250"
               />
@@ -332,11 +377,17 @@ export function CreateJobSheet({
           />
 
           <View style={{ marginTop: 24, paddingBottom: 40 }}>
-            <KitButton
-              label={isSubmitting ? t("jobsTab.actions.posting") : t("jobsTab.actions.post")}
+            <ActionButton
+              label={
+                isSubmitting
+                  ? t("jobsTab.actions.posting")
+                  : t("jobsTab.actions.post")
+              }
               onPress={() => onPost(draft)}
               disabled={isSubmitting || !draft.sport}
+              palette={palette}
               loading={isSubmitting}
+              fullWidth
             />
           </View>
         </View>
@@ -353,11 +404,11 @@ export function CreateJobSheet({
             minimumDate={new Date()}
           />
           {Platform.OS === "ios" ? (
-            <KitButton
+            <ActionButton
               label={t("common.done", { defaultValue: "Done" })}
               onPress={() => setShowDatePicker(false)}
-              variant="secondary"
-              size="sm"
+              palette={palette}
+              tone="secondary"
             />
           ) : null}
         </View>
@@ -371,11 +422,11 @@ export function CreateJobSheet({
             onChange={handleStartTimeChange}
           />
           {Platform.OS === "ios" ? (
-            <KitButton
+            <ActionButton
               label={t("common.done", { defaultValue: "Done" })}
               onPress={() => setShowStartTimePicker(false)}
-              variant="secondary"
-              size="sm"
+              palette={palette}
+              tone="secondary"
             />
           ) : null}
         </View>
@@ -390,11 +441,11 @@ export function CreateJobSheet({
             minimumDate={new Date(draft.startTime)}
           />
           {Platform.OS === "ios" ? (
-            <KitButton
+            <ActionButton
               label={t("common.done", { defaultValue: "Done" })}
               onPress={() => setShowEndTimePicker(false)}
-              variant="secondary"
-              size="sm"
+              palette={palette}
+              tone="secondary"
             />
           ) : null}
         </View>
