@@ -9,7 +9,8 @@ import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { KitButton, KitTextField } from "@/components/ui/kit";
+import { ActionButton } from "@/components/ui/action-button";
+import { KitTextField } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 
@@ -71,7 +72,11 @@ export default function SignInScreen() {
   useEffect(() => {
     const authFlow = readParam(searchParams.authFlow);
     const magicCode = readParam(searchParams.code);
-    if (authFlow !== "magic" || !magicCode || handledMagicCodeRef.current === magicCode) {
+    if (
+      authFlow !== "magic" ||
+      !magicCode ||
+      handledMagicCodeRef.current === magicCode
+    ) {
       return;
     }
 
@@ -138,7 +143,10 @@ export default function SignInScreen() {
     setErrorMessage(null);
     setInfoMessage(null);
     try {
-      await signIn("resend", { email: normalizedEmail, redirectTo: magicLinkRedirectTo });
+      await signIn("resend", {
+        email: normalizedEmail,
+        redirectTo: magicLinkRedirectTo,
+      });
       setInfoMessage(t("auth.magicLinkSent", { email: normalizedEmail }));
     } catch (error) {
       setErrorMessage(getErrorMessage(error, t("auth.unexpectedError")));
@@ -208,38 +216,6 @@ export default function SignInScreen() {
           </View>
 
           <View style={{ gap: BrandSpacing.md }}>
-            <KitButton
-              label={t("auth.signInWithGoogle")}
-              variant="secondary"
-              onPress={() => void handleOAuth("google")}
-              disabled={isSubmitting}
-              icon="person.badge.key.fill"
-              style={{ justifyContent: "flex-start" }}
-            />
-            <KitButton
-              label={t("auth.signInWithApple")}
-              variant="secondary"
-              onPress={() => void handleOAuth("apple")}
-              disabled={isSubmitting}
-              icon="apple.logo"
-              style={{ justifyContent: "flex-start" }}
-            />
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: BrandSpacing.sm,
-              }}
-            >
-              <View style={{ flex: 1, height: 1, backgroundColor: palette.border }} />
-              <ThemedText type="micro" style={{ color: palette.textMuted }}>
-                {t("auth.or")}
-              </ThemedText>
-              <View style={{ flex: 1, height: 1, backgroundColor: palette.border }} />
-            </View>
-          </View>
-
-          <View style={{ gap: BrandSpacing.md }}>
             {step === "email" ? (
               <View key="email-step" style={{ gap: BrandSpacing.md }}>
                 <KitTextField
@@ -254,24 +230,79 @@ export default function SignInScreen() {
                   placeholder={t("auth.emailPlaceholder")}
                   autoComplete="email"
                 />
-                <KitButton
-                  label={isSubmitting ? t("auth.signingIn") : t("auth.sendCodeButton")}
+                <ActionButton
+                  label={
+                    isSubmitting
+                      ? t("auth.signingIn")
+                      : t("auth.sendCodeButton")
+                  }
                   onPress={() => void handleSendCode()}
                   disabled={isSubmitting || email.trim().length === 0}
+                  palette={palette}
+                  fullWidth
                 />
-                <KitButton
+                <ActionButton
                   label={t("auth.sendMagicLinkButton")}
-                  variant="secondary"
                   onPress={() => void handleSendMagicLink()}
                   disabled={isSubmitting || email.trim().length === 0}
+                  palette={palette}
+                  tone="secondary"
+                  fullWidth
                 />
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: BrandSpacing.sm,
+                  }}
+                >
+                  <View
+                    style={{
+                      flex: 1,
+                      height: 1,
+                      backgroundColor: palette.border,
+                    }}
+                  />
+                  <ThemedText type="micro" style={{ color: palette.textMuted }}>
+                    {t("auth.or")}
+                  </ThemedText>
+                  <View
+                    style={{
+                      flex: 1,
+                      height: 1,
+                      backgroundColor: palette.border,
+                    }}
+                  />
+                </View>
+
+                <View style={{ gap: BrandSpacing.md }}>
+                  <ActionButton
+                    label={t("auth.signInWithGoogle")}
+                    onPress={() => void handleOAuth("google")}
+                    disabled={isSubmitting}
+                    palette={palette}
+                    tone="secondary"
+                    fullWidth
+                  />
+                  <ActionButton
+                    label={t("auth.signInWithApple")}
+                    onPress={() => void handleOAuth("apple")}
+                    disabled={isSubmitting}
+                    palette={palette}
+                    tone="secondary"
+                    fullWidth
+                  />
+                </View>
               </View>
             ) : (
               <View key="code-step" style={{ gap: BrandSpacing.md }}>
                 <KitTextField
                   label={t("auth.codeLabel")}
                   value={code}
-                  onChangeText={(value) => setCode(value.replace(/\D/g, "").slice(0, OTP_LENGTH))}
+                  onChangeText={(value) =>
+                    setCode(value.replace(/\D/g, "").slice(0, OTP_LENGTH))
+                  }
                   autoFocus
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -281,39 +312,58 @@ export default function SignInScreen() {
                   autoComplete="one-time-code"
                   maxLength={OTP_LENGTH}
                 />
-                <KitButton
-                  label={isSubmitting ? t("auth.verifyingCode") : t("auth.verifyCodeButton")}
+                <ActionButton
+                  label={
+                    isSubmitting
+                      ? t("auth.verifyingCode")
+                      : t("auth.verifyCodeButton")
+                  }
                   onPress={() => void handleVerifyCode()}
                   disabled={isSubmitting || code.length !== OTP_LENGTH}
+                  palette={palette}
+                  fullWidth
                 />
-                <KitButton
+                <ActionButton
                   label={t("auth.backToSignInMethods")}
-                  variant="secondary"
                   onPress={() => {
                     setStep("email");
                     setCode("");
                     setErrorMessage(null);
                   }}
                   disabled={isSubmitting}
+                  palette={palette}
+                  tone="secondary"
+                  fullWidth
                 />
               </View>
             )}
           </View>
 
           {infoMessage ? (
-            <ThemedText type="caption" selectable style={{ color: palette.textMuted }}>
+            <ThemedText
+              type="caption"
+              selectable
+              style={{ color: palette.textMuted }}
+            >
               {infoMessage}
             </ThemedText>
           ) : null}
 
           {errorMessage ? (
-            <ThemedText type="caption" selectable style={{ color: palette.danger }}>
+            <ThemedText
+              type="caption"
+              selectable
+              style={{ color: palette.danger }}
+            >
               {errorMessage}
             </ThemedText>
           ) : null}
 
           <View style={{ marginTop: "auto", paddingTop: BrandSpacing.md }}>
-            <ThemedText type="caption" style={{ color: palette.textMuted, textAlign: "center" }}>
+            <ThemedText
+              type="caption"
+              style={{ color: palette.textMuted, textAlign: "center" }}
+            >
               {t("auth.noAccountHint")}
             </ThemedText>
           </View>

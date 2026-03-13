@@ -2,12 +2,18 @@ import { useMutation, useQuery } from "convex/react";
 import { Redirect, useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
 import { ThemedText } from "@/components/themed-text";
+import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
-import { KitButton, KitChip, KitSurface, KitTextField } from "@/components/ui/kit";
+import { KitChip, KitSurface, KitTextField } from "@/components/ui/kit";
 import { ZONE_OPTIONS } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import { SPORT_TYPES } from "@/convex/constants";
@@ -58,7 +64,11 @@ function StepBadge({
     >
       <ThemedText
         type="micro"
-        style={{ color: palette.textMuted, fontVariant: ["tabular-nums"], letterSpacing: 0.2 }}
+        style={{
+          color: palette.textMuted,
+          fontVariant: ["tabular-nums"],
+          letterSpacing: 0.2,
+        }}
       >
         {`Step ${current} of ${total}`}
       </ThemedText>
@@ -74,7 +84,10 @@ function SectionCaption({
   palette: ReturnType<typeof useBrand>;
 }) {
   return (
-    <ThemedText type="micro" style={{ color: palette.textMuted, letterSpacing: 0.2 }}>
+    <ThemedText
+      type="micro"
+      style={{ color: palette.textMuted, letterSpacing: 0.2 }}
+    >
       {label}
     </ThemedText>
   );
@@ -90,8 +103,12 @@ export default function OnboardingScreen() {
   const language = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
 
   const currentUser = useQuery(api.users.getCurrentUser);
-  const completeInstructorOnboarding = useMutation(api.onboarding.completeInstructorOnboarding);
-  const completeStudioOnboarding = useMutation(api.onboarding.completeStudioOnboarding);
+  const completeInstructorOnboarding = useMutation(
+    api.onboarding.completeInstructorOnboarding,
+  );
+  const completeStudioOnboarding = useMutation(
+    api.onboarding.completeStudioOnboarding,
+  );
 
   const [step, setStep] = useState<OnboardingStep>(0);
   const [selectedRole, setSelectedRole] = useState<OnboardingRole | null>(null);
@@ -110,9 +127,15 @@ export default function OnboardingScreen() {
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [selectedZones, setSelectedZones] = useState<string[]>([]);
   const [instructorAddress, setInstructorAddress] = useState("");
-  const [instructorLatitude, setInstructorLatitude] = useState<number | undefined>();
-  const [instructorLongitude, setInstructorLongitude] = useState<number | undefined>();
-  const [instructorDetectedZone, setInstructorDetectedZone] = useState<string | null>(null);
+  const [instructorLatitude, setInstructorLatitude] = useState<
+    number | undefined
+  >();
+  const [instructorLongitude, setInstructorLongitude] = useState<
+    number | undefined
+  >();
+  const [instructorDetectedZone, setInstructorDetectedZone] = useState<
+    string | null
+  >(null);
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isRequestingPush, setIsRequestingPush] = useState(false);
 
@@ -121,7 +144,9 @@ export default function OnboardingScreen() {
   const [studioContactPhone, setStudioContactPhone] = useState("");
   const [studioLatitude, setStudioLatitude] = useState<number | undefined>();
   const [studioLongitude, setStudioLongitude] = useState<number | undefined>();
-  const [studioDetectedZone, setStudioDetectedZone] = useState<string | null>(null);
+  const [studioDetectedZone, setStudioDetectedZone] = useState<string | null>(
+    null,
+  );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -145,7 +170,9 @@ export default function OnboardingScreen() {
 
   const toggleSport = (sport: string) => {
     setSelectedSports((current) =>
-      current.includes(sport) ? current.filter((value) => value !== sport) : [...current, sport],
+      current.includes(sport)
+        ? current.filter((value) => value !== sport)
+        : [...current, sport],
     );
   };
 
@@ -248,7 +275,8 @@ export default function OnboardingScreen() {
     }
 
     setErrorMessage(null);
-    const result = await instructorResolver.resolveFromAddress(instructorAddress);
+    const result =
+      await instructorResolver.resolveFromAddress(instructorAddress);
     if (!result.ok) {
       setErrorMessage(
         getLocationResolveErrorMessage({
@@ -284,7 +312,10 @@ export default function OnboardingScreen() {
     applyInstructorResolution(result.data.value, true);
   };
 
-  const resolveInstructorFromMapPin = async (pin: { latitude: number; longitude: number }) => {
+  const resolveInstructorFromMapPin = async (pin: {
+    latitude: number;
+    longitude: number;
+  }) => {
     setErrorMessage(null);
     const result = await instructorResolver.resolveFromCoordinates(pin);
     if (!result.ok) {
@@ -346,7 +377,10 @@ export default function OnboardingScreen() {
     applyStudioResolution(result.data.value);
   };
 
-  const resolveStudioFromMapPin = async (pin: { latitude: number; longitude: number }) => {
+  const resolveStudioFromMapPin = async (pin: {
+    latitude: number;
+    longitude: number;
+  }) => {
     setErrorMessage(null);
     const result = await studioResolver.resolveFromCoordinates(pin);
     if (!result.ok) {
@@ -416,7 +450,8 @@ export default function OnboardingScreen() {
 
     try {
       const hourly = Number.parseFloat(hourlyRate);
-      const hourlyRateExpectation = Number.isFinite(hourly) && hourly > 0 ? hourly : undefined;
+      const hourlyRateExpectation =
+        Number.isFinite(hourly) && hourly > 0 ? hourly : undefined;
 
       await completeInstructorOnboarding({
         displayName: displayName.trim(),
@@ -464,7 +499,11 @@ export default function OnboardingScreen() {
       let resolvedLatitude = studioLatitude;
       let resolvedLongitude = studioLongitude;
 
-      if (!resolvedZone || resolvedLatitude === undefined || resolvedLongitude === undefined) {
+      if (
+        !resolvedZone ||
+        resolvedLatitude === undefined ||
+        resolvedLongitude === undefined
+      ) {
         const result = await studioResolver.resolveFromAddress(studioAddress);
         if (!result.ok) {
           throw new Error(
@@ -485,7 +524,11 @@ export default function OnboardingScreen() {
         resolvedLongitude = resolved.longitude;
       }
 
-      if (!resolvedZone || resolvedLatitude === undefined || resolvedLongitude === undefined) {
+      if (
+        !resolvedZone ||
+        resolvedLatitude === undefined ||
+        resolvedLongitude === undefined
+      ) {
         throw new Error(t("onboarding.errors.failedToResolveAddress"));
       }
 
@@ -539,20 +582,38 @@ export default function OnboardingScreen() {
           mode={role === "instructor" ? "zoneSelect" : "pinDrop"}
           pin={
             role === "instructor"
-              ? instructorLatitude !== undefined && instructorLongitude !== undefined
-                ? { latitude: instructorLatitude, longitude: instructorLongitude }
+              ? instructorLatitude !== undefined &&
+                instructorLongitude !== undefined
+                ? {
+                    latitude: instructorLatitude,
+                    longitude: instructorLongitude,
+                  }
                 : null
               : studioLatitude !== undefined && studioLongitude !== undefined
                 ? { latitude: studioLatitude, longitude: studioLongitude }
                 : null
           }
           selectedZoneIds={
-            role === "instructor" ? selectedZones : studioDetectedZone ? [studioDetectedZone] : []
+            role === "instructor"
+              ? selectedZones
+              : studioDetectedZone
+                ? [studioDetectedZone]
+                : []
           }
-          focusZoneId={role === "instructor" ? instructorDetectedZone : studioDetectedZone}
+          focusZoneId={
+            role === "instructor" ? instructorDetectedZone : studioDetectedZone
+          }
           onPressZone={toggleZone}
-          onPressMap={role === "instructor" ? resolveInstructorFromMapPin : resolveStudioFromMapPin}
-          onUseGps={role === "instructor" ? resolveInstructorFromGps : resolveStudioFromGps}
+          onPressMap={
+            role === "instructor"
+              ? resolveInstructorFromMapPin
+              : resolveStudioFromMapPin
+          }
+          onUseGps={
+            role === "instructor"
+              ? resolveInstructorFromGps
+              : resolveStudioFromGps
+          }
         />
       </View>
     </KitSurface>
@@ -560,9 +621,14 @@ export default function OnboardingScreen() {
 
   const instructorForm = (
     <KitSurface tone="elevated" style={styles.formCard}>
-      <ThemedText type="subtitle">{t("onboarding.instructorDetailsTitle")}</ThemedText>
+      <ThemedText type="subtitle">
+        {t("onboarding.instructorDetailsTitle")}
+      </ThemedText>
 
-      <SectionCaption label={t("onboarding.instructorDetailsTitle")} palette={palette} />
+      <SectionCaption
+        label={t("onboarding.instructorDetailsTitle")}
+        palette={palette}
+      />
       <KitTextField
         label={t("onboarding.displayName")}
         value={displayName}
@@ -588,7 +654,9 @@ export default function OnboardingScreen() {
 
       <View style={styles.sectionBlock}>
         <SectionCaption label={t("onboarding.sportsTitle")} palette={palette} />
-        <ThemedText type="defaultSemiBold">{t("onboarding.sportsTitle")}</ThemedText>
+        <ThemedText type="defaultSemiBold">
+          {t("onboarding.sportsTitle")}
+        </ThemedText>
         <View style={styles.chipGrid}>
           {SPORT_TYPES.map((sport) => (
             <KitChip
@@ -602,7 +670,10 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={styles.sectionBlock}>
-        <SectionCaption label={t("profile.settings.location.title")} palette={palette} />
+        <SectionCaption
+          label={t("profile.settings.location.title")}
+          palette={palette}
+        />
         <AddressAutocomplete
           value={instructorAddress}
           onChangeText={(value) => {
@@ -622,14 +693,15 @@ export default function OnboardingScreen() {
         />
 
         <View style={styles.inlineActions}>
-          <KitButton
-            variant="secondary"
+          <ActionButton
             disabled={instructorResolver.isResolving}
             label={
               instructorResolver.isResolving
                 ? t("onboarding.location.resolvingAddress")
                 : t("onboarding.location.findByAddress")
             }
+            palette={palette}
+            tone="secondary"
             onPress={() => {
               void resolveInstructorFromAddress();
             }}
@@ -638,7 +710,9 @@ export default function OnboardingScreen() {
 
         <ThemedText style={{ color: palette.textMuted }}>
           {instructorDetectedZone
-            ? t("onboarding.location.detectedZone", { zone: instructorDetectedZone })
+            ? t("onboarding.location.detectedZone", {
+                zone: instructorDetectedZone,
+              })
             : t("onboarding.location.zoneOptionalHint")}
         </ThemedText>
 
@@ -647,15 +721,19 @@ export default function OnboardingScreen() {
             const zone = ZONE_OPTIONS.find((item) => item.id === zoneId);
             const label = zone ? zone.label[language] : zoneId;
             return (
-              <KitChip key={zoneId} label={label} selected onPress={() => toggleZone(zoneId)} />
+              <KitChip
+                key={zoneId}
+                label={label}
+                selected
+                onPress={() => toggleZone(zoneId)}
+              />
             );
           })}
         </View>
       </View>
 
       <View style={styles.sectionBlock}>
-        <KitButton
-          variant={pushToken ? "secondary" : "primary"}
+        <ActionButton
           disabled={isRequestingPush}
           label={
             isRequestingPush
@@ -664,6 +742,9 @@ export default function OnboardingScreen() {
                 ? t("onboarding.push.enabled")
                 : t("onboarding.push.requestPermission")
           }
+          palette={palette}
+          tone={pushToken ? "secondary" : "primary"}
+          fullWidth
           onPress={() => {
             void requestPushPermission();
           }}
@@ -674,9 +755,14 @@ export default function OnboardingScreen() {
 
   const studioForm = (
     <KitSurface tone="elevated" style={styles.formCard}>
-      <ThemedText type="subtitle">{t("onboarding.studioDetailsTitle")}</ThemedText>
+      <ThemedText type="subtitle">
+        {t("onboarding.studioDetailsTitle")}
+      </ThemedText>
 
-      <SectionCaption label={t("onboarding.studioDetailsTitle")} palette={palette} />
+      <SectionCaption
+        label={t("onboarding.studioDetailsTitle")}
+        palette={palette}
+      />
       <KitTextField
         label={t("onboarding.studioName")}
         value={studioName}
@@ -707,14 +793,16 @@ export default function OnboardingScreen() {
         onChangeText={setStudioContactPhone}
       />
 
-      <KitButton
-        variant="secondary"
+      <ActionButton
         disabled={studioResolver.isResolving}
         label={
           studioResolver.isResolving
             ? t("onboarding.location.resolvingAddress")
             : t("onboarding.location.findByAddress")
         }
+        palette={palette}
+        tone="secondary"
+        fullWidth
         onPress={() => {
           void resolveStudioFromAddress();
         }}
@@ -738,7 +826,9 @@ export default function OnboardingScreen() {
       <KitSurface tone="glass" style={styles.headerCard}>
         <StepBadge current={currentStep} total={totalSteps} palette={palette} />
         <ThemedText type="title">{t("onboarding.title")}</ThemedText>
-        <ThemedText style={{ color: palette.textMuted }}>{t("onboarding.subtitle")}</ThemedText>
+        <ThemedText style={{ color: palette.textMuted }}>
+          {t("onboarding.subtitle")}
+        </ThemedText>
 
         <View style={styles.progressRow}>
           <View
@@ -762,24 +852,33 @@ export default function OnboardingScreen() {
 
       {step === 0 ? (
         <KitSurface tone="elevated" style={styles.roleCard}>
-          <SectionCaption label={t("onboarding.rolePrompt")} palette={palette} />
-          <ThemedText type="defaultSemiBold">{t("onboarding.rolePrompt")}</ThemedText>
+          <SectionCaption
+            label={t("onboarding.rolePrompt")}
+            palette={palette}
+          />
+          <ThemedText type="defaultSemiBold">
+            {t("onboarding.rolePrompt")}
+          </ThemedText>
           <View style={styles.roleGrid}>
             <View style={styles.roleOption}>
-              <KitButton
-                variant={role === "instructor" ? "primary" : "secondary"}
+              <ActionButton
                 label={t("onboarding.roleInstructorTitle")}
                 onPress={() => setSelectedRole("instructor")}
+                palette={palette}
+                tone={role === "instructor" ? "primary" : "secondary"}
+                fullWidth
               />
               <ThemedText type="caption" style={{ color: palette.textMuted }}>
                 {t("onboarding.roleInstructorDescription")}
               </ThemedText>
             </View>
             <View style={styles.roleOption}>
-              <KitButton
-                variant={role === "studio" ? "primary" : "secondary"}
+              <ActionButton
                 label={t("onboarding.roleStudioTitle")}
                 onPress={() => setSelectedRole("studio")}
+                palette={palette}
+                tone={role === "studio" ? "primary" : "secondary"}
+                fullWidth
               />
               <ThemedText type="caption" style={{ color: palette.textMuted }}>
                 {t("onboarding.roleStudioDescription")}
@@ -791,41 +890,56 @@ export default function OnboardingScreen() {
           </ThemedText>
 
           <View style={styles.navRow}>
-            <KitButton
+            <ActionButton
               label={t("onboarding.next")}
               disabled={!role}
+              palette={palette}
+              fullWidth
               onPress={() => goToProfileStep()}
             />
           </View>
         </KitSurface>
       ) : step === 1 && role === "instructor" ? (
-        <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
+        <View
+          style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}
+        >
           {instructorForm}
           {mapPane}
         </View>
       ) : step === 1 && role === "studio" ? (
-        <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
+        <View
+          style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}
+        >
           {studioForm}
           {mapPane}
         </View>
       ) : step === 2 && role === "instructor" ? (
         <KitSurface tone="elevated" style={styles.verifyCard}>
-          <SectionCaption label={t("onboarding.verification.title")} palette={palette} />
-          <ThemedText type="subtitle">{t("onboarding.verification.subtitle")}</ThemedText>
+          <SectionCaption
+            label={t("onboarding.verification.title")}
+            palette={palette}
+          />
+          <ThemedText type="subtitle">
+            {t("onboarding.verification.subtitle")}
+          </ThemedText>
           <ThemedText style={{ color: palette.textMuted }}>
             {t("onboarding.verification.body")}
           </ThemedText>
 
           <View style={styles.verifyActions}>
-            <KitButton
+            <ActionButton
               label={t("onboarding.verification.verifyNow")}
+              palette={palette}
+              fullWidth
               onPress={() => {
                 router.replace("/instructor/profile/identity-verification");
               }}
             />
-            <KitButton
-              variant="secondary"
+            <ActionButton
               label={t("onboarding.verification.later")}
+              palette={palette}
+              tone="secondary"
+              fullWidth
               onPress={() => {
                 router.replace("/");
               }}
@@ -837,42 +951,50 @@ export default function OnboardingScreen() {
       {step === 1 ? (
         <KitSurface tone="glass">
           <View style={styles.navRowSplit}>
-            <KitButton
-              variant="secondary"
-              label={t("onboarding.back")}
-              style={{ flex: 1 }}
-              onPress={() => {
-                setStep(0);
-              }}
-            />
+            <View style={styles.navAction}>
+              <ActionButton
+                label={t("onboarding.back")}
+                palette={palette}
+                tone="secondary"
+                fullWidth
+                onPress={() => {
+                  setStep(0);
+                }}
+              />
+            </View>
 
-            <KitButton
-              label={
-                isSubmitting
-                  ? t("onboarding.save")
-                  : role === "instructor"
-                    ? t("onboarding.continue")
-                    : t("onboarding.complete")
-              }
-              disabled={isSubmitting}
-              style={{ flex: 1 }}
-              onPress={() => {
-                if (role === "instructor") {
-                  void submitInstructor();
-                  return;
+            <View style={styles.navAction}>
+              <ActionButton
+                label={
+                  isSubmitting
+                    ? t("onboarding.save")
+                    : role === "instructor"
+                      ? t("onboarding.continue")
+                      : t("onboarding.complete")
                 }
-                if (role === "studio") {
-                  void submitStudio();
-                }
-              }}
-            />
+                disabled={isSubmitting}
+                palette={palette}
+                fullWidth
+                onPress={() => {
+                  if (role === "instructor") {
+                    void submitInstructor();
+                    return;
+                  }
+                  if (role === "studio") {
+                    void submitStudio();
+                  }
+                }}
+              />
+            </View>
           </View>
         </KitSurface>
       ) : null}
 
       {errorMessage ? (
         <KitSurface tone="elevated">
-          <ThemedText style={{ color: palette.danger }}>{errorMessage}</ThemedText>
+          <ThemedText style={{ color: palette.danger }}>
+            {errorMessage}
+          </ThemedText>
         </KitSurface>
       ) : null}
     </ScrollView>
@@ -915,6 +1037,9 @@ const styles = StyleSheet.create({
   navRowSplit: {
     flexDirection: "row",
     gap: 10,
+  },
+  navAction: {
+    flex: 1,
   },
   stepTwoWrap: {
     gap: 12,
