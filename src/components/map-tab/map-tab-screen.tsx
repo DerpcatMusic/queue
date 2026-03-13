@@ -18,7 +18,14 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Animated from "react-native-reanimated";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
@@ -32,8 +39,8 @@ import {
 import { QueueMap } from "@/components/maps/queue-map";
 import type { QueueMapPin } from "@/components/maps/queue-map.types";
 import { ThemedText } from "@/components/themed-text";
+import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitButton, KitPressable } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { ZONE_OPTIONS } from "@/constants/zones";
@@ -49,7 +56,11 @@ export default function MapTabScreen() {
   const palette = useBrand();
   const { overlayBottom, safeTop } = useAppInsets();
   const isFocused = useIsFocused();
-  const zoneLanguage = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he") ? "he" : "en";
+  const zoneLanguage = (i18n.resolvedLanguage ?? "en")
+    .toLowerCase()
+    .startsWith("he")
+    ? "he"
+    : "en";
   const currentUser = useQuery(api.users.getCurrentUser);
   const remoteZones = useQuery(
     api.instructorZones.getMyInstructorZones,
@@ -69,7 +80,8 @@ export default function MapTabScreen() {
   const zoneSheetRef = useRef<BottomSheet>(null);
   const noopMapPress = useCallback(() => {}, []);
   const handleFocusSelection = useCallback(() => {
-    const nextFocusZoneId = focusZoneId ?? selectedZoneIds[0] ?? remoteZones?.zoneIds?.[0] ?? null;
+    const nextFocusZoneId =
+      focusZoneId ?? selectedZoneIds[0] ?? remoteZones?.zoneIds?.[0] ?? null;
     if (!nextFocusZoneId) return;
     setFocusZoneId(nextFocusZoneId);
   }, [focusZoneId, remoteZones?.zoneIds, selectedZoneIds]);
@@ -93,7 +105,9 @@ export default function MapTabScreen() {
       setFocusZoneId(resolved.zoneId);
     } catch (error) {
       setSaveError(
-        error instanceof Error ? error.message : t("mapTab.errors.failedToLoadLocation"),
+        error instanceof Error
+          ? error.message
+          : t("mapTab.errors.failedToLoadLocation"),
       );
     }
   }, [t]);
@@ -114,7 +128,10 @@ export default function MapTabScreen() {
       setSaveError(null);
       setSelectedZoneIds(dedupedZoneIds);
       setFocusZoneId((currentFocusZoneId) => {
-        if (preferredFocusZoneId && dedupedZoneIds.includes(preferredFocusZoneId)) {
+        if (
+          preferredFocusZoneId &&
+          dedupedZoneIds.includes(preferredFocusZoneId)
+        ) {
           return preferredFocusZoneId;
         }
         if (currentFocusZoneId && dedupedZoneIds.includes(currentFocusZoneId)) {
@@ -136,7 +153,8 @@ export default function MapTabScreen() {
       const nextZoneIds = isSelected
         ? selectedZoneIds.filter((id) => id !== zoneId)
         : [...selectedZoneIds, zoneId];
-      const preferredFocusZoneId = isSelected && focusZoneId === zoneId ? null : zoneId;
+      const preferredFocusZoneId =
+        isSelected && focusZoneId === zoneId ? null : zoneId;
       applySelectedZoneIds(nextZoneIds, preferredFocusZoneId);
     },
     [applySelectedZoneIds, focusZoneId, selectedZoneIds],
@@ -154,7 +172,10 @@ export default function MapTabScreen() {
     () => new Set(deferredSelectedZoneIds),
     [deferredSelectedZoneIds],
   );
-  const expandedCityKeySet = useMemo(() => new Set(expandedCityKeys), [expandedCityKeys]);
+  const expandedCityKeySet = useMemo(
+    () => new Set(expandedCityKeys),
+    [expandedCityKeys],
+  );
   const deferredZoneSearch = useDeferredValue(zoneSearch);
   const zoneCityGroups = useMemo(() => buildZoneCityGroups(ZONE_OPTIONS), []);
   const zoneCityByZoneId = useMemo(() => {
@@ -189,7 +210,13 @@ export default function MapTabScreen() {
         expandedCityKeys: expandedCityKeySet,
         selectedZoneIds: deferredSelectedZoneSet,
       }),
-    [deferredSelectedZoneSet, deferredZoneSearch, expandedCityKeySet, zoneCityGroups, zoneLanguage],
+    [
+      deferredSelectedZoneSet,
+      deferredZoneSearch,
+      expandedCityKeySet,
+      zoneCityGroups,
+      zoneLanguage,
+    ],
   );
   const selectedZones = useMemo(
     () => ZONE_OPTIONS.filter((zone) => deferredSelectedZoneSet.has(zone.id)),
@@ -254,13 +281,20 @@ export default function MapTabScreen() {
       }
 
       const cityZoneIds = group.zones.map((zone) => zone.id);
-      const isFullySelected = cityZoneIds.every((zoneId) => selectedZoneIds.includes(zoneId));
+      const isFullySelected = cityZoneIds.every((zoneId) =>
+        selectedZoneIds.includes(zoneId),
+      );
       const nextZoneIds = isFullySelected
         ? selectedZoneIds.filter((zoneId) => !cityZoneIds.includes(zoneId))
         : [...selectedZoneIds, ...cityZoneIds];
-      const preferredFocusZoneId = isFullySelected ? null : (cityZoneIds[0] ?? null);
+      const preferredFocusZoneId = isFullySelected
+        ? null
+        : (cityZoneIds[0] ?? null);
 
-      if (applySelectedZoneIds(nextZoneIds, preferredFocusZoneId) && !isFullySelected) {
+      if (
+        applySelectedZoneIds(nextZoneIds, preferredFocusZoneId) &&
+        !isFullySelected
+      ) {
         setExpandedCityKeys((current) =>
           current.includes(cityKey) ? current : [...current, cityKey],
         );
@@ -310,7 +344,9 @@ export default function MapTabScreen() {
       zoneSheetRef.current?.close();
     } catch (error) {
       setSaveError(
-        error instanceof Error && error.message ? error.message : t("mapTab.errors.failedToSave"),
+        error instanceof Error && error.message
+          ? error.message
+          : t("mapTab.errors.failedToSave"),
       );
     } finally {
       setIsSaving(false);
@@ -401,7 +437,12 @@ export default function MapTabScreen() {
               >
                 {t("mapTab.web.workspaceTitle")}
               </Text>
-              <Text style={{ ...BrandType.body, color: palette.textMuted as string }}>
+              <Text
+                style={{
+                  ...BrandType.body,
+                  color: palette.textMuted as string,
+                }}
+              >
                 {t("mapTab.web.workspaceBody")}
               </Text>
             </View>
@@ -448,7 +489,9 @@ export default function MapTabScreen() {
                   opacity: 0.86,
                 }}
               >
-                {hasChanges ? t("mapTab.web.statePending") : t("mapTab.web.stateReady")}
+                {hasChanges
+                  ? t("mapTab.web.statePending")
+                  : t("mapTab.web.stateReady")}
               </Text>
               <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
                 <View
@@ -512,38 +555,39 @@ export default function MapTabScreen() {
                       color: palette.onPrimary as string,
                     }}
                   >
-                    {focusedZone ? focusedZone.label[zoneLanguage] : t("mapTab.web.auto")}
+                    {focusedZone
+                      ? focusedZone.label[zoneLanguage]
+                      : t("mapTab.web.auto")}
                   </Text>
                 </View>
               </View>
-              <View style={{ flexDirection: "row", gap: 10, marginTop: "auto" }}>
-                <KitButton
-                  label={
-                    isSaving ? t("mapTab.mobile.saveCoverageSaving") : t("mapTab.web.saveCoverage")
-                  }
+              <View
+                style={{ flexDirection: "row", gap: 10, marginTop: "auto" }}
+              >
+                <ActionButton
+                  label={t("mapTab.web.saveCoverage")}
                   onPress={() => {
                     void handleSaveZones();
                   }}
                   disabled={!hasChanges || isSaving}
-                  variant="secondary"
-                  size="sm"
-                  fullWidth={false}
-                  style={{ backgroundColor: palette.onPrimary as string }}
+                  loading={isSaving}
+                  palette={palette}
+                  tone="secondary"
                 />
-                <KitButton
+                <ActionButton
                   label={t("mapTab.web.resetToLive")}
                   onPress={handleDiscardChanges}
-                  variant="secondary"
-                  size="sm"
-                  fullWidth={false}
                   disabled={!hasChanges || isSaving}
-                  style={{ backgroundColor: "rgba(255,255,255,0.14)" }}
+                  palette={palette}
+                  tone="secondary"
                 />
               </View>
             </View>
           </View>
 
-          <View style={{ flex: 1, minHeight: 0, flexDirection: "row", gap: 18 }}>
+          <View
+            style={{ flex: 1, minHeight: 0, flexDirection: "row", gap: 18 }}
+          >
             <View
               style={{
                 flex: 1.45,
@@ -587,7 +631,12 @@ export default function MapTabScreen() {
                 >
                   {t("mapTab.web.commandEyebrow")}
                 </Text>
-                <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+                <Text
+                  style={{
+                    ...BrandType.caption,
+                    color: palette.textMuted as string,
+                  }}
+                >
                   {t("mapTab.web.commandBody")}
                 </Text>
               </View>
@@ -662,14 +711,23 @@ export default function MapTabScreen() {
                         fontVariant: ["tabular-nums"],
                       }}
                     >
-                      {t("mapTab.web.left", { count: MAX_ZONES - selectedZoneIds.length })}
+                      {t("mapTab.web.left", {
+                        count: MAX_ZONES - selectedZoneIds.length,
+                      })}
                     </Text>
                   </View>
                 </View>
 
-                <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+                <Text
+                  style={{
+                    ...BrandType.caption,
+                    color: palette.textMuted as string,
+                  }}
+                >
                   {focusedZone
-                    ? t("mapTab.web.focusPinned", { zone: focusedZone.label[zoneLanguage] })
+                    ? t("mapTab.web.focusPinned", {
+                        zone: focusedZone.label[zoneLanguage],
+                      })
                     : t("mapTab.web.focusPrompt")}
                 </Text>
               </View>
@@ -691,7 +749,12 @@ export default function MapTabScreen() {
                     paddingVertical: 12,
                   }}
                 >
-                  <Text style={{ ...BrandType.caption, color: palette.danger as string }}>
+                  <Text
+                    style={{
+                      ...BrandType.caption,
+                      color: palette.danger as string,
+                    }}
+                  >
                     {saveError}
                   </Text>
                 </View>
@@ -723,22 +786,32 @@ export default function MapTabScreen() {
                         gap: 4,
                       }}
                     >
-                      <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
+                      <Text
+                        style={{
+                          ...BrandType.bodyStrong,
+                          color: palette.text as string,
+                        }}
+                      >
                         {t("mapTab.web.noTerritoryTitle")}
                       </Text>
-                      <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+                      <Text
+                        style={{
+                          ...BrandType.caption,
+                          color: palette.textMuted as string,
+                        }}
+                      >
                         {t("mapTab.web.noTerritoryBody")}
                       </Text>
                     </View>
                   ) : (
                     selectedZones.map((zone) => (
-                      <KitPressable
+                      <Pressable
                         key={zone.id}
                         accessibilityRole="button"
                         onPress={() => {
                           setFocusZoneId(zone.id);
                         }}
-                        style={{
+                        style={({ pressed }) => ({
                           borderRadius: 22,
                           borderCurve: "continuous",
                           backgroundColor:
@@ -747,7 +820,8 @@ export default function MapTabScreen() {
                               : (palette.surface as string),
                           paddingHorizontal: 14,
                           paddingVertical: 14,
-                        }}
+                          opacity: pressed ? 0.92 : 1,
+                        })}
                       >
                         <View
                           style={{
@@ -783,13 +857,13 @@ export default function MapTabScreen() {
                                 : t("mapTab.web.tapToFocus")}
                             </Text>
                           </View>
-                          <KitPressable
+                          <Pressable
                             accessibilityRole="button"
                             accessibilityLabel={t("mapTab.mobile.removeZone", {
                               zone: zone.label[zoneLanguage],
                             })}
                             onPress={() => toggleZone(zone.id)}
-                            style={{
+                            style={({ pressed }) => ({
                               borderRadius: 999,
                               backgroundColor:
                                 focusZoneId === zone.id
@@ -797,7 +871,8 @@ export default function MapTabScreen() {
                                   : (palette.surfaceAlt as string),
                               paddingHorizontal: 10,
                               paddingVertical: 8,
-                            }}
+                              opacity: pressed ? 0.88 : 1,
+                            })}
                           >
                             <IconSymbol
                               name="minus"
@@ -808,9 +883,9 @@ export default function MapTabScreen() {
                                   : (palette.text as string)
                               }
                             />
-                          </KitPressable>
+                          </Pressable>
                         </View>
-                      </KitPressable>
+                      </Pressable>
                     ))
                   )}
                 </ScrollView>
@@ -834,11 +909,11 @@ export default function MapTabScreen() {
                   {filteredZones.map((zone) => {
                     const selected = deferredSelectedZoneSet.has(zone.id);
                     return (
-                      <KitPressable
+                      <Pressable
                         key={zone.id}
                         accessibilityRole="button"
                         onPress={() => toggleZone(zone.id)}
-                        style={{
+                        style={({ pressed }) => ({
                           borderRadius: 20,
                           borderCurve: "continuous",
                           backgroundColor: selected
@@ -846,7 +921,8 @@ export default function MapTabScreen() {
                             : (palette.surface as string),
                           paddingHorizontal: 14,
                           paddingVertical: 12,
-                        }}
+                          opacity: pressed ? 0.92 : 1,
+                        })}
                       >
                         <View
                           style={{
@@ -874,10 +950,12 @@ export default function MapTabScreen() {
                                 : (palette.textMuted as string),
                             }}
                           >
-                            {selected ? t("mapTab.web.live") : t("mapTab.web.add")}
+                            {selected
+                              ? t("mapTab.web.live")
+                              : t("mapTab.web.add")}
                           </Text>
                         </View>
-                      </KitPressable>
+                      </Pressable>
                     );
                   })}
                 </ScrollView>
@@ -960,7 +1038,9 @@ export default function MapTabScreen() {
                     color: palette.onPrimary as string,
                   }}
                 >
-                  {t("mapTab.mobile.activeZones", { count: selectedZoneIds.length })}
+                  {t("mapTab.mobile.activeZones", {
+                    count: selectedZoneIds.length,
+                  })}
                 </Text>
                 <Text
                   style={{
@@ -969,7 +1049,9 @@ export default function MapTabScreen() {
                   }}
                 >
                   {hasChanges
-                    ? t("mapTab.mobile.stagedReady", { count: pendingChangeCount })
+                    ? t("mapTab.mobile.stagedReady", {
+                        count: pendingChangeCount,
+                      })
                     : t("mapTab.mobile.editingHint")}
                 </Text>
               </View>
@@ -1035,7 +1117,9 @@ export default function MapTabScreen() {
                   }}
                 >
                   {hasChanges
-                    ? t("mapTab.mobile.sheetPending", { count: pendingChangeCount })
+                    ? t("mapTab.mobile.sheetPending", {
+                        count: pendingChangeCount,
+                      })
                     : t("mapTab.mobile.sheetHint")}
                 </ThemedText>
               </View>
@@ -1048,7 +1132,11 @@ export default function MapTabScreen() {
                     },
                   ]}
                 >
-                  <IconSymbol name="magnifyingglass" size={16} color={palette.textMuted} />
+                  <IconSymbol
+                    name="magnifyingglass"
+                    size={16}
+                    color={palette.textMuted}
+                  />
                   <BottomSheetTextInput
                     value={zoneSearch}
                     onChangeText={setZoneSearch}
@@ -1061,20 +1149,29 @@ export default function MapTabScreen() {
                     style={[styles.searchInput, { color: palette.text }]}
                   />
                   {zoneSearch.length > 0 ? (
-                    <KitPressable
+                    <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={t("common.clear")}
                       hitSlop={8}
                       onPress={() => setZoneSearch("")}
-                      rippleRadius={16}
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.8 : 1,
+                      })}
                     >
-                      <IconSymbol name="xmark.circle.fill" size={16} color={palette.textMuted} />
-                    </KitPressable>
+                      <IconSymbol
+                        name="xmark.circle.fill"
+                        size={16}
+                        color={palette.textMuted}
+                      />
+                    </Pressable>
                   ) : null}
                 </View>
               </View>
               {saveError ? (
-                <ThemedText selectable style={{ color: palette.danger, paddingHorizontal: 24 }}>
+                <ThemedText
+                  selectable
+                  style={{ color: palette.danger, paddingHorizontal: 24 }}
+                >
                   {saveError}
                 </ThemedText>
               ) : null}
@@ -1095,10 +1192,20 @@ export default function MapTabScreen() {
                       { backgroundColor: palette.surfaceAlt as string },
                     ]}
                   >
-                    <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
+                    <Text
+                      style={{
+                        ...BrandType.bodyStrong,
+                        color: palette.text as string,
+                      }}
+                    >
                       {t("mapTab.mobile.noMatchingCities")}
                     </Text>
-                    <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+                    <Text
+                      style={{
+                        ...BrandType.caption,
+                        color: palette.textMuted as string,
+                      }}
+                    >
                       {t("mapTab.mobile.noMatchingCitiesHint")}
                     </Text>
                   </View>
@@ -1106,14 +1213,15 @@ export default function MapTabScreen() {
                 renderItem={({ item }: { item: ZoneCityListItem }) => {
                   if (item.kind === "zone") {
                     return (
-                      <KitPressable
+                      <Pressable
                         onPress={() => toggleZone(item.zone.id)}
-                        style={[
+                        style={({ pressed }) => [
                           styles.zoneChildRow,
                           {
                             backgroundColor: item.selected
                               ? (palette.primarySubtle as string)
                               : (palette.surface as string),
+                            opacity: pressed ? 0.92 : 1,
                           },
                         ]}
                       >
@@ -1136,7 +1244,12 @@ export default function MapTabScreen() {
                           >
                             {item.zone.variantLabel[zoneLanguage]}
                           </Text>
-                          <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
+                          <Text
+                            style={{
+                              ...BrandType.micro,
+                              color: palette.textMuted as string,
+                            }}
+                          >
                             {item.zone.id}
                           </Text>
                         </View>
@@ -1147,29 +1260,34 @@ export default function MapTabScreen() {
                             color={palette.primary as string}
                           />
                         ) : null}
-                      </KitPressable>
+                      </Pressable>
                     );
                   }
 
                   const zoneCount = item.group.zones.length;
                   const isFullySelected = item.selectedCount === zoneCount;
-                  const isPartiallySelected = item.selectedCount > 0 && !isFullySelected;
+                  const isPartiallySelected =
+                    item.selectedCount > 0 && !isFullySelected;
                   const summary =
                     zoneCount === 1
                       ? (item.group.zones[0]?.id ?? item.group.cityKey)
                       : isFullySelected
-                        ? t("mapTab.mobile.summaryAllLive", { count: zoneCount })
+                        ? t("mapTab.mobile.summaryAllLive", {
+                            count: zoneCount,
+                          })
                         : isPartiallySelected
                           ? t("mapTab.mobile.summarySomeLive", {
                               selected: item.selectedCount,
                               count: zoneCount,
                             })
-                          : t("mapTab.mobile.summaryZones", { count: zoneCount });
+                          : t("mapTab.mobile.summaryZones", {
+                              count: zoneCount,
+                            });
 
                   return (
-                    <KitPressable
+                    <Pressable
                       onPress={() => toggleCity(item.group.cityKey)}
-                      style={[
+                      style={({ pressed }) => [
                         styles.zoneCityRow,
                         {
                           backgroundColor: isFullySelected
@@ -1177,6 +1295,7 @@ export default function MapTabScreen() {
                             : isPartiallySelected
                               ? (palette.primarySubtle as string)
                               : (palette.surfaceAlt as string),
+                          opacity: pressed ? 0.92 : 1,
                         },
                       ]}
                     >
@@ -1223,7 +1342,7 @@ export default function MapTabScreen() {
                           />
                         ) : null}
                         {item.showChevron ? (
-                          <KitPressable
+                          <Pressable
                             accessibilityRole="button"
                             accessibilityLabel={
                               item.expanded
@@ -1239,10 +1358,15 @@ export default function MapTabScreen() {
                               event.stopPropagation();
                               toggleCityExpanded(item.group.cityKey);
                             }}
-                            style={styles.zoneChevronButton}
+                            style={({ pressed }) => [
+                              styles.zoneChevronButton,
+                              { opacity: pressed ? 0.82 : 1 },
+                            ]}
                           >
                             <IconSymbol
-                              name={item.expanded ? "chevron.down" : "chevron.right"}
+                              name={
+                                item.expanded ? "chevron.down" : "chevron.right"
+                              }
                               size={16}
                               color={
                                 isFullySelected
@@ -1250,10 +1374,10 @@ export default function MapTabScreen() {
                                   : (palette.textMuted as string)
                               }
                             />
-                          </KitPressable>
+                          </Pressable>
                         ) : null}
                       </View>
-                    </KitPressable>
+                    </Pressable>
                   );
                 }}
               />
@@ -1270,42 +1394,37 @@ export default function MapTabScreen() {
               zIndex: 30,
             }}
           >
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                gap: 10,
+              }}
+            >
               {zoneModeActive ? (
                 <>
-                  <KitButton
+                  <ActionButton
                     label={t("mapTab.mobile.cancel")}
                     onPress={handleDiscardChanges}
                     disabled={isSaving}
-                    variant="secondary"
-                    fullWidth={false}
-                    leadingIcon={<IconSymbol name="xmark" size={16} color={palette.text} />}
-                    style={{ backgroundColor: palette.surface as string }}
+                    palette={palette}
+                    tone="secondary"
                   />
-                  <KitButton
-                    label={
-                      isSaving
-                        ? t("mapTab.mobile.saveCoverageSaving")
-                        : t("mapTab.mobile.saveCoverage")
-                    }
+                  <ActionButton
+                    label={t("mapTab.mobile.saveCoverage")}
                     onPress={() => {
                       void handleSaveZones();
                     }}
                     disabled={!hasChanges || isSaving}
-                    fullWidth={false}
-                    leadingIcon={
-                      <IconSymbol name="checkmark" size={16} color={palette.onPrimary} />
-                    }
+                    loading={isSaving}
+                    palette={palette}
                   />
                 </>
               ) : (
-                <KitButton
+                <ActionButton
                   label={t("mapTab.mobile.editCoverage")}
                   onPress={openZoneEditor}
-                  fullWidth={false}
-                  leadingIcon={
-                    <IconSymbol name="slider.horizontal.3" size={16} color={palette.onPrimary} />
-                  }
+                  palette={palette}
                 />
               )}
             </View>
