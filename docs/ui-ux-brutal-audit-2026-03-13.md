@@ -502,6 +502,12 @@ Replace with consequence and momentum:
 - deleted wide-web hero cards, metric rails, workflow panels, and duplicate mobile ops blocks
 - kept the jobs surface focused on filters, queue state, and the actual list
 
+### Slice 04
+
+- removed `KitButton` from auth and onboarding
+- made sign-in lead with email first instead of giving every auth method equal weight
+- reduced onboarding action plumbing to simpler native-style buttons and clearer next/back flows
+
 ## Final Verdict
 
 The app is not ugly.
