@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -15,6 +16,7 @@ type SportsMultiSelectProps = {
   title: string;
   emptyHint: string;
   defaultOpen?: boolean;
+  variant?: "card" | "content";
 };
 
 export function SportsMultiSelect({
@@ -25,9 +27,12 @@ export function SportsMultiSelect({
   title,
   emptyHint,
   defaultOpen = false,
+  variant = "card",
 }: SportsMultiSelectProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [query, setQuery] = useState("");
+  const isCardVariant = variant === "card";
 
   const filteredSports = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -46,6 +51,156 @@ export function SportsMultiSelect({
     () => filteredSports.filter((sport) => !selectedSports.includes(sport)),
     [filteredSports, selectedSports],
   );
+
+  const panel = (
+    <View
+      style={[styles.panel, isCardVariant ? null : styles.panelContentOnly]}
+    >
+      <NativeSearchField
+        value={query}
+        onChangeText={setQuery}
+        placeholder={searchPlaceholder}
+      />
+      {selectedSportsList.length > 0 ? (
+        <View style={styles.section}>
+          <Text
+            style={[
+              styles.sectionLabel,
+              { color: palette.textMuted as string },
+            ]}
+          >
+            {t("profile.sports.selectedLabel", {
+              defaultValue: "Selected sports",
+            })}
+          </Text>
+          <View style={styles.resultsList}>
+            {selectedSportsList.map((sport) => (
+              <Pressable
+                key={`selected-${sport}`}
+                accessibilityRole="button"
+                onPress={() => onToggleSport(sport)}
+                style={({ pressed }) => [
+                  styles.resultRow,
+                  {
+                    backgroundColor: palette.primarySubtle as string,
+                    opacity: pressed ? 0.82 : 1,
+                  },
+                ]}
+              >
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text
+                    style={[
+                      styles.resultTitle,
+                      { color: palette.text as string },
+                    ]}
+                  >
+                    {isSportType(sport) ? toSportLabel(sport) : sport}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.resultMeta,
+                      { color: palette.primary as string },
+                    ]}
+                  >
+                    {t("profile.sports.selectedBody", {
+                      defaultValue: "Added to your teaching profile",
+                    })}
+                  </Text>
+                </View>
+                <IconSymbol
+                  name="checkmark.circle.fill"
+                  size={18}
+                  color={palette.primary as string}
+                />
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
+      <View style={styles.section}>
+        <Text
+          style={[styles.sectionLabel, { color: palette.textMuted as string }]}
+        >
+          {query.trim().length > 0
+            ? t("profile.sports.matchingLabel", {
+                defaultValue: "Matching sports",
+              })
+            : t("profile.sports.allLabel", {
+                defaultValue: "All sports",
+              })}
+        </Text>
+        <ScrollView
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.resultsList}
+          style={styles.resultsViewport}
+        >
+          {availableSportsList.length > 0 ? (
+            availableSportsList.map((sport) => (
+              <Pressable
+                key={sport}
+                accessibilityRole="button"
+                onPress={() => onToggleSport(sport)}
+                style={({ pressed }) => [
+                  styles.resultRow,
+                  {
+                    backgroundColor: palette.surface as string,
+                    opacity: pressed ? 0.82 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.resultTitle,
+                    { color: palette.text as string },
+                  ]}
+                >
+                  {toSportLabel(sport)}
+                </Text>
+                <IconSymbol
+                  name="plus.circle.fill"
+                  size={18}
+                  color={palette.textMuted as string}
+                />
+              </Pressable>
+            ))
+          ) : (
+            <View
+              style={[
+                styles.emptyState,
+                {
+                  backgroundColor: palette.surface as string,
+                  borderColor: palette.border as string,
+                },
+              ]}
+            >
+              <Text
+                style={[styles.resultTitle, { color: palette.text as string }]}
+              >
+                {t("profile.sports.emptyTitle", {
+                  defaultValue: "No matching sports",
+                })}
+              </Text>
+              <Text
+                style={[
+                  styles.resultMeta,
+                  { color: palette.textMuted as string },
+                ]}
+              >
+                {t("profile.sports.emptyBody", {
+                  defaultValue: "Try a different sport name.",
+                })}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    </View>
+  );
+
+  if (!isCardVariant) {
+    return panel;
+  }
 
   return (
     <View
@@ -93,146 +248,14 @@ export function SportsMultiSelect({
               includeFontPadding: false,
             }}
           >
-            {isOpen ? "Done" : "Edit"}
+            {isOpen
+              ? t("profile.sports.done", { defaultValue: "Done" })
+              : t("profile.sports.edit", { defaultValue: "Edit" })}
           </Text>
         </View>
       </Pressable>
 
-      {isOpen ? (
-        <View style={styles.panel}>
-          <NativeSearchField
-            value={query}
-            onChangeText={setQuery}
-            placeholder={searchPlaceholder}
-          />
-          {selectedSportsList.length > 0 ? (
-            <View style={styles.section}>
-              <Text
-                style={[
-                  styles.sectionLabel,
-                  { color: palette.textMuted as string },
-                ]}
-              >
-                Selected sports
-              </Text>
-              <View style={styles.resultsList}>
-                {selectedSportsList.map((sport) => (
-                  <Pressable
-                    key={`selected-${sport}`}
-                    accessibilityRole="button"
-                    onPress={() => onToggleSport(sport)}
-                    style={({ pressed }) => [
-                      styles.resultRow,
-                      {
-                        backgroundColor: palette.primarySubtle as string,
-                        opacity: pressed ? 0.82 : 1,
-                      },
-                    ]}
-                  >
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text
-                        style={[
-                          styles.resultTitle,
-                          { color: palette.text as string },
-                        ]}
-                      >
-                        {isSportType(sport) ? toSportLabel(sport) : sport}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.resultMeta,
-                          { color: palette.primary as string },
-                        ]}
-                      >
-                        Added to your teaching profile
-                      </Text>
-                    </View>
-                    <IconSymbol
-                      name="checkmark.circle.fill"
-                      size={18}
-                      color={palette.primary as string}
-                    />
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          ) : null}
-          <View style={styles.section}>
-            <Text
-              style={[
-                styles.sectionLabel,
-                { color: palette.textMuted as string },
-              ]}
-            >
-              {query.trim().length > 0 ? "Matching sports" : "All sports"}
-            </Text>
-            <ScrollView
-              nestedScrollEnabled
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.resultsList}
-              style={styles.resultsViewport}
-            >
-              {availableSportsList.length > 0 ? (
-                availableSportsList.map((sport) => (
-                  <Pressable
-                    key={sport}
-                    accessibilityRole="button"
-                    onPress={() => onToggleSport(sport)}
-                    style={({ pressed }) => [
-                      styles.resultRow,
-                      {
-                        backgroundColor: palette.surface as string,
-                        opacity: pressed ? 0.82 : 1,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.resultTitle,
-                        { color: palette.text as string },
-                      ]}
-                    >
-                      {toSportLabel(sport)}
-                    </Text>
-                    <IconSymbol
-                      name="plus.circle.fill"
-                      size={18}
-                      color={palette.textMuted as string}
-                    />
-                  </Pressable>
-                ))
-              ) : (
-                <View
-                  style={[
-                    styles.emptyState,
-                    {
-                      backgroundColor: palette.surface as string,
-                      borderColor: palette.border as string,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.resultTitle,
-                      { color: palette.text as string },
-                    ]}
-                  >
-                    No matching sports
-                  </Text>
-                  <Text
-                    style={[
-                      styles.resultMeta,
-                      { color: palette.textMuted as string },
-                    ]}
-                  >
-                    Try a different sport name.
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      ) : null}
+      {isOpen ? panel : null}
     </View>
   );
 }
@@ -266,6 +289,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 14,
     gap: 12,
+  },
+  panelContentOnly: {
+    paddingHorizontal: 0,
+    paddingBottom: 0,
   },
   section: {
     gap: 8,
