@@ -550,6 +550,12 @@ Replace with consequence and momentum:
 - simplified payout, bank, schedule, and receipt actions to native pressables while keeping payout logic intact
 - reduced one of the heaviest profile screens without changing payment state or hosted onboarding flow
 
+### Slice 12
+
+- removed the last app-level kit button and pressable usage outside the kit internals
+- simplified studio payment detail dismissal and identity-verification primary actions to native pressables
+- finished the wrapper removal sweep so remaining kit references are implementation details, not product-screen dependencies
+
 ## Final Verdict
 
 The app is not ugly.
