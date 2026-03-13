@@ -32,7 +32,10 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import {
+  buildRoleTabRoute,
+  ROLE_TAB_ROUTE_NAMES,
+} from "@/navigation/role-routes";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -40,13 +43,19 @@ const ROLE_TRANSLATION_KEYS = {
   studio: "profile.roles.studio",
   admin: "profile.roles.admin",
 } as const;
-const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile);
+const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute(
+  "instructor",
+  ROLE_TAB_ROUTE_NAMES.profile,
+);
 const INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE =
   `${INSTRUCTOR_PROFILE_ROUTE}/identity-verification` as const;
 const INSTRUCTOR_SPORTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/sports` as const;
-const INSTRUCTOR_LOCATION_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/location` as const;
-const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
-const INSTRUCTOR_PAYMENTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
+const INSTRUCTOR_LOCATION_ROUTE =
+  `${INSTRUCTOR_PROFILE_ROUTE}/location` as const;
+const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE =
+  `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
+const INSTRUCTOR_PAYMENTS_ROUTE =
+  `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
 const INSTRUCTOR_EDIT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/edit` as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
@@ -54,7 +63,9 @@ function getSportsSummary(sports: string[], t: TFunction) {
     return t("profile.settings.sports.none");
   }
   if (sports.length <= 2) {
-    return sports.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(", ");
+    return sports
+      .map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport))
+      .join(", ");
   }
   return t("profile.settings.sports.selected", { count: sports.length });
 }
@@ -139,27 +150,39 @@ export default function InstructorProfileScreen() {
     router.push(INSTRUCTOR_EDIT_ROUTE as Href);
   }, [router]);
 
-  if (!hasActivated || (currentUser?.role === "instructor" && instructorSettings === undefined)) {
+  if (
+    !hasActivated ||
+    (currentUser?.role === "instructor" && instructorSettings === undefined)
+  ) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
 
   const nameValue =
-    instructorSettings?.displayName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
+    instructorSettings?.displayName ??
+    currentUser?.fullName ??
+    t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
   const roleValue = t(
-    ROLE_TRANSLATION_KEYS[currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS] ??
-      "profile.roles.pending",
+    ROLE_TRANSLATION_KEYS[
+      currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS
+    ] ?? "profile.roles.pending",
   );
   const memberSince = currentUser?.createdAt
-    ? new Date(currentUser.createdAt).toLocaleDateString(i18n.resolvedLanguage ?? "en", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
+    ? new Date(currentUser.createdAt).toLocaleDateString(
+        i18n.resolvedLanguage ?? "en",
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        },
+      )
     : null;
 
   const identityVerified = diditVerification?.isVerified ?? false;
-  const identityVerificationSummary = getIdentityVerificationSummary(diditVerification?.status, t);
+  const identityVerificationSummary = getIdentityVerificationSummary(
+    diditVerification?.status,
+    t,
+  );
   const bankConnected = payoutSummary?.hasVerifiedDestination ?? false;
   const sportsSummary = getSportsSummary(instructorSettings?.sports ?? [], t);
   const locationSummary = instructorSettings?.address
@@ -180,7 +203,8 @@ export default function InstructorProfileScreen() {
     !identityVerified
       ? {
           label: t("profile.setup.verifyIdentity"),
-          onPress: () => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href),
+          onPress: () =>
+            router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href),
           icon: "checkmark.circle.fill" as const,
         }
       : null,
@@ -201,7 +225,8 @@ export default function InstructorProfileScreen() {
     !provider || provider === "none"
       ? {
           label: t("profile.setup.linkCalendar"),
-          onPress: () => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href),
+          onPress: () =>
+            router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href),
           icon: "calendar.badge.clock" as const,
         }
       : null,
@@ -230,14 +255,19 @@ export default function InstructorProfileScreen() {
       : t("profile.settings.publicProfilePrompt"));
 
   return (
-    <View collapsable={false} style={[styles.screen, { backgroundColor: palette.appBg }]}>
+    <View
+      collapsable={false}
+      style={[styles.screen, { backgroundColor: palette.appBg }]}
+    >
       <TabScreenScrollView
         animatedRef={scrollRef}
         routeKey="instructor/profile"
         topInsetTone="sheet"
         style={styles.screen}
         contentContainerStyle={{
-          paddingTop: isDesktopWeb ? 24 : getProfileHeroScrollTopPadding(safeTop),
+          paddingTop: isDesktopWeb
+            ? 24
+            : getProfileHeroScrollTopPadding(safeTop),
           paddingHorizontal: isDesktopWeb ? 24 : 0,
           paddingBottom: 40,
           gap: 24,
@@ -253,20 +283,26 @@ export default function InstructorProfileScreen() {
                     ? t("profile.hero.verifiedInstructor")
                     : t("profile.hero.instructorProfile")
                 }
-                profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+                profileImageUrl={
+                  instructorSettings?.profileImageUrl ?? currentUser?.image
+                }
                 palette={palette}
                 summary={publicProfileSummary}
                 statusLabel={setupStatusLabel}
                 metaLabel={
                   memberSince
-                    ? t("profile.account.memberSinceValue", { date: memberSince })
+                    ? t("profile.account.memberSinceValue", {
+                        date: memberSince,
+                      })
                     : sportsSummary
                 }
                 primaryAction={{
                   label: t("profile.actions.edit"),
                   onPress: handleRequestEdit,
                 }}
-                {...(primarySetupAction ? { secondaryAction: primarySetupAction } : {})}
+                {...(primarySetupAction
+                  ? { secondaryAction: primarySetupAction }
+                  : {})}
               />
             </View>
 
@@ -287,12 +323,14 @@ export default function InstructorProfileScreen() {
 
                 <ProfileSectionHeader
                   label={t("profile.sections.professional")}
-                  description={t("profile.sections.professionalDesc")}
                   icon="person.crop.circle.fill"
                   palette={palette}
                   flush
                 />
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+                <ProfileSectionCard
+                  palette={palette}
+                  style={styles.desktopCardGroup}
+                >
                   <ProfileSettingRow
                     title={t("profile.settings.publicProfile")}
                     subtitle={publicProfileSummary}
@@ -313,7 +351,9 @@ export default function InstructorProfileScreen() {
                     title={t("profile.settings.location.title")}
                     subtitle={locationSummary}
                     icon="mappin.and.ellipse"
-                    onPress={() => router.push(INSTRUCTOR_LOCATION_ROUTE as Href)}
+                    onPress={() =>
+                      router.push(INSTRUCTOR_LOCATION_ROUTE as Href)
+                    }
                     palette={palette}
                     showDivider
                   />
@@ -323,12 +363,14 @@ export default function InstructorProfileScreen() {
               <View style={styles.desktopSideColumn}>
                 <ProfileSectionHeader
                   label={t("profile.account.title")}
-                  description={t("profile.sections.accountDesc")}
                   icon="person.crop.circle.fill"
                   palette={palette}
                   flush
                 />
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+                <ProfileSectionCard
+                  palette={palette}
+                  style={styles.desktopCardGroup}
+                >
                   <ProfileSettingRow
                     title={t("profile.account.nameLabel")}
                     value={currentUser?.fullName ?? nameValue}
@@ -348,7 +390,7 @@ export default function InstructorProfileScreen() {
                     value={roleValue}
                     icon="checkmark.circle.fill"
                     palette={palette}
-                    showDivider={Boolean(memberSince)}
+                    showDivider
                   />
                   {memberSince ? (
                     <ProfileSettingRow
@@ -356,23 +398,20 @@ export default function InstructorProfileScreen() {
                       value={memberSince}
                       icon="calendar.circle.fill"
                       palette={palette}
+                      showDivider
                     />
                   ) : null}
-                </ProfileSectionCard>
-
-                <ProfileSectionHeader
-                  label={t("profile.sections.preferences")}
-                  description={t("profile.sections.preferencesDesc")}
-                  icon="globe"
-                  palette={palette}
-                  flush
-                />
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                   <ProfileSettingRow
                     title={t("profile.language.title")}
-                    value={language === "en" ? t("language.english") : t("language.hebrew")}
+                    value={
+                      language === "en"
+                        ? t("language.english")
+                        : t("language.hebrew")
+                    }
                     icon="globe"
-                    onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                    onPress={() =>
+                      void setLanguage(language === "en" ? "he" : "en")
+                    }
                     palette={palette}
                     showDivider
                   />
@@ -384,7 +423,9 @@ export default function InstructorProfileScreen() {
                     accessory={
                       <Switch
                         value={preference === "system"}
-                        onValueChange={(value) => setPreference(value ? "system" : "light")}
+                        onValueChange={(value) =>
+                          setPreference(value ? "system" : "light")
+                        }
                         trackColor={{
                           true: palette.primary as string,
                           false: palette.borderStrong as string,
@@ -400,7 +441,9 @@ export default function InstructorProfileScreen() {
                       <Switch
                         disabled={preference === "system"}
                         value={preference === "dark"}
-                        onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                        onValueChange={(value) =>
+                          setPreference(value ? "dark" : "light")
+                        }
                         trackColor={{
                           true: palette.primary as string,
                           false: palette.borderStrong as string,
@@ -412,17 +455,23 @@ export default function InstructorProfileScreen() {
 
                 <ProfileSectionHeader
                   label={t("profile.sections.operations")}
-                  description={t("profile.sections.operationsDesc")}
                   icon="slider.horizontal.3"
                   palette={palette}
                   flush
                 />
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+                <ProfileSectionCard
+                  palette={palette}
+                  style={styles.desktopCardGroup}
+                >
                   <ProfileSettingRow
                     title={t("profile.navigation.identityVerification")}
                     subtitle={identityVerificationSummary}
                     icon="checkmark.circle.fill"
-                    onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
+                    onPress={() =>
+                      router.push(
+                        INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href,
+                      )
+                    }
                     palette={palette}
                     showDivider
                   />
@@ -430,7 +479,9 @@ export default function InstructorProfileScreen() {
                     title={t("profile.settings.calendar.title")}
                     subtitle={calendarSummary}
                     icon="calendar.badge.clock"
-                    onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
+                    onPress={() =>
+                      router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)
+                    }
                     palette={palette}
                     showDivider
                   />
@@ -442,12 +493,12 @@ export default function InstructorProfileScreen() {
                         : t("profile.settings.payoutsNeeded")
                     }
                     icon="creditcard.fill"
-                    onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
+                    onPress={() =>
+                      router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)
+                    }
                     palette={palette}
+                    showDivider
                   />
-                </ProfileSectionCard>
-
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                   <ProfileSettingRow
                     title={t("auth.signOutButton")}
                     subtitle={t("profile.settings.signOutDesc")}
@@ -469,7 +520,9 @@ export default function InstructorProfileScreen() {
                 statusLabel={setupStatusLabel}
                 subtitleLabel={
                   primarySetupAction
-                    ? t("profile.setup.nextStep", { step: primarySetupAction.label.toLowerCase() })
+                    ? t("profile.setup.nextStep", {
+                        step: primarySetupAction.label.toLowerCase(),
+                      })
                     : t("profile.setup.allClear")
                 }
               />
@@ -477,7 +530,6 @@ export default function InstructorProfileScreen() {
             <View style={styles.mobileSectionsContainer}>
               <ProfileSectionHeader
                 label={t("profile.sections.professional")}
-                description={t("profile.sections.professionalDesc")}
                 icon="person.crop.circle.fill"
                 palette={palette}
               />
@@ -510,7 +562,6 @@ export default function InstructorProfileScreen() {
 
               <ProfileSectionHeader
                 label={t("profile.account.title")}
-                description={t("profile.sections.accountDesc")}
                 icon="person.crop.circle.fill"
                 palette={palette}
               />
@@ -534,7 +585,7 @@ export default function InstructorProfileScreen() {
                   value={roleValue}
                   icon="checkmark.circle.fill"
                   palette={palette}
-                  showDivider={Boolean(memberSince)}
+                  showDivider
                 />
                 {memberSince ? (
                   <ProfileSettingRow
@@ -542,22 +593,20 @@ export default function InstructorProfileScreen() {
                     value={memberSince}
                     icon="calendar.circle.fill"
                     palette={palette}
+                    showDivider
                   />
                 ) : null}
-              </ProfileSectionCard>
-
-              <ProfileSectionHeader
-                label={t("profile.sections.preferences")}
-                description={t("profile.sections.preferencesDesc")}
-                icon="globe"
-                palette={palette}
-              />
-              <ProfileSectionCard palette={palette}>
                 <ProfileSettingRow
                   title={t("profile.language.title")}
-                  value={language === "en" ? t("language.english") : t("language.hebrew")}
+                  value={
+                    language === "en"
+                      ? t("language.english")
+                      : t("language.hebrew")
+                  }
                   icon="globe"
-                  onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                  onPress={() =>
+                    void setLanguage(language === "en" ? "he" : "en")
+                  }
                   palette={palette}
                   showDivider
                 />
@@ -569,7 +618,9 @@ export default function InstructorProfileScreen() {
                   accessory={
                     <Switch
                       value={preference === "system"}
-                      onValueChange={(value) => setPreference(value ? "system" : "light")}
+                      onValueChange={(value) =>
+                        setPreference(value ? "system" : "light")
+                      }
                       trackColor={{
                         true: palette.primary as string,
                         false: palette.borderStrong as string,
@@ -585,7 +636,9 @@ export default function InstructorProfileScreen() {
                     <Switch
                       disabled={preference === "system"}
                       value={preference === "dark"}
-                      onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                      onValueChange={(value) =>
+                        setPreference(value ? "dark" : "light")
+                      }
                       trackColor={{
                         true: palette.primary as string,
                         false: palette.borderStrong as string,
@@ -597,7 +650,6 @@ export default function InstructorProfileScreen() {
 
               <ProfileSectionHeader
                 label={t("profile.sections.operations")}
-                description={t("profile.sections.operationsDesc")}
                 icon="slider.horizontal.3"
                 palette={palette}
               />
@@ -606,7 +658,9 @@ export default function InstructorProfileScreen() {
                   title={t("profile.navigation.identityVerification")}
                   subtitle={identityVerificationSummary}
                   icon="checkmark.circle.fill"
-                  onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
+                  onPress={() =>
+                    router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)
+                  }
                   palette={palette}
                   showDivider
                 />
@@ -614,7 +668,9 @@ export default function InstructorProfileScreen() {
                   title={t("profile.settings.calendar.title")}
                   subtitle={calendarSummary}
                   icon="calendar.badge.clock"
-                  onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
+                  onPress={() =>
+                    router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)
+                  }
                   palette={palette}
                   showDivider
                 />
@@ -628,21 +684,17 @@ export default function InstructorProfileScreen() {
                   icon="creditcard.fill"
                   onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
                   palette={palette}
+                  showDivider
+                />
+                <ProfileSettingRow
+                  title={t("auth.signOutButton")}
+                  subtitle={t("profile.settings.signOutDesc")}
+                  icon="arrow.right.square"
+                  onPress={() => void signOut()}
+                  palette={palette}
+                  tone="danger"
                 />
               </ProfileSectionCard>
-
-              <View style={{ marginTop: 32, marginBottom: 40 }}>
-                <ProfileSectionCard palette={palette}>
-                  <ProfileSettingRow
-                    title={t("auth.signOutButton")}
-                    subtitle={t("profile.settings.signOutDesc")}
-                    icon="arrow.right.square"
-                    onPress={() => void signOut()}
-                    palette={palette}
-                    tone="danger"
-                  />
-                </ProfileSectionCard>
-              </View>
             </View>
           </View>
         )}
@@ -656,12 +708,16 @@ export default function InstructorProfileScreen() {
               ? t("profile.hero.verifiedInstructor")
               : t("profile.hero.instructorProfile")
           }
-          profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+          profileImageUrl={
+            instructorSettings?.profileImageUrl ?? currentUser?.image
+          }
           palette={palette}
           scrollY={scrollY}
           onRequestEdit={handleRequestEdit}
           primaryActionLabel={t("profile.actions.edit")}
-          {...(primarySetupAction ? { secondaryAction: primarySetupAction } : {})}
+          {...(primarySetupAction
+            ? { secondaryAction: primarySetupAction }
+            : {})}
           statusLabel={setupStatusLabel}
           bio={instructorSettings?.bio}
           socialLinks={instructorSettings?.socialLinks}

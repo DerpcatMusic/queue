@@ -31,7 +31,10 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import {
+  buildRoleTabRoute,
+  ROLE_TAB_ROUTE_NAMES,
+} from "@/navigation/role-routes";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -39,8 +42,12 @@ const ROLE_TRANSLATION_KEYS = {
   studio: "profile.roles.studio",
   admin: "profile.roles.admin",
 } as const;
-const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
-const STUDIO_CALENDAR_SETTINGS_ROUTE = `${STUDIO_PROFILE_ROUTE}/calendar-settings` as const;
+const STUDIO_PROFILE_ROUTE = buildRoleTabRoute(
+  "studio",
+  ROLE_TAB_ROUTE_NAMES.profile,
+);
+const STUDIO_CALENDAR_SETTINGS_ROUTE =
+  `${STUDIO_PROFILE_ROUTE}/calendar-settings` as const;
 const STUDIO_PAYMENTS_ROUTE = `${STUDIO_PROFILE_ROUTE}/payments` as const;
 const STUDIO_EDIT_ROUTE = `${STUDIO_PROFILE_ROUTE}/edit` as const;
 
@@ -49,7 +56,9 @@ function getSportsSummary(sports: string[], t: TFunction) {
     return t("profile.settings.sports.none");
   }
   if (sports.length <= 2) {
-    return sports.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(", ");
+    return sports
+      .map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport))
+      .join(", ");
   }
   return t("profile.settings.sports.selected", { count: sports.length });
 }
@@ -93,23 +102,32 @@ export default function StudioProfileScreen() {
     router.push(STUDIO_EDIT_ROUTE as Href);
   }, [router]);
 
-  if (!hasActivated || (currentUser?.role === "studio" && studioSettings === undefined)) {
+  if (
+    !hasActivated ||
+    (currentUser?.role === "studio" && studioSettings === undefined)
+  ) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
 
   const profileName =
-    studioSettings?.studioName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
+    studioSettings?.studioName ??
+    currentUser?.fullName ??
+    t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
   const roleValue = t(
-    ROLE_TRANSLATION_KEYS[currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS] ??
-      "profile.roles.pending",
+    ROLE_TRANSLATION_KEYS[
+      currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS
+    ] ?? "profile.roles.pending",
   );
   const memberSince = currentUser?.createdAt
-    ? new Date(currentUser.createdAt).toLocaleDateString(i18n.resolvedLanguage ?? "en", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
+    ? new Date(currentUser.createdAt).toLocaleDateString(
+        i18n.resolvedLanguage ?? "en",
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        },
+      )
     : null;
 
   const sportsSummary = getSportsSummary(studioSettings?.sports ?? [], t);
@@ -171,14 +189,19 @@ export default function StudioProfileScreen() {
       : t("profile.settings.publicProfilePrompt"));
   const primarySetupAction = setupActions[0] ?? null;
   return (
-    <View collapsable={false} style={[styles.screen, { backgroundColor: palette.appBg }]}>
+    <View
+      collapsable={false}
+      style={[styles.screen, { backgroundColor: palette.appBg }]}
+    >
       <TabScreenScrollView
         animatedRef={scrollRef}
         routeKey="studio/profile"
         topInsetTone="sheet"
         style={styles.screen}
         contentContainerStyle={{
-          paddingTop: isDesktopWeb ? 24 : getProfileHeroScrollTopPadding(safeTop),
+          paddingTop: isDesktopWeb
+            ? 24
+            : getProfileHeroScrollTopPadding(safeTop),
           paddingHorizontal: isDesktopWeb ? 24 : 0,
           paddingBottom: 40,
           gap: 24,
@@ -190,17 +213,26 @@ export default function StudioProfileScreen() {
               <ProfileDesktopHeroPanel
                 profileName={profileName}
                 roleLabel={t("profile.hero.studioProfile")}
-                profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
+                profileImageUrl={
+                  studioSettings?.profileImageUrl ?? currentUser?.image
+                }
                 palette={palette}
                 summary={publicProfileSummary}
                 statusLabel={setupStatusLabel}
                 metaLabel={
                   memberSince
-                    ? t("profile.account.memberSinceValue", { date: memberSince })
+                    ? t("profile.account.memberSinceValue", {
+                        date: memberSince,
+                      })
                     : sportsSummary
                 }
-                primaryAction={{ label: t("profile.actions.edit"), onPress: handleRequestEdit }}
-                {...(primarySetupAction ? { secondaryAction: primarySetupAction } : {})}
+                primaryAction={{
+                  label: t("profile.actions.edit"),
+                  onPress: handleRequestEdit,
+                }}
+                {...(primarySetupAction
+                  ? { secondaryAction: primarySetupAction }
+                  : {})}
               />
             </View>
 
@@ -221,12 +253,14 @@ export default function StudioProfileScreen() {
 
                 <ProfileSectionHeader
                   label={t("profile.sections.studio")}
-                  description={t("profile.sections.studioDesc")}
                   icon="building.2.fill"
                   palette={palette}
                   flush
                 />
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+                <ProfileSectionCard
+                  palette={palette}
+                  style={styles.desktopCardGroup}
+                >
                   <ProfileSettingRow
                     title={t("profile.settings.publicProfile")}
                     subtitle={publicProfileSummary}
@@ -238,7 +272,8 @@ export default function StudioProfileScreen() {
                   <ProfileSettingRow
                     title={t("profile.settings.studioDetails")}
                     subtitle={
-                      studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
+                      studioSettings?.address ??
+                      t("profile.settings.completeOnboardingAddress")
                     }
                     icon="building.2.fill"
                     onPress={handleRequestEdit}
@@ -247,7 +282,9 @@ export default function StudioProfileScreen() {
                   />
                   <ProfileSettingRow
                     title={t("profile.settings.coverageZone")}
-                    subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
+                    subtitle={
+                      studioSettings?.zone ?? t("profile.settings.noZone")
+                    }
                     icon="mappin.and.ellipse"
                     onPress={handleRequestEdit}
                     palette={palette}
@@ -258,12 +295,14 @@ export default function StudioProfileScreen() {
               <View style={styles.desktopSideColumn}>
                 <ProfileSectionHeader
                   label={t("profile.account.title")}
-                  description={t("profile.sections.accountDesc")}
                   icon="person.crop.circle.fill"
                   palette={palette}
                   flush
                 />
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+                <ProfileSectionCard
+                  palette={palette}
+                  style={styles.desktopCardGroup}
+                >
                   <ProfileSettingRow
                     title={t("profile.account.nameLabel")}
                     value={currentUser?.fullName ?? profileName}
@@ -283,7 +322,7 @@ export default function StudioProfileScreen() {
                     value={roleValue}
                     icon="checkmark.circle.fill"
                     palette={palette}
-                    showDivider={Boolean(memberSince)}
+                    showDivider
                   />
                   {memberSince ? (
                     <ProfileSettingRow
@@ -291,23 +330,20 @@ export default function StudioProfileScreen() {
                       value={memberSince}
                       icon="calendar.circle.fill"
                       palette={palette}
+                      showDivider
                     />
                   ) : null}
-                </ProfileSectionCard>
-
-                <ProfileSectionHeader
-                  label={t("profile.sections.preferences")}
-                  description={t("profile.sections.preferencesDesc")}
-                  icon="globe"
-                  palette={palette}
-                  flush
-                />
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                   <ProfileSettingRow
                     title={t("profile.language.title")}
-                    value={language === "en" ? t("language.english") : t("language.hebrew")}
+                    value={
+                      language === "en"
+                        ? t("language.english")
+                        : t("language.hebrew")
+                    }
                     icon="globe"
-                    onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                    onPress={() =>
+                      void setLanguage(language === "en" ? "he" : "en")
+                    }
                     palette={palette}
                     showDivider
                   />
@@ -319,7 +355,9 @@ export default function StudioProfileScreen() {
                     accessory={
                       <Switch
                         value={preference === "system"}
-                        onValueChange={(value) => setPreference(value ? "system" : "light")}
+                        onValueChange={(value) =>
+                          setPreference(value ? "system" : "light")
+                        }
                         trackColor={{
                           true: palette.primary as string,
                           false: palette.borderStrong as string,
@@ -335,7 +373,9 @@ export default function StudioProfileScreen() {
                       <Switch
                         disabled={preference === "system"}
                         value={preference === "dark"}
-                        onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                        onValueChange={(value) =>
+                          setPreference(value ? "dark" : "light")
+                        }
                         trackColor={{
                           true: palette.primary as string,
                           false: palette.borderStrong as string,
@@ -347,12 +387,14 @@ export default function StudioProfileScreen() {
 
                 <ProfileSectionHeader
                   label={t("profile.sections.operations")}
-                  description={t("profile.sections.operationsDesc")}
                   icon="slider.horizontal.3"
                   palette={palette}
                   flush
                 />
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+                <ProfileSectionCard
+                  palette={palette}
+                  style={styles.desktopCardGroup}
+                >
                   <ProfileSettingRow
                     title={t("profile.settings.autoExpireJobs")}
                     value={t("profile.settings.autoExpire.value", {
@@ -366,7 +408,9 @@ export default function StudioProfileScreen() {
                     title={t("profile.settings.calendar.title")}
                     subtitle={calendarSummary}
                     icon="calendar.circle.fill"
-                    onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
+                    onPress={() =>
+                      router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)
+                    }
                     palette={palette}
                     showDivider
                   />
@@ -376,10 +420,8 @@ export default function StudioProfileScreen() {
                     icon="creditcard.fill"
                     onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
                     palette={palette}
+                    showDivider
                   />
-                </ProfileSectionCard>
-
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                   <ProfileSettingRow
                     title={t("auth.signOutButton")}
                     subtitle={t("profile.settings.signOutDesc")}
@@ -401,7 +443,9 @@ export default function StudioProfileScreen() {
                 statusLabel={setupStatusLabel}
                 subtitleLabel={
                   primarySetupAction
-                    ? t("profile.setup.nextStep", { step: primarySetupAction.label.toLowerCase() })
+                    ? t("profile.setup.nextStep", {
+                        step: primarySetupAction.label.toLowerCase(),
+                      })
                     : t("profile.setup.allClear")
                 }
               />
@@ -409,7 +453,6 @@ export default function StudioProfileScreen() {
             <View style={styles.mobileSectionsContainer}>
               <ProfileSectionHeader
                 label={t("profile.sections.studio")}
-                description={t("profile.sections.studioDesc")}
                 icon="building.2.fill"
                 palette={palette}
               />
@@ -425,7 +468,8 @@ export default function StudioProfileScreen() {
                 <ProfileSettingRow
                   title={t("profile.settings.studioDetails")}
                   subtitle={
-                    studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
+                    studioSettings?.address ??
+                    t("profile.settings.completeOnboardingAddress")
                   }
                   icon="building.2.fill"
                   onPress={handleRequestEdit}
@@ -434,7 +478,9 @@ export default function StudioProfileScreen() {
                 />
                 <ProfileSettingRow
                   title={t("profile.settings.coverageZone")}
-                  subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
+                  subtitle={
+                    studioSettings?.zone ?? t("profile.settings.noZone")
+                  }
                   icon="mappin.and.ellipse"
                   onPress={handleRequestEdit}
                   palette={palette}
@@ -443,7 +489,6 @@ export default function StudioProfileScreen() {
 
               <ProfileSectionHeader
                 label={t("profile.account.title")}
-                description={t("profile.sections.accountDesc")}
                 icon="person.crop.circle.fill"
                 palette={palette}
               />
@@ -467,7 +512,7 @@ export default function StudioProfileScreen() {
                   value={roleValue}
                   icon="checkmark.circle.fill"
                   palette={palette}
-                  showDivider={Boolean(memberSince)}
+                  showDivider
                 />
                 {memberSince ? (
                   <ProfileSettingRow
@@ -475,22 +520,20 @@ export default function StudioProfileScreen() {
                     value={memberSince}
                     icon="calendar.circle.fill"
                     palette={palette}
+                    showDivider
                   />
                 ) : null}
-              </ProfileSectionCard>
-
-              <ProfileSectionHeader
-                label={t("profile.sections.preferences")}
-                description={t("profile.sections.preferencesDesc")}
-                icon="globe"
-                palette={palette}
-              />
-              <ProfileSectionCard palette={palette}>
                 <ProfileSettingRow
                   title={t("profile.language.title")}
-                  value={language === "en" ? t("language.english") : t("language.hebrew")}
+                  value={
+                    language === "en"
+                      ? t("language.english")
+                      : t("language.hebrew")
+                  }
                   icon="globe"
-                  onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                  onPress={() =>
+                    void setLanguage(language === "en" ? "he" : "en")
+                  }
                   palette={palette}
                   showDivider
                 />
@@ -502,7 +545,9 @@ export default function StudioProfileScreen() {
                   accessory={
                     <Switch
                       value={preference === "system"}
-                      onValueChange={(value) => setPreference(value ? "system" : "light")}
+                      onValueChange={(value) =>
+                        setPreference(value ? "system" : "light")
+                      }
                       trackColor={{
                         true: palette.primary as string,
                         false: palette.borderStrong as string,
@@ -518,7 +563,9 @@ export default function StudioProfileScreen() {
                     <Switch
                       disabled={preference === "system"}
                       value={preference === "dark"}
-                      onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                      onValueChange={(value) =>
+                        setPreference(value ? "dark" : "light")
+                      }
                       trackColor={{
                         true: palette.primary as string,
                         false: palette.borderStrong as string,
@@ -530,7 +577,6 @@ export default function StudioProfileScreen() {
 
               <ProfileSectionHeader
                 label={t("profile.sections.operations")}
-                description={t("profile.sections.operationsDesc")}
                 icon="slider.horizontal.3"
                 palette={palette}
               />
@@ -548,7 +594,9 @@ export default function StudioProfileScreen() {
                   title={t("profile.settings.calendar.title")}
                   subtitle={calendarSummary}
                   icon="calendar.circle.fill"
-                  onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
+                  onPress={() =>
+                    router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)
+                  }
                   palette={palette}
                   showDivider
                 />
@@ -558,21 +606,17 @@ export default function StudioProfileScreen() {
                   icon="creditcard.fill"
                   onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
                   palette={palette}
+                  showDivider
+                />
+                <ProfileSettingRow
+                  title={t("auth.signOutButton")}
+                  subtitle={t("profile.settings.signOutDesc")}
+                  icon="arrow.right.square"
+                  onPress={() => void signOut()}
+                  palette={palette}
+                  tone="danger"
                 />
               </ProfileSectionCard>
-
-              <View style={{ marginTop: 32, marginBottom: 40 }}>
-                <ProfileSectionCard palette={palette}>
-                  <ProfileSettingRow
-                    title={t("auth.signOutButton")}
-                    subtitle={t("profile.settings.signOutDesc")}
-                    icon="arrow.right.square"
-                    onPress={() => void signOut()}
-                    palette={palette}
-                    tone="danger"
-                  />
-                </ProfileSectionCard>
-              </View>
             </View>
           </View>
         )}
@@ -582,12 +626,16 @@ export default function StudioProfileScreen() {
         <ProfileHeroSheet
           profileName={profileName}
           roleLabel={t("profile.hero.studioProfile")}
-          profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
+          profileImageUrl={
+            studioSettings?.profileImageUrl ?? currentUser?.image
+          }
           palette={palette}
           scrollY={scrollY}
           onRequestEdit={handleRequestEdit}
           primaryActionLabel={t("profile.actions.edit")}
-          {...(primarySetupAction ? { secondaryAction: primarySetupAction } : {})}
+          {...(primarySetupAction
+            ? { secondaryAction: primarySetupAction }
+            : {})}
           statusLabel={setupStatusLabel}
           bio={studioSettings?.bio}
           socialLinks={studioSettings?.socialLinks}
