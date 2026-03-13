@@ -580,6 +580,12 @@ Replace with consequence and momentum:
 - took push permission out of the instructor detail step and moved it behind the core onboarding save path
 - kept the onboarding structure intact while reducing first-run ceremony and making the main flow faster to finish
 
+### Slice 17
+
+- rebuilt the instructor and studio home hero surfaces around immediate next actions instead of passive summary cards
+- replaced soft dashboard copy with stronger signal tiles, direct action rails, and tighter queue language
+- kept the redesign on shared semantic tokens only so the new home pass does not introduce another color or styling pocket
+
 ## Final Verdict
 
 The app is not ugly.

@@ -15,6 +15,7 @@ import {
   getHomeHeaderScrollTopPadding,
   HomeHeaderSheet,
 } from "@/components/home/home-header-sheet";
+import { HomeSignalTile } from "@/components/home/home-shared";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
@@ -99,11 +100,6 @@ export function StudioHomeContent({
           count: jobsFilled,
           defaultValue: `${String(jobsFilled)} closed`,
         });
-  const leadAction = jobsNeedingReview.length > 0 ? onOpenJobs : onOpenCalendar;
-  const leadActionHint =
-    jobsNeedingReview.length > 0
-      ? t("home.actions.jobsTitle", { defaultValue: "Open jobs" })
-      : t("home.actions.calendarTitle", { defaultValue: "Open calendar" });
 
   const visibleRecentJobs = recentJobs.slice(0, layout.isWideWeb ? 6 : 4);
 
@@ -133,74 +129,144 @@ export function StudioHomeContent({
         }}
       >
         <Animated.View entering={FadeInUp.delay(80).duration(280)}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={leadActionHint}
-            onPress={leadAction}
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.94 : 1,
-              transform: [{ scale: pressed ? 0.995 : 1 }],
-            })}
+          <HomeSurface
+            palette={palette}
+            tone="primary"
+            style={{
+              padding: BrandSpacing.xl,
+              gap: BrandSpacing.lg,
+            }}
           >
-            <HomeSurface
-              palette={palette}
-              tone="surface"
+            <View style={{ gap: 6 }}>
+              <Text
+                style={{
+                  ...BrandType.micro,
+                  color: palette.onPrimary as string,
+                  letterSpacing: 0.8,
+                  opacity: 0.76,
+                }}
+              >
+                {jobsNeedingReview.length > 0
+                  ? t("home.studio.eyebrowReview", {
+                      defaultValue: "REVIEW QUEUE",
+                    })
+                  : t("home.studio.eyebrowOps", {
+                      defaultValue: "OPERATIONS",
+                    })}
+              </Text>
+              <Text
+                style={{
+                  ...BrandType.heading,
+                  fontSize: layout.isWideWeb ? 34 : 28,
+                  lineHeight: layout.isWideWeb ? 36 : 30,
+                  color: palette.onPrimary as string,
+                }}
+              >
+                {heroTitle}
+              </Text>
+              <Text
+                style={{
+                  ...BrandType.body,
+                  color: palette.onPrimary as string,
+                  opacity: 0.84,
+                }}
+              >
+                {jobsNeedingReview.length > 0
+                  ? t("home.studio.waitingCount", {
+                      count: pendingApplicants,
+                      defaultValue: `${String(pendingApplicants)} waiting`,
+                    })
+                  : t("home.studio.heroActive", {
+                      count: openJobs,
+                      defaultValue: `${String(openJobs)} active jobs on the board`,
+                    })}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <HomeSignalTile
+                label={t("home.actions.jobsTitle", { defaultValue: "Open jobs" })}
+                value={String(openJobs)}
+                detail={t("home.studio.heroActive", {
+                  count: openJobs,
+                  defaultValue: `${String(openJobs)} live on board`,
+                })}
+                palette={palette}
+              />
+              <HomeSignalTile
+                label={heroSecondaryLabel}
+                value={heroSecondaryValue}
+                detail={t("home.studio.pendingApplicants", {
+                  defaultValue: "Pending applicants",
+                })}
+                palette={palette}
+                tone="accent"
+              />
+              <HomeSignalTile
+                label={t("home.studio.recentlyFilled", {
+                  defaultValue: "Recently filled",
+                })}
+                value={String(jobsFilled)}
+                detail={t("home.studio.closedCount", {
+                  count: jobsFilled,
+                  defaultValue: `${String(jobsFilled)} closed`,
+                })}
+                palette={palette}
+              />
+            </View>
+
+            <View
               style={{
-                padding: BrandSpacing.xl,
-                gap: BrandSpacing.md,
+                flexDirection: layout.isWideWeb ? "row" : "column",
+                gap: 10,
               }}
             >
-              <View style={{ gap: 6 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("home.actions.jobsTitle", {
+                  defaultValue: "Open jobs",
+                })}
+                onPress={onOpenJobs}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  minHeight: 50,
+                  borderRadius: 18,
+                  borderCurve: "continuous",
+                  backgroundColor: palette.surface as string,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 16,
+                  opacity: pressed ? 0.92 : 1,
+                })}
+              >
                 <Text
                   style={{
-                    ...BrandType.micro,
-                    color: palette.textMuted as string,
-                    letterSpacing: 0.8,
-                  }}
-                >
-                  {jobsNeedingReview.length > 0
-                    ? t("home.studio.eyebrowReview", {
-                        defaultValue: "REVIEW QUEUE",
-                      })
-                    : t("home.studio.eyebrowOps", {
-                        defaultValue: "OPERATIONS",
-                      })}
-                </Text>
-                <Text
-                  style={{
-                    ...BrandType.heading,
-                    fontSize: layout.isWideWeb ? 30 : 24,
-                    lineHeight: layout.isWideWeb ? 32 : 26,
+                    ...BrandType.bodyStrong,
                     color: palette.text as string,
                   }}
                 >
-                  {heroTitle}
+                  {t("home.actions.jobsTitle", { defaultValue: "Open jobs" })}
                 </Text>
-                <Text
-                  style={{
-                    ...BrandType.body,
-                    color: palette.textMuted as string,
-                  }}
-                >
-                  {jobsNeedingReview.length > 0
-                    ? t("home.studio.waitingCount", {
-                        count: pendingApplicants,
-                        defaultValue: `${String(pendingApplicants)} waiting`,
-                      })
-                    : t("home.studio.heroActive", {
-                        count: openJobs,
-                        defaultValue: `${String(openJobs)} active jobs on the board`,
-                      })}
-                </Text>
-              </View>
-
-              <View
-                style={{
-                  flexDirection: layout.isWideWeb ? "row" : "column",
-                  alignItems: layout.isWideWeb ? "center" : "stretch",
-                  justifyContent: "space-between",
-                  gap: BrandSpacing.md,
-                }}
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("home.actions.calendarTitle", {
+                  defaultValue: "Open calendar",
+                })}
+                onPress={onOpenCalendar}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  minHeight: 50,
+                  borderRadius: 18,
+                  borderCurve: "continuous",
+                  backgroundColor: palette.primarySubtle as string,
+                  borderWidth: 1,
+                  borderColor: palette.borderStrong as string,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 16,
+                  opacity: pressed ? 0.9 : 1,
+                })}
               >
                 <Text
                   style={{
@@ -208,21 +274,13 @@ export function StudioHomeContent({
                     color: palette.primary as string,
                   }}
                 >
-                  {`${heroSecondaryLabel}: ${heroSecondaryValue}`}
+                  {t("home.actions.calendarTitle", {
+                    defaultValue: "Open calendar",
+                  })}
                 </Text>
-                <Text
-                  style={{
-                    ...BrandType.micro,
-                    color: palette.textMuted as string,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.6,
-                  }}
-                >
-                  {leadActionHint}
-                </Text>
-              </View>
-            </HomeSurface>
-          </Pressable>
+              </Pressable>
+            </View>
+          </HomeSurface>
         </Animated.View>
 
         <View
@@ -276,6 +334,18 @@ export function StudioHomeContent({
                           }}
                         >
                           <View style={{ flex: 1, gap: 3 }}>
+                            <Text
+                              style={{
+                                ...BrandType.micro,
+                                color: palette.primary as string,
+                                letterSpacing: 0.6,
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              {t("home.studio.queueEyebrow", {
+                                defaultValue: "Queue",
+                              })}
+                            </Text>
                             <Text
                               style={{
                                 ...BrandType.title,
