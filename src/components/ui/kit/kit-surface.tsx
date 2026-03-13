@@ -46,9 +46,9 @@ export function KitSurface({
   style,
   ...rest
 }: KitSurfaceProps) {
-  const { background, scheme, stylePreference } = useKitTheme();
+  const { background, scheme } = useKitTheme();
   const isGlass = tone === "glass";
-  const allowNativeGlass = stylePreference === "native" && process.env.EXPO_OS === "ios";
+  const allowNativeGlass = process.env.EXPO_OS === "ios";
   const glassModule = allowNativeGlass ? getGlassModule() : null;
 
   const baseStyle = [
@@ -57,7 +57,7 @@ export function KitSurface({
       borderCurve: "continuous" as const,
       padding,
       gap,
-        ...(tone === "elevated"
+      ...(tone === "elevated"
         ? {
             backgroundColor: background.surfaceElevated,
           }
@@ -65,11 +65,11 @@ export function KitSurface({
           ? {
               backgroundColor: background.sheet,
             }
-        : tone === "sunken"
-          ? { backgroundColor: background.panel }
-          : isGlass
-            ? { backgroundColor: background.glass }
-            : { backgroundColor: background.panel }),
+          : tone === "sunken"
+            ? { backgroundColor: background.panel }
+            : isGlass
+              ? { backgroundColor: background.glass }
+              : { backgroundColor: background.panel }),
     },
     style,
   ];
