@@ -508,6 +508,12 @@ Replace with consequence and momentum:
 - made sign-in lead with email first instead of giving every auth method equal weight
 - reduced onboarding action plumbing to simpler native-style buttons and clearer next/back flows
 
+### Slice 05
+
+- removed kit action wrappers from the create-job sheet and small shared controls
+- simplified dismiss and clear interactions to plain native pressables
+- trimmed over-authored create-job copy so the sheet gets to the point faster
+
 ## Final Verdict
 
 The app is not ugly.

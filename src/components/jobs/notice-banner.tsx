@@ -1,8 +1,13 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { type ColorValue, StyleSheet, View, type ViewStyle } from "react-native";
+import {
+  type ColorValue,
+  Pressable,
+  StyleSheet,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { KitPressable } from "@/components/ui/kit";
 
 type NoticeBannerProps = {
   tone: "success" | "error";
@@ -38,16 +43,17 @@ export function NoticeBanner({
       <ThemedText selectable style={[styles.copy, { color: textColor }]}>
         {message}
       </ThemedText>
-      <KitPressable
+      <Pressable
         hitSlop={8}
         onPress={onDismiss}
-        style={styles.dismiss}
         accessibilityRole="button"
-        nativeFeedback={false}
-        pressedOpacity={0.7}
+        style={({ pressed }) => [
+          styles.dismiss,
+          { opacity: pressed ? 0.7 : 1 },
+        ]}
       >
         <MaterialIcons name="close" size={16} color={textColor} />
-      </KitPressable>
+      </Pressable>
     </View>
   );
 }
