@@ -526,6 +526,12 @@ Replace with consequence and momentum:
 - kept those routes structurally intact while simplifying their action layer
 - finished the profile-form cleanup before moving to heavier calendar, map, and payments screens
 
+### Slice 08
+
+- removed kit action wrappers from medium shared surfaces including address autocomplete, payment activity rows, web tabs, map controls, and the performance hero selector
+- kept the slice tactical so the remaining work is concentrated in the largest screen files
+- reduced more interaction plumbing without expanding the abstraction surface
+
 ## Final Verdict
 
 The app is not ugly.

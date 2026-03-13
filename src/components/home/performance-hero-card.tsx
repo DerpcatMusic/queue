@@ -1,12 +1,24 @@
 import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type LayoutChangeEvent, PanResponder, Text, View } from "react-native";
+import {
+  type LayoutChangeEvent,
+  PanResponder,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { useHomeDashboardLayout } from "@/components/home/home-dashboard-layout";
-import type { AxisTick, MetricMode, Timeframe } from "@/components/home/performance-chart-math";
-import { buildSplinePaths, getAdjacentTimeframe } from "@/components/home/performance-chart-math";
+import type {
+  AxisTick,
+  MetricMode,
+  Timeframe,
+} from "@/components/home/performance-chart-math";
+import {
+  buildSplinePaths,
+  getAdjacentTimeframe,
+} from "@/components/home/performance-chart-math";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitPressable } from "@/components/ui/kit";
 import { type BrandPalette, BrandRadius, BrandType } from "@/constants/brand";
 
 export type PerformanceTimeframeSeries = {
@@ -45,7 +57,10 @@ type AxisLabelEntry = {
   x: number;
 };
 
-const METRIC_ICONS: Record<MetricMode, "creditcard.fill" | "calendar.badge.clock"> = {
+const METRIC_ICONS: Record<
+  MetricMode,
+  "creditcard.fill" | "calendar.badge.clock"
+> = {
   earnings: "creditcard.fill",
   lessons: "calendar.badge.clock",
 };
@@ -72,10 +87,19 @@ export function PerformanceHeroCard({
   const gradientId = `hero-fill-${useId()}`;
 
   const currentSeries = seriesByTimeframe[timeframe];
-  const currentMetricOption = metricOptions.find((option) => option.value === metricMode);
-  const currentMetricLabel = currentMetricOption?.label ?? t(`home.performance.${metricMode}`);
+  const currentMetricOption = metricOptions.find(
+    (option) => option.value === metricMode,
+  );
+  const currentMetricLabel =
+    currentMetricOption?.label ?? t(`home.performance.${metricMode}`);
   const { linePath, areaPath, separators, pointXs, hasActivity } = useMemo(
-    () => buildSplinePaths(currentSeries.values, chartWidth, chartHeight, chartPadding),
+    () =>
+      buildSplinePaths(
+        currentSeries.values,
+        chartWidth,
+        chartHeight,
+        chartPadding,
+      ),
     [chartHeight, chartWidth, currentSeries.values],
   );
 
@@ -102,7 +126,8 @@ export function PerformanceHeroCard({
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_evt, gestureState) =>
-          Math.abs(gestureState.dx) > 12 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
+          Math.abs(gestureState.dx) > 12 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
         onPanResponderRelease: (_evt, gestureState) => {
           const absDx = Math.abs(gestureState.dx);
           if (absDx >= 44) {
@@ -141,7 +166,14 @@ export function PerformanceHeroCard({
         }}
       >
         <View style={{ flex: 1, gap: 10 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
             <View
               style={{
                 flexDirection: "row",
@@ -191,7 +223,11 @@ export function PerformanceHeroCard({
             {totalLabel}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <IconSymbol name="sparkles" size={14} color={palette.onPrimary as string} />
+            <IconSymbol
+              name="sparkles"
+              size={14}
+              color={palette.onPrimary as string}
+            />
             <Text
               style={{
                 ...BrandType.micro,
@@ -219,7 +255,7 @@ export function PerformanceHeroCard({
           {metricOptions.map((option) => {
             const selected = option.value === metricMode;
             return (
-              <KitPressable
+              <Pressable
                 key={option.value}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
@@ -227,9 +263,7 @@ export function PerformanceHeroCard({
                   metric: option.label,
                 })}
                 onPress={() => onSelectMetric(option.value)}
-                nativeFeedback={false}
-                pressStyle={{ opacity: 0.9, transform: [{ scale: 0.98 }] }}
-                style={{
+                style={({ pressed }) => ({
                   minHeight: 36,
                   minWidth: 82,
                   flex: layout.isWideWeb ? undefined : 1,
@@ -242,23 +276,31 @@ export function PerformanceHeroCard({
                   backgroundColor: selected
                     ? (palette.onPrimary as string)
                     : "rgba(255,255,255,0.08)",
-                }}
+                  opacity: pressed ? 0.9 : 1,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                })}
               >
                 <IconSymbol
                   name={METRIC_ICONS[option.value]}
                   size={14}
-                  color={selected ? (palette.primary as string) : (palette.onPrimary as string)}
+                  color={
+                    selected
+                      ? (palette.primary as string)
+                      : (palette.onPrimary as string)
+                  }
                 />
                 <Text
                   style={{
                     ...BrandType.micro,
-                    color: selected ? (palette.primary as string) : (palette.onPrimary as string),
+                    color: selected
+                      ? (palette.primary as string)
+                      : (palette.onPrimary as string),
                     opacity: selected ? 1 : 0.76,
                   }}
                 >
                   {option.label}
                 </Text>
-              </KitPressable>
+              </Pressable>
             );
           })}
         </View>
@@ -285,7 +327,10 @@ export function PerformanceHeroCard({
           paddingTop: 10,
         }}
       >
-        <View style={{ flex: 1 }} importantForAccessibility="no-hide-descendants">
+        <View
+          style={{ flex: 1 }}
+          importantForAccessibility="no-hide-descendants"
+        >
           {separators.map((x, idx) => (
             <View
               key={`separator-${String(idx)}`}
@@ -307,13 +352,28 @@ export function PerformanceHeroCard({
           >
             <Defs>
               <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor={palette.onPrimary as string} stopOpacity={0.34} />
-                <Stop offset="100%" stopColor={palette.onPrimary as string} stopOpacity={0.04} />
+                <Stop
+                  offset="0%"
+                  stopColor={palette.onPrimary as string}
+                  stopOpacity={0.34}
+                />
+                <Stop
+                  offset="100%"
+                  stopColor={palette.onPrimary as string}
+                  stopOpacity={0.04}
+                />
               </LinearGradient>
             </Defs>
-            {hasActivity && areaPath ? <Path d={areaPath} fill={`url(#${gradientId})`} /> : null}
+            {hasActivity && areaPath ? (
+              <Path d={areaPath} fill={`url(#${gradientId})`} />
+            ) : null}
             {linePath ? (
-              <Path d={linePath} stroke={palette.onPrimary as string} strokeWidth={3} fill="none" />
+              <Path
+                d={linePath}
+                stroke={palette.onPrimary as string}
+                strokeWidth={3}
+                fill="none"
+              />
             ) : null}
           </Svg>
         </View>
@@ -351,17 +411,18 @@ export function PerformanceHeroCard({
           gap: 10,
         }}
       >
-        <View style={{ flexDirection: "row", gap: 8, flex: 1, flexWrap: "wrap" }}>
+        <View
+          style={{ flexDirection: "row", gap: 8, flex: 1, flexWrap: "wrap" }}
+        >
           {timeframeOptions.map((option) => {
             const selected = option.value === timeframe;
             return (
-              <KitPressable
+              <Pressable
                 key={option.value}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 onPress={() => onSelectTimeframe(option.value)}
-                nativeFeedback={false}
-                style={{
+                style={({ pressed }) => ({
                   minHeight: 34,
                   borderRadius: BrandRadius.pill,
                   alignItems: "center",
@@ -370,18 +431,21 @@ export function PerformanceHeroCard({
                   backgroundColor: selected
                     ? (palette.onPrimary as string)
                     : "rgba(255,255,255,0.12)",
-                }}
+                  opacity: pressed ? 0.9 : 1,
+                })}
               >
                 <Text
                   style={{
                     ...BrandType.micro,
-                    color: selected ? (palette.primary as string) : (palette.onPrimary as string),
+                    color: selected
+                      ? (palette.primary as string)
+                      : (palette.onPrimary as string),
                     opacity: selected ? 1 : 0.76,
                   }}
                 >
                   {option.label}
                 </Text>
-              </KitPressable>
+              </Pressable>
             );
           })}
         </View>
