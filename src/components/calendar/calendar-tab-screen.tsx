@@ -6,6 +6,7 @@ import {
   I18nManager,
   type LayoutChangeEvent,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -25,7 +26,8 @@ import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { TopSheetSurface } from "@/components/layout/top-sheet-surface";
 import { LoadingScreen } from "@/components/loading-screen";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { KitButton, KitPressable, KitSegmentedToggle } from "@/components/ui/kit";
+import { ActionButton } from "@/components/ui/action-button";
+import { KitSegmentedToggle } from "@/components/ui/kit";
 import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -195,7 +197,10 @@ function WeekRail({
     () => weekDays.map((dayKey) => shiftDayKey(dayKey, -7)),
     [weekDays],
   );
-  const nextWeekDays = useMemo(() => weekDays.map((dayKey) => shiftDayKey(dayKey, 7)), [weekDays]);
+  const nextWeekDays = useMemo(
+    () => weekDays.map((dayKey) => shiftDayKey(dayKey, 7)),
+    [weekDays],
+  );
 
   const handleSwipeWeek = useCallback(
     (deltaWeeks: number) => {
@@ -237,14 +242,19 @@ function WeekRail({
             event.translationX <= -Math.max(SWIPE_THRESHOLD, width * 0.2) ||
             event.velocityX <= -650;
           const shouldRewind =
-            event.translationX >= Math.max(SWIPE_THRESHOLD, width * 0.2) || event.velocityX >= 650;
+            event.translationX >= Math.max(SWIPE_THRESHOLD, width * 0.2) ||
+            event.velocityX >= 650;
 
           if (shouldAdvance) {
-            translateX.value = withSpring(-width * 2, WEEK_RAIL_SPRING, (finished) => {
-              if (!finished) return;
-              translateX.value = -width;
-              runOnJS(handleSwipeWeek)(1);
-            });
+            translateX.value = withSpring(
+              -width * 2,
+              WEEK_RAIL_SPRING,
+              (finished) => {
+                if (!finished) return;
+                translateX.value = -width;
+                runOnJS(handleSwipeWeek)(1);
+              },
+            );
             return;
           }
 
@@ -283,7 +293,7 @@ function WeekRail({
 
           return (
             <Animated.View key={dayKey} style={{ flex: 1 }}>
-              <KitPressable
+              <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 accessibilityLabel={formatSelectedDayLabel(dayKey, locale)}
@@ -314,7 +324,9 @@ function WeekRail({
                   <Text
                     style={{
                       ...BrandType.micro,
-                      color: today ? (palette.text as string) : (palette.textMuted as string),
+                      color: today
+                        ? (palette.text as string)
+                        : (palette.textMuted as string),
                     }}
                   >
                     {formatWeekdayLetter(dayKey, locale)}
@@ -327,9 +339,13 @@ function WeekRail({
                       borderCurve: "continuous",
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: selected ? (palette.text as string) : "transparent",
+                      backgroundColor: selected
+                        ? (palette.text as string)
+                        : "transparent",
                       borderWidth: today && !selected ? 1 : 0,
-                      borderColor: today ? (palette.borderStrong as string) : "transparent",
+                      borderColor: today
+                        ? (palette.borderStrong as string)
+                        : "transparent",
                     }}
                   >
                     <Text
@@ -339,7 +355,9 @@ function WeekRail({
                         lineHeight: 22,
                         fontVariant: ["tabular-nums"],
                         includeFontPadding: false,
-                        color: selected ? (palette.surface as string) : (palette.text as string),
+                        color: selected
+                          ? (palette.surface as string)
+                          : (palette.text as string),
                       }}
                     >
                       {formatDayNumber(dayKey)}
@@ -382,7 +400,7 @@ function WeekRail({
                     )}
                   </View>
                 </View>
-              </KitPressable>
+              </Pressable>
             </Animated.View>
           );
         })}
@@ -443,8 +461,12 @@ export function WeekStrip({
   const palette = useBrand();
   const { width: screenWidth } = useWindowDimensions();
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
-  const selectedWeekStart = useMemo(() => getWeekStart(selectedDay), [selectedDay]);
-  const [displayedWeekStart, setDisplayedWeekStart] = useState(selectedWeekStart);
+  const selectedWeekStart = useMemo(
+    () => getWeekStart(selectedDay),
+    [selectedDay],
+  );
+  const [displayedWeekStart, setDisplayedWeekStart] =
+    useState(selectedWeekStart);
   const displayedWeekStartRef = useRef(selectedWeekStart);
   const [displayedSelectedDay, setDisplayedSelectedDay] = useState(selectedDay);
   const displayedSelectedDayRef = useRef(selectedDay);
@@ -460,9 +482,15 @@ export function WeekStrip({
   // 3-week triptych: prev, current, next
   const prevWeekStart = addDays(weekStart, -7);
   const nextWeekStart = addDays(weekStart, 7);
-  const prevWeekDays = useMemo(() => getWeekDays(prevWeekStart), [prevWeekStart]);
+  const prevWeekDays = useMemo(
+    () => getWeekDays(prevWeekStart),
+    [prevWeekStart],
+  );
   const currWeekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
-  const nextWeekDays = useMemo(() => getWeekDays(nextWeekStart), [nextWeekStart]);
+  const nextWeekDays = useMemo(
+    () => getWeekDays(nextWeekStart),
+    [nextWeekStart],
+  );
 
   // ─── Single unified pan gesture ──────────────────────────────────────
   const swipeX = useSharedValue(0);
@@ -483,11 +511,17 @@ export function WeekStrip({
   }, []);
   const commitWeekSwipe = useCallback(
     (deltaWeeks: number) => {
-      const nextWeekStart = addDays(displayedWeekStartRef.current, deltaWeeks * 7);
+      const nextWeekStart = addDays(
+        displayedWeekStartRef.current,
+        deltaWeeks * 7,
+      );
       displayedWeekStartRef.current = nextWeekStart;
       setDisplayedWeekStart(nextWeekStart);
 
-      const nextSelectedDay = addDays(displayedSelectedDayRef.current, deltaWeeks * 7);
+      const nextSelectedDay = addDays(
+        displayedSelectedDayRef.current,
+        deltaWeeks * 7,
+      );
       displayedSelectedDayRef.current = nextSelectedDay;
       setDisplayedSelectedDay(nextSelectedDay);
 
@@ -547,11 +581,17 @@ export function WeekStrip({
         const isExpanded = expandProgress.value > 0.5;
         const weekDelta = isExpanded ? 4 : 1; // month vs week navigation
 
-        if (e.translationX < -SWIPE_THRESHOLD || (e.velocityX < -500 && e.translationX < -20)) {
+        if (
+          e.translationX < -SWIPE_THRESHOLD ||
+          (e.velocityX < -500 && e.translationX < -20)
+        ) {
           swipeX.value = withTiming(-panelWidth, { duration: 200 }, () => {
             runOnJS(commitWeekSwipe)(weekDelta);
           });
-        } else if (e.translationX > SWIPE_THRESHOLD || (e.velocityX > 500 && e.translationX > 20)) {
+        } else if (
+          e.translationX > SWIPE_THRESHOLD ||
+          (e.velocityX > 500 && e.translationX > 20)
+        ) {
           swipeX.value = withTiming(panelWidth, { duration: 200 }, () => {
             runOnJS(commitWeekSwipe)(-weekDelta);
           });
@@ -597,19 +637,21 @@ export function WeekStrip({
     const lessonCount = lessonCountByDay.get(dayKey) ?? 0;
     const isCurrentMonth = isSameMonth(dayKey, displayedSelectedDay);
     const dimmed = !isCurrentMonth;
-    const dayDateLabel = new Date(dayKeyToTimestamp(dayKey)).toLocaleDateString(locale, {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    });
+    const dayDateLabel = new Date(dayKeyToTimestamp(dayKey)).toLocaleDateString(
+      locale,
+      {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      },
+    );
 
     return (
-      <KitPressable
+      <Pressable
         key={dayKey}
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
         accessibilityLabel={`${dayDateLabel}. ${lessonCount} events.`}
-        haptic="none"
         onPress={() => {
           onDayPress(dayKey);
           triggerSelectionHaptic();
@@ -646,11 +688,16 @@ export function WeekStrip({
           </Text>
         </View>
         {hasLessons && !isSelected ? (
-          <View style={[wStyles.dot, { backgroundColor: palette.primary as string }]} />
+          <View
+            style={[
+              wStyles.dot,
+              { backgroundColor: palette.primary as string },
+            ]}
+          />
         ) : (
           <View style={wStyles.dotSpacer} />
         )}
-      </KitPressable>
+      </Pressable>
     );
   };
 
@@ -666,7 +713,7 @@ export function WeekStrip({
     >
       {/* Header */}
       <View style={wStyles.headerRow}>
-        <KitPressable
+        <Pressable
           accessibilityRole="button"
           accessibilityLabel={monthButtonLabel}
           onPress={onMonthPress}
@@ -676,24 +723,39 @@ export function WeekStrip({
           <Text style={[wStyles.monthLabel, { color: palette.text as string }]}>
             {formatMonthYear(displayedSelectedDay, locale)}
           </Text>
-          <Text style={[wStyles.monthChevron, { color: palette.textMuted as string }]}>▾</Text>
-        </KitPressable>
+          <Text
+            style={[
+              wStyles.monthChevron,
+              { color: palette.textMuted as string },
+            ]}
+          >
+            ▾
+          </Text>
+        </Pressable>
         <View style={wStyles.headerActions}>
           {displayedSelectedDay !== todayKey ? (
-            <KitPressable
+            <Pressable
               accessibilityRole="button"
               accessibilityLabel={todayLabel}
               onPress={onTodayPress}
               hitSlop={6}
             >
               <View
-                style={[wStyles.todayPill, { backgroundColor: palette.primarySubtle as string }]}
+                style={[
+                  wStyles.todayPill,
+                  { backgroundColor: palette.primarySubtle as string },
+                ]}
               >
-                <Text style={[wStyles.todayPillText, { color: palette.primary as string }]}>
+                <Text
+                  style={[
+                    wStyles.todayPillText,
+                    { color: palette.primary as string },
+                  ]}
+                >
                   {todayLabel}
                 </Text>
               </View>
-            </KitPressable>
+            </Pressable>
           ) : null}
         </View>
       </View>
@@ -702,7 +764,12 @@ export function WeekStrip({
       <View style={wStyles.weekdayLabels}>
         {getWeekDays(getWeekStart(todayKey)).map((d) => (
           <View key={d} style={wStyles.weekdayLabelCell}>
-            <Text style={[wStyles.weekdayLabel, { color: palette.textMuted as string }]}>
+            <Text
+              style={[
+                wStyles.weekdayLabel,
+                { color: palette.textMuted as string },
+              ]}
+            >
               {formatWeekdayLetter(d, locale)}
             </Text>
           </View>
@@ -713,7 +780,12 @@ export function WeekStrip({
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[{ overflow: "hidden" }, swipeStyle]}>
           {/* First row: triptych (prev | current | next) */}
-          <View style={[wStyles.triptych, { width: panelWidth * 3, marginLeft: -panelWidth }]}>
+          <View
+            style={[
+              wStyles.triptych,
+              { width: panelWidth * 3, marginLeft: -panelWidth },
+            ]}
+          >
             <View style={[wStyles.weekRow, { width: panelWidth }]}>
               {prevWeekDays.map((d) => renderDayCell(d, true))}
             </View>
@@ -737,11 +809,10 @@ export function WeekStrip({
       </GestureDetector>
 
       {/* Drag handle — enlarged touch target */}
-      <KitPressable
+      <Pressable
         style={wStyles.dragHandle}
         accessibilityRole="button"
         accessibilityLabel={dragHandleLabel}
-        haptic="none"
         onPress={() => {
           // Tap handle to toggle
           if (expandProgress.value > 0.5) {
@@ -759,8 +830,13 @@ export function WeekStrip({
         }}
         hitSlop={{ top: 12, bottom: 12, left: 40, right: 40 }}
       >
-        <View style={[wStyles.dragBar, { backgroundColor: palette.border as string }]} />
-      </KitPressable>
+        <View
+          style={[
+            wStyles.dragBar,
+            { backgroundColor: palette.border as string },
+          ]}
+        />
+      </Pressable>
     </Animated.View>
   );
 }
@@ -897,9 +973,14 @@ export default function CalendarTabScreen() {
     selectedDayTimestamp,
     isLoading,
   } = useCalendarTabController();
-  const selectedWeekDays = useMemo(() => getWeekDays(getWeekStart(selectedDay)), [selectedDay]);
+  const selectedWeekDays = useMemo(
+    () => getWeekDays(getWeekStart(selectedDay)),
+    [selectedDay],
+  );
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [pickerDate, setPickerDate] = useState(() => new Date(selectedDayTimestamp));
+  const [pickerDate, setPickerDate] = useState(
+    () => new Date(selectedDayTimestamp),
+  );
   const selectedLessonCount = lessonCountByDay.get(selectedDay) ?? 0;
 
   // ─── Render items ───────────────────────────────────────────────────────────
@@ -959,7 +1040,9 @@ export default function CalendarTabScreen() {
             <Text style={{ ...BrandType.title, color: palette.text as string }}>
               {t("calendarTab.agenda.title")}
             </Text>
-            <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
+            <Text
+              style={{ ...BrandType.micro, color: palette.textMuted as string }}
+            >
               {formatSelectedDayLabel(selectedDay, i18n.language)}
             </Text>
           </View>
@@ -987,7 +1070,9 @@ export default function CalendarTabScreen() {
             >
               {selectedLessonCount === 1
                 ? t("calendarTab.agenda.oneSession")
-                : t("calendarTab.agenda.sessionCount", { count: selectedLessonCount })}
+                : t("calendarTab.agenda.sessionCount", {
+                    count: selectedLessonCount,
+                  })}
             </Text>
           </View>
         </View>
@@ -1000,7 +1085,9 @@ export default function CalendarTabScreen() {
     ({ item }: { item: TimelineListItem }) => {
       if (item.kind === "dayHeader") {
         const isToday = item.dayKey === todayKey;
-        const dotColor = isToday ? (palette.primary as string) : (palette.textMuted as string);
+        const dotColor = isToday
+          ? (palette.primary as string)
+          : (palette.textMuted as string);
 
         return (
           <View style={styles.timelineRow}>
@@ -1020,10 +1107,17 @@ export default function CalendarTabScreen() {
               />
             </View>
             <View style={styles.dayHeaderContent}>
-              <Text style={[styles.dayHeading, { color: palette.text as string }]}>
+              <Text
+                style={[styles.dayHeading, { color: palette.text as string }]}
+              >
                 {formatDayHeading(item.dayKey, i18n.language)}
               </Text>
-              <Text style={[styles.daySubtitle, { color: palette.textMuted as string }]}>
+              <Text
+                style={[
+                  styles.daySubtitle,
+                  { color: palette.textMuted as string },
+                ]}
+              >
                 {formatDaySubtitle(item.dayKey, i18n.language)}
               </Text>
             </View>
@@ -1033,21 +1127,40 @@ export default function CalendarTabScreen() {
 
       if (item.kind === "empty") {
         return (
-          <Animated.View entering={FadeInUp.duration(300).springify().damping(20)}>
+          <Animated.View
+            entering={FadeInUp.duration(300).springify().damping(20)}
+          >
             <View style={styles.timelineRow}>
               <View style={styles.railGutter}>
-                <View style={[styles.railLine, { backgroundColor: railColor }]} />
+                <View
+                  style={[styles.railLine, { backgroundColor: railColor }]}
+                />
               </View>
-              <View style={[styles.emptyStateCard, { backgroundColor: palette.surface as string }]}>
+              <View
+                style={[
+                  styles.emptyStateCard,
+                  { backgroundColor: palette.surface as string },
+                ]}
+              >
                 <AppSymbol
                   name="calendar.badge.exclamationmark"
                   size={28}
                   tintColor={palette.textMuted as string}
                 />
-                <Text style={[styles.emptyStateTitle, { color: palette.textMuted as string }]}>
+                <Text
+                  style={[
+                    styles.emptyStateTitle,
+                    { color: palette.textMuted as string },
+                  ]}
+                >
                   {t("calendarTab.timeline.noLessons")}
                 </Text>
-                <Text style={[styles.emptyStateBody, { color: palette.textMuted as string }]}>
+                <Text
+                  style={[
+                    styles.emptyStateBody,
+                    { color: palette.textMuted as string },
+                  ]}
+                >
                   {t("calendarTab.timeline.noLessonsHint")}
                 </Text>
               </View>
@@ -1058,8 +1171,11 @@ export default function CalendarTabScreen() {
 
       const row = item.lesson;
       const swatches = palette.calendar.eventSwatches;
-      const swatch = swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ?? undefined;
-      const accent = (swatch?.background as string) ?? (palette.primary as string);
+      const swatch =
+        swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ??
+        undefined;
+      const accent =
+        (swatch?.background as string) ?? (palette.primary as string);
       const counterpart =
         row.source === "google"
           ? (row.location ?? t("calendarTab.googleCalendar"))
@@ -1106,7 +1222,7 @@ export default function CalendarTabScreen() {
             <View style={[styles.railLine, { backgroundColor: railColor }]} />
             <View style={[styles.railDotLesson, { backgroundColor: accent }]} />
           </View>
-          <KitPressable
+          <Pressable
             accessibilityRole="button"
             accessibilityLabel={t("calendarTab.lessonRowAccessibility", {
               sport: row.sport,
@@ -1115,11 +1231,19 @@ export default function CalendarTabScreen() {
             })}
             accessibilityHint={t("calendarTab.lessonRowAccessibilityHint")}
             onPress={() => handleDayPress(item.dayKey)}
-            style={[styles.lessonCard, { backgroundColor: palette.surfaceElevated as string }]}
+            style={[
+              styles.lessonCard,
+              { backgroundColor: palette.surfaceElevated as string },
+            ]}
           >
             <View style={styles.lessonContent}>
               <View style={styles.lessonTopRow}>
-                <Text style={[styles.lessonTime, { color: palette.textMuted as string }]}>
+                <Text
+                  style={[
+                    styles.lessonTime,
+                    { color: palette.textMuted as string },
+                  ]}
+                >
                   {timeLabel}
                 </Text>
                 <View style={styles.lessonBadgeRow}>
@@ -1130,26 +1254,48 @@ export default function CalendarTabScreen() {
                         { backgroundColor: palette.primarySubtle as string },
                       ]}
                     >
-                      <Text style={[styles.sourceBadgeText, { color: palette.primary as string }]}>
+                      <Text
+                        style={[
+                          styles.sourceBadgeText,
+                          { color: palette.primary as string },
+                        ]}
+                      >
                         {t("calendarTab.timeline.googleBadge")}
                       </Text>
                     </View>
                   ) : null}
-                  <View style={[styles.lifecycleBadge, { backgroundColor: lifecycleTone.bg }]}>
-                    <Text style={[styles.lifecycleBadgeText, { color: lifecycleTone.fg }]}>
+                  <View
+                    style={[
+                      styles.lifecycleBadge,
+                      { backgroundColor: lifecycleTone.bg },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.lifecycleBadgeText,
+                        { color: lifecycleTone.fg },
+                      ]}
+                    >
                       {lifecycleLabel}
                     </Text>
                   </View>
                 </View>
               </View>
-              <Text style={[styles.lessonTitle, { color: palette.text as string }]}>
+              <Text
+                style={[styles.lessonTitle, { color: palette.text as string }]}
+              >
                 {row.sport}
               </Text>
-              <Text style={[styles.lessonMeta, { color: palette.textMuted as string }]}>
+              <Text
+                style={[
+                  styles.lessonMeta,
+                  { color: palette.textMuted as string },
+                ]}
+              >
                 {counterpart}
               </Text>
             </View>
-          </KitPressable>
+          </Pressable>
         </View>
       );
     },
@@ -1164,9 +1310,24 @@ export default function CalendarTabScreen() {
 
   if (isDesktopWeb) {
     return (
-      <TabScreenRoot mode="static" style={{ backgroundColor: palette.surface as string }}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <Text style={{ ...BrandType.bodyStrong, color: palette.textMuted as string }}>
+      <TabScreenRoot
+        mode="static"
+        style={{ backgroundColor: palette.surface as string }}
+      >
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <Text
+            style={{
+              ...BrandType.bodyStrong,
+              color: palette.textMuted as string,
+            }}
+          >
             {t("calendarTab.desktopSoon")}
           </Text>
         </View>
@@ -1177,7 +1338,11 @@ export default function CalendarTabScreen() {
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
+    <TabScreenRoot
+      mode="static"
+      topInsetTone="sheet"
+      style={{ backgroundColor: palette.appBg }}
+    >
       <TopSheetSurface
         style={{
           paddingHorizontal: BrandSpacing.lg,
@@ -1207,23 +1372,31 @@ export default function CalendarTabScreen() {
               >
                 {formatMonthYear(selectedDay, i18n.language)}
               </Text>
-              <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+              <Text
+                style={{
+                  ...BrandType.caption,
+                  color: palette.textMuted as string,
+                }}
+              >
                 {formatSelectedDayLabel(selectedDay, i18n.language)}
               </Text>
             </View>
 
             <View style={{ alignItems: "flex-end", gap: BrandSpacing.sm }}>
               {selectedDay !== todayKey ? (
-                <KitButton
+                <ActionButton
                   label={t("common.today")}
                   onPress={handleTodayPress}
-                  variant="secondary"
-                  size="sm"
-                  fullWidth={false}
+                  palette={palette}
+                  tone="secondary"
                 />
               ) : null}
-              <KitButton
-                label={showDatePicker ? t("common.done") : t("calendarTab.header.chooseDate")}
+              <ActionButton
+                label={
+                  showDatePicker
+                    ? t("common.done")
+                    : t("calendarTab.header.chooseDate")
+                }
                 onPress={() => {
                   if (showDatePicker) {
                     handleDoneWithDatePicker();
@@ -1232,9 +1405,8 @@ export default function CalendarTabScreen() {
                   setShowDatePicker(true);
                   openMonthPicker();
                 }}
-                variant="secondary"
-                size="sm"
-                fullWidth={false}
+                palette={palette}
+                tone="secondary"
               />
             </View>
           </View>
@@ -1250,7 +1422,9 @@ export default function CalendarTabScreen() {
               paddingTop: BrandSpacing.md,
             }}
           >
-            <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
+            <Text
+              style={{ ...BrandType.bodyStrong, color: palette.text as string }}
+            >
               {formatSelectedDayLabel(selectedDay, i18n.language)}
             </Text>
             <View
@@ -1277,7 +1451,9 @@ export default function CalendarTabScreen() {
               >
                 {selectedLessonCount === 1
                   ? t("calendarTab.agenda.oneSession")
-                  : t("calendarTab.agenda.sessionCount", { count: selectedLessonCount })}
+                  : t("calendarTab.agenda.sessionCount", {
+                      count: selectedLessonCount,
+                    })}
               </Text>
             </View>
           </View>
@@ -1327,12 +1503,17 @@ export default function CalendarTabScreen() {
               onChange={handleDateChange}
             />
             {Platform.OS === "ios" ? (
-              <View style={{ alignItems: "flex-end", paddingHorizontal: 14, paddingBottom: 14 }}>
-                <KitButton
+              <View
+                style={{
+                  alignItems: "flex-end",
+                  paddingHorizontal: 14,
+                  paddingBottom: 14,
+                }}
+              >
+                <ActionButton
                   label={t("common.done")}
                   onPress={handleDoneWithDatePicker}
-                  size="sm"
-                  fullWidth={false}
+                  palette={palette}
                 />
               </View>
             ) : null}
@@ -1340,7 +1521,12 @@ export default function CalendarTabScreen() {
         ) : null}
       </TopSheetSurface>
 
-      <View style={[styles.timelineViewport, { backgroundColor: palette.appBg as string }]}>
+      <View
+        style={[
+          styles.timelineViewport,
+          { backgroundColor: palette.appBg as string },
+        ]}
+      >
         <FlashList
           ref={listRef}
           data={listItems}
@@ -1367,7 +1553,10 @@ export default function CalendarTabScreen() {
         />
         <View
           pointerEvents="none"
-          style={[styles.timelineBottomMask, { backgroundColor: palette.appBg as string }]}
+          style={[
+            styles.timelineBottomMask,
+            { backgroundColor: palette.appBg as string },
+          ]}
         />
       </View>
     </TabScreenRoot>
