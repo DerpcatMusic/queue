@@ -1,11 +1,13 @@
 import { type Href, Link, Slot, usePathname } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
-import { KitPressable } from "@/components/ui/kit";
+import { Pressable, Text, View } from "react-native";
 import { TabBarScrollProvider } from "@/contexts/tab-bar-scroll-context";
 import { useBrand } from "@/hooks/use-brand";
-import { buildRoleTabRoute, type RoleTabRouteName } from "@/navigation/role-routes";
+import {
+  buildRoleTabRoute,
+  type RoleTabRouteName,
+} from "@/navigation/role-routes";
 import { getTabsForRole } from "@/navigation/tab-registry";
 import type { AppRole } from "@/navigation/types";
 
@@ -22,7 +24,10 @@ function formatDashboardDate(locale: string) {
   });
 }
 
-export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutProps) {
+export function RoleTabsLayout({
+  appRole,
+  badgeCountByRoute,
+}: RoleTabsLayoutProps) {
   const palette = useBrand();
   const pathname = usePathname();
   const { t, i18n } = useTranslation();
@@ -91,7 +96,9 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                   color: palette.text as string,
                 }}
               >
-                {appRole === "studio" ? "Studio dashboard" : "Instructor dashboard"}
+                {appRole === "studio"
+                  ? "Studio dashboard"
+                  : "Instructor dashboard"}
               </Text>
               <Text
                 style={{
@@ -156,10 +163,9 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
 
                 return (
                   <Link key={tab.id} href={route} asChild>
-                    <KitPressable
+                    <Pressable
                       accessibilityRole="link"
-                      pressStyle={{ transform: [{ scale: 0.99 }] }}
-                      style={{
+                      style={({ pressed }) => ({
                         borderRadius: 26,
                         borderCurve: "continuous",
                         backgroundColor: selected
@@ -167,7 +173,8 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                           : (palette.surfaceAlt as string),
                         paddingHorizontal: 16,
                         paddingVertical: 14,
-                      }}
+                        transform: [{ scale: pressed ? 0.99 : 1 }],
+                      })}
                     >
                       <View
                         style={{
@@ -228,7 +235,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                           </View>
                         ) : null}
                       </View>
-                    </KitPressable>
+                    </Pressable>
                   </Link>
                 );
               })}
@@ -318,7 +325,8 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                     color: palette.textMuted as string,
                   }}
                 >
-                  Desktop mode is tuned for scanning, routing, and staying in flow.
+                  Desktop mode is tuned for scanning, routing, and staying in
+                  flow.
                 </Text>
               </View>
             </View>

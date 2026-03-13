@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   InteractionManager,
+  Pressable,
   StyleSheet,
   View,
 } from "react-native";
@@ -29,8 +30,9 @@ import {
 } from "@/constants/zones-map";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
-import { KitButton, KitPressable, KitSurface } from "../ui/kit";
+import { KitSurface } from "../ui/kit";
 import type { QueueMapPin, QueueMapProps } from "./queue-map.types";
 
 type Expression = unknown;
@@ -522,23 +524,22 @@ export function QueueMap({
             <ThemedText type="meta" style={{ color: palette.textMuted }}>
               {mapErrorMessage ?? t("mapTab.native.unavailableBody")}
             </ThemedText>
-            <KitButton
+            <ActionButton
               label={t("tabsLayout.actions.retry")}
               onPress={handleRetry}
-              fullWidth={false}
-              variant="secondary"
+              palette={palette}
+              tone="secondary"
             />
           </KitSurface>
         </View>
       ) : null}
 
       {showGpsButton && onUseGps ? (
-        <KitPressable
+        <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("mapTab.actions.useCurrentLocation")}
           onPress={onUseGps}
-          haptic="impact"
-          style={[
+          style={({ pressed }) => [
             styles.gps,
             {
               width: 58,
@@ -552,11 +553,12 @@ export function QueueMap({
               borderColor: palette.borderStrong as string,
               boxShadow: "0 16px 30px rgba(15, 23, 15, 0.14)",
               overflow: "hidden",
+              opacity: pressed ? 0.84 : 1,
             },
           ]}
         >
           <IconSymbol name="location.fill" size={20} color={palette.text} />
-        </KitPressable>
+        </Pressable>
       ) : null}
     </View>
   );
