@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitButton, KitSurface } from "@/components/ui/kit";
+import { ActionButton } from "@/components/ui/action-button";
+import { KitSurface } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandType } from "@/constants/brand";
 
@@ -33,7 +34,9 @@ export function ProfileReadinessBanner({
           gap: 16,
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 16 }}>
+        <View
+          style={{ flexDirection: "row", alignItems: "flex-start", gap: 16 }}
+        >
           <View
             style={{
               width: 44,
@@ -47,7 +50,11 @@ export function ProfileReadinessBanner({
             }}
           >
             <IconSymbol
-              name={primaryAction ? "exclamationmark.circle.fill" : "checkmark.seal.fill"}
+              name={
+                primaryAction
+                  ? "exclamationmark.circle.fill"
+                  : "checkmark.seal.fill"
+              }
               size={22}
               color={primaryAction ? palette.warning : palette.success}
             />
@@ -56,17 +63,22 @@ export function ProfileReadinessBanner({
             <Text style={{ ...BrandType.title, color: palette.text as string }}>
               {statusLabel}
             </Text>
-            <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+            <Text
+              style={{
+                ...BrandType.caption,
+                color: palette.textMuted as string,
+              }}
+            >
               {subtitleLabel}
             </Text>
           </View>
         </View>
         {primaryAction ? (
-          <KitButton
+          <ActionButton
             label={primaryAction.label}
             onPress={primaryAction.onPress}
-            size="sm"
-            style={{ width: "100%" }}
+            palette={palette}
+            fullWidth
           />
         ) : null}
       </KitSurface>

@@ -514,6 +514,12 @@ Replace with consequence and momentum:
 - simplified dismiss and clear interactions to plain native pressables
 - trimmed over-authored create-job copy so the sheet gets to the point faster
 
+### Slice 06
+
+- removed kit action wrappers from the reusable profile surfaces
+- simplified profile editor, readiness, and sports-selection controls without changing the route structure yet
+- kept the profile cleanup focused on shared components so later route cuts can delete more safely
+
 ## Final Verdict
 
 The app is not ugly.

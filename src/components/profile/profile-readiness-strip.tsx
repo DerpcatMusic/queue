@@ -1,8 +1,7 @@
-import { Text, useWindowDimensions, View } from "react-native";
+import { Pressable, Text, useWindowDimensions, View } from "react-native";
 
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { type BrandPalette, BrandRadius, BrandType } from "@/constants/brand";
-import { KitPressable } from "../ui/kit";
 
 type ReadinessItem = {
   label: string;
@@ -22,7 +21,8 @@ export function ProfileReadinessStrip({
   columns?: 1 | 2 | 4;
 }) {
   const { width } = useWindowDimensions();
-  const resolvedColumns = columns ?? (process.env.EXPO_OS === "web" && width >= 1180 ? 4 : 2);
+  const resolvedColumns =
+    columns ?? (process.env.EXPO_OS === "web" && width >= 1180 ? 4 : 2);
   const horizontalPadding = 48;
   const totalGap = resolvedColumns === 1 ? 0 : 10 * (resolvedColumns - 1);
   const tileWidth = Math.max(
@@ -84,7 +84,11 @@ export function ProfileReadinessStrip({
                     justifyContent: "center",
                   }}
                 >
-                  <IconSymbol name="arrow.up.right" size={14} color={palette.primary} />
+                  <IconSymbol
+                    name="arrow.up.right"
+                    size={14}
+                    color={palette.primary}
+                  />
                 </View>
               ) : null}
             </View>
@@ -121,15 +125,17 @@ export function ProfileReadinessStrip({
         }
 
         return (
-          <KitPressable
+          <Pressable
             key={item.label}
             accessibilityRole="button"
             accessibilityLabel={`${item.label}. ${item.value}`}
             onPress={item.onPress}
-            style={({ pressed }) => [{ width: tileWidth, opacity: pressed ? 0.84 : 1 }]}
+            style={({ pressed }) => [
+              { width: tileWidth, opacity: pressed ? 0.84 : 1 },
+            ]}
           >
             {content}
-          </KitPressable>
+          </Pressable>
         );
       })}
     </View>
