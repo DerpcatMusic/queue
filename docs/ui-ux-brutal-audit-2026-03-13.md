@@ -556,6 +556,12 @@ Replace with consequence and momentum:
 - simplified studio payment detail dismissal and identity-verification primary actions to native pressables
 - finished the wrapper removal sweep so remaining kit references are implementation details, not product-screen dependencies
 
+### Slice 13
+
+- deleted `KitButton` and `KitPressable` from the kit itself after product-screen usage hit zero
+- rebuilt the remaining kit internals on top of native `Pressable` and direct haptic helpers instead of a wrapper abstraction
+- updated kit documentation so the library description matches the reduced component surface
+
 ## Final Verdict
 
 The app is not ugly.

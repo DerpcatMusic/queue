@@ -1,50 +1,5 @@
-import type { SymbolViewProps } from "expo-symbols";
 import type { ReactNode } from "react";
-import type {
-  GestureResponderEvent,
-  PressableProps,
-  PressableStateCallbackType,
-  StyleProp,
-  TextInputProps,
-  ViewStyle,
-} from "react-native";
-
-export type KitPressableHaptic = "none" | "selection" | "impact";
-
-export type KitPressableProps = Omit<
-  PressableProps,
-  "android_ripple" | "children" | "style"
-> & {
-  children: ReactNode | ((state: PressableStateCallbackType) => ReactNode);
-  style?:
-    | StyleProp<ViewStyle>
-    | ((state: PressableStateCallbackType) => StyleProp<ViewStyle>);
-  pressStyle?:
-    | StyleProp<ViewStyle>
-    | ((state: PressableStateCallbackType) => StyleProp<ViewStyle>);
-  haptic?: KitPressableHaptic;
-  nativeFeedback?: boolean;
-  pressedOpacity?: number;
-  rippleRadius?: number;
-  borderlessRipple?: boolean;
-};
-
-export type KitButtonVariant = "primary" | "secondary" | "ghost" | "danger";
-export type KitButtonSize = "sm" | "md" | "lg";
-
-export type KitButtonProps = {
-  label: string;
-  onPress: (event?: GestureResponderEvent) => void;
-  variant?: KitButtonVariant;
-  size?: KitButtonSize;
-  disabled?: boolean;
-  loading?: boolean;
-  fullWidth?: boolean;
-  icon?: SymbolViewProps["name"];
-  leadingIcon?: ReactNode;
-  trailingIcon?: ReactNode;
-  style?: StyleProp<ViewStyle>;
-};
+import type { StyleProp, TextInputProps, ViewStyle } from "react-native";
 
 export type KitTextFieldProps = TextInputProps & {
   label?: string;
