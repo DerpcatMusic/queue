@@ -1,8 +1,6 @@
-export { KitButton } from "./kit-button";
 export { KitChip } from "./kit-chip";
 export { KitFloatingBadge } from "./kit-floating-badge";
 export { KitList, KitListItem } from "./kit-list";
-export { KitPressable } from "./kit-pressable";
 export { KitSegmentedToggle } from "./kit-segmented-toggle";
 export { KitSocialIconButton } from "./kit-social-icon-button";
 export { KitStatusBadge } from "./kit-status-badge";
@@ -12,14 +10,9 @@ export { KitSurface } from "./kit-surface";
 export { KitSwitchRow } from "./kit-switch-row";
 export { KitTextField } from "./kit-text-field";
 export type {
-  KitButtonProps,
-  KitButtonSize,
-  KitButtonVariant,
   KitChipProps,
   KitFloatingBadgeMotion,
   KitFloatingBadgeProps,
-  KitPressableHaptic,
-  KitPressableProps,
   KitStatusBadgeProps,
   KitStatusBadgeTone,
   KitTextFieldProps,

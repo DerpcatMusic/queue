@@ -1,11 +1,16 @@
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
 import type { BrandPalette } from "@/constants/brand";
-import { KitPressable } from "./kit-pressable";
+import { triggerSelectionHaptic } from "./native-interaction";
 
-type BrandIconName = "instagram" | "tiktok" | "whatsapp" | "facebook" | "linkedin";
+type BrandIconName =
+  | "instagram"
+  | "tiktok"
+  | "whatsapp"
+  | "facebook"
+  | "linkedin";
 
 type KitSocialIconButtonProps = {
   accessibilityLabel: string;
@@ -62,14 +67,19 @@ export function KitSocialIconButton({
   }
 
   return (
-    <KitPressable
+    <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      onPress={onPress}
-      haptic="selection"
-      style={{ borderRadius: 999 }}
+      onPress={() => {
+        triggerSelectionHaptic();
+        onPress();
+      }}
+      style={({ pressed }) => ({
+        borderRadius: 999,
+        opacity: pressed ? 0.84 : 1,
+      })}
     >
       {circle}
-    </KitPressable>
+    </Pressable>
   );
 }

@@ -1,7 +1,7 @@
-import { Text } from "react-native";
+import { Pressable, Text } from "react-native";
 
 import { BrandRadius, BrandType } from "@/constants/brand";
-import { KitPressable } from "./kit-pressable";
+import { triggerSelectionHaptic } from "./native-interaction";
 import type { KitChipProps } from "./types";
 import { useKitTheme } from "./use-kit-theme";
 
@@ -15,15 +15,15 @@ export function KitChip({
   const { color, foreground, background } = useKitTheme();
 
   return (
-    <KitPressable
+    <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
-      nativeFeedback
-      haptic="selection"
-      onPress={onPress}
-      pressStyle={disabled ? undefined : { transform: [{ scale: 0.985 }] }}
-      style={[
+      onPress={() => {
+        triggerSelectionHaptic();
+        onPress();
+      }}
+      style={({ pressed }) => [
         {
           minHeight: 40,
           borderWidth: 0,
@@ -35,6 +35,7 @@ export function KitChip({
           paddingVertical: 8,
           backgroundColor: selected ? color.primary : background.panel,
           opacity: disabled ? 0.55 : 1,
+          transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
         },
         style,
       ]}
@@ -49,6 +50,6 @@ export function KitChip({
       >
         {label}
       </Text>
-    </KitPressable>
+    </Pressable>
   );
 }

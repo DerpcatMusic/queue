@@ -1,7 +1,7 @@
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { BrandRadius } from "@/constants/brand";
-import { KitPressable } from "./kit-pressable";
+import { triggerSelectionHaptic } from "./native-interaction";
 import { useKitTheme } from "./use-kit-theme";
 
 type Option<T extends string> = {
@@ -39,12 +39,15 @@ export function KitSegmentedToggle<T extends string>({
       {options.map((option) => {
         const selected = option.value === value;
         return (
-          <KitPressable
+          <Pressable
             key={option.value}
             accessibilityRole="button"
             accessibilityState={{ disabled: option.disabled, selected }}
             disabled={option.disabled}
-            onPress={() => onChange(option.value)}
+            onPress={() => {
+              triggerSelectionHaptic();
+              onChange(option.value);
+            }}
             style={({ pressed }) => ({
               flex: 1,
               minHeight: 38,
@@ -70,7 +73,7 @@ export function KitSegmentedToggle<T extends string>({
             >
               {option.label}
             </Text>
-          </KitPressable>
+          </Pressable>
         );
       })}
     </View>
