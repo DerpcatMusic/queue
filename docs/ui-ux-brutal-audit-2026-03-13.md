@@ -598,6 +598,12 @@ Replace with consequence and momentum:
 - removed the remaining `KitList`, `KitSegmentedToggle`, and `KitSwitchRow` shell from the route in favor of shared profile cards and direct provider actions
 - fixed the save flow so choosing `No sync` persists cleanly even when switching away from non-Google providers
 
+### Slice 20
+
+- rebuilt the instructor sports route into a dedicated board editor instead of a caption plus nested card editor
+- added a content-only selector mode so the route no longer stacks redundant edit chrome inside a dedicated editing page
+- kept the sports selection surface on shared semantic tokens while tightening the hierarchy and save flow
+
 ## Final Verdict
 
 The app is not ugly.
