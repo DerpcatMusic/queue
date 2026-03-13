@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type ColorValue, StyleSheet, TextInput, View } from "react-native";
+import {
+  type ColorValue,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+} from "react-native";
 import { ThemedText } from "@/components/themed-text";
-import { KitPressable } from "@/components/ui/kit";
 import { useBrand } from "@/hooks/use-brand";
 import {
   fetchPlaceAutocomplete,
@@ -148,8 +153,15 @@ export function AddressAutocomplete({
         cursorColor={palette.primary as string}
       />
       {isLoading ? (
-        <View style={[styles.loadingBar, { backgroundColor: palette.primarySubtle }]}>
-          <ThemedText style={{ color: mutedTextColor ?? palette.textMuted, fontSize: 12 }}>
+        <View
+          style={[
+            styles.loadingBar,
+            { backgroundColor: palette.primarySubtle },
+          ]}
+        >
+          <ThemedText
+            style={{ color: mutedTextColor ?? palette.textMuted, fontSize: 12 }}
+          >
             {t("common.searching")}
           </ThemedText>
         </View>
@@ -165,12 +177,14 @@ export function AddressAutocomplete({
           ]}
         >
           {predictions.map((prediction) => (
-            <KitPressable
+            <Pressable
               key={prediction.placeId}
               style={({ pressed }) => [
                 styles.suggestion,
                 {
-                  backgroundColor: pressed ? palette.primarySubtle : "transparent",
+                  backgroundColor: pressed
+                    ? palette.primarySubtle
+                    : "transparent",
                 },
               ]}
               onPress={() => {
@@ -191,7 +205,7 @@ export function AddressAutocomplete({
                   {prediction.secondaryText}
                 </ThemedText>
               ) : null}
-            </KitPressable>
+            </Pressable>
           ))}
         </View>
       ) : null}

@@ -1,8 +1,11 @@
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { ThemedText } from "@/components/themed-text";
-import { KitPressable } from "@/components/ui/kit";
-import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
+import {
+  type BrandPalette,
+  BrandRadius,
+  BrandSpacing,
+} from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { isSportType, toSportLabel } from "@/convex/constants";
 import { formatDateTime } from "@/lib/jobs-utils";
@@ -160,7 +163,9 @@ export function PaymentActivityList({
         <View style={{ paddingHorizontal: BrandSpacing.md, paddingBottom: 16 }}>
           {items.map((item, index) => {
             const paymentStatus = getPaymentStatusLabel(item.payment.status);
-            const payoutStatus = item.payout ? getPayoutStatusLabel(item.payout.status) : null;
+            const payoutStatus = item.payout
+              ? getPayoutStatusLabel(item.payout.status)
+              : null;
             const sportLabel = item.job
               ? isSportType(item.job.sport)
                 ? toSportLabel(item.job.sport)
@@ -178,16 +183,13 @@ export function PaymentActivityList({
                   zIndex: items.length - index,
                 }}
               >
-                <KitPressable
+                <Pressable
                   {...listItemPressProps}
                   accessibilityRole={onSelectPaymentId ? "button" : undefined}
-                  haptic={onSelectPaymentId ? "selection" : "none"}
-                  nativeFeedback={Boolean(onSelectPaymentId)}
-                  pressedOpacity={0.96}
-                  style={{
+                  style={({ pressed }) => ({
                     backgroundColor: palette.surface,
                     padding: 16,
-                    paddingBottom: 24, // extra padding at bottom because of overlap
+                    paddingBottom: 24,
                     borderRadius: 24,
                     borderCurve: "continuous",
                     borderWidth: 1,
@@ -195,18 +197,24 @@ export function PaymentActivityList({
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
-                  }}
+                    opacity: pressed && onSelectPaymentId ? 0.96 : 1,
+                  })}
                 >
                   <View style={{ flex: 1, gap: 4 }}>
                     <ThemedText type="bodyStrong" style={{ fontSize: 18 }}>
                       {sportLabel}
                     </ThemedText>
-                    <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                    <ThemedText
+                      type="caption"
+                      style={{ color: palette.textMuted }}
+                    >
                       {item.job
                         ? formatDateTime(item.job.startTime, locale)
                         : formatDateTime(item.payment.createdAt, locale)}
                     </ThemedText>
-                    <View style={{ flexDirection: "row", gap: 6, marginTop: 4 }}>
+                    <View
+                      style={{ flexDirection: "row", gap: 6, marginTop: 4 }}
+                    >
                       <StatusBadge
                         label={paymentStatus}
                         tone={getPaymentStatusTone(item.payment.status)}
@@ -226,7 +234,11 @@ export function PaymentActivityList({
                     <ThemedText
                       type="title"
                       selectable
-                      style={{ fontVariant: ["tabular-nums"], fontSize: 22, fontWeight: "700" }}
+                      style={{
+                        fontVariant: ["tabular-nums"],
+                        fontSize: 22,
+                        fontWeight: "700",
+                      }}
                     >
                       {viewerRole === "studio"
                         ? formatAgorotCurrency(
@@ -241,7 +253,10 @@ export function PaymentActivityList({
                           )}
                     </ThemedText>
                     {viewerRole === "studio" ? (
-                      <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                      <ThemedText
+                        type="caption"
+                        style={{ color: palette.textMuted }}
+                      >
                         {`Payout ${formatAgorotCurrency(
                           item.payment.instructorBaseAmountAgorot,
                           locale,
@@ -250,7 +265,7 @@ export function PaymentActivityList({
                       </ThemedText>
                     ) : null}
                   </View>
-                </KitPressable>
+                </Pressable>
               </View>
             );
           })}
