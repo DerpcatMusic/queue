@@ -6,8 +6,9 @@ import { StyleSheet, View } from "react-native";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
+import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
-import { KitButton, KitList, KitListItem, KitSwitchRow } from "@/components/ui/kit";
+import { KitList, KitListItem, KitSwitchRow } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -16,12 +17,19 @@ import { useLocationResolution } from "@/hooks/use-location-resolution";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import type { ResolvedLocation } from "@/lib/location-zone";
 
-let zoneLabelByIdPromise: Promise<Map<string, { en: string; he: string }>> | null = null;
+let zoneLabelByIdPromise: Promise<
+  Map<string, { en: string; he: string }>
+> | null = null;
 
-async function getZoneLabelById(zoneId: string, language: "en" | "he"): Promise<string> {
+async function getZoneLabelById(
+  zoneId: string,
+  language: "en" | "he",
+): Promise<string> {
   if (!zoneLabelByIdPromise) {
     zoneLabelByIdPromise = import("@/constants/zones").then((module) => {
-      return new Map(module.ZONE_OPTIONS.map((zone) => [zone.id, zone.label] as const));
+      return new Map(
+        module.ZONE_OPTIONS.map((zone) => [zone.id, zone.label] as const),
+      );
     });
   }
 
@@ -46,13 +54,16 @@ export default function LocationScreen() {
   const [latitude, setLatitude] = useState<number>();
   const [longitude, setLongitude] = useState<number>();
   const [detectedZone, setDetectedZone] = useState<string | null>(null);
-  const [detectedZoneLabel, setDetectedZoneLabel] = useState<string | null>(null);
+  const [detectedZoneLabel, setDetectedZoneLabel] = useState<string | null>(
+    null,
+  );
   const [includeDetectedZone, setIncludeDetectedZone] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
   const screenStyle = useMemo(
-    () => StyleSheet.flatten([styles.screen, { backgroundColor: palette.appBg }]),
+    () =>
+      StyleSheet.flatten([styles.screen, { backgroundColor: palette.appBg }]),
     [palette.appBg],
   );
 
@@ -137,7 +148,11 @@ export default function LocationScreen() {
       });
       router.back();
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : t("profile.settings.errors.saveFailed"));
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : t("profile.settings.errors.saveFailed"),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -187,17 +202,19 @@ export default function LocationScreen() {
               surfaceColor={palette.surface}
               mutedTextColor={palette.textMuted}
             />
-            <KitButton
+            <ActionButton
               label={
                 locationResolver.isResolving
                   ? t("profile.settings.location.resolvingGps")
                   : t("profile.settings.location.useGps")
               }
-              variant="secondary"
               onPress={() => {
                 void resolveByGps();
               }}
               disabled={locationResolver.isResolving}
+              palette={palette}
+              tone="secondary"
+              fullWidth
             />
           </View>
         </KitListItem>
@@ -210,7 +227,9 @@ export default function LocationScreen() {
             styles.locationBadge,
             {
               borderColor: detectedZone ? palette.primary : palette.border,
-              backgroundColor: detectedZone ? palette.primarySubtle : palette.appBg,
+              backgroundColor: detectedZone
+                ? palette.primarySubtle
+                : palette.appBg,
             },
           ]}
         >
@@ -244,22 +263,36 @@ export default function LocationScreen() {
       {/* Error */}
       {errorMessage ? (
         <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-          <ThemedText style={{ color: palette.danger }}>{errorMessage}</ThemedText>
+          <ThemedText style={{ color: palette.danger }}>
+            {errorMessage}
+          </ThemedText>
         </View>
       ) : null}
 
       {/* Actions */}
-      <View style={{ paddingHorizontal: 16, paddingTop: BrandSpacing.md, gap: 10 }}>
-        <KitButton
+      <View
+        style={{ paddingHorizontal: 16, paddingTop: BrandSpacing.md, gap: 10 }}
+      >
+        <ActionButton
           label={
-            isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
+            isSaving
+              ? t("profile.settings.actions.saving")
+              : t("profile.settings.actions.save")
           }
           onPress={() => {
             void onSave();
           }}
           disabled={isSaving}
+          palette={palette}
+          fullWidth
         />
-        <KitButton label={t("common.cancel")} variant="secondary" onPress={() => router.back()} />
+        <ActionButton
+          label={t("common.cancel")}
+          onPress={() => router.back()}
+          palette={palette}
+          tone="secondary"
+          fullWidth
+        />
       </View>
     </TabScreenScrollView>
   );
