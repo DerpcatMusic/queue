@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
@@ -11,15 +11,17 @@ import { ThemedText } from "@/components/themed-text";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KitChip, KitSurface } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
-import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import {
+  buildRoleTabRoute,
+  ROLE_TAB_ROUTE_NAMES,
+} from "@/navigation/role-routes";
 
 function SectionHeader({
   title,
@@ -48,17 +50,24 @@ export function InstructorFeed() {
   const { safeTop } = useAppInsets();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
-  const { isDesktopWeb: isWideWeb } = useLayoutBreakpoint();
-  const mobileContentPaddingTop = Platform.OS === "android" ? safeTop + BrandSpacing.sm : 0;
+  const mobileContentPaddingTop =
+    Platform.OS === "android" ? safeTop + BrandSpacing.sm : 0;
 
   const [jobsSearchQuery, setJobsSearchQuery] = useState("");
-  const [jobsWindowFilter, setJobsWindowFilter] = useState<"all" | "24h" | "72h">("all");
+  const [jobsWindowFilter, setJobsWindowFilter] = useState<
+    "all" | "24h" | "72h"
+  >("all");
   const [applyingJobId, setApplyingJobId] = useState<Id<"jobs"> | null>(null);
-  const [applyErrorMessage, setApplyErrorMessage] = useState<string | null>(null);
+  const [applyErrorMessage, setApplyErrorMessage] = useState<string | null>(
+    null,
+  );
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const applyToJob = useMutation(api.jobs.applyToJob);
-  const studioHomeRoute = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.home);
+  const studioHomeRoute = buildRoleTabRoute(
+    "studio",
+    ROLE_TAB_ROUTE_NAMES.home,
+  );
 
   const now = Date.now();
   const queryMinuteBucket = Math.floor(now / (60 * 1000));
@@ -95,13 +104,21 @@ export function InstructorFeed() {
   type AvailableJob = NonNullable<typeof availableJobs>[number];
 
   const jobs = (availableJobs ?? []) as AvailableJob[];
-  const hotNowCount = jobs.filter((job) => job.startTime <= now + 24 * 60 * 60 * 1000).length;
-  const pendingCount = jobs.filter((job) => job.applicationStatus === "pending").length;
-  const acceptedCount = jobs.filter((job) => job.applicationStatus === "accepted").length;
+  const hotNowCount = jobs.filter(
+    (job) => job.startTime <= now + 24 * 60 * 60 * 1000,
+  ).length;
+  const pendingCount = jobs.filter(
+    (job) => job.applicationStatus === "pending",
+  ).length;
+  const acceptedCount = jobs.filter(
+    (job) => job.applicationStatus === "accepted",
+  ).length;
 
   const filteredAvailableJobs = jobs.filter((job) => {
-    if (jobsWindowFilter === "24h" && job.startTime > now + 24 * 60 * 60 * 1000) return false;
-    if (jobsWindowFilter === "72h" && job.startTime > now + 72 * 60 * 60 * 1000) return false;
+    if (jobsWindowFilter === "24h" && job.startTime > now + 24 * 60 * 60 * 1000)
+      return false;
+    if (jobsWindowFilter === "72h" && job.startTime > now + 72 * 60 * 60 * 1000)
+      return false;
 
     const search = jobsSearchQuery.trim().toLowerCase();
     if (!search) return true;
@@ -131,392 +148,95 @@ export function InstructorFeed() {
     { key: "72h", label: t("jobsTab.instructorFeed.filterThisWeek") },
   ] as const;
 
-  if (isWideWeb) {
-    return (
-      <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
-        <TabScreenScrollView
-          routeKey="instructor/jobs/index"
-          style={styles.screen}
-          contentContainerStyle={{
-            paddingHorizontal: BrandSpacing.xl,
-            paddingTop: BrandSpacing.xl,
-            paddingBottom: BrandSpacing.xxl,
-            gap: BrandSpacing.xl,
-          }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={{ flexDirection: "row", gap: BrandSpacing.xl, alignItems: "stretch" }}>
-            <View
-              style={{
-                flex: 1.2,
-                borderRadius: 34,
-                borderCurve: "continuous",
-                backgroundColor: palette.primary as string,
-                paddingHorizontal: 22,
-                paddingVertical: 22,
-                gap: 12,
-              }}
-            >
-              <Text
-                style={{
-                  ...BrandType.micro,
-                  color: palette.onPrimary as string,
-                  opacity: 0.8,
-                  letterSpacing: 0.2,
-                }}
-              >
-                {t("jobsTab.instructorFeed.eyebrow")}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: "BarlowCondensed_800ExtraBold",
-                  fontSize: 42,
-                  lineHeight: 40,
-                  letterSpacing: -1,
-                  color: palette.onPrimary as string,
-                }}
-              >
-                {t("jobsTab.instructorFeed.title")}
-              </Text>
-              <Text
-                style={{
-                  ...BrandType.body,
-                  color: palette.onPrimary as string,
-                  opacity: 0.9,
-                  maxWidth: 620,
-                }}
-              >
-                {t("jobsTab.instructorFeed.body")}
-              </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {[
-                  t("jobsTab.instructorFeed.matchesCount", { count: filteredAvailableJobs.length }),
-                  hotNowCount > 0
-                    ? t("jobsTab.instructorFeed.hotNow", { count: hotNowCount })
-                    : t("jobsTab.instructorFeed.freshBoard"),
-                ].map((label) => (
-                  <View
-                    key={label}
-                    style={{
-                      borderRadius: 999,
-                      backgroundColor: "rgba(255,255,255,0.16)",
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        ...BrandType.micro,
-                        color: palette.onPrimary as string,
-                        letterSpacing: 0.2,
-                      }}
-                    >
-                      {label}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            <View
-              style={{
-                width: 340,
-                borderRadius: 34,
-                borderCurve: "continuous",
-                backgroundColor: palette.surfaceAlt as string,
-                paddingHorizontal: 18,
-                paddingVertical: 18,
-                gap: 14,
-              }}
-            >
-              {[
-                {
-                  label: t("jobsTab.instructorFeed.metricHotNow"),
-                  value: hotNowCount,
-                  accent: palette.primary as string,
-                },
-                {
-                  label: t("jobsTab.instructorFeed.metricPending"),
-                  value: pendingCount,
-                  accent: palette.warning as string,
-                },
-                {
-                  label: t("jobsTab.instructorFeed.metricAccepted"),
-                  value: acceptedCount,
-                  accent: palette.success as string,
-                },
-              ].map((metric) => (
-                <View
-                  key={metric.label}
-                  style={{
-                    borderRadius: 24,
-                    borderCurve: "continuous",
-                    backgroundColor: palette.surface as string,
-                    paddingHorizontal: 14,
-                    paddingVertical: 14,
-                    gap: 2,
-                  }}
-                >
-                  <Text
-                    style={{
-                      ...BrandType.micro,
-                      color: palette.textMuted as string,
-                      letterSpacing: 0.2,
-                    }}
-                  >
-                    {metric.label}
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: "BarlowCondensed_800ExtraBold",
-                      fontSize: 30,
-                      lineHeight: 28,
-                      color: metric.accent,
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {String(metric.value)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {applyErrorMessage ? (
-            <NoticeBanner
-              tone="error"
-              message={applyErrorMessage}
-              onDismiss={() => setApplyErrorMessage(null)}
-              borderColor="transparent"
-              backgroundColor={palette.dangerSubtle}
-              textColor={palette.danger}
-              iconColor={palette.danger}
-            />
-          ) : null}
-
-          <View style={{ flexDirection: "row", gap: BrandSpacing.xl, alignItems: "flex-start" }}>
-            <View
-              style={{
-                flex: 1.4,
-                borderRadius: 32,
-                borderCurve: "continuous",
-                backgroundColor: palette.surface as string,
-                paddingVertical: 18,
-                gap: 12,
-              }}
-            >
-              <View style={{ paddingHorizontal: 18 }}>
-                <SectionHeader
-                  title={t("jobsTab.instructorFeed.openingsTitle")}
-                  subtitle={t("jobsTab.instructorFeed.openingsFiltered", {
-                    count: filteredAvailableJobs.length,
-                  })}
-                  palette={palette}
-                />
-              </View>
-
-              {jobs.length === 0 ? (
-                <View style={{ minHeight: 360, justifyContent: "center" }}>
-                  <EmptyState icon="briefcase" title={t("jobsTab.emptyInstructor")} body="" />
-                </View>
-              ) : filteredAvailableJobs.length === 0 ? (
-                <View style={{ minHeight: 320, justifyContent: "center" }}>
-                  <EmptyState
-                    icon="magnifyingglass"
-                    title={t("jobsTab.noJobsFound")}
-                    body={t("jobsTab.tryDifferentSearchOrTimeFilter")}
-                  />
-                </View>
-              ) : (
-                <InstructorOpenJobsList
-                  jobs={filteredAvailableJobs}
-                  locale={locale}
-                  zoneLanguage={zoneLanguage}
-                  palette={palette}
-                  applyingJobId={applyingJobId}
-                  onApply={(jobId) => {
-                    void onApply(jobId);
-                  }}
-                  t={t}
-                />
-              )}
-            </View>
-
-            <View style={{ width: 320, gap: 16 }}>
-              <View
-                style={{
-                  borderRadius: 30,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.surface as string,
-                  paddingHorizontal: 18,
-                  paddingVertical: 18,
-                  gap: 12,
-                }}
-              >
-                <SectionHeader
-                  title={t("jobsTab.instructorFeed.filterDeskTitle")}
-                  subtitle={t("jobsTab.instructorFeed.filterDeskSubtitle")}
-                  palette={palette}
-                />
-                <NativeSearchField
-                  value={jobsSearchQuery}
-                  onChangeText={setJobsSearchQuery}
-                  placeholder={t("jobsTab.searchPlaceholder")}
-                  clearAccessibilityLabel={t("common.clear", { defaultValue: "Clear search" })}
-                />
-                <View style={styles.segmentRow}>
-                  {filterOptions.map((option) => (
-                    <KitChip
-                      key={option.key}
-                      label={option.label}
-                      selected={jobsWindowFilter === option.key}
-                      onPress={() => setJobsWindowFilter(option.key)}
-                    />
-                  ))}
-                </View>
-              </View>
-
-              <View
-                style={{
-                  borderRadius: 30,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.surfaceAlt as string,
-                  paddingHorizontal: 18,
-                  paddingVertical: 18,
-                  gap: 8,
-                }}
-              >
-                <Text style={{ ...BrandType.heading, fontSize: 24, color: palette.text as string }}>
-                  {t("jobsTab.instructorFeed.pipelineTitle")}
-                </Text>
-                <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                  {t("jobsTab.instructorFeed.pipelineSubtitle")}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </TabScreenScrollView>
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
       <TabScreenScrollView
         routeKey="instructor/jobs/index"
         style={styles.screen}
-        contentContainerStyle={[styles.content, { paddingTop: mobileContentPaddingTop }]}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: mobileContentPaddingTop,
+            paddingHorizontal: BrandSpacing.lg,
+          },
+        ]}
         topInsetTone="sheet"
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ flex: 1, gap: BrandSpacing.md }}>
+        <View style={{ flex: 1, gap: BrandSpacing.lg }}>
+          <View style={{ gap: BrandSpacing.sm }}>
+            <SectionHeader
+              title={t("jobsTab.instructorFeed.title")}
+              subtitle={t("jobsTab.instructorFeed.openingsFiltered", {
+                count: filteredAvailableJobs.length,
+              })}
+              palette={palette}
+            />
+            {applyErrorMessage ? (
+              <NoticeBanner
+                tone="error"
+                message={applyErrorMessage}
+                onDismiss={() => setApplyErrorMessage(null)}
+                borderColor="transparent"
+                backgroundColor={palette.dangerSubtle}
+                textColor={palette.danger}
+                iconColor={palette.danger}
+              />
+            ) : null}
+          </View>
+
           <KitSurface
             tone="sheet"
             padding={BrandSpacing.lg}
             gap={BrandSpacing.md}
-            style={{
-              marginHorizontal: BrandSpacing.lg,
-            }}
           >
-            <SectionHeader
-              title={t("jobsTab.instructorFeed.mobileTitle")}
-              subtitle={t("jobsTab.instructorFeed.mobileSubtitle")}
-              palette={palette}
-            />
-            <View
-              style={{
-                flexDirection: "row",
-                gap: 10,
-              }}
+            <ThemedText
+              type="meta"
+              style={{ color: palette.textMuted as string }}
             >
               {[
-                {
-                  label: t("jobsTab.instructorFeed.metricHotNow"),
-                  value: String(hotNowCount),
-                  accent: palette.primary as string,
-                },
-                { label: t("jobsTab.instructorFeed.metricPending"), value: String(pendingCount) },
-                {
-                  label: t("jobsTab.instructorFeed.metricAccepted"),
-                  value: String(acceptedCount),
-                  accent: palette.success as string,
-                },
-              ].map((item) => (
-                <View
-                  key={item.label}
-                  style={{
-                    flex: 1,
-                    gap: 4,
-                    borderRadius: BrandRadius.card,
-                    borderCurve: "continuous",
-                    backgroundColor: palette.surface as string,
-                    paddingHorizontal: BrandSpacing.md,
-                    paddingVertical: BrandSpacing.md,
-                  }}
-                >
-                  <Text
-                    style={{
-                      ...BrandType.caption,
-                      color: palette.textMuted as string,
-                    }}
-                  >
-                    {item.label}
-                  </Text>
-                  <Text
-                    style={{
-                      ...BrandType.title,
-                      color: item.accent ?? (palette.text as string),
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {item.value}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            <View
-              style={{
-                gap: BrandSpacing.sm,
-                borderRadius: BrandRadius.card,
-                borderCurve: "continuous",
-                backgroundColor: palette.surface as string,
-                padding: 14,
-              }}
-            >
-              {applyErrorMessage ? (
-                <NoticeBanner
-                  tone="error"
-                  message={applyErrorMessage}
-                  onDismiss={() => setApplyErrorMessage(null)}
-                  borderColor="transparent"
-                  backgroundColor={palette.dangerSubtle}
-                  textColor={palette.danger}
-                  iconColor={palette.danger}
+                t("jobsTab.instructorFeed.matchesCount", {
+                  count: filteredAvailableJobs.length,
+                }),
+                hotNowCount > 0
+                  ? t("jobsTab.instructorFeed.hotNow", { count: hotNowCount })
+                  : t("jobsTab.instructorFeed.freshBoard"),
+                pendingCount > 0
+                  ? t("jobsTab.instructorFeed.metricPending", {
+                      defaultValue: "Pending",
+                    }) + `: ${String(pendingCount)}`
+                  : t("jobsTab.instructorFeed.metricAccepted", {
+                      defaultValue: "Accepted",
+                    }) + `: ${String(acceptedCount)}`,
+              ].join("  •  ")}
+            </ThemedText>
+            <NativeSearchField
+              value={jobsSearchQuery}
+              onChangeText={setJobsSearchQuery}
+              placeholder={t("jobsTab.searchPlaceholder")}
+              clearAccessibilityLabel={t("common.clear", {
+                defaultValue: "Clear search",
+              })}
+            />
+            <View style={styles.segmentRow}>
+              {filterOptions.map((option) => (
+                <KitChip
+                  key={option.key}
+                  label={option.label}
+                  selected={jobsWindowFilter === option.key}
+                  onPress={() => setJobsWindowFilter(option.key)}
                 />
-              ) : null}
-              <NativeSearchField
-                value={jobsSearchQuery}
-                onChangeText={setJobsSearchQuery}
-                placeholder={t("jobsTab.searchPlaceholder")}
-                clearAccessibilityLabel={t("common.clear", { defaultValue: "Clear search" })}
-              />
-              <View style={styles.segmentRow}>
-                {filterOptions.map((option) => (
-                  <KitChip
-                    key={option.key}
-                    label={option.label}
-                    selected={jobsWindowFilter === option.key}
-                    onPress={() => setJobsWindowFilter(option.key)}
-                  />
-                ))}
-              </View>
+              ))}
             </View>
           </KitSurface>
 
           {jobs.length === 0 ? (
             <View style={{ minHeight: 260, justifyContent: "center" }}>
-              <EmptyState icon="briefcase" title={t("jobsTab.emptyInstructor")} body="" />
+              <EmptyState
+                icon="briefcase"
+                title={t("jobsTab.emptyInstructor")}
+                body=""
+              />
             </View>
           ) : filteredAvailableJobs.length === 0 ? (
             <View
@@ -559,7 +279,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingTop: BrandSpacing.lg,
     paddingBottom: BrandSpacing.xl,
-    gap: BrandSpacing.md,
+    gap: BrandSpacing.lg,
   },
   segmentRow: {
     flexDirection: "row",
