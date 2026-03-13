@@ -76,23 +76,6 @@ function StepBadge({
   );
 }
 
-function SectionCaption({
-  label,
-  palette,
-}: {
-  label: string;
-  palette: ReturnType<typeof useBrand>;
-}) {
-  return (
-    <ThemedText
-      type="micro"
-      style={{ color: palette.textMuted, letterSpacing: 0.2 }}
-    >
-      {label}
-    </ThemedText>
-  );
-}
-
 export default function OnboardingScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
@@ -624,11 +607,6 @@ export default function OnboardingScreen() {
       <ThemedText type="subtitle">
         {t("onboarding.instructorDetailsTitle")}
       </ThemedText>
-
-      <SectionCaption
-        label={t("onboarding.instructorDetailsTitle")}
-        palette={palette}
-      />
       <KitTextField
         label={t("onboarding.displayName")}
         value={displayName}
@@ -653,7 +631,6 @@ export default function OnboardingScreen() {
       />
 
       <View style={styles.sectionBlock}>
-        <SectionCaption label={t("onboarding.sportsTitle")} palette={palette} />
         <ThemedText type="defaultSemiBold">
           {t("onboarding.sportsTitle")}
         </ThemedText>
@@ -670,10 +647,9 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={styles.sectionBlock}>
-        <SectionCaption
-          label={t("profile.settings.location.title")}
-          palette={palette}
-        />
+        <ThemedText type="defaultSemiBold">
+          {t("profile.settings.location.title")}
+        </ThemedText>
         <AddressAutocomplete
           value={instructorAddress}
           onChangeText={(value) => {
@@ -731,25 +707,6 @@ export default function OnboardingScreen() {
           })}
         </View>
       </View>
-
-      <View style={styles.sectionBlock}>
-        <ActionButton
-          disabled={isRequestingPush}
-          label={
-            isRequestingPush
-              ? t("onboarding.push.requesting")
-              : pushToken
-                ? t("onboarding.push.enabled")
-                : t("onboarding.push.requestPermission")
-          }
-          palette={palette}
-          tone={pushToken ? "secondary" : "primary"}
-          fullWidth
-          onPress={() => {
-            void requestPushPermission();
-          }}
-        />
-      </View>
     </KitSurface>
   );
 
@@ -758,11 +715,6 @@ export default function OnboardingScreen() {
       <ThemedText type="subtitle">
         {t("onboarding.studioDetailsTitle")}
       </ThemedText>
-
-      <SectionCaption
-        label={t("onboarding.studioDetailsTitle")}
-        palette={palette}
-      />
       <KitTextField
         label={t("onboarding.studioName")}
         value={studioName}
@@ -852,10 +804,6 @@ export default function OnboardingScreen() {
 
       {step === 0 ? (
         <KitSurface tone="elevated" style={styles.roleCard}>
-          <SectionCaption
-            label={t("onboarding.rolePrompt")}
-            palette={palette}
-          />
           <ThemedText type="defaultSemiBold">
             {t("onboarding.rolePrompt")}
           </ThemedText>
@@ -915,16 +863,29 @@ export default function OnboardingScreen() {
         </View>
       ) : step === 2 && role === "instructor" ? (
         <KitSurface tone="elevated" style={styles.verifyCard}>
-          <SectionCaption
-            label={t("onboarding.verification.title")}
-            palette={palette}
-          />
           <ThemedText type="subtitle">
             {t("onboarding.verification.subtitle")}
           </ThemedText>
           <ThemedText style={{ color: palette.textMuted }}>
             {t("onboarding.verification.body")}
           </ThemedText>
+
+          {!pushToken ? (
+            <ActionButton
+              disabled={isRequestingPush}
+              label={
+                isRequestingPush
+                  ? t("onboarding.push.requesting")
+                  : t("onboarding.push.requestPermission")
+              }
+              palette={palette}
+              tone="secondary"
+              fullWidth
+              onPress={() => {
+                void requestPushPermission();
+              }}
+            />
+          ) : null}
 
           <View style={styles.verifyActions}>
             <ActionButton
