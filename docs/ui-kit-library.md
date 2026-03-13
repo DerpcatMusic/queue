@@ -5,7 +5,7 @@ Scope: `Queue/src/components/ui/kit/*`
 
 ## Goals
 
-- One reusable UI library for buttons, chips, FABs, headers, text fields, lists, switches, and segmented toggles.
+- One reusable UI library for chips, surfaces, text fields, lists, switches, status badges, and segmented toggles.
 - Zero component-level hardcoded colors.
 - All visual styling derives from global semantic palette (`useBrand`) through one adapter hook (`useKitTheme`).
 - Keep native behavior and animation support (haptics, ripple, reanimated press feedback, glass fallback rules).
@@ -26,17 +26,16 @@ Scope: `Queue/src/components/ui/kit/*`
 
 ## Components
 
-- `KitButton`
 - `KitChip`
-- `KitFab`
 - `KitSurface`
-- `KitPressable`
 - `KitTextField`
 - `KitList`
 - `KitListItem`
-- `KitHeader`
 - `KitSwitchRow`
 - `KitSegmentedToggle`
+- `KitSocialIconButton`
+- `KitStatusBadge`
+- `KitSuccessBurst`
 
 Exports are centralized in `src/components/ui/kit/index.ts`.
 
@@ -48,12 +47,12 @@ Exports are centralized in `src/components/ui/kit/index.ts`.
   - `src/components/ui/brand-surface.tsx`
   - `src/components/ui/native-list.tsx`
 - Screens now import kit primitives directly from `@/components/ui/kit`.
-- Profile settings screens updated to use `KitHeader`, `KitSwitchRow`, and `KitSegmentedToggle`.
+- Profile settings screens updated to use `KitSwitchRow` and `KitSegmentedToggle`.
 
 ## Extension Rules
 
 - New kit components must consume `useKitTheme()` and never declare hardcoded color literals.
-- Interactive controls should build on `KitPressable` so Android ripple, iOS pressed states, and haptics stay consistent.
+- Interactive controls should prefer native `Pressable` with direct semantic styling and only add haptics where they materially help.
 - Use semantic token names only (`.primary`, `.secondary`, `.surface`, `.foreground`, `.border`, etc.) instead of direct palette fields inside components.
 - New shadow/glass/overlay treatments must be tokenized in `use-kit-theme.ts`.
 - Feature screens should import from `@/components/ui/kit` and avoid ad-hoc control styling.

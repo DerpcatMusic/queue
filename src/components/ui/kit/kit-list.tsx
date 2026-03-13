@@ -1,9 +1,8 @@
 import React from "react";
-import { type StyleProp, View, type ViewStyle } from "react-native";
+import { Pressable, type StyleProp, View, type ViewStyle } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { KitPressable } from "./kit-pressable";
 import { useKitTheme } from "./use-kit-theme";
 
 type KitListProps = {
@@ -78,8 +77,12 @@ export function KitListItem({
 
   const content = (
     <>
-      {leading ? <View style={{ marginEnd: BrandSpacing.md }}>{leading}</View> : null}
-      <View style={{ flex: 1, justifyContent: "center", gap: children ? 2 : 0 }}>
+      {leading ? (
+        <View style={{ marginEnd: BrandSpacing.md }}>{leading}</View>
+      ) : null}
+      <View
+        style={{ flex: 1, justifyContent: "center", gap: children ? 2 : 0 }}
+      >
         {title ? (
           <ThemedText type="bodyStrong" style={{ color: foreground.secondary }}>
             {title}
@@ -87,13 +90,15 @@ export function KitListItem({
         ) : null}
         {children}
       </View>
-      {accessory ? <View style={{ marginStart: BrandSpacing.md }}>{accessory}</View> : null}
+      {accessory ? (
+        <View style={{ marginStart: BrandSpacing.md }}>{accessory}</View>
+      ) : null}
     </>
   );
 
   if (onPress) {
     return (
-      <KitPressable
+      <Pressable
         accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [
@@ -103,13 +108,15 @@ export function KitListItem({
             paddingHorizontal: BrandSpacing.lg,
             paddingVertical: BrandSpacing.md,
             minHeight: 56,
-            backgroundColor: pressed ? background.surfaceSecondary : background.transparent,
+            backgroundColor: pressed
+              ? background.surfaceSecondary
+              : background.transparent,
           },
           style,
         ]}
       >
         {content}
-      </KitPressable>
+      </Pressable>
     );
   }
 

@@ -1,5 +1,6 @@
 import * as Haptics from "expo-haptics";
-import type { KitPressableHaptic } from "./types";
+
+type KitHapticKind = "none" | "selection" | "impact";
 
 export function triggerSelectionHaptic() {
   if (process.env.EXPO_OS !== "ios") return;
@@ -11,7 +12,7 @@ export function triggerLightImpactHaptic() {
   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 }
 
-export function triggerHaptic(kind: KitPressableHaptic) {
+export function triggerHaptic(kind: KitHapticKind) {
   if (kind === "impact") {
     triggerLightImpactHaptic();
     return;
