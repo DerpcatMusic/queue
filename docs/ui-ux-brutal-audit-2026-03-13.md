@@ -562,6 +562,12 @@ Replace with consequence and momentum:
 - rebuilt the remaining kit internals on top of native `Pressable` and direct haptic helpers instead of a wrapper abstraction
 - updated kit documentation so the library description matches the reduced component surface
 
+### Slice 14
+
+- compressed the instructor and studio profile index screens from fragmented multi-section shells into tighter profile, account, and operations groupings
+- removed repeated section descriptions and extra sign-out cards that were adding boilerplate without helping task flow
+- moved profile closer to one completion rail plus one account/settings area while keeping the existing routes and actions intact
+
 ## Final Verdict
 
 The app is not ugly.
