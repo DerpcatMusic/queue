@@ -43,15 +43,6 @@ export function RoleTabsLayout({
     );
   }, [appRole, pathname, tabs]);
 
-  const totalAttention = useMemo(
-    () =>
-      Object.values(badgeCountByRoute).reduce(
-        (sum, count) => sum + (count && count > 0 ? count : 0),
-        0,
-      ),
-    [badgeCountByRoute],
-  );
-
   return (
     <TabBarScrollProvider>
       <View style={{ flex: 1, backgroundColor: palette.appBg as string }}>
@@ -59,23 +50,23 @@ export function RoleTabsLayout({
           style={{
             flex: 1,
             flexDirection: "row",
-            gap: 20,
-            paddingHorizontal: 20,
-            paddingVertical: 20,
+            gap: 16,
+            paddingHorizontal: 16,
+            paddingVertical: 16,
           }}
         >
           <View
             style={{
-              width: 272,
-              borderRadius: 36,
+              width: 236,
+              borderRadius: 30,
               borderCurve: "continuous",
               backgroundColor: palette.surface as string,
-              paddingHorizontal: 20,
-              paddingVertical: 22,
-              gap: 24,
+              paddingHorizontal: 16,
+              paddingVertical: 18,
+              gap: 18,
             }}
           >
-            <View style={{ gap: 10 }}>
+            <View style={{ gap: 4 }}>
               <Text
                 style={{
                   fontSize: 12,
@@ -85,73 +76,27 @@ export function RoleTabsLayout({
                   color: palette.primary as string,
                 }}
               >
-                Queue Control
+                Queue
               </Text>
               <Text
                 style={{
                   fontFamily: "BarlowCondensed_800ExtraBold",
-                  fontSize: 42,
-                  lineHeight: 40,
-                  letterSpacing: -1,
+                  fontSize: 32,
+                  lineHeight: 30,
+                  letterSpacing: -0.8,
                   color: palette.text as string,
                 }}
               >
-                {appRole === "studio"
-                  ? "Studio dashboard"
-                  : "Instructor dashboard"}
+                {appRole === "studio" ? "Studio" : "Instructor"}
               </Text>
               <Text
                 style={{
-                  fontSize: 14,
-                  lineHeight: 20,
+                  fontSize: 12,
+                  lineHeight: 17,
                   color: palette.textMuted as string,
                 }}
               >
-                Clean lanes, live priority, and less chrome.
-              </Text>
-            </View>
-
-            <View
-              style={{
-                borderRadius: 28,
-                borderCurve: "continuous",
-                backgroundColor: palette.primary as string,
-                paddingHorizontal: 18,
-                paddingVertical: 16,
-                gap: 4,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "700",
-                  letterSpacing: 1.1,
-                  textTransform: "uppercase",
-                  color: palette.onPrimary as string,
-                  opacity: 0.78,
-                }}
-              >
-                Active alerts
-              </Text>
-              <Text
-                style={{
-                  fontFamily: "BarlowCondensed_800ExtraBold",
-                  fontSize: 34,
-                  lineHeight: 32,
-                  color: palette.onPrimary as string,
-                }}
-              >
-                {String(totalAttention)}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 13,
-                  lineHeight: 18,
-                  color: palette.onPrimary as string,
-                  opacity: 0.86,
-                }}
-              >
-                Routed into one workspace instead of five repeated counters.
+                Fast lanes. Less shell.
               </Text>
             </View>
 
@@ -166,13 +111,13 @@ export function RoleTabsLayout({
                     <Pressable
                       accessibilityRole="link"
                       style={({ pressed }) => ({
-                        borderRadius: 26,
+                        borderRadius: 22,
                         borderCurve: "continuous",
                         backgroundColor: selected
                           ? (palette.text as string)
                           : (palette.surfaceAlt as string),
-                        paddingHorizontal: 16,
-                        paddingVertical: 14,
+                        paddingHorizontal: 14,
+                        paddingVertical: 12,
                         transform: [{ scale: pressed ? 0.99 : 1 }],
                       })}
                     >
@@ -187,7 +132,7 @@ export function RoleTabsLayout({
                         <View style={{ flex: 1, gap: 2 }}>
                           <Text
                             style={{
-                              fontSize: 15,
+                              fontSize: 14,
                               fontWeight: "700",
                               letterSpacing: 0.2,
                               color: selected
@@ -246,21 +191,17 @@ export function RoleTabsLayout({
             <View
               style={{
                 flexDirection: "row",
-                alignItems: "stretch",
-                gap: 16,
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                borderRadius: 28,
+                borderCurve: "continuous",
+                backgroundColor: palette.surface as string,
+                paddingHorizontal: 18,
+                paddingVertical: 16,
               }}
             >
-              <View
-                style={{
-                  flex: 1,
-                  borderRadius: 32,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.surface as string,
-                  paddingHorizontal: 20,
-                  paddingVertical: 18,
-                  gap: 4,
-                }}
-              >
+              <View style={{ flex: 1, gap: 2 }}>
                 <Text
                   style={{
                     fontSize: 11,
@@ -275,28 +216,16 @@ export function RoleTabsLayout({
                 <Text
                   style={{
                     fontFamily: "BarlowCondensed_800ExtraBold",
-                    fontSize: 38,
-                    lineHeight: 36,
-                    letterSpacing: -0.9,
+                    fontSize: 34,
+                    lineHeight: 32,
+                    letterSpacing: -0.8,
                     color: palette.text as string,
                   }}
                 >
                   {t(activeTab?.titleKey ?? "tabs.home")}
                 </Text>
               </View>
-
-              <View
-                style={{
-                  width: 260,
-                  borderRadius: 32,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.surfaceAlt as string,
-                  paddingHorizontal: 18,
-                  paddingVertical: 18,
-                  justifyContent: "space-between",
-                  gap: 8,
-                }}
-              >
+              <View style={{ alignItems: "flex-end", gap: 2 }}>
                 <Text
                   style={{
                     fontSize: 11,
@@ -310,23 +239,13 @@ export function RoleTabsLayout({
                 </Text>
                 <Text
                   style={{
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: "600",
-                    lineHeight: 20,
+                    lineHeight: 18,
                     color: palette.text as string,
                   }}
                 >
                   {formatDashboardDate(locale)}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    lineHeight: 17,
-                    color: palette.textMuted as string,
-                  }}
-                >
-                  Desktop mode is tuned for scanning, routing, and staying in
-                  flow.
                 </Text>
               </View>
             </View>
@@ -335,7 +254,7 @@ export function RoleTabsLayout({
               style={{
                 flex: 1,
                 minHeight: 0,
-                borderRadius: 36,
+                borderRadius: 30,
                 borderCurve: "continuous",
                 backgroundColor: palette.surface as string,
                 overflow: "hidden",
