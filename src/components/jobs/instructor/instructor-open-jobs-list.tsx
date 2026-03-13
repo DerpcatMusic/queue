@@ -2,9 +2,15 @@ import type { TFunction } from "i18next";
 import { Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { DotStatusPill, MetricCell } from "@/components/home/home-shared";
-import { KitButton, KitSurface } from "@/components/ui/kit";
+import { ActionButton } from "@/components/ui/action-button";
+import { KitSurface } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import {
+  type BrandPalette,
+  BrandRadius,
+  BrandSpacing,
+  BrandType,
+} from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -69,9 +75,13 @@ export function InstructorOpenJobsList({
       }}
     >
       {jobs.map((job, index) => {
-        const tone = job.applicationStatus ? STATUS_DOT[job.applicationStatus] : null;
+        const tone = job.applicationStatus
+          ? STATUS_DOT[job.applicationStatus]
+          : null;
         const dotColor = tone ? (palette[tone.color] as string) : undefined;
-        const pillBackground = tone ? (palette[tone.background] as string) : undefined;
+        const pillBackground = tone
+          ? (palette[tone.background] as string)
+          : undefined;
         const shiftWindow = `${formatDateWithWeekday(job.startTime, locale)} · ${formatTime(
           job.startTime,
           locale,
@@ -124,7 +134,9 @@ export function InstructorOpenJobsList({
                   />
 
                   <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    <View
+                      style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                    >
                       <Text
                         style={{
                           ...BrandType.heading,
@@ -140,7 +152,11 @@ export function InstructorOpenJobsList({
                         <DotStatusPill
                           backgroundColor={pillBackground}
                           color={dotColor}
-                          label={t(getApplicationStatusTranslationKey(job.applicationStatus!))}
+                          label={t(
+                            getApplicationStatusTranslationKey(
+                              job.applicationStatus!,
+                            ),
+                          )}
                         />
                       ) : null}
                     </View>
@@ -159,7 +175,10 @@ export function InstructorOpenJobsList({
 
                     {job.note ? (
                       <Text
-                        style={{ ...BrandType.caption, color: palette.textMuted as string }}
+                        style={{
+                          ...BrandType.caption,
+                          color: palette.textMuted as string,
+                        }}
                         numberOfLines={isWideWeb ? 1 : 2}
                       >
                         {job.note}
@@ -205,23 +224,26 @@ export function InstructorOpenJobsList({
                 >
                   {job.applicationStatus ? (
                     <DotStatusPill
-                      backgroundColor={pillBackground ?? (palette.surface as string)}
+                      backgroundColor={
+                        pillBackground ?? (palette.surface as string)
+                      }
                       color={dotColor ?? (palette.textMuted as string)}
-                      label={t(getApplicationStatusTranslationKey(job.applicationStatus))}
+                      label={t(
+                        getApplicationStatusTranslationKey(
+                          job.applicationStatus,
+                        ),
+                      )}
                     />
                   ) : (
-                    <KitButton
+                    <ActionButton
                       label={
                         applyingJobId === job.jobId
                           ? t("jobsTab.actions.applying")
                           : t("jobsTab.actions.apply")
                       }
                       onPress={() => onApply(job.jobId)}
-                      variant="primary"
-                      size="sm"
-                      fullWidth={false}
+                      palette={palette}
                       loading={applyingJobId === job.jobId}
-                      icon="arrow.right"
                     />
                   )}
                 </View>

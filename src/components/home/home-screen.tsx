@@ -8,14 +8,32 @@ import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import {
+  buildRoleTabRoute,
+  ROLE_TAB_ROUTE_NAMES,
+} from "@/navigation/role-routes";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
-const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
-const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile);
-const STUDIO_JOBS_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.jobs);
-const STUDIO_CALENDAR_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.calendar);
-const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
+const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute(
+  "instructor",
+  ROLE_TAB_ROUTE_NAMES.jobs,
+);
+const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute(
+  "instructor",
+  ROLE_TAB_ROUTE_NAMES.profile,
+);
+const STUDIO_JOBS_ROUTE = buildRoleTabRoute(
+  "studio",
+  ROLE_TAB_ROUTE_NAMES.jobs,
+);
+const STUDIO_CALENDAR_ROUTE = buildRoleTabRoute(
+  "studio",
+  ROLE_TAB_ROUTE_NAMES.calendar,
+);
+const STUDIO_PROFILE_ROUTE = buildRoleTabRoute(
+  "studio",
+  ROLE_TAB_ROUTE_NAMES.profile,
+);
 
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
@@ -27,7 +45,8 @@ export default function HomeScreen() {
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
   const canQueryInstructor =
     !isAuthLoading && isAuthenticated && currentUser?.role === "instructor";
-  const canQueryStudio = !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
+  const canQueryStudio =
+    !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
 
   // Role-specific queries - only fetch when user role is known
   const myStudioJobs = useQuery(
@@ -44,7 +63,10 @@ export default function HomeScreen() {
     canQueryInstructor ? {} : "skip",
   );
 
-  const studioSettings = useQuery(api.users.getMyStudioSettings, canQueryStudio ? {} : "skip");
+  const studioSettings = useQuery(
+    api.users.getMyStudioSettings,
+    canQueryStudio ? {} : "skip",
+  );
 
   const currencyFormatter = useMemo(
     () =>
@@ -72,7 +94,10 @@ export default function HomeScreen() {
     return <Redirect href="/sign-in" />;
   }
 
-  if (currentUser && (!currentUser.onboardingComplete || currentUser.role === "pending")) {
+  if (
+    currentUser &&
+    (!currentUser.onboardingComplete || currentUser.role === "pending")
+  ) {
     return <Redirect href="/onboarding" />;
   }
 
@@ -95,12 +120,16 @@ export default function HomeScreen() {
       ?.trim()
       .split(/\s+/)[0];
     const displayName =
-      firstName && firstName.length > 0 ? firstName : t("home.shared.unknownName");
+      firstName && firstName.length > 0
+        ? firstName
+        : t("home.shared.unknownName");
 
     return (
       <InstructorHomeContent
         displayName={displayName}
-        profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser.image}
+        profileImageUrl={
+          instructorSettings?.profileImageUrl ?? currentUser.image
+        }
         isVerified={instructorHomeStats.isVerified}
         locale={locale}
         openMatches={instructorHomeStats.openMatches}
@@ -108,8 +137,6 @@ export default function HomeScreen() {
         palette={palette}
         currencyFormatter={currencyFormatter}
         t={t}
-        earningsEvents={instructorHomeStats.earningsEvents}
-        lessonEvents={instructorHomeStats.lessonEvents}
         upcomingSessions={instructorHomeStats.upcomingSessions}
         onOpenJobs={() => router.push(INSTRUCTOR_JOBS_ROUTE)}
         onOpenProfile={() => router.push(INSTRUCTOR_PROFILE_ROUTE)}
@@ -122,14 +149,23 @@ export default function HomeScreen() {
   }
 
   const studioJobs = myStudioJobs ?? [];
-  const openJobs = studioJobs.filter((job: any) => job.status === "open").length;
+  const openJobs = studioJobs.filter(
+    (job: any) => job.status === "open",
+  ).length;
   const pendingApplicants = studioJobs.reduce(
     (total: number, job: any) => total + job.pendingApplicationsCount,
     0,
   );
-  const jobsFilled = studioJobs.filter((job: any) => job.status === "filled").length;
-  const firstName = (studioSettings?.studioName ?? currentUser.fullName)?.trim().split(/\s+/)[0];
-  const displayName = firstName && firstName.length > 0 ? firstName : t("home.shared.unknownName");
+  const jobsFilled = studioJobs.filter(
+    (job: any) => job.status === "filled",
+  ).length;
+  const firstName = (studioSettings?.studioName ?? currentUser.fullName)
+    ?.trim()
+    .split(/\s+/)[0];
+  const displayName =
+    firstName && firstName.length > 0
+      ? firstName
+      : t("home.shared.unknownName");
 
   return (
     <StudioHomeContent

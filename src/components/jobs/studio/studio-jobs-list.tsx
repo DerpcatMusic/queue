@@ -2,8 +2,14 @@ import type { TFunction } from "i18next";
 import { Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { DotStatusPill, MetricCell } from "@/components/home/home-shared";
-import { KitButton, KitSurface } from "@/components/ui/kit";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { ActionButton } from "@/components/ui/action-button";
+import { KitSurface } from "@/components/ui/kit";
+import {
+  type BrandPalette,
+  BrandRadius,
+  BrandSpacing,
+  BrandType,
+} from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -54,7 +60,10 @@ type StudioJobsListProps = {
   palette: BrandPalette;
   reviewingApplicationId: Id<"jobApplications"> | null;
   payingJobId: Id<"jobs"> | null;
-  onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
+  onReview: (
+    applicationId: Id<"jobApplications">,
+    status: "accepted" | "rejected",
+  ) => void;
   onStartPayment: (jobId: Id<"jobs">) => void;
   t: TFunction;
 };
@@ -79,14 +88,20 @@ const PAYOUT_STATUS_KEY: Record<PayoutStatus, string> = {
   needs_attention: "jobsTab.checkout.payoutStatus.needsAttention",
 };
 
-function jobStatusDot(status: StudioJob["status"], palette: BrandPalette): string {
+function jobStatusDot(
+  status: StudioJob["status"],
+  palette: BrandPalette,
+): string {
   const tone = getJobStatusTone(status);
   if (tone === "primary") return palette.primary as string;
   if (tone === "success") return palette.success as string;
   return palette.textMuted as string;
 }
 
-function paymentDotColor(status: PaymentStatus | undefined, palette: BrandPalette): string {
+function paymentDotColor(
+  status: PaymentStatus | undefined,
+  palette: BrandPalette,
+): string {
   if (!status) return palette.textMuted as string;
   const tone = getPaymentStatusTone(status);
   if (tone === "success") return palette.success as string;
@@ -95,7 +110,10 @@ function paymentDotColor(status: PaymentStatus | undefined, palette: BrandPalett
   return palette.primary as string;
 }
 
-function appStatusDot(status: StudioJobApplication["status"], palette: BrandPalette): string {
+function appStatusDot(
+  status: StudioJobApplication["status"],
+  palette: BrandPalette,
+): string {
   if (status === "accepted") return palette.success as string;
   if (status === "rejected") return palette.danger as string;
   if (status === "pending") return palette.warning as string;
@@ -109,7 +127,10 @@ type ApplicationRowProps = {
   palette: BrandPalette;
   reviewingApplicationId: Id<"jobApplications"> | null;
   canReview: boolean;
-  onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
+  onReview: (
+    applicationId: Id<"jobApplications">,
+    status: "accepted" | "rejected",
+  ) => void;
   t: TFunction;
 };
 
@@ -143,7 +164,9 @@ function ApplicationRow({
           paddingVertical: 12,
         }}
       >
-        <View style={{ flex: isWideWeb ? 1.5 : undefined, minWidth: 0, gap: 3 }}>
+        <View
+          style={{ flex: isWideWeb ? 1.5 : undefined, minWidth: 0, gap: 3 }}
+        >
           <Text
             style={{
               ...BrandType.bodyStrong,
@@ -157,7 +180,10 @@ function ApplicationRow({
           </Text>
           {application.message ? (
             <Text
-              style={{ ...BrandType.caption, color: palette.textMuted as string }}
+              style={{
+                ...BrandType.caption,
+                color: palette.textMuted as string,
+              }}
               numberOfLines={isWideWeb ? 1 : 2}
             >
               {application.message}
@@ -192,20 +218,25 @@ function ApplicationRow({
               gap: BrandSpacing.sm,
             }}
           >
-            <KitButton
-              label={isReviewing ? t("jobsTab.actions.rejecting") : t("jobsTab.actions.reject")}
+            <ActionButton
+              label={
+                isReviewing
+                  ? t("jobsTab.actions.rejecting")
+                  : t("jobsTab.actions.reject")
+              }
               onPress={() => onReview(application.applicationId, "rejected")}
-              variant="secondary"
-              size="sm"
-              fullWidth={false}
+              palette={palette}
+              tone="secondary"
               disabled={isReviewing}
             />
-            <KitButton
-              label={isReviewing ? t("jobsTab.actions.accepting") : t("jobsTab.actions.accept")}
+            <ActionButton
+              label={
+                isReviewing
+                  ? t("jobsTab.actions.accepting")
+                  : t("jobsTab.actions.accept")
+              }
               onPress={() => onReview(application.applicationId, "accepted")}
-              variant="primary"
-              size="sm"
-              fullWidth={false}
+              palette={palette}
               loading={isReviewing}
             />
           </View>
@@ -244,9 +275,13 @@ export function StudioJobsList({
           ["filled", "completed"].includes(job.status) &&
           !(
             job.payment &&
-            ["created", "pending", "authorized", "captured", "refunded"].includes(
-              job.payment.status,
-            )
+            [
+              "created",
+              "pending",
+              "authorized",
+              "captured",
+              "refunded",
+            ].includes(job.payment.status)
           );
         const acceptedApplication = job.applications.find(
           (application) => application.status === "accepted",
@@ -262,7 +297,9 @@ export function StudioJobsList({
                   count: job.applicationsCount,
                   defaultValue: `${String(job.applicationsCount)} reviewed`,
                 })
-              : t("jobsTab.card.noApplicants", { defaultValue: "No applicants" });
+              : t("jobsTab.card.noApplicants", {
+                  defaultValue: "No applicants",
+                });
         const listTone =
           job.pendingApplicationsCount > 0
             ? (palette.primarySubtle as string)
@@ -296,8 +333,16 @@ export function StudioJobsList({
                     gap: isWideWeb ? 16 : 12,
                   }}
                 >
-                  <View style={{ flex: isWideWeb ? 1.6 : undefined, minWidth: 0, gap: 6 }}>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <View
+                    style={{
+                      flex: isWideWeb ? 1.6 : undefined,
+                      minWidth: 0,
+                      gap: 6,
+                    }}
+                  >
+                    <View
+                      style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                    >
                       <Text
                         style={{
                           ...BrandType.heading,
@@ -327,7 +372,10 @@ export function StudioJobsList({
                     </View>
 
                     <Text
-                      style={{ ...BrandType.caption, color: palette.textMuted as string }}
+                      style={{
+                        ...BrandType.caption,
+                        color: palette.textMuted as string,
+                      }}
                       numberOfLines={1}
                     >
                       {pendingLabel}
@@ -335,7 +383,10 @@ export function StudioJobsList({
 
                     {acceptedApplication ? (
                       <Text
-                        style={{ ...BrandType.caption, color: palette.textMuted as string }}
+                        style={{
+                          ...BrandType.caption,
+                          color: palette.textMuted as string,
+                        }}
                         numberOfLines={1}
                       >
                         {t("jobsTab.card.assignedInstructor", {
@@ -368,7 +419,9 @@ export function StudioJobsList({
                     <MetricCell
                       align={isWideWeb ? "flex-end" : "flex-start"}
                       icon="creditcard.fill"
-                      label={t("jobsTab.card.payLabel", { defaultValue: "Pay" })}
+                      label={t("jobsTab.card.payLabel", {
+                        defaultValue: "Pay",
+                      })}
                       value={t("jobsTab.card.pay", { value: job.pay })}
                       palette={palette}
                     />
@@ -404,7 +457,9 @@ export function StudioJobsList({
                           color: palette.textMuted as string,
                         }}
                       >
-                        {t("jobsTab.card.settlement", { defaultValue: "Settlement" })}
+                        {t("jobsTab.card.settlement", {
+                          defaultValue: "Settlement",
+                        })}
                       </Text>
                       <DotStatusPill
                         backgroundColor={palette.surfaceAlt as string}
@@ -412,7 +467,9 @@ export function StudioJobsList({
                         label={
                           job.payment
                             ? t(PAYMENT_STATUS_KEY[job.payment.status], {
-                                defaultValue: getPaymentStatusLabel(job.payment.status),
+                                defaultValue: getPaymentStatusLabel(
+                                  job.payment.status,
+                                ),
                               })
                             : t("jobsTab.checkout.notStarted")
                         }
@@ -421,27 +478,33 @@ export function StudioJobsList({
                         <DotStatusPill
                           backgroundColor={palette.surfaceAlt as string}
                           color={palette.text as string}
-                          label={t(PAYOUT_STATUS_KEY[job.payment.payoutStatus], {
-                            defaultValue: getPayoutStatusLabel(job.payment.payoutStatus),
-                          })}
+                          label={t(
+                            PAYOUT_STATUS_KEY[job.payment.payoutStatus],
+                            {
+                              defaultValue: getPayoutStatusLabel(
+                                job.payment.payoutStatus,
+                              ),
+                            },
+                          )}
                         />
                       ) : null}
                     </View>
 
                     {canPay ? (
-                      <KitButton
+                      <ActionButton
                         label={
                           payingJobId === job.jobId
                             ? t("jobsTab.checkout.starting")
-                            : job.payment && ["failed", "cancelled"].includes(job.payment.status)
+                            : job.payment &&
+                                ["failed", "cancelled"].includes(
+                                  job.payment.status,
+                                )
                               ? t("jobsTab.checkout.retryPayment")
                               : t("jobsTab.checkout.payNow")
                         }
                         onPress={() => onStartPayment(job.jobId)}
+                        palette={palette}
                         loading={payingJobId === job.jobId}
-                        variant="primary"
-                        size="sm"
-                        fullWidth={false}
                       />
                     ) : null}
                   </View>
@@ -464,7 +527,9 @@ export function StudioJobsList({
                           color: palette.textMuted as string,
                         }}
                       >
-                        {t("jobsTab.card.reviewQueue", { defaultValue: "Review queue" })}
+                        {t("jobsTab.card.reviewQueue", {
+                          defaultValue: "Review queue",
+                        })}
                       </Text>
                       <Text
                         style={{
@@ -488,7 +553,10 @@ export function StudioJobsList({
                         locale={locale}
                         palette={palette}
                         reviewingApplicationId={reviewingApplicationId}
-                        canReview={application.status === "pending" && job.status === "open"}
+                        canReview={
+                          application.status === "pending" &&
+                          job.status === "open"
+                        }
                         onReview={onReview}
                         t={t}
                       />
@@ -504,7 +572,12 @@ export function StudioJobsList({
                       paddingVertical: 12,
                     }}
                   >
-                    <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+                    <Text
+                      style={{
+                        ...BrandType.caption,
+                        color: palette.textMuted as string,
+                      }}
+                    >
                       {t("jobsTab.card.assignedTo", {
                         name: acceptedApplication.instructorName,
                         defaultValue: `Assigned to ${acceptedApplication.instructorName}`,
@@ -521,7 +594,12 @@ export function StudioJobsList({
                       paddingVertical: 12,
                     }}
                   >
-                    <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+                    <Text
+                      style={{
+                        ...BrandType.caption,
+                        color: palette.textMuted as string,
+                      }}
+                    >
                       {t("jobsTab.card.applicantsProcessed", {
                         count: job.applicationsCount,
                         defaultValue: `${String(job.applicationsCount)} applicants processed`,
@@ -538,9 +616,15 @@ export function StudioJobsList({
                       paddingVertical: 12,
                     }}
                   >
-                    <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+                    <Text
+                      style={{
+                        ...BrandType.caption,
+                        color: palette.textMuted as string,
+                      }}
+                    >
                       {t("jobsTab.card.liveOnBoard", {
-                        defaultValue: "Live on the board — new applicants arrive here.",
+                        defaultValue:
+                          "Live on the board — new applicants arrive here.",
                       })}
                     </Text>
                   </View>

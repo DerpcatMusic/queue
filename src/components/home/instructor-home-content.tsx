@@ -1,7 +1,11 @@
 import type { TFunction } from "i18next";
 import { useMemo } from "react";
-import { Text, View } from "react-native";
-import Animated, { FadeInUp, useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
+import { Pressable, Text, View } from "react-native";
+import Animated, {
+  FadeInUp,
+  useAnimatedRef,
+  useScrollViewOffset,
+} from "react-native-reanimated";
 
 import {
   HomeSectionHeading,
@@ -13,19 +17,7 @@ import {
   HomeHeaderSheet,
 } from "@/components/home/home-header-sheet";
 import { getRelativeTimeLabel } from "@/components/home/home-shared";
-import { HomeStatsRow } from "@/components/home/home-stats-row";
-import {
-  getTimeframeData,
-  type MetricMode,
-  type Timeframe,
-} from "@/components/home/performance-chart-math";
-import {
-  PerformanceHeroCard,
-  type PerformanceTimeframeSeries,
-} from "@/components/home/performance-hero-card";
-import { usePerformanceChart } from "@/components/home/use-performance-chart";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { KitButton } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
@@ -42,15 +34,6 @@ type UpcomingSession = {
   pay: number;
 };
 
-type InstructorPaymentRow = {
-  timestamp: number;
-  amountAgorot: number;
-};
-
-type InstructorApplicationRow = {
-  endTime: number;
-};
-
 type InstructorHomeContentProps = {
   displayName: string;
   profileImageUrl?: string | null | undefined;
@@ -61,8 +44,6 @@ type InstructorHomeContentProps = {
   palette: BrandPalette;
   currencyFormatter: Intl.NumberFormat;
   t: TFunction;
-  earningsEvents: InstructorPaymentRow[];
-  lessonEvents: InstructorApplicationRow[];
   upcomingSessions: UpcomingSession[];
 
   onOpenJobs: () => void;
@@ -79,8 +60,6 @@ export function InstructorHomeContent({
   palette,
   currencyFormatter,
   t,
-  earningsEvents,
-  lessonEvents,
   upcomingSessions,
   onOpenJobs,
   onOpenProfile,
@@ -91,58 +70,6 @@ export function InstructorHomeContent({
   const layout = useHomeDashboardLayout();
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useScrollViewOffset(scrollRef);
-
-  const computeSeries = useMemo(() => {
-    return (currentMetricMode: MetricMode) => {
-      const frames = {} as Record<Timeframe, PerformanceTimeframeSeries>;
-
-      (["weekly", "monthly", "yearly"] as const).forEach((frame) => {
-        const frameData = getTimeframeData(frame, now, locale);
-        const values = Array.from({ length: frameData.bucketStarts.length }, () => 0);
-
-        if (currentMetricMode === "earnings") {
-          for (const row of earningsEvents) {
-            for (let index = 0; index < frameData.bucketStarts.length; index += 1) {
-              const bucketStart = frameData.bucketStarts[index]!;
-              const bucketEnd = frameData.bucketEnds[index]!;
-              if (row.timestamp >= bucketStart && row.timestamp < bucketEnd) {
-                values[index] = (values[index] ?? 0) + row.amountAgorot;
-                break;
-              }
-            }
-          }
-        } else {
-          for (const row of lessonEvents) {
-            for (let index = 0; index < frameData.bucketStarts.length; index += 1) {
-              const bucketStart = frameData.bucketStarts[index]!;
-              const bucketEnd = frameData.bucketEnds[index]!;
-              if (row.endTime >= bucketStart && row.endTime < bucketEnd) {
-                values[index] = (values[index] ?? 0) + 1;
-                break;
-              }
-            }
-          }
-        }
-
-        frames[frame] = {
-          values,
-          axisTicks: frameData.axisTicks,
-        };
-      });
-
-      return frames;
-    };
-  }, [earningsEvents, lessonEvents, locale, now]);
-
-  const chart = usePerformanceChart({
-    computeSeries,
-    currencyFormatter,
-    metricLabels: {
-      earnings: t("home.performance.earnings", { defaultValue: "Earnings" }),
-      lessons: t("home.performance.lessonLabel", { defaultValue: "Lessons" }),
-    },
-    t,
-  });
 
   const nextSession = upcomingSessions[0] ?? null;
   const readinessLabel = isVerified
@@ -160,7 +87,9 @@ export function InstructorHomeContent({
       });
   const heroSecondaryLabel =
     pendingApplications > 0
-      ? t("home.instructor.pendingApps", { defaultValue: "Pending applications" })
+      ? t("home.instructor.pendingApps", {
+          defaultValue: "Pending applications",
+        })
       : t("home.instructor.readyState", { defaultValue: "Ready state" });
   const heroSecondaryValue =
     pendingApplications > 0
@@ -171,10 +100,17 @@ export function InstructorHomeContent({
       : nextSession
         ? getRelativeTimeLabel(nextSession.startTime, now, locale)
         : t("home.instructor.profileSet", { defaultValue: "Profile set" });
+  const leadAction = !isVerified ? onOpenProfile : onOpenJobs;
+  const leadActionHint = !isVerified
+    ? t("home.actions.profileTitle", { defaultValue: "Open profile" })
+    : t("home.actions.jobsTitle", { defaultValue: "Open jobs" });
   const visibleSessions = upcomingSessions.slice(0, layout.isWideWeb ? 6 : 4);
 
   return (
-    <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
+    <View
+      collapsable={false}
+      style={{ flex: 1, backgroundColor: palette.appBg }}
+    >
       <HomeHeaderSheet
         displayName={displayName}
         subtitle={readinessLabel}
@@ -193,33 +129,28 @@ export function InstructorHomeContent({
           paddingHorizontal: BrandSpacing.xl,
           paddingTop: getHomeHeaderScrollTopPadding(safeTop),
           paddingBottom: BrandSpacing.xxl,
-          gap: layout.sectionGap,
+          gap: BrandSpacing.xl,
         }}
       >
-        <View
-          style={{
-            flexDirection: layout.isWideWeb ? "row" : "column",
-            alignItems: "stretch",
-            gap: layout.topRowGap,
-          }}
-        >
-          <Animated.View
-            entering={FadeInUp.delay(80).duration(300)}
-            style={{ flex: layout.heroFlex, gap: layout.sectionGap }}
+        <Animated.View entering={FadeInUp.delay(80).duration(280)}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={leadActionHint}
+            onPress={leadAction}
+            style={({ pressed }) => ({
+              opacity: pressed ? 0.94 : 1,
+              transform: [{ scale: pressed ? 0.995 : 1 }],
+            })}
           >
-            {/* Collapsed Hero Card */}
             <HomeSurface
               palette={palette}
+              tone="surface"
               style={{
-                padding: BrandSpacing.lg,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
+                padding: BrandSpacing.xl,
                 gap: BrandSpacing.md,
-                minHeight: layout.railMinHeight,
               }}
             >
-              <View style={{ flex: 1, gap: 4 }}>
+              <View style={{ gap: 6 }}>
                 <Text
                   style={{
                     ...BrandType.micro,
@@ -228,93 +159,99 @@ export function InstructorHomeContent({
                   }}
                 >
                   {nextSession
-                    ? t("home.instructor.eyebrowNext", { defaultValue: "NEXT LESSON" })
-                    : t("home.instructor.eyebrowBoard", { defaultValue: "JOBS BOARD" })}
+                    ? t("home.instructor.eyebrowNext", {
+                        defaultValue: "NEXT LESSON",
+                      })
+                    : t("home.instructor.eyebrowBoard", {
+                        defaultValue: "JOBS BOARD",
+                      })}
                 </Text>
                 <Text
                   style={{
                     ...BrandType.heading,
-                    fontSize: 20,
+                    fontSize: layout.isWideWeb ? 30 : 24,
+                    lineHeight: layout.isWideWeb ? 32 : 26,
                     color: palette.text as string,
                   }}
-                  numberOfLines={1}
                 >
                   {heroTitle}
                 </Text>
+                <Text
+                  style={{
+                    ...BrandType.body,
+                    color: palette.textMuted as string,
+                  }}
+                >
+                  {nextSession
+                    ? [
+                        formatDateTime(nextSession.startTime, locale),
+                        getZoneLabel(nextSession.zone, zoneLanguage),
+                      ].join("  ·  ")
+                    : t("home.instructor.heroMatches", {
+                        count: openMatches,
+                        defaultValue: `${String(openMatches)} open matches near you`,
+                      })}
+                </Text>
               </View>
-              <KitButton
-                label={
-                  nextSession
-                    ? t("home.actions.profileTitle", { defaultValue: "Profile" })
-                    : t("home.actions.jobsTitle", { defaultValue: "Open Jobs" })
-                }
-                onPress={nextSession ? onOpenProfile : onOpenJobs}
-                size="sm"
-              />
+
+              <View
+                style={{
+                  flexDirection: layout.isWideWeb ? "row" : "column",
+                  alignItems: layout.isWideWeb ? "center" : "stretch",
+                  justifyContent: "space-between",
+                  gap: BrandSpacing.md,
+                }}
+              >
+                <Text
+                  style={{
+                    ...BrandType.bodyStrong,
+                    color: palette.primary as string,
+                  }}
+                >
+                  {`${heroSecondaryLabel}: ${heroSecondaryValue}`}
+                </Text>
+                <Text
+                  style={{
+                    ...BrandType.micro,
+                    color: palette.textMuted as string,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.6,
+                  }}
+                >
+                  {leadActionHint}
+                </Text>
+              </View>
             </HomeSurface>
+          </Pressable>
+        </Animated.View>
 
-            <HomeStatsRow
-              palette={palette}
-              stats={[
-                {
-                  icon: "briefcase.fill",
-                  label: t("jobsTab.title", { defaultValue: "Open matches" }),
-                  value: String(openMatches),
-                },
-                {
-                  icon: "clock.fill",
-                  label: t("home.shared.pending"),
-                  value: String(pendingApplications),
-                },
-                {
-                  icon:
-                    pendingApplications > 0
-                      ? "clock.fill"
-                      : nextSession
-                        ? "calendar.badge.clock"
-                        : "checkmark.circle.fill",
-                  label: heroSecondaryLabel,
-                  value: heroSecondaryValue,
-                },
-              ]}
-            />
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInUp.delay(120).duration(320)}
-            style={{ flex: layout.chartFlex }}
-          >
-            <PerformanceHeroCard
-              palette={palette}
-              timeframe={chart.timeframe}
-              metricMode={chart.metricMode}
-              timeframeLabel={chart.timeframeLabel}
-              insightLabel={chart.insightLabel}
-              totalLabel={chart.summaryValue}
-              metricOptions={chart.metricOptions}
-              timeframeOptions={chart.timeframeOptions}
-              seriesByTimeframe={chart.seriesByTimeframe}
-              onSelectMetric={chart.setMetricMode}
-              onSelectTimeframe={chart.setTimeframe}
-              onSwipeTimeframe={chart.handleSwipeTimeframe}
-            />
-          </Animated.View>
-        </View>
-
-        <Animated.View entering={FadeInUp.delay(180).duration(320)} style={{ gap: 12 }}>
+        <Animated.View
+          entering={FadeInUp.delay(180).duration(320)}
+          style={{ gap: 12 }}
+        >
           <HomeSectionHeading
             title={t("home.instructor.nextTitle")}
-            eyebrow={t("home.instructor.scheduleEyebrow", { defaultValue: "SCHEDULE" })}
+            eyebrow={t("home.instructor.scheduleEyebrow", {
+              defaultValue: "SCHEDULE",
+            })}
             palette={palette}
           />
           {upcomingSessions.length === 0 ? (
             <HomeSurface palette={palette} style={{ padding: 18, gap: 6 }}>
-              <Text style={{ ...BrandType.title, color: palette.text as string }}>
+              <Text
+                style={{ ...BrandType.title, color: palette.text as string }}
+              >
                 {t("home.instructor.noUpcoming")}
               </Text>
-              <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+              <Text
+                style={{
+                  ...BrandType.caption,
+                  color: palette.textMuted as string,
+                }}
+              >
                 {t("home.instructor.emptySchedule", {
-                  defaultValue: "The jobs board is live when you want the next one.",
+                  defaultValue:
+                    "The jobs board is live when you want the next one.",
                 })}
               </Text>
             </HomeSurface>
@@ -361,12 +298,20 @@ export function InstructorHomeContent({
                           fontVariant: ["tabular-nums"],
                         }}
                       >
-                        {new Date(session.startTime).toLocaleTimeString(locale, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {new Date(session.startTime).toLocaleTimeString(
+                          locale,
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}
                       </Text>
-                      <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
+                      <Text
+                        style={{
+                          ...BrandType.micro,
+                          color: palette.textMuted as string,
+                        }}
+                      >
                         {getRelativeTimeLabel(session.startTime, now, locale)}
                       </Text>
                     </View>
@@ -381,13 +326,19 @@ export function InstructorHomeContent({
                       >
                         <View style={{ flex: 1, gap: 2 }}>
                           <Text
-                            style={{ ...BrandType.title, color: palette.text as string }}
+                            style={{
+                              ...BrandType.title,
+                              color: palette.text as string,
+                            }}
                             numberOfLines={1}
                           >
                             {toSportLabel(session.sport as never)}
                           </Text>
                           <Text
-                            style={{ ...BrandType.micro, color: palette.primary as string }}
+                            style={{
+                              ...BrandType.micro,
+                              color: palette.primary as string,
+                            }}
                             numberOfLines={1}
                           >
                             {session.studioName}
@@ -404,7 +355,12 @@ export function InstructorHomeContent({
                           {currencyFormatter.format(session.pay)}
                         </Text>
                       </View>
-                      <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+                      <Text
+                        style={{
+                          ...BrandType.caption,
+                          color: palette.textMuted as string,
+                        }}
+                      >
                         {[
                           formatDateTime(session.startTime, locale),
                           getZoneLabel(session.zone, zoneLanguage),

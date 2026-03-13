@@ -22,12 +22,16 @@ import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view"
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { EmptyState } from "@/components/ui/empty-state";
-import { KitButton, KitChip, KitSurface } from "@/components/ui/kit";
+import { ActionButton } from "@/components/ui/action-button";
+import { KitChip, KitSurface } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import {
+  buildRoleTabRoute,
+  ROLE_TAB_ROUTE_NAMES,
+} from "@/navigation/role-routes";
 
 type FeedSectionHeaderProps = {
   title: string;
@@ -40,7 +44,11 @@ type StudioFeedJobSummary = {
   status: string;
 };
 
-function FeedSectionHeader({ title, subtitle, palette }: FeedSectionHeaderProps) {
+function FeedSectionHeader({
+  title,
+  subtitle,
+  palette,
+}: FeedSectionHeaderProps) {
   return (
     <View style={styles.sectionHeader}>
       <ThemedText type="sectionTitle">{title}</ThemedText>
@@ -63,10 +71,14 @@ export function StudioFeed() {
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const isWideWeb = Platform.OS === "web" && width >= 1180;
-  const mobileContentPaddingTop = Platform.OS === "android" ? safeTop + BrandSpacing.sm : 0;
+  const mobileContentPaddingTop =
+    Platform.OS === "android" ? safeTop + BrandSpacing.sm : 0;
   const signInRoute = "/sign-in" as const;
   const onboardingRoute = "/onboarding" as const;
-  const instructorJobsRoute = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
+  const instructorJobsRoute = buildRoleTabRoute(
+    "instructor",
+    ROLE_TAB_ROUTE_NAMES.jobs,
+  );
   const {
     createJobSheetRef,
     currentUser,
@@ -92,18 +104,22 @@ export function StudioFeed() {
     studioNotificationSettings,
   } = useStudioFeedController({ t });
   const screenStyle = useMemo(
-    () => StyleSheet.flatten([styles.screen, { backgroundColor: palette.appBg }]),
+    () =>
+      StyleSheet.flatten([styles.screen, { backgroundColor: palette.appBg }]),
     [palette.appBg],
   );
   const reviewCount =
     studioJobs?.reduce(
-      (total: number, job: StudioFeedJobSummary) => total + job.pendingApplicationsCount,
+      (total: number, job: StudioFeedJobSummary) =>
+        total + job.pendingApplicationsCount,
       0,
     ) ?? 0;
   const openCount =
-    studioJobs?.filter((job: StudioFeedJobSummary) => job.status === "open").length ?? 0;
+    studioJobs?.filter((job: StudioFeedJobSummary) => job.status === "open")
+      .length ?? 0;
   const filledCount =
-    studioJobs?.filter((job: StudioFeedJobSummary) => job.status === "filled").length ?? 0;
+    studioJobs?.filter((job: StudioFeedJobSummary) => job.status === "filled")
+      .length ?? 0;
   const reviewQueueJobs = filteredStudioJobsWithPayments.filter(
     (job: StudioFeedJobSummary) => job.pendingApplicationsCount > 0,
   );
@@ -124,9 +140,13 @@ export function StudioFeed() {
     { key: "completed", label: t("jobsTab.studioFeed.filterCompleted") },
   ] as const;
   const shouldSplitMobileBoard =
-    jobsStatusFilter === "all" && reviewQueueJobs.length > 0 && boardJobs.length > 0;
+    jobsStatusFilter === "all" &&
+    reviewQueueJobs.length > 0 &&
+    boardJobs.length > 0;
   const mobilePrimaryJobs =
-    jobsStatusFilter === "needs_review" ? reviewQueueJobs : filteredStudioJobsWithPayments;
+    jobsStatusFilter === "needs_review"
+      ? reviewQueueJobs
+      : filteredStudioJobsWithPayments;
 
   if (currentUser === undefined) {
     return <LoadingScreen label={t("jobsTab.loading")} />;
@@ -162,7 +182,13 @@ export function StudioFeed() {
           }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ flexDirection: "row", gap: BrandSpacing.xl, alignItems: "stretch" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              gap: BrandSpacing.xl,
+              alignItems: "stretch",
+            }}
+          >
             <View
               style={{
                 flex: 1.2,
@@ -206,24 +232,28 @@ export function StudioFeed() {
                 {t("jobsTab.studioFeed.body")}
               </Text>
               <View style={{ flexDirection: "row", gap: 10 }}>
-                <KitButton
+                <ActionButton
                   label={t("jobsTab.form.title", "Post New Job")}
-                  icon="plus"
                   onPress={() => createJobSheetRef.current?.expand()}
-                  variant="secondary"
-                  fullWidth={false}
-                  style={{ backgroundColor: palette.onPrimary as string }}
+                  palette={palette}
+                  tone="secondary"
                 />
-                <KitButton
+                <ActionButton
                   label={
                     reviewCount > 0
-                      ? t("jobsTab.studioFeed.reviewAction", { count: reviewCount })
+                      ? t("jobsTab.studioFeed.reviewAction", {
+                          count: reviewCount,
+                        })
                       : t("jobsTab.studioFeed.queueClear")
                   }
                   onPress={() => setJobsStatusFilter("needs_review")}
-                  variant="secondary"
-                  fullWidth={false}
-                  style={{ backgroundColor: "rgba(255,255,255,0.16)" }}
+                  palette={{
+                    ...palette,
+                    surface: "rgba(255,255,255,0.16)",
+                    borderStrong: "rgba(255,255,255,0.24)",
+                    text: palette.onPrimary,
+                  }}
+                  tone="secondary"
                 />
               </View>
             </View>
@@ -316,7 +346,13 @@ export function StudioFeed() {
             />
           ) : null}
 
-          <View style={{ flexDirection: "row", gap: BrandSpacing.xl, alignItems: "flex-start" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              gap: BrandSpacing.xl,
+              alignItems: "flex-start",
+            }}
+          >
             <View style={{ flex: 1.35, gap: BrandSpacing.xl, minWidth: 0 }}>
               {reviewQueueJobs.length > 0 ? (
                 <View
@@ -367,7 +403,9 @@ export function StudioFeed() {
                 <View style={{ paddingHorizontal: 18 }}>
                   <FeedSectionHeader
                     title={t("jobsTab.studioFeed.boardTitle")}
-                    subtitle={t("jobsTab.studioFeed.boardSubtitle", { count: boardJobs.length })}
+                    subtitle={t("jobsTab.studioFeed.boardSubtitle", {
+                      count: boardJobs.length,
+                    })}
                     palette={palette}
                   />
                 </View>
@@ -376,18 +414,41 @@ export function StudioFeed() {
                   <View style={[styles.emptyStateWrap, { minHeight: 320 }]}>
                     <ActivityIndicator
                       size="small"
-                      color={palette.primary as import("react-native").ColorValue}
+                      color={
+                        palette.primary as import("react-native").ColorValue
+                      }
                     />
-                    <ThemedText style={{ color: palette.textMuted, marginTop: BrandSpacing.xs }}>
+                    <ThemedText
+                      style={{
+                        color: palette.textMuted,
+                        marginTop: BrandSpacing.xs,
+                      }}
+                    >
                       {t("jobsTab.loading")}
                     </ThemedText>
                   </View>
                 ) : studioJobs.length === 0 ? (
-                  <View style={{ flex: 1, minHeight: 360, justifyContent: "center" }}>
-                    <EmptyState icon="bag" title={t("jobsTab.emptyStudio")} body="" />
+                  <View
+                    style={{
+                      flex: 1,
+                      minHeight: 360,
+                      justifyContent: "center",
+                    }}
+                  >
+                    <EmptyState
+                      icon="bag"
+                      title={t("jobsTab.emptyStudio")}
+                      body=""
+                    />
                   </View>
                 ) : filteredStudioJobs.length === 0 ? (
-                  <View style={{ flex: 1, minHeight: 260, justifyContent: "center" }}>
+                  <View
+                    style={{
+                      flex: 1,
+                      minHeight: 260,
+                      justifyContent: "center",
+                    }}
+                  >
                     <EmptyState
                       icon="magnifyingglass"
                       title={t("jobsTab.noJobsFound")}
@@ -411,7 +472,13 @@ export function StudioFeed() {
                     t={t}
                   />
                 ) : (
-                  <View style={{ flex: 1, minHeight: 240, justifyContent: "center" }}>
+                  <View
+                    style={{
+                      flex: 1,
+                      minHeight: 240,
+                      justifyContent: "center",
+                    }}
+                  >
                     <EmptyState
                       icon="checkmark.circle"
                       title={t("jobsTab.boardEmptyTitle")}
@@ -441,8 +508,12 @@ export function StudioFeed() {
                 <NativeSearchField
                   value={jobsSearchQuery}
                   onChangeText={setJobsSearchQuery}
-                  placeholder={t("jobsTab.searchPlaceholder", { defaultValue: "Search jobs" })}
-                  clearAccessibilityLabel={t("common.clear", { defaultValue: "Clear search" })}
+                  placeholder={t("jobsTab.searchPlaceholder", {
+                    defaultValue: "Search jobs",
+                  })}
+                  clearAccessibilityLabel={t("common.clear", {
+                    defaultValue: "Clear search",
+                  })}
                 />
                 <ScrollView
                   horizontal
@@ -455,7 +526,9 @@ export function StudioFeed() {
                       label={option.label}
                       selected={jobsStatusFilter === option.key}
                       onPress={() => {
-                        setJobsStatusFilter(option.key as StudioJobsStatusFilter);
+                        setJobsStatusFilter(
+                          option.key as StudioJobsStatusFilter,
+                        );
                       }}
                     />
                   ))}
@@ -479,13 +552,14 @@ export function StudioFeed() {
                     subtitle={t("jobsTab.studioPushDescription")}
                     palette={palette}
                   />
-                  <KitButton
+                  <ActionButton
                     label={
                       isEnablingStudioPush
                         ? t("jobsTab.actions.enablingPush")
                         : t("jobsTab.actions.enablePush")
                     }
-                    variant="secondary"
+                    palette={palette}
+                    tone="secondary"
                     onPress={() => {
                       void enableStudioPush();
                     }}
@@ -504,13 +578,24 @@ export function StudioFeed() {
                   gap: 8,
                 }}
               >
-                <Text style={{ ...BrandType.heading, fontSize: 24, color: palette.text as string }}>
+                <Text
+                  style={{
+                    ...BrandType.heading,
+                    fontSize: 24,
+                    color: palette.text as string,
+                  }}
+                >
                   Workflow
                 </Text>
-                <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
-                  Review stays detailed only while a decision is needed. The board compresses once a
-                  job is staffed or settled, so web reads like an operations desk instead of a long
-                  mobile feed.
+                <Text
+                  style={{
+                    ...BrandType.caption,
+                    color: palette.textMuted as string,
+                  }}
+                >
+                  Review stays detailed only while a decision is needed. The
+                  board compresses once a job is staffed or settled, so web
+                  reads like an operations desk instead of a long mobile feed.
                 </Text>
               </View>
             </View>
@@ -535,7 +620,10 @@ export function StudioFeed() {
       <TabScreenScrollView
         routeKey="studio/jobs/index"
         style={styles.screen}
-        contentContainerStyle={[styles.content, { paddingTop: mobileContentPaddingTop }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: mobileContentPaddingTop },
+        ]}
         topInsetTone="sheet"
         keyboardShouldPersistTaps="handled"
       >
@@ -591,8 +679,9 @@ export function StudioFeed() {
                   {
                     label: "Open",
                     value: String(
-                      studioJobs?.filter((job: StudioFeedJobSummary) => job.status === "open")
-                        .length ?? 0,
+                      studioJobs?.filter(
+                        (job: StudioFeedJobSummary) => job.status === "open",
+                      ).length ?? 0,
                     ),
                     accent: palette.primary as string,
                   },
@@ -609,8 +698,9 @@ export function StudioFeed() {
                   {
                     label: "Filled",
                     value: String(
-                      studioJobs?.filter((job: StudioFeedJobSummary) => job.status === "filled")
-                        .length ?? 0,
+                      studioJobs?.filter(
+                        (job: StudioFeedJobSummary) => job.status === "filled",
+                      ).length ?? 0,
                     ),
                     accent: palette.success as string,
                   },
@@ -684,22 +774,23 @@ export function StudioFeed() {
                       color: palette.textMuted as string,
                     }}
                   >
-                    Create shifts, review applicants, and move payment work from one lane.
+                    Create shifts, review applicants, and move payment work from
+                    one lane.
                   </Text>
                 </View>
-                <KitButton
+                <ActionButton
                   label={t("jobsTab.form.title", "Post New Job")}
-                  icon="plus"
                   onPress={() => createJobSheetRef.current?.expand()}
-                  variant="primary"
-                  fullWidth={false}
+                  palette={palette}
                 />
               </View>
             </KitSurface>
 
             {studioNotificationSettings !== undefined &&
             !studioNotificationSettings?.hasExpoPushToken ? (
-              <View style={[styles.section, { borderBottomColor: "transparent" }]}>
+              <View
+                style={[styles.section, { borderBottomColor: "transparent" }]}
+              >
                 <FeedSectionHeader
                   title={t("jobsTab.notificationsTitle")}
                   subtitle={t("jobsTab.studioPushDescription")}
@@ -711,13 +802,14 @@ export function StudioFeed() {
                       {t("jobsTab.studioPushDescription")}
                     </ThemedText>
                   </View>
-                  <KitButton
+                  <ActionButton
                     label={
                       isEnablingStudioPush
                         ? t("jobsTab.actions.enablingPush")
                         : t("jobsTab.actions.enablePush")
                     }
-                    variant="secondary"
+                    palette={palette}
+                    tone="secondary"
                     onPress={() => {
                       void enableStudioPush();
                     }}
@@ -755,8 +847,12 @@ export function StudioFeed() {
                 <NativeSearchField
                   value={jobsSearchQuery}
                   onChangeText={setJobsSearchQuery}
-                  placeholder={t("jobsTab.searchPlaceholder", { defaultValue: "Search jobs" })}
-                  clearAccessibilityLabel={t("common.clear", { defaultValue: "Clear search" })}
+                  placeholder={t("jobsTab.searchPlaceholder", {
+                    defaultValue: "Search jobs",
+                  })}
+                  clearAccessibilityLabel={t("common.clear", {
+                    defaultValue: "Clear search",
+                  })}
                 />
                 <ScrollView
                   horizontal
@@ -771,7 +867,9 @@ export function StudioFeed() {
                         label={option.label}
                         selected={selected}
                         onPress={() => {
-                          setJobsStatusFilter(option.key as StudioJobsStatusFilter);
+                          setJobsStatusFilter(
+                            option.key as StudioJobsStatusFilter,
+                          );
                         }}
                       />
                     );
@@ -784,16 +882,29 @@ export function StudioFeed() {
                     size="small"
                     color={palette.primary as import("react-native").ColorValue}
                   />
-                  <ThemedText style={{ color: palette.textMuted, marginTop: BrandSpacing.xs }}>
+                  <ThemedText
+                    style={{
+                      color: palette.textMuted,
+                      marginTop: BrandSpacing.xs,
+                    }}
+                  >
                     {t("jobsTab.loading")}
                   </ThemedText>
                 </View>
               ) : studioJobs.length === 0 ? (
-                <View style={{ flex: 1, minHeight: 400, justifyContent: "center" }}>
-                  <EmptyState icon="bag" title={t("jobsTab.emptyStudio")} body="" />
+                <View
+                  style={{ flex: 1, minHeight: 400, justifyContent: "center" }}
+                >
+                  <EmptyState
+                    icon="bag"
+                    title={t("jobsTab.emptyStudio")}
+                    body=""
+                  />
                 </View>
               ) : filteredStudioJobs.length === 0 ? (
-                <View style={{ flex: 1, minHeight: 260, justifyContent: "center" }}>
+                <View
+                  style={{ flex: 1, minHeight: 260, justifyContent: "center" }}
+                >
                   <EmptyState
                     icon="magnifyingglass"
                     title={t("jobsTab.noJobsFound")}
@@ -830,7 +941,9 @@ export function StudioFeed() {
                   <View style={{ gap: BrandSpacing.xs }}>
                     <FeedSectionHeader
                       title={t("jobsTab.studioFeed.boardTitle")}
-                      subtitle={t("jobsTab.studioFeed.boardSubtitle", { count: boardJobs.length })}
+                      subtitle={t("jobsTab.studioFeed.boardSubtitle", {
+                        count: boardJobs.length,
+                      })}
                       palette={palette}
                     />
                     <StudioJobsList
