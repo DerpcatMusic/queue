@@ -592,6 +592,12 @@ Replace with consequence and momentum:
 - removed the remaining `KitList` and `KitSwitchRow` shell in favor of shared profile cards, one address lane, one zone lane, and a fixed save rail
 - normalized the page onto semantic palette tokens only while tightening the zone-resolution feedback and error messaging
 
+### Slice 19
+
+- rebuilt the instructor calendar settings page into a provider-first operations surface instead of a segmented settings dump
+- removed the remaining `KitList`, `KitSegmentedToggle`, and `KitSwitchRow` shell from the route in favor of shared profile cards and direct provider actions
+- fixed the save flow so choosing `No sync` persists cleanly even when switching away from non-Google providers
+
 ## Final Verdict
 
 The app is not ugly.
