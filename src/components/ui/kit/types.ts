@@ -11,10 +11,17 @@ import type {
 
 export type KitPressableHaptic = "none" | "selection" | "impact";
 
-export type KitPressableProps = Omit<PressableProps, "android_ripple" | "children" | "style"> & {
+export type KitPressableProps = Omit<
+  PressableProps,
+  "android_ripple" | "children" | "style"
+> & {
   children: ReactNode | ((state: PressableStateCallbackType) => ReactNode);
-  style?: StyleProp<ViewStyle> | ((state: PressableStateCallbackType) => StyleProp<ViewStyle>);
-  pressStyle?: StyleProp<ViewStyle> | ((state: PressableStateCallbackType) => StyleProp<ViewStyle>);
+  style?:
+    | StyleProp<ViewStyle>
+    | ((state: PressableStateCallbackType) => StyleProp<ViewStyle>);
+  pressStyle?:
+    | StyleProp<ViewStyle>
+    | ((state: PressableStateCallbackType) => StyleProp<ViewStyle>);
   haptic?: KitPressableHaptic;
   nativeFeedback?: boolean;
   pressedOpacity?: number;
@@ -55,16 +62,12 @@ export type KitChipProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export type KitFabProps = {
-  icon: ReactNode;
-  onPress: () => void;
-  badgeLabel?: string;
-  selected?: boolean;
-  disabled?: boolean;
-  style?: StyleProp<ViewStyle>;
-};
-
-export type KitStatusBadgeTone = "neutral" | "accent" | "success" | "warning" | "danger";
+export type KitStatusBadgeTone =
+  | "neutral"
+  | "accent"
+  | "success"
+  | "warning"
+  | "danger";
 
 export type KitStatusBadgeProps = {
   label: string;

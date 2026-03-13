@@ -1,6 +1,5 @@
 export { KitButton } from "./kit-button";
 export { KitChip } from "./kit-chip";
-export { KitFab } from "./kit-fab";
 export { KitFloatingBadge } from "./kit-floating-badge";
 export { KitList, KitListItem } from "./kit-list";
 export { KitPressable } from "./kit-pressable";
@@ -17,7 +16,6 @@ export type {
   KitButtonSize,
   KitButtonVariant,
   KitChipProps,
-  KitFabProps,
   KitFloatingBadgeMotion,
   KitFloatingBadgeProps,
   KitPressableHaptic,

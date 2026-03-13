@@ -2,7 +2,6 @@ import { Text, View } from "react-native";
 
 import { BrandRadius } from "@/constants/brand";
 import { KitPressable } from "./kit-pressable";
-import { getNativeShadowStyle } from "./native-shadow";
 import { useKitTheme } from "./use-kit-theme";
 
 type Option<T extends string> = {
@@ -53,11 +52,12 @@ export function KitSegmentedToggle<T extends string>({
               borderRadius: BrandRadius.button - 4,
               borderCurve: "continuous",
               borderColor: selected ? color.primaryPressed : border.transparent,
-              backgroundColor: selected ? color.primary : background.surfaceSecondary,
+              backgroundColor: selected
+                ? color.primary
+                : background.surfaceSecondary,
               alignItems: "center",
               justifyContent: "center",
               opacity: option.disabled ? 0.5 : pressed ? 0.86 : 1,
-              ...(selected ? getNativeShadowStyle("surface") : {}),
             })}
           >
             <Text
