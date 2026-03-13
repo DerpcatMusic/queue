@@ -520,6 +520,12 @@ Replace with consequence and momentum:
 - simplified profile editor, readiness, and sports-selection controls without changing the route structure yet
 - kept the profile cleanup focused on shared components so later route cuts can delete more safely
 
+### Slice 07
+
+- removed kit button usage from the remaining profile route forms for sports, location, and calendar settings
+- kept those routes structurally intact while simplifying their action layer
+- finished the profile-form cleanup before moving to heavier calendar, map, and payments screens
+
 ## Final Verdict
 
 The app is not ugly.
