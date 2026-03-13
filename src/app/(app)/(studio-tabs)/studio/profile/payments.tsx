@@ -2,12 +2,12 @@ import { useQuery } from "convex/react";
 import { Redirect } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
 import { ThemedText } from "@/components/themed-text";
-import { KitList, KitListItem, KitPressable } from "@/components/ui/kit";
+import { KitList, KitListItem } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -31,14 +31,18 @@ export default function ProfilePaymentsScreen() {
     api.payments.listMyPayments,
     isStudioPaymentsRole ? { limit: 40 } : "skip",
   );
-  const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"payments"> | null>(null);
+  const [selectedPaymentId, setSelectedPaymentId] =
+    useState<Id<"payments"> | null>(null);
 
   const selectedPaymentDetail = useQuery(
     api.payments.getMyPaymentDetail,
     selectedPaymentId ? { paymentId: selectedPaymentId } : "skip",
   );
 
-  if (currentUser === undefined || (isStudioPaymentsRole && paymentRows === undefined)) {
+  if (
+    currentUser === undefined ||
+    (isStudioPaymentsRole && paymentRows === undefined)
+  ) {
     return <LoadingScreen label={t("jobsTab.loading")} />;
   }
   if (currentUser === null) {
@@ -52,16 +56,23 @@ export default function ProfilePaymentsScreen() {
   }
 
   type PaymentListRow = NonNullable<typeof paymentRows>[number];
-  type PaymentTimelineEvent = NonNullable<typeof selectedPaymentDetail>["timeline"][number];
+  type PaymentTimelineEvent = NonNullable<
+    typeof selectedPaymentDetail
+  >["timeline"][number];
 
   const rows = (paymentRows ?? []) as PaymentListRow[];
   const role = currentUser.role as "studio" | "instructor";
-  const failedCount = rows.filter((row) => row.payment.status === "failed").length;
+  const failedCount = rows.filter(
+    (row) => row.payment.status === "failed",
+  ).length;
   const processedCount = rows.filter((row) =>
     ["captured", "refunded"].includes(row.payment.status),
   ).length;
-  const paidOutCount = rows.filter((row) => row.payout?.status === "paid").length;
-  const isDetailLoading = selectedPaymentId !== null && selectedPaymentDetail === undefined;
+  const paidOutCount = rows.filter(
+    (row) => row.payout?.status === "paid",
+  ).length;
+  const isDetailLoading =
+    selectedPaymentId !== null && selectedPaymentDetail === undefined;
 
   return (
     <TabScreenScrollView
@@ -80,16 +91,26 @@ export default function ProfilePaymentsScreen() {
           <KitListItem
             title={t("profile.payments.processedPayments")}
             accessory={
-              <ThemedText style={{ color: palette.textMuted }}>{processedCount}</ThemedText>
+              <ThemedText style={{ color: palette.textMuted }}>
+                {processedCount}
+              </ThemedText>
             }
           />
           <KitListItem
             title={t("profile.payments.paidOut")}
-            accessory={<ThemedText style={{ color: palette.textMuted }}>{paidOutCount}</ThemedText>}
+            accessory={
+              <ThemedText style={{ color: palette.textMuted }}>
+                {paidOutCount}
+              </ThemedText>
+            }
           />
           <KitListItem
             title={t("profile.payments.failed")}
-            accessory={<ThemedText style={{ color: palette.danger }}>{failedCount}</ThemedText>}
+            accessory={
+              <ThemedText style={{ color: palette.danger }}>
+                {failedCount}
+              </ThemedText>
+            }
           />
         </KitList>
       </View>
@@ -119,16 +140,21 @@ export default function ProfilePaymentsScreen() {
               justifyContent: "space-between",
             }}
           >
-            <ThemedText type="title">{t("profile.payments.detailTitle")}</ThemedText>
-            <KitPressable
+            <ThemedText type="title">
+              {t("profile.payments.detailTitle")}
+            </ThemedText>
+            <Pressable
               accessibilityRole="button"
               accessibilityLabel={t("profile.payments.clearDetail")}
               onPress={() => setSelectedPaymentId(null)}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.72 : 1,
+              })}
             >
               <ThemedText type="caption" style={{ color: palette.textMuted }}>
                 {t("common.clear")}
               </ThemedText>
-            </KitPressable>
+            </Pressable>
           </View>
           {isDetailLoading ? (
             <KitList inset>
@@ -153,7 +179,9 @@ export default function ProfilePaymentsScreen() {
                   title={t("profile.payments.paymentStatus")}
                   accessory={
                     <ThemedText style={{ color: palette.textMuted }}>
-                      {getPaymentStatusLabel(selectedPaymentDetail.payment.status)}
+                      {getPaymentStatusLabel(
+                        selectedPaymentDetail.payment.status,
+                      )}
                     </ThemedText>
                   }
                 />
@@ -162,7 +190,9 @@ export default function ProfilePaymentsScreen() {
                   accessory={
                     <ThemedText style={{ color: palette.textMuted }}>
                       {selectedPaymentDetail.payout
-                        ? getPayoutStatusLabel(selectedPaymentDetail.payout.status)
+                        ? getPayoutStatusLabel(
+                            selectedPaymentDetail.payout.status,
+                          )
                         : t("profile.payments.notCreated")}
                     </ThemedText>
                   }
@@ -204,8 +234,10 @@ export default function ProfilePaymentsScreen() {
                     <ThemedText style={{ color: palette.textMuted }}>
                       {formatAgorotCurrency(
                         role === "studio"
-                          ? selectedPaymentDetail.payment.studioChargeAmountAgorot
-                          : selectedPaymentDetail.payment.instructorBaseAmountAgorot,
+                          ? selectedPaymentDetail.payment
+                              .studioChargeAmountAgorot
+                          : selectedPaymentDetail.payment
+                              .instructorBaseAmountAgorot,
                         locale,
                         selectedPaymentDetail.payment.currency,
                       )}
@@ -217,7 +249,8 @@ export default function ProfilePaymentsScreen() {
                   accessory={
                     <ThemedText style={{ color: palette.textMuted }}>
                       {formatAgorotCurrency(
-                        selectedPaymentDetail.payment.platformMarkupAmountAgorot,
+                        selectedPaymentDetail.payment
+                          .platformMarkupAmountAgorot,
                         locale,
                         selectedPaymentDetail.payment.currency,
                       )}
@@ -228,7 +261,10 @@ export default function ProfilePaymentsScreen() {
                   title={t("profile.payments.created")}
                   accessory={
                     <ThemedText style={{ color: palette.textMuted }}>
-                      {formatDateTime(selectedPaymentDetail.payment.createdAt, locale)}
+                      {formatDateTime(
+                        selectedPaymentDetail.payment.createdAt,
+                        locale,
+                      )}
                     </ThemedText>
                   }
                 />
@@ -241,23 +277,28 @@ export default function ProfilePaymentsScreen() {
                     </ThemedText>
                   </KitListItem>
                 ) : (
-                  selectedPaymentDetail.timeline.map((event: PaymentTimelineEvent) => (
-                    <KitListItem
-                      key={event._id}
-                      title={event.title}
-                      accessory={
-                        <ThemedText style={{ color: palette.textMuted }}>
-                          {formatDateTime(event.createdAt, locale)}
+                  selectedPaymentDetail.timeline.map(
+                    (event: PaymentTimelineEvent) => (
+                      <KitListItem
+                        key={event._id}
+                        title={event.title}
+                        accessory={
+                          <ThemedText style={{ color: palette.textMuted }}>
+                            {formatDateTime(event.createdAt, locale)}
+                          </ThemedText>
+                        }
+                      >
+                        <ThemedText
+                          type="caption"
+                          style={{ color: palette.textMuted }}
+                        >
+                          {event.description}
+                          {event.signatureValid ? "" : " | signature_invalid"}
+                          {event.processed ? "" : " | not_processed"}
                         </ThemedText>
-                      }
-                    >
-                      <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                        {event.description}
-                        {event.signatureValid ? "" : " | signature_invalid"}
-                        {event.processed ? "" : " | not_processed"}
-                      </ThemedText>
-                    </KitListItem>
-                  ))
+                      </KitListItem>
+                    ),
+                  )
                 )}
               </KitList>
             </View>
@@ -269,8 +310,8 @@ export default function ProfilePaymentsScreen() {
         <KitList inset>
           <KitListItem>
             <ThemedText type="caption" style={{ color: palette.textMuted }}>
-              Instructor payout onboarding and bank connection are managed from the instructor app
-              profile.
+              Instructor payout onboarding and bank connection are managed from
+              the instructor app profile.
             </ThemedText>
           </KitListItem>
         </KitList>
