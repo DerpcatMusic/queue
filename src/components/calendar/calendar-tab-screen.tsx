@@ -1,6 +1,6 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { FlashList } from "@shopify/flash-list";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   I18nManager,
@@ -9,24 +9,20 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  FadeInDown,
-  FadeInUp,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
 } from "react-native-reanimated";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { TopSheetSurface } from "@/components/layout/top-sheet-surface";
+import { TopSheet } from "@/components/layout/top-sheet";
 import { LoadingScreen } from "@/components/loading-screen";
-import { AppSymbol } from "@/components/ui/app-symbol";
 import { ActionButton } from "@/components/ui/action-button";
+import { AppSymbol } from "@/components/ui/app-symbol";
 import { KitSegmentedToggle } from "@/components/ui/kit";
 import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
@@ -71,10 +67,6 @@ function addDays(dayKey: string, delta: number) {
   return toDayKey(dayKeyToTimestamp(dayKey) + delta * DAY_MS);
 }
 
-function compareDayKey(a: string, b: string) {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
 function getWeekStart(dayKey: string) {
   const ts = dayKeyToTimestamp(dayKey);
   const d = new Date(ts);
@@ -85,32 +77,6 @@ function getWeekStart(dayKey: string) {
 
 function getWeekDays(weekStartKey: string): string[] {
   return Array.from({ length: 7 }, (_, i) => addDays(weekStartKey, i));
-}
-
-function getMonthWeeks(monthDayKey: string): string[][] {
-  const ts = dayKeyToTimestamp(monthDayKey);
-  const d = new Date(ts);
-  const year = d.getFullYear();
-  const month = d.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const weeks: string[][] = [];
-  let cursor = getWeekStart(toDayKey(firstDay.getTime()));
-  const lastDayKey = toDayKey(lastDay.getTime());
-  while (true) {
-    const week = getWeekDays(cursor);
-    weeks.push(week);
-    // Stop if the week's last day is past the month's last day
-    if (compareDayKey(week[6]!, lastDayKey) >= 0) break;
-    cursor = addDays(cursor, 7);
-  }
-  return weeks;
-}
-
-function getMonthStart(dayKey: string) {
-  const ts = dayKeyToTimestamp(dayKey);
-  const d = new Date(ts);
-  return toDayKey(new Date(d.getFullYear(), d.getMonth(), 1).getTime());
 }
 
 // Format: "January 15" (month + day number)
@@ -144,10 +110,6 @@ function formatWeekdayLetter(dayKey: string, locale: string) {
 
 function formatDayNumber(dayKey: string) {
   return String(new Date(dayKeyToTimestamp(dayKey)).getDate());
-}
-
-function isSameMonth(dayKeyA: string, dayKeyB: string) {
-  return dayKeyA.substring(0, 7) === dayKeyB.substring(0, 7);
 }
 
 function formatSelectedDayLabel(dayKey: string, locale: string) {
@@ -197,10 +159,7 @@ function WeekRail({
     () => weekDays.map((dayKey) => shiftDayKey(dayKey, -7)),
     [weekDays],
   );
-  const nextWeekDays = useMemo(
-    () => weekDays.map((dayKey) => shiftDayKey(dayKey, 7)),
-    [weekDays],
-  );
+  const nextWeekDays = useMemo(() => weekDays.map((dayKey) => shiftDayKey(dayKey, 7)), [weekDays]);
 
   const handleSwipeWeek = useCallback(
     (deltaWeeks: number) => {
@@ -242,19 +201,14 @@ function WeekRail({
             event.translationX <= -Math.max(SWIPE_THRESHOLD, width * 0.2) ||
             event.velocityX <= -650;
           const shouldRewind =
-            event.translationX >= Math.max(SWIPE_THRESHOLD, width * 0.2) ||
-            event.velocityX >= 650;
+            event.translationX >= Math.max(SWIPE_THRESHOLD, width * 0.2) || event.velocityX >= 650;
 
           if (shouldAdvance) {
-            translateX.value = withSpring(
-              -width * 2,
-              WEEK_RAIL_SPRING,
-              (finished) => {
-                if (!finished) return;
-                translateX.value = -width;
-                runOnJS(handleSwipeWeek)(1);
-              },
-            );
+            translateX.value = withSpring(-width * 2, WEEK_RAIL_SPRING, (finished) => {
+              if (!finished) return;
+              translateX.value = -width;
+              runOnJS(handleSwipeWeek)(1);
+            });
             return;
           }
 
@@ -292,7 +246,7 @@ function WeekRail({
           const today = dayKey === todayKey;
 
           return (
-            <Animated.View key={dayKey} style={{ flex: 1 }}>
+            <View key={dayKey} style={{ flex: 1 }}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
@@ -324,9 +278,7 @@ function WeekRail({
                   <Text
                     style={{
                       ...BrandType.micro,
-                      color: today
-                        ? (palette.text as string)
-                        : (palette.textMuted as string),
+                      color: today ? (palette.text as string) : (palette.textMuted as string),
                     }}
                   >
                     {formatWeekdayLetter(dayKey, locale)}
@@ -339,13 +291,9 @@ function WeekRail({
                       borderCurve: "continuous",
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: selected
-                        ? (palette.text as string)
-                        : "transparent",
+                      backgroundColor: selected ? (palette.text as string) : "transparent",
                       borderWidth: today && !selected ? 1 : 0,
-                      borderColor: today
-                        ? (palette.borderStrong as string)
-                        : "transparent",
+                      borderColor: today ? (palette.borderStrong as string) : "transparent",
                     }}
                   >
                     <Text
@@ -355,9 +303,7 @@ function WeekRail({
                         lineHeight: 22,
                         fontVariant: ["tabular-nums"],
                         includeFontPadding: false,
-                        color: selected
-                          ? (palette.surface as string)
-                          : (palette.text as string),
+                        color: selected ? (palette.surface as string) : (palette.text as string),
                       }}
                     >
                       {formatDayNumber(dayKey)}
@@ -401,7 +347,7 @@ function WeekRail({
                   </View>
                 </View>
               </Pressable>
-            </Animated.View>
+            </View>
           );
         })}
       </View>
@@ -430,527 +376,12 @@ function WeekRail({
   );
 }
 
-const WEEK_ROW_HEIGHT = 46; // height of one row of day cells
-const DRAG_HANDLE_HEIGHT = 16; // drag bar area
-const HEADER_HEIGHT = 44; // month label row
-const LABELS_HEIGHT = 20; // weekday letter labels
-
-export function WeekStrip({
-  selectedDay,
-  onDayPress,
-  onWeekChange,
-  onMonthPress,
-  onTodayPress,
-  lessonCountByDay,
-  locale,
-  todayLabel,
-  monthButtonLabel,
-  dragHandleLabel,
-}: {
-  selectedDay: string;
-  onDayPress: (dayKey: string) => void;
-  onWeekChange: (delta: number) => void;
-  onMonthPress: () => void;
-  onTodayPress: () => void;
-  lessonCountByDay: Map<string, number>;
-  locale: string;
-  todayLabel: string;
-  monthButtonLabel: string;
-  dragHandleLabel: string;
-}) {
-  const palette = useBrand();
-  const { width: screenWidth } = useWindowDimensions();
-  const todayKey = useMemo(() => toDayKey(Date.now()), []);
-  const selectedWeekStart = useMemo(
-    () => getWeekStart(selectedDay),
-    [selectedDay],
-  );
-  const [displayedWeekStart, setDisplayedWeekStart] =
-    useState(selectedWeekStart);
-  const displayedWeekStartRef = useRef(selectedWeekStart);
-  const [displayedSelectedDay, setDisplayedSelectedDay] = useState(selectedDay);
-  const displayedSelectedDayRef = useRef(selectedDay);
-  const weekStart = displayedWeekStart;
-  const monthStart = getMonthStart(displayedSelectedDay);
-  const monthWeeks = useMemo(() => getMonthWeeks(monthStart), [monthStart]);
-
-  // How many extra rows beyond 1 does this month need?
-  const extraRows = monthWeeks.length - 1;
-  const weekHeight = WEEK_ROW_HEIGHT;
-  const monthExtraHeight = extraRows * WEEK_ROW_HEIGHT;
-
-  // 3-week triptych: prev, current, next
-  const prevWeekStart = addDays(weekStart, -7);
-  const nextWeekStart = addDays(weekStart, 7);
-  const prevWeekDays = useMemo(
-    () => getWeekDays(prevWeekStart),
-    [prevWeekStart],
-  );
-  const currWeekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
-  const nextWeekDays = useMemo(
-    () => getWeekDays(nextWeekStart),
-    [nextWeekStart],
-  );
-
-  // ─── Single unified pan gesture ──────────────────────────────────────
-  const swipeX = useSharedValue(0);
-  const expandProgress = useSharedValue(0); // 0=week, 1=month
-  const expandStartRef = useSharedValue(0);
-  const gestureDirection = useSharedValue<"none" | "h" | "v">("none");
-  const hapticFiredRef = useRef(false);
-  const panelWidth = screenWidth;
-
-  const fireHapticOnce = useCallback(() => {
-    if (!hapticFiredRef.current) {
-      hapticFiredRef.current = true;
-      triggerSelectionHaptic();
-    }
-  }, []);
-  const resetHaptic = useCallback(() => {
-    hapticFiredRef.current = false;
-  }, []);
-  const commitWeekSwipe = useCallback(
-    (deltaWeeks: number) => {
-      const nextWeekStart = addDays(
-        displayedWeekStartRef.current,
-        deltaWeeks * 7,
-      );
-      displayedWeekStartRef.current = nextWeekStart;
-      setDisplayedWeekStart(nextWeekStart);
-
-      const nextSelectedDay = addDays(
-        displayedSelectedDayRef.current,
-        deltaWeeks * 7,
-      );
-      displayedSelectedDayRef.current = nextSelectedDay;
-      setDisplayedSelectedDay(nextSelectedDay);
-
-      swipeX.value = 0;
-      onWeekChange(deltaWeeks);
-    },
-    [onWeekChange, swipeX],
-  );
-
-  useEffect(() => {
-    displayedSelectedDayRef.current = selectedDay;
-    setDisplayedSelectedDay(selectedDay);
-
-    if (displayedWeekStartRef.current === selectedWeekStart) {
-      return;
-    }
-    displayedWeekStartRef.current = selectedWeekStart;
-    setDisplayedWeekStart(selectedWeekStart);
-  }, [selectedDay, selectedWeekStart]);
-
-  const panGesture = Gesture.Pan()
-    .minDistance(5)
-    .onStart(() => {
-      gestureDirection.value = "none";
-      expandStartRef.value = expandProgress.value;
-    })
-    .onUpdate((e) => {
-      // Lock direction on first significant movement
-      if (gestureDirection.value === "none") {
-        if (
-          Math.abs(e.translationX) > 10 &&
-          Math.abs(e.translationX) > Math.abs(e.translationY) * 1.2
-        ) {
-          gestureDirection.value = "h";
-        } else if (Math.abs(e.translationY) > 6) {
-          gestureDirection.value = "v";
-        }
-        return;
-      }
-
-      if (gestureDirection.value === "h") {
-        swipeX.value = e.translationX;
-        if (Math.abs(e.translationX) > SWIPE_THRESHOLD) {
-          runOnJS(fireHapticOnce)();
-        }
-      } else {
-        // Vertical: map drag to expand progress
-        const dragRange = Math.max(monthExtraHeight, 100) * 1.2;
-        const rawProgress = expandStartRef.value + e.translationY / dragRange;
-        expandProgress.value = Math.max(0, Math.min(1, rawProgress));
-      }
-    })
-    .onEnd((e) => {
-      runOnJS(resetHaptic)();
-
-      if (gestureDirection.value === "h") {
-        const isExpanded = expandProgress.value > 0.5;
-        const weekDelta = isExpanded ? 4 : 1; // month vs week navigation
-
-        if (
-          e.translationX < -SWIPE_THRESHOLD ||
-          (e.velocityX < -500 && e.translationX < -20)
-        ) {
-          swipeX.value = withTiming(-panelWidth, { duration: 200 }, () => {
-            runOnJS(commitWeekSwipe)(weekDelta);
-          });
-        } else if (
-          e.translationX > SWIPE_THRESHOLD ||
-          (e.velocityX > 500 && e.translationX > 20)
-        ) {
-          swipeX.value = withTiming(panelWidth, { duration: 200 }, () => {
-            runOnJS(commitWeekSwipe)(-weekDelta);
-          });
-        } else {
-          swipeX.value = withSpring(0, { damping: 20, stiffness: 300 });
-        }
-      } else if (gestureDirection.value === "v") {
-        if (expandProgress.value > 0.35) {
-          expandProgress.value = withSpring(1, { damping: 18, stiffness: 200 });
-        } else {
-          expandProgress.value = withSpring(0, { damping: 18, stiffness: 200 });
-        }
-        runOnJS(triggerSelectionHaptic)();
-      }
-
-      gestureDirection.value = "none";
-    });
-
-  // Animated styles
-  const swipeStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: swipeX.value }],
-  }));
-
-  const containerAnimStyle = useAnimatedStyle(() => ({
-    height:
-      HEADER_HEIGHT +
-      LABELS_HEIGHT +
-      weekHeight +
-      expandProgress.value * monthExtraHeight +
-      DRAG_HANDLE_HEIGHT,
-  }));
-
-  const extraRowsContainerStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(expandProgress.value > 0.06 ? 1 : 0, { duration: 120 }),
-    height: expandProgress.value * monthExtraHeight,
-    overflow: "hidden" as const,
-  }));
-
-  const renderDayCell = (dayKey: string, isTriptychSide = false) => {
-    const isSelected = !isTriptychSide && dayKey === displayedSelectedDay;
-    const isToday = dayKey === todayKey;
-    const hasLessons = (lessonCountByDay.get(dayKey) ?? 0) > 0;
-    const lessonCount = lessonCountByDay.get(dayKey) ?? 0;
-    const isCurrentMonth = isSameMonth(dayKey, displayedSelectedDay);
-    const dimmed = !isCurrentMonth;
-    const dayDateLabel = new Date(dayKeyToTimestamp(dayKey)).toLocaleDateString(
-      locale,
-      {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      },
-    );
-
-    return (
-      <Pressable
-        key={dayKey}
-        accessibilityRole="button"
-        accessibilityState={{ selected: isSelected }}
-        accessibilityLabel={`${dayDateLabel}. ${lessonCount} events.`}
-        onPress={() => {
-          onDayPress(dayKey);
-          triggerSelectionHaptic();
-        }}
-        style={wStyles.dayCell}
-      >
-        <View
-          style={[
-            wStyles.dayCircle,
-            isSelected && { backgroundColor: palette.primary as string },
-            !isSelected &&
-              isToday && {
-                borderWidth: 1.5,
-                borderColor: palette.primary as string,
-              },
-          ]}
-        >
-          <Text
-            style={[
-              wStyles.dayNumber,
-              {
-                color: isSelected
-                  ? (palette.onPrimary as string)
-                  : dimmed
-                    ? (palette.textMicro as string)
-                    : isToday
-                      ? (palette.primary as string)
-                      : (palette.text as string),
-              },
-              isSelected && { fontWeight: "600" },
-            ]}
-          >
-            {formatDayNumber(dayKey)}
-          </Text>
-        </View>
-        {hasLessons && !isSelected ? (
-          <View
-            style={[
-              wStyles.dot,
-              { backgroundColor: palette.primary as string },
-            ]}
-          />
-        ) : (
-          <View style={wStyles.dotSpacer} />
-        )}
-      </Pressable>
-    );
-  };
-
-  const firstWeekRow = currWeekDays;
-
-  return (
-    <Animated.View
-      style={[
-        wStyles.container,
-        { backgroundColor: palette.surface as string },
-        containerAnimStyle,
-      ]}
-    >
-      {/* Header */}
-      <View style={wStyles.headerRow}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={monthButtonLabel}
-          onPress={onMonthPress}
-          style={wStyles.monthButton}
-          hitSlop={8}
-        >
-          <Text style={[wStyles.monthLabel, { color: palette.text as string }]}>
-            {formatMonthYear(displayedSelectedDay, locale)}
-          </Text>
-          <Text
-            style={[
-              wStyles.monthChevron,
-              { color: palette.textMuted as string },
-            ]}
-          >
-            ▾
-          </Text>
-        </Pressable>
-        <View style={wStyles.headerActions}>
-          {displayedSelectedDay !== todayKey ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={todayLabel}
-              onPress={onTodayPress}
-              hitSlop={6}
-            >
-              <View
-                style={[
-                  wStyles.todayPill,
-                  { backgroundColor: palette.primarySubtle as string },
-                ]}
-              >
-                <Text
-                  style={[
-                    wStyles.todayPillText,
-                    { color: palette.primary as string },
-                  ]}
-                >
-                  {todayLabel}
-                </Text>
-              </View>
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
-
-      {/* Weekday labels */}
-      <View style={wStyles.weekdayLabels}>
-        {getWeekDays(getWeekStart(todayKey)).map((d) => (
-          <View key={d} style={wStyles.weekdayLabelCell}>
-            <Text
-              style={[
-                wStyles.weekdayLabel,
-                { color: palette.textMuted as string },
-              ]}
-            >
-              {formatWeekdayLetter(d, locale)}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Gesture area — swipe wraps EVERYTHING so month grid moves too */}
-      <GestureDetector gesture={panGesture}>
-        <Animated.View style={[{ overflow: "hidden" }, swipeStyle]}>
-          {/* First row: triptych (prev | current | next) */}
-          <View
-            style={[
-              wStyles.triptych,
-              { width: panelWidth * 3, marginLeft: -panelWidth },
-            ]}
-          >
-            <View style={[wStyles.weekRow, { width: panelWidth }]}>
-              {prevWeekDays.map((d) => renderDayCell(d, true))}
-            </View>
-            <View style={[wStyles.weekRow, { width: panelWidth }]}>
-              {firstWeekRow.map((d) => renderDayCell(d))}
-            </View>
-            <View style={[wStyles.weekRow, { width: panelWidth }]}>
-              {nextWeekDays.map((d) => renderDayCell(d, true))}
-            </View>
-          </View>
-
-          {/* Extra month rows (revealed by vertical drag) */}
-          <Animated.View style={extraRowsContainerStyle}>
-            {monthWeeks.slice(1).map((week) => (
-              <View key={`extra-${week[0]}`} style={wStyles.weekRow}>
-                {week.map((d) => renderDayCell(d))}
-              </View>
-            ))}
-          </Animated.View>
-        </Animated.View>
-      </GestureDetector>
-
-      {/* Drag handle — enlarged touch target */}
-      <Pressable
-        style={wStyles.dragHandle}
-        accessibilityRole="button"
-        accessibilityLabel={dragHandleLabel}
-        onPress={() => {
-          // Tap handle to toggle
-          if (expandProgress.value > 0.5) {
-            expandProgress.value = withSpring(0, {
-              damping: 18,
-              stiffness: 200,
-            });
-          } else {
-            expandProgress.value = withSpring(1, {
-              damping: 18,
-              stiffness: 200,
-            });
-          }
-          triggerSelectionHaptic();
-        }}
-        hitSlop={{ top: 12, bottom: 12, left: 40, right: 40 }}
-      >
-        <View
-          style={[
-            wStyles.dragBar,
-            { backgroundColor: palette.border as string },
-          ]}
-        />
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-const wStyles = StyleSheet.create({
-  container: {
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    borderCurve: "continuous",
-    overflow: "hidden",
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    height: HEADER_HEIGHT,
-  },
-  monthButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  monthLabel: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  monthChevron: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  todayPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderCurve: "continuous",
-  },
-  todayPillText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  weekdayLabels: {
-    flexDirection: "row",
-    paddingHorizontal: 8,
-    height: LABELS_HEIGHT,
-    alignItems: "center",
-  },
-  weekdayLabelCell: {
-    flex: 1,
-    alignItems: "center",
-  },
-  weekdayLabel: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  triptych: {
-    flexDirection: "row",
-  },
-  weekRow: {
-    flexDirection: "row",
-    paddingHorizontal: 8,
-    height: WEEK_ROW_HEIGHT,
-    alignItems: "center",
-  },
-  dayCell: {
-    flex: 1,
-    alignItems: "center",
-    gap: 1,
-  },
-  dayCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dayNumber: {
-    fontSize: 15,
-    fontWeight: "400",
-    includeFontPadding: false,
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-  dotSpacer: {
-    width: 4,
-    height: 4,
-  },
-  dragHandle: {
-    alignItems: "center",
-    height: DRAG_HANDLE_HEIGHT,
-    justifyContent: "center",
-  },
-  dragBar: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    opacity: 0.4,
-  },
-});
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function CalendarTabScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
-  const { safeTop, safeBottom } = useAppInsets();
+  const { safeBottom } = useAppInsets();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
   const {
@@ -973,14 +404,9 @@ export default function CalendarTabScreen() {
     selectedDayTimestamp,
     isLoading,
   } = useCalendarTabController();
-  const selectedWeekDays = useMemo(
-    () => getWeekDays(getWeekStart(selectedDay)),
-    [selectedDay],
-  );
+  const selectedWeekDays = useMemo(() => getWeekDays(getWeekStart(selectedDay)), [selectedDay]);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [pickerDate, setPickerDate] = useState(
-    () => new Date(selectedDayTimestamp),
-  );
+  const [pickerDate, setPickerDate] = useState(() => new Date(selectedDayTimestamp));
   const selectedLessonCount = lessonCountByDay.get(selectedDay) ?? 0;
 
   // ─── Render items ───────────────────────────────────────────────────────────
@@ -1040,9 +466,7 @@ export default function CalendarTabScreen() {
             <Text style={{ ...BrandType.title, color: palette.text as string }}>
               {t("calendarTab.agenda.title")}
             </Text>
-            <Text
-              style={{ ...BrandType.micro, color: palette.textMuted as string }}
-            >
+            <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
               {formatSelectedDayLabel(selectedDay, i18n.language)}
             </Text>
           </View>
@@ -1085,9 +509,7 @@ export default function CalendarTabScreen() {
     ({ item }: { item: TimelineListItem }) => {
       if (item.kind === "dayHeader") {
         const isToday = item.dayKey === todayKey;
-        const dotColor = isToday
-          ? (palette.primary as string)
-          : (palette.textMuted as string);
+        const dotColor = isToday ? (palette.primary as string) : (palette.textMuted as string);
 
         return (
           <View style={styles.timelineRow}>
@@ -1107,17 +529,10 @@ export default function CalendarTabScreen() {
               />
             </View>
             <View style={styles.dayHeaderContent}>
-              <Text
-                style={[styles.dayHeading, { color: palette.text as string }]}
-              >
+              <Text style={[styles.dayHeading, { color: palette.text as string }]}>
                 {formatDayHeading(item.dayKey, i18n.language)}
               </Text>
-              <Text
-                style={[
-                  styles.daySubtitle,
-                  { color: palette.textMuted as string },
-                ]}
-              >
+              <Text style={[styles.daySubtitle, { color: palette.textMuted as string }]}>
                 {formatDaySubtitle(item.dayKey, i18n.language)}
               </Text>
             </View>
@@ -1127,55 +542,31 @@ export default function CalendarTabScreen() {
 
       if (item.kind === "empty") {
         return (
-          <Animated.View
-            entering={FadeInUp.duration(300).springify().damping(20)}
-          >
-            <View style={styles.timelineRow}>
-              <View style={styles.railGutter}>
-                <View
-                  style={[styles.railLine, { backgroundColor: railColor }]}
-                />
-              </View>
-              <View
-                style={[
-                  styles.emptyStateCard,
-                  { backgroundColor: palette.surface as string },
-                ]}
-              >
-                <AppSymbol
-                  name="calendar.badge.exclamationmark"
-                  size={28}
-                  tintColor={palette.textMuted as string}
-                />
-                <Text
-                  style={[
-                    styles.emptyStateTitle,
-                    { color: palette.textMuted as string },
-                  ]}
-                >
-                  {t("calendarTab.timeline.noLessons")}
-                </Text>
-                <Text
-                  style={[
-                    styles.emptyStateBody,
-                    { color: palette.textMuted as string },
-                  ]}
-                >
-                  {t("calendarTab.timeline.noLessonsHint")}
-                </Text>
-              </View>
+          <View style={styles.timelineRow}>
+            <View style={styles.railGutter}>
+              <View style={[styles.railLine, { backgroundColor: railColor }]} />
             </View>
-          </Animated.View>
+            <View style={[styles.emptyStateCard, { backgroundColor: palette.surface as string }]}>
+              <AppSymbol
+                name="calendar.badge.exclamationmark"
+                size={28}
+                tintColor={palette.textMuted as string}
+              />
+              <Text style={[styles.emptyStateTitle, { color: palette.textMuted as string }]}>
+                {t("calendarTab.timeline.noLessons")}
+              </Text>
+              <Text style={[styles.emptyStateBody, { color: palette.textMuted as string }]}>
+                {t("calendarTab.timeline.noLessonsHint")}
+              </Text>
+            </View>
+          </View>
         );
       }
 
       const row = item.lesson;
       const swatches = palette.calendar.eventSwatches;
-      const swatch =
-        swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ??
-        undefined;
-      const accent =
-        (swatch?.background as string) ?? (palette.primary as string);
+      const swatch = swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ?? undefined;
+      const accent = (swatch?.background as string) ?? (palette.primary as string);
       const counterpart =
         row.source === "google"
           ? (row.location ?? t("calendarTab.googleCalendar"))
@@ -1231,19 +622,11 @@ export default function CalendarTabScreen() {
             })}
             accessibilityHint={t("calendarTab.lessonRowAccessibilityHint")}
             onPress={() => handleDayPress(item.dayKey)}
-            style={[
-              styles.lessonCard,
-              { backgroundColor: palette.surfaceElevated as string },
-            ]}
+            style={[styles.lessonCard, { backgroundColor: palette.surfaceElevated as string }]}
           >
             <View style={styles.lessonContent}>
               <View style={styles.lessonTopRow}>
-                <Text
-                  style={[
-                    styles.lessonTime,
-                    { color: palette.textMuted as string },
-                  ]}
-                >
+                <Text style={[styles.lessonTime, { color: palette.textMuted as string }]}>
                   {timeLabel}
                 </Text>
                 <View style={styles.lessonBadgeRow}>
@@ -1254,44 +637,22 @@ export default function CalendarTabScreen() {
                         { backgroundColor: palette.primarySubtle as string },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.sourceBadgeText,
-                          { color: palette.primary as string },
-                        ]}
-                      >
+                      <Text style={[styles.sourceBadgeText, { color: palette.primary as string }]}>
                         {t("calendarTab.timeline.googleBadge")}
                       </Text>
                     </View>
                   ) : null}
-                  <View
-                    style={[
-                      styles.lifecycleBadge,
-                      { backgroundColor: lifecycleTone.bg },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.lifecycleBadgeText,
-                        { color: lifecycleTone.fg },
-                      ]}
-                    >
+                  <View style={[styles.lifecycleBadge, { backgroundColor: lifecycleTone.bg }]}>
+                    <Text style={[styles.lifecycleBadgeText, { color: lifecycleTone.fg }]}>
                       {lifecycleLabel}
                     </Text>
                   </View>
                 </View>
               </View>
-              <Text
-                style={[styles.lessonTitle, { color: palette.text as string }]}
-              >
+              <Text style={[styles.lessonTitle, { color: palette.text as string }]}>
                 {row.sport}
               </Text>
-              <Text
-                style={[
-                  styles.lessonMeta,
-                  { color: palette.textMuted as string },
-                ]}
-              >
+              <Text style={[styles.lessonMeta, { color: palette.textMuted as string }]}>
                 {counterpart}
               </Text>
             </View>
@@ -1310,10 +671,7 @@ export default function CalendarTabScreen() {
 
   if (isDesktopWeb) {
     return (
-      <TabScreenRoot
-        mode="static"
-        style={{ backgroundColor: palette.surface as string }}
-      >
+      <TabScreenRoot mode="static" style={{ backgroundColor: palette.surface as string }}>
         <View
           style={{
             flex: 1,
@@ -1338,18 +696,15 @@ export default function CalendarTabScreen() {
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <TabScreenRoot
-      mode="static"
-      topInsetTone="sheet"
-      style={{ backgroundColor: palette.appBg }}
-    >
-      <TopSheetSurface
+    <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
+      <TopSheet
         style={{
-          paddingHorizontal: BrandSpacing.lg,
-          paddingTop: safeTop + BrandSpacing.sm,
-          paddingBottom: BrandSpacing.lg,
           gap: BrandSpacing.md,
           marginBottom: BrandSpacing.md,
+        }}
+        padding={{
+          vertical: BrandSpacing.lg,
+          horizontal: BrandSpacing.lg,
         }}
       >
         <View style={{ gap: BrandSpacing.md }}>
@@ -1392,11 +747,7 @@ export default function CalendarTabScreen() {
                 />
               ) : null}
               <ActionButton
-                label={
-                  showDatePicker
-                    ? t("common.done")
-                    : t("calendarTab.header.chooseDate")
-                }
+                label={showDatePicker ? t("common.done") : t("calendarTab.header.chooseDate")}
                 onPress={() => {
                   if (showDatePicker) {
                     handleDoneWithDatePicker();
@@ -1422,9 +773,7 @@ export default function CalendarTabScreen() {
               paddingTop: BrandSpacing.md,
             }}
           >
-            <Text
-              style={{ ...BrandType.bodyStrong, color: palette.text as string }}
-            >
+            <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
               {formatSelectedDayLabel(selectedDay, i18n.language)}
             </Text>
             <View
@@ -1487,8 +836,7 @@ export default function CalendarTabScreen() {
         ) : null}
 
         {showDatePicker ? (
-          <Animated.View
-            entering={FadeInDown.duration(220).springify().damping(22)}
+          <View
             style={{
               borderRadius: 24,
               borderCurve: "continuous",
@@ -1517,16 +865,11 @@ export default function CalendarTabScreen() {
                 />
               </View>
             ) : null}
-          </Animated.View>
+          </View>
         ) : null}
-      </TopSheetSurface>
+      </TopSheet>
 
-      <View
-        style={[
-          styles.timelineViewport,
-          { backgroundColor: palette.appBg as string },
-        ]}
-      >
+      <View style={[styles.timelineViewport, { backgroundColor: palette.appBg as string }]}>
         <FlashList
           ref={listRef}
           data={listItems}
@@ -1534,9 +877,9 @@ export default function CalendarTabScreen() {
           keyExtractor={(item) => item.key}
           renderItem={renderItem}
           getItemType={(item) => item.kind}
-          drawDistance={900}
+          drawDistance={600}
           overrideItemLayout={overrideItemLayout}
-          removeClippedSubviews={false}
+          removeClippedSubviews
           onScrollBeginDrag={handleTimelineScrollBegin}
           showsVerticalScrollIndicator={false}
           onViewableItemsChanged={onViewableItemsChanged}
@@ -1553,10 +896,7 @@ export default function CalendarTabScreen() {
         />
         <View
           pointerEvents="none"
-          style={[
-            styles.timelineBottomMask,
-            { backgroundColor: palette.appBg as string },
-          ]}
+          style={[styles.timelineBottomMask, { backgroundColor: palette.appBg as string }]}
         />
       </View>
     </TabScreenRoot>
@@ -1578,7 +918,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 28,
     opacity: 0.96,
   },
   filterBar: {

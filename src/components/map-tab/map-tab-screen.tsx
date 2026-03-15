@@ -18,18 +18,12 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
+import { TopSheet } from "@/components/layout/top-sheet";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
   buildZoneCityGroups,
@@ -56,11 +50,7 @@ export default function MapTabScreen() {
   const palette = useBrand();
   const { overlayBottom, safeTop } = useAppInsets();
   const isFocused = useIsFocused();
-  const zoneLanguage = (i18n.resolvedLanguage ?? "en")
-    .toLowerCase()
-    .startsWith("he")
-    ? "he"
-    : "en";
+  const zoneLanguage = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he") ? "he" : "en";
   const currentUser = useQuery(api.users.getCurrentUser);
   const remoteZones = useQuery(
     api.instructorZones.getMyInstructorZones,
@@ -70,7 +60,7 @@ export default function MapTabScreen() {
 
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>([]);
   const [zoneModeActive, setZoneModeActive] = useState(false);
-  const [, setSheetIndex] = useState(-1);
+  const [sheetStep, setSheetStep] = useState(0);
   const [zoneSearch, setZoneSearch] = useState("");
   const [expandedCityKeys, setExpandedCityKeys] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -80,8 +70,7 @@ export default function MapTabScreen() {
   const zoneSheetRef = useRef<BottomSheet>(null);
   const noopMapPress = useCallback(() => {}, []);
   const handleFocusSelection = useCallback(() => {
-    const nextFocusZoneId =
-      focusZoneId ?? selectedZoneIds[0] ?? remoteZones?.zoneIds?.[0] ?? null;
+    const nextFocusZoneId = focusZoneId ?? selectedZoneIds[0] ?? remoteZones?.zoneIds?.[0] ?? null;
     if (!nextFocusZoneId) return;
     setFocusZoneId(nextFocusZoneId);
   }, [focusZoneId, remoteZones?.zoneIds, selectedZoneIds]);
@@ -105,9 +94,7 @@ export default function MapTabScreen() {
       setFocusZoneId(resolved.zoneId);
     } catch (error) {
       setSaveError(
-        error instanceof Error
-          ? error.message
-          : t("mapTab.errors.failedToLoadLocation"),
+        error instanceof Error ? error.message : t("mapTab.errors.failedToLoadLocation"),
       );
     }
   }, [t]);
@@ -128,10 +115,7 @@ export default function MapTabScreen() {
       setSaveError(null);
       setSelectedZoneIds(dedupedZoneIds);
       setFocusZoneId((currentFocusZoneId) => {
-        if (
-          preferredFocusZoneId &&
-          dedupedZoneIds.includes(preferredFocusZoneId)
-        ) {
+        if (preferredFocusZoneId && dedupedZoneIds.includes(preferredFocusZoneId)) {
           return preferredFocusZoneId;
         }
         if (currentFocusZoneId && dedupedZoneIds.includes(currentFocusZoneId)) {
@@ -153,8 +137,7 @@ export default function MapTabScreen() {
       const nextZoneIds = isSelected
         ? selectedZoneIds.filter((id) => id !== zoneId)
         : [...selectedZoneIds, zoneId];
-      const preferredFocusZoneId =
-        isSelected && focusZoneId === zoneId ? null : zoneId;
+      const preferredFocusZoneId = isSelected && focusZoneId === zoneId ? null : zoneId;
       applySelectedZoneIds(nextZoneIds, preferredFocusZoneId);
     },
     [applySelectedZoneIds, focusZoneId, selectedZoneIds],
@@ -172,10 +155,7 @@ export default function MapTabScreen() {
     () => new Set(deferredSelectedZoneIds),
     [deferredSelectedZoneIds],
   );
-  const expandedCityKeySet = useMemo(
-    () => new Set(expandedCityKeys),
-    [expandedCityKeys],
-  );
+  const expandedCityKeySet = useMemo(() => new Set(expandedCityKeys), [expandedCityKeys]);
   const deferredZoneSearch = useDeferredValue(zoneSearch);
   const zoneCityGroups = useMemo(() => buildZoneCityGroups(ZONE_OPTIONS), []);
   const zoneCityByZoneId = useMemo(() => {
@@ -210,13 +190,7 @@ export default function MapTabScreen() {
         expandedCityKeys: expandedCityKeySet,
         selectedZoneIds: deferredSelectedZoneSet,
       }),
-    [
-      deferredSelectedZoneSet,
-      deferredZoneSearch,
-      expandedCityKeySet,
-      zoneCityGroups,
-      zoneLanguage,
-    ],
+    [deferredSelectedZoneSet, deferredZoneSearch, expandedCityKeySet, zoneCityGroups, zoneLanguage],
   );
   const selectedZones = useMemo(
     () => ZONE_OPTIONS.filter((zone) => deferredSelectedZoneSet.has(zone.id)),
@@ -281,20 +255,13 @@ export default function MapTabScreen() {
       }
 
       const cityZoneIds = group.zones.map((zone) => zone.id);
-      const isFullySelected = cityZoneIds.every((zoneId) =>
-        selectedZoneIds.includes(zoneId),
-      );
+      const isFullySelected = cityZoneIds.every((zoneId) => selectedZoneIds.includes(zoneId));
       const nextZoneIds = isFullySelected
         ? selectedZoneIds.filter((zoneId) => !cityZoneIds.includes(zoneId))
         : [...selectedZoneIds, ...cityZoneIds];
-      const preferredFocusZoneId = isFullySelected
-        ? null
-        : (cityZoneIds[0] ?? null);
+      const preferredFocusZoneId = isFullySelected ? null : (cityZoneIds[0] ?? null);
 
-      if (
-        applySelectedZoneIds(nextZoneIds, preferredFocusZoneId) &&
-        !isFullySelected
-      ) {
+      if (applySelectedZoneIds(nextZoneIds, preferredFocusZoneId) && !isFullySelected) {
         setExpandedCityKeys((current) =>
           current.includes(cityKey) ? current : [...current, cityKey],
         );
@@ -306,8 +273,7 @@ export default function MapTabScreen() {
   const openZoneEditor = useCallback(() => {
     setSaveError(null);
     setZoneModeActive(true);
-    setSheetIndex(1);
-    zoneSheetRef.current?.snapToIndex(1);
+    setSheetStep(1);
   }, []);
 
   const handleDiscardChanges = useCallback(() => {
@@ -315,9 +281,8 @@ export default function MapTabScreen() {
     setFocusZoneId(persistedZoneIds[0] ?? null);
     setSaveError(null);
     setZoneModeActive(false);
-    setSheetIndex(-1);
+    setSheetStep(0);
     setZoneSearch("");
-    zoneSheetRef.current?.close();
   }, [persistedZoneIds]);
 
   const handleSaveZones = useCallback(async () => {
@@ -327,9 +292,8 @@ export default function MapTabScreen() {
 
     if (!hasChanges) {
       setZoneModeActive(false);
-      setSheetIndex(-1);
+      setSheetStep(0);
       setZoneSearch("");
-      zoneSheetRef.current?.close();
       return;
     }
 
@@ -339,14 +303,11 @@ export default function MapTabScreen() {
       await saveZones({ zoneIds: nextZoneIds });
       setFocusZoneId(nextZoneIds[0] ?? null);
       setZoneModeActive(false);
-      setSheetIndex(-1);
+      setSheetStep(0);
       setZoneSearch("");
-      zoneSheetRef.current?.close();
     } catch (error) {
       setSaveError(
-        error instanceof Error && error.message
-          ? error.message
-          : t("mapTab.errors.failedToSave"),
+        error instanceof Error && error.message ? error.message : t("mapTab.errors.failedToSave"),
       );
     } finally {
       setIsSaving(false);
@@ -489,9 +450,7 @@ export default function MapTabScreen() {
                   opacity: 0.86,
                 }}
               >
-                {hasChanges
-                  ? t("mapTab.web.statePending")
-                  : t("mapTab.web.stateReady")}
+                {hasChanges ? t("mapTab.web.statePending") : t("mapTab.web.stateReady")}
               </Text>
               <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
                 <View
@@ -555,15 +514,11 @@ export default function MapTabScreen() {
                       color: palette.onPrimary as string,
                     }}
                   >
-                    {focusedZone
-                      ? focusedZone.label[zoneLanguage]
-                      : t("mapTab.web.auto")}
+                    {focusedZone ? focusedZone.label[zoneLanguage] : t("mapTab.web.auto")}
                   </Text>
                 </View>
               </View>
-              <View
-                style={{ flexDirection: "row", gap: 10, marginTop: "auto" }}
-              >
+              <View style={{ flexDirection: "row", gap: 10, marginTop: "auto" }}>
                 <ActionButton
                   label={t("mapTab.web.saveCoverage")}
                   onPress={() => {
@@ -585,9 +540,7 @@ export default function MapTabScreen() {
             </View>
           </View>
 
-          <View
-            style={{ flex: 1, minHeight: 0, flexDirection: "row", gap: 18 }}
-          >
+          <View style={{ flex: 1, minHeight: 0, flexDirection: "row", gap: 18 }}>
             <View
               style={{
                 flex: 1.45,
@@ -950,9 +903,7 @@ export default function MapTabScreen() {
                                 : (palette.textMuted as string),
                             }}
                           >
-                            {selected
-                              ? t("mapTab.web.live")
-                              : t("mapTab.web.add")}
+                            {selected ? t("mapTab.web.live") : t("mapTab.web.add")}
                           </Text>
                         </View>
                       </Pressable>
@@ -969,6 +920,31 @@ export default function MapTabScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.appBg as string }}>
+      {/* Top Sheet with sticky search header, expandable to reveal zones list */}
+      <TopSheet
+        draggable={true}
+        expandable={true}
+        steps={[0.16, 0.65]}
+        initialStep={sheetStep}
+        onStepChange={setSheetStep}
+        backgroundColor={palette.surface as string}
+        topInsetColor={palette.primary}
+        expandMode="overlay"
+        // Sticky header - always visible with search bar
+        stickyHeader={
+          <View>
+            <TopSheet.SearchBar
+              value={zoneSearch}
+              onChangeText={setZoneSearch}
+              placeholder={t("mapTab.searchPlaceholder")}
+              palette={palette}
+            />
+          </View>
+        }
+      >
+        <View style={{ flex: 1 }} />
+      </TopSheet>
+
       {isFocused ? (
         <>
           <QueueMap
@@ -1089,12 +1065,12 @@ export default function MapTabScreen() {
             onChange={(index) => {
               if (index < 0) {
                 setZoneModeActive(false);
-                setSheetIndex(-1);
+                setSheetStep(0);
                 setZoneSearch("");
                 setSaveError(null);
                 return;
               }
-              setSheetIndex(index);
+              setSheetStep(index);
             }}
           >
             <View style={styles.sheetContent}>
@@ -1132,11 +1108,7 @@ export default function MapTabScreen() {
                     },
                   ]}
                 >
-                  <IconSymbol
-                    name="magnifyingglass"
-                    size={16}
-                    color={palette.textMuted}
-                  />
+                  <IconSymbol name="magnifyingglass" size={16} color={palette.textMuted} />
                   <BottomSheetTextInput
                     value={zoneSearch}
                     onChangeText={setZoneSearch}
@@ -1158,20 +1130,13 @@ export default function MapTabScreen() {
                         opacity: pressed ? 0.8 : 1,
                       })}
                     >
-                      <IconSymbol
-                        name="xmark.circle.fill"
-                        size={16}
-                        color={palette.textMuted}
-                      />
+                      <IconSymbol name="xmark.circle.fill" size={16} color={palette.textMuted} />
                     </Pressable>
                   ) : null}
                 </View>
               </View>
               {saveError ? (
-                <ThemedText
-                  selectable
-                  style={{ color: palette.danger, paddingHorizontal: 24 }}
-                >
+                <ThemedText selectable style={{ color: palette.danger, paddingHorizontal: 24 }}>
                   {saveError}
                 </ThemedText>
               ) : null}
@@ -1266,8 +1231,7 @@ export default function MapTabScreen() {
 
                   const zoneCount = item.group.zones.length;
                   const isFullySelected = item.selectedCount === zoneCount;
-                  const isPartiallySelected =
-                    item.selectedCount > 0 && !isFullySelected;
+                  const isPartiallySelected = item.selectedCount > 0 && !isFullySelected;
                   const summary =
                     zoneCount === 1
                       ? (item.group.zones[0]?.id ?? item.group.cityKey)
@@ -1364,9 +1328,7 @@ export default function MapTabScreen() {
                             ]}
                           >
                             <IconSymbol
-                              name={
-                                item.expanded ? "chevron.down" : "chevron.right"
-                              }
+                              name={item.expanded ? "chevron.down" : "chevron.right"}
                               size={16}
                               color={
                                 isFullySelected
