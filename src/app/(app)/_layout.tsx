@@ -9,7 +9,8 @@ export default function AppGateLayout() {
   const pathname = usePathname();
   const gate = useSessionGate("app_layout", pathname);
 
-  if (gate.status === "loading") {
+  // Handle loading or undefined state
+  if (!gate || gate.status === "loading") {
     return <LoadingScreen label={t("launch.loadingAccount")} />;
   }
 
