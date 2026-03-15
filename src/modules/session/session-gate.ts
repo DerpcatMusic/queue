@@ -97,6 +97,12 @@ export function useSessionGate<T extends SessionGateEntryPoint>(
   pathname?: string,
 ): SessionGateDecisionMap[T] {
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
+
+  // Handle undefined user context - return loading state
+  if (!currentUser && !isAuthenticated) {
+    return { status: "loading" } as SessionGateDecisionMap[T];
+  }
+
   const session = resolveSessionState({
     isAuthLoading,
     isAuthenticated,
