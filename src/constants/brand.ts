@@ -43,6 +43,7 @@ const CustomSeed: Record<ResolvedBrandScheme, ThemeSeed> = {
   light: {
     primary: "#8B5CF6", // Vibrant violet/purple
     background: "#F7F4FC",
+    neutral: "#E8E0F0",
     success: "#16A34A",
     warning: "#D97706",
     danger: "#DC2626",
@@ -50,6 +51,7 @@ const CustomSeed: Record<ResolvedBrandScheme, ThemeSeed> = {
   dark: {
     primary: "#A78BFA", // Lighter vibrant purple for dark mode
     background: "#110E16",
+    neutral: "#2A2640",
     success: "#22C55E",
     warning: "#F59E0B",
     danger: "#EF4444",
@@ -185,7 +187,6 @@ function buildGeneratedCustomBrand(scheme: ResolvedBrandScheme): BrandPalette {
     textMuted: g.text.secondary,
     primary: g.brand.primary,
     primarySubtle: g.brand.subtle,
-    secondary: g.brand.secondary,
     onPrimary: g.brand.onPrimary,
     success: g.semantic.success.base,
     successSubtle: g.semantic.success.subtle,
