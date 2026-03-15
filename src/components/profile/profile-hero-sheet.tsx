@@ -14,11 +14,7 @@ import { ActionButton } from "@/components/ui/action-button";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
-import {
-  isSportType,
-  type SPORT_TYPES,
-  toSportLabel,
-} from "@/convex/constants";
+import { isSportType, type SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 
 const PROFILE_HERO_EXPANDED_CONTENT_HEIGHT = 204;
@@ -60,16 +56,11 @@ type ProfileHeroSheetProps = {
   sports: string[];
 };
 
-function getSportsLabel(
-  sports: string[],
-  t: ReturnType<typeof useTranslation>["t"],
-) {
+function getSportsLabel(sports: string[], t: ReturnType<typeof useTranslation>["t"]) {
   return sports.length === 0
     ? t("profile.settings.sports.none")
     : sports.length <= 2
-      ? sports
-          .map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport))
-          .join(", ")
+      ? sports.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(", ")
       : `${isSportType(sports[0] ?? "") ? toSportLabel(sports[0] as (typeof SPORT_TYPES)[number]) : sports[0]} +${String(
           sports.length - 1,
         )}`;
@@ -108,8 +99,7 @@ export function ProfileHeroSheet({
   const activeSocialCount = Object.values(socialLinks ?? {}).filter((value) =>
     Boolean(value?.trim()),
   ).length;
-  const resolvedPrimaryActionLabel =
-    primaryActionLabel ?? t("profile.actions.edit");
+  const resolvedPrimaryActionLabel = primaryActionLabel ?? t("profile.actions.edit");
   const sportsLabel = getSportsLabel(sports, t);
   const summaryLabel = getProfileSummary(bio, activeSocialCount, t);
 
@@ -163,21 +153,11 @@ export function ProfileHeroSheet({
   const expandedDetailsStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, 80], [1, 0], Extrapolation.CLAMP),
     height: interpolate(scrollY.value, [0, 80], [88, 0], Extrapolation.CLAMP),
-    marginTop: interpolate(
-      scrollY.value,
-      [0, 80],
-      [14, 0],
-      Extrapolation.CLAMP,
-    ),
+    marginTop: interpolate(scrollY.value, [0, 80], [14, 0], Extrapolation.CLAMP),
   }));
 
   const animatedSheetStyle = useAnimatedStyle(() => {
-    const pullStretch = interpolate(
-      scrollY.value,
-      [-120, 0],
-      [84, 0],
-      Extrapolation.CLAMP,
-    );
+    const pullStretch = interpolate(scrollY.value, [-120, 0], [84, 0], Extrapolation.CLAMP);
     const collapsedBase = interpolate(
       scrollY.value,
       [0, PROFILE_HERO_COLLAPSE_END],
@@ -194,6 +174,7 @@ export function ProfileHeroSheet({
     <TopSheetSurface
       pointerEvents="box-none"
       backgroundColor={palette.surfaceAlt}
+      topInsetColor={palette.primary}
       style={[
         {
           position: "absolute",
@@ -221,9 +202,7 @@ export function ProfileHeroSheet({
           paddingHorizontal: BrandSpacing.xl,
         }}
       >
-        <View
-          style={{ flexDirection: "row", alignItems: "flex-start", gap: 14 }}
-        >
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 14 }}>
           <View
             style={{
               flexDirection: "row",
@@ -245,9 +224,7 @@ export function ProfileHeroSheet({
               </Animated.View>
             </View>
 
-            <Animated.View
-              style={[{ flex: 1, gap: 4, minWidth: 0 }, identityBlockStyle]}
-            >
+            <Animated.View style={[{ flex: 1, gap: 4, minWidth: 0 }, identityBlockStyle]}>
               <Text
                 style={{
                   ...BrandType.micro,

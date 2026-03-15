@@ -155,6 +155,7 @@ export function HomeHeaderSheet({
     <TopSheetSurface
       pointerEvents="box-none"
       backgroundColor={bg}
+      topInsetColor={palette.primary}
       style={[
         {
           backgroundColor: bg,
