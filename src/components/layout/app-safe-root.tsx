@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 import type { ColorValue } from "react-native";
 import { View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 export function AppSafeRoot({
   children,
@@ -11,6 +11,7 @@ export function AppSafeRoot({
 
   return (
     <View style={{ flex: 1 }}>
+      {/* Status bar background - overlay on top */}
       <View
         pointerEvents="none"
         style={{
@@ -18,12 +19,15 @@ export function AppSafeRoot({
           top: 0,
           left: 0,
           right: 0,
-          zIndex: 9999, // Always on top of everything
+          zIndex: 9999,
           height: insets.top,
           backgroundColor: topInsetBackgroundColor,
         }}
       />
-      <View style={{ flex: 1 }}>{children}</View>
+      {/* Children wrapped in SafeAreaView for proper inset handling */}
+      <SafeAreaView style={{ flex: 1 }} edges={[]}>
+        {children}
+      </SafeAreaView>
     </View>
   );
 }
