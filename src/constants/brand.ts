@@ -187,6 +187,7 @@ function buildGeneratedCustomBrand(scheme: ResolvedBrandScheme): BrandPalette {
     textMuted: g.text.secondary,
     primary: g.brand.primary,
     primarySubtle: g.brand.subtle,
+    secondary: g.brand.accent,
     onPrimary: g.brand.onPrimary,
     success: g.semantic.success.base,
     successSubtle: g.semantic.success.subtle,
