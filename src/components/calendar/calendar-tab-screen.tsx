@@ -698,7 +698,6 @@ export default function CalendarTabScreen() {
   return (
     <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
       <TopSheet
-        backgroundColor={palette.surface as string}
         topInsetColor={palette.primary}
         style={{
           gap: BrandSpacing.md,

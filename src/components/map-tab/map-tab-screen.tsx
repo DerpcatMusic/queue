@@ -927,7 +927,6 @@ export default function MapTabScreen() {
         steps={[0.16, 0.65]}
         initialStep={sheetStep}
         onStepChange={setSheetStep}
-        backgroundColor={palette.surface as string}
         topInsetColor={palette.primary}
         expandMode="overlay"
         // Sticky header - always visible with search bar

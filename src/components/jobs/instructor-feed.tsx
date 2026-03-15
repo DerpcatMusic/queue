@@ -109,9 +109,8 @@ export function InstructorFeed() {
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
-      {/* Top Sheet with Search Bar and Stats - purple inset, surface content */}
+      {/* Top Sheet with Search Bar and Stats - purple */}
       <TopSheet
-        backgroundColor={palette.surface as string}
         topInsetColor={palette.primary}
         padding={{ vertical: BrandSpacing.sm, horizontal: BrandSpacing.lg }}
       >
