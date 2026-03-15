@@ -18,7 +18,7 @@ export function AppSafeRoot({
           top: 0,
           left: 0,
           right: 0,
-          zIndex: 1,
+          zIndex: 9999, // Always on top of everything
           height: insets.top,
           backgroundColor: topInsetBackgroundColor,
         }}
