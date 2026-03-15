@@ -4,6 +4,7 @@ import Animated from "react-native-reanimated";
 import { useKitTheme } from "@/components/ui/kit";
 import { BrandRadius } from "@/constants/brand";
 import { useSystemUi } from "@/contexts/system-ui-context";
+import { useAppInsets } from "@/hooks/use-app-insets";
 
 type TopSheetSurfaceProps = PropsWithChildren<{
   backgroundColor?: ColorValue;
@@ -21,6 +22,7 @@ export function TopSheetSurface({
 }: TopSheetSurfaceProps) {
   const { background } = useKitTheme();
   const { setTopInsetTone, setTopInsetBackgroundColor } = useSystemUi();
+  const { safeTop } = useAppInsets();
   const resolvedBackground = backgroundColor ?? background.sheet;
   const resolvedInsetColor = topInsetColor ?? resolvedBackground;
 
@@ -44,6 +46,8 @@ export function TopSheetSurface({
           overflow: "hidden",
           backgroundColor: resolvedBackground,
         },
+        // Always account for safeTop when using absolute positioning
+        { ...((style as ViewStyle)?.position === "absolute" ? { top: safeTop } : {}) },
         style,
       ]}
     >

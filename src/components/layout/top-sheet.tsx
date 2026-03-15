@@ -256,6 +256,7 @@ export function TopSheet({
   const outerStyle = useAnimatedStyle(() => ({
     height: sheetHeight.value,
     // Overlay mode: position absolutely to overlap content below
+    // Resize mode: add top margin to account for safe area
     ...(expandMode === "overlay"
       ? {
           position: "absolute",
@@ -263,7 +264,9 @@ export function TopSheet({
           right: 0,
           top: safeTop,
         }
-      : {}),
+      : {
+          marginTop: safeTop,
+        }),
   }));
 
   // Animated inner content (padding + background)
