@@ -140,7 +140,7 @@ function RootLayoutContent() {
 
   const fallbackBackgroundColor =
     topInsetTone === "sheet"
-      ? palette.surfaceAlt
+      ? palette.primary
       : topInsetTone === "card"
         ? palette.surface
         : topInsetTone === "transparent"
