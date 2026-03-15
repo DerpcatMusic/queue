@@ -2,19 +2,12 @@ import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFonts } from "expo-font";
 import "../../global.css";
+import { BarlowCondensed_800ExtraBold } from "@expo-google-fonts/barlow-condensed";
 import {
-  BarlowCondensed_700Bold,
-  BarlowCondensed_800ExtraBold,
-  BarlowCondensed_900Black,
-} from "@expo-google-fonts/barlow-condensed";
-import {
-  Rubik_300Light,
   Rubik_400Regular,
   Rubik_500Medium,
   Rubik_600SemiBold,
   Rubik_700Bold,
-  Rubik_800ExtraBold,
-  Rubik_900Black,
 } from "@expo-google-fonts/rubik";
 import {
   DarkTheme,
@@ -25,8 +18,8 @@ import {
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
-import { Animated, LogBox, Platform, StyleSheet, View } from "react-native";
+import { useMemo } from "react";
+import { LogBox, Platform, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -86,30 +79,15 @@ function RootLayoutContent() {
   const { topInsetBackgroundColor, topInsetTone } = useSystemUi();
   const { resolvedScheme } = useThemePreference();
   const palette = useBrand();
-  const [transitionOverlayColor, setTransitionOverlayColor] = useState(palette.appBg as string);
   const convex = getConvexClient();
   useFonts({
     ...MaterialIcons.font,
-    // Sekuya — sporty display font (local TTF asset)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    "Sekuya-Regular": require("../../assets/fonts/Sekuya-Regular.ttf"),
-    // Barlow Condensed — sporty condensed for headings/titles
-    BarlowCondensed_700Bold,
     BarlowCondensed_800ExtraBold,
-    BarlowCondensed_900Black,
-    // Rubik — Hebrew-safe body/caption font (all weights)
-    Rubik_300Light,
     Rubik_400Regular,
     Rubik_500Medium,
     Rubik_600SemiBold,
     Rubik_700Bold,
-    Rubik_800ExtraBold,
-    Rubik_900Black,
   });
-  const transitionOpacity = useMemo(() => new Animated.Value(0), []);
-  const currentThemeKey = resolvedScheme;
-  const [previousThemeKey, setPreviousThemeKey] = useState(currentThemeKey);
-  const [previousBackgroundColor, setPreviousBackgroundColor] = useState(palette.appBg as string);
 
   const nativeStorage = useMemo(() => {
     const secureStorage = {
@@ -121,28 +99,6 @@ function RootLayoutContent() {
   }, []);
 
   useStartupNotificationsSetup();
-
-  useEffect(() => {
-    if (previousThemeKey === currentThemeKey) {
-      return;
-    }
-
-    setTransitionOverlayColor(previousBackgroundColor);
-    transitionOpacity.setValue(1);
-    Animated.timing(transitionOpacity, {
-      toValue: 0,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
-    setPreviousBackgroundColor(palette.appBg as string);
-    setPreviousThemeKey(currentThemeKey);
-  }, [
-    currentThemeKey,
-    palette.appBg,
-    previousBackgroundColor,
-    previousThemeKey,
-    transitionOpacity,
-  ]);
 
   useAndroidNavigationBarTheme(resolvedScheme);
 
@@ -184,12 +140,14 @@ function RootLayoutContent() {
 
   const fallbackBackgroundColor =
     topInsetTone === "sheet"
-      ? palette.surfaceAlt
+      ? palette.primary
       : topInsetTone === "card"
         ? palette.surface
         : topInsetTone === "transparent"
           ? "transparent"
-          : palette.appBg;
+          : topInsetTone === "app"
+            ? palette.primary
+            : palette.appBg;
   const statusInsetColor = topInsetBackgroundColor ?? fallbackBackgroundColor;
 
   return (
@@ -220,16 +178,6 @@ function RootLayoutContent() {
                 </View>
               </AppSafeRoot>
               <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  StyleSheet.absoluteFillObject,
-                  {
-                    backgroundColor: transitionOverlayColor,
-                    opacity: transitionOpacity,
-                  },
-                ]}
-              />
             </ThemeProvider>
           </RapydReturnProvider>
         </UserProvider>
