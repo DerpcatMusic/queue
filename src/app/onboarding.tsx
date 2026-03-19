@@ -2,9 +2,10 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useMutation, useQuery } from "convex/react";
 import { Redirect, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { I18nManager, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import {
   ScrollSheetProvider,
@@ -34,6 +35,8 @@ type OnboardingRole = "instructor" | "studio";
 type OnboardingStep = 0 | 1 | 2;
 
 const MAX_INSTRUCTOR_ZONES = 25;
+const STEP_EXIT_MS = 170;
+const STEP_ENTER_MS = 220;
 
 function toDisplayLabel(value: string) {
   return value
@@ -45,6 +48,50 @@ function toDisplayLabel(value: string) {
 function trimOptional(value: string) {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function OnboardingStageLayer({
+  phase,
+  direction,
+  children,
+}: {
+  phase: "idle" | "enter" | "exit";
+  direction: 1 | -1;
+  children: React.ReactNode;
+}) {
+  const translateX = useSharedValue(0);
+  const opacity = useSharedValue(1);
+
+  useEffect(() => {
+    const incomingOffset = 20 * direction;
+    const outgoingOffset = -18 * direction;
+
+    if (phase === "enter") {
+      translateX.value = incomingOffset;
+      opacity.value = 0;
+      translateX.value = withTiming(0, { duration: STEP_ENTER_MS });
+      opacity.value = withTiming(1, { duration: STEP_ENTER_MS });
+      return;
+    }
+
+    if (phase === "exit") {
+      translateX.value = withTiming(outgoingOffset, { duration: STEP_EXIT_MS });
+      opacity.value = withTiming(0, { duration: STEP_EXIT_MS });
+      return;
+    }
+
+    translateX.value = 0;
+    opacity.value = 1;
+  }, [direction, opacity, phase, translateX]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  return (
+    <Animated.View style={[{ flex: 1, width: "100%" }, animatedStyle]}>{children}</Animated.View>
+  );
 }
 
 function OnboardingSheetHeader({
@@ -105,6 +152,16 @@ function OnboardingScreenContent() {
   const completeStudioOnboarding = useMutation(api.onboarding.completeStudioOnboarding);
 
   const [step, setStep] = useState<OnboardingStep>(0);
+  const [visibleStep, setVisibleStep] = useState<OnboardingStep>(0);
+  const [stepTransition, setStepTransition] = useState<{
+    direction: 1 | -1;
+    phase: "idle" | "enter" | "exit";
+    targetStep: OnboardingStep | null;
+  }>({
+    direction: 1,
+    phase: "idle",
+    targetStep: null,
+  });
   const [selectedRole, setSelectedRole] = useState<OnboardingRole | null>(null);
   const effectiveRole: OnboardingRole | null =
     selectedRole ??
@@ -193,6 +250,17 @@ function OnboardingScreenContent() {
 
   const instructorResolver = useLocationResolution();
   const studioResolver = useLocationResolution();
+  const stepTransitionTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+
+  useEffect(
+    () => () => {
+      for (const timer of stepTransitionTimersRef.current) {
+        clearTimeout(timer);
+      }
+      stepTransitionTimersRef.current = [];
+    },
+    [],
+  );
 
   if (currentUser === undefined) {
     return <LoadingScreen label={t("onboarding.loading")} />;
@@ -455,7 +523,46 @@ function OnboardingScreenContent() {
       return;
     }
     setErrorMessage(null);
-    setStep(1);
+
+    if (step === 1) {
+      return;
+    }
+
+    for (const timer of stepTransitionTimersRef.current) {
+      clearTimeout(timer);
+    }
+    stepTransitionTimersRef.current = [];
+
+    const nextStep: OnboardingStep = 1;
+    const direction: 1 | -1 = nextStep > visibleStep ? 1 : -1;
+
+    setStep(nextStep);
+    setStepTransition({
+      direction,
+      phase: "exit",
+      targetStep: nextStep,
+    });
+
+    stepTransitionTimersRef.current.push(
+      setTimeout(() => {
+        startTransition(() => {
+          setVisibleStep(nextStep);
+          setStepTransition((current) =>
+            current?.targetStep === nextStep ? { ...current, phase: "enter" } : current,
+          );
+        });
+      }, STEP_EXIT_MS),
+    );
+
+    stepTransitionTimersRef.current.push(
+      setTimeout(() => {
+        setStepTransition({
+          direction,
+          phase: "idle",
+          targetStep: null,
+        });
+      }, STEP_EXIT_MS + STEP_ENTER_MS),
+    );
   };
 
   const submitInstructor = async () => {
@@ -798,6 +905,213 @@ function OnboardingScreenContent() {
     </View>
   );
 
+  const renderBody = (bodyStep: OnboardingStep) => {
+    if (bodyStep === 0) {
+      return (
+        <View style={styles.roleStage}>
+          <View style={styles.roleStageHeader}>
+            <ThemedText type="title">{t("onboarding.rolePrompt")}</ThemedText>
+            <ThemedText type="caption" style={{ color: palette.textMuted }}>
+              {role === "studio"
+                ? t("onboarding.roleStudioDescription")
+                : role === "instructor"
+                  ? t("onboarding.roleInstructorDescription")
+                  : t("onboarding.roleSelectHint")}
+            </ThemedText>
+          </View>
+          <View style={styles.roleGrid}>
+            <View style={styles.roleOption}>
+              <ChoicePill
+                label={t("onboarding.roleInstructorTitle")}
+                icon={
+                  <MaterialIcons
+                    name="self-improvement"
+                    size={20}
+                    color={
+                      role === "instructor"
+                        ? (palette.onPrimary as string)
+                        : (palette.text as string)
+                    }
+                  />
+                }
+                onPress={() => setSelectedRole("instructor")}
+                selected={role === "instructor"}
+              />
+            </View>
+            <View style={styles.roleOption}>
+              <ChoicePill
+                label={t("onboarding.roleStudioTitle")}
+                icon={
+                  <MaterialIcons
+                    name="storefront"
+                    size={20}
+                    color={
+                      role === "studio" ? (palette.onPrimary as string) : (palette.text as string)
+                    }
+                  />
+                }
+                onPress={() => setSelectedRole("studio")}
+                selected={role === "studio"}
+              />
+            </View>
+          </View>
+          <View style={styles.roleStageFooter}>
+            <IconButton
+              accessibilityLabel={t("onboarding.next")}
+              icon={nextArrowIcon}
+              onPress={() => goToProfileStep()}
+              disabled={!role}
+              tone="primary"
+              size={60}
+            />
+          </View>
+        </View>
+      );
+    }
+
+    if (bodyStep === 1 && role === "instructor") {
+      return (
+        <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
+          {instructorForm}
+          {mapPane}
+          <View style={styles.navBar}>
+            <View style={styles.navRowSplit}>
+              <View style={styles.navAction}>
+                <ActionButton
+                  label={t("onboarding.back")}
+                  palette={palette}
+                  tone="secondary"
+                  fullWidth
+                  onPress={() => {
+                    setStep(0);
+                    setVisibleStep(0);
+                    setStepTransition({
+                      direction: -1,
+                      phase: "idle",
+                      targetStep: null,
+                    });
+                  }}
+                />
+              </View>
+
+              <View style={styles.navAction}>
+                <ActionButton
+                  label={isSubmitting ? t("onboarding.save") : t("onboarding.continue")}
+                  disabled={isSubmitting}
+                  palette={palette}
+                  fullWidth
+                  onPress={() => {
+                    void submitInstructor();
+                  }}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    if (bodyStep === 1 && role === "studio") {
+      return (
+        <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
+          {studioForm}
+          {mapPane}
+          <View style={styles.navBar}>
+            <View style={styles.navRowSplit}>
+              <View style={styles.navAction}>
+                <ActionButton
+                  label={t("onboarding.back")}
+                  palette={palette}
+                  tone="secondary"
+                  fullWidth
+                  onPress={() => {
+                    setStep(0);
+                    setVisibleStep(0);
+                    setStepTransition({
+                      direction: -1,
+                      phase: "idle",
+                      targetStep: null,
+                    });
+                  }}
+                />
+              </View>
+
+              <View style={styles.navAction}>
+                <ActionButton
+                  label={isSubmitting ? t("onboarding.save") : t("onboarding.complete")}
+                  disabled={isSubmitting}
+                  palette={palette}
+                  fullWidth
+                  onPress={() => {
+                    void submitStudio();
+                  }}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    if (bodyStep === 2 && role === "instructor") {
+      return (
+        <View
+          style={[
+            styles.verifyStage,
+            {
+              backgroundColor: palette.surface as string,
+              borderColor: palette.borderStrong as string,
+            },
+          ]}
+        >
+          <ThemedText type="subtitle">{t("onboarding.verification.subtitle")}</ThemedText>
+          <ThemedText style={{ color: palette.textMuted }}>
+            {t("onboarding.verification.body")}
+          </ThemedText>
+
+          {!pushToken ? (
+            <ActionButton
+              disabled={isRequestingPush}
+              label={
+                isRequestingPush
+                  ? t("onboarding.push.requesting")
+                  : t("onboarding.push.requestPermission")
+              }
+              palette={palette}
+              tone="secondary"
+              fullWidth
+              onPress={() => {
+                void requestPushPermission();
+              }}
+            />
+          ) : null}
+
+          <View style={styles.verifyActions}>
+            <ActionButton
+              label={t("onboarding.verification.verifyNow")}
+              palette={palette}
+              fullWidth
+              onPress={() => {
+                router.replace("/instructor/profile/identity-verification");
+              }}
+            />
+            <ActionButton
+              label={t("onboarding.verification.later")}
+              palette={palette}
+              tone="secondary"
+              fullWidth
+              onPress={() => {
+                router.replace("/");
+              }}
+            />
+          </View>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg as string }]}>
       <GlobalTopSheet />
@@ -811,170 +1125,19 @@ function OnboardingScreenContent() {
         contentInsetAdjustmentBehavior="never"
         keyboardShouldPersistTaps="handled"
       >
-        {step === 0 ? (
-          <View style={styles.roleStage}>
-            <View style={styles.roleStageHeader}>
-              <ThemedText type="title">{t("onboarding.rolePrompt")}</ThemedText>
-              <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                {role === "studio"
-                  ? t("onboarding.roleStudioDescription")
-                  : role === "instructor"
-                    ? t("onboarding.roleInstructorDescription")
-                    : t("onboarding.roleSelectHint")}
-              </ThemedText>
-            </View>
-            <View style={styles.roleGrid}>
-              <View style={styles.roleOption}>
-                <ChoicePill
-                  label={t("onboarding.roleInstructorTitle")}
-                  icon={
-                    <MaterialIcons
-                      name="self-improvement"
-                      size={20}
-                      color={
-                        role === "instructor"
-                          ? (palette.onPrimary as string)
-                          : (palette.text as string)
-                      }
-                    />
-                  }
-                  onPress={() => setSelectedRole("instructor")}
-                  selected={role === "instructor"}
-                />
-              </View>
-              <View style={styles.roleOption}>
-                <ChoicePill
-                  label={t("onboarding.roleStudioTitle")}
-                  icon={
-                    <MaterialIcons
-                      name="storefront"
-                      size={20}
-                      color={
-                        role === "studio" ? (palette.onPrimary as string) : (palette.text as string)
-                      }
-                    />
-                  }
-                  onPress={() => setSelectedRole("studio")}
-                  selected={role === "studio"}
-                />
-              </View>
-            </View>
-            <View style={styles.roleStageFooter}>
-              <IconButton
-                accessibilityLabel={t("onboarding.next")}
-                icon={nextArrowIcon}
-                onPress={() => goToProfileStep()}
-                disabled={!role}
-                tone="primary"
-                size={60}
-              />
-            </View>
-          </View>
-        ) : step === 1 && role === "instructor" ? (
-          <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
-            {instructorForm}
-            {mapPane}
-          </View>
-        ) : step === 1 && role === "studio" ? (
-          <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
-            {studioForm}
-            {mapPane}
-          </View>
-        ) : step === 2 && role === "instructor" ? (
-          <View
-            style={[
-              styles.verifyStage,
-              {
-                backgroundColor: palette.surface as string,
-                borderColor: palette.borderStrong as string,
-              },
-            ]}
-          >
-            <ThemedText type="subtitle">{t("onboarding.verification.subtitle")}</ThemedText>
-            <ThemedText style={{ color: palette.textMuted }}>
-              {t("onboarding.verification.body")}
-            </ThemedText>
-
-            {!pushToken ? (
-              <ActionButton
-                disabled={isRequestingPush}
-                label={
-                  isRequestingPush
-                    ? t("onboarding.push.requesting")
-                    : t("onboarding.push.requestPermission")
-                }
-                palette={palette}
-                tone="secondary"
-                fullWidth
-                onPress={() => {
-                  void requestPushPermission();
-                }}
-              />
-            ) : null}
-
-            <View style={styles.verifyActions}>
-              <ActionButton
-                label={t("onboarding.verification.verifyNow")}
-                palette={palette}
-                fullWidth
-                onPress={() => {
-                  router.replace("/instructor/profile/identity-verification");
-                }}
-              />
-              <ActionButton
-                label={t("onboarding.verification.later")}
-                palette={palette}
-                tone="secondary"
-                fullWidth
-                onPress={() => {
-                  router.replace("/");
-                }}
-              />
-            </View>
-          </View>
-        ) : null}
-
-        {step === 1 ? (
-          <View style={styles.navBar}>
-            <View style={styles.navRowSplit}>
-              <View style={styles.navAction}>
-                <ActionButton
-                  label={t("onboarding.back")}
-                  palette={palette}
-                  tone="secondary"
-                  fullWidth
-                  onPress={() => {
-                    setStep(0);
-                  }}
-                />
-              </View>
-
-              <View style={styles.navAction}>
-                <ActionButton
-                  label={
-                    isSubmitting
-                      ? t("onboarding.save")
-                      : role === "instructor"
-                        ? t("onboarding.continue")
-                        : t("onboarding.complete")
-                  }
-                  disabled={isSubmitting}
-                  palette={palette}
-                  fullWidth
-                  onPress={() => {
-                    if (role === "instructor") {
-                      void submitInstructor();
-                      return;
-                    }
-                    if (role === "studio") {
-                      void submitStudio();
-                    }
-                  }}
-                />
-              </View>
-            </View>
-          </View>
-        ) : null}
+        <View style={styles.stageViewport}>
+          {stepTransition.phase === "idle" ? (
+            renderBody(step)
+          ) : stepTransition.phase === "exit" ? (
+            <OnboardingStageLayer phase="exit" direction={stepTransition.direction}>
+              {renderBody(visibleStep)}
+            </OnboardingStageLayer>
+          ) : stepTransition.phase === "enter" ? (
+            <OnboardingStageLayer phase="enter" direction={stepTransition.direction}>
+              {renderBody(visibleStep)}
+            </OnboardingStageLayer>
+          ) : null}
+        </View>
 
         {errorMessage ? (
           <View
@@ -1002,6 +1165,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 20,
     gap: 12,
+  },
+  stageViewport: {
+    minHeight: 1,
   },
   contentGrow: {
     flexGrow: 1,
