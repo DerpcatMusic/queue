@@ -11,10 +11,10 @@ import { TopSheetSurface } from "@/components/layout/top-sheet-surface";
 import { ProfileIconButton } from "@/components/profile/profile-settings-sections";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { ActionButton } from "@/components/ui/action-button";
-import { alphaColor } from "@/components/ui/kit/color-utils";
+import { KitStatusBadge } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { isSportType, type SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 
@@ -105,8 +105,6 @@ export function ProfileHeroSheet({
   const resolvedPrimaryActionLabel = primaryActionLabel ?? t("profile.actions.edit");
   const sportsLabel = getSportsLabel(sports, t);
   const summaryLabel = getProfileSummary(bio, activeSocialCount, t);
-  const strongPillFill = alphaColor(palette.onPrimary, 0.18, "rgba(255,255,255,0.18)");
-  const softPillFill = alphaColor(palette.onPrimary, 0.12, "rgba(255,255,255,0.12)");
 
   const profileAvatarStyle = useAnimatedStyle(() => ({
     transform: [
@@ -288,46 +286,9 @@ export function ProfileHeroSheet({
           <View style={{ gap: 12 }}>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {statusLabel ? (
-                <View
-                  style={{
-                    borderRadius: BrandRadius.button - 4,
-                    borderCurve: "continuous",
-                    backgroundColor: strongPillFill,
-                    paddingHorizontal: 12,
-                    paddingVertical: 7,
-                  }}
-                >
-                  <Text
-                    style={{
-                      ...BrandType.micro,
-                      color: palette.onPrimary as string,
-                      letterSpacing: 0.2,
-                    }}
-                  >
-                    {statusLabel}
-                  </Text>
-                </View>
+                <KitStatusBadge label={statusLabel} tone="accent" showDot={false} />
               ) : null}
-              <View
-                style={{
-                  borderRadius: BrandRadius.button - 4,
-                  borderCurve: "continuous",
-                  backgroundColor: softPillFill,
-                  paddingHorizontal: 12,
-                  paddingVertical: 7,
-                }}
-              >
-                <Text
-                  style={{
-                    ...BrandType.micro,
-                    color: palette.onPrimary as string,
-                    opacity: 0.82,
-                    letterSpacing: 0.2,
-                  }}
-                >
-                  {sportsLabel}
-                </Text>
-              </View>
+              <KitStatusBadge label={sportsLabel} tone="neutral" showDot={false} />
             </View>
             <Text
               numberOfLines={2}
@@ -412,26 +373,7 @@ export function ProfileDesktopHeroPanel({
       </View>
 
       <View style={{ gap: 10 }}>
-        <View
-          style={{
-            alignSelf: "flex-start",
-            borderRadius: BrandSpacing.lg,
-            borderCurve: "continuous",
-            backgroundColor: palette.primarySubtle as string,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-          }}
-        >
-          <Text
-            style={{
-              ...BrandType.micro,
-              color: palette.primary as string,
-              letterSpacing: 0.2,
-            }}
-          >
-            {statusLabel}
-          </Text>
-        </View>
+        <KitStatusBadge label={statusLabel} tone="accent" showDot={false} />
         <Text
           style={{
             ...BrandType.body,
