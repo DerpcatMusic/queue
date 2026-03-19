@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
@@ -142,72 +142,82 @@ export function ProfileSettingRow({
   const borderColor = tone === "danger" ? "transparent" : (palette.border as string);
 
   const content = (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
-        gap: 14,
-        paddingHorizontal: 16,
-        paddingVertical: 15,
-        borderBottomWidth: showDivider ? StyleSheet.hairlineWidth : 0,
-        borderBottomColor: borderColor,
-      }}
-    >
-      {icon ? (
-        <View
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            borderCurve: "continuous",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: iconBackground,
-          }}
-        >
-          <IconSymbol name={icon} size={18} color={iconColor} />
-        </View>
-      ) : null}
-
-      <View style={{ flex: 1, gap: subtitle ? 3 : 0, minWidth: 0 }}>
-        <Text
-          style={{
-            ...BrandType.bodyStrong,
-            color: titleColor,
-            letterSpacing: -0.1,
-          }}
-        >
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text style={{ ...BrandType.caption, color: secondaryColor }}>{subtitle}</Text>
-        ) : null}
-      </View>
-
+    <View>
       <View
         style={{
           flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: 10,
-          maxWidth: "44%",
+          alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
+          gap: 14,
+          paddingHorizontal: 16,
+          paddingVertical: 15,
         }}
       >
-        {value ? (
-          <Text
-            numberOfLines={1}
+        {icon ? (
+          <View
             style={{
-              ...BrandType.bodyMedium,
-              color: secondaryColor,
-              textAlign: "right",
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              borderCurve: "continuous",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: iconBackground,
             }}
           >
-            {value}
-          </Text>
+            <IconSymbol name={icon} size={18} color={iconColor} />
+          </View>
         ) : null}
-        {accessory ??
-          (onPress ? <IconSymbol name="chevron.right" size={18} color={secondaryColor} /> : null)}
+
+        <View style={{ flex: 1, gap: subtitle ? 3 : 0, minWidth: 0 }}>
+          <Text
+            style={{
+              ...BrandType.bodyStrong,
+              color: titleColor,
+              letterSpacing: -0.1,
+            }}
+          >
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text style={{ ...BrandType.caption, color: secondaryColor }}>{subtitle}</Text>
+          ) : null}
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: 10,
+            maxWidth: "44%",
+          }}
+        >
+          {value ? (
+            <Text
+              numberOfLines={1}
+              style={{
+                ...BrandType.bodyMedium,
+                color: secondaryColor,
+                textAlign: "right",
+              }}
+            >
+              {value}
+            </Text>
+          ) : null}
+          {accessory ??
+            (onPress ? <IconSymbol name="chevron.right" size={18} color={secondaryColor} /> : null)}
+        </View>
       </View>
+      {showDivider ? (
+        <View
+          style={{
+            height: 1,
+            marginLeft: icon ? 54 : 16,
+            marginRight: 16,
+            backgroundColor: borderColor,
+          }}
+        />
+      ) : null}
     </View>
   );
 

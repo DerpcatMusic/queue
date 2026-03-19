@@ -6,7 +6,6 @@ import { useHomeDashboardLayout } from "@/components/home/home-dashboard-layout"
 import type { AxisTick, MetricMode, Timeframe } from "@/components/home/performance-chart-math";
 import { buildSplinePaths, getAdjacentTimeframe } from "@/components/home/performance-chart-math";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { alphaColor } from "@/components/ui/kit/color-utils";
 import { type BrandPalette, BrandRadius, BrandType } from "@/constants/brand";
 
 export type PerformanceTimeframeSeries = {
@@ -74,10 +73,6 @@ export function PerformanceHeroCard({
   const currentSeries = seriesByTimeframe[timeframe];
   const currentMetricOption = metricOptions.find((option) => option.value === metricMode);
   const currentMetricLabel = currentMetricOption?.label ?? t(`home.performance.${metricMode}`);
-  const softPrimaryFill = alphaColor(palette.onPrimary, 0.12, "rgba(255,255,255,0.12)");
-  const softerPrimaryFill = alphaColor(palette.onPrimary, 0.08, "rgba(255,255,255,0.08)");
-  const mediumPrimaryFill = alphaColor(palette.onPrimary, 0.14, "rgba(255,255,255,0.14)");
-  const linePrimaryFill = alphaColor(palette.onPrimary, 0.16, "rgba(255,255,255,0.16)");
   const { linePath, areaPath, separators, pointXs, hasActivity } = useMemo(
     () => buildSplinePaths(currentSeries.values, chartWidth, chartHeight, chartPadding),
     [chartHeight, chartWidth, currentSeries.values],
@@ -159,7 +154,7 @@ export function PerformanceHeroCard({
                 alignItems: "center",
                 gap: 6,
                 borderRadius: BrandRadius.pill,
-                backgroundColor: softPrimaryFill,
+                backgroundColor: palette.primarySubtle as string,
                 paddingHorizontal: 10,
                 paddingVertical: 6,
               }}
@@ -221,7 +216,7 @@ export function PerformanceHeroCard({
           style={{
             width: layout.isWideWeb ? 232 : "100%",
             borderRadius: BrandRadius.pill,
-            backgroundColor: mediumPrimaryFill,
+            backgroundColor: palette.surfaceElevated as string,
             flexDirection: "row",
             gap: 4,
             padding: 4,
@@ -248,7 +243,9 @@ export function PerformanceHeroCard({
                   gap: 6,
                   borderRadius: BrandRadius.pill,
                   paddingHorizontal: 12,
-                  backgroundColor: selected ? (palette.onPrimary as string) : softerPrimaryFill,
+                  backgroundColor: selected
+                    ? (palette.primary as string)
+                    : (palette.surfaceAlt as string),
                   opacity: pressed ? 0.9 : 1,
                   transform: [{ scale: pressed ? 0.98 : 1 }],
                 })}
@@ -261,8 +258,7 @@ export function PerformanceHeroCard({
                 <Text
                   style={{
                     ...BrandType.micro,
-                    color: selected ? (palette.primary as string) : (palette.onPrimary as string),
-                    opacity: selected ? 1 : 0.76,
+                    color: selected ? (palette.onPrimary as string) : (palette.textMuted as string),
                   }}
                 >
                   {option.label}
@@ -289,7 +285,7 @@ export function PerformanceHeroCard({
           overflow: "hidden",
           borderRadius: BrandRadius.card,
           borderCurve: "continuous",
-          backgroundColor: softerPrimaryFill,
+          backgroundColor: palette.surfaceElevated as string,
           paddingHorizontal: 8,
           paddingTop: 10,
         }}
@@ -304,7 +300,7 @@ export function PerformanceHeroCard({
                 top: x.yStart,
                 bottom: chartHeight - x.yEnd,
                 width: 1,
-                backgroundColor: linePrimaryFill,
+                backgroundColor: palette.primarySubtle as string,
               }}
             />
           ))}
@@ -316,8 +312,8 @@ export function PerformanceHeroCard({
           >
             <Defs>
               <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor={palette.onPrimary as string} stopOpacity={0.34} />
-                <Stop offset="100%" stopColor={palette.onPrimary as string} stopOpacity={0.04} />
+                <Stop offset="0%" stopColor={palette.primary as string} stopOpacity={0.34} />
+                <Stop offset="100%" stopColor={palette.primary as string} stopOpacity={0.04} />
               </LinearGradient>
             </Defs>
             {hasActivity && areaPath ? <Path d={areaPath} fill={`url(#${gradientId})`} /> : null}
@@ -375,15 +371,16 @@ export function PerformanceHeroCard({
                   alignItems: "center",
                   justifyContent: "center",
                   paddingHorizontal: 12,
-                  backgroundColor: selected ? (palette.onPrimary as string) : softPrimaryFill,
+                  backgroundColor: selected
+                    ? (palette.primary as string)
+                    : (palette.surfaceAlt as string),
                   opacity: pressed ? 0.9 : 1,
                 })}
               >
                 <Text
                   style={{
                     ...BrandType.micro,
-                    color: selected ? (palette.primary as string) : (palette.onPrimary as string),
-                    opacity: selected ? 1 : 0.76,
+                    color: selected ? (palette.onPrimary as string) : (palette.textMuted as string),
                   }}
                 >
                   {option.label}
