@@ -3,23 +3,8 @@ import type { ColorValue } from "react-native";
 
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { alphaColor } from "./color-utils";
 
 const TRANSPARENT = "transparent";
-
-function resolveAlphaColor(
-  base: unknown,
-  alpha: number,
-  fallback: unknown,
-): ColorValue {
-  const fromBase = alphaColor(base, alpha, TRANSPARENT);
-  if (fromBase !== TRANSPARENT) return fromBase;
-  const fromFallback = alphaColor(fallback, alpha, TRANSPARENT);
-  if (fromFallback !== TRANSPARENT) return fromFallback;
-  if (typeof fallback === "string") return fallback;
-  if (typeof base === "string") return base;
-  return TRANSPARENT;
-}
 
 function resolveStringColor(...colors: unknown[]) {
   for (const color of colors) {
@@ -28,14 +13,9 @@ function resolveStringColor(...colors: unknown[]) {
   return undefined;
 }
 
-function resolveColorValue(
-  primary: unknown,
-  fallback: unknown,
-  final: ColorValue,
-): ColorValue {
+function resolveColorValue(primary: unknown, fallback: unknown, final: ColorValue): ColorValue {
   if (primary !== undefined && primary !== null) return primary as ColorValue;
-  if (fallback !== undefined && fallback !== null)
-    return fallback as ColorValue;
+  if (fallback !== undefined && fallback !== null) return fallback as ColorValue;
   return final;
 }
 
@@ -96,32 +76,24 @@ export function useKitTheme() {
   const palette = useBrand();
 
   return useMemo<KitThemeTokens>(() => {
-    const glassBackground = resolveAlphaColor(
-      palette.surface as unknown,
-      scheme === "dark" ? 0.9 : 0.84,
-      palette.surfaceElevated as unknown,
+    const glassBackground = resolveColorValue(
+      palette.surfaceElevated,
+      palette.surface,
+      palette.surface,
     );
-    const panelBackground = resolveAlphaColor(
-      palette.surfaceAlt as unknown,
-      scheme === "dark" ? 0.96 : 0.88,
-      palette.surface as unknown,
+    const panelBackground = resolveColorValue(
+      palette.surfaceElevated,
+      palette.surfaceAlt,
+      palette.surface,
     );
-    const highlightBorder = resolveAlphaColor(
-      palette.borderStrong as unknown,
-      scheme === "dark" ? 0.45 : 0.36,
-      palette.border as unknown,
-    );
+    const highlightBorder = resolveColorValue(palette.borderStrong, palette.border, palette.border);
     const primaryLiftShadow = "none";
     const surfaceShadow = "none";
-    const switchTrackOff = resolveAlphaColor(
-      palette.borderStrong as unknown,
-      0.24,
-      palette.border as unknown,
-    );
-    const switchTrackOn = resolveAlphaColor(
-      palette.primary as unknown,
-      0.74,
-      palette.primarySubtle as unknown,
+    const switchTrackOff = resolveColorValue(palette.borderStrong, palette.border, palette.border);
+    const switchTrackOn = resolveColorValue(
+      palette.primarySubtle,
+      palette.primary,
+      palette.primary,
     );
 
     return {
@@ -131,20 +103,12 @@ export function useKitTheme() {
         primaryPressed: palette.primaryPressed,
         secondary: palette.text,
         danger: palette.danger,
-        warning: resolveColorValue(
-          palette.warning,
-          palette.primary,
-          palette.text,
-        ),
-        success: resolveColorValue(
-          palette.success,
-          palette.primary,
-          palette.text,
-        ),
+        warning: resolveColorValue(palette.warning, palette.primary, palette.text),
+        success: resolveColorValue(palette.success, palette.primary, palette.text),
       },
       background: {
         app: palette.appBg,
-        sheet: palette.surfaceAlt,
+        sheet: palette.surface,
         surface: palette.surface,
         surfaceSecondary: palette.surfaceAlt,
         surfaceElevated: palette.surfaceElevated,
@@ -163,16 +127,8 @@ export function useKitTheme() {
         danger: palette.danger,
       },
       border: {
-        primary: resolveAlphaColor(
-          palette.borderStrong as unknown,
-          scheme === "dark" ? 0.4 : 0.28,
-          palette.border as unknown,
-        ),
-        secondary: resolveAlphaColor(
-          palette.border as unknown,
-          scheme === "dark" ? 0.28 : 0.18,
-          palette.border as unknown,
-        ),
+        primary: resolveColorValue(palette.borderStrong, palette.border, palette.border),
+        secondary: resolveColorValue(palette.border, palette.borderStrong, palette.border),
         highlight: highlightBorder,
         transparent: TRANSPARENT,
       },
@@ -188,11 +144,7 @@ export function useKitTheme() {
         switchThumbOff: palette.surface,
       },
       symbol: {
-        defaultTint: resolveStringColor(
-          palette.primary,
-          palette.text,
-          palette.onPrimary,
-        ),
+        defaultTint: resolveStringColor(palette.primary, palette.text, palette.onPrimary),
       },
     };
   }, [palette, scheme]);

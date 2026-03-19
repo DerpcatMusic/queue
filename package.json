@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "bun run ./scripts/dev/dev.ts",
-    "postinstall": "node ./scripts/patches/patch-react-native-css-interop-safe-area.mjs && node ./scripts/patches/patch-expo-devtools-keep-awake.mjs && node ./scripts/patches/patch-expo-router-react-navigation-dedupe.mjs",
+    "postinstall": "node ./scripts/patches/patch-expo-devtools-keep-awake.mjs && node ./scripts/patches/patch-expo-router-react-navigation-dedupe.mjs",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "node ./scripts/android/start-expo.mjs",
@@ -85,7 +85,6 @@
     "expo-web-browser": "~55.0.9",
     "geojson": "^0.5.0",
     "i18next": "^25.8.14",
-    "nativewind": "4.2.2",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-i18next": "^16.5.5",
@@ -107,7 +106,6 @@
     "@types/react": "~19.2.14",
     "babel-preset-expo": "~55.0.10",
     "knip": "^5.85.0",
-    "tailwindcss": "3.4.19",
     "typescript": "~5.9.3"
   },
   "private": true

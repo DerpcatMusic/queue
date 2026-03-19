@@ -2,12 +2,12 @@ import { type Href, Link, Slot, usePathname } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
+import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
+import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
+import { GlobalTopSheetProvider } from "@/components/layout/top-sheet-registry";
 import { TabBarScrollProvider } from "@/contexts/tab-bar-scroll-context";
 import { useBrand } from "@/hooks/use-brand";
-import {
-  buildRoleTabRoute,
-  type RoleTabRouteName,
-} from "@/navigation/role-routes";
+import { buildRoleTabRoute, type RoleTabRouteName } from "@/navigation/role-routes";
 import { getTabsForRole } from "@/navigation/tab-registry";
 import type { AppRole } from "@/navigation/types";
 
@@ -24,10 +24,7 @@ function formatDashboardDate(locale: string) {
   });
 }
 
-export function RoleTabsLayout({
-  appRole,
-  badgeCountByRoute,
-}: RoleTabsLayoutProps) {
+export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutProps) {
   const palette = useBrand();
   const pathname = usePathname();
   const { t, i18n } = useTranslation();
@@ -44,227 +41,232 @@ export function RoleTabsLayout({
   }, [appRole, pathname, tabs]);
 
   return (
-    <TabBarScrollProvider>
-      <View style={{ flex: 1, backgroundColor: palette.appBg as string }}>
-        <View
-          style={{
-            flex: 1,
-            flexDirection: "row",
-            gap: 16,
-            paddingHorizontal: 16,
-            paddingVertical: 16,
-          }}
-        >
-          <View
-            style={{
-              width: 236,
-              borderRadius: 30,
-              borderCurve: "continuous",
-              backgroundColor: palette.surface as string,
-              paddingHorizontal: 16,
-              paddingVertical: 18,
-              gap: 18,
-            }}
-          >
-            <View style={{ gap: 4 }}>
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: "700",
-                  letterSpacing: 1.4,
-                  textTransform: "uppercase",
-                  color: palette.primary as string,
-                }}
-              >
-                Queue
-              </Text>
-              <Text
-                style={{
-                  fontFamily: "BarlowCondensed_800ExtraBold",
-                  fontSize: 32,
-                  lineHeight: 30,
-                  letterSpacing: -0.8,
-                  color: palette.text as string,
-                }}
-              >
-                {appRole === "studio" ? "Studio" : "Instructor"}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  lineHeight: 17,
-                  color: palette.textMuted as string,
-                }}
-              >
-                Fast lanes. Less shell.
-              </Text>
-            </View>
-
-            <View style={{ gap: 10 }}>
-              {tabs.map((tab) => {
-                const route = buildRoleTabRoute(appRole, tab.routeName) as Href;
-                const selected = activeTab?.id === tab.id;
-                const badgeCount = badgeCountByRoute[tab.routeName] ?? 0;
-
-                return (
-                  <Link key={tab.id} href={route} asChild>
-                    <Pressable
-                      accessibilityRole="link"
-                      style={({ pressed }) => ({
-                        borderRadius: 22,
-                        borderCurve: "continuous",
-                        backgroundColor: selected
-                          ? (palette.text as string)
-                          : (palette.surfaceAlt as string),
-                        paddingHorizontal: 14,
-                        paddingVertical: 12,
-                        transform: [{ scale: pressed ? 0.99 : 1 }],
-                      })}
-                    >
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 12,
-                        }}
-                      >
-                        <View style={{ flex: 1, gap: 2 }}>
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              fontWeight: "700",
-                              letterSpacing: 0.2,
-                              color: selected
-                                ? (palette.surface as string)
-                                : (palette.text as string),
-                            }}
-                          >
-                            {t(tab.titleKey)}
-                          </Text>
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              color: selected
-                                ? "rgba(255,255,255,0.72)"
-                                : (palette.textMuted as string),
-                            }}
-                          >
-                            {selected ? "Current workspace" : "Open workspace"}
-                          </Text>
-                        </View>
-                        {badgeCount > 0 ? (
-                          <View
-                            style={{
-                              minWidth: 28,
-                              borderRadius: 999,
-                              backgroundColor: selected
-                                ? "rgba(255,255,255,0.14)"
-                                : (palette.primary as string),
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              alignItems: "center",
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                fontWeight: "700",
-                                color: selected
-                                  ? (palette.surface as string)
-                                  : (palette.onPrimary as string),
-                              }}
-                            >
-                              {badgeCount > 99 ? "99+" : String(badgeCount)}
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </Pressable>
-                  </Link>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={{ flex: 1, gap: 18 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                borderRadius: 28,
-                borderCurve: "continuous",
-                backgroundColor: palette.surface as string,
-                paddingHorizontal: 18,
-                paddingVertical: 16,
-              }}
-            >
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: "700",
-                    letterSpacing: 1.2,
-                    textTransform: "uppercase",
-                    color: palette.textMuted as string,
-                  }}
-                >
-                  Workspace
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: "BarlowCondensed_800ExtraBold",
-                    fontSize: 34,
-                    lineHeight: 32,
-                    letterSpacing: -0.8,
-                    color: palette.text as string,
-                  }}
-                >
-                  {t(activeTab?.titleKey ?? "tabs.home")}
-                </Text>
-              </View>
-              <View style={{ alignItems: "flex-end", gap: 2 }}>
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: "700",
-                    letterSpacing: 1.2,
-                    textTransform: "uppercase",
-                    color: palette.textMuted as string,
-                  }}
-                >
-                  Today
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    lineHeight: 18,
-                    color: palette.text as string,
-                  }}
-                >
-                  {formatDashboardDate(locale)}
-                </Text>
-              </View>
-            </View>
-
+    <ScrollSheetProvider>
+      <GlobalTopSheetProvider>
+        <TabBarScrollProvider>
+          <View style={{ flex: 1, backgroundColor: palette.appBg as string }}>
+            <GlobalTopSheet />
             <View
               style={{
                 flex: 1,
-                minHeight: 0,
-                borderRadius: 30,
-                borderCurve: "continuous",
-                backgroundColor: palette.surface as string,
-                overflow: "hidden",
+                flexDirection: "row",
+                gap: 16,
+                paddingHorizontal: 16,
+                paddingVertical: 16,
               }}
             >
-              <Slot />
+              <View
+                style={{
+                  width: 236,
+                  borderRadius: 30,
+                  borderCurve: "continuous",
+                  backgroundColor: palette.surface as string,
+                  paddingHorizontal: 16,
+                  paddingVertical: 18,
+                  gap: 18,
+                }}
+              >
+                <View style={{ gap: 4 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      letterSpacing: 1.4,
+                      textTransform: "uppercase",
+                      color: palette.primary as string,
+                    }}
+                  >
+                    Queue
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: "BarlowCondensed_800ExtraBold",
+                      fontSize: 32,
+                      lineHeight: 30,
+                      letterSpacing: -0.8,
+                      color: palette.text as string,
+                    }}
+                  >
+                    {appRole === "studio" ? "Studio" : "Instructor"}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      lineHeight: 17,
+                      color: palette.textMuted as string,
+                    }}
+                  >
+                    Fast lanes. Less shell.
+                  </Text>
+                </View>
+
+                <View style={{ gap: 10 }}>
+                  {tabs.map((tab) => {
+                    const route = buildRoleTabRoute(appRole, tab.routeName) as Href;
+                    const selected = activeTab?.id === tab.id;
+                    const badgeCount = badgeCountByRoute[tab.routeName] ?? 0;
+
+                    return (
+                      <Link key={tab.id} href={route} asChild>
+                        <Pressable
+                          accessibilityRole="link"
+                          style={({ pressed }) => ({
+                            borderRadius: 22,
+                            borderCurve: "continuous",
+                            backgroundColor: selected
+                              ? (palette.text as string)
+                              : (palette.surfaceAlt as string),
+                            paddingHorizontal: 14,
+                            paddingVertical: 12,
+                            transform: [{ scale: pressed ? 0.99 : 1 }],
+                          })}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 12,
+                            }}
+                          >
+                            <View style={{ flex: 1, gap: 2 }}>
+                              <Text
+                                style={{
+                                  fontSize: 14,
+                                  fontWeight: "700",
+                                  letterSpacing: 0.2,
+                                  color: selected
+                                    ? (palette.surface as string)
+                                    : (palette.text as string),
+                                }}
+                              >
+                                {t(tab.titleKey)}
+                              </Text>
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  color: selected
+                                    ? "rgba(255,255,255,0.72)"
+                                    : (palette.textMuted as string),
+                                }}
+                              >
+                                {selected ? "Current workspace" : "Open workspace"}
+                              </Text>
+                            </View>
+                            {badgeCount > 0 ? (
+                              <View
+                                style={{
+                                  minWidth: 28,
+                                  borderRadius: 999,
+                                  backgroundColor: selected
+                                    ? "rgba(255,255,255,0.14)"
+                                    : (palette.primary as string),
+                                  paddingHorizontal: 8,
+                                  paddingVertical: 4,
+                                  alignItems: "center",
+                                }}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: "700",
+                                    color: selected
+                                      ? (palette.surface as string)
+                                      : (palette.onPrimary as string),
+                                  }}
+                                >
+                                  {badgeCount > 99 ? "99+" : String(badgeCount)}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </Pressable>
+                      </Link>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={{ flex: 1, gap: 18 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    borderRadius: 28,
+                    borderCurve: "continuous",
+                    backgroundColor: palette.surface as string,
+                    paddingHorizontal: 18,
+                    paddingVertical: 16,
+                  }}
+                >
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "700",
+                        letterSpacing: 1.2,
+                        textTransform: "uppercase",
+                        color: palette.textMuted as string,
+                      }}
+                    >
+                      Workspace
+                    </Text>
+                    <Text
+                      style={{
+                        fontFamily: "BarlowCondensed_800ExtraBold",
+                        fontSize: 34,
+                        lineHeight: 32,
+                        letterSpacing: -0.8,
+                        color: palette.text as string,
+                      }}
+                    >
+                      {t(activeTab?.titleKey ?? "tabs.home")}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: "flex-end", gap: 2 }}>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "700",
+                        letterSpacing: 1.2,
+                        textTransform: "uppercase",
+                        color: palette.textMuted as string,
+                      }}
+                    >
+                      Today
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        lineHeight: 18,
+                        color: palette.text as string,
+                      }}
+                    >
+                      {formatDashboardDate(locale)}
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  style={{
+                    flex: 1,
+                    minHeight: 0,
+                    borderRadius: 30,
+                    borderCurve: "continuous",
+                    backgroundColor: palette.surface as string,
+                    overflow: "hidden",
+                  }}
+                >
+                  <Slot />
+                </View>
+              </View>
             </View>
           </View>
-        </View>
-      </View>
-    </TabBarScrollProvider>
+        </TabBarScrollProvider>
+      </GlobalTopSheetProvider>
+    </ScrollSheetProvider>
   );
 }

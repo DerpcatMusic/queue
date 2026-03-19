@@ -11,9 +11,10 @@ import { TopSheetSurface } from "@/components/layout/top-sheet-surface";
 import { ProfileIconButton } from "@/components/profile/profile-settings-sections";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { ActionButton } from "@/components/ui/action-button";
+import { alphaColor } from "@/components/ui/kit/color-utils";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { isSportType, type SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 
@@ -26,8 +27,10 @@ export function getProfileHeroExpandedHeight(safeTop: number) {
   return safeTop + PROFILE_HERO_EXPANDED_CONTENT_HEIGHT;
 }
 
-export function getProfileHeroScrollTopPadding(safeTop: number) {
-  return getProfileHeroExpandedHeight(safeTop) + PROFILE_HERO_CONTENT_GAP;
+export function getProfileHeroScrollTopPadding(_safeTop: number) {
+  // Now that TopSheetSurface uses marginTop: safeTop (natural flow),
+  // padding should only account for content height + gap, not safeTop.
+  return PROFILE_HERO_EXPANDED_CONTENT_HEIGHT + PROFILE_HERO_CONTENT_GAP;
 }
 
 type ProfileHeroAction = {
@@ -102,6 +105,8 @@ export function ProfileHeroSheet({
   const resolvedPrimaryActionLabel = primaryActionLabel ?? t("profile.actions.edit");
   const sportsLabel = getSportsLabel(sports, t);
   const summaryLabel = getProfileSummary(bio, activeSocialCount, t);
+  const strongPillFill = alphaColor(palette.onPrimary, 0.18, "rgba(255,255,255,0.18)");
+  const softPillFill = alphaColor(palette.onPrimary, 0.12, "rgba(255,255,255,0.12)");
 
   const profileAvatarStyle = useAnimatedStyle(() => ({
     transform: [
@@ -173,22 +178,17 @@ export function ProfileHeroSheet({
   return (
     <TopSheetSurface
       pointerEvents="box-none"
-      backgroundColor={palette.surfaceAlt}
+      backgroundColor={palette.primary}
       topInsetColor={palette.primary}
       style={[
         {
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
+          // NO absolute - uses marginTop from TopSheetSurface
           zIndex: 10,
           overflow: "hidden",
-          backgroundColor: palette.surfaceAlt as string,
+          backgroundColor: palette.primary as string,
           borderBottomLeftRadius: 28,
           borderBottomRightRadius: 28,
-          borderBottomWidth: 1,
           borderCurve: "continuous",
-          borderColor: palette.border as string,
         },
         animatedSheetStyle,
       ]}
@@ -228,7 +228,8 @@ export function ProfileHeroSheet({
               <Text
                 style={{
                   ...BrandType.micro,
-                  color: palette.textMicro as string,
+                  color: palette.onPrimary as string,
+                  opacity: 0.6,
                   letterSpacing: 0.2,
                   includeFontPadding: false,
                 }}
@@ -240,7 +241,7 @@ export function ProfileHeroSheet({
                 style={[
                   {
                     ...BrandType.heading,
-                    color: palette.text as string,
+                    color: palette.onPrimary as string,
                     letterSpacing: -0.2,
                     includeFontPadding: false,
                   },
@@ -254,7 +255,8 @@ export function ProfileHeroSheet({
                 style={{
                   ...BrandType.bodyMedium,
                   fontSize: 13,
-                  color: palette.textMuted as string,
+                  color: palette.onPrimary as string,
+                  opacity: 0.72,
                   includeFontPadding: false,
                 }}
               >
@@ -288,9 +290,9 @@ export function ProfileHeroSheet({
               {statusLabel ? (
                 <View
                   style={{
-                    borderRadius: 999,
+                    borderRadius: BrandRadius.button - 4,
                     borderCurve: "continuous",
-                    backgroundColor: palette.primarySubtle as string,
+                    backgroundColor: strongPillFill,
                     paddingHorizontal: 12,
                     paddingVertical: 7,
                   }}
@@ -298,7 +300,7 @@ export function ProfileHeroSheet({
                   <Text
                     style={{
                       ...BrandType.micro,
-                      color: palette.primary as string,
+                      color: palette.onPrimary as string,
                       letterSpacing: 0.2,
                     }}
                   >
@@ -308,9 +310,9 @@ export function ProfileHeroSheet({
               ) : null}
               <View
                 style={{
-                  borderRadius: 999,
+                  borderRadius: BrandRadius.button - 4,
                   borderCurve: "continuous",
-                  backgroundColor: palette.surface as string,
+                  backgroundColor: softPillFill,
                   paddingHorizontal: 12,
                   paddingVertical: 7,
                 }}
@@ -318,7 +320,8 @@ export function ProfileHeroSheet({
                 <Text
                   style={{
                     ...BrandType.micro,
-                    color: palette.textMuted as string,
+                    color: palette.onPrimary as string,
+                    opacity: 0.82,
                     letterSpacing: 0.2,
                   }}
                 >
@@ -330,7 +333,8 @@ export function ProfileHeroSheet({
               numberOfLines={2}
               style={{
                 ...BrandType.caption,
-                color: palette.textMuted as string,
+                color: palette.onPrimary as string,
+                opacity: 0.72,
               }}
             >
               {summaryLabel}
@@ -368,9 +372,7 @@ export function ProfileDesktopHeroPanel({
       style={{
         borderRadius: 34,
         borderCurve: "continuous",
-        backgroundColor: palette.surfaceAlt as string,
-        borderWidth: 1,
-        borderColor: palette.border as string,
+        backgroundColor: palette.surface as string,
         paddingHorizontal: 22,
         paddingVertical: 22,
         gap: 18,
@@ -413,11 +415,9 @@ export function ProfileDesktopHeroPanel({
         <View
           style={{
             alignSelf: "flex-start",
-            borderRadius: 999,
+            borderRadius: BrandSpacing.lg,
             borderCurve: "continuous",
-            backgroundColor: palette.surface as string,
-            borderWidth: 1,
-            borderColor: palette.border as string,
+            backgroundColor: palette.primarySubtle as string,
             paddingHorizontal: 12,
             paddingVertical: 8,
           }}
@@ -458,7 +458,6 @@ export function ProfileDesktopHeroPanel({
             label={primaryAction.label}
             onPress={primaryAction.onPress}
             palette={palette}
-            tone="secondary"
             fullWidth
           />
         </View>

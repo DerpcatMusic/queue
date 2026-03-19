@@ -1,57 +1,50 @@
-import BottomSheet, {
-  type BottomSheetBackgroundProps,
-  BottomSheetFlatList,
-  BottomSheetTextInput,
-} from "@gorhom/bottom-sheet";
 import { useIsFocused } from "@react-navigation/native";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { Redirect } from "expo-router";
-import {
-  type RefObject,
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated from "react-native-reanimated";
-import { NoticeBanner } from "@/components/jobs/notice-banner";
-import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { TopSheet } from "@/components/layout/top-sheet";
-import { LoadingScreen } from "@/components/loading-screen";
-import {
-  buildZoneCityGroups,
-  buildZoneCityListItems,
-  type ZoneCityListItem,
-} from "@/components/map-tab/zone-city-tree";
+import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
+import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
+import { MapChromeButton } from "@/components/map-tab/map/map-chrome-button";
+import { MapSelectedZonesStrip } from "@/components/map-tab/map/map-selected-zones-strip";
+import { MapSheetResults } from "@/components/map-tab/map/map-sheet-results";
+import { buildZoneCityGroups, buildZoneCityListItems } from "@/components/map-tab/zone-city-tree";
 import { QueueMap } from "@/components/maps/queue-map";
 import type { QueueMapPin } from "@/components/maps/queue-map.types";
-import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { NativeSearchField } from "@/components/ui/native-search-field";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType, getMapBrandPalette } from "@/constants/brand";
 import { ZONE_OPTIONS } from "@/constants/zones";
+import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
+import { useThemePreference } from "@/hooks/use-theme-preference";
 import { resolveCurrentLocationToZone } from "@/lib/location-zone";
 
 const MAX_ZONES = 25;
+const MAP_CAMERA_TOP_OFFSET = BrandSpacing.xl;
+const MAP_CAMERA_BOTTOM_OFFSET = BrandSpacing.xxl + BrandSpacing.xl;
+const MAP_HEADER_TO_STRIP_GAP = BrandSpacing.lg;
+const MAP_FLOATING_BUTTON_GAP = BrandSpacing.md;
 
 export default function MapTabScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
-  const { overlayBottom, safeTop } = useAppInsets();
+  const { resolvedScheme } = useThemePreference();
+  const mapPalette = getMapBrandPalette(resolvedScheme);
+  const { overlayBottom } = useAppInsets();
   const isFocused = useIsFocused();
+  const isMapBodyReady = useDeferredTabMount(isFocused, { delayMs: 72 });
+  const collapsedSheetHeight = useCollapsedSheetHeight();
   const zoneLanguage = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he") ? "he" : "en";
-  const currentUser = useQuery(api.users.getCurrentUser);
+  const { currentUser } = useUser();
   const remoteZones = useQuery(
     api.instructorZones.getMyInstructorZones,
     currentUser?.role === "instructor" ? {} : "skip",
@@ -67,8 +60,10 @@ export default function MapTabScreen() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [focusZoneId, setFocusZoneId] = useState<string | null>(null);
   const [mapPin, setMapPin] = useState<QueueMapPin | null>(null);
-  const zoneSheetRef = useRef<BottomSheet>(null);
   const noopMapPress = useCallback(() => {}, []);
+  const openSearchSheet = useCallback(() => {
+    setSheetStep(1);
+  }, []);
   const handleFocusSelection = useCallback(() => {
     const nextFocusZoneId = focusZoneId ?? selectedZoneIds[0] ?? remoteZones?.zoneIds?.[0] ?? null;
     if (!nextFocusZoneId) return;
@@ -105,7 +100,11 @@ export default function MapTabScreen() {
   }, [remoteZones]);
 
   const applySelectedZoneIds = useCallback(
-    (nextZoneIds: string[], preferredFocusZoneId?: string | null) => {
+    (
+      nextZoneIds: string[],
+      preferredFocusZoneId?: string | null,
+      options?: { allowNullFocus?: boolean },
+    ) => {
       const dedupedZoneIds = [...new Set(nextZoneIds)];
       if (dedupedZoneIds.length > MAX_ZONES) {
         setSaveError(t("mapTab.errors.maxZones", { max: MAX_ZONES }));
@@ -120,6 +119,9 @@ export default function MapTabScreen() {
         }
         if (currentFocusZoneId && dedupedZoneIds.includes(currentFocusZoneId)) {
           return currentFocusZoneId;
+        }
+        if (options?.allowNullFocus && preferredFocusZoneId === null) {
+          return null;
         }
         return dedupedZoneIds[0] ?? null;
       });
@@ -137,8 +139,14 @@ export default function MapTabScreen() {
       const nextZoneIds = isSelected
         ? selectedZoneIds.filter((id) => id !== zoneId)
         : [...selectedZoneIds, zoneId];
-      const preferredFocusZoneId = isSelected && focusZoneId === zoneId ? null : zoneId;
-      applySelectedZoneIds(nextZoneIds, preferredFocusZoneId);
+      const preferredFocusZoneId = isSelected
+        ? focusZoneId === zoneId
+          ? null
+          : undefined
+        : zoneId;
+      applySelectedZoneIds(nextZoneIds, preferredFocusZoneId, {
+        allowNullFocus: isSelected && focusZoneId === zoneId,
+      });
     },
     [applySelectedZoneIds, focusZoneId, selectedZoneIds],
   );
@@ -150,13 +158,8 @@ export default function MapTabScreen() {
     const currentSet = new Set(selectedZoneIds);
     return persistedZoneIds.some((id) => !currentSet.has(id));
   }, [persistedZoneIds, selectedZoneIds]);
-  const deferredSelectedZoneIds = useDeferredValue(selectedZoneIds);
-  const deferredSelectedZoneSet = useMemo(
-    () => new Set(deferredSelectedZoneIds),
-    [deferredSelectedZoneIds],
-  );
+  const deferredSelectedZoneSet = useMemo(() => new Set(selectedZoneIds), [selectedZoneIds]);
   const expandedCityKeySet = useMemo(() => new Set(expandedCityKeys), [expandedCityKeys]);
-  const deferredZoneSearch = useDeferredValue(zoneSearch);
   const zoneCityGroups = useMemo(() => buildZoneCityGroups(ZONE_OPTIONS), []);
   const zoneCityByZoneId = useMemo(() => {
     const entries = new Map<string, string>();
@@ -172,7 +175,7 @@ export default function MapTabScreen() {
     [zoneCityGroups],
   );
   const filteredZones = useMemo(() => {
-    const q = deferredZoneSearch.trim().toLowerCase();
+    const q = zoneSearch.trim().toLowerCase();
     if (!q) return ZONE_OPTIONS;
     return ZONE_OPTIONS.filter((zone) => {
       const label = zone.label[zoneLanguage].toLowerCase();
@@ -180,17 +183,17 @@ export default function MapTabScreen() {
       const id = zone.id.toLowerCase();
       return label.includes(q) || fallback.includes(q) || id.includes(q);
     });
-  }, [deferredZoneSearch, zoneLanguage]);
+  }, [zoneLanguage, zoneSearch]);
   const zoneCityItems = useMemo(
     () =>
       buildZoneCityListItems({
         groups: zoneCityGroups,
         language: zoneLanguage,
-        query: deferredZoneSearch,
+        query: zoneSearch,
         expandedCityKeys: expandedCityKeySet,
         selectedZoneIds: deferredSelectedZoneSet,
       }),
-    [deferredSelectedZoneSet, deferredZoneSearch, expandedCityKeySet, zoneCityGroups, zoneLanguage],
+    [deferredSelectedZoneSet, expandedCityKeySet, zoneCityGroups, zoneLanguage, zoneSearch],
   );
   const selectedZones = useMemo(
     () => ZONE_OPTIONS.filter((zone) => deferredSelectedZoneSet.has(zone.id)),
@@ -214,8 +217,6 @@ export default function MapTabScreen() {
 
     return delta;
   }, [persistedZoneIds, selectedZoneIds]);
-  const sheetSnapPoints = useMemo(() => ["24%", "82%"], []);
-
   useEffect(() => {
     if (!zoneModeActive) {
       return;
@@ -273,28 +274,22 @@ export default function MapTabScreen() {
   const openZoneEditor = useCallback(() => {
     setSaveError(null);
     setZoneModeActive(true);
-    setSheetStep(1);
   }, []);
 
-  const handleDiscardChanges = useCallback(() => {
-    setSelectedZoneIds(persistedZoneIds);
-    setFocusZoneId(persistedZoneIds[0] ?? null);
-    setSaveError(null);
-    setZoneModeActive(false);
-    setSheetStep(0);
-    setZoneSearch("");
-  }, [persistedZoneIds]);
+  const handleMapSheetSearchChange = useCallback((text: string) => {
+    setZoneSearch(text);
+    if (text.trim().length > 0) {
+      setSheetStep(1);
+    }
+  }, []);
 
-  const handleSaveZones = useCallback(async () => {
+  const persistZoneSelection = useCallback(async () => {
     const nextZoneIds = [...selectedZoneIds];
-    const shouldSave = hasChanges;
-    if (shouldSave && isSaving) return;
+    if (hasChanges && isSaving) return false;
 
     if (!hasChanges) {
-      setZoneModeActive(false);
-      setSheetStep(0);
-      setZoneSearch("");
-      return;
+      setFocusZoneId(nextZoneIds[0] ?? null);
+      return true;
     }
 
     setIsSaving(true);
@@ -302,39 +297,185 @@ export default function MapTabScreen() {
     try {
       await saveZones({ zoneIds: nextZoneIds });
       setFocusZoneId(nextZoneIds[0] ?? null);
-      setZoneModeActive(false);
-      setSheetStep(0);
-      setZoneSearch("");
+      return true;
     } catch (error) {
       setSaveError(
         error instanceof Error && error.message ? error.message : t("mapTab.errors.failedToSave"),
       );
+      return false;
     } finally {
       setIsSaving(false);
     }
   }, [hasChanges, isSaving, saveZones, selectedZoneIds, t]);
 
-  const backgroundComponent = useCallback(
-    ({ style }: BottomSheetBackgroundProps) => (
-      <Animated.View style={[style, { backgroundColor: "transparent" }]}>
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: palette.surface,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              borderCurve: "continuous",
-            },
-          ]}
-        />
-      </Animated.View>
+  const closeZoneEditor = useCallback(() => {
+    setZoneModeActive(false);
+  }, []);
+
+  const confirmZoneSelection = useCallback(async () => {
+    const didPersist = await persistZoneSelection();
+    if (didPersist) {
+      closeZoneEditor();
+      return true;
+    }
+    setZoneModeActive(true);
+    return false;
+  }, [closeZoneEditor, persistZoneSelection]);
+
+  const handleDiscardChanges = useCallback(() => {
+    setSelectedZoneIds(persistedZoneIds);
+    setFocusZoneId(persistedZoneIds[0] ?? null);
+    setSaveError(null);
+    closeZoneEditor();
+  }, [closeZoneEditor, persistedZoneIds]);
+
+  const handleSaveZones = useCallback(async () => {
+    await confirmZoneSelection();
+  }, [confirmZoneSelection]);
+
+  const handleEditButtonPress = useCallback(() => {
+    if (zoneModeActive) {
+      void confirmZoneSelection();
+      return;
+    }
+    openZoneEditor();
+  }, [confirmZoneSelection, openZoneEditor, zoneModeActive]);
+
+  const handleSheetStepChange = useCallback((step: number) => {
+    setSheetStep(step);
+  }, []);
+
+  const isSheetExpanded = sheetStep > 0;
+  const handleZoneResultPress = useCallback(
+    (zoneId: string) => {
+      if (zoneModeActive) {
+        toggleZone(zoneId);
+        return;
+      }
+      setFocusZoneId(zoneId);
+    },
+    [toggleZone, zoneModeActive],
+  );
+  const handleCityResultPress = useCallback(
+    (cityKey: string) => {
+      if (zoneModeActive) {
+        toggleCity(cityKey);
+        return;
+      }
+      toggleCityExpanded(cityKey);
+    },
+    [toggleCity, toggleCityExpanded, zoneModeActive],
+  );
+  const handleMapUtilityPress = useCallback(() => {
+    if (focusedZone || selectedZoneIds.length > 0) {
+      handleFocusSelection();
+      return;
+    }
+    void handleUseGps();
+  }, [focusedZone, handleFocusSelection, handleUseGps, selectedZoneIds.length]);
+  const mapCameraPadding = useMemo(
+    () => ({
+      top: collapsedSheetHeight + MAP_CAMERA_TOP_OFFSET,
+      right: BrandSpacing.lg,
+      bottom: overlayBottom + MAP_CAMERA_BOTTOM_OFFSET,
+      left: BrandSpacing.lg,
+    }),
+    [collapsedSheetHeight, overlayBottom],
+  );
+  const mapExpandedResults = useMemo(
+    () => (
+      <MapSheetResults
+        isVisible={isSheetExpanded}
+        saveError={saveError}
+        zoneCityItems={zoneCityItems}
+        zoneLanguage={zoneLanguage}
+        zoneModeActive={zoneModeActive}
+        palette={palette}
+        onPressZone={handleZoneResultPress}
+        onPressCity={handleCityResultPress}
+        onToggleCityExpanded={toggleCityExpanded}
+      />
     ),
-    [palette],
+    [
+      isSheetExpanded,
+      handleCityResultPress,
+      handleZoneResultPress,
+      palette,
+      saveError,
+      toggleCityExpanded,
+      zoneCityItems,
+      zoneModeActive,
+      zoneLanguage,
+    ],
   );
 
+  const mapSheetConfig = useMemo(
+    () => ({
+      render: () => ({
+        stickyHeader: (
+          <View style={{ gap: MAP_HEADER_TO_STRIP_GAP }}>
+            <NativeSearchField
+              value={zoneSearch}
+              onChangeText={handleMapSheetSearchChange}
+              onFocus={openSearchSheet}
+              placeholder={t("mapTab.searchPlaceholder")}
+              clearAccessibilityLabel={t("common.clear")}
+            />
+            <MapSelectedZonesStrip
+              selectedZones={selectedZones}
+              focusZoneId={focusZoneId}
+              zoneLanguage={zoneLanguage}
+              palette={palette}
+              onPressZone={setFocusZoneId}
+            />
+          </View>
+        ),
+        revealOnExpand: mapExpandedResults,
+        activeStep: sheetStep,
+        onStepChange: handleSheetStepChange,
+        backgroundColor: palette.surfaceElevated as string,
+        topInsetColor: palette.surfaceElevated as string,
+        padding: {
+          vertical: BrandSpacing.xs,
+          horizontal: BrandSpacing.lg,
+        },
+      }),
+      draggable: true,
+      expandable: true,
+      steps: [0.18, 0.52],
+      initialStep: 0,
+      activeStep: sheetStep,
+      expandMode: "overlay" as const,
+      backgroundColor: palette.surfaceElevated as string,
+      topInsetColor: palette.surfaceElevated as string,
+    }),
+    [
+      handleSheetStepChange,
+      handleMapSheetSearchChange,
+      mapExpandedResults,
+      openSearchSheet,
+      palette,
+      selectedZones,
+      sheetStep,
+      t,
+      focusZoneId,
+      zoneLanguage,
+      zoneSearch,
+    ],
+  );
+
+  useGlobalTopSheet("map", Platform.OS === "web" ? null : mapSheetConfig);
+
   if (currentUser === undefined) {
-    return <LoadingScreen />;
+    return (
+      <TabScreenRoot
+        mode="static"
+        topInsetTone="sheet"
+        style={{ backgroundColor: mapPalette.styleBackground }}
+      >
+        <View style={{ flex: 1, backgroundColor: mapPalette.styleBackground }} />
+      </TabScreenRoot>
+    );
   }
 
   if (!currentUser) {
@@ -345,8 +486,16 @@ export default function MapTabScreen() {
     return <Redirect href="/studio" />;
   }
 
-  if (remoteZones === undefined) {
-    return <LoadingScreen label={t("mapTab.loading")} />;
+  if (!isMapBodyReady || remoteZones === undefined) {
+    return (
+      <TabScreenRoot
+        mode="static"
+        topInsetTone="sheet"
+        style={{ backgroundColor: mapPalette.styleBackground }}
+      >
+        <View style={{ flex: 1, backgroundColor: mapPalette.styleBackground }} />
+      </TabScreenRoot>
+    );
   }
 
   if (Platform.OS === "web") {
@@ -919,31 +1068,7 @@ export default function MapTabScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.appBg as string }}>
-      {/* Top Sheet with sticky search header, expandable to reveal zones list */}
-      <TopSheet
-        draggable={true}
-        expandable={true}
-        steps={[0.16, 0.65]}
-        initialStep={sheetStep}
-        onStepChange={setSheetStep}
-        topInsetColor={palette.primary}
-        expandMode="overlay"
-        // Sticky header - always visible with search bar
-        stickyHeader={
-          <View>
-            <TopSheet.SearchBar
-              value={zoneSearch}
-              onChangeText={setZoneSearch}
-              placeholder={t("mapTab.searchPlaceholder")}
-              palette={palette}
-            />
-          </View>
-        }
-      >
-        <View style={{ flex: 1 }} />
-      </TopSheet>
-
+    <View style={{ flex: 1, backgroundColor: mapPalette.styleBackground }}>
       {isFocused ? (
         <>
           <QueueMap
@@ -951,443 +1076,45 @@ export default function MapTabScreen() {
             pin={mapPin}
             selectedZoneIds={selectedZoneIds}
             focusZoneId={focusZoneId}
+            isEditing={zoneModeActive}
+            cameraPadding={mapCameraPadding}
             {...(zoneModeActive ? { onPressZone: toggleZone } : {})}
             onPressMap={noopMapPress}
-            onUseGps={handleUseGps}
-            showGpsButton
+            showGpsButton={false}
+            showAttributionButton
           />
-          {saveError ? (
-            <View style={styles.saveBannerWrap}>
-              <NoticeBanner
-                tone="error"
-                message={saveError}
-                onDismiss={() => setSaveError(null)}
-                borderColor={palette.borderStrong}
-                backgroundColor={palette.surface}
-                textColor={palette.danger}
-                iconColor={palette.danger}
-              />
-            </View>
-          ) : null}
-
-          {zoneModeActive ? (
-            <View
-              pointerEvents="box-none"
-              style={{
-                position: "absolute",
-                top: safeTop + BrandSpacing.lg,
-                left: BrandSpacing.lg,
-                right: BrandSpacing.lg,
-                zIndex: 30,
-              }}
-            >
-              <View
-                style={{
-                  alignSelf: "flex-start",
-                  maxWidth: 260,
-                  borderRadius: 24,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.primary as string,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  gap: 4,
-                }}
-              >
-                <Text
-                  style={{
-                    ...BrandType.micro,
-                    color: palette.onPrimary as string,
-                    letterSpacing: 1,
-                    textTransform: "uppercase",
-                    opacity: 0.78,
-                  }}
-                >
-                  {t("mapTab.mobile.editingEyebrow")}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: "BarlowCondensed_800ExtraBold",
-                    fontSize: 28,
-                    lineHeight: 26,
-                    letterSpacing: -0.6,
-                    color: palette.onPrimary as string,
-                  }}
-                >
-                  {t("mapTab.mobile.activeZones", {
-                    count: selectedZoneIds.length,
-                  })}
-                </Text>
-                <Text
-                  style={{
-                    ...BrandType.caption,
-                    color: "rgba(255,255,255,0.78)",
-                  }}
-                >
-                  {hasChanges
-                    ? t("mapTab.mobile.stagedReady", {
-                        count: pendingChangeCount,
-                      })
-                    : t("mapTab.mobile.editingHint")}
-                </Text>
-              </View>
-            </View>
-          ) : null}
-
-          {saveError ? (
-            <TabOverlayAnchor side="left" offset={BrandSpacing.lg}>
-              <View
-                style={{
-                  maxWidth: 280,
-                  borderRadius: 18,
-                  borderCurve: "continuous",
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  backgroundColor: palette.dangerSubtle,
-                }}
-              >
-                <ThemedText selectable style={{ color: palette.danger }}>
-                  {saveError}
-                </ThemedText>
-              </View>
-            </TabOverlayAnchor>
-          ) : null}
-
-          <BottomSheet
-            ref={zoneSheetRef as RefObject<BottomSheet>}
-            index={zoneModeActive ? 1 : -1}
-            snapPoints={sheetSnapPoints}
-            enablePanDownToClose={false}
-            enableContentPanningGesture
-            keyboardBehavior="extend"
-            android_keyboardInputMode="adjustResize"
-            backgroundComponent={backgroundComponent}
-            onChange={(index) => {
-              if (index < 0) {
-                setZoneModeActive(false);
-                setSheetStep(0);
-                setZoneSearch("");
-                setSaveError(null);
-                return;
-              }
-              setSheetStep(index);
-            }}
-          >
-            <View style={styles.sheetContent}>
-              <View style={styles.sheetHeader}>
-                <ThemedText
-                  style={{
-                    fontSize: 24,
-                    fontWeight: "600",
-                    color: palette.text,
-                    letterSpacing: -0.2,
-                  }}
-                >
-                  {t("mapTab.mobile.sheetTitle")}
-                </ThemedText>
-                <ThemedText
-                  style={{
-                    marginTop: 4,
-                    color: palette.textMuted,
-                    fontSize: 13,
-                  }}
-                >
-                  {hasChanges
-                    ? t("mapTab.mobile.sheetPending", {
-                        count: pendingChangeCount,
-                      })
-                    : t("mapTab.mobile.sheetHint")}
-                </ThemedText>
-              </View>
-              <View style={styles.searchWrap}>
-                <View
-                  style={[
-                    styles.searchInputShell,
-                    {
-                      backgroundColor: palette.surfaceAlt,
-                    },
-                  ]}
-                >
-                  <IconSymbol name="magnifyingglass" size={16} color={palette.textMuted} />
-                  <BottomSheetTextInput
-                    value={zoneSearch}
-                    onChangeText={setZoneSearch}
-                    placeholder={t("mapTab.searchPlaceholder")}
-                    placeholderTextColor={palette.textMuted}
-                    clearButtonMode="while-editing"
-                    returnKeyType="search"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={[styles.searchInput, { color: palette.text }]}
-                  />
-                  {zoneSearch.length > 0 ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={t("common.clear")}
-                      hitSlop={8}
-                      onPress={() => setZoneSearch("")}
-                      style={({ pressed }) => ({
-                        opacity: pressed ? 0.8 : 1,
-                      })}
-                    >
-                      <IconSymbol name="xmark.circle.fill" size={16} color={palette.textMuted} />
-                    </Pressable>
-                  ) : null}
-                </View>
-              </View>
-              {saveError ? (
-                <ThemedText selectable style={{ color: palette.danger, paddingHorizontal: 24 }}>
-                  {saveError}
-                </ThemedText>
-              ) : null}
-              <BottomSheetFlatList<ZoneCityListItem>
-                data={zoneCityItems}
-                keyExtractor={(item: ZoneCityListItem) => item.key}
-                contentContainerStyle={styles.zoneListContent}
-                keyboardShouldPersistTaps="handled"
-                removeClippedSubviews={false}
-                initialNumToRender={20}
-                maxToRenderPerBatch={28}
-                windowSize={9}
-                updateCellsBatchingPeriod={16}
-                ListEmptyComponent={
-                  <View
-                    style={[
-                      styles.emptyZoneSearchState,
-                      { backgroundColor: palette.surfaceAlt as string },
-                    ]}
-                  >
-                    <Text
-                      style={{
-                        ...BrandType.bodyStrong,
-                        color: palette.text as string,
-                      }}
-                    >
-                      {t("mapTab.mobile.noMatchingCities")}
-                    </Text>
-                    <Text
-                      style={{
-                        ...BrandType.caption,
-                        color: palette.textMuted as string,
-                      }}
-                    >
-                      {t("mapTab.mobile.noMatchingCitiesHint")}
-                    </Text>
-                  </View>
-                }
-                renderItem={({ item }: { item: ZoneCityListItem }) => {
-                  if (item.kind === "zone") {
-                    return (
-                      <Pressable
-                        onPress={() => toggleZone(item.zone.id)}
-                        style={({ pressed }) => [
-                          styles.zoneChildRow,
-                          {
-                            backgroundColor: item.selected
-                              ? (palette.primarySubtle as string)
-                              : (palette.surface as string),
-                            opacity: pressed ? 0.92 : 1,
-                          },
-                        ]}
-                      >
-                        <View
-                          style={[
-                            styles.zoneChildBullet,
-                            {
-                              backgroundColor: item.selected
-                                ? (palette.primary as string)
-                                : (palette.borderStrong as string),
-                            },
-                          ]}
-                        />
-                        <View style={{ flex: 1, gap: 2 }}>
-                          <Text
-                            style={{
-                              ...BrandType.bodyStrong,
-                              color: palette.text as string,
-                            }}
-                          >
-                            {item.zone.variantLabel[zoneLanguage]}
-                          </Text>
-                          <Text
-                            style={{
-                              ...BrandType.micro,
-                              color: palette.textMuted as string,
-                            }}
-                          >
-                            {item.zone.id}
-                          </Text>
-                        </View>
-                        {item.selected ? (
-                          <IconSymbol
-                            name="checkmark.circle.fill"
-                            size={18}
-                            color={palette.primary as string}
-                          />
-                        ) : null}
-                      </Pressable>
-                    );
-                  }
-
-                  const zoneCount = item.group.zones.length;
-                  const isFullySelected = item.selectedCount === zoneCount;
-                  const isPartiallySelected = item.selectedCount > 0 && !isFullySelected;
-                  const summary =
-                    zoneCount === 1
-                      ? (item.group.zones[0]?.id ?? item.group.cityKey)
-                      : isFullySelected
-                        ? t("mapTab.mobile.summaryAllLive", {
-                            count: zoneCount,
-                          })
-                        : isPartiallySelected
-                          ? t("mapTab.mobile.summarySomeLive", {
-                              selected: item.selectedCount,
-                              count: zoneCount,
-                            })
-                          : t("mapTab.mobile.summaryZones", {
-                              count: zoneCount,
-                            });
-
-                  return (
-                    <Pressable
-                      onPress={() => toggleCity(item.group.cityKey)}
-                      style={({ pressed }) => [
-                        styles.zoneCityRow,
-                        {
-                          backgroundColor: isFullySelected
-                            ? (palette.primary as string)
-                            : isPartiallySelected
-                              ? (palette.primarySubtle as string)
-                              : (palette.surfaceAlt as string),
-                          opacity: pressed ? 0.92 : 1,
-                        },
-                      ]}
-                    >
-                      <View style={{ flex: 1, gap: 4 }}>
-                        <Text
-                          numberOfLines={1}
-                          style={{
-                            ...BrandType.heading,
-                            fontSize: 21,
-                            lineHeight: 24,
-                            color: isFullySelected
-                              ? (palette.onPrimary as string)
-                              : (palette.text as string),
-                          }}
-                        >
-                          {item.group.cityLabel[zoneLanguage]}
-                        </Text>
-                        <Text
-                          style={{
-                            ...BrandType.micro,
-                            color: isFullySelected
-                              ? "rgba(255,255,255,0.78)"
-                              : isPartiallySelected
-                                ? (palette.primary as string)
-                                : (palette.textMuted as string),
-                            letterSpacing: 0.2,
-                          }}
-                        >
-                          {summary}
-                        </Text>
-                      </View>
-                      <View style={styles.zoneCityActions}>
-                        {isFullySelected ? (
-                          <IconSymbol
-                            name="checkmark.circle.fill"
-                            size={20}
-                            color={palette.onPrimary as string}
-                          />
-                        ) : isPartiallySelected ? (
-                          <IconSymbol
-                            name="minus.circle.fill"
-                            size={20}
-                            color={palette.primary as string}
-                          />
-                        ) : null}
-                        {item.showChevron ? (
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={
-                              item.expanded
-                                ? t("mapTab.mobile.collapseCity", {
-                                    city: item.group.cityLabel[zoneLanguage],
-                                  })
-                                : t("mapTab.mobile.expandCity", {
-                                    city: item.group.cityLabel[zoneLanguage],
-                                  })
-                            }
-                            hitSlop={8}
-                            onPress={(event) => {
-                              event.stopPropagation();
-                              toggleCityExpanded(item.group.cityKey);
-                            }}
-                            style={({ pressed }) => [
-                              styles.zoneChevronButton,
-                              { opacity: pressed ? 0.82 : 1 },
-                            ]}
-                          >
-                            <IconSymbol
-                              name={item.expanded ? "chevron.down" : "chevron.right"}
-                              size={16}
-                              color={
-                                isFullySelected
-                                  ? (palette.onPrimary as string)
-                                  : (palette.textMuted as string)
-                              }
-                            />
-                          </Pressable>
-                        ) : null}
-                      </View>
-                    </Pressable>
-                  );
-                }}
-              />
-            </View>
-          </BottomSheet>
 
           <View
             pointerEvents="box-none"
             style={{
               position: "absolute",
-              left: BrandSpacing.lg,
+              bottom: overlayBottom + BrandSpacing.xxl,
               right: BrandSpacing.lg,
-              bottom: overlayBottom,
-              zIndex: 30,
+              zIndex: 60,
             }}
           >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "flex-end",
-                gap: 10,
-              }}
-            >
-              {zoneModeActive ? (
-                <>
-                  <ActionButton
-                    label={t("mapTab.mobile.cancel")}
-                    onPress={handleDiscardChanges}
-                    disabled={isSaving}
-                    palette={palette}
-                    tone="secondary"
-                  />
-                  <ActionButton
-                    label={t("mapTab.mobile.saveCoverage")}
-                    onPress={() => {
-                      void handleSaveZones();
-                    }}
-                    disabled={!hasChanges || isSaving}
-                    loading={isSaving}
-                    palette={palette}
-                  />
-                </>
-              ) : (
-                <ActionButton
-                  label={t("mapTab.mobile.editCoverage")}
-                  onPress={openZoneEditor}
-                  palette={palette}
-                />
-              )}
+            <View style={{ gap: MAP_FLOATING_BUTTON_GAP }}>
+              <MapChromeButton
+                icon="location.north.line.fill"
+                label={t("mapTab.actions.refocus")}
+                onPress={() => {
+                  handleMapUtilityPress();
+                }}
+                palette={palette}
+                disabled={isSaving}
+              />
+              <MapChromeButton
+                icon={zoneModeActive ? "checkmark.circle.fill" : "square.and.pencil"}
+                label={
+                  zoneModeActive
+                    ? t("mapTab.mobile.confirmCoverage")
+                    : t("mapTab.mobile.editCoverage")
+                }
+                onPress={handleEditButtonPress}
+                palette={palette}
+                active={zoneModeActive}
+                disabled={isSaving}
+              />
             </View>
           </View>
         </>
@@ -1395,100 +1122,3 @@ export default function MapTabScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  sheetContent: {
-    flex: 1,
-    paddingTop: 16,
-  },
-  sheetHeader: {
-    paddingHorizontal: 24,
-    marginBottom: 8,
-  },
-  searchWrap: {
-    paddingHorizontal: 16,
-    marginBottom: 6,
-  },
-  searchInputShell: {
-    minHeight: 44,
-    borderRadius: 14,
-    borderCurve: "continuous",
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    minHeight: 40,
-    fontSize: 16,
-  },
-  zoneListContent: {
-    paddingBottom: 48,
-  },
-  emptyZoneSearchState: {
-    borderRadius: 20,
-    borderCurve: "continuous",
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    gap: 4,
-    marginHorizontal: 16,
-    marginTop: 4,
-  },
-  zoneCityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 18,
-    paddingHorizontal: 24,
-    paddingVertical: 18,
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
-  zoneCityActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginLeft: 12,
-  },
-  zoneChevronButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  zoneChildRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 16,
-    paddingLeft: 22,
-    paddingRight: 18,
-    paddingVertical: 14,
-    marginLeft: 34,
-    marginRight: 16,
-    marginBottom: 8,
-    gap: 12,
-  },
-  zoneChildBullet: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  saveBannerWrap: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    right: 16,
-    zIndex: 50,
-  },
-  modeHint: {
-    marginTop: 8,
-    borderWidth: 1,
-    borderRadius: 999,
-    borderCurve: "continuous",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignSelf: "flex-end",
-  },
-});

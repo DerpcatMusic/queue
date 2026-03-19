@@ -2,8 +2,8 @@ import type { ComponentType } from "react";
 import { View, type ViewProps } from "react-native";
 
 import { BrandRadius } from "@/constants/brand";
-
-import { useKitTheme } from "./use-kit-theme";
+import { useBrand } from "@/hooks/use-brand";
+import { useThemePreference } from "@/hooks/use-theme-preference";
 
 export type KitSurfaceTone = "base" | "elevated" | "glass" | "sheet" | "sunken";
 
@@ -46,7 +46,8 @@ export function KitSurface({
   style,
   ...rest
 }: KitSurfaceProps) {
-  const { background, scheme } = useKitTheme();
+  const palette = useBrand();
+  const { resolvedScheme: scheme } = useThemePreference();
   const isGlass = tone === "glass";
   const allowNativeGlass = process.env.EXPO_OS === "ios";
   const glassModule = allowNativeGlass ? getGlassModule() : null;
@@ -59,17 +60,18 @@ export function KitSurface({
       gap,
       ...(tone === "elevated"
         ? {
-            backgroundColor: background.surfaceElevated,
+            backgroundColor: palette.surfaceElevated as string,
           }
         : tone === "sheet"
           ? {
-              backgroundColor: background.sheet,
+              backgroundColor: palette.surface as string,
             }
           : tone === "sunken"
-            ? { backgroundColor: background.panel }
+            ? { backgroundColor: palette.surfaceAlt as string }
             : isGlass
-              ? { backgroundColor: background.glass }
-              : { backgroundColor: background.panel }),
+              ? { backgroundColor: palette.surface as string }
+              : { backgroundColor: palette.surfaceAlt as string }),
+      overflow: "hidden" as const,
     },
     style,
   ];

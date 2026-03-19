@@ -11,78 +11,11 @@ const socialLinksValidator = v.object({
   website: v.optional(v.string()),
 });
 
-const rapydCanonicalPayloadValidator = v.object({
-  id: v.optional(v.string()),
-  type: v.optional(v.string()),
-  data: v.optional(
-    v.object({
-      id: v.optional(v.string()),
-      status: v.optional(v.string()),
-      merchant_reference_id: v.optional(v.string()),
-      payout_method_type: v.optional(v.string()),
-      default_payout_method_type: v.optional(v.string()),
-      payment: v.optional(
-        v.object({
-          id: v.optional(v.string()),
-          status: v.optional(v.string()),
-        }),
-      ),
-      payout: v.optional(
-        v.object({
-          id: v.optional(v.string()),
-          status: v.optional(v.string()),
-        }),
-      ),
-      checkout: v.optional(
-        v.object({
-          id: v.optional(v.string()),
-        }),
-      ),
-      metadata: v.optional(
-        v.object({
-          payoutId: v.optional(v.string()),
-          paymentId: v.optional(v.string()),
-          merchant_reference_id: v.optional(v.string()),
-        }),
-      ),
-    }),
-  ),
-});
+const rapydCanonicalPayloadValidator = v.any();
 
-const rapydProviderResponsePayloadValidator = v.object({
-  status: v.optional(
-    v.object({
-      status: v.optional(v.string()),
-      error_code: v.optional(v.string()),
-      message: v.optional(v.string()),
-    }),
-  ),
-  data: v.optional(
-    v.object({
-      id: v.optional(v.string()),
-      status: v.optional(v.string()),
-    }),
-  ),
-});
+const rapydProviderResponsePayloadValidator = v.any();
 
-const diditCanonicalPayloadValidator = v.object({
-  id: v.optional(v.string()),
-  event_id: v.optional(v.string()),
-  session_id: v.optional(v.string()),
-  status: v.optional(v.string()),
-  vendor_data: v.optional(v.string()),
-  webhook_type: v.optional(v.string()),
-  timestamp: v.optional(v.string()),
-  data: v.optional(
-    v.object({
-      session_id: v.optional(v.string()),
-      status: v.optional(v.string()),
-      vendor_data: v.optional(v.string()),
-      webhook_type: v.optional(v.string()),
-      timestamp: v.optional(v.string()),
-    }),
-  ),
-});
+const diditCanonicalPayloadValidator = v.any();
 
 const paymentMetadataValidator = v.object({
   sport: v.optional(v.string()),
@@ -243,11 +176,7 @@ export default defineSchema({
     integrationId: v.id("calendarIntegrations"),
     providerEventId: v.string(),
     title: v.string(),
-    status: v.union(
-      v.literal("confirmed"),
-      v.literal("tentative"),
-      v.literal("cancelled"),
-    ),
+    status: v.union(v.literal("confirmed"), v.literal("tentative"), v.literal("cancelled")),
     startTime: v.number(),
     endTime: v.number(),
     isAllDay: v.boolean(),
@@ -595,7 +524,12 @@ export default defineSchema({
     ),
     verifiedAt: v.optional(v.number()),
     lastProviderSyncState: v.optional(
-      v.union(v.literal("pending"), v.literal("verified"), v.literal("failed"), v.literal("expired")),
+      v.union(
+        v.literal("pending"),
+        v.literal("verified"),
+        v.literal("failed"),
+        v.literal("expired"),
+      ),
     ),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -20,9 +20,10 @@ export function getHomeHeaderExpandedHeight(safeTop: number) {
   return safeTop + SHEET_EXPANDED_CONTENT_HEIGHT;
 }
 
-export function getHomeHeaderScrollTopPadding(safeTop: number) {
-  const automaticTopInset = process.env.EXPO_OS === "ios" ? safeTop : 0;
-  return getHomeHeaderExpandedHeight(safeTop) - automaticTopInset + SHEET_CONTENT_GAP;
+export function getHomeHeaderScrollTopPadding(_safeTop: number) {
+  // Now that TopSheetSurface uses marginTop: safeTop (natural flow),
+  // padding should only account for content height + gap, not safeTop.
+  return SHEET_EXPANDED_CONTENT_HEIGHT + SHEET_CONTENT_GAP;
 }
 
 // Scroll range over which the sheet transitions
@@ -149,27 +150,22 @@ export function HomeHeaderSheet({
     ],
   }));
 
-  const bg = palette.surfaceAlt as string;
+  const bg = palette.primary as string;
 
   return (
     <TopSheetSurface
       pointerEvents="box-none"
       backgroundColor={bg}
-      topInsetColor={palette.primary}
+      topInsetColor={bg}
       style={[
         {
           backgroundColor: bg,
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
+          // NO absolute - uses marginTop from TopSheetSurface
           overflow: "hidden",
           zIndex: 10,
-          borderBottomWidth: 1,
           borderBottomLeftRadius: 28,
           borderBottomRightRadius: 28,
           borderCurve: "continuous",
-          borderColor: palette.border as string,
         } as unknown as object,
         animatedSheetStyle,
       ]}
@@ -193,7 +189,7 @@ export function HomeHeaderSheet({
             style={[
               {
                 ...BrandType.display,
-                color: palette.text as string,
+                color: palette.onPrimary as string,
                 letterSpacing: -0.6,
                 paddingTop: 2,
               },
@@ -208,7 +204,8 @@ export function HomeHeaderSheet({
               <Text
                 style={{
                   ...BrandType.caption,
-                  color: palette.textMuted as string,
+                  color: palette.onPrimary as string,
+                  opacity: 0.72,
                 }}
               >
                 {subtitle}

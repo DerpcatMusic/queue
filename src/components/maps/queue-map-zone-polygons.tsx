@@ -9,6 +9,7 @@ type Expression = unknown;
 
 type QueueMapZonePolygonsProps = {
   mode: QueueMapProps["mode"];
+  isEditing: boolean;
   selectedZoneFilter: Expression;
   zoneGeoJson: QueueMapProps["zoneGeoJson"];
   zoneIdProperty: string;
@@ -26,13 +27,14 @@ function getPressedZoneId(
 
 export function QueueMapZonePolygons({
   mode,
+  isEditing,
   selectedZoneFilter,
   zoneGeoJson,
   zoneIdProperty,
   mapPalette,
   onPressZone,
 }: QueueMapZonePolygonsProps) {
-  const showAllZones = mode === "zoneSelect";
+  const showAllZones = mode === "zoneSelect" && isEditing;
   const zoneFillOpacity = showAllZones
     ? Math.max(APPLE_MAP_THEME.overlay.touchFillOpacity, 0.1)
     : 0;

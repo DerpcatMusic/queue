@@ -4,7 +4,7 @@ import { TopSheet } from "@/components/layout/top-sheet";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
 type ProfileHeaderSheetProps = {
   profileName: string;
@@ -62,6 +62,7 @@ export function ProfileHeaderSheet({
       steps={[0.2, 0.5, 0.95]}
       draggable={true}
       expandable={true}
+      topInsetColor={palette.primary}
       {...(onStepChange ? { onStepChange } : {})}
       padding={{ vertical: BrandSpacing.md, horizontal: BrandSpacing.xl }}
     >
@@ -107,20 +108,25 @@ export function ProfileHeaderSheet({
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <View
               style={{
-                paddingHorizontal: 8,
-                paddingVertical: 2,
-                borderRadius: 4,
-                backgroundColor: (statusConfig.color as string) + "15",
-                borderWidth: 1,
-                borderColor: (statusConfig.color as string) + "30",
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: BrandRadius.button - 10,
+                borderCurve: "continuous",
+                backgroundColor:
+                  verificationStatus === "approved"
+                    ? (palette.successSubtle as string)
+                    : verificationStatus === "declined" ||
+                        verificationStatus === "expired" ||
+                        verificationStatus === "abandoned"
+                      ? (palette.dangerSubtle as string)
+                      : (palette.primarySubtle as string),
               }}
             >
               <Text
                 style={{
                   ...BrandType.micro,
-                  fontSize: 10,
                   color: statusConfig.color as string,
-                  fontWeight: "700",
+                  letterSpacing: 0.4,
                 }}
               >
                 {statusConfig.label.toUpperCase()}

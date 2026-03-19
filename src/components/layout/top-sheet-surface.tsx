@@ -1,10 +1,10 @@
 import { type PropsWithChildren, useEffect } from "react";
 import type { ColorValue, StyleProp, ViewProps, ViewStyle } from "react-native";
-import Animated from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
-import { useKitTheme } from "@/components/ui/kit";
 import { BrandRadius } from "@/constants/brand";
 import { useSystemUi } from "@/contexts/system-ui-context";
+import { useBrand } from "@/hooks/use-brand";
 
 type TopSheetSurfaceProps = PropsWithChildren<{
   backgroundColor?: ColorValue;
@@ -20,10 +20,17 @@ export function TopSheetSurface({
   pointerEvents,
   style,
 }: TopSheetSurfaceProps) {
-  const { background } = useKitTheme();
+  const palette = useBrand();
   const { setTopInsetTone, setTopInsetBackgroundColor } = useSystemUi();
-  const resolvedBackground = backgroundColor ?? background.sheet;
+  const resolvedBackground = backgroundColor ?? palette.surface;
   const resolvedInsetColor = topInsetColor ?? resolvedBackground;
+  const animatedBackground = useSharedValue(String(resolvedBackground));
+
+  useEffect(() => {
+    animatedBackground.value = withTiming(String(resolvedBackground), {
+      duration: 220,
+    });
+  }, [animatedBackground, resolvedBackground]);
 
   useEffect(() => {
     setTopInsetTone("sheet");
@@ -34,17 +41,23 @@ export function TopSheetSurface({
     };
   }, [resolvedInsetColor, setTopInsetBackgroundColor, setTopInsetTone]);
 
+  const animatedBackgroundStyle = useAnimatedStyle(() => ({
+    backgroundColor: animatedBackground.value,
+  }));
+
   return (
     <Animated.View
       pointerEvents={pointerEvents}
       style={[
         {
+          // No marginTop — sheet extends behind the status bar overlay (zIndex 9999)
+          // The AppSafeRoot overlay paints the same color on top — seamless
           borderBottomLeftRadius: BrandRadius.card + 4,
           borderBottomRightRadius: BrandRadius.card + 4,
           borderCurve: "continuous",
           overflow: "hidden",
-          backgroundColor: resolvedBackground,
         },
+        animatedBackgroundStyle,
         style,
       ]}
     >
