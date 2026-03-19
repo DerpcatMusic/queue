@@ -4,7 +4,14 @@ import { useMutation, useQuery } from "convex/react";
 import { Redirect, useRouter } from "expo-router";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import {
+  ActivityIndicator,
+  I18nManager,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import {
@@ -37,6 +44,7 @@ type OnboardingStep = 0 | 1 | 2;
 const MAX_INSTRUCTOR_ZONES = 25;
 const STEP_EXIT_MS = 170;
 const STEP_ENTER_MS = 220;
+const DETAILS_READY_DELAY_MS = 110;
 
 function toDisplayLabel(value: string) {
   return value
@@ -153,6 +161,8 @@ function OnboardingScreenContent() {
 
   const [step, setStep] = useState<OnboardingStep>(0);
   const [visibleStep, setVisibleStep] = useState<OnboardingStep>(0);
+  const [detailsReady, setDetailsReady] = useState(false);
+  const [showLocationSection, setShowLocationSection] = useState(false);
   const [stepTransition, setStepTransition] = useState<{
     direction: 1 | -1;
     phase: "idle" | "enter" | "exit";
@@ -171,20 +181,21 @@ function OnboardingScreenContent() {
   const role = effectiveRole;
   const isInstructorFlow = effectiveRole === "instructor";
   const totalSteps = isInstructorFlow ? 3 : 2;
-  const currentStep = step + 1;
+  const displayedStep = stepTransition.phase === "idle" ? step : visibleStep;
+  const currentStep = displayedStep + 1;
 
   const onboardingSheetTitle =
-    step === 0
+    displayedStep === 0
       ? t("onboarding.title")
-      : step === 2
+      : displayedStep === 2
         ? t("onboarding.verification.title")
         : role === "studio"
           ? t("onboarding.studioDetailsTitle")
           : t("onboarding.instructorDetailsTitle");
   const onboardingSheetSubtitle =
-    step === 0
+    displayedStep === 0
       ? t("onboarding.subtitle")
-      : step === 2
+      : displayedStep === 2
         ? t("onboarding.verification.body")
         : role === "studio"
           ? t("onboarding.sheetStudioSubtitle")
@@ -251,6 +262,7 @@ function OnboardingScreenContent() {
   const instructorResolver = useLocationResolution();
   const studioResolver = useLocationResolution();
   const stepTransitionTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  const onboardingScrollRef = useRef<ScrollView>(null);
 
   useEffect(
     () => () => {
@@ -517,6 +529,15 @@ function OnboardingScreenContent() {
     }
   };
 
+  const revealLocationSection = () => {
+    startTransition(() => {
+      setShowLocationSection(true);
+    });
+    requestAnimationFrame(() => {
+      onboardingScrollRef.current?.scrollToEnd({ animated: true });
+    });
+  };
+
   const goToProfileStep = () => {
     if (!role) {
       setErrorMessage(t("onboarding.errors.roleRequired"));
@@ -532,6 +553,8 @@ function OnboardingScreenContent() {
       clearTimeout(timer);
     }
     stepTransitionTimersRef.current = [];
+    setDetailsReady(false);
+    setShowLocationSection(false);
 
     const nextStep: OnboardingStep = 1;
     const direction: 1 | -1 = nextStep > visibleStep ? 1 : -1;
@@ -562,6 +585,15 @@ function OnboardingScreenContent() {
           targetStep: null,
         });
       }, STEP_EXIT_MS + STEP_ENTER_MS),
+    );
+
+    stepTransitionTimersRef.current.push(
+      setTimeout(
+        () => {
+          setDetailsReady(true);
+        },
+        STEP_EXIT_MS + STEP_ENTER_MS + DETAILS_READY_DELAY_MS,
+      ),
     );
   };
 
@@ -681,62 +713,65 @@ function OnboardingScreenContent() {
     }
   };
 
-  const mapPane = role ? (
-    <View
-      style={[
-        styles.mapPanel,
-        {
-          backgroundColor: palette.surface as string,
-        },
-      ]}
-    >
-      <View style={styles.mapHeader}>
-        <View style={styles.mapHeaderRow}>
-          <ThemedText type="defaultSemiBold">
+  const mapPane =
+    role && showLocationSection ? (
+      <View
+        style={[
+          styles.mapPanel,
+          {
+            backgroundColor: palette.surface as string,
+          },
+        ]}
+      >
+        <View style={styles.mapHeader}>
+          <View style={styles.mapHeaderRow}>
+            <ThemedText type="defaultSemiBold">
+              {role === "instructor"
+                ? t("onboarding.map.instructorTitle")
+                : t("onboarding.map.studioTitle")}
+            </ThemedText>
+            <ThemedText type="micro" style={{ color: palette.textMuted }}>
+              {role === "instructor"
+                ? t("mapTab.selectedZones", { count: selectedZones.length })
+                : studioDetectedZone
+                  ? studioDetectedZone
+                  : t("profile.roles.pending")}
+            </ThemedText>
+          </View>
+          <ThemedText style={{ color: palette.textMuted }}>
             {role === "instructor"
-              ? t("onboarding.map.instructorTitle")
-              : t("onboarding.map.studioTitle")}
-          </ThemedText>
-          <ThemedText type="micro" style={{ color: palette.textMuted }}>
-            {role === "instructor"
-              ? t("mapTab.selectedZones", { count: selectedZones.length })
-              : studioDetectedZone
-                ? studioDetectedZone
-                : t("profile.roles.pending")}
+              ? t("onboarding.map.instructorHint")
+              : t("onboarding.map.studioHint")}
           </ThemedText>
         </View>
-        <ThemedText style={{ color: palette.textMuted }}>
-          {role === "instructor"
-            ? t("onboarding.map.instructorHint")
-            : t("onboarding.map.studioHint")}
-        </ThemedText>
+        <View style={styles.mapWrap}>
+          <QueueMap
+            mode={role === "instructor" ? "zoneSelect" : "pinDrop"}
+            pin={
+              role === "instructor"
+                ? instructorLatitude !== undefined && instructorLongitude !== undefined
+                  ? {
+                      latitude: instructorLatitude,
+                      longitude: instructorLongitude,
+                    }
+                  : null
+                : studioLatitude !== undefined && studioLongitude !== undefined
+                  ? { latitude: studioLatitude, longitude: studioLongitude }
+                  : null
+            }
+            selectedZoneIds={
+              role === "instructor" ? selectedZones : studioDetectedZone ? [studioDetectedZone] : []
+            }
+            focusZoneId={role === "instructor" ? instructorDetectedZone : studioDetectedZone}
+            onPressZone={toggleZone}
+            onPressMap={
+              role === "instructor" ? resolveInstructorFromMapPin : resolveStudioFromMapPin
+            }
+            onUseGps={role === "instructor" ? resolveInstructorFromGps : resolveStudioFromGps}
+          />
+        </View>
       </View>
-      <View style={styles.mapWrap}>
-        <QueueMap
-          mode={role === "instructor" ? "zoneSelect" : "pinDrop"}
-          pin={
-            role === "instructor"
-              ? instructorLatitude !== undefined && instructorLongitude !== undefined
-                ? {
-                    latitude: instructorLatitude,
-                    longitude: instructorLongitude,
-                  }
-                : null
-              : studioLatitude !== undefined && studioLongitude !== undefined
-                ? { latitude: studioLatitude, longitude: studioLongitude }
-                : null
-          }
-          selectedZoneIds={
-            role === "instructor" ? selectedZones : studioDetectedZone ? [studioDetectedZone] : []
-          }
-          focusZoneId={role === "instructor" ? instructorDetectedZone : studioDetectedZone}
-          onPressZone={toggleZone}
-          onPressMap={role === "instructor" ? resolveInstructorFromMapPin : resolveStudioFromMapPin}
-          onUseGps={role === "instructor" ? resolveInstructorFromGps : resolveStudioFromGps}
-        />
-      </View>
-    </View>
-  ) : null;
+    ) : null;
 
   const instructorForm = (
     <View
@@ -787,57 +822,67 @@ function OnboardingScreenContent() {
 
       <View style={styles.sectionBlock}>
         <ThemedText type="defaultSemiBold">{t("profile.settings.location.title")}</ThemedText>
-        <AddressAutocomplete
-          value={instructorAddress}
-          onChangeText={(value) => {
-            setInstructorAddress(value);
-            setInstructorLatitude(undefined);
-            setInstructorLongitude(undefined);
-            setInstructorDetectedZone(null);
-          }}
-          onPlaceSelected={handleInstructorPlaceSelected}
-          placeholder={t("onboarding.location.instructorAddressOptional")}
-          placeholderTextColor={palette.textMuted}
-          borderColor={palette.border}
-          textColor={palette.text}
-          backgroundColor={palette.appBg}
-          surfaceColor={palette.surface}
-          mutedTextColor={palette.textMuted}
-        />
+        {showLocationSection ? (
+          <>
+            <AddressAutocomplete
+              value={instructorAddress}
+              onChangeText={(value) => {
+                setInstructorAddress(value);
+                setInstructorLatitude(undefined);
+                setInstructorLongitude(undefined);
+                setInstructorDetectedZone(null);
+              }}
+              onPlaceSelected={handleInstructorPlaceSelected}
+              placeholder={t("onboarding.location.instructorAddressOptional")}
+              placeholderTextColor={palette.textMuted}
+              borderColor={palette.border}
+              textColor={palette.text}
+              backgroundColor={palette.appBg}
+              surfaceColor={palette.surface}
+              mutedTextColor={palette.textMuted}
+            />
 
-        <View style={styles.inlineActions}>
-          <ActionButton
-            disabled={instructorResolver.isResolving}
-            label={
-              instructorResolver.isResolving
-                ? t("onboarding.location.resolvingAddress")
-                : t("onboarding.location.findByAddress")
-            }
-            palette={palette}
-            tone="secondary"
-            onPress={() => {
-              void resolveInstructorFromAddress();
-            }}
-          />
-        </View>
+            <View style={styles.inlineActions}>
+              <ActionButton
+                disabled={instructorResolver.isResolving}
+                label={
+                  instructorResolver.isResolving
+                    ? t("onboarding.location.resolvingAddress")
+                    : t("onboarding.location.findByAddress")
+                }
+                palette={palette}
+                tone="secondary"
+                onPress={() => {
+                  void resolveInstructorFromAddress();
+                }}
+              />
+            </View>
 
-        <ThemedText style={{ color: palette.textMuted }}>
-          {instructorDetectedZone
-            ? t("onboarding.location.detectedZone", {
-                zone: instructorDetectedZone,
-              })
-            : t("onboarding.location.zoneOptionalHint")}
-        </ThemedText>
+            <ThemedText style={{ color: palette.textMuted }}>
+              {instructorDetectedZone
+                ? t("onboarding.location.detectedZone", {
+                    zone: instructorDetectedZone,
+                  })
+                : t("onboarding.location.zoneOptionalHint")}
+            </ThemedText>
 
-        <View style={styles.chipGrid}>
-          {selectedZones.map((zoneId) => {
-            const zone = ZONE_OPTIONS.find((item) => item.id === zoneId);
-            const label = zone ? zone.label[language] : zoneId;
-            return (
-              <KitChip key={zoneId} label={label} selected onPress={() => toggleZone(zoneId)} />
-            );
-          })}
-        </View>
+            <View style={styles.chipGrid}>
+              {selectedZones.map((zoneId) => {
+                const zone = ZONE_OPTIONS.find((item) => item.id === zoneId);
+                const label = zone ? zone.label[language] : zoneId;
+                return (
+                  <KitChip key={zoneId} label={label} selected onPress={() => toggleZone(zoneId)} />
+                );
+              })}
+            </View>
+          </>
+        ) : (
+          <View style={styles.locationPreviewRow}>
+            <ThemedText style={{ color: palette.textMuted }}>
+              {t("onboarding.location.zoneOptionalHint")}
+            </ThemedText>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -858,50 +903,60 @@ function OnboardingScreenContent() {
         onChangeText={setStudioName}
       />
 
-      <AddressAutocomplete
-        value={studioAddress}
-        onChangeText={(value) => {
-          setStudioAddress(value);
-          setStudioLatitude(undefined);
-          setStudioLongitude(undefined);
-          setStudioDetectedZone(null);
-        }}
-        onPlaceSelected={handleStudioPlaceSelected}
-        placeholder={t("onboarding.studioAddress")}
-        placeholderTextColor={palette.textMuted}
-        borderColor={palette.border}
-        textColor={palette.text}
-        backgroundColor={palette.appBg}
-        surfaceColor={palette.surface}
-        mutedTextColor={palette.textMuted}
-      />
-
       <KitTextField
         label={t("onboarding.phoneOptional")}
         value={studioContactPhone}
         onChangeText={setStudioContactPhone}
       />
 
-      <ActionButton
-        disabled={studioResolver.isResolving}
-        label={
-          studioResolver.isResolving
-            ? t("onboarding.location.resolvingAddress")
-            : t("onboarding.location.findByAddress")
-        }
-        palette={palette}
-        tone="secondary"
-        fullWidth
-        onPress={() => {
-          void resolveStudioFromAddress();
-        }}
-      />
+      {showLocationSection ? (
+        <>
+          <AddressAutocomplete
+            value={studioAddress}
+            onChangeText={(value) => {
+              setStudioAddress(value);
+              setStudioLatitude(undefined);
+              setStudioLongitude(undefined);
+              setStudioDetectedZone(null);
+            }}
+            onPlaceSelected={handleStudioPlaceSelected}
+            placeholder={t("onboarding.studioAddress")}
+            placeholderTextColor={palette.textMuted}
+            borderColor={palette.border}
+            textColor={palette.text}
+            backgroundColor={palette.appBg}
+            surfaceColor={palette.surface}
+            mutedTextColor={palette.textMuted}
+          />
 
-      <ThemedText style={{ color: palette.textMuted }}>
-        {studioDetectedZone
-          ? t("onboarding.location.detectedZone", { zone: studioDetectedZone })
-          : t("onboarding.location.zonePending")}
-      </ThemedText>
+          <ActionButton
+            disabled={studioResolver.isResolving}
+            label={
+              studioResolver.isResolving
+                ? t("onboarding.location.resolvingAddress")
+                : t("onboarding.location.findByAddress")
+            }
+            palette={palette}
+            tone="secondary"
+            fullWidth
+            onPress={() => {
+              void resolveStudioFromAddress();
+            }}
+          />
+
+          <ThemedText style={{ color: palette.textMuted }}>
+            {studioDetectedZone
+              ? t("onboarding.location.detectedZone", { zone: studioDetectedZone })
+              : t("onboarding.location.zonePending")}
+          </ThemedText>
+        </>
+      ) : (
+        <View style={styles.locationPreviewRow}>
+          <ThemedText style={{ color: palette.textMuted }}>
+            {t("onboarding.location.zonePending")}
+          </ThemedText>
+        </View>
+      )}
     </View>
   );
 
@@ -970,6 +1025,25 @@ function OnboardingScreenContent() {
     }
 
     if (bodyStep === 1 && role === "instructor") {
+      if (!detailsReady) {
+        return (
+          <View style={styles.detailsLoadingStage}>
+            <View style={styles.detailsLoadingHeader}>
+              <ThemedText type="title">{t("onboarding.loading")}</ThemedText>
+              <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                {t("onboarding.sheetInstructorSubtitle")}
+              </ThemedText>
+            </View>
+            <View style={styles.detailsLoadingRow}>
+              <ActivityIndicator color={palette.primary as string} />
+              <ThemedText style={{ color: palette.textMuted }}>
+                {t("onboarding.loading")}
+              </ThemedText>
+            </View>
+          </View>
+        );
+      }
+
       return (
         <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
           {instructorForm}
@@ -985,6 +1059,8 @@ function OnboardingScreenContent() {
                   onPress={() => {
                     setStep(0);
                     setVisibleStep(0);
+                    setDetailsReady(false);
+                    setShowLocationSection(false);
                     setStepTransition({
                       direction: -1,
                       phase: "idle",
@@ -996,11 +1072,21 @@ function OnboardingScreenContent() {
 
               <View style={styles.navAction}>
                 <ActionButton
-                  label={isSubmitting ? t("onboarding.save") : t("onboarding.continue")}
+                  label={
+                    showLocationSection
+                      ? isSubmitting
+                        ? t("onboarding.save")
+                        : t("onboarding.save")
+                      : t("onboarding.continue")
+                  }
                   disabled={isSubmitting}
                   palette={palette}
                   fullWidth
                   onPress={() => {
+                    if (!showLocationSection) {
+                      revealLocationSection();
+                      return;
+                    }
                     void submitInstructor();
                   }}
                 />
@@ -1012,6 +1098,25 @@ function OnboardingScreenContent() {
     }
 
     if (bodyStep === 1 && role === "studio") {
+      if (!detailsReady) {
+        return (
+          <View style={styles.detailsLoadingStage}>
+            <View style={styles.detailsLoadingHeader}>
+              <ThemedText type="title">{t("onboarding.loading")}</ThemedText>
+              <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                {t("onboarding.sheetStudioSubtitle")}
+              </ThemedText>
+            </View>
+            <View style={styles.detailsLoadingRow}>
+              <ActivityIndicator color={palette.primary as string} />
+              <ThemedText style={{ color: palette.textMuted }}>
+                {t("onboarding.loading")}
+              </ThemedText>
+            </View>
+          </View>
+        );
+      }
+
       return (
         <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
           {studioForm}
@@ -1027,6 +1132,8 @@ function OnboardingScreenContent() {
                   onPress={() => {
                     setStep(0);
                     setVisibleStep(0);
+                    setDetailsReady(false);
+                    setShowLocationSection(false);
                     setStepTransition({
                       direction: -1,
                       phase: "idle",
@@ -1038,11 +1145,21 @@ function OnboardingScreenContent() {
 
               <View style={styles.navAction}>
                 <ActionButton
-                  label={isSubmitting ? t("onboarding.save") : t("onboarding.complete")}
+                  label={
+                    showLocationSection
+                      ? isSubmitting
+                        ? t("onboarding.save")
+                        : t("onboarding.complete")
+                      : t("onboarding.continue")
+                  }
                   disabled={isSubmitting}
                   palette={palette}
                   fullWidth
                   onPress={() => {
+                    if (!showLocationSection) {
+                      revealLocationSection();
+                      return;
+                    }
                     void submitStudio();
                   }}
                 />
@@ -1116,6 +1233,7 @@ function OnboardingScreenContent() {
     <View style={[styles.screen, { backgroundColor: palette.appBg as string }]}>
       <GlobalTopSheet />
       <ScrollView
+        ref={onboardingScrollRef}
         style={styles.screen}
         contentContainerStyle={[
           styles.content,
@@ -1168,6 +1286,20 @@ const styles = StyleSheet.create({
   },
   stageViewport: {
     minHeight: 1,
+  },
+  detailsLoadingStage: {
+    minHeight: 260,
+    justifyContent: "center",
+    gap: 12,
+    paddingVertical: 12,
+  },
+  detailsLoadingHeader: {
+    gap: 4,
+  },
+  detailsLoadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   contentGrow: {
     flexGrow: 1,
@@ -1257,6 +1389,10 @@ const styles = StyleSheet.create({
   inlineActions: {
     flexDirection: "row",
     gap: 8,
+  },
+  locationPreviewRow: {
+    minHeight: 44,
+    justifyContent: "center",
   },
   multilineInput: {
     minHeight: 96,

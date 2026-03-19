@@ -4,15 +4,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Alert,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -20,14 +12,10 @@ import {
   ProfileSectionCard,
   ProfileSectionHeader,
 } from "@/components/profile/profile-settings-sections";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ActionButton } from "@/components/ui/action-button";
-import {
-  BrandRadius,
-  BrandSpacing,
-  BrandType,
-  type BrandPalette,
-} from "@/constants/brand";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitSwitch } from "@/components/ui/kit";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -42,11 +30,7 @@ const CALENDAR_PROVIDER_KEYS = {
 
 type CalendarProvider = keyof typeof CALENDAR_PROVIDER_KEYS;
 
-const GOOGLE_SCOPES = [
-  "https://www.googleapis.com/auth/calendar.events",
-  "openid",
-  "email",
-];
+const GOOGLE_SCOPES = ["https://www.googleapis.com/auth/calendar.events", "openid", "email"];
 
 const GOOGLE_DISCOVERY: AuthSession.DiscoveryDocument = {
   authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -54,8 +38,7 @@ const GOOGLE_DISCOVERY: AuthSession.DiscoveryDocument = {
   revocationEndpoint: "https://oauth2.googleapis.com/revoke",
 };
 
-const calendarApi = (api as unknown as { calendar: Record<string, unknown> })
-  .calendar as {
+const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).calendar as {
   getMyGoogleCalendarStatus: unknown;
   disconnectGoogleCalendar: unknown;
   connectGoogleCalendarWithCode: unknown;
@@ -106,13 +89,9 @@ function StatusSignal({
   tone?: "surface" | "accent";
 }) {
   const backgroundColor =
-    tone === "accent"
-      ? (palette.primarySubtle as string)
-      : (palette.surfaceElevated as string);
+    tone === "accent" ? (palette.primarySubtle as string) : (palette.surfaceElevated as string);
   const labelColor =
-    tone === "accent"
-      ? (palette.primary as string)
-      : (palette.textMuted as string);
+    tone === "accent" ? (palette.primary as string) : (palette.textMuted as string);
 
   return (
     <View
@@ -168,9 +147,7 @@ function ProviderOption({
         borderWidth: 1,
         borderRadius: BrandRadius.button,
         borderCurve: "continuous",
-        borderColor: selected
-          ? (palette.primary as string)
-          : (palette.border as string),
+        borderColor: selected ? (palette.primary as string) : (palette.border as string),
         backgroundColor: selected
           ? (palette.primarySubtle as string)
           : (palette.surfaceElevated as string),
@@ -202,9 +179,7 @@ function ProviderOption({
           style={[
             styles.providerBadge,
             {
-              backgroundColor: selected
-                ? (palette.primary as string)
-                : (palette.surface as string),
+              backgroundColor: selected ? (palette.primary as string) : (palette.surface as string),
               borderColor: selected
                 ? (palette.primary as string)
                 : (palette.borderStrong as string),
@@ -214,9 +189,7 @@ function ProviderOption({
           <Text
             style={{
               ...BrandType.micro,
-              color: selected
-                ? (palette.onPrimary as string)
-                : (palette.textMuted as string),
+              color: selected ? (palette.onPrimary as string) : (palette.textMuted as string),
               letterSpacing: 0.6,
               textTransform: "uppercase",
             }}
@@ -246,20 +219,16 @@ export default function CalendarSettingsScreen() {
   ) as GoogleCalendarStatus | undefined;
 
   const saveSettings = useMutation(api.users.updateMyInstructorSettings);
-  const disconnectGoogleCalendar = useAction(
-    calendarApi.disconnectGoogleCalendar as any,
-  ) as (args: Record<string, never>) => Promise<DisconnectGoogleCalendarResult>;
-  const exchangeGoogleCode = useAction(
-    calendarApi.connectGoogleCalendarWithCode as any,
-  ) as (args: {
+  const disconnectGoogleCalendar = useAction(calendarApi.disconnectGoogleCalendar as any) as (
+    args: Record<string, never>,
+  ) => Promise<DisconnectGoogleCalendarResult>;
+  const exchangeGoogleCode = useAction(calendarApi.connectGoogleCalendarWithCode as any) as (args: {
     code: string;
     codeVerifier: string;
     redirectUri: string;
     clientId: string;
   }) => Promise<unknown>;
-  const syncGoogleCalendar = useAction(
-    calendarApi.syncMyGoogleCalendarEvents as any,
-  ) as (args: {
+  const syncGoogleCalendar = useAction(calendarApi.syncMyGoogleCalendarEvents as any) as (args: {
     startTime?: number;
     endTime?: number;
     limit?: number;
@@ -299,9 +268,7 @@ export default function CalendarSettingsScreen() {
 
   useEffect(() => {
     if (instructorSettings && !seeded) {
-      setProvider(
-        (instructorSettings.calendarProvider as CalendarProvider) ?? "none",
-      );
+      setProvider((instructorSettings.calendarProvider as CalendarProvider) ?? "none");
       setSyncEnabled(instructorSettings.calendarSyncEnabled ?? false);
       setSeeded(true);
     }
@@ -540,16 +507,9 @@ export default function CalendarSettingsScreen() {
               </Text>
             </View>
             <View
-              style={[
-                styles.heroIconWrap,
-                { backgroundColor: palette.primarySubtle as string },
-              ]}
+              style={[styles.heroIconWrap, { backgroundColor: palette.primarySubtle as string }]}
             >
-              <IconSymbol
-                name="calendar.badge.clock"
-                size={22}
-                color={palette.primary as string}
-              />
+              <IconSymbol name="calendar.badge.clock" size={22} color={palette.primary as string} />
             </View>
           </View>
 
@@ -588,8 +548,7 @@ export default function CalendarSettingsScreen() {
                 value="none"
                 title={t(CALENDAR_PROVIDER_KEYS.none)}
                 description={t("profile.calendar.providerNoneBody", {
-                  defaultValue:
-                    "Keep Queue self-contained and skip calendar export entirely.",
+                  defaultValue: "Keep Queue self-contained and skip calendar export entirely.",
                 })}
                 selected={provider === "none"}
                 onPress={handleProviderChange}
@@ -610,8 +569,7 @@ export default function CalendarSettingsScreen() {
                 value="apple"
                 title={t(CALENDAR_PROVIDER_KEYS.apple)}
                 description={t("profile.calendar.providerAppleBody", {
-                  defaultValue:
-                    "Write accepted sessions into the device calendar on this phone.",
+                  defaultValue: "Write accepted sessions into the device calendar on this phone.",
                 })}
                 selected={provider === "apple"}
                 onPress={handleProviderChange}
@@ -663,19 +621,10 @@ export default function CalendarSettingsScreen() {
                     {t("profile.settings.calendar.futureNote")}
                   </Text>
                 </View>
-                <Switch
+                <KitSwitch
                   value={syncEnabled}
                   onValueChange={setSyncEnabled}
-                  disabled={
-                    provider === "none" ||
-                    (provider === "google" && !hasGoogleConnection)
-                  }
-                  trackColor={{
-                    false: palette.borderStrong as string,
-                    true: palette.primary as string,
-                  }}
-                  thumbColor={palette.surfaceElevated as string}
-                  ios_backgroundColor={palette.borderStrong as string}
+                  disabled={provider === "none" || (provider === "google" && !hasGoogleConnection)}
                 />
               </View>
 
@@ -840,9 +789,7 @@ export default function CalendarSettingsScreen() {
                       onPress={() => {
                         void onConnectGoogle();
                       }}
-                      disabled={
-                        isConnectingGoogle || !googleClientId || !googleRequest
-                      }
+                      disabled={isConnectingGoogle || !googleClientId || !googleRequest}
                       palette={palette}
                       fullWidth
                     />
@@ -895,9 +842,7 @@ export default function CalendarSettingsScreen() {
       >
         <ActionButton
           label={
-            isSaving
-              ? t("profile.settings.actions.saving")
-              : t("profile.settings.actions.save")
+            isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
           }
           onPress={() => {
             void onSave();

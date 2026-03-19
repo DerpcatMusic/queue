@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Switch, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -10,37 +10,26 @@ import {
   ProfileSectionCard,
   ProfileSectionHeader,
 } from "@/components/profile/profile-settings-sections";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
-import {
-  BrandRadius,
-  BrandSpacing,
-  BrandType,
-  type BrandPalette,
-} from "@/constants/brand";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitSwitch } from "@/components/ui/kit";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import { useLocationResolution } from "@/hooks/use-location-resolution";
-import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import type { PlaceCoordinates } from "@/lib/google-places";
+import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import type { ResolvedLocation } from "@/lib/location-zone";
 
-let zoneLabelByIdPromise: Promise<
-  Map<string, { en: string; he: string }>
-> | null = null;
+let zoneLabelByIdPromise: Promise<Map<string, { en: string; he: string }>> | null = null;
 
-async function getZoneLabelById(
-  zoneId: string,
-  language: "en" | "he",
-): Promise<string> {
+async function getZoneLabelById(zoneId: string, language: "en" | "he"): Promise<string> {
   if (!zoneLabelByIdPromise) {
     zoneLabelByIdPromise = import("@/constants/zones").then((module) => {
-      return new Map(
-        module.ZONE_OPTIONS.map((zone) => [zone.id, zone.label] as const),
-      );
+      return new Map(module.ZONE_OPTIONS.map((zone) => [zone.id, zone.label] as const));
     });
   }
 
@@ -68,13 +57,9 @@ function StatusSignal({
   tone?: "surface" | "accent";
 }) {
   const backgroundColor =
-    tone === "accent"
-      ? (palette.primarySubtle as string)
-      : (palette.surfaceElevated as string);
+    tone === "accent" ? (palette.primarySubtle as string) : (palette.surfaceElevated as string);
   const labelColor =
-    tone === "accent"
-      ? (palette.primary as string)
-      : (palette.textMuted as string);
+    tone === "accent" ? (palette.primary as string) : (palette.textMuted as string);
 
   return (
     <View
@@ -131,9 +116,7 @@ export default function LocationScreen() {
   const [latitude, setLatitude] = useState<number>();
   const [longitude, setLongitude] = useState<number>();
   const [detectedZone, setDetectedZone] = useState<string | null>(null);
-  const [detectedZoneLabel, setDetectedZoneLabel] = useState<string | null>(
-    null,
-  );
+  const [detectedZoneLabel, setDetectedZoneLabel] = useState<string | null>(null);
   const [includeDetectedZone, setIncludeDetectedZone] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -294,8 +277,7 @@ export default function LocationScreen() {
         });
   const heroBody = hasDetectedZone
     ? t("profile.location.heroReadyBody", {
-        defaultValue:
-          "Address, coordinates, and detected zone are aligned and ready to publish.",
+        defaultValue: "Address, coordinates, and detected zone are aligned and ready to publish.",
       })
     : hasAddress
       ? t("profile.location.heroPendingBody", {
@@ -303,11 +285,10 @@ export default function LocationScreen() {
             "You have an address draft. Resolve the zone, confirm it, and save to make it live.",
         })
       : t("profile.location.heroMissingBody", {
-          defaultValue:
-            "Add a base address or use GPS so studios see where you operate from.",
+          defaultValue: "Add a base address or use GPS so studios see where you operate from.",
         });
   const zoneDisplayValue = detectedZone
-    ? detectedZoneLabel ?? detectedZone
+    ? (detectedZoneLabel ?? detectedZone)
     : t("profile.settings.location.zoneNotDetected");
 
   const onSave = async () => {
@@ -336,11 +317,7 @@ export default function LocationScreen() {
       });
       router.back();
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : t("profile.settings.errors.saveFailed"),
-      );
+      setErrorMessage(err instanceof Error ? err.message : t("profile.settings.errors.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -396,16 +373,9 @@ export default function LocationScreen() {
               </Text>
             </View>
             <View
-              style={[
-                styles.heroIconWrap,
-                { backgroundColor: palette.primarySubtle as string },
-              ]}
+              style={[styles.heroIconWrap, { backgroundColor: palette.primarySubtle as string }]}
             >
-              <IconSymbol
-                name="mappin.and.ellipse"
-                size={22}
-                color={palette.primary as string}
-              />
+              <IconSymbol name="mappin.and.ellipse" size={22} color={palette.primary as string} />
             </View>
           </View>
 
@@ -633,16 +603,7 @@ export default function LocationScreen() {
                       {t("profile.settings.location.includeDetectedZoneDescription")}
                     </Text>
                   </View>
-                  <Switch
-                    value={includeDetectedZone}
-                    onValueChange={setIncludeDetectedZone}
-                    trackColor={{
-                      false: palette.borderStrong as string,
-                      true: palette.primary as string,
-                    }}
-                    thumbColor={palette.surfaceElevated as string}
-                    ios_backgroundColor={palette.borderStrong as string}
-                  />
+                  <KitSwitch value={includeDetectedZone} onValueChange={setIncludeDetectedZone} />
                 </View>
               ) : null}
             </View>
@@ -682,9 +643,7 @@ export default function LocationScreen() {
       >
         <ActionButton
           label={
-            isSaving
-              ? t("profile.settings.actions.saving")
-              : t("profile.settings.actions.save")
+            isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
           }
           onPress={() => {
             void onSave();

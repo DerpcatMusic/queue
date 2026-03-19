@@ -6,7 +6,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Switch, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
 import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provider";
@@ -25,6 +25,7 @@ import {
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
+import { KitSwitch } from "@/components/ui/kit";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
@@ -354,13 +355,9 @@ export default function StudioProfileScreen() {
                   palette={palette}
                   showDivider
                   accessory={
-                    <Switch
+                    <KitSwitch
                       value={preference === "system"}
                       onValueChange={(value) => setPreference(value ? "system" : "light")}
-                      trackColor={{
-                        true: palette.primary as string,
-                        false: palette.borderStrong as string,
-                      }}
                     />
                   }
                 />
@@ -369,14 +366,10 @@ export default function StudioProfileScreen() {
                   icon="moon.fill"
                   palette={palette}
                   accessory={
-                    <Switch
+                    <KitSwitch
                       disabled={preference === "system"}
                       value={preference === "dark"}
                       onValueChange={(value) => setPreference(value ? "dark" : "light")}
-                      trackColor={{
-                        true: palette.primary as string,
-                        false: palette.borderStrong as string,
-                      }}
                     />
                   }
                 />
@@ -538,13 +531,9 @@ export default function StudioProfileScreen() {
                   palette={palette}
                   showDivider
                   accessory={
-                    <Switch
+                    <KitSwitch
                       value={preference === "system"}
                       onValueChange={(value) => setPreference(value ? "system" : "light")}
-                      trackColor={{
-                        true: palette.primary as string,
-                        false: palette.borderStrong as string,
-                      }}
                     />
                   }
                 />
@@ -553,14 +542,10 @@ export default function StudioProfileScreen() {
                   icon="moon.fill"
                   palette={palette}
                   accessory={
-                    <Switch
+                    <KitSwitch
                       disabled={preference === "system"}
                       value={preference === "dark"}
                       onValueChange={(value) => setPreference(value ? "dark" : "light")}
-                      trackColor={{
-                        true: palette.primary as string,
-                        false: palette.borderStrong as string,
-                      }}
                     />
                   }
                 />
