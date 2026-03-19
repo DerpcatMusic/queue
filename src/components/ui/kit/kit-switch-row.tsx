@@ -1,8 +1,6 @@
-import { Switch } from "react-native";
-
 import { ThemedText } from "@/components/themed-text";
 import { KitListItem } from "./kit-list";
-import { triggerSelectionHaptic } from "./native-interaction";
+import { KitSwitch } from "./kit-switch";
 import { useKitTheme } from "./use-kit-theme";
 
 type KitSwitchRowProps = {
@@ -20,30 +18,12 @@ export function KitSwitchRow({
   onValueChange,
   disabled = false,
 }: KitSwitchRowProps) {
-  const { interaction, foreground } = useKitTheme();
-  const handleValueChange = (nextValue: boolean) => {
-    triggerSelectionHaptic();
-    onValueChange(nextValue);
-  };
+  const { foreground } = useKitTheme();
 
   return (
     <KitListItem
       title={title}
-      accessory={
-        <Switch
-          value={value}
-          disabled={disabled}
-          onValueChange={handleValueChange}
-          trackColor={{
-            false: interaction.switchTrackOff,
-            true: interaction.switchTrackOn,
-          }}
-          thumbColor={
-            value ? (interaction.switchThumbOn as string) : (interaction.switchThumbOff as string)
-          }
-          ios_backgroundColor={interaction.switchTrackOff as string}
-        />
-      }
+      accessory={<KitSwitch value={value} disabled={disabled} onValueChange={onValueChange} />}
     >
       {description ? (
         <ThemedText style={{ color: foreground.muted, fontSize: 13 }}>{description}</ThemedText>

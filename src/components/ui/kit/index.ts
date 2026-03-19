@@ -7,6 +7,7 @@ export { KitStatusBadge } from "./kit-status-badge";
 export { KitSuccessBurst } from "./kit-success-burst";
 export type { KitSurfaceProps, KitSurfaceTone } from "./kit-surface";
 export { KitSurface } from "./kit-surface";
+export { KitSwitch } from "./kit-switch";
 export { KitSwitchRow } from "./kit-switch-row";
 export { KitTextField } from "./kit-text-field";
 export type {
