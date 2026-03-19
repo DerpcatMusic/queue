@@ -29,8 +29,8 @@ export function KitSegmentedToggle<T extends string>({
         borderWidth: 1,
         borderRadius: BrandRadius.button,
         borderCurve: "continuous",
-        borderColor: border.secondary,
-        backgroundColor: background.surfaceSecondary,
+        borderColor: border.primary,
+        backgroundColor: background.surfaceElevated,
         padding: 4,
         flexDirection: "row",
         gap: 4,
@@ -54,13 +54,11 @@ export function KitSegmentedToggle<T extends string>({
               borderWidth: 1,
               borderRadius: BrandRadius.button - 4,
               borderCurve: "continuous",
-              borderColor: selected ? color.primaryPressed : border.transparent,
-              backgroundColor: selected
-                ? color.primary
-                : background.surfaceSecondary,
+              borderColor: selected ? color.primaryPressed : border.secondary,
+              backgroundColor: selected ? color.primary : background.surfaceSecondary,
               alignItems: "center",
               justifyContent: "center",
-              opacity: option.disabled ? 0.5 : pressed ? 0.86 : 1,
+              opacity: option.disabled ? 0.72 : pressed ? 0.86 : 1,
             })}
           >
             <Text

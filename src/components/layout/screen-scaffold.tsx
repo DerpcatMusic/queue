@@ -1,8 +1,8 @@
 import type { PropsWithChildren } from "react";
 import { useEffect } from "react";
 import type { ScrollViewProps, StyleProp, ViewStyle } from "react-native";
+import { View } from "react-native";
 import Animated from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
 import { type InsetTone, useSystemUi } from "@/contexts/system-ui-context";
@@ -40,8 +40,7 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
 
   if (props.mode === "static") {
     return (
-      <SafeAreaView
-        edges={["bottom"]}
+      <View
         style={[
           {
             flex: 1,
@@ -50,7 +49,7 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
         ]}
       >
         {props.children}
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -64,8 +63,8 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
 
   return (
     <Animated.ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      automaticallyAdjustContentInsets
+      contentInsetAdjustmentBehavior="never"
+      automaticallyAdjustContentInsets={false}
       showsVerticalScrollIndicator={false}
       {...scrollProps}
       style={[{ flex: 1 }, style]}

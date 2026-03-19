@@ -1,56 +1,25 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { FlashList } from "@shopify/flash-list";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  I18nManager,
-  type LayoutChangeEvent,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { TopSheet } from "@/components/layout/top-sheet";
+import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ActionButton } from "@/components/ui/action-button";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { KitSegmentedToggle } from "@/components/ui/kit";
-import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { formatTime } from "@/lib/jobs-utils";
-import {
-  type CalendarViewMode,
-  type TimelineListItem,
-  useCalendarTabController,
-} from "./use-calendar-tab-controller";
+import { type TimelineListItem, useCalendarTabController } from "./use-calendar-tab-controller";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 const RAIL_LEFT = 24;
 const RAIL_DOT_DAY = 10;
 const RAIL_DOT_LESSON = 6;
-const SWIPE_THRESHOLD = 50;
-const WEEK_RAIL_SPRING = {
-  damping: 24,
-  stiffness: 220,
-  mass: 0.7,
-  overshootClamping: true,
-};
-
 // ─── Date helpers ────────────────────────────────────────────────────────────
 
 function toDayKey(timestamp: number) {
@@ -61,22 +30,6 @@ function toDayKey(timestamp: number) {
 function dayKeyToTimestamp(dayKey: string) {
   const [y, m, d] = dayKey.split("-").map(Number) as [number, number, number];
   return new Date(y, m - 1, d).getTime();
-}
-
-function addDays(dayKey: string, delta: number) {
-  return toDayKey(dayKeyToTimestamp(dayKey) + delta * DAY_MS);
-}
-
-function getWeekStart(dayKey: string) {
-  const ts = dayKeyToTimestamp(dayKey);
-  const d = new Date(ts);
-  const dow = d.getDay(); // 0=Sun
-  const mondayOffset = dow === 0 ? -6 : 1 - dow;
-  return toDayKey(ts + mondayOffset * DAY_MS);
-}
-
-function getWeekDays(weekStartKey: string): string[] {
-  return Array.from({ length: 7 }, (_, i) => addDays(weekStartKey, i));
 }
 
 // Format: "January 15" (month + day number)
@@ -101,17 +54,6 @@ function formatMonthYear(dayKey: string, locale: string) {
   });
 }
 
-function formatWeekdayLetter(dayKey: string, locale: string) {
-  return new Date(dayKeyToTimestamp(dayKey))
-    .toLocaleDateString(locale, { weekday: "narrow" })
-    .charAt(0)
-    .toUpperCase();
-}
-
-function formatDayNumber(dayKey: string) {
-  return String(new Date(dayKeyToTimestamp(dayKey)).getDate());
-}
-
 function formatSelectedDayLabel(dayKey: string, locale: string) {
   return new Date(dayKeyToTimestamp(dayKey)).toLocaleDateString(locale, {
     weekday: "long",
@@ -128,260 +70,13 @@ function hashSport(sport: string) {
   return Math.abs(h);
 }
 
-// ─── WeekStrip (live-sliding, dynamic height) ────────────────────────────────
-
-function shiftDayKey(dayKey: string, deltaDays: number) {
-  return toDayKey(dayKeyToTimestamp(dayKey) + deltaDays * DAY_MS);
-}
-
-function WeekRail({
-  locale,
-  selectedDay,
-  todayKey,
-  weekDays,
-  lessonCountByDay,
-  onSelectDay,
-  onChangeWeek,
-}: {
-  locale: string;
-  selectedDay: string;
-  todayKey: string;
-  weekDays: string[];
-  lessonCountByDay: Map<string, number>;
-  onSelectDay: (dayKey: string) => void;
-  onChangeWeek: (deltaWeeks: number) => void;
-}) {
-  const palette = useBrand();
-  const translateX = useSharedValue(-1);
-  const railWidth = useSharedValue(1);
-  const isRtl = I18nManager.isRTL;
-  const previousWeekDays = useMemo(
-    () => weekDays.map((dayKey) => shiftDayKey(dayKey, -7)),
-    [weekDays],
-  );
-  const nextWeekDays = useMemo(() => weekDays.map((dayKey) => shiftDayKey(dayKey, 7)), [weekDays]);
-
-  const handleSwipeWeek = useCallback(
-    (deltaWeeks: number) => {
-      triggerSelectionHaptic();
-      onChangeWeek(deltaWeeks);
-    },
-    [onChangeWeek],
-  );
-  const handleSelectDay = useCallback(
-    (dayKey: string) => {
-      triggerSelectionHaptic();
-      onSelectDay(dayKey);
-    },
-    [onSelectDay],
-  );
-
-  const onRailLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      const nextWidth = Math.max(1, event.nativeEvent.layout.width);
-      railWidth.value = nextWidth;
-      translateX.value = -nextWidth;
-    },
-    [railWidth, translateX],
-  );
-
-  const railGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetX([-20, 20])
-        .failOffsetY([-12, 12])
-        .onUpdate((event) => {
-          const width = railWidth.value || 1;
-          const nextX = -width + event.translationX;
-          translateX.value = Math.max(-width * 2, Math.min(0, nextX));
-        })
-        .onEnd((event) => {
-          const width = railWidth.value || 1;
-          const shouldAdvance =
-            event.translationX <= -Math.max(SWIPE_THRESHOLD, width * 0.2) ||
-            event.velocityX <= -650;
-          const shouldRewind =
-            event.translationX >= Math.max(SWIPE_THRESHOLD, width * 0.2) || event.velocityX >= 650;
-
-          if (shouldAdvance) {
-            translateX.value = withSpring(-width * 2, WEEK_RAIL_SPRING, (finished) => {
-              if (!finished) return;
-              translateX.value = -width;
-              runOnJS(handleSwipeWeek)(1);
-            });
-            return;
-          }
-
-          if (shouldRewind) {
-            translateX.value = withSpring(0, WEEK_RAIL_SPRING, (finished) => {
-              if (!finished) return;
-              translateX.value = -width;
-              runOnJS(handleSwipeWeek)(-1);
-            });
-            return;
-          }
-
-          translateX.value = withSpring(-width, WEEK_RAIL_SPRING);
-        }),
-    [handleSwipeWeek, railWidth, translateX],
-  );
-
-  const railTrackStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
-
-  const renderWeekPage = useCallback(
-    (days: string[], pageKey: string) => (
-      <View
-        key={pageKey}
-        style={{
-          flex: 1,
-          flexDirection: isRtl ? "row-reverse" : "row",
-          gap: 4,
-        }}
-      >
-        {days.map((dayKey) => {
-          const selected = dayKey === selectedDay;
-          const lessonCount = lessonCountByDay.get(dayKey) ?? 0;
-          const today = dayKey === todayKey;
-
-          return (
-            <View key={dayKey} style={{ flex: 1 }}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                accessibilityLabel={formatSelectedDayLabel(dayKey, locale)}
-                onPress={() => handleSelectDay(dayKey)}
-                style={{ flex: 1 }}
-              >
-                <View
-                  style={{
-                    minHeight: 76,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 4,
-                    paddingHorizontal: 4,
-                  }}
-                >
-                  {today && !selected ? (
-                    <View
-                      style={{
-                        width: 4,
-                        height: 4,
-                        borderRadius: 2,
-                        backgroundColor: palette.text as string,
-                        position: "absolute",
-                        top: 6,
-                      }}
-                    />
-                  ) : null}
-                  <Text
-                    style={{
-                      ...BrandType.micro,
-                      color: today ? (palette.text as string) : (palette.textMuted as string),
-                    }}
-                  >
-                    {formatWeekdayLetter(dayKey, locale)}
-                  </Text>
-                  <View
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 999,
-                      borderCurve: "continuous",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: selected ? (palette.text as string) : "transparent",
-                      borderWidth: today && !selected ? 1 : 0,
-                      borderColor: today ? (palette.borderStrong as string) : "transparent",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        ...BrandType.bodyStrong,
-                        fontSize: 19,
-                        lineHeight: 22,
-                        fontVariant: ["tabular-nums"],
-                        includeFontPadding: false,
-                        color: selected ? (palette.surface as string) : (palette.text as string),
-                      }}
-                    >
-                      {formatDayNumber(dayKey)}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      minHeight: 14,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 3,
-                    }}
-                  >
-                    {lessonCount > 0 ? (
-                      <>
-                        <View
-                          style={{
-                            width: 5,
-                            height: 5,
-                            borderRadius: 3,
-                            backgroundColor: selected
-                              ? (palette.surface as string)
-                              : (palette.primary as string),
-                          }}
-                        />
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: "600",
-                            color: selected
-                              ? (palette.surface as string)
-                              : (palette.textMuted as string),
-                          }}
-                        >
-                          {lessonCount}
-                        </Text>
-                      </>
-                    ) : (
-                      <View style={{ height: 12 }} />
-                    )}
-                  </View>
-                </View>
-              </Pressable>
-            </View>
-          );
-        })}
-      </View>
-    ),
-    [handleSelectDay, lessonCountByDay, locale, palette, selectedDay, todayKey],
-  );
-
-  return (
-    <GestureDetector gesture={railGesture}>
-      <View onLayout={onRailLayout} style={{ overflow: "hidden" }}>
-        <Animated.View
-          style={[
-            {
-              width: "300%",
-              flexDirection: isRtl ? "row-reverse" : "row",
-            },
-            railTrackStyle,
-          ]}
-        >
-          {renderWeekPage(previousWeekDays, "previous")}
-          {renderWeekPage(weekDays, "current")}
-          {renderWeekPage(nextWeekDays, "next")}
-        </Animated.View>
-      </View>
-    </GestureDetector>
-  );
-}
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function CalendarTabScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
   const { safeBottom } = useAppInsets();
+  const collapsedSheetHeight = useCollapsedSheetHeight();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
   const {
@@ -390,21 +85,16 @@ export default function CalendarTabScreen() {
     listItems,
     initialScrollIndex,
     lessonCountByDay,
-    canShowGoogleAgenda,
-    viewMode,
-    setViewMode,
     viewabilityConfig,
     onViewableItemsChanged,
     handleTimelineScrollBegin,
     handleDayPress,
-    handleWeekChange,
     handleTodayPress,
     openMonthPicker,
     overrideItemLayout,
     selectedDayTimestamp,
     isLoading,
   } = useCalendarTabController();
-  const selectedWeekDays = useMemo(() => getWeekDays(getWeekStart(selectedDay)), [selectedDay]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerDate, setPickerDate] = useState(() => new Date(selectedDayTimestamp));
   const selectedLessonCount = lessonCountByDay.get(selectedDay) ?? 0;
@@ -417,26 +107,6 @@ export default function CalendarTabScreen() {
     setPickerDate(new Date(selectedDayTimestamp));
   }, [selectedDayTimestamp]);
 
-  const handleDateChange = useCallback(
-    (_event: unknown, nextDate?: Date) => {
-      if (!nextDate) {
-        if (Platform.OS !== "ios") {
-          setShowDatePicker(false);
-        }
-        return;
-      }
-
-      if (Platform.OS === "ios") {
-        setPickerDate(nextDate);
-        return;
-      }
-
-      setShowDatePicker(false);
-      handleDayPress(toDayKey(nextDate.getTime()));
-    },
-    [handleDayPress],
-  );
-
   const handleDoneWithDatePicker = useCallback(() => {
     setShowDatePicker(false);
     const nextDayKey = toDayKey(pickerDate.getTime());
@@ -444,6 +114,132 @@ export default function CalendarTabScreen() {
       handleDayPress(nextDayKey);
     }
   }, [handleDayPress, pickerDate, selectedDay]);
+
+  const calendarSheetConfig = useMemo(
+    () => ({
+      content: (
+        <View style={{ gap: BrandSpacing.md }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text
+                style={{
+                  ...BrandType.heading,
+                  fontSize: 30,
+                  lineHeight: 34,
+                  color: palette.onPrimary as string,
+                }}
+              >
+                {formatMonthYear(selectedDay, i18n.language)}
+              </Text>
+              <Text
+                style={{
+                  ...BrandType.caption,
+                  color: palette.onPrimary as string,
+                  opacity: 0.72,
+                }}
+              >
+                {formatSelectedDayLabel(selectedDay, i18n.language)}
+              </Text>
+            </View>
+            <View style={{ alignItems: "flex-end", gap: BrandSpacing.sm }}>
+              {selectedDay !== todayKey ? (
+                <ActionButton
+                  label={t("common.today")}
+                  onPress={handleTodayPress}
+                  palette={palette}
+                  tone="secondary"
+                />
+              ) : null}
+              <ActionButton
+                label={showDatePicker ? t("common.done") : t("calendarTab.header.chooseDate")}
+                onPress={() => {
+                  if (showDatePicker) {
+                    handleDoneWithDatePicker();
+                    return;
+                  }
+                  setShowDatePicker(true);
+                  openMonthPicker();
+                }}
+                palette={palette}
+                tone="secondary"
+              />
+            </View>
+          </View>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: BrandSpacing.md,
+              borderTopWidth: 1,
+              borderColor: palette.border as string,
+              paddingTop: BrandSpacing.md,
+            }}
+          >
+            <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
+              {formatSelectedDayLabel(selectedDay, i18n.language)}
+            </Text>
+            <View
+              style={{
+                borderRadius: BrandRadius.pill,
+                borderCurve: "continuous",
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                backgroundColor:
+                  selectedLessonCount > 0
+                    ? (palette.primarySubtle as string)
+                    : (palette.surface as string),
+              }}
+            >
+              <Text
+                style={{
+                  ...BrandType.micro,
+                  fontVariant: ["tabular-nums"],
+                  color:
+                    selectedLessonCount > 0
+                      ? (palette.primary as string)
+                      : (palette.textMuted as string),
+                }}
+              >
+                {selectedLessonCount === 1
+                  ? t("calendarTab.agenda.oneSession")
+                  : t("calendarTab.agenda.sessionCount", { count: selectedLessonCount })}
+              </Text>
+            </View>
+          </View>
+        </View>
+      ),
+      padding: {
+        vertical: BrandSpacing.lg,
+        horizontal: BrandSpacing.xl,
+      },
+      steps: [0.28],
+      initialStep: 0,
+      backgroundColor: palette.primary as string,
+      topInsetColor: palette.primary as string,
+    }),
+    [
+      handleDoneWithDatePicker,
+      handleTodayPress,
+      i18n.language,
+      openMonthPicker,
+      palette,
+      selectedDay,
+      selectedLessonCount,
+      showDatePicker,
+      t,
+      todayKey,
+    ],
+  );
+
+  useGlobalTopSheet("calendar", calendarSheetConfig);
 
   const agendaHeaderComponent = useMemo(
     () => (
@@ -697,179 +493,7 @@ export default function CalendarTabScreen() {
 
   return (
     <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
-      <TopSheet
-        topInsetColor={palette.primary}
-        style={{
-          gap: BrandSpacing.md,
-          marginBottom: BrandSpacing.md,
-        }}
-        padding={{
-          vertical: BrandSpacing.lg,
-          horizontal: BrandSpacing.lg,
-        }}
-      >
-        <View style={{ gap: BrandSpacing.md }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: 12,
-            }}
-          >
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text
-                style={{
-                  ...BrandType.heading,
-                  fontSize: 30,
-                  lineHeight: 34,
-                  color: palette.text as string,
-                }}
-              >
-                {formatMonthYear(selectedDay, i18n.language)}
-              </Text>
-              <Text
-                style={{
-                  ...BrandType.caption,
-                  color: palette.textMuted as string,
-                }}
-              >
-                {formatSelectedDayLabel(selectedDay, i18n.language)}
-              </Text>
-            </View>
-
-            <View style={{ alignItems: "flex-end", gap: BrandSpacing.sm }}>
-              {selectedDay !== todayKey ? (
-                <ActionButton
-                  label={t("common.today")}
-                  onPress={handleTodayPress}
-                  palette={palette}
-                  tone="secondary"
-                />
-              ) : null}
-              <ActionButton
-                label={showDatePicker ? t("common.done") : t("calendarTab.header.chooseDate")}
-                onPress={() => {
-                  if (showDatePicker) {
-                    handleDoneWithDatePicker();
-                    return;
-                  }
-                  setShowDatePicker(true);
-                  openMonthPicker();
-                }}
-                palette={palette}
-                tone="secondary"
-              />
-            </View>
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: BrandSpacing.md,
-              borderTopWidth: 1,
-              borderColor: palette.border as string,
-              paddingTop: BrandSpacing.md,
-            }}
-          >
-            <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
-              {formatSelectedDayLabel(selectedDay, i18n.language)}
-            </Text>
-            <View
-              style={{
-                borderRadius: BrandRadius.pill,
-                borderCurve: "continuous",
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor:
-                  selectedLessonCount > 0
-                    ? (palette.primarySubtle as string)
-                    : (palette.surface as string),
-              }}
-            >
-              <Text
-                style={{
-                  ...BrandType.micro,
-                  color:
-                    selectedLessonCount > 0
-                      ? (palette.primary as string)
-                      : (palette.textMuted as string),
-                  fontVariant: ["tabular-nums"],
-                }}
-              >
-                {selectedLessonCount === 1
-                  ? t("calendarTab.agenda.oneSession")
-                  : t("calendarTab.agenda.sessionCount", {
-                      count: selectedLessonCount,
-                    })}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <WeekRail
-          locale={i18n.language}
-          selectedDay={selectedDay}
-          todayKey={todayKey}
-          weekDays={selectedWeekDays}
-          lessonCountByDay={lessonCountByDay}
-          onSelectDay={handleDayPress}
-          onChangeWeek={handleWeekChange}
-        />
-
-        {canShowGoogleAgenda ? (
-          <KitSegmentedToggle<CalendarViewMode>
-            value={viewMode}
-            onChange={setViewMode}
-            options={[
-              {
-                value: "jobs_only",
-                label: t("calendarTab.filters.jobsOnly"),
-              },
-              {
-                value: "jobs_and_google",
-                label: t("calendarTab.filters.jobsAndGoogle"),
-              },
-            ]}
-          />
-        ) : null}
-
-        {showDatePicker ? (
-          <View
-            style={{
-              borderRadius: 24,
-              borderCurve: "continuous",
-              overflow: "hidden",
-              backgroundColor: palette.surface as string,
-            }}
-          >
-            <DateTimePicker
-              value={pickerDate}
-              mode="date"
-              display={Platform.OS === "ios" ? "inline" : "default"}
-              onChange={handleDateChange}
-            />
-            {Platform.OS === "ios" ? (
-              <View
-                style={{
-                  alignItems: "flex-end",
-                  paddingHorizontal: 14,
-                  paddingBottom: 14,
-                }}
-              >
-                <ActionButton
-                  label={t("common.done")}
-                  onPress={handleDoneWithDatePicker}
-                  palette={palette}
-                />
-              </View>
-            ) : null}
-          </View>
-        ) : null}
-      </TopSheet>
-
+      {/* Sheet content (month heading, week rail, etc.) rendered by global TopSheet via setTabSheetRender */}
       <View style={[styles.timelineViewport, { backgroundColor: palette.appBg as string }]}>
         <FlashList
           ref={listRef}
@@ -889,6 +513,7 @@ export default function CalendarTabScreen() {
           contentContainerStyle={[
             styles.timelineContent,
             {
+              paddingTop: collapsedSheetHeight + BrandSpacing.md,
               paddingHorizontal: BrandSpacing.lg,
               paddingBottom: safeBottom + BrandSpacing.xl,
             },

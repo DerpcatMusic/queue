@@ -11,7 +11,13 @@ export default function AppGateLayout() {
 
   // Handle loading or undefined state
   if (!gate || gate.status === "loading") {
-    return <LoadingScreen label={t("launch.loadingAccount")} />;
+    return (
+      <LoadingScreen
+        variant="launch"
+        title={t("launch.title")}
+        label={t("launch.loadingAccount")}
+      />
+    );
   }
 
   if (gate.status === "allow") {

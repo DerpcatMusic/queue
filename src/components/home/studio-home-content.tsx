@@ -1,22 +1,17 @@
 import type { TFunction } from "i18next";
 import { Pressable, Text, View } from "react-native";
-import Animated, {
-  FadeInUp,
-  useAnimatedRef,
-  useScrollViewOffset,
-} from "react-native-reanimated";
+import Animated, { FadeInUp } from "react-native-reanimated";
 
 import {
   HomeSectionHeading,
   HomeSurface,
   useHomeDashboardLayout,
 } from "@/components/home/home-dashboard-layout";
-import {
-  getHomeHeaderScrollTopPadding,
-  HomeHeaderSheet,
-} from "@/components/home/home-header-sheet";
+import { getHomeHeaderScrollTopPadding } from "@/components/home/home-header-sheet";
 import { HomeSignalTile } from "@/components/home/home-shared";
+import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
+import { ActionButton } from "@/components/ui/action-button";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
@@ -36,8 +31,6 @@ type RecentJob = {
 };
 
 type StudioHomeContentProps = {
-  displayName: string;
-  profileImageUrl?: string | null | undefined;
   locale: string;
   openJobs: number;
   pendingApplicants: number;
@@ -48,12 +41,9 @@ type StudioHomeContentProps = {
   recentJobs: RecentJob[];
   onOpenJobs: () => void;
   onOpenCalendar: () => void;
-  onOpenProfile: () => void;
 };
 
 export function StudioHomeContent({
-  displayName,
-  profileImageUrl,
   locale,
   openJobs,
   pendingApplicants,
@@ -64,7 +54,6 @@ export function StudioHomeContent({
   recentJobs,
   onOpenJobs,
   onOpenCalendar,
-  onOpenProfile,
 }: StudioHomeContentProps) {
   const { safeTop } = useAppInsets();
   const layout = useHomeDashboardLayout();
@@ -72,8 +61,7 @@ export function StudioHomeContent({
   const jobsNeedingReview = recentJobs
     .filter((job) => job.pendingApplicationsCount > 0)
     .slice(0, 4);
-  const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const scrollY = useScrollViewOffset(scrollRef);
+  const { scrollRef, onScroll } = useScrollSheetBindings();
 
   const heroTitle =
     jobsNeedingReview.length > 0
@@ -104,20 +92,10 @@ export function StudioHomeContent({
   const visibleRecentJobs = recentJobs.slice(0, layout.isWideWeb ? 6 : 4);
 
   return (
-    <View
-      collapsable={false}
-      style={{ flex: 1, backgroundColor: palette.appBg }}
-    >
-      <HomeHeaderSheet
-        displayName={displayName}
-        subtitle={t("home.studio.role", { defaultValue: "Studio" })}
-        profileImageUrl={profileImageUrl}
-        scrollY={scrollY}
-        palette={palette}
-        onPressAvatar={onOpenProfile}
-      />
+    <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
       <TabScreenScrollView
         animatedRef={scrollRef}
+        onScroll={onScroll}
         routeKey="studio/index"
         style={{ flex: 1 }}
         topInsetTone="sheet"
@@ -221,74 +199,38 @@ export function StudioHomeContent({
                 gap: 10,
               }}
             >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("home.actions.jobsTitle", {
-                  defaultValue: "Open jobs",
-                })}
-                onPress={onOpenJobs}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  minHeight: 50,
-                  borderRadius: 18,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.surface as string,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingHorizontal: 16,
-                  opacity: pressed ? 0.92 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    ...BrandType.bodyStrong,
-                    color: palette.text as string,
-                  }}
-                >
-                  {t("home.actions.jobsTitle", { defaultValue: "Open jobs" })}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("home.actions.calendarTitle", {
-                  defaultValue: "Open calendar",
-                })}
-                onPress={onOpenCalendar}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  minHeight: 50,
-                  borderRadius: 18,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.primarySubtle as string,
-                  borderWidth: 1,
-                  borderColor: palette.borderStrong as string,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingHorizontal: 16,
-                  opacity: pressed ? 0.9 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    ...BrandType.bodyStrong,
-                    color: palette.primary as string,
-                  }}
-                >
-                  {t("home.actions.calendarTitle", {
+              <View style={{ flex: 1 }}>
+                <ActionButton
+                  accessibilityLabel={t("home.actions.jobsTitle", {
+                    defaultValue: "Open jobs",
+                  })}
+                  label={t("home.actions.jobsTitle", { defaultValue: "Open jobs" })}
+                  onPress={onOpenJobs}
+                  palette={palette}
+                  tone="secondary"
+                  fullWidth
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ActionButton
+                  accessibilityLabel={t("home.actions.calendarTitle", {
                     defaultValue: "Open calendar",
                   })}
-                </Text>
-              </Pressable>
+                  label={t("home.actions.calendarTitle", {
+                    defaultValue: "Open calendar",
+                  })}
+                  onPress={onOpenCalendar}
+                  palette={palette}
+                  fullWidth
+                />
+              </View>
             </View>
           </HomeSurface>
         </Animated.View>
 
         <View
           style={{
-            flexDirection:
-              layout.isWideWeb && jobsNeedingReview.length > 0
-                ? "row"
-                : "column",
+            flexDirection: layout.isWideWeb && jobsNeedingReview.length > 0 ? "row" : "column",
             alignItems: "stretch",
             gap: layout.sectionGap,
           }}
@@ -388,14 +330,9 @@ export function StudioHomeContent({
           ) : null}
 
           <Animated.View
-            entering={FadeInUp.delay(
-              jobsNeedingReview.length > 0 ? 220 : 180,
-            ).duration(320)}
+            entering={FadeInUp.delay(jobsNeedingReview.length > 0 ? 220 : 180).duration(320)}
             style={{
-              flex:
-                layout.isWideWeb && jobsNeedingReview.length > 0
-                  ? 0.92
-                  : undefined,
+              flex: layout.isWideWeb && jobsNeedingReview.length > 0 ? 0.92 : undefined,
               gap: 12,
             }}
           >
@@ -408,9 +345,7 @@ export function StudioHomeContent({
             />
             {recentJobs.length === 0 ? (
               <HomeSurface palette={palette} style={{ padding: 18, gap: 6 }}>
-                <Text
-                  style={{ ...BrandType.title, color: palette.text as string }}
-                >
+                <Text style={{ ...BrandType.title, color: palette.text as string }}>
                   {t("home.studio.noRecent")}
                 </Text>
                 <Text
@@ -420,8 +355,7 @@ export function StudioHomeContent({
                   }}
                 >
                   {t("home.studio.emptyBoard", {
-                    defaultValue:
-                      "Post a shift to start filling your schedule.",
+                    defaultValue: "Post a shift to start filling your schedule.",
                   })}
                 </Text>
               </HomeSurface>
@@ -435,10 +369,7 @@ export function StudioHomeContent({
                       .springify()
                       .damping(18)}
                   >
-                    <HomeSurface
-                      palette={palette}
-                      style={{ padding: 16, gap: 4 }}
-                    >
+                    <HomeSurface palette={palette} style={{ padding: 16, gap: 4 }}>
                       <View
                         style={{
                           flexDirection: "row",

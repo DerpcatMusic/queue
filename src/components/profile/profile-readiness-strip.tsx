@@ -21,8 +21,7 @@ export function ProfileReadinessStrip({
   columns?: 1 | 2 | 4;
 }) {
   const { width } = useWindowDimensions();
-  const resolvedColumns =
-    columns ?? (process.env.EXPO_OS === "web" && width >= 1180 ? 4 : 2);
+  const resolvedColumns = columns ?? (process.env.EXPO_OS === "web" && width >= 1180 ? 4 : 2);
   const horizontalPadding = 48;
   const totalGap = resolvedColumns === 1 ? 0 : 10 * (resolvedColumns - 1);
   const tileWidth = Math.max(
@@ -77,18 +76,14 @@ export function ProfileReadinessStrip({
                   style={{
                     width: 28,
                     height: 28,
-                    borderRadius: 999,
+                    borderRadius: BrandRadius.button - 8,
                     borderCurve: "continuous",
                     backgroundColor: palette.primarySubtle as string,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <IconSymbol
-                    name="arrow.up.right"
-                    size={14}
-                    color={palette.primary}
-                  />
+                  <IconSymbol name="arrow.up.right" size={14} color={palette.primary} />
                 </View>
               ) : null}
             </View>
@@ -130,9 +125,7 @@ export function ProfileReadinessStrip({
             accessibilityRole="button"
             accessibilityLabel={`${item.label}. ${item.value}`}
             onPress={item.onPress}
-            style={({ pressed }) => [
-              { width: tileWidth, opacity: pressed ? 0.84 : 1 },
-            ]}
+            style={({ pressed }) => [{ width: tileWidth, opacity: pressed ? 0.84 : 1 }]}
           >
             {content}
           </Pressable>

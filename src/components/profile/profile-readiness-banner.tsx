@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ActionButton } from "@/components/ui/action-button";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandType } from "@/constants/brand";
@@ -34,14 +34,13 @@ export function ProfileReadinessBanner({
           gap: 16,
         }}
       >
-        <View
-          style={{ flexDirection: "row", alignItems: "flex-start", gap: 16 }}
-        >
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 16 }}>
           <View
             style={{
               width: 44,
               height: 44,
-              borderRadius: 22,
+              borderRadius: BrandRadius.button - 2,
+              borderCurve: "continuous",
               backgroundColor: primaryAction
                 ? (palette.warningSubtle as string)
                 : (palette.successSubtle as string),
@@ -50,19 +49,13 @@ export function ProfileReadinessBanner({
             }}
           >
             <IconSymbol
-              name={
-                primaryAction
-                  ? "exclamationmark.circle.fill"
-                  : "checkmark.seal.fill"
-              }
+              name={primaryAction ? "exclamationmark.circle.fill" : "checkmark.seal.fill"}
               size={22}
               color={primaryAction ? palette.warning : palette.success}
             />
           </View>
           <View style={{ flex: 1, gap: 4 }}>
-            <Text style={{ ...BrandType.title, color: palette.text as string }}>
-              {statusLabel}
-            </Text>
+            <Text style={{ ...BrandType.title, color: palette.text as string }}>{statusLabel}</Text>
             <Text
               style={{
                 ...BrandType.caption,

@@ -2,38 +2,33 @@ import { useQuery } from "convex/react";
 import { Redirect, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { View } from "react-native";
+import type { SharedValue } from "react-native-reanimated";
+import { HomeHeaderSheet } from "@/components/home/home-header-sheet";
 import { InstructorHomeContent } from "@/components/home/instructor-home-content";
 import { StudioHomeContent } from "@/components/home/studio-home-content";
+import { TabScreenRoot } from "@/components/layout/tab-screen-root";
+import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
+import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
 import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
-import {
-  buildRoleTabRoute,
-  ROLE_TAB_ROUTE_NAMES,
-} from "@/navigation/role-routes";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
-const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute(
-  "instructor",
-  ROLE_TAB_ROUTE_NAMES.jobs,
-);
-const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute(
-  "instructor",
-  ROLE_TAB_ROUTE_NAMES.profile,
-);
-const STUDIO_JOBS_ROUTE = buildRoleTabRoute(
-  "studio",
-  ROLE_TAB_ROUTE_NAMES.jobs,
-);
-const STUDIO_CALENDAR_ROUTE = buildRoleTabRoute(
-  "studio",
-  ROLE_TAB_ROUTE_NAMES.calendar,
-);
-const STUDIO_PROFILE_ROUTE = buildRoleTabRoute(
-  "studio",
-  ROLE_TAB_ROUTE_NAMES.profile,
-);
+const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
+const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile);
+const STUDIO_JOBS_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.jobs);
+const STUDIO_CALENDAR_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.calendar);
+
+function HomeBodyPlaceholder({ backgroundColor }: { backgroundColor: string }) {
+  return (
+    <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor }}>
+      <View style={{ flex: 1, backgroundColor }} />
+    </TabScreenRoot>
+  );
+}
 
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
@@ -43,10 +38,14 @@ export default function HomeScreen() {
 
   // Use centralized user context - eliminates duplicate getCurrentUser query
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
+  const requestedRole = currentUser?.role;
+  const homeBodyReady = useDeferredTabMount(
+    requestedRole === "instructor" || requestedRole === "studio",
+  );
   const canQueryInstructor =
-    !isAuthLoading && isAuthenticated && currentUser?.role === "instructor";
+    homeBodyReady && !isAuthLoading && isAuthenticated && currentUser?.role === "instructor";
   const canQueryStudio =
-    !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
+    homeBodyReady && !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
 
   // Role-specific queries - only fetch when user role is known
   const myStudioJobs = useQuery(
@@ -63,10 +62,7 @@ export default function HomeScreen() {
     canQueryInstructor ? {} : "skip",
   );
 
-  const studioSettings = useQuery(
-    api.users.getMyStudioSettings,
-    canQueryStudio ? {} : "skip",
-  );
+  const studioSettings = useQuery(api.users.getMyStudioSettings, canQueryStudio ? {} : "skip");
 
   const currencyFormatter = useMemo(
     () =>
@@ -77,6 +73,62 @@ export default function HomeScreen() {
       }),
     [locale],
   );
+
+  const activeRole = currentUser?.role ?? null;
+  const fallbackDisplayName =
+    currentUser?.fullName?.trim().split(/\s+/)[0] || t("home.shared.unknownName");
+  const homeDisplayName =
+    activeRole === "instructor"
+      ? (instructorSettings?.displayName ?? fallbackDisplayName)
+      : activeRole === "studio"
+        ? (studioSettings?.studioName ?? fallbackDisplayName)
+        : fallbackDisplayName;
+  const homeProfileImageUrl =
+    activeRole === "instructor"
+      ? (instructorSettings?.profileImageUrl ?? currentUser?.image)
+      : activeRole === "studio"
+        ? (studioSettings?.profileImageUrl ?? currentUser?.image)
+        : currentUser?.image;
+  const homeSubtitle =
+    activeRole === "instructor"
+      ? instructorHomeStats?.isVerified
+        ? t("home.instructor.verified", { defaultValue: "Verified and ready" })
+        : t("home.instructor.needsPolish", {
+            defaultValue: "Polish your profile",
+          })
+      : activeRole === "studio"
+        ? t("home.studio.role", { defaultValue: "Studio" })
+        : undefined;
+
+  const homeSheetConfig = useMemo(
+    () =>
+      activeRole === "instructor" || activeRole === "studio"
+        ? {
+            render: ({ scrollY }: { scrollY: SharedValue<number> }) => (
+              <HomeHeaderSheet
+                displayName={homeDisplayName}
+                profileImageUrl={homeProfileImageUrl}
+                scrollY={scrollY}
+                palette={palette}
+                isVerified={
+                  activeRole === "instructor" ? (instructorHomeStats?.isVerified ?? false) : false
+                }
+                {...(homeSubtitle ? { subtitle: homeSubtitle } : {})}
+              />
+            ),
+          }
+        : null,
+    [
+      activeRole,
+      homeDisplayName,
+      homeProfileImageUrl,
+      homeSubtitle,
+      instructorHomeStats?.isVerified,
+      palette,
+    ],
+  );
+
+  useGlobalTopSheet("index", homeSheetConfig);
 
   if (isAuthLoading) {
     return <LoadingScreen label={t("home.loading")} />;
@@ -94,14 +146,9 @@ export default function HomeScreen() {
     return <Redirect href="/sign-in" />;
   }
 
-  if (
-    currentUser &&
-    (!currentUser.onboardingComplete || currentUser.role === "pending")
-  ) {
+  if (currentUser && (!currentUser.onboardingComplete || currentUser.role === "pending")) {
     return <Redirect href="/onboarding" />;
   }
-
-  const activeRole = currentUser.role;
 
   if (activeRole === "pending") {
     return <Redirect href="/onboarding" />;
@@ -112,24 +159,12 @@ export default function HomeScreen() {
   }
 
   if (activeRole === "instructor") {
-    if (instructorHomeStats === undefined) {
-      return <LoadingScreen label={t("home.loading")} />;
+    if (!homeBodyReady || instructorHomeStats === undefined) {
+      return <HomeBodyPlaceholder backgroundColor={palette.appBg as string} />;
     }
-
-    const firstName = (instructorSettings?.displayName ?? currentUser.fullName)
-      ?.trim()
-      .split(/\s+/)[0];
-    const displayName =
-      firstName && firstName.length > 0
-        ? firstName
-        : t("home.shared.unknownName");
 
     return (
       <InstructorHomeContent
-        displayName={displayName}
-        profileImageUrl={
-          instructorSettings?.profileImageUrl ?? currentUser.image
-        }
         isVerified={instructorHomeStats.isVerified}
         locale={locale}
         openMatches={instructorHomeStats.openMatches}
@@ -144,33 +179,19 @@ export default function HomeScreen() {
     );
   }
 
-  if (myStudioJobs === undefined) {
-    return <LoadingScreen label={t("home.loading")} />;
+  if (!homeBodyReady || myStudioJobs === undefined) {
+    return <HomeBodyPlaceholder backgroundColor={palette.appBg as string} />;
   }
 
   const studioJobs = myStudioJobs ?? [];
-  const openJobs = studioJobs.filter(
-    (job: any) => job.status === "open",
-  ).length;
+  const openJobs = studioJobs.filter((job: any) => job.status === "open").length;
   const pendingApplicants = studioJobs.reduce(
     (total: number, job: any) => total + job.pendingApplicationsCount,
     0,
   );
-  const jobsFilled = studioJobs.filter(
-    (job: any) => job.status === "filled",
-  ).length;
-  const firstName = (studioSettings?.studioName ?? currentUser.fullName)
-    ?.trim()
-    .split(/\s+/)[0];
-  const displayName =
-    firstName && firstName.length > 0
-      ? firstName
-      : t("home.shared.unknownName");
-
+  const jobsFilled = studioJobs.filter((job: any) => job.status === "filled").length;
   return (
     <StudioHomeContent
-      displayName={displayName}
-      profileImageUrl={studioSettings?.profileImageUrl ?? currentUser.image}
       locale={locale}
       openJobs={openJobs}
       pendingApplicants={pendingApplicants}
@@ -181,7 +202,6 @@ export default function HomeScreen() {
       jobsFilled={jobsFilled}
       onOpenJobs={() => router.push(STUDIO_JOBS_ROUTE)}
       onOpenCalendar={() => router.push(STUDIO_CALENDAR_ROUTE)}
-      onOpenProfile={() => router.push(STUDIO_PROFILE_ROUTE)}
     />
   );
 }

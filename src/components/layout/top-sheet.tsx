@@ -1,12 +1,13 @@
 import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ColorValue, StyleProp, ViewStyle } from "react-native";
-import { Dimensions, Pressable, TextInput, View } from "react-native";
+import { Pressable, TextInput, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
@@ -16,8 +17,6 @@ import { useBrand } from "@/hooks/use-brand";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 const SHEET_SPRING = {
   damping: 24,
   stiffness: 220,
@@ -26,7 +25,7 @@ const SHEET_SPRING = {
 };
 
 const DEFAULT_STEPS = [0.16, 0.4, 0.65, 0.95] as const;
-const HANDLE_HEIGHT = 28;
+const HANDLE_HEIGHT = BrandSpacing.xl + BrandSpacing.md;
 const HANDLE_PILL_WIDTH = 36;
 const HANDLE_PILL_HEIGHT = 4;
 const BOTTOM_TABS_ESTIMATE = 80;
@@ -40,7 +39,7 @@ export type TopSheetPadding = {
 
 export type TopSheetExpandMode = "resize" | "overlay";
 
-type TopSheetProps = PropsWithChildren<{
+export type TopSheetProps = PropsWithChildren<{
   /** Show drag handle and enable pan gestures. @default false */
   draggable?: boolean;
   /** Allow height to change between steps via drag. @default false */
@@ -49,6 +48,8 @@ type TopSheetProps = PropsWithChildren<{
   steps?: readonly number[];
   /** Step index to start at. @default 0 */
   initialStep?: number;
+  /** Controlled active step index. When set, the sheet snaps to this step. */
+  activeStep?: number;
   /** Padding inside the sheet below the safe area. */
   padding?: TopSheetPadding;
   /** Background color for the sheet content. */
@@ -101,6 +102,7 @@ export function TopSheet({
   expandable = false,
   steps = DEFAULT_STEPS,
   initialStep = 0,
+  activeStep,
   padding,
   backgroundColor,
   topInsetColor,
@@ -109,16 +111,26 @@ export function TopSheet({
   stickyHeader,
   stickyFooter,
   revealOnExpand,
-  expandMode = "resize",
+  expandMode: _expandMode = "resize", // Reserved for future overlay mode implementation
 }: TopSheetProps) {
   const palette = useBrand();
   const { setTopInsetTone, setTopInsetBackgroundColor } = useSystemUi();
   const { safeTop } = useAppInsets();
-  const resolvedBackground = (backgroundColor ?? palette.primary) as ColorValue;
-  const resolvedInsetColor = (topInsetColor ?? palette.primary) as ColorValue;
+  const { height: screenHeight } = useWindowDimensions();
+  const resolvedBackground = (backgroundColor ?? palette.surfaceElevated) as ColorValue;
+  const resolvedInsetColor = (topInsetColor ?? resolvedBackground) as ColorValue;
+  const backgroundColorValue = String(resolvedBackground);
 
   // Track if sheet is expanded (step > initialStep)
-  const [isExpanded, setIsExpanded] = useState(initialStep > 0);
+  const resolvedStepIndex = activeStep ?? initialStep;
+  const [isExpanded, setIsExpanded] = useState(resolvedStepIndex > initialStep);
+  const animatedBackground = useSharedValue(backgroundColorValue);
+
+  useEffect(() => {
+    animatedBackground.value = withTiming(backgroundColorValue, {
+      duration: 220,
+    });
+  }, [animatedBackground, backgroundColorValue]);
 
   // Inset coloring
   useEffect(() => {
@@ -131,7 +143,7 @@ export function TopSheet({
   }, [resolvedInsetColor, setTopInsetBackgroundColor, setTopInsetTone]);
 
   // Available height for sheet steps (screen minus safe top minus bottom tabs)
-  const availableHeight = SCREEN_HEIGHT - safeTop - BOTTOM_TABS_ESTIMATE;
+  const availableHeight = screenHeight - safeTop - BOTTOM_TABS_ESTIMATE;
 
   // Compute step heights in pixels
   const stepHeights = useMemo(
@@ -140,14 +152,25 @@ export function TopSheet({
   );
 
   // Sheet height shared value
-  const defaultHeight = stepHeights[initialStep] ?? stepHeights[0] ?? 100;
+  const defaultHeight = stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? 100;
   const sheetHeight = useSharedValue(defaultHeight);
 
   // Track current step for callbacks
-  const currentStepRef = useRef(initialStep);
-  const stepsRef = useRef(stepHeights);
-  const dragStartHeightRef = useRef<number | null>(null);
-  stepsRef.current = stepHeights;
+  const currentStepRef = useRef(resolvedStepIndex);
+  const dragStartHeight = useSharedValue<number | null>(null);
+
+  useEffect(() => {
+    const clampedStepIndex = Math.max(
+      0,
+      Math.min(resolvedStepIndex, Math.max(stepHeights.length - 1, 0)),
+    );
+    const nextHeight = stepHeights[clampedStepIndex] ?? 100;
+
+    currentStepRef.current = clampedStepIndex;
+    dragStartHeight.value = nextHeight;
+    sheetHeight.value = withSpring(nextHeight, SHEET_SPRING);
+    setIsExpanded(clampedStepIndex > initialStep);
+  }, [dragStartHeight, initialStep, resolvedStepIndex, sheetHeight, stepHeights]);
 
   // Find step based on drag direction - snap to next step in the direction of drag
   const findDirectionalStep = useCallback(
@@ -156,7 +179,7 @@ export function TopSheet({
       velocityY: number,
       startHeight: number,
     ): { index: number; height: number } => {
-      const h = stepsRef.current;
+      const h = stepHeights;
       if (h.length === 0) return { index: 0, height: 100 };
 
       // Find current step index
@@ -170,9 +193,8 @@ export function TopSheet({
         }
       }
 
-      // Determine direction: use velocity as primary, fallback to position
-      // Negative velocity = dragging up = expand (larger step)
-      // Positive velocity = dragging down = contract (smaller step)
+      // Determine direction: use velocity as primary, fallback to position.
+      // For a top sheet, dragging down expands and dragging up contracts.
       // If velocity is low, use position relative to start
       const VELOCITY_THRESHOLD = 500;
       let direction: "up" | "down";
@@ -181,28 +203,27 @@ export function TopSheet({
         direction = velocityY < 0 ? "up" : "down";
       } else {
         // Use position relative to drag start
-        direction = currentHeight < startHeight ? "up" : "down";
+        direction = currentHeight > startHeight ? "down" : "up";
       }
 
       // Calculate target step index
       let targetIdx: number;
-      if (direction === "up") {
-        // Dragging up - expand to next larger step (or stay at max)
+      if (direction === "down") {
+        // Dragging down - expand to the next larger step (or stay at max)
         targetIdx = Math.min(currentStepIdx + 1, h.length - 1);
       } else {
-        // Dragging down - contract to next smaller step (or stay at min)
+        // Dragging up - contract to the next smaller step (or stay at min)
         targetIdx = Math.max(currentStepIdx - 1, 0);
       }
 
       return { index: targetIdx, height: h[targetIdx]! };
     },
-    [],
+    [stepHeights],
   );
 
   const snapToDirectional = useCallback(
-    (velocityY: number) => {
-      const startHeight = dragStartHeightRef.current ?? sheetHeight.value;
-      const target = findDirectionalStep(sheetHeight.value, velocityY, startHeight);
+    (velocityY: number, currentHeight: number, startHeight: number) => {
+      const target = findDirectionalStep(currentHeight, velocityY, startHeight);
       sheetHeight.value = withSpring(target.height, SHEET_SPRING);
       const wasExpanded = currentStepRef.current > initialStep;
       if (target.index !== currentStepRef.current) {
@@ -225,26 +246,27 @@ export function TopSheet({
   const panGesture = useMemo(
     () =>
       Gesture.Pan()
-        .activeOffsetY([-8, 8])
+        .activeOffsetY([-4, 4])
+        .failOffsetX([-18, 18])
         .onStart(() => {
           // Record the height when drag starts
-          dragStartHeightRef.current = sheetHeight.value;
+          dragStartHeight.value = sheetHeight.value;
         })
         .onUpdate((event) => {
-          const h = stepsRef.current;
+          const h = stepHeights;
           if (h.length === 0) return;
           const minH = h[0]!;
           const maxH = h[h.length - 1]!;
-          sheetHeight.value = Math.max(
-            minH,
-            Math.min(maxH, sheetHeight.value + event.translationY),
-          );
+          const startHeight = dragStartHeight.value ?? sheetHeight.value;
+          sheetHeight.value = Math.max(minH, Math.min(maxH, startHeight + event.translationY));
         })
         .onEnd((event) => {
-          // Use directional snapping based on drag direction and velocity
-          runOnJS(snapToDirectional)(event.velocityY);
+          const currentHeight = sheetHeight.value;
+          const startHeight = dragStartHeight.value ?? currentHeight;
+          dragStartHeight.value = null;
+          runOnJS(snapToDirectional)(event.velocityY, currentHeight, startHeight);
         }),
-    [sheetHeight, snapToDirectional],
+    [dragStartHeight, sheetHeight, snapToDirectional, stepHeights],
   );
 
   const resolvedPadding = {
@@ -253,28 +275,27 @@ export function TopSheet({
   };
 
   // Animated outer container (sets height)
+  // No marginTop — sheet extends behind the status bar overlay (zIndex 9999)
+  // The AppSafeRoot overlay paints the same purple on top — seamless
   const outerStyle = useAnimatedStyle(() => ({
     height: sheetHeight.value,
-    // Overlay mode: position absolutely to overlap content below
-    // Resize mode: let it flow naturally in the view hierarchy
-    ...(expandMode === "overlay"
-      ? {
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: safeTop,
-        }
-      : {}),
   }));
 
   // Animated inner content (padding + background)
   const innerStyle = useAnimatedStyle(() => ({
     flex: 1,
-    paddingTop: 0, // Insets handled by AppSafeRoot naturally
+    paddingTop: safeTop + resolvedPadding.vertical,
     paddingHorizontal: resolvedPadding.horizontal,
     paddingBottom: resolvedPadding.vertical,
-    backgroundColor: resolvedBackground,
+    backgroundColor: animatedBackground.value,
   }));
+
+  const shellBackgroundStyle = useAnimatedStyle(() => ({
+    backgroundColor: animatedBackground.value,
+  }));
+
+  const mainContentFlex = revealOnExpand ? 0 : 1;
+  const revealFlex = revealOnExpand && isExpanded ? 1 : 0;
 
   const sheetContent = (
     <Animated.View
@@ -286,6 +307,7 @@ export function TopSheet({
           overflow: "hidden" as const,
           zIndex: 100,
         },
+        shellBackgroundStyle,
         outerStyle,
         style,
       ]}
@@ -295,41 +317,53 @@ export function TopSheet({
         {stickyHeader ? <View style={{ flex: 0 }}>{stickyHeader}</View> : null}
 
         {/* Main children - always visible */}
-        <View style={{ flex: 1 }}>{children}</View>
+        <View style={{ flex: mainContentFlex }}>{children}</View>
 
         {/* Reveal on Expand - only shows when expanded */}
-        {revealOnExpand && isExpanded ? <View style={{ flex: 0 }}>{revealOnExpand}</View> : null}
+        {revealOnExpand && isExpanded ? (
+          <View style={{ flex: revealFlex }}>{revealOnExpand}</View>
+        ) : null}
 
         {/* Sticky Footer - always visible at bottom */}
         {stickyFooter ? <View style={{ flex: 0 }}>{stickyFooter}</View> : null}
       </Animated.View>
       {draggable && gestureEnabled ? (
         <GestureDetector gesture={panGesture}>
-          <View
-            style={{
+          <Animated.View
+            style={[
+              {
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: HANDLE_HEIGHT,
+                borderTopWidth: 1,
+                borderTopColor: palette.border as string,
+              },
+              shellBackgroundStyle,
+            ]}
+          >
+            <DragHandle borderColor={palette.borderStrong} />
+          </Animated.View>
+        </GestureDetector>
+      ) : draggable ? (
+        // Draggable but not expandable - show handle but no gesture
+        <Animated.View
+          style={[
+            {
               position: "absolute",
               bottom: 0,
               left: 0,
               right: 0,
               height: HANDLE_HEIGHT,
-            }}
-          >
-            <DragHandle borderColor="#999" />
-          </View>
-        </GestureDetector>
-      ) : draggable ? (
-        // Draggable but not expandable - show handle but no gesture
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: HANDLE_HEIGHT,
-          }}
+              borderTopWidth: 1,
+              borderTopColor: palette.border as string,
+            },
+            shellBackgroundStyle,
+          ]}
         >
-          <DragHandle borderColor="#999" />
-        </View>
+          <DragHandle borderColor={palette.borderStrong} />
+        </Animated.View>
       ) : null}
     </Animated.View>
   );
@@ -344,10 +378,13 @@ type SearchBarWidgetProps = {
   onChangeText: (text: string) => void;
   placeholder?: string;
   palette: {
+    appBg?: ColorValue;
+    surface?: ColorValue;
     surfaceAlt: ColorValue;
     text: ColorValue;
     textMuted: ColorValue;
     primary: ColorValue;
+    borderStrong?: ColorValue;
   };
   onFocus?: () => void;
   onBlur?: () => void;
@@ -379,17 +416,21 @@ function SearchBarWidget({
     <Pressable
       onPress={() => inputRef.current?.focus()}
       style={({ pressed }) => ({
+        width: "100%",
         flexDirection: "row",
         alignItems: "center",
         gap: BrandSpacing.sm,
-        backgroundColor: palette.surfaceAlt as string,
-        borderRadius: BrandRadius.card - 6,
+        minHeight: BrandSpacing.xxl + BrandSpacing.md,
+        backgroundColor: (palette.appBg ?? palette.surfaceAlt) as string,
+        borderRadius: BrandRadius.input,
         borderCurve: "continuous" as const,
-        paddingHorizontal: BrandSpacing.md,
-        paddingVertical: BrandSpacing.sm,
-        borderWidth: isFocused ? 2 : 0,
-        borderColor: isFocused ? (palette.primary as string) : "transparent",
-        opacity: pressed ? 0.9 : 1,
+        paddingHorizontal: BrandSpacing.lg,
+        paddingVertical: BrandSpacing.md,
+        borderWidth: isFocused ? 1.5 : 1,
+        borderColor: isFocused
+          ? (palette.primary as string)
+          : ((palette.borderStrong ?? palette.surfaceAlt) as string),
+        opacity: pressed ? 0.96 : 1,
       })}
     >
       <IconSymbol name="magnifyingglass" size={18} color={palette.textMuted as string} />

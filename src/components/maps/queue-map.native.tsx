@@ -8,26 +8,13 @@ import {
 import Constants from "expo-constants";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ActivityIndicator,
-  InteractionManager,
-  Pressable,
-  StyleSheet,
-  View,
-} from "react-native";
+import { ActivityIndicator, InteractionManager, Pressable, StyleSheet, View } from "react-native";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons";
 import { ThemedText } from "@/components/themed-text";
-import {
-  BrandRadius,
-  BrandSpacing,
-  getMapBrandPalette,
-} from "@/constants/brand";
-import {
-  getZoneIndexEntry,
-  ISRAEL_MAP_INTERACTION_BOUNDS,
-} from "@/constants/zones-map";
+import { BrandRadius, BrandSpacing, getMapBrandPalette } from "@/constants/brand";
+import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { ActionButton } from "../ui/action-button";
@@ -53,22 +40,12 @@ function sanitizeZoom(value: number, fallback: number) {
   return Math.max(0, Math.min(22, value));
 }
 
-function createZoneFilter(
-  zoneIds: readonly string[],
-  propertyName: string,
-): Expression {
+function createZoneFilter(zoneIds: readonly string[], propertyName: string): Expression {
   if (zoneIds.length === 0) return NO_MATCH_ZONE_FILTER;
-  return [
-    "in",
-    ["get", propertyName],
-    ["literal", zoneIds as string[]],
-  ] as Expression;
+  return ["in", ["get", propertyName], ["literal", zoneIds as string[]]] as Expression;
 }
 
-function toBounds(
-  sw: [number, number],
-  ne: [number, number],
-): [number, number, number, number] {
+function toBounds(sw: [number, number], ne: [number, number]): [number, number, number, number] {
   return [sw[0], sw[1], ne[0], ne[1]];
 }
 
@@ -80,9 +57,7 @@ function isRoadNumberLayer(layer: AnyStyleLayer) {
   if (id.includes("highway-number")) return true;
   if (id.includes("route-number")) return true;
   if (sourceLayer.includes("shield")) return true;
-  const textField = JSON.stringify(
-    layer?.layout?.["text-field"] ?? "",
-  ).toLowerCase();
+  const textField = JSON.stringify(layer?.layout?.["text-field"] ?? "").toLowerCase();
   if (textField.includes("ref")) return true;
   return false;
 }
@@ -91,70 +66,50 @@ function withMapPersonality(
   style: AnyStyleSpec,
   palette: ReturnType<typeof getMapBrandPalette>,
   showBaseLabels: boolean,
-  isDark: boolean,
 ) {
   const layers = (style.layers ?? [])
     .filter((layer) => !isRoadNumberLayer(layer))
-    .filter((layer) =>
-      showBaseLabels ? true : String(layer?.type ?? "") !== "symbol",
-    )
+    .filter((layer) => (showBaseLabels ? true : String(layer?.type ?? "") !== "symbol"))
     .map((layer) => {
       const nextLayer = { ...layer };
       const id = String(nextLayer.id ?? "").toLowerCase();
       const sourceLayer = String(nextLayer["source-layer"] ?? "").toLowerCase();
       const paint = { ...(nextLayer.paint ?? {}) };
       const layerType = String(nextLayer.type ?? "");
-      const dark = {
-        background: "#0d0d0d", // deep pitch black/graphite
-        waterFill: "#141414", // subtle dark gray
-        waterLine: "#1c1c1c",
-        landcover: "#111111", // barely noticeable difference
-        roadLine: "#2b2b2b", // sleek road lines
-        text: "#cccccc", // muted silvery text
-        textHalo: "#0d0d0d",
-      };
-      const light = {
-        background: "#f7f7f7", // clean stark white-gray
-        waterFill: "#ebebeb", // muted silver water
-        waterLine: "#e0e0e0",
-        landcover: "#fcfcfc", // bright minimal land
-        roadLine: "#ffffff", // clean white roads
-        text: "#444444", // dark graphite text
-        textHalo: "#fcfcfc",
-      };
-      const tone = isDark ? dark : light;
 
       if (layerType === "background") {
-        paint["background-color"] = isDark
-          ? tone.background
-          : palette.surfaceAlt;
+        paint["background-color"] = palette.styleBackground;
       }
-      if (
-        (sourceLayer.includes("water") || id.includes("water")) &&
-        layerType === "fill"
-      ) {
-        paint["fill-color"] = tone.waterFill;
+      if ((sourceLayer.includes("water") || id.includes("water")) && layerType === "fill") {
+        paint["fill-color"] = palette.waterFill;
       }
-      if (
-        (sourceLayer.includes("water") || id.includes("water")) &&
-        layerType === "line"
-      ) {
-        paint["line-color"] = tone.waterLine;
+      if ((sourceLayer.includes("water") || id.includes("water")) && layerType === "line") {
+        paint["line-color"] = palette.waterLine;
       }
       if (
         (sourceLayer.includes("park") ||
+          sourceLayer.includes("landuse") ||
           sourceLayer.includes("landcover") ||
+          sourceLayer.includes("forest") ||
+          sourceLayer.includes("wood") ||
+          sourceLayer.includes("grass") ||
+          sourceLayer.includes("green") ||
+          id.includes("forest") ||
+          id.includes("green") ||
           id.includes("park")) &&
         layerType === "fill"
       ) {
-        paint["fill-color"] = tone.landcover;
+        paint["fill-color"] = palette.landcover;
       }
       if (sourceLayer.includes("road") && layerType === "line") {
-        paint["line-color"] = tone.roadLine;
+        paint["line-color"] = palette.roadLine;
+      }
+      if ((sourceLayer.includes("building") || id.includes("building")) && layerType === "fill") {
+        paint["fill-color"] = palette.buildingFill;
       }
       if (layerType === "symbol") {
-        paint["text-color"] = tone.text;
-        paint["text-halo-color"] = tone.textHalo;
+        paint["text-color"] = palette.text;
+        paint["text-halo-color"] = palette.textHalo;
         paint["text-halo-width"] = 1;
       }
 
@@ -187,16 +142,11 @@ async function ensureVectorOfflinePack() {
       );
       if (existingPack) return;
 
-      OfflineManager.setProgressEventThrottle(
-        APPLE_MAP_THEME.offlinePack.progressThrottleMs,
-      );
+      OfflineManager.setProgressEventThrottle(APPLE_MAP_THEME.offlinePack.progressThrottleMs);
       await OfflineManager.createPack(
         {
           mapStyle: APPLE_MAP_THEME.mapStyleLightUrl,
-          bounds: toBounds(
-            ISRAEL_MAP_INTERACTION_BOUNDS.sw,
-            ISRAEL_MAP_INTERACTION_BOUNDS.ne,
-          ),
+          bounds: toBounds(ISRAEL_MAP_INTERACTION_BOUNDS.sw, ISRAEL_MAP_INTERACTION_BOUNDS.ne),
           minZoom: zoomStart,
           maxZoom: zoomEnd,
           metadata: {
@@ -238,12 +188,16 @@ export function QueueMap({
   pin,
   selectedZoneIds,
   focusZoneId,
+  isEditing = mode === "zoneSelect",
   zoneGeoJson,
   zoneIdProperty = "id",
   onPressZone,
   onPressMap,
   onUseGps,
   showGpsButton = true,
+  showAttributionButton = true,
+  contentInset,
+  cameraPadding,
 }: QueueMapProps) {
   const { t } = useTranslation();
   const palette = useBrand();
@@ -254,32 +208,24 @@ export function QueueMap({
   const [mapErrorMessage, setMapErrorMessage] = useState<string | null>(null);
   const [baseMapStyle, setBaseMapStyle] = useState<AnyStyleSpec | null>(null);
   const preferredStyleUrl =
-    resolvedScheme === "dark"
-      ? APPLE_MAP_THEME.mapStyleDarkUrl
-      : APPLE_MAP_THEME.mapStyleLightUrl;
+    resolvedScheme === "dark" ? APPLE_MAP_THEME.mapStyleDarkUrl : APPLE_MAP_THEME.mapStyleLightUrl;
   const styleFetchUrl =
     retryNonce === 0
       ? preferredStyleUrl
       : `${preferredStyleUrl}${preferredStyleUrl.includes("?") ? "&" : "?"}queueRetry=${String(retryNonce)}`;
   const themedMapStyle = useMemo(() => {
     if (!baseMapStyle) return null;
-    return withMapPersonality(
-      baseMapStyle,
-      mapPalette,
-      mode !== "zoneSelect",
-      resolvedScheme === "dark",
-    );
-  }, [baseMapStyle, mapPalette, mode, resolvedScheme]);
+    return withMapPersonality(baseMapStyle, mapPalette, mode !== "zoneSelect");
+  }, [baseMapStyle, mapPalette, mode]);
   const mapStyle = themedMapStyle ?? preferredStyleUrl;
   const mapKey = `${resolvedScheme}:${retryNonce}:${themedMapStyle ? "themed" : "url"}`;
 
+  const mapRef = useRef<{
+    showAttribution?: () => void;
+  } | null>(null);
   const cameraRef = useRef<{
     setStop: (config: unknown) => void;
-    flyTo: (options: {
-      center: [number, number];
-      zoom?: number;
-      duration?: number;
-    }) => void;
+    flyTo: (options: { center: [number, number]; zoom?: number; duration?: number }) => void;
   } | null>(null);
   const selectedZoneFilter = useMemo(
     () => createZoneFilter(selectedZoneIds, zoneIdProperty),
@@ -350,7 +296,7 @@ export function QueueMap({
 
     cameraRef.current?.setStop({
       bounds: [zone.bbox[0], zone.bbox[1], zone.bbox[2], zone.bbox[3]],
-      padding: {
+      padding: cameraPadding ?? {
         top: APPLE_MAP_THEME.focusPadding.top,
         right: APPLE_MAP_THEME.focusPadding.right,
         bottom: APPLE_MAP_THEME.focusPadding.bottom,
@@ -359,7 +305,7 @@ export function QueueMap({
       duration: 350,
       easing: "ease",
     });
-  }, [focusZoneId]);
+  }, [cameraPadding, focusZoneId]);
 
   useEffect(() => {
     if (!pin) return;
@@ -384,9 +330,7 @@ export function QueueMap({
           },
         ]}
       >
-        <ThemedText type="defaultSemiBold">
-          {t("mapTab.devBuildRequiredTitle")}
-        </ThemedText>
+        <ThemedText type="defaultSemiBold">{t("mapTab.devBuildRequiredTitle")}</ThemedText>
         <ThemedText style={{ color: palette.textMuted }}>
           {t("mapTab.devBuildRequiredBody")}
         </ThemedText>
@@ -395,18 +339,20 @@ export function QueueMap({
   }
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { backgroundColor: mapPalette.styleBackground }]}>
       <MapLibreMap
+        ref={mapRef as any}
         key={mapKey}
         style={styles.map}
         mapStyle={mapStyle as any}
+        {...(contentInset ? { contentInset } : {})}
         dragPan
         touchAndDoubleTapZoom
         touchRotate={false}
         touchPitch={false}
         compass={false}
-        logo
-        attribution
+        logo={false}
+        attribution={false}
         onWillStartLoadingMap={() => {
           setMapLoadState("loading");
           setMapErrorMessage(null);
@@ -417,9 +363,7 @@ export function QueueMap({
         }}
         onDidFailLoadingMap={() => {
           setMapLoadState("error");
-          setMapErrorMessage(
-            "The map could not finish loading. Check your connection and try again.",
-          );
+          setMapErrorMessage(t("mapTab.native.unavailableBody"));
         }}
         onPress={(event: any) => {
           if (mode !== "pinDrop") return;
@@ -432,24 +376,18 @@ export function QueueMap({
       >
         <Camera
           ref={cameraRef as any}
-          maxBounds={toBounds(
-            ISRAEL_MAP_INTERACTION_BOUNDS.sw,
-            ISRAEL_MAP_INTERACTION_BOUNDS.ne,
-          )}
+          maxBounds={toBounds(ISRAEL_MAP_INTERACTION_BOUNDS.sw, ISRAEL_MAP_INTERACTION_BOUNDS.ne)}
           minZoom={sanitizeZoom(APPLE_MAP_THEME.minZoom, 7.5)}
           maxZoom={sanitizeZoom(APPLE_MAP_THEME.maxZoom, 16)}
           initialViewState={{
-            center: pin
-              ? [pin.longitude, pin.latitude]
-              : APPLE_MAP_THEME.defaultCenter,
-            zoom: pin
-              ? APPLE_MAP_THEME.defaultZoomWithPin
-              : APPLE_MAP_THEME.defaultZoomWithoutPin,
+            center: pin ? [pin.longitude, pin.latitude] : APPLE_MAP_THEME.defaultCenter,
+            zoom: pin ? APPLE_MAP_THEME.defaultZoomWithPin : APPLE_MAP_THEME.defaultZoomWithoutPin,
           }}
         />
 
         <QueueMapZonePolygons
           mode={mode}
+          isEditing={isEditing}
           selectedZoneFilter={selectedZoneFilter}
           zoneGeoJson={zoneGeoJson}
           zoneIdProperty={zoneIdProperty}
@@ -518,9 +456,7 @@ export function QueueMap({
               },
             ]}
           >
-            <ThemedText type="cardTitle">
-              {t("mapTab.native.unavailableTitle")}
-            </ThemedText>
+            <ThemedText type="cardTitle">{t("mapTab.native.unavailableTitle")}</ThemedText>
             <ThemedText type="meta" style={{ color: palette.textMuted }}>
               {mapErrorMessage ?? t("mapTab.native.unavailableBody")}
             </ThemedText>
@@ -551,13 +487,35 @@ export function QueueMap({
               borderCurve: "continuous",
               backgroundColor: palette.surface as string,
               borderColor: palette.borderStrong as string,
-              boxShadow: "0 16px 30px rgba(15, 23, 15, 0.14)",
               overflow: "hidden",
               opacity: pressed ? 0.84 : 1,
             },
           ]}
         >
           <IconSymbol name="location.fill" size={20} color={palette.text} />
+        </Pressable>
+      ) : null}
+
+      {showAttributionButton ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("mapTab.native.openAttribution", {
+            defaultValue: "Open map attribution",
+          })}
+          onPress={() => {
+            mapRef.current?.showAttribution?.();
+          }}
+          style={({ pressed }) => [
+            styles.attributionButton,
+            {
+              backgroundColor: palette.surfaceElevated as string,
+              borderColor: palette.borderStrong as string,
+              borderWidth: 1,
+              opacity: pressed ? 0.82 : 1,
+            },
+          ]}
+        >
+          <IconSymbol name="info.circle.fill" size={15} color={palette.text} />
         </Pressable>
       ) : null}
     </View>
@@ -571,6 +529,16 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: BrandSpacing.lg,
     bottom: BrandSpacing.lg,
+  },
+  attributionButton: {
+    position: "absolute",
+    left: BrandSpacing.lg,
+    bottom: BrandSpacing.lg,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
   },
   fallback: {
     alignItems: "center",

@@ -1,19 +1,26 @@
+import { useAuthActions } from "@convex-dev/auth/react";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useMutation, useQuery } from "convex/react";
 import { Redirect, useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { I18nManager, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import {
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from "react-native";
+  ScrollSheetProvider,
+  useCollapsedSheetHeight,
+} from "@/components/layout/scroll-sheet-provider";
+import { GlobalTopSheetProvider, useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
-import { KitChip, KitSurface, KitTextField } from "@/components/ui/kit";
+import { ChoicePill } from "@/components/ui/choice-pill";
+import { IconButton } from "@/components/ui/icon-button";
+import { KitChip, KitTextField } from "@/components/ui/kit";
+import { SheetHeaderBlock } from "@/components/ui/sheet-header-block";
+import { BrandSpacing } from "@/constants/brand";
 import { ZONE_OPTIONS } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import { SPORT_TYPES } from "@/convex/constants";
@@ -40,58 +47,62 @@ function trimOptional(value: string) {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function StepBadge({
-  current,
-  total,
+function OnboardingSheetHeader({
+  title,
+  subtitle,
+  currentStep,
+  totalSteps,
   palette,
+  signOutLabel,
+  onSignOut,
 }: {
-  current: number;
-  total: number;
+  title: string;
+  subtitle: string;
+  currentStep: number;
+  totalSteps: number;
   palette: ReturnType<typeof useBrand>;
+  signOutLabel: string;
+  onSignOut: () => void;
 }) {
   return (
-    <View
-      style={{
-        alignSelf: "flex-start",
-        borderRadius: 999,
-        borderCurve: "continuous",
-        borderWidth: 1,
-        borderColor: palette.border,
-        backgroundColor: palette.surface,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-      }}
-    >
-      <ThemedText
-        type="micro"
-        style={{
-          color: palette.textMuted,
-          fontVariant: ["tabular-nums"],
-          letterSpacing: 0.2,
-        }}
-      >
-        {`Step ${current} of ${total}`}
-      </ThemedText>
-    </View>
+    <SheetHeaderBlock
+      title={title}
+      subtitle={subtitle}
+      progressCount={totalSteps}
+      progressIndex={currentStep}
+      trailingLabel={signOutLabel}
+      trailingIcon={<MaterialIcons name="logout" size={18} color={palette.danger as string} />}
+      onPressTrailing={onSignOut}
+      tone="primary"
+      trailingTone="danger"
+    />
   );
 }
 
 export default function OnboardingScreen() {
+  return (
+    <ScrollSheetProvider>
+      <GlobalTopSheetProvider>
+        <OnboardingScreenContent />
+      </GlobalTopSheetProvider>
+    </ScrollSheetProvider>
+  );
+}
+
+function OnboardingScreenContent() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
 
   const palette = useBrand();
+  const collapsedSheetHeight = useCollapsedSheetHeight();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 980;
   const language = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
+  const { signOut } = useAuthActions();
 
   const currentUser = useQuery(api.users.getCurrentUser);
-  const completeInstructorOnboarding = useMutation(
-    api.onboarding.completeInstructorOnboarding,
-  );
-  const completeStudioOnboarding = useMutation(
-    api.onboarding.completeStudioOnboarding,
-  );
+  const completeInstructorOnboarding = useMutation(api.onboarding.completeInstructorOnboarding);
+  const completeStudioOnboarding = useMutation(api.onboarding.completeStudioOnboarding);
 
   const [step, setStep] = useState<OnboardingStep>(0);
   const [selectedRole, setSelectedRole] = useState<OnboardingRole | null>(null);
@@ -100,9 +111,63 @@ export default function OnboardingScreen() {
     (currentUser?.role === "instructor" || currentUser?.role === "studio"
       ? currentUser.role
       : null);
+  const role = effectiveRole;
   const isInstructorFlow = effectiveRole === "instructor";
   const totalSteps = isInstructorFlow ? 3 : 2;
   const currentStep = step + 1;
+
+  const onboardingSheetTitle =
+    step === 0
+      ? t("onboarding.title")
+      : step === 2
+        ? t("onboarding.verification.title")
+        : role === "studio"
+          ? t("onboarding.studioDetailsTitle")
+          : t("onboarding.instructorDetailsTitle");
+  const onboardingSheetSubtitle =
+    step === 0
+      ? t("onboarding.subtitle")
+      : step === 2
+        ? t("onboarding.verification.body")
+        : role === "studio"
+          ? t("onboarding.sheetStudioSubtitle")
+          : t("onboarding.sheetInstructorSubtitle");
+
+  const onboardingSheetConfig = useMemo(
+    () => ({
+      stickyHeader: (
+        <OnboardingSheetHeader
+          title={onboardingSheetTitle}
+          subtitle={onboardingSheetSubtitle}
+          currentStep={currentStep}
+          totalSteps={totalSteps}
+          palette={palette}
+          signOutLabel={t("auth.signOutButton")}
+          onSignOut={() => {
+            void signOut();
+          }}
+        />
+      ),
+      backgroundColor: palette.primary as string,
+      topInsetColor: palette.primary as string,
+      padding: {
+        horizontal: BrandSpacing.lg,
+        vertical: BrandSpacing.sm,
+      },
+      steps: [0.24],
+      initialStep: 0,
+    }),
+    [currentStep, onboardingSheetSubtitle, onboardingSheetTitle, palette, signOut, t, totalSteps],
+  );
+
+  useGlobalTopSheet("onboarding", onboardingSheetConfig);
+  const nextArrowIcon = (
+    <MaterialIcons
+      name={I18nManager.isRTL ? "arrow-back" : "arrow-forward"}
+      size={24}
+      color={palette.onPrimary as string}
+    />
+  );
 
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -110,15 +175,9 @@ export default function OnboardingScreen() {
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [selectedZones, setSelectedZones] = useState<string[]>([]);
   const [instructorAddress, setInstructorAddress] = useState("");
-  const [instructorLatitude, setInstructorLatitude] = useState<
-    number | undefined
-  >();
-  const [instructorLongitude, setInstructorLongitude] = useState<
-    number | undefined
-  >();
-  const [instructorDetectedZone, setInstructorDetectedZone] = useState<
-    string | null
-  >(null);
+  const [instructorLatitude, setInstructorLatitude] = useState<number | undefined>();
+  const [instructorLongitude, setInstructorLongitude] = useState<number | undefined>();
+  const [instructorDetectedZone, setInstructorDetectedZone] = useState<string | null>(null);
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isRequestingPush, setIsRequestingPush] = useState(false);
 
@@ -127,9 +186,7 @@ export default function OnboardingScreen() {
   const [studioContactPhone, setStudioContactPhone] = useState("");
   const [studioLatitude, setStudioLatitude] = useState<number | undefined>();
   const [studioLongitude, setStudioLongitude] = useState<number | undefined>();
-  const [studioDetectedZone, setStudioDetectedZone] = useState<string | null>(
-    null,
-  );
+  const [studioDetectedZone, setStudioDetectedZone] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -149,13 +206,9 @@ export default function OnboardingScreen() {
     return <Redirect href="/" />;
   }
 
-  const role = effectiveRole;
-
   const toggleSport = (sport: string) => {
     setSelectedSports((current) =>
-      current.includes(sport)
-        ? current.filter((value) => value !== sport)
-        : [...current, sport],
+      current.includes(sport) ? current.filter((value) => value !== sport) : [...current, sport],
     );
   };
 
@@ -258,8 +311,7 @@ export default function OnboardingScreen() {
     }
 
     setErrorMessage(null);
-    const result =
-      await instructorResolver.resolveFromAddress(instructorAddress);
+    const result = await instructorResolver.resolveFromAddress(instructorAddress);
     if (!result.ok) {
       setErrorMessage(
         getLocationResolveErrorMessage({
@@ -295,10 +347,7 @@ export default function OnboardingScreen() {
     applyInstructorResolution(result.data.value, true);
   };
 
-  const resolveInstructorFromMapPin = async (pin: {
-    latitude: number;
-    longitude: number;
-  }) => {
+  const resolveInstructorFromMapPin = async (pin: { latitude: number; longitude: number }) => {
     setErrorMessage(null);
     const result = await instructorResolver.resolveFromCoordinates(pin);
     if (!result.ok) {
@@ -360,10 +409,7 @@ export default function OnboardingScreen() {
     applyStudioResolution(result.data.value);
   };
 
-  const resolveStudioFromMapPin = async (pin: {
-    latitude: number;
-    longitude: number;
-  }) => {
+  const resolveStudioFromMapPin = async (pin: { latitude: number; longitude: number }) => {
     setErrorMessage(null);
     const result = await studioResolver.resolveFromCoordinates(pin);
     if (!result.ok) {
@@ -433,8 +479,7 @@ export default function OnboardingScreen() {
 
     try {
       const hourly = Number.parseFloat(hourlyRate);
-      const hourlyRateExpectation =
-        Number.isFinite(hourly) && hourly > 0 ? hourly : undefined;
+      const hourlyRateExpectation = Number.isFinite(hourly) && hourly > 0 ? hourly : undefined;
 
       await completeInstructorOnboarding({
         displayName: displayName.trim(),
@@ -482,11 +527,7 @@ export default function OnboardingScreen() {
       let resolvedLatitude = studioLatitude;
       let resolvedLongitude = studioLongitude;
 
-      if (
-        !resolvedZone ||
-        resolvedLatitude === undefined ||
-        resolvedLongitude === undefined
-      ) {
+      if (!resolvedZone || resolvedLatitude === undefined || resolvedLongitude === undefined) {
         const result = await studioResolver.resolveFromAddress(studioAddress);
         if (!result.ok) {
           throw new Error(
@@ -507,11 +548,7 @@ export default function OnboardingScreen() {
         resolvedLongitude = resolved.longitude;
       }
 
-      if (
-        !resolvedZone ||
-        resolvedLatitude === undefined ||
-        resolvedLongitude === undefined
-      ) {
+      if (!resolvedZone || resolvedLatitude === undefined || resolvedLongitude === undefined) {
         throw new Error(t("onboarding.errors.failedToResolveAddress"));
       }
 
@@ -538,7 +575,14 @@ export default function OnboardingScreen() {
   };
 
   const mapPane = role ? (
-    <KitSurface tone="glass" style={styles.mapCard}>
+    <View
+      style={[
+        styles.mapPanel,
+        {
+          backgroundColor: palette.surface as string,
+        },
+      ]}
+    >
       <View style={styles.mapHeader}>
         <View style={styles.mapHeaderRow}>
           <ThemedText type="defaultSemiBold">
@@ -565,8 +609,7 @@ export default function OnboardingScreen() {
           mode={role === "instructor" ? "zoneSelect" : "pinDrop"}
           pin={
             role === "instructor"
-              ? instructorLatitude !== undefined &&
-                instructorLongitude !== undefined
+              ? instructorLatitude !== undefined && instructorLongitude !== undefined
                 ? {
                     latitude: instructorLatitude,
                     longitude: instructorLongitude,
@@ -577,36 +620,27 @@ export default function OnboardingScreen() {
                 : null
           }
           selectedZoneIds={
-            role === "instructor"
-              ? selectedZones
-              : studioDetectedZone
-                ? [studioDetectedZone]
-                : []
+            role === "instructor" ? selectedZones : studioDetectedZone ? [studioDetectedZone] : []
           }
-          focusZoneId={
-            role === "instructor" ? instructorDetectedZone : studioDetectedZone
-          }
+          focusZoneId={role === "instructor" ? instructorDetectedZone : studioDetectedZone}
           onPressZone={toggleZone}
-          onPressMap={
-            role === "instructor"
-              ? resolveInstructorFromMapPin
-              : resolveStudioFromMapPin
-          }
-          onUseGps={
-            role === "instructor"
-              ? resolveInstructorFromGps
-              : resolveStudioFromGps
-          }
+          onPressMap={role === "instructor" ? resolveInstructorFromMapPin : resolveStudioFromMapPin}
+          onUseGps={role === "instructor" ? resolveInstructorFromGps : resolveStudioFromGps}
         />
       </View>
-    </KitSurface>
+    </View>
   ) : null;
 
   const instructorForm = (
-    <KitSurface tone="elevated" style={styles.formCard}>
-      <ThemedText type="subtitle">
-        {t("onboarding.instructorDetailsTitle")}
-      </ThemedText>
+    <View
+      style={[
+        styles.formPanel,
+        {
+          backgroundColor: palette.surfaceAlt as string,
+        },
+      ]}
+    >
+      <ThemedText type="subtitle">{t("onboarding.instructorDetailsTitle")}</ThemedText>
       <KitTextField
         label={t("onboarding.displayName")}
         value={displayName}
@@ -631,9 +665,7 @@ export default function OnboardingScreen() {
       />
 
       <View style={styles.sectionBlock}>
-        <ThemedText type="defaultSemiBold">
-          {t("onboarding.sportsTitle")}
-        </ThemedText>
+        <ThemedText type="defaultSemiBold">{t("onboarding.sportsTitle")}</ThemedText>
         <View style={styles.chipGrid}>
           {SPORT_TYPES.map((sport) => (
             <KitChip
@@ -647,9 +679,7 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={styles.sectionBlock}>
-        <ThemedText type="defaultSemiBold">
-          {t("profile.settings.location.title")}
-        </ThemedText>
+        <ThemedText type="defaultSemiBold">{t("profile.settings.location.title")}</ThemedText>
         <AddressAutocomplete
           value={instructorAddress}
           onChangeText={(value) => {
@@ -697,24 +727,24 @@ export default function OnboardingScreen() {
             const zone = ZONE_OPTIONS.find((item) => item.id === zoneId);
             const label = zone ? zone.label[language] : zoneId;
             return (
-              <KitChip
-                key={zoneId}
-                label={label}
-                selected
-                onPress={() => toggleZone(zoneId)}
-              />
+              <KitChip key={zoneId} label={label} selected onPress={() => toggleZone(zoneId)} />
             );
           })}
         </View>
       </View>
-    </KitSurface>
+    </View>
   );
 
   const studioForm = (
-    <KitSurface tone="elevated" style={styles.formCard}>
-      <ThemedText type="subtitle">
-        {t("onboarding.studioDetailsTitle")}
-      </ThemedText>
+    <View
+      style={[
+        styles.formPanel,
+        {
+          backgroundColor: palette.surfaceAlt as string,
+        },
+      ]}
+    >
+      <ThemedText type="subtitle">{t("onboarding.studioDetailsTitle")}</ThemedText>
       <KitTextField
         label={t("onboarding.studioName")}
         value={studioName}
@@ -765,200 +795,202 @@ export default function OnboardingScreen() {
           ? t("onboarding.location.detectedZone", { zone: studioDetectedZone })
           : t("onboarding.location.zonePending")}
       </ThemedText>
-    </KitSurface>
+    </View>
   );
 
   return (
-    <ScrollView
-      style={[styles.screen, { backgroundColor: palette.appBg }]}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled"
-    >
-      <KitSurface tone="glass" style={styles.headerCard}>
-        <StepBadge current={currentStep} total={totalSteps} palette={palette} />
-        <ThemedText type="title">{t("onboarding.title")}</ThemedText>
-        <ThemedText style={{ color: palette.textMuted }}>
-          {t("onboarding.subtitle")}
-        </ThemedText>
-
-        <View style={styles.progressRow}>
-          <View
-            style={[
-              styles.progressSegment,
-              {
-                backgroundColor: step >= 0 ? palette.primary : palette.border,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.progressSegment,
-              {
-                backgroundColor: step >= 1 ? palette.primary : palette.border,
-              },
-            ]}
-          />
-        </View>
-      </KitSurface>
-
-      {step === 0 ? (
-        <KitSurface tone="elevated" style={styles.roleCard}>
-          <ThemedText type="defaultSemiBold">
-            {t("onboarding.rolePrompt")}
-          </ThemedText>
-          <View style={styles.roleGrid}>
-            <View style={styles.roleOption}>
-              <ActionButton
-                label={t("onboarding.roleInstructorTitle")}
-                onPress={() => setSelectedRole("instructor")}
-                palette={palette}
-                tone={role === "instructor" ? "primary" : "secondary"}
-                fullWidth
-              />
+    <View style={[styles.screen, { backgroundColor: palette.appBg as string }]}>
+      <GlobalTopSheet />
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: collapsedSheetHeight + BrandSpacing.lg },
+          step === 0 ? styles.contentGrow : null,
+        ]}
+        contentInsetAdjustmentBehavior="never"
+        keyboardShouldPersistTaps="handled"
+      >
+        {step === 0 ? (
+          <View style={styles.roleStage}>
+            <View style={styles.roleStageHeader}>
+              <ThemedText type="title">{t("onboarding.rolePrompt")}</ThemedText>
               <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                {t("onboarding.roleInstructorDescription")}
+                {role === "studio"
+                  ? t("onboarding.roleStudioDescription")
+                  : role === "instructor"
+                    ? t("onboarding.roleInstructorDescription")
+                    : t("onboarding.roleSelectHint")}
               </ThemedText>
             </View>
-            <View style={styles.roleOption}>
-              <ActionButton
-                label={t("onboarding.roleStudioTitle")}
-                onPress={() => setSelectedRole("studio")}
-                palette={palette}
-                tone={role === "studio" ? "primary" : "secondary"}
-                fullWidth
+            <View style={styles.roleGrid}>
+              <View style={styles.roleOption}>
+                <ChoicePill
+                  label={t("onboarding.roleInstructorTitle")}
+                  icon={
+                    <MaterialIcons
+                      name="self-improvement"
+                      size={20}
+                      color={
+                        role === "instructor"
+                          ? (palette.onPrimary as string)
+                          : (palette.text as string)
+                      }
+                    />
+                  }
+                  onPress={() => setSelectedRole("instructor")}
+                  selected={role === "instructor"}
+                />
+              </View>
+              <View style={styles.roleOption}>
+                <ChoicePill
+                  label={t("onboarding.roleStudioTitle")}
+                  icon={
+                    <MaterialIcons
+                      name="storefront"
+                      size={20}
+                      color={
+                        role === "studio" ? (palette.onPrimary as string) : (palette.text as string)
+                      }
+                    />
+                  }
+                  onPress={() => setSelectedRole("studio")}
+                  selected={role === "studio"}
+                />
+              </View>
+            </View>
+            <View style={styles.roleStageFooter}>
+              <IconButton
+                accessibilityLabel={t("onboarding.next")}
+                icon={nextArrowIcon}
+                onPress={() => goToProfileStep()}
+                disabled={!role}
+                tone="primary"
+                size={60}
               />
-              <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                {t("onboarding.roleStudioDescription")}
-              </ThemedText>
             </View>
           </View>
-          <ThemedText style={{ color: palette.textMuted }}>
-            {t("onboarding.roleSelectHint")}
-          </ThemedText>
-
-          <View style={styles.navRow}>
-            <ActionButton
-              label={t("onboarding.next")}
-              disabled={!role}
-              palette={palette}
-              fullWidth
-              onPress={() => goToProfileStep()}
-            />
+        ) : step === 1 && role === "instructor" ? (
+          <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
+            {instructorForm}
+            {mapPane}
           </View>
-        </KitSurface>
-      ) : step === 1 && role === "instructor" ? (
-        <View
-          style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}
-        >
-          {instructorForm}
-          {mapPane}
-        </View>
-      ) : step === 1 && role === "studio" ? (
-        <View
-          style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}
-        >
-          {studioForm}
-          {mapPane}
-        </View>
-      ) : step === 2 && role === "instructor" ? (
-        <KitSurface tone="elevated" style={styles.verifyCard}>
-          <ThemedText type="subtitle">
-            {t("onboarding.verification.subtitle")}
-          </ThemedText>
-          <ThemedText style={{ color: palette.textMuted }}>
-            {t("onboarding.verification.body")}
-          </ThemedText>
-
-          {!pushToken ? (
-            <ActionButton
-              disabled={isRequestingPush}
-              label={
-                isRequestingPush
-                  ? t("onboarding.push.requesting")
-                  : t("onboarding.push.requestPermission")
-              }
-              palette={palette}
-              tone="secondary"
-              fullWidth
-              onPress={() => {
-                void requestPushPermission();
-              }}
-            />
-          ) : null}
-
-          <View style={styles.verifyActions}>
-            <ActionButton
-              label={t("onboarding.verification.verifyNow")}
-              palette={palette}
-              fullWidth
-              onPress={() => {
-                router.replace("/instructor/profile/identity-verification");
-              }}
-            />
-            <ActionButton
-              label={t("onboarding.verification.later")}
-              palette={palette}
-              tone="secondary"
-              fullWidth
-              onPress={() => {
-                router.replace("/");
-              }}
-            />
+        ) : step === 1 && role === "studio" ? (
+          <View style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}>
+            {studioForm}
+            {mapPane}
           </View>
-        </KitSurface>
-      ) : null}
+        ) : step === 2 && role === "instructor" ? (
+          <View
+            style={[
+              styles.verifyStage,
+              {
+                backgroundColor: palette.surface as string,
+                borderColor: palette.borderStrong as string,
+              },
+            ]}
+          >
+            <ThemedText type="subtitle">{t("onboarding.verification.subtitle")}</ThemedText>
+            <ThemedText style={{ color: palette.textMuted }}>
+              {t("onboarding.verification.body")}
+            </ThemedText>
 
-      {step === 1 ? (
-        <KitSurface tone="glass">
-          <View style={styles.navRowSplit}>
-            <View style={styles.navAction}>
+            {!pushToken ? (
               <ActionButton
-                label={t("onboarding.back")}
+                disabled={isRequestingPush}
+                label={
+                  isRequestingPush
+                    ? t("onboarding.push.requesting")
+                    : t("onboarding.push.requestPermission")
+                }
                 palette={palette}
                 tone="secondary"
                 fullWidth
                 onPress={() => {
-                  setStep(0);
+                  void requestPushPermission();
                 }}
               />
-            </View>
+            ) : null}
 
-            <View style={styles.navAction}>
+            <View style={styles.verifyActions}>
               <ActionButton
-                label={
-                  isSubmitting
-                    ? t("onboarding.save")
-                    : role === "instructor"
-                      ? t("onboarding.continue")
-                      : t("onboarding.complete")
-                }
-                disabled={isSubmitting}
+                label={t("onboarding.verification.verifyNow")}
                 palette={palette}
                 fullWidth
                 onPress={() => {
-                  if (role === "instructor") {
-                    void submitInstructor();
-                    return;
-                  }
-                  if (role === "studio") {
-                    void submitStudio();
-                  }
+                  router.replace("/instructor/profile/identity-verification");
+                }}
+              />
+              <ActionButton
+                label={t("onboarding.verification.later")}
+                palette={palette}
+                tone="secondary"
+                fullWidth
+                onPress={() => {
+                  router.replace("/");
                 }}
               />
             </View>
           </View>
-        </KitSurface>
-      ) : null}
+        ) : null}
 
-      {errorMessage ? (
-        <KitSurface tone="elevated">
-          <ThemedText style={{ color: palette.danger }}>
-            {errorMessage}
-          </ThemedText>
-        </KitSurface>
-      ) : null}
-    </ScrollView>
+        {step === 1 ? (
+          <View style={styles.navBar}>
+            <View style={styles.navRowSplit}>
+              <View style={styles.navAction}>
+                <ActionButton
+                  label={t("onboarding.back")}
+                  palette={palette}
+                  tone="secondary"
+                  fullWidth
+                  onPress={() => {
+                    setStep(0);
+                  }}
+                />
+              </View>
+
+              <View style={styles.navAction}>
+                <ActionButton
+                  label={
+                    isSubmitting
+                      ? t("onboarding.save")
+                      : role === "instructor"
+                        ? t("onboarding.continue")
+                        : t("onboarding.complete")
+                  }
+                  disabled={isSubmitting}
+                  palette={palette}
+                  fullWidth
+                  onPress={() => {
+                    if (role === "instructor") {
+                      void submitInstructor();
+                      return;
+                    }
+                    if (role === "studio") {
+                      void submitStudio();
+                    }
+                  }}
+                />
+              </View>
+            </View>
+          </View>
+        ) : null}
+
+        {errorMessage ? (
+          <View
+            style={[
+              styles.errorBanner,
+              {
+                backgroundColor: palette.dangerSubtle as string,
+                borderColor: palette.danger as string,
+              },
+            ]}
+          >
+            <ThemedText style={{ color: palette.danger }}>{errorMessage}</ThemedText>
+          </View>
+        ) : null}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -971,54 +1003,69 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     gap: 12,
   },
-  headerCard: {
-    gap: 8,
+  contentGrow: {
+    flexGrow: 1,
   },
-  progressRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  progressSegment: {
+  roleStage: {
     flex: 1,
-    height: 6,
-    borderRadius: 999,
+    justifyContent: "flex-start",
+    gap: BrandSpacing.lg,
+    paddingTop: BrandSpacing.sm,
+    paddingBottom: BrandSpacing.xl,
   },
-  roleCard: {
-    gap: 12,
-  },
-  roleGrid: {
-    gap: 10,
-  },
-  roleOption: {
+  roleStageHeader: {
     gap: 6,
   },
-  navRow: {
-    marginTop: 4,
+  roleGrid: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 12,
+    marginTop: BrandSpacing.md,
+  },
+  roleOption: {
+    flex: 1,
+    minWidth: 0,
+  },
+  roleStageFooter: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: "auto",
+    paddingTop: BrandSpacing.xl,
+  },
+  navBar: {
+    marginTop: BrandSpacing.sm,
+    paddingTop: BrandSpacing.sm,
   },
   navRowSplit: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
   },
   navAction: {
     flex: 1,
   },
   stepTwoWrap: {
-    gap: 12,
+    gap: 14,
   },
   stepTwoDesktop: {
     flexDirection: "row",
     alignItems: "stretch",
   },
-  formCard: {
+  formPanel: {
     gap: 12,
     flex: 1,
     minWidth: 320,
+    borderRadius: 24,
+    borderCurve: "continuous",
+    padding: 16,
   },
-  mapCard: {
+  mapPanel: {
     flex: 1,
     minWidth: 320,
     minHeight: 360,
     gap: 10,
+    borderRadius: 24,
+    borderCurve: "continuous",
+    padding: 16,
   },
   mapHeader: {
     gap: 4,
@@ -1049,10 +1096,20 @@ const styles = StyleSheet.create({
     minHeight: 96,
     textAlignVertical: "top",
   },
-  verifyCard: {
-    gap: 12,
-  },
   verifyActions: {
     gap: 10,
+  },
+  verifyStage: {
+    gap: 12,
+    borderWidth: 1.5,
+    borderRadius: 24,
+    borderCurve: "continuous",
+    padding: 16,
+  },
+  errorBanner: {
+    borderWidth: 1.5,
+    borderRadius: 20,
+    borderCurve: "continuous",
+    padding: 14,
   },
 });

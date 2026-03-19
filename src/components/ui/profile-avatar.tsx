@@ -48,8 +48,6 @@ export function ProfileAvatar({
         borderRadius,
         borderCurve: "continuous",
         overflow: "hidden",
-        borderWidth: 1,
-        borderColor: palette.border as string,
         backgroundColor: palette.surfaceAlt as string,
         alignItems: "center",
         justifyContent: "center",

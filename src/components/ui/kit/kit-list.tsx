@@ -77,12 +77,8 @@ export function KitListItem({
 
   const content = (
     <>
-      {leading ? (
-        <View style={{ marginEnd: BrandSpacing.md }}>{leading}</View>
-      ) : null}
-      <View
-        style={{ flex: 1, justifyContent: "center", gap: children ? 2 : 0 }}
-      >
+      {leading ? <View style={{ marginEnd: BrandSpacing.md }}>{leading}</View> : null}
+      <View style={{ flex: 1, justifyContent: "center", gap: children ? 2 : 0 }}>
         {title ? (
           <ThemedText type="bodyStrong" style={{ color: foreground.secondary }}>
             {title}
@@ -90,9 +86,7 @@ export function KitListItem({
         ) : null}
         {children}
       </View>
-      {accessory ? (
-        <View style={{ marginStart: BrandSpacing.md }}>{accessory}</View>
-      ) : null}
+      {accessory ? <View style={{ marginStart: BrandSpacing.md }}>{accessory}</View> : null}
     </>
   );
 
@@ -108,9 +102,7 @@ export function KitListItem({
             paddingHorizontal: BrandSpacing.lg,
             paddingVertical: BrandSpacing.md,
             minHeight: 56,
-            backgroundColor: pressed
-              ? background.surfaceSecondary
-              : background.transparent,
+            backgroundColor: pressed ? background.surfaceSecondary : background.surfaceElevated,
           },
           style,
         ]}
