@@ -6,7 +6,7 @@ type DeferredTabMountOptions = {
 
 export function useDeferredTabMount(
   enabled: boolean,
-  { delayMs = 32 }: DeferredTabMountOptions = {},
+  { delayMs = 0 }: DeferredTabMountOptions = {},
 ) {
   const [isReady, setIsReady] = useState(false);
 
@@ -17,22 +17,20 @@ export function useDeferredTabMount(
 
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let frameId: number | null = null;
 
     const commitReady = () => {
       if (cancelled) return;
       setIsReady(true);
     };
 
-    frameId = globalThis.requestAnimationFrame(() => {
+    if (delayMs > 0) {
       timeoutId = setTimeout(commitReady, delayMs);
-    });
+    } else {
+      commitReady();
+    }
 
     return () => {
       cancelled = true;
-      if (frameId !== null) {
-        globalThis.cancelAnimationFrame(frameId);
-      }
       if (timeoutId !== null) {
         clearTimeout(timeoutId);
       }

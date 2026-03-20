@@ -8,7 +8,6 @@ import { api } from "@/convex/_generated/api";
 import { syncDeviceCalendarEvents } from "@/lib/device-calendar-sync";
 import {
   addDays,
-  buildTimelineRowsSignature,
   CALENDAR_VISIBILITY_STORAGE_KEY,
   type CalendarViewMode,
   type CalendarVisibilityFilterKey,
@@ -20,10 +19,8 @@ import {
   ESTIMATED_DAY_HEADER_SIZE,
   ESTIMATED_EMPTY_SIZE,
   ESTIMATED_LESSON_SIZE,
-  enumerateDays,
   type GoogleAgendaRow,
   type GoogleCalendarStatus,
-  getLifecycle,
   type ItemLayout,
   LEGACY_GOOGLE_VIEW_MODE_STORAGE_KEY,
   TIMELINE_EXTEND_BUFFER_DAYS,
@@ -34,6 +31,18 @@ import {
   toDayKey,
   useTimelineCache,
 } from "./calendar-controller-helpers";
+import {
+  buildFilteredRows,
+  buildLessonCountByDay,
+  buildRemoteGoogleTimelineRows,
+  buildRemoteJobTimelineRows,
+  buildSyncEvents,
+  buildTimelineListData,
+  buildVisibleRows,
+  combineTimelineRows,
+  getRemoteRowsSignature,
+  mergeVisibilityFilters,
+} from "./calendar-tab-controller.helpers";
 
 const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).calendar as {
   getMyGoogleCalendarAgenda: unknown;
@@ -112,13 +121,7 @@ export function useCalendarTabController() {
         }
         if (stored) {
           const parsed = JSON.parse(stored) as Partial<CalendarVisibilityFilters>;
-          setVisibilityFilters({
-            queueLessons: parsed.queueLessons ?? DEFAULT_VISIBILITY_FILTERS.queueLessons,
-            timedCalendarEvents:
-              parsed.timedCalendarEvents ?? DEFAULT_VISIBILITY_FILTERS.timedCalendarEvents,
-            allDayCalendarEvents:
-              parsed.allDayCalendarEvents ?? DEFAULT_VISIBILITY_FILTERS.allDayCalendarEvents,
-          });
+          setVisibilityFilters(mergeVisibilityFilters(parsed, DEFAULT_VISIBILITY_FILTERS));
           return;
         }
 
@@ -159,52 +162,21 @@ export function useCalendarTabController() {
   }, []);
 
   const remoteJobTimelineRows = useMemo(() => {
-    if (!remoteRows) {
-      return null;
-    }
-    return (remoteRows as unknown as Omit<TimelineRow, "source">[]).map((row) => ({
-      ...row,
-      source: "job" as const,
-    }));
+    return buildRemoteJobTimelineRows(
+      remoteRows as Omit<TimelineRow, "source">[] | undefined | null,
+    );
   }, [remoteRows]);
 
   const remoteGoogleTimelineRows = useMemo(() => {
-    if (resolvedViewMode !== "jobs_and_google") {
-      return [];
-    }
-    if (!googleAgendaRows) {
-      return null;
-    }
-
-    const now = Date.now();
-    return googleAgendaRows.map((row) => ({
-      lessonId: row.providerEventId,
-      source: "google" as const,
-      roleView: (role ?? "instructor") as "instructor" | "studio",
-      studioName: row.location ?? "Google Calendar",
-      sport: row.title,
-      startTime: row.startTime,
-      endTime: row.endTime,
-      status: row.status,
-      lifecycle: getLifecycle(row.status, now, row.startTime, row.endTime),
-      ...(row.isAllDay ? { isAllDay: true } : {}),
-      ...(row.location ? { location: row.location } : {}),
-      ...(row.htmlLink ? { htmlLink: row.htmlLink } : {}),
-    }));
+    return buildRemoteGoogleTimelineRows(googleAgendaRows, resolvedViewMode, role);
   }, [googleAgendaRows, resolvedViewMode, role]);
 
   const remoteCombinedRows = useMemo(() => {
-    if (!remoteJobTimelineRows) {
-      return null;
-    }
-    return [...remoteJobTimelineRows, ...(remoteGoogleTimelineRows ?? [])].sort(
-      (a, b) =>
-        a.startTime - b.startTime || a.endTime - b.endTime || a.lessonId.localeCompare(b.lessonId),
-    );
+    return combineTimelineRows(remoteJobTimelineRows, remoteGoogleTimelineRows);
   }, [remoteGoogleTimelineRows, remoteJobTimelineRows]);
 
   const remoteRowsSignature = useMemo(
-    () => (remoteCombinedRows ? buildTimelineRowsSignature(remoteCombinedRows) : ""),
+    () => getRemoteRowsSignature(remoteCombinedRows),
     [remoteCombinedRows],
   );
   const lastPersistSignatureRef = useRef<string>("");
@@ -250,48 +222,16 @@ export function useCalendarTabController() {
   }, [cachedRows, remoteCombinedRows, retainedRows]);
 
   const visibleRows = useMemo(
-    () =>
-      rows.filter((row) => {
-        if (row.source === "job") {
-          return visibilityFilters.queueLessons;
-        }
-        if (row.isAllDay) {
-          return visibilityFilters.allDayCalendarEvents;
-        }
-        return visibilityFilters.timedCalendarEvents;
-      }),
+    () => buildVisibleRows(rows, visibilityFilters),
     [rows, visibilityFilters],
   );
 
   const filteredRows = useMemo(() => {
-    const start = dayKeyToTimestamp(windowRange.start);
-    const end = dayKeyToTimestamp(windowRange.end) + DAY_MS - 1;
-    return visibleRows
-      .filter((row) => row.startTime >= start && row.startTime <= end)
-      .sort((a, b) => a.startTime - b.startTime);
-  }, [visibleRows, windowRange.end, windowRange.start]);
+    return buildFilteredRows(visibleRows, windowRange, dayKeyToTimestamp);
+  }, [visibleRows, windowRange]);
 
   const syncEvents = useMemo(() => {
-    if (!role || !remoteJobTimelineRows) {
-      return [];
-    }
-    const now = Date.now();
-    const staleCutoff = now - 7 * DAY_MS;
-    return remoteJobTimelineRows
-      .filter((row) => row.status !== "cancelled" && row.endTime >= staleCutoff)
-      .sort(
-        (a, b) =>
-          a.startTime - b.startTime ||
-          a.endTime - b.endTime ||
-          a.lessonId.localeCompare(b.lessonId),
-      )
-      .map((row) => ({
-        externalId: row.lessonId,
-        title: `${row.sport} lesson`,
-        startDate: new Date(row.startTime),
-        endDate: new Date(row.endTime),
-        notes: `Studio: ${row.studioName}`,
-      }));
+    return buildSyncEvents(role, remoteJobTimelineRows);
   }, [remoteJobTimelineRows, role]);
 
   const appleSyncSignature = useMemo(
@@ -360,41 +300,8 @@ export function useCalendarTabController() {
   ]);
 
   const { listItems, dayStartIndexByKey } = useMemo(() => {
-    const rowsByDay = new Map<string, TimelineRow[]>();
-    for (const row of filteredRows) {
-      const dk = toDayKey(row.startTime);
-      const existing = rowsByDay.get(dk);
-      if (existing) {
-        existing.push(row);
-      } else {
-        rowsByDay.set(dk, [row]);
-      }
-    }
-
-    const items: TimelineListItem[] = [];
-    const dayIndexMap = new Map<string, number>();
-    const days = enumerateDays(windowRange.start, windowRange.end);
-
-    for (const dk of days) {
-      dayIndexMap.set(dk, items.length);
-      items.push({ kind: "dayHeader", key: `${dk}:header`, dayKey: dk });
-      const dayRows = rowsByDay.get(dk) ?? [];
-      if (dayRows.length === 0) {
-        items.push({ kind: "empty", key: `${dk}:empty`, dayKey: dk });
-      } else {
-        for (const lesson of dayRows) {
-          items.push({
-            kind: "lesson",
-            key: `${dk}:${lesson.source}:${lesson.lessonId}`,
-            dayKey: dk,
-            lesson,
-          });
-        }
-      }
-    }
-
-    return { listItems: items, dayStartIndexByKey: dayIndexMap };
-  }, [filteredRows, windowRange.end, windowRange.start]);
+    return buildTimelineListData(filteredRows, windowRange, selectedDay, todayKey);
+  }, [filteredRows, selectedDay, todayKey, windowRange]);
 
   const initialScrollIndex = useMemo(
     () => dayStartIndexByKey.get(selectedDay) ?? dayStartIndexByKey.get(todayKey) ?? 0,
@@ -402,12 +309,7 @@ export function useCalendarTabController() {
   );
 
   const lessonCountByDay = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const row of visibleRows) {
-      const dk = toDayKey(row.startTime);
-      counts.set(dk, (counts.get(dk) ?? 0) + 1);
-    }
-    return counts;
+    return buildLessonCountByDay(visibleRows);
   }, [visibleRows]);
 
   const scrollToDay = useCallback(
