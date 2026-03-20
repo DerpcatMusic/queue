@@ -1,4 +1,11 @@
-import { createContext, type PropsWithChildren, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  type PropsWithChildren,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import type Animated from "react-native-reanimated";
 import { useAnimatedRef, useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 
@@ -13,14 +20,17 @@ export const ScrollSheetContext = createContext<ScrollSheetContextValue | null>(
 export function ScrollSheetProvider({ children }: PropsWithChildren) {
   const scrollY = useSharedValue(0);
   const [collapsedSheetHeight, setCollapsedSheetHeight] = useState(140);
+  const updateCollapsedSheetHeight = useCallback((height: number) => {
+    setCollapsedSheetHeight((current) => (Math.abs(current - height) < 1 ? current : height));
+  }, []);
 
   const value = useMemo<ScrollSheetContextValue>(
     () => ({
       scrollY,
       collapsedSheetHeight,
-      setCollapsedSheetHeight,
+      setCollapsedSheetHeight: updateCollapsedSheetHeight,
     }),
-    [collapsedSheetHeight, scrollY],
+    [collapsedSheetHeight, scrollY, updateCollapsedSheetHeight],
   );
 
   return <ScrollSheetContext.Provider value={value}>{children}</ScrollSheetContext.Provider>;

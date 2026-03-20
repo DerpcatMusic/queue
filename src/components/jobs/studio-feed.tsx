@@ -93,6 +93,21 @@ export function StudioFeed() {
     },
     [setJobsTimeFilter],
   );
+  const handleReviewApplication = useCallback(
+    (
+      applicationId: Parameters<typeof reviewStudioApplication>[0],
+      status: Parameters<typeof reviewStudioApplication>[1],
+    ) => {
+      void reviewStudioApplication(applicationId, status);
+    },
+    [reviewStudioApplication],
+  );
+  const handleStartPayment = useCallback(
+    (jobId: Parameters<typeof startStudioCheckout>[0]) => {
+      void startStudioCheckout(jobId);
+    },
+    [startStudioCheckout],
+  );
 
   const jobsSheetConfig = useMemo(
     () => ({
@@ -229,12 +244,8 @@ export function StudioFeed() {
                   palette={palette}
                   reviewingApplicationId={isReviewingApplicationId}
                   payingJobId={isStartingCheckoutForJobId}
-                  onReview={(applicationId, status) => {
-                    void reviewStudioApplication(applicationId, status);
-                  }}
-                  onStartPayment={(jobId) => {
-                    void startStudioCheckout(jobId);
-                  }}
+                  onReview={handleReviewApplication}
+                  onStartPayment={handleStartPayment}
                   t={t}
                 />
               </View>
@@ -248,12 +259,8 @@ export function StudioFeed() {
                   palette={palette}
                   reviewingApplicationId={isReviewingApplicationId}
                   payingJobId={isStartingCheckoutForJobId}
-                  onReview={(applicationId, status) => {
-                    void reviewStudioApplication(applicationId, status);
-                  }}
-                  onStartPayment={(jobId) => {
-                    void startStudioCheckout(jobId);
-                  }}
+                  onReview={handleReviewApplication}
+                  onStartPayment={handleStartPayment}
                   t={t}
                 />
               </View>
@@ -269,12 +276,8 @@ export function StudioFeed() {
                   palette={palette}
                   reviewingApplicationId={isReviewingApplicationId}
                   payingJobId={isStartingCheckoutForJobId}
-                  onReview={(applicationId, status) => {
-                    void reviewStudioApplication(applicationId, status);
-                  }}
-                  onStartPayment={(jobId) => {
-                    void startStudioCheckout(jobId);
-                  }}
+                  onReview={handleReviewApplication}
+                  onStartPayment={handleStartPayment}
                   t={t}
                 />
               ) : (
