@@ -114,9 +114,9 @@ export function TopSheet({
   const resolvedInsetColor = (topInsetColor ?? resolvedBackground) as ColorValue;
   const backgroundColorValue = String(resolvedBackground);
 
-  // Track if sheet is expanded (step > initialStep)
-  const resolvedStepIndex = activeStep ?? initialStep;
-  const [isExpanded, setIsExpanded] = useState(resolvedStepIndex > initialStep);
+  const [internalStepIndex, setInternalStepIndex] = useState(initialStep);
+  const resolvedStepIndex = activeStep ?? internalStepIndex;
+  const isExpanded = resolvedStepIndex > initialStep;
   const animatedBackground = useSharedValue(backgroundColorValue);
 
   useEffect(() => {
@@ -163,8 +163,7 @@ export function TopSheet({
     currentStepRef.current = clampedStepIndex;
     dragStartHeight.value = nextHeight;
     sheetHeight.value = withSpring(nextHeight, SHEET_SPRING);
-    setIsExpanded(clampedStepIndex > initialStep);
-  }, [dragStartHeight, initialStep, resolvedStepIndex, sheetHeight, stepHeights]);
+  }, [dragStartHeight, resolvedStepIndex, sheetHeight, stepHeights]);
 
   // Find step based on drag direction - snap to next step in the direction of drag
   const findDirectionalStep = useCallback(
@@ -219,20 +218,17 @@ export function TopSheet({
     (velocityY: number, currentHeight: number, startHeight: number) => {
       const target = findDirectionalStep(currentHeight, velocityY, startHeight);
       sheetHeight.value = withSpring(target.height, SHEET_SPRING);
-      const wasExpanded = currentStepRef.current > initialStep;
       if (target.index !== currentStepRef.current) {
         currentStepRef.current = target.index;
-        // Update expanded state
-        const isNowExpanded = target.index > initialStep;
-        if (isNowExpanded !== wasExpanded) {
-          runOnJS(setIsExpanded)(isNowExpanded);
+        if (activeStep === undefined) {
+          runOnJS(setInternalStepIndex)(target.index);
         }
         if (onStepChange) {
           runOnJS(onStepChange)(target.index);
         }
       }
     },
-    [findDirectionalStep, sheetHeight, onStepChange, initialStep],
+    [activeStep, findDirectionalStep, onStepChange, sheetHeight],
   );
 
   // Pan gesture (only active when draggable + expandable)
@@ -263,10 +259,13 @@ export function TopSheet({
     [dragStartHeight, sheetHeight, snapToDirectional, stepHeights],
   );
 
-  const resolvedPadding = {
-    vertical: padding?.vertical ?? BrandSpacing.lg,
-    horizontal: padding?.horizontal ?? BrandSpacing.lg,
-  };
+  const resolvedPadding = useMemo(
+    () => ({
+      vertical: padding?.vertical ?? BrandSpacing.lg,
+      horizontal: padding?.horizontal ?? BrandSpacing.lg,
+    }),
+    [padding?.horizontal, padding?.vertical],
+  );
 
   // Animated outer container (sets height)
   // No marginTop — sheet extends behind the status bar overlay (zIndex 9999)
