@@ -45,14 +45,14 @@ export function ActionButton({
   const minWidth = shape === "square" ? minHeight : 96;
   const backgroundColor = isDisabled
     ? tone === "primary"
-      ? (palette.primarySubtle as string)
+      ? (palette.primaryPressed as string)
       : (palette.surface as string)
     : tone === "primary"
       ? (palette.primary as string)
       : (palette.surfaceAlt as string);
   const textColor = isDisabled
     ? tone === "primary"
-      ? (palette.primary as string)
+      ? (palette.onPrimary as string)
       : (palette.textMuted as string)
     : tone === "primary"
       ? (palette.onPrimary as string)
@@ -90,11 +90,14 @@ export function ActionButton({
           {icon ? <View>{icon}</View> : null}
           {label ? (
             <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
               style={{
                 ...BrandType.bodyMedium,
                 color: textColor,
                 includeFontPadding: false,
                 textAlign: isIconOnly ? "center" : "left",
+                flexShrink: 1,
               }}
             >
               {label}

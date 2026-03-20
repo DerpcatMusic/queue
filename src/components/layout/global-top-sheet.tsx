@@ -8,11 +8,21 @@ import {
   useRef,
   useState,
 } from "react";
-import { type LayoutChangeEvent, Platform, StyleSheet, View } from "react-native";
+import {
+  type LayoutChangeEvent,
+  Platform,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import Reanimated, {
   FadeInDown,
   FadeOutUp,
   ReduceMotion,
+  SlideInLeft,
+  SlideInRight,
+  SlideOutLeft,
+  SlideOutRight,
   useReducedMotion,
 } from "react-native-reanimated";
 
@@ -27,6 +37,32 @@ import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 
 const CONTENT_EXIT_MS = 120;
+
+type ContentTransitionDirection = "vertical" | "forward" | "backward";
+
+function areSheetConfigsEqual(
+  previous: TopSheetTabConfig | null | undefined,
+  next: TopSheetTabConfig | null | undefined,
+) {
+  if (previous === next) {
+    return true;
+  }
+
+  if (!previous || !next) {
+    return false;
+  }
+
+  const previousKeys = Object.keys(previous);
+  const nextKeys = Object.keys(next);
+
+  if (previousKeys.length !== nextKeys.length) {
+    return false;
+  }
+
+  return nextKeys.every((key) =>
+    Object.is(previous[key as keyof TopSheetTabConfig], next[key as keyof TopSheetTabConfig]),
+  );
+}
 
 function getFallbackSheetColors(tabId: string, palette: ReturnType<typeof useBrand>) {
   if (tabId === "map") {
@@ -64,6 +100,11 @@ function resolveTopSheetRouteTab(pathname: string | null): string | null {
   return tabSegment || null;
 }
 
+function getRouteDepth(routeKey: string | null) {
+  if (!routeKey) return 0;
+  return routeKey.split("/").filter(Boolean).length;
+}
+
 /**
  * One global TopSheet mounted in RoleTabsLayout above NativeTabs.
  *
@@ -77,6 +118,7 @@ function resolveTopSheetRouteTab(pathname: string | null): string | null {
 export function GlobalTopSheet() {
   const pathname = usePathname();
   const { safeTop } = useAppInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const palette = useBrand();
   const rootStyle = Platform.OS === "web" ? undefined : styles.overlayRoot;
   const reduceMotionEnabled = useReducedMotion();
@@ -86,7 +128,7 @@ export function GlobalTopSheet() {
   const activeTabId = resolveTopSheetRouteTab(pathname);
   const routeConfig = useResolvedTabSheetConfig(activeTabId);
   const activeConfig = routeConfig;
-  const activeRouteKey = activeTabId;
+  const activeRouteKey = pathname ?? activeTabId;
 
   // ── ScrollY from provider (for custom animated sheets) ─────────────
   const scrollCtx = useContext(ScrollSheetContext);
@@ -95,6 +137,8 @@ export function GlobalTopSheet() {
   const [displayedConfig, setDisplayedConfig] = useState<TopSheetTabConfig | null>(activeConfig);
   const [displayedRouteKey, setDisplayedRouteKey] = useState<string | null>(activeRouteKey);
   const [contentPhase, setContentPhase] = useState<"visible" | "hidden">("visible");
+  const [transitionDirection, setTransitionDirection] =
+    useState<ContentTransitionDirection>("vertical");
 
   useEffect(() => {
     for (const timeout of transitionTimeoutsRef.current) {
@@ -117,11 +161,12 @@ export function GlobalTopSheet() {
       setDisplayedConfig(activeConfig);
       setDisplayedRouteKey(activeRouteKey);
       setContentPhase("visible");
+      setTransitionDirection("vertical");
       return;
     }
 
     if (displayedRouteKey === activeRouteKey) {
-      if (displayedConfig !== activeConfig) {
+      if (!areSheetConfigsEqual(displayedConfig, activeConfig)) {
         startTransition(() => {
           setDisplayedConfig(activeConfig);
         });
@@ -134,7 +179,20 @@ export function GlobalTopSheet() {
       setDisplayedConfig(activeConfig);
       setDisplayedRouteKey(activeRouteKey);
       setContentPhase("visible");
+      setTransitionDirection("vertical");
       return;
+    }
+
+    const displayedTabId = resolveTopSheetRouteTab(displayedRouteKey);
+    const nextTabId = resolveTopSheetRouteTab(activeRouteKey);
+    const isSameTabRouteChange = displayedTabId !== null && displayedTabId === nextTabId;
+
+    if (isSameTabRouteChange) {
+      const currentDepth = getRouteDepth(displayedRouteKey);
+      const nextDepth = getRouteDepth(activeRouteKey);
+      setTransitionDirection(nextDepth >= currentDepth ? "forward" : "backward");
+    } else {
+      setTransitionDirection("vertical");
     }
 
     setContentPhase("hidden");
@@ -165,10 +223,11 @@ export function GlobalTopSheet() {
   }, []);
 
   const fallbackHeight = (() => {
-    if (!displayedConfig) return DEFAULT_SHEET_PADDING_TOP;
-    const steps = displayedConfig.steps ?? [0.18, 0.4, 0.65, 0.95];
+    const fallbackConfig = activeConfig ?? displayedConfig;
+    if (!fallbackConfig) return DEFAULT_SHEET_PADDING_TOP;
+    const steps = fallbackConfig.steps ?? [0.18, 0.4, 0.65, 0.95];
     const collapsedStep = steps[0] ?? 0.18;
-    return collapsedStep * 844 + safeTop;
+    return collapsedStep * screenHeight + safeTop;
   })();
 
   const collapsedSheetHeight = measuredHeight ?? fallbackHeight;
@@ -178,47 +237,88 @@ export function GlobalTopSheet() {
   }, [collapsedSheetHeight, scrollCtx]);
 
   // ── Render nothing if no config ─────────────────────────────────────
-  if (!displayedConfig) return null;
+  const resolvedDisplayedConfig =
+    activeRouteKey && displayedRouteKey === activeRouteKey && activeConfig
+      ? activeConfig
+      : displayedConfig;
 
-  const transitionKey = displayedRouteKey ?? displayedConfig.tabId;
+  if (!resolvedDisplayedConfig) return null;
+
+  const transitionKey = displayedRouteKey ?? activeRouteKey ?? resolvedDisplayedConfig.tabId;
   const shouldHideContent = contentPhase === "hidden";
-  const fallbackColors = getFallbackSheetColors(displayedConfig.tabId, palette);
+  const fallbackColors = getFallbackSheetColors(resolvedDisplayedConfig.tabId, palette);
 
   const baseSheetProps = {
-    ...(displayedConfig.draggable !== undefined ? { draggable: displayedConfig.draggable } : {}),
-    ...(displayedConfig.expandable !== undefined ? { expandable: displayedConfig.expandable } : {}),
-    ...(displayedConfig.steps ? { steps: displayedConfig.steps } : {}),
-    ...(displayedConfig.initialStep !== undefined
-      ? { initialStep: displayedConfig.initialStep }
+    ...(resolvedDisplayedConfig.draggable !== undefined
+      ? { draggable: resolvedDisplayedConfig.draggable }
       : {}),
-    ...(displayedConfig.activeStep !== undefined ? { activeStep: displayedConfig.activeStep } : {}),
-    ...(displayedConfig.expandMode ? { expandMode: displayedConfig.expandMode } : {}),
-    ...(displayedConfig.padding ? { padding: displayedConfig.padding } : {}),
+    ...(resolvedDisplayedConfig.expandable !== undefined
+      ? { expandable: resolvedDisplayedConfig.expandable }
+      : {}),
+    ...(resolvedDisplayedConfig.steps ? { steps: resolvedDisplayedConfig.steps } : {}),
+    ...(resolvedDisplayedConfig.initialStep !== undefined
+      ? { initialStep: resolvedDisplayedConfig.initialStep }
+      : {}),
+    ...(resolvedDisplayedConfig.activeStep !== undefined
+      ? { activeStep: resolvedDisplayedConfig.activeStep }
+      : {}),
+    ...(resolvedDisplayedConfig.expandMode
+      ? { expandMode: resolvedDisplayedConfig.expandMode }
+      : {}),
+    ...(resolvedDisplayedConfig.padding ? { padding: resolvedDisplayedConfig.padding } : {}),
     backgroundColor:
-      (displayedConfig.backgroundColor as string | undefined) ?? fallbackColors.backgroundColor,
+      (resolvedDisplayedConfig.backgroundColor as string | undefined) ??
+      fallbackColors.backgroundColor,
     topInsetColor:
-      (displayedConfig.topInsetColor as string | undefined) ?? fallbackColors.topInsetColor,
-    ...(displayedConfig.style ? { style: displayedConfig.style } : {}),
-    ...(displayedConfig.onStepChange ? { onStepChange: displayedConfig.onStepChange } : {}),
-    ...(displayedConfig.stickyHeader ? { stickyHeader: displayedConfig.stickyHeader } : {}),
-    ...(displayedConfig.stickyFooter ? { stickyFooter: displayedConfig.stickyFooter } : {}),
-    ...(displayedConfig.revealOnExpand ? { revealOnExpand: displayedConfig.revealOnExpand } : {}),
+      (resolvedDisplayedConfig.topInsetColor as string | undefined) ?? fallbackColors.topInsetColor,
+    ...(resolvedDisplayedConfig.style ? { style: resolvedDisplayedConfig.style } : {}),
+    ...(resolvedDisplayedConfig.onStepChange
+      ? { onStepChange: resolvedDisplayedConfig.onStepChange }
+      : {}),
+    ...(resolvedDisplayedConfig.stickyHeader
+      ? { stickyHeader: resolvedDisplayedConfig.stickyHeader }
+      : {}),
+    ...(resolvedDisplayedConfig.stickyFooter
+      ? { stickyFooter: resolvedDisplayedConfig.stickyFooter }
+      : {}),
+    ...(resolvedDisplayedConfig.revealOnExpand
+      ? { revealOnExpand: resolvedDisplayedConfig.revealOnExpand }
+      : {}),
   };
   const hasRenderableContent = Boolean(
-    displayedConfig.render ||
-      displayedConfig.content ||
-      displayedConfig.stickyHeader ||
-      displayedConfig.stickyFooter ||
-      displayedConfig.revealOnExpand,
+    resolvedDisplayedConfig.render ||
+      resolvedDisplayedConfig.content ||
+      resolvedDisplayedConfig.stickyHeader ||
+      resolvedDisplayedConfig.stickyFooter ||
+      resolvedDisplayedConfig.revealOnExpand ||
+      resolvedDisplayedConfig.overlay,
   );
 
   const transitionProps = reduceMotionEnabled ? {} : {};
-  const contentTransitionProps = reduceMotionEnabled
-    ? {}
-    : {
-        entering: FadeInDown.duration(240).reduceMotion(ReduceMotion.System),
-        exiting: FadeOutUp.duration(180).reduceMotion(ReduceMotion.System),
+  const contentTransitionProps = (() => {
+    if (reduceMotionEnabled) {
+      return {};
+    }
+
+    if (transitionDirection === "forward") {
+      return {
+        entering: SlideInRight.duration(240).reduceMotion(ReduceMotion.System),
+        exiting: SlideOutLeft.duration(180).reduceMotion(ReduceMotion.System),
       };
+    }
+
+    if (transitionDirection === "backward") {
+      return {
+        entering: SlideInLeft.duration(240).reduceMotion(ReduceMotion.System),
+        exiting: SlideOutRight.duration(180).reduceMotion(ReduceMotion.System),
+      };
+    }
+
+    return {
+      entering: FadeInDown.duration(240).reduceMotion(ReduceMotion.System),
+      exiting: FadeOutUp.duration(180).reduceMotion(ReduceMotion.System),
+    };
+  })();
   const renderTransitionedNode = (
     slotKey: string,
     node: React.ReactNode,
@@ -237,10 +337,10 @@ export function GlobalTopSheet() {
   };
 
   // ── Render function mode ────────────────────────────────────────────
-  if (displayedConfig.render) {
+  if (resolvedDisplayedConfig.render) {
     if (!scrollY) return null;
 
-    const result = shouldHideContent ? null : displayedConfig.render({ scrollY });
+    const result = shouldHideContent ? null : resolvedDisplayedConfig.render({ scrollY });
 
     const isRichResult =
       typeof result === "object" &&
@@ -275,6 +375,7 @@ export function GlobalTopSheet() {
               })}
             </TopSheet>
           </Reanimated.View>
+          {renderTransitionedNode("overlay", resolvedDisplayedConfig.overlay, styles.overlayLayer)}
         </View>
       );
     }
@@ -284,6 +385,7 @@ export function GlobalTopSheet() {
         <Reanimated.View onLayout={handleLayout} {...transitionProps}>
           {result as React.ReactNode}
         </Reanimated.View>
+        {renderTransitionedNode("overlay", resolvedDisplayedConfig.overlay, styles.overlayLayer)}
       </View>
     );
   }
@@ -302,11 +404,12 @@ export function GlobalTopSheet() {
               style={{ flex: 1 }}
               {...contentTransitionProps}
             >
-              {displayedConfig.content}
+              {resolvedDisplayedConfig.content}
             </Reanimated.View>
           )}
         </TopSheet>
       </Reanimated.View>
+      {renderTransitionedNode("overlay", resolvedDisplayedConfig.overlay, styles.overlayLayer)}
     </View>
   );
 }
@@ -318,5 +421,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 40,
+  },
+  overlayLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 120,
   },
 });

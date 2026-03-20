@@ -5,14 +5,26 @@ export const TAB_SPECS: readonly TabSpec[] = [
   {
     id: "home",
     titleKey: "tabs.home",
-    icon: { md: "home", sfDefault: "house", sfSelected: "house.fill" },
+    icon: {
+      md: "home",
+      mdDefaultVector: "home-outline",
+      mdSelectedVector: "home",
+      sfDefault: "house",
+      sfSelected: "house.fill",
+    },
     routeName: ROLE_TAB_ROUTE_NAMES.home,
     visibleFor: ["instructor", "studio"],
   },
   {
     id: "jobs",
     titleKey: "tabs.jobs",
-    icon: { md: "work", sfDefault: "briefcase", sfSelected: "briefcase.fill" },
+    icon: {
+      md: "work",
+      mdDefaultVector: "briefcase-outline",
+      mdSelectedVector: "briefcase",
+      sfDefault: "briefcase",
+      sfSelected: "briefcase.fill",
+    },
     routeName: ROLE_TAB_ROUTE_NAMES.jobs,
     visibleFor: ["instructor", "studio"],
   },
@@ -21,6 +33,8 @@ export const TAB_SPECS: readonly TabSpec[] = [
     titleKey: "tabs.calendar",
     icon: {
       md: "calendar_month",
+      mdDefaultVector: "calendar-month-outline",
+      mdSelectedVector: "calendar-month",
       sfDefault: "calendar",
       sfSelected: "calendar.circle.fill",
     },
@@ -30,7 +44,13 @@ export const TAB_SPECS: readonly TabSpec[] = [
   {
     id: "map",
     titleKey: "tabs.map",
-    icon: { md: "map", sfDefault: "map", sfSelected: "map.fill" },
+    icon: {
+      md: "map",
+      mdDefaultVector: "map-outline",
+      mdSelectedVector: "map",
+      sfDefault: "map",
+      sfSelected: "map.fill",
+    },
     routeName: ROLE_TAB_ROUTE_NAMES.map,
     visibleFor: ["instructor"],
   },
@@ -39,6 +59,8 @@ export const TAB_SPECS: readonly TabSpec[] = [
     titleKey: "tabs.profile",
     icon: {
       md: "account_circle",
+      mdDefaultVector: "account-circle-outline",
+      mdSelectedVector: "account-circle",
       sfDefault: "person.crop.circle",
       sfSelected: "person.crop.circle.fill",
     },

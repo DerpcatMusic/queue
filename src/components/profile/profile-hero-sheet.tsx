@@ -1,37 +1,18 @@
+import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
-import Animated, {
-  Extrapolation,
-  interpolate,
-  type SharedValue,
-  useAnimatedStyle,
-} from "react-native-reanimated";
 
-import { TopSheetSurface } from "@/components/layout/top-sheet-surface";
-import { ProfileIconButton } from "@/components/profile/profile-settings-sections";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { ActionButton } from "@/components/ui/action-button";
+import { IconButton } from "@/components/ui/icon-button";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitStatusBadge } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { isSportType, type SPORT_TYPES, toSportLabel } from "@/convex/constants";
-import { useAppInsets } from "@/hooks/use-app-insets";
 
-const PROFILE_HERO_EXPANDED_CONTENT_HEIGHT = 204;
-const PROFILE_HERO_CONTRACTED_CONTENT_HEIGHT = 98;
-const PROFILE_HERO_CONTENT_GAP = BrandSpacing.md;
-const PROFILE_HERO_COLLAPSE_END = 116;
-
-export function getProfileHeroExpandedHeight(safeTop: number) {
-  return safeTop + PROFILE_HERO_EXPANDED_CONTENT_HEIGHT;
-}
-
-export function getProfileHeroScrollTopPadding(_safeTop: number) {
-  // Now that TopSheetSurface uses marginTop: safeTop (natural flow),
-  // padding should only account for content height + gap, not safeTop.
-  return PROFILE_HERO_EXPANDED_CONTENT_HEIGHT + PROFILE_HERO_CONTENT_GAP;
-}
+const PROFILE_HEADER_CONTENT_HEIGHT = 128;
 
 type ProfileHeroAction = {
   label: string;
@@ -44,20 +25,11 @@ type ProfileHeroAction = {
     | "mappin.and.ellipse";
 };
 
-type ProfileHeroSheetProps = {
-  profileName: string;
-  roleLabel: string;
-  profileImageUrl?: string | null | undefined;
-  palette: BrandPalette;
-  scrollY: SharedValue<number>;
-  onRequestEdit: () => void;
-  primaryActionLabel?: string;
-  secondaryAction?: ProfileHeroAction | undefined;
-  statusLabel?: string | undefined;
-  bio?: string | null | undefined;
-  socialLinks?: ProfileSocialLinks | undefined;
-  sports: string[];
-};
+type ProfileHeroStatus = "ready" | "pending" | "unverified";
+
+export function getProfileHeaderExpandedHeight(safeTop: number) {
+  return safeTop + PROFILE_HEADER_CONTENT_HEIGHT;
+}
 
 function getSportsLabel(sports: string[], t: ReturnType<typeof useTranslation>["t"]) {
   return sports.length === 0
@@ -74,246 +46,185 @@ function getProfileSummary(
   activeSocialCount: number,
   t: ReturnType<typeof useTranslation>["t"],
 ) {
-  return (
-    bio?.trim() ||
-    (activeSocialCount > 0
-      ? t("profile.hero.linksReady", { count: activeSocialCount })
-      : t("profile.hero.focused"))
-  );
+  const trimmed = bio?.trim();
+  if (trimmed) {
+    return trimmed;
+  }
+  return activeSocialCount > 0 ? t("profile.hero.linksReady", { count: activeSocialCount }) : "";
 }
 
-export function ProfileHeroSheet({
+type ProfileHeaderSheetProps = {
+  profileName: string;
+  roleLabel: string;
+  profileImageUrl?: string | null | undefined;
+  palette: BrandPalette;
+  onRequestEdit: () => void;
+  primaryActionLabel?: string;
+  status?: ProfileHeroStatus;
+  statusLabel?: string | undefined;
+  bio?: string | null | undefined;
+  socialLinks?: ProfileSocialLinks | undefined;
+  sports: string[];
+};
+
+export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   profileName,
   roleLabel,
   profileImageUrl,
   palette,
-  scrollY,
   onRequestEdit,
   primaryActionLabel,
-  secondaryAction,
+  status,
   statusLabel,
   bio,
   socialLinks,
   sports,
-}: ProfileHeroSheetProps) {
+}: ProfileHeaderSheetProps) {
   const { t } = useTranslation();
-  const { safeTop } = useAppInsets();
-  const contractedHeight = safeTop + PROFILE_HERO_CONTRACTED_CONTENT_HEIGHT;
+  const resolvedPrimaryActionLabel = primaryActionLabel ?? t("profile.actions.edit");
   const activeSocialCount = Object.values(socialLinks ?? {}).filter((value) =>
     Boolean(value?.trim()),
   ).length;
-  const resolvedPrimaryActionLabel = primaryActionLabel ?? t("profile.actions.edit");
   const sportsLabel = getSportsLabel(sports, t);
   const summaryLabel = getProfileSummary(bio, activeSocialCount, t);
-
-  const profileAvatarStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        scale: interpolate(
-          scrollY.value,
-          [0, PROFILE_HERO_COLLAPSE_END],
-          [1.04, 0.76],
-          Extrapolation.CLAMP,
-        ),
-      },
-    ],
-  }));
-
-  const identityBlockStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      scrollY.value,
-      [0, PROFILE_HERO_COLLAPSE_END],
-      [1, 0.82],
-      Extrapolation.CLAMP,
-    ),
-    transform: [
-      {
-        translateY: interpolate(
-          scrollY.value,
-          [0, PROFILE_HERO_COLLAPSE_END],
-          [0, -6],
-          Extrapolation.CLAMP,
-        ),
-      },
-    ],
-  }));
-
-  const nameStyle = useAnimatedStyle(() => ({
-    fontSize: interpolate(
-      scrollY.value,
-      [0, PROFILE_HERO_COLLAPSE_END],
-      [26, 19],
-      Extrapolation.CLAMP,
-    ),
-    lineHeight: interpolate(
-      scrollY.value,
-      [0, PROFILE_HERO_COLLAPSE_END],
-      [31, 24],
-      Extrapolation.CLAMP,
-    ),
-  }));
-
-  const expandedDetailsStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, 80], [1, 0], Extrapolation.CLAMP),
-    height: interpolate(scrollY.value, [0, 80], [88, 0], Extrapolation.CLAMP),
-    marginTop: interpolate(scrollY.value, [0, 80], [14, 0], Extrapolation.CLAMP),
-  }));
-
-  const animatedSheetStyle = useAnimatedStyle(() => {
-    const pullStretch = interpolate(scrollY.value, [-120, 0], [84, 0], Extrapolation.CLAMP);
-    const collapsedBase = interpolate(
-      scrollY.value,
-      [0, PROFILE_HERO_COLLAPSE_END],
-      [safeTop + PROFILE_HERO_EXPANDED_CONTENT_HEIGHT, contractedHeight],
-      Extrapolation.CLAMP,
-    );
-
-    return {
-      height: collapsedBase + pullStretch,
-    };
-  });
+  const resolvedStatusLabel =
+    statusLabel ??
+    (status === "ready"
+      ? t("profile.hero.statusReady")
+      : status === "pending"
+        ? t("profile.hero.statusPending")
+        : status === "unverified"
+          ? t("profile.hero.statusUnverified")
+          : "");
+  const statusTone = status === "ready" ? "success" : status === "pending" ? "warning" : "neutral";
 
   return (
-    <TopSheetSurface
+    <View
       pointerEvents="box-none"
-      backgroundColor={palette.primary}
-      topInsetColor={palette.primary}
-      style={[
-        {
-          // NO absolute - uses marginTop from TopSheetSurface
-          zIndex: 10,
-          overflow: "hidden",
-          backgroundColor: palette.primary as string,
-          borderBottomLeftRadius: 28,
-          borderBottomRightRadius: 28,
-          borderCurve: "continuous",
-        },
-        animatedSheetStyle,
-      ]}
+      style={{
+        paddingHorizontal: BrandSpacing.xl,
+        paddingTop: BrandSpacing.sm,
+        paddingBottom: BrandSpacing.lg,
+        gap: BrandSpacing.md,
+      }}
     >
       <View
-        pointerEvents="box-none"
         style={{
-          flex: 1,
-          paddingTop: safeTop + BrandSpacing.sm,
-          paddingBottom: BrandSpacing.lg,
-          paddingHorizontal: BrandSpacing.xl,
+          flexDirection: "row",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 14,
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 14 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 14,
-              flex: 1,
-              minWidth: 0,
-            }}
-          >
-            <View style={{ borderRadius: 24 }}>
-              <Animated.View style={profileAvatarStyle}>
-                <ProfileAvatar
-                  imageUrl={profileImageUrl}
-                  fallbackName={profileName}
-                  palette={palette}
-                  size={74}
-                  roundedSquare
-                />
-              </Animated.View>
-            </View>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 14,
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          <ProfileAvatar
+            imageUrl={profileImageUrl}
+            fallbackName={profileName}
+            palette={palette}
+            size={72}
+            roundedSquare
+          />
 
-            <Animated.View style={[{ flex: 1, gap: 4, minWidth: 0 }, identityBlockStyle]}>
-              <Text
-                style={{
-                  ...BrandType.micro,
-                  color: palette.onPrimary as string,
-                  opacity: 0.6,
-                  letterSpacing: 0.2,
-                  includeFontPadding: false,
-                }}
-              >
-                {roleLabel}
-              </Text>
-              <Animated.Text
-                numberOfLines={2}
-                style={[
-                  {
-                    ...BrandType.heading,
-                    color: palette.onPrimary as string,
-                    letterSpacing: -0.2,
-                    includeFontPadding: false,
-                  },
-                  nameStyle,
-                ]}
-              >
-                {profileName}
-              </Animated.Text>
-              <Text
-                numberOfLines={1}
-                style={{
-                  ...BrandType.bodyMedium,
-                  fontSize: 13,
-                  color: palette.onPrimary as string,
-                  opacity: 0.72,
-                  includeFontPadding: false,
-                }}
-              >
-                {sportsLabel}
-              </Text>
-            </Animated.View>
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <ProfileIconButton
-              icon="pencil"
-              label={resolvedPrimaryActionLabel}
-              onPress={onRequestEdit}
-              palette={palette}
-              tone="accent"
-            />
-            {secondaryAction ? (
-              <ProfileIconButton
-                icon={secondaryAction.icon ?? "sparkles"}
-                label={secondaryAction.label}
-                onPress={secondaryAction.onPress}
-                palette={palette}
-              />
-            ) : null}
-          </View>
-        </View>
-
-        <Animated.View style={[{ overflow: "hidden" }, expandedDetailsStyle]}>
-          <View style={{ gap: 12 }}>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {statusLabel ? (
-                <KitStatusBadge label={statusLabel} tone="accent" showDot={false} />
-              ) : null}
-              <KitStatusBadge label={sportsLabel} tone="neutral" showDot={false} />
-            </View>
+          <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
+            <Text
+              style={{
+                ...BrandType.micro,
+                color: palette.onPrimary as string,
+                opacity: 0.64,
+                letterSpacing: 0.2,
+                includeFontPadding: false,
+              }}
+            >
+              {roleLabel}
+            </Text>
             <Text
               numberOfLines={2}
               style={{
-                ...BrandType.caption,
+                ...BrandType.heading,
+                fontSize: 26,
+                lineHeight: 30,
                 color: palette.onPrimary as string,
-                opacity: 0.72,
+                letterSpacing: -0.3,
+                includeFontPadding: false,
               }}
             >
-              {summaryLabel}
+              {profileName}
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={{
+                ...BrandType.bodyMedium,
+                fontSize: 13,
+                color: palette.onPrimary as string,
+                opacity: 0.76,
+                includeFontPadding: false,
+              }}
+            >
+              {sportsLabel}
             </Text>
           </View>
-        </Animated.View>
-      </View>
-    </TopSheetSurface>
-  );
-}
+        </View>
 
-export function ProfileDesktopHeroPanel({
+        <IconButton
+          accessibilityLabel={resolvedPrimaryActionLabel}
+          onPress={onRequestEdit}
+          tone="primarySubtle"
+          size={48}
+          icon={<IconSymbol name="pencil" size={21} color={palette.primary as string} />}
+        />
+      </View>
+
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        {resolvedStatusLabel ? (
+          <KitStatusBadge
+            label={resolvedStatusLabel}
+            tone={
+              statusTone === "success"
+                ? "success"
+                : statusTone === "warning"
+                  ? "warning"
+                  : "neutral"
+            }
+            showDot
+          />
+        ) : null}
+        {sports.length > 0 ? (
+          <KitStatusBadge label={sportsLabel} tone="neutral" showDot={false} />
+        ) : null}
+      </View>
+
+      {summaryLabel ? (
+        <Text
+          numberOfLines={2}
+          style={{
+            ...BrandType.caption,
+            color: palette.onPrimary as string,
+            opacity: 0.76,
+          }}
+        >
+          {summaryLabel}
+        </Text>
+      ) : null}
+    </View>
+  );
+});
+
+export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
   profileName,
   roleLabel,
   profileImageUrl,
   palette,
   summary,
   statusLabel,
+  statusTone = "neutral",
   metaLabel,
   primaryAction,
   secondaryAction,
@@ -324,6 +235,7 @@ export function ProfileDesktopHeroPanel({
   palette: BrandPalette;
   summary: string;
   statusLabel: string;
+  statusTone?: "neutral" | "success" | "warning";
   metaLabel?: string | undefined;
   primaryAction: ProfileHeroAction;
   secondaryAction?: ProfileHeroAction | undefined;
@@ -373,15 +285,23 @@ export function ProfileDesktopHeroPanel({
       </View>
 
       <View style={{ gap: 10 }}>
-        <KitStatusBadge label={statusLabel} tone="accent" showDot={false} />
-        <Text
-          style={{
-            ...BrandType.body,
-            color: palette.textMuted as string,
-          }}
-        >
-          {summary}
-        </Text>
+        <KitStatusBadge
+          label={statusLabel}
+          tone={
+            statusTone === "success" ? "success" : statusTone === "warning" ? "warning" : "neutral"
+          }
+          showDot
+        />
+        {summary ? (
+          <Text
+            style={{
+              ...BrandType.body,
+              color: palette.textMuted as string,
+            }}
+          >
+            {summary}
+          </Text>
+        ) : null}
         {metaLabel ? (
           <Text
             style={{
@@ -417,4 +337,4 @@ export function ProfileDesktopHeroPanel({
       </View>
     </View>
   );
-}
+});

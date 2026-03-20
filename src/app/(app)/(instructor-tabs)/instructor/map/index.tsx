@@ -2,7 +2,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
-import MapTabScreen from "@/components/map-tab/map-tab-screen";
+import MapTabScreen from "@/components/map-tab";
 import { useBrand } from "@/hooks/use-brand";
 import { isFeatureEnabled } from "@/navigation/tab-registry";
 

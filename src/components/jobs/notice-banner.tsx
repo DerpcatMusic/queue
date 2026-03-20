@@ -1,11 +1,5 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import {
-  type ColorValue,
-  Pressable,
-  StyleSheet,
-  View,
-  type ViewStyle,
-} from "react-native";
+import { type ColorValue, Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 
@@ -47,10 +41,7 @@ export function NoticeBanner({
         hitSlop={8}
         onPress={onDismiss}
         accessibilityRole="button"
-        style={({ pressed }) => [
-          styles.dismiss,
-          { opacity: pressed ? 0.7 : 1 },
-        ]}
+        style={({ pressed }) => [styles.dismiss, { opacity: pressed ? 0.7 : 1 }]}
       >
         <MaterialIcons name="close" size={16} color={textColor} />
       </Pressable>

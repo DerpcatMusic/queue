@@ -28,7 +28,7 @@ const DEFAULT_STEPS = [0.16, 0.4, 0.65, 0.95] as const;
 const HANDLE_HEIGHT = BrandSpacing.xl + BrandSpacing.md;
 const HANDLE_PILL_WIDTH = 36;
 const HANDLE_PILL_HEIGHT = 4;
-const BOTTOM_TABS_ESTIMATE = 80;
+const MIN_BOTTOM_CHROME_ESTIMATE = 80;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -115,7 +115,7 @@ export function TopSheet({
 }: TopSheetProps) {
   const palette = useBrand();
   const { setTopInsetTone, setTopInsetBackgroundColor } = useSystemUi();
-  const { safeTop } = useAppInsets();
+  const { safeTop, safeBottom } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
   const resolvedBackground = (backgroundColor ?? palette.surfaceElevated) as ColorValue;
   const resolvedInsetColor = (topInsetColor ?? resolvedBackground) as ColorValue;
@@ -143,7 +143,8 @@ export function TopSheet({
   }, [resolvedInsetColor, setTopInsetBackgroundColor, setTopInsetTone]);
 
   // Available height for sheet steps (screen minus safe top minus bottom tabs)
-  const availableHeight = screenHeight - safeTop - BOTTOM_TABS_ESTIMATE;
+  const bottomChromeEstimate = Math.max(MIN_BOTTOM_CHROME_ESTIMATE, safeBottom + 64);
+  const availableHeight = screenHeight - safeTop - bottomChromeEstimate;
 
   // Compute step heights in pixels
   const stepHeights = useMemo(

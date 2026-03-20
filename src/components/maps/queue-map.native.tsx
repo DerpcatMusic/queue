@@ -6,9 +6,9 @@ import {
   OfflineManager,
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, InteractionManager, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons";
@@ -31,9 +31,13 @@ type AnyStyleSpec = {
   [key: string]: unknown;
 };
 type MapLoadState = "loading" | "ready" | "error";
+const MAP_LOADING_OVERLAY_DELAY_MS = 180;
 
 const NO_MATCH_ZONE_FILTER: Expression = ["==", ["get", "id"], "__none__"];
 let offlinePackBootstrapPromise: Promise<void> | null = null;
+const mapStyleResponseCache = new Map<string, AnyStyleSpec | null>();
+const mapStyleResponsePromiseCache = new Map<string, Promise<AnyStyleSpec | null>>();
+const themedMapStyleCache = new Map<string, AnyStyleSpec>();
 
 function sanitizeZoom(value: number, fallback: number) {
   if (!Number.isFinite(value)) return fallback;
@@ -120,6 +124,39 @@ function withMapPersonality(
   return { ...style, layers };
 }
 
+async function fetchMapStyleSpec(styleUrl: string): Promise<AnyStyleSpec | null> {
+  if (mapStyleResponseCache.has(styleUrl)) {
+    return mapStyleResponseCache.get(styleUrl) ?? null;
+  }
+
+  const existingPromise = mapStyleResponsePromiseCache.get(styleUrl);
+  if (existingPromise) {
+    return existingPromise;
+  }
+
+  const request = (async () => {
+    try {
+      const response = await fetch(styleUrl);
+      if (!response.ok) {
+        mapStyleResponseCache.set(styleUrl, null);
+        return null;
+      }
+
+      const baseStyle = (await response.json()) as AnyStyleSpec;
+      mapStyleResponseCache.set(styleUrl, baseStyle);
+      return baseStyle;
+    } catch {
+      mapStyleResponseCache.set(styleUrl, null);
+      return null;
+    } finally {
+      mapStyleResponsePromiseCache.delete(styleUrl);
+    }
+  })();
+
+  mapStyleResponsePromiseCache.set(styleUrl, request);
+  return request;
+}
+
 async function ensureVectorOfflinePack() {
   if (!APPLE_MAP_THEME.offlinePack.enabled) return;
   if (offlinePackBootstrapPromise) {
@@ -183,7 +220,7 @@ function createPinShape(pin: QueueMapPin | null): GeoJSON.FeatureCollection {
   };
 }
 
-export function QueueMap({
+export const QueueMap = memo(function QueueMap({
   mode,
   pin,
   selectedZoneIds,
@@ -204,6 +241,7 @@ export function QueueMap({
   const { resolvedScheme } = useThemePreference();
   const mapPalette = getMapBrandPalette(resolvedScheme);
   const [mapLoadState, setMapLoadState] = useState<MapLoadState>("loading");
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [mapErrorMessage, setMapErrorMessage] = useState<string | null>(null);
   const [baseMapStyle, setBaseMapStyle] = useState<AnyStyleSpec | null>(null);
@@ -213,10 +251,17 @@ export function QueueMap({
     retryNonce === 0
       ? preferredStyleUrl
       : `${preferredStyleUrl}${preferredStyleUrl.includes("?") ? "&" : "?"}queueRetry=${String(retryNonce)}`;
+  const themedStyleCacheKey = `${styleFetchUrl}:${resolvedScheme}:${mode === "zoneSelect" ? "edit" : "browse"}`;
   const themedMapStyle = useMemo(() => {
     if (!baseMapStyle) return null;
-    return withMapPersonality(baseMapStyle, mapPalette, mode !== "zoneSelect");
-  }, [baseMapStyle, mapPalette, mode]);
+    const cachedStyle = themedMapStyleCache.get(themedStyleCacheKey);
+    if (cachedStyle) {
+      return cachedStyle;
+    }
+    const nextStyle = withMapPersonality(baseMapStyle, mapPalette, mode !== "zoneSelect");
+    themedMapStyleCache.set(themedStyleCacheKey, nextStyle);
+    return nextStyle;
+  }, [baseMapStyle, mapPalette, mode, themedStyleCacheKey]);
   const mapStyle = themedMapStyle ?? preferredStyleUrl;
   const mapKey = `${resolvedScheme}:${retryNonce}:${themedMapStyle ? "themed" : "url"}`;
 
@@ -236,56 +281,78 @@ export function QueueMap({
     setBaseMapStyle(null);
     setMapErrorMessage(null);
     setMapLoadState("loading");
+    setShowLoadingOverlay(false);
     setRetryNonce((current) => current + 1);
   }, []);
+
+  useEffect(() => {
+    if (mapLoadState !== "loading") {
+      setShowLoadingOverlay(false);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setShowLoadingOverlay(true);
+    }, MAP_LOADING_OVERLAY_DELAY_MS);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [mapLoadState]);
 
   useEffect(() => {
     if (mapLoadState !== "ready") return;
 
     let cancelled = false;
-    const task = InteractionManager.runAfterInteractions(() => {
-      if (cancelled) return;
-      void ensureVectorOfflinePack().catch(() => {});
-    });
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let idleId: number | null = null;
+
+    const scheduleBootstrap = () => {
+      if (typeof globalThis.requestIdleCallback === "function") {
+        idleId = globalThis.requestIdleCallback(() => {
+          if (cancelled) return;
+          void ensureVectorOfflinePack().catch(() => {});
+        });
+        return;
+      }
+
+      timeoutId = setTimeout(() => {
+        if (cancelled) return;
+        void ensureVectorOfflinePack().catch(() => {});
+      }, 40);
+    };
+
+    timeoutId = setTimeout(scheduleBootstrap, 16);
 
     return () => {
       cancelled = true;
-      task.cancel();
+      if (idleId !== null && typeof globalThis.cancelIdleCallback === "function") {
+        globalThis.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [mapLoadState]);
 
   useEffect(() => {
     let cancelled = false;
-    const controller = new AbortController();
 
     (async () => {
-      if (!cancelled) {
-        setBaseMapStyle(null);
+      const cachedStyle = mapStyleResponseCache.get(styleFetchUrl);
+      if (!cancelled && cachedStyle !== undefined) {
+        setBaseMapStyle(cachedStyle);
+        return;
       }
-      try {
-        const response = await fetch(styleFetchUrl, {
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          if (!cancelled) {
-            setBaseMapStyle(null);
-          }
-          return;
-        }
-        const baseStyle = (await response.json()) as AnyStyleSpec;
-        if (!cancelled) {
-          setBaseMapStyle(baseStyle);
-        }
-      } catch {
-        if (!cancelled) {
-          setBaseMapStyle(null);
-        }
+
+      const baseStyle = await fetchMapStyleSpec(styleFetchUrl);
+      if (!cancelled) {
+        setBaseMapStyle(baseStyle);
       }
     })();
 
     return () => {
       cancelled = true;
-      controller.abort();
     };
   }, [styleFetchUrl]);
 
@@ -409,7 +476,7 @@ export function QueueMap({
         </GeoJSONSource>
       </MapLibreMap>
 
-      {mapLoadState === "loading" ? (
+      {mapLoadState === "loading" && showLoadingOverlay ? (
         <View
           style={[
             styles.stateOverlay,
@@ -499,9 +566,7 @@ export function QueueMap({
       {showAttributionButton ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t("mapTab.native.openAttribution", {
-            defaultValue: "Open map attribution",
-          })}
+          accessibilityLabel={t("mapTab.native.openAttribution")}
           onPress={() => {
             mapRef.current?.showAttribution?.();
           }}
@@ -520,7 +585,7 @@ export function QueueMap({
       ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },

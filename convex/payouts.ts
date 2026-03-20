@@ -1,7 +1,12 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalAction, internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
+import {
+  internalAction,
+  internalMutation,
+  internalQuery,
+  type MutationCtx,
+} from "./_generated/server";
 import { executeRapydSignedPost } from "./integrations/rapyd/client";
 import {
   getOptionalEnv,
@@ -327,7 +332,9 @@ export const releaseInstructorFunds = internalMutation({
     }
 
     const paymentOrders = paymentOrderId
-      ? [await ctx.db.get(paymentOrderId)].filter((value): value is Doc<"paymentOrders"> => Boolean(value))
+      ? [await ctx.db.get(paymentOrderId)].filter((value): value is Doc<"paymentOrders"> =>
+          Boolean(value),
+        )
       : await ctx.db
           .query("paymentOrders")
           .withIndex("by_job", (q) => q.eq("jobId", jobId))
@@ -510,9 +517,13 @@ export const scheduleInstructorPayout = internalMutation({
       if (nextStatus === "scheduled") {
         scheduledCount += 1;
         scheduledIds.push(schedule._id);
-        await ctx.scheduler.runAfter(Math.max(0, readyAt - now), internal.payouts.executeScheduledPayout, {
-          scheduleId: schedule._id,
-        });
+        await ctx.scheduler.runAfter(
+          Math.max(0, readyAt - now),
+          internal.payouts.executeScheduledPayout,
+          {
+            scheduleId: schedule._id,
+          },
+        );
       }
     }
 
@@ -582,8 +593,7 @@ export const executeScheduledPayout = internalMutation({
       return { started: false, reason: "source_payment_missing" as const };
     }
 
-    const existingPayout =
-      schedule.payoutId ? await ctx.db.get(schedule.payoutId) : null;
+    const existingPayout = schedule.payoutId ? await ctx.db.get(schedule.payoutId) : null;
     const payout =
       existingPayout ??
       (schedule.sourcePaymentId
@@ -817,7 +827,9 @@ export const getPayoutExecutionContext = internalQuery({
     const payment = await ctx.db.get(payout.paymentId);
     if (!payment) return null;
 
-    const explicitDestination = payout.destinationId ? await ctx.db.get(payout.destinationId) : null;
+    const explicitDestination = payout.destinationId
+      ? await ctx.db.get(payout.destinationId)
+      : null;
     const defaultDestinations = await ctx.db
       .query("payoutDestinations")
       .withIndex("by_user_default", (q) =>
@@ -838,7 +850,7 @@ export const getPayoutExecutionContext = internalQuery({
     const destination =
       explicitDestination?.status === "verified"
         ? explicitDestination
-        : verifiedDefaultDestination ?? verifiedDestination;
+        : (verifiedDefaultDestination ?? verifiedDestination);
     const providerLink = await ctx.db
       .query("payoutProviderLinks")
       .withIndex("by_payout", (q) => q.eq("payoutId", payout._id))
@@ -988,7 +1000,9 @@ export const executePayoutAttemptAction = internalAction({
       confirm_automatically: true,
       description: `QuickFit payout for payment ${payment._id}`,
       ewallet: ewalletId,
-      merchant_reference_id: providerLink?.merchantReferenceId ?? buildPayoutCorrelationToken(String(payout.instructorUserId)),
+      merchant_reference_id:
+        providerLink?.merchantReferenceId ??
+        buildPayoutCorrelationToken(String(payout.instructorUserId)),
       payout_amount: Number((payout.amountAgorot / 100).toFixed(2)),
       payout_currency: payout.currency,
       payout_method_type: payoutMethodType,
@@ -1243,7 +1257,11 @@ export const recordPayoutAttemptResult = internalMutation({
           });
         }
 
-        if (nextStatus === "failed" || nextStatus === "cancelled" || nextStatus === "needs_attention") {
+        if (
+          nextStatus === "failed" ||
+          nextStatus === "cancelled" ||
+          nextStatus === "needs_attention"
+        ) {
           await insertLedgerEntryIfMissing(ctx, {
             paymentOrderId: paymentOrder._id,
             jobId: paymentOrder.jobId,
@@ -1509,7 +1527,9 @@ export const processRapydPayoutWebhookEvent = internalMutation({
           mappedStatus: attemptResult.status ?? nextStatus,
           retryable: false,
           message:
-            nextStatus === "failed" || nextStatus === "cancelled" || nextStatus === "needs_attention"
+            nextStatus === "failed" ||
+            nextStatus === "cancelled" ||
+            nextStatus === "needs_attention"
               ? "Payout moved to terminal state via Rapyd webhook"
               : "Payout status updated via Rapyd webhook",
         }),
@@ -1522,7 +1542,9 @@ export const processRapydPayoutWebhookEvent = internalMutation({
           mappedStatus: attemptResult.status ?? nextStatus,
           retryable: false,
           message:
-            nextStatus === "failed" || nextStatus === "cancelled" || nextStatus === "needs_attention"
+            nextStatus === "failed" ||
+            nextStatus === "cancelled" ||
+            nextStatus === "needs_attention"
               ? "Payout moved to terminal state via Rapyd webhook"
               : "Payout status updated via Rapyd webhook",
         }),

@@ -1,3 +1,4 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { View } from "react-native";
 
@@ -57,9 +58,9 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
               backgroundColor={tabBarBackgroundColor}
               badgeBackgroundColor={palette.primary as string}
               badgeTextColor={palette.onPrimary as string}
+              indicatorColor={palette.primarySubtle as string}
               shadowColor="transparent"
               labelVisibilityMode="unlabeled"
-              disableIndicator
               disableTransparentOnScrollEdge
             >
               {tabs.map((tab) => (
@@ -73,7 +74,20 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                       default: tab.icon.sfDefault as never,
                       selected: tab.icon.sfSelected as never,
                     }}
-                    md={tab.icon.md}
+                    src={{
+                      default: (
+                        <NativeTabs.Trigger.VectorIcon
+                          family={MaterialCommunityIcons}
+                          name={tab.icon.mdDefaultVector as any}
+                        />
+                      ),
+                      selected: (
+                        <NativeTabs.Trigger.VectorIcon
+                          family={MaterialCommunityIcons}
+                          name={tab.icon.mdSelectedVector as any}
+                        />
+                      ),
+                    }}
                   />
                   <NativeTabBadge count={badgeCountByRoute[tab.routeName] ?? 0} />
                 </NativeTabs.Trigger>

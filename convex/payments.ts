@@ -15,6 +15,7 @@ import {
   normalizeRapydPayoutMethodType,
 } from "./integrations/rapyd/config";
 import { buildCanonicalRapydPayload } from "./integrations/rapyd/payloads";
+import { requireUserRole } from "./lib/auth";
 import {
   buildPaymentOrderCorrelationToken,
   inferPayoutRailCategory,
@@ -23,7 +24,6 @@ import {
   requirePositiveAgorot,
   summarizeLedgerBalances,
 } from "./lib/marketplace";
-import { requireUserRole } from "./lib/auth";
 import { omitUndefined } from "./lib/validation";
 import {
   getCheckoutContextRead,
@@ -395,7 +395,7 @@ async function syncPaymentOrderFromLegacyPayment(
           : paymentOrder.capturedAt,
       latestError:
         args.nextStatus === "failed"
-          ? args.payment.lastError ?? paymentOrder.latestError
+          ? (args.payment.lastError ?? paymentOrder.latestError)
           : paymentOrder.latestError,
     }),
   });
@@ -433,7 +433,10 @@ async function syncPaymentOrderFromLegacyPayment(
       dedupeKey: `capture:${paymentOrder._id}:gross`,
       entryType: "charge_gross",
       balanceBucket: "provider_clearing",
-      amountAgorot: requirePositiveAgorot(paymentOrder.studioChargeAmountAgorot, "studioChargeAmountAgorot"),
+      amountAgorot: requirePositiveAgorot(
+        paymentOrder.studioChargeAmountAgorot,
+        "studioChargeAmountAgorot",
+      ),
       currency: paymentOrder.currency,
       referenceType: "payment_order",
       referenceId: String(paymentOrder._id),
@@ -826,8 +829,7 @@ export const createPendingPayment = internalMutation({
         paymentOrderId: args.paymentOrderId,
         legacyPaymentId: paymentId,
         providerObjectType: "merchant_reference",
-        providerObjectId:
-          (await ctx.db.get(args.paymentOrderId))?.correlationToken ?? "",
+        providerObjectId: (await ctx.db.get(args.paymentOrderId))?.correlationToken ?? "",
       });
     }
 
@@ -1570,7 +1572,8 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
         country: session.beneficiaryCountry,
         currency: session.payoutCurrency,
         beneficiaryEntityType: session.beneficiaryEntityType,
-        senderProfileId: process.env.RAPYD_MERCHANT_ID?.trim() || existingDestination.senderProfileId,
+        senderProfileId:
+          process.env.RAPYD_MERCHANT_ID?.trim() || existingDestination.senderProfileId,
         verifiedAt: now,
         lastProviderSyncState: "verified",
         updatedAt: now,

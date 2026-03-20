@@ -7,6 +7,8 @@ import { Alert, View } from "react-native";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ProfileEditorForm } from "@/components/profile/profile-editor-form";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
+import { useProfileSubpageSheet } from "@/components/profile/profile-subpage-sheet";
+import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
@@ -42,6 +44,10 @@ export default function StudioProfileEditScreen() {
   const palette = useBrand();
   const router = useRouter();
   const { currentUser } = useUser();
+  const collapsedSheetHeight = useProfileSubpageSheet({
+    title: t("profile.navigation.edit"),
+    routeMatchPath: "/profile/edit",
+  });
   const studioSettings = useQuery(
     api.users.getMyStudioSettings,
     currentUser?.role === "studio" ? {} : "skip",
@@ -194,6 +200,7 @@ export default function StudioProfileEditScreen() {
           },
           keyboardType: "phone-pad",
         }}
+        contentTopInset={collapsedSheetHeight + BrandSpacing.lg}
       />
     </View>
   );

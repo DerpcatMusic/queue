@@ -17,12 +17,7 @@ export type KitChipProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export type KitStatusBadgeTone =
-  | "neutral"
-  | "accent"
-  | "success"
-  | "warning"
-  | "danger";
+export type KitStatusBadgeTone = "neutral" | "accent" | "success" | "warning" | "danger";
 
 export type KitStatusBadgeProps = {
   label: string;

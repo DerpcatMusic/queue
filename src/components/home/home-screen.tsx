@@ -2,9 +2,8 @@ import { useQuery } from "convex/react";
 import { Redirect, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
-import type { SharedValue } from "react-native-reanimated";
-import { HomeHeaderSheet } from "@/components/home/home-header-sheet";
+import { useWindowDimensions, View } from "react-native";
+import { getHomeHeaderExpandedHeight, HomeHeaderSheet } from "@/components/home/home-header-sheet";
 import { InstructorHomeContent } from "@/components/home/instructor-home-content";
 import { StudioHomeContent } from "@/components/home/studio-home-content";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
@@ -13,6 +12,7 @@ import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount"
 import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
+import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
@@ -21,6 +21,7 @@ const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAM
 const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile);
 const STUDIO_JOBS_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.jobs);
 const STUDIO_CALENDAR_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.calendar);
+const BOTTOM_TABS_ESTIMATE = 80;
 
 function HomeBodyPlaceholder({ backgroundColor }: { backgroundColor: string }) {
   return (
@@ -35,6 +36,8 @@ export default function HomeScreen() {
   const palette = useBrand();
   const locale = i18n.resolvedLanguage ?? "en";
   const router = useRouter();
+  const { safeTop } = useAppInsets();
+  const { height: screenHeight } = useWindowDimensions();
 
   // Use centralized user context - eliminates duplicate getCurrentUser query
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
@@ -92,32 +95,29 @@ export default function HomeScreen() {
   const homeSubtitle =
     activeRole === "instructor"
       ? instructorHomeStats?.isVerified
-        ? t("home.instructor.verified", { defaultValue: "Verified and ready" })
-        : t("home.instructor.needsPolish", {
-            defaultValue: "Polish your profile",
-          })
+        ? t("home.instructor.verified")
+        : t("home.instructor.needsPolish")
       : activeRole === "studio"
-        ? t("home.studio.role", { defaultValue: "Studio" })
+        ? t("home.studio.role")
         : undefined;
-
-  const homeSheetConfig = useMemo(
+  const homeHeaderHeight = useMemo(() => getHomeHeaderExpandedHeight(safeTop), [safeTop]);
+  const homeSheetStep = useMemo(() => {
+    const availableHeight = Math.max(1, screenHeight - safeTop - BOTTOM_TABS_ESTIMATE);
+    return Math.max(0.1, Math.min(0.4, homeHeaderHeight / availableHeight));
+  }, [homeHeaderHeight, safeTop, screenHeight]);
+  const homeSheetContent = useMemo(
     () =>
-      activeRole === "instructor" || activeRole === "studio"
-        ? {
-            render: ({ scrollY }: { scrollY: SharedValue<number> }) => (
-              <HomeHeaderSheet
-                displayName={homeDisplayName}
-                profileImageUrl={homeProfileImageUrl}
-                scrollY={scrollY}
-                palette={palette}
-                isVerified={
-                  activeRole === "instructor" ? (instructorHomeStats?.isVerified ?? false) : false
-                }
-                {...(homeSubtitle ? { subtitle: homeSubtitle } : {})}
-              />
-            ),
+      activeRole === "instructor" || activeRole === "studio" ? (
+        <HomeHeaderSheet
+          displayName={homeDisplayName}
+          profileImageUrl={homeProfileImageUrl}
+          palette={palette}
+          isVerified={
+            activeRole === "instructor" ? (instructorHomeStats?.isVerified ?? false) : false
           }
-        : null,
+          {...(homeSubtitle ? { subtitle: homeSubtitle } : {})}
+        />
+      ) : null,
     [
       activeRole,
       homeDisplayName,
@@ -126,6 +126,24 @@ export default function HomeScreen() {
       instructorHomeStats?.isVerified,
       palette,
     ],
+  );
+
+  const homeSheetConfig = useMemo(
+    () =>
+      activeRole === "instructor" || activeRole === "studio"
+        ? {
+            content: homeSheetContent,
+            steps: [homeSheetStep],
+            initialStep: 0,
+            padding: {
+              vertical: 0,
+              horizontal: 0,
+            },
+            backgroundColor: palette.primary as string,
+            topInsetColor: palette.primary as string,
+          }
+        : null,
+    [activeRole, homeSheetContent, homeSheetStep, palette],
   );
 
   useGlobalTopSheet("index", homeSheetConfig);

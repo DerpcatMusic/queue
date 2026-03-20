@@ -63,19 +63,15 @@ export function InstructorHomeContent({
 
   const nextSession = upcomingSessions[0] ?? null;
   const readinessLabel = isVerified
-    ? t("home.instructor.verified", { defaultValue: "Verified and ready" })
-    : t("home.instructor.needsPolish", {
-        defaultValue: "Polish your profile",
-      });
+    ? t("home.instructor.verified")
+    : t("home.instructor.needsPolish");
   const heroTitle = nextSession
     ? t("home.instructor.heroSession", {
         sport: toSportLabel(nextSession.sport as never),
         studio: nextSession.studioName,
-        defaultValue: `${toSportLabel(nextSession.sport as never)} at ${nextSession.studioName}`,
       })
     : t("home.instructor.heroMatches", {
         count: openMatches,
-        defaultValue: `${String(openMatches)} open matches near you`,
       });
   const heroSummary = nextSession
     ? [
@@ -87,11 +83,10 @@ export function InstructorHomeContent({
     pendingApplications > 0
       ? t("home.instructor.waitingCount", {
           count: pendingApplications,
-          defaultValue: `${String(pendingApplications)} waiting`,
         })
       : nextSession
         ? getRelativeTimeLabel(nextSession.startTime, now, locale)
-        : t("home.instructor.profileSet", { defaultValue: "Profile set" });
+        : t("home.instructor.profileSet");
   const visibleSessions = upcomingSessions.slice(0, layout.isWideWeb ? 6 : 4);
 
   return (
@@ -127,13 +122,7 @@ export function InstructorHomeContent({
                   opacity: 0.76,
                 }}
               >
-                {nextSession
-                  ? t("home.instructor.eyebrowNext", {
-                      defaultValue: "NEXT LESSON",
-                    })
-                  : t("home.instructor.eyebrowBoard", {
-                      defaultValue: "JOBS BOARD",
-                    })}
+                {nextSession ? t("home.instructor.eyebrowNext") : t("home.instructor.eyebrowBoard")}
               </Text>
               <Text
                 style={{
@@ -158,20 +147,15 @@ export function InstructorHomeContent({
 
             <View style={{ flexDirection: "row", gap: 10 }}>
               <HomeSignalTile
-                label={t("home.actions.jobsTitle", {
-                  defaultValue: "Open jobs",
-                })}
+                label={t("home.actions.jobsTitle")}
                 value={String(openMatches)}
                 detail={t("home.instructor.heroMatches", {
                   count: openMatches,
-                  defaultValue: `${String(openMatches)} live now`,
                 })}
                 palette={palette}
               />
               <HomeSignalTile
-                label={t("home.instructor.pendingApps", {
-                  defaultValue: "Pending applications",
-                })}
+                label={t("home.instructor.pendingApps")}
                 value={heroSecondaryValue}
                 detail={readinessLabel}
                 palette={palette}
@@ -187,10 +171,8 @@ export function InstructorHomeContent({
             >
               <View style={{ flex: 1 }}>
                 <ActionButton
-                  accessibilityLabel={t("home.actions.jobsTitle", {
-                    defaultValue: "Open jobs",
-                  })}
-                  label={t("home.actions.jobsTitle", { defaultValue: "Open jobs" })}
+                  accessibilityLabel={t("home.actions.jobsTitle")}
+                  label={t("home.actions.jobsTitle")}
                   onPress={onOpenJobs}
                   palette={palette}
                   tone="secondary"
@@ -199,12 +181,8 @@ export function InstructorHomeContent({
               </View>
               <View style={{ flex: 1 }}>
                 <ActionButton
-                  accessibilityLabel={t("home.actions.profileTitle", {
-                    defaultValue: "Open profile",
-                  })}
-                  label={t("home.actions.profileTitle", {
-                    defaultValue: "Open profile",
-                  })}
+                  accessibilityLabel={t("home.actions.profileTitle")}
+                  label={t("home.actions.profileTitle")}
                   onPress={onOpenProfile}
                   palette={palette}
                   fullWidth
@@ -217,9 +195,7 @@ export function InstructorHomeContent({
         <Animated.View entering={FadeInUp.delay(180).duration(320)} style={{ gap: 12 }}>
           <HomeSectionHeading
             title={t("home.instructor.nextTitle")}
-            eyebrow={t("home.instructor.scheduleEyebrow", {
-              defaultValue: "SCHEDULE",
-            })}
+            eyebrow={t("home.instructor.scheduleEyebrow")}
             palette={palette}
           />
           {upcomingSessions.length === 0 ? (
@@ -233,9 +209,7 @@ export function InstructorHomeContent({
                   color: palette.textMuted as string,
                 }}
               >
-                {t("home.instructor.emptySchedule", {
-                  defaultValue: "The jobs board is live when you want the next one.",
-                })}
+                {t("home.instructor.emptySchedule", {})}
               </Text>
             </HomeSurface>
           ) : (
@@ -279,9 +253,7 @@ export function InstructorHomeContent({
                           textTransform: "uppercase",
                         }}
                       >
-                        {t("home.instructor.scheduleEyebrow", {
-                          defaultValue: "Schedule",
-                        })}
+                        {t("home.instructor.scheduleEyebrow")}
                       </Text>
                       <Text
                         selectable

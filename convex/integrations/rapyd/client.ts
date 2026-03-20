@@ -325,9 +325,11 @@ const matchSelectorToTypes = (
 export const resolveRapydCheckoutMethodSelectionFromAvailableMethods = ({
   configured,
   availableMethods,
+  allowedCategories,
 }: {
   configured: string | undefined;
   availableMethods: ReadonlyArray<RapydAvailablePaymentMethod>;
+  allowedCategories?: ReadonlyArray<string> | undefined;
 }): RapydCheckoutMethodSelection => {
   const requestedSelectors = parseConfiguredSelectorTokens(configured);
   if (requestedSelectors.length === 0) {
@@ -338,6 +340,21 @@ export const resolveRapydCheckoutMethodSelectionFromAvailableMethods = ({
   const includedTypes: string[] = [];
   const seenTypes = new Set<string>();
   const normalizedMethods = normalizeAvailableMethods(availableMethods);
+  const allowedCategorySet = new Set(
+    (allowedCategories ?? [])
+      .map((category) => category.trim().toLowerCase())
+      .filter((category) => category.length > 0),
+  );
+  const isAllowedMethod = (method: RapydAvailablePaymentMethod): boolean => {
+    if (allowedCategorySet.size === 0) return true;
+    const category = method.category?.trim().toLowerCase();
+    const paymentFlowType = method.paymentFlowType?.trim().toLowerCase();
+    return Boolean(
+      (category && allowedCategorySet.has(category)) ||
+        (paymentFlowType && allowedCategorySet.has(paymentFlowType)),
+    );
+  };
+  const methodByType = new Map(normalizedMethods.map((method) => [method.type, method]));
 
   for (const selector of requestedSelectors) {
     const matchedTypes = matchSelectorToTypes(selector, normalizedMethods);
@@ -345,7 +362,16 @@ export const resolveRapydCheckoutMethodSelectionFromAvailableMethods = ({
       warnings.push(`Unrecognized Rapyd payment selector: ${selector}`);
       continue;
     }
-    for (const matchedType of matchedTypes) {
+    const allowedMatchedTypes = matchedTypes.filter((type) =>
+      isAllowedMethod(methodByType.get(type)!),
+    );
+    if (allowedCategorySet.size > 0 && allowedMatchedTypes.length === 0) {
+      warnings.push(
+        `Rapyd payment selector is not allowed in the current checkout mode: ${selector}`,
+      );
+      continue;
+    }
+    for (const matchedType of allowedMatchedTypes) {
       if (seenTypes.has(matchedType)) continue;
       seenTypes.add(matchedType);
       includedTypes.push(matchedType);
@@ -430,6 +456,7 @@ export const resolveRapydCheckoutMethodSelection = async ({
   accessKey,
   secretKey,
   baseUrl,
+  allowedCategories,
 }: {
   configured: string | undefined;
   country: string;
@@ -437,6 +464,7 @@ export const resolveRapydCheckoutMethodSelection = async ({
   accessKey: string;
   secretKey: string;
   baseUrl: string;
+  allowedCategories?: ReadonlyArray<string> | undefined;
 }): Promise<RapydCheckoutMethodSelection> => {
   const requestedSelectors = parseConfiguredSelectorTokens(configured);
   if (requestedSelectors.length === 0) {
@@ -454,6 +482,7 @@ export const resolveRapydCheckoutMethodSelection = async ({
     return resolveRapydCheckoutMethodSelectionFromAvailableMethods({
       configured,
       availableMethods,
+      allowedCategories,
     });
   } catch (error) {
     return {

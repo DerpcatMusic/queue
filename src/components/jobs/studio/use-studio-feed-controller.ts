@@ -2,25 +2,48 @@ import type BottomSheet from "@gorhom/bottom-sheet";
 import { useAction, useMutation, useQuery } from "convex/react";
 import * as WebBrowser from "expo-web-browser";
 import type { TFunction } from "i18next";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FEATURE_FLAGS } from "@/constants/feature-flags";
 import { useRapydReturn } from "@/contexts/rapyd-return-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { toSportLabel } from "@/convex/constants";
 import { DEVICE_TIME_ZONE, MINUTE_MS, type StudioDraft, trimOptional } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { createPerfTimer, logPerfSummary, recordPerfMetric } from "@/lib/perf-telemetry";
-import { registerForPushNotificationsAsync } from "@/lib/push-notifications";
+import {
+  isPushRegistrationError,
+  registerForPushNotificationsAsync,
+} from "@/lib/push-notifications";
 import { buildRapydBridgeUrl, resolveRapydAppReturnUrl } from "@/lib/rapyd-hosted-flow";
 
 WebBrowser.maybeCompleteAuthSession();
 
-export type StudioJobsStatusFilter = "all" | "needs_review" | "open" | "filled" | "completed";
+export type StudioJobsTimeFilter = "all" | "active" | "past";
 
 type UseStudioFeedControllerArgs = {
   t: TFunction;
 };
+
+function getStudioPushErrorMessage(error: unknown, t: TFunction): string {
+  if (isPushRegistrationError(error)) {
+    switch (error.code) {
+      case "permission_denied":
+        return t("jobsTab.errors.pushPermissionRequired");
+      case "expo_go_unsupported":
+        return t("jobsTab.errors.pushUnavailableInExpoGo");
+      case "physical_device_required":
+        return t("jobsTab.errors.pushRequiresPhysicalDevice");
+      case "native_module_unavailable":
+        return t("jobsTab.errors.pushUnavailableInBuild");
+      case "web_unsupported":
+        return t("jobsTab.errors.pushUnsupportedOnWeb");
+    }
+  }
+
+  return error instanceof Error && error.message
+    ? error.message
+    : t("jobsTab.errors.failedToEnablePush");
+}
 
 type StudioControllerJob = {
   applications: Array<{
@@ -75,36 +98,31 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
   const [isStartingCheckoutForJobId, setIsStartingCheckoutForJobId] = useState<Id<"jobs"> | null>(
     null,
   );
-  const [jobsSearchQuery, setJobsSearchQuery] = useState("");
-  const [jobsStatusFilter, setJobsStatusFilter] = useState<StudioJobsStatusFilter>("all");
+  const [jobsTimeFilter, setJobsTimeFilter] = useState<StudioJobsTimeFilter>("all");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const studioJobsStartedAtRef = useRef<number | null>(null);
   const lastHandledCheckoutReturnRef = useRef<string | null>(null);
 
   const filteredStudioJobs = useMemo(() => {
-    const search = jobsSearchQuery.trim().toLowerCase();
+    const now = Date.now();
     return (studioJobs ?? []).filter((job: StudioControllerJob) => {
-      if (jobsStatusFilter === "needs_review" && job.pendingApplicationsCount === 0) {
-        return false;
-      }
-      if (
-        jobsStatusFilter !== "all" &&
-        jobsStatusFilter !== "needs_review" &&
-        job.status !== jobsStatusFilter
-      ) {
-        return false;
+      if (jobsTimeFilter === "all") {
+        return true;
       }
 
-      if (!search) return true;
-      const applicants = job.applications
-        .map((application: { instructorName: string }) => application.instructorName)
-        .join(" ");
-      const haystack =
-        `${job.zone} ${toSportLabel(job.sport as never)} ${applicants}`.toLowerCase();
-      return haystack.includes(search);
+      const isPastJob =
+        job.status === "completed" || job.status === "cancelled" || job.startTime < now;
+
+      if (jobsTimeFilter === "past" && !isPastJob) {
+        return false;
+      }
+      if (jobsTimeFilter === "active" && isPastJob) {
+        return false;
+      }
+      return true;
     });
-  }, [studioJobs, jobsSearchQuery, jobsStatusFilter]);
+  }, [studioJobs, jobsTimeFilter]);
 
   const latestPaymentByJobId = useMemo(() => {
     const map = new Map<
@@ -178,16 +196,18 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
 
   const applyCheckoutOutcome = useMemo(
     () =>
-      (paymentStatus:
-        | "created"
-        | "pending"
-        | "authorized"
-        | "captured"
-        | "failed"
-        | "cancelled"
-        | "refunded") => {
+      (
+        paymentStatus:
+          | "created"
+          | "pending"
+          | "authorized"
+          | "captured"
+          | "failed"
+          | "cancelled"
+          | "refunded",
+      ) => {
         if (paymentStatus === "captured") {
-          setStatusMessage(t("jobsTab.checkout.completed", { defaultValue: "Payment completed." }));
+          setStatusMessage(t("jobsTab.checkout.completed"));
           return;
         }
         if (
@@ -195,21 +215,15 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
           paymentStatus === "authorized" ||
           paymentStatus === "created"
         ) {
-          setStatusMessage(
-            t("jobsTab.checkout.pendingConfirmation", {
-              defaultValue: "Payment submitted. Waiting for provider confirmation.",
-            }),
-          );
+          setStatusMessage(t("jobsTab.checkout.pendingConfirmation"));
           return;
         }
         if (paymentStatus === "cancelled") {
-          setStatusMessage(
-            t("jobsTab.checkout.cancelled", { defaultValue: "Checkout cancelled." }),
-          );
+          setStatusMessage(t("jobsTab.checkout.cancelled"));
           return;
         }
 
-        setErrorMessage(t("jobsTab.checkout.failed", { defaultValue: "Payment did not complete." }));
+        setErrorMessage(t("jobsTab.checkout.failed"));
       },
     [t],
   );
@@ -222,7 +236,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     if (latestCheckoutReturn.result === "cancel") {
       consumeCheckoutReturn();
       setErrorMessage(null);
-      setStatusMessage(t("jobsTab.checkout.cancelled", { defaultValue: "Checkout cancelled." }));
+      setStatusMessage(t("jobsTab.checkout.cancelled"));
       return;
     }
 
@@ -230,11 +244,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     if (!jobId) {
       consumeCheckoutReturn();
       setErrorMessage(null);
-      setStatusMessage(
-        t("jobsTab.checkout.pendingConfirmation", {
-          defaultValue: "Payment submitted. Waiting for provider confirmation.",
-        }),
-      );
+      setStatusMessage(t("jobsTab.checkout.pendingConfirmation"));
       return;
     }
 
@@ -368,7 +378,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     }
   };
 
-  const enableStudioPush = async () => {
+  const enableStudioPush = useCallback(async () => {
     if (currentUser?.role !== "studio") return;
 
     setIsEnablingStudioPush(true);
@@ -376,15 +386,37 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
 
     try {
       const token = await registerForPushNotificationsAsync();
-      if (!token) {
-        throw new Error(t("jobsTab.errors.pushPermissionRequired"));
-      }
-
       await updateStudioNotificationSettings({
         notificationsEnabled: true,
         expoPushToken: token,
       });
       setStatusMessage(t("jobsTab.success.pushEnabled"));
+    } catch (error) {
+      setErrorMessage(getStudioPushErrorMessage(error, t));
+    } finally {
+      setIsEnablingStudioPush(false);
+    }
+  }, [currentUser?.role, t, updateStudioNotificationSettings]);
+
+  const toggleStudioPush = useCallback(async () => {
+    if (currentUser?.role !== "studio") return;
+
+    if (
+      !studioNotificationSettings?.hasExpoPushToken ||
+      !studioNotificationSettings.notificationsEnabled
+    ) {
+      await enableStudioPush();
+      return;
+    }
+
+    setIsEnablingStudioPush(true);
+    setErrorMessage(null);
+
+    try {
+      await updateStudioNotificationSettings({
+        notificationsEnabled: false,
+      });
+      setStatusMessage(t("jobsTab.success.pushDisabled"));
     } catch (error) {
       const message =
         error instanceof Error && error.message
@@ -394,7 +426,14 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     } finally {
       setIsEnablingStudioPush(false);
     }
-  };
+  }, [
+    currentUser?.role,
+    enableStudioPush,
+    studioNotificationSettings?.hasExpoPushToken,
+    studioNotificationSettings?.notificationsEnabled,
+    t,
+    updateStudioNotificationSettings,
+  ]);
 
   const startStudioCheckout = async (jobId: Id<"jobs">) => {
     if (currentUser?.role !== "studio") return;
@@ -431,9 +470,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
       if (authResult.type === "success" && authResult.url) {
         const resultUrl = new URL(authResult.url);
         if ((resultUrl.searchParams.get("result") ?? "complete") === "cancel") {
-          setStatusMessage(
-            t("jobsTab.checkout.cancelled", { defaultValue: "Checkout cancelled." }),
-          );
+          setStatusMessage(t("jobsTab.checkout.cancelled"));
           return;
         }
       }
@@ -465,17 +502,16 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     isReviewingApplicationId,
     isStartingCheckoutForJobId,
     isSubmittingStudio,
-    jobsSearchQuery,
-    jobsStatusFilter,
+    jobsTimeFilter,
     postStudioJob,
     reviewStudioApplication,
     setErrorMessage,
-    setJobsSearchQuery,
-    setJobsStatusFilter,
+    setJobsTimeFilter,
     setStatusMessage,
     startStudioCheckout,
     statusMessage,
     studioJobs,
     studioNotificationSettings,
+    toggleStudioPush,
   };
 }

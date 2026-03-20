@@ -17,11 +17,14 @@ type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
+  "arrow.clockwise": "autorenew",
   "arrow.down": "south",
   "arrow.right": "arrow-forward",
   "arrow.right.square": "logout",
   "arrow.up.right": "north-east",
   "bag.badge.plus": "work-outline",
+  "bell.fill": "notifications",
+  "bell.slash.fill": "notifications-off",
   "briefcase.fill": "work",
   "building.2.fill": "business",
   "building.columns.fill": "account-balance",
@@ -41,6 +44,8 @@ const MAPPING = {
   "mappin.and.ellipse": "place",
   "mappin.circle.fill": "location-on",
   magnifyingglass: "search",
+  plus: "add",
+  "plus.circle.fill": "add-circle",
   "moon.fill": "dark-mode",
   pencil: "edit",
   "person.crop.circle.fill": "account-circle",
@@ -50,6 +55,7 @@ const MAPPING = {
   sparkles: "auto-awesome",
   "checkmark.circle.fill": "check-circle",
   "location.fill": "my-location",
+  "line.3.horizontal.decrease.circle": "filter-list",
   "paperplane.fill": "send",
   "chevron.left.forwardslash.chevron.right": "code",
   "chevron.right": "chevron-right",

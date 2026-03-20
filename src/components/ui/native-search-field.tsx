@@ -24,15 +24,12 @@ export function NativeSearchField({
     resolvedScheme === "dark"
       ? (palette.surfaceElevated as string)
       : (palette.surfaceAlt as string);
-  const borderColor =
-    resolvedScheme === "dark" ? (palette.borderStrong as string) : (palette.border as string);
 
   return (
     <View
       style={{
         minHeight: 52,
-        borderWidth: 1,
-        borderColor,
+        borderWidth: 0,
         borderRadius: BrandRadius.input,
         borderCurve: "continuous",
         backgroundColor: surfaceColor,
@@ -40,11 +37,6 @@ export function NativeSearchField({
         flexDirection: "row",
         alignItems: "center",
         gap: BrandSpacing.sm,
-        shadowColor: "#000000",
-        shadowOpacity: resolvedScheme === "dark" ? 0.16 : 0.03,
-        shadowRadius: resolvedScheme === "dark" ? 14 : 8,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: resolvedScheme === "dark" ? 2 : 1,
       }}
     >
       <MaterialIcons name="search" size={19} color={palette.textMuted as string} />

@@ -25,7 +25,7 @@ export function KitSwitch({
   disabled = false,
   accessibilityLabel,
 }: KitSwitchProps) {
-  const { color, background, foreground } = useKitTheme();
+  const { interaction } = useKitTheme();
   const progress = useSharedValue(value ? 1 : 0);
 
   useEffect(() => {
@@ -33,12 +33,12 @@ export function KitSwitch({
   }, [progress, value]);
 
   const trackStyle = useAnimatedStyle(() => ({
-    backgroundColor: value ? color.primary : background.surfaceElevated,
+    backgroundColor: value ? interaction.switchTrackOn : interaction.switchTrackOff,
   }));
 
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: progress.value * THUMB_DISTANCE }],
-    backgroundColor: value ? foreground.primary : foreground.muted,
+    backgroundColor: value ? interaction.switchThumbOn : interaction.switchThumbOff,
   }));
 
   return (

@@ -1,15 +1,12 @@
 import type { TFunction } from "i18next";
+import { type ComponentProps, memo } from "react";
 import { Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { DotStatusPill, MetricCell } from "@/components/home/home-shared";
 import { ActionButton } from "@/components/ui/action-button";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
-import {
-  type BrandPalette,
-  BrandRadius,
-  BrandSpacing,
-  BrandType,
-} from "@/constants/brand";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -20,13 +17,7 @@ import {
   getJobStatusTone,
   JOB_STATUS_TRANSLATION_KEYS,
 } from "@/lib/jobs-utils";
-import {
-  getPaymentStatusLabel,
-  getPaymentStatusTone,
-  getPayoutStatusLabel,
-  type PaymentStatus,
-  type PayoutStatus,
-} from "@/lib/payments-utils";
+import { getPaymentStatusTone, type PaymentStatus, type PayoutStatus } from "@/lib/payments-utils";
 
 type StudioJobApplication = {
   applicationId: Id<"jobApplications">;
@@ -60,10 +51,7 @@ type StudioJobsListProps = {
   palette: BrandPalette;
   reviewingApplicationId: Id<"jobApplications"> | null;
   payingJobId: Id<"jobs"> | null;
-  onReview: (
-    applicationId: Id<"jobApplications">,
-    status: "accepted" | "rejected",
-  ) => void;
+  onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
   onStartPayment: (jobId: Id<"jobs">) => void;
   t: TFunction;
 };
@@ -88,20 +76,14 @@ const PAYOUT_STATUS_KEY: Record<PayoutStatus, string> = {
   needs_attention: "jobsTab.checkout.payoutStatus.needsAttention",
 };
 
-function jobStatusDot(
-  status: StudioJob["status"],
-  palette: BrandPalette,
-): string {
+function jobStatusDot(status: StudioJob["status"], palette: BrandPalette): string {
   const tone = getJobStatusTone(status);
   if (tone === "primary") return palette.primary as string;
   if (tone === "success") return palette.success as string;
   return palette.textMuted as string;
 }
 
-function paymentDotColor(
-  status: PaymentStatus | undefined,
-  palette: BrandPalette,
-): string {
+function paymentDotColor(status: PaymentStatus | undefined, palette: BrandPalette): string {
   if (!status) return palette.textMuted as string;
   const tone = getPaymentStatusTone(status);
   if (tone === "success") return palette.success as string;
@@ -110,15 +92,45 @@ function paymentDotColor(
   return palette.primary as string;
 }
 
-function appStatusDot(
-  status: StudioJobApplication["status"],
-  palette: BrandPalette,
-): string {
+function appStatusDot(status: StudioJobApplication["status"], palette: BrandPalette): string {
   if (status === "accepted") return palette.success as string;
   if (status === "rejected") return palette.danger as string;
   if (status === "pending") return palette.warning as string;
   return palette.textMuted as string;
 }
+
+type SummaryChipProps = {
+  icon: ComponentProps<typeof IconSymbol>["name"];
+  text: string;
+  palette: BrandPalette;
+};
+
+const SummaryChip = memo(function SummaryChip({ icon, text, palette }: SummaryChipProps) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        borderRadius: BrandRadius.button - 4,
+        borderCurve: "continuous",
+        backgroundColor: palette.surface as string,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+      }}
+    >
+      <IconSymbol name={icon} size={12} color={palette.textMuted as string} />
+      <Text
+        style={{
+          ...BrandType.caption,
+          color: palette.text as string,
+        }}
+      >
+        {text}
+      </Text>
+    </View>
+  );
+});
 
 type ApplicationRowProps = {
   application: StudioJobApplication;
@@ -127,14 +139,11 @@ type ApplicationRowProps = {
   palette: BrandPalette;
   reviewingApplicationId: Id<"jobApplications"> | null;
   canReview: boolean;
-  onReview: (
-    applicationId: Id<"jobApplications">,
-    status: "accepted" | "rejected",
-  ) => void;
+  onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
   t: TFunction;
 };
 
-function ApplicationRow({
+const ApplicationRow = memo(function ApplicationRow({
   application,
   isWideWeb,
   locale,
@@ -164,9 +173,7 @@ function ApplicationRow({
           paddingVertical: 12,
         }}
       >
-        <View
-          style={{ flex: isWideWeb ? 1.5 : undefined, minWidth: 0, gap: 3 }}
-        >
+        <View style={{ flex: isWideWeb ? 1.5 : undefined, minWidth: 0, gap: 3 }}>
           <Text
             style={{
               ...BrandType.bodyStrong,
@@ -194,7 +201,7 @@ function ApplicationRow({
         <View style={{ width: isWideWeb ? 150 : undefined }}>
           <MetricCell
             icon="calendar.badge.clock"
-            label={t("jobsTab.card.applied", { defaultValue: "Applied" })}
+            label={t("jobsTab.card.applied")}
             value={formatDateTime(application.appliedAt, locale)}
             palette={palette}
           />
@@ -219,22 +226,14 @@ function ApplicationRow({
             }}
           >
             <ActionButton
-              label={
-                isReviewing
-                  ? t("jobsTab.actions.rejecting")
-                  : t("jobsTab.actions.reject")
-              }
+              label={isReviewing ? t("jobsTab.actions.rejecting") : t("jobsTab.actions.reject")}
               onPress={() => onReview(application.applicationId, "rejected")}
               palette={palette}
               tone="secondary"
               disabled={isReviewing}
             />
             <ActionButton
-              label={
-                isReviewing
-                  ? t("jobsTab.actions.accepting")
-                  : t("jobsTab.actions.accept")
-              }
+              label={isReviewing ? t("jobsTab.actions.accepting") : t("jobsTab.actions.accept")}
               onPress={() => onReview(application.applicationId, "accepted")}
               palette={palette}
               loading={isReviewing}
@@ -244,7 +243,331 @@ function ApplicationRow({
       </View>
     </Animated.View>
   );
-}
+});
+
+type StudioJobCardProps = {
+  job: StudioJob;
+  index: number;
+  isWideWeb: boolean;
+  locale: string;
+  zoneLanguage: "en" | "he";
+  palette: BrandPalette;
+  reviewingApplicationId: Id<"jobApplications"> | null;
+  payingJobId: Id<"jobs"> | null;
+  onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
+  onStartPayment: (jobId: Id<"jobs">) => void;
+  t: TFunction;
+};
+
+const StudioJobCard = memo(function StudioJobCard({
+  job,
+  index,
+  isWideWeb,
+  locale,
+  zoneLanguage,
+  palette,
+  reviewingApplicationId,
+  payingJobId,
+  onReview,
+  onStartPayment,
+  t,
+}: StudioJobCardProps) {
+  const dotColor = jobStatusDot(job.status, palette);
+  const payDotColor = paymentDotColor(job.payment?.status, palette);
+  const canPay =
+    ["filled", "completed"].includes(job.status) &&
+    !(
+      job.payment &&
+      ["created", "pending", "authorized", "captured", "refunded"].includes(job.payment.status)
+    );
+  const acceptedApplication = job.applications.find(
+    (application) => application.status === "accepted",
+  );
+  const pendingLabel =
+    job.pendingApplicationsCount > 0
+      ? t("jobsTab.card.pendingCount", {
+          count: job.pendingApplicationsCount,
+        })
+      : job.applicationsCount > 0
+        ? t("jobsTab.card.reviewedCount", {
+            count: job.applicationsCount,
+          })
+        : t("jobsTab.card.noApplicants");
+  const listTone =
+    job.pendingApplicationsCount > 0
+      ? (palette.primarySubtle as string)
+      : (palette.surfaceAlt as string);
+
+  return (
+    <Animated.View
+      entering={FadeInUp.delay(Math.min(index, 5) * 36)
+        .duration(280)
+        .springify()
+        .damping(18)}
+    >
+      <KitSurface
+        tone="base"
+        padding={BrandSpacing.md}
+        gap={0}
+        style={{
+          borderRadius: isWideWeb ? 26 : BrandRadius.card,
+          borderCurve: "continuous",
+          backgroundColor: listTone,
+          paddingHorizontal: isWideWeb ? 18 : BrandSpacing.lg,
+          paddingVertical: isWideWeb ? 16 : 14,
+        }}
+      >
+        <View style={{ gap: 12 }}>
+          <View
+            style={{
+              flexDirection: isWideWeb ? "row" : "column",
+              alignItems: isWideWeb ? "flex-start" : "stretch",
+              gap: isWideWeb ? 14 : 10,
+            }}
+          >
+            <View
+              style={{
+                flex: isWideWeb ? 1.6 : undefined,
+                minWidth: 0,
+                gap: 8,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+                  <Text
+                    style={{
+                      ...BrandType.heading,
+                      fontSize: isWideWeb ? 22 : 20,
+                      lineHeight: isWideWeb ? 24 : 22,
+                      color: palette.text as string,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {toSportLabel(job.sport as never)}
+                  </Text>
+
+                  {acceptedApplication ? (
+                    <Text
+                      style={{
+                        ...BrandType.caption,
+                        color: palette.textMuted as string,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {t("jobsTab.card.assignedInstructor", {
+                        name: acceptedApplication.instructorName,
+                      })}
+                    </Text>
+                  ) : (
+                    <Text
+                      style={{
+                        ...BrandType.caption,
+                        color: palette.textMuted as string,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {pendingLabel}
+                    </Text>
+                  )}
+                </View>
+
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <DotStatusPill
+                    backgroundColor={palette.surface as string}
+                    color={dotColor}
+                    label={t(JOB_STATUS_TRANSLATION_KEYS[job.status])}
+                  />
+                  {job.pendingApplicationsCount > 0 ? (
+                    <DotStatusPill
+                      backgroundColor={palette.surface as string}
+                      color={palette.primary as string}
+                      label={t("jobsTab.card.toReview", {
+                        count: job.pendingApplicationsCount,
+                      })}
+                    />
+                  ) : null}
+                </View>
+              </View>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                <SummaryChip
+                  icon="calendar.badge.clock"
+                  text={formatDateTime(job.startTime, locale)}
+                  palette={palette}
+                />
+                <SummaryChip
+                  icon="mappin.and.ellipse"
+                  text={getZoneLabel(job.zone, zoneLanguage)}
+                  palette={palette}
+                />
+                <SummaryChip
+                  icon="creditcard.fill"
+                  text={t("jobsTab.card.pay", { value: job.pay })}
+                  palette={palette}
+                />
+              </View>
+            </View>
+          </View>
+
+          {["filled", "completed"].includes(job.status) ? (
+            <View
+              style={{
+                flexDirection: isWideWeb ? "row" : "column",
+                alignItems: isWideWeb ? "center" : "stretch",
+                gap: 8,
+                borderRadius: BrandRadius.card - 2,
+                borderCurve: "continuous",
+                backgroundColor: palette.surface as string,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+              }}
+            >
+              <View
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    ...BrandType.caption,
+                    letterSpacing: 0.1,
+                    color: palette.textMuted as string,
+                  }}
+                >
+                  {t("jobsTab.card.settlement")}
+                </Text>
+                <DotStatusPill
+                  backgroundColor={palette.surfaceAlt as string}
+                  color={payDotColor}
+                  label={
+                    job.payment
+                      ? t(PAYMENT_STATUS_KEY[job.payment.status])
+                      : t("jobsTab.checkout.notStarted")
+                  }
+                />
+                {job.payment?.payoutStatus ? (
+                  <DotStatusPill
+                    backgroundColor={palette.surfaceAlt as string}
+                    color={palette.text as string}
+                    label={t(PAYOUT_STATUS_KEY[job.payment.payoutStatus])}
+                  />
+                ) : null}
+              </View>
+
+              {canPay ? (
+                <ActionButton
+                  label={
+                    payingJobId === job.jobId
+                      ? t("jobsTab.checkout.starting")
+                      : job.payment && ["failed", "cancelled"].includes(job.payment.status)
+                        ? t("jobsTab.checkout.retryPayment")
+                        : t("jobsTab.checkout.payNow")
+                  }
+                  onPress={() => onStartPayment(job.jobId)}
+                  palette={palette}
+                  loading={payingJobId === job.jobId}
+                />
+              ) : null}
+            </View>
+          ) : null}
+
+          {job.pendingApplicationsCount > 0 ? (
+            <View style={{ gap: 8 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <Text
+                  style={{
+                    ...BrandType.caption,
+                    letterSpacing: 0.1,
+                    color: palette.textMuted as string,
+                  }}
+                >
+                  {t("jobsTab.card.reviewQueue")}
+                </Text>
+                <Text
+                  style={{
+                    ...BrandType.micro,
+                    color: palette.textMuted as string,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {t("jobsTab.card.waitingCount", {
+                    count: job.pendingApplicationsCount,
+                  })}
+                </Text>
+              </View>
+
+              {job.applications.map((application) => (
+                <ApplicationRow
+                  key={application.applicationId}
+                  application={application}
+                  isWideWeb={isWideWeb}
+                  locale={locale}
+                  palette={palette}
+                  reviewingApplicationId={reviewingApplicationId}
+                  canReview={application.status === "pending" && job.status === "open"}
+                  onReview={onReview}
+                  t={t}
+                />
+              ))}
+            </View>
+          ) : acceptedApplication ? (
+            <Text
+              style={{
+                ...BrandType.caption,
+                color: palette.textMuted as string,
+                paddingHorizontal: 2,
+              }}
+            >
+              {t("jobsTab.card.assignedTo", {
+                name: acceptedApplication.instructorName,
+              })}
+            </Text>
+          ) : job.applicationsCount > 0 ? (
+            <Text
+              style={{
+                ...BrandType.caption,
+                color: palette.textMuted as string,
+                paddingHorizontal: 2,
+              }}
+            >
+              {t("jobsTab.card.applicantsProcessed", {
+                count: job.applicationsCount,
+              })}
+            </Text>
+          ) : job.status === "open" ? (
+            <Text
+              style={{
+                ...BrandType.caption,
+                color: palette.textMuted as string,
+                paddingHorizontal: 2,
+              }}
+            >
+              {t("jobsTab.card.liveOnBoard", {})}
+            </Text>
+          ) : null}
+        </View>
+      </KitSurface>
+    </Animated.View>
+  );
+});
 
 export function StudioJobsList({
   jobs,
@@ -269,369 +592,21 @@ export function StudioJobsList({
       }}
     >
       {jobs.map((job, index) => {
-        const dotColor = jobStatusDot(job.status, palette);
-        const payDotColor = paymentDotColor(job.payment?.status, palette);
-        const canPay =
-          ["filled", "completed"].includes(job.status) &&
-          !(
-            job.payment &&
-            [
-              "created",
-              "pending",
-              "authorized",
-              "captured",
-              "refunded",
-            ].includes(job.payment.status)
-          );
-        const acceptedApplication = job.applications.find(
-          (application) => application.status === "accepted",
-        );
-        const pendingLabel =
-          job.pendingApplicationsCount > 0
-            ? t("jobsTab.card.pendingCount", {
-                count: job.pendingApplicationsCount,
-                defaultValue: `${String(job.pendingApplicationsCount)} pending`,
-              })
-            : job.applicationsCount > 0
-              ? t("jobsTab.card.reviewedCount", {
-                  count: job.applicationsCount,
-                  defaultValue: `${String(job.applicationsCount)} reviewed`,
-                })
-              : t("jobsTab.card.noApplicants", {
-                  defaultValue: "No applicants",
-                });
-        const listTone =
-          job.pendingApplicationsCount > 0
-            ? (palette.primarySubtle as string)
-            : (palette.surfaceAlt as string);
-
         return (
-          <Animated.View
+          <StudioJobCard
             key={job.jobId}
-            entering={FadeInUp.delay(Math.min(index, 5) * 36)
-              .duration(280)
-              .springify()
-              .damping(18)}
-          >
-            <KitSurface
-              tone="base"
-              padding={BrandSpacing.lg}
-              gap={0}
-              style={{
-                borderRadius: isWideWeb ? 28 : BrandRadius.card,
-                borderCurve: "continuous",
-                backgroundColor: listTone,
-                paddingHorizontal: isWideWeb ? 18 : BrandSpacing.lg,
-                paddingVertical: isWideWeb ? 18 : 16,
-              }}
-            >
-              <View style={{ gap: 14 }}>
-                <View
-                  style={{
-                    flexDirection: isWideWeb ? "row" : "column",
-                    alignItems: isWideWeb ? "center" : "stretch",
-                    gap: isWideWeb ? 16 : 12,
-                  }}
-                >
-                  <View
-                    style={{
-                      flex: isWideWeb ? 1.6 : undefined,
-                      minWidth: 0,
-                      gap: 6,
-                    }}
-                  >
-                    <View
-                      style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
-                    >
-                      <Text
-                        style={{
-                          ...BrandType.heading,
-                          fontSize: isWideWeb ? 24 : 22,
-                          lineHeight: isWideWeb ? 26 : 25,
-                          color: palette.text as string,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {toSportLabel(job.sport as never)}
-                      </Text>
-                      <DotStatusPill
-                        backgroundColor={palette.surface as string}
-                        color={dotColor}
-                        label={t(JOB_STATUS_TRANSLATION_KEYS[job.status])}
-                      />
-                      {job.pendingApplicationsCount > 0 ? (
-                        <DotStatusPill
-                          backgroundColor={palette.surface as string}
-                          color={palette.primary as string}
-                          label={t("jobsTab.card.toReview", {
-                            count: job.pendingApplicationsCount,
-                            defaultValue: `${String(job.pendingApplicationsCount)} to review`,
-                          })}
-                        />
-                      ) : null}
-                    </View>
-
-                    <Text
-                      style={{
-                        ...BrandType.caption,
-                        color: palette.textMuted as string,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {pendingLabel}
-                    </Text>
-
-                    {acceptedApplication ? (
-                      <Text
-                        style={{
-                          ...BrandType.caption,
-                          color: palette.textMuted as string,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {t("jobsTab.card.assignedInstructor", {
-                          name: acceptedApplication.instructorName,
-                          defaultValue: `Assigned: ${acceptedApplication.instructorName}`,
-                        })}
-                      </Text>
-                    ) : null}
-                  </View>
-
-                  <View style={{ width: isWideWeb ? 200 : undefined }}>
-                    <MetricCell
-                      icon="calendar.badge.clock"
-                      label={t("jobsTab.card.shift", { defaultValue: "Shift" })}
-                      value={formatDateTime(job.startTime, locale)}
-                      palette={palette}
-                    />
-                  </View>
-
-                  <View style={{ width: isWideWeb ? 150 : undefined }}>
-                    <MetricCell
-                      icon="mappin.and.ellipse"
-                      label={t("jobsTab.card.zone", { defaultValue: "Zone" })}
-                      value={getZoneLabel(job.zone, zoneLanguage)}
-                      palette={palette}
-                    />
-                  </View>
-
-                  <View style={{ width: isWideWeb ? 150 : undefined }}>
-                    <MetricCell
-                      align={isWideWeb ? "flex-end" : "flex-start"}
-                      icon="creditcard.fill"
-                      label={t("jobsTab.card.payLabel", {
-                        defaultValue: "Pay",
-                      })}
-                      value={t("jobsTab.card.pay", { value: job.pay })}
-                      palette={palette}
-                    />
-                  </View>
-                </View>
-
-                {["filled", "completed"].includes(job.status) ? (
-                  <View
-                    style={{
-                      flexDirection: isWideWeb ? "row" : "column",
-                      alignItems: isWideWeb ? "center" : "stretch",
-                      gap: 10,
-                      borderRadius: BrandRadius.card,
-                      borderCurve: "continuous",
-                      backgroundColor: palette.surface as string,
-                      paddingHorizontal: 14,
-                      paddingVertical: 12,
-                    }}
-                  >
-                    <View
-                      style={{
-                        flex: 1,
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                        gap: 8,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          ...BrandType.caption,
-                          letterSpacing: 0.1,
-                          color: palette.textMuted as string,
-                        }}
-                      >
-                        {t("jobsTab.card.settlement", {
-                          defaultValue: "Settlement",
-                        })}
-                      </Text>
-                      <DotStatusPill
-                        backgroundColor={palette.surfaceAlt as string}
-                        color={payDotColor}
-                        label={
-                          job.payment
-                            ? t(PAYMENT_STATUS_KEY[job.payment.status], {
-                                defaultValue: getPaymentStatusLabel(
-                                  job.payment.status,
-                                ),
-                              })
-                            : t("jobsTab.checkout.notStarted")
-                        }
-                      />
-                      {job.payment?.payoutStatus ? (
-                        <DotStatusPill
-                          backgroundColor={palette.surfaceAlt as string}
-                          color={palette.text as string}
-                          label={t(
-                            PAYOUT_STATUS_KEY[job.payment.payoutStatus],
-                            {
-                              defaultValue: getPayoutStatusLabel(
-                                job.payment.payoutStatus,
-                              ),
-                            },
-                          )}
-                        />
-                      ) : null}
-                    </View>
-
-                    {canPay ? (
-                      <ActionButton
-                        label={
-                          payingJobId === job.jobId
-                            ? t("jobsTab.checkout.starting")
-                            : job.payment &&
-                                ["failed", "cancelled"].includes(
-                                  job.payment.status,
-                                )
-                              ? t("jobsTab.checkout.retryPayment")
-                              : t("jobsTab.checkout.payNow")
-                        }
-                        onPress={() => onStartPayment(job.jobId)}
-                        palette={palette}
-                        loading={payingJobId === job.jobId}
-                      />
-                    ) : null}
-                  </View>
-                ) : null}
-
-                {job.pendingApplicationsCount > 0 ? (
-                  <View style={{ gap: 8 }}>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 12,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          ...BrandType.caption,
-                          letterSpacing: 0.1,
-                          color: palette.textMuted as string,
-                        }}
-                      >
-                        {t("jobsTab.card.reviewQueue", {
-                          defaultValue: "Review queue",
-                        })}
-                      </Text>
-                      <Text
-                        style={{
-                          ...BrandType.micro,
-                          color: palette.textMuted as string,
-                          fontVariant: ["tabular-nums"],
-                        }}
-                      >
-                        {t("jobsTab.card.waitingCount", {
-                          count: job.pendingApplicationsCount,
-                          defaultValue: `${String(job.pendingApplicationsCount)} waiting`,
-                        })}
-                      </Text>
-                    </View>
-
-                    {job.applications.map((application) => (
-                      <ApplicationRow
-                        key={application.applicationId}
-                        application={application}
-                        isWideWeb={isWideWeb}
-                        locale={locale}
-                        palette={palette}
-                        reviewingApplicationId={reviewingApplicationId}
-                        canReview={
-                          application.status === "pending" &&
-                          job.status === "open"
-                        }
-                        onReview={onReview}
-                        t={t}
-                      />
-                    ))}
-                  </View>
-                ) : acceptedApplication ? (
-                  <View
-                    style={{
-                      borderRadius: BrandRadius.card,
-                      borderCurve: "continuous",
-                      backgroundColor: palette.surface as string,
-                      paddingHorizontal: 14,
-                      paddingVertical: 12,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        ...BrandType.caption,
-                        color: palette.textMuted as string,
-                      }}
-                    >
-                      {t("jobsTab.card.assignedTo", {
-                        name: acceptedApplication.instructorName,
-                        defaultValue: `Assigned to ${acceptedApplication.instructorName}`,
-                      })}
-                    </Text>
-                  </View>
-                ) : job.applicationsCount > 0 ? (
-                  <View
-                    style={{
-                      borderRadius: BrandRadius.card,
-                      borderCurve: "continuous",
-                      backgroundColor: palette.surface as string,
-                      paddingHorizontal: 14,
-                      paddingVertical: 12,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        ...BrandType.caption,
-                        color: palette.textMuted as string,
-                      }}
-                    >
-                      {t("jobsTab.card.applicantsProcessed", {
-                        count: job.applicationsCount,
-                        defaultValue: `${String(job.applicationsCount)} applicants processed`,
-                      })}
-                    </Text>
-                  </View>
-                ) : job.status === "open" ? (
-                  <View
-                    style={{
-                      borderRadius: BrandRadius.card,
-                      borderCurve: "continuous",
-                      backgroundColor: palette.surface as string,
-                      paddingHorizontal: 14,
-                      paddingVertical: 12,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        ...BrandType.caption,
-                        color: palette.textMuted as string,
-                      }}
-                    >
-                      {t("jobsTab.card.liveOnBoard", {
-                        defaultValue:
-                          "Live on the board — new applicants arrive here.",
-                      })}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            </KitSurface>
-          </Animated.View>
+            job={job}
+            index={index}
+            isWideWeb={isWideWeb}
+            locale={locale}
+            zoneLanguage={zoneLanguage}
+            palette={palette}
+            reviewingApplicationId={reviewingApplicationId}
+            payingJobId={payingJobId}
+            onReview={onReview}
+            onStartPayment={onStartPayment}
+            t={t}
+          />
         );
       })}
     </View>

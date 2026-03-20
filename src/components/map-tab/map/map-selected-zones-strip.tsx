@@ -26,9 +26,9 @@ export function MapSelectedZonesStrip({
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{
-        gap: BrandSpacing.sm,
-        paddingTop: BrandSpacing.sm,
-        paddingBottom: BrandSpacing.xs,
+        gap: BrandSpacing.xs,
+        paddingTop: 0,
+        paddingBottom: 0,
         paddingRight: BrandSpacing.lg,
         alignItems: "center",
       }}
@@ -41,12 +41,13 @@ export function MapSelectedZonesStrip({
               key={zone.id}
               label={zone.label[zoneLanguage]}
               selected={isFocused}
+              compact
+              fullWidth={false}
               onPress={() => onPressZone(zone.id)}
               style={{
-                minHeight: BrandSpacing.xl + BrandSpacing.sm,
-                paddingHorizontal: BrandSpacing.lg - BrandSpacing.xs,
-                paddingVertical: BrandSpacing.sm - 2,
-                width: undefined,
+                minHeight: 40,
+                paddingHorizontal: BrandSpacing.md,
+                paddingVertical: 6,
               }}
             />
           );
@@ -54,14 +55,12 @@ export function MapSelectedZonesStrip({
       ) : (
         <View
           style={{
-            minHeight: BrandSpacing.xl + BrandSpacing.sm,
-            borderRadius: BrandRadius.pill,
+            minHeight: 40,
+            borderRadius: BrandRadius.card - 14,
             borderCurve: "continuous",
-            paddingHorizontal: BrandSpacing.lg - BrandSpacing.xs,
-            paddingVertical: BrandSpacing.sm - 2,
-            borderWidth: 1,
-            borderColor: palette.borderStrong as string,
-            backgroundColor: palette.surfaceElevated as string,
+            paddingHorizontal: BrandSpacing.md,
+            paddingVertical: 6,
+            backgroundColor: palette.surfaceAlt as string,
             justifyContent: "center",
           }}
         >

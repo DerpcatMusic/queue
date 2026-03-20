@@ -43,30 +43,23 @@ function getZone(zoneId: string) {
   return ZONE_OPTIONS.find((zone) => zone.id === zoneId);
 }
 
-function buildCoverageNodes(
-  selectedZoneIds: string[],
-  focusZoneId: string | null,
-): CoverageNode[] {
+function buildCoverageNodes(selectedZoneIds: string[], focusZoneId: string | null): CoverageNode[] {
   const selectedSet = new Set(selectedZoneIds);
   const orderedSelected = selectedZoneIds
     .map((zoneId) => getZone(zoneId))
     .filter((zone): zone is NonNullable<typeof zone> => Boolean(zone));
-  const focusIndex = orderedSelected.findIndex(
-    (zone) => zone.id === focusZoneId,
-  );
+  const focusIndex = orderedSelected.findIndex((zone) => zone.id === focusZoneId);
   if (focusIndex > 0) {
     const focusedZone = orderedSelected[focusIndex];
     if (focusedZone === undefined) return [];
     orderedSelected.splice(focusIndex, 1);
     orderedSelected.unshift(focusedZone);
   }
-  const previewZones = ZONE_OPTIONS.filter(
-    (zone) => !selectedSet.has(zone.id),
-  ).slice(0, Math.max(0, COVERAGE_SLOTS.length - orderedSelected.length));
-  const visibleZones = [...orderedSelected, ...previewZones].slice(
+  const previewZones = ZONE_OPTIONS.filter((zone) => !selectedSet.has(zone.id)).slice(
     0,
-    COVERAGE_SLOTS.length,
+    Math.max(0, COVERAGE_SLOTS.length - orderedSelected.length),
   );
+  const visibleZones = [...orderedSelected, ...previewZones].slice(0, COVERAGE_SLOTS.length);
 
   return visibleZones.reduce<CoverageNode[]>((nodes, zone, index) => {
     const slot = COVERAGE_SLOTS[index];
@@ -91,10 +84,7 @@ function buildCoverageNodes(
 
 function getResponseLabel(
   seconds: number,
-  labels: Record<
-    "instant" | "thirtySeconds" | "oneMinute" | "ninetySeconds",
-    string
-  >,
+  labels: Record<"instant" | "thirtySeconds" | "oneMinute" | "ninetySeconds", string>,
 ) {
   if (seconds <= 0) return labels.instant;
   if (seconds <= 30) return labels.thirtySeconds;
@@ -105,11 +95,7 @@ function getResponseLabel(
 export function QueueMap(props: QueueMapProps) {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
-  const zoneLanguage = (i18n.resolvedLanguage ?? "en")
-    .toLowerCase()
-    .startsWith("he")
-    ? "he"
-    : "en";
+  const zoneLanguage = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he") ? "he" : "en";
   const responseLabels = useMemo(
     () => ({
       instant: t("mapTab.web.instant"),
@@ -128,9 +114,7 @@ export function QueueMap(props: QueueMapProps) {
     () => (props.focusZoneId ? (getZone(props.focusZoneId) ?? null) : null),
     [props.focusZoneId],
   );
-  const selectedPreview = coverageNodes
-    .filter((node) => node.selected)
-    .slice(0, 4);
+  const selectedPreview = coverageNodes.filter((node) => node.selected).slice(0, 4);
 
   return (
     <View
@@ -200,11 +184,7 @@ export function QueueMap(props: QueueMapProps) {
                   backgroundColor: palette.primary as string,
                 }}
               >
-                <AppSymbol
-                  name="map.fill"
-                  size={24}
-                  tintColor={palette.onPrimary as string}
-                />
+                <AppSymbol name="map.fill" size={24} tintColor={palette.onPrimary as string} />
               </View>
             </View>
 
@@ -331,9 +311,7 @@ export function QueueMap(props: QueueMapProps) {
                     color: palette.text as string,
                   }}
                 >
-                  {focusedZone
-                    ? focusedZone.label[zoneLanguage]
-                    : t("mapTab.web.noFocusLocked")}
+                  {focusedZone ? focusedZone.label[zoneLanguage] : t("mapTab.web.noFocusLocked")}
                 </Text>
                 <Text
                   style={{
@@ -341,9 +319,7 @@ export function QueueMap(props: QueueMapProps) {
                     color: palette.textMuted as string,
                   }}
                 >
-                  {focusedZone
-                    ? t("mapTab.web.focusHelp")
-                    : t("mapTab.web.focusEmpty")}
+                  {focusedZone ? t("mapTab.web.focusHelp") : t("mapTab.web.focusEmpty")}
                 </Text>
               </View>
 
@@ -417,11 +393,7 @@ export function QueueMap(props: QueueMapProps) {
                     paddingVertical: 12,
                     justifyContent: "space-between",
                     transform: [{ rotate: `${String(node.rotate)}deg` }],
-                    opacity: pressed
-                      ? 0.84
-                      : node.selected || node.focused
-                        ? 1
-                        : 0.92,
+                    opacity: pressed ? 0.84 : node.selected || node.focused ? 1 : 0.92,
                   })}
                 >
                   <Text
@@ -498,9 +470,7 @@ export function QueueMap(props: QueueMapProps) {
                   color: palette.onPrimary as string,
                 }}
               >
-                {props.onPressZone
-                  ? t("mapTab.web.interactive")
-                  : t("mapTab.web.preview")}
+                {props.onPressZone ? t("mapTab.web.interactive") : t("mapTab.web.preview")}
               </Text>
             </View>
 
@@ -527,9 +497,7 @@ export function QueueMap(props: QueueMapProps) {
               </Text>
 
               {selectedPreview.length > 0 ? (
-                <View
-                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
-                >
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                   {selectedPreview.map((node) => (
                     <View
                       key={node.zoneId}

@@ -5,21 +5,19 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 
-import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
 } from "@/components/profile/profile-settings-sections";
-import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { ActionButton } from "@/components/ui/action-button";
 import {
-  BrandRadius,
-  BrandSpacing,
-  BrandType,
-  type BrandPalette,
-} from "@/constants/brand";
+  ProfileSubpageScrollView,
+  useProfileSubpageSheet,
+} from "@/components/profile/profile-subpage-sheet";
+import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
+import { ActionButton } from "@/components/ui/action-button";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -37,13 +35,9 @@ function StatusSignal({
   tone?: "surface" | "accent";
 }) {
   const backgroundColor =
-    tone === "accent"
-      ? (palette.primarySubtle as string)
-      : (palette.surfaceElevated as string);
+    tone === "accent" ? (palette.primarySubtle as string) : (palette.surfaceElevated as string);
   const labelColor =
-    tone === "accent"
-      ? (palette.primary as string)
-      : (palette.textMuted as string);
+    tone === "accent" ? (palette.primary as string) : (palette.textMuted as string);
 
   return (
     <View
@@ -87,6 +81,10 @@ export default function SportsScreen() {
   const router = useRouter();
   const { overlayBottom } = useAppInsets();
   const { currentUser } = useUser();
+  useProfileSubpageSheet({
+    title: t("profile.navigation.sports"),
+    routeMatchPath: "/profile/sports",
+  });
 
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
@@ -132,23 +130,10 @@ export default function SportsScreen() {
 
   const heroTitle =
     sports.length > 0
-      ? t("profile.sports.heroReady", {
-          count: sports.length,
-          defaultValue: `You are live in ${String(sports.length)} sports`,
-        })
-      : t("profile.sports.heroEmpty", {
-          defaultValue: "Build the sports board you want jobs from",
-        });
+      ? t("profile.sports.heroReady", { count: sports.length })
+      : t("profile.sports.heroEmpty");
   const heroBody =
-    sports.length > 0
-      ? t("profile.sports.heroReadyBody", {
-          defaultValue:
-            "Keep the board tight. Every selected sport sharpens matching, profile clarity, and job quality.",
-        })
-      : t("profile.sports.heroEmptyBody", {
-          defaultValue:
-            "Select the sports you actually teach so Queue stops looking broad and starts looking credible.",
-        });
+    sports.length > 0 ? t("profile.sports.heroReadyBody") : t("profile.sports.heroEmptyBody");
 
   const onSave = async () => {
     if (!hasChanges || !draft) {
@@ -180,9 +165,7 @@ export default function SportsScreen() {
       router.back();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : t("profile.settings.errors.saveFailed"),
+        error instanceof Error ? error.message : t("profile.settings.errors.saveFailed"),
       );
     } finally {
       setIsSaving(false);
@@ -191,12 +174,11 @@ export default function SportsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
-      <TabScreenScrollView
-        routeKey="instructor/profile"
+      <ProfileSubpageScrollView
+        routeKey="instructor/profile/sports"
         contentContainerStyle={{
           paddingHorizontal: BrandSpacing.lg,
-          paddingTop: BrandSpacing.lg,
-          paddingBottom: 148,
+          paddingBottom: overlayBottom + 92,
           gap: BrandSpacing.lg,
         }}
       >
@@ -238,24 +220,15 @@ export default function SportsScreen() {
               </Text>
             </View>
             <View
-              style={[
-                styles.heroIconWrap,
-                { backgroundColor: palette.primarySubtle as string },
-              ]}
+              style={[styles.heroIconWrap, { backgroundColor: palette.primarySubtle as string }]}
             >
-              <IconSymbol
-                name="sparkles"
-                size={22}
-                color={palette.primary as string}
-              />
+              <IconSymbol name="sparkles" size={22} color={palette.primary as string} />
             </View>
           </View>
 
           <View style={styles.heroSignalsRow}>
             <StatusSignal
-              label={t("profile.sports.signalSelected", {
-                defaultValue: "Selected",
-              })}
+              label={t("profile.sports.signalSelected")}
               value={t("profile.settings.sports.selected", {
                 count: sports.length,
               })}
@@ -263,18 +236,8 @@ export default function SportsScreen() {
               tone="accent"
             />
             <StatusSignal
-              label={t("profile.sports.signalState", {
-                defaultValue: "State",
-              })}
-              value={
-                hasChanges
-                  ? t("profile.sports.stateUnsaved", {
-                      defaultValue: "Unsaved changes",
-                    })
-                  : t("profile.sports.stateLive", {
-                      defaultValue: "Live",
-                    })
-              }
+              label={t("profile.sports.signalState")}
+              value={hasChanges ? t("profile.sports.stateUnsaved") : t("profile.sports.stateLive")}
               palette={palette}
             />
           </View>
@@ -282,13 +245,8 @@ export default function SportsScreen() {
 
         <View style={{ gap: BrandSpacing.sm }}>
           <ProfileSectionHeader
-            label={t("profile.sports.boardLabel", {
-              defaultValue: "Sports board",
-            })}
-            description={t("profile.sports.boardBody", {
-              defaultValue:
-                "Tap to add or remove. Keep it honest and tight so the matching engine stays sharp.",
-            })}
+            label={t("profile.sports.boardLabel")}
+            description={t("profile.sports.boardBody")}
             icon="sparkles"
             palette={palette}
             flush
@@ -328,7 +286,7 @@ export default function SportsScreen() {
             </Text>
           </View>
         ) : null}
-      </TabScreenScrollView>
+      </ProfileSubpageScrollView>
 
       <View
         style={[
@@ -341,9 +299,7 @@ export default function SportsScreen() {
       >
         <ActionButton
           label={
-            isSaving
-              ? t("profile.settings.actions.saving")
-              : t("profile.settings.actions.save")
+            isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
           }
           onPress={() => {
             void onSave();

@@ -85,9 +85,7 @@ function formatHoursMetric(hours: number) {
   if (rounded === 0) {
     return "0h";
   }
-  return Number.isInteger(rounded)
-    ? `${String(rounded)}h`
-    : `${rounded.toFixed(1)}h`;
+  return Number.isInteger(rounded) ? `${String(rounded)}h` : `${rounded.toFixed(1)}h`;
 }
 
 function hashSport(sport: string) {
@@ -100,22 +98,15 @@ function hashSport(sport: string) {
 
 function getRowsForSection(section: AgendaSection | undefined) {
   if (!section) return [] as TimelineRow[];
-  return section.data.flatMap((item) =>
-    item.kind === "lesson" ? [item.lesson] : [],
-  );
+  return section.data.flatMap((item) => (item.kind === "lesson" ? [item.lesson] : []));
 }
 
 function getDurationHours(rows: TimelineRow[]) {
-  return rows.reduce(
-    (total, row) => total + (row.endTime - row.startTime) / 3_600_000,
-    0,
-  );
+  return rows.reduce((total, row) => total + (row.endTime - row.startTime) / 3_600_000, 0);
 }
 
 function buildLaneLayout(rows: TimelineRow[]) {
-  const sorted = [...rows].sort(
-    (a, b) => a.startTime - b.startTime || a.endTime - b.endTime,
-  );
+  const sorted = [...rows].sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime);
   const laneEndTimes: number[] = [];
   const laneAssignments = new Map<string, number>();
 
@@ -153,10 +144,7 @@ function resolveGridBounds(rows: TimelineRow[]) {
     latestHour = Math.max(latestHour, endHour);
   });
 
-  const gridStartHour = Math.max(
-    MIN_GRID_START_HOUR,
-    Math.floor(earliestHour) - 1,
-  );
+  const gridStartHour = Math.max(MIN_GRID_START_HOUR, Math.floor(earliestHour) - 1);
   const gridEndHour = Math.min(MAX_GRID_END_HOUR, Math.ceil(latestHour) + 1);
 
   return {
@@ -232,17 +220,10 @@ function MetricTile({
   );
 }
 
-function FocusAgendaCard({
-  locale,
-  row,
-}: {
-  locale: string;
-  row: TimelineRow;
-}) {
+function FocusAgendaCard({ locale, row }: { locale: string; row: TimelineRow }) {
   const palette = useBrand();
   const swatches = palette.calendar.eventSwatches;
-  const swatch =
-    swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ?? undefined;
+  const swatch = swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ?? undefined;
   const accent = (swatch?.background as string) ?? (palette.primary as string);
 
   return (
@@ -264,16 +245,10 @@ function FocusAgendaCard({
           backgroundColor: accent,
         }}
       />
-      <Text
-        style={{ ...BrandType.title, color: palette.text as string }}
-        numberOfLines={1}
-      >
+      <Text style={{ ...BrandType.title, color: palette.text as string }} numberOfLines={1}>
         {row.sport}
       </Text>
-      <Text
-        style={{ ...BrandType.caption, color: palette.textMuted as string }}
-        numberOfLines={2}
-      >
+      <Text style={{ ...BrandType.caption, color: palette.textMuted as string }} numberOfLines={2}>
         {row.roleView === "instructor"
           ? row.studioName
           : (row.instructorName ?? "Unassigned instructor")}
@@ -320,40 +295,24 @@ export function CalendarWebBoard({
     [sectionMap, weekDays],
   );
   const selectedRows = useMemo(
-    () =>
-      weekRowsByDay.find((entry) => entry.dayKey === selectedDay)?.rows ?? [],
+    () => weekRowsByDay.find((entry) => entry.dayKey === selectedDay)?.rows ?? [],
     [selectedDay, weekRowsByDay],
   );
-  const weekRows = useMemo(
-    () => weekRowsByDay.flatMap((entry) => entry.rows),
-    [weekRowsByDay],
-  );
+  const weekRows = useMemo(() => weekRowsByDay.flatMap((entry) => entry.rows), [weekRowsByDay]);
   const weekSessionCount = weekRows.length;
-  const busyDayCount = weekRowsByDay.filter(
-    (entry) => entry.rows.length > 0,
-  ).length;
+  const busyDayCount = weekRowsByDay.filter((entry) => entry.rows.length > 0).length;
   const weekBookedHours = getDurationHours(weekRows);
   const selectedBookedHours = getDurationHours(selectedRows);
-  const { gridStartHour, gridEndHour } = useMemo(
-    () => resolveGridBounds(weekRows),
-    [weekRows],
-  );
+  const { gridStartHour, gridEndHour } = useMemo(() => resolveGridBounds(weekRows), [weekRows]);
   const hours = useMemo(
-    () =>
-      Array.from(
-        { length: gridEndHour - gridStartHour },
-        (_, index) => gridStartHour + index,
-      ),
+    () => Array.from({ length: gridEndHour - gridStartHour }, (_, index) => gridStartHour + index),
     [gridEndHour, gridStartHour],
   );
   const gridHeight = hours.length * HOUR_ROW_HEIGHT;
   const now = Date.now();
   const todayOffsetHours =
-    new Date(now).getHours() +
-    new Date(now).getMinutes() / 60 +
-    new Date(now).getSeconds() / 3600;
-  const showNowLine =
-    todayOffsetHours >= gridStartHour && todayOffsetHours <= gridEndHour;
+    new Date(now).getHours() + new Date(now).getMinutes() / 60 + new Date(now).getSeconds() / 3600;
+  const showNowLine = todayOffsetHours >= gridStartHour && todayOffsetHours <= gridEndHour;
 
   return (
     <View
@@ -403,31 +362,17 @@ export function CalendarWebBoard({
           >
             {formatMonthLabel(selectedDay, locale)}
           </Text>
-          <Text
-            style={{ ...BrandType.body, color: palette.textMuted as string }}
-          >
-            {formatWeekRangeLabel(weekDays, locale)}. One horizontal surface for
-            scan, select, and adjust.
+          <Text style={{ ...BrandType.body, color: palette.textMuted as string }}>
+            {formatWeekRangeLabel(weekDays, locale)}. One horizontal surface for scan, select, and
+            adjust.
           </Text>
         </View>
 
-        <MetricTile
-          label="Week load"
-          value={formatHoursMetric(weekBookedHours)}
-          tone="light"
-        />
-        <MetricTile
-          label="Active days"
-          value={`${String(busyDayCount)}/7`}
-          tone="accent"
-        />
+        <MetricTile label="Week load" value={formatHoursMetric(weekBookedHours)} tone="light" />
+        <MetricTile label="Active days" value={`${String(busyDayCount)}/7`} tone="accent" />
         <MetricTile
           label="Focus"
-          value={
-            selectedRows.length === 0
-              ? "OPEN"
-              : formatHoursMetric(selectedBookedHours)
-          }
+          value={selectedRows.length === 0 ? "OPEN" : formatHoursMetric(selectedBookedHours)}
           tone="dark"
         />
       </View>
@@ -465,9 +410,7 @@ export function CalendarWebBoard({
           >
             {formatSelectedDayLabel(selectedDay, locale)}
           </Text>
-          <Text
-            style={{ ...BrandType.caption, color: palette.textMuted as string }}
-          >
+          <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
             {selectedRows.length === 0
               ? "No sessions are stacked here yet."
               : selectedRows.length === 1
@@ -489,17 +432,8 @@ export function CalendarWebBoard({
             palette={palette}
             tone="secondary"
           />
-          <ActionButton
-            label="Today"
-            onPress={onTodayPress}
-            palette={palette}
-            tone="secondary"
-          />
-          <ActionButton
-            label="Next week"
-            onPress={() => onChangeWeek(1)}
-            palette={palette}
-          />
+          <ActionButton label="Today" onPress={onTodayPress} palette={palette} tone="secondary" />
+          <ActionButton label="Next week" onPress={() => onChangeWeek(1)} palette={palette} />
         </View>
       </View>
 
@@ -533,11 +467,7 @@ export function CalendarWebBoard({
               palette={palette}
               tone="secondary"
             />
-            <ActionButton
-              label="Apply"
-              onPress={onToggleDatePicker}
-              palette={palette}
-            />
+            <ActionButton label="Apply" onPress={onToggleDatePicker} palette={palette} />
           </View>
         </View>
       ) : null}
@@ -587,19 +517,14 @@ export function CalendarWebBoard({
                   ? "1 session"
                   : `${String(selectedRows.length)} sessions`}
             </Text>
-            <Text
-              style={{ ...BrandType.caption, color: "rgba(255,255,255,0.72)" }}
-            >
+            <Text style={{ ...BrandType.caption, color: "rgba(255,255,255,0.72)" }}>
               {selectedRows.length === 0
                 ? "A clear day gives you room to absorb new demand."
                 : `${formatHoursMetric(selectedBookedHours)} booked across the selected day.`}
             </Text>
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10 }}
-          >
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
             {selectedRows.length === 0 ? (
               <View
                 style={{
@@ -625,8 +550,7 @@ export function CalendarWebBoard({
                     color: palette.textMuted as string,
                   }}
                 >
-                  Switch days directly from the planner header to review the
-                  rest of the week.
+                  Switch days directly from the planner header to review the rest of the week.
                 </Text>
               </View>
             ) : (
@@ -696,17 +620,12 @@ export function CalendarWebBoard({
                   const { laneAssignments, laneCount } = buildLaneLayout(rows);
                   const dayLoadHours = getDurationHours(rows);
                   const laneWidth =
-                    laneCount > 1
-                      ? (DAY_COLUMN_WIDTH - 28) / laneCount
-                      : DAY_COLUMN_WIDTH - 28;
+                    laneCount > 1 ? (DAY_COLUMN_WIDTH - 28) / laneCount : DAY_COLUMN_WIDTH - 28;
                   const selected = dayKey === selectedDay;
                   const today = dayKey === todayKey;
 
                   return (
-                    <View
-                      key={dayKey}
-                      style={{ width: DAY_COLUMN_WIDTH, marginRight: 12 }}
-                    >
+                    <View key={dayKey} style={{ width: DAY_COLUMN_WIDTH, marginRight: 12 }}>
                       <Pressable
                         accessibilityRole="button"
                         accessibilityState={{ selected }}
@@ -816,9 +735,7 @@ export function CalendarWebBoard({
                               position: "absolute",
                               left: 12,
                               right: 12,
-                              top:
-                                (todayOffsetHours - gridStartHour) *
-                                HOUR_ROW_HEIGHT,
+                              top: (todayOffsetHours - gridStartHour) * HOUR_ROW_HEIGHT,
                               height: 2,
                               borderRadius: 999,
                               backgroundColor: palette.primary as string,
@@ -830,29 +747,19 @@ export function CalendarWebBoard({
                           const lane = laneAssignments.get(row.lessonId) ?? 0;
                           const dayStart = dayKeyToTimestamp(dayKey);
                           const startHourOffset =
-                            (row.startTime - dayStart) / 3_600_000 -
-                            gridStartHour;
+                            (row.startTime - dayStart) / 3_600_000 - gridStartHour;
                           const durationHours = Math.max(
                             0.75,
                             (row.endTime - row.startTime) / 3_600_000,
                           );
                           const swatches = palette.calendar.eventSwatches;
                           const swatch =
-                            swatches[
-                              hashSport(row.sport) %
-                                Math.max(swatches.length, 1)
-                            ] ?? undefined;
+                            swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ??
+                            undefined;
                           const accent =
-                            (swatch?.background as string) ??
-                            (palette.primary as string);
-                          const top = Math.max(
-                            8,
-                            startHourOffset * HOUR_ROW_HEIGHT + 8,
-                          );
-                          const height = Math.max(
-                            58,
-                            durationHours * HOUR_ROW_HEIGHT - 10,
-                          );
+                            (swatch?.background as string) ?? (palette.primary as string);
+                          const top = Math.max(8, startHourOffset * HOUR_ROW_HEIGHT + 8);
+                          const height = Math.max(58, durationHours * HOUR_ROW_HEIGHT - 10);
 
                           return (
                             <View
@@ -900,8 +807,7 @@ export function CalendarWebBoard({
                               >
                                 {row.roleView === "instructor"
                                   ? row.studioName
-                                  : (row.instructorName ??
-                                    "Unassigned instructor")}
+                                  : (row.instructorName ?? "Unassigned instructor")}
                               </Text>
                             </View>
                           );

@@ -20,6 +20,8 @@ export type TabSpec = {
   titleKey: string;
   icon: {
     md: AndroidSymbol;
+    mdDefaultVector: string;
+    mdSelectedVector: string;
     sfDefault: string;
     sfSelected: string;
   };

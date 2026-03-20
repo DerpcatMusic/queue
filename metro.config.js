@@ -26,7 +26,22 @@ const blockListPatterns = blockDirs.map((dir) => {
   return new RegExp(`^${escaped}([/\\\\].*)?$`);
 });
 
-config.resolver.blockList = blockListPatterns;
+const nodeModulesAndroidBuildPatterns = [
+  new RegExp(
+    `^${escapeForRegex(normalizePathForRegex(path.resolve(__dirname, "node_modules")))}[/\\\\][^/\\\\]+[/\\\\]android[/\\\\]build([/\\\\].*)?$`,
+  ),
+  new RegExp(
+    `^${escapeForRegex(normalizePathForRegex(path.resolve(__dirname, "node_modules")))}[/\\\\]@[^/\\\\]+[/\\\\][^/\\\\]+[/\\\\]android[/\\\\]build([/\\\\].*)?$`,
+  ),
+  new RegExp(
+    `^${escapeForRegex(normalizePathForRegex(path.resolve(__dirname, "node_modules")))}[/\\\\][^/\\\\]+[/\\\\]android[/\\\\]\\.cxx([/\\\\].*)?$`,
+  ),
+  new RegExp(
+    `^${escapeForRegex(normalizePathForRegex(path.resolve(__dirname, "node_modules")))}[/\\\\]@[^/\\\\]+[/\\\\][^/\\\\]+[/\\\\]android[/\\\\]\\.cxx([/\\\\].*)?$`,
+  ),
+];
+
+config.resolver.blockList = [...blockListPatterns, ...nodeModulesAndroidBuildPatterns];
 config.resolver.extraNodeModules = {
   ...(config.resolver.extraNodeModules ?? {}),
   ...Object.fromEntries(

@@ -6,8 +6,8 @@ import { requireUserRole } from "./lib/auth";
 import { isKnownZoneId } from "./lib/domainValidation";
 import {
   hasCoverageKey,
-  loadInstructorEligibility,
   type InstructorEligibility,
+  loadInstructorEligibility,
 } from "./lib/instructorEligibility";
 import { trimOptionalString } from "./lib/validation";
 

@@ -1,11 +1,7 @@
-import { Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { Pressable, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
-import {
-  type BrandPalette,
-  BrandRadius,
-  BrandSpacing,
-} from "@/constants/brand";
+import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { isSportType, toSportLabel } from "@/convex/constants";
 import { formatDateTime } from "@/lib/jobs-utils";
@@ -163,9 +159,7 @@ export function PaymentActivityList({
         <View style={{ paddingHorizontal: BrandSpacing.md, paddingBottom: 16 }}>
           {items.map((item, index) => {
             const paymentStatus = getPaymentStatusLabel(item.payment.status);
-            const payoutStatus = item.payout
-              ? getPayoutStatusLabel(item.payout.status)
-              : null;
+            const payoutStatus = item.payout ? getPayoutStatusLabel(item.payout.status) : null;
             const sportLabel = item.job
               ? isSportType(item.job.sport)
                 ? toSportLabel(item.job.sport)
@@ -204,17 +198,12 @@ export function PaymentActivityList({
                     <ThemedText type="bodyStrong" style={{ fontSize: 18 }}>
                       {sportLabel}
                     </ThemedText>
-                    <ThemedText
-                      type="caption"
-                      style={{ color: palette.textMuted }}
-                    >
+                    <ThemedText type="caption" style={{ color: palette.textMuted }}>
                       {item.job
                         ? formatDateTime(item.job.startTime, locale)
                         : formatDateTime(item.payment.createdAt, locale)}
                     </ThemedText>
-                    <View
-                      style={{ flexDirection: "row", gap: 6, marginTop: 4 }}
-                    >
+                    <View style={{ flexDirection: "row", gap: 6, marginTop: 4 }}>
                       <StatusBadge
                         label={paymentStatus}
                         tone={getPaymentStatusTone(item.payment.status)}
@@ -253,10 +242,7 @@ export function PaymentActivityList({
                           )}
                     </ThemedText>
                     {viewerRole === "studio" ? (
-                      <ThemedText
-                        type="caption"
-                        style={{ color: palette.textMuted }}
-                      >
+                      <ThemedText type="caption" style={{ color: palette.textMuted }}>
                         {`Payout ${formatAgorotCurrency(
                           item.payment.instructorBaseAmountAgorot,
                           locale,
