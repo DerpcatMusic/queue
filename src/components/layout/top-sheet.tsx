@@ -1,6 +1,6 @@
 import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ColorValue, StyleProp, ViewStyle } from "react-native";
-import { Pressable, TextInput, useWindowDimensions, View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -9,26 +9,19 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useSystemUi } from "@/contexts/system-ui-context";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const SHEET_SPRING = {
-  damping: 24,
-  stiffness: 220,
-  mass: 0.7,
-  overshootClamping: true as const,
-};
-
-const DEFAULT_STEPS = [0.16, 0.4, 0.65, 0.95] as const;
-const HANDLE_HEIGHT = BrandSpacing.xl + BrandSpacing.md;
-const HANDLE_PILL_WIDTH = 36;
-const HANDLE_PILL_HEIGHT = 4;
-const MIN_BOTTOM_CHROME_ESTIMATE = 80;
+import {
+  DEFAULT_STEPS,
+  HANDLE_HEIGHT,
+  HANDLE_PILL_HEIGHT,
+  HANDLE_PILL_WIDTH,
+  MIN_BOTTOM_CHROME_ESTIMATE,
+  SHEET_SPRING,
+} from "./top-sheet.helpers";
+import { TopSheetSearchBar } from "./top-sheet-search-bar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -374,100 +367,6 @@ export function TopSheet({
 
 // ─── SearchBar Widget ─────────────────────────────────────────────────────────
 
-type SearchBarWidgetProps = {
-  value: string;
-  onChangeText: (text: string) => void;
-  placeholder?: string;
-  palette: {
-    appBg?: ColorValue;
-    surface?: ColorValue;
-    surfaceAlt: ColorValue;
-    text: ColorValue;
-    textMuted: ColorValue;
-    primary: ColorValue;
-    borderStrong?: ColorValue;
-  };
-  onFocus?: () => void;
-  onBlur?: () => void;
-  autoFocus?: boolean;
-};
-
-function SearchBarWidget({
-  value,
-  onChangeText,
-  placeholder = "Search...",
-  palette,
-  onFocus,
-  onBlur,
-  autoFocus = false,
-}: SearchBarWidgetProps) {
-  const inputRef = useRef<TextInput>(null);
-  const [isFocused, setIsFocused] = useState(false);
-
-  const handleFocus = () => {
-    setIsFocused(true);
-    onFocus?.();
-  };
-  const handleBlur = () => {
-    setIsFocused(false);
-    onBlur?.();
-  };
-
-  return (
-    <Pressable
-      onPress={() => inputRef.current?.focus()}
-      style={({ pressed }) => ({
-        width: "100%",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: BrandSpacing.sm,
-        minHeight: BrandSpacing.xxl + BrandSpacing.md,
-        backgroundColor: (palette.appBg ?? palette.surfaceAlt) as string,
-        borderRadius: BrandRadius.input,
-        borderCurve: "continuous" as const,
-        paddingHorizontal: BrandSpacing.lg,
-        paddingVertical: BrandSpacing.md,
-        borderWidth: isFocused ? 1.5 : 1,
-        borderColor: isFocused
-          ? (palette.primary as string)
-          : ((palette.borderStrong ?? palette.surfaceAlt) as string),
-        opacity: pressed ? 0.96 : 1,
-      })}
-    >
-      <IconSymbol name="magnifyingglass" size={18} color={palette.textMuted as string} />
-      <TextInput
-        ref={inputRef}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={palette.textMuted as string}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        autoFocus={autoFocus}
-        returnKeyType="search"
-        autoCapitalize="none"
-        autoCorrect={false}
-        style={{
-          flex: 1,
-          ...BrandType.body,
-          color: palette.text as string,
-          padding: 0,
-          margin: 0,
-        }}
-      />
-      {value.length > 0 ? (
-        <Pressable
-          onPress={() => onChangeText("")}
-          hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-        >
-          <IconSymbol name="xmark.circle.fill" size={18} color={palette.textMuted as string} />
-        </Pressable>
-      ) : null}
-    </Pressable>
-  );
-}
-
 // ─── Attach widgets ───────────────────────────────────────────────────────────
 
-TopSheet.SearchBar = SearchBarWidget;
+TopSheet.SearchBar = TopSheetSearchBar;
