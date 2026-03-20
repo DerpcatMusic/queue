@@ -12,11 +12,11 @@ import {
 } from "./lib/calendarCrypto";
 import {
   buildGoogleEventBody,
-  isQueueManagedGoogleEvent,
-  normalizeImportedGoogleEvent,
   type CalendarOwnerRole,
   type GoogleCalendarEvent,
   type ImportedGoogleCalendarEvent,
+  isQueueManagedGoogleEvent,
+  normalizeImportedGoogleEvent,
   type TimelineRow,
 } from "./lib/calendarShared";
 import { omitUndefined } from "./lib/validation";
@@ -230,10 +230,7 @@ async function deleteGoogleEvent(args: { accessToken: string; providerEventId: s
   throw new ConvexError(`Google delete failed: ${message}`);
 }
 
-async function listGoogleAgendaChanges(args: {
-  accessToken: string;
-  syncToken?: string;
-}): Promise<{
+async function listGoogleAgendaChanges(args: { accessToken: string; syncToken?: string }): Promise<{
   events: GoogleCalendarEvent[];
   nextSyncToken?: string;
   resetImportedEvents: boolean;
@@ -293,11 +290,7 @@ async function listGoogleAgendaChanges(args: {
   }
 }
 
-async function getGoogleAccessToken(
-  ctx: any,
-  integration: GoogleIntegrationRecord,
-  now: number,
-) {
+async function getGoogleAccessToken(ctx: any, integration: GoogleIntegrationRecord, now: number) {
   let accessToken = decryptCalendarToken(integration.accessToken) ?? "";
   let accessTokenExpiresAt = integration.accessTokenExpiresAt ?? 0;
   if (!accessToken || accessTokenExpiresAt < now + 60_000) {
@@ -349,9 +342,12 @@ async function syncQueueEventsToGoogle(args: {
     )
     .sort((a, b) => a.startTime - b.startTime);
 
-  const existingMappings = (await args.ctx.runQuery(calendarInternal.getEventMappingsForIntegration, {
-    integrationId: args.integrationId,
-  })) as Array<{ externalEventId: string; providerEventId: string }>;
+  const existingMappings = (await args.ctx.runQuery(
+    calendarInternal.getEventMappingsForIntegration,
+    {
+      integrationId: args.integrationId,
+    },
+  )) as Array<{ externalEventId: string; providerEventId: string }>;
   const mappingByExternalId = new Map(
     existingMappings.map((mapping) => [mapping.externalEventId, mapping.providerEventId]),
   );
@@ -412,9 +408,7 @@ async function syncGoogleAgendaIntoConvex(args: {
 }) {
   const imported = await listGoogleAgendaChanges({
     accessToken: args.accessToken,
-    ...(args.integration.agendaSyncToken
-      ? { syncToken: args.integration.agendaSyncToken }
-      : {}),
+    ...(args.integration.agendaSyncToken ? { syncToken: args.integration.agendaSyncToken } : {}),
   });
 
   const nextEvents: ImportedGoogleCalendarEvent[] = [];
@@ -645,19 +639,8 @@ export const syncMyGoogleCalendarEventsInternal = internalAction({
     importedCount: v.number(),
     importedRemovedCount: v.number(),
   }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{
-    ok: boolean;
-    syncedCount: number;
-    removedCount: number;
-    importedCount: number;
-    importedRemovedCount: number;
-  }> => {
-    const currentUser = (await ctx.runQuery(api.users.getCurrentUser as any, {})) as
-      | { _id: Id<"users">; role: string }
-      | null;
+  handler: async (ctx, args) => {
+    const currentUser = await ctx.runQuery(api.users.getCurrentUser as any, {});
     if (!currentUser || (currentUser.role !== "instructor" && currentUser.role !== "studio")) {
       throw new ConvexError("Only instructors and studios can sync Google Calendar");
     }
