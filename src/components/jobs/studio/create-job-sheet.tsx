@@ -1,25 +1,24 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { ThemedText } from "@/components/themed-text";
-import { ActionButton } from "@/components/ui/action-button";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { ChoicePill } from "@/components/ui/choice-pill";
-import { KitTextField } from "@/components/ui/kit/kit-text-field";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing } from "@/constants/brand";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import type { StudioDraft } from "@/lib/jobs-utils";
+import { createDefaultStudioDraft } from "@/lib/jobs-utils";
 import {
-  createDefaultStudioDraft,
-  formatDateWithWeekday,
-  formatTime,
-  sanitizeDecimalInput,
-} from "@/lib/jobs-utils";
+  NotesSection,
+  PayParticipantsSection,
+  PickerDock,
+  ScheduleSection,
+  SportPickerSection,
+  SubmitBar,
+} from "./create-job-sheet-sections";
 
 type CreateJobSheetProps = {
   innerRef: React.RefObject<BottomSheet>;
@@ -48,9 +47,6 @@ export function CreateJobSheet({
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   const snapPoints = ["100%"];
-  const selectedSportLabel = draft.sport
-    ? toSportLabel(draft.sport as never)
-    : t("jobsTab.form.pickSport");
   const filteredSports = useMemo(() => {
     const query = sportQuery.trim().toLowerCase();
     if (!query) {
@@ -188,310 +184,72 @@ export function CreateJobSheet({
         </View>
 
         <View style={styles.form}>
-          {/* Sport Selection */}
-          <View style={styles.section}>
-            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-              {t("jobsTab.form.sport")}
-            </ThemedText>
-            <ChoicePill
-              label={draft.sport ? selectedSportLabel : t("jobsTab.form.pickSport")}
-              compact
-              fullWidth
-              icon={
-                <AppSymbol
-                  name={sportPickerOpen ? "chevron.up" : "chevron.down"}
-                  size={14}
-                  tintColor={palette.textMuted as string}
-                />
-              }
-              backgroundColor={palette.surfaceAlt as string}
-              selectedBackgroundColor={palette.surfaceAlt as string}
-              labelColor={palette.text as string}
-              selectedLabelColor={palette.text as string}
-              onPress={() => {
-                setSportPickerOpen((curr) => {
-                  const next = !curr;
-                  if (!next) {
-                    setSportQuery("");
-                  }
-                  return next;
-                });
-              }}
-            />
-
-            {sportPickerOpen ? (
-              <View style={styles.optionStack}>
-                <KitTextField
-                  value={sportQuery}
-                  onChangeText={(value) => {
-                    setSportQuery(value);
-                    resolveSportSelection(value);
-                    if (!value.trim()) {
-                      setDraft((curr) => ({ ...curr, sport: "" }));
-                    }
-                  }}
-                  onSubmitEditing={() => {
-                    const exact = SPORT_TYPES.find(
-                      (sport) =>
-                        toSportLabel(sport as never).toLowerCase() ===
-                        sportQuery.trim().toLowerCase(),
-                    );
-                    if (exact) {
-                      selectSport(exact);
-                      return;
-                    }
-                    if (filteredSports.length === 1) {
-                      selectSport(filteredSports[0]!);
-                    }
-                  }}
-                  placeholder={t("jobsTab.form.sportSearch")}
-                  leading={
-                    <AppSymbol
-                      name="magnifyingglass"
-                      size={16}
-                      tintColor={palette.textMuted as string}
-                    />
-                  }
-                />
-
-                <View style={styles.optionList}>
-                  <ScrollView
-                    nestedScrollEnabled
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.optionListContent}
-                  >
-                    {filteredSports.length > 0 ? (
-                      filteredSports.map((sport) => {
-                        const isSelected = draft.sport === sport;
-                        return (
-                          <ChoicePill
-                            key={sport}
-                            label={toSportLabel(sport as never)}
-                            selected={isSelected}
-                            compact
-                            backgroundColor={palette.surfaceAlt as string}
-                            selectedBackgroundColor={palette.primary as string}
-                            labelColor={palette.text as string}
-                            selectedLabelColor={palette.onPrimary as string}
-                            onPress={() => {
-                              selectSport(sport);
-                            }}
-                          />
-                        );
-                      })
-                    ) : (
-                      <ThemedText
-                        type="micro"
-                        style={{ color: palette.textMuted as string, paddingHorizontal: 4 }}
-                      >
-                        {t("jobsTab.form.noSportResults")}
-                      </ThemedText>
-                    )}
-                  </ScrollView>
-                </View>
-              </View>
-            ) : null}
-          </View>
-
-          {/* Date & Time Section */}
-          <View style={styles.section}>
-            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-              {t("jobsTab.form.schedule")}
-            </ThemedText>
-
-            <ChoicePill
-              label={formatDateWithWeekday(draft.startTime, locale)}
-              compact
-              fullWidth
-              icon={<AppSymbol name="calendar" size={15} tintColor={palette.primary as string} />}
-              backgroundColor={palette.surfaceAlt as string}
-              selectedBackgroundColor={palette.surfaceAlt as string}
-              labelColor={palette.text as string}
-              selectedLabelColor={palette.text as string}
-              onPress={() => setShowDatePicker(true)}
-            />
-
-            <View style={[styles.row, { gap: 10 }]}>
-              <ChoicePill
-                label={formatTime(draft.startTime, locale)}
-                compact
-                icon={<AppSymbol name="clock" size={15} tintColor={palette.primary as string} />}
-                backgroundColor={palette.surfaceAlt as string}
-                selectedBackgroundColor={palette.surfaceAlt as string}
-                labelColor={palette.text as string}
-                selectedLabelColor={palette.text as string}
-                onPress={() => setShowStartTimePicker(true)}
-                style={{ flex: 1 }}
-              />
-
-              <View
-                style={{
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 14,
-                  marginHorizontal: -2,
-                }}
-              >
-                <AppSymbol
-                  name={I18nManager.isRTL ? "arrow.left" : "arrow.right"}
-                  size={12}
-                  tintColor={palette.textMuted as string}
-                />
-              </View>
-
-              <ChoicePill
-                label={formatTime(draft.endTime, locale)}
-                compact
-                icon={<AppSymbol name="clock" size={15} tintColor={palette.primary as string} />}
-                backgroundColor={palette.surfaceAlt as string}
-                selectedBackgroundColor={palette.surfaceAlt as string}
-                labelColor={palette.text as string}
-                selectedLabelColor={palette.text as string}
-                onPress={() => setShowEndTimePicker(true)}
-                style={{ flex: 1 }}
-              />
-            </View>
-          </View>
-
-          {/* Pay & Participants */}
-          <View style={[styles.row, { gap: 16 }]}>
-            <View style={{ flex: 1 }}>
-              <KitTextField
-                label={t("jobsTab.form.pay")}
-                value={draft.payInput}
-                onChangeText={(v) => setDraft((d) => ({ ...d, payInput: sanitizeDecimalInput(v) }))}
-                keyboardType="decimal-pad"
-                placeholder="250"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <KitTextField
-                label={t("jobsTab.form.maxParticipants")}
-                value={String(draft.maxParticipants)}
-                onChangeText={(v) =>
-                  setDraft((d) => ({
-                    ...d,
-                    maxParticipants: Number.parseInt(v, 10) || 12,
-                  }))
-                }
-                keyboardType="number-pad"
-                placeholder="12"
-              />
-            </View>
-          </View>
-
-          {/* Notes */}
-          <KitTextField
-            label={t("jobsTab.form.notes")}
-            value={draft.note}
-            onChangeText={(v) => setDraft((d) => ({ ...d, note: v }))}
-            multiline
-            numberOfLines={4}
-            placeholder={t("jobsTab.form.notesPlaceholder")}
-            style={{ minHeight: 100, textAlignVertical: "top" }}
+          <SportPickerSection
+            draft={draft}
+            sportQuery={sportQuery}
+            sportPickerOpen={sportPickerOpen}
+            locale={locale}
+            palette={palette}
+            filteredSports={filteredSports}
+            setSportQuery={setSportQuery}
+            setSportPickerOpen={setSportPickerOpen}
+            setDraft={setDraft}
+            resolveSportSelection={resolveSportSelection}
+            selectSport={selectSport}
           />
 
-          <View style={{ marginTop: 24, paddingBottom: 40 }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                isSubmitting ? t("jobsTab.actions.posting") : t("jobsTab.actions.post")
-              }
-              accessibilityState={{ disabled: isSubmitting || !draft.sport, busy: isSubmitting }}
-              disabled={isSubmitting || !draft.sport}
-              onPress={() => {
-                void onPost(draft);
-              }}
-              style={({ pressed }) => ({
-                minHeight: 56,
-                width: "100%",
-                borderRadius: 18,
-                borderCurve: "continuous",
-                backgroundColor:
-                  isSubmitting || !draft.sport
-                    ? (palette.primaryPressed as string)
-                    : (palette.primary as string),
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-                opacity: pressed ? 0.92 : 1,
-              })}
-            >
-              <AppSymbol name="plus" size={18} tintColor={palette.onPrimary as string} />
-              <Text
-                style={{
-                  color: palette.onPrimary as string,
-                  fontSize: 16,
-                  fontWeight: "700",
-                  includeFontPadding: false,
-                }}
-              >
-                {isSubmitting ? t("jobsTab.actions.posting") : t("jobsTab.actions.post")}
-              </Text>
-            </Pressable>
-          </View>
+          <ScheduleSection
+            draft={draft}
+            locale={locale}
+            palette={palette}
+            onOpenDate={() => setShowDatePicker(true)}
+            onOpenStartTime={() => setShowStartTimePicker(true)}
+            onOpenEndTime={() => setShowEndTimePicker(true)}
+          />
+
+          <PayParticipantsSection draft={draft} setDraft={setDraft} />
+          <NotesSection draft={draft} setDraft={setDraft} />
+
+          <SubmitBar
+            draft={draft}
+            isSubmitting={isSubmitting}
+            palette={palette}
+            onPost={() => {
+              void onPost(draft);
+            }}
+          />
         </View>
       </BottomSheetScrollView>
 
-      {/* Native Pickers */}
-      {showDatePicker && (
-        <View style={styles.pickerDock}>
-          <DateTimePicker
-            value={new Date(draft.startTime)}
-            mode="date"
-            display={Platform.OS === "ios" ? "inline" : "default"}
-            onChange={handleDateChange}
-            minimumDate={new Date()}
-          />
-          {Platform.OS === "ios" ? (
-            <ActionButton
-              label={t("common.done")}
-              onPress={() => setShowDatePicker(false)}
-              palette={palette}
-              tone="secondary"
-            />
-          ) : null}
-        </View>
-      )}
-      {showStartTimePicker && (
-        <View style={styles.pickerDock}>
-          <DateTimePicker
-            value={new Date(draft.startTime)}
-            mode="time"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={handleStartTimeChange}
-          />
-          {Platform.OS === "ios" ? (
-            <ActionButton
-              label={t("common.done")}
-              onPress={() => setShowStartTimePicker(false)}
-              palette={palette}
-              tone="secondary"
-            />
-          ) : null}
-        </View>
-      )}
-      {showEndTimePicker && (
-        <View style={styles.pickerDock}>
-          <DateTimePicker
-            value={new Date(draft.endTime)}
-            mode="time"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={handleEndTimeChange}
-            minimumDate={new Date(draft.startTime)}
-          />
-          {Platform.OS === "ios" ? (
-            <ActionButton
-              label={t("common.done")}
-              onPress={() => setShowEndTimePicker(false)}
-              palette={palette}
-              tone="secondary"
-            />
-          ) : null}
-        </View>
-      )}
+      <PickerDock
+        visible={showDatePicker}
+        value={new Date(draft.startTime)}
+        mode="date"
+        display={Platform.OS === "ios" ? "inline" : "default"}
+        onChange={handleDateChange}
+        minimumDate={new Date()}
+        palette={palette}
+        onDone={() => setShowDatePicker(false)}
+      />
+      <PickerDock
+        visible={showStartTimePicker}
+        value={new Date(draft.startTime)}
+        mode="time"
+        display={Platform.OS === "ios" ? "spinner" : "default"}
+        onChange={handleStartTimeChange}
+        palette={palette}
+        onDone={() => setShowStartTimePicker(false)}
+      />
+      <PickerDock
+        visible={showEndTimePicker}
+        value={new Date(draft.endTime)}
+        mode="time"
+        display={Platform.OS === "ios" ? "spinner" : "default"}
+        onChange={handleEndTimeChange}
+        minimumDate={new Date(draft.startTime)}
+        palette={palette}
+        onDone={() => setShowEndTimePicker(false)}
+      />
     </BottomSheet>
   );
 }
@@ -515,35 +273,5 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 20,
-  },
-  section: {
-    gap: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    opacity: 0.9,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  optionStack: {
-    gap: 10,
-    paddingTop: 10,
-  },
-  optionList: {
-    maxHeight: 208,
-  },
-  optionListContent: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    paddingTop: 4,
-    paddingBottom: 4,
-  },
-  pickerDock: {
-    gap: 12,
-    paddingHorizontal: BrandSpacing.lg,
-    paddingBottom: BrandSpacing.lg,
   },
 });

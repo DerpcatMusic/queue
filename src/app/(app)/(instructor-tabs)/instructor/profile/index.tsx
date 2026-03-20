@@ -10,18 +10,17 @@ import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
-
-import {
-  getProfileHeaderExpandedHeight,
-  ProfileDesktopHeroPanel,
-  ProfileHeaderSheet,
-} from "@/components/profile/profile-hero-sheet";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
+import {
+  getProfileHeaderExpandedHeight,
+  ProfileDesktopHeroPanel,
+  ProfileHeaderSheet,
+} from "@/components/profile/profile-tab";
 import { KitSwitch } from "@/components/ui/kit";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";

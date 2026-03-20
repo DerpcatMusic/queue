@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, View } from "react-native";
 
 import { LoadingScreen } from "@/components/loading-screen";
-import { ProfileEditorForm } from "@/components/profile/profile-editor-form";
+import { ProfileEditorForm } from "@/components/profile/profile-editor";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { useProfileSubpageSheet } from "@/components/profile/profile-subpage-sheet";
 import { BrandSpacing } from "@/constants/brand";
