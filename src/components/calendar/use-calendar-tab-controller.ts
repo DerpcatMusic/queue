@@ -6,203 +6,40 @@ import { Platform, type ViewToken } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { syncDeviceCalendarEvents } from "@/lib/device-calendar-sync";
+import {
+  addDays,
+  buildTimelineRowsSignature,
+  CALENDAR_VISIBILITY_STORAGE_KEY,
+  type CalendarViewMode,
+  type CalendarVisibilityFilterKey,
+  type CalendarVisibilityFilters,
+  compareDayKey,
+  DAY_MS,
+  DEFAULT_VISIBILITY_FILTERS,
+  dayKeyToTimestamp,
+  ESTIMATED_DAY_HEADER_SIZE,
+  ESTIMATED_EMPTY_SIZE,
+  ESTIMATED_LESSON_SIZE,
+  enumerateDays,
+  type GoogleAgendaRow,
+  type GoogleCalendarStatus,
+  getLifecycle,
+  type ItemLayout,
+  LEGACY_GOOGLE_VIEW_MODE_STORAGE_KEY,
+  TIMELINE_EXTEND_BUFFER_DAYS,
+  TIMELINE_PREFETCH_THRESHOLD_DAYS,
+  TIMELINE_RANGE_DAYS,
+  type TimelineListItem,
+  type TimelineRow,
+  toDayKey,
+  useTimelineCache,
+} from "./calendar-controller-helpers";
 
 const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).calendar as {
   getMyGoogleCalendarAgenda: unknown;
   getMyGoogleCalendarStatus: unknown;
   syncMyGoogleCalendarEvents: unknown;
 };
-
-export type CalendarViewMode = "jobs_only" | "jobs_and_google";
-export type CalendarVisibilityFilterKey =
-  | "queueLessons"
-  | "timedCalendarEvents"
-  | "allDayCalendarEvents";
-
-export type CalendarVisibilityFilters = Record<CalendarVisibilityFilterKey, boolean>;
-
-type GoogleCalendarStatus = {
-  connected: boolean;
-};
-
-type GoogleAgendaRow = {
-  providerEventId: string;
-  title: string;
-  status: "confirmed" | "tentative" | "cancelled";
-  startTime: number;
-  endTime: number;
-  isAllDay: boolean;
-  location?: string;
-  htmlLink?: string;
-};
-
-export type TimelineRow = {
-  lessonId: string;
-  source: "job" | "google";
-  roleView: "instructor" | "studio";
-  studioName: string;
-  instructorName?: string;
-  sport: string;
-  startTime: number;
-  endTime: number;
-  status: "open" | "filled" | "cancelled" | "completed" | "confirmed" | "tentative";
-  lifecycle: "upcoming" | "live" | "past" | "cancelled";
-  isAllDay?: boolean;
-  location?: string;
-  htmlLink?: string;
-};
-
-export type TimelineListItem =
-  | { kind: "dayHeader"; key: string; dayKey: string }
-  | { kind: "empty"; key: string; dayKey: string }
-  | { kind: "lesson"; key: string; dayKey: string; lesson: TimelineRow };
-
-export type AgendaItem = TimelineListItem;
-
-export type AgendaSection = {
-  key: string;
-  dayKey: string;
-  data: AgendaItem[];
-};
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const CACHE_TTL_MS = 15 * 60 * 1000;
-const CACHE_VERSION = 3;
-const TIMELINE_RANGE_DAYS = 120;
-const TIMELINE_EXTEND_BUFFER_DAYS = 90;
-const TIMELINE_PREFETCH_THRESHOLD_DAYS = 35;
-const ESTIMATED_DAY_HEADER_SIZE = 56;
-const ESTIMATED_LESSON_SIZE = 76;
-const ESTIMATED_EMPTY_SIZE = 34;
-const LEGACY_GOOGLE_VIEW_MODE_STORAGE_KEY = "calendar:view-mode:v1";
-const CALENDAR_VISIBILITY_STORAGE_KEY = "calendar:visibility-filters:v1";
-const DEFAULT_VISIBILITY_FILTERS: CalendarVisibilityFilters = {
-  queueLessons: true,
-  timedCalendarEvents: true,
-  allDayCalendarEvents: true,
-};
-
-function toDayKey(timestamp: number) {
-  const d = new Date(timestamp);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function dayKeyToTimestamp(dayKey: string) {
-  const [y, m, d] = dayKey.split("-").map(Number) as [number, number, number];
-  return new Date(y, m - 1, d).getTime();
-}
-
-function addDays(dayKey: string, delta: number) {
-  return toDayKey(dayKeyToTimestamp(dayKey) + delta * DAY_MS);
-}
-
-function compareDayKey(a: string, b: string) {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
-function buildTimelineRowsSignature(rows: TimelineRow[]) {
-  if (rows.length === 0) {
-    return "0";
-  }
-  return rows
-    .map(
-      (row) =>
-        `${row.source}:${row.lessonId}:${row.sport}:${row.startTime}:${row.endTime}:${row.status}:${row.lifecycle}`,
-    )
-    .sort()
-    .join("|");
-}
-
-function enumerateDays(startKey: string, endKey: string) {
-  const out: string[] = [];
-  let cursor = startKey;
-  while (compareDayKey(cursor, endKey) <= 0) {
-    out.push(cursor);
-    cursor = addDays(cursor, 1);
-  }
-  return out;
-}
-
-function getLifecycle(
-  status: TimelineRow["status"],
-  now: number,
-  startTime: number,
-  endTime: number,
-): TimelineRow["lifecycle"] {
-  if (status === "cancelled") {
-    return "cancelled";
-  }
-  if (now < startTime) {
-    return "upcoming";
-  }
-  if (now <= endTime) {
-    return "live";
-  }
-  return "past";
-}
-
-function useTimelineCache(
-  role: string | undefined,
-  startTime: number,
-  endTime: number,
-  viewMode: CalendarViewMode,
-) {
-  const cacheKey = useMemo(
-    () =>
-      `calendar:timeline:v${CACHE_VERSION}:${role ?? "none"}:${viewMode}:${startTime}:${endTime}`,
-    [endTime, role, startTime, viewMode],
-  );
-  const [cachedRows, setCachedRows] = useState<TimelineRow[] | null>(null);
-  const [cacheReady, setCacheReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setCachedRows(null);
-    setCacheReady(false);
-    void (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(cacheKey);
-        if (!raw || cancelled) {
-          setCacheReady(true);
-          return;
-        }
-        const payload = JSON.parse(raw) as {
-          fetchedAt: number;
-          rows: TimelineRow[];
-        };
-        if (Date.now() - payload.fetchedAt > CACHE_TTL_MS) {
-          setCacheReady(true);
-          return;
-        }
-        setCachedRows(payload.rows);
-      } catch {
-        /* ignore */
-      } finally {
-        if (!cancelled) {
-          setCacheReady(true);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [cacheKey]);
-
-  const persist = useCallback(
-    async (rows: TimelineRow[]) => {
-      try {
-        await AsyncStorage.setItem(cacheKey, JSON.stringify({ fetchedAt: Date.now(), rows }));
-      } catch {
-        /* best-effort */
-      }
-    },
-    [cacheKey],
-  );
-
-  return { cachedRows, cacheReady, persist };
-}
-
-type ItemLayout = { span?: number; size?: number };
 
 export function useCalendarTabController() {
   const currentUser = useQuery(api.users.getCurrentUser);
@@ -767,4 +604,11 @@ export function useCalendarTabController() {
   };
 }
 
-export { dayKeyToTimestamp, toDayKey };
+export {
+  type AgendaSection,
+  type CalendarVisibilityFilters,
+  dayKeyToTimestamp,
+  type TimelineListItem,
+  type TimelineRow,
+  toDayKey,
+} from "./calendar-controller-helpers";

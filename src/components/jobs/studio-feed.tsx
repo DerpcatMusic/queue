@@ -3,6 +3,7 @@ import { Redirect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { JobsSectionHeader } from "@/components/jobs/jobs-tab/jobs-section-header";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { CreateJobSheet } from "@/components/jobs/studio/create-job-sheet";
 import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
@@ -23,25 +24,6 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
-
-type FeedSectionHeaderProps = {
-  title: string;
-  subtitle?: string;
-  palette: ReturnType<typeof useBrand>;
-};
-
-function FeedSectionHeader({ title, subtitle, palette }: FeedSectionHeaderProps) {
-  return (
-    <View style={styles.sectionHeader}>
-      <ThemedText type="sectionTitle">{title}</ThemedText>
-      {subtitle ? (
-        <ThemedText type="meta" style={{ color: palette.textMuted }}>
-          {subtitle}
-        </ThemedText>
-      ) : null}
-    </View>
-  );
-}
 
 export function StudioFeed() {
   const { t, i18n } = useTranslation();
@@ -234,12 +216,11 @@ export function StudioFeed() {
           ) : shouldSplitBoard ? (
             <View style={styles.sectionStack}>
               <View style={styles.sectionBlock}>
-                <FeedSectionHeader
+                <JobsSectionHeader
                   title={t("jobsTab.studioFeed.needsReviewTitle")}
                   subtitle={t("jobsTab.studioFeed.mobileDecisionWaiting", {
                     count: reviewQueueJobs.length,
                   })}
-                  palette={palette}
                 />
                 <StudioJobsList
                   jobs={reviewQueueJobs}
@@ -259,7 +240,7 @@ export function StudioFeed() {
               </View>
 
               <View style={styles.sectionBlock}>
-                <FeedSectionHeader title={t("jobsTab.studioFeed.boardTitle")} palette={palette} />
+                <JobsSectionHeader title={t("jobsTab.studioFeed.boardTitle")} />
                 <StudioJobsList
                   jobs={boardJobs}
                   locale={locale}
@@ -279,11 +260,7 @@ export function StudioFeed() {
             </View>
           ) : (
             <View style={styles.sectionBlock}>
-              <FeedSectionHeader
-                title={primarySectionTitle}
-                subtitle={primarySectionSubtitle}
-                palette={palette}
-              />
+              <JobsSectionHeader title={primarySectionTitle} subtitle={primarySectionSubtitle} />
               {primaryJobs.length > 0 ? (
                 <StudioJobsList
                   jobs={primaryJobs}
@@ -353,10 +330,6 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     gap: BrandSpacing.lg,
-  },
-  sectionHeader: {
-    gap: 2,
-    paddingHorizontal: BrandSpacing.xs,
   },
   sectionStack: {
     gap: BrandSpacing.lg,

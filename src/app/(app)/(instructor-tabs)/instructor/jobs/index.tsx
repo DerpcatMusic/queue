@@ -1,5 +1,5 @@
-import { InstructorFeed } from "@/components/jobs/instructor-feed";
+import { InstructorJobsTab } from "@/components/jobs";
 
 export default function InstructorJobsRoute() {
-  return <InstructorFeed />;
+  return <InstructorJobsTab />;
 }

@@ -1,11 +1,13 @@
 import { useQuery } from "convex/react";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useWindowDimensions, View } from "react-native";
 import { getHomeHeaderExpandedHeight, HomeHeaderSheet } from "@/components/home/home-header-sheet";
-import { InstructorHomeContent } from "@/components/home/instructor-home-content";
-import { StudioHomeContent } from "@/components/home/studio-home-content";
+import {
+  HomeRoleContent,
+  type HomeRoleContentProps,
+} from "@/components/home/home-tab/home-role-content";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
@@ -14,13 +16,8 @@ import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
-const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
-const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile);
-const STUDIO_JOBS_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.jobs);
-const STUDIO_CALENDAR_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.calendar);
 const BOTTOM_TABS_ESTIMATE = 80;
 
 function HomeBodyPlaceholder({ backgroundColor }: { backgroundColor: string }) {
@@ -35,11 +32,9 @@ export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
   const locale = i18n.resolvedLanguage ?? "en";
-  const router = useRouter();
   const { safeTop } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
 
-  // Use centralized user context - eliminates duplicate getCurrentUser query
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
   const requestedRole = currentUser?.role;
   const homeBodyReady = useDeferredTabMount(
@@ -50,7 +45,6 @@ export default function HomeScreen() {
   const canQueryStudio =
     homeBodyReady && !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
 
-  // Role-specific queries - only fetch when user role is known
   const myStudioJobs = useQuery(
     api.jobs.getMyStudioJobs,
     canQueryStudio ? { limit: HOME_STUDIO_JOBS_LIMIT } : "skip",
@@ -59,12 +53,10 @@ export default function HomeScreen() {
     api.home.getMyInstructorHomeStats,
     canQueryInstructor ? {} : "skip",
   );
-
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
     canQueryInstructor ? {} : "skip",
   );
-
   const studioSettings = useQuery(api.users.getMyStudioSettings, canQueryStudio ? {} : "skip");
 
   const currencyFormatter = useMemo(
@@ -176,50 +168,23 @@ export default function HomeScreen() {
     return <LoadingScreen label={t("home.loading")} />;
   }
 
-  if (activeRole === "instructor") {
-    if (!homeBodyReady || instructorHomeStats === undefined) {
-      return <HomeBodyPlaceholder backgroundColor={palette.appBg as string} />;
-    }
-
-    return (
-      <InstructorHomeContent
-        isVerified={instructorHomeStats.isVerified}
-        locale={locale}
-        openMatches={instructorHomeStats.openMatches}
-        pendingApplications={instructorHomeStats.pendingApplications}
-        palette={palette}
-        currencyFormatter={currencyFormatter}
-        t={t}
-        upcomingSessions={instructorHomeStats.upcomingSessions}
-        onOpenJobs={() => router.push(INSTRUCTOR_JOBS_ROUTE)}
-        onOpenProfile={() => router.push(INSTRUCTOR_PROFILE_ROUTE)}
-      />
-    );
-  }
-
-  if (!homeBodyReady || myStudioJobs === undefined) {
+  if (
+    (activeRole === "instructor" && !homeBodyReady) ||
+    (activeRole === "studio" && !homeBodyReady)
+  ) {
     return <HomeBodyPlaceholder backgroundColor={palette.appBg as string} />;
   }
 
-  const studioJobs = myStudioJobs ?? [];
-  const openJobs = studioJobs.filter((job: any) => job.status === "open").length;
-  const pendingApplicants = studioJobs.reduce(
-    (total: number, job: any) => total + job.pendingApplicationsCount,
-    0,
-  );
-  const jobsFilled = studioJobs.filter((job: any) => job.status === "filled").length;
   return (
-    <StudioHomeContent
+    <HomeRoleContent
+      activeRole={activeRole}
+      homeBodyReady={homeBodyReady}
       locale={locale}
-      openJobs={openJobs}
-      pendingApplicants={pendingApplicants}
       palette={palette}
       currencyFormatter={currencyFormatter}
       t={t}
-      recentJobs={studioJobs}
-      jobsFilled={jobsFilled}
-      onOpenJobs={() => router.push(STUDIO_JOBS_ROUTE)}
-      onOpenCalendar={() => router.push(STUDIO_CALENDAR_ROUTE)}
+      instructorHomeStats={instructorHomeStats}
+      myStudioJobs={myStudioJobs as HomeRoleContentProps["myStudioJobs"]}
     />
   );
 }
