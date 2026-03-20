@@ -74,11 +74,12 @@ export const QueueMap = memo(function QueueMap({
     );
   }, [baseMapStyle, mapPalette, mode, themedStyleCacheKey]);
   const mapStyle = themedMapStyle ?? preferredStyleUrl;
-  const mapKey = `${resolvedScheme}:${retryNonce}:${themedMapStyle ? "themed" : "url"}`;
+  const mapKey = `${resolvedScheme}:${retryNonce}`;
 
   const mapRef = useRef<{
     showAttribution?: () => void;
   } | null>(null);
+  const mapLoadStateRef = useRef<MapLoadState>("loading");
   const cameraRef = useRef<{
     setStop: (config: unknown) => void;
     flyTo: (options: { center: [number, number]; zoom?: number; duration?: number }) => void;
@@ -92,9 +93,27 @@ export const QueueMap = memo(function QueueMap({
     setBaseMapStyle(null);
     setMapErrorMessage(null);
     setMapLoadState("loading");
+    mapLoadStateRef.current = "loading";
     setShowLoadingOverlay(false);
     setRetryNonce((current) => current + 1);
   }, []);
+  const updateMapLoadState = useCallback(
+    (nextState: MapLoadState, errorMessage?: string | null) => {
+      const nextError = errorMessage ?? null;
+      if (mapLoadStateRef.current === nextState) {
+        if (nextState === "error") {
+          setMapErrorMessage((current) => (current === nextError ? current : nextError));
+        } else if (nextError === null) {
+          setMapErrorMessage((current) => (current === null ? current : null));
+        }
+        return;
+      }
+      mapLoadStateRef.current = nextState;
+      setMapLoadState(nextState);
+      setMapErrorMessage(nextError);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (mapLoadState !== "loading") {
@@ -157,13 +176,13 @@ export const QueueMap = memo(function QueueMap({
     (async () => {
       const cachedStyle = getCachedMapStyleSpec(styleFetchUrl);
       if (!cancelled && cachedStyle !== undefined) {
-        setBaseMapStyle(cachedStyle);
+        setBaseMapStyle((current) => (current === cachedStyle ? current : cachedStyle));
         return;
       }
 
       const baseStyle = await fetchMapStyleSpec(styleFetchUrl);
       if (!cancelled) {
-        setBaseMapStyle(baseStyle);
+        setBaseMapStyle((current) => (current === baseStyle ? current : baseStyle));
       }
     })();
 
@@ -237,16 +256,13 @@ export const QueueMap = memo(function QueueMap({
         logo={false}
         attribution={false}
         onWillStartLoadingMap={() => {
-          setMapLoadState("loading");
-          setMapErrorMessage(null);
+          updateMapLoadState("loading");
         }}
         onDidFinishLoadingMap={() => {
-          setMapLoadState("ready");
-          setMapErrorMessage(null);
+          updateMapLoadState("ready");
         }}
         onDidFailLoadingMap={() => {
-          setMapLoadState("error");
-          setMapErrorMessage(t("mapTab.native.unavailableBody"));
+          updateMapLoadState("error", t("mapTab.native.unavailableBody"));
         }}
         onPress={(event: any) => {
           if (mode !== "pinDrop") return;
