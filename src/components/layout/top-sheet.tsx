@@ -1,4 +1,4 @@
-import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
 import type { ColorValue, StyleProp, ViewStyle } from "react-native";
 import { useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -148,9 +148,8 @@ export function TopSheet({
   // Sheet height shared value
   const defaultHeight = stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? 100;
   const sheetHeight = useSharedValue(defaultHeight);
+  const currentStepIndex = useSharedValue(resolvedStepIndex);
 
-  // Track current step for callbacks
-  const currentStepRef = useRef(resolvedStepIndex);
   const dragStartHeight = useSharedValue<number | null>(null);
 
   useEffect(() => {
@@ -160,76 +159,10 @@ export function TopSheet({
     );
     const nextHeight = stepHeights[clampedStepIndex] ?? 100;
 
-    currentStepRef.current = clampedStepIndex;
+    currentStepIndex.value = clampedStepIndex;
     dragStartHeight.value = nextHeight;
     sheetHeight.value = withSpring(nextHeight, SHEET_SPRING);
-  }, [dragStartHeight, resolvedStepIndex, sheetHeight, stepHeights]);
-
-  // Find step based on drag direction - snap to next step in the direction of drag
-  const findDirectionalStep = useCallback(
-    (
-      currentHeight: number,
-      velocityY: number,
-      startHeight: number,
-    ): { index: number; height: number } => {
-      const h = stepHeights;
-      if (h.length === 0) return { index: 0, height: 100 };
-
-      // Find current step index
-      let currentStepIdx = 0;
-      let minDist = Math.abs(currentHeight - h[0]!);
-      for (let i = 1; i < h.length; i++) {
-        const dist = Math.abs(currentHeight - h[i]!);
-        if (dist < minDist) {
-          currentStepIdx = i;
-          minDist = dist;
-        }
-      }
-
-      // Determine direction: use velocity as primary, fallback to position.
-      // For a top sheet, dragging down expands and dragging up contracts.
-      // If velocity is low, use position relative to start
-      const VELOCITY_THRESHOLD = 500;
-      let direction: "up" | "down";
-
-      if (Math.abs(velocityY) > VELOCITY_THRESHOLD) {
-        direction = velocityY < 0 ? "up" : "down";
-      } else {
-        // Use position relative to drag start
-        direction = currentHeight > startHeight ? "down" : "up";
-      }
-
-      // Calculate target step index
-      let targetIdx: number;
-      if (direction === "down") {
-        // Dragging down - expand to the next larger step (or stay at max)
-        targetIdx = Math.min(currentStepIdx + 1, h.length - 1);
-      } else {
-        // Dragging up - contract to the next smaller step (or stay at min)
-        targetIdx = Math.max(currentStepIdx - 1, 0);
-      }
-
-      return { index: targetIdx, height: h[targetIdx]! };
-    },
-    [stepHeights],
-  );
-
-  const snapToDirectional = useCallback(
-    (velocityY: number, currentHeight: number, startHeight: number) => {
-      const target = findDirectionalStep(currentHeight, velocityY, startHeight);
-      sheetHeight.value = withSpring(target.height, SHEET_SPRING);
-      if (target.index !== currentStepRef.current) {
-        currentStepRef.current = target.index;
-        if (activeStep === undefined) {
-          runOnJS(setInternalStepIndex)(target.index);
-        }
-        if (onStepChange) {
-          runOnJS(onStepChange)(target.index);
-        }
-      }
-    },
-    [activeStep, findDirectionalStep, onStepChange, sheetHeight],
-  );
+  }, [currentStepIndex, dragStartHeight, resolvedStepIndex, sheetHeight, stepHeights]);
 
   // Pan gesture (only active when draggable + expandable)
   const gestureEnabled = draggable && expandable;
@@ -251,12 +184,50 @@ export function TopSheet({
           sheetHeight.value = Math.max(minH, Math.min(maxH, startHeight + event.translationY));
         })
         .onEnd((event) => {
+          const h = stepHeights;
+          if (h.length === 0) return;
           const currentHeight = sheetHeight.value;
           const startHeight = dragStartHeight.value ?? currentHeight;
           dragStartHeight.value = null;
-          runOnJS(snapToDirectional)(event.velocityY, currentHeight, startHeight);
+
+          let nearestStepIdx = 0;
+          let minDistance = Math.abs(currentHeight - h[0]!);
+          for (let index = 1; index < h.length; index++) {
+            const distance = Math.abs(currentHeight - h[index]!);
+            if (distance < minDistance) {
+              nearestStepIdx = index;
+              minDistance = distance;
+            }
+          }
+
+          const VELOCITY_THRESHOLD = 500;
+          const direction =
+            Math.abs(event.velocityY) > VELOCITY_THRESHOLD
+              ? event.velocityY < 0
+                ? "up"
+                : "down"
+              : currentHeight > startHeight
+                ? "down"
+                : "up";
+
+          const targetIdx =
+            direction === "down"
+              ? Math.min(nearestStepIdx + 1, h.length - 1)
+              : Math.max(nearestStepIdx - 1, 0);
+          const targetHeight = h[targetIdx] ?? h[0] ?? 100;
+
+          sheetHeight.value = withSpring(targetHeight, SHEET_SPRING);
+          if (targetIdx !== currentStepIndex.value) {
+            currentStepIndex.value = targetIdx;
+            if (activeStep === undefined) {
+              runOnJS(setInternalStepIndex)(targetIdx);
+            }
+            if (onStepChange) {
+              runOnJS(onStepChange)(targetIdx);
+            }
+          }
         }),
-    [dragStartHeight, sheetHeight, snapToDirectional, stepHeights],
+    [activeStep, currentStepIndex, dragStartHeight, onStepChange, sheetHeight, stepHeights],
   );
 
   const resolvedPadding = useMemo(
