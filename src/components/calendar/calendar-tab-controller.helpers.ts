@@ -2,8 +2,8 @@ import {
   addDays,
   buildTimelineRowsSignature,
   type CalendarVisibilityFilters,
+  compareDayKey,
   DAY_MS,
-  enumerateDays,
   type GoogleAgendaRow,
   getLifecycle,
   type TimelineListItem,
@@ -102,9 +102,7 @@ export function buildFilteredRows(
 ) {
   const start = dayKeyToTimestamp(range.start);
   const end = dayKeyToTimestamp(range.end) + DAY_MS - 1;
-  return visibleRows
-    .filter((row) => row.startTime >= start && row.startTime <= end)
-    .sort((a, b) => a.startTime - b.startTime);
+  return visibleRows.filter((row) => row.startTime >= start && row.startTime <= end);
 }
 
 export function buildSyncEvents(
@@ -156,9 +154,13 @@ export function buildTimelineListData(
     addDays(todayKey, 1),
     selectedDay,
   ]);
-  const days = enumerateDays(windowRange.start, windowRange.end).filter(
-    (dayKey) => guaranteedDays.has(dayKey) || (rowsByDay.get(dayKey)?.length ?? 0) > 0,
-  );
+  const days = [...new Set([...rowsByDay.keys(), ...guaranteedDays])]
+    .filter(
+      (dayKey) =>
+        compareDayKey(dayKey, windowRange.start) >= 0 &&
+        compareDayKey(dayKey, windowRange.end) <= 0,
+    )
+    .sort(compareDayKey);
 
   for (const dk of days) {
     dayIndexMap.set(dk, items.length);
