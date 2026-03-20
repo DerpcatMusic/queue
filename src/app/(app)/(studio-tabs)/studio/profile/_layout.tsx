@@ -1,6 +1,9 @@
 import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useBrand } from "@/hooks/use-brand";
+import {
+  ProfileSubpageSheetHost,
+  ProfileSubpageSheetProvider,
+} from "@/components/profile/profile-subpage-sheet";
 
 /**
  * Profile section uses a nested Stack navigator so sub-screens
@@ -9,29 +12,46 @@ import { useBrand } from "@/hooks/use-brand";
  */
 export default function ProfileLayout() {
   const { t } = useTranslation();
-  const palette = useBrand();
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: true,
-        headerTintColor: palette.text as string,
-        headerTitleStyle: { color: palette.text as string },
-      }}
-    >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="calendar-settings"
-        options={{ title: t("profile.navigation.calendar") }}
+    <ProfileSubpageSheetProvider>
+      <ProfileSubpageSheetHost
+        ownerId="profile-layout:studio"
+        routes={[
+          {
+            routeMatchPath: "/profile/calendar-settings",
+            title: t("profile.navigation.calendar"),
+          },
+          {
+            routeMatchPath: "/profile/edit",
+            title: t("profile.navigation.edit"),
+          },
+          {
+            routeMatchPath: "/profile/payments",
+            title: t("profile.navigation.paymentsPayouts"),
+          },
+        ]}
       />
-      <Stack.Screen
-        name="edit"
-        options={{ title: t("profile.navigation.edit"), presentation: "modal" }}
-      />
-      <Stack.Screen
-        name="payments"
-        options={{ title: t("profile.navigation.paymentsPayouts") }}
-      />
-    </Stack>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: "slide_from_right",
+        }}
+      >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="calendar-settings"
+          options={{ title: t("profile.navigation.calendar") }}
+        />
+        <Stack.Screen
+          name="edit"
+          options={{ title: t("profile.navigation.edit"), presentation: "modal" }}
+        />
+        <Stack.Screen
+          name="payments"
+          options={{ title: t("profile.navigation.paymentsPayouts") }}
+        />
+      </Stack>
+    </ProfileSubpageSheetProvider>
   );
 }

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 
 import { TopSheet } from "@/components/layout/top-sheet";
@@ -37,21 +38,34 @@ export function ProfileHeaderSheet({
   verificationStatus = "not_started",
   onStepChange,
 }: ProfileHeaderSheetProps) {
-  // Map verification status to badge colors/labels
+  const { t } = useTranslation();
+
   const getStatusConfig = () => {
     switch (verificationStatus) {
       case "approved":
-        return { color: palette.success, label: "Verified" };
+        return {
+          color: palette.success,
+          label: t("profile.identityVerification.badgeLabels.verified"),
+        };
       case "in_review":
       case "pending":
       case "in_progress":
-        return { color: palette.warning, label: "Pending" };
+        return {
+          color: palette.warning,
+          label: t("profile.identityVerification.badgeLabels.pending"),
+        };
       case "declined":
       case "expired":
       case "abandoned":
-        return { color: palette.danger, label: "Action Needed" };
+        return {
+          color: palette.danger,
+          label: t("profile.identityVerification.badgeLabels.actionNeeded"),
+        };
       default:
-        return { color: palette.textMuted, label: "Unverified" };
+        return {
+          color: palette.textMuted,
+          label: t("profile.identityVerification.badgeLabels.unverified"),
+        };
     }
   };
 

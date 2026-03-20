@@ -1,14 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Pressable,
-  ScrollView,
-  Text,
-  type TextInputProps,
-  View,
-} from "react-native";
-import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
-
+import { Pressable, ScrollView, Text, type TextInputProps, View } from "react-native";
 import {
   PROFILE_SOCIAL_FIELDS,
   type ProfileSocialKey,
@@ -20,6 +12,8 @@ import { KitSurface, KitTextField } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
+import { useAppInsets } from "@/hooks/use-app-insets";
+import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 
 type EditableExtraField = {
   label: string;
@@ -52,6 +46,7 @@ type ProfileEditorFormProps = {
   sportsTitle: string;
   sportsEmptyHint: string;
   extraField?: EditableExtraField;
+  contentTopInset?: number;
 };
 
 export function ProfileEditorForm({
@@ -77,26 +72,22 @@ export function ProfileEditorForm({
   sportsTitle,
   sportsEmptyHint,
   extraField,
+  contentTopInset = BrandSpacing.lg,
 }: ProfileEditorFormProps) {
   const { isDesktopWeb } = useLayoutBreakpoint();
+  const { safeBottom } = useAppInsets();
   const { t } = useTranslation();
   const activeSocialCount = useMemo(
     () =>
-      PROFILE_SOCIAL_FIELDS.filter((field) =>
-        Boolean(socialLinksDraft[field.key]?.trim()),
-      ).length,
+      PROFILE_SOCIAL_FIELDS.filter((field) => Boolean(socialLinksDraft[field.key]?.trim())).length,
     [socialLinksDraft],
   );
-  const [showSocialFields, setShowSocialFields] = useState(
-    activeSocialCount > 0,
-  );
+  const [showSocialFields, setShowSocialFields] = useState(activeSocialCount > 0);
   const saveActions = (
     <View style={{ flexDirection: "row", gap: 12 }}>
       <View style={{ flex: 1 }}>
         <ActionButton
-          label={
-            isSaving ? t("profile.editor.saving") : t("profile.editor.save")
-          }
+          label={isSaving ? t("profile.editor.saving") : t("profile.editor.save")}
           onPress={onSave}
           disabled={isSaving}
           palette={palette}
@@ -142,9 +133,7 @@ export function ProfileEditorForm({
             style={{
               ...BrandType.bodyMedium,
               fontSize: 13,
-              color: isDesktopWeb
-                ? (palette.onPrimary as string)
-                : (palette.textMuted as string),
+              color: isDesktopWeb ? (palette.onPrimary as string) : (palette.textMuted as string),
               includeFontPadding: false,
               opacity: isDesktopWeb ? 0.76 : 1,
             }}
@@ -156,9 +145,7 @@ export function ProfileEditorForm({
               ...(isDesktopWeb ? BrandType.display : BrandType.title),
               fontSize: isDesktopWeb ? 32 : 20,
               lineHeight: isDesktopWeb ? 30 : undefined,
-              color: isDesktopWeb
-                ? (palette.onPrimary as string)
-                : (palette.text as string),
+              color: isDesktopWeb ? (palette.onPrimary as string) : (palette.text as string),
               includeFontPadding: false,
               letterSpacing: isDesktopWeb ? -0.8 : 0,
             }}
@@ -170,9 +157,7 @@ export function ProfileEditorForm({
               style={{
                 ...BrandType.bodyMedium,
                 fontSize: 13,
-                color: isDesktopWeb
-                  ? (palette.onPrimary as string)
-                  : (palette.textMuted as string),
+                color: isDesktopWeb ? (palette.onPrimary as string) : (palette.textMuted as string),
                 includeFontPadding: false,
                 opacity: isDesktopWeb ? 0.76 : 1,
               }}
@@ -182,11 +167,7 @@ export function ProfileEditorForm({
           ) : null}
         </View>
         <ActionButton
-          label={
-            isChangingPhoto
-              ? t("profile.editor.uploading")
-              : t("profile.editor.photo")
-          }
+          label={isChangingPhoto ? t("profile.editor.uploading") : t("profile.editor.photo")}
           onPress={onChangePhoto}
           disabled={isChangingPhoto}
           palette={palette}
@@ -274,9 +255,7 @@ export function ProfileEditorForm({
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={
-            showSocialFields ? t("profile.editor.hide") : t("common.edit")
-          }
+          accessibilityLabel={showSocialFields ? t("profile.editor.hide") : t("common.edit")}
           onPress={() => setShowSocialFields((value) => !value)}
           style={({ pressed }) => ({
             opacity: pressed ? 0.68 : 1,
@@ -321,8 +300,8 @@ export function ProfileEditorForm({
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
         paddingHorizontal: BrandSpacing.lg,
-        paddingTop: BrandSpacing.lg,
-        paddingBottom: BrandSpacing.xxl,
+        paddingTop: contentTopInset,
+        paddingBottom: BrandSpacing.xxl + safeBottom,
         gap: BrandSpacing.lg,
       }}
     >

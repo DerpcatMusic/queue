@@ -1,8 +1,8 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, type StyleProp, Text, View, type ViewStyle } from "react-native";
 
-import { BrandRadius } from "@/constants/brand";
+import { BrandRadius, BrandType } from "@/constants/brand";
+import { useBrand } from "@/hooks/use-brand";
 import { triggerSelectionHaptic } from "./native-interaction";
-import { useKitTheme } from "./use-kit-theme";
 
 type Option<T extends string> = {
   label: string;
@@ -14,27 +14,31 @@ type KitSegmentedToggleProps<T extends string> = {
   value: T;
   onChange: (value: T) => void;
   options: readonly Option<T>[];
+  style?: StyleProp<ViewStyle>;
 };
 
 export function KitSegmentedToggle<T extends string>({
   value,
   onChange,
   options,
+  style,
 }: KitSegmentedToggleProps<T>) {
-  const { color, foreground, border, background } = useKitTheme();
+  const palette = useBrand();
 
   return (
     <View
-      style={{
-        borderWidth: 1,
-        borderRadius: BrandRadius.button,
-        borderCurve: "continuous",
-        borderColor: border.primary,
-        backgroundColor: background.surfaceElevated,
-        padding: 4,
-        flexDirection: "row",
-        gap: 4,
-      }}
+      style={[
+        {
+          borderRadius: BrandRadius.button,
+          borderCurve: "continuous",
+          backgroundColor: palette.primarySubtle as string,
+          padding: 4,
+          flexDirection: "row",
+          gap: 4,
+          overflow: "hidden",
+        },
+        style,
+      ]}
     >
       {options.map((option) => {
         const selected = option.value === value;
@@ -50,12 +54,12 @@ export function KitSegmentedToggle<T extends string>({
             }}
             style={({ pressed }) => ({
               flex: 1,
-              minHeight: 38,
-              borderWidth: 1,
-              borderRadius: BrandRadius.button - 4,
+              minHeight: 48,
+              borderRadius: BrandRadius.button - 8,
               borderCurve: "continuous",
-              borderColor: selected ? color.primaryPressed : border.secondary,
-              backgroundColor: selected ? color.primary : background.surfaceSecondary,
+              backgroundColor: selected
+                ? (palette.primary as string)
+                : (palette.surfaceAlt as string),
               alignItems: "center",
               justifyContent: "center",
               opacity: option.disabled ? 0.72 : pressed ? 0.86 : 1,
@@ -63,9 +67,10 @@ export function KitSegmentedToggle<T extends string>({
           >
             <Text
               style={{
-                fontSize: 13,
-                fontWeight: "500",
-                color: selected ? foreground.primary : foreground.muted,
+                ...BrandType.micro,
+                color: selected ? (palette.onPrimary as string) : (palette.primary as string),
+                fontSize: 14,
+                fontWeight: "700",
                 includeFontPadding: false,
               }}
             >

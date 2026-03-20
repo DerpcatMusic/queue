@@ -8,8 +8,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
+import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconButton } from "@/components/ui/icon-button";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
@@ -77,7 +77,11 @@ export default function SignInScreen() {
     code?: string | string[];
   }>();
   const palette = useBrand();
-  const collapsedSheetHeight = useCollapsedSheetHeight();
+  const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
+    topSpacing: BrandSpacing.lg,
+    bottomSpacing: BrandSpacing.xxl,
+    horizontalPadding: BrandSpacing.lg,
+  });
   const { isAuthenticated } = useConvexAuth();
   const { signIn } = useAuthActions();
   const handledMagicCodeRef = useRef<string | null>(null);
@@ -253,10 +257,8 @@ export default function SignInScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           flexGrow: 1,
-          paddingHorizontal: BrandSpacing.lg,
-          paddingTop: collapsedSheetHeight + BrandSpacing.lg,
-          paddingBottom: BrandSpacing.xxl,
           backgroundColor: palette.appBg as string,
+          ...(sheetContentInsets as object),
         }}
       >
         <View style={styles.screen}>

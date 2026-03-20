@@ -1,4 +1,16 @@
+export {
+  KitButtonGroup,
+  type KitButtonGroupAlign,
+  type KitButtonGroupOption,
+  type KitButtonGroupProps,
+  type KitButtonGroupSize,
+  type KitButtonGroupTone,
+} from "./kit-button-group";
 export { KitChip } from "./kit-chip";
+export {
+  KitDisclosureButtonGroup,
+  type KitDisclosureButtonGroupOption,
+} from "./kit-disclosure-button-group";
 export { KitFloatingBadge } from "./kit-floating-badge";
 export { KitList, KitListItem } from "./kit-list";
 export { KitSegmentedToggle } from "./kit-segmented-toggle";

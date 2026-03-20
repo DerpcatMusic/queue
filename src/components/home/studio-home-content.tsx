@@ -65,28 +65,23 @@ export function StudioHomeContent({
 
   const heroTitle =
     jobsNeedingReview.length > 0
-      ? t("home.studio.heroReview", { defaultValue: "Decisions are waiting" })
+      ? t("home.studio.heroReview")
       : t("home.studio.heroActive", {
           count: openJobs,
-          defaultValue: `${String(openJobs)} active jobs on the board`,
         });
 
   const heroSecondaryLabel =
     jobsNeedingReview.length > 0
-      ? t("home.studio.pendingApplicants", {
-          defaultValue: "Pending applicants",
-        })
-      : t("home.studio.recentlyFilled", { defaultValue: "Recently filled" });
+      ? t("home.studio.pendingApplicants")
+      : t("home.studio.recentlyFilled");
 
   const heroSecondaryValue =
     jobsNeedingReview.length > 0
       ? t("home.studio.waitingCount", {
           count: pendingApplicants,
-          defaultValue: `${String(pendingApplicants)} waiting`,
         })
       : t("home.studio.closedCount", {
           count: jobsFilled,
-          defaultValue: `${String(jobsFilled)} closed`,
         });
 
   const visibleRecentJobs = recentJobs.slice(0, layout.isWideWeb ? 6 : 4);
@@ -125,12 +120,8 @@ export function StudioHomeContent({
                 }}
               >
                 {jobsNeedingReview.length > 0
-                  ? t("home.studio.eyebrowReview", {
-                      defaultValue: "REVIEW QUEUE",
-                    })
-                  : t("home.studio.eyebrowOps", {
-                      defaultValue: "OPERATIONS",
-                    })}
+                  ? t("home.studio.eyebrowReview")
+                  : t("home.studio.eyebrowOps")}
               </Text>
               <Text
                 style={{
@@ -152,42 +143,34 @@ export function StudioHomeContent({
                 {jobsNeedingReview.length > 0
                   ? t("home.studio.waitingCount", {
                       count: pendingApplicants,
-                      defaultValue: `${String(pendingApplicants)} waiting`,
                     })
                   : t("home.studio.heroActive", {
                       count: openJobs,
-                      defaultValue: `${String(openJobs)} active jobs on the board`,
                     })}
               </Text>
             </View>
 
             <View style={{ flexDirection: "row", gap: 10 }}>
               <HomeSignalTile
-                label={t("home.actions.jobsTitle", { defaultValue: "Open jobs" })}
+                label={t("home.actions.jobsTitle")}
                 value={String(openJobs)}
                 detail={t("home.studio.heroActive", {
                   count: openJobs,
-                  defaultValue: `${String(openJobs)} live on board`,
                 })}
                 palette={palette}
               />
               <HomeSignalTile
                 label={heroSecondaryLabel}
                 value={heroSecondaryValue}
-                detail={t("home.studio.pendingApplicants", {
-                  defaultValue: "Pending applicants",
-                })}
+                detail={t("home.studio.pendingApplicants")}
                 palette={palette}
                 tone="accent"
               />
               <HomeSignalTile
-                label={t("home.studio.recentlyFilled", {
-                  defaultValue: "Recently filled",
-                })}
+                label={t("home.studio.recentlyFilled")}
                 value={String(jobsFilled)}
                 detail={t("home.studio.closedCount", {
                   count: jobsFilled,
-                  defaultValue: `${String(jobsFilled)} closed`,
                 })}
                 palette={palette}
               />
@@ -201,10 +184,8 @@ export function StudioHomeContent({
             >
               <View style={{ flex: 1 }}>
                 <ActionButton
-                  accessibilityLabel={t("home.actions.jobsTitle", {
-                    defaultValue: "Open jobs",
-                  })}
-                  label={t("home.actions.jobsTitle", { defaultValue: "Open jobs" })}
+                  accessibilityLabel={t("home.actions.jobsTitle")}
+                  label={t("home.actions.jobsTitle")}
                   onPress={onOpenJobs}
                   palette={palette}
                   tone="secondary"
@@ -213,12 +194,8 @@ export function StudioHomeContent({
               </View>
               <View style={{ flex: 1 }}>
                 <ActionButton
-                  accessibilityLabel={t("home.actions.calendarTitle", {
-                    defaultValue: "Open calendar",
-                  })}
-                  label={t("home.actions.calendarTitle", {
-                    defaultValue: "Open calendar",
-                  })}
+                  accessibilityLabel={t("home.actions.calendarTitle")}
+                  label={t("home.actions.calendarTitle")}
                   onPress={onOpenCalendar}
                   palette={palette}
                   fullWidth
@@ -241,12 +218,8 @@ export function StudioHomeContent({
               style={{ flex: layout.isWideWeb ? 1.08 : undefined, gap: 12 }}
             >
               <HomeSectionHeading
-                title={t("home.studio.needsReview", {
-                  defaultValue: "Needs review",
-                })}
-                eyebrow={t("home.studio.queueEyebrow", {
-                  defaultValue: "QUEUE",
-                })}
+                title={t("home.studio.needsReview")}
+                eyebrow={t("home.studio.queueEyebrow")}
                 palette={palette}
               />
               <View style={{ gap: 10 }}>
@@ -284,9 +257,7 @@ export function StudioHomeContent({
                                 textTransform: "uppercase",
                               }}
                             >
-                              {t("home.studio.queueEyebrow", {
-                                defaultValue: "Queue",
-                              })}
+                              {t("home.studio.queueEyebrow")}
                             </Text>
                             <Text
                               style={{
@@ -338,9 +309,7 @@ export function StudioHomeContent({
           >
             <HomeSectionHeading
               title={t("home.studio.recentTitle")}
-              eyebrow={t("home.studio.boardEyebrow", {
-                defaultValue: "LIVE BOARD",
-              })}
+              eyebrow={t("home.studio.boardEyebrow")}
               palette={palette}
             />
             {recentJobs.length === 0 ? (
@@ -354,9 +323,7 @@ export function StudioHomeContent({
                     color: palette.textMuted as string,
                   }}
                 >
-                  {t("home.studio.emptyBoard", {
-                    defaultValue: "Post a shift to start filling your schedule.",
-                  })}
+                  {t("home.studio.emptyBoard")}
                 </Text>
               </HomeSurface>
             ) : (

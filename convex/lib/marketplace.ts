@@ -114,15 +114,12 @@ export const mapLegacyPaymentStatusToOrderStatus = (
       return "cancelled";
     case "refunded":
       return "refunded";
-    case "failed":
     default:
       return "failed";
   }
 };
 
-export const normalizePayoutPreferenceMode = (
-  mode: string | undefined,
-): PayoutPreferenceMode => {
+export const normalizePayoutPreferenceMode = (mode: string | undefined): PayoutPreferenceMode => {
   const normalized = (mode ?? "").trim().toLowerCase();
   if (normalized === "scheduled_date") return "scheduled_date";
   if (normalized === "manual_hold") return "manual_hold";

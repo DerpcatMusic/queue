@@ -2,12 +2,14 @@ import { FlashList } from "@shopify/flash-list";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
+import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ActionButton } from "@/components/ui/action-button";
-import { AppSymbol } from "@/components/ui/app-symbol";
+import { IconButton } from "@/components/ui/icon-button";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitChip } from "@/components/ui/kit/kit-chip";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
@@ -76,8 +78,12 @@ export default function CalendarTabScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
   const { safeBottom } = useAppInsets();
-  const collapsedSheetHeight = useCollapsedSheetHeight();
   const { isDesktopWeb } = useLayoutBreakpoint();
+  const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
+    topSpacing: BrandSpacing.md,
+    bottomSpacing: BrandSpacing.xl,
+    horizontalPadding: BrandSpacing.lg,
+  });
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
   const {
     selectedDay,
@@ -94,7 +100,11 @@ export default function CalendarTabScreen() {
     overrideItemLayout,
     selectedDayTimestamp,
     isLoading,
+    canShowGoogleAgenda,
+    visibilityFilters,
+    toggleVisibilityFilter,
   } = useCalendarTabController();
+  const [showCalendarFilters, setShowCalendarFilters] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerDate, setPickerDate] = useState(() => new Date(selectedDayTimestamp));
   const selectedLessonCount = lessonCountByDay.get(selectedDay) ?? 0;
@@ -186,34 +196,79 @@ export default function CalendarTabScreen() {
             <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
               {formatSelectedDayLabel(selectedDay, i18n.language)}
             </Text>
-            <View
-              style={{
-                borderRadius: BrandRadius.pill,
-                borderCurve: "continuous",
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor:
-                  selectedLessonCount > 0
-                    ? (palette.primarySubtle as string)
-                    : (palette.surface as string),
-              }}
-            >
-              <Text
+            <View style={styles.headerControlsRow}>
+              {canShowGoogleAgenda ? (
+                <IconButton
+                  accessibilityLabel={t("calendarTab.filters.button")}
+                  onPress={() => setShowCalendarFilters((current) => !current)}
+                  tone={showCalendarFilters ? "primary" : "secondary"}
+                  size={42}
+                  icon={
+                    <IconSymbol
+                      name="line.3.horizontal.decrease.circle"
+                      size={18}
+                      color={
+                        showCalendarFilters
+                          ? (palette.onPrimary as string)
+                          : (palette.textMuted as string)
+                      }
+                    />
+                  }
+                />
+              ) : null}
+              <View
                 style={{
-                  ...BrandType.micro,
-                  fontVariant: ["tabular-nums"],
-                  color:
+                  borderRadius: BrandRadius.pill,
+                  borderCurve: "continuous",
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  backgroundColor:
                     selectedLessonCount > 0
-                      ? (palette.primary as string)
-                      : (palette.textMuted as string),
+                      ? (palette.primarySubtle as string)
+                      : (palette.surface as string),
                 }}
               >
-                {selectedLessonCount === 1
-                  ? t("calendarTab.agenda.oneSession")
-                  : t("calendarTab.agenda.sessionCount", { count: selectedLessonCount })}
-              </Text>
+                <Text
+                  style={{
+                    ...BrandType.micro,
+                    fontVariant: ["tabular-nums"],
+                    color:
+                      selectedLessonCount > 0
+                        ? (palette.primary as string)
+                        : (palette.textMuted as string),
+                  }}
+                >
+                  {selectedLessonCount === 1
+                    ? t("calendarTab.agenda.oneEvent")
+                    : t("calendarTab.agenda.eventCount", { count: selectedLessonCount })}
+                </Text>
+              </View>
             </View>
           </View>
+          {canShowGoogleAgenda && showCalendarFilters ? (
+            <View style={styles.visibilitySection}>
+              <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
+                {t("calendarTab.filters.show")}
+              </Text>
+              <View style={styles.visibilityChipRow}>
+                <KitChip
+                  label={t("calendarTab.filters.lessons")}
+                  selected={visibilityFilters.queueLessons}
+                  onPress={() => toggleVisibilityFilter("queueLessons")}
+                />
+                <KitChip
+                  label={t("calendarTab.filters.timed")}
+                  selected={visibilityFilters.timedCalendarEvents}
+                  onPress={() => toggleVisibilityFilter("timedCalendarEvents")}
+                />
+                <KitChip
+                  label={t("calendarTab.filters.allDay")}
+                  selected={visibilityFilters.allDayCalendarEvents}
+                  onPress={() => toggleVisibilityFilter("allDayCalendarEvents")}
+                />
+              </View>
+            </View>
+          ) : null}
         </View>
       ),
       padding: {
@@ -234,8 +289,14 @@ export default function CalendarTabScreen() {
       selectedDay,
       selectedLessonCount,
       showDatePicker,
+      showCalendarFilters,
       t,
+      toggleVisibilityFilter,
       todayKey,
+      visibilityFilters.allDayCalendarEvents,
+      visibilityFilters.queueLessons,
+      visibilityFilters.timedCalendarEvents,
+      canShowGoogleAgenda,
     ],
   );
 
@@ -245,8 +306,8 @@ export default function CalendarTabScreen() {
     () => (
       <View
         style={{
-          gap: BrandSpacing.sm,
-          paddingTop: BrandSpacing.sm,
+          gap: BrandSpacing.xs,
+          paddingTop: BrandSpacing.xs,
           paddingBottom: BrandSpacing.xs,
         }}
       >
@@ -258,12 +319,9 @@ export default function CalendarTabScreen() {
             gap: BrandSpacing.md,
           }}
         >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ ...BrandType.title, color: palette.text as string }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
               {t("calendarTab.agenda.title")}
-            </Text>
-            <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
-              {formatSelectedDayLabel(selectedDay, i18n.language)}
             </Text>
           </View>
           <View
@@ -289,8 +347,8 @@ export default function CalendarTabScreen() {
               }}
             >
               {selectedLessonCount === 1
-                ? t("calendarTab.agenda.oneSession")
-                : t("calendarTab.agenda.sessionCount", {
+                ? t("calendarTab.agenda.oneEvent")
+                : t("calendarTab.agenda.eventCount", {
                     count: selectedLessonCount,
                   })}
             </Text>
@@ -298,7 +356,7 @@ export default function CalendarTabScreen() {
         </View>
       </View>
     ),
-    [i18n.language, palette, selectedDay, selectedLessonCount, t],
+    [palette, selectedLessonCount, t],
   );
 
   const renderItem = useCallback(
@@ -343,16 +401,8 @@ export default function CalendarTabScreen() {
               <View style={[styles.railLine, { backgroundColor: railColor }]} />
             </View>
             <View style={[styles.emptyStateCard, { backgroundColor: palette.surface as string }]}>
-              <AppSymbol
-                name="calendar.badge.exclamationmark"
-                size={28}
-                tintColor={palette.textMuted as string}
-              />
               <Text style={[styles.emptyStateTitle, { color: palette.textMuted as string }]}>
                 {t("calendarTab.timeline.noLessons")}
-              </Text>
-              <Text style={[styles.emptyStateBody, { color: palette.textMuted as string }]}>
-                {t("calendarTab.timeline.noLessonsHint")}
               </Text>
             </View>
           </View>
@@ -369,9 +419,10 @@ export default function CalendarTabScreen() {
           : row.roleView === "instructor"
             ? row.studioName
             : (row.instructorName ?? t("calendarTab.unassignedInstructor"));
-      const timeLabel = row.isAllDay
+      const timeStartLabel = row.isAllDay
         ? t("calendarTab.timeline.allDay")
-        : `${formatTime(row.startTime, i18n.language)} – ${formatTime(row.endTime, i18n.language)}`;
+        : formatTime(row.startTime, i18n.language);
+      const timeEndLabel = row.isAllDay ? null : formatTime(row.endTime, i18n.language);
 
       const lifecycleLabel =
         row.lifecycle === "live"
@@ -420,37 +471,46 @@ export default function CalendarTabScreen() {
             onPress={() => handleDayPress(item.dayKey)}
             style={[styles.lessonCard, { backgroundColor: palette.surfaceElevated as string }]}
           >
-            <View style={styles.lessonContent}>
-              <View style={styles.lessonTopRow}>
-                <Text style={[styles.lessonTime, { color: palette.textMuted as string }]}>
-                  {timeLabel}
+            <View style={styles.lessonRowCompact}>
+              <View style={styles.lessonTimeColumn}>
+                <Text style={[styles.lessonTimePrimary, { color: palette.text as string }]}>
+                  {timeStartLabel}
                 </Text>
-                <View style={styles.lessonBadgeRow}>
-                  {row.source === "google" ? (
-                    <View
-                      style={[
-                        styles.sourceBadge,
-                        { backgroundColor: palette.primarySubtle as string },
-                      ]}
-                    >
-                      <Text style={[styles.sourceBadgeText, { color: palette.primary as string }]}>
-                        {t("calendarTab.timeline.googleBadge")}
-                      </Text>
-                    </View>
-                  ) : null}
+                {timeEndLabel ? (
+                  <Text
+                    style={[styles.lessonTimeSecondary, { color: palette.textMuted as string }]}
+                  >
+                    {timeEndLabel}
+                  </Text>
+                ) : null}
+              </View>
+              <View style={[styles.lessonAccent, { backgroundColor: accent }]} />
+              <View style={styles.lessonContent}>
+                <View style={styles.lessonTopRow}>
+                  <Text
+                    style={[styles.lessonTitle, { color: palette.text as string }]}
+                    numberOfLines={1}
+                  >
+                    {row.sport}
+                  </Text>
                   <View style={[styles.lifecycleBadge, { backgroundColor: lifecycleTone.bg }]}>
                     <Text style={[styles.lifecycleBadgeText, { color: lifecycleTone.fg }]}>
                       {lifecycleLabel}
                     </Text>
                   </View>
                 </View>
+                <Text
+                  style={[styles.lessonMeta, { color: palette.textMuted as string }]}
+                  numberOfLines={1}
+                >
+                  {counterpart}
+                </Text>
+                {row.source === "google" ? (
+                  <Text style={[styles.lessonSource, { color: palette.textMicro as string }]}>
+                    {t("calendarTab.timeline.googleBadge")}
+                  </Text>
+                ) : null}
               </View>
-              <Text style={[styles.lessonTitle, { color: palette.text as string }]}>
-                {row.sport}
-              </Text>
-              <Text style={[styles.lessonMeta, { color: palette.textMuted as string }]}>
-                {counterpart}
-              </Text>
             </View>
           </Pressable>
         </View>
@@ -510,14 +570,7 @@ export default function CalendarTabScreen() {
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           scrollIndicatorInsets={{ bottom: safeBottom + BrandSpacing.md }}
-          contentContainerStyle={[
-            styles.timelineContent,
-            {
-              paddingTop: collapsedSheetHeight + BrandSpacing.md,
-              paddingHorizontal: BrandSpacing.lg,
-              paddingBottom: safeBottom + BrandSpacing.xl,
-            },
-          ]}
+          contentContainerStyle={[styles.timelineContent, sheetContentInsets]}
           ListHeaderComponent={agendaHeaderComponent}
         />
         <View
@@ -550,6 +603,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 4,
+  },
+  visibilitySection: {
+    gap: 8,
+  },
+  visibilityChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  headerControlsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
 
   // ── Rail ─────────────────────────────────────────
@@ -590,17 +656,17 @@ const styles = StyleSheet.create({
   // ── Day header (month+number first, weekday underneath) ──
   dayHeaderContent: {
     flex: 1,
-    paddingTop: 12,
-    paddingBottom: 6,
+    paddingTop: 10,
+    paddingBottom: 4,
     paddingRight: 16,
   },
   dayHeading: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "600",
-    lineHeight: 26,
+    lineHeight: 22,
   },
   daySubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "400",
     marginTop: 1,
   },
@@ -610,57 +676,73 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 16,
     marginBottom: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 16,
     borderCurve: "continuous",
   },
+  lessonRowCompact: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 10,
+  },
+  lessonTimeColumn: {
+    width: 64,
+    alignItems: "flex-start",
+    justifyContent: "center",
+    gap: 1,
+  },
+  lessonTimePrimary: {
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 16,
+  },
+  lessonTimeSecondary: {
+    fontSize: 11,
+    fontWeight: "500",
+    lineHeight: 14,
+  },
+  lessonAccent: {
+    width: 3,
+    borderRadius: 999,
+    borderCurve: "continuous",
+  },
   lessonContent: {
-    gap: 3,
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   lessonTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 8,
   },
-  lessonTime: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  lessonBadgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
   lifecycleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
     borderRadius: 999,
     borderCurve: "continuous",
   },
   lifecycleBadgeText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  sourceBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-    borderCurve: "continuous",
-  },
-  sourceBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "600",
   },
   lessonTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    lineHeight: 21,
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "600",
+    lineHeight: 19,
   },
   lessonMeta: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "400",
+    lineHeight: 16,
+  },
+  lessonSource: {
+    fontSize: 11,
+    fontWeight: "500",
+    lineHeight: 14,
   },
 
   // ── Empty ────────────────────────────────────────
@@ -677,21 +759,14 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 16,
     marginBottom: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 20,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
     borderCurve: "continuous",
-    alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
   },
   emptyStateTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  emptyStateBody: {
     fontSize: 13,
-    fontWeight: "400",
-    textAlign: "center",
+    fontWeight: "500",
   },
 });

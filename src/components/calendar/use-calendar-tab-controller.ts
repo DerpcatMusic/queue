@@ -14,6 +14,12 @@ const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).ca
 };
 
 export type CalendarViewMode = "jobs_only" | "jobs_and_google";
+export type CalendarVisibilityFilterKey =
+  | "queueLessons"
+  | "timedCalendarEvents"
+  | "allDayCalendarEvents";
+
+export type CalendarVisibilityFilters = Record<CalendarVisibilityFilterKey, boolean>;
 
 type GoogleCalendarStatus = {
   connected: boolean;
@@ -62,13 +68,19 @@ export type AgendaSection = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CACHE_TTL_MS = 15 * 60 * 1000;
 const CACHE_VERSION = 3;
-const TIMELINE_RANGE_DAYS = 90;
-const TIMELINE_EXTEND_BUFFER_DAYS = 60;
-const TIMELINE_PREFETCH_THRESHOLD_DAYS = 21;
-const ESTIMATED_DAY_HEADER_SIZE = 64;
-const ESTIMATED_LESSON_SIZE = 84;
-const ESTIMATED_EMPTY_SIZE = 40;
-const GOOGLE_VIEW_MODE_STORAGE_KEY = "calendar:view-mode:v1";
+const TIMELINE_RANGE_DAYS = 120;
+const TIMELINE_EXTEND_BUFFER_DAYS = 90;
+const TIMELINE_PREFETCH_THRESHOLD_DAYS = 35;
+const ESTIMATED_DAY_HEADER_SIZE = 56;
+const ESTIMATED_LESSON_SIZE = 76;
+const ESTIMATED_EMPTY_SIZE = 34;
+const LEGACY_GOOGLE_VIEW_MODE_STORAGE_KEY = "calendar:view-mode:v1";
+const CALENDAR_VISIBILITY_STORAGE_KEY = "calendar:visibility-filters:v1";
+const DEFAULT_VISIBILITY_FILTERS: CalendarVisibilityFilters = {
+  queueLessons: true,
+  timedCalendarEvents: true,
+  allDayCalendarEvents: true,
+};
 
 function toDayKey(timestamp: number) {
   const d = new Date(timestamp);
@@ -202,8 +214,10 @@ export function useCalendarTabController() {
     end: addDays(todayKey, TIMELINE_RANGE_DAYS),
   }));
   const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const [viewMode, setViewModeState] = useState<CalendarViewMode>("jobs_only");
-  const [viewModeReady, setViewModeReady] = useState(false);
+  const [visibilityFilters, setVisibilityFilters] = useState<CalendarVisibilityFilters>(
+    DEFAULT_VISIBILITY_FILTERS,
+  );
+  const [visibilityFiltersReady, setVisibilityFiltersReady] = useState(false);
   const listRef = useRef<FlashListRef<TimelineListItem>>(null);
   const programmaticScrollRef = useRef(false);
   const lastViewSyncAtRef = useRef(0);
@@ -235,9 +249,14 @@ export function useCalendarTabController() {
   );
   const calendarSettings = role === "instructor" ? instructorSettings : studioSettings;
 
+  const canShowGoogleAgenda = Boolean(role && googleStatus?.connected === true);
+  const shouldFetchGoogleAgenda =
+    canShowGoogleAgenda &&
+    (visibilityFilters.timedCalendarEvents || visibilityFilters.allDayCalendarEvents);
+
   const googleAgendaRows = useQuery(
     calendarApi.getMyGoogleCalendarAgenda as any,
-    role && viewMode === "jobs_and_google" && googleStatus?.connected ? timelineArgs : "skip",
+    role && shouldFetchGoogleAgenda ? timelineArgs : "skip",
   ) as GoogleAgendaRow[] | undefined;
 
   const syncGoogleCalendar = useAction(calendarApi.syncMyGoogleCalendarEvents as any) as (args: {
@@ -250,16 +269,33 @@ export function useCalendarTabController() {
     let cancelled = false;
     void (async () => {
       try {
-        const stored = await AsyncStorage.getItem(GOOGLE_VIEW_MODE_STORAGE_KEY);
+        const stored = await AsyncStorage.getItem(CALENDAR_VISIBILITY_STORAGE_KEY);
         if (cancelled) {
           return;
         }
-        if (stored === "jobs_only" || stored === "jobs_and_google") {
-          setViewModeState(stored);
+        if (stored) {
+          const parsed = JSON.parse(stored) as Partial<CalendarVisibilityFilters>;
+          setVisibilityFilters({
+            queueLessons: parsed.queueLessons ?? DEFAULT_VISIBILITY_FILTERS.queueLessons,
+            timedCalendarEvents:
+              parsed.timedCalendarEvents ?? DEFAULT_VISIBILITY_FILTERS.timedCalendarEvents,
+            allDayCalendarEvents:
+              parsed.allDayCalendarEvents ?? DEFAULT_VISIBILITY_FILTERS.allDayCalendarEvents,
+          });
+          return;
+        }
+
+        const legacyViewMode = await AsyncStorage.getItem(LEGACY_GOOGLE_VIEW_MODE_STORAGE_KEY);
+        if (legacyViewMode === "jobs_only") {
+          setVisibilityFilters({
+            queueLessons: true,
+            timedCalendarEvents: false,
+            allDayCalendarEvents: false,
+          });
         }
       } finally {
         if (!cancelled) {
-          setViewModeReady(true);
+          setVisibilityFiltersReady(true);
         }
       }
     })();
@@ -268,14 +304,20 @@ export function useCalendarTabController() {
     };
   }, []);
 
-  const canShowGoogleAgenda = Boolean(role && googleStatus?.connected === true);
-  const resolvedViewMode: CalendarViewMode =
-    canShowGoogleAgenda && viewMode === "jobs_and_google" ? "jobs_and_google" : "jobs_only";
+  const resolvedViewMode: CalendarViewMode = shouldFetchGoogleAgenda
+    ? "jobs_and_google"
+    : "jobs_only";
 
-  const setViewMode = useCallback((nextMode: CalendarViewMode) => {
-    setViewModeState(nextMode);
-    void AsyncStorage.setItem(GOOGLE_VIEW_MODE_STORAGE_KEY, nextMode).catch(() => {
-      /* best-effort */
+  const toggleVisibilityFilter = useCallback((key: CalendarVisibilityFilterKey) => {
+    setVisibilityFilters((current) => {
+      const next = {
+        ...current,
+        [key]: !current[key],
+      };
+      void AsyncStorage.setItem(CALENDAR_VISIBILITY_STORAGE_KEY, JSON.stringify(next)).catch(() => {
+        /* best-effort */
+      });
+      return next;
     });
   }, []);
 
@@ -329,6 +371,7 @@ export function useCalendarTabController() {
     [remoteCombinedRows],
   );
   const lastPersistSignatureRef = useRef<string>("");
+  const [retainedRows, setRetainedRows] = useState<TimelineRow[]>([]);
 
   const { cachedRows, cacheReady, persist } = useTimelineCache(
     role,
@@ -348,6 +391,17 @@ export function useCalendarTabController() {
     void persist(remoteCombinedRows);
   }, [persist, remoteCombinedRows, remoteRowsSignature]);
 
+  useEffect(() => {
+    if (remoteCombinedRows) {
+      setRetainedRows(remoteCombinedRows);
+      return;
+    }
+
+    if (cachedRows) {
+      setRetainedRows(cachedRows);
+    }
+  }, [cachedRows, remoteCombinedRows]);
+
   const rows = useMemo(() => {
     if (remoteCombinedRows) {
       return remoteCombinedRows;
@@ -355,16 +409,30 @@ export function useCalendarTabController() {
     if (cachedRows) {
       return cachedRows;
     }
-    return [];
-  }, [cachedRows, remoteCombinedRows]);
+    return retainedRows;
+  }, [cachedRows, remoteCombinedRows, retainedRows]);
+
+  const visibleRows = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (row.source === "job") {
+          return visibilityFilters.queueLessons;
+        }
+        if (row.isAllDay) {
+          return visibilityFilters.allDayCalendarEvents;
+        }
+        return visibilityFilters.timedCalendarEvents;
+      }),
+    [rows, visibilityFilters],
+  );
 
   const filteredRows = useMemo(() => {
     const start = dayKeyToTimestamp(windowRange.start);
     const end = dayKeyToTimestamp(windowRange.end) + DAY_MS - 1;
-    return rows
+    return visibleRows
       .filter((row) => row.startTime >= start && row.startTime <= end)
       .sort((a, b) => a.startTime - b.startTime);
-  }, [rows, windowRange.end, windowRange.start]);
+  }, [visibleRows, windowRange.end, windowRange.start]);
 
   const syncEvents = useMemo(() => {
     if (!role || !remoteJobTimelineRows) {
@@ -431,7 +499,7 @@ export function useCalendarTabController() {
     if (!calendarSettings || calendarSettings.calendarProvider !== "google") {
       return;
     }
-    if (!calendarSettings.calendarSyncEnabled && resolvedViewMode !== "jobs_and_google") {
+    if (!calendarSettings.calendarSyncEnabled && !shouldFetchGoogleAgenda) {
       return;
     }
     const now = Date.now();
@@ -448,9 +516,9 @@ export function useCalendarTabController() {
     calendarSettings,
     endTime,
     googleStatus?.connected,
-    resolvedViewMode,
     role,
     startTime,
+    shouldFetchGoogleAgenda,
     syncGoogleCalendar,
   ]);
 
@@ -498,12 +566,12 @@ export function useCalendarTabController() {
 
   const lessonCountByDay = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const row of rows) {
+    for (const row of visibleRows) {
       const dk = toDayKey(row.startTime);
       counts.set(dk, (counts.get(dk) ?? 0) + 1);
     }
     return counts;
-  }, [rows]);
+  }, [visibleRows]);
 
   const scrollToDay = useCallback(
     (dayKey: string) => {
@@ -578,14 +646,18 @@ export function useCalendarTabController() {
       if (now - lastViewSyncAtRef.current < 180) {
         return;
       }
-      const firstHeader = viewableItems.find(
-        (viewableItem) => (viewableItem.item as TimelineListItem).kind === "dayHeader",
+      const sortedViewableItems = [...viewableItems].sort(
+        (a, b) => (a.index ?? Number.MAX_SAFE_INTEGER) - (b.index ?? Number.MAX_SAFE_INTEGER),
       );
-      if (!firstHeader) {
+      const headerAnchor =
+        sortedViewableItems.find(
+          (viewableItem) => (viewableItem.item as TimelineListItem).kind === "dayHeader",
+        ) ?? sortedViewableItems[0];
+      if (!headerAnchor) {
         return;
       }
 
-      const dayKey = (firstHeader.item as TimelineListItem).dayKey;
+      const dayKey = (headerAnchor.item as TimelineListItem).dayKey;
 
       if (!hasInitialViewportSyncRef.current) {
         if (dayKey !== selectedDayRef.current) {
@@ -664,9 +736,12 @@ export function useCalendarTabController() {
 
   const isLoading =
     currentUser === undefined ||
-    !viewModeReady ||
-    (!cacheReady && !remoteRows) ||
-    (resolvedViewMode === "jobs_and_google" && googleAgendaRows === undefined && !cachedRows);
+    !visibilityFiltersReady ||
+    (!cacheReady && remoteRows === undefined && retainedRows.length === 0) ||
+    (shouldFetchGoogleAgenda &&
+      googleAgendaRows === undefined &&
+      !cachedRows &&
+      retainedRows.length === 0);
 
   return {
     selectedDay,
@@ -687,8 +762,8 @@ export function useCalendarTabController() {
     selectedDayTimestamp: dayKeyToTimestamp(selectedDay),
     isLoading,
     canShowGoogleAgenda,
-    viewMode: resolvedViewMode,
-    setViewMode,
+    visibilityFilters,
+    toggleVisibilityFilter,
   };
 }
 

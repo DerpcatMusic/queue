@@ -2,6 +2,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useMutation, useQuery } from "convex/react";
 import { Redirect, useRouter } from "expo-router";
+import type { TFunction } from "i18next";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,11 +15,9 @@ import {
 } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
-import {
-  ScrollSheetProvider,
-  useCollapsedSheetHeight,
-} from "@/components/layout/scroll-sheet-provider";
+import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
 import { GlobalTopSheetProvider, useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
+import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
 import { ThemedText } from "@/components/themed-text";
@@ -36,7 +35,10 @@ import { useBrand } from "@/hooks/use-brand";
 import { useLocationResolution } from "@/hooks/use-location-resolution";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import { omitUndefined } from "@/lib/omit-undefined";
-import { registerForPushNotificationsAsync } from "@/lib/push-notifications";
+import {
+  isPushRegistrationError,
+  registerForPushNotificationsAsync,
+} from "@/lib/push-notifications";
 
 type OnboardingRole = "instructor" | "studio";
 type OnboardingStep = 0 | 1 | 2;
@@ -45,6 +47,7 @@ const MAX_INSTRUCTOR_ZONES = 25;
 const STEP_EXIT_MS = 170;
 const STEP_ENTER_MS = 220;
 const DETAILS_READY_DELAY_MS = 110;
+const LOCATION_MAP_READY_DELAY_MS = 60;
 
 function toDisplayLabel(value: string) {
   return value
@@ -56,6 +59,27 @@ function toDisplayLabel(value: string) {
 function trimOptional(value: string) {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function getOnboardingPushErrorMessage(error: unknown, t: TFunction): string {
+  if (isPushRegistrationError(error)) {
+    switch (error.code) {
+      case "permission_denied":
+        return t("onboarding.push.permissionNotGranted");
+      case "expo_go_unsupported":
+        return t("onboarding.push.unavailableInExpoGo");
+      case "physical_device_required":
+        return t("onboarding.push.requiresPhysicalDevice");
+      case "native_module_unavailable":
+        return t("onboarding.push.unavailableInBuild");
+      case "web_unsupported":
+        return t("onboarding.push.unsupportedOnWeb");
+    }
+  }
+
+  return error instanceof Error && error.message
+    ? error.message
+    : t("onboarding.push.requestFailed");
 }
 
 function OnboardingStageLayer({
@@ -149,7 +173,11 @@ function OnboardingScreenContent() {
   const { t, i18n } = useTranslation();
 
   const palette = useBrand();
-  const collapsedSheetHeight = useCollapsedSheetHeight();
+  const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
+    topSpacing: BrandSpacing.lg,
+    bottomSpacing: 20,
+    horizontalPadding: 16,
+  });
   const { width } = useWindowDimensions();
   const isDesktop = width >= 980;
   const language = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
@@ -163,6 +191,7 @@ function OnboardingScreenContent() {
   const [visibleStep, setVisibleStep] = useState<OnboardingStep>(0);
   const [detailsReady, setDetailsReady] = useState(false);
   const [showLocationSection, setShowLocationSection] = useState(false);
+  const [locationMapReady, setLocationMapReady] = useState(false);
   const [stepTransition, setStepTransition] = useState<{
     direction: 1 | -1;
     phase: "idle" | "enter" | "exit";
@@ -273,6 +302,21 @@ function OnboardingScreenContent() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (!showLocationSection) {
+      setLocationMapReady(false);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setLocationMapReady(true);
+    }, LOCATION_MAP_READY_DELAY_MS);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [showLocationSection]);
 
   if (currentUser === undefined) {
     return <LoadingScreen label={t("onboarding.loading")} />;
@@ -515,15 +559,8 @@ function OnboardingScreenContent() {
     try {
       const token = await registerForPushNotificationsAsync();
       setPushToken(token);
-      if (!token) {
-        setErrorMessage(t("onboarding.push.permissionNotGranted"));
-      }
     } catch (error) {
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : t("onboarding.push.requestFailed");
-      setErrorMessage(message);
+      setErrorMessage(getOnboardingPushErrorMessage(error, t));
     } finally {
       setIsRequestingPush(false);
     }
@@ -745,30 +782,50 @@ function OnboardingScreenContent() {
           </ThemedText>
         </View>
         <View style={styles.mapWrap}>
-          <QueueMap
-            mode={role === "instructor" ? "zoneSelect" : "pinDrop"}
-            pin={
-              role === "instructor"
-                ? instructorLatitude !== undefined && instructorLongitude !== undefined
-                  ? {
-                      latitude: instructorLatitude,
-                      longitude: instructorLongitude,
-                    }
-                  : null
-                : studioLatitude !== undefined && studioLongitude !== undefined
-                  ? { latitude: studioLatitude, longitude: studioLongitude }
-                  : null
-            }
-            selectedZoneIds={
-              role === "instructor" ? selectedZones : studioDetectedZone ? [studioDetectedZone] : []
-            }
-            focusZoneId={role === "instructor" ? instructorDetectedZone : studioDetectedZone}
-            onPressZone={toggleZone}
-            onPressMap={
-              role === "instructor" ? resolveInstructorFromMapPin : resolveStudioFromMapPin
-            }
-            onUseGps={role === "instructor" ? resolveInstructorFromGps : resolveStudioFromGps}
-          />
+          {locationMapReady ? (
+            <QueueMap
+              mode={role === "instructor" ? "zoneSelect" : "pinDrop"}
+              pin={
+                role === "instructor"
+                  ? instructorLatitude !== undefined && instructorLongitude !== undefined
+                    ? {
+                        latitude: instructorLatitude,
+                        longitude: instructorLongitude,
+                      }
+                    : null
+                  : studioLatitude !== undefined && studioLongitude !== undefined
+                    ? { latitude: studioLatitude, longitude: studioLongitude }
+                    : null
+              }
+              selectedZoneIds={
+                role === "instructor"
+                  ? selectedZones
+                  : studioDetectedZone
+                    ? [studioDetectedZone]
+                    : []
+              }
+              focusZoneId={role === "instructor" ? instructorDetectedZone : studioDetectedZone}
+              onPressZone={toggleZone}
+              onPressMap={
+                role === "instructor" ? resolveInstructorFromMapPin : resolveStudioFromMapPin
+              }
+              onUseGps={role === "instructor" ? resolveInstructorFromGps : resolveStudioFromGps}
+            />
+          ) : (
+            <View
+              style={[
+                styles.mapLoadingState,
+                {
+                  backgroundColor: palette.surfaceAlt as string,
+                },
+              ]}
+            >
+              <ActivityIndicator color={palette.primary as string} />
+              <ThemedText style={{ color: palette.textMuted }}>
+                {t("onboarding.loading")}
+              </ThemedText>
+            </View>
+          )}
         </View>
       </View>
     ) : null;
@@ -978,6 +1035,7 @@ function OnboardingScreenContent() {
             <View style={styles.roleOption}>
               <ChoicePill
                 label={t("onboarding.roleInstructorTitle")}
+                fullWidth
                 icon={
                   <MaterialIcons
                     name="self-improvement"
@@ -996,6 +1054,7 @@ function OnboardingScreenContent() {
             <View style={styles.roleOption}>
               <ChoicePill
                 label={t("onboarding.roleStudioTitle")}
+                fullWidth
                 icon={
                   <MaterialIcons
                     name="storefront"
@@ -1237,7 +1296,7 @@ function OnboardingScreenContent() {
         style={styles.screen}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: collapsedSheetHeight + BrandSpacing.lg },
+          sheetContentInsets,
           step === 0 ? styles.contentGrow : null,
         ]}
         contentInsetAdjustmentBehavior="never"
@@ -1377,6 +1436,15 @@ const styles = StyleSheet.create({
   mapWrap: {
     flex: 1,
     minHeight: 300,
+  },
+  mapLoadingState: {
+    flex: 1,
+    minHeight: 300,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    borderRadius: 20,
+    borderCurve: "continuous",
   },
   chipGrid: {
     flexDirection: "row",

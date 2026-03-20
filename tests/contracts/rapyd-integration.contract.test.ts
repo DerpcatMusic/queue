@@ -93,6 +93,32 @@ describe("rapyd integration helpers", () => {
     ]);
   });
 
+  it("fails closed to bank rails in a2a checkout mode", () => {
+    const selection = resolveRapydCheckoutMethodSelectionFromAvailableMethods({
+      configured: "il_visa_card,bank_transfer",
+      allowedCategories: ["bank_transfer", "bank_redirect"],
+      availableMethods: [
+        {
+          type: "il_visa_card",
+          category: "card",
+          supportedDigitalWalletProviders: [],
+          status: 1,
+        },
+        {
+          type: "il_bank_transfer",
+          category: "bank_transfer",
+          supportedDigitalWalletProviders: [],
+          status: 1,
+        },
+      ],
+    });
+
+    expect(selection.paymentMethodTypesInclude).toEqual(["il_bank_transfer"]);
+    expect(selection.warnings).toEqual([
+      "Rapyd payment selector is not allowed in the current checkout mode: il_visa_card",
+    ]);
+  });
+
   it("builds webhook signatures without the HTTP method", async () => {
     const args = {
       path: "/webhooks/rapyd",

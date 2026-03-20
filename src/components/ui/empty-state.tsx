@@ -3,8 +3,8 @@ import { View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
-import { AppSymbol } from "@/components/ui/app-symbol";
 import { ActionButton } from "@/components/ui/action-button";
+import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 
@@ -47,17 +47,9 @@ export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
         paddingVertical: BrandSpacing.xxl,
       }}
     >
-      <AppSymbol
-        name={icon}
-        size={52}
-        tintColor={palette.textMicro as string}
-      />
+      <AppSymbol name={icon} size={52} tintColor={palette.textMicro as string} />
       <View style={{ gap: BrandSpacing.xs, alignItems: "center" }}>
-        <ThemedText
-          type="title"
-          style={{ textAlign: "center", color: palette.text }}
-          selectable
-        >
+        <ThemedText type="title" style={{ textAlign: "center", color: palette.text }} selectable>
           {title}
         </ThemedText>
         {body ? (
@@ -71,11 +63,7 @@ export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
         ) : null}
       </View>
       {action ? (
-        <ActionButton
-          label={action.label}
-          onPress={action.onPress}
-          palette={palette}
-        />
+        <ActionButton label={action.label} onPress={action.onPress} palette={palette} />
       ) : null}
     </Animated.View>
   );

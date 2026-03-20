@@ -56,9 +56,7 @@ export function SportsMultiSelect({
       {selectedSportsList.length > 0 ? (
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: palette.textMuted as string }]}>
-            {t("profile.sports.selectedLabel", {
-              defaultValue: "Selected sports",
-            })}
+            {t("profile.sports.selectedLabel")}
           </Text>
           <View style={styles.resultsList}>
             {selectedSportsList.map((sport) => (
@@ -79,9 +77,7 @@ export function SportsMultiSelect({
                     {isSportType(sport) ? toSportLabel(sport) : sport}
                   </Text>
                   <Text style={[styles.resultMeta, { color: palette.primary as string }]}>
-                    {t("profile.sports.selectedBody", {
-                      defaultValue: "Added to your teaching profile",
-                    })}
+                    {t("profile.sports.selectedBody")}
                   </Text>
                 </View>
                 <IconSymbol
@@ -97,12 +93,8 @@ export function SportsMultiSelect({
       <View style={styles.section}>
         <Text style={[styles.sectionLabel, { color: palette.textMuted as string }]}>
           {query.trim().length > 0
-            ? t("profile.sports.matchingLabel", {
-                defaultValue: "Matching sports",
-              })
-            : t("profile.sports.allLabel", {
-                defaultValue: "All sports",
-              })}
+            ? t("profile.sports.matchingLabel")
+            : t("profile.sports.allLabel")}
         </Text>
         <ScrollView
           nestedScrollEnabled
@@ -140,14 +132,10 @@ export function SportsMultiSelect({
               ]}
             >
               <Text style={[styles.resultTitle, { color: palette.text as string }]}>
-                {t("profile.sports.emptyTitle", {
-                  defaultValue: "No matching sports",
-                })}
+                {t("profile.sports.emptyTitle")}
               </Text>
               <Text style={[styles.resultMeta, { color: palette.textMuted as string }]}>
-                {t("profile.sports.emptyBody", {
-                  defaultValue: "Try a different sport name.",
-                })}
+                {t("profile.sports.emptyBody")}
               </Text>
             </View>
           )}
@@ -178,7 +166,9 @@ export function SportsMultiSelect({
         <View style={styles.headerTextBlock}>
           <ThemedText type="defaultSemiBold">{title}</ThemedText>
           <ThemedText type="caption" style={{ color: palette.textMuted }}>
-            {selectedSports.length > 0 ? `${String(selectedSports.length)} selected` : emptyHint}
+            {selectedSports.length > 0
+              ? t("profile.settings.sports.selected", { count: selectedSports.length })
+              : emptyHint}
           </ThemedText>
         </View>
         <View
@@ -198,9 +188,7 @@ export function SportsMultiSelect({
               includeFontPadding: false,
             }}
           >
-            {isOpen
-              ? t("profile.sports.done", { defaultValue: "Done" })
-              : t("profile.sports.edit", { defaultValue: "Edit" })}
+            {isOpen ? t("profile.sports.done") : t("profile.sports.edit")}
           </Text>
         </View>
       </Pressable>

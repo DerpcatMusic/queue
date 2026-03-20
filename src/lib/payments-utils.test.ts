@@ -87,5 +87,9 @@ describe("payments-utils", () => {
     expect(getPaymentStatusTone("unknown" as never)).toBe("muted");
     expect(getPayoutStatusLabel("unknown" as never)).toBe("Unknown");
     expect(getPayoutStatusTone("unknown" as never)).toBe("muted");
+    expect(getPaymentStatusLabel(undefined)).toBe("Unknown");
+    expect(getPaymentStatusTone(undefined)).toBe("muted");
+    expect(getPayoutStatusLabel(undefined)).toBe("Unknown");
+    expect(getPayoutStatusTone(undefined)).toBe("muted");
   });
 });

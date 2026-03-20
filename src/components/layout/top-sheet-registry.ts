@@ -30,6 +30,7 @@ export type TopSheetTabConfig = {
   tabId: string;
   content?: React.ReactNode;
   render?: (props: TopSheetRenderProps) => TopSheetRenderResult;
+  overlay?: React.ReactNode;
   contentPaddingTop?: number;
   draggable?: boolean;
   expandable?: boolean;
@@ -48,6 +49,10 @@ export type TopSheetTabConfig = {
 };
 
 type TopSheetTabOverride = Omit<Partial<TopSheetTabConfig>, "tabId">;
+type TopSheetTabOverrideEntry = {
+  ownerId: string;
+  config: TopSheetTabOverride;
+};
 
 function areSheetOverridesEqual(
   previous: TopSheetTabOverride | undefined,
@@ -112,41 +117,56 @@ const DEFAULT_TOP_SHEET_CONFIGS: Record<string, TopSheetTabConfig> = {
 export const DEFAULT_SHEET_PADDING_TOP = 140;
 
 type TopSheetRegistryContextValue = {
-  overrides: Record<string, TopSheetTabOverride | undefined>;
-  replaceConfig: (tabId: string, config: TopSheetTabOverride | null) => void;
-  clearConfig: (tabId: string) => void;
+  overrides: Record<string, TopSheetTabOverrideEntry | undefined>;
+  replaceConfig: (tabId: string, ownerId: string, config: TopSheetTabOverride | null) => void;
+  clearConfig: (tabId: string, ownerId: string) => void;
 };
 
 const TopSheetRegistryContext = createContext<TopSheetRegistryContextValue | null>(null);
 
 export function GlobalTopSheetProvider({ children }: PropsWithChildren) {
-  const [overrides, setOverrides] = useState<Record<string, TopSheetTabOverride | undefined>>({});
+  const [overrides, setOverrides] = useState<Record<string, TopSheetTabOverrideEntry | undefined>>(
+    {},
+  );
 
-  const replaceConfig = useCallback((tabId: string, config: TopSheetTabOverride | null) => {
-    setOverrides((current) => {
-      if (config === null) {
-        if (!current[tabId]) {
+  const replaceConfig = useCallback(
+    (tabId: string, ownerId: string, config: TopSheetTabOverride | null) => {
+      setOverrides((current) => {
+        const currentEntry = current[tabId];
+
+        if (config === null) {
+          if (!currentEntry || currentEntry.ownerId !== ownerId) {
+            return current;
+          }
+          const next = { ...current };
+          delete next[tabId];
+          return next;
+        }
+
+        if (
+          currentEntry &&
+          currentEntry.ownerId === ownerId &&
+          areSheetOverridesEqual(currentEntry.config, config)
+        ) {
           return current;
         }
-        const next = { ...current };
-        delete next[tabId];
-        return next;
-      }
 
-      if (areSheetOverridesEqual(current[tabId], config)) {
-        return current;
-      }
+        return {
+          ...current,
+          [tabId]: {
+            ownerId,
+            config: { ...config },
+          },
+        };
+      });
+    },
+    [],
+  );
 
-      return {
-        ...current,
-        [tabId]: { ...config },
-      };
-    });
-  }, []);
-
-  const clearConfig = useCallback((tabId: string) => {
+  const clearConfig = useCallback((tabId: string, ownerId: string) => {
     setOverrides((current) => {
-      if (!current[tabId]) {
+      const currentEntry = current[tabId];
+      if (!currentEntry || currentEntry.ownerId !== ownerId) {
         return current;
       }
       const next = { ...current };
@@ -177,10 +197,10 @@ function useTopSheetRegistry() {
 
 export function resolveTabSheetConfig(
   tabId: string,
-  overrides: Record<string, TopSheetTabOverride | undefined>,
+  overrides: Record<string, TopSheetTabOverrideEntry | undefined>,
 ): TopSheetTabConfig | null {
   const baseConfig = DEFAULT_TOP_SHEET_CONFIGS[tabId];
-  const overrideConfig = overrides[tabId];
+  const overrideConfig = overrides[tabId]?.config;
 
   if (!baseConfig && !overrideConfig) {
     return null;
@@ -193,27 +213,44 @@ export function resolveTabSheetConfig(
   };
 }
 
-export function useGlobalTopSheet(tabId: string, config: TopSheetTabOverride | null) {
+export function useGlobalTopSheet(
+  tabId: string,
+  config: TopSheetTabOverride | null,
+  explicitOwnerId?: string,
+) {
   const { replaceConfig, clearConfig } = useTopSheetRegistry();
   const latestTabIdRef = useRef(tabId);
+  const ownerIdRef = useRef<string | null>(null);
+  if (!ownerIdRef.current) {
+    ownerIdRef.current = `${tabId}:${Math.random().toString(36).slice(2, 10)}`;
+  }
+  const ownerId = explicitOwnerId ?? ownerIdRef.current;
   latestTabIdRef.current = tabId;
 
   useLayoutEffect(() => {
-    replaceConfig(tabId, config);
-  }, [config, replaceConfig, tabId]);
+    replaceConfig(tabId, ownerId, config);
+  }, [config, ownerId, replaceConfig, tabId]);
 
   useLayoutEffect(
     () => () => {
-      clearConfig(latestTabIdRef.current);
+      clearConfig(latestTabIdRef.current, ownerId);
     },
-    [clearConfig],
+    [clearConfig, ownerId],
   );
 }
 
 export function useResolvedTabSheetConfig(tabId: string | null) {
   const { overrides } = useTopSheetRegistry();
+  const activeEntry = tabId ? overrides[tabId] : undefined;
   return useMemo(
-    () => (tabId ? resolveTabSheetConfig(tabId, overrides) : null),
-    [overrides, tabId],
+    () =>
+      tabId
+        ? {
+            ...(DEFAULT_TOP_SHEET_CONFIGS[tabId] ?? { tabId }),
+            ...(activeEntry?.config ?? {}),
+            tabId,
+          }
+        : null,
+    [activeEntry, tabId],
   );
 }

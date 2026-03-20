@@ -6,9 +6,7 @@ const THEME_PREFERENCE_KEY = "app_theme_preference";
 export type ThemePreference = "light" | "dark" | "system";
 
 function toThemePreference(value: string | null): ThemePreference | null {
-  return value === "light" || value === "dark" || value === "system"
-    ? value
-    : null;
+  return value === "light" || value === "dark" || value === "system" ? value : null;
 }
 
 export async function loadThemePreference(): Promise<ThemePreference | null> {
@@ -20,9 +18,7 @@ export async function loadThemePreference(): Promise<ThemePreference | null> {
   }
 }
 
-export async function persistThemePreference(
-  preference: ThemePreference,
-): Promise<void> {
+export async function persistThemePreference(preference: ThemePreference): Promise<void> {
   try {
     await AsyncStorage.setItem(THEME_PREFERENCE_KEY, preference);
   } catch {
@@ -33,9 +29,7 @@ export async function persistThemePreference(
 export function applyThemePreference(preference: ThemePreference): void {
   const setColorScheme = (
     Appearance as {
-      setColorScheme?: (
-        scheme: "light" | "dark" | "unspecified" | null,
-      ) => void;
+      setColorScheme?: (scheme: "light" | "dark" | "unspecified" | null) => void;
     }
   ).setColorScheme;
 
@@ -46,9 +40,7 @@ export function applyThemePreference(preference: ThemePreference): void {
   setColorScheme(preference === "system" ? "unspecified" : preference);
 }
 
-export async function setThemePreference(
-  preference: ThemePreference,
-): Promise<void> {
+export async function setThemePreference(preference: ThemePreference): Promise<void> {
   await persistThemePreference(preference);
   applyThemePreference(preference);
 }

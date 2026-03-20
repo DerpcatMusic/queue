@@ -5,12 +5,7 @@ import { AppSymbol } from "@/components/ui/app-symbol";
 import type { BrandPalette } from "@/constants/brand";
 import { triggerSelectionHaptic } from "./native-interaction";
 
-type BrandIconName =
-  | "instagram"
-  | "tiktok"
-  | "whatsapp"
-  | "facebook"
-  | "linkedin";
+type BrandIconName = "instagram" | "tiktok" | "whatsapp" | "facebook" | "linkedin";
 
 type KitSocialIconButtonProps = {
   accessibilityLabel: string;
