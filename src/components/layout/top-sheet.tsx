@@ -3,6 +3,7 @@ import type { ColorValue, StyleProp, ViewStyle } from "react-native";
 import { useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+  interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -118,12 +119,19 @@ export function TopSheet({
   const resolvedStepIndex = activeStep ?? internalStepIndex;
   const isExpanded = resolvedStepIndex > initialStep;
   const animatedBackground = useSharedValue(backgroundColorValue);
+  const expandedProgress = useSharedValue(isExpanded ? 1 : 0);
 
   useEffect(() => {
     animatedBackground.value = withTiming(backgroundColorValue, {
       duration: 220,
     });
   }, [animatedBackground, backgroundColorValue]);
+
+  useEffect(() => {
+    expandedProgress.value = withTiming(isExpanded ? 1 : 0, {
+      duration: 180,
+    });
+  }, [expandedProgress, isExpanded]);
 
   // Inset coloring
   useEffect(() => {
@@ -257,9 +265,18 @@ export function TopSheet({
   const shellBackgroundStyle = useAnimatedStyle(() => ({
     backgroundColor: animatedBackground.value,
   }));
+  const revealStyle = useAnimatedStyle(() => ({
+    flex: 1,
+    minHeight: 0,
+    opacity: expandedProgress.value,
+    transform: [
+      {
+        translateY: interpolate(expandedProgress.value, [0, 1], [8, 0]),
+      },
+    ],
+  }));
 
   const mainContentFlex = revealOnExpand ? 0 : 1;
-  const revealFlex = revealOnExpand && isExpanded ? 1 : 0;
 
   const sheetContent = (
     <Animated.View
@@ -283,9 +300,11 @@ export function TopSheet({
         {/* Main children - always visible */}
         <View style={{ flex: mainContentFlex }}>{children}</View>
 
-        {/* Reveal on Expand - only shows when expanded */}
-        {revealOnExpand && isExpanded ? (
-          <View style={{ flex: revealFlex }}>{revealOnExpand}</View>
+        {/* Reveal on Expand - stays mounted to avoid React mount churn during snaps */}
+        {revealOnExpand ? (
+          <Animated.View pointerEvents={isExpanded ? "auto" : "none"} style={revealStyle}>
+            {revealOnExpand}
+          </Animated.View>
         ) : null}
 
         {/* Sticky Footer - always visible at bottom */}
