@@ -9,13 +9,17 @@ import {
 import type Animated from "react-native-reanimated";
 import { useAnimatedRef, useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 
-export type ScrollSheetContextValue = {
+type ScrollSheetScrollContextValue = {
   scrollY: ReturnType<typeof useSharedValue<number>>;
+};
+
+type ScrollSheetLayoutContextValue = {
   collapsedSheetHeight: number;
   setCollapsedSheetHeight: (height: number) => void;
 };
 
-export const ScrollSheetContext = createContext<ScrollSheetContextValue | null>(null);
+export const ScrollSheetScrollContext = createContext<ScrollSheetScrollContextValue | null>(null);
+export const ScrollSheetLayoutContext = createContext<ScrollSheetLayoutContextValue | null>(null);
 
 export function ScrollSheetProvider({ children }: PropsWithChildren) {
   const scrollY = useSharedValue(0);
@@ -24,20 +28,31 @@ export function ScrollSheetProvider({ children }: PropsWithChildren) {
     setCollapsedSheetHeight((current) => (Math.abs(current - height) < 1 ? current : height));
   }, []);
 
-  const value = useMemo<ScrollSheetContextValue>(
+  const scrollValue = useMemo<ScrollSheetScrollContextValue>(
     () => ({
       scrollY,
+    }),
+    [scrollY],
+  );
+  const layoutValue = useMemo<ScrollSheetLayoutContextValue>(
+    () => ({
       collapsedSheetHeight,
       setCollapsedSheetHeight: updateCollapsedSheetHeight,
     }),
-    [collapsedSheetHeight, scrollY, updateCollapsedSheetHeight],
+    [collapsedSheetHeight, updateCollapsedSheetHeight],
   );
 
-  return <ScrollSheetContext.Provider value={value}>{children}</ScrollSheetContext.Provider>;
+  return (
+    <ScrollSheetScrollContext.Provider value={scrollValue}>
+      <ScrollSheetLayoutContext.Provider value={layoutValue}>
+        {children}
+      </ScrollSheetLayoutContext.Provider>
+    </ScrollSheetScrollContext.Provider>
+  );
 }
 
 export function useScrollSheetBindings() {
-  const ctx = useContext(ScrollSheetContext);
+  const ctx = useContext(ScrollSheetScrollContext);
   if (!ctx) {
     throw new Error("useScrollSheetBindings must be used inside <ScrollSheetProvider>");
   }
@@ -57,6 +72,22 @@ export function useScrollSheetBindings() {
 }
 
 export function useCollapsedSheetHeight(): number {
-  const ctx = useContext(ScrollSheetContext);
+  const ctx = useContext(ScrollSheetLayoutContext);
   return ctx?.collapsedSheetHeight ?? 140;
+}
+
+export function useScrollSheetLayout() {
+  const ctx = useContext(ScrollSheetLayoutContext);
+  if (!ctx) {
+    throw new Error("useScrollSheetLayout must be used inside <ScrollSheetProvider>");
+  }
+  return ctx;
+}
+
+export function useScrollSheetScrollValue() {
+  const ctx = useContext(ScrollSheetScrollContext);
+  if (!ctx) {
+    throw new Error("useScrollSheetScrollValue must be used inside <ScrollSheetProvider>");
+  }
+  return ctx.scrollY;
 }

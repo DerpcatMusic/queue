@@ -1,5 +1,5 @@
 import { usePathname } from "expo-router";
-import { isValidElement, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { isValidElement, useCallback, useEffect, useRef, useState } from "react";
 import {
   type LayoutChangeEvent,
   Platform,
@@ -18,7 +18,10 @@ import Reanimated, {
   useReducedMotion,
 } from "react-native-reanimated";
 
-import { ScrollSheetContext } from "@/components/layout/scroll-sheet-provider";
+import {
+  useScrollSheetLayout,
+  useScrollSheetScrollValue,
+} from "@/components/layout/scroll-sheet-provider";
 import { TopSheet } from "@/components/layout/top-sheet";
 import {
   DEFAULT_SHEET_PADDING_TOP,
@@ -59,8 +62,8 @@ export function GlobalTopSheet() {
   const activeRouteKey = pathname ?? activeTabId;
 
   // ── ScrollY from provider (for custom animated sheets) ─────────────
-  const scrollCtx = useContext(ScrollSheetContext);
-  const scrollY = scrollCtx?.scrollY ?? null;
+  const { setCollapsedSheetHeight } = useScrollSheetLayout();
+  const scrollY = useScrollSheetScrollValue();
 
   const [transitionDirection, setTransitionDirection] =
     useState<ContentTransitionDirection>("vertical");
@@ -129,8 +132,8 @@ export function GlobalTopSheet() {
   const collapsedSheetHeight = measuredHeight ?? fallbackHeight;
 
   useEffect(() => {
-    scrollCtx?.setCollapsedSheetHeight(collapsedSheetHeight);
-  }, [collapsedSheetHeight, scrollCtx]);
+    setCollapsedSheetHeight(collapsedSheetHeight);
+  }, [collapsedSheetHeight, setCollapsedSheetHeight]);
 
   // ── Render nothing if no config ─────────────────────────────────────
   if (!activeConfig) return null;
@@ -208,8 +211,6 @@ export function GlobalTopSheet() {
 
   // ── Render function mode ────────────────────────────────────────────
   if (activeConfig.render) {
-    if (!scrollY) return null;
-
     const result = activeConfig.render({ scrollY });
 
     const isRichResult =
