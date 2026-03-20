@@ -24,6 +24,7 @@ import {
   resolveThemedMapStyle,
   sanitizeZoom,
   toBounds,
+  warmMapStyleSpec,
 } from "./queue-map.native.helpers";
 import type { QueueMapProps } from "./queue-map.types";
 
@@ -61,6 +62,8 @@ export const QueueMap = memo(function QueueMap({
     retryNonce === 0
       ? preferredStyleUrl
       : `${preferredStyleUrl}${preferredStyleUrl.includes("?") ? "&" : "?"}queueRetry=${String(retryNonce)}`;
+  const alternateStyleUrl =
+    resolvedScheme === "dark" ? APPLE_MAP_THEME.mapStyleLightUrl : APPLE_MAP_THEME.mapStyleDarkUrl;
   const themedStyleCacheKey = `${styleFetchUrl}:${resolvedScheme}:${mode === "zoneSelect" ? "edit" : "browse"}`;
   const themedMapStyle = useMemo(() => {
     return resolveThemedMapStyle(
@@ -142,6 +145,11 @@ export const QueueMap = memo(function QueueMap({
       }
     };
   }, [mapLoadState]);
+
+  useEffect(() => {
+    warmMapStyleSpec(styleFetchUrl);
+    warmMapStyleSpec(alternateStyleUrl);
+  }, [alternateStyleUrl, styleFetchUrl]);
 
   useEffect(() => {
     let cancelled = false;

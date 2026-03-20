@@ -146,6 +146,13 @@ export function getCachedMapStyleSpec(styleUrl: string) {
   return mapStyleResponseCache.get(styleUrl);
 }
 
+export function warmMapStyleSpec(styleUrl: string) {
+  if (mapStyleResponseCache.has(styleUrl) || mapStyleResponsePromiseCache.has(styleUrl)) {
+    return;
+  }
+  void fetchMapStyleSpec(styleUrl);
+}
+
 export async function ensureVectorOfflinePack() {
   if (!APPLE_MAP_THEME.offlinePack.enabled) return;
   if (offlinePackBootstrapPromise) {
