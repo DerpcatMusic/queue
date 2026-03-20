@@ -38,7 +38,7 @@ export function useMapTabController() {
   const mapPalette = getMapBrandPalette(resolvedScheme);
   const { overlayBottom } = useAppInsets();
   const isFocused = useIsFocused();
-  const isMapBodyReady = useDeferredTabMount(isFocused, { delayMs: 36 });
+  const isMapBodyReady = useDeferredTabMount(isFocused);
   const collapsedSheetHeight = useCollapsedSheetHeight();
   const zoneLanguage: "en" | "he" = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he")
     ? "he"

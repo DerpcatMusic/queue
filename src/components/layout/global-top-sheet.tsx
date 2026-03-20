@@ -104,10 +104,18 @@ export function GlobalTopSheet() {
 
   // ── Measure collapsed sheet height for tab content padding ─────────
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
+  const measuredHeightRef = useRef<number | null>(null);
 
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
     const h = e.nativeEvent.layout.height;
-    if (h > 0) setMeasuredHeight(h);
+    if (h <= 0) {
+      return;
+    }
+    if (measuredHeightRef.current !== null && Math.abs(measuredHeightRef.current - h) < 1) {
+      return;
+    }
+    measuredHeightRef.current = h;
+    setMeasuredHeight(h);
   }, []);
 
   const fallbackHeight = (() => {
