@@ -18,12 +18,25 @@ import {
   resolveHostedPageUrl,
   resolvePaymentsCurrency,
   resolveRapydCountry,
+  resolveRapydMode,
 } from "./integrations/rapyd/config";
 import { omitUndefined } from "./lib/validation";
 
 const RAPYD_PROVIDER = "rapyd" as const;
+type RapydCheckoutMode = "a2a" | "flexible";
 
 const toAgorot = (amount: number): number => Math.max(0, Math.round(amount * 100));
+
+const resolveRapydCheckoutMode = (): RapydCheckoutMode =>
+  (process.env.RAPYD_CHECKOUT_MODE ?? "a2a").trim().toLowerCase() === "flexible"
+    ? "flexible"
+    : "a2a";
+
+const requireSandboxRapydMode = () => {
+  if (resolveRapydMode() !== "sandbox") {
+    throw new ConvexError("This operation is only available in Rapyd sandbox mode");
+  }
+};
 
 type CheckoutContext = {
   user: {
@@ -68,6 +81,28 @@ type BeneficiaryOnboardingResult = {
   onboardingId: Id<"payoutDestinationOnboarding">;
   redirectUrl: string;
   merchantReferenceId: string;
+};
+
+type VirtualAccountResult = {
+  virtualAccountId: string;
+  merchantReferenceId: string;
+  ewallet: string;
+  country: string;
+  currency: string;
+  requestedCurrency?: string;
+  status?: string;
+  bankAccount?: Record<string, unknown>;
+  description?: string;
+};
+
+type VirtualAccountTransferResult = {
+  virtualAccountId: string;
+  transactionId?: string;
+  currency: string;
+  amount: number;
+  requestedCurrency?: string;
+  status?: string;
+  bankAccount?: Record<string, unknown>;
 };
 
 type CheckoutStatusResult = {
@@ -167,7 +202,10 @@ export const createCheckoutForJob = action({
 
     const requestPath = "/v1/checkout";
     const country = resolveRapydCountry();
-    const configuredMethods = process.env.RAPYD_PAYMENT_METHODS;
+    const checkoutMode = resolveRapydCheckoutMode();
+    const configuredMethods =
+      process.env.RAPYD_PAYMENT_METHODS?.trim() ||
+      (checkoutMode === "a2a" ? "bank_transfer,bank_redirect" : undefined);
     const checkoutMethodSelection = await resolveRapydCheckoutMethodSelection({
       configured: configuredMethods,
       country,
@@ -175,6 +213,7 @@ export const createCheckoutForJob = action({
       accessKey,
       secretKey,
       baseUrl: rapydBaseUrl,
+      allowedCategories: checkoutMode === "a2a" ? ["bank_transfer", "bank_redirect"] : undefined,
     });
     if (checkoutMethodSelection.warnings.length > 0) {
       throw new ConvexError(checkoutMethodSelection.warnings.join(" | "));
@@ -495,35 +534,34 @@ export const listAvailablePaymentMethods = action({
     const cached = (await ctx.runQuery(internal.payments.getProviderMethodCache, {
       kind: "payment_methods_country",
       cacheKey,
-    })) as
-      | {
-          expiresAt: number;
-          payload: {
-            methods?: Array<{
-              type: string;
-              category?: string;
-              paymentFlowType?: string;
-              supportedDigitalWalletProviders?: string[];
-              status?: string | number;
-            }>;
-          };
-        }
-      | null;
-    if (cached && cached.expiresAt > Date.now() && cached.payload.methods) {
-      return cached.payload.methods.map((method: (typeof cached.payload.methods)[number]) =>
-        omitUndefined({
-          type: method.type,
-          category: method.category,
-          paymentFlowType: method.paymentFlowType,
-          supportedDigitalWalletProviders: method.supportedDigitalWalletProviders ?? [],
-          status: typeof method.status === "number" ? method.status : undefined,
-        }) as {
+    })) as {
+      expiresAt: number;
+      payload: {
+        methods?: Array<{
           type: string;
           category?: string;
           paymentFlowType?: string;
-          supportedDigitalWalletProviders: string[];
-          status?: number;
-        },
+          supportedDigitalWalletProviders?: string[];
+          status?: string | number;
+        }>;
+      };
+    } | null;
+    if (cached && cached.expiresAt > Date.now() && cached.payload.methods) {
+      return cached.payload.methods.map(
+        (method: (typeof cached.payload.methods)[number]) =>
+          omitUndefined({
+            type: method.type,
+            category: method.category,
+            paymentFlowType: method.paymentFlowType,
+            supportedDigitalWalletProviders: method.supportedDigitalWalletProviders ?? [],
+            status: typeof method.status === "number" ? method.status : undefined,
+          }) as {
+            type: string;
+            category?: string;
+            paymentFlowType?: string;
+            supportedDigitalWalletProviders: string[];
+            status?: number;
+          },
       );
     }
 
@@ -614,39 +652,38 @@ export const listAvailablePayoutMethodTypes = action({
     const cached = (await ctx.runQuery(internal.payments.getProviderMethodCache, {
       kind: "payout_method_types",
       cacheKey,
-    })) as
-      | {
-          expiresAt: number;
-          payload: {
-            methods?: Array<{
-              type: string;
-              payoutMethodType?: string;
-              name?: string;
-              category?: string;
-              status?: string | number;
-              countries?: string[];
-              currencies?: string[];
-            }>;
-          };
-        }
-      | null;
-    if (cached && cached.expiresAt > Date.now() && cached.payload.methods) {
-      return cached.payload.methods.map((method: (typeof cached.payload.methods)[number]) =>
-        omitUndefined({
-          payoutMethodType: method.payoutMethodType ?? method.type,
-          name: method.name,
-          category: method.category,
-          status: method.status,
-          countries: method.countries,
-          currencies: method.currencies,
-        }) as {
-          payoutMethodType: string;
+    })) as {
+      expiresAt: number;
+      payload: {
+        methods?: Array<{
+          type: string;
+          payoutMethodType?: string;
           name?: string;
           category?: string;
           status?: string | number;
           countries?: string[];
           currencies?: string[];
-        },
+        }>;
+      };
+    } | null;
+    if (cached && cached.expiresAt > Date.now() && cached.payload.methods) {
+      return cached.payload.methods.map(
+        (method: (typeof cached.payload.methods)[number]) =>
+          omitUndefined({
+            payoutMethodType: method.payoutMethodType ?? method.type,
+            name: method.name,
+            category: method.category,
+            status: method.status,
+            countries: method.countries,
+            currencies: method.currencies,
+          }) as {
+            payoutMethodType: string;
+            name?: string;
+            category?: string;
+            status?: string | number;
+            countries?: string[];
+            currencies?: string[];
+          },
       );
     }
 
@@ -698,22 +735,23 @@ export const listAvailablePayoutMethodTypes = action({
       currencies?: string[];
     }> = payload.data
       .filter((row) => typeof row.payout_method_type === "string" && row.payout_method_type.trim())
-      .map((row) =>
-        omitUndefined({
-          payoutMethodType: row.payout_method_type!.trim(),
-          name: row.name?.trim(),
-          category: row.category?.trim(),
-          status: row.status,
-          countries: row.beneficiary_countries,
-          currencies: row.payout_currencies,
-        }) as {
-          payoutMethodType: string;
-          name?: string;
-          category?: string;
-          status?: string | number;
-          countries?: string[];
-          currencies?: string[];
-        },
+      .map(
+        (row) =>
+          omitUndefined({
+            payoutMethodType: row.payout_method_type!.trim(),
+            name: row.name?.trim(),
+            category: row.category?.trim(),
+            status: row.status,
+            countries: row.beneficiary_countries,
+            currencies: row.payout_currencies,
+          }) as {
+            payoutMethodType: string;
+            name?: string;
+            category?: string;
+            status?: string | number;
+            countries?: string[];
+            currencies?: string[];
+          },
       );
     await ctx.runMutation(internal.payments.upsertProviderMethodCache, {
       kind: "payout_method_types",
@@ -795,19 +833,17 @@ export const getPayoutRequiredFields = action({
     const cached = (await ctx.runQuery(internal.payments.getProviderMethodCache, {
       kind: "payout_required_fields",
       cacheKey,
-    })) as
-      | {
-          expiresAt: number;
-          payload: {
-            requiredFields?: Array<{
-              name: string;
-              type?: string;
-              required?: boolean;
-              description?: string;
-            }>;
-          };
-        }
-      | null;
+    })) as {
+      expiresAt: number;
+      payload: {
+        requiredFields?: Array<{
+          name: string;
+          type?: string;
+          required?: boolean;
+          description?: string;
+        }>;
+      };
+    } | null;
     if (cached && cached.expiresAt > Date.now() && cached.payload.requiredFields) {
       return cached.payload.requiredFields;
     }
@@ -867,18 +903,19 @@ export const getPayoutRequiredFields = action({
       ...(payload.data?.sender_required_fields ?? []),
     ]
       .filter((row) => typeof row.name === "string" && row.name.trim())
-      .map((row) =>
-        omitUndefined({
-          name: row.name!.trim(),
-          type: row.type?.trim(),
-          required: row.required,
-          description: row.description?.trim(),
-        }) as {
-          name: string;
-          type?: string;
-          required?: boolean;
-          description?: string;
-        },
+      .map(
+        (row) =>
+          omitUndefined({
+            name: row.name!.trim(),
+            type: row.type?.trim(),
+            required: row.required,
+            description: row.description?.trim(),
+          }) as {
+            name: string;
+            type?: string;
+            required?: boolean;
+            description?: string;
+          },
       );
     await ctx.runMutation(internal.payments.upsertProviderMethodCache, {
       kind: "payout_required_fields",
@@ -1037,5 +1074,278 @@ export const createBeneficiaryOnboardingForInstructor = action({
       });
       throw error;
     }
+  },
+});
+
+export const createSandboxVirtualAccountForEwallet = action({
+  args: {
+    ewallet: v.optional(v.string()),
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    requestedCurrency: v.optional(v.string()),
+    description: v.optional(v.string()),
+  },
+  returns: v.object({
+    virtualAccountId: v.string(),
+    merchantReferenceId: v.string(),
+    ewallet: v.string(),
+    country: v.string(),
+    currency: v.string(),
+    requestedCurrency: v.optional(v.string()),
+    status: v.optional(v.string()),
+    bankAccount: v.optional(v.record(v.string(), v.any())),
+    description: v.optional(v.string()),
+  }),
+  handler: async (ctx, args): Promise<VirtualAccountResult> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+    requireSandboxRapydMode();
+
+    const ewallet = (args.ewallet ?? process.env.RAPYD_EWALLET ?? "").trim();
+    if (!ewallet) {
+      throw new ConvexError("Missing RAPYD_EWALLET");
+    }
+
+    const { accessKey, secretKey, baseUrl: rapydBaseUrl } = resolveRapydRequestCredentials();
+    const country = resolveRapydCountry(args.country ?? process.env.RAPYD_COUNTRY);
+    const currency = resolvePaymentsCurrency(args.currency ?? process.env.PAYMENTS_CURRENCY);
+    const requestedCurrency = args.requestedCurrency?.trim() || undefined;
+    const merchantReferenceId = `virtual_account:${ewallet}:${crypto.randomUUID()}`;
+    const requestPath = "/v1/virtual_accounts";
+    const requestUrl = new URL(requestPath, `${rapydBaseUrl}/`);
+    const bodyPayload: Record<string, unknown> = {
+      ewallet,
+      country,
+      currency,
+      description: args.description?.trim() || "Sandbox virtual account for wallet",
+      merchant_reference_id: merchantReferenceId,
+      ...omitUndefined({
+        requested_currency: requestedCurrency,
+      }),
+    };
+
+    const body = JSON.stringify(bodyPayload);
+    const { response, responseText, signatureEncoding } = await executeRapydSignedPost({
+      url: requestUrl.toString(),
+      path: requestUrl.pathname,
+      accessKey,
+      secretKey,
+      idempotency: merchantReferenceId,
+      body,
+    });
+    if (!response.ok) {
+      throw new ConvexError(
+        `Rapyd virtual account issue failed (HTTP ${response.status}) [${signatureEncoding}]: ${responseText.slice(0, 400)}`,
+      );
+    }
+
+    const payload = JSON.parse(responseText) as {
+      status?: { status?: string; message?: string; error_code?: string };
+      data?: {
+        id?: string;
+        merchant_reference_id?: string;
+        ewallet?: string;
+        currency?: string;
+        requested_currency?: string;
+        status?: string;
+        description?: string;
+        bank_account?: Record<string, unknown>;
+      };
+    };
+    if ((payload.status?.status ?? "ERROR") !== "SUCCESS" || !payload.data?.id) {
+      throw new ConvexError(
+        `Rapyd virtual account issue rejected: ${payload.status?.message ?? payload.status?.error_code ?? "Unknown error"}`,
+      );
+    }
+
+    return omitUndefined({
+      virtualAccountId: payload.data.id,
+      merchantReferenceId: payload.data.merchant_reference_id ?? merchantReferenceId,
+      ewallet: payload.data.ewallet ?? ewallet,
+      country,
+      currency: payload.data.currency ?? currency,
+      requestedCurrency: payload.data.requested_currency,
+      status: payload.data.status,
+      bankAccount: payload.data.bank_account,
+      description: payload.data.description,
+    }) as VirtualAccountResult;
+  },
+});
+
+export const listSandboxVirtualAccountsForEwallet = action({
+  args: {
+    ewallet: v.optional(v.string()),
+  },
+  returns: v.array(
+    v.object({
+      virtualAccountId: v.string(),
+      merchantReferenceId: v.optional(v.string()),
+      ewallet: v.optional(v.string()),
+      currency: v.optional(v.string()),
+      requestedCurrency: v.optional(v.string()),
+      status: v.optional(v.string()),
+      bankAccount: v.optional(v.record(v.string(), v.any())),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+    requireSandboxRapydMode();
+
+    const ewallet = (args.ewallet ?? process.env.RAPYD_EWALLET ?? "").trim();
+    if (!ewallet) {
+      throw new ConvexError("Missing RAPYD_EWALLET");
+    }
+
+    const { accessKey, secretKey, baseUrl: rapydBaseUrl } = resolveRapydRequestCredentials();
+    const requestPath = `/v1/ewallets/${ewallet}/virtual_accounts`;
+    const requestUrl = new URL(requestPath, `${rapydBaseUrl}/`);
+    const { response, responseText, signatureEncoding } = await executeRapydSignedGet({
+      url: requestUrl.toString(),
+      path: requestUrl.pathname,
+      accessKey,
+      secretKey,
+    });
+    if (!response.ok) {
+      throw new ConvexError(
+        `Rapyd virtual account list failed (HTTP ${response.status}) [${signatureEncoding}]: ${responseText.slice(0, 400)}`,
+      );
+    }
+
+    const payload = JSON.parse(responseText) as {
+      status?: { status?: string; message?: string; error_code?: string };
+      data?: Array<{
+        id?: string;
+        merchant_reference_id?: string;
+        ewallet?: string;
+        currency?: string;
+        requested_currency?: string;
+        status?: string;
+        bank_account?: Record<string, unknown>;
+      }>;
+    };
+    if ((payload.status?.status ?? "ERROR") !== "SUCCESS" || !Array.isArray(payload.data)) {
+      throw new ConvexError(
+        `Rapyd virtual account list rejected: ${payload.status?.message ?? payload.status?.error_code ?? "Unknown error"}`,
+      );
+    }
+
+    return payload.data
+      .filter((row) => typeof row.id === "string" && row.id.trim().length > 0)
+      .map(
+        (row) =>
+          omitUndefined({
+            virtualAccountId: row.id!.trim(),
+            merchantReferenceId: row.merchant_reference_id?.trim(),
+            ewallet: row.ewallet?.trim(),
+            currency: row.currency?.trim(),
+            requestedCurrency: row.requested_currency?.trim(),
+            status: row.status?.trim(),
+            bankAccount: row.bank_account,
+          }) as {
+            virtualAccountId: string;
+            merchantReferenceId?: string;
+            ewallet?: string;
+            currency?: string;
+            requestedCurrency?: string;
+            status?: string;
+            bankAccount?: Record<string, unknown>;
+          },
+      );
+  },
+});
+
+export const simulateSandboxVirtualAccountTransfer = action({
+  args: {
+    virtualAccountId: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+    requestedCurrency: v.optional(v.string()),
+    remitterReference: v.optional(v.string()),
+    accountName: v.optional(v.string()),
+  },
+  returns: v.object({
+    virtualAccountId: v.string(),
+    transactionId: v.optional(v.string()),
+    currency: v.string(),
+    amount: v.number(),
+    requestedCurrency: v.optional(v.string()),
+    status: v.optional(v.string()),
+    bankAccount: v.optional(v.record(v.string(), v.any())),
+  }),
+  handler: async (ctx, args): Promise<VirtualAccountTransferResult> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+    requireSandboxRapydMode();
+
+    const { accessKey, secretKey, baseUrl: rapydBaseUrl } = resolveRapydRequestCredentials();
+    const amount = Number(Math.max(0, args.amount).toFixed(2));
+    const requestPath = "/v1/virtual_accounts/transactions";
+    const requestUrl = new URL(requestPath, `${rapydBaseUrl}/`);
+    const bodyPayload: Record<string, unknown> = {
+      issued_bank_account: args.virtualAccountId,
+      amount: String(amount),
+      currency: args.currency.trim().toUpperCase(),
+      ...omitUndefined({
+        requested_currency: args.requestedCurrency?.trim().toUpperCase(),
+      }),
+      ...(args.remitterReference || args.accountName
+        ? {
+            remitter_information: omitUndefined({
+              remitter_reference: args.remitterReference?.trim(),
+              account_name: args.accountName?.trim(),
+            }),
+          }
+        : {}),
+    };
+
+    const body = JSON.stringify(bodyPayload);
+    const idempotency = `virtual_account_transfer:${args.virtualAccountId}:${crypto.randomUUID()}`;
+    const { response, responseText, signatureEncoding } = await executeRapydSignedPost({
+      url: requestUrl.toString(),
+      path: requestUrl.pathname,
+      accessKey,
+      secretKey,
+      idempotency,
+      body,
+    });
+    if (!response.ok) {
+      throw new ConvexError(
+        `Rapyd virtual account transfer failed (HTTP ${response.status}) [${signatureEncoding}]: ${responseText.slice(0, 400)}`,
+      );
+    }
+
+    const payload = JSON.parse(responseText) as {
+      status?: { status?: string; message?: string; error_code?: string };
+      data?: {
+        id?: string;
+        currency?: string;
+        requested_currency?: string;
+        status?: string;
+        bank_account?: Record<string, unknown>;
+        transactions?: Array<{ id?: string }>;
+      };
+    };
+    if ((payload.status?.status ?? "ERROR") !== "SUCCESS" || !payload.data?.id) {
+      throw new ConvexError(
+        `Rapyd virtual account transfer rejected: ${payload.status?.message ?? payload.status?.error_code ?? "Unknown error"}`,
+      );
+    }
+
+    return omitUndefined({
+      virtualAccountId: payload.data.id,
+      transactionId: payload.data.transactions?.[0]?.id,
+      currency: payload.data.currency ?? args.currency.trim().toUpperCase(),
+      amount,
+      requestedCurrency: payload.data.requested_currency,
+      status: payload.data.status,
+      bankAccount: payload.data.bank_account,
+    }) as VirtualAccountTransferResult;
   },
 });

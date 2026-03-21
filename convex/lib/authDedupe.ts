@@ -70,6 +70,36 @@ function selectCanonicalUser(args: {
   })[0];
 }
 
+export async function resolveCanonicalUserByEmail(args: {
+  ctx: Ctx;
+  normalizedEmail: string;
+  preferredUserId?: Id<"users"> | null;
+}) {
+  const users = (await ((args.ctx.db as any).query("users") as any)
+    .withIndex("by_email", (q: any) => q.eq("email", args.normalizedEmail))
+    .collect()) as UserDoc[];
+
+  if (users.length === 0) {
+    return null;
+  }
+  if (users.length === 1) {
+    return users[0]!._id;
+  }
+
+  const userIds = users.map((user) => user._id);
+  const [instructorProfilesByUserId, studioProfilesByUserId] = await Promise.all([
+    getProfilesByUserIds(args.ctx, "instructorProfiles", userIds),
+    getProfilesByUserIds(args.ctx, "studioProfiles", userIds),
+  ]);
+  const canonicalUser = selectCanonicalUser({
+    users,
+    preferredUserId: args.preferredUserId,
+    instructorProfilesByUserId,
+    studioProfilesByUserId,
+  });
+  return canonicalUser?._id ?? null;
+}
+
 function chooseRole(users: UserDoc[], canonicalUser: UserDoc) {
   if (canonicalUser.role !== "pending") {
     return canonicalUser.role;
@@ -78,8 +108,22 @@ function chooseRole(users: UserDoc[], canonicalUser: UserDoc) {
   return nonPending?.role ?? canonicalUser.role;
 }
 
-function hasVerifiedEmailUser(users: UserDoc[]) {
-  return users.some((user) => user.emailVerificationTime !== undefined);
+export function canProceedWithEmailDedupe(args: {
+  requireVerifiedUser?: boolean | undefined;
+  emailOwnershipVerified?: boolean | undefined;
+  users: Array<{
+    emailVerificationTime?: number | undefined;
+  }>;
+}) {
+  if (!args.requireVerifiedUser) {
+    return true;
+  }
+
+  if (args.emailOwnershipVerified) {
+    return true;
+  }
+
+  return args.users.some((user) => user.emailVerificationTime !== undefined);
 }
 
 function hasIncompatibleRoleMix(args: {
@@ -91,7 +135,9 @@ function hasIncompatibleRoleMix(args: {
   const hasInstructorProfile = users.some(
     (user) => (instructorProfilesByUserId.get(user._id)?.length ?? 0) > 0,
   );
-  const hasStudioProfile = users.some((user) => (studioProfilesByUserId.get(user._id)?.length ?? 0) > 0);
+  const hasStudioProfile = users.some(
+    (user) => (studioProfilesByUserId.get(user._id)?.length ?? 0) > 0,
+  );
   if (hasInstructorProfile && hasStudioProfile) {
     return true;
   }
@@ -108,10 +154,11 @@ async function getProfilesByUserIds<T extends "instructorProfiles" | "studioProf
   userIds: Id<"users">[],
 ) {
   const results = await Promise.all(
-    userIds.map((userId) =>
-      ((ctx.db as any).query(table) as any)
-        .withIndex("by_user_id", (q: any) => q.eq("userId", userId))
-        .collect() as Promise<Array<Doc<T>>>,
+    userIds.map(
+      (userId) =>
+        ((ctx.db as any).query(table) as any)
+          .withIndex("by_user_id", (q: any) => q.eq("userId", userId))
+          .collect() as Promise<Array<Doc<T>>>,
     ),
   );
   const byUserId = new Map<Id<"users">, Array<Doc<T>>>();
@@ -133,7 +180,9 @@ async function reassignByIndex(args: {
     .withIndex(args.index, (q: any) => q.eq(args.field, args.fromId))
     .collect();
   await Promise.all(
-    rows.map((row: { _id: string }) => (args.ctx.db as any).patch(args.table, row._id, { [args.field]: args.toId })),
+    rows.map((row: { _id: string }) =>
+      (args.ctx.db as any).patch(args.table, row._id, { [args.field]: args.toId }),
+    ),
   );
 }
 
@@ -148,7 +197,9 @@ async function reassignByCollect(args: {
   await Promise.all(
     rows
       .filter((row: Record<string, unknown>) => row[args.field] === args.fromId)
-      .map((row: { _id: string }) => (args.ctx.db as any).patch(args.table, row._id, { [args.field]: args.toId })),
+      .map((row: { _id: string }) =>
+        (args.ctx.db as any).patch(args.table, row._id, { [args.field]: args.toId }),
+      ),
   );
 }
 
@@ -158,14 +209,16 @@ async function mergeInstructorProfiles(args: {
   userIds: Id<"users">[];
   now: number;
 }) {
-  const profiles = (await Promise.all(
-    args.userIds.map((userId) =>
-      args.ctx.db
-        .query("instructorProfiles")
-        .withIndex("by_user_id", (q) => q.eq("userId", userId))
-        .collect(),
-    ),
-  )).flat();
+  const profiles = (
+    await Promise.all(
+      args.userIds.map((userId) =>
+        args.ctx.db
+          .query("instructorProfiles")
+          .withIndex("by_user_id", (q) => q.eq("userId", userId))
+          .collect(),
+      ),
+    )
+  ).flat();
 
   if (profiles.length === 0) {
     return;
@@ -210,33 +263,89 @@ async function mergeInstructorProfiles(args: {
 
   await args.ctx.db.patch("instructorProfiles", canonicalProfile._id, {
     userId: args.canonicalUserId,
-    displayName: pickFirstDefined(canonicalProfile.displayName, profiles.find((p) => p._id !== canonicalProfile._id)?.displayName) ?? canonicalProfile.displayName,
+    displayName:
+      pickFirstDefined(
+        canonicalProfile.displayName,
+        profiles.find((p) => p._id !== canonicalProfile._id)?.displayName,
+      ) ?? canonicalProfile.displayName,
     bio: pickFirstDefined(canonicalProfile.bio, ...profiles.map((profile) => profile.bio)),
-    socialLinks: pickFirstDefined(canonicalProfile.socialLinks, ...profiles.map((profile) => profile.socialLinks)),
-    address: pickFirstDefined(canonicalProfile.address, ...profiles.map((profile) => profile.address)),
-    latitude: pickFirstDefined(canonicalProfile.latitude, ...profiles.map((profile) => profile.latitude)),
-    longitude: pickFirstDefined(canonicalProfile.longitude, ...profiles.map((profile) => profile.longitude)),
-    expoPushToken: pickFirstDefined(canonicalProfile.expoPushToken, ...profiles.map((profile) => profile.expoPushToken)),
+    socialLinks: pickFirstDefined(
+      canonicalProfile.socialLinks,
+      ...profiles.map((profile) => profile.socialLinks),
+    ),
+    address: pickFirstDefined(
+      canonicalProfile.address,
+      ...profiles.map((profile) => profile.address),
+    ),
+    latitude: pickFirstDefined(
+      canonicalProfile.latitude,
+      ...profiles.map((profile) => profile.latitude),
+    ),
+    longitude: pickFirstDefined(
+      canonicalProfile.longitude,
+      ...profiles.map((profile) => profile.longitude),
+    ),
+    expoPushToken: pickFirstDefined(
+      canonicalProfile.expoPushToken,
+      ...profiles.map((profile) => profile.expoPushToken),
+    ),
     notificationsEnabled: profiles.some((profile) => profile.notificationsEnabled),
-    profileImageStorageId: pickFirstDefined(canonicalProfile.profileImageStorageId, ...profiles.map((profile) => profile.profileImageStorageId)),
-    hourlyRateExpectation: pickFirstDefined(canonicalProfile.hourlyRateExpectation, ...profiles.map((profile) => profile.hourlyRateExpectation)),
-    calendarProvider: pickFirstDefined(canonicalProfile.calendarProvider, ...profiles.map((profile) => profile.calendarProvider)),
+    profileImageStorageId: pickFirstDefined(
+      canonicalProfile.profileImageStorageId,
+      ...profiles.map((profile) => profile.profileImageStorageId),
+    ),
+    hourlyRateExpectation: pickFirstDefined(
+      canonicalProfile.hourlyRateExpectation,
+      ...profiles.map((profile) => profile.hourlyRateExpectation),
+    ),
+    calendarProvider: pickFirstDefined(
+      canonicalProfile.calendarProvider,
+      ...profiles.map((profile) => profile.calendarProvider),
+    ),
     calendarSyncEnabled: profiles.some((profile) => profile.calendarSyncEnabled === true),
-    calendarConnectedAt: pickFirstDefined(canonicalProfile.calendarConnectedAt, ...profiles.map((profile) => profile.calendarConnectedAt)),
-    diditSessionId: pickFirstDefined(canonicalProfile.diditSessionId, ...profiles.map((profile) => profile.diditSessionId)),
+    calendarConnectedAt: pickFirstDefined(
+      canonicalProfile.calendarConnectedAt,
+      ...profiles.map((profile) => profile.calendarConnectedAt),
+    ),
+    diditSessionId: pickFirstDefined(
+      canonicalProfile.diditSessionId,
+      ...profiles.map((profile) => profile.diditSessionId),
+    ),
     diditVerificationStatus: pickFirstDefined(
-      profiles.find((profile) => profile.diditVerificationStatus === "approved")?.diditVerificationStatus,
+      profiles.find((profile) => profile.diditVerificationStatus === "approved")
+        ?.diditVerificationStatus,
       canonicalProfile.diditVerificationStatus,
       ...profiles.map((profile) => profile.diditVerificationStatus),
     ),
-    diditStatusRaw: pickFirstDefined(canonicalProfile.diditStatusRaw, ...profiles.map((profile) => profile.diditStatusRaw)),
-    diditDecision: pickFirstDefined(canonicalProfile.diditDecision, ...profiles.map((profile) => profile.diditDecision)),
+    diditStatusRaw: pickFirstDefined(
+      canonicalProfile.diditStatusRaw,
+      ...profiles.map((profile) => profile.diditStatusRaw),
+    ),
+    diditDecision: pickFirstDefined(
+      canonicalProfile.diditDecision,
+      ...profiles.map((profile) => profile.diditDecision),
+    ),
     diditLastEventAt: maxNumber(...profiles.map((profile) => profile.diditLastEventAt)),
-    diditVerifiedAt: pickFirstDefined(canonicalProfile.diditVerifiedAt, ...profiles.map((profile) => profile.diditVerifiedAt)),
-    diditLegalFirstName: pickFirstDefined(canonicalProfile.diditLegalFirstName, ...profiles.map((profile) => profile.diditLegalFirstName)),
-    diditLegalMiddleName: pickFirstDefined(canonicalProfile.diditLegalMiddleName, ...profiles.map((profile) => profile.diditLegalMiddleName)),
-    diditLegalLastName: pickFirstDefined(canonicalProfile.diditLegalLastName, ...profiles.map((profile) => profile.diditLegalLastName)),
-    diditLegalName: pickFirstDefined(canonicalProfile.diditLegalName, ...profiles.map((profile) => profile.diditLegalName)),
+    diditVerifiedAt: pickFirstDefined(
+      canonicalProfile.diditVerifiedAt,
+      ...profiles.map((profile) => profile.diditVerifiedAt),
+    ),
+    diditLegalFirstName: pickFirstDefined(
+      canonicalProfile.diditLegalFirstName,
+      ...profiles.map((profile) => profile.diditLegalFirstName),
+    ),
+    diditLegalMiddleName: pickFirstDefined(
+      canonicalProfile.diditLegalMiddleName,
+      ...profiles.map((profile) => profile.diditLegalMiddleName),
+    ),
+    diditLegalLastName: pickFirstDefined(
+      canonicalProfile.diditLegalLastName,
+      ...profiles.map((profile) => profile.diditLegalLastName),
+    ),
+    diditLegalName: pickFirstDefined(
+      canonicalProfile.diditLegalName,
+      ...profiles.map((profile) => profile.diditLegalName),
+    ),
     updatedAt: args.now,
   });
 
@@ -379,14 +488,16 @@ async function mergeStudioProfiles(args: {
   userIds: Id<"users">[];
   now: number;
 }) {
-  const profiles = (await Promise.all(
-    args.userIds.map((userId) =>
-      args.ctx.db
-        .query("studioProfiles")
-        .withIndex("by_user_id", (q) => q.eq("userId", userId))
-        .collect(),
-    ),
-  )).flat();
+  const profiles = (
+    await Promise.all(
+      args.userIds.map((userId) =>
+        args.ctx.db
+          .query("studioProfiles")
+          .withIndex("by_user_id", (q) => q.eq("userId", userId))
+          .collect(),
+      ),
+    )
+  ).flat();
 
   if (profiles.length === 0) {
     return;
@@ -419,21 +530,56 @@ async function mergeStudioProfiles(args: {
 
   await args.ctx.db.patch("studioProfiles", canonicalProfile._id, {
     userId: args.canonicalUserId,
-    studioName: pickFirstDefined(canonicalProfile.studioName, ...profiles.map((profile) => profile.studioName)) ?? canonicalProfile.studioName,
+    studioName:
+      pickFirstDefined(
+        canonicalProfile.studioName,
+        ...profiles.map((profile) => profile.studioName),
+      ) ?? canonicalProfile.studioName,
     bio: pickFirstDefined(canonicalProfile.bio, ...profiles.map((profile) => profile.bio)),
-    socialLinks: pickFirstDefined(canonicalProfile.socialLinks, ...profiles.map((profile) => profile.socialLinks)),
-    address: pickFirstDefined(canonicalProfile.address, ...profiles.map((profile) => profile.address)) ?? canonicalProfile.address,
-    zone: pickFirstDefined(canonicalProfile.zone, ...profiles.map((profile) => profile.zone)) ?? canonicalProfile.zone,
-    latitude: pickFirstDefined(canonicalProfile.latitude, ...profiles.map((profile) => profile.latitude)),
-    longitude: pickFirstDefined(canonicalProfile.longitude, ...profiles.map((profile) => profile.longitude)),
-    contactPhone: pickFirstDefined(canonicalProfile.contactPhone, ...profiles.map((profile) => profile.contactPhone)),
-    expoPushToken: pickFirstDefined(canonicalProfile.expoPushToken, ...profiles.map((profile) => profile.expoPushToken)),
+    socialLinks: pickFirstDefined(
+      canonicalProfile.socialLinks,
+      ...profiles.map((profile) => profile.socialLinks),
+    ),
+    address:
+      pickFirstDefined(canonicalProfile.address, ...profiles.map((profile) => profile.address)) ??
+      canonicalProfile.address,
+    zone:
+      pickFirstDefined(canonicalProfile.zone, ...profiles.map((profile) => profile.zone)) ??
+      canonicalProfile.zone,
+    latitude: pickFirstDefined(
+      canonicalProfile.latitude,
+      ...profiles.map((profile) => profile.latitude),
+    ),
+    longitude: pickFirstDefined(
+      canonicalProfile.longitude,
+      ...profiles.map((profile) => profile.longitude),
+    ),
+    contactPhone: pickFirstDefined(
+      canonicalProfile.contactPhone,
+      ...profiles.map((profile) => profile.contactPhone),
+    ),
+    expoPushToken: pickFirstDefined(
+      canonicalProfile.expoPushToken,
+      ...profiles.map((profile) => profile.expoPushToken),
+    ),
     notificationsEnabled: profiles.some((profile) => profile.notificationsEnabled === true),
-    logoStorageId: pickFirstDefined(canonicalProfile.logoStorageId, ...profiles.map((profile) => profile.logoStorageId)),
-    autoExpireMinutesBefore: pickFirstDefined(canonicalProfile.autoExpireMinutesBefore, ...profiles.map((profile) => profile.autoExpireMinutesBefore)),
-    calendarProvider: pickFirstDefined(canonicalProfile.calendarProvider, ...profiles.map((profile) => profile.calendarProvider)),
+    logoStorageId: pickFirstDefined(
+      canonicalProfile.logoStorageId,
+      ...profiles.map((profile) => profile.logoStorageId),
+    ),
+    autoExpireMinutesBefore: pickFirstDefined(
+      canonicalProfile.autoExpireMinutesBefore,
+      ...profiles.map((profile) => profile.autoExpireMinutesBefore),
+    ),
+    calendarProvider: pickFirstDefined(
+      canonicalProfile.calendarProvider,
+      ...profiles.map((profile) => profile.calendarProvider),
+    ),
     calendarSyncEnabled: profiles.some((profile) => profile.calendarSyncEnabled === true),
-    calendarConnectedAt: pickFirstDefined(canonicalProfile.calendarConnectedAt, ...profiles.map((profile) => profile.calendarConnectedAt)),
+    calendarConnectedAt: pickFirstDefined(
+      canonicalProfile.calendarConnectedAt,
+      ...profiles.map((profile) => profile.calendarConnectedAt),
+    ),
     updatedAt: args.now,
   });
 
@@ -534,6 +680,7 @@ export async function dedupeUsersByEmail(args: {
   preferredUserId?: Id<"users"> | null;
   now?: number;
   requireVerifiedUser?: boolean;
+  emailOwnershipVerified?: boolean;
 }) {
   const now = args.now ?? Date.now();
   const users = (await ((args.ctx.db as any).query("users") as any)
@@ -552,7 +699,13 @@ export async function dedupeUsersByEmail(args: {
     getProfilesByUserIds(args.ctx, "instructorProfiles", userIds),
     getProfilesByUserIds(args.ctx, "studioProfiles", userIds),
   ]);
-  if (args.requireVerifiedUser && !hasVerifiedEmailUser(users)) {
+  if (
+    !canProceedWithEmailDedupe({
+      requireVerifiedUser: args.requireVerifiedUser,
+      emailOwnershipVerified: args.emailOwnershipVerified,
+      users,
+    })
+  ) {
     return null;
   }
   if (hasIncompatibleRoleMix({ users, instructorProfilesByUserId, studioProfilesByUserId })) {
@@ -765,11 +918,27 @@ export async function dedupeUsersByEmail(args: {
       canonicalUser.emailVerificationTime,
       ...duplicateUsers.map((user: UserDoc) => user.emailVerificationTime),
     ),
-    fullName: pickFirstDefined(canonicalUser.fullName, canonicalUser.name, ...duplicateUsers.map((user: UserDoc) => user.fullName ?? user.name)),
-    name: pickFirstDefined(canonicalUser.name, canonicalUser.fullName, ...duplicateUsers.map((user: UserDoc) => user.name ?? user.fullName)),
-    phoneE164: pickFirstDefined(canonicalUser.phoneE164, ...duplicateUsers.map((user: UserDoc) => user.phoneE164)),
-    image: pickFirstDefined(canonicalUser.image, ...duplicateUsers.map((user: UserDoc) => user.image)),
-    isAnonymous: duplicateUsers.every((user: UserDoc) => user.isAnonymous === true) ? true : canonicalUser.isAnonymous,
+    fullName: pickFirstDefined(
+      canonicalUser.fullName,
+      canonicalUser.name,
+      ...duplicateUsers.map((user: UserDoc) => user.fullName ?? user.name),
+    ),
+    name: pickFirstDefined(
+      canonicalUser.name,
+      canonicalUser.fullName,
+      ...duplicateUsers.map((user: UserDoc) => user.name ?? user.fullName),
+    ),
+    phoneE164: pickFirstDefined(
+      canonicalUser.phoneE164,
+      ...duplicateUsers.map((user: UserDoc) => user.phoneE164),
+    ),
+    image: pickFirstDefined(
+      canonicalUser.image,
+      ...duplicateUsers.map((user: UserDoc) => user.image),
+    ),
+    isAnonymous: duplicateUsers.every((user: UserDoc) => user.isAnonymous === true)
+      ? true
+      : canonicalUser.isAnonymous,
     isActive: true,
     role: chooseRole(users, canonicalUser),
     onboardingComplete: users.some((user: UserDoc) => user.onboardingComplete),

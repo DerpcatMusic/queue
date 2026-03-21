@@ -359,6 +359,52 @@ export const getMyDiditVerification = query({
   },
 });
 
+export const listMyDiditEvents = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      providerEventId: v.string(),
+      createdAt: v.number(),
+      processed: v.boolean(),
+      signatureValid: v.boolean(),
+      mappedStatus: v.optional(diditStatusValidator),
+      statusRaw: v.optional(v.string()),
+      processingError: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const user = await requireUserRole(ctx, ["instructor"]);
+    const profile = await ctx.db
+      .query("instructorProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) {
+      return [];
+    }
+
+    const limit = Math.min(Math.max(Math.floor(args.limit ?? 8), 1), 20);
+    const rows = await ctx.db
+      .query("diditEvents")
+      .withIndex("by_instructor", (q) => q.eq("instructorId", profile._id))
+      .order("desc")
+      .take(limit);
+
+    return rows.map((row) => ({
+      providerEventId: row.providerEventId,
+      createdAt: row.createdAt,
+      processed: row.processed,
+      signatureValid: row.signatureValid,
+      ...omitUndefined({
+        mappedStatus: row.mappedStatus,
+        statusRaw: row.statusRaw,
+        processingError: row.processingError,
+      }),
+    }));
+  },
+});
+
 export const recordDiditSessionStart = internalMutation({
   args: {
     instructorId: v.id("instructorProfiles"),

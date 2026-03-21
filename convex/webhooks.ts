@@ -383,7 +383,9 @@ export const linkWebhookDeliveryToIntegrationEvent = internalMutation({
   args: {
     deliveryId: v.id("webhookDeliveries"),
     integrationEventId: v.optional(v.id("integrationEvents")),
-    processingState: v.optional(v.union(v.literal("pending"), v.literal("processed"), v.literal("failed"))),
+    processingState: v.optional(
+      v.union(v.literal("pending"), v.literal("processed"), v.literal("failed")),
+    ),
     processingError: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -846,9 +848,9 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
             : omitUndefined({
                 providerPaymentId,
                 providerCheckoutId,
-              merchantReferenceId: paymentReferenceIdFromPayload,
-              statusRaw,
-            }),
+                merchantReferenceId: paymentReferenceIdFromPayload,
+                statusRaw,
+              }),
     }),
   });
 

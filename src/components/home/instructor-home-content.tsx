@@ -1,26 +1,18 @@
 import type { TFunction } from "i18next";
 import { useMemo } from "react";
-import { Pressable, Text, View } from "react-native";
-import Animated, {
-  FadeInUp,
-  useAnimatedRef,
-  useScrollViewOffset,
-} from "react-native-reanimated";
+import { Text, View } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
 
 import {
   HomeSectionHeading,
   HomeSurface,
   useHomeDashboardLayout,
 } from "@/components/home/home-dashboard-layout";
-import {
-  getHomeHeaderScrollTopPadding,
-  HomeHeaderSheet,
-} from "@/components/home/home-header-sheet";
-import {
-  getRelativeTimeLabel,
-  HomeSignalTile,
-} from "@/components/home/home-shared";
+import { getHomeHeaderScrollTopPadding } from "@/components/home/home-header-sheet";
+import { getRelativeTimeLabel, HomeSignalTile } from "@/components/home/home-shared";
+import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
+import { ActionButton } from "@/components/ui/action-button";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
@@ -38,8 +30,6 @@ type UpcomingSession = {
 };
 
 type InstructorHomeContentProps = {
-  displayName: string;
-  profileImageUrl?: string | null | undefined;
   isVerified?: boolean;
   locale: string;
   openMatches: number;
@@ -54,8 +44,6 @@ type InstructorHomeContentProps = {
 };
 
 export function InstructorHomeContent({
-  displayName,
-  profileImageUrl,
   isVerified = false,
   locale,
   openMatches,
@@ -71,24 +59,19 @@ export function InstructorHomeContent({
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const { safeTop } = useAppInsets();
   const layout = useHomeDashboardLayout();
-  const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const scrollY = useScrollViewOffset(scrollRef);
+  const { scrollRef, onScroll } = useScrollSheetBindings();
 
   const nextSession = upcomingSessions[0] ?? null;
   const readinessLabel = isVerified
-    ? t("home.instructor.verified", { defaultValue: "Verified and ready" })
-    : t("home.instructor.needsPolish", {
-        defaultValue: "Polish your profile",
-      });
+    ? t("home.instructor.verified")
+    : t("home.instructor.needsPolish");
   const heroTitle = nextSession
     ? t("home.instructor.heroSession", {
         sport: toSportLabel(nextSession.sport as never),
         studio: nextSession.studioName,
-        defaultValue: `${toSportLabel(nextSession.sport as never)} at ${nextSession.studioName}`,
       })
     : t("home.instructor.heroMatches", {
         count: openMatches,
-        defaultValue: `${String(openMatches)} open matches near you`,
       });
   const heroSummary = nextSession
     ? [
@@ -100,29 +83,17 @@ export function InstructorHomeContent({
     pendingApplications > 0
       ? t("home.instructor.waitingCount", {
           count: pendingApplications,
-          defaultValue: `${String(pendingApplications)} waiting`,
         })
       : nextSession
         ? getRelativeTimeLabel(nextSession.startTime, now, locale)
-        : t("home.instructor.profileSet", { defaultValue: "Profile set" });
+        : t("home.instructor.profileSet");
   const visibleSessions = upcomingSessions.slice(0, layout.isWideWeb ? 6 : 4);
 
   return (
-    <View
-      collapsable={false}
-      style={{ flex: 1, backgroundColor: palette.appBg }}
-    >
-      <HomeHeaderSheet
-        displayName={displayName}
-        subtitle={readinessLabel}
-        profileImageUrl={profileImageUrl}
-        scrollY={scrollY}
-        palette={palette}
-        isVerified={isVerified}
-        onPressAvatar={onOpenProfile}
-      />
+    <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
       <TabScreenScrollView
         animatedRef={scrollRef}
+        onScroll={onScroll}
         routeKey="instructor/index"
         style={{ flex: 1 }}
         topInsetTone="sheet"
@@ -151,13 +122,7 @@ export function InstructorHomeContent({
                   opacity: 0.76,
                 }}
               >
-                {nextSession
-                  ? t("home.instructor.eyebrowNext", {
-                      defaultValue: "NEXT LESSON",
-                    })
-                  : t("home.instructor.eyebrowBoard", {
-                      defaultValue: "JOBS BOARD",
-                    })}
+                {nextSession ? t("home.instructor.eyebrowNext") : t("home.instructor.eyebrowBoard")}
               </Text>
               <Text
                 style={{
@@ -182,20 +147,15 @@ export function InstructorHomeContent({
 
             <View style={{ flexDirection: "row", gap: 10 }}>
               <HomeSignalTile
-                label={t("home.actions.jobsTitle", {
-                  defaultValue: "Open jobs",
-                })}
+                label={t("home.actions.jobsTitle")}
                 value={String(openMatches)}
                 detail={t("home.instructor.heroMatches", {
                   count: openMatches,
-                  defaultValue: `${String(openMatches)} live now`,
                 })}
                 palette={palette}
               />
               <HomeSignalTile
-                label={t("home.instructor.pendingApps", {
-                  defaultValue: "Pending applications",
-                })}
+                label={t("home.instructor.pendingApps")}
                 value={heroSecondaryValue}
                 detail={readinessLabel}
                 palette={palette}
@@ -209,84 +169,38 @@ export function InstructorHomeContent({
                 gap: 10,
               }}
             >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("home.actions.jobsTitle", {
-                  defaultValue: "Open jobs",
-                })}
-                onPress={onOpenJobs}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  minHeight: 50,
-                  borderRadius: 18,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.surface as string,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingHorizontal: 16,
-                  opacity: pressed ? 0.92 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    ...BrandType.bodyStrong,
-                    color: palette.text as string,
-                  }}
-                >
-                  {t("home.actions.jobsTitle", { defaultValue: "Open jobs" })}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("home.actions.profileTitle", {
-                  defaultValue: "Open profile",
-                })}
-                onPress={onOpenProfile}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  minHeight: 50,
-                  borderRadius: 18,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.primarySubtle as string,
-                  borderWidth: 1,
-                  borderColor: palette.borderStrong as string,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingHorizontal: 16,
-                  opacity: pressed ? 0.9 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    ...BrandType.bodyStrong,
-                    color: palette.primary as string,
-                  }}
-                >
-                  {t("home.actions.profileTitle", {
-                    defaultValue: "Open profile",
-                  })}
-                </Text>
-              </Pressable>
+              <View style={{ flex: 1 }}>
+                <ActionButton
+                  accessibilityLabel={t("home.actions.jobsTitle")}
+                  label={t("home.actions.jobsTitle")}
+                  onPress={onOpenJobs}
+                  palette={palette}
+                  tone="secondary"
+                  fullWidth
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ActionButton
+                  accessibilityLabel={t("home.actions.profileTitle")}
+                  label={t("home.actions.profileTitle")}
+                  onPress={onOpenProfile}
+                  palette={palette}
+                  fullWidth
+                />
+              </View>
             </View>
           </HomeSurface>
         </Animated.View>
 
-        <Animated.View
-          entering={FadeInUp.delay(180).duration(320)}
-          style={{ gap: 12 }}
-        >
+        <Animated.View entering={FadeInUp.delay(180).duration(320)} style={{ gap: 12 }}>
           <HomeSectionHeading
             title={t("home.instructor.nextTitle")}
-            eyebrow={t("home.instructor.scheduleEyebrow", {
-              defaultValue: "SCHEDULE",
-            })}
+            eyebrow={t("home.instructor.scheduleEyebrow")}
             palette={palette}
           />
           {upcomingSessions.length === 0 ? (
             <HomeSurface palette={palette} style={{ padding: 18, gap: 6 }}>
-              <Text
-                style={{ ...BrandType.title, color: palette.text as string }}
-              >
+              <Text style={{ ...BrandType.title, color: palette.text as string }}>
                 {t("home.instructor.noUpcoming")}
               </Text>
               <Text
@@ -295,10 +209,7 @@ export function InstructorHomeContent({
                   color: palette.textMuted as string,
                 }}
               >
-                {t("home.instructor.emptySchedule", {
-                  defaultValue:
-                    "The jobs board is live when you want the next one.",
-                })}
+                {t("home.instructor.emptySchedule", {})}
               </Text>
             </HomeSurface>
           ) : (
@@ -342,9 +253,7 @@ export function InstructorHomeContent({
                           textTransform: "uppercase",
                         }}
                       >
-                        {t("home.instructor.scheduleEyebrow", {
-                          defaultValue: "Schedule",
-                        })}
+                        {t("home.instructor.scheduleEyebrow")}
                       </Text>
                       <Text
                         selectable
@@ -356,13 +265,10 @@ export function InstructorHomeContent({
                           fontVariant: ["tabular-nums"],
                         }}
                       >
-                        {new Date(session.startTime).toLocaleTimeString(
-                          locale,
-                          {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          },
-                        )}
+                        {new Date(session.startTime).toLocaleTimeString(locale, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </Text>
                       <Text
                         style={{

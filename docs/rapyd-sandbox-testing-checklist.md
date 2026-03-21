@@ -5,6 +5,7 @@
 Set these before end-to-end testing:
 
 - `RAPYD_MODE=sandbox`
+- `RAPYD_CHECKOUT_MODE=a2a`
 - `RAPYD_SANDBOX_BASE_URL=https://sandboxapi.rapyd.net`
 - `RAPYD_ACCESS_KEY=<rapyd_sandbox_access_key>`
 - `RAPYD_SECRET_KEY=<rapyd_sandbox_secret_key>`
@@ -31,7 +32,8 @@ Notes:
 - Keep Rapyd base URLs as host-only URLs (no query/hash). Example: `https://sandboxapi.rapyd.net`
 - If you set both `RAPYD_SANDBOX_BASE_URL` and `RAPYD_BASE_URL`, sandbox uses `RAPYD_SANDBOX_BASE_URL`.
 - Hosted page URLs must be public `https` URLs and cannot be `localhost`, `exp://`, `exps://`, or custom app schemes.
-- If `RAPYD_PAYMENT_METHODS` is unset, checkout falls back to Rapyd's default country-valid methods.
+- If `RAPYD_CHECKOUT_MODE=a2a`, checkout defaults to bank-transfer and bank-redirect methods and fails closed if Rapyd cannot resolve them for your IL account.
+- If `RAPYD_PAYMENT_METHODS` is unset and `RAPYD_CHECKOUT_MODE=flexible`, checkout falls back to Rapyd's default country-valid methods.
 - If you use `join-queue.com`, make sure app config includes universal links (`applinks:join-queue.com`) and Android intent filters for `https://join-queue.com/rapyd/*`.
 
 ## Webhook setup
@@ -54,6 +56,21 @@ The backend verifies signature and timestamp before processing.
 8. If running sandbox with `ALLOW_SANDBOX_DESTINATION_SELF_VERIFY=1`, mark destination verified in-app.
 9. Tap `Withdraw to bank`.
 10. Confirm payout transitions: `queued` -> `processing` -> `pending_provider`/`paid`.
+
+## Sandbox virtual account test
+
+Use this when you want a fake bank account number and a simulated inbound transfer:
+
+1. Call `convex/rapyd.createSandboxVirtualAccountForEwallet` in sandbox mode.
+2. Use the returned `virtualAccountId` / bank account details as the simulated receiving account.
+3. Call `convex/rapyd.simulateSandboxVirtualAccountTransfer` with a small amount.
+4. Verify the virtual account history in Rapyd shows the deposit.
+5. If you want to inspect the wallet list, call `convex/rapyd.listSandboxVirtualAccountsForEwallet`.
+
+Notes:
+
+- These helpers are sandbox-only and will fail closed in production.
+- This tests the inbound bank-rail plumbing. It does not replace the instructor payout flow yet.
 
 ## Expected money behavior
 

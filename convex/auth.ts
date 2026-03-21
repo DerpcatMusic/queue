@@ -3,7 +3,7 @@ import Google from "@auth/core/providers/google";
 import { convexAuth } from "@convex-dev/auth/server";
 import { ConvexError } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { dedupeUsersByEmail, normalizeEmail } from "./lib/authDedupe";
+import { dedupeUsersByEmail, normalizeEmail, resolveCanonicalUserByEmail } from "./lib/authDedupe";
 import { ResendMagicLink } from "./resendMagicLink";
 import { ResendOTP } from "./resendOtp";
 
@@ -16,11 +16,16 @@ export function resolveLinkedUserId(args: {
 }) {
   const { matchedUserIdsByEmail, email } = args;
   const existingUserId = args.existingUserId ?? undefined;
+  const matchedUserId = matchedUserIdsByEmail[0];
+
+  if (existingUserId && matchedUserIdsByEmail.includes(existingUserId)) {
+    return existingUserId;
+  }
+
   if (matchedUserIdsByEmail.length > 1) {
     throw new ConvexError("Ambiguous account resolution for this email");
   }
 
-  const matchedUserId = matchedUserIdsByEmail[0];
   if (existingUserId && matchedUserId && existingUserId !== matchedUserId) {
     throw new ConvexError("Email is already linked to a different account");
   }
@@ -113,23 +118,38 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
             .withIndex("by_email", (q: any) => q.eq("email", email))
             .collect() as Promise<Array<{ _id: Id<"users"> }>>)
         : [];
+      const normalizedEmailMatches = emailMatches.map((row) => row._id);
+      let linkedUserId: Id<"users"> | null | undefined = null;
       const dedupedUserId =
-        canResolveLinkedUserByEmail(email, isEmailVerified) && emailMatches.length > 1
+        canResolveLinkedUserByEmail(email, isEmailVerified) && normalizedEmailMatches.length > 1
           ? await dedupeUsersByEmail({
               ctx,
               normalizedEmail: email!,
               preferredUserId: args.existingUserId,
               now,
               requireVerifiedUser: true,
+              emailOwnershipVerified: isEmailVerified,
             })
           : null;
-      const linkedUserId = resolveLinkedUserId({
-        existingUserId: dedupedUserId ?? args.existingUserId,
-        matchedUserIdsByEmail: dedupedUserId
-          ? [dedupedUserId]
-          : emailMatches.map((row) => row._id),
-        email,
-      });
+      if (dedupedUserId) {
+        linkedUserId = dedupedUserId;
+      } else if (
+        canResolveLinkedUserByEmail(email, isEmailVerified) &&
+        normalizedEmailMatches.length > 1
+      ) {
+        linkedUserId = await resolveCanonicalUserByEmail({
+          ctx,
+          normalizedEmail: email!,
+          preferredUserId: args.existingUserId,
+        });
+      }
+      if (!linkedUserId) {
+        linkedUserId = resolveLinkedUserId({
+          existingUserId: args.existingUserId,
+          matchedUserIdsByEmail: normalizedEmailMatches,
+          email,
+        });
+      }
 
       if (linkedUserId) {
         await ctx.db.patch("users", linkedUserId, {

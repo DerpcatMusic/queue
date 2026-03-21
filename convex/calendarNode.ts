@@ -91,6 +91,22 @@ function assertGoogleClientIdAllowed(clientId: string) {
   }
 }
 
+function getGoogleServerClientId() {
+  const clientId = process.env.GOOGLE_CALENDAR_SERVER_CLIENT_ID?.trim();
+  if (!clientId) {
+    throw new ConvexError("GOOGLE_CALENDAR_SERVER_CLIENT_ID is not configured");
+  }
+  return clientId;
+}
+
+function getGoogleClientSecret() {
+  const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET?.trim();
+  if (!clientSecret) {
+    throw new ConvexError("GOOGLE_CALENDAR_CLIENT_SECRET is not configured");
+  }
+  return clientSecret;
+}
+
 async function exchangeGoogleAuthorizationCode(args: {
   code: string;
   codeVerifier: string;
@@ -121,15 +137,48 @@ async function exchangeGoogleAuthorizationCode(args: {
   return payload;
 }
 
+async function exchangeGoogleServerAuthCode(args: {
+  serverAuthCode: string;
+  clientId: string;
+  clientSecret: string;
+}): Promise<GoogleTokenResponse> {
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code: args.serverAuthCode,
+    client_id: args.clientId,
+    client_secret: args.clientSecret,
+    redirect_uri: "",
+  });
+
+  const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+
+  const payload = (await response.json()) as GoogleTokenResponse;
+  if (!response.ok || !payload.access_token) {
+    throw new ConvexError(
+      payload.error_description ?? payload.error ?? "Failed to exchange Google server auth code",
+    );
+  }
+
+  return payload;
+}
+
 async function refreshGoogleAccessToken(args: {
   refreshToken: string;
   clientId: string;
+  clientSecret?: string;
 }): Promise<GoogleTokenResponse> {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: args.refreshToken,
     client_id: args.clientId,
   });
+  if (args.clientSecret) {
+    body.set("client_secret", args.clientSecret);
+  }
 
   const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
     method: "POST",
@@ -301,6 +350,9 @@ async function getGoogleAccessToken(ctx: any, integration: GoogleIntegrationReco
     const refreshed = await refreshGoogleAccessToken({
       refreshToken,
       clientId: integration.oauthClientId,
+      ...(integration.oauthClientId === process.env.GOOGLE_CALENDAR_SERVER_CLIENT_ID?.trim()
+        ? { clientSecret: getGoogleClientSecret() }
+        : {}),
     });
     accessToken = refreshed.access_token ?? "";
     accessTokenExpiresAt = now + Math.max(60, refreshed.expires_in ?? 3600) * 1000;
@@ -626,6 +678,79 @@ export const connectGoogleCalendarWithCodeInternal = internalAction({
   },
 });
 
+export const connectGoogleCalendarWithServerAuthCodeInternal = internalAction({
+  args: {
+    serverAuthCode: v.string(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    connected: v.boolean(),
+    accountEmail: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const currentUser = await ctx.runQuery(api.users.getCurrentUser, {});
+    if (!currentUser || (currentUser.role !== "instructor" && currentUser.role !== "studio")) {
+      throw new ConvexError("Only instructors and studios can connect Google Calendar");
+    }
+
+    const profile = (await ctx.runQuery(calendarInternal.getCalendarProfileForUser, {
+      userId: currentUser._id,
+    })) as CalendarOwnerProfile | null;
+    if (!profile) {
+      throw new ConvexError("Calendar profile not found");
+    }
+
+    const existingIntegration = (await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {
+      userId: currentUser._id,
+    })) as GoogleIntegrationRecord | null;
+
+    const clientId = getGoogleServerClientId();
+    assertGoogleClientIdAllowed(clientId);
+    const clientSecret = getGoogleClientSecret();
+
+    const token = await exchangeGoogleServerAuthCode({
+      serverAuthCode: args.serverAuthCode,
+      clientId,
+      clientSecret,
+    });
+
+    const refreshToken = token.refresh_token
+      ? encryptCalendarToken(token.refresh_token)
+      : existingIntegration?.refreshToken;
+    const accessToken = token.access_token;
+    if (!accessToken) {
+      throw new ConvexError("Google access token was missing from authorization response");
+    }
+    const accountEmail = await fetchGoogleAccountEmail(accessToken);
+
+    await ctx.runMutation(calendarInternal.upsertGoogleIntegration, {
+      userId: currentUser._id,
+      role: profile.role,
+      ...(profile.instructorId ? { instructorId: profile.instructorId } : {}),
+      ...(profile.studioId ? { studioId: profile.studioId } : {}),
+      accountEmail,
+      oauthClientId: clientId,
+      accessToken: encryptRequiredCalendarToken(accessToken),
+      refreshToken,
+      accessTokenExpiresAt: Date.now() + Math.max(60, token.expires_in ?? 3600) * 1000,
+      scopes: parseScopes(token.scope),
+      enableSync: true,
+      clearError: true,
+    });
+
+    await runGoogleCalendarSync(ctx, {
+      userId: currentUser._id,
+      requireConnected: true,
+    });
+
+    return {
+      ok: true,
+      connected: true,
+      ...omitUndefined({ accountEmail }),
+    };
+  },
+});
+
 export const syncMyGoogleCalendarEventsInternal = internalAction({
   args: {
     startTime: v.optional(v.number()),
@@ -639,8 +764,20 @@ export const syncMyGoogleCalendarEventsInternal = internalAction({
     importedCount: v.number(),
     importedRemovedCount: v.number(),
   }),
-  handler: async (ctx, args) => {
-    const currentUser = await ctx.runQuery(api.users.getCurrentUser as any, {});
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    ok: boolean;
+    syncedCount: number;
+    removedCount: number;
+    importedCount: number;
+    importedRemovedCount: number;
+  }> => {
+    const currentUser = (await ctx.runQuery(api.users.getCurrentUser as any, {})) as {
+      _id: Id<"users">;
+      role: string;
+    } | null;
     if (!currentUser || (currentUser.role !== "instructor" && currentUser.role !== "studio")) {
       throw new ConvexError("Only instructors and studios can sync Google Calendar");
     }

@@ -20,6 +20,30 @@ export type PayoutStatus =
 
 export type StatusTone = "primary" | "success" | "warning" | "danger" | "muted";
 
+export function isPaymentStatus(value: unknown): value is PaymentStatus {
+  return (
+    value === "created" ||
+    value === "pending" ||
+    value === "authorized" ||
+    value === "captured" ||
+    value === "failed" ||
+    value === "cancelled" ||
+    value === "refunded"
+  );
+}
+
+export function isPayoutStatus(value: unknown): value is PayoutStatus {
+  return (
+    value === "queued" ||
+    value === "processing" ||
+    value === "pending_provider" ||
+    value === "paid" ||
+    value === "failed" ||
+    value === "cancelled" ||
+    value === "needs_attention"
+  );
+}
+
 export function formatAgorotCurrency(amountAgorot: number, locale: string, currency: string) {
   return new Intl.NumberFormat(locale, {
     style: "currency",
@@ -28,7 +52,10 @@ export function formatAgorotCurrency(amountAgorot: number, locale: string, curre
   }).format(amountAgorot / 100);
 }
 
-export function getPaymentStatusLabel(status: PaymentStatus): string {
+export function getPaymentStatusLabel(status: PaymentStatus | string | null | undefined): string {
+  if (!isPaymentStatus(status)) {
+    return i18n.t("profile.roles.unknown");
+  }
   switch (status) {
     case "created":
       return i18n.t("jobsTab.checkout.paymentStatus.created");
@@ -49,7 +76,10 @@ export function getPaymentStatusLabel(status: PaymentStatus): string {
   }
 }
 
-export function getPayoutStatusLabel(status: PayoutStatus): string {
+export function getPayoutStatusLabel(status: PayoutStatus | string | null | undefined): string {
+  if (!isPayoutStatus(status)) {
+    return i18n.t("profile.roles.unknown");
+  }
   switch (status) {
     case "queued":
       return i18n.t("jobsTab.checkout.payoutStatus.queued");
@@ -70,7 +100,12 @@ export function getPayoutStatusLabel(status: PayoutStatus): string {
   }
 }
 
-export function getPaymentStatusTone(status: PaymentStatus): StatusTone {
+export function getPaymentStatusTone(
+  status: PaymentStatus | string | null | undefined,
+): StatusTone {
+  if (!isPaymentStatus(status)) {
+    return "muted";
+  }
   switch (status) {
     case "captured":
       return "success";
@@ -88,7 +123,10 @@ export function getPaymentStatusTone(status: PaymentStatus): StatusTone {
   }
 }
 
-export function getPayoutStatusTone(status: PayoutStatus): StatusTone {
+export function getPayoutStatusTone(status: PayoutStatus | string | null | undefined): StatusTone {
+  if (!isPayoutStatus(status)) {
+    return "muted";
+  }
   switch (status) {
     case "paid":
       return "success";

@@ -1,5 +1,6 @@
 import { useMutation } from "convex/react";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -140,6 +141,7 @@ function resolveFileSystemLegacyModule(): FileSystemLegacyModule | null {
 }
 
 export function useProfileImageUpload() {
+  const { t } = useTranslation();
   const createUploadSession = useMutation(api.users.createMyProfileImageUploadSession);
   const completeUpload = useMutation(api.users.completeMyProfileImageUpload);
   const [uploadPhase, setUploadPhase] = useState<ProfileImageUploadPhase>("idle");
@@ -151,14 +153,12 @@ export function useProfileImageUpload() {
     try {
       const imagePicker = resolveImagePickerModule();
       if (!imagePicker) {
-        throw new Error(
-          "Image picker is unavailable in this build. Update Expo Go or rebuild your development client.",
-        );
+        throw new Error(t("profile.editor.photoPickerUnavailable"));
       }
 
       const permission = await imagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        throw new Error("Photo library permission is required.");
+        throw new Error(t("profile.editor.photoPermissionRequired"));
       }
 
       const picked = await imagePicker.launchImageLibraryAsync({
@@ -176,9 +176,7 @@ export function useProfileImageUpload() {
       setUploadPhase("compressing");
       const imageManipulator = resolveImageManipulatorModule();
       if (!imageManipulator) {
-        throw new Error(
-          "Image compression is unavailable in this build. Update Expo Go or rebuild your development client.",
-        );
+        throw new Error(t("profile.editor.photoCompressionUnavailable"));
       }
 
       const processedAsset = await imageManipulator.manipulateAsync(
@@ -194,9 +192,7 @@ export function useProfileImageUpload() {
       const { uploadUrl, sessionToken } = await createUploadSession({});
       const fileSystemLegacy = resolveFileSystemLegacyModule();
       if (!fileSystemLegacy) {
-        throw new Error(
-          "Native file upload is unavailable in this build. Update Expo Go or rebuild your development client.",
-        );
+        throw new Error(t("profile.editor.photoUploadUnavailable"));
       }
 
       const uploadResponse = await fileSystemLegacy.uploadAsync(uploadUrl, processedAsset.uri, {
@@ -207,12 +203,12 @@ export function useProfileImageUpload() {
         },
       });
       if (uploadResponse.status < 200 || uploadResponse.status >= 300) {
-        throw new Error("Failed to upload selected image.");
+        throw new Error(t("profile.editor.photoUploadFailed"));
       }
 
       const uploadResult = JSON.parse(uploadResponse.body) as UploadResponse;
       if (!uploadResult.storageId) {
-        throw new Error("Upload did not return a storage id.");
+        throw new Error(t("profile.editor.photoUploadMissingStorageId"));
       }
 
       const completed = await completeUpload({
@@ -224,15 +220,15 @@ export function useProfileImageUpload() {
     } finally {
       setUploadPhase("idle");
     }
-  }, [completeUpload, createUploadSession, isUploading]);
+  }, [completeUpload, createUploadSession, isUploading, t]);
 
   const uploadStatusLabel =
     uploadPhase === "selecting"
-      ? "Choosing photo..."
+      ? t("profile.editor.choosingPhoto")
       : uploadPhase === "compressing"
-        ? "Compressing photo..."
+        ? t("profile.editor.compressingPhoto")
         : uploadPhase === "uploading"
-          ? "Uploading photo..."
+          ? t("profile.editor.uploadingPhoto")
           : null;
 
   return {

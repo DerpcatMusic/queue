@@ -3,7 +3,13 @@ import { v } from "convex/values";
 import { ZONE_OPTIONS } from "../src/constants/zones.generated";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { action, internalMutation, internalQuery, type MutationCtx, query } from "./_generated/server";
+import {
+  action,
+  internalMutation,
+  internalQuery,
+  type MutationCtx,
+  query,
+} from "./_generated/server";
 import { dedupeUsersByEmail, normalizeEmail } from "./lib/authDedupe";
 import { isKnownZoneId } from "./lib/domainValidation";
 import { mapLegacyPaymentStatusToOrderStatus, summarizeLedgerBalances } from "./lib/marketplace";
@@ -50,6 +56,15 @@ type MarketplaceFinanceBackfillResult = {
   continueCursor?: string;
 };
 
+type DevelopmentResetResult = {
+  tablesCleared: number;
+  deletedDocuments: number;
+  deletedByTable: Array<{
+    table: string;
+    deleted: number;
+  }>;
+};
+
 function toCleanZone(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
@@ -71,6 +86,53 @@ function resolveZoneId(value: string | undefined): string | undefined {
 }
 
 const MIGRATIONS_ACCESS_TOKEN_ENV = "MIGRATIONS_ACCESS_TOKEN";
+const DEVELOPMENT_RESET_CONFIRMATION = "DELETE_ALL_DEV_DATA";
+const DEVELOPMENT_RESET_TABLES = [
+  "authAccounts",
+  "authRateLimits",
+  "authRefreshTokens",
+  "authSessions",
+  "authVerificationCodes",
+  "authVerifiers",
+  "calendarEventMappings",
+  "calendarExternalEvents",
+  "calendarIntegrations",
+  "diditEvents",
+  "instructorCoverage",
+  "instructorProfiles",
+  "instructorSports",
+  "instructorZones",
+  "integrationEvents",
+  "invoices",
+  "jobApplicationStats",
+  "jobApplications",
+  "jobClaimEvents",
+  "jobs",
+  "ledgerEntries",
+  "notificationLog",
+  "notificationQueue",
+  "paymentEvents",
+  "paymentOrders",
+  "paymentProviderLinks",
+  "payments",
+  "payoutDestinationEvents",
+  "payoutDestinationOnboarding",
+  "payoutDestinations",
+  "payoutEvents",
+  "payoutProviderLinks",
+  "payoutReleaseRules",
+  "payoutSchedules",
+  "payouts",
+  "profileImageUploadSessions",
+  "providerMethodCache",
+  "pushDevices",
+  "studioProfiles",
+  "studioSports",
+  "userNotifications",
+  "users",
+  "webhookDeliveries",
+  "webhookInvalidSignatureThrottle",
+] as const;
 
 export function isValidMigrationsAccessToken(accessToken: string | undefined): boolean {
   const expected = process.env[MIGRATIONS_ACCESS_TOKEN_ENV]?.trim();
@@ -83,6 +145,12 @@ function requireMigrationsAccessToken(accessToken: string | undefined) {
       "Unauthorized migration operation. Set MIGRATIONS_ACCESS_TOKEN and pass accessToken.",
     );
   }
+}
+
+async function deleteAllRowsInTable(ctx: MutationCtx, table: string) {
+  const rows = await ((ctx.db as any).query(table) as any).collect();
+  await Promise.all(rows.map((row: { _id: string }) => ctx.db.delete(row._id as any)));
+  return rows.length;
 }
 
 function getFinanceBackfillBatchSize(batchSize: number | undefined) {
@@ -99,9 +167,7 @@ function buildLegacyPaymentOrderCorrelationToken(paymentId: Id<"payments">) {
 function isInstructorKycApprovedForMigration(
   profile: Pick<Doc<"instructorProfiles">, "diditVerificationStatus" | "diditLegalName"> | null,
 ) {
-  return (
-    profile?.diditVerificationStatus === "approved" && Boolean(profile.diditLegalName?.trim())
-  );
+  return profile?.diditVerificationStatus === "approved" && Boolean(profile.diditLegalName?.trim());
 }
 
 async function insertMarketplaceLedgerEntryIfMissing(
@@ -121,7 +187,8 @@ async function insertMarketplaceLedgerEntryIfMissing(
     referenceType: Doc<"ledgerEntries">["referenceType"];
     referenceId: string;
     createdAt: number;
-  }) {
+  },
+) {
   const existing = await ctx.db
     .query("ledgerEntries")
     .withIndex("by_dedupe_key", (q: any) => q.eq("dedupeKey", args.dedupeKey))
@@ -270,20 +337,15 @@ function mapLegacyPayoutToScheduleStatus(
       return "failed";
     case "cancelled":
       return "cancelled";
-    case "needs_attention":
     default:
       return "needs_attention";
   }
 }
 
-async function ensurePaymentOrderForLegacyPayment(
-  ctx: MutationCtx,
-  payment: Doc<"payments">,
-) {
+async function ensurePaymentOrderForLegacyPayment(ctx: MutationCtx, payment: Doc<"payments">) {
   const legacyCorrelationToken = buildLegacyPaymentOrderCorrelationToken(payment._id);
   let paymentOrder =
-    (payment.paymentOrderId ? await ctx.db.get(payment.paymentOrderId) : null) ??
-    null;
+    (payment.paymentOrderId ? await ctx.db.get(payment.paymentOrderId) : null) ?? null;
 
   if (!paymentOrder) {
     const providerLink = await ctx.db
@@ -561,17 +623,25 @@ export const getMarketplaceFinanceBackfillReport = query({
     requireMigrationsAccessToken(args.accessToken);
     const sampleLimit = Math.min(Math.max(args.sampleLimit ?? 20, 1), 100);
 
-    const [payments, paymentProviderLinks, ledgerEntries, payoutSchedules, payouts, payoutProviderLinks] =
-      await Promise.all([
-        ctx.db.query("payments").collect(),
-        ctx.db.query("paymentProviderLinks").collect(),
-        ctx.db.query("ledgerEntries").collect(),
-        ctx.db.query("payoutSchedules").collect(),
-        ctx.db.query("payouts").collect(),
-        ctx.db.query("payoutProviderLinks").collect(),
-      ]);
+    const [
+      payments,
+      paymentProviderLinks,
+      ledgerEntries,
+      payoutSchedules,
+      payouts,
+      payoutProviderLinks,
+    ] = await Promise.all([
+      ctx.db.query("payments").collect(),
+      ctx.db.query("paymentProviderLinks").collect(),
+      ctx.db.query("ledgerEntries").collect(),
+      ctx.db.query("payoutSchedules").collect(),
+      ctx.db.query("payouts").collect(),
+      ctx.db.query("payoutProviderLinks").collect(),
+    ]);
 
-    const paymentOrderIdsWithLedger = new Set(ledgerEntries.map((entry) => String(entry.paymentOrderId)));
+    const paymentOrderIdsWithLedger = new Set(
+      ledgerEntries.map((entry) => String(entry.paymentOrderId)),
+    );
     const paymentOrderIdsWithSchedules = new Set(
       payoutSchedules.map((schedule) => String(schedule.paymentOrderId)),
     );
@@ -615,10 +685,7 @@ export const getMarketplaceFinanceBackfillReport = query({
       if (!hasLegacyLink) {
         paymentsMissingProviderLinks += 1;
       }
-      if (
-        capturedOrRefunded &&
-        (!linkedOrderId || !paymentOrderIdsWithLedger.has(linkedOrderId))
-      ) {
+      if (capturedOrRefunded && (!linkedOrderId || !paymentOrderIdsWithLedger.has(linkedOrderId))) {
         capturedOrRefundedPaymentsMissingLedger += 1;
         if (samplePaymentIdsMissingLedger.length < sampleLimit) {
           samplePaymentIdsMissingLedger.push(payment._id);
@@ -639,7 +706,11 @@ export const getMarketplaceFinanceBackfillReport = query({
     let payoutsMissingBackfillLinks = 0;
     const samplePayoutIdsMissingLinks: Id<"payouts">[] = [];
     for (const payout of payouts) {
-      if (!payout.paymentOrderId || !payout.payoutScheduleId || !payoutIdsWithLinks.has(String(payout._id))) {
+      if (
+        !payout.paymentOrderId ||
+        !payout.payoutScheduleId ||
+        !payoutIdsWithLinks.has(String(payout._id))
+      ) {
         payoutsMissingBackfillLinks += 1;
         if (samplePayoutIdsMissingLinks.length < sampleLimit) {
           samplePayoutIdsMissingLinks.push(payout._id);
@@ -861,7 +932,9 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
             jobCompleted &&
             kycApproved),
         releaseReferenceType: primaryPayout ? "adjustment" : "job_completion",
-        releaseReferenceId: primaryPayout ? `migration:release:${String(payment._id)}` : String(payment.jobId),
+        releaseReferenceId: primaryPayout
+          ? `migration:release:${String(payment._id)}`
+          : String(payment.jobId),
         releaseAt:
           paymentOrder.releasedAt ??
           primaryPayout?.createdAt ??
@@ -873,7 +946,9 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
 
       if (paymentOrder.instructorId && paymentOrder.instructorUserId) {
         let payoutSchedule =
-          (primaryPayout?.payoutScheduleId ? await ctx.db.get(primaryPayout.payoutScheduleId) : null) ??
+          (primaryPayout?.payoutScheduleId
+            ? await ctx.db.get(primaryPayout.payoutScheduleId)
+            : null) ??
           (await ctx.db
             .query("payoutSchedules")
             .withIndex("by_payment_order", (q: any) => q.eq("paymentOrderId", paymentOrder._id))
@@ -899,7 +974,10 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
                 ? "Instructor identity verification is required"
                 : undefined);
 
-        if (!payoutSchedule && (payment.status === "captured" || payment.status === "refunded" || primaryPayout)) {
+        if (
+          !payoutSchedule &&
+          (payment.status === "captured" || payment.status === "refunded" || primaryPayout)
+        ) {
           const payoutScheduleId = await ctx.db.insert(
             "payoutSchedules",
             omitUndefined({
@@ -915,7 +993,8 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
               status: nextScheduleStatus,
               amountAgorot: paymentOrder.instructorGrossAmountAgorot,
               currency: paymentOrder.currency,
-              releaseAfter: nextScheduleStatus === "scheduled" ? primaryPayout?.createdAt : undefined,
+              releaseAfter:
+                nextScheduleStatus === "scheduled" ? primaryPayout?.createdAt : undefined,
               readyAt:
                 nextScheduleStatus === "available" ||
                 nextScheduleStatus === "scheduled" ||
@@ -978,7 +1057,10 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
 
         if (payoutSchedule && primaryPayout) {
           for (const payout of legacyPayouts) {
-            if (payout.paymentOrderId !== paymentOrder._id || payout.payoutScheduleId !== payoutSchedule._id) {
+            if (
+              payout.paymentOrderId !== paymentOrder._id ||
+              payout.payoutScheduleId !== payoutSchedule._id
+            ) {
               await ctx.db.patch(payout._id, {
                 paymentOrderId: paymentOrder._id,
                 payoutScheduleId: payoutSchedule._id,
@@ -1055,7 +1137,8 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
               currency: payoutSchedule.currency,
               referenceType: "payout",
               referenceId: String(primaryPayout._id),
-              createdAt: primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
+              createdAt:
+                primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
             });
             if (paidReserved.created) {
               ledgerEntriesInserted += 1;
@@ -1074,7 +1157,8 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
               currency: payoutSchedule.currency,
               referenceType: "payout",
               referenceId: String(primaryPayout._id),
-              createdAt: primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
+              createdAt:
+                primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
             });
             if (paidOut.created) {
               ledgerEntriesInserted += 1;
@@ -1100,7 +1184,8 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
               currency: payoutSchedule.currency,
               referenceType: "payout",
               referenceId: String(primaryPayout._id),
-              createdAt: primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
+              createdAt:
+                primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
             });
             if (failedReserved.created) {
               ledgerEntriesInserted += 1;
@@ -1119,7 +1204,8 @@ export const backfillMarketplaceFinanceBatch = internalMutation({
               currency: payoutSchedule.currency,
               referenceType: "payout",
               referenceId: String(primaryPayout._id),
-              createdAt: primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
+              createdAt:
+                primaryPayout.terminalAt ?? primaryPayout.updatedAt ?? primaryPayout.createdAt,
             });
             if (failedAvailable.created) {
               ledgerEntriesInserted += 1;
@@ -1897,7 +1983,10 @@ export const dedupeDuplicateUsersByEmail = action({
     const duplicateEmails: string[] = normalizedTargetEmail
       ? [normalizedTargetEmail]
       : await ctx.runQuery(internal.migrations.getDuplicateUserEmails, {});
-    const targetEmails = duplicateEmails.slice(0, Math.max(args.limit ?? duplicateEmails.length, 0));
+    const targetEmails = duplicateEmails.slice(
+      0,
+      Math.max(args.limit ?? duplicateEmails.length, 0),
+    );
     const canonicalUserIds: Id<"users">[] = [];
 
     for (const email of targetEmails) {
@@ -1915,6 +2004,32 @@ export const dedupeDuplicateUsersByEmail = action({
       canonicalUserIds,
       duplicateEmails: targetEmails,
     };
+  },
+});
+
+export const resetDevelopmentData = action({
+  args: {
+    accessToken: v.optional(v.string()),
+    confirm: v.string(),
+  },
+  returns: v.object({
+    tablesCleared: v.number(),
+    deletedDocuments: v.number(),
+    deletedByTable: v.array(
+      v.object({
+        table: v.string(),
+        deleted: v.number(),
+      }),
+    ),
+  }),
+  handler: async (ctx, args): Promise<DevelopmentResetResult> => {
+    requireMigrationsAccessToken(args.accessToken);
+    if (args.confirm !== DEVELOPMENT_RESET_CONFIRMATION) {
+      throw new Error(
+        `Refusing to reset development data without confirm=${DEVELOPMENT_RESET_CONFIRMATION}.`,
+      );
+    }
+    return await ctx.runMutation(internal.migrations.clearAllDevelopmentData, {});
   },
 });
 
@@ -1957,6 +2072,34 @@ export const dedupeUsersForEmail = internalMutation({
       normalizedEmail,
       requireVerifiedUser: true,
     });
+  },
+});
+
+export const clearAllDevelopmentData = internalMutation({
+  args: {},
+  returns: v.object({
+    tablesCleared: v.number(),
+    deletedDocuments: v.number(),
+    deletedByTable: v.array(
+      v.object({
+        table: v.string(),
+        deleted: v.number(),
+      }),
+    ),
+  }),
+  handler: async (ctx): Promise<DevelopmentResetResult> => {
+    const deletedByTable: Array<{ table: string; deleted: number }> = [];
+
+    for (const table of DEVELOPMENT_RESET_TABLES) {
+      const deleted = await deleteAllRowsInTable(ctx, table);
+      deletedByTable.push({ table, deleted });
+    }
+
+    return {
+      tablesCleared: deletedByTable.filter((entry) => entry.deleted > 0).length,
+      deletedDocuments: deletedByTable.reduce((total, entry) => total + entry.deleted, 0),
+      deletedByTable,
+    };
   },
 });
 
