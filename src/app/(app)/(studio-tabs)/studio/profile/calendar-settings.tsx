@@ -6,20 +6,23 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Platform, StyleSheet, View } from "react-native";
 
-import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
-import { ActionButton } from "@/components/ui/action-button";
 import {
-  KitList,
-  KitListItem,
-  KitSegmentedToggle,
-  KitSwitchRow,
-} from "@/components/ui/kit";
+  ProfileSubpageScrollView,
+  useProfileSubpageSheet,
+} from "@/components/profile/profile-subpage-sheet";
+import { ActionButton } from "@/components/ui/action-button";
+import { KitList, KitListItem, KitSegmentedToggle, KitSwitchRow } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
 import { prepareDeviceCalendarSync } from "@/lib/device-calendar-sync";
+import { resolveGoogleCalendarAuthConfig } from "@/lib/google-calendar-auth-config";
+import {
+  connectGoogleCalendarNative,
+  disconnectGoogleCalendarNative,
+} from "@/lib/google-calendar-native-auth";
 
 const CALENDAR_PROVIDER_KEYS = {
   none: "profile.settings.calendar.provider.none",
@@ -29,11 +32,7 @@ const CALENDAR_PROVIDER_KEYS = {
 
 type CalendarProvider = keyof typeof CALENDAR_PROVIDER_KEYS;
 
-const GOOGLE_SCOPES = [
-  "https://www.googleapis.com/auth/calendar.events",
-  "openid",
-  "email",
-];
+const GOOGLE_SCOPES = ["https://www.googleapis.com/auth/calendar.events", "openid", "email"];
 
 const GOOGLE_DISCOVERY: AuthSession.DiscoveryDocument = {
   authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -41,11 +40,11 @@ const GOOGLE_DISCOVERY: AuthSession.DiscoveryDocument = {
   revocationEndpoint: "https://oauth2.googleapis.com/revoke",
 };
 
-const calendarApi = (api as unknown as { calendar: Record<string, unknown> })
-  .calendar as {
+const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).calendar as {
   getMyGoogleCalendarStatus: unknown;
   disconnectGoogleCalendar: unknown;
   connectGoogleCalendarWithCode: unknown;
+  connectGoogleCalendarWithServerAuthCode: unknown;
   syncMyGoogleCalendarEvents: unknown;
 };
 
@@ -68,21 +67,15 @@ type DisconnectGoogleCalendarResult = {
 
 WebBrowser.maybeCompleteAuthSession();
 
-function resolveGoogleClientId() {
-  if (Platform.OS === "ios") {
-    return process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID_IOS;
-  }
-  if (Platform.OS === "android") {
-    return process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID_ANDROID;
-  }
-  return process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID_WEB;
-}
-
 export default function StudioCalendarSettingsScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
   const router = useRouter();
   const { currentUser } = useUser();
+  useProfileSubpageSheet({
+    title: t("profile.navigation.calendar"),
+    routeMatchPath: "/profile/calendar-settings",
+  });
 
   const studioSettings = useQuery(
     api.users.getMyStudioSettings,
@@ -94,20 +87,19 @@ export default function StudioCalendarSettingsScreen() {
   ) as GoogleCalendarStatus | undefined;
 
   const saveSettings = useMutation(api.users.updateMyStudioCalendarSettings);
-  const disconnectGoogleCalendar = useAction(
-    calendarApi.disconnectGoogleCalendar as any,
-  ) as (args: Record<string, never>) => Promise<DisconnectGoogleCalendarResult>;
-  const exchangeGoogleCode = useAction(
-    calendarApi.connectGoogleCalendarWithCode as any,
-  ) as (args: {
+  const disconnectGoogleCalendar = useAction(calendarApi.disconnectGoogleCalendar as any) as (
+    args: Record<string, never>,
+  ) => Promise<DisconnectGoogleCalendarResult>;
+  const exchangeGoogleCode = useAction(calendarApi.connectGoogleCalendarWithCode as any) as (args: {
     code: string;
     codeVerifier: string;
     redirectUri: string;
     clientId: string;
   }) => Promise<unknown>;
-  const syncGoogleCalendar = useAction(
-    calendarApi.syncMyGoogleCalendarEvents as any,
-  ) as (args: {
+  const exchangeGoogleServerAuthCode = useAction(
+    calendarApi.connectGoogleCalendarWithServerAuthCode as any,
+  ) as (args: { serverAuthCode: string }) => Promise<unknown>;
+  const syncGoogleCalendar = useAction(calendarApi.syncMyGoogleCalendarEvents as any) as (args: {
     startTime?: number;
     endTime?: number;
     limit?: number;
@@ -121,17 +113,15 @@ export default function StudioCalendarSettingsScreen() {
   const [isDisconnectingGoogle, setIsDisconnectingGoogle] = useState(false);
   const [seeded, setSeeded] = useState(false);
 
-  const googleClientId = resolveGoogleClientId();
-  const redirectUri =
-    process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_REDIRECT_URL ??
-    AuthSession.makeRedirectUri({
-      scheme: "queue",
-      path: "oauth/google-calendar",
-    });
+  const googleAuthConfig = resolveGoogleCalendarAuthConfig(Platform.OS);
+  const googleClientId = googleAuthConfig.clientId;
+  const googleServerClientId = googleAuthConfig.serverClientId;
+  const redirectUri = googleAuthConfig.redirectUri;
+  const googleConfigError = googleAuthConfig.configError;
 
   const [googleRequest, , promptGoogleAuth] = AuthSession.useAuthRequest(
     {
-      clientId: googleClientId ?? "",
+      clientId: googleClientId ?? googleServerClientId ?? "",
       scopes: GOOGLE_SCOPES,
       responseType: AuthSession.ResponseType.Code,
       usePKCE: true,
@@ -220,26 +210,65 @@ export default function StudioCalendarSettingsScreen() {
   };
 
   const onConnectGoogle = async () => {
-    if (!googleClientId || !googleRequest?.codeVerifier) {
+    if (googleConfigError) {
+      Alert.alert(t("profile.settings.errors.saveFailed"), googleConfigError);
       return;
     }
 
-    setIsConnectingGoogle(true);
-    try {
-      const result = await promptGoogleAuth();
-      if (result.type !== "success" || !result.params.code) {
+    if (Platform.OS === "android") {
+      if (!googleServerClientId) {
+        Alert.alert(
+          t("profile.settings.errors.saveFailed"),
+          "Google Calendar is not configured for this Android build.",
+        );
         return;
       }
+    } else if (!googleClientId || !googleRequest?.codeVerifier) {
+      Alert.alert(
+        t("profile.settings.errors.saveFailed"),
+        "Google Calendar is not configured for this build.",
+      );
+      return;
+    }
 
-      await exchangeGoogleCode({
-        code: result.params.code,
-        codeVerifier: googleRequest.codeVerifier,
-        redirectUri,
-        clientId: googleClientId,
-      });
+    const googleCodeVerifier = googleRequest?.codeVerifier;
+    const resolvedGoogleClientId = googleClientId;
+
+    setIsConnectingGoogle(true);
+    try {
+      if (Platform.OS === "android") {
+        const nativeResult = await connectGoogleCalendarNative({
+          serverClientId: googleServerClientId!,
+          scopes: GOOGLE_SCOPES,
+        });
+        if (nativeResult.type === "cancelled") {
+          return;
+        }
+
+        await exchangeGoogleServerAuthCode({
+          serverAuthCode: nativeResult.serverAuthCode,
+        });
+      } else {
+        const result = await promptGoogleAuth();
+        if (result.type !== "success" || !result.params.code) {
+          return;
+        }
+
+        await exchangeGoogleCode({
+          code: result.params.code,
+          codeVerifier: googleCodeVerifier!,
+          redirectUri,
+          clientId: resolvedGoogleClientId!,
+        });
+      }
 
       setProvider("google");
       setSyncEnabled(true);
+    } catch (error) {
+      Alert.alert(
+        t("profile.settings.errors.saveFailed"),
+        error instanceof Error ? error.message : "Google Calendar connection failed.",
+      );
     } finally {
       setIsConnectingGoogle(false);
     }
@@ -258,6 +287,11 @@ export default function StudioCalendarSettingsScreen() {
     setIsDisconnectingGoogle(true);
     try {
       const result = await disconnectGoogleCalendar({});
+      if (Platform.OS === "android") {
+        await disconnectGoogleCalendarNative().catch(() => {
+          /* best-effort */
+        });
+      }
       if (!result.deletedRemoteEvents) {
         Alert.alert(
           t("profile.settings.calendar.disconnectCleanupWarningTitle"),
@@ -279,9 +313,12 @@ export default function StudioCalendarSettingsScreen() {
     : null;
 
   return (
-    <TabScreenScrollView
-      routeKey="studio/profile"
+    <ProfileSubpageScrollView
+      routeKey="studio/profile/calendar-settings"
       style={[styles.screen, { backgroundColor: palette.appBg }]}
+      contentContainerStyle={{
+        paddingBottom: BrandSpacing.xl,
+      }}
     >
       <KitList inset>
         <KitListItem title={t("profile.settings.calendar.provider.none")}>
@@ -292,9 +329,7 @@ export default function StudioCalendarSettingsScreen() {
                 setProvider(next);
                 if (next === "none") setSyncEnabled(false);
               }}
-              options={(
-                Object.keys(CALENDAR_PROVIDER_KEYS) as CalendarProvider[]
-              ).map((key) => ({
+              options={(Object.keys(CALENDAR_PROVIDER_KEYS) as CalendarProvider[]).map((key) => ({
                 value: key,
                 label: t(CALENDAR_PROVIDER_KEYS[key]),
               }))}
@@ -308,10 +343,7 @@ export default function StudioCalendarSettingsScreen() {
           <KitSwitchRow
             title={t("profile.settings.calendar.autoSync")}
             value={syncEnabled}
-            disabled={
-              provider === "none" ||
-              (provider === "google" && !hasGoogleConnection)
-            }
+            disabled={provider === "none" || (provider === "google" && !hasGoogleConnection)}
             onValueChange={setSyncEnabled}
             description={t("profile.settings.calendar.futureNote")}
           />
@@ -327,12 +359,13 @@ export default function StudioCalendarSettingsScreen() {
             />
           ) : null}
           {provider === "apple" ? (
-            <KitListItem
-              title={t("profile.settings.calendar.applePermissionNote")}
-            />
+            <KitListItem title={t("profile.settings.calendar.applePermissionNote")} />
           ) : null}
           {provider === "google" && googleStatus?.lastError ? (
             <KitListItem title={googleStatus.lastError} />
+          ) : null}
+          {provider === "google" && googleConfigError ? (
+            <KitListItem title={googleConfigError} />
           ) : null}
           {connectedDate ? (
             <KitListItem
@@ -344,9 +377,7 @@ export default function StudioCalendarSettingsScreen() {
         </KitList>
       </View>
 
-      <View
-        style={{ paddingHorizontal: 16, paddingTop: BrandSpacing.md, gap: 10 }}
-      >
+      <View style={{ paddingHorizontal: 16, paddingTop: BrandSpacing.md, gap: 10 }}>
         {provider === "google" ? (
           <View style={{ gap: 10 }}>
             {!hasGoogleConnection ? (
@@ -360,7 +391,11 @@ export default function StudioCalendarSettingsScreen() {
                   void onConnectGoogle();
                 }}
                 disabled={
-                  isConnectingGoogle || !googleClientId || !googleRequest
+                  isConnectingGoogle ||
+                  !!googleConfigError ||
+                  (Platform.OS === "android"
+                    ? !googleServerClientId
+                    : !googleClientId || !googleRequest)
                 }
                 palette={palette}
                 fullWidth
@@ -401,9 +436,7 @@ export default function StudioCalendarSettingsScreen() {
 
         <ActionButton
           label={
-            isSaving
-              ? t("profile.settings.actions.saving")
-              : t("profile.settings.actions.save")
+            isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
           }
           onPress={() => {
             void onSave();
@@ -420,7 +453,7 @@ export default function StudioCalendarSettingsScreen() {
           fullWidth
         />
       </View>
-    </TabScreenScrollView>
+    </ProfileSubpageScrollView>
   );
 }
 

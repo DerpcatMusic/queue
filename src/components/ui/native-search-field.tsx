@@ -1,7 +1,8 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Pressable, TextInput, type TextInputProps, View } from "react-native";
-import { BrandRadius } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
+import { useThemePreference } from "@/hooks/use-theme-preference";
 
 type NativeSearchFieldProps = Omit<TextInputProps, "value" | "onChangeText"> & {
   value: string;
@@ -18,26 +19,27 @@ export function NativeSearchField({
   ...rest
 }: NativeSearchFieldProps) {
   const palette = useBrand();
+  const { resolvedScheme } = useThemePreference();
+  const surfaceColor =
+    resolvedScheme === "dark"
+      ? (palette.surfaceElevated as string)
+      : (palette.surfaceAlt as string);
 
   return (
     <View
       style={{
-        minHeight: 50,
+        minHeight: 52,
         borderWidth: 0,
         borderRadius: BrandRadius.input,
         borderCurve: "continuous",
-        backgroundColor: palette.surfaceAlt,
-        paddingHorizontal: 14,
+        backgroundColor: surfaceColor,
+        paddingHorizontal: BrandSpacing.lg,
         flexDirection: "row",
         alignItems: "center",
-        gap: 10,
+        gap: BrandSpacing.sm,
       }}
     >
-      <MaterialIcons
-        name="search"
-        size={19}
-        color={palette.textMuted as string}
-      />
+      <MaterialIcons name="search" size={19} color={palette.textMuted as string} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -53,11 +55,12 @@ export function NativeSearchField({
         style={[
           {
             flex: 1,
-            minHeight: 46,
+            minHeight: 48,
             color: palette.text,
             fontSize: 16,
             fontWeight: "500",
             includeFontPadding: false,
+            paddingVertical: 0,
           },
           style,
         ]}
@@ -71,11 +74,7 @@ export function NativeSearchField({
           hitSlop={8}
           style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
         >
-          <MaterialIcons
-            name="close"
-            size={18}
-            color={palette.textMuted as string}
-          />
+          <MaterialIcons name="close" size={18} color={palette.textMuted as string} />
         </Pressable>
       ) : null}
     </View>

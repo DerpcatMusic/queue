@@ -1,12 +1,5 @@
 import type { PropsWithChildren } from "react";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
@@ -77,9 +70,7 @@ export function ThemePreferenceProvider({ children }: PropsWithChildren) {
   );
 
   return (
-    <ThemePreferenceContext.Provider value={value}>
-      {children}
-    </ThemePreferenceContext.Provider>
+    <ThemePreferenceContext.Provider value={value}>{children}</ThemePreferenceContext.Provider>
   );
 }
 

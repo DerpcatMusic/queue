@@ -1,29 +1,27 @@
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useIsFocused } from "@react-navigation/native";
 import { useQuery } from "convex/react";
 import type { Href } from "expo-router";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Switch, View } from "react-native";
-import type Animated from "react-native-reanimated";
-import { useAnimatedRef, useScrollViewOffset } from "react-native-reanimated";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 
-import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { LoadingScreen } from "@/components/loading-screen";
-
-import {
-  getProfileHeroScrollTopPadding,
-  ProfileDesktopHeroPanel,
-  ProfileHeroSheet,
-} from "@/components/profile/profile-hero-sheet";
-import { ProfileReadinessBanner } from "@/components/profile/profile-readiness-banner";
+import { TabScreenRoot } from "@/components/layout/tab-screen-root";
+import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
+import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
+import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
+import {
+  getProfileHeaderExpandedHeight,
+  ProfileDesktopHeroPanel,
+  ProfileHeaderSheet,
+} from "@/components/profile/profile-tab";
+import { KitSwitch } from "@/components/ui/kit";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
@@ -32,10 +30,7 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import {
-  buildRoleTabRoute,
-  ROLE_TAB_ROUTE_NAMES,
-} from "@/navigation/role-routes";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -43,19 +38,13 @@ const ROLE_TRANSLATION_KEYS = {
   studio: "profile.roles.studio",
   admin: "profile.roles.admin",
 } as const;
-const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute(
-  "instructor",
-  ROLE_TAB_ROUTE_NAMES.profile,
-);
+const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile);
 const INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE =
   `${INSTRUCTOR_PROFILE_ROUTE}/identity-verification` as const;
 const INSTRUCTOR_SPORTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/sports` as const;
-const INSTRUCTOR_LOCATION_ROUTE =
-  `${INSTRUCTOR_PROFILE_ROUTE}/location` as const;
-const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE =
-  `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
-const INSTRUCTOR_PAYMENTS_ROUTE =
-  `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
+const INSTRUCTOR_LOCATION_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/location` as const;
+const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
+const INSTRUCTOR_PAYMENTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
 const INSTRUCTOR_EDIT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/edit` as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
@@ -63,9 +52,7 @@ function getSportsSummary(sports: string[], t: TFunction) {
     return t("profile.settings.sports.none");
   }
   if (sports.length <= 2) {
-    return sports
-      .map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport))
-      .join(", ");
+    return sports.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(", ");
   }
   return t("profile.settings.sports.selected", { count: sports.length });
 }
@@ -111,19 +98,19 @@ export default function InstructorProfileScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
   const router = useRouter();
-  const isFocused = useIsFocused();
+  const pathname = usePathname();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { safeTop } = useAppInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
-  const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const scrollY = useScrollViewOffset(scrollRef);
   const [hasActivated, setHasActivated] = useState(false);
+  const isBodyReady = useDeferredTabMount(pathname === INSTRUCTOR_PROFILE_ROUTE, { delayMs: 36 });
 
   useEffect(() => {
-    if (isFocused) {
+    if (pathname === INSTRUCTOR_PROFILE_ROUTE) {
       setHasActivated(true);
     }
-  }, [isFocused]);
+  }, [pathname]);
 
   useEffect(() => {
     if (edit === "1") {
@@ -131,7 +118,7 @@ export default function InstructorProfileScreen() {
     }
   }, [edit, router]);
   const emptyArgs = useMemo(() => ({}), []);
-  const shouldLoadSettings = currentUser?.role === "instructor" && hasActivated;
+  const shouldLoadSettings = currentUser?.role === "instructor" && hasActivated && isBodyReady;
 
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
@@ -150,39 +137,23 @@ export default function InstructorProfileScreen() {
     router.push(INSTRUCTOR_EDIT_ROUTE as Href);
   }, [router]);
 
-  if (
-    !hasActivated ||
-    (currentUser?.role === "instructor" && instructorSettings === undefined)
-  ) {
-    return <LoadingScreen label={t("profile.settings.loading")} />;
-  }
-
   const nameValue =
-    instructorSettings?.displayName ??
-    currentUser?.fullName ??
-    t("profile.account.fallbackName");
+    instructorSettings?.displayName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
   const roleValue = t(
-    ROLE_TRANSLATION_KEYS[
-      currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS
-    ] ?? "profile.roles.pending",
+    ROLE_TRANSLATION_KEYS[currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS] ??
+      "profile.roles.pending",
   );
   const memberSince = currentUser?.createdAt
-    ? new Date(currentUser.createdAt).toLocaleDateString(
-        i18n.resolvedLanguage ?? "en",
-        {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        },
-      )
+    ? new Date(currentUser.createdAt).toLocaleDateString(i18n.resolvedLanguage ?? "en", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
     : null;
 
   const identityVerified = diditVerification?.isVerified ?? false;
-  const identityVerificationSummary = getIdentityVerificationSummary(
-    diditVerification?.status,
-    t,
-  );
+  const identityVerificationSummary = getIdentityVerificationSummary(diditVerification?.status, t);
   const bankConnected = payoutSummary?.hasVerifiedDestination ?? false;
   const sportsSummary = getSportsSummary(instructorSettings?.sports ?? [], t);
   const locationSummary = instructorSettings?.address
@@ -203,8 +174,7 @@ export default function InstructorProfileScreen() {
     !identityVerified
       ? {
           label: t("profile.setup.verifyIdentity"),
-          onPress: () =>
-            router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href),
+          onPress: () => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href),
           icon: "checkmark.circle.fill" as const,
         }
       : null,
@@ -225,8 +195,7 @@ export default function InstructorProfileScreen() {
     !provider || provider === "none"
       ? {
           label: t("profile.setup.linkCalendar"),
-          onPress: () =>
-            router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href),
+          onPress: () => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href),
           icon: "calendar.badge.clock" as const,
         }
       : null,
@@ -239,301 +208,145 @@ export default function InstructorProfileScreen() {
       icon: "sparkles" | "checkmark.circle.fill" | "calendar.badge.clock";
     } => item !== null,
   );
-  const primarySetupAction = setupActions[0] ?? null;
-
-  const setupStatusLabel =
-    setupActions.length === 0
-      ? t("profile.setup.statusReady")
-      : t("profile.setup.statusPending", {
-          count: setupActions.length,
-        });
+  const profileStatus =
+    setupActions.length === 0 ? "ready" : identityVerified ? "pending" : "unverified";
 
   const publicProfileSummary =
     instructorSettings?.bio?.trim() ||
     (socialCount > 0
       ? t("profile.settings.publicProfileActive", { count: socialCount })
       : t("profile.settings.publicProfilePrompt"));
+  const profileHeaderHeight = useMemo(() => getProfileHeaderExpandedHeight(safeTop), [safeTop]);
+  const profileSheetStep = useMemo(() => {
+    const availableHeight = Math.max(1, screenHeight - safeTop - 80);
+    return Math.max(0.12, Math.min(0.34, profileHeaderHeight / availableHeight));
+  }, [profileHeaderHeight, safeTop, screenHeight]);
+  const profileSheetContent = useMemo(
+    () => (
+      <ProfileHeaderSheet
+        profileName={nameValue}
+        roleLabel={
+          identityVerified
+            ? t("profile.hero.verifiedInstructor")
+            : t("profile.hero.instructorProfile")
+        }
+        profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+        palette={palette}
+        onRequestEdit={handleRequestEdit}
+        primaryActionLabel={t("profile.actions.edit")}
+        status={profileStatus}
+        bio={instructorSettings?.bio}
+        socialLinks={instructorSettings?.socialLinks}
+        sports={instructorSettings?.sports ?? []}
+      />
+    ),
+    [
+      currentUser?.image,
+      handleRequestEdit,
+      identityVerified,
+      instructorSettings?.bio,
+      instructorSettings?.profileImageUrl,
+      instructorSettings?.socialLinks,
+      instructorSettings?.sports,
+      nameValue,
+      palette,
+      profileStatus,
+      t,
+    ],
+  );
+
+  const profileSheetConfig = useMemo(
+    () => ({
+      content: profileSheetContent,
+      steps: [profileSheetStep],
+      initialStep: 0,
+      padding: {
+        vertical: 0,
+        horizontal: 0,
+      },
+      backgroundColor: palette.primary as string,
+      topInsetColor: palette.primary as string,
+    }),
+    [palette, profileSheetContent, profileSheetStep],
+  );
+
+  const isProfileIndexRoute =
+    pathname === INSTRUCTOR_PROFILE_ROUTE || pathname.endsWith("/profile");
+
+  useGlobalTopSheet("profile", !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null);
+
+  if (
+    !hasActivated ||
+    !isBodyReady ||
+    (currentUser?.role === "instructor" && instructorSettings === undefined)
+  ) {
+    return (
+      <TabScreenRoot
+        mode="static"
+        topInsetTone="sheet"
+        style={[styles.screen, { backgroundColor: palette.appBg }]}
+      >
+        <View style={{ flex: 1, backgroundColor: palette.appBg as string }} />
+      </TabScreenRoot>
+    );
+  }
 
   return (
-    <View
-      collapsable={false}
+    <TabScreenRoot
+      mode="static"
+      topInsetTone="sheet"
       style={[styles.screen, { backgroundColor: palette.appBg }]}
     >
-      <TabScreenScrollView
-        animatedRef={scrollRef}
-        routeKey="instructor/profile"
-        topInsetTone="sheet"
-        style={styles.screen}
-        contentContainerStyle={{
-          paddingTop: isDesktopWeb
-            ? 24
-            : getProfileHeroScrollTopPadding(safeTop),
-          paddingHorizontal: isDesktopWeb ? 24 : 0,
-          paddingBottom: 40,
-          gap: 24,
-        }}
-      >
-        {isDesktopWeb ? (
-          <View style={styles.desktopShell}>
-            <View style={styles.desktopRail}>
-              <ProfileDesktopHeroPanel
-                profileName={nameValue}
-                roleLabel={
-                  identityVerified
-                    ? t("profile.hero.verifiedInstructor")
-                    : t("profile.hero.instructorProfile")
-                }
-                profileImageUrl={
-                  instructorSettings?.profileImageUrl ?? currentUser?.image
-                }
-                palette={palette}
-                summary={publicProfileSummary}
-                statusLabel={setupStatusLabel}
-                metaLabel={
-                  memberSince
-                    ? t("profile.account.memberSinceValue", {
-                        date: memberSince,
-                      })
-                    : sportsSummary
-                }
-                primaryAction={{
-                  label: t("profile.actions.edit"),
-                  onPress: handleRequestEdit,
-                }}
-                {...(primarySetupAction
-                  ? { secondaryAction: primarySetupAction }
-                  : {})}
-              />
-            </View>
-
-            <View style={styles.desktopContent}>
-              <View style={styles.desktopMainColumn}>
-                <ProfileReadinessBanner
-                  palette={palette}
-                  primaryAction={primarySetupAction}
-                  statusLabel={setupStatusLabel}
-                  subtitleLabel={
-                    primarySetupAction
-                      ? t("profile.setup.nextStep", {
-                          step: primarySetupAction.label.toLowerCase(),
-                        })
-                      : t("profile.setup.allClear")
-                  }
-                />
-
-                <ProfileSectionHeader
-                  label={t("profile.sections.professional")}
-                  icon="person.crop.circle.fill"
-                  palette={palette}
-                  flush
-                />
-                <ProfileSectionCard
-                  palette={palette}
-                  style={styles.desktopCardGroup}
-                >
-                  <ProfileSettingRow
-                    title={t("profile.settings.publicProfile")}
-                    subtitle={publicProfileSummary}
-                    icon="person.crop.circle.fill"
-                    onPress={handleRequestEdit}
-                    palette={palette}
-                    showDivider
-                  />
-                  <ProfileSettingRow
-                    title={t("profile.settings.sports.title")}
-                    subtitle={sportsSummary}
-                    icon="gym.bag.fill"
-                    onPress={() => router.push(INSTRUCTOR_SPORTS_ROUTE as Href)}
-                    palette={palette}
-                    showDivider
-                  />
-                  <ProfileSettingRow
-                    title={t("profile.settings.location.title")}
-                    subtitle={locationSummary}
-                    icon="mappin.and.ellipse"
-                    onPress={() =>
-                      router.push(INSTRUCTOR_LOCATION_ROUTE as Href)
-                    }
-                    palette={palette}
-                    showDivider
-                  />
-                </ProfileSectionCard>
-              </View>
-
-              <View style={styles.desktopSideColumn}>
-                <ProfileSectionHeader
-                  label={t("profile.account.title")}
-                  icon="person.crop.circle.fill"
-                  palette={palette}
-                  flush
-                />
-                <ProfileSectionCard
-                  palette={palette}
-                  style={styles.desktopCardGroup}
-                >
-                  <ProfileSettingRow
-                    title={t("profile.account.nameLabel")}
-                    value={currentUser?.fullName ?? nameValue}
-                    icon="person.crop.circle.fill"
-                    palette={palette}
-                    showDivider
-                  />
-                  <ProfileSettingRow
-                    title={t("profile.account.emailLabel")}
-                    value={emailValue}
-                    icon="paperplane.fill"
-                    palette={palette}
-                    showDivider
-                  />
-                  <ProfileSettingRow
-                    title={t("profile.account.roleLabel")}
-                    value={roleValue}
-                    icon="checkmark.circle.fill"
-                    palette={palette}
-                    showDivider
-                  />
-                  {memberSince ? (
-                    <ProfileSettingRow
-                      title={t("profile.account.memberSince")}
-                      value={memberSince}
-                      icon="calendar.circle.fill"
-                      palette={palette}
-                      showDivider
-                    />
-                  ) : null}
-                  <ProfileSettingRow
-                    title={t("profile.language.title")}
-                    value={
-                      language === "en"
-                        ? t("language.english")
-                        : t("language.hebrew")
-                    }
-                    icon="globe"
-                    onPress={() =>
-                      void setLanguage(language === "en" ? "he" : "en")
-                    }
-                    palette={palette}
-                    showDivider
-                  />
-                  <ProfileSettingRow
-                    title={t("profile.appearance.systemTheme.title")}
-                    icon="slider.horizontal.3"
-                    palette={palette}
-                    showDivider
-                    accessory={
-                      <Switch
-                        value={preference === "system"}
-                        onValueChange={(value) =>
-                          setPreference(value ? "system" : "light")
-                        }
-                        trackColor={{
-                          true: palette.primary as string,
-                          false: palette.borderStrong as string,
-                        }}
-                      />
-                    }
-                  />
-                  <ProfileSettingRow
-                    title={t("profile.appearance.darkMode.title")}
-                    icon="moon.fill"
-                    palette={palette}
-                    accessory={
-                      <Switch
-                        disabled={preference === "system"}
-                        value={preference === "dark"}
-                        onValueChange={(value) =>
-                          setPreference(value ? "dark" : "light")
-                        }
-                        trackColor={{
-                          true: palette.primary as string,
-                          false: palette.borderStrong as string,
-                        }}
-                      />
-                    }
-                  />
-                </ProfileSectionCard>
-
-                <ProfileSectionHeader
-                  label={t("profile.sections.operations")}
-                  icon="slider.horizontal.3"
-                  palette={palette}
-                  flush
-                />
-                <ProfileSectionCard
-                  palette={palette}
-                  style={styles.desktopCardGroup}
-                >
-                  <ProfileSettingRow
-                    title={t("profile.navigation.identityVerification")}
-                    subtitle={identityVerificationSummary}
-                    icon="checkmark.circle.fill"
-                    onPress={() =>
-                      router.push(
-                        INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href,
-                      )
-                    }
-                    palette={palette}
-                    showDivider
-                  />
-                  <ProfileSettingRow
-                    title={t("profile.settings.calendar.title")}
-                    subtitle={calendarSummary}
-                    icon="calendar.badge.clock"
-                    onPress={() =>
-                      router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)
-                    }
-                    palette={palette}
-                    showDivider
-                  />
-                  <ProfileSettingRow
-                    title={t("profile.settings.paymentsPayouts")}
-                    subtitle={
-                      bankConnected
-                        ? t("profile.settings.payoutsConnected")
-                        : t("profile.settings.payoutsNeeded")
-                    }
-                    icon="creditcard.fill"
-                    onPress={() =>
-                      router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)
-                    }
-                    palette={palette}
-                    showDivider
-                  />
-                  <ProfileSettingRow
-                    title={t("auth.signOutButton")}
-                    subtitle={t("profile.settings.signOutDesc")}
-                    icon="arrow.right.square"
-                    onPress={() => void signOut()}
-                    palette={palette}
-                    tone="danger"
-                  />
-                </ProfileSectionCard>
-              </View>
-            </View>
+      {isDesktopWeb ? (
+        <View style={styles.desktopShell}>
+          <View style={styles.desktopRail}>
+            <ProfileDesktopHeroPanel
+              profileName={nameValue}
+              roleLabel={
+                identityVerified
+                  ? t("profile.hero.verifiedInstructor")
+                  : t("profile.hero.instructorProfile")
+              }
+              profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+              palette={palette}
+              summary={publicProfileSummary}
+              statusLabel={
+                profileStatus === "ready"
+                  ? t("profile.hero.statusReady")
+                  : profileStatus === "pending"
+                    ? t("profile.hero.statusPending")
+                    : t("profile.hero.statusUnverified")
+              }
+              statusTone={
+                profileStatus === "ready"
+                  ? "success"
+                  : profileStatus === "pending"
+                    ? "warning"
+                    : "neutral"
+              }
+              metaLabel={
+                memberSince
+                  ? t("profile.account.memberSinceValue", {
+                      date: memberSince,
+                    })
+                  : sportsSummary
+              }
+              primaryAction={{
+                label: t("profile.actions.edit"),
+                onPress: handleRequestEdit,
+              }}
+            />
           </View>
-        ) : (
-          <View style={styles.mobileContentPadding}>
-            <View style={{ marginBottom: 32 }}>
-              <ProfileReadinessBanner
-                palette={palette}
-                primaryAction={primarySetupAction}
-                statusLabel={setupStatusLabel}
-                subtitleLabel={
-                  primarySetupAction
-                    ? t("profile.setup.nextStep", {
-                        step: primarySetupAction.label.toLowerCase(),
-                      })
-                    : t("profile.setup.allClear")
-                }
-              />
-            </View>
-            <View style={styles.mobileSectionsContainer}>
+
+          <View style={styles.desktopContent}>
+            <View style={styles.desktopMainColumn}>
               <ProfileSectionHeader
                 label={t("profile.sections.professional")}
                 icon="person.crop.circle.fill"
                 palette={palette}
+                flush
               />
-              <ProfileSectionCard palette={palette}>
+              <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                 <ProfileSettingRow
                   title={t("profile.settings.publicProfile")}
                   subtitle={publicProfileSummary}
@@ -559,13 +372,16 @@ export default function InstructorProfileScreen() {
                   showDivider
                 />
               </ProfileSectionCard>
+            </View>
 
+            <View style={styles.desktopSideColumn}>
               <ProfileSectionHeader
                 label={t("profile.account.title")}
                 icon="person.crop.circle.fill"
                 palette={palette}
+                flush
               />
-              <ProfileSectionCard palette={palette}>
+              <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                 <ProfileSettingRow
                   title={t("profile.account.nameLabel")}
                   value={currentUser?.fullName ?? nameValue}
@@ -598,15 +414,9 @@ export default function InstructorProfileScreen() {
                 ) : null}
                 <ProfileSettingRow
                   title={t("profile.language.title")}
-                  value={
-                    language === "en"
-                      ? t("language.english")
-                      : t("language.hebrew")
-                  }
+                  value={language === "en" ? t("language.english") : t("language.hebrew")}
                   icon="globe"
-                  onPress={() =>
-                    void setLanguage(language === "en" ? "he" : "en")
-                  }
+                  onPress={() => void setLanguage(language === "en" ? "he" : "en")}
                   palette={palette}
                   showDivider
                 />
@@ -616,15 +426,9 @@ export default function InstructorProfileScreen() {
                   palette={palette}
                   showDivider
                   accessory={
-                    <Switch
+                    <KitSwitch
                       value={preference === "system"}
-                      onValueChange={(value) =>
-                        setPreference(value ? "system" : "light")
-                      }
-                      trackColor={{
-                        true: palette.primary as string,
-                        false: palette.borderStrong as string,
-                      }}
+                      onValueChange={(value) => setPreference(value ? "system" : "light")}
                     />
                   }
                 />
@@ -633,16 +437,10 @@ export default function InstructorProfileScreen() {
                   icon="moon.fill"
                   palette={palette}
                   accessory={
-                    <Switch
+                    <KitSwitch
                       disabled={preference === "system"}
                       value={preference === "dark"}
-                      onValueChange={(value) =>
-                        setPreference(value ? "dark" : "light")
-                      }
-                      trackColor={{
-                        true: palette.primary as string,
-                        false: palette.borderStrong as string,
-                      }}
+                      onValueChange={(value) => setPreference(value ? "dark" : "light")}
                     />
                   }
                 />
@@ -652,15 +450,14 @@ export default function InstructorProfileScreen() {
                 label={t("profile.sections.operations")}
                 icon="slider.horizontal.3"
                 palette={palette}
+                flush
               />
-              <ProfileSectionCard palette={palette}>
+              <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
                 <ProfileSettingRow
                   title={t("profile.navigation.identityVerification")}
                   subtitle={identityVerificationSummary}
                   icon="checkmark.circle.fill"
-                  onPress={() =>
-                    router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)
-                  }
+                  onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
                   palette={palette}
                   showDivider
                 />
@@ -668,9 +465,7 @@ export default function InstructorProfileScreen() {
                   title={t("profile.settings.calendar.title")}
                   subtitle={calendarSummary}
                   icon="calendar.badge.clock"
-                  onPress={() =>
-                    router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)
-                  }
+                  onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
                   palette={palette}
                   showDivider
                 />
@@ -697,34 +492,167 @@ export default function InstructorProfileScreen() {
               </ProfileSectionCard>
             </View>
           </View>
-        )}
-      </TabScreenScrollView>
+        </View>
+      ) : (
+        <ProfileIndexScrollView
+          routeKey="instructor/profile"
+          style={styles.screen}
+          contentContainerStyle={{
+            gap: 18,
+          }}
+          topSpacing={18}
+          bottomSpacing={32}
+        >
+          <View style={styles.mobileContentPadding}>
+            <ProfileSectionHeader
+              label={t("profile.sections.professional")}
+              icon="person.crop.circle.fill"
+              palette={palette}
+            />
+            <ProfileSectionCard palette={palette}>
+              <ProfileSettingRow
+                title={t("profile.settings.publicProfile")}
+                subtitle={publicProfileSummary}
+                icon="person.crop.circle.fill"
+                onPress={handleRequestEdit}
+                palette={palette}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.settings.sports.title")}
+                subtitle={sportsSummary}
+                icon="gym.bag.fill"
+                onPress={() => router.push(INSTRUCTOR_SPORTS_ROUTE as Href)}
+                palette={palette}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.settings.location.title")}
+                subtitle={locationSummary}
+                icon="mappin.and.ellipse"
+                onPress={() => router.push(INSTRUCTOR_LOCATION_ROUTE as Href)}
+                palette={palette}
+                showDivider
+              />
+            </ProfileSectionCard>
 
-      {isDesktopWeb ? null : (
-        <ProfileHeroSheet
-          profileName={nameValue}
-          roleLabel={
-            identityVerified
-              ? t("profile.hero.verifiedInstructor")
-              : t("profile.hero.instructorProfile")
-          }
-          profileImageUrl={
-            instructorSettings?.profileImageUrl ?? currentUser?.image
-          }
-          palette={palette}
-          scrollY={scrollY}
-          onRequestEdit={handleRequestEdit}
-          primaryActionLabel={t("profile.actions.edit")}
-          {...(primarySetupAction
-            ? { secondaryAction: primarySetupAction }
-            : {})}
-          statusLabel={setupStatusLabel}
-          bio={instructorSettings?.bio}
-          socialLinks={instructorSettings?.socialLinks}
-          sports={instructorSettings?.sports ?? []}
-        />
+            <ProfileSectionHeader
+              label={t("profile.account.title")}
+              icon="person.crop.circle.fill"
+              palette={palette}
+            />
+            <ProfileSectionCard palette={palette}>
+              <ProfileSettingRow
+                title={t("profile.account.nameLabel")}
+                value={currentUser?.fullName ?? nameValue}
+                icon="person.crop.circle.fill"
+                palette={palette}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.account.emailLabel")}
+                value={emailValue}
+                icon="paperplane.fill"
+                palette={palette}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.account.roleLabel")}
+                value={roleValue}
+                icon="checkmark.circle.fill"
+                palette={palette}
+                showDivider
+              />
+              {memberSince ? (
+                <ProfileSettingRow
+                  title={t("profile.account.memberSince")}
+                  value={memberSince}
+                  icon="calendar.circle.fill"
+                  palette={palette}
+                  showDivider
+                />
+              ) : null}
+              <ProfileSettingRow
+                title={t("profile.language.title")}
+                value={language === "en" ? t("language.english") : t("language.hebrew")}
+                icon="globe"
+                onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                palette={palette}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.appearance.systemTheme.title")}
+                icon="slider.horizontal.3"
+                palette={palette}
+                showDivider
+                accessory={
+                  <KitSwitch
+                    value={preference === "system"}
+                    onValueChange={(value) => setPreference(value ? "system" : "light")}
+                  />
+                }
+              />
+              <ProfileSettingRow
+                title={t("profile.appearance.darkMode.title")}
+                icon="moon.fill"
+                palette={palette}
+                accessory={
+                  <KitSwitch
+                    disabled={preference === "system"}
+                    value={preference === "dark"}
+                    onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                  />
+                }
+              />
+            </ProfileSectionCard>
+
+            <ProfileSectionHeader
+              label={t("profile.sections.operations")}
+              icon="slider.horizontal.3"
+              palette={palette}
+            />
+            <ProfileSectionCard palette={palette}>
+              <ProfileSettingRow
+                title={t("profile.navigation.identityVerification")}
+                subtitle={identityVerificationSummary}
+                icon="checkmark.circle.fill"
+                onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
+                palette={palette}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.settings.calendar.title")}
+                subtitle={calendarSummary}
+                icon="calendar.badge.clock"
+                onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
+                palette={palette}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.settings.paymentsPayouts")}
+                subtitle={
+                  bankConnected
+                    ? t("profile.settings.payoutsConnected")
+                    : t("profile.settings.payoutsNeeded")
+                }
+                icon="creditcard.fill"
+                onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
+                palette={palette}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("auth.signOutButton")}
+                subtitle={t("profile.settings.signOutDesc")}
+                icon="arrow.right.square"
+                onPress={() => void signOut()}
+                palette={palette}
+                tone="danger"
+              />
+            </ProfileSectionCard>
+          </View>
+        </ProfileIndexScrollView>
       )}
-    </View>
+    </TabScreenRoot>
   );
 }
 
@@ -758,8 +686,5 @@ const styles = StyleSheet.create({
   },
   mobileContentPadding: {
     paddingHorizontal: 24,
-  },
-  mobileSectionsContainer: {
-    marginHorizontal: -24,
   },
 });

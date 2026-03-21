@@ -24,11 +24,7 @@ function getRelativeTimeFormatter(locale: string) {
   }
 }
 
-function formatRelativeFallback(
-  targetTime: number,
-  deltaDays: number,
-  locale: string,
-) {
+function formatRelativeFallback(targetTime: number, deltaDays: number, locale: string) {
   if (Math.abs(deltaDays) < 1) {
     return new Date(targetTime).toLocaleTimeString(locale, {
       hour: "2-digit",
@@ -41,34 +37,23 @@ function formatRelativeFallback(
   });
 }
 
-export function getRelativeTimeLabel(
-  targetTime: number,
-  now: number,
-  locale: string,
-) {
+export function getRelativeTimeLabel(targetTime: number, now: number, locale: string) {
   const formatter = getRelativeTimeFormatter(locale);
   const deltaMs = targetTime - now;
   const deltaMinutesRaw = deltaMs / (60 * 1000);
   const deltaMinutes =
-    deltaMinutesRaw < 0
-      ? Math.ceil(deltaMinutesRaw)
-      : Math.floor(deltaMinutesRaw);
+    deltaMinutesRaw < 0 ? Math.ceil(deltaMinutesRaw) : Math.floor(deltaMinutesRaw);
   const fmt = (value: number, unit: RelativeUnit, deltaDays: number) =>
-    formatter?.format(value, unit) ??
-    formatRelativeFallback(targetTime, deltaDays, locale);
+    formatter?.format(value, unit) ?? formatRelativeFallback(targetTime, deltaDays, locale);
 
-  if (Math.abs(deltaMinutes) < 60)
-    return fmt(deltaMinutes, "minute", deltaMinutes / (60 * 24));
+  if (Math.abs(deltaMinutes) < 60) return fmt(deltaMinutes, "minute", deltaMinutes / (60 * 24));
 
   const deltaHoursRaw = deltaMinutes / 60;
-  const deltaHours =
-    deltaHoursRaw < 0 ? Math.ceil(deltaHoursRaw) : Math.floor(deltaHoursRaw);
-  if (Math.abs(deltaHours) < 48)
-    return fmt(deltaHours, "hour", deltaHours / 24);
+  const deltaHours = deltaHoursRaw < 0 ? Math.ceil(deltaHoursRaw) : Math.floor(deltaHoursRaw);
+  if (Math.abs(deltaHours) < 48) return fmt(deltaHours, "hour", deltaHours / 24);
 
   const deltaDaysRaw = deltaHours / 24;
-  const deltaDays =
-    deltaDaysRaw < 0 ? Math.ceil(deltaDaysRaw) : Math.floor(deltaDaysRaw);
+  const deltaDays = deltaDaysRaw < 0 ? Math.ceil(deltaDaysRaw) : Math.floor(deltaDaysRaw);
   return fmt(deltaDays, "day", deltaDays);
 }
 
@@ -84,20 +69,17 @@ export function StatusPill({ label, status, palette }: StatusPillProps) {
       ? {
           fg: palette.primary,
           bg: palette.primarySubtle,
-          border: palette.primary,
         }
       : getJobStatusTokens(status, palette);
 
   return (
     <View
       style={{
-        borderWidth: 1,
-        borderRadius: BrandRadius.pill,
+        borderRadius: BrandRadius.button - 4,
         borderCurve: "continuous",
         paddingHorizontal: 10,
         paddingVertical: 5,
         backgroundColor: tokens.bg,
-        borderColor: tokens.border,
       }}
     >
       <ThemedText type="micro" style={{ color: tokens.fg }}>
@@ -116,11 +98,7 @@ type DotStatusPillProps = {
 };
 
 /** Colored-dot status pill used in job cards. */
-export function DotStatusPill({
-  backgroundColor,
-  color,
-  label,
-}: DotStatusPillProps) {
+export function DotStatusPill({ backgroundColor, color, label }: DotStatusPillProps) {
   return (
     <View
       style={{
@@ -163,23 +141,11 @@ type MetricCellProps = {
 };
 
 /** Label + value metric pair used in job cards. */
-export function MetricCell({
-  align = "flex-start",
-  icon,
-  label,
-  value,
-  palette,
-}: MetricCellProps) {
+export function MetricCell({ align = "flex-start", icon, label, value, palette }: MetricCellProps) {
   return (
     <View style={{ gap: 3, alignItems: align }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        {icon ? (
-          <IconSymbol
-            name={icon}
-            size={12}
-            color={palette.textMuted as string}
-          />
-        ) : null}
+        {icon ? <IconSymbol name={icon} size={12} color={palette.textMuted as string} /> : null}
         <Text
           style={{
             ...BrandType.caption,
@@ -223,13 +189,9 @@ export function HomeSignalTile({
   tone = "surface",
 }: HomeSignalTileProps) {
   const backgroundColor =
-    tone === "accent"
-      ? (palette.primarySubtle as string)
-      : (palette.surfaceElevated as string);
+    tone === "accent" ? (palette.primarySubtle as string) : (palette.surfaceElevated as string);
   const labelColor =
-    tone === "accent"
-      ? (palette.primary as string)
-      : (palette.textMuted as string);
+    tone === "accent" ? (palette.primary as string) : (palette.textMuted as string);
   const valueColor = palette.text as string;
 
   return (

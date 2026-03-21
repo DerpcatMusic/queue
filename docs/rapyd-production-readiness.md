@@ -22,6 +22,7 @@
 
 ### Rapyd
 - `RAPYD_MODE` (`sandbox` or `production`)
+- `RAPYD_CHECKOUT_MODE` (`a2a` or `flexible`; default `a2a`)
 - `RAPYD_ACCESS_KEY`
 - `RAPYD_SECRET_KEY`
 - `RAPYD_WEBHOOK_SECRET` (recommended; falls back to `RAPYD_SECRET_KEY`)
@@ -30,7 +31,7 @@
 - `RAPYD_SANDBOX_BASE_URL` / `RAPYD_PROD_BASE_URL`
 - `RAPYD_COMPLETE_CHECKOUT_URL`
 - `RAPYD_CANCEL_CHECKOUT_URL`
-- `RAPYD_PAYMENT_METHODS` (optional; country-valid values only)
+- `RAPYD_PAYMENT_METHODS` (optional; country-valid values only; A2A mode defaults to bank transfer / bank redirect)
 - `RAPYD_WEBHOOK_MAX_SKEW_SECONDS` (default `300`)
 
 ### Payments/Payouts
@@ -51,6 +52,7 @@
 
 ## Hard Truth Risks
 - Rapyd webhook signature mismatch or clock skew will block payment capture progression.
+- Rapyd must actually expose bank-transfer rails on the live IL account; the app now fails closed if A2A mode cannot resolve a bank method.
 - Missing/invalid invoice provider env will make invoice issuance fail.
 - Israeli compliance details (document type, numbering, VAT handling, cancellation docs) must be finalized with CPA and encoded at provider payload level before go-live.
 - Hosted onboarding event contracts can vary by account/program; verify your webhook payload fields in sandbox (`merchant_reference_id`, beneficiary ID, payout method type) and adjust parser if Rapyd account returns alternate field names.

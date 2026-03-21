@@ -97,6 +97,14 @@ export function useSessionGate<T extends SessionGateEntryPoint>(
   pathname?: string,
 ): SessionGateDecisionMap[T] {
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
+
+  // Only auth initialization itself should block routing.
+  // A null/undefined user doc after auth settles must flow through the
+  // session resolver so signed-out and onboarding redirects can happen.
+  if (isAuthLoading) {
+    return { status: "loading" } as SessionGateDecisionMap[T];
+  }
+
   const session = resolveSessionState({
     isAuthLoading,
     isAuthenticated,

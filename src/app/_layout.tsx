@@ -1,7 +1,5 @@
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useFonts } from "expo-font";
-import "../../global.css";
 import { BarlowCondensed_800ExtraBold } from "@expo-google-fonts/barlow-condensed";
 import {
   Rubik_400Regular,
@@ -15,6 +13,7 @@ import {
   type Theme as NavigationTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
@@ -164,6 +163,13 @@ function RootLayoutContent() {
                       headerTitleStyle: { color: palette.text as string },
                     }}
                   >
+                    <Stack.Screen
+                      name="index"
+                      options={{
+                        headerShown: false,
+                        animation: "none",
+                      }}
+                    />
                     <Stack.Screen name="(app)" options={{ headerShown: false }} />
                     <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                     <Stack.Screen name="onboarding" options={{ headerShown: false }} />

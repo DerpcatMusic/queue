@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 
+import i18n from "@/i18n";
 import { FetchRequestError, fetchJsonWithPolicy } from "@/lib/fetch-json";
 
 export type ResolvedLocation = {
@@ -53,12 +54,18 @@ function createLocationError(code: LocationResolveErrorCode, message: string) {
   return new LocationResolveError(code, message);
 }
 
+function locationMessage(key: string) {
+  return i18n.t(key);
+}
+
 async function withTimeout<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
-      reject(createLocationError("timeout", "Location request timed out."));
+      reject(
+        createLocationError("timeout", locationMessage("profile.settings.errors.locationTimeout")),
+      );
     }, timeoutMs);
   });
 
@@ -76,34 +83,49 @@ export function normalizeLocationResolveError(error: unknown): LocationResolveEr
     return error;
   }
 
-  const message = error instanceof Error ? error.message : "Unknown location error.";
+  const message =
+    error instanceof Error
+      ? error.message
+      : locationMessage("profile.settings.errors.locationResolveFailed");
 
   const lowered = message.toLowerCase();
   if (lowered.includes("timeout")) {
-    return createLocationError("timeout", "Location request timed out.");
+    return createLocationError(
+      "timeout",
+      locationMessage("profile.settings.errors.locationTimeout"),
+    );
   }
 
   if (lowered.includes("denied")) {
-    return createLocationError("permission_denied", "Location permission was denied.");
+    return createLocationError(
+      "permission_denied",
+      locationMessage("profile.settings.errors.locationPermissionDenied"),
+    );
   }
 
   if (lowered.includes("cannot find native module") && lowered.includes("expolocation")) {
     return createLocationError(
       "native_module_missing",
-      "Expo Location native module is unavailable. Rebuild and reinstall the dev client.",
+      locationMessage("profile.settings.errors.locationNativeMissing"),
     );
   }
 
-  return createLocationError("unknown", message);
+  return createLocationError(
+    "unknown",
+    locationMessage("profile.settings.errors.locationResolveFailed"),
+  );
 }
 
 async function getLocationModule() {
   if (!locationModulePromise) {
     locationModulePromise = import("expo-location").catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : "Unknown location module error";
+      const message =
+        error instanceof Error
+          ? error.message
+          : locationMessage("profile.settings.errors.locationResolveFailed");
       throw createLocationError(
         "native_module_missing",
-        `Expo Location native module is unavailable. Rebuild/reinstall the Android app and relaunch the dev client. (${message})`,
+        `${locationMessage("profile.settings.errors.locationNativeMissing")} (${message})`,
       );
     });
   }
@@ -136,15 +158,24 @@ async function geocodeAddressOnWeb(address: string): Promise<{
     const latitude = Number.parseFloat(first?.lat ?? "");
     const longitude = Number.parseFloat(first?.lon ?? "");
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      throw createLocationError("address_not_found", "Address not found.");
+      throw createLocationError(
+        "address_not_found",
+        locationMessage("profile.settings.errors.locationAddressNotFound"),
+      );
     }
     return { latitude, longitude };
   } catch (error) {
     if (isFetchTimeout(error)) {
-      throw createLocationError("timeout", "Location request timed out.");
+      throw createLocationError(
+        "timeout",
+        locationMessage("profile.settings.errors.locationTimeout"),
+      );
     }
     if (error instanceof FetchRequestError && error.code === "http") {
-      throw createLocationError("address_not_found", "Address not found.");
+      throw createLocationError(
+        "address_not_found",
+        locationMessage("profile.settings.errors.locationAddressNotFound"),
+      );
     }
     throw error;
   }
@@ -175,7 +206,7 @@ async function getCurrentCoordinatesOnWeb(): Promise<{
   if (typeof navigator === "undefined" || !navigator.geolocation) {
     throw createLocationError(
       "unsupported_platform",
-      "Location lookup is not supported in this browser.",
+      locationMessage("profile.settings.errors.locationUnsupportedPlatform"),
     );
   }
 
@@ -190,17 +221,27 @@ async function getCurrentCoordinatesOnWeb(): Promise<{
         },
         (error) => {
           if (error.code === error.PERMISSION_DENIED) {
-            reject(createLocationError("permission_denied", "Location permission was denied."));
+            reject(
+              createLocationError(
+                "permission_denied",
+                locationMessage("profile.settings.errors.locationPermissionDenied"),
+              ),
+            );
             return;
           }
           if (error.code === error.TIMEOUT) {
-            reject(createLocationError("timeout", "Location request timed out."));
+            reject(
+              createLocationError(
+                "timeout",
+                locationMessage("profile.settings.errors.locationTimeout"),
+              ),
+            );
             return;
           }
           reject(
             createLocationError(
               "services_disabled",
-              "Unable to determine current location from this browser.",
+              locationMessage("profile.settings.errors.locationResolveFailed"),
             ),
           );
         },
@@ -254,7 +295,7 @@ async function ensureForegroundPermission(location: LocationModule) {
   if (existingPermission.canAskAgain === false) {
     throw createLocationError(
       "permission_blocked",
-      "Location permission is blocked. Enable it in system settings.",
+      locationMessage("profile.settings.errors.locationPermissionBlocked"),
     );
   }
 
@@ -263,10 +304,13 @@ async function ensureForegroundPermission(location: LocationModule) {
     if (requestedPermission.canAskAgain === false) {
       throw createLocationError(
         "permission_blocked",
-        "Location permission is blocked. Enable it in system settings.",
+        locationMessage("profile.settings.errors.locationPermissionBlocked"),
       );
     }
-    throw createLocationError("permission_denied", "Location permission is required.");
+    throw createLocationError(
+      "permission_denied",
+      locationMessage("profile.settings.errors.locationPermissionDenied"),
+    );
   }
 }
 
@@ -276,7 +320,7 @@ async function resolveZoneOrThrow(latitude: number, longitude: number): Promise<
   if (!zoneId) {
     throw createLocationError(
       "outside_supported_zone",
-      "Address is outside supported Pikud Haoref zones.",
+      locationMessage("profile.settings.errors.locationOutsideSupportedZone"),
     );
   }
   return zoneId;
@@ -293,7 +337,7 @@ export async function checkLocationRuntimeSupport(): Promise<{
           available: false,
           error: createLocationError(
             "unsupported_platform",
-            "Location lookup is not supported in this browser.",
+            locationMessage("profile.settings.errors.locationUnsupportedPlatform"),
           ),
         };
       }
@@ -315,7 +359,10 @@ export async function resolveAddressToZone(addressInput: string): Promise<Resolv
   try {
     const address = addressInput.trim();
     if (!address) {
-      throw createLocationError("address_not_found", "Address is required.");
+      throw createLocationError(
+        "address_not_found",
+        locationMessage("profile.settings.errors.addressRequired"),
+      );
     }
     const normalizedAddress = address.toLowerCase();
     const cached = addressResolutionCache.get(normalizedAddress);
@@ -331,7 +378,10 @@ export async function resolveAddressToZone(addressInput: string): Promise<Resolv
             const result = await withTimeout(location.geocodeAsync(address), 12000);
             const first = result[0];
             if (!first) {
-              throw createLocationError("address_not_found", "Address not found.");
+              throw createLocationError(
+                "address_not_found",
+                locationMessage("profile.settings.errors.locationAddressNotFound"),
+              );
             }
             return first;
           })();
@@ -457,7 +507,7 @@ export async function resolveCurrentLocationToZone(): Promise<ResolvedLocation> 
     if (!servicesEnabled) {
       throw createLocationError(
         "services_disabled",
-        "Location services are disabled on this device.",
+        locationMessage("profile.settings.errors.locationServicesDisabled"),
       );
     }
 

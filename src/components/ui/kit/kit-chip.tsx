@@ -1,9 +1,9 @@
 import { Pressable, Text } from "react-native";
 
 import { BrandRadius, BrandType } from "@/constants/brand";
+import { useBrand } from "@/hooks/use-brand";
 import { triggerSelectionHaptic } from "./native-interaction";
 import type { KitChipProps } from "./types";
-import { useKitTheme } from "./use-kit-theme";
 
 export function KitChip({
   label,
@@ -12,7 +12,7 @@ export function KitChip({
   onPress,
   style,
 }: KitChipProps) {
-  const { color, foreground, background } = useKitTheme();
+  const palette = useBrand();
 
   return (
     <Pressable
@@ -26,15 +26,14 @@ export function KitChip({
       style={({ pressed }) => [
         {
           minHeight: 40,
-          borderWidth: 0,
-          borderRadius: BrandRadius.pill,
+          borderRadius: BrandRadius.button - 4,
           borderCurve: "continuous",
           alignItems: "center",
           justifyContent: "center",
           paddingHorizontal: 14,
           paddingVertical: 8,
-          backgroundColor: selected ? color.primary : background.panel,
-          opacity: disabled ? 0.55 : 1,
+          backgroundColor: selected ? (palette.primary as string) : (palette.surfaceAlt as string),
+          opacity: disabled ? 0.72 : 1,
           transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
         },
         style,
@@ -43,7 +42,7 @@ export function KitChip({
       <Text
         style={{
           ...BrandType.micro,
-          color: selected ? foreground.primary : foreground.secondary,
+          color: selected ? (palette.onPrimary as string) : (palette.text as string),
           letterSpacing: 0.15,
           includeFontPadding: false,
         }}

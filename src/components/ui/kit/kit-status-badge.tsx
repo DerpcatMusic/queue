@@ -10,7 +10,7 @@ export function KitStatusBadge({
   showDot = true,
   style,
 }: KitStatusBadgeProps) {
-  const { background, border, color, foreground } = useKitTheme();
+  const { background, color, foreground } = useKitTheme();
 
   const resolvedTone =
     tone === "success"
@@ -22,7 +22,7 @@ export function KitStatusBadge({
       : tone === "warning"
         ? {
             accent: color.warning,
-            backgroundColor: background.surfaceSecondary,
+            backgroundColor: background.surfaceElevated,
             text: color.warning,
           }
         : tone === "danger"
@@ -38,8 +38,8 @@ export function KitStatusBadge({
                 text: foreground.secondary,
               }
             : {
-                accent: border.secondary,
-                backgroundColor: background.surface,
+                accent: foreground.muted,
+                backgroundColor: background.surfaceElevated,
                 text: foreground.muted,
               };
 

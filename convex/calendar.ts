@@ -10,7 +10,7 @@ import {
   query,
 } from "./_generated/server";
 import { getCurrentUser as getCurrentUserDoc } from "./lib/auth";
-import { GOOGLE_PROVIDER, type CalendarOwnerRole } from "./lib/calendarShared";
+import { type CalendarOwnerRole, GOOGLE_PROVIDER } from "./lib/calendarShared";
 import { omitUndefined } from "./lib/validation";
 
 const calendarNodeInternal = (internal as unknown as { calendarNode: Record<string, unknown> })
@@ -73,11 +73,7 @@ export const getMyGoogleCalendarAgenda = query({
     v.object({
       providerEventId: v.string(),
       title: v.string(),
-      status: v.union(
-        v.literal("confirmed"),
-        v.literal("tentative"),
-        v.literal("cancelled"),
-      ),
+      status: v.union(v.literal("confirmed"), v.literal("tentative"), v.literal("cancelled")),
       startTime: v.number(),
       endTime: v.number(),
       isAllDay: v.boolean(),
@@ -156,6 +152,23 @@ export const connectGoogleCalendarWithCode = action({
   },
 });
 
+export const connectGoogleCalendarWithServerAuthCode = action({
+  args: {
+    serverAuthCode: v.string(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    connected: v.boolean(),
+    accountEmail: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    return await ctx.runAction(
+      calendarNodeInternal.connectGoogleCalendarWithServerAuthCodeInternal,
+      args,
+    );
+  },
+});
+
 export const syncMyGoogleCalendarEvents = action({
   args: {
     startTime: v.optional(v.number()),
@@ -227,14 +240,12 @@ export const getCalendarProfileForUser = internalQuery({
     const instructorProfile = (await ctx.db
       .query("instructorProfiles")
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
-      .unique()) as
-      | {
-          _id: Id<"instructorProfiles">;
-          calendarProvider?: "none" | "google" | "apple";
-          calendarSyncEnabled?: boolean;
-          calendarConnectedAt?: number;
-        }
-      | null;
+      .unique()) as {
+      _id: Id<"instructorProfiles">;
+      calendarProvider?: "none" | "google" | "apple";
+      calendarSyncEnabled?: boolean;
+      calendarConnectedAt?: number;
+    } | null;
     if (instructorProfile) {
       return {
         role: "instructor" as const,
@@ -250,14 +261,12 @@ export const getCalendarProfileForUser = internalQuery({
     const studioProfile = (await ctx.db
       .query("studioProfiles")
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
-      .unique()) as
-      | {
-          _id: Id<"studioProfiles">;
-          calendarProvider?: "none" | "google" | "apple";
-          calendarSyncEnabled?: boolean;
-          calendarConnectedAt?: number;
-        }
-      | null;
+      .unique()) as {
+      _id: Id<"studioProfiles">;
+      calendarProvider?: "none" | "google" | "apple";
+      calendarSyncEnabled?: boolean;
+      calendarConnectedAt?: number;
+    } | null;
     if (!studioProfile) {
       return null;
     }
@@ -434,8 +443,7 @@ export const getGoogleIntegrationForUser = internalQuery({
       return null;
     }
     const inferredRole =
-      integration.role ??
-      (integration.studioId ? ("studio" as const) : ("instructor" as const));
+      integration.role ?? (integration.studioId ? ("studio" as const) : ("instructor" as const));
     return {
       _id: integration._id,
       role: inferredRole,
@@ -654,11 +662,7 @@ export const applyGoogleAgendaSyncResult = internalMutation({
       v.object({
         providerEventId: v.string(),
         title: v.string(),
-        status: v.union(
-          v.literal("confirmed"),
-          v.literal("tentative"),
-          v.literal("cancelled"),
-        ),
+        status: v.union(v.literal("confirmed"), v.literal("tentative"), v.literal("cancelled")),
         startTime: v.number(),
         endTime: v.number(),
         isAllDay: v.boolean(),

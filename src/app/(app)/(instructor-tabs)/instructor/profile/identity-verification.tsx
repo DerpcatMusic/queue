@@ -4,9 +4,9 @@ import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
 import { Redirect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NativeModules, Platform, Pressable, View } from "react-native";
+import { NativeModules, Platform, Pressable, RefreshControl, View } from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -18,14 +18,19 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
   getIdentityStatusLabel,
   getIdentityStatusTone,
   IdentityStatusBadge,
 } from "@/components/profile/identity-status-ui";
+import {
+  ProfileSubpageScrollView,
+  useProfileSubpageSheet,
+} from "@/components/profile/profile-subpage-sheet";
 import { ThemedText } from "@/components/themed-text";
+import { IconButton } from "@/components/ui/icon-button";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSuccessBurst } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
@@ -52,11 +57,7 @@ const resolveDiditSdkModule = async (): Promise<DiditSdkModule | null> => {
     return cachedDiditSdkModule;
   }
 
-  if (
-    Platform.OS === "web" ||
-    Platform.OS === "android" ||
-    Constants.appOwnership === "expo"
-  ) {
+  if (Platform.OS === "web" || Platform.OS === "android" || Constants.appOwnership === "expo") {
     cachedDiditSdkModule = null;
     return cachedDiditSdkModule;
   }
@@ -69,9 +70,7 @@ const resolveDiditSdkModule = async (): Promise<DiditSdkModule | null> => {
     global as typeof global & { __turboModuleProxy?: (name: string) => unknown }
   ).__turboModuleProxy;
   const turboDiditModule =
-    typeof turboModuleProxy === "function"
-      ? turboModuleProxy("SdkReactNative")
-      : undefined;
+    typeof turboModuleProxy === "function" ? turboModuleProxy("SdkReactNative") : undefined;
 
   if (!nativeDiditModule && !turboDiditModule) {
     cachedDiditSdkModule = null;
@@ -79,8 +78,7 @@ const resolveDiditSdkModule = async (): Promise<DiditSdkModule | null> => {
   }
 
   try {
-    cachedDiditSdkModule =
-      (await import("@didit-protocol/sdk-react-native")) as DiditSdkModule;
+    cachedDiditSdkModule = (await import("@didit-protocol/sdk-react-native")) as DiditSdkModule;
     return cachedDiditSdkModule;
   } catch {
     cachedDiditSdkModule = null;
@@ -92,10 +90,7 @@ function isProcessingStatus(status: string) {
   return PROCESSING_STATUSES.has(status);
 }
 
-function getStatusHeadline(
-  status: string,
-  t: ReturnType<typeof useTranslation>["t"],
-) {
+function getStatusHeadline(status: string, t: ReturnType<typeof useTranslation>["t"]) {
   switch (status) {
     case "approved":
       return t("profile.identityVerification.headline.approved");
@@ -116,10 +111,7 @@ function getStatusHeadline(
   }
 }
 
-function getStatusBody(
-  status: string,
-  t: ReturnType<typeof useTranslation>["t"],
-) {
+function getStatusBody(status: string, t: ReturnType<typeof useTranslation>["t"]) {
   switch (status) {
     case "approved":
       return t("profile.identityVerification.body.approved");
@@ -152,10 +144,7 @@ function LoaderDot({ delay, color }: { delay: number; color: string }) {
     pulse.value = withDelay(
       delay,
       withRepeat(
-        withSequence(
-          withTiming(1, { duration: 420 }),
-          withTiming(0.45, { duration: 420 }),
-        ),
+        withSequence(withTiming(1, { duration: 420 }), withTiming(0.45, { duration: 420 })),
         -1,
         false,
       ),
@@ -193,26 +182,17 @@ function VerificationResolvingState({ label }: { label: string }) {
   useEffect(() => {
     settle.value = withTiming(1, { duration: 320 });
     halo.value = withRepeat(
-      withSequence(
-        withTiming(1.18, { duration: 850 }),
-        withTiming(0.8, { duration: 850 }),
-      ),
+      withSequence(withTiming(1.18, { duration: 850 }), withTiming(0.8, { duration: 850 })),
       -1,
       false,
     );
     cardFloat.value = withRepeat(
-      withSequence(
-        withTiming(-5, { duration: 1200 }),
-        withTiming(0, { duration: 1200 }),
-      ),
+      withSequence(withTiming(-5, { duration: 1200 }), withTiming(0, { duration: 1200 })),
       -1,
       false,
     );
     bubbleFloat.value = withRepeat(
-      withSequence(
-        withTiming(-10, { duration: 1400 }),
-        withTiming(0, { duration: 1400 }),
-      ),
+      withSequence(withTiming(-10, { duration: 1400 }), withTiming(0, { duration: 1400 })),
       -1,
       false,
     );
@@ -225,26 +205,17 @@ function VerificationResolvingState({ label }: { label: string }) {
 
   const cardStyle = useAnimatedStyle(() => ({
     opacity: 0.72 + settle.value * 0.28,
-    transform: [
-      { translateY: cardFloat.value },
-      { scale: 0.96 + settle.value * 0.04 },
-    ],
+    transform: [{ translateY: cardFloat.value }, { scale: 0.96 + settle.value * 0.04 }],
   }));
 
   const bubbleLeftStyle = useAnimatedStyle(() => ({
     opacity: 0.16 + settle.value * 0.1,
-    transform: [
-      { translateY: bubbleFloat.value },
-      { scale: 0.92 + settle.value * 0.08 },
-    ],
+    transform: [{ translateY: bubbleFloat.value }, { scale: 0.92 + settle.value * 0.08 }],
   }));
 
   const bubbleRightStyle = useAnimatedStyle(() => ({
     opacity: 0.14 + settle.value * 0.1,
-    transform: [
-      { translateY: bubbleFloat.value * -0.7 },
-      { scale: 0.9 + settle.value * 0.1 },
-    ],
+    transform: [{ translateY: bubbleFloat.value * -0.7 }, { scale: 0.9 + settle.value * 0.1 }],
   }));
 
   return (
@@ -338,9 +309,7 @@ function VerificationResolvingState({ label }: { label: string }) {
               backgroundColor: palette.surface as string,
             }}
           >
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-            >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <LoaderDot delay={0} color={palette.primary as string} />
               <LoaderDot delay={140} color={palette.primary as string} />
               <LoaderDot delay={280} color={palette.primary as string} />
@@ -354,10 +323,7 @@ function VerificationResolvingState({ label }: { label: string }) {
             <ThemedText type="title" style={{ textAlign: "center" }}>
               {t("profile.identityVerification.resolvingTitle")}
             </ThemedText>
-            <ThemedText
-              type="caption"
-              style={{ color: palette.textMuted, textAlign: "center" }}
-            >
+            <ThemedText type="caption" style={{ color: palette.textMuted, textAlign: "center" }}>
               {label}
             </ThemedText>
           </Animated.View>
@@ -375,11 +341,11 @@ export default function IdentityVerificationScreen() {
     api.didit.getMyDiditVerification,
     currentUser?.role === "instructor" ? {} : "skip",
   );
-  const createSessionForCurrentInstructor = useAction(
-    api.didit.createSessionForCurrentInstructor,
-  );
-  const refreshMyDiditVerification = useAction(
-    api.didit.refreshMyDiditVerification,
+  const createSessionForCurrentInstructor = useAction(api.didit.createSessionForCurrentInstructor);
+  const refreshMyDiditVerification = useAction(api.didit.refreshMyDiditVerification);
+  const diditEvents = useQuery(
+    api.didit.listMyDiditEvents,
+    currentUser?.role === "instructor" ? { limit: 6 } : "skip",
   );
 
   const diditReturnUrl = useMemo(
@@ -398,6 +364,7 @@ export default function IdentityVerificationScreen() {
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [localStatus, setLocalStatus] = useState<string | null>(null);
   const [showApprovalBurst, setShowApprovalBurst] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const previousStatusRef = useRef<string | null>(null);
 
   const status = localStatus ?? diditVerification?.status ?? "not_started";
@@ -407,6 +374,45 @@ export default function IdentityVerificationScreen() {
   const legalName = diditVerification?.legalName ?? null;
   const verifiedAtLabel = formatDateTime(diditVerification?.verifiedAt);
   const lastEventAtLabel = formatDateTime(diditVerification?.lastEventAt);
+  const refreshVerificationStatus = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const latest = await refreshMyDiditVerification({});
+      setLocalStatus(latest.status);
+      setErrorMessage(null);
+      setInfoMessage(
+        t("profile.identityVerification.lastUpdate", {
+          date: formatDateTime(Date.now()) ?? "",
+        }),
+      );
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : t("profile.identityVerification.confirmFailed"),
+      );
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshMyDiditVerification, t]);
+  const refreshAccessory = useMemo(
+    () => (
+      <IconButton
+        size={40}
+        tone="secondary"
+        accessibilityLabel={t("profile.identityVerification.refreshStatus")}
+        disabled={busy || isRefreshing}
+        onPress={() => {
+          void refreshVerificationStatus();
+        }}
+        icon={<IconSymbol name="arrow.clockwise" size={18} color={String(palette.text)} />}
+      />
+    ),
+    [busy, isRefreshing, palette.text, refreshVerificationStatus, t],
+  );
+  useProfileSubpageSheet({
+    title: t("profile.navigation.identityVerification"),
+    routeMatchPath: "/profile/identity-verification",
+    rightAccessory: refreshAccessory,
+  });
 
   useEffect(() => {
     if (previousStatusRef.current === null) {
@@ -416,9 +422,7 @@ export default function IdentityVerificationScreen() {
     if (status === "approved" && previousStatusRef.current !== "approved") {
       setShowApprovalBurst(true);
       if (Platform.OS === "ios") {
-        void Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     }
     previousStatusRef.current = status;
@@ -515,9 +519,7 @@ export default function IdentityVerificationScreen() {
     currentUser === undefined ||
     (currentUser?.role === "instructor" && diditVerification === undefined)
   ) {
-    return (
-      <LoadingScreen label={t("profile.identityVerification.loadingStatus")} />
-    );
+    return <LoadingScreen label={t("profile.identityVerification.loadingStatus")} />;
   }
   if (currentUser === null) {
     return <Redirect href="/sign-in" />;
@@ -558,10 +560,7 @@ export default function IdentityVerificationScreen() {
         } else if (result.type === "cancelled") {
           setInfoMessage(t("profile.identityVerification.cancelled"));
         } else {
-          setErrorMessage(
-            result.error?.message ??
-              t("profile.identityVerification.startFailed"),
-          );
+          setErrorMessage(result.error?.message ?? t("profile.identityVerification.startFailed"));
         }
         return;
       }
@@ -573,19 +572,14 @@ export default function IdentityVerificationScreen() {
 
       if (browserResult.type === "success") {
         beginAwaitingFinalResult("in_review");
-      } else if (
-        browserResult.type === "cancel" ||
-        browserResult.type === "dismiss"
-      ) {
+      } else if (browserResult.type === "cancel" || browserResult.type === "dismiss") {
         setInfoMessage(t("profile.identityVerification.cancelled"));
       } else {
         setErrorMessage(t("profile.identityVerification.invalidReturn"));
       }
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : t("profile.identityVerification.startFailed"),
+        error instanceof Error ? error.message : t("profile.identityVerification.startFailed"),
       );
     } finally {
       setBusy(false);
@@ -601,22 +595,29 @@ export default function IdentityVerificationScreen() {
   };
 
   if (awaitingFinalResult) {
-    return (
-      <VerificationResolvingState
-        label={t("profile.identityVerification.resolvingLabel")}
-      />
-    );
+    return <VerificationResolvingState label={t("profile.identityVerification.resolvingLabel")} />;
   }
 
   return (
-    <TabScreenScrollView
-      routeKey="instructor/profile"
+    <ProfileSubpageScrollView
+      routeKey="instructor/profile/identity-verification"
       style={{ flex: 1, backgroundColor: palette.appBg }}
-      contentContainerStyle={{ paddingTop: 16, paddingBottom: 44, gap: 22 }}
+      contentContainerStyle={{
+        gap: 22,
+      }}
+      topSpacing={16}
+      bottomSpacing={44}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={() => {
+            void refreshVerificationStatus();
+          }}
+          tintColor={palette.primary as string}
+        />
+      }
     >
-      <View
-        style={{ paddingHorizontal: BrandSpacing.md, gap: BrandSpacing.md }}
-      >
+      <View style={{ paddingHorizontal: BrandSpacing.md, gap: BrandSpacing.md }}>
         {showApprovalBurst ? <KitSuccessBurst /> : null}
 
         <View
@@ -642,9 +643,7 @@ export default function IdentityVerificationScreen() {
               <ThemedText type="caption" style={{ color: palette.textMuted }}>
                 {t("profile.identityVerification.title")}
               </ThemedText>
-              <ThemedText type="title">
-                {getStatusHeadline(status, t)}
-              </ThemedText>
+              <ThemedText type="title">{getStatusHeadline(status, t)}</ThemedText>
             </View>
             <IdentityStatusBadge status={status} palette={palette} />
           </View>
@@ -709,17 +708,12 @@ export default function IdentityVerificationScreen() {
               opacity: busy ? 0.7 : 1,
             })}
           >
-            <ThemedText
-              type="bodyStrong"
-              style={{ color: palette.onPrimary as string }}
-            >
+            <ThemedText type="bodyStrong" style={{ color: palette.onPrimary as string }}>
               {busy
                 ? t("profile.identityVerification.starting")
                 : isProcessing
                   ? t("profile.identityVerification.resume")
-                  : status === "declined" ||
-                      status === "expired" ||
-                      status === "abandoned"
+                  : status === "declined" || status === "expired" || status === "abandoned"
                     ? t("profile.identityVerification.restart")
                     : t("profile.identityVerification.start")}
             </ThemedText>
@@ -727,25 +721,67 @@ export default function IdentityVerificationScreen() {
         ) : null}
 
         {errorMessage ? (
-          <ThemedText
-            type="caption"
-            selectable
-            style={{ color: palette.danger }}
-          >
+          <ThemedText type="caption" selectable style={{ color: palette.danger }}>
             {errorMessage}
           </ThemedText>
         ) : null}
 
         {infoMessage ? (
-          <ThemedText
-            type="caption"
-            selectable
-            style={{ color: palette.textMuted }}
-          >
+          <ThemedText type="caption" selectable style={{ color: palette.textMuted }}>
             {infoMessage}
           </ThemedText>
         ) : null}
+
+        {diditEvents && diditEvents.length > 0 ? (
+          <View
+            style={{
+              gap: 10,
+              padding: 18,
+              borderRadius: 24,
+              borderCurve: "continuous",
+              backgroundColor: palette.surfaceAlt as string,
+            }}
+          >
+            <ThemedText type="bodyStrong">
+              {t("profile.identityVerification.timelineTitle")}
+            </ThemedText>
+            {diditEvents.map((event) => (
+              <View
+                key={event.providerEventId}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <View style={{ flex: 1, gap: 2 }}>
+                  <ThemedText type="caption">
+                    {event.mappedStatus
+                      ? getIdentityStatusLabel(event.mappedStatus)
+                      : (event.statusRaw ?? t("profile.identityVerification.timelineUnknown"))}
+                  </ThemedText>
+                  <ThemedText type="micro" style={{ color: palette.textMuted }}>
+                    {formatDateTime(event.createdAt) ?? ""}
+                  </ThemedText>
+                </View>
+                <ThemedText
+                  type="micro"
+                  style={{
+                    color: event.processingError ? palette.danger : palette.textMuted,
+                  }}
+                >
+                  {event.processingError
+                    ? t("profile.identityVerification.timelineError")
+                    : event.processed
+                      ? t("profile.identityVerification.timelineProcessed")
+                      : t("profile.identityVerification.timelinePending")}
+                </ThemedText>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </View>
-    </TabScreenScrollView>
+    </ProfileSubpageScrollView>
   );
 }

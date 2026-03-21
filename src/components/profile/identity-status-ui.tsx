@@ -1,5 +1,6 @@
 import { KitStatusBadge } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
+import i18n from "@/i18n";
 
 export type IdentityStatus =
   | "approved"
@@ -11,22 +12,22 @@ export type IdentityStatus =
   | "expired"
   | "not_started";
 
-const STATUS_LABELS: Record<IdentityStatus, string> = {
-  approved: "Approved",
-  declined: "Declined",
-  in_review: "In review",
-  pending: "Pending",
-  in_progress: "In progress",
-  abandoned: "Cancelled",
-  expired: "Expired",
-  not_started: "Not started",
+const STATUS_LABEL_KEYS: Record<IdentityStatus, string> = {
+  approved: "profile.identityVerification.status.approved",
+  declined: "profile.identityVerification.status.declined",
+  in_review: "profile.identityVerification.status.in_review",
+  pending: "profile.identityVerification.status.pending",
+  in_progress: "profile.identityVerification.status.in_progress",
+  abandoned: "profile.identityVerification.status.abandoned",
+  expired: "profile.identityVerification.status.expired",
+  not_started: "profile.identityVerification.status.not_started",
 };
 
 export function getIdentityStatusLabel(status: string) {
-  if (status in STATUS_LABELS) {
-    return STATUS_LABELS[status as IdentityStatus];
+  if (status in STATUS_LABEL_KEYS) {
+    return i18n.t(STATUS_LABEL_KEYS[status as IdentityStatus]);
   }
-  return STATUS_LABELS.not_started;
+  return i18n.t(STATUS_LABEL_KEYS.not_started);
 }
 
 export function getIdentityStatusTone(status: string, palette: BrandPalette) {

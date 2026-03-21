@@ -139,7 +139,5 @@ export function isQueueManagedGoogleEvent(
     return true;
   }
 
-  return (
-    event.extendedProperties?.private?.[GOOGLE_EVENT_SOURCE_KEY] === GOOGLE_EVENT_SOURCE_VALUE
-  );
+  return event.extendedProperties?.private?.[GOOGLE_EVENT_SOURCE_KEY] === GOOGLE_EVENT_SOURCE_VALUE;
 }

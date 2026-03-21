@@ -4,35 +4,31 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Alert,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
 } from "@/components/profile/profile-settings-sections";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { ActionButton } from "@/components/ui/action-button";
 import {
-  BrandRadius,
-  BrandSpacing,
-  BrandType,
-  type BrandPalette,
-} from "@/constants/brand";
+  ProfileSubpageScrollView,
+  useProfileSubpageSheet,
+} from "@/components/profile/profile-subpage-sheet";
+import { ActionButton } from "@/components/ui/action-button";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitSwitch } from "@/components/ui/kit";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import { prepareDeviceCalendarSync } from "@/lib/device-calendar-sync";
+import { resolveGoogleCalendarAuthConfig } from "@/lib/google-calendar-auth-config";
+import {
+  connectGoogleCalendarNative,
+  disconnectGoogleCalendarNative,
+} from "@/lib/google-calendar-native-auth";
 
 const CALENDAR_PROVIDER_KEYS = {
   none: "profile.settings.calendar.provider.none",
@@ -42,11 +38,7 @@ const CALENDAR_PROVIDER_KEYS = {
 
 type CalendarProvider = keyof typeof CALENDAR_PROVIDER_KEYS;
 
-const GOOGLE_SCOPES = [
-  "https://www.googleapis.com/auth/calendar.events",
-  "openid",
-  "email",
-];
+const GOOGLE_SCOPES = ["https://www.googleapis.com/auth/calendar.events", "openid", "email"];
 
 const GOOGLE_DISCOVERY: AuthSession.DiscoveryDocument = {
   authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -54,11 +46,11 @@ const GOOGLE_DISCOVERY: AuthSession.DiscoveryDocument = {
   revocationEndpoint: "https://oauth2.googleapis.com/revoke",
 };
 
-const calendarApi = (api as unknown as { calendar: Record<string, unknown> })
-  .calendar as {
+const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).calendar as {
   getMyGoogleCalendarStatus: unknown;
   disconnectGoogleCalendar: unknown;
   connectGoogleCalendarWithCode: unknown;
+  connectGoogleCalendarWithServerAuthCode: unknown;
   syncMyGoogleCalendarEvents: unknown;
 };
 
@@ -84,16 +76,6 @@ type ProviderOptionProps = {
 
 WebBrowser.maybeCompleteAuthSession();
 
-function resolveGoogleClientId() {
-  if (Platform.OS === "ios") {
-    return process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID_IOS;
-  }
-  if (Platform.OS === "android") {
-    return process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID_ANDROID;
-  }
-  return process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID_WEB;
-}
-
 function StatusSignal({
   label,
   value,
@@ -106,13 +88,9 @@ function StatusSignal({
   tone?: "surface" | "accent";
 }) {
   const backgroundColor =
-    tone === "accent"
-      ? (palette.primarySubtle as string)
-      : (palette.surfaceElevated as string);
+    tone === "accent" ? (palette.primarySubtle as string) : (palette.surfaceElevated as string);
   const labelColor =
-    tone === "accent"
-      ? (palette.primary as string)
-      : (palette.textMuted as string);
+    tone === "accent" ? (palette.primary as string) : (palette.textMuted as string);
 
   return (
     <View
@@ -158,6 +136,8 @@ function ProviderOption({
   onPress,
   palette,
 }: ProviderOptionProps) {
+  const { t } = useTranslation();
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -168,9 +148,7 @@ function ProviderOption({
         borderWidth: 1,
         borderRadius: BrandRadius.button,
         borderCurve: "continuous",
-        borderColor: selected
-          ? (palette.primary as string)
-          : (palette.border as string),
+        borderColor: selected ? (palette.primary as string) : (palette.border as string),
         backgroundColor: selected
           ? (palette.primarySubtle as string)
           : (palette.surfaceElevated as string),
@@ -202,9 +180,7 @@ function ProviderOption({
           style={[
             styles.providerBadge,
             {
-              backgroundColor: selected
-                ? (palette.primary as string)
-                : (palette.surface as string),
+              backgroundColor: selected ? (palette.primary as string) : (palette.surface as string),
               borderColor: selected
                 ? (palette.primary as string)
                 : (palette.borderStrong as string),
@@ -214,14 +190,12 @@ function ProviderOption({
           <Text
             style={{
               ...BrandType.micro,
-              color: selected
-                ? (palette.onPrimary as string)
-                : (palette.textMuted as string),
+              color: selected ? (palette.onPrimary as string) : (palette.textMuted as string),
               letterSpacing: 0.6,
               textTransform: "uppercase",
             }}
           >
-            {selected ? "Live" : "Pick"}
+            {selected ? t("profile.calendar.liveLabel") : t("profile.calendar.pickLabel")}
           </Text>
         </View>
       </View>
@@ -235,6 +209,10 @@ export default function CalendarSettingsScreen() {
   const router = useRouter();
   const { overlayBottom } = useAppInsets();
   const { currentUser } = useUser();
+  useProfileSubpageSheet({
+    title: t("profile.navigation.calendar"),
+    routeMatchPath: "/profile/calendar-settings",
+  });
 
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
@@ -246,20 +224,19 @@ export default function CalendarSettingsScreen() {
   ) as GoogleCalendarStatus | undefined;
 
   const saveSettings = useMutation(api.users.updateMyInstructorSettings);
-  const disconnectGoogleCalendar = useAction(
-    calendarApi.disconnectGoogleCalendar as any,
-  ) as (args: Record<string, never>) => Promise<DisconnectGoogleCalendarResult>;
-  const exchangeGoogleCode = useAction(
-    calendarApi.connectGoogleCalendarWithCode as any,
-  ) as (args: {
+  const disconnectGoogleCalendar = useAction(calendarApi.disconnectGoogleCalendar as any) as (
+    args: Record<string, never>,
+  ) => Promise<DisconnectGoogleCalendarResult>;
+  const exchangeGoogleCode = useAction(calendarApi.connectGoogleCalendarWithCode as any) as (args: {
     code: string;
     codeVerifier: string;
     redirectUri: string;
     clientId: string;
   }) => Promise<unknown>;
-  const syncGoogleCalendar = useAction(
-    calendarApi.syncMyGoogleCalendarEvents as any,
-  ) as (args: {
+  const exchangeGoogleServerAuthCode = useAction(
+    calendarApi.connectGoogleCalendarWithServerAuthCode as any,
+  ) as (args: { serverAuthCode: string }) => Promise<unknown>;
+  const syncGoogleCalendar = useAction(calendarApi.syncMyGoogleCalendarEvents as any) as (args: {
     startTime?: number;
     endTime?: number;
     limit?: number;
@@ -273,17 +250,15 @@ export default function CalendarSettingsScreen() {
   const [isDisconnectingGoogle, setIsDisconnectingGoogle] = useState(false);
   const [seeded, setSeeded] = useState(false);
 
-  const googleClientId = resolveGoogleClientId();
-  const redirectUri =
-    process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_REDIRECT_URL ??
-    AuthSession.makeRedirectUri({
-      scheme: "queue",
-      path: "oauth/google-calendar",
-    });
+  const googleAuthConfig = resolveGoogleCalendarAuthConfig(Platform.OS);
+  const googleClientId = googleAuthConfig.clientId;
+  const googleServerClientId = googleAuthConfig.serverClientId;
+  const redirectUri = googleAuthConfig.redirectUri;
+  const googleConfigError = googleAuthConfig.configError;
 
   const [googleRequest, , promptGoogleAuth] = AuthSession.useAuthRequest(
     {
-      clientId: googleClientId ?? "",
+      clientId: googleClientId ?? googleServerClientId ?? "",
       scopes: GOOGLE_SCOPES,
       responseType: AuthSession.ResponseType.Code,
       usePKCE: true,
@@ -299,9 +274,7 @@ export default function CalendarSettingsScreen() {
 
   useEffect(() => {
     if (instructorSettings && !seeded) {
-      setProvider(
-        (instructorSettings.calendarProvider as CalendarProvider) ?? "none",
-      );
+      setProvider((instructorSettings.calendarProvider as CalendarProvider) ?? "none");
       setSyncEnabled(instructorSettings.calendarSyncEnabled ?? false);
       setSeeded(true);
     }
@@ -328,46 +301,26 @@ export default function CalendarSettingsScreen() {
   const providerLabel = t(CALENDAR_PROVIDER_KEYS[provider]);
   const syncStateLabel =
     provider === "none"
-      ? t("profile.calendar.syncOff", { defaultValue: "Off" })
+      ? t("profile.calendar.syncOff")
       : syncEnabled
-        ? t("profile.calendar.syncOn", { defaultValue: "Auto-add on" })
-        : t("profile.calendar.syncManual", { defaultValue: "Manual" });
+        ? t("profile.calendar.syncOn")
+        : t("profile.calendar.syncManual");
   const heroTitle =
     provider === "google"
       ? hasGoogleConnection
-        ? t("profile.calendar.heroGoogleLive", {
-            defaultValue: "Google sync is live",
-          })
-        : t("profile.calendar.heroGooglePending", {
-            defaultValue: "Connect Google to go live",
-          })
+        ? t("profile.calendar.heroGoogleLive")
+        : t("profile.calendar.heroGooglePending")
       : provider === "apple"
-        ? t("profile.calendar.heroApple", {
-            defaultValue: "Device calendar sync is ready",
-          })
-        : t("profile.calendar.heroOff", {
-            defaultValue: "Calendar sync is off",
-          });
+        ? t("profile.calendar.heroApple")
+        : t("profile.calendar.heroOff");
   const heroBody =
     provider === "google"
       ? hasGoogleConnection
-        ? t("profile.calendar.heroGoogleLiveBody", {
-            defaultValue:
-              "Accepted sessions can flow straight into your Google calendar with one active connection.",
-          })
-        : t("profile.calendar.heroGooglePendingBody", {
-            defaultValue:
-              "Pick Google, connect the account, then decide whether new sessions auto-land or stay manual.",
-          })
+        ? t("profile.calendar.heroGoogleLiveBody")
+        : t("profile.calendar.heroGooglePendingBody")
       : provider === "apple"
-        ? t("profile.calendar.heroAppleBody", {
-            defaultValue:
-              "Queue writes accepted sessions into your device calendar after you grant local calendar access.",
-          })
-        : t("profile.calendar.heroOffBody", {
-            defaultValue:
-              "Leave sync off if you want Queue to stay separate from your personal scheduling stack.",
-          });
+        ? t("profile.calendar.heroAppleBody")
+        : t("profile.calendar.heroOffBody");
 
   const handleProviderChange = (next: CalendarProvider) => {
     setProvider(next);
@@ -440,26 +393,67 @@ export default function CalendarSettingsScreen() {
   };
 
   const onConnectGoogle = async () => {
-    if (!googleClientId || !googleRequest?.codeVerifier) {
+    if (googleConfigError) {
+      Alert.alert(t("profile.settings.errors.saveFailed"), googleConfigError);
       return;
     }
 
-    setIsConnectingGoogle(true);
-    try {
-      const result = await promptGoogleAuth();
-      if (result.type !== "success" || !result.params.code) {
+    if (Platform.OS === "android") {
+      if (!googleServerClientId) {
+        Alert.alert(
+          t("profile.settings.errors.saveFailed"),
+          t("profile.calendar.configErrors.androidBuildMissing"),
+        );
         return;
       }
+    } else if (!googleClientId || !googleRequest?.codeVerifier) {
+      Alert.alert(
+        t("profile.settings.errors.saveFailed"),
+        t("profile.calendar.configErrors.buildMissing"),
+      );
+      return;
+    }
 
-      await exchangeGoogleCode({
-        code: result.params.code,
-        codeVerifier: googleRequest.codeVerifier,
-        redirectUri,
-        clientId: googleClientId,
-      });
+    const googleCodeVerifier = googleRequest?.codeVerifier;
+    const resolvedGoogleClientId = googleClientId;
+
+    setIsConnectingGoogle(true);
+    try {
+      if (Platform.OS === "android") {
+        const nativeResult = await connectGoogleCalendarNative({
+          serverClientId: googleServerClientId!,
+          scopes: GOOGLE_SCOPES,
+        });
+        if (nativeResult.type === "cancelled") {
+          return;
+        }
+
+        await exchangeGoogleServerAuthCode({
+          serverAuthCode: nativeResult.serverAuthCode,
+        });
+      } else {
+        const result = await promptGoogleAuth();
+        if (result.type !== "success" || !result.params.code) {
+          return;
+        }
+
+        await exchangeGoogleCode({
+          code: result.params.code,
+          codeVerifier: googleCodeVerifier!,
+          redirectUri,
+          clientId: resolvedGoogleClientId!,
+        });
+      }
 
       setProvider("google");
       setSyncEnabled(true);
+    } catch (error) {
+      Alert.alert(
+        t("profile.settings.errors.saveFailed"),
+        error instanceof Error
+          ? error.message
+          : t("profile.calendar.configErrors.connectionFailed"),
+      );
     } finally {
       setIsConnectingGoogle(false);
     }
@@ -478,6 +472,11 @@ export default function CalendarSettingsScreen() {
     setIsDisconnectingGoogle(true);
     try {
       const result = await disconnectGoogleCalendar({});
+      if (Platform.OS === "android") {
+        await disconnectGoogleCalendarNative().catch(() => {
+          /* best-effort */
+        });
+      }
       if (!result.deletedRemoteEvents) {
         Alert.alert(
           t("profile.settings.calendar.disconnectCleanupWarningTitle"),
@@ -493,12 +492,11 @@ export default function CalendarSettingsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
-      <TabScreenScrollView
-        routeKey="instructor/profile"
+      <ProfileSubpageScrollView
+        routeKey="instructor/profile/calendar-settings"
         contentContainerStyle={{
           paddingHorizontal: BrandSpacing.lg,
-          paddingTop: BrandSpacing.lg,
-          paddingBottom: 148,
+          paddingBottom: overlayBottom + 92,
           gap: BrandSpacing.lg,
         }}
       >
@@ -540,32 +538,21 @@ export default function CalendarSettingsScreen() {
               </Text>
             </View>
             <View
-              style={[
-                styles.heroIconWrap,
-                { backgroundColor: palette.primarySubtle as string },
-              ]}
+              style={[styles.heroIconWrap, { backgroundColor: palette.primarySubtle as string }]}
             >
-              <IconSymbol
-                name="calendar.badge.clock"
-                size={22}
-                color={palette.primary as string}
-              />
+              <IconSymbol name="calendar.badge.clock" size={22} color={palette.primary as string} />
             </View>
           </View>
 
           <View style={styles.heroSignalsRow}>
             <StatusSignal
-              label={t("profile.calendar.signalProvider", {
-                defaultValue: "Provider",
-              })}
+              label={t("profile.calendar.signalProvider")}
               value={providerLabel}
               palette={palette}
               tone={provider === "none" ? "surface" : "accent"}
             />
             <StatusSignal
-              label={t("profile.calendar.signalSync", {
-                defaultValue: "Mode",
-              })}
+              label={t("profile.calendar.signalSync")}
               value={syncStateLabel}
               palette={palette}
             />
@@ -574,9 +561,7 @@ export default function CalendarSettingsScreen() {
 
         <View style={{ gap: BrandSpacing.sm }}>
           <ProfileSectionHeader
-            label={t("profile.calendar.providerLabel", {
-              defaultValue: "Provider",
-            })}
+            label={t("profile.calendar.providerLabel")}
             description={t("profile.settings.calendar.description")}
             icon="calendar.badge.clock"
             palette={palette}
@@ -587,10 +572,7 @@ export default function CalendarSettingsScreen() {
               <ProviderOption
                 value="none"
                 title={t(CALENDAR_PROVIDER_KEYS.none)}
-                description={t("profile.calendar.providerNoneBody", {
-                  defaultValue:
-                    "Keep Queue self-contained and skip calendar export entirely.",
-                })}
+                description={t("profile.calendar.providerNoneBody")}
                 selected={provider === "none"}
                 onPress={handleProviderChange}
                 palette={palette}
@@ -598,10 +580,7 @@ export default function CalendarSettingsScreen() {
               <ProviderOption
                 value="google"
                 title={t(CALENDAR_PROVIDER_KEYS.google)}
-                description={t("profile.calendar.providerGoogleBody", {
-                  defaultValue:
-                    "Push accepted sessions into the connected Google calendar account.",
-                })}
+                description={t("profile.calendar.providerGoogleBody")}
                 selected={provider === "google"}
                 onPress={handleProviderChange}
                 palette={palette}
@@ -609,10 +588,7 @@ export default function CalendarSettingsScreen() {
               <ProviderOption
                 value="apple"
                 title={t(CALENDAR_PROVIDER_KEYS.apple)}
-                description={t("profile.calendar.providerAppleBody", {
-                  defaultValue:
-                    "Write accepted sessions into the device calendar on this phone.",
-                })}
+                description={t("profile.calendar.providerAppleBody")}
                 selected={provider === "apple"}
                 onPress={handleProviderChange}
                 palette={palette}
@@ -623,13 +599,8 @@ export default function CalendarSettingsScreen() {
 
         <View style={{ gap: BrandSpacing.sm }}>
           <ProfileSectionHeader
-            label={t("profile.calendar.commandLabel", {
-              defaultValue: "Command",
-            })}
-            description={t("profile.calendar.commandBody", {
-              defaultValue:
-                "Choose whether accepted sessions auto-land in your calendar or stay available for manual sync.",
-            })}
+            label={t("profile.calendar.commandLabel")}
+            description={t("profile.calendar.commandBody")}
             icon="sparkles"
             palette={palette}
             flush
@@ -663,19 +634,10 @@ export default function CalendarSettingsScreen() {
                     {t("profile.settings.calendar.futureNote")}
                   </Text>
                 </View>
-                <Switch
+                <KitSwitch
                   value={syncEnabled}
                   onValueChange={setSyncEnabled}
-                  disabled={
-                    provider === "none" ||
-                    (provider === "google" && !hasGoogleConnection)
-                  }
-                  trackColor={{
-                    false: palette.borderStrong as string,
-                    true: palette.primary as string,
-                  }}
-                  thumbColor={palette.surfaceElevated as string}
-                  ios_backgroundColor={palette.borderStrong as string}
+                  disabled={provider === "none" || (provider === "google" && !hasGoogleConnection)}
                 />
               </View>
 
@@ -704,12 +666,8 @@ export default function CalendarSettingsScreen() {
                     }}
                   >
                     {hasGoogleConnection
-                      ? t("profile.calendar.googleStateLive", {
-                          defaultValue: "Google linked",
-                        })
-                      : t("profile.calendar.googleStatePending", {
-                          defaultValue: "Google pending",
-                        })}
+                      ? t("profile.calendar.googleStateLive")
+                      : t("profile.calendar.googleStatePending")}
                   </Text>
                   <Text
                     style={{
@@ -719,7 +677,9 @@ export default function CalendarSettingsScreen() {
                   >
                     {hasGoogleConnection
                       ? t("profile.settings.calendar.googleConnectedAs", {
-                          email: googleStatus?.accountEmail ?? "Google account",
+                          email:
+                            googleStatus?.accountEmail ??
+                            t("profile.calendar.googleAccountFallback"),
                         })
                       : t("profile.settings.calendar.googleConnectRequired")}
                   </Text>
@@ -756,9 +716,7 @@ export default function CalendarSettingsScreen() {
                       textTransform: "uppercase",
                     }}
                   >
-                    {t("profile.calendar.appleLabel", {
-                      defaultValue: "Apple calendar",
-                    })}
+                    {t("profile.calendar.appleLabel")}
                   </Text>
                   <Text
                     style={{
@@ -789,9 +747,7 @@ export default function CalendarSettingsScreen() {
                       textTransform: "uppercase",
                     }}
                   >
-                    {t("profile.calendar.noneLabel", {
-                      defaultValue: "No sync",
-                    })}
+                    {t("profile.calendar.noneLabel")}
                   </Text>
                   <Text
                     style={{
@@ -799,10 +755,7 @@ export default function CalendarSettingsScreen() {
                       color: palette.text as string,
                     }}
                   >
-                    {t("profile.calendar.noneBody", {
-                      defaultValue:
-                        "Queue will track accepted sessions internally without writing into an external calendar.",
-                    })}
+                    {t("profile.calendar.noneBody")}
                   </Text>
                 </View>
               ) : null}
@@ -828,6 +781,27 @@ export default function CalendarSettingsScreen() {
                 </View>
               ) : null}
 
+              {provider === "google" && googleConfigError ? (
+                <View
+                  style={[
+                    styles.errorCard,
+                    {
+                      borderColor: palette.border as string,
+                      backgroundColor: palette.surfaceElevated as string,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      ...BrandType.bodyMedium,
+                      color: palette.text as string,
+                    }}
+                  >
+                    {googleConfigError}
+                  </Text>
+                </View>
+              ) : null}
+
               {provider === "google" ? (
                 <View style={{ gap: 10 }}>
                   {!hasGoogleConnection ? (
@@ -841,7 +815,11 @@ export default function CalendarSettingsScreen() {
                         void onConnectGoogle();
                       }}
                       disabled={
-                        isConnectingGoogle || !googleClientId || !googleRequest
+                        isConnectingGoogle ||
+                        !!googleConfigError ||
+                        (Platform.OS === "android"
+                          ? !googleServerClientId
+                          : !googleClientId || !googleRequest)
                       }
                       palette={palette}
                       fullWidth
@@ -882,7 +860,7 @@ export default function CalendarSettingsScreen() {
             </View>
           </ProfileSectionCard>
         </View>
-      </TabScreenScrollView>
+      </ProfileSubpageScrollView>
 
       <View
         style={[
@@ -895,9 +873,7 @@ export default function CalendarSettingsScreen() {
       >
         <ActionButton
           label={
-            isSaving
-              ? t("profile.settings.actions.saving")
-              : t("profile.settings.actions.save")
+            isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
           }
           onPress={() => {
             void onSave();

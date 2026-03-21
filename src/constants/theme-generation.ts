@@ -130,6 +130,19 @@ function rgbToHex(color: Rgb): string {
   return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
 }
 
+function mixHexColors(foreground: string, background: string, backgroundWeight: number): string {
+  const fg = parseHexColor(foreground);
+  const bg = parseHexColor(background);
+  const clampedWeight = clamp(backgroundWeight, 0, 1);
+  const foregroundWeight = 1 - clampedWeight;
+
+  return rgbToHex({
+    r: fg.r * foregroundWeight + bg.r * clampedWeight,
+    g: fg.g * foregroundWeight + bg.g * clampedWeight,
+    b: fg.b * foregroundWeight + bg.b * clampedWeight,
+  });
+}
+
 function srgbToLinear(value: number): number {
   const normalized = value / 255;
   if (normalized <= 0.04045) return normalized / 12.92;
@@ -242,6 +255,25 @@ function tuneTextOnBackground(background: string, preferDark: boolean, minRatio:
   return preferDark ? "#111827" : "#f8fafc";
 }
 
+function softenTextOnBackground(
+  text: string,
+  background: string,
+  initialBackgroundWeight: number,
+  minRatio: number,
+): string {
+  let weight = clamp(initialBackgroundWeight, 0, 0.82);
+
+  for (let i = 0; i < 8; i += 1) {
+    const candidate = mixHexColors(text, background, weight);
+    if (contrastRatio(candidate, background) >= minRatio) {
+      return candidate;
+    }
+    weight = Math.max(0, weight - 0.08);
+  }
+
+  return text;
+}
+
 function derive(base: Oklch, overrides: Partial<Oklch>, options: ThemeGenerationOptions): string {
   // We carefully clamp chroma to the options minimum, EXCEPT if the caller explicitly requests extremely low chroma
   // to avoid tinting deep/dark backgrounds with an artificial hue.
@@ -299,23 +331,28 @@ export function generateThemeTokens(
   );
   const surfaceBase = derive(
     baseNeutral,
-    { l: isDark ? 0.18 : 0.995, c: baseNeutral.c * 0.22 },
+    { l: isDark ? 0.16 : 0.99, c: baseNeutral.c * 0.18 },
     options,
   );
   const surfaceAlt = derive(
     baseNeutral,
-    { l: isDark ? 0.22 : 0.93, c: baseNeutral.c * 0.3 },
+    { l: isDark ? 0.24 : 0.935, c: baseNeutral.c * 0.26 },
     options,
   );
   const surfaceElevated = derive(
     baseNeutral,
-    { l: isDark ? 0.24 : 1, c: baseNeutral.c * 0.2 },
+    { l: isDark ? 0.3 : 0.998, c: baseNeutral.c * 0.22 },
     options,
   );
 
   const textPrimary = tuneTextOnBackground(surfaceBase, !isDark, options.targetTextContrast);
-  const textSecondary = tuneTextOnBackground(surfaceBase, !isDark, options.targetMutedTextContrast);
-  const textMicro = tuneTextOnBackground(surfaceAlt, !isDark, 2.4); // Clearly distinct from textMuted
+  const textSecondary = softenTextOnBackground(
+    textPrimary,
+    surfaceBase,
+    isDark ? 0.34 : 0.42,
+    options.targetMutedTextContrast,
+  );
+  const textMicro = softenTextOnBackground(textSecondary, surfaceAlt, isDark ? 0.28 : 0.38, 3.0);
   const onPrimary = tuneTextOnBackground(
     derive(basePrimary, { l: isDark ? 0.68 : 0.58, c: basePrimary.c }, options),
     isDark,
@@ -324,12 +361,12 @@ export function generateThemeTokens(
 
   const borderSubtle = derive(
     baseNeutral,
-    { l: isDark ? 0.32 : 0.84, c: baseNeutral.c * 0.35 },
+    { l: isDark ? 0.4 : 0.84, c: baseNeutral.c * 0.32 },
     options,
   );
   const borderStrong = derive(
     baseNeutral,
-    { l: isDark ? 0.42 : 0.73, c: baseNeutral.c * 0.42 },
+    { l: isDark ? 0.54 : 0.73, c: baseNeutral.c * 0.38 },
     options,
   );
   const focus = derive(basePrimary, { l: isDark ? 0.76 : 0.64, c: basePrimary.c * 0.9 }, options);
@@ -342,7 +379,7 @@ export function generateThemeTokens(
   );
   const primarySubtle = derive(
     basePrimary,
-    { l: isDark ? 0.28 : 0.92, c: basePrimary.c * 0.42 },
+    { l: isDark ? 0.38 : 0.92, c: basePrimary.c * 0.38 },
     options,
   );
   const accent = derive(baseAccent, { l: isDark ? 0.72 : 0.6, c: baseAccent.c }, options);

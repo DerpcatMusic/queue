@@ -1,5 +1,5 @@
-import { StudioFeed } from "@/components/jobs/studio-feed";
+import { StudioJobsTab } from "@/components/jobs";
 
 export default function StudioJobsRoute() {
-  return <StudioFeed />;
+  return <StudioJobsTab />;
 }

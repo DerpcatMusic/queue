@@ -1,7 +1,7 @@
 import { useIsFocused } from "@react-navigation/native";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
-import CalendarTabScreen from "@/components/calendar/calendar-tab-screen";
+import CalendarTabScreen from "@/components/calendar";
 import { useBrand } from "@/hooks/use-brand";
 
 export default function CalendarTabRoute() {

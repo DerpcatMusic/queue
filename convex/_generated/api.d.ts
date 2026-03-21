@@ -24,6 +24,7 @@ import type * as integrations_rapyd_payloads from "../integrations/rapyd/payload
 import type * as invoicing from "../invoicing.js";
 import type * as jobs from "../jobs.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_authDedupe from "../lib/authDedupe.js";
 import type * as lib_calendarCrypto from "../lib/calendarCrypto.js";
 import type * as lib_calendarShared from "../lib/calendarShared.js";
 import type * as lib_domainValidation from "../lib/domainValidation.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   invoicing: typeof invoicing;
   jobs: typeof jobs;
   "lib/auth": typeof lib_auth;
+  "lib/authDedupe": typeof lib_authDedupe;
   "lib/calendarCrypto": typeof lib_calendarCrypto;
   "lib/calendarShared": typeof lib_calendarShared;
   "lib/domainValidation": typeof lib_domainValidation;

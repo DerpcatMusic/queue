@@ -2,45 +2,37 @@ import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Switch, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
 } from "@/components/profile/profile-settings-sections";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import {
+  ProfileSubpageScrollView,
+  useProfileSubpageSheet,
+} from "@/components/profile/profile-subpage-sheet";
 import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
-import {
-  BrandRadius,
-  BrandSpacing,
-  BrandType,
-  type BrandPalette,
-} from "@/constants/brand";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitSwitch } from "@/components/ui/kit";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import { useLocationResolution } from "@/hooks/use-location-resolution";
-import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import type { PlaceCoordinates } from "@/lib/google-places";
+import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import type { ResolvedLocation } from "@/lib/location-zone";
 
-let zoneLabelByIdPromise: Promise<
-  Map<string, { en: string; he: string }>
-> | null = null;
+let zoneLabelByIdPromise: Promise<Map<string, { en: string; he: string }>> | null = null;
 
-async function getZoneLabelById(
-  zoneId: string,
-  language: "en" | "he",
-): Promise<string> {
+async function getZoneLabelById(zoneId: string, language: "en" | "he"): Promise<string> {
   if (!zoneLabelByIdPromise) {
     zoneLabelByIdPromise = import("@/constants/zones").then((module) => {
-      return new Map(
-        module.ZONE_OPTIONS.map((zone) => [zone.id, zone.label] as const),
-      );
+      return new Map(module.ZONE_OPTIONS.map((zone) => [zone.id, zone.label] as const));
     });
   }
 
@@ -68,13 +60,9 @@ function StatusSignal({
   tone?: "surface" | "accent";
 }) {
   const backgroundColor =
-    tone === "accent"
-      ? (palette.primarySubtle as string)
-      : (palette.surfaceElevated as string);
+    tone === "accent" ? (palette.primarySubtle as string) : (palette.surfaceElevated as string);
   const labelColor =
-    tone === "accent"
-      ? (palette.primary as string)
-      : (palette.textMuted as string);
+    tone === "accent" ? (palette.primary as string) : (palette.textMuted as string);
 
   return (
     <View
@@ -119,6 +107,10 @@ export default function LocationScreen() {
   const { overlayBottom } = useAppInsets();
   const { currentUser } = useUser();
   const languageCode = (i18n.resolvedLanguage ?? "en") as "en" | "he";
+  useProfileSubpageSheet({
+    title: t("profile.navigation.location"),
+    routeMatchPath: "/profile/location",
+  });
 
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
@@ -131,9 +123,7 @@ export default function LocationScreen() {
   const [latitude, setLatitude] = useState<number>();
   const [longitude, setLongitude] = useState<number>();
   const [detectedZone, setDetectedZone] = useState<string | null>(null);
-  const [detectedZoneLabel, setDetectedZoneLabel] = useState<string | null>(
-    null,
-  );
+  const [detectedZoneLabel, setDetectedZoneLabel] = useState<string | null>(null);
   const [includeDetectedZone, setIncludeDetectedZone] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -282,32 +272,17 @@ export default function LocationScreen() {
   const hasChanges = hasLocationChanges || hasZoneAssignment;
 
   const heroTitle = hasDetectedZone
-    ? t("profile.location.heroReady", {
-        defaultValue: "Your base is locked in",
-      })
+    ? t("profile.location.heroReady")
     : hasAddress
-      ? t("profile.location.heroPending", {
-          defaultValue: "Finish the zone and save it",
-        })
-      : t("profile.location.heroMissing", {
-          defaultValue: "Set the base you teach from",
-        });
+      ? t("profile.location.heroPending")
+      : t("profile.location.heroMissing");
   const heroBody = hasDetectedZone
-    ? t("profile.location.heroReadyBody", {
-        defaultValue:
-          "Address, coordinates, and detected zone are aligned and ready to publish.",
-      })
+    ? t("profile.location.heroReadyBody")
     : hasAddress
-      ? t("profile.location.heroPendingBody", {
-          defaultValue:
-            "You have an address draft. Resolve the zone, confirm it, and save to make it live.",
-        })
-      : t("profile.location.heroMissingBody", {
-          defaultValue:
-            "Add a base address or use GPS so studios see where you operate from.",
-        });
+      ? t("profile.location.heroPendingBody")
+      : t("profile.location.heroMissingBody");
   const zoneDisplayValue = detectedZone
-    ? detectedZoneLabel ?? detectedZone
+    ? (detectedZoneLabel ?? detectedZone)
     : t("profile.settings.location.zoneNotDetected");
 
   const onSave = async () => {
@@ -336,11 +311,7 @@ export default function LocationScreen() {
       });
       router.back();
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : t("profile.settings.errors.saveFailed"),
-      );
+      setErrorMessage(err instanceof Error ? err.message : t("profile.settings.errors.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -348,13 +319,12 @@ export default function LocationScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
-      <TabScreenScrollView
-        routeKey="instructor/profile"
+      <ProfileSubpageScrollView
+        routeKey="instructor/profile/location"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingHorizontal: BrandSpacing.lg,
-          paddingTop: BrandSpacing.lg,
-          paddingBottom: 148,
+          paddingBottom: overlayBottom + 92,
           gap: BrandSpacing.lg,
         }}
       >
@@ -396,39 +366,24 @@ export default function LocationScreen() {
               </Text>
             </View>
             <View
-              style={[
-                styles.heroIconWrap,
-                { backgroundColor: palette.primarySubtle as string },
-              ]}
+              style={[styles.heroIconWrap, { backgroundColor: palette.primarySubtle as string }]}
             >
-              <IconSymbol
-                name="mappin.and.ellipse"
-                size={22}
-                color={palette.primary as string}
-              />
+              <IconSymbol name="mappin.and.ellipse" size={22} color={palette.primary as string} />
             </View>
           </View>
 
           <View style={styles.heroSignalsRow}>
             <StatusSignal
-              label={t("profile.location.signalAddress", {
-                defaultValue: "Address",
-              })}
+              label={t("profile.location.signalAddress")}
               value={
                 hasAddress
-                  ? t("profile.location.signalAddressReady", {
-                      defaultValue: "Ready",
-                    })
-                  : t("profile.location.signalAddressMissing", {
-                      defaultValue: "Missing",
-                    })
+                  ? t("profile.location.signalAddressReady")
+                  : t("profile.location.signalAddressMissing")
               }
               palette={palette}
             />
             <StatusSignal
-              label={t("profile.location.signalZone", {
-                defaultValue: "Zone",
-              })}
+              label={t("profile.location.signalZone")}
               value={hasDetectedZone ? zoneDisplayValue : t("common.pending")}
               palette={palette}
               tone={hasDetectedZone ? "accent" : "surface"}
@@ -438,9 +393,7 @@ export default function LocationScreen() {
 
         <View style={{ gap: BrandSpacing.sm }}>
           <ProfileSectionHeader
-            label={t("profile.location.commandLabel", {
-              defaultValue: "Command",
-            })}
+            label={t("profile.location.commandLabel")}
             description={t("profile.settings.location.instructorDescription")}
             icon="mappin.and.ellipse"
             palette={palette}
@@ -455,9 +408,7 @@ export default function LocationScreen() {
                     color: palette.text as string,
                   }}
                 >
-                  {t("profile.location.addressTitle", {
-                    defaultValue: "Search your base address",
-                  })}
+                  {t("profile.location.addressTitle")}
                 </Text>
                 <Text
                   style={{
@@ -465,10 +416,7 @@ export default function LocationScreen() {
                     color: palette.textMuted as string,
                   }}
                 >
-                  {t("profile.location.addressBody", {
-                    defaultValue:
-                      "Type the address you teach from most often or let GPS pull it in instantly.",
-                  })}
+                  {t("profile.location.addressBody")}
                 </Text>
               </View>
 
@@ -518,9 +466,7 @@ export default function LocationScreen() {
                       textTransform: "uppercase",
                     }}
                   >
-                    {t("profile.location.coordinatesLabel", {
-                      defaultValue: "Coordinates",
-                    })}
+                    {t("profile.location.coordinatesLabel")}
                   </Text>
                   <Text
                     style={{
@@ -538,13 +484,8 @@ export default function LocationScreen() {
 
         <View style={{ gap: BrandSpacing.sm }}>
           <ProfileSectionHeader
-            label={t("profile.location.zoneLabel", {
-              defaultValue: "Zone state",
-            })}
-            description={t("profile.location.zoneDescription", {
-              defaultValue:
-                "Use the detected zone as your default operating zone when the address looks right.",
-            })}
+            label={t("profile.location.zoneLabel")}
+            description={t("profile.location.zoneDescription")}
             icon="checkmark.circle.fill"
             palette={palette}
             flush
@@ -575,12 +516,8 @@ export default function LocationScreen() {
                   }}
                 >
                   {hasDetectedZone
-                    ? t("profile.location.zoneDetectedLabel", {
-                        defaultValue: "Detected zone",
-                      })
-                    : t("profile.location.zoneWaitingLabel", {
-                        defaultValue: "Zone pending",
-                      })}
+                    ? t("profile.location.zoneDetectedLabel")
+                    : t("profile.location.zoneWaitingLabel")}
                 </Text>
                 <Text
                   style={{
@@ -598,10 +535,7 @@ export default function LocationScreen() {
                 >
                   {hasDetectedZone
                     ? t("profile.settings.location.includeDetectedZoneDescription")
-                    : t("profile.location.zonePendingBody", {
-                        defaultValue:
-                          "Search an address or use GPS to resolve the service zone automatically.",
-                      })}
+                    : t("profile.location.zonePendingBody")}
                 </Text>
               </View>
 
@@ -633,16 +567,7 @@ export default function LocationScreen() {
                       {t("profile.settings.location.includeDetectedZoneDescription")}
                     </Text>
                   </View>
-                  <Switch
-                    value={includeDetectedZone}
-                    onValueChange={setIncludeDetectedZone}
-                    trackColor={{
-                      false: palette.borderStrong as string,
-                      true: palette.primary as string,
-                    }}
-                    thumbColor={palette.surfaceElevated as string}
-                    ios_backgroundColor={palette.borderStrong as string}
-                  />
+                  <KitSwitch value={includeDetectedZone} onValueChange={setIncludeDetectedZone} />
                 </View>
               ) : null}
             </View>
@@ -669,7 +594,7 @@ export default function LocationScreen() {
             </Text>
           </View>
         ) : null}
-      </TabScreenScrollView>
+      </ProfileSubpageScrollView>
 
       <View
         style={[
@@ -682,9 +607,7 @@ export default function LocationScreen() {
       >
         <ActionButton
           label={
-            isSaving
-              ? t("profile.settings.actions.saving")
-              : t("profile.settings.actions.save")
+            isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
           }
           onPress={() => {
             void onSave();

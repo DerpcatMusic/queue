@@ -46,7 +46,7 @@ export function usePerformanceChart({
   const insightLabel = useMemo(() => {
     const values = currentSeries.values;
     if (values.length === 0 || values.every((value) => value === 0)) {
-      return t("home.performance.noActivity", { defaultValue: "No activity yet" });
+      return t("home.performance.noActivity");
     }
 
     let peakIndex = 0;
@@ -72,7 +72,6 @@ export function usePerformanceChart({
     return t("home.performance.peakActivity", {
       peak: peakStr,
       active: activePoints,
-      defaultValue: `Peak ${peakStr}  ·  ${String(activePoints)} active`,
     });
   }, [currentSeries.axisTicks, currentSeries.values, t]);
 

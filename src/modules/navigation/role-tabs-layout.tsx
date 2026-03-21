@@ -1,7 +1,10 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
+import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
+import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
+import { GlobalTopSheetProvider } from "@/components/layout/top-sheet-registry";
 import { useBrand } from "@/hooks/use-brand";
 import type { RoleTabRouteName } from "@/navigation/role-routes";
 import { getTabsForRole } from "@/navigation/tab-registry";
@@ -22,36 +25,77 @@ type RoleTabsLayoutProps = {
 
 export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutProps) {
   const palette = useBrand();
-  const { t } = useTranslation();
   const tabs = getTabsForRole(appRole);
   const sceneBackgroundColor = palette.appBg as string;
+  const tabBarBackgroundColor = palette.surfaceElevated as string;
+  const defaultIconColor = palette.textMicro as string;
+  const selectedIconColor = palette.primary as string;
 
   return (
-    <View style={{ flex: 1, backgroundColor: sceneBackgroundColor }}>
-      <NativeTabs
-        tintColor={palette.primary}
-        backgroundColor={palette.surface as string}
-        disableTransparentOnScrollEdge
-        minimizeBehavior="onScrollDown"
-      >
-        {tabs.map((tab) => (
-          <NativeTabs.Trigger
-            key={tab.id}
-            name={tab.routeName}
-            contentStyle={{ backgroundColor: sceneBackgroundColor }}
-          >
-            <NativeTabs.Trigger.Label>{t(tab.titleKey)}</NativeTabs.Trigger.Label>
-            <NativeTabs.Trigger.Icon
-              sf={{
-                default: tab.icon.sfDefault as never,
-                selected: tab.icon.sfSelected as never,
+    <ScrollSheetProvider>
+      <GlobalTopSheetProvider>
+        <View style={{ flex: 1, backgroundColor: sceneBackgroundColor }}>
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 144,
+              backgroundColor: tabBarBackgroundColor,
+              zIndex: 0,
+            }}
+          />
+          <GlobalTopSheet />
+          <View style={{ flex: 1, zIndex: 2 }}>
+            <NativeTabs
+              tintColor={selectedIconColor}
+              iconColor={{
+                default: defaultIconColor,
+                selected: selectedIconColor,
               }}
-              md={tab.icon.md}
-            />
-            <NativeTabBadge count={badgeCountByRoute[tab.routeName] ?? 0} />
-          </NativeTabs.Trigger>
-        ))}
-      </NativeTabs>
-    </View>
+              backgroundColor={tabBarBackgroundColor}
+              badgeBackgroundColor={palette.primary as string}
+              badgeTextColor={palette.onPrimary as string}
+              indicatorColor={palette.primarySubtle as string}
+              shadowColor="transparent"
+              labelVisibilityMode="unlabeled"
+              disableTransparentOnScrollEdge
+            >
+              {tabs.map((tab) => (
+                <NativeTabs.Trigger
+                  key={tab.id}
+                  name={tab.routeName}
+                  contentStyle={{ backgroundColor: sceneBackgroundColor }}
+                >
+                  <NativeTabs.Trigger.Icon
+                    sf={{
+                      default: tab.icon.sfDefault as never,
+                      selected: tab.icon.sfSelected as never,
+                    }}
+                    src={{
+                      default: (
+                        <NativeTabs.Trigger.VectorIcon
+                          family={MaterialCommunityIcons}
+                          name={tab.icon.mdDefaultVector as any}
+                        />
+                      ),
+                      selected: (
+                        <NativeTabs.Trigger.VectorIcon
+                          family={MaterialCommunityIcons}
+                          name={tab.icon.mdSelectedVector as any}
+                        />
+                      ),
+                    }}
+                  />
+                  <NativeTabBadge count={badgeCountByRoute[tab.routeName] ?? 0} />
+                </NativeTabs.Trigger>
+              ))}
+            </NativeTabs>
+          </View>
+        </View>
+      </GlobalTopSheetProvider>
+    </ScrollSheetProvider>
   );
 }
