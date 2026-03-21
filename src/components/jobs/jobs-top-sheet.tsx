@@ -80,9 +80,9 @@ export function JobsTopSheet({
       {/* Action Chips */}
       {actions && actions.length > 0 ? (
         <View style={{ flexDirection: "row", gap: BrandSpacing.sm, flexWrap: "wrap" }}>
-          {actions.map((action, index) => (
+          {actions.map((action) => (
             <Pressable
-              key={`action-${index}`}
+              key={`${action.label}-${action.icon}`}
               onPress={action.onPress}
               style={({ pressed }) => ({
                 flexDirection: "row",

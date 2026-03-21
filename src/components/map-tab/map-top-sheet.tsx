@@ -73,11 +73,11 @@ export function MapTopSheet({
       {/* Action Chips */}
       {actions && actions.length > 0 ? (
         <View style={{ flexDirection: "row", gap: BrandSpacing.sm, flexWrap: "wrap" }}>
-          {actions.map((action, index) => {
+          {actions.map((action) => {
             const isPrimary = action.variant === "primary";
             return (
               <Pressable
-                key={`map-action-${index}`}
+                key={`${action.label}-${action.icon}-${action.variant ?? "default"}`}
                 onPress={action.onPress}
                 style={({ pressed }) => ({
                   flexDirection: "row",

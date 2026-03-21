@@ -110,9 +110,9 @@ export function ProfileHeaderSheet({
                 paddingHorizontal: 8,
                 paddingVertical: 2,
                 borderRadius: 4,
-                backgroundColor: (statusConfig.color as string) + "15",
+                backgroundColor: `${statusConfig.color as string}15`,
                 borderWidth: 1,
-                borderColor: (statusConfig.color as string) + "30",
+                borderColor: `${statusConfig.color as string}30`,
               }}
             >
               <Text
