@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import type { BrandPalette } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
+import type { BoostPreset, JobClosureReason } from "@/lib/jobs-utils";
 import type { PaymentStatus, PayoutStatus } from "@/lib/payments-utils";
 
 export type StudioJobApplication = {
@@ -18,6 +19,11 @@ export type StudioJob = {
   zone: string;
   startTime: number;
   pay: number;
+  applicationDeadline?: number;
+  closureReason?: JobClosureReason;
+  boostPreset?: BoostPreset;
+  boostBonusAmount?: number;
+  boostActive?: boolean;
   applicationsCount: number;
   pendingApplicationsCount: number;
   applications: StudioJobApplication[];

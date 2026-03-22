@@ -4,6 +4,12 @@ export const DURATION_PRESETS = [45, 60, 75, 90] as const;
 export const PAY_PRESETS = [180, 220, 260, 320] as const;
 export const CANCELLATION_PRESETS = [6, 12, 24, 48] as const;
 export const APPLICATION_LEAD_PRESETS = [30, 60, 120, 180] as const;
+export const EXPIRY_OVERRIDE_PRESETS = [15, 30, 45, 60] as const;
+export const BOOST_PRESET_VALUES = {
+  small: 20,
+  medium: 50,
+  large: 100,
+} as const;
 export const MAX_PARTICIPANTS_MIN = 1;
 export const MAX_PARTICIPANTS_MAX = 40;
 
@@ -21,6 +27,10 @@ export const APPLICATION_STATUS_TRANSLATION_KEYS = {
   withdrawn: "jobsTab.status.application.withdrawn",
 } as const;
 
+export type JobStatus = keyof typeof JOB_STATUS_TRANSLATION_KEYS;
+export type JobClosureReason = "studio_cancelled" | "expired" | "filled";
+export type JobStatusTone = "primary" | "success" | "muted" | "amber" | "gray";
+
 export function getApplicationStatusTranslationKey(status: string) {
   const key = status as keyof typeof APPLICATION_STATUS_TRANSLATION_KEYS;
   return APPLICATION_STATUS_TRANSLATION_KEYS[key] ?? APPLICATION_STATUS_TRANSLATION_KEYS.pending;
@@ -28,6 +38,24 @@ export function getApplicationStatusTranslationKey(status: string) {
 
 export type PickerTarget = "start" | "end";
 export type LessonLifecycle = "live" | "upcoming" | "needs_done" | "completed";
+export type BoostPreset = keyof typeof BOOST_PRESET_VALUES;
+
+type ExpiryPresentation = {
+  isExpired: boolean;
+  key: string;
+  interpolation: Record<string, number | string>;
+  relativeText: string;
+  exactText: string;
+  text: string;
+};
+
+type BoostPresentation = {
+  totalPay: number;
+  bonusAmount: number | undefined;
+  badge: string | undefined;
+  badgeKey: string | undefined;
+  badgeInterpolation: Record<string, number | string>;
+};
 
 export type StudioDraft = {
   sport: string;
@@ -38,6 +66,8 @@ export type StudioDraft = {
   maxParticipants: number;
   cancellationDeadlineHours: number;
   applicationLeadMinutes: number;
+  expiryOverrideMinutes: number | undefined;
+  boostPreset: BoostPreset | undefined;
 };
 
 export type ReminderMap = Record<
@@ -72,6 +102,8 @@ export function createDefaultStudioDraft(): StudioDraft {
     maxParticipants: 12,
     cancellationDeadlineHours: 24,
     applicationLeadMinutes: 60,
+    expiryOverrideMinutes: undefined,
+    boostPreset: undefined,
   };
 }
 
@@ -108,10 +140,30 @@ export function formatDateWithWeekday(value: number, locale: string, timeZone = 
   });
 }
 
-export function getJobStatusTone(status: keyof typeof JOB_STATUS_TRANSLATION_KEYS) {
+export function getJobStatusTone(status: JobStatus) {
   if (status === "open") return "primary";
   if (status === "filled" || status === "completed") return "success";
   return "muted";
+}
+
+export function getJobStatusToneWithReason(
+  status: JobStatus,
+  closureReason?: JobClosureReason,
+): JobStatusTone {
+  if (status === "cancelled") {
+    if (closureReason === "studio_cancelled") return "amber";
+    if (closureReason === "expired") return "gray";
+  }
+
+  return getJobStatusTone(status);
+}
+
+export function getJobStatusTranslationKey(status: JobStatus, closureReason?: JobClosureReason) {
+  if (status === "cancelled" && closureReason === "expired") {
+    return "jobsTab.status.job.expired";
+  }
+
+  return JOB_STATUS_TRANSLATION_KEYS[status];
 }
 
 export function formatCompactDateTime(value: number, locale: string, timeZone = DEVICE_TIME_ZONE) {
@@ -136,6 +188,109 @@ export function formatRelativeDuration(ms: number) {
   if (hours === 0) return `${minutes}m`;
   if (minutes === 0) return `${hours}h`;
   return `${hours}h ${minutes}m`;
+}
+
+export function formatExpiryText(expiryTimestamp: number, now = Date.now()) {
+  const deltaMs = expiryTimestamp - now;
+  if (deltaMs <= 0) {
+    return {
+      key: "jobsTab.form.expiryExpired",
+      interpolation: {},
+      formatted: "Expired",
+    };
+  }
+
+  const roundedMinutes = Math.max(1, Math.ceil(deltaMs / MINUTE_MS));
+  if (roundedMinutes < 60) {
+    return {
+      key: "jobsTab.form.expiresInMinutes",
+      interpolation: { count: roundedMinutes },
+      formatted: `Expires in ${roundedMinutes} minute${roundedMinutes === 1 ? "" : "s"}`,
+    };
+  }
+
+  const roundedHours = Math.floor(roundedMinutes / 60);
+  const remainingMinutes = roundedMinutes % 60;
+  if (remainingMinutes === 0) {
+    return {
+      key: "jobsTab.form.expiresInHours",
+      interpolation: { count: roundedHours },
+      formatted: `Expires in ${roundedHours} hour${roundedHours === 1 ? "" : "s"}`,
+    };
+  }
+
+  return {
+    key: "jobsTab.form.expiresInHoursAndMinutes",
+    interpolation: { count: roundedHours, minutes: remainingMinutes },
+    formatted: `Expires in ${roundedHours} hour${roundedHours === 1 ? "" : "s"} ${remainingMinutes} minute${remainingMinutes === 1 ? "" : "s"}`,
+  };
+}
+
+export function getExpiryPresentation(
+  expiryTimestamp: number | undefined,
+  locale: string,
+  now = Date.now(),
+  timeZone = DEVICE_TIME_ZONE,
+): ExpiryPresentation | undefined {
+  if (typeof expiryTimestamp !== "number" || !Number.isFinite(expiryTimestamp)) return undefined;
+
+  const expiry = formatExpiryText(expiryTimestamp, now);
+  const exactText = formatCompactDateTime(expiryTimestamp, locale, timeZone);
+
+  return {
+    isExpired: expiry.key === "jobsTab.form.expiryExpired",
+    key: expiry.key,
+    interpolation: expiry.interpolation,
+    relativeText: expiry.formatted,
+    exactText,
+    text: `${expiry.formatted} · ${exactText}`,
+  };
+}
+
+export function formatBoostBadge(
+  boostPreset?: BoostPreset,
+  boostBonusAmount?: number,
+  boostActive?: boolean,
+) {
+  if (!boostActive) return undefined;
+
+  const resolvedBonus =
+    typeof boostBonusAmount === "number"
+      ? boostBonusAmount
+      : boostPreset
+        ? BOOST_PRESET_VALUES[boostPreset]
+        : undefined;
+
+  if (typeof resolvedBonus !== "number" || resolvedBonus <= 0) return undefined;
+  return {
+    key: "jobsTab.form.boostBadge",
+    bonus: resolvedBonus,
+    formatted: `+₪${resolvedBonus} boost`,
+  };
+}
+
+export function getBoostPresentation(
+  pay: number,
+  boostPreset?: BoostPreset,
+  boostBonusAmount?: number,
+  boostActive?: boolean,
+): BoostPresentation {
+  const badgeResult = formatBoostBadge(boostPreset, boostBonusAmount, boostActive);
+  const bonusAmount = badgeResult
+    ? typeof boostBonusAmount === "number"
+      ? boostBonusAmount
+      : boostPreset
+        ? BOOST_PRESET_VALUES[boostPreset]
+        : undefined
+    : undefined;
+
+  return {
+    totalPay: pay + (bonusAmount ?? 0),
+    bonusAmount,
+    badge: badgeResult?.formatted,
+    badgeKey: badgeResult?.key,
+    badgeInterpolation: badgeResult ? { bonus: badgeResult.bonus } : {},
+  };
 }
 
 export function getLessonProgress(now: number, startTime: number, endTime: number) {

@@ -3,12 +3,16 @@ import { describe, expect, it } from "bun:test";
 import {
   APPLICATION_STATUS_TRANSLATION_KEYS,
   clamp,
+  formatBoostBadge,
   formatDateTime,
   formatDateWithWeekday,
+  formatExpiryText,
   formatRelativeDuration,
   formatTime,
   getApplicationStatusTranslationKey,
   getJobStatusTone,
+  getJobStatusToneWithReason,
+  getJobStatusTranslationKey,
   getLessonProgress,
   JOB_STATUS_TRANSLATION_KEYS,
   sanitizeDecimalInput,
@@ -77,6 +81,37 @@ describe("jobs-utils", () => {
     expect(getJobStatusTone("filled")).toBe("success");
     expect(getJobStatusTone("completed")).toBe("success");
     expect(getJobStatusTone("cancelled")).toBe("muted");
+    expect(getJobStatusToneWithReason("cancelled", "expired")).toBe("gray");
+    expect(getJobStatusToneWithReason("cancelled", "studio_cancelled")).toBe("amber");
+    expect(getJobStatusTranslationKey("cancelled", "expired")).toBe("jobsTab.status.job.expired");
+  });
+
+  it("formats expiry text for upcoming and expired jobs", () => {
+    const now = Date.UTC(2026, 2, 22, 10, 0, 0);
+
+    const result1 = formatExpiryText(now + 15 * 60 * 1000, now);
+    expect(result1.key).toBe("jobsTab.form.expiresInMinutes");
+    expect(result1.interpolation).toEqual({ count: 15 });
+    expect(result1.formatted).toBe("Expires in 15 minutes");
+
+    const result2 = formatExpiryText(now - 1, now);
+    expect(result2.key).toBe("jobsTab.form.expiryExpired");
+    expect(result2.interpolation).toEqual({});
+    expect(result2.formatted).toBe("Expired");
+  });
+
+  it("formats boost badges only when boost is active", () => {
+    const result1 = formatBoostBadge("medium", 50, true);
+    expect(result1?.key).toBe("jobsTab.form.boostBadge");
+    expect(result1?.bonus).toBe(50);
+    expect(result1?.formatted).toBe("+₪50 boost");
+
+    const result2 = formatBoostBadge("small", 20, true);
+    expect(result2?.key).toBe("jobsTab.form.boostBadge");
+    expect(result2?.bonus).toBe(20);
+    expect(result2?.formatted).toBe("+₪20 boost");
+
+    expect(formatBoostBadge(undefined, undefined, false)).toBeUndefined();
   });
 
   it("formats date/time values with explicit timezone", () => {

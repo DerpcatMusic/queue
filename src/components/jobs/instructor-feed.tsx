@@ -63,9 +63,9 @@ export function InstructorFeed() {
 
   const jobs = (availableJobs ?? []) as AvailableJob[];
   const emptyVariants = [
-    t("jobsTab.emptyInstructorFreshOne"),
-    t("jobsTab.emptyInstructorFreshTwo"),
-    t("jobsTab.emptyInstructorFreshThree"),
+    t("jobsTab.instructorFeed.emptyInstructorFreshOne"),
+    t("jobsTab.instructorFeed.emptyInstructorFreshTwo"),
+    t("jobsTab.instructorFeed.emptyInstructorFreshThree"),
   ];
   const emptyJobsCopy =
     emptyVariants[emptyVariantIndex % emptyVariants.length] ?? emptyVariants[0]!;
@@ -159,7 +159,6 @@ export function InstructorFeed() {
                 value={jobsWindowFilter}
                 onChange={(value) => {
                   setJobsWindowFilter(value);
-                  setShowJobsFilters(false);
                 }}
                 triggerIcon={
                   <IconSymbol
@@ -168,7 +167,7 @@ export function InstructorFeed() {
                     color={String(palette.onPrimary)}
                   />
                 }
-                size="md"
+                size="sm"
                 railColor="rgba(52, 32, 96, 0.82)"
                 selectedColor="rgba(255, 255, 255, 0.2)"
                 labelColor="rgba(255, 255, 255, 0.76)"
@@ -284,7 +283,7 @@ export function InstructorFeed() {
               <IconSymbol name="briefcase.fill" size={30} color={palette.textMuted as string} />
               <View style={{ alignItems: "center", gap: 4 }}>
                 <ThemedText type="meta" style={{ color: palette.textMuted as string }}>
-                  {t("jobsTab.emptyInstructorShort")}
+                  {t("jobsTab.instructorFeed.emptyInstructorShort")}
                 </ThemedText>
                 <ThemedText
                   type="caption"
@@ -304,7 +303,7 @@ export function InstructorFeed() {
                     opacity: 0.72,
                   }}
                 >
-                  {t("jobsTab.emptyRefreshHint")}
+                  {t("jobsTab.instructorFeed.emptyRefreshHint")}
                 </ThemedText>
               </View>
             </View>

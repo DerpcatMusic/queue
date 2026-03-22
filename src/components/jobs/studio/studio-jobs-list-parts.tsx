@@ -13,15 +13,14 @@ import { toSportLabel } from "@/convex/constants";
 import {
   formatDateTime,
   getApplicationStatusTranslationKey,
-  JOB_STATUS_TRANSLATION_KEYS,
+  getBoostPresentation,
+  getExpiryPresentation,
+  getJobStatusToneWithReason,
+  getJobStatusTranslationKey,
+  type JobStatusTone,
 } from "@/lib/jobs-utils";
 import type { PaymentStatus, PayoutStatus } from "@/lib/payments-utils";
-import {
-  appStatusDot,
-  jobStatusDot,
-  paymentDotColor,
-  type SummaryChipProps,
-} from "./studio-jobs-list.helpers";
+import { appStatusDot, paymentDotColor, type SummaryChipProps } from "./studio-jobs-list.helpers";
 import type { StudioJob, StudioJobApplication } from "./studio-jobs-list.types";
 
 const PAYMENT_STATUS_KEY: Record<PaymentStatus, string> = {
@@ -43,6 +42,34 @@ const PAYOUT_STATUS_KEY: Record<PayoutStatus, string> = {
   cancelled: "jobsTab.checkout.payoutStatus.cancelled",
   needs_attention: "jobsTab.checkout.payoutStatus.needsAttention",
 };
+
+function getToneColors(tone: JobStatusTone, palette: BrandPalette) {
+  if (tone === "primary") {
+    return {
+      color: palette.primary as string,
+      backgroundColor: palette.primarySubtle as string,
+    };
+  }
+
+  if (tone === "success") {
+    return {
+      color: palette.success as string,
+      backgroundColor: palette.successSubtle as string,
+    };
+  }
+
+  if (tone === "amber") {
+    return {
+      color: palette.warning as string,
+      backgroundColor: palette.warningSubtle as string,
+    };
+  }
+
+  return {
+    color: palette.textMuted as string,
+    backgroundColor: palette.surface as string,
+  };
+}
 
 export const SummaryChip = memo(function SummaryChip({ icon, text, palette }: SummaryChipProps) {
   return (
@@ -198,8 +225,19 @@ export const StudioJobCard = memo(function StudioJobCard({
   onStartPayment,
   t,
 }: StudioJobCardProps) {
-  const dotColor = jobStatusDot(job.status, palette);
+  const statusTone = getJobStatusToneWithReason(job.status, job.closureReason);
+  const statusPill = getToneColors(statusTone, palette);
   const payDot = paymentDotColor(job.payment?.status, palette);
+  const boost = getBoostPresentation(
+    job.pay,
+    job.boostPreset,
+    job.boostBonusAmount,
+    job.boostActive,
+  );
+  const expiry = getExpiryPresentation(job.applicationDeadline, locale);
+  const shouldShowExpiry =
+    Boolean(expiry) &&
+    (job.status === "open" || (job.status === "cancelled" && job.closureReason === "expired"));
   const canPay =
     ["filled", "completed"].includes(job.status) &&
     !(
@@ -283,10 +321,17 @@ export const StudioJobCard = memo(function StudioJobCard({
 
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                   <DotStatusPill
-                    backgroundColor={palette.surface as string}
-                    color={dotColor}
-                    label={t(JOB_STATUS_TRANSLATION_KEYS[job.status])}
+                    backgroundColor={statusPill.backgroundColor}
+                    color={statusPill.color}
+                    label={t(getJobStatusTranslationKey(job.status, job.closureReason))}
                   />
+                  {boost.badgeKey ? (
+                    <DotStatusPill
+                      backgroundColor={palette.primarySubtle as string}
+                      color={palette.primary as string}
+                      label={t(boost.badgeKey, boost.badgeInterpolation)}
+                    />
+                  ) : null}
                   {job.pendingApplicationsCount > 0 ? (
                     <DotStatusPill
                       backgroundColor={palette.surface as string}
@@ -310,9 +355,16 @@ export const StudioJobCard = memo(function StudioJobCard({
                 />
                 <SummaryChip
                   icon="creditcard.fill"
-                  text={t("jobsTab.card.pay", { value: job.pay })}
+                  text={t("jobsTab.card.pay", { value: boost.totalPay })}
                   palette={palette}
                 />
+                {shouldShowExpiry && expiry ? (
+                  <SummaryChip
+                    icon="calendar.badge.clock"
+                    text={t(expiry.key, expiry.interpolation)}
+                    palette={palette}
+                  />
+                ) : null}
               </View>
             </View>
           </View>
