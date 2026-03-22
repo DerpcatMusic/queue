@@ -15,6 +15,7 @@ import {
   NotesSection,
   PayParticipantsSection,
   PickerDock,
+  PostingOptionsSection,
   ScheduleSection,
   SportPickerSection,
   SubmitBar,
@@ -207,6 +208,7 @@ export function CreateJobSheet({
             onOpenEndTime={() => setShowEndTimePicker(true)}
           />
 
+          <PostingOptionsSection draft={draft} setDraft={setDraft} palette={palette} />
           <PayParticipantsSection draft={draft} setDraft={setDraft} />
           <NotesSection draft={draft} setDraft={setDraft} />
 

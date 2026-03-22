@@ -250,7 +250,11 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
         maxParticipants: draft.maxParticipants,
         cancellationDeadlineHours: draft.cancellationDeadlineHours,
         applicationDeadline: finalApplicationDeadline,
-        ...omitUndefined({ note }),
+        ...omitUndefined({
+          note,
+          expiryOverrideMinutes: draft.expiryOverrideMinutes,
+          boostPreset: draft.boostPreset,
+        }),
       });
 
       setStatusMessage(t("jobsTab.success.posted"));

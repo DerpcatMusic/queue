@@ -793,7 +793,7 @@ Max Concurrent: 5
 
   **Commit**: NO
 
-- [ ] 11. Studio settings and job composer UI
+- [x] 11. Studio settings and job composer UI
 
   **What to do**:
   - Add UI controls for studio auto-accept default, per-job expiry override, and boost preset selection.
@@ -859,7 +859,7 @@ Max Concurrent: 5
 
   **Commit**: NO
 
-- [ ] 12. Job-card and jobs-list state presentation
+- [x] 12. Job-card and jobs-list state presentation
 
   **What to do**:
   - Update job cards/lists to show expiry timing, boosted pay, and color-coded state consistently across relevant studio and instructor surfaces.
@@ -928,7 +928,7 @@ Max Concurrent: 5
   - Files: `src/components/jobs/**`, `src/lib/jobs-utils.ts`, `src/i18n/translations/en.ts`
   - Pre-commit: `bun test && bun run lint`
 
-- [ ] 13. Copy, notification wiring, and final utility alignment
+- [x] 13. Copy, notification wiring, and final utility alignment
 
   **What to do**:
   - Add/adjust the minimum copy, translation keys, and notification payload handling needed for studio cancellation, expiry, auto-accept, and boost display.
@@ -990,7 +990,7 @@ Max Concurrent: 5
 
   **Commit**: NO
 
-- [ ] 14. Regression pass for calendar, counts, and side effects
+- [x] 14. Regression pass for calendar, counts, and side effects
 
   **What to do**:
   - Verify and fix downstream side effects impacted by the lifecycle changes: calendar sync triggers, application stats recomputation, tab counts, and any lesson lifecycle guards.
@@ -1065,19 +1065,19 @@ Max Concurrent: 5
 
 > 4 review agents run in PARALLEL. ALL must APPROVE. Present consolidated results to user and get explicit okay before completing.
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
+- [x] F1. **Plan Compliance Audit** — `oracle`
   Verify every Must Have and Must NOT Have against implementation, evidence files, and resulting behavior.
   Output: `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT`
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
   Run `bun run lint`, `bun run typecheck`, and `bun test`; inspect changed files for unsafe shortcuts, dead code, and generic AI slop.
   Output: `Lint [PASS/FAIL] | Typecheck [PASS/FAIL] | Tests [PASS/FAIL] | VERDICT`
 
-- [ ] F3. **Real Manual QA** — `unspecified-high`
+- [x] F3. **Real Manual QA** — `unspecified-high`
   Execute all task QA scenarios end-to-end, including auto-accept race simulation, expiry visibility, cancellation outcomes, and boost presentation. Save evidence to `.sisyphus/evidence/final-qa/`.
   Output: `Scenarios [N/N] | Integration [N/N] | Edge Cases [N tested] | VERDICT`
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
   Compare the actual diff against task scope and guardrails; flag unplanned changes, missing implementation, or overreach.
   Output: `Tasks [N/N compliant] | Unaccounted [CLEAN/N files] | VERDICT`
 

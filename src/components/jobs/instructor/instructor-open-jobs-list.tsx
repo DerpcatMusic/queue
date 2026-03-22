@@ -11,9 +11,13 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import {
+  type BoostPreset,
   formatDateWithWeekday,
   formatTime,
   getApplicationStatusTranslationKey,
+  getBoostPresentation,
+  getExpiryPresentation,
+  type JobClosureReason,
 } from "@/lib/jobs-utils";
 
 type OpenJob = {
@@ -27,6 +31,11 @@ type OpenJob = {
   zone: string;
   note?: string | null;
   pay: number;
+  applicationDeadline?: number;
+  closureReason?: JobClosureReason;
+  boostPreset?: BoostPreset;
+  boostBonusAmount?: number;
+  boostActive?: boolean;
 };
 
 type InstructorOpenJobsListProps = {
@@ -77,6 +86,13 @@ export function InstructorOpenJobsList({
           job.startTime,
           locale,
         )}-${formatTime(job.endTime, locale)}`;
+        const boost = getBoostPresentation(
+          job.pay,
+          job.boostPreset,
+          job.boostBonusAmount,
+          job.boostActive,
+        );
+        const expiry = getExpiryPresentation(job.applicationDeadline, locale);
 
         return (
           <Animated.View
@@ -144,6 +160,13 @@ export function InstructorOpenJobsList({
                           label={t(getApplicationStatusTranslationKey(job.applicationStatus!))}
                         />
                       ) : null}
+                      {boost.badgeKey ? (
+                        <DotStatusPill
+                          backgroundColor={palette.primarySubtle as string}
+                          color={palette.primary as string}
+                          label={t(boost.badgeKey, boost.badgeInterpolation)}
+                        />
+                      ) : null}
                     </View>
 
                     <Text
@@ -167,6 +190,20 @@ export function InstructorOpenJobsList({
                         numberOfLines={isWideWeb ? 1 : 2}
                       >
                         {job.note}
+                      </Text>
+                    ) : null}
+
+                    {expiry ? (
+                      <Text
+                        style={{
+                          ...BrandType.caption,
+                          color: expiry.isExpired
+                            ? (palette.textMuted as string)
+                            : (palette.primary as string),
+                        }}
+                        numberOfLines={isWideWeb ? 1 : 2}
+                      >
+                        {t(expiry.key, expiry.interpolation)}
                       </Text>
                     ) : null}
                   </View>
@@ -195,7 +232,7 @@ export function InstructorOpenJobsList({
                     align={isWideWeb ? "flex-end" : "flex-start"}
                     icon="creditcard.fill"
                     label={t("jobsTab.card.payLabel")}
-                    value={t("jobsTab.card.pay", { value: job.pay })}
+                    value={t("jobsTab.card.pay", { value: boost.totalPay })}
                     palette={palette}
                   />
                 </View>

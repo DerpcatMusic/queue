@@ -1,5 +1,5 @@
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
@@ -30,6 +30,7 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { omitUndefined } from "@/lib/omit-undefined";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 const ROLE_TRANSLATION_KEYS = {
@@ -86,6 +87,46 @@ export default function StudioProfileScreen() {
   const studioSettings = useQuery(
     api.users.getMyStudioSettings,
     shouldLoadSettings ? emptyArgs : "skip",
+  );
+  const updateMyStudioSettings = useMutation(api.users.updateMyStudioSettings);
+  const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
+  const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
+
+  useEffect(() => {
+    if (studioSettings) {
+      setAutoAcceptDefault(studioSettings.autoAcceptDefault ?? false);
+    }
+  }, [studioSettings]);
+
+  const handleAutoAcceptDefaultChange = useCallback(
+    (value: boolean) => {
+      if (!studioSettings) {
+        return;
+      }
+      const previousValue = autoAcceptDefault;
+      setAutoAcceptDefault(value);
+      setIsSavingAutoAcceptDefault(true);
+      void updateMyStudioSettings({
+        studioName: studioSettings.studioName ?? "",
+        address: studioSettings.address ?? "",
+        zone: studioSettings.zone ?? "",
+        ...omitUndefined({
+          autoAcceptDefault: value,
+          autoExpireMinutesBefore: studioSettings.autoExpireMinutesBefore,
+          sports: studioSettings.sports,
+          contactPhone: studioSettings.contactPhone,
+          latitude: studioSettings.latitude,
+          longitude: studioSettings.longitude,
+        }),
+      })
+        .catch(() => {
+          setAutoAcceptDefault(previousValue);
+        })
+        .finally(() => {
+          setIsSavingAutoAcceptDefault(false);
+        });
+    },
+    [autoAcceptDefault, studioSettings, updateMyStudioSettings],
   );
 
   const handleRequestEdit = useCallback(() => {
@@ -391,6 +432,20 @@ export default function StudioProfileScreen() {
                   showDivider
                 />
                 <ProfileSettingRow
+                  title={t("profile.settings.autoAcceptJobs")}
+                  subtitle={t("profile.settings.autoAcceptJobsDescription")}
+                  icon="checkmark.seal.fill"
+                  palette={palette}
+                  showDivider
+                  accessory={
+                    <KitSwitch
+                      disabled={isSavingAutoAcceptDefault || studioSettings === undefined}
+                      value={autoAcceptDefault}
+                      onValueChange={handleAutoAcceptDefaultChange}
+                    />
+                  }
+                />
+                <ProfileSettingRow
                   title={t("profile.settings.calendar.title")}
                   subtitle={calendarSummary}
                   icon="calendar.circle.fill"
@@ -546,6 +601,20 @@ export default function StudioProfileScreen() {
                 icon="clock.fill"
                 palette={palette}
                 showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.settings.autoAcceptJobs")}
+                subtitle={t("profile.settings.autoAcceptJobsDescription")}
+                icon="checkmark.seal.fill"
+                palette={palette}
+                showDivider
+                accessory={
+                  <KitSwitch
+                    disabled={isSavingAutoAcceptDefault || studioSettings === undefined}
+                    value={autoAcceptDefault}
+                    onValueChange={handleAutoAcceptDefaultChange}
+                  />
+                }
               />
               <ProfileSettingRow
                 title={t("profile.settings.calendar.title")}
