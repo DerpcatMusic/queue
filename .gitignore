@@ -95,3 +95,6 @@ metro-file-map-*
 
 # Bunx cache
 bunx-*/
+
+# OpenCode / Sisyphus agent artifacts
+.sisyphus/
