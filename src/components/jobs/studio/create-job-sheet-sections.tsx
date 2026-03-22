@@ -5,11 +5,18 @@ import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { ChoicePill } from "@/components/ui/choice-pill";
+import { KitSegmentedToggle } from "@/components/ui/kit";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
 import type { BrandPalette } from "@/constants/brand";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import type { StudioDraft } from "@/lib/jobs-utils";
-import { formatDateWithWeekday, formatTime, sanitizeDecimalInput } from "@/lib/jobs-utils";
+import {
+  BOOST_PRESET_VALUES,
+  EXPIRY_OVERRIDE_PRESETS,
+  formatDateWithWeekday,
+  formatTime,
+  sanitizeDecimalInput,
+} from "@/lib/jobs-utils";
 
 type SportPickerSectionProps = {
   draft: StudioDraft;
@@ -259,6 +266,93 @@ export function PayParticipantsSection({ draft, setDraft }: PayParticipantsSecti
           }
           keyboardType="number-pad"
           placeholder="12"
+        />
+      </View>
+    </View>
+  );
+}
+
+type PostingOptionsSectionProps = {
+  draft: StudioDraft;
+  setDraft: React.Dispatch<React.SetStateAction<StudioDraft>>;
+  palette: BrandPalette;
+};
+
+type BoostToggleValue = keyof typeof BOOST_PRESET_VALUES | "none";
+
+const BOOST_OPTIONS = ["small", "medium", "large"] as const;
+
+export function PostingOptionsSection({ draft, setDraft, palette }: PostingOptionsSectionProps) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={{ gap: 16 }}>
+      <View style={{ gap: 12 }}>
+        <ThemedText type="defaultSemiBold" style={{ fontSize: 16, opacity: 0.9 }}>
+          {t("jobsTab.form.closeApplications")}
+        </ThemedText>
+        <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+          {t("jobsTab.form.closeApplicationsDescription")}
+        </ThemedText>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+          <ChoicePill
+            label={t("jobsTab.form.useStudioDefault")}
+            selected={draft.expiryOverrideMinutes === undefined}
+            compact
+            backgroundColor={palette.surfaceAlt as string}
+            selectedBackgroundColor={palette.primary as string}
+            labelColor={palette.text as string}
+            selectedLabelColor={palette.onPrimary as string}
+            onPress={() =>
+              setDraft((current) => ({
+                ...current,
+                expiryOverrideMinutes: undefined,
+              }))
+            }
+          />
+          {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
+            <ChoicePill
+              key={minutes}
+              label={t("jobsTab.form.minutes", { value: minutes })}
+              selected={draft.expiryOverrideMinutes === minutes}
+              compact
+              backgroundColor={palette.surfaceAlt as string}
+              selectedBackgroundColor={palette.primary as string}
+              labelColor={palette.text as string}
+              selectedLabelColor={palette.onPrimary as string}
+              onPress={() =>
+                setDraft((current) => ({
+                  ...current,
+                  expiryOverrideMinutes: minutes,
+                }))
+              }
+            />
+          ))}
+        </View>
+      </View>
+
+      <View style={{ gap: 12 }}>
+        <ThemedText type="defaultSemiBold" style={{ fontSize: 16, opacity: 0.9 }}>
+          {t("jobsTab.form.boostOnBoard")}
+        </ThemedText>
+        <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+          {t("jobsTab.form.boostOnBoardDescription")}
+        </ThemedText>
+        <KitSegmentedToggle<BoostToggleValue>
+          value={draft.boostPreset ?? "none"}
+          onChange={(value) =>
+            setDraft((current) => ({
+              ...current,
+              boostPreset: value === "none" ? undefined : value,
+            }))
+          }
+          options={[
+            { label: t("jobsTab.form.none"), value: "none" },
+            ...BOOST_OPTIONS.map((preset) => ({
+              label: `${preset[0]!.toUpperCase()}${preset.slice(1)} +\u20aa${BOOST_PRESET_VALUES[preset]}`,
+              value: preset,
+            })),
+          ]}
         />
       </View>
     </View>
