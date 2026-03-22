@@ -2,6 +2,7 @@ import { useAction, useQuery } from "convex/react";
 import * as AuthSession from "expo-auth-session";
 import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
+import * as ExpoLinking from "expo-linking";
 import { Redirect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -21,7 +22,6 @@ import Animated, {
 import { LoadingScreen } from "@/components/loading-screen";
 import {
   getIdentityStatusLabel,
-  getIdentityStatusTone,
   IdentityStatusBadge,
 } from "@/components/profile/identity-status-ui";
 import {
@@ -35,6 +35,7 @@ import { KitSuccessBurst } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
+import { useThemePreference } from "@/hooks/use-theme-preference";
 
 type DiditSdkResult = {
   type?: "completed" | "cancelled" | "failed";
@@ -43,21 +44,31 @@ type DiditSdkResult = {
 };
 
 type DiditSdkModule = {
-  startVerification: (sessionToken: string) => Promise<DiditSdkResult>;
+  startVerification: (
+    sessionToken: string,
+    config?: {
+      languageCode?: string;
+      loggingEnabled?: boolean;
+    },
+  ) => Promise<DiditSdkResult>;
 };
 
 let cachedDiditSdkModule: DiditSdkModule | null | undefined;
 
 const PROCESSING_STATUSES = new Set(["in_progress", "pending", "in_review"]);
-
-WebBrowser.maybeCompleteAuthSession();
+const ACTIVE_REVIEW_STATUSES = new Set(["pending", "in_review"]);
+const DIDIT_DOCS_URL = "https://docs.didit.me/integration/native-sdks/react-native-sdk";
+const ISRAEL_SAFER_PAYMENTS_URL =
+  "https://www.boi.org.il/en/communication-and-publications/press-releases/safer-payments-principles-for-implementing-stronger-customer-authentication-in-the-payment-cards-market/";
+const ISRAEL_AML_ORDER_URL =
+  "https://www.gov.il/BlobFolder/dynamiccollectorresultitem/service-providers-prevention-ml-english/he/legal-docs_service_providers_prevention_ml_english.pdf";
 
 const resolveDiditSdkModule = async (): Promise<DiditSdkModule | null> => {
   if (cachedDiditSdkModule !== undefined) {
     return cachedDiditSdkModule;
   }
 
-  if (Platform.OS === "web" || Platform.OS === "android" || Constants.appOwnership === "expo") {
+  if (Platform.OS === "web" || Constants.appOwnership === "expo") {
     cachedDiditSdkModule = null;
     return cachedDiditSdkModule;
   }
@@ -88,6 +99,10 @@ const resolveDiditSdkModule = async (): Promise<DiditSdkModule | null> => {
 
 function isProcessingStatus(status: string) {
   return PROCESSING_STATUSES.has(status);
+}
+
+function isActiveReviewStatus(status: string) {
+  return ACTIVE_REVIEW_STATUSES.has(status);
 }
 
 function getStatusHeadline(status: string, t: ReturnType<typeof useTranslation>["t"]) {
@@ -135,6 +150,38 @@ function getStatusBody(status: string, t: ReturnType<typeof useTranslation>["t"]
 function formatDateTime(value: number | undefined) {
   if (!value) return null;
   return new Date(value).toLocaleString();
+}
+
+function LinkPill({
+  label,
+  onPress,
+  color,
+}: {
+  label: string;
+  onPress: () => void;
+  color: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.72 : 1,
+      })}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <ThemedText type="caption" style={{ color }}>
+          {label}
+        </ThemedText>
+        <IconSymbol name="arrow.up.right" size={14} color={color} />
+      </View>
+    </Pressable>
+  );
 }
 
 function LoaderDot({ delay, color }: { delay: number; color: string }) {
@@ -334,8 +381,12 @@ function VerificationResolvingState({ label }: { label: string }) {
 }
 
 export default function IdentityVerificationScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const palette = useBrand();
+  const { resolvedScheme } = useThemePreference();
+  useEffect(() => {
+    WebBrowser.maybeCompleteAuthSession();
+  }, []);
   const currentUser = useQuery(api.users.getCurrentUser);
   const diditVerification = useQuery(
     api.didit.getMyDiditVerification,
@@ -343,10 +394,6 @@ export default function IdentityVerificationScreen() {
   );
   const createSessionForCurrentInstructor = useAction(api.didit.createSessionForCurrentInstructor);
   const refreshMyDiditVerification = useAction(api.didit.refreshMyDiditVerification);
-  const diditEvents = useQuery(
-    api.didit.listMyDiditEvents,
-    currentUser?.role === "instructor" ? { limit: 6 } : "skip",
-  );
 
   const diditReturnUrl = useMemo(
     () =>
@@ -369,11 +416,23 @@ export default function IdentityVerificationScreen() {
 
   const status = localStatus ?? diditVerification?.status ?? "not_started";
   const isVerified = diditVerification?.isVerified ?? false;
-  const isProcessing = isProcessingStatus(status);
-  const tone = getIdentityStatusTone(status, palette);
+  const needsStatusCheck = isActiveReviewStatus(status);
   const legalName = diditVerification?.legalName ?? null;
   const verifiedAtLabel = formatDateTime(diditVerification?.verifiedAt);
   const lastEventAtLabel = formatDateTime(diditVerification?.lastEventAt);
+  const isInProgressState =
+    status === "in_progress" || status === "pending" || status === "in_review";
+  const diditStatusBackground = resolvedScheme === "dark" ? "#16243B" : "#EEF5FF";
+  const diditSectionBackground = resolvedScheme === "dark" ? "#141C2A" : "#F6F7FB";
+  const diditPressedBlue = resolvedScheme === "dark" ? "#4C96FF" : "#256FE0";
+  const openExternalUrl = useCallback(
+    (url: string) => {
+      void ExpoLinking.openURL(url).catch(() => {
+        setErrorMessage(t("profile.identityVerification.externalLinkFailed"));
+      });
+    },
+    [t],
+  );
   const refreshVerificationStatus = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -397,16 +456,17 @@ export default function IdentityVerificationScreen() {
     () => (
       <IconButton
         size={40}
-        tone="secondary"
+        tone="primarySubtle"
+        backgroundColorOverride="rgba(255,255,255,0.18)"
         accessibilityLabel={t("profile.identityVerification.refreshStatus")}
         disabled={busy || isRefreshing}
         onPress={() => {
           void refreshVerificationStatus();
         }}
-        icon={<IconSymbol name="arrow.clockwise" size={18} color={String(palette.text)} />}
+        icon={<IconSymbol name="arrow.clockwise" size={18} color="#FFFFFF" />}
       />
     ),
-    [busy, isRefreshing, palette.text, refreshVerificationStatus, t],
+    [busy, isRefreshing, refreshVerificationStatus, t],
   );
   useProfileSubpageSheet({
     title: t("profile.navigation.identityVerification"),
@@ -539,7 +599,7 @@ export default function IdentityVerificationScreen() {
   };
 
   const startVerification = async () => {
-    if (busy || awaitingFinalResult || isVerified || isProcessing) {
+    if (busy || awaitingFinalResult || isVerified || needsStatusCheck) {
       return;
     }
 
@@ -548,34 +608,44 @@ export default function IdentityVerificationScreen() {
     setInfoMessage(null);
 
     try {
-      const session = await createSessionForCurrentInstructor({
-        callback: diditReturnUrl,
-      });
       const sdk = await resolveDiditSdkModule();
 
-      if (sdk) {
-        const result = await sdk.startVerification(session.sessionToken);
-        if (result.type === "completed") {
-          beginAwaitingFinalResult("in_review");
-        } else if (result.type === "cancelled") {
-          setInfoMessage(t("profile.identityVerification.cancelled"));
-        } else {
-          setErrorMessage(result.error?.message ?? t("profile.identityVerification.startFailed"));
+      if (!sdk) {
+        if (Platform.OS === "web") {
+          const session = await createSessionForCurrentInstructor({
+            callback: diditReturnUrl,
+          });
+          const browserResult = await WebBrowser.openAuthSessionAsync(
+            session.verificationUrl,
+            diditReturnUrl,
+          );
+
+          if (browserResult.type === "success") {
+            beginAwaitingFinalResult("in_review");
+          } else if (browserResult.type === "cancel" || browserResult.type === "dismiss") {
+            setInfoMessage(t("profile.identityVerification.cancelled"));
+          } else {
+            setErrorMessage(t("profile.identityVerification.invalidReturn"));
+          }
+          return;
         }
+
+        setErrorMessage(t("profile.identityVerification.nativeUnavailable"));
         return;
       }
 
-      const browserResult = await WebBrowser.openAuthSessionAsync(
-        session.verificationUrl,
-        diditReturnUrl,
-      );
+      const session = await createSessionForCurrentInstructor({});
 
-      if (browserResult.type === "success") {
+      const result = await sdk.startVerification(session.sessionToken, {
+        languageCode: i18n.resolvedLanguage ?? i18n.language ?? undefined,
+        loggingEnabled: __DEV__,
+      });
+      if (result.type === "completed") {
         beginAwaitingFinalResult("in_review");
-      } else if (browserResult.type === "cancel" || browserResult.type === "dismiss") {
+      } else if (result.type === "cancelled") {
         setInfoMessage(t("profile.identityVerification.cancelled"));
       } else {
-        setErrorMessage(t("profile.identityVerification.invalidReturn"));
+        setErrorMessage(result.error?.message ?? t("profile.identityVerification.startFailed"));
       }
     } catch (error) {
       setErrorMessage(
@@ -587,12 +657,18 @@ export default function IdentityVerificationScreen() {
   };
 
   const handlePrimaryAction = () => {
-    if (isProcessing) {
-      beginAwaitingFinalResult(status);
+    if (needsStatusCheck) {
+      void refreshVerificationStatus();
       return;
     }
     void startVerification();
   };
+
+  const primaryActionLabel = busy
+    ? t("profile.identityVerification.starting")
+    : needsStatusCheck
+      ? t("profile.identityVerification.checkStatus")
+      : t("profile.identityVerification.start");
 
   if (awaitingFinalResult) {
     return <VerificationResolvingState label={t("profile.identityVerification.resolvingLabel")} />;
@@ -613,7 +689,7 @@ export default function IdentityVerificationScreen() {
           onRefresh={() => {
             void refreshVerificationStatus();
           }}
-          tintColor={palette.primary as string}
+          tintColor={palette.didit.accent}
         />
       }
     >
@@ -622,43 +698,45 @@ export default function IdentityVerificationScreen() {
 
         <View
           style={{
-            gap: 14,
-            padding: 20,
-            borderRadius: 28,
+            gap: 16,
+            padding: 18,
+            borderRadius: 24,
             borderCurve: "continuous",
-            borderWidth: 1,
-            borderColor: tone.accent,
-            backgroundColor: tone.background,
+            backgroundColor: isInProgressState ? diditStatusBackground : (palette.surface as string),
+            paddingBottom: 18,
           }}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: 12,
-            }}
-          >
-            <View style={{ flex: 1, gap: 6 }}>
-              <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                {t("profile.identityVerification.title")}
-              </ThemedText>
-              <ThemedText type="title">{getStatusHeadline(status, t)}</ThemedText>
+          <View style={{ gap: 8 }}>
+            <ThemedText type="micro" style={{ color: palette.textMuted }}>
+              {t("profile.identityVerification.eyebrow")}
+            </ThemedText>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <View style={{ flex: 1, gap: 6 }}>
+                <ThemedText type="title" style={{ letterSpacing: -0.3 }}>
+                  {getStatusHeadline(status, t)}
+                </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={{ color: palette.textMuted, maxWidth: 520, lineHeight: 20 }}
+                >
+                  {getStatusBody(status, t)}
+                </ThemedText>
+              </View>
+              <IdentityStatusBadge status={status} palette={palette} />
             </View>
-            <IdentityStatusBadge status={status} palette={palette} />
           </View>
-
-          <ThemedText type="caption" style={{ color: palette.textMuted }}>
-            {getStatusBody(status, t)}
-          </ThemedText>
 
           {legalName ? (
             <View
               style={{
-                gap: 4,
-                paddingTop: 2,
-                borderTopWidth: 1,
-                borderTopColor: palette.border as string,
+                gap: 6,
               }}
             >
               <ThemedText type="micro" style={{ color: palette.textMuted }}>
@@ -669,7 +747,7 @@ export default function IdentityVerificationScreen() {
           ) : null}
 
           {verifiedAtLabel || lastEventAtLabel ? (
-            <View style={{ gap: 4 }}>
+            <View style={{ gap: 4, paddingTop: 2 }}>
               {verifiedAtLabel ? (
                 <ThemedText type="caption" style={{ color: palette.textMuted }}>
                   {t("profile.identityVerification.verifiedAt", {
@@ -693,31 +771,33 @@ export default function IdentityVerificationScreen() {
             onPress={() => {
               handlePrimaryAction();
             }}
-            disabled={busy}
+            disabled={busy || isRefreshing}
             style={({ pressed }) => ({
-              borderRadius: 18,
+              borderRadius: 20,
               borderCurve: "continuous",
               alignItems: "center",
-              paddingVertical: 15,
+              paddingVertical: 17,
               paddingHorizontal: 18,
-              backgroundColor: busy
-                ? (palette.borderStrong as string)
+              borderWidth: 1,
+              borderColor: busy || isRefreshing ? (palette.borderStrong as string) : palette.didit.accent,
+              backgroundColor: busy || isRefreshing
+                ? (palette.surfaceAlt as string)
                 : pressed
-                  ? (palette.primaryPressed as string)
-                  : (palette.primary as string),
-              opacity: busy ? 0.7 : 1,
+                  ? diditPressedBlue
+                  : palette.didit.accent,
+              opacity: busy || isRefreshing ? 0.7 : 1,
             })}
           >
             <ThemedText type="bodyStrong" style={{ color: palette.onPrimary as string }}>
-              {busy
-                ? t("profile.identityVerification.starting")
-                : isProcessing
-                  ? t("profile.identityVerification.resume")
-                  : status === "declined" || status === "expired" || status === "abandoned"
-                    ? t("profile.identityVerification.restart")
-                    : t("profile.identityVerification.start")}
+              {primaryActionLabel}
             </ThemedText>
           </Pressable>
+        ) : null}
+
+        {!isVerified ? (
+          <ThemedText type="caption" style={{ color: palette.textMuted }}>
+            {t("profile.identityVerification.primaryHint")}
+          </ThemedText>
         ) : null}
 
         {errorMessage ? (
@@ -732,55 +812,47 @@ export default function IdentityVerificationScreen() {
           </ThemedText>
         ) : null}
 
-        {diditEvents && diditEvents.length > 0 ? (
-          <View
-            style={{
-              gap: 10,
-              padding: 18,
-              borderRadius: 24,
-              borderCurve: "continuous",
-              backgroundColor: palette.surfaceAlt as string,
-            }}
+        <View
+          style={{
+            gap: 10,
+            padding: 18,
+            borderRadius: 24,
+            borderCurve: "continuous",
+            backgroundColor: diditSectionBackground,
+            paddingTop: 6,
+          }}
+        >
+          <ThemedText type="bodyStrong">{t("profile.identityVerification.whyTitle")}</ThemedText>
+          <ThemedText
+            type="caption"
+            style={{ color: palette.textMuted, maxWidth: 580, lineHeight: 20 }}
           >
-            <ThemedText type="bodyStrong">
-              {t("profile.identityVerification.timelineTitle")}
-            </ThemedText>
-            {diditEvents.map((event) => (
-              <View
-                key={event.providerEventId}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "flex-start",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
-                <View style={{ flex: 1, gap: 2 }}>
-                  <ThemedText type="caption">
-                    {event.mappedStatus
-                      ? getIdentityStatusLabel(event.mappedStatus)
-                      : (event.statusRaw ?? t("profile.identityVerification.timelineUnknown"))}
-                  </ThemedText>
-                  <ThemedText type="micro" style={{ color: palette.textMuted }}>
-                    {formatDateTime(event.createdAt) ?? ""}
-                  </ThemedText>
-                </View>
-                <ThemedText
-                  type="micro"
-                  style={{
-                    color: event.processingError ? palette.danger : palette.textMuted,
-                  }}
-                >
-                  {event.processingError
-                    ? t("profile.identityVerification.timelineError")
-                    : event.processed
-                      ? t("profile.identityVerification.timelineProcessed")
-                      : t("profile.identityVerification.timelinePending")}
-                </ThemedText>
-              </View>
-            ))}
+            {t("profile.identityVerification.whyIntro")}
+          </ThemedText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+            <LinkPill
+              label={t("profile.identityVerification.systemDocs")}
+              color={palette.didit.accent as string}
+              onPress={() => {
+                openExternalUrl(DIDIT_DOCS_URL);
+              }}
+            />
+            <LinkPill
+              label={t("profile.identityVerification.whySources.bankIsrael")}
+              color={palette.didit.accent as string}
+              onPress={() => {
+                openExternalUrl(ISRAEL_SAFER_PAYMENTS_URL);
+              }}
+            />
+            <LinkPill
+              label={t("profile.identityVerification.whySources.amlOrder")}
+              color={palette.didit.accent as string}
+              onPress={() => {
+                openExternalUrl(ISRAEL_AML_ORDER_URL);
+              }}
+            />
           </View>
-        ) : null}
+        </View>
       </View>
     </ProfileSubpageScrollView>
   );

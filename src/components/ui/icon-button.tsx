@@ -10,6 +10,7 @@ type IconButtonProps = {
   tone?: "primary" | "secondary" | "primarySubtle";
   size?: number;
   disabled?: boolean;
+  backgroundColorOverride?: string;
 };
 
 export function IconButton({
@@ -19,9 +20,12 @@ export function IconButton({
   tone = "secondary",
   size = 54,
   disabled = false,
+  backgroundColorOverride,
 }: IconButtonProps) {
   const palette = useBrand();
-  const backgroundColor = disabled
+  const backgroundColor =
+    backgroundColorOverride ??
+    (disabled
     ? tone === "primary" || tone === "primarySubtle"
       ? (palette.primarySubtle as string)
       : (palette.surface as string)
@@ -29,7 +33,7 @@ export function IconButton({
       ? (palette.primary as string)
       : tone === "primarySubtle"
         ? (palette.primarySubtle as string)
-        : (palette.surfaceAlt as string);
+        : (palette.surfaceAlt as string));
 
   return (
     <Pressable

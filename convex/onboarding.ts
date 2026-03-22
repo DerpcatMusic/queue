@@ -21,6 +21,13 @@ const MAX_ADDRESS_LENGTH = 220;
 const MAX_PHONE_LENGTH = 20;
 const MAX_SPORTS = 12;
 const MAX_ZONES = 25;
+type AppRole = "instructor" | "studio";
+
+function mergeOwnedRoles(existingRoles: AppRole[] | undefined, nextRole: AppRole) {
+  const roleSet = new Set<AppRole>(existingRoles ?? []);
+  roleSet.add(nextRole);
+  return (["instructor", "studio"] as const).filter((role) => roleSet.has(role));
+}
 
 export function resolveGetOrCreateProfileAction(
   profileCount: number,
@@ -108,10 +115,7 @@ export const completeInstructorOnboarding = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const user = await requireCurrentUser(ctx);
-
-    if (user.role !== "pending" && user.role !== "instructor") {
-      throw new ConvexError("Only instructor users can complete this flow");
-    }
+    const existingRoles = mergeOwnedRoles(user.roles, "instructor");
 
     const requestedDisplayName = normalizeRequiredString(
       args.displayName,
@@ -237,6 +241,7 @@ export const completeInstructorOnboarding = mutation({
 
     await ctx.db.patch("users", user._id, {
       role: "instructor",
+      roles: existingRoles,
       onboardingComplete: true,
       fullName: user.fullName ?? displayName,
       updatedAt: now,
@@ -265,10 +270,7 @@ export const completeStudioOnboarding = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const user = await requireCurrentUser(ctx);
-
-    if (user.role !== "pending" && user.role !== "studio") {
-      throw new ConvexError("Only studio users can complete this flow");
-    }
+    const existingRoles = mergeOwnedRoles(user.roles, "studio");
 
     const studioName = normalizeRequiredString(
       args.studioName,
@@ -356,6 +358,7 @@ export const completeStudioOnboarding = mutation({
 
       await ctx.db.patch("users", user._id, {
         role: "studio",
+        roles: existingRoles,
         onboardingComplete: true,
         updatedAt: now,
       });
@@ -375,6 +378,7 @@ export const completeStudioOnboarding = mutation({
 
     await ctx.db.patch("users", user._id, {
       role: "studio",
+      roles: existingRoles,
       onboardingComplete: true,
       updatedAt: now,
     });

@@ -1,5 +1,5 @@
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
@@ -15,6 +15,7 @@ import {
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
+import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
 import {
   getProfileHeaderExpandedHeight,
@@ -92,7 +93,7 @@ function getIdentityVerificationSummary(
 
 export default function InstructorProfileScreen() {
   const { signOut } = useAuthActions();
-  const { currentUser } = useUser();
+  const { currentUser, availableRoles } = useUser();
   const { language, setLanguage } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
   const { t, i18n } = useTranslation();
@@ -103,7 +104,9 @@ export default function InstructorProfileScreen() {
   const { safeTop } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const switchActiveRole = useMutation(api.users.switchActiveRole);
   const [hasActivated, setHasActivated] = useState(false);
+  const [pendingProfileRole, setPendingProfileRole] = useState<"instructor" | "studio" | null>(null);
   const isBodyReady = useDeferredTabMount(pathname === INSTRUCTOR_PROFILE_ROUTE, { delayMs: 36 });
 
   useEffect(() => {
@@ -136,6 +139,31 @@ export default function InstructorProfileScreen() {
   const handleRequestEdit = useCallback(() => {
     router.push(INSTRUCTOR_EDIT_ROUTE as Href);
   }, [router]);
+
+  const handleSwitchProfile = useCallback(
+    async (role: "instructor" | "studio") => {
+      if (pendingProfileRole || currentUser?.role === role) {
+        return;
+      }
+
+      setPendingProfileRole(role);
+      try {
+        await switchActiveRole({ role });
+        router.replace(buildRoleTabRoute(role, ROLE_TAB_ROUTE_NAMES.profile) as Href);
+      } finally {
+        setPendingProfileRole(null);
+      }
+    },
+    [currentUser?.role, pendingProfileRole, router, switchActiveRole],
+  );
+
+  const handleSetupRole = useCallback(
+    (role: "instructor" | "studio") => {
+      router.push(`/onboarding?role=${role}` as Href);
+    },
+    [router],
+  );
+  const missingRole = availableRoles.includes("studio") ? null : "studio";
 
   const nameValue =
     instructorSettings?.displayName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
@@ -372,6 +400,33 @@ export default function InstructorProfileScreen() {
                   showDivider
                 />
               </ProfileSectionCard>
+
+              <ProfileSectionHeader
+                label={t("profile.sections.profiles")}
+                description={t("profile.sections.profilesDesc")}
+                icon="person.2.fill"
+                palette={palette}
+                flush
+              />
+              <ProfileRoleSwitcherCard
+                activeRole="instructor"
+                availableRoles={availableRoles}
+                isSwitching={pendingProfileRole !== null}
+                pendingRole={pendingProfileRole}
+                onSwitchRole={handleSwitchProfile}
+                palette={palette}
+              />
+              {missingRole ? (
+                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title={t("profile.switcher.setupStudioTitle")}
+                    subtitle={t("profile.switcher.setupStudioHint")}
+                    icon="plus.circle.fill"
+                    onPress={() => handleSetupRole(missingRole)}
+                    palette={palette}
+                  />
+                </ProfileSectionCard>
+              ) : null}
             </View>
 
             <View style={styles.desktopSideColumn}>
@@ -459,6 +514,7 @@ export default function InstructorProfileScreen() {
                   icon="checkmark.circle.fill"
                   onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
                   palette={palette}
+                  tone="accent"
                   showDivider
                 />
                 <ProfileSettingRow
@@ -479,6 +535,8 @@ export default function InstructorProfileScreen() {
                   icon="creditcard.fill"
                   onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
                   palette={palette}
+                  tone="accent"
+                  accentColor={palette.payments.accent}
                   showDivider
                 />
                 <ProfileSettingRow
@@ -535,6 +593,32 @@ export default function InstructorProfileScreen() {
                 showDivider
               />
             </ProfileSectionCard>
+
+            <ProfileSectionHeader
+              label={t("profile.sections.profiles")}
+              description={t("profile.sections.profilesDesc")}
+              icon="person.2.fill"
+              palette={palette}
+            />
+            <ProfileRoleSwitcherCard
+              activeRole="instructor"
+              availableRoles={availableRoles}
+              isSwitching={pendingProfileRole !== null}
+              pendingRole={pendingProfileRole}
+              onSwitchRole={handleSwitchProfile}
+              palette={palette}
+            />
+            {missingRole ? (
+              <ProfileSectionCard palette={palette}>
+                <ProfileSettingRow
+                  title={t("profile.switcher.setupStudioTitle")}
+                  subtitle={t("profile.switcher.setupStudioHint")}
+                  icon="plus.circle.fill"
+                  onPress={() => handleSetupRole(missingRole)}
+                  palette={palette}
+                />
+              </ProfileSectionCard>
+            ) : null}
 
             <ProfileSectionHeader
               label={t("profile.account.title")}
@@ -618,6 +702,7 @@ export default function InstructorProfileScreen() {
                 icon="checkmark.circle.fill"
                 onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
                 palette={palette}
+                tone="accent"
                 showDivider
               />
               <ProfileSettingRow
@@ -638,6 +723,8 @@ export default function InstructorProfileScreen() {
                 icon="creditcard.fill"
                 onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
                 palette={palette}
+                tone="accent"
+                accentColor={palette.payments.accent}
                 showDivider
               />
               <ProfileSettingRow

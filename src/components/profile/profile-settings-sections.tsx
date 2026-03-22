@@ -4,6 +4,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { useThemePreference } from "@/hooks/use-theme-preference";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
@@ -121,6 +122,7 @@ export function ProfileSettingRow({
   onPress,
   palette,
   tone = "default",
+  accentColor,
   showDivider = false,
 }: {
   title: string;
@@ -130,16 +132,43 @@ export function ProfileSettingRow({
   accessory?: ReactNode;
   onPress?: () => void;
   palette: BrandPalette;
-  tone?: "default" | "danger";
+  tone?: "default" | "danger" | "accent";
+  accentColor?: string;
   showDivider?: boolean;
 }) {
-  const titleColor = tone === "danger" ? (palette.danger as string) : (palette.text as string);
+  const { resolvedScheme } = useThemePreference();
+  const resolvedAccentColor = accentColor ?? palette.didit.accent;
+  const titleColor =
+    tone === "danger"
+      ? (palette.danger as string)
+      : tone === "accent"
+        ? resolvedAccentColor
+        : (palette.text as string);
   const secondaryColor =
-    tone === "danger" ? (palette.danger as string) : (palette.textMuted as string);
+    tone === "danger"
+      ? (palette.danger as string)
+      : tone === "accent"
+        ? resolvedScheme === "dark"
+          ? "#AFC3E8"
+          : "#5B6B8A"
+        : (palette.textMuted as string);
   const iconBackground =
-    tone === "danger" ? (palette.dangerSubtle as string) : (palette.surfaceAlt as string);
-  const iconColor = tone === "danger" ? (palette.danger as string) : (palette.primary as string);
+    tone === "danger"
+      ? (palette.dangerSubtle as string)
+      : tone === "accent"
+        ? resolvedScheme === "dark"
+          ? "#1B2D49"
+          : "#EEF5FF"
+        : (palette.surfaceAlt as string);
+  const iconColor =
+    tone === "danger"
+      ? (palette.danger as string)
+      : tone === "accent"
+        ? resolvedAccentColor
+        : (palette.primary as string);
   const borderColor = tone === "danger" ? "transparent" : (palette.border as string);
+  const rowBackground =
+    tone === "accent" ? (resolvedScheme === "dark" ? "#141C2A" : "#F7FAFF") : "transparent";
 
   const content = (
     <View>
@@ -150,6 +179,7 @@ export function ProfileSettingRow({
           gap: 14,
           paddingHorizontal: 18,
           paddingVertical: 15,
+          backgroundColor: rowBackground,
         }}
       >
         {icon ? (

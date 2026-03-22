@@ -18,6 +18,7 @@ export type StudioJob = {
   status: "open" | "filled" | "cancelled" | "completed";
   zone: string;
   startTime: number;
+  endTime: number;
   pay: number;
   applicationDeadline?: number;
   closureReason?: JobClosureReason;

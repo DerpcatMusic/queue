@@ -1,6 +1,8 @@
 import type { TFunction } from "i18next";
 
 import type { Id } from "@/convex/_generated/dataModel";
+import type { BoostPreset, JobClosureReason } from "@/lib/jobs-utils";
+import type { PaymentStatus, PayoutStatus } from "@/lib/payments-utils";
 import { isPushRegistrationError } from "@/lib/push-notifications";
 
 import type { StudioJobsTimeFilter } from "./use-studio-feed-controller";
@@ -14,9 +16,20 @@ export type StudioControllerJob = {
     status: "pending" | "accepted" | "rejected" | "withdrawn";
   }>;
   applicationsCount: number;
+  applicationDeadline?: number;
+  boostActive?: boolean;
+  boostBonusAmount?: number;
+  boostPreset?: BoostPreset;
+  closureReason?: JobClosureReason;
+  endTime: number;
   jobId: Id<"jobs">;
   pendingApplicationsCount: number;
   pay: number;
+  payment?: {
+    paymentId: Id<"payments">;
+    payoutStatus: PayoutStatus | null;
+    status: PaymentStatus;
+  } | null;
   sport: string;
   startTime: number;
   status: "open" | "filled" | "cancelled" | "completed";

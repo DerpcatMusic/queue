@@ -5,7 +5,10 @@ import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, useWindowDimensions, View } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+
+import { ThemedText } from "@/components/themed-text";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
@@ -15,12 +18,14 @@ import {
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
+import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
 import {
   getProfileHeaderExpandedHeight,
   ProfileDesktopHeroPanel,
   ProfileHeaderSheet,
 } from "@/components/profile/profile-tab";
+import { ChoicePill } from "@/components/ui/choice-pill";
 import { KitSwitch } from "@/components/ui/kit";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -30,6 +35,7 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { EXPIRY_OVERRIDE_PRESETS } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
@@ -56,7 +62,7 @@ function getSportsSummary(sports: string[], t: TFunction) {
 
 export default function StudioProfileScreen() {
   const { signOut } = useAuthActions();
-  const { currentUser } = useUser();
+  const { currentUser, availableRoles } = useUser();
   const { language, setLanguage } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
   const { t, i18n } = useTranslation();
@@ -68,6 +74,9 @@ export default function StudioProfileScreen() {
   const { height: screenHeight } = useWindowDimensions();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const [hasActivated, setHasActivated] = useState(false);
+  const [pendingProfileRole, setPendingProfileRole] = useState<"instructor" | "studio" | null>(
+    null,
+  );
   const isBodyReady = useDeferredTabMount(pathname === STUDIO_PROFILE_ROUTE, { delayMs: 36 });
 
   useEffect(() => {
@@ -89,12 +98,21 @@ export default function StudioProfileScreen() {
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const updateMyStudioSettings = useMutation(api.users.updateMyStudioSettings);
+  const switchActiveRole = useMutation(api.users.switchActiveRole);
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
   const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
+  const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<number | undefined>(undefined);
+  const [isSavingAutoExpireMinutes, setIsSavingAutoExpireMinutes] = useState(false);
 
   useEffect(() => {
     if (studioSettings) {
       setAutoAcceptDefault(studioSettings.autoAcceptDefault ?? false);
+    }
+  }, [studioSettings]);
+
+  useEffect(() => {
+    if (studioSettings) {
+      setAutoExpireMinutesBefore(studioSettings.autoExpireMinutesBefore);
     }
   }, [studioSettings]);
 
@@ -112,7 +130,7 @@ export default function StudioProfileScreen() {
         zone: studioSettings.zone ?? "",
         ...omitUndefined({
           autoAcceptDefault: value,
-          autoExpireMinutesBefore: studioSettings.autoExpireMinutesBefore,
+          autoExpireMinutesBefore: autoExpireMinutesBefore,
           sports: studioSettings.sports,
           contactPhone: studioSettings.contactPhone,
           latitude: studioSettings.latitude,
@@ -126,12 +144,67 @@ export default function StudioProfileScreen() {
           setIsSavingAutoAcceptDefault(false);
         });
     },
-    [autoAcceptDefault, studioSettings, updateMyStudioSettings],
+    [autoAcceptDefault, autoExpireMinutesBefore, studioSettings, updateMyStudioSettings],
+  );
+
+  const handleAutoExpireMinutesBeforeChange = useCallback(
+    (minutes: number | undefined) => {
+      if (!studioSettings) {
+        return;
+      }
+      const previousValue = autoExpireMinutesBefore;
+      setAutoExpireMinutesBefore(minutes);
+      setIsSavingAutoExpireMinutes(true);
+      void updateMyStudioSettings({
+        studioName: studioSettings.studioName ?? "",
+        address: studioSettings.address ?? "",
+        zone: studioSettings.zone ?? "",
+        ...omitUndefined({
+          autoAcceptDefault: studioSettings.autoAcceptDefault,
+          autoExpireMinutesBefore: minutes,
+          sports: studioSettings.sports,
+          contactPhone: studioSettings.contactPhone,
+          latitude: studioSettings.latitude,
+          longitude: studioSettings.longitude,
+        }),
+      })
+        .catch(() => {
+          setAutoExpireMinutesBefore(previousValue);
+        })
+        .finally(() => {
+          setIsSavingAutoExpireMinutes(false);
+        });
+    },
+    [autoExpireMinutesBefore, studioSettings, updateMyStudioSettings],
   );
 
   const handleRequestEdit = useCallback(() => {
     router.push(STUDIO_EDIT_ROUTE as Href);
   }, [router]);
+
+  const handleSwitchProfile = useCallback(
+    async (role: "instructor" | "studio") => {
+      if (pendingProfileRole || currentUser?.role === role) {
+        return;
+      }
+
+      setPendingProfileRole(role);
+      try {
+        await switchActiveRole({ role });
+        router.replace(buildRoleTabRoute(role, ROLE_TAB_ROUTE_NAMES.profile) as Href);
+      } finally {
+        setPendingProfileRole(null);
+      }
+    },
+    [currentUser?.role, pendingProfileRole, router, switchActiveRole],
+  );
+  const handleSetupRole = useCallback(
+    (role: "instructor" | "studio") => {
+      router.push(`/onboarding?role=${role}` as Href);
+    },
+    [router],
+  );
+  const missingRole = availableRoles.includes("instructor") ? null : "instructor";
 
   const profileName =
     studioSettings?.studioName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
@@ -341,6 +414,33 @@ export default function StudioProfileScreen() {
                   palette={palette}
                 />
               </ProfileSectionCard>
+
+              <ProfileSectionHeader
+                label={t("profile.sections.profiles")}
+                description={t("profile.sections.profilesDesc")}
+                icon="person.2.fill"
+                palette={palette}
+                flush
+              />
+              <ProfileRoleSwitcherCard
+                activeRole="studio"
+                availableRoles={availableRoles}
+                isSwitching={pendingProfileRole !== null}
+                pendingRole={pendingProfileRole}
+                onSwitchRole={handleSwitchProfile}
+                palette={palette}
+              />
+              {missingRole ? (
+                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title={t("profile.switcher.setupInstructorTitle")}
+                    subtitle={t("profile.switcher.setupInstructorHint")}
+                    icon="plus.circle.fill"
+                    onPress={() => handleSetupRole(missingRole)}
+                    palette={palette}
+                  />
+                </ProfileSectionCard>
+              ) : null}
             </View>
 
             <View style={styles.desktopSideColumn}>
@@ -422,14 +522,75 @@ export default function StudioProfileScreen() {
                 flush
               />
               <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
-                <ProfileSettingRow
-                  title={t("profile.settings.autoExpireJobs")}
-                  value={t("profile.settings.autoExpire.value", {
-                    minutes: studioSettings?.autoExpireMinutesBefore ?? 30,
-                  })}
-                  icon="clock.fill"
-                  palette={palette}
-                  showDivider
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 14,
+                    paddingHorizontal: 18,
+                    paddingVertical: 15,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
+                      borderCurve: "continuous",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: palette.surfaceAlt as string,
+                    }}
+                  >
+                    <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
+                  </View>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "600",
+                        color: palette.text as string,
+                      }}
+                    >
+                      {t("profile.settings.autoExpireJobs")}
+                    </Text>
+                    <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+                      {t("profile.settings.autoExpire.description")}
+                    </ThemedText>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                      <ChoicePill
+                        label={t("jobsTab.form.useStudioDefault")}
+                        selected={autoExpireMinutesBefore === undefined}
+                        compact
+                        backgroundColor={palette.surfaceAlt as string}
+                        selectedBackgroundColor={palette.primary as string}
+                        labelColor={palette.text as string}
+                        selectedLabelColor={palette.onPrimary as string}
+                        onPress={() => handleAutoExpireMinutesBeforeChange(undefined)}
+                      />
+                      {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
+                        <ChoicePill
+                          key={minutes}
+                          label={t("jobsTab.form.minutes", { value: minutes })}
+                          selected={autoExpireMinutesBefore === minutes}
+                          compact
+                          backgroundColor={palette.surfaceAlt as string}
+                          selectedBackgroundColor={palette.primary as string}
+                          labelColor={palette.text as string}
+                          selectedLabelColor={palette.onPrimary as string}
+                          onPress={() => handleAutoExpireMinutesBeforeChange(minutes)}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </View>
+                <View
+                  style={{
+                    height: 1,
+                    marginLeft: 56,
+                    marginRight: 18,
+                    backgroundColor: palette.border as string,
+                  }}
                 />
                 <ProfileSettingRow
                   title={t("profile.settings.autoAcceptJobs")}
@@ -518,6 +679,32 @@ export default function StudioProfileScreen() {
             </ProfileSectionCard>
 
             <ProfileSectionHeader
+              label={t("profile.sections.profiles")}
+              description={t("profile.sections.profilesDesc")}
+              icon="person.2.fill"
+              palette={palette}
+            />
+            <ProfileRoleSwitcherCard
+              activeRole="studio"
+              availableRoles={availableRoles}
+              isSwitching={pendingProfileRole !== null}
+              pendingRole={pendingProfileRole}
+              onSwitchRole={handleSwitchProfile}
+              palette={palette}
+            />
+            {missingRole ? (
+              <ProfileSectionCard palette={palette}>
+                <ProfileSettingRow
+                  title={t("profile.switcher.setupInstructorTitle")}
+                  subtitle={t("profile.switcher.setupInstructorHint")}
+                  icon="plus.circle.fill"
+                  onPress={() => handleSetupRole(missingRole)}
+                  palette={palette}
+                />
+              </ProfileSectionCard>
+            ) : null}
+
+            <ProfileSectionHeader
               label={t("profile.account.title")}
               icon="person.crop.circle.fill"
               palette={palette}
@@ -593,14 +780,75 @@ export default function StudioProfileScreen() {
               palette={palette}
             />
             <ProfileSectionCard palette={palette}>
-              <ProfileSettingRow
-                title={t("profile.settings.autoExpireJobs")}
-                value={t("profile.settings.autoExpire.value", {
-                  minutes: studioSettings?.autoExpireMinutesBefore ?? 30,
-                })}
-                icon="clock.fill"
-                palette={palette}
-                showDivider
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: 14,
+                  paddingHorizontal: 18,
+                  paddingVertical: 15,
+                }}
+              >
+                <View
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 19,
+                    borderCurve: "continuous",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: palette.surfaceAlt as string,
+                  }}
+                >
+                  <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
+                </View>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color: palette.text as string,
+                    }}
+                  >
+                    {t("profile.settings.autoExpireJobs")}
+                  </Text>
+                  <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+                    {t("profile.settings.autoExpire.description")}
+                  </ThemedText>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                    <ChoicePill
+                      label={t("jobsTab.form.useStudioDefault")}
+                      selected={autoExpireMinutesBefore === undefined}
+                      compact
+                      backgroundColor={palette.surfaceAlt as string}
+                      selectedBackgroundColor={palette.primary as string}
+                      labelColor={palette.text as string}
+                      selectedLabelColor={palette.onPrimary as string}
+                      onPress={() => handleAutoExpireMinutesBeforeChange(undefined)}
+                    />
+                    {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
+                      <ChoicePill
+                        key={minutes}
+                        label={t("jobsTab.form.minutes", { value: minutes })}
+                        selected={autoExpireMinutesBefore === minutes}
+                        compact
+                        backgroundColor={palette.surfaceAlt as string}
+                        selectedBackgroundColor={palette.primary as string}
+                        labelColor={palette.text as string}
+                        selectedLabelColor={palette.onPrimary as string}
+                        onPress={() => handleAutoExpireMinutesBeforeChange(minutes)}
+                      />
+                    ))}
+                  </View>
+                </View>
+              </View>
+              <View
+                style={{
+                  height: 1,
+                  marginLeft: 56,
+                  marginRight: 18,
+                  backgroundColor: palette.border as string,
+                }}
               />
               <ProfileSettingRow
                 title={t("profile.settings.autoAcceptJobs")}

@@ -13,6 +13,7 @@ export {
 } from "./kit-disclosure-button-group";
 export { KitFloatingBadge } from "./kit-floating-badge";
 export { KitList, KitListItem } from "./kit-list";
+export { MeshGradientView } from "./kit-mesh-gradient";
 export { KitSegmentedToggle } from "./kit-segmented-toggle";
 export { KitSocialIconButton } from "./kit-social-icon-button";
 export { KitStatusBadge } from "./kit-status-badge";

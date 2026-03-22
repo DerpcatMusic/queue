@@ -71,3 +71,38 @@ card: 24, button: 20, input: 20, pill: 999 (full)
 - Too many primary actions per screen
 - Inconsistent spacing
 - Generic/mixed typography styles
+
+## Advanced Styling: Mesh Gradients
+
+### MeshGradientView Component (`@/components/ui/kit/MeshGradientView`)
+- Reusable component for rich mesh gradient backgrounds with subtle texture
+- Uses stacked radial CSS gradients via `experimental_backgroundImage` (New Architecture only)
+- Adds a tiny dot pattern overlay for grain/texture feel
+- Works on iOS, Android, and Web
+
+### Usage
+```tsx
+import { MeshGradientView } from "@/components/ui/kit";
+
+// On ActionButton
+<ActionButton meshGradient={true} ... />
+
+// As standalone component
+<MeshGradientView preset="primary" borderRadius={20}>
+  {children}
+</MeshGradientView>
+```
+
+### Presets
+- `primary` — Vibrant purple mesh (light/dark aware)
+- `primaryDark` — Lighter purple variant for dark surfaces
+
+### Properties
+- `preset` — Which gradient preset to use
+- `grainOpacity` — Override texture intensity (0-1)
+- `borderRadius` — Corner radius
+- `darkVariant` — Force dark variant regardless of system theme
+
+### Dependencies
+- `react-native-svg` — For dot pattern overlay
+- New Architecture (Fabric) — For CSS gradient support via `experimental_backgroundImage`

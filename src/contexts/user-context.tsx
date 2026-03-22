@@ -4,6 +4,7 @@ import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { api } from "@/convex/_generated/api";
 
 type KnownRole = "pending" | "instructor" | "studio" | "admin";
+type AppRole = "instructor" | "studio";
 
 function isKnownRole(value: string): value is KnownRole {
   return value === "pending" || value === "instructor" || value === "studio" || value === "admin";
@@ -14,6 +15,8 @@ interface UserContextValue {
   currentUser: ReturnType<typeof useQuery<typeof api.users.getCurrentUser>>;
   /** Role from currentUser; kept for backward compatibility with existing consumers */
   effectiveRole: KnownRole | null;
+  /** All profile roles currently available on this account */
+  availableRoles: AppRole[];
   /** Is auth state still loading? */
   isAuthLoading: boolean;
   /** Is user authenticated? */
@@ -31,6 +34,7 @@ interface UserContextValue {
 const DEFAULT_USER_CONTEXT: UserContextValue = {
   currentUser: undefined,
   effectiveRole: null,
+  availableRoles: [],
   isAuthLoading: true,
   isAuthenticated: false,
   isSyncing: false,
@@ -49,6 +53,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     () => ({
       currentUser,
       effectiveRole: isKnownRole(currentUser?.role ?? "") ? (currentUser?.role ?? null) : null,
+      availableRoles: currentUser?.roles ?? [],
       isAuthLoading: isConvexAuthLoading,
       isAuthenticated,
       isSyncing: false,

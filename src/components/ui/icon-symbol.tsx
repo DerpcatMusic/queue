@@ -54,6 +54,7 @@ const MAPPING = {
   "slider.horizontal.3": "tune",
   sparkles: "auto-awesome",
   "checkmark.circle.fill": "check-circle",
+  banknote: "payments",
   "location.fill": "my-location",
   "line.3.horizontal.decrease.circle": "filter-list",
   "paperplane.fill": "send",

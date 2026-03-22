@@ -52,27 +52,34 @@ function ProfileSubpageSheetHeader({
   title,
   rightAccessory,
   onBack,
+  accentColor,
 }: {
   title: string;
   rightAccessory?: React.ReactNode;
   onBack: () => void;
+  accentColor?: string;
 }) {
   const palette = useBrand();
   const { t } = useTranslation();
+  const isCustomAccent = Boolean(accentColor);
+  const foregroundColor = isCustomAccent ? "#FFFFFF" : String(palette.text);
 
   return (
     <View style={styles.headerRow}>
       <View style={styles.edgeSlot}>
         <IconButton
           size={40}
-          tone="secondary"
+          tone={isCustomAccent ? "primarySubtle" : "secondary"}
+          {...(isCustomAccent
+            ? { backgroundColorOverride: "rgba(255,255,255,0.18)" }
+            : {})}
           accessibilityLabel={t("common.back")}
           onPress={onBack}
           icon={
             <IconSymbol
               name="chevron.right"
               size={20}
-              color={String(palette.text)}
+              color={foregroundColor}
               style={{
                 transform: [{ rotate: I18nManager.isRTL ? "0deg" : "180deg" }],
               }}
@@ -82,7 +89,11 @@ function ProfileSubpageSheetHeader({
       </View>
 
       <View style={styles.titleSlot}>
-        <ThemedText numberOfLines={1} type="sheetTitle" style={styles.title}>
+        <ThemedText
+          numberOfLines={1}
+          type="sheetTitle"
+          style={[styles.title, isCustomAccent ? { color: foregroundColor } : null]}
+        >
           {title}
         </ThemedText>
       </View>
@@ -99,18 +110,19 @@ export function useProfileSubpageSheet({
 }: ProfileSubpageSheetOptions) {
   const pathname = usePathname();
   const accessoryContext = useContext(ProfileSubpageAccessoryContext);
+  const setAccessory = accessoryContext?.setAccessory;
   const collapsedSheetHeight = useCollapsedSheetHeight();
   const isActiveRoute = isProfileSubpageRouteActive(pathname, routeMatchPath);
 
   useLayoutEffect(() => {
-    if (!accessoryContext) {
+    if (!setAccessory) {
       return;
     }
-    accessoryContext.setAccessory(routeMatchPath, isActiveRoute ? (rightAccessory ?? null) : null);
+    setAccessory(routeMatchPath, isActiveRoute ? (rightAccessory ?? null) : null);
     return () => {
-      accessoryContext.setAccessory(routeMatchPath, null);
+      setAccessory(routeMatchPath, null);
     };
-  }, [accessoryContext, isActiveRoute, rightAccessory, routeMatchPath]);
+  }, [isActiveRoute, rightAccessory, routeMatchPath, setAccessory]);
 
   void title;
 
@@ -171,12 +183,23 @@ export function ProfileSubpageSheetHost({
       return null;
     }
 
+    const isDiditRoute = activeRoute.routeMatchPath === "/profile/identity-verification";
+    const isPaymentsRoute =
+      activeRoute.routeMatchPath === "/profile/payments" ||
+      activeRoute.routeMatchPath.endsWith("/profile/payments");
+    const accentColor = isDiditRoute
+      ? palette.didit.accent
+      : isPaymentsRoute
+        ? palette.payments.accent
+        : (palette.primary as string);
+
     return {
       stickyHeader: (
         <ProfileSubpageSheetHeader
           title={activeRoute.title}
           rightAccessory={accessoryContext?.accessories[activeRoute.routeMatchPath] ?? null}
           onBack={() => router.back()}
+          {...(isDiditRoute || isPaymentsRoute ? { accentColor } : {})}
         />
       ),
       padding: {
@@ -187,10 +210,10 @@ export function ProfileSubpageSheetHost({
       initialStep: 0,
       draggable: false,
       expandable: false,
-      backgroundColor: palette.primary as string,
-      topInsetColor: palette.primary as string,
+      backgroundColor: accentColor,
+      topInsetColor: accentColor,
     };
-  }, [activeRoute, accessoryContext?.accessories, palette.primary, router]);
+  }, [activeRoute, accessoryContext?.accessories, palette.primary, palette.didit.accent, palette.payments.accent, router]);
 
   useGlobalTopSheet("profile", config, ownerId);
 

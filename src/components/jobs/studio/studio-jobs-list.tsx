@@ -6,7 +6,7 @@ import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import type { StudioJobsListProps } from "./studio-jobs-list.types";
 import { StudioJobCard } from "./studio-jobs-list-parts";
 
-const ESTIMATED_STUDIO_JOB_CARD_HEIGHT = 420;
+const ESTIMATED_STUDIO_JOB_CARD_HEIGHT = 360;
 
 export const StudioJobsList = memo(function StudioJobsList({
   jobs,
@@ -56,7 +56,7 @@ export const StudioJobsList = memo(function StudioJobsList({
     <View
       style={{
         gap: isWideWeb ? 10 : BrandSpacing.sm,
-        paddingHorizontal: isWideWeb ? 18 : BrandSpacing.lg,
+        paddingHorizontal: isWideWeb ? 18 : BrandSpacing.md,
       }}
     >
       <FlashList

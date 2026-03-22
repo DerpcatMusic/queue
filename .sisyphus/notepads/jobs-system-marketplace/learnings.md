@@ -679,3 +679,319 @@ await ctx.db.patch("jobs", job._id, {
   closureReason: "studio_cancelled",
 });
 ```
+
+---
+
+## 14. T11 UI Wiring: Studio Settings and Composer Controls (2026-03-22)
+
+- Reused `ProfileSettingRow`, `KitSwitch`, `ChoicePill`, and `KitSegmentedToggle` to keep the new controls aligned with the existing profile/settings and composer form language.
+- Kept `autoAcceptDefault` default-safe by hydrating missing values to `false` in the profile screen before rendering the switch.
+- Modeled per-job expiry and boost as optional draft fields so the composer can fall back to studio/platform defaults when unset while still sending explicit overrides when selected.
+- `postStudioJob` also needed additive payload wiring for `expiryOverrideMinutes` and `boostPreset`; the UI change was not sufficient on its own.
+
+## 15. T11 Follow-up Fixes (2026-03-22)
+
+- Boost helper copy must match product semantics: presets increase the pay instructors see by adding bonus pay, not just placement visibility.
+- For optimistic settings toggles on profile screens, add both a UI disable guard and an early return in the handler so required mutation payloads never fall back to placeholder values before query data exists.
+
+## 16. T10 Implementation: Query Payload Extensions for Instructor vs Studio Visibility (2026-03-22)
+
+### Changes Made to `convex/jobs.ts`
+
+**`getAvailableJobsForInstructor` query (lines ~595-645 and ~768-785)**:
+- Extended return schema to include: `closureReason`, `boostPreset`, `boostBonusAmount`, `boostActive`
+- Extended row mapping `omitUndefined` to include these fields from `job.*`
+- Note: `applicationDeadline` was already present in both schema and row mapping
+
+**`getMyStudioJobsWithApplications` query (lines ~1273-1283 and ~1404-1412)**:
+- Extended return schema to include: `applicationDeadline`, `closureReason`, `boostPreset`, `boostBonusAmount`, `boostActive`
+- Extended row mapping `omitUndefined` to include all these fields from `job.*`
+
+### Verification
+- All 95 contract tests pass
+- No LSP diagnostics on jobs.ts
+- Lint passes
+- Typecheck passes
+
+### Frontend Types Decision
+- Did NOT update `StudioJob` or `StudioControllerJob` types because TypeScript allows objects to have more properties than their declared type (excess properties are ignored)
+- The queries return the new optional fields, but frontend code only accesses known typed fields
+- This keeps the change additive and backward-compatible without requiring frontend changes
+
+### Key Pattern
+When extending query payloads with additive metadata:
+1. Add fields to `returns` schema (lines)
+2. Add fields to row mapping `omitUndefined` block
+3. Do NOT make fields required (they may not exist on older records)
+4. Do NOT update frontend types unless TypeScript errors actually occur
+
+## 17. T12 Card-State Presentation (2026-03-22)
+
+- `closureReason` should stay additive in the UI too: keep `status === "cancelled"` for lifecycle logic, but map `expired` to a muted/gray card state and `studio_cancelled` to a warmer warning tone.
+- Card pay should reflect the boosted total when `boostActive` is true, while still surfacing the bonus separately as a visible badge so instructors and studios can scan the uplift immediately.
+- `applicationDeadline` is only worth rendering on cards while the cutoff still explains the current state (open jobs and expired cancellations); showing it on filled/completed history adds noise.
+
+## 18. T13 Implementation: Copy Alignment and Translation Wiring (2026-03-22)
+
+### Changes Made
+
+**Translation keys added to en.ts and he.ts**:
+- `jobsTab.form.closeApplications` - composer section header for application cutoff
+- `jobsTab.form.boostOnBoard` - composer section header for boost preset
+- `jobsTab.form.useStudioDefault` - label for studio default expiry option
+- `profile.settings.autoAcceptJobs` - profile settings toggle title
+- `profile.settings.autoAcceptJobsDescription` - profile settings toggle subtitle
+
+**Components updated to use translation keys**:
+- `create-job-sheet-sections.tsx`: "Close applications", "Boost on board", "Studio default" now use t() with translation keys
+- `profile/index.tsx`: "Auto-accept jobs" title and subtitle now use t() with translation keys (both desktop and mobile)
+
+**Notification titles already distinct**:
+- "Job expired" - expiry outcome (instructors and studio)
+- "Booking cancelled" - studio cancelled a filled job (instructor)
+- "Application accepted/rejected" - manual review outcome
+
+No new notification dispatch points were added (architecture preservation per task scope).
+
+### Verification
+- LSP diagnostics: clean on all modified files
+- `bun run lint`: passes
+- `bun run typecheck`: passes
+
+## 19. T13 Follow-up: Helper Translation Keys and Remaining Raw Copy (2026-03-22)
+
+### Problem
+Verification found remaining hardcoded user-facing strings in jobs-marketplace scope:
+- `jobs-utils.ts`: `formatExpiryText` returned hardcoded "Expired" / "Expires in X minute(s)" strings; `formatBoostBadge` returned hardcoded "+₪X boost"
+- `create-job-sheet-sections.tsx`: expiry/boost description texts and "None" segmented toggle option
+
+### Solution: Translation-key returning helpers
+
+Changed `formatExpiryText` and `formatBoostBadge` to return structured objects with translation keys instead of formatted strings:
+
+```typescript
+// formatExpiryText now returns:
+{ key: "jobsTab.form.expiresInMinutes", interpolation: { count: 15 }, formatted: "Expires in 15 minutes" }
+
+// formatBoostBadge now returns:
+{ key: "jobsTab.form.boostBadge", bonus: 50, formatted: "+₪50 boost" }
+```
+
+Updated `ExpiryPresentation` and `BoostPresentation` types to include `key` and `interpolation` fields. Components (`instructor-open-jobs-list.tsx`, `studio-jobs-list-parts.tsx`) now call `t(key, interpolation)` instead of using pre-formatted strings.
+
+Added translation keys to en.ts/he.ts:
+- `jobsTab.form.expiryExpired` = "Expired"
+- `jobsTab.form.expiresInMinutes` = "Expires in {{count}} minute{{count === 1 ? '' : 's'}}"
+- `jobsTab.form.expiresInHours` = "Expires in {{count}} hour{{count === 1 ? '' : 's'}}"
+- `jobsTab.form.expiresInHoursAndMinutes` = "Expires in {{count}} hour{{count === 1 ? '' : 's'}} {{minutes}} minute{{minutes === 1 ? '' : 's'}}"
+- `jobsTab.form.boostBadge` = "+₪{{bonus}} boost"
+- `jobsTab.form.closeApplicationsDescription` = expiry cutoff description
+- `jobsTab.form.boostOnBoardDescription` = boost description
+- `jobsTab.form.none` = "None"
+
+### Verification
+- All 9 jobs-utils tests pass
+- LSP diagnostics: clean on all modified files
+- `bun run lint`: passes
+- `bun run typecheck`: passes
+
+## 20. T13 Follow-up Fix: Invalid i18n Pluralization Syntax (2026-03-22)
+
+### Problem
+The expiry translation strings used `{{count === 1 ? '' : 's'}}` which is invalid i18next v4 syntax. i18next does not support inline conditional expressions in interpolation values.
+
+### Solution
+The project already uses the standard i18next `_one`/`_other` plural suffix pattern (e.g., `openingsFiltered_one`/`openingsFiltered_other`). Replaced the invalid expressions with proper plural keys:
+
+**Before (invalid):**
+```
+expiresInMinutes: "Expires in {{count}} minute{{count === 1 ? '' : 's'}}"
+```
+
+**After (valid):**
+```
+expiresInMinutes_one: "Expires in {{count}} minute"
+expiresInMinutes_other: "Expires in {{count}} minutes"
+```
+
+The `formatExpiryText` helper already returns the **base key** (`"jobsTab.form.expiresInMinutes"`) — i18next auto-selects `_one` or `_other` based on the `count` interpolation value passed at call time. No helper changes were needed.
+
+### Files changed
+- `src/i18n/translations/en.ts`: replaced 3 invalid keys with 6 valid plural keys
+- `src/i18n/translations/he.ts`: same pattern with Hebrew translations
+
+### Verification
+- All 9 jobs-utils tests pass (helper returns base keys + interpolation — unchanged)
+- `bun run lint`: passes
+- `bun run typecheck`: passes
+
+## 21. T14 Regression Pass: Calendar, Counts, and Side Effects (2026-03-22)
+
+### Verification Results
+
+**All checks pass:**
+- `bun test`: 154 pass, 0 fail
+- `bun run lint`: passes
+- `bun run typecheck`: passes
+- LSP diagnostics on jobs.ts: no errors
+- LSP diagnostics on calendar-controller-helpers.ts: no errors
+
+### Calendar/Lifecycle Side Effects Verified
+
+**`getLifecycle` function (getMyCalendarTimeline)** - correctly maps:
+- `status === "cancelled"` → lifecycle: "cancelled"
+- `now < startTime` → lifecycle: "upcoming"
+- `now <= endTime` → lifecycle: "live"
+- otherwise → lifecycle: "past"
+
+**Google Calendar sync triggers** - correctly placed in:
+- `postJob`: studio sync
+- `runAcceptedApplicationReviewWorkflow`: both studio and instructor syncs
+- `autoExpireUnfilledJob`: studio sync
+- `cancelFilledJob` (open path): studio sync
+- `cancelFilledJob` (filled path): instructor and studio syncs
+- `cancelMyBooking`: studio sync
+
+### Application Stats Consistency Verified
+
+**`recomputeJobApplicationStats`** called in all appropriate places:
+- `applyToJob`: after pending application created, after auto-accept
+- `withdrawApplication`: after instructor withdraws
+- `reviewApplication`: after studio accepts or rejects
+- `autoExpireUnfilledJob`: after job expires
+- `cancelFilledJob`: after studio cancels (both open and filled paths)
+- `cancelMyBooking`: after instructor cancels booking
+
+### Expiry/Cancellation/Auto-accept Interactions Verified
+
+**`autoExpireUnfilledJob`** (T9 implementation):
+- Guard: only proceeds if `job.status === "open"`
+- Sets `closureReason: "expired"`
+- Rejects all pending applications
+- Calls `recomputeJobApplicationStats`
+- Notifies all applicants with "Job expired" message
+- Notifies studio
+
+**`cancelFilledJob`** (T9 implementation):
+- Open jobs: cancels directly without deadline check, sets `closureReason: "studio_cancelled"`
+- Filled jobs: checks cancellation deadline before cancelling
+- Rejects pending applications in both paths
+- Calls `recomputeJobApplicationStats`
+- Notifies accepted instructor (filled path only)
+- Schedules Google Calendar syncs
+
+**`cancelMyBooking`** (instructor cancellation):
+- Checks `job.status === "filled"`
+- Checks cancellation deadline
+- Sets `status: "cancelled"` and clears `filledByInstructorId`
+- Marks accepted application as "withdrawn"
+- Calls `recomputeJobApplicationStats`
+- Notifies studio
+- Schedules Google Calendar sync
+
+**Auto-accept flow** (`applyToJob` with autoAcceptEnabled):
+- Validates job still open, checks eligibility and conflicts
+- Creates accepted application, fills job, rejects competing applications
+- `runAcceptedApplicationReviewWorkflow`: notifies all applicants, schedules lifecycle events, syncs calendars
+- Calls `recomputeJobApplicationStats`
+
+### Tab Counts Verified
+
+**`getInstructorTabCounts`**:
+- `jobsBadgeCount`: open jobs matching instructor coverage
+- `calendarBadgeCount`: accepted jobs that haven't ended
+
+**`getStudioTabCounts`**:
+- `jobsBadgeCount`: pending applications for active jobs
+- `calendarBadgeCount`: active (open/filled) jobs that haven't ended
+
+### Conclusion
+
+No regressions found. The jobs-marketplace T9-T13 changes correctly maintain:
+1. Calendar/lifecycle assumptions for all job states
+2. Application stats consistency across all state transitions
+3. Proper notification and calendar sync triggers
+4. Tab count accuracy for both instructor and studio views
+
+---
+
+## 22. i18n Regression Fix: instructor-feed.tsx Empty State Keys (2026-03-22)
+
+### Problem
+Native QA on Android emulator surfaced raw translation keys on the instructor jobs empty state:
+- `jobsTab.emptyInstructorShort`
+- `jobsTab.emptyInstructorFreshOne`
+- `jobsTab.emptyRefreshHint`
+
+### Root Cause
+The translation entries live under `jobsTab.instructorFeed.*` in `en.ts` (lines 1042-1046), but `instructor-feed.tsx` was calling `t("jobsTab.emptyInstructor*")` directly (missing `instructorFeed.` prefix).
+
+### Fix
+Updated three translation lookups in `src/components/jobs/instructor-feed.tsx`:
+- `jobsTab.emptyInstructorFreshOne` → `jobsTab.instructorFeed.emptyInstructorFreshOne`
+- `jobsTab.emptyInstructorFreshTwo` → `jobsTab.instructorFeed.emptyInstructorFreshTwo`
+- `jobsTab.emptyInstructorFreshThree` → `jobsTab.instructorFeed.emptyInstructorFreshThree`
+- `jobsTab.emptyInstructorShort` → `jobsTab.instructorFeed.emptyInstructorShort`
+- `jobsTab.emptyRefreshHint` → `jobsTab.instructorFeed.emptyRefreshHint`
+
+### Verification
+- `bun run lint`: passes
+- `bun run typecheck`: passes
+
+---
+
+## 23. F1 Final Wave Defect Fixes (2026-03-22)
+
+### Defect 1: autoExpireUnfilledJob re-check ignored per-job override
+**Problem**: The `autoExpireUnfilledJob` internal mutation used only `studio?.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES` without checking for `job.expiryOverrideMinutes`.
+
+**Fix**: Changed line 2025 to use the full fallback chain:
+```typescript
+const expireMinutes = job.expiryOverrideMinutes ?? studio?.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
+```
+
+**Test added**: `autoExpireUnfilledJob re-check uses per-job override when present` - verifies per-job override (60 min) is honored during scheduled re-check.
+
+### Defect 2: getAvailableJobsForInstructor filtered by applicationDeadline at query time
+**Problem**: The instructor feed query was filtering out jobs where `applicationDeadline < now`, but this should be handled by persisted lifecycle state (expiry), not query-time deadline checks.
+
+**Fix**: Removed the `applicationDeadline < now` check from `getAvailableJobsForInstructor` (lines 694-696). Kept `job.startTime <= now` check which prevents showing already-started jobs.
+
+**Rationale**: `applicationDeadline` is persisted metadata for display. Expiry hiding must rely on state transitions (`status === "cancelled"`) rather than query-time deadline checks.
+
+### Defect 3: cancelFilledJob open-job branch missing side effects
+**Problem**: When a studio cancelled an open job, pending applications were rejected but:
+1. Rejected applicants were not notified
+2. Studio calendar sync was not triggered
+
+**Fix**: Added notification loop for rejected applicants and `scheduleGoogleCalendarSyncForUser(ctx, studio.userId)` call to the open-job branch.
+
+**Test added**: `open job cancellation rejects pending applications and triggers calendar sync` - verifies job cancelled, pending apps rejected, and calendar sync scheduled.
+
+### Verification
+- All 185 tests pass
+- `bun run lint`: passes  
+- `bun run typecheck`: passes
+- LSP diagnostics clean on `convex/jobs.ts` and `tests/contracts/jobs-marketplace-lifecycle.contract.test.ts`
+
+---
+
+### 23a. Verification Gap Fix: Stale Reference Bug in Open-Job Cancellation (2026-03-22)
+
+**Problem discovered during test verification**: The open-job cancellation notification loop was checking `application.status === "pending"` on objects fetched via `collect()` BEFORE the patch loop. Since InMemoryConvexDb returns references to the same table objects, when the patch loop ran `Object.assign(row, patch)`, it mutated the same objects that `collect()` returned. By the time the notification loop ran, `application.status` was already "rejected" - so the condition was never met and notifications were never sent.
+
+**Fix**: Refactored to use `filter()` to capture pending applications into a separate array BEFORE patching:
+```typescript
+const pendingApplications = applications.filter((a) => a.status === "pending");
+for (const application of pendingApplications) {
+  await ctx.db.patch("jobApplications", application._id, {...});
+}
+// Now iterate over pendingApplications which has the pre-patch status
+for (const application of pendingApplications) {
+  await enqueueUserNotification(...);
+}
+```
+
+**Test strengthened**: Added assertion `expect(rejectedNotifications.length).toBe(1)` to verify notification fanout via `db.list("userNotifications")` rather than just checking scheduler calls.
+
+**Verification**: All 185 tests pass, lint/typecheck clean.

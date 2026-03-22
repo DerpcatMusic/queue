@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
-import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
+import { type BrandPalette, BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { isSportType, toSportLabel } from "@/convex/constants";
 import { formatDateTime } from "@/lib/jobs-utils";
@@ -10,7 +10,6 @@ import {
   getPaymentStatusLabel,
   getPaymentStatusTone,
   getPayoutStatusLabel,
-  getPayoutStatusTone,
   type PaymentStatus,
   type PayoutStatus,
   type StatusTone,
@@ -49,67 +48,23 @@ type PaymentActivityListProps = {
   onSelectPaymentId?: (paymentId: Id<"payments">) => void;
 };
 
-function toneToken(tone: StatusTone, palette: BrandPalette) {
-  switch (tone) {
-    case "success":
-      return {
-        fg: palette.success as import("react-native").ColorValue,
-        bg: palette.successSubtle,
-        border: palette.success as import("react-native").ColorValue,
-      };
-    case "warning":
-      return {
-        fg: palette.warning as import("react-native").ColorValue,
-        bg: palette.warningSubtle,
-        border: palette.warning as import("react-native").ColorValue,
-      };
-    case "danger":
-      return {
-        fg: palette.danger,
-        bg: palette.dangerSubtle,
-        border: palette.danger,
-      };
-    case "primary":
-      return {
-        fg: palette.primary,
-        bg: palette.primarySubtle,
-        border: palette.primary,
-      };
-    default:
-      return {
-        fg: palette.textMuted,
-        bg: palette.surfaceAlt,
-        border: palette.borderStrong,
-      };
-  }
-}
-
-function StatusBadge({
-  label,
-  tone,
-  palette,
-}: {
-  label: string;
-  tone: StatusTone;
-  palette: BrandPalette;
-}) {
-  const token = toneToken(tone, palette);
+function StatusDot({ tone, palette }: { tone: StatusTone; palette: BrandPalette }) {
+  const colors: Record<StatusTone, string> = {
+    success: palette.success as string,
+    warning: palette.warning as string,
+    danger: palette.danger,
+    primary: palette.primary as string,
+    neutral: palette.textMuted,
+  };
   return (
     <View
       style={{
-        borderWidth: 1,
-        borderRadius: BrandRadius.pill,
-        borderCurve: "continuous",
-        borderColor: token.border,
-        backgroundColor: token.bg,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: colors[tone] ?? colors.neutral,
       }}
-    >
-      <ThemedText type="micro" style={{ color: token.fg }}>
-        {label}
-      </ThemedText>
-    </View>
+    />
   );
 }
 
@@ -125,28 +80,28 @@ export function PaymentActivityList({
 }: PaymentActivityListProps) {
   const { t } = useTranslation();
   return (
-    <View style={{ gap: BrandSpacing.sm, paddingHorizontal: BrandSpacing.sm }}>
+    <View style={{ gap: BrandSpacing.sm }}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          paddingHorizontal: BrandSpacing.xs,
+          paddingHorizontal: BrandSpacing.md,
         }}
       >
         <View style={{ gap: 2 }}>
-          <ThemedText type="title" style={{ fontWeight: "600" }}>
-            {title}
-          </ThemedText>
+          <ThemedText type="bodyStrong">{title}</ThemedText>
           {subtitle ? (
             <ThemedText type="caption" style={{ color: palette.textMuted }}>
               {subtitle}
             </ThemedText>
           ) : null}
         </View>
-        <ThemedText type="bodyStrong" style={{ color: palette.text }}>
-          {items.length}
-        </ThemedText>
+        {items.length > 0 && (
+          <ThemedText type="caption" style={{ color: palette.textMuted }}>
+            {items.length} {items.length === 1 ? "item" : "items"}
+          </ThemedText>
+        )}
       </View>
 
       {items.length === 0 ? (
@@ -156,7 +111,7 @@ export function PaymentActivityList({
           </ThemedText>
         </View>
       ) : (
-        <View style={{ paddingHorizontal: BrandSpacing.md, paddingBottom: 16 }}>
+        <View>
           {items.map((item, index) => {
             const paymentStatus = getPaymentStatusLabel(item.payment.status);
             const payoutStatus = item.payout ? getPayoutStatusLabel(item.payout.status) : null;
@@ -170,89 +125,65 @@ export function PaymentActivityList({
               : {};
 
             return (
-              <View
+              <Pressable
                 key={item.payment._id}
-                style={{
-                  marginTop: index === 0 ? 0 : -12,
-                  zIndex: items.length - index,
-                }}
+                {...listItemPressProps}
+                accessibilityRole={onSelectPaymentId ? "button" : undefined}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingVertical: 12,
+                  paddingHorizontal: BrandSpacing.md,
+                  backgroundColor: pressed && onSelectPaymentId ? palette.surfaceAlt : "transparent",
+                  borderBottomWidth: index < items.length - 1 ? 1 : 0,
+                  borderBottomColor: palette.border,
+                })}
               >
-                <Pressable
-                  {...listItemPressProps}
-                  accessibilityRole={onSelectPaymentId ? "button" : undefined}
-                  style={({ pressed }) => ({
-                    backgroundColor: palette.surface,
-                    padding: 16,
-                    paddingBottom: 24,
-                    borderRadius: 24,
-                    borderCurve: "continuous",
-                    borderWidth: 1,
-                    borderColor: palette.border,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    opacity: pressed && onSelectPaymentId ? 0.96 : 1,
-                  })}
-                >
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <ThemedText type="bodyStrong" style={{ fontSize: 18 }}>
+                <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <StatusDot
+                    tone={getPaymentStatusTone(item.payment.status)}
+                    palette={palette}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <ThemedText type="bodyStrong" style={{ fontSize: 15 }}>
                       {sportLabel}
                     </ThemedText>
                     <ThemedText type="caption" style={{ color: palette.textMuted }}>
                       {item.job
                         ? formatDateTime(item.job.startTime, locale)
                         : formatDateTime(item.payment.createdAt, locale)}
+                      {payoutStatus ? ` · ${payoutStatus}` : ""}
                     </ThemedText>
-                    <View style={{ flexDirection: "row", gap: 6, marginTop: 4 }}>
-                      <StatusBadge
-                        label={paymentStatus}
-                        tone={getPaymentStatusTone(item.payment.status)}
-                        palette={palette}
-                      />
-                      {payoutStatus ? (
-                        <StatusBadge
-                          label={payoutStatus}
-                          tone={getPayoutStatusTone(item.payout!.status)}
-                          palette={palette}
-                        />
-                      ) : null}
-                    </View>
                   </View>
+                </View>
 
-                  <View style={{ alignItems: "flex-end", gap: 2 }}>
-                    <ThemedText
-                      type="title"
-                      selectable
-                      style={{
-                        fontVariant: ["tabular-nums"],
-                        fontSize: 22,
-                        fontWeight: "700",
-                      }}
-                    >
-                      {viewerRole === "studio"
-                        ? formatAgorotCurrency(
-                            item.payment.studioChargeAmountAgorot,
-                            locale,
-                            item.payment.currency,
-                          )
-                        : formatAgorotCurrency(
-                            item.payment.instructorBaseAmountAgorot,
-                            locale,
-                            item.payment.currency,
-                          )}
-                    </ThemedText>
-                    {viewerRole === "studio" ? (
-                      <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                        {`Payout ${formatAgorotCurrency(
+                <View style={{ alignItems: "flex-end" }}>
+                  <ThemedText
+                    type="bodyStrong"
+                    selectable
+                    style={{
+                      fontVariant: ["tabular-nums"],
+                      fontWeight: "600",
+                    }}
+                  >
+                    {viewerRole === "studio"
+                      ? formatAgorotCurrency(
+                          item.payment.studioChargeAmountAgorot,
+                          locale,
+                          item.payment.currency,
+                        )
+                      : formatAgorotCurrency(
                           item.payment.instructorBaseAmountAgorot,
                           locale,
                           item.payment.currency,
-                        )}`}
-                      </ThemedText>
-                    ) : null}
-                  </View>
-                </Pressable>
-              </View>
+                        )}
+                  </ThemedText>
+                  <ThemedText type="caption" style={{ color: palette.textMuted, fontSize: 11 }}>
+                    {paymentStatus}
+                  </ThemedText>
+                </View>
+              </Pressable>
             );
           })}
         </View>

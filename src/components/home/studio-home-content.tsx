@@ -65,23 +65,9 @@ export function StudioHomeContent({
 
   const heroTitle =
     jobsNeedingReview.length > 0
-      ? t("home.studio.heroReview")
+      ? t("home.studio.needsReview")
       : t("home.studio.heroActive", {
           count: openJobs,
-        });
-
-  const heroSecondaryLabel =
-    jobsNeedingReview.length > 0
-      ? t("home.studio.pendingApplicants")
-      : t("home.studio.recentlyFilled");
-
-  const heroSecondaryValue =
-    jobsNeedingReview.length > 0
-      ? t("home.studio.waitingCount", {
-          count: pendingApplicants,
-        })
-      : t("home.studio.closedCount", {
-          count: jobsFilled,
         });
 
   const visibleRecentJobs = recentJobs.slice(0, layout.isWideWeb ? 6 : 4);
@@ -119,9 +105,7 @@ export function StudioHomeContent({
                   opacity: 0.76,
                 }}
               >
-                {jobsNeedingReview.length > 0
-                  ? t("home.studio.eyebrowReview")
-                  : t("home.studio.eyebrowOps")}
+                {t("home.studio.title")}
               </Text>
               <Text
                 style={{
@@ -154,25 +138,23 @@ export function StudioHomeContent({
               <HomeSignalTile
                 label={t("home.actions.jobsTitle")}
                 value={String(openJobs)}
-                detail={t("home.studio.heroActive", {
-                  count: openJobs,
-                })}
-                palette={palette}
-              />
-              <HomeSignalTile
-                label={heroSecondaryLabel}
-                value={heroSecondaryValue}
-                detail={t("home.studio.pendingApplicants")}
                 palette={palette}
                 tone="accent"
+                icon="briefcase.fill"
+              />
+              <HomeSignalTile
+                label={t("home.studio.pendingApplicants")}
+                value={String(pendingApplicants)}
+                palette={palette}
+                tone="warning"
+                icon="clock.badge.checkmark"
               />
               <HomeSignalTile
                 label={t("home.studio.recentlyFilled")}
                 value={String(jobsFilled)}
-                detail={t("home.studio.closedCount", {
-                  count: jobsFilled,
-                })}
                 palette={palette}
+                tone="success"
+                icon="checkmark.circle.fill"
               />
             </View>
 
@@ -307,11 +289,7 @@ export function StudioHomeContent({
               gap: 12,
             }}
           >
-            <HomeSectionHeading
-              title={t("home.studio.recentTitle")}
-              eyebrow={t("home.studio.boardEyebrow")}
-              palette={palette}
-            />
+            <HomeSectionHeading title={t("home.studio.boardEyebrow")} palette={palette} />
             {recentJobs.length === 0 ? (
               <HomeSurface palette={palette} style={{ padding: 18, gap: 6 }}>
                 <Text style={{ ...BrandType.title, color: palette.text as string }}>

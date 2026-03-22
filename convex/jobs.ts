@@ -598,6 +598,7 @@ export const getAvailableJobsForInstructor = query({
       studioId: v.id("studioProfiles"),
       studioName: v.string(),
       studioImageUrl: v.optional(v.string()),
+      studioAddress: v.optional(v.string()),
       sport: v.string(),
       zone: v.string(),
       startTime: v.number(),
@@ -691,6 +692,13 @@ export const getAvailableJobsForInstructor = query({
           continue;
         }
         if (job.startTime <= now) continue;
+        if (
+          typeof job.applicationDeadline === "number" &&
+          Number.isFinite(job.applicationDeadline) &&
+          job.applicationDeadline <= now
+        ) {
+          continue;
+        }
         matchingById.set(job._id, job);
       }
     }
@@ -764,6 +772,7 @@ export const getAvailableJobsForInstructor = query({
         postedAt: job.postedAt,
         ...omitUndefined({
           studioImageUrl: studioImageUrlById.get(String(job.studioId)),
+          studioAddress: studio?.address,
           timeZone: job.timeZone,
           note: job.note,
           requiredLevel: job.requiredLevel,
@@ -781,6 +790,187 @@ export const getAvailableJobsForInstructor = query({
         }),
       };
     });
+  },
+});
+
+export const getStudioProfileForInstructor = query({
+  args: {
+    studioId: v.id("studioProfiles"),
+    now: v.optional(v.number()),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      studioId: v.id("studioProfiles"),
+      studioName: v.string(),
+      studioAddress: v.string(),
+      zone: v.string(),
+      bio: v.optional(v.string()),
+      studioImageUrl: v.optional(v.string()),
+      sports: v.array(v.string()),
+      jobs: v.array(
+        v.object({
+          jobId: v.id("jobs"),
+          studioId: v.id("studioProfiles"),
+          studioName: v.string(),
+          studioImageUrl: v.optional(v.string()),
+          studioAddress: v.optional(v.string()),
+          sport: v.string(),
+          zone: v.string(),
+          startTime: v.number(),
+          endTime: v.number(),
+          timeZone: v.optional(v.string()),
+          pay: v.number(),
+          note: v.optional(v.string()),
+          status: v.union(
+            v.literal("open"),
+            v.literal("filled"),
+            v.literal("cancelled"),
+            v.literal("completed"),
+          ),
+          postedAt: v.number(),
+          requiredLevel: v.optional(
+            v.union(
+              v.literal("beginner_friendly"),
+              v.literal("all_levels"),
+              v.literal("intermediate"),
+              v.literal("advanced"),
+            ),
+          ),
+          maxParticipants: v.optional(v.number()),
+          equipmentProvided: v.optional(v.boolean()),
+          sessionLanguage: v.optional(
+            v.union(
+              v.literal("hebrew"),
+              v.literal("english"),
+              v.literal("arabic"),
+              v.literal("russian"),
+            ),
+          ),
+          isRecurring: v.optional(v.boolean()),
+          cancellationDeadlineHours: v.optional(v.number()),
+          applicationDeadline: v.optional(v.number()),
+          closureReason: v.optional(
+            v.union(v.literal("expired"), v.literal("studio_cancelled"), v.literal("filled")),
+          ),
+          boostPreset: v.optional(
+            v.union(v.literal("small"), v.literal("medium"), v.literal("large")),
+          ),
+          boostBonusAmount: v.optional(v.number()),
+          boostActive: v.optional(v.boolean()),
+          applicationStatus: v.optional(
+            v.union(
+              v.literal("pending"),
+              v.literal("accepted"),
+              v.literal("rejected"),
+              v.literal("withdrawn"),
+            ),
+          ),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const instructor = await requireInstructorProfile(ctx);
+    const now = args.now ?? Date.now();
+    const studio = await ctx.db.get("studioProfiles", args.studioId);
+
+    if (!studio) {
+      return null;
+    }
+
+    const [sportsRows, jobsForStudio, studioImageUrl] = await Promise.all([
+      ctx.db
+        .query("studioSports")
+        .withIndex("by_studio_id", (q) => q.eq("studioId", args.studioId))
+        .collect(),
+      ctx.db
+        .query("jobs")
+        .withIndex("by_studio_postedAt", (q) => q.eq("studioId", args.studioId))
+        .order("desc")
+        .take(40),
+      studio.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
+    ]);
+
+    const visibleJobs = jobsForStudio.filter((job) => {
+      if (job.status !== "open" || job.startTime <= now) {
+        return false;
+      }
+      if (
+        typeof job.applicationDeadline === "number" &&
+        Number.isFinite(job.applicationDeadline) &&
+        job.applicationDeadline <= now
+      ) {
+        return false;
+      }
+      return true;
+    });
+    const visibleJobIdSet = new Set(visibleJobs.map((job) => String(job._id)));
+
+    const instructorApplications = await ctx.db
+      .query("jobApplications")
+      .withIndex("by_instructor", (q) => q.eq("instructorId", instructor._id))
+      .collect();
+    const applicationByJobId = new Map<string, Doc<"jobApplications">>();
+    for (const application of instructorApplications) {
+      const jobId = String(application.jobId);
+      if (!visibleJobIdSet.has(jobId)) continue;
+      const existing = applicationByJobId.get(jobId);
+      if (!existing) {
+        applicationByJobId.set(jobId, application);
+        continue;
+      }
+      const existingUpdatedAt = existing.updatedAt ?? existing.appliedAt;
+      const nextUpdatedAt = application.updatedAt ?? application.appliedAt;
+      if (nextUpdatedAt > existingUpdatedAt) {
+        applicationByJobId.set(jobId, application);
+      }
+    }
+
+    return {
+      studioId: studio._id,
+      studioName: studio.studioName,
+      studioAddress: studio.address,
+      zone: studio.zone,
+      sports: [...new Set(sportsRows.map((row) => row.sport))].sort(),
+      ...omitUndefined({
+        bio: studio.bio,
+        studioImageUrl: studioImageUrl ?? undefined,
+      }),
+      jobs: visibleJobs.map((job) => {
+        const application = applicationByJobId.get(String(job._id));
+        return {
+          jobId: job._id,
+          studioId: studio._id,
+          studioName: studio.studioName,
+          sport: job.sport,
+          zone: trimOptionalString(job.zone) ?? job.zone,
+          startTime: job.startTime,
+          endTime: job.endTime,
+          pay: job.pay,
+          status: job.status,
+          postedAt: job.postedAt,
+          ...omitUndefined({
+            studioImageUrl: studioImageUrl ?? undefined,
+            studioAddress: studio.address,
+            timeZone: job.timeZone,
+            note: job.note,
+            requiredLevel: job.requiredLevel,
+            maxParticipants: job.maxParticipants,
+            equipmentProvided: job.equipmentProvided,
+            sessionLanguage: job.sessionLanguage,
+            isRecurring: job.isRecurring,
+            cancellationDeadlineHours: job.cancellationDeadlineHours,
+            applicationDeadline: job.applicationDeadline,
+            closureReason: job.closureReason,
+            boostPreset: job.boostPreset,
+            boostBonusAmount: job.boostBonusAmount,
+            boostActive: job.boostActive,
+            applicationStatus: application?.status,
+          }),
+        };
+      }),
+    };
   },
 });
 

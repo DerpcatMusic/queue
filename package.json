@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "bun run ./scripts/dev/dev.ts",
-    "postinstall": "node ./scripts/patches/patch-expo-devtools-keep-awake.mjs && node ./scripts/patches/patch-expo-router-react-navigation-dedupe.mjs",
+    "postinstall": "node ./scripts/patches/patch-expo-devtools-keep-awake.mjs && node ./scripts/patches/patch-expo-router-react-navigation-dedupe.mjs && node ./scripts/patches/patch-didit-sdk-react-native-android-activity.mjs",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "node ./scripts/android/start-expo.mjs",

@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
-import { Redirect } from "expo-router";
+import type { Href } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshControl, StyleSheet, View } from "react-native";
@@ -21,13 +22,16 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useBrand } from "@/hooks/use-brand";
+import { useMinuteNow } from "@/hooks/use-minute-now";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 export function InstructorFeed() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
+  const router = useRouter();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
+  const liveNow = useMinuteNow();
 
   const [jobsSearchQuery, setJobsSearchQuery] = useState("");
   const [jobsWindowFilter, setJobsWindowFilter] = useState<"all" | "24h" | "72h">("all");
@@ -51,8 +55,7 @@ export function InstructorFeed() {
 
   // Stable time ref: only recomputes when queryMinuteBucket changes (once/minute)
   // This avoids Filter re-computation on every render while keeping the 24h/72h window current
-  const queryMinuteBucketRef = useRef<number>(Math.floor(Date.now() / (60 * 1000)));
-  const queryNow = queryMinuteBucketRef.current * 60 * 1000;
+  const queryNow = Math.floor(liveNow / (60 * 1000)) * 60 * 1000;
 
   const availableJobs = useQuery(
     api.jobs.getAvailableJobsForInstructor,
@@ -83,7 +86,7 @@ export function InstructorFeed() {
       const zoneLabel = getZoneLabel(job.zone, zoneLanguage).toLowerCase();
       const sportLabel = toSportLabel(job.sport as never).toLowerCase();
       const haystack =
-        `${job.studioName} ${job.note ?? ""} ${job.zone} ${zoneLabel} ${sportLabel}`.toLowerCase();
+        `${job.studioName} ${job.studioAddress ?? ""} ${job.zone} ${zoneLabel} ${sportLabel}`.toLowerCase();
       return haystack.includes(search);
     });
   }, [deferredJobsSearchQuery, jobs, jobsWindowFilter, queryNow, zoneLanguage]);
@@ -228,7 +231,16 @@ export function InstructorFeed() {
     [applyToJob, t],
   );
 
-  useGlobalTopSheet("jobs", jobsSheetConfig);
+  const onOpenStudio = useCallback(
+    (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => {
+      router.push(
+        `/instructor/jobs/studios/${encodeURIComponent(String(studioId))}?jobId=${encodeURIComponent(String(jobId))}` as Href,
+      );
+    },
+    [router],
+  );
+
+  useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:instructor-feed");
 
   if (
     currentUser === undefined ||
@@ -337,7 +349,9 @@ export function InstructorFeed() {
             zoneLanguage={zoneLanguage}
             palette={palette}
             applyingJobId={applyingJobId}
+            now={liveNow}
             onApply={onApply}
+            onOpenStudio={onOpenStudio}
             t={t}
           />
         )}

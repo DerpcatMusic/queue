@@ -1,12 +1,12 @@
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { memo, type RefObject } from "react";
-import { type StyleProp, Text, View, type ViewStyle } from "react-native";
+import { type StyleProp, View, type ViewStyle } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import type { TimelineListItem } from "../calendar-controller-helpers";
-import { calendarSheetStyles, calendarTimelineStyles } from "./calendar-date-utils";
+import { calendarTimelineStyles } from "./calendar-date-utils";
 
 type CalendarTimelineListProps = {
   listRef: RefObject<FlashListRef<TimelineListItem> | null>;
@@ -20,9 +20,6 @@ type CalendarTimelineListProps = {
   onViewableItemsChanged: ((info: unknown) => void) | undefined;
   viewabilityConfig: Record<string, unknown>;
   contentContainerStyle: StyleProp<ViewStyle>;
-  selectedLessonCount: number;
-  agendaTitle: string;
-  eventCountLabel: string;
   renderItem: ({ item }: { item: TimelineListItem }) => React.ReactElement | null;
 };
 
@@ -36,49 +33,10 @@ function CalendarTimelineList({
   onViewableItemsChanged,
   viewabilityConfig,
   contentContainerStyle,
-  selectedLessonCount,
-  agendaTitle,
-  eventCountLabel,
   renderItem,
 }: CalendarTimelineListProps) {
   const palette = useBrand();
   const { safeBottom } = useAppInsets();
-
-  const agendaHeaderComponent = (
-    <View style={calendarSheetStyles.agendaHeader}>
-      <View style={calendarSheetStyles.agendaHeaderRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
-            {agendaTitle}
-          </Text>
-        </View>
-        <View
-          style={[
-            calendarSheetStyles.summaryCountPill,
-            {
-              backgroundColor:
-                selectedLessonCount > 0
-                  ? (palette.primarySubtle as string)
-                  : (palette.surface as string),
-            },
-          ]}
-        >
-          <Text
-            style={{
-              ...BrandType.micro,
-              color:
-                selectedLessonCount > 0
-                  ? (palette.primary as string)
-                  : (palette.textMuted as string),
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {eventCountLabel}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
 
   return (
     <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
@@ -105,7 +63,6 @@ function CalendarTimelineList({
           viewabilityConfig={viewabilityConfig as never}
           scrollIndicatorInsets={{ bottom: safeBottom + BrandSpacing.md }}
           contentContainerStyle={[calendarTimelineStyles.timelineContent, contentContainerStyle]}
-          ListHeaderComponent={agendaHeaderComponent}
         />
       </View>
     </TabScreenRoot>

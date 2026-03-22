@@ -4,16 +4,19 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Platform, StyleSheet, View } from "react-native";
+import { Alert, Platform, StyleSheet, Text, View } from "react-native";
 
+import appleCalendarIcon from "@/assets/images/calendar-apple-app-icon.jpg";
+import googleCalendarIcon from "@/assets/images/calendar-google-app-icon.jpg";
+import { CalendarConnectionRow } from "@/components/profile/calendar-connection-row";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
 import { ActionButton } from "@/components/ui/action-button";
-import { KitList, KitListItem, KitSegmentedToggle, KitSwitchRow } from "@/components/ui/kit";
-import { BrandSpacing } from "@/constants/brand";
+import { KitList, KitSwitchRow } from "@/components/ui/kit";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
@@ -24,13 +27,7 @@ import {
   disconnectGoogleCalendarNative,
 } from "@/lib/google-calendar-native-auth";
 
-const CALENDAR_PROVIDER_KEYS = {
-  none: "profile.settings.calendar.provider.none",
-  google: "profile.settings.calendar.provider.google",
-  apple: "profile.settings.calendar.provider.apple",
-} as const;
-
-type CalendarProvider = keyof typeof CALENDAR_PROVIDER_KEYS;
+type CalendarProvider = "none" | "google" | "apple";
 
 const GOOGLE_SCOPES = ["https://www.googleapis.com/auth/calendar.events", "openid", "email"];
 
@@ -51,7 +48,6 @@ const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).ca
 type StudioSettings = {
   calendarProvider: CalendarProvider;
   calendarSyncEnabled: boolean;
-  calendarConnectedAt?: number | undefined;
 };
 
 type GoogleCalendarStatus = {
@@ -65,13 +61,14 @@ type DisconnectGoogleCalendarResult = {
   deletedRemoteEvents: boolean;
 };
 
-WebBrowser.maybeCompleteAuthSession();
-
 export default function StudioCalendarSettingsScreen() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const palette = useBrand();
   const router = useRouter();
   const { currentUser } = useUser();
+  useEffect(() => {
+    WebBrowser.maybeCompleteAuthSession();
+  }, []);
   useProfileSubpageSheet({
     title: t("profile.navigation.calendar"),
     routeMatchPath: "/profile/calendar-settings",
@@ -151,61 +148,41 @@ export default function StudioCalendarSettingsScreen() {
   }
 
   const hasGoogleConnection = Boolean(googleStatus?.connected);
-  const hasChanges =
-    provider !== (studioSettings.calendarProvider ?? "none") ||
-    syncEnabled !== (studioSettings.calendarSyncEnabled ?? false);
+  const isGoogleConnected = provider === "google" && hasGoogleConnection;
+  const isAppleConnected = provider === "apple";
+  const isBusy = isSaving || isConnectingGoogle || isDisconnectingGoogle || isSyncingGoogle;
 
-  const onSave = async () => {
-    setIsSaving(true);
-    try {
-      let nextSyncEnabled = syncEnabled;
-      const switchingAwayFromGoogle =
-        studioSettings.calendarProvider === "google" &&
-        hasGoogleConnection &&
-        provider !== "google";
+  const persistCalendarSettings = async (
+    nextProvider: CalendarProvider,
+    nextSyncEnabled: boolean,
+  ) => {
+    await saveSettings({
+      calendarProvider: nextProvider,
+      calendarSyncEnabled: nextSyncEnabled,
+    });
+    setProvider(nextProvider);
+    setSyncEnabled(nextSyncEnabled);
+  };
 
-      if (provider === "google" && !hasGoogleConnection) {
-        nextSyncEnabled = false;
-      }
+  const showSaveError = (error: unknown) => {
+    Alert.alert(
+      t("profile.settings.errors.saveFailed"),
+      error instanceof Error ? error.message : undefined,
+    );
+  };
 
-      if (provider === "apple" && nextSyncEnabled) {
-        const preparation = await prepareDeviceCalendarSync();
-        if (!preparation.ok) {
-          nextSyncEnabled = false;
-        }
-      }
-
-      if (nextSyncEnabled !== syncEnabled) {
-        setSyncEnabled(nextSyncEnabled);
-      }
-
-      if (switchingAwayFromGoogle) {
-        const disconnectResult = await disconnectGoogleCalendar({});
-        if (!disconnectResult.deletedRemoteEvents) {
-          Alert.alert(
-            t("profile.settings.calendar.disconnectCleanupWarningTitle"),
-            t("profile.settings.calendar.disconnectCleanupWarningBody"),
-          );
-        }
-      }
-
-      if (provider === "none") {
-        router.back();
-        return;
-      }
-
-      await saveSettings({
-        calendarProvider: provider,
-        calendarSyncEnabled: nextSyncEnabled,
+  const disconnectGoogleConnection = async () => {
+    const result = await disconnectGoogleCalendar({});
+    if (Platform.OS === "android") {
+      await disconnectGoogleCalendarNative().catch(() => {
+        /* best-effort */
       });
-      router.back();
-    } catch (error) {
+    }
+    if (!result.deletedRemoteEvents) {
       Alert.alert(
-        t("profile.settings.errors.saveFailed"),
-        error instanceof Error ? error.message : undefined,
+        t("profile.settings.calendar.disconnectCleanupWarningTitle"),
+        t("profile.settings.calendar.disconnectCleanupWarningBody"),
       );
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -219,14 +196,14 @@ export default function StudioCalendarSettingsScreen() {
       if (!googleServerClientId) {
         Alert.alert(
           t("profile.settings.errors.saveFailed"),
-          "Google Calendar is not configured for this Android build.",
+          t("profile.calendar.configErrors.androidBuildMissing"),
         );
         return;
       }
     } else if (!googleClientId || !googleRequest?.codeVerifier) {
       Alert.alert(
         t("profile.settings.errors.saveFailed"),
-        "Google Calendar is not configured for this build.",
+        t("profile.calendar.configErrors.buildMissing"),
       );
       return;
     }
@@ -262,15 +239,82 @@ export default function StudioCalendarSettingsScreen() {
         });
       }
 
-      setProvider("google");
-      setSyncEnabled(true);
+      await persistCalendarSettings("google", true);
     } catch (error) {
       Alert.alert(
         t("profile.settings.errors.saveFailed"),
-        error instanceof Error ? error.message : "Google Calendar connection failed.",
+        error instanceof Error
+          ? error.message
+          : t("profile.calendar.configErrors.connectionFailed"),
       );
     } finally {
       setIsConnectingGoogle(false);
+    }
+  };
+
+  const onDisconnectGoogle = async () => {
+    setIsDisconnectingGoogle(true);
+    try {
+      await disconnectGoogleConnection();
+      await persistCalendarSettings("none", false);
+    } catch (error) {
+      showSaveError(error);
+    } finally {
+      setIsDisconnectingGoogle(false);
+    }
+  };
+
+  const onSelectApple = async () => {
+    setIsSaving(true);
+    try {
+      const preparation = await prepareDeviceCalendarSync();
+      if (!preparation.ok) {
+        return;
+      }
+
+      if (hasGoogleConnection) {
+        await disconnectGoogleConnection();
+      }
+
+      await persistCalendarSettings("apple", true);
+    } catch (error) {
+      showSaveError(error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const onDisconnectApple = async () => {
+    setIsSaving(true);
+    try {
+      await persistCalendarSettings("none", false);
+    } catch (error) {
+      showSaveError(error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const onToggleSyncEnabled = async (nextValue: boolean) => {
+    const previousValue = syncEnabled;
+    setSyncEnabled(nextValue);
+    setIsSaving(true);
+
+    try {
+      if (provider === "apple" && nextValue) {
+        const preparation = await prepareDeviceCalendarSync();
+        if (!preparation.ok) {
+          setSyncEnabled(previousValue);
+          return;
+        }
+      }
+
+      await persistCalendarSettings(provider, nextValue);
+    } catch (error) {
+      setSyncEnabled(previousValue);
+      showSaveError(error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -283,182 +327,249 @@ export default function StudioCalendarSettingsScreen() {
     }
   };
 
-  const onDisconnectGoogle = async () => {
-    setIsDisconnectingGoogle(true);
-    try {
-      const result = await disconnectGoogleCalendar({});
-      if (Platform.OS === "android") {
-        await disconnectGoogleCalendarNative().catch(() => {
-          /* best-effort */
-        });
-      }
-      if (!result.deletedRemoteEvents) {
-        Alert.alert(
-          t("profile.settings.calendar.disconnectCleanupWarningTitle"),
-          t("profile.settings.calendar.disconnectCleanupWarningBody"),
-        );
-      }
-      setProvider("none");
-      setSyncEnabled(false);
-    } finally {
-      setIsDisconnectingGoogle(false);
-    }
+  const confirmDisconnectGoogle = () => {
+    Alert.alert(
+      t("profile.settings.calendar.disconnectGoogleTitle"),
+      t("profile.settings.calendar.disconnectGoogleBody"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.disconnect"),
+          style: "destructive",
+          onPress: () => {
+            void onDisconnectGoogle();
+          },
+        },
+      ],
+    );
   };
 
-  const connectedDate = studioSettings.calendarConnectedAt
-    ? new Date(studioSettings.calendarConnectedAt).toLocaleDateString(
-        i18n.resolvedLanguage ?? "en",
-        { month: "short", day: "numeric", year: "numeric" },
-      )
-    : null;
+  const confirmDisconnectApple = () => {
+    Alert.alert(
+      t("profile.settings.calendar.disconnectAppleTitle"),
+      t("profile.settings.calendar.disconnectAppleBody"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.disconnect"),
+          style: "destructive",
+          onPress: () => {
+            void onDisconnectApple();
+          },
+        },
+      ],
+    );
+  };
+
+  const handleGoogleRowPress = () => {
+    if (isBusy) {
+      return;
+    }
+
+    if (isGoogleConnected) {
+      confirmDisconnectGoogle();
+      return;
+    }
+
+    if (isAppleConnected) {
+      Alert.alert(
+        t("profile.settings.calendar.switchToGoogleTitle"),
+        t("profile.settings.calendar.switchToGoogleBody"),
+        [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("profile.settings.calendar.connectAction"),
+            onPress: () => {
+              void onConnectGoogle();
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    void onConnectGoogle();
+  };
+
+  const handleAppleRowPress = () => {
+    if (isBusy) {
+      return;
+    }
+
+    if (isAppleConnected) {
+      confirmDisconnectApple();
+      return;
+    }
+
+    if (isGoogleConnected) {
+      Alert.alert(
+        t("profile.settings.calendar.switchToAppleTitle"),
+        t("profile.settings.calendar.switchToAppleBody"),
+        [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("profile.settings.calendar.connectAction"),
+            onPress: () => {
+              void onSelectApple();
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    void onSelectApple();
+  };
 
   return (
-    <ProfileSubpageScrollView
-      routeKey="studio/profile/calendar-settings"
-      style={[styles.screen, { backgroundColor: palette.appBg }]}
-      contentContainerStyle={{
-        paddingBottom: BrandSpacing.xl,
-      }}
-    >
-      <KitList inset>
-        <KitListItem title={t("profile.settings.calendar.provider.none")}>
-          <View style={{ marginTop: 8 }}>
-            <KitSegmentedToggle<CalendarProvider>
-              value={provider}
-              onChange={(next) => {
-                setProvider(next);
-                if (next === "none") setSyncEnabled(false);
-              }}
-              options={(Object.keys(CALENDAR_PROVIDER_KEYS) as CalendarProvider[]).map((key) => ({
-                value: key,
-                label: t(CALENDAR_PROVIDER_KEYS[key]),
-              }))}
-            />
-          </View>
-        </KitListItem>
-      </KitList>
-
-      <View style={{ paddingTop: 8 }}>
-        <KitList inset>
-          <KitSwitchRow
-            title={t("profile.settings.calendar.autoSync")}
-            value={syncEnabled}
-            disabled={provider === "none" || (provider === "google" && !hasGoogleConnection)}
-            onValueChange={setSyncEnabled}
-            description={t("profile.settings.calendar.futureNote")}
+    <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
+      <ProfileSubpageScrollView
+        routeKey="studio/profile/calendar-settings"
+        style={[styles.screen, { backgroundColor: palette.appBg }]}
+        contentContainerStyle={styles.content}
+      >
+        <View
+          style={[
+            styles.connectionList,
+            {
+              backgroundColor: palette.surface as string,
+            },
+          ]}
+        >
+          <CalendarConnectionRow
+            iconSource={googleCalendarIcon}
+            title={t("profile.settings.calendar.provider.google")}
+            detail={
+              isGoogleConnected
+                ? (googleStatus?.accountEmail ?? t("profile.calendar.googleAccountFallback"))
+                : t("profile.settings.calendar.connectHint")
+            }
+            connected={isGoogleConnected}
+            loading={isConnectingGoogle || isDisconnectingGoogle}
+            onPress={handleGoogleRowPress}
+            palette={palette}
+            showDivider
           />
-          {provider === "google" ? (
-            <KitListItem
-              title={
-                hasGoogleConnection
-                  ? t("profile.settings.calendar.googleConnectedAs", {
-                      email: googleStatus?.accountEmail ?? "Google account",
-                    })
-                  : t("profile.settings.calendar.googleConnectRequired")
-              }
-            />
-          ) : null}
-          {provider === "apple" ? (
-            <KitListItem title={t("profile.settings.calendar.applePermissionNote")} />
-          ) : null}
-          {provider === "google" && googleStatus?.lastError ? (
-            <KitListItem title={googleStatus.lastError} />
-          ) : null}
-          {provider === "google" && googleConfigError ? (
-            <KitListItem title={googleConfigError} />
-          ) : null}
-          {connectedDate ? (
-            <KitListItem
-              title={t("profile.settings.calendar.lastConnected", {
-                date: connectedDate,
-              })}
-            />
-          ) : null}
-        </KitList>
-      </View>
 
-      <View style={{ paddingHorizontal: 16, paddingTop: BrandSpacing.md, gap: 10 }}>
-        {provider === "google" ? (
-          <View style={{ gap: 10 }}>
-            {!hasGoogleConnection ? (
-              <ActionButton
-                label={
-                  isConnectingGoogle
-                    ? t("profile.settings.actions.connecting")
-                    : t("profile.settings.calendar.actions.connectGoogle")
-                }
-                onPress={() => {
-                  void onConnectGoogle();
-                }}
-                disabled={
-                  isConnectingGoogle ||
-                  !!googleConfigError ||
-                  (Platform.OS === "android"
-                    ? !googleServerClientId
-                    : !googleClientId || !googleRequest)
-                }
-                palette={palette}
-                fullWidth
-              />
-            ) : (
-              <>
-                <ActionButton
-                  label={
-                    isSyncingGoogle
-                      ? t("profile.settings.actions.syncing")
-                      : t("profile.settings.calendar.actions.syncNow")
-                  }
-                  onPress={() => {
-                    void onSyncGoogleNow();
-                  }}
-                  disabled={isSyncingGoogle}
-                  palette={palette}
-                  fullWidth
-                />
-                <ActionButton
-                  label={
-                    isDisconnectingGoogle
-                      ? t("profile.settings.actions.disconnecting")
-                      : t("profile.settings.calendar.actions.disconnectGoogle")
-                  }
-                  onPress={() => {
-                    void onDisconnectGoogle();
-                  }}
-                  disabled={isDisconnectingGoogle}
-                  palette={palette}
-                  tone="secondary"
-                  fullWidth
-                />
-              </>
-            )}
+          <CalendarConnectionRow
+            iconSource={appleCalendarIcon}
+            title={t("profile.settings.calendar.provider.apple")}
+            detail={
+              isAppleConnected
+                ? t("profile.settings.calendar.appleConnectedHint")
+                : t("profile.settings.calendar.connectHint")
+            }
+            connected={isAppleConnected}
+            loading={isSaving && !isConnectingGoogle && !isDisconnectingGoogle}
+            onPress={handleAppleRowPress}
+            palette={palette}
+          />
+        </View>
+
+        {provider !== "none" ? (
+          <KitList inset>
+            <KitSwitchRow
+              title={t("profile.settings.calendar.autoSync")}
+              value={syncEnabled}
+              disabled={isBusy}
+              onValueChange={(nextValue) => {
+                void onToggleSyncEnabled(nextValue);
+              }}
+              description={t("profile.settings.calendar.futureNote")}
+            />
+          </KitList>
+        ) : null}
+
+        {googleStatus?.lastError ? (
+          <View
+            style={[
+              styles.feedbackCard,
+              {
+                backgroundColor: palette.dangerSubtle as string,
+                borderColor: palette.danger as string,
+              },
+            ]}
+          >
+            <Text style={[styles.feedbackText, { color: palette.danger as string }]}>
+              {googleStatus.lastError}
+            </Text>
           </View>
         ) : null}
 
+        {googleConfigError ? (
+          <View
+            style={[
+              styles.feedbackCard,
+              {
+                backgroundColor: palette.warningSubtle,
+                borderColor: palette.warning,
+              },
+            ]}
+          >
+            <Text style={[styles.feedbackText, { color: palette.warning }]}>{googleConfigError}</Text>
+          </View>
+        ) : null}
+
+        {isGoogleConnected ? (
+          <View style={styles.actionStack}>
+            <ActionButton
+              label={
+                isSyncingGoogle
+                  ? t("profile.settings.actions.syncing")
+                  : t("profile.settings.calendar.actions.syncNow")
+              }
+              onPress={() => {
+                void onSyncGoogleNow();
+              }}
+              disabled={isSyncingGoogle || isBusy}
+              palette={palette}
+              fullWidth
+            />
+          </View>
+        ) : null}
+      </ProfileSubpageScrollView>
+
+      <View style={styles.footerAction}>
         <ActionButton
-          label={
-            isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
-          }
-          onPress={() => {
-            void onSave();
-          }}
-          disabled={isSaving || !hasChanges}
-          palette={palette}
-          fullWidth
-        />
-        <ActionButton
-          label={t("common.cancel")}
+          label={t("common.done")}
           onPress={() => router.back()}
           palette={palette}
-          tone="secondary"
           fullWidth
         />
       </View>
-    </ProfileSubpageScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  content: {
+    paddingHorizontal: BrandSpacing.lg,
+    paddingBottom: 112,
+    gap: BrandSpacing.lg,
+  },
+  connectionList: {
+    borderRadius: BrandRadius.card,
+    overflow: "hidden",
+  },
+  feedbackCard: {
+    borderWidth: 1,
+    borderRadius: BrandRadius.input,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.md,
+  },
+  feedbackText: {
+    ...BrandType.body,
+  },
+  actionStack: {
+    gap: 10,
+  },
+  footerAction: {
+    position: "absolute",
+    left: BrandSpacing.lg,
+    right: BrandSpacing.lg,
+    bottom: BrandSpacing.lg,
   },
 });

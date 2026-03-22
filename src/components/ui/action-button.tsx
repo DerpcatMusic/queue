@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, I18nManager, Pressable, Text, View } from "react-native";
-
+import { MeshGradientView } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandType } from "@/constants/brand";
 
@@ -20,6 +20,8 @@ type ActionButtonProps = {
   accessibilityLabel?: string;
   shape?: ActionButtonShape;
   size?: ActionButtonSize;
+  /** Use mesh gradient background instead of solid color (Vercel/Linear style) */
+  meshGradient?: boolean;
 };
 
 export function ActionButton({
@@ -34,6 +36,7 @@ export function ActionButton({
   accessibilityLabel,
   shape = "pill",
   size = "md",
+  meshGradient = false,
 }: ActionButtonProps) {
   if (!label && !icon) {
     throw new Error("ActionButton requires a label, an icon, or both.");
@@ -43,6 +46,7 @@ export function ActionButton({
   const isIconOnly = Boolean(icon) && !label;
   const minHeight = size === "lg" ? 54 : 42;
   const minWidth = shape === "square" ? minHeight : 96;
+  const useMeshGradient = meshGradient && tone === "primary" && !isDisabled;
   const backgroundColor = isDisabled
     ? tone === "primary"
       ? (palette.primaryPressed as string)
@@ -58,7 +62,9 @@ export function ActionButton({
       ? (palette.onPrimary as string)
       : (palette.text as string);
 
-  return (
+  const borderRadius = shape === "square" ? BrandRadius.card - 4 : BrandRadius.button;
+
+  const buttonContent = (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
@@ -76,11 +82,11 @@ export function ActionButton({
         gap: icon && label ? 8 : 0,
         paddingHorizontal: shape === "square" ? 0 : 14,
         paddingVertical: shape === "square" ? 0 : 10,
-        borderRadius: shape === "square" ? BrandRadius.card - 4 : BrandRadius.button,
+        borderRadius,
         borderCurve: "continuous",
-        backgroundColor,
+        backgroundColor: useMeshGradient ? "transparent" : backgroundColor,
         overflow: "hidden",
-        opacity: pressed && !isDisabled ? 0.94 : 1,
+        opacity: pressed && !isDisabled ? 0.92 : 1,
       })}
     >
       {loading ? (
@@ -92,13 +98,15 @@ export function ActionButton({
             <Text
               numberOfLines={1}
               ellipsizeMode="tail"
-              style={{
-                ...BrandType.bodyMedium,
-                color: textColor,
-                includeFontPadding: false,
-                textAlign: isIconOnly ? "center" : "left",
-                flexShrink: 1,
-              }}
+              style={[
+                BrandType.bodyMedium,
+                {
+                  color: textColor,
+                  includeFontPadding: false,
+                  textAlign: isIconOnly ? "center" : "left",
+                  flexShrink: 1,
+                },
+              ]}
             >
               {label}
             </Text>
@@ -107,4 +115,22 @@ export function ActionButton({
       )}
     </Pressable>
   );
+
+  if (useMeshGradient) {
+    return (
+      <MeshGradientView
+        borderRadius={borderRadius}
+        style={{
+          minHeight,
+          minWidth,
+          width: fullWidth ? "100%" : undefined,
+          alignSelf: fullWidth ? "stretch" : "flex-start",
+        }}
+      >
+        {buttonContent}
+      </MeshGradientView>
+    );
+  }
+
+  return buttonContent;
 }

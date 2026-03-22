@@ -168,6 +168,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
 
       const userId = await ctx.db.insert("users", {
         role: "pending",
+        roles: [],
         onboardingComplete: false,
         isActive: true,
         createdAt: now,

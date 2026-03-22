@@ -7,6 +7,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Platform, Pressable, View } from "react-native";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
 import {
@@ -28,8 +29,7 @@ import {
   getPayoutStatusLabel,
 } from "@/lib/payments-utils";
 import { buildRapydBridgeUrl, resolveRapydAppReturnUrl } from "@/lib/rapyd-hosted-flow";
-
-WebBrowser.maybeCompleteAuthSession();
+import { useThemePreference } from "@/hooks/use-theme-preference";
 
 const INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE = "/instructor/profile/identity-verification" as const;
 type PayoutPreferenceMode = "immediate_when_eligible" | "scheduled_date" | "manual_hold";
@@ -49,6 +49,10 @@ export default function ProfilePaymentsScreen() {
   const palette = useBrand();
   const locale = i18n.resolvedLanguage ?? "en";
   const router = useRouter();
+  const { resolvedScheme } = useThemePreference();
+  useEffect(() => {
+    WebBrowser.maybeCompleteAuthSession();
+  }, []);
   useProfileSubpageSheet({
     title: t("profile.navigation.wallet"),
     routeMatchPath: "/profile/payments",
@@ -65,6 +69,10 @@ export default function ProfilePaymentsScreen() {
   );
   const payoutSummary = useQuery(
     api.payments.getMyPayoutSummary,
+    currentUser?.role === "instructor" ? {} : "skip",
+  );
+  const diditVerification = useQuery(
+    api.didit.getMyDiditVerification,
     currentUser?.role === "instructor" ? {} : "skip",
   );
   const requestPayoutWithdrawal = useMutation(api.payments.requestMyPayoutWithdrawal);
@@ -91,6 +99,7 @@ export default function ProfilePaymentsScreen() {
   const [showSchedulePicker, setShowSchedulePicker] = useState(false);
   const [scheduleDraft, setScheduleDraft] = useState<Date>(buildDefaultScheduledDate());
   const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"payments"> | null>(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   const selectedPaymentDetail = useQuery(
     api.payments.getMyPaymentDetail,
@@ -433,6 +442,113 @@ export default function ProfilePaymentsScreen() {
     );
   }
 
+  if (showVerifyModal) {
+    return (
+      <Animated.View
+        entering={FadeIn.duration(250)}
+        exiting={FadeOut.duration(200)}
+        style={{ flex: 1, backgroundColor: palette.appBg }}
+      >
+        <ProfileSubpageScrollView
+          routeKey="instructor/profile/payments"
+          style={{ flex: 1, backgroundColor: palette.appBg }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: BrandSpacing.lg,
+            justifyContent: "center",
+          }}
+          bottomSpacing={BrandSpacing.lg}
+        >
+          <View
+            style={{
+              backgroundColor: palette.surfaceAlt,
+              borderRadius: 28,
+              borderCurve: "continuous",
+              padding: 24,
+              gap: 20,
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: palette.didit.accent,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 3,
+                borderColor: "rgba(255,255,255,0.3)",
+              }}
+            >
+              <IconSymbol name="person.crop.circle.fill" size={40} color="#FFF" />
+            </View>
+            <ThemedText type="title" style={{ textAlign: "center" }}>
+              {t("profile.payments.verifyToConnectBankTitle")}
+            </ThemedText>
+            <ThemedText
+              type="caption"
+              style={{ color: palette.textMuted, textAlign: "center", lineHeight: 20 }}
+            >
+              {t("profile.payments.verifyToConnectBankBody")}
+            </ThemedText>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: palette.didit.accentSubtle,
+              }}
+            >
+              <ThemedText type="micro" style={{ color: palette.didit.accent, fontWeight: "600" }}>
+                {t("profile.identityVerification.providerPill")}
+              </ThemedText>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("profile.payments.verifyToConnectBankCta")}
+              onPress={() => {
+                setShowVerifyModal(false);
+                void router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href);
+              }}
+              style={({ pressed }) => ({
+                width: "100%",
+                paddingVertical: 16,
+                paddingHorizontal: 18,
+                borderRadius: 20,
+                borderCurve: "continuous",
+                alignItems: "center",
+                backgroundColor: palette.didit.accent,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <ThemedText type="bodyStrong" style={{ color: "#FFF" }}>
+                {t("profile.payments.verifyToConnectBankCta")}
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+            accessibilityLabel={t("common.cancel")}
+            onPress={() => setShowVerifyModal(false)}
+            style={({ pressed }) => ({
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <ThemedText type="caption" style={{ color: palette.textMuted }}>
+              {t("common.cancel")}
+            </ThemedText>
+          </Pressable>
+        </View>
+        </ProfileSubpageScrollView>
+      </Animated.View>
+    );
+  }
+
   return (
     <ProfileSubpageScrollView
       routeKey="instructor/profile/payments"
@@ -446,51 +562,55 @@ export default function ProfilePaymentsScreen() {
       <View style={{ paddingHorizontal: BrandSpacing.lg }}>
         <View
           style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
             alignSelf: "flex-start",
-            paddingHorizontal: 10,
-            paddingVertical: 4,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
             borderRadius: 999,
-            backgroundColor: payoutSummary?.hasVerifiedDestination
-              ? palette.successSubtle
-              : palette.warningSubtle,
+            backgroundColor:
+              isIdentityVerified && payoutSummary?.hasVerifiedDestination
+                ? palette.successSubtle
+                : isIdentityVerified || payoutSummary?.hasVerifiedDestination
+                  ? palette.warningSubtle
+                  : palette.dangerSubtle,
           }}
         >
+          <View
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor:
+                isIdentityVerified && payoutSummary?.hasVerifiedDestination
+                  ? palette.success
+                  : isIdentityVerified || payoutSummary?.hasVerifiedDestination
+                    ? palette.warning
+                    : palette.danger,
+            }}
+          />
           <ThemedText
             type="micro"
             style={{
-              color: payoutSummary?.hasVerifiedDestination ? palette.success : palette.warning,
+              color:
+                isIdentityVerified && payoutSummary?.hasVerifiedDestination
+                  ? palette.success
+                  : isIdentityVerified || payoutSummary?.hasVerifiedDestination
+                    ? palette.warning
+                    : palette.danger,
               fontWeight: "700",
             }}
           >
-            {payoutSummary?.hasVerifiedDestination
-              ? t("profile.payments.bankConnected")
-              : t("profile.payments.bankNotConnected")}
+            {isIdentityVerified && payoutSummary?.hasVerifiedDestination
+              ? t("profile.payments.statusAllSet")
+              : isIdentityVerified
+                ? t("profile.payments.statusBankNeeded")
+                : t("profile.payments.statusVerificationNeeded")}
           </ThemedText>
         </View>
-        <View
-          style={{
-            alignSelf: "flex-start",
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 999,
-            marginTop: 8,
-            backgroundColor: isIdentityVerified ? palette.successSubtle : palette.warningSubtle,
-          }}
-        >
-          <ThemedText
-            type="micro"
-            style={{
-              color: isIdentityVerified ? palette.success : palette.warning,
-              fontWeight: "700",
-            }}
-          >
-            {isIdentityVerified
-              ? t("profile.payments.kycVerified")
-              : t("profile.payments.kycRequired")}
-          </ThemedText>
-        </View>
-        {!isIdentityVerified ? (
-          <View style={{ marginTop: 8, gap: 10, alignItems: "flex-start" }}>
+        {!isIdentityVerified && !payoutSummary?.hasVerifiedDestination ? (
+          <View style={{ marginTop: 12, gap: 12, alignItems: "flex-start" }}>
             <ThemedText type="caption" style={{ color: palette.textMuted }}>
               {t("profile.payments.kycRequiredHint")}
             </ThemedText>
@@ -530,7 +650,7 @@ export default function ProfilePaymentsScreen() {
       <View style={{ paddingHorizontal: BrandSpacing.md }}>
         <View
           style={{
-            backgroundColor: palette.primary,
+            backgroundColor: palette.payments.accent,
             borderRadius: 28,
             padding: 24,
             gap: 24,
@@ -667,9 +787,13 @@ export default function ProfilePaymentsScreen() {
                 transform: [{ scale: pressed ? 0.985 : 1 }],
               })}
               onPress={() => {
+                if (!isIdentityVerified) {
+                  setShowVerifyModal(true);
+                  return;
+                }
                 void startHostedBankOnboarding();
               }}
-              disabled={onboardingBusy || !isIdentityVerified}
+              disabled={onboardingBusy}
             >
               <IconSymbol name="building.columns.fill" size={18} color="#FFF" />
               <ThemedText type="bodyStrong" style={{ color: "#FFF", fontSize: 16 }}>
@@ -705,186 +829,173 @@ export default function ProfilePaymentsScreen() {
         ) : null}
       </View>
 
-      <View style={{ paddingHorizontal: BrandSpacing.md }}>
-        <View
-          style={{
-            backgroundColor: palette.surfaceAlt,
-            borderRadius: 24,
-            borderCurve: "continuous",
-            padding: 20,
-            gap: 16,
-          }}
-        >
-          <View style={{ gap: 6 }}>
-            <ThemedText type="title">{t("profile.payments.preferenceTitle")}</ThemedText>
-            <ThemedText type="caption" style={{ color: palette.textMuted }}>
-              {t("profile.payments.preferenceSubtitle")}
-            </ThemedText>
-          </View>
+      <View style={{ paddingHorizontal: BrandSpacing.md, gap: 12 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <ThemedText type="bodyStrong">{t("profile.payments.preferenceTitle")}</ThemedText>
+        </View>
 
-          <KitSegmentedToggle<PayoutPreferenceMode>
-            value={effectivePreferenceMode}
-            onChange={handlePreferenceModeChange}
-            options={[
-              {
-                label: t("profile.payments.preferenceImmediate"),
-                value: "immediate_when_eligible",
-              },
-              {
-                label: t("profile.payments.preferenceScheduled"),
-                value: "scheduled_date",
-              },
-              {
-                label: t("profile.payments.preferenceHold"),
-                value: "manual_hold",
-              },
-            ]}
-          />
+        <KitSegmentedToggle<PayoutPreferenceMode>
+          value={effectivePreferenceMode}
+          onChange={handlePreferenceModeChange}
+          options={[
+            {
+              label: t("profile.payments.preferenceImmediate"),
+              value: "immediate_when_eligible",
+            },
+            {
+              label: t("profile.payments.preferenceScheduled"),
+              value: "scheduled_date",
+            },
+            {
+              label: t("profile.payments.preferenceHold"),
+              value: "manual_hold",
+            },
+          ]}
+        />
 
-          <ThemedText type="caption" style={{ color: palette.textMuted }}>
-            {effectivePreferenceMode === "scheduled_date"
-              ? t("profile.payments.preferenceScheduledHint")
-              : effectivePreferenceMode === "manual_hold"
-                ? t("profile.payments.preferenceHoldHint")
-                : t("profile.payments.preferenceImmediateHint")}
-          </ThemedText>
+        <ThemedText type="caption" style={{ color: palette.textMuted }}>
+          {effectivePreferenceMode === "scheduled_date"
+            ? t("profile.payments.preferenceScheduledHint")
+            : effectivePreferenceMode === "manual_hold"
+              ? t("profile.payments.preferenceHoldHint")
+              : t("profile.payments.preferenceImmediateHint")}
+        </ThemedText>
 
-          {effectivePreferenceMode === "scheduled_date" ? (
-            <View style={{ gap: 12 }}>
+        {effectivePreferenceMode === "scheduled_date" ? (
+          <View style={{ gap: 12 }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("profile.payments.preferenceChooseDate")}
+              onPress={() => setShowSchedulePicker((value) => !value)}
+              style={({ pressed }) => ({
+                borderRadius: 16,
+                borderCurve: "continuous",
+                borderWidth: 1,
+                borderColor: palette.border as string,
+                backgroundColor: pressed ? palette.surface : palette.appBg,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                gap: 4,
+              })}
+            >
+              <ThemedText type="micro" style={{ color: palette.textMuted }}>
+                {t("profile.payments.preferenceScheduleAt")}
+              </ThemedText>
+              <ThemedText type="bodyStrong">{scheduledAtLabel}</ThemedText>
+            </Pressable>
+
+            {showSchedulePicker ? (
+              <View
+                style={{
+                  borderRadius: 16,
+                  borderCurve: "continuous",
+                  borderWidth: 1,
+                  borderColor: palette.border as string,
+                  backgroundColor: palette.appBg,
+                  padding: 12,
+                  gap: 10,
+                }}
+              >
+                <DateTimePicker
+                  value={scheduleDraft}
+                  mode="datetime"
+                  display={Platform.OS === "ios" ? "inline" : "default"}
+                  minimumDate={new Date(Date.now() + 60_000)}
+                  onChange={(event, value) => {
+                    if (Platform.OS !== "ios") {
+                      setShowSchedulePicker(false);
+                    }
+                    if (event.type === "dismissed" || !value) {
+                      return;
+                    }
+                    setScheduleDraft(value);
+                  }}
+                />
+                {Platform.OS === "ios" ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t("common.done")}
+                    onPress={() => setShowSchedulePicker(false)}
+                    style={({ pressed }) => ({
+                      alignSelf: "flex-start",
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 999,
+                      borderCurve: "continuous",
+                      backgroundColor: pressed ? palette.surface : palette.primarySubtle,
+                    })}
+                  >
+                    <ThemedText type="bodyStrong" style={{ color: palette.primary }}>
+                      {t("common.done")}
+                    </ThemedText>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+
+            <View style={{ flexDirection: "row", gap: 12 }}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={t("profile.payments.preferenceChooseDate")}
-                onPress={() => setShowSchedulePicker((value) => !value)}
+                accessibilityLabel={t("common.cancel")}
+                onPress={() => {
+                  setPendingPreferenceMode(null);
+                  setShowSchedulePicker(false);
+                  setScheduleDraft(
+                    buildDefaultScheduledDate(payoutSummary?.payoutPreferenceScheduledDate),
+                  );
+                }}
                 style={({ pressed }) => ({
-                  borderRadius: 18,
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: 44,
+                  borderRadius: 16,
                   borderCurve: "continuous",
                   borderWidth: 1,
                   borderColor: palette.border as string,
                   backgroundColor: pressed ? palette.surface : palette.appBg,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  gap: 4,
                 })}
               >
-                <ThemedText type="micro" style={{ color: palette.textMuted }}>
-                  {t("profile.payments.preferenceScheduleAt")}
-                </ThemedText>
-                <ThemedText type="bodyStrong">{scheduledAtLabel}</ThemedText>
+                <ThemedText type="bodyStrong">{t("common.cancel")}</ThemedText>
               </Pressable>
-
-              {showSchedulePicker ? (
-                <View
-                  style={{
-                    borderRadius: 20,
-                    borderCurve: "continuous",
-                    borderWidth: 1,
-                    borderColor: palette.border as string,
-                    backgroundColor: palette.appBg,
-                    padding: 12,
-                    gap: 10,
-                  }}
-                >
-                  <DateTimePicker
-                    value={scheduleDraft}
-                    mode="datetime"
-                    display={Platform.OS === "ios" ? "inline" : "default"}
-                    minimumDate={new Date(Date.now() + 60_000)}
-                    onChange={(event, value) => {
-                      if (Platform.OS !== "ios") {
-                        setShowSchedulePicker(false);
-                      }
-                      if (event.type === "dismissed" || !value) {
-                        return;
-                      }
-                      setScheduleDraft(value);
-                    }}
-                  />
-                  {Platform.OS === "ios" ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={t("common.done")}
-                      onPress={() => setShowSchedulePicker(false)}
-                      style={({ pressed }) => ({
-                        alignSelf: "flex-start",
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        borderRadius: 999,
-                        borderCurve: "continuous",
-                        backgroundColor: pressed ? palette.surface : palette.primarySubtle,
-                      })}
-                    >
-                      <ThemedText type="bodyStrong" style={{ color: palette.primary }}>
-                        {t("common.done")}
-                      </ThemedText>
-                    </Pressable>
-                  ) : null}
-                </View>
-              ) : null}
-
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t("common.cancel")}
-                  onPress={() => {
-                    setPendingPreferenceMode(null);
-                    setShowSchedulePicker(false);
-                    setScheduleDraft(
-                      buildDefaultScheduledDate(payoutSummary?.payoutPreferenceScheduledDate),
-                    );
-                  }}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    minHeight: 46,
-                    borderRadius: 18,
-                    borderCurve: "continuous",
-                    borderWidth: 1,
-                    borderColor: palette.border as string,
-                    backgroundColor: pressed ? palette.surface : palette.appBg,
-                  })}
-                >
-                  <ThemedText type="bodyStrong">{t("common.cancel")}</ThemedText>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t("profile.payments.preferenceSaveSchedule")}
-                  onPress={() => {
-                    void savePayoutPreference("scheduled_date", scheduleDraft.getTime());
-                  }}
-                  disabled={preferenceBusy}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    minHeight: 46,
-                    borderRadius: 18,
-                    borderCurve: "continuous",
-                    backgroundColor: palette.primary,
-                    opacity: preferenceBusy ? 0.6 : 1,
-                    transform: [{ scale: pressed ? 0.985 : 1 }],
-                  })}
-                >
-                  <ThemedText type="bodyStrong" style={{ color: palette.onPrimary as string }}>
-                    {preferenceBusy
-                      ? t("profile.payments.preferenceSaving")
-                      : t("profile.payments.preferenceSaveSchedule")}
-                  </ThemedText>
-                </Pressable>
-              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("profile.payments.preferenceSaveSchedule")}
+                onPress={() => {
+                  void savePayoutPreference("scheduled_date", scheduleDraft.getTime());
+                }}
+                disabled={preferenceBusy}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: 44,
+                  borderRadius: 16,
+                  borderCurve: "continuous",
+                  backgroundColor: palette.payments.accent,
+                  opacity: preferenceBusy ? 0.6 : 1,
+                  transform: [{ scale: pressed ? 0.985 : 1 }],
+                })}
+              >
+                <ThemedText type="bodyStrong" style={{ color: "#FFFFFF" }}>
+                  {preferenceBusy
+                    ? t("profile.payments.preferenceSaving")
+                    : t("profile.payments.preferenceSaveSchedule")}
+                </ThemedText>
+              </Pressable>
             </View>
-          ) : null}
+          </View>
+        ) : null}
 
-          {preferenceError ? (
-            <ThemedText type="caption" style={{ color: palette.danger }}>
-              {preferenceError}
-            </ThemedText>
-          ) : preferenceInfo ? (
-            <ThemedText type="caption" style={{ color: palette.textMuted }}>
-              {preferenceInfo}
-            </ThemedText>
-          ) : null}
-        </View>
+        {preferenceError ? (
+          <ThemedText type="caption" style={{ color: palette.danger }}>
+            {preferenceError}
+          </ThemedText>
+        ) : preferenceInfo ? (
+          <ThemedText type="caption" style={{ color: palette.textMuted }}>
+            {preferenceInfo}
+          </ThemedText>
+        ) : null}
       </View>
 
       {/* Stats Row */}
@@ -892,39 +1003,22 @@ export default function ProfilePaymentsScreen() {
         style={{
           flexDirection: "row",
           paddingHorizontal: BrandSpacing.md,
-          gap: 12,
+          gap: 24,
         }}
       >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: palette.surfaceAlt,
-            padding: 16,
-            borderRadius: 24,
-            borderCurve: "continuous",
-          }}
-        >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              marginBottom: 8,
+              width: 10,
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: palette.warning as import("react-native").ColorValue,
             }}
-          >
-            <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: palette.warning as import("react-native").ColorValue,
-              }}
-            />
-            <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "600" }}>
-              {t("profile.payments.pending")}
-            </ThemedText>
-          </View>
-          <ThemedText type="title" style={{ fontSize: 22, fontVariant: ["tabular-nums"] }}>
+          />
+          <ThemedText type="caption" style={{ color: palette.textMuted }}>
+            {t("profile.payments.pending")}
+          </ThemedText>
+          <ThemedText type="bodyStrong" style={{ fontVariant: ["tabular-nums"] }}>
             {formatAgorotCurrency(
               payoutSummary?.pendingAmountAgorot ?? 0,
               locale,
@@ -932,36 +1026,19 @@ export default function ProfilePaymentsScreen() {
             )}
           </ThemedText>
         </View>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: palette.surfaceAlt,
-            padding: 16,
-            borderRadius: 24,
-            borderCurve: "continuous",
-          }}
-        >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              marginBottom: 8,
+              width: 10,
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: palette.success as import("react-native").ColorValue,
             }}
-          >
-            <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: palette.success as import("react-native").ColorValue,
-              }}
-            />
-            <ThemedText type="caption" style={{ color: palette.textMuted, fontWeight: "600" }}>
-              {t("profile.payments.paid")}
-            </ThemedText>
-          </View>
-          <ThemedText type="title" style={{ fontSize: 22, fontVariant: ["tabular-nums"] }}>
+          />
+          <ThemedText type="caption" style={{ color: palette.textMuted }}>
+            {t("profile.payments.paid")}
+          </ThemedText>
+          <ThemedText type="bodyStrong" style={{ fontVariant: ["tabular-nums"] }}>
             {formatAgorotCurrency(
               payoutSummary?.paidAmountAgorot ?? 0,
               locale,
