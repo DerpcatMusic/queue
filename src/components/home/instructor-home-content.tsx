@@ -2,17 +2,14 @@ import type { TFunction } from "i18next";
 import { useMemo } from "react";
 import { Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-
-import {
-  HomeSectionHeading,
-  HomeSurface,
-  useHomeDashboardLayout,
-} from "@/components/home/home-dashboard-layout";
+import { HomeAgendaWidget } from "@/components/home/home-agenda-widget";
+import { HomeSurface, useHomeDashboardLayout } from "@/components/home/home-dashboard-layout";
 import { getHomeHeaderScrollTopPadding } from "@/components/home/home-header-sheet";
 import { getRelativeTimeLabel, HomeSignalTile } from "@/components/home/home-shared";
 import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { ActionButton } from "@/components/ui/action-button";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
@@ -31,26 +28,29 @@ type UpcomingSession = {
 
 type InstructorHomeContentProps = {
   isVerified?: boolean;
+  currencyFormatter: Intl.NumberFormat;
   locale: string;
+  lessonsCompleted: number;
   openMatches: number;
   pendingApplications: number;
   palette: BrandPalette;
-  currencyFormatter: Intl.NumberFormat;
   t: TFunction;
+  totalEarningsAgorot: number;
   upcomingSessions: UpcomingSession[];
-
   onOpenJobs: () => void;
   onOpenProfile: () => void;
 };
 
 export function InstructorHomeContent({
   isVerified = false,
+  currencyFormatter,
   locale,
+  lessonsCompleted,
   openMatches,
   pendingApplications,
   palette,
-  currencyFormatter,
   t,
+  totalEarningsAgorot,
   upcomingSessions,
   onOpenJobs,
   onOpenProfile,
@@ -62,32 +62,21 @@ export function InstructorHomeContent({
   const { scrollRef, onScroll } = useScrollSheetBindings();
 
   const nextSession = upcomingSessions[0] ?? null;
-  const readinessLabel = isVerified
+  const earningsLabel = currencyFormatter.format(totalEarningsAgorot / 100);
+  const completionLabel = String(lessonsCompleted);
+  const verificationLabel = isVerified
     ? t("home.instructor.verified")
     : t("home.instructor.needsPolish");
-  const heroTitle = nextSession
-    ? t("home.instructor.heroSession", {
-        sport: toSportLabel(nextSession.sport as never),
-        studio: nextSession.studioName,
-      })
-    : t("home.instructor.heroMatches", {
-        count: openMatches,
-      });
-  const heroSummary = nextSession
+  const focusTitle = nextSession
+    ? toSportLabel(nextSession.sport as never)
+    : t("home.instructor.heroMatches", { count: openMatches });
+  const focusSubtitle = nextSession ? nextSession.studioName : verificationLabel;
+  const focusMeta = nextSession
     ? [
-        formatDateTime(nextSession.startTime, locale),
+        getRelativeTimeLabel(nextSession.startTime, now, locale),
         getZoneLabel(nextSession.zone, zoneLanguage),
       ].join("  ·  ")
-    : readinessLabel;
-  const heroSecondaryValue =
-    pendingApplications > 0
-      ? t("home.instructor.waitingCount", {
-          count: pendingApplications,
-        })
-      : nextSession
-        ? getRelativeTimeLabel(nextSession.startTime, now, locale)
-        : t("home.instructor.profileSet");
-  const visibleSessions = upcomingSessions.slice(0, layout.isWideWeb ? 6 : 4);
+    : t("home.instructor.pendingApps", { count: pendingApplications });
 
   return (
     <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
@@ -101,16 +90,25 @@ export function InstructorHomeContent({
           paddingHorizontal: BrandSpacing.xl,
           paddingTop: getHomeHeaderScrollTopPadding(safeTop),
           paddingBottom: BrandSpacing.xxl,
-          gap: BrandSpacing.xl,
+          gap: layout.sectionGap,
         }}
       >
-        <Animated.View entering={FadeInUp.delay(80).duration(280)}>
+        <Animated.View
+          entering={FadeInUp.delay(70).duration(260)}
+          style={{
+            flexDirection: layout.isWideWeb ? "row" : "column",
+            gap: layout.topRowGap,
+            alignItems: "stretch",
+          }}
+        >
           <HomeSurface
             palette={palette}
             tone="primary"
             style={{
-              padding: BrandSpacing.xl,
-              gap: BrandSpacing.lg,
+              flex: layout.heroFlex,
+              paddingHorizontal: BrandSpacing.xl,
+              paddingVertical: BrandSpacing.lg,
+              gap: BrandSpacing.md,
             }}
           >
             <View style={{ gap: 6 }}>
@@ -118,57 +116,91 @@ export function InstructorHomeContent({
                 style={{
                   ...BrandType.micro,
                   color: palette.onPrimary as string,
+                  opacity: 0.72,
                   letterSpacing: 0.8,
-                  opacity: 0.76,
                 }}
               >
                 {nextSession ? t("home.instructor.eyebrowNext") : t("home.instructor.eyebrowBoard")}
               </Text>
-              <Text
-                style={{
-                  ...BrandType.heading,
-                  fontSize: layout.isWideWeb ? 34 : 28,
-                  lineHeight: layout.isWideWeb ? 36 : 30,
-                  color: palette.onPrimary as string,
-                }}
-              >
-                {heroTitle}
-              </Text>
-              <Text
-                style={{
-                  ...BrandType.body,
-                  color: palette.onPrimary as string,
-                  opacity: 0.84,
-                }}
-              >
-                {heroSummary}
-              </Text>
+              <View style={{ gap: 2 }}>
+                <Text
+                  style={{
+                    ...BrandType.heading,
+                    fontSize: layout.isWideWeb ? 34 : 28,
+                    lineHeight: layout.isWideWeb ? 34 : 28,
+                    color: palette.onPrimary as string,
+                  }}
+                >
+                  {focusTitle}
+                </Text>
+                <Text
+                  style={{
+                    ...BrandType.bodyStrong,
+                    color: palette.onPrimary as string,
+                    opacity: 0.88,
+                  }}
+                >
+                  {focusSubtitle}
+                </Text>
+                <Text
+                  style={{
+                    ...BrandType.caption,
+                    color: palette.onPrimary as string,
+                    opacity: 0.72,
+                  }}
+                >
+                  {focusMeta}
+                </Text>
+              </View>
             </View>
 
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <HomeSignalTile
-                label={t("home.actions.jobsTitle")}
-                value={String(openMatches)}
-                detail={t("home.instructor.heroMatches", {
-                  count: openMatches,
-                })}
-                palette={palette}
-              />
-              <HomeSignalTile
-                label={t("home.instructor.pendingApps")}
-                value={heroSecondaryValue}
-                detail={readinessLabel}
-                palette={palette}
-                tone="accent"
-              />
-            </View>
+            {nextSession ? (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  borderRadius: 20,
+                  backgroundColor: "rgba(255,255,255,0.12)",
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  gap: 12,
+                }}
+              >
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text
+                    style={{
+                      ...BrandType.micro,
+                      color: palette.onPrimary as string,
+                      opacity: 0.66,
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {t("home.instructor.nextTitle")}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      ...BrandType.bodyStrong,
+                      color: palette.onPrimary as string,
+                    }}
+                  >
+                    {formatDateTime(nextSession.startTime, locale)}
+                  </Text>
+                </View>
+                <Text
+                  style={{
+                    ...BrandType.bodyStrong,
+                    color: palette.onPrimary as string,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {currencyFormatter.format(nextSession.pay)}
+                </Text>
+              </View>
+            ) : null}
 
-            <View
-              style={{
-                flexDirection: layout.isWideWeb ? "row" : "column",
-                gap: 10,
-              }}
-            >
+            <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
               <View style={{ flex: 1 }}>
                 <ActionButton
                   accessibilityLabel={t("home.actions.jobsTitle")}
@@ -185,157 +217,148 @@ export function InstructorHomeContent({
                   label={t("home.actions.profileTitle")}
                   onPress={onOpenProfile}
                   palette={palette}
+                  tone="secondary"
                   fullWidth
                 />
               </View>
             </View>
           </HomeSurface>
+
+          <View style={{ flex: layout.chartFlex, gap: BrandSpacing.sm }}>
+            <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+              <HomeSignalTile
+                label={t("home.actions.jobsTitle")}
+                value={String(openMatches)}
+                detail={t("home.instructor.heroMatches", { count: openMatches })}
+                palette={palette}
+                tone="accent"
+                icon="briefcase.fill"
+              />
+              <HomeSignalTile
+                label={t("home.instructor.pendingApps")}
+                value={String(pendingApplications)}
+                detail={verificationLabel}
+                palette={palette}
+                icon="clock.badge.checkmark"
+              />
+            </View>
+            <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+              <HomeSignalTile
+                label={t("profile.earnings.title")}
+                value={earningsLabel}
+                detail={t("profile.earnings.totalPaid")}
+                palette={palette}
+                icon="banknote"
+              />
+              <HomeSignalTile
+                label={t("home.studio.filled")}
+                value={completionLabel}
+                detail={t("home.agenda.title")}
+                palette={palette}
+                icon="checkmark.circle.fill"
+              />
+            </View>
+          </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(180).duration(320)} style={{ gap: 12 }}>
-          <HomeSectionHeading
-            title={t("home.instructor.nextTitle")}
-            eyebrow={t("home.instructor.scheduleEyebrow")}
+        <Animated.View
+          entering={FadeInUp.delay(140).duration(280)}
+          style={{
+            flexDirection: layout.isWideWeb ? "row" : "column",
+            gap: layout.topRowGap,
+            alignItems: "stretch",
+          }}
+        >
+          <HomeAgendaWidget
+            items={upcomingSessions.map((session) => ({
+              id: session.applicationId,
+              sport: session.sport,
+              name: session.studioName,
+              startTime: session.startTime,
+              zone: session.zone,
+            }))}
             palette={palette}
+            t={t}
+            locale={locale}
+            maxItems={layout.isWideWeb ? 8 : 5}
+            maxHeight={layout.isWideWeb ? 360 : 280}
+            heading={t("home.instructor.nextTitle")}
+            emptyLabel={t("home.instructor.noUpcoming")}
+            onPressAll={onOpenJobs}
           />
-          {upcomingSessions.length === 0 ? (
-            <HomeSurface palette={palette} style={{ padding: 18, gap: 6 }}>
-              <Text style={{ ...BrandType.title, color: palette.text as string }}>
-                {t("home.instructor.noUpcoming")}
+
+          <HomeSurface
+            palette={palette}
+            tone="surface"
+            style={{
+              flex: 1,
+              minHeight: layout.isWideWeb ? 360 : undefined,
+              padding: BrandSpacing.lg,
+              gap: BrandSpacing.md,
+              justifyContent: "space-between",
+            }}
+          >
+            <View style={{ gap: BrandSpacing.sm }}>
+              <Text
+                style={{
+                  ...BrandType.micro,
+                  color: palette.textMuted as string,
+                  letterSpacing: 0.8,
+                }}
+              >
+                {t("home.shared.title")}
               </Text>
               <Text
                 style={{
-                  ...BrandType.caption,
+                  ...BrandType.heading,
+                  fontSize: 24,
+                  lineHeight: 26,
+                  color: palette.text as string,
+                }}
+              >
+                {isVerified ? t("home.instructor.verified") : t("home.instructor.needsPolish")}
+              </Text>
+              <Text
+                style={{
+                  ...BrandType.body,
                   color: palette.textMuted as string,
                 }}
               >
-                {t("home.instructor.emptySchedule", {})}
+                {nextSession
+                  ? t("home.instructor.waitingCount", { count: pendingApplications })
+                  : t("home.instructor.profileSet")}
               </Text>
-            </HomeSurface>
-          ) : (
-            <View
-              style={{
-                flexDirection: layout.isWideWeb ? "row" : "column",
-                flexWrap: layout.isWideWeb ? "wrap" : "nowrap",
-                gap: 10,
-              }}
-            >
-              {visibleSessions.map((session, index) => (
-                <Animated.View
-                  key={session.applicationId}
-                  entering={FadeInUp.delay(220 + index * 35)
-                    .duration(260)
-                    .springify()
-                    .damping(18)}
-                  style={{ width: layout.isWideWeb ? "48.9%" : "100%" }}
-                >
-                  <HomeSurface
-                    palette={palette}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "stretch",
-                      gap: 12,
-                      padding: 16,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 72,
-                        justifyContent: "space-between",
-                        paddingVertical: 2,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          ...BrandType.micro,
-                          color: palette.primary as string,
-                          letterSpacing: 0.6,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {t("home.instructor.scheduleEyebrow")}
-                      </Text>
-                      <Text
-                        selectable
-                        style={{
-                          ...BrandType.heading,
-                          fontSize: 24,
-                          lineHeight: 24,
-                          color: palette.text as string,
-                          fontVariant: ["tabular-nums"],
-                        }}
-                      >
-                        {new Date(session.startTime).toLocaleTimeString(locale, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Text>
-                      <Text
-                        style={{
-                          ...BrandType.micro,
-                          color: palette.textMuted as string,
-                        }}
-                      >
-                        {getRelativeTimeLabel(session.startTime, now, locale)}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1, gap: 4 }}>
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "flex-start",
-                          justifyContent: "space-between",
-                          gap: 12,
-                        }}
-                      >
-                        <View style={{ flex: 1, gap: 2 }}>
-                          <Text
-                            style={{
-                              ...BrandType.title,
-                              color: palette.text as string,
-                            }}
-                            numberOfLines={1}
-                          >
-                            {toSportLabel(session.sport as never)}
-                          </Text>
-                          <Text
-                            style={{
-                              ...BrandType.micro,
-                              color: palette.primary as string,
-                            }}
-                            numberOfLines={1}
-                          >
-                            {session.studioName}
-                          </Text>
-                        </View>
-                        <Text
-                          selectable
-                          style={{
-                            ...BrandType.title,
-                            color: palette.text as string,
-                            fontVariant: ["tabular-nums"],
-                          }}
-                        >
-                          {currencyFormatter.format(session.pay)}
-                        </Text>
-                      </View>
-                      <Text
-                        style={{
-                          ...BrandType.caption,
-                          color: palette.textMuted as string,
-                        }}
-                      >
-                        {[
-                          formatDateTime(session.startTime, locale),
-                          getZoneLabel(session.zone, zoneLanguage),
-                        ].join("  ·  ")}
-                      </Text>
-                    </View>
-                  </HomeSurface>
-                </Animated.View>
-              ))}
             </View>
-          )}
+
+            <View style={{ gap: BrandSpacing.sm }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <IconSymbol name="sparkles" size={16} color={palette.primary as string} />
+                <Text style={{ ...BrandType.bodyMedium, color: palette.text as string }}>
+                  {verificationLabel}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <IconSymbol
+                  name="calendar.badge.clock"
+                  size={16}
+                  color={palette.primary as string}
+                />
+                <Text style={{ ...BrandType.bodyMedium, color: palette.text as string }}>
+                  {nextSession
+                    ? getRelativeTimeLabel(nextSession.startTime, now, locale)
+                    : t("home.instructor.noUpcoming")}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <IconSymbol name="location.circle" size={16} color={palette.primary as string} />
+                <Text style={{ ...BrandType.bodyMedium, color: palette.text as string }}>
+                  {nextSession
+                    ? getZoneLabel(nextSession.zone, zoneLanguage)
+                    : t("home.actions.profileTitle")}
+                </Text>
+              </View>
+            </View>
+          </HomeSurface>
         </Animated.View>
       </TabScreenScrollView>
     </View>

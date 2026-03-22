@@ -18,6 +18,12 @@ const APPLICATION_STATUS_SET = new Set<string>(APPLICATION_STATUSES);
 const REQUIRED_LEVEL_SET = new Set<string>(REQUIRED_LEVELS);
 const SESSION_LANGUAGE_SET = new Set<string>(SESSION_LANGUAGES);
 
+const BOOST_PRESETS = {
+  small: 20,
+  medium: 50,
+  large: 100,
+} as const;
+
 function assertPositiveNumber(value: number, fieldName: string) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new ConvexError(`${fieldName} must be greater than 0`);
@@ -475,6 +481,8 @@ export const postJob = mutation({
     isRecurring: v.optional(v.boolean()),
     cancellationDeadlineHours: v.optional(v.number()),
     applicationDeadline: v.optional(v.number()),
+    expiryOverrideMinutes: v.optional(v.number()),
+    boostPreset: v.optional(v.union(v.literal("small"), v.literal("medium"), v.literal("large"))),
   },
   returns: v.object({
     jobId: v.id("jobs"),
@@ -513,6 +521,17 @@ export const postJob = mutation({
       applicationDeadline: args.applicationDeadline,
     });
 
+    // Validate boostPreset if provided
+    if (args.boostPreset !== undefined && !(args.boostPreset in BOOST_PRESETS)) {
+      throw new ConvexError(
+        `Invalid boostPreset "${args.boostPreset}". Must be one of: ${Object.keys(BOOST_PRESETS).join(", ")}`,
+      );
+    }
+
+    const boostBonusAmount =
+      args.boostPreset !== undefined ? BOOST_PRESETS[args.boostPreset] : undefined;
+    const boostActive = args.boostPreset !== undefined;
+
     const jobId = await ctx.db.insert("jobs", {
       studioId: studio._id,
       zone: studioZone,
@@ -532,6 +551,11 @@ export const postJob = mutation({
         isRecurring: args.isRecurring,
         cancellationDeadlineHours: args.cancellationDeadlineHours,
         applicationDeadline: args.applicationDeadline,
+        expiryOverrideMinutes: args.expiryOverrideMinutes,
+        boostPreset: args.boostPreset,
+        boostBonusAmount,
+        boostActive,
+        autoAcceptEnabled: studio.autoAcceptDefault,
       }),
     });
 
@@ -549,7 +573,8 @@ export const postJob = mutation({
       { jobId },
     );
 
-    const expireMinutes = studio.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
+    const expireMinutes =
+      args.expiryOverrideMinutes ?? studio.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
     const expireAt = args.startTime - expireMinutes * 60 * 1000;
     const expireDelay = Math.max(expireAt - now, 0);
     if (expireAt > now) {
@@ -893,22 +918,92 @@ export const applyToJob = mutation({
     ]);
 
     if (!job) throw new ConvexError("Job not found");
-    if (job.status !== "open") throw new ConvexError("Job is not open");
+
+    const studio = await ctx.db.get("studioProfiles", job.studioId);
+    const studioAutoAcceptEnabled = (studio as any)?.autoAcceptEnabled;
+    const studioAutoAcceptDefault = studio?.autoAcceptDefault;
+    const autoAcceptEnabled =
+      job.autoAcceptEnabled ?? studioAutoAcceptEnabled ?? studioAutoAcceptDefault ?? false;
 
     const now = Date.now();
-    if (job.applicationDeadline !== undefined && now > job.applicationDeadline) {
-      throw new ConvexError("Application deadline has passed");
-    }
-    if (now >= job.startTime) {
-      throw new ConvexError("Job has already started");
-    }
 
-    const normalizedJobZone = trimOptionalString(job.zone);
-    if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
-      throw new ConvexError("Job has invalid zone configuration");
-    }
-    if (!hasCoverageKey(eligibility, job.sport, normalizedJobZone)) {
-      throw new ConvexError("You are not eligible for this job");
+    if (!autoAcceptEnabled) {
+      if (job.status !== "open") throw new ConvexError("Job is not open");
+      if (job.applicationDeadline !== undefined && now > job.applicationDeadline) {
+        throw new ConvexError("Application deadline has passed");
+      }
+      if (now >= job.startTime) {
+        throw new ConvexError("Job has already started");
+      }
+      const normalizedJobZone = trimOptionalString(job.zone);
+      if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
+        throw new ConvexError("Job has invalid zone configuration");
+      }
+      if (!hasCoverageKey(eligibility, job.sport, normalizedJobZone)) {
+        throw new ConvexError("You are not eligible for this job");
+      }
+
+      const existing = await ctx.db
+        .query("jobApplications")
+        .withIndex("by_job_and_instructor", (q) =>
+          q.eq("jobId", args.jobId).eq("instructorId", instructor._id),
+        )
+        .unique();
+
+      const message = trimOptionalString(args.message);
+
+      if (existing) {
+        if (existing.status === "accepted") {
+          throw new ConvexError("Application already accepted");
+        }
+
+        await ctx.db.patch("jobApplications", existing._id, {
+          studioId: job.studioId,
+          status: "pending",
+          ...omitUndefined({ message }),
+          updatedAt: now,
+        });
+
+        if (studio) {
+          await enqueueUserNotification(ctx, {
+            recipientUserId: studio.userId,
+            actorUserId: instructor.userId,
+            kind: "application_received",
+            title: "New application received",
+            body: `${instructor.displayName} applied to teach ${toDisplayLabel(job.sport)}.`,
+            jobId: job._id,
+            applicationId: existing._id,
+          });
+        }
+
+        await recomputeJobApplicationStats(ctx, job);
+        return { applicationId: existing._id, status: "pending" as const };
+      }
+
+      const applicationId = await ctx.db.insert("jobApplications", {
+        jobId: args.jobId,
+        studioId: job.studioId,
+        instructorId: instructor._id,
+        status: "pending",
+        appliedAt: now,
+        updatedAt: now,
+        ...omitUndefined({ message }),
+      });
+
+      if (studio) {
+        await enqueueUserNotification(ctx, {
+          recipientUserId: studio.userId,
+          actorUserId: instructor.userId,
+          kind: "application_received",
+          title: "New application received",
+          body: `${instructor.displayName} applied to teach ${toDisplayLabel(job.sport)}.`,
+          jobId: job._id,
+          applicationId,
+        });
+      }
+
+      await recomputeJobApplicationStats(ctx, job);
+      return { applicationId, status: "pending" as const };
     }
 
     const existing = await ctx.db
@@ -918,49 +1013,132 @@ export const applyToJob = mutation({
       )
       .unique();
 
+    if (job.status !== "open") {
+      const applicationId = await ctx.db.insert("jobApplications", {
+        jobId: args.jobId,
+        studioId: job.studioId,
+        instructorId: instructor._id,
+        status: "rejected",
+        appliedAt: now,
+        updatedAt: now,
+      });
+      return { applicationId, status: "rejected" as const };
+    }
+
+    const normalizedJobZone = trimOptionalString(job.zone);
+    if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
+      throw new ConvexError("Job has invalid zone configuration");
+    }
+    if (!hasCoverageKey(eligibility, job.sport, normalizedJobZone)) {
+      throw new ConvexError("You are not eligible for this job");
+    }
+    if (job.applicationDeadline !== undefined && now > job.applicationDeadline) {
+      throw new ConvexError("Application deadline has passed");
+    }
+    if (now >= job.startTime) {
+      throw new ConvexError("Job has already started");
+    }
+
+    const existingJobs = await ctx.db
+      .query("jobs")
+      .withIndex("by_filledByInstructor_startTime", (q) =>
+        q.eq("filledByInstructorId", instructor._id),
+      )
+      .collect();
+    const hasConflict = existingJobs.some(
+      (j) => j.status === "filled" && j.startTime < job.endTime && j.endTime > job.startTime,
+    );
+    if (hasConflict) {
+      throw new ConvexError("Instructor has a conflicting booking at this time");
+    }
+
     const message = trimOptionalString(args.message);
 
-    let applicationId: Id<"jobApplications">;
     if (existing) {
       if (existing.status === "accepted") {
         throw new ConvexError("Application already accepted");
       }
-
       await ctx.db.patch("jobApplications", existing._id, {
         studioId: job.studioId,
-        status: "pending",
-        ...omitUndefined({ message }),
+        status: "rejected",
         updatedAt: now,
-      });
-      applicationId = existing._id;
-    } else {
-      applicationId = await ctx.db.insert("jobApplications", {
-        jobId: args.jobId,
-        studioId: job.studioId,
-        instructorId: instructor._id,
-        status: "pending",
-        appliedAt: now,
-        updatedAt: now,
-        ...omitUndefined({ message }),
       });
     }
 
-    const studio = await ctx.db.get("studioProfiles", job.studioId);
+    const applicationId = await ctx.db.insert("jobApplications", {
+      jobId: args.jobId,
+      studioId: job.studioId,
+      instructorId: instructor._id,
+      status: "accepted",
+      appliedAt: now,
+      updatedAt: now,
+      ...omitUndefined({ message }),
+    });
+
+    await ctx.db.patch("jobs", job._id, {
+      status: "filled",
+      filledByInstructorId: instructor._id,
+    });
+
+    const competingApplications = await ctx.db
+      .query("jobApplications")
+      .withIndex("by_job", (q) => q.eq("jobId", job._id))
+      .collect();
+
+    for (const row of competingApplications) {
+      if (row._id !== applicationId) {
+        await ctx.db.patch("jobApplications", row._id, {
+          studioId: job.studioId,
+          status: "rejected",
+          updatedAt: now,
+        });
+      }
+    }
+
     if (studio) {
-      await enqueueUserNotification(ctx, {
-        recipientUserId: studio.userId,
-        actorUserId: instructor.userId,
-        kind: "application_received",
-        title: "New application received",
-        body: `${instructor.displayName} applied to teach ${toDisplayLabel(job.sport)}.`,
+      await ctx.runMutation(internal.jobs.runAcceptedApplicationReviewWorkflow, {
         jobId: job._id,
-        applicationId,
+        acceptedApplicationId: applicationId,
+        studioUserId: studio.userId,
       });
     }
 
     await recomputeJobApplicationStats(ctx, job);
+    return { applicationId, status: "accepted" as const };
+  },
+});
 
-    return { applicationId, status: "pending" as const };
+export const withdrawApplication = mutation({
+  args: {
+    applicationId: v.id("jobApplications"),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const instructor = await requireInstructorProfile(ctx);
+    const application = await ctx.db.get("jobApplications", args.applicationId);
+
+    if (!application) throw new ConvexError("Application not found");
+    if (application.instructorId !== instructor._id) {
+      throw new ConvexError("Not authorized to withdraw this application");
+    }
+    if (application.status !== "pending") {
+      throw new ConvexError("Can only withdraw pending applications");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch("jobApplications", application._id, {
+      status: "withdrawn",
+      updatedAt: now,
+    });
+
+    const job = await ctx.db.get("jobs", application.jobId);
+    if (job) {
+      await recomputeJobApplicationStats(ctx, job);
+    }
+
+    return { ok: true };
   },
 });
 
@@ -1228,6 +1406,64 @@ export const getMyStudioJobsWithApplications = query({
   },
 });
 
+export const checkInstructorConflicts = query({
+  args: {
+    instructorId: v.id("instructorProfiles"),
+    startTime: v.number(),
+    endTime: v.number(),
+    excludeJobId: v.optional(v.id("jobs")),
+  },
+  returns: v.object({
+    hasConflict: v.boolean(),
+    conflictingJobs: v.array(
+      v.object({
+        jobId: v.id("jobs"),
+        sport: v.string(),
+        studioName: v.string(),
+        startTime: v.number(),
+        endTime: v.number(),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const jobs = await ctx.db
+      .query("jobs")
+      .withIndex("by_filledByInstructor_startTime", (q) =>
+        q.eq("filledByInstructorId", args.instructorId),
+      )
+      .collect();
+
+    const conflictingJobs: {
+      jobId: Id<"jobs">;
+      sport: string;
+      studioName: string;
+      startTime: number;
+      endTime: number;
+    }[] = [];
+
+    for (const job of jobs) {
+      if (job.status !== "filled") continue;
+      if (args.excludeJobId && job._id === args.excludeJobId) continue;
+      // Overlap check: existing.startTime < newEndTime AND existing.endTime > newStartTime
+      if (job.startTime < args.endTime && job.endTime > args.startTime) {
+        const studio = await ctx.db.get("studioProfiles", job.studioId);
+        conflictingJobs.push({
+          jobId: job._id,
+          sport: job.sport,
+          studioName: studio?.studioName ?? "Unknown studio",
+          startTime: job.startTime,
+          endTime: job.endTime,
+        });
+      }
+    }
+
+    return {
+      hasConflict: conflictingJobs.length > 0,
+      conflictingJobs,
+    };
+  },
+});
+
 export const getMyCalendarTimeline = query({
   args: {
     startTime: v.number(),
@@ -1438,6 +1674,18 @@ export const reviewApplication = mutation({
       }
       if (now >= job.endTime) {
         throw new ConvexError("Job already ended");
+      }
+      const existingJobs = await ctx.db
+        .query("jobs")
+        .withIndex("by_filledByInstructor_startTime", (q) =>
+          q.eq("filledByInstructorId", application.instructorId),
+        )
+        .collect();
+      const hasConflict = existingJobs.some(
+        (j) => j.status === "filled" && j.startTime < job.endTime && j.endTime > job.startTime,
+      );
+      if (hasConflict) {
+        throw new ConvexError("Instructor has a conflicting booking at this time");
       }
       await ctx.db.patch("jobs", job._id, {
         status: "filled",
@@ -1773,5 +2021,172 @@ export const autoExpireUnfilledJob = internalMutation({
     }
 
     return { expired: true };
+  },
+});
+
+export const cancelMyBooking = mutation({
+  args: {
+    jobId: v.id("jobs"),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const instructor = await requireInstructorProfile(ctx);
+    const job = await ctx.db.get("jobs", args.jobId);
+
+    if (!job) throw new ConvexError("Job not found");
+    if (job.status !== "filled") {
+      throw new ConvexError("Job is not filled");
+    }
+    if (job.filledByInstructorId !== instructor._id) {
+      throw new ConvexError("Not authorized to cancel this booking");
+    }
+
+    if (job.cancellationDeadlineHours !== undefined) {
+      const deadline = job.startTime - job.cancellationDeadlineHours * 3600000;
+      if (Date.now() > deadline) {
+        throw new ConvexError("Cancellation deadline passed");
+      }
+    }
+
+    await ctx.db.patch("jobs", job._id, {
+      status: "cancelled",
+      filledByInstructorId: undefined,
+    });
+
+    const applications = await ctx.db
+      .query("jobApplications")
+      .withIndex("by_job", (q) => q.eq("jobId", job._id))
+      .collect();
+
+    for (const application of applications) {
+      if (application.instructorId === instructor._id && application.status === "accepted") {
+        await ctx.db.patch("jobApplications", application._id, {
+          status: "withdrawn",
+          updatedAt: Date.now(),
+        });
+        break;
+      }
+    }
+
+    await recomputeJobApplicationStats(ctx, job);
+
+    const studio = await ctx.db.get("studioProfiles", job.studioId);
+    if (studio) {
+      await enqueueUserNotification(ctx, {
+        recipientUserId: studio.userId,
+        kind: "lesson_completed",
+        title: "Booking cancelled",
+        body: `${instructor.displayName} cancelled their booking for ${toDisplayLabel(job.sport)}.`,
+        jobId: job._id,
+      });
+      // Google Calendar: real-time sync via server-side action
+      await scheduleGoogleCalendarSyncForUser(ctx, studio.userId);
+      // Apple Calendar: deleted on next app open when syncEvents recomputes
+      // without this cancelled job (buildSyncEvents filters status === "cancelled")
+    }
+
+    return { ok: true };
+  },
+});
+
+export const cancelFilledJob = mutation({
+  args: {
+    jobId: v.id("jobs"),
+    reason: v.optional(v.string()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const studio = await requireStudioProfile(ctx);
+    const job = await ctx.db.get("jobs", args.jobId);
+
+    if (!job) throw new ConvexError("Job not found");
+    if (job.studioId !== studio._id) {
+      throw new ConvexError("Not authorized to cancel this job");
+    }
+
+    // Handle open jobs - cancel directly without cancellation deadline check
+    if (job.status === "open") {
+      await ctx.db.patch("jobs", job._id, {
+        status: "cancelled",
+        closureReason: "studio_cancelled",
+      });
+
+      const applications = await ctx.db
+        .query("jobApplications")
+        .withIndex("by_job", (q) => q.eq("jobId", job._id))
+        .collect();
+
+      for (const application of applications) {
+        if (application.status === "pending") {
+          await ctx.db.patch("jobApplications", application._id, {
+            status: "rejected",
+            updatedAt: Date.now(),
+          });
+        }
+      }
+
+      await recomputeJobApplicationStats(ctx, job);
+      return { ok: true };
+    }
+
+    // Handle filled jobs - require cancellation deadline check
+    if (job.status !== "filled") {
+      throw new ConvexError("Job is not filled");
+    }
+
+    if (job.cancellationDeadlineHours !== undefined) {
+      const deadline = job.startTime - job.cancellationDeadlineHours * 3600000;
+      if (Date.now() > deadline) {
+        throw new ConvexError("Cancellation deadline passed");
+      }
+    }
+
+    await ctx.db.patch("jobs", job._id, {
+      status: "cancelled",
+    });
+
+    const applications = await ctx.db
+      .query("jobApplications")
+      .withIndex("by_job", (q) => q.eq("jobId", job._id))
+      .collect();
+
+    let acceptedInstructorProfile: Doc<"instructorProfiles"> | null = null;
+    for (const application of applications) {
+      if (application.status === "accepted") {
+        await ctx.db.patch("jobApplications", application._id, {
+          status: "rejected",
+          updatedAt: Date.now(),
+        });
+        acceptedInstructorProfile = await ctx.db.get(
+          "instructorProfiles",
+          application.instructorId,
+        );
+        break;
+      }
+    }
+
+    await recomputeJobApplicationStats(ctx, job);
+
+    if (acceptedInstructorProfile) {
+      await enqueueUserNotification(ctx, {
+        recipientUserId: acceptedInstructorProfile.userId,
+        kind: "lesson_completed",
+        title: "Booking cancelled",
+        body: `Your booking for ${toDisplayLabel(job.sport)} was cancelled by the studio${args.reason ? `: ${args.reason}` : "."}`,
+        jobId: job._id,
+      });
+      await scheduleGoogleCalendarSyncForUser(ctx, acceptedInstructorProfile.userId);
+    }
+
+    await scheduleGoogleCalendarSyncForUser(ctx, studio.userId);
+    // Google Calendar: real-time sync via server-side action (above)
+    // Apple Calendar: deleted on next app open when syncEvents recomputes
+    // without this cancelled job (buildSyncEvents filters status === "cancelled")
+
+    return { ok: true };
   },
 });

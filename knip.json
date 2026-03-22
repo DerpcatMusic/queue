@@ -31,12 +31,14 @@
     "type": true
   },
   "ignoreBinaries": ["powershell"],
-  "ignoreDependencies": ["babel-preset-expo"],
+  "ignoreDependencies": ["babel-preset-expo", "expo-navigation-bar", "react-native-svg"],
   "ignore": [
     "src/components/maps/queue-map-apple-theme.ts",
     "src/components/maps/queue-map-zone-polygons.tsx",
     "src/components/maps/queue-map.native.tsx",
     "src/components/maps/queue-map.web.tsx",
+    "src/components/maps/queue-map.native.helpers.ts",
+    "src/components/maps/queue-map.web.helpers.ts",
     "src/components/ui/icon-symbol.ios.tsx"
   ]
 }

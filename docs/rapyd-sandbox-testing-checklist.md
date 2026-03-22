@@ -5,7 +5,6 @@
 Set these before end-to-end testing:
 
 - `RAPYD_MODE=sandbox`
-- `RAPYD_CHECKOUT_MODE=a2a`
 - `RAPYD_SANDBOX_BASE_URL=https://sandboxapi.rapyd.net`
 - `RAPYD_ACCESS_KEY=<rapyd_sandbox_access_key>`
 - `RAPYD_SECRET_KEY=<rapyd_sandbox_secret_key>`
@@ -32,7 +31,7 @@ Notes:
 - Keep Rapyd base URLs as host-only URLs (no query/hash). Example: `https://sandboxapi.rapyd.net`
 - If you set both `RAPYD_SANDBOX_BASE_URL` and `RAPYD_BASE_URL`, sandbox uses `RAPYD_SANDBOX_BASE_URL`.
 - Hosted page URLs must be public `https` URLs and cannot be `localhost`, `exp://`, `exps://`, or custom app schemes.
-- If `RAPYD_CHECKOUT_MODE=a2a`, checkout defaults to bank-transfer and bank-redirect methods and fails closed if Rapyd cannot resolve them for your IL account.
+- Checkout mode defaults are environment-sensitive: sandbox defaults to `flexible` (card-capable) because IL sandbox does not have A2A/bank pay-in rails. Production defaults to `a2a` (fail-closed bank-only). Set `RAPYD_CHECKOUT_MODE=a2a` explicitly in sandbox only if you need to test strict A2A behavior.
 - If `RAPYD_PAYMENT_METHODS` is unset and `RAPYD_CHECKOUT_MODE=flexible`, checkout falls back to Rapyd's default country-valid methods.
 - If you use `join-queue.com`, make sure app config includes universal links (`applinks:join-queue.com`) and Android intent filters for `https://join-queue.com/rapyd/*`.
 

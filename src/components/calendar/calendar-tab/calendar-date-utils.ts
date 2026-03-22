@@ -37,7 +37,6 @@ export function formatMonthYear(dayKey: string, locale: string) {
 export function formatSelectedDayLabel(dayKey: string, locale: string) {
   return new Date(dayKeyToTimestamp(dayKey)).toLocaleDateString(locale, {
     weekday: "long",
-    month: "long",
     day: "numeric",
   });
 }
@@ -63,7 +62,7 @@ export const calendarTimelineStyles = {
     left: 0,
     right: 0,
     bottom: 0,
-    opacity: 0.96,
+    opacity: 1,
   },
   visibilitySection: {
     gap: 8,
@@ -98,17 +97,23 @@ export const calendarTimelineStyles = {
     opacity: 0.3,
   },
   railDotDay: {
+    position: "absolute",
+    left: RAIL_LEFT - RAIL_DOT_DAY / 2,
+    top: "50%",
     width: RAIL_DOT_DAY,
     height: RAIL_DOT_DAY,
     borderRadius: RAIL_DOT_DAY / 2,
-    marginTop: 18,
+    marginTop: -(RAIL_DOT_DAY / 2),
     zIndex: 1,
   },
   railDotLesson: {
+    position: "absolute",
+    left: RAIL_LEFT - RAIL_DOT_LESSON / 2,
+    top: "50%",
     width: RAIL_DOT_LESSON,
     height: RAIL_DOT_LESSON,
     borderRadius: RAIL_DOT_LESSON / 2,
-    marginTop: 20,
+    marginTop: -(RAIL_DOT_LESSON / 2),
     zIndex: 1,
   },
   dayHeaderContent: {
@@ -217,7 +222,7 @@ export const calendarTimelineStyles = {
 
 export const calendarSheetStyles = {
   root: {
-    gap: BrandSpacing.md,
+    gap: BrandSpacing.xs,
   },
   titleRow: {
     flexDirection: "row",
@@ -239,16 +244,9 @@ export const calendarSheetStyles = {
     opacity: 0.72,
   },
   actionsColumn: {
-    alignItems: "flex-end",
-    gap: BrandSpacing.sm,
-  },
-  summaryRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: BrandSpacing.md,
-    borderTopWidth: 1,
-    paddingTop: BrandSpacing.md,
+    gap: BrandSpacing.xs,
   },
   summaryCountPill: {
     borderRadius: BrandRadius.pill,
@@ -266,5 +264,12 @@ export const calendarSheetStyles = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: BrandSpacing.md,
+  },
+  datePickerBlock: {
+    gap: BrandSpacing.sm,
+    paddingTop: BrandSpacing.xs,
+  },
+  datePickerActions: {
+    paddingBottom: BrandSpacing.xs,
   },
 } as const;

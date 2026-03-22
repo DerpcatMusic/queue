@@ -620,6 +620,7 @@ export const getMyStudioSettings = query({
       profileImageUrl: v.optional(v.string()),
       socialLinks: v.optional(socialLinksValidator),
       autoExpireMinutesBefore: v.number(),
+      autoAcceptDefault: v.optional(v.boolean()),
       sports: v.array(v.string()),
       calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
       calendarSyncEnabled: v.boolean(),
@@ -664,6 +665,7 @@ export const getMyStudioSettings = query({
       notificationsEnabled,
       hasExpoPushToken,
       autoExpireMinutesBefore: profile.autoExpireMinutesBefore ?? 30,
+      autoAcceptDefault: profile.autoAcceptDefault ?? false,
       sports,
       calendarProvider: profile.calendarProvider ?? "none",
       calendarSyncEnabled: profile.calendarSyncEnabled ?? false,
@@ -718,6 +720,7 @@ export const updateMyStudioSettings = mutation({
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     autoExpireMinutesBefore: v.optional(v.number()),
+    autoAcceptDefault: v.optional(v.boolean()),
     sports: v.optional(v.array(v.string())),
   },
   returns: v.object({
@@ -771,6 +774,7 @@ export const updateMyStudioSettings = mutation({
         latitude,
         longitude,
         autoExpireMinutesBefore,
+        autoAcceptDefault: args.autoAcceptDefault,
       }),
       updatedAt: Date.now(),
     });

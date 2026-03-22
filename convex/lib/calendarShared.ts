@@ -79,6 +79,10 @@ export function buildGoogleEventBody(row: TimelineRow) {
         [GOOGLE_EVENT_EXTERNAL_ID_KEY]: row.lessonId,
       },
     },
+    reminders: {
+      useDefault: false,
+      overrides: [{ method: "popup", minutes: 15 }],
+    },
   };
 }
 

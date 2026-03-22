@@ -1,7 +1,6 @@
 import { useIsFocused } from "@react-navigation/native";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
-import * as Location from "expo-location";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
@@ -19,7 +18,6 @@ import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { resolveCurrentLocationToZone } from "@/lib/location-zone";
 import { MapSheetHeader } from "./map-sheet-header";
 import {
   buildFilteredZones,
@@ -58,7 +56,7 @@ export function useMapTabController() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [focusZoneId, setFocusZoneId] = useState<string | null>(null);
-  const [mapPin, setMapPin] = useState<QueueMapPin | null>(null);
+  const [mapPin] = useState<QueueMapPin | null>(null);
 
   const noopMapPress = useCallback(() => {}, []);
   const openSearchSheet = useCallback(() => {
@@ -70,30 +68,6 @@ export function useMapTabController() {
     if (!nextFocusZoneId) return;
     setFocusZoneId(nextFocusZoneId);
   }, [focusZoneId, remoteZones?.zoneIds, selectedZoneIds]);
-
-  const handleUseGps = useCallback(async () => {
-    setSaveError(null);
-    try {
-      if (Platform.OS === "ios") {
-        void Haptics.selectionAsync();
-      }
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        throw new Error(t("mapTab.errors.locationPermission", {}));
-      }
-      const location = await Location.getCurrentPositionAsync({});
-      setMapPin({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-      const resolved = await resolveCurrentLocationToZone();
-      setFocusZoneId(resolved.zoneId);
-    } catch (error) {
-      setSaveError(
-        error instanceof Error ? error.message : t("mapTab.errors.failedToLoadLocation"),
-      );
-    }
-  }, [t]);
 
   useEffect(() => {
     if (!remoteZones) return;
@@ -345,31 +319,16 @@ export function useMapTabController() {
 
   const handleZoneResultPress = useCallback(
     (zoneId: string) => {
-      if (zoneModeActive) {
-        toggleZone(zoneId);
-        return;
-      }
-      setFocusZoneId(zoneId);
+      toggleZone(zoneId);
     },
-    [toggleZone, zoneModeActive],
+    [toggleZone],
   );
   const handleCityResultPress = useCallback(
     (cityKey: string) => {
-      if (zoneModeActive) {
-        toggleCity(cityKey);
-        return;
-      }
-      toggleCityExpanded(cityKey);
+      toggleCity(cityKey);
     },
-    [toggleCity, toggleCityExpanded, zoneModeActive],
+    [toggleCity],
   );
-  const handleMapUtilityPress = useCallback(() => {
-    if (focusedZone || selectedZoneIds.length > 0) {
-      handleFocusSelection();
-      return;
-    }
-    void handleUseGps();
-  }, [focusedZone, handleFocusSelection, handleUseGps, selectedZoneIds.length]);
   const mapCameraPadding = useMemo(
     () => ({
       top: collapsedSheetHeight + MAP_CAMERA_TOP_OFFSET,
@@ -428,13 +387,13 @@ export function useMapTabController() {
         backgroundColor: palette.surface as string,
         topInsetColor: palette.surface as string,
         padding: {
-          vertical: BrandSpacing.xs,
+          vertical: 2,
           horizontal: BrandSpacing.lg,
         },
       }),
       draggable: true,
       expandable: true,
-      steps: [0.28, 0.58, 0.94],
+      steps: [0.24, 0.56, 0.94],
       initialStep: 0,
       activeStep: sheetStep,
       expandMode: "overlay" as const,
@@ -467,7 +426,6 @@ export function useMapTabController() {
     handleEditButtonPress,
     handleFocusSelection,
     handleMapSheetSearchChange,
-    handleMapUtilityPress,
     handleSaveZones,
     hasChanges,
     isFocused,

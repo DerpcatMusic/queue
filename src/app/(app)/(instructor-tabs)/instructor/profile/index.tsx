@@ -685,6 +685,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
   },
   mobileContentPadding: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
   },
 });

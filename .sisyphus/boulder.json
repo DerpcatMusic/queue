@@ -1,0 +1,24 @@
+{
+  "active_plan": "/home/derpcat/projects/queue/.sisyphus/plans/jobs-system-marketplace.md",
+  "started_at": "2026-03-22T00:15:20.547Z",
+  "session_ids": [
+    "ses_2ed31dc28ffedQFWauPayF7n3a",
+    "ses_2ed191e17ffeAjvJM6yfiz7N0A",
+    "ses_2ed140804ffe9XKwSXTAyH23aa",
+    "ses_2ed0e15c8ffeM5mnhPlArkAa7y",
+    "ses_2ed07a495ffeK9Xqc0YKvcl7Ga",
+    "ses_2ecfbbb18ffegzULWk9RfnBA0K",
+    "ses_2ecf699d8ffewS2dwMNa3NXNNQ",
+    "ses_2ecf3ffe8ffeNLhECAe832PLo5",
+    "ses_2ecf10dcaffevtnk07ttS28gKF",
+    "ses_2ece2744cffeYBu5WFe7MC26An",
+    "ses_2ecda5f31ffeLMYkvMQSTjsmOY",
+    "ses_2ecdab754ffejK0DaacRCDc1ue",
+    "ses_2ecda8d62ffe4KT3MBDflqonmj",
+    "ses_2ecd35d8bffe7GkMPTEqIyozfd",
+    "ses_2ecd00ffaffe0YE9pQP8ujo5SH",
+    "ses_2ecca360dffeUTRfq4bjcoYHEm"
+  ],
+  "plan_name": "jobs-system-marketplace",
+  "agent": "atlas"
+}

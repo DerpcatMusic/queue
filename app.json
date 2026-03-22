@@ -10,7 +10,20 @@
     "ios": {
       "userInterfaceStyle": "automatic",
       "supportsTablet": true,
-      "associatedDomains": ["applinks:join-queue.com"]
+      "associatedDomains": ["applinks:join-queue.com"],
+      "infoPlist": {
+        "ExpoLocalization_supportsRTL": true,
+        "CFBundleLocalizations": ["en", "he", "en", "he"]
+      },
+      "bundleIdentifier": "com.derpcat.queue",
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
+      }
     },
     "android": {
       "package": "com.derpcat.queue",
@@ -36,6 +49,12 @@
             }
           ]
         }
+      ],
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ]
     },
     "androidStatusBar": {
@@ -101,11 +120,14 @@
         "expo-build-properties",
         {
           "android": {
-            "enableProguardInReleaseBuilds": true
+            "enableProguardInReleaseBuilds": true,
+            "enableMinifyInReleaseBuilds": true
           }
         }
       ],
-      "@didit-protocol/sdk-react-native"
+      "@didit-protocol/sdk-react-native",
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "extra": {
       "supportsRTL": true

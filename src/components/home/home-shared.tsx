@@ -179,6 +179,7 @@ type HomeSignalTileProps = {
   detail?: string;
   palette: BrandPalette;
   tone?: "surface" | "accent";
+  icon?: ComponentProps<typeof IconSymbol>["name"];
 };
 
 export function HomeSignalTile({
@@ -187,6 +188,7 @@ export function HomeSignalTile({
   detail,
   palette,
   tone = "surface",
+  icon,
 }: HomeSignalTileProps) {
   const backgroundColor =
     tone === "accent" ? (palette.primarySubtle as string) : (palette.surfaceElevated as string);
@@ -207,16 +209,19 @@ export function HomeSignalTile({
         gap: 3,
       }}
     >
-      <Text
-        style={{
-          ...BrandType.micro,
-          color: labelColor,
-          letterSpacing: 0.6,
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        {icon ? <IconSymbol name={icon} size={13} color={labelColor} /> : null}
+        <Text
+          style={{
+            ...BrandType.micro,
+            color: labelColor,
+            letterSpacing: 0.6,
+            textTransform: "uppercase",
+          }}
+        >
+          {label}
+        </Text>
+      </View>
       <Text
         numberOfLines={1}
         style={{

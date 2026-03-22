@@ -6,7 +6,10 @@ import {
   buildRapydWebhookSignature,
   resolveRapydCheckoutMethodSelectionFromAvailableMethods,
 } from "../../convex/integrations/rapyd/client";
-import { getRapydEnvPresence } from "../../convex/integrations/rapyd/config";
+import {
+  getRapydEnvPresence,
+  resolveRapydCheckoutMode,
+} from "../../convex/integrations/rapyd/config";
 import { buildCanonicalRapydPayload } from "../../convex/integrations/rapyd/payloads";
 
 function withEnv(
@@ -209,6 +212,78 @@ describe("rapyd integration helpers", () => {
         expect(status.readyForPayouts).toBe(true);
         expect(status.hasExplicitWebhookSecret).toBe(true);
         expect(status.effectiveBaseUrlEnvName).toBe("RAPYD_SANDBOX_BASE_URL");
+      },
+    );
+  });
+
+  it("defaults checkout mode to flexible in sandbox (card-capable)", async () => {
+    await withEnv(
+      {
+        RAPYD_MODE: "sandbox",
+        RAPYD_ACCESS_KEY: "ak",
+        RAPYD_SECRET_KEY: "sk",
+        RAPYD_COUNTRY: "IL",
+        RAPYD_COMPLETE_CHECKOUT_URL: "https://example.com/complete",
+        RAPYD_CANCEL_CHECKOUT_URL: "https://example.com/cancel",
+        RAPYD_EWALLET: "ewallet_1",
+        RAPYD_CHECKOUT_MODE: undefined,
+      },
+      () => {
+        expect(resolveRapydCheckoutMode()).toBe("flexible");
+      },
+    );
+  });
+
+  it("defaults checkout mode to a2a in production (fail-closed bank-only)", async () => {
+    await withEnv(
+      {
+        RAPYD_MODE: "production",
+        RAPYD_ACCESS_KEY: "ak",
+        RAPYD_SECRET_KEY: "sk",
+        RAPYD_COUNTRY: "IL",
+        RAPYD_COMPLETE_CHECKOUT_URL: "https://example.com/complete",
+        RAPYD_CANCEL_CHECKOUT_URL: "https://example.com/cancel",
+        RAPYD_EWALLET: "ewallet_1",
+        RAPYD_CHECKOUT_MODE: undefined,
+      },
+      () => {
+        expect(resolveRapydCheckoutMode()).toBe("a2a");
+      },
+    );
+  });
+
+  it("respects explicit RAPYD_CHECKOUT_MODE=flexible override regardless of environment", async () => {
+    await withEnv(
+      {
+        RAPYD_MODE: "production",
+        RAPYD_ACCESS_KEY: "ak",
+        RAPYD_SECRET_KEY: "sk",
+        RAPYD_COUNTRY: "IL",
+        RAPYD_COMPLETE_CHECKOUT_URL: "https://example.com/complete",
+        RAPYD_CANCEL_CHECKOUT_URL: "https://example.com/cancel",
+        RAPYD_EWALLET: "ewallet_1",
+        RAPYD_CHECKOUT_MODE: "flexible",
+      },
+      () => {
+        expect(resolveRapydCheckoutMode()).toBe("flexible");
+      },
+    );
+  });
+
+  it("respects explicit RAPYD_CHECKOUT_MODE=a2a override in sandbox", async () => {
+    await withEnv(
+      {
+        RAPYD_MODE: "sandbox",
+        RAPYD_ACCESS_KEY: "ak",
+        RAPYD_SECRET_KEY: "sk",
+        RAPYD_COUNTRY: "IL",
+        RAPYD_COMPLETE_CHECKOUT_URL: "https://example.com/complete",
+        RAPYD_CANCEL_CHECKOUT_URL: "https://example.com/cancel",
+        RAPYD_EWALLET: "ewallet_1",
+        RAPYD_CHECKOUT_MODE: "a2a",
+      },
+      () => {
+        expect(resolveRapydCheckoutMode()).toBe("a2a");
       },
     );
   });

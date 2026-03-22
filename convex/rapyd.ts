@@ -17,20 +17,15 @@ import {
   normalizeIsoCountryCode,
   resolveHostedPageUrl,
   resolvePaymentsCurrency,
+  resolveRapydCheckoutMode,
   resolveRapydCountry,
   resolveRapydMode,
 } from "./integrations/rapyd/config";
 import { omitUndefined } from "./lib/validation";
 
 const RAPYD_PROVIDER = "rapyd" as const;
-type RapydCheckoutMode = "a2a" | "flexible";
 
 const toAgorot = (amount: number): number => Math.max(0, Math.round(amount * 100));
-
-const resolveRapydCheckoutMode = (): RapydCheckoutMode =>
-  (process.env.RAPYD_CHECKOUT_MODE ?? "a2a").trim().toLowerCase() === "flexible"
-    ? "flexible"
-    : "a2a";
 
 const requireSandboxRapydMode = () => {
   if (resolveRapydMode() !== "sandbox") {

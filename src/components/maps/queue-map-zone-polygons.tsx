@@ -40,13 +40,20 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
     ? Math.max(APPLE_MAP_THEME.overlay.baseOutlineWidth, 1.35)
     : APPLE_MAP_THEME.overlay.baseOutlineWidth;
   const selectedLabelOpacity = 1;
+  const previewFillOpacity = showAllZones
+    ? Math.max(APPLE_MAP_THEME.overlay.touchFillOpacity, 0.1)
+    : 0;
+  const previewOutlineOpacity = showAllZones
+    ? Math.max(APPLE_MAP_THEME.overlay.baseOutlineOpacity, 0.88)
+    : 0;
+  const allZonesLabelOpacity = showAllZones ? 0.92 : 0;
 
   return (
     <GeoJSONSource
       id="queue-zone-source"
       data={zoneGeoJson ?? PIKUD_ZONE_GEOJSON}
       onPress={(event: any) => {
-        if (mode !== "zoneSelect") return;
+        if (mode !== "zoneSelect" || !isEditing) return;
         if (!onPressZone) return;
         const native = event?.nativeEvent ?? event;
         const zoneId = getPressedZoneId(native, zoneIdProperty);
@@ -54,38 +61,34 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
         onPressZone(zoneId);
       }}
     >
-      {showAllZones ? (
-        <>
-          <Layer
-            id="queue-zone-touch"
-            type="fill"
-            paint={{
-              "fill-color": mapPalette.previewFill,
-              "fill-opacity": Math.max(APPLE_MAP_THEME.overlay.touchFillOpacity, 0.1),
-            }}
-          />
-          <Layer
-            id="queue-zone-outline"
-            type="line"
-            paint={{
-              "line-color": mapPalette.zoneOutline,
-              "line-width": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                6,
-                Math.max(1, zoneOutlineWidth * 0.85),
-                10,
-                zoneOutlineWidth,
-                14,
-                zoneOutlineWidth * 1.2,
-              ] as any,
-              "line-opacity": Math.max(APPLE_MAP_THEME.overlay.baseOutlineOpacity, 0.88),
-            }}
-            layout={{ "line-join": "round" }}
-          />
-        </>
-      ) : null}
+      <Layer
+        id="queue-zone-touch"
+        type="fill"
+        paint={{
+          "fill-color": mapPalette.previewFill,
+          "fill-opacity": previewFillOpacity,
+        }}
+      />
+      <Layer
+        id="queue-zone-outline"
+        type="line"
+        paint={{
+          "line-color": mapPalette.zoneOutline,
+          "line-width": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            6,
+            Math.max(1, zoneOutlineWidth * 0.85),
+            10,
+            zoneOutlineWidth,
+            14,
+            zoneOutlineWidth * 1.2,
+          ] as any,
+          "line-opacity": previewOutlineOpacity,
+        }}
+        layout={{ "line-join": "round" }}
+      />
       <Layer
         id="queue-zone-selected-fill"
         type="fill"
@@ -126,31 +129,24 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
           "text-opacity": selectedLabelOpacity,
         }}
       />
-      {showAllZones ? (
-        <Layer
-          id="queue-zone-all-labels"
-          type="symbol"
-          minzoom={9.5 as any}
-          layout={{
-            "symbol-placement": "point",
-            "text-field": [
-              "coalesce",
-              ["get", "engName"],
-              ["get", "hebName"],
-              ["get", "id"],
-            ] as any,
-            "text-size": ["interpolate", ["linear"], ["zoom"], 9.5, 10, 11, 12, 14, 14] as any,
-            "text-allow-overlap": false,
-            "text-font": ["Noto Sans Regular"] as any,
-          }}
-          paint={{
-            "text-color": mapPalette.text,
-            "text-halo-color": mapPalette.surfaceAlt,
-            "text-halo-width": 1.1,
-            "text-opacity": 0.92,
-          }}
-        />
-      ) : null}
+      <Layer
+        id="queue-zone-all-labels"
+        type="symbol"
+        minzoom={9.5 as any}
+        layout={{
+          "symbol-placement": "point",
+          "text-field": ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]] as any,
+          "text-size": ["interpolate", ["linear"], ["zoom"], 9.5, 10, 11, 12, 14, 14] as any,
+          "text-allow-overlap": false,
+          "text-font": ["Noto Sans Regular"] as any,
+        }}
+        paint={{
+          "text-color": mapPalette.text,
+          "text-halo-color": mapPalette.surfaceAlt,
+          "text-halo-width": 1.1,
+          "text-opacity": allZonesLabelOpacity,
+        }}
+      />
     </GeoJSONSource>
   );
 });
