@@ -16,6 +16,7 @@ import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
+import { useMinuteNow } from "@/hooks/use-minute-now";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
 const BOTTOM_TABS_ESTIMATE = 80;
@@ -32,6 +33,8 @@ export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
   const locale = i18n.resolvedLanguage ?? "en";
+  const liveNow = useMinuteNow();
+  const queryNow = Math.floor(liveNow / (60 * 1000)) * 60 * 1000;
   const { safeTop } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
 
@@ -48,6 +51,10 @@ export default function HomeScreen() {
   const myStudioJobs = useQuery(
     api.jobs.getMyStudioJobs,
     canQueryStudio ? { limit: HOME_STUDIO_JOBS_LIMIT } : "skip",
+  );
+  const availableInstructorJobs = useQuery(
+    api.jobs.getAvailableJobsForInstructor,
+    canQueryInstructor ? { limit: 4, now: queryNow } : "skip",
   );
   const instructorHomeStats = useQuery(
     api.home.getMyInstructorHomeStats,
@@ -88,7 +95,7 @@ export default function HomeScreen() {
     activeRole === "instructor"
       ? instructorHomeStats?.isVerified
         ? t("home.instructor.verified")
-        : t("home.instructor.needsPolish")
+        : undefined
       : activeRole === "studio"
         ? t("home.studio.role")
         : undefined;
@@ -183,7 +190,9 @@ export default function HomeScreen() {
       palette={palette}
       currencyFormatter={currencyFormatter}
       t={t}
+      now={liveNow}
       instructorHomeStats={instructorHomeStats}
+      availableInstructorJobs={availableInstructorJobs}
       myStudioJobs={myStudioJobs as HomeRoleContentProps["myStudioJobs"]}
     />
   );

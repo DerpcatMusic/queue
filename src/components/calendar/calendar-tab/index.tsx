@@ -39,12 +39,9 @@ export default function CalendarTabScreen() {
     listRef,
     listItems,
     initialScrollIndex,
-    lessonCountByDay,
     viewabilityConfig,
     onViewableItemsChanged,
     handleTimelineScrollBegin,
-    handleDayPress,
-    handleTodayPress,
     overrideItemLayout,
     isLoading,
     canShowGoogleAgenda,
@@ -54,8 +51,6 @@ export default function CalendarTabScreen() {
   const showExternalCalendarItems =
     visibilityFilters.timedCalendarEvents || visibilityFilters.allDayCalendarEvents;
   const listAnimationKey = `${showExternalCalendarItems}:${selectedDay}:${listItems.length}`;
-  const selectedLessonCount = lessonCountByDay.get(selectedDay) ?? 0;
-  const railColor = (palette.border as string) ?? "#E5E5E5";
 
   useEffect(() => {
     if (Platform.OS === "android") {
@@ -71,7 +66,7 @@ export default function CalendarTabScreen() {
 
   const calendarSheetStep = useMemo(() => {
     const availableHeight = Math.max(screenHeight, 1);
-    const desiredHeight = 176;
+    const desiredHeight = 152;
     return Math.max(0.18, Math.min(0.48, desiredHeight / availableHeight));
   }, [screenHeight]);
 
@@ -83,9 +78,7 @@ export default function CalendarTabScreen() {
         <CalendarSheetHeader
           canShowGoogleAgenda={canShowGoogleAgenda}
           selectedDay={selectedDay}
-          selectedDayIsToday={selectedDay === todayKey}
           showExternalCalendarItems={showExternalCalendarItems}
-          onTodayPress={handleTodayPress}
           onToggleExternalCalendarItems={handleExternalCalendarToggle}
         />
       ),
@@ -101,33 +94,21 @@ export default function CalendarTabScreen() {
     [
       canShowGoogleAgenda,
       handleExternalCalendarToggle,
-      handleTodayPress,
       calendarHorizontalPadding,
       calendarSheetStep,
       palette,
       selectedDay,
       showExternalCalendarItems,
-      todayKey,
     ],
   );
 
   useGlobalTopSheet("calendar", calendarSheetConfig);
 
-  const eventCountLabel =
-    selectedLessonCount === 1
-      ? t("calendarTab.agenda.oneEvent")
-      : t("calendarTab.agenda.eventCount", { count: selectedLessonCount });
-
   const renderItem = useCallback(
     ({ item }: { item: TimelineListItem }) => (
-      <CalendarTimelineRow
-        item={item}
-        todayKey={todayKey}
-        railColor={railColor}
-        onDayPress={handleDayPress}
-      />
+      <CalendarTimelineRow item={item} todayKey={todayKey} />
     ),
-    [handleDayPress, railColor, todayKey],
+    [todayKey],
   );
 
   if (isLoading) {
@@ -157,9 +138,6 @@ export default function CalendarTabScreen() {
       onViewableItemsChanged={onViewableItemsChanged as (info: unknown) => void}
       viewabilityConfig={viewabilityConfig as Record<string, unknown>}
       contentContainerStyle={sheetContentInsets}
-      selectedLessonCount={selectedLessonCount}
-      agendaTitle={t("calendarTab.agenda.title")}
-      eventCountLabel={eventCountLabel}
       renderItem={renderItem}
     />
   );

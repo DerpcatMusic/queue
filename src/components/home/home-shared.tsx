@@ -178,7 +178,7 @@ type HomeSignalTileProps = {
   value: string;
   detail?: string;
   palette: BrandPalette;
-  tone?: "surface" | "accent";
+  tone?: "surface" | "accent" | "success" | "warning" | "danger";
   icon?: ComponentProps<typeof IconSymbol>["name"];
 };
 
@@ -191,9 +191,25 @@ export function HomeSignalTile({
   icon,
 }: HomeSignalTileProps) {
   const backgroundColor =
-    tone === "accent" ? (palette.primarySubtle as string) : (palette.surfaceElevated as string);
+    tone === "accent"
+      ? (palette.primarySubtle as string)
+      : tone === "success"
+        ? (palette.successSubtle as string)
+        : tone === "warning"
+          ? (palette.warningSubtle as string)
+          : tone === "danger"
+            ? (palette.dangerSubtle as string)
+            : (palette.surfaceElevated as string);
   const labelColor =
-    tone === "accent" ? (palette.primary as string) : (palette.textMuted as string);
+    tone === "accent"
+      ? (palette.primary as string)
+      : tone === "success"
+        ? (palette.success as string)
+        : tone === "warning"
+          ? (palette.warning as string)
+          : tone === "danger"
+            ? (palette.danger as string)
+            : (palette.textMuted as string);
   const valueColor = palette.text as string;
 
   return (
@@ -225,9 +241,9 @@ export function HomeSignalTile({
       <Text
         numberOfLines={1}
         style={{
-          ...BrandType.heading,
-          fontSize: 24,
-          lineHeight: 24,
+          ...BrandType.title,
+          fontSize: 21,
+          lineHeight: 23,
           color: valueColor,
           fontVariant: ["tabular-nums"],
         }}

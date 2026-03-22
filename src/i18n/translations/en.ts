@@ -131,6 +131,7 @@ const en = {
     cancel: "Cancel",
     clear: "Clear",
     discard: "Discard",
+    disconnect: "Disconnect",
     discardChanges: "Discard changes?",
     discardChangesMessage: "Your changes are not saved yet.",
     pending: "Pending",
@@ -186,6 +187,8 @@ const en = {
     sections: {
       professional: "Professional",
       professionalDesc: "What studios scan before they book you.",
+      profiles: "Profiles",
+      profilesDesc: "Switch between the profiles already available on this account.",
       operations: "Operations",
       operationsDesc: "Calendar, payouts, and workflow controls.",
       preferences: "Preferences",
@@ -200,6 +203,17 @@ const en = {
     },
     actions: {
       edit: "Edit profile",
+    },
+    switcher: {
+      activeBadge: "Active",
+      instructorActiveHint: "You are using your instructor workspace right now.",
+      studioActiveHint: "You are using your studio workspace right now.",
+      instructorSwitchHint: "Jump into instructor tabs, jobs, and payouts.",
+      studioSwitchHint: "Jump into studio scheduling, ops, and payouts.",
+      setupInstructorTitle: "Set up instructor workspace",
+      setupInstructorHint: "Create the instructor side on this same login.",
+      setupStudioTitle: "Set up studio workspace",
+      setupStudioHint: "Create the studio side on this same login.",
     },
     setup: {
       verifyIdentity: "Verify identity",
@@ -298,13 +312,30 @@ const en = {
           apple: "Apple Calendar",
         },
         autoSync: "Auto-add accepted sessions",
+        pickerDescription: "Pick the calendar Queue should write accepted sessions into.",
         futureNote:
           "Queue syncs to a dedicated device calendar. Cloud sync to Google or Apple depends on your phone account settings.",
         googleConnectRequired: "Connect your Google account to enable direct Google Calendar sync.",
         googleConnectedAs: "Connected as {{email}}",
         applePermissionNote:
           "Apple sync requests calendar access and writes to a dedicated Queue Sessions calendar.",
+        connectAction: "Connect",
+        connectedAction: "Connected",
+        connectHint: "Connect calendar",
+        appleConnectedHint: "Connected on this device",
         lastConnected: "Connected on {{date}}",
+        disconnectGoogleTitle: "Disconnect Google Calendar?",
+        disconnectGoogleBody:
+          "Queue will stop sending new sessions to this Google calendar. Existing Queue-created Google events may also be removed.",
+        disconnectAppleTitle: "Disconnect Apple Calendar?",
+        disconnectAppleBody:
+          "Queue will stop sending new sessions to the device calendar on this phone.",
+        switchToGoogleTitle: "Use Google Calendar instead?",
+        switchToGoogleBody:
+          "Queue will stop sending new sessions to Apple Calendar and connect Google Calendar instead.",
+        switchToAppleTitle: "Use Apple Calendar instead?",
+        switchToAppleBody:
+          "Queue will disconnect Google Calendar and start sending new sessions to the device calendar on this phone.",
         disconnectCleanupWarningTitle: "Google disconnect completed with warnings",
         disconnectCleanupWarningBody:
           "Queue removed the local connection, but some Queue-created Google events could not be deleted automatically.",
@@ -507,8 +538,16 @@ const en = {
       bankNotConnected: "Bank not connected",
       kycVerified: "KYC verified",
       kycRequired: "KYC required",
+      statusAllSet: "All set for payouts",
+      statusBankNeeded: "Connect bank to receive payouts",
+      statusVerificationNeeded: "Identity verification needed",
       kycRequiredHint:
         "Complete identity verification in Profile before connecting bank or withdrawing funds.",
+      verifyToConnectBankTitle: "Identity verification required",
+      verifyToConnectBankBody:
+        "To connect your bank account for payouts, you first need to verify your identity. This takes just a few minutes.",
+      verifyToConnectBankCta: "Verify identity",
+      verificationInProgress: "Verification in progress...",
       onboardingPending:
         "Onboarding submitted. Complete the hosted flow and wait for provider confirmation.",
       onboardingFailed: "Bank onboarding failed. Try again.",
@@ -565,6 +604,9 @@ const en = {
     },
     identityVerification: {
       title: "Identity verification",
+      eyebrow: "Secure payout verification",
+      providerPill: "Powered by Didit native SDK",
+      unlockPill: "Unlocks payouts and banking",
       verifiedLegalName: "Verified legal name",
       verifiedAt: "Verified at {{date}}",
       lastUpdate: "Last update {{date}}",
@@ -572,19 +614,73 @@ const en = {
       refreshStatus: "Refresh verification status",
       resolvingLabel: "Waiting for Didit to confirm your result. Keep this screen open.",
       resolvingTitle: "Finalizing your verification",
-      start: "Start Didit verification",
+      start: "Verify",
       starting: "Starting verification...",
-      resume: "Resume verification",
+      checkStatus: "Check verification status",
       restart: "Start a fresh verification",
       cancelled: "Verification flow was cancelled.",
       invalidReturn: "Didit did not return a valid completion signal.",
       startFailed: "Failed to start Didit verification.",
+      nativeUnavailable: "Native verification is not available in this build. Update the app and try again.",
+      externalLinkFailed: "Could not open the verification reference link.",
       slow: "Verification is taking longer than expected. Pull to refresh or try again shortly.",
       approvedInfo: "Identity verified. Your KYC is now active.",
       declinedInfo: "Didit declined this attempt. Review your document details and try again.",
       finishedWithStatus: "Verification finished with status: {{status}}.",
       confirmFailed: "We could not confirm your latest verification status. Please try again.",
-      timelineTitle: "Live verification activity",
+      primaryHint:
+        "This runs inside our native verification flow. Most people finish in 2 to 3 minutes.",
+      systemTitle: "How we verify you",
+      systemBody:
+        "Queue uses Didit’s native identity verification SDK to scan your document, run liveness checks, and return a verification result inside the app.",
+      systemDocs: "Open Didit docs",
+      systemCode: "View provider repo",
+      prepTitle: "Before you start",
+      prep: {
+        documentTitle: "Bring a real government ID",
+        documentBody:
+          "Use a passport or national identity document that matches the legal name you use for payouts.",
+        faceTitle: "Use good lighting for the selfie check",
+        faceBody:
+          "Didit may ask for a live face scan to confirm the document belongs to you.",
+        timeTitle: "Set aside a couple of minutes",
+        timeBody:
+          "The flow is quickest when your document is clean, readable, and your camera is steady.",
+      },
+      stepsTitle: "What the check does",
+      steps: {
+        one: {
+          title: "1. Scan your ID",
+          body: "We collect the document images Didit needs to verify that the document is real and readable.",
+        },
+        two: {
+          title: "2. Match the person to the document",
+          body: "The native flow may request a selfie or liveness step to reduce impersonation and stolen-ID abuse.",
+        },
+        three: {
+          title: "3. Return the result to Queue",
+          body: "Once the provider finishes, we update your account status so payouts and bank setup can continue.",
+        },
+      },
+      whyTitle: "Why we ask for this",
+      whyIntro:
+        "Because Queue supports paid activity and payout setup, we need to confirm who is receiving money and reduce fraud risk before enabling withdrawals.",
+      why: {
+        payoutsTitle: "Payouts need a verified identity",
+        payoutsBody:
+          "We use this to connect payouts and account review to a real person instead of an anonymous profile.",
+        fraudTitle: "Payment fraud controls in Israel are getting stricter",
+        fraudBody:
+          "Identity checks help reduce account takeovers, stolen cards, and other abuse around digital payments.",
+        complianceTitle: "AML and money-movement rules matter",
+        complianceBody:
+          "Where money is collected or paid out, identity verification supports anti-money-laundering and counter-terror-financing controls.",
+      },
+      whySources: {
+        bankIsrael: "Bank of Israel guidance",
+        amlOrder: "Israel AML order",
+      },
+      timelineTitle: "Recent verification updates",
       timelinePending: "Pending",
       timelineProcessed: "Processed",
       timelineError: "Error",
@@ -609,7 +705,7 @@ const en = {
         pending:
           "Your submission was received. We are waiting for a final review result from Didit.",
         in_progress:
-          "Your verification session is active. Resume the flow and we will keep this screen locked until the final result arrives.",
+          "Your last attempt did not finish. Start a fresh secure verification to continue.",
         abandoned:
           "The verification flow was cancelled before completion. Start again when you are ready.",
         expired: "This verification session expired. Start a new one to continue.",
@@ -679,6 +775,15 @@ const en = {
     phoneNumberRequiredForSignUp: "Your account requires a phone number. Add it to continue.",
     magicLinkSent: "Magic link sent to {{email}}. Open it on this device to continue.",
     magicLinkVerified: "Magic link verified. Signing you in...",
+    addAccountTitle: "Add account",
+    addAccountSubtitle: "Sign in to another account and link it to this login.",
+    addAccountBody:
+      "Use email, magic link, Google, or Apple to connect another existing account to the one you are already using.",
+    addInstructorAccountBody:
+      "Sign in to the instructor account you want to link to this login.",
+    addStudioAccountBody:
+      "Sign in to the studio account you want to link to this login.",
+    addAccountLinked: "Account linked. Finishing setup...",
     magicLinkUnavailableNative:
       "Email magic links are not supported in Expo native apps, so this flow uses one-time codes.",
     backToSignInMethods: "Back to sign-in methods",
@@ -752,6 +857,10 @@ const en = {
       verifyNow: "Verify now",
       later: "Later",
     },
+    workspaceSetupInstructorHint:
+      "Set up the instructor side of this account. You can polish bio, rates, and verification afterward.",
+    workspaceSetupStudioHint:
+      "Set up the studio side of this account. Just add the studio name and location to get started.",
     push: {
       description: "Enable push notifications to get new job alerts as soon as studios post them.",
       requesting: "Requesting permission...",

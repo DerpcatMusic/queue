@@ -42,9 +42,11 @@ const socialLinksValidator = v.object({
   linkedin: v.optional(v.string()),
   website: v.optional(v.string()),
 });
+const appRoleValidator = v.union(v.literal("instructor"), v.literal("studio"));
 
 type SocialLinkKey = (typeof SOCIAL_LINK_KEYS)[number];
 type SocialLinksValue = Partial<Record<SocialLinkKey, string>>;
+type AppRole = "instructor" | "studio";
 
 function normalizeEmail(email: string | undefined): string | undefined {
   if (!email) return undefined;
@@ -84,11 +86,50 @@ function toOptionalSocialLinksPayload(
   return Object.keys(socialLinks).length > 0 ? socialLinks : undefined;
 }
 
-function toCurrentUserPayload(user: Doc<"users">) {
+function mergeOwnedRoles(
+  seededRoles: AppRole[],
+  userRole: Doc<"users">["role"],
+  discoveredRoles?: Partial<Record<AppRole, boolean>>,
+) {
+  const roleSet = new Set<AppRole>(seededRoles);
+
+  if (userRole === "instructor" || userRole === "studio") {
+    roleSet.add(userRole);
+  }
+  if (discoveredRoles?.instructor) {
+    roleSet.add("instructor");
+  }
+  if (discoveredRoles?.studio) {
+    roleSet.add("studio");
+  }
+
+  return (["instructor", "studio"] as const).filter((role) => roleSet.has(role));
+}
+
+type UserProfileCtx = QueryCtx | MutationCtx;
+
+async function resolveOwnedRoles(ctx: UserProfileCtx, user: Doc<"users">) {
+  const seededRoles = (user.roles ?? []).filter(
+    (role): role is AppRole => role === "instructor" || role === "studio",
+  );
+
+  const [instructorProfile, studioProfile] = await Promise.all([
+    getUniqueInstructorProfileByUserId(ctx, user._id),
+    getUniqueStudioProfileByUserId(ctx, user._id),
+  ]);
+
+  return mergeOwnedRoles(seededRoles, user.role, {
+    instructor: instructorProfile !== null,
+    studio: studioProfile !== null,
+  });
+}
+
+function toCurrentUserPayload(user: Doc<"users">, roles: AppRole[]) {
   return {
     _id: user._id,
     _creationTime: user._creationTime,
     role: user.role,
+    roles,
     onboardingComplete: user.onboardingComplete,
     isActive: user.isActive,
     createdAt: user.createdAt,
@@ -106,8 +147,6 @@ function toCurrentUserPayload(user: Doc<"users">) {
     }),
   };
 }
-
-type UserProfileCtx = QueryCtx | MutationCtx;
 
 async function getUniqueInstructorProfileByUserId(
   ctx: UserProfileCtx,
@@ -185,6 +224,7 @@ export const getCurrentUser = query({
       _id: v.id("users"),
       _creationTime: v.number(),
       role: v.union(v.literal("pending"), v.literal("instructor"), v.literal("studio")),
+      roles: v.array(appRoleValidator),
       onboardingComplete: v.boolean(),
       email: v.optional(v.string()),
       fullName: v.optional(v.string()),
@@ -208,7 +248,9 @@ export const getCurrentUser = query({
       return null;
     }
 
-    return toCurrentUserPayload(user);
+    const roles = await resolveOwnedRoles(ctx, user);
+
+    return toCurrentUserPayload(user, roles);
   },
 });
 
@@ -219,6 +261,7 @@ export const setMyRole = mutation({
   returns: v.id("users"),
   handler: async (ctx, args) => {
     const existing = await requireCurrentUser(ctx);
+    const existingRoles = await resolveOwnedRoles(ctx, existing);
 
     if (!existing) {
       throw new ConvexError("User must be synced before role selection");
@@ -228,17 +271,45 @@ export const setMyRole = mutation({
       return existing._id;
     }
 
-    if (existing.role !== "pending") {
-      throw new ConvexError("Role is already set and cannot be changed");
-    }
-
     await ctx.db.patch("users", existing._id, {
       role: args.role,
-      onboardingComplete: false,
+      roles: mergeOwnedRoles(existingRoles, args.role),
+      onboardingComplete: existingRoles.includes(args.role) ? existing.onboardingComplete : false,
       updatedAt: Date.now(),
     });
 
     return existing._id;
+  },
+});
+
+export const switchActiveRole = mutation({
+  args: {
+    role: appRoleValidator,
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    role: appRoleValidator,
+    roles: v.array(appRoleValidator),
+  }),
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+    const roles = await resolveOwnedRoles(ctx, user);
+
+    if (!roles.includes(args.role)) {
+      throw new ConvexError("Profile not found for requested role");
+    }
+
+    await ctx.db.patch("users", user._id, {
+      role: args.role,
+      roles,
+      updatedAt: Date.now(),
+    });
+
+    return {
+      ok: true,
+      role: args.role,
+      roles,
+    };
   },
 });
 

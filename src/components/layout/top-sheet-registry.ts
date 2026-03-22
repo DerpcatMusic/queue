@@ -117,7 +117,7 @@ const DEFAULT_TOP_SHEET_CONFIGS: Record<string, TopSheetTabConfig> = {
 export const DEFAULT_SHEET_PADDING_TOP = 140;
 
 type TopSheetRegistryContextValue = {
-  overrides: Record<string, TopSheetTabOverrideEntry | undefined>;
+  overrides: Record<string, TopSheetTabOverrideEntry[] | undefined>;
   replaceConfig: (tabId: string, ownerId: string, config: TopSheetTabOverride | null) => void;
   clearConfig: (tabId: string, ownerId: string) => void;
 };
@@ -125,38 +125,43 @@ type TopSheetRegistryContextValue = {
 const TopSheetRegistryContext = createContext<TopSheetRegistryContextValue | null>(null);
 
 export function GlobalTopSheetProvider({ children }: PropsWithChildren) {
-  const [overrides, setOverrides] = useState<Record<string, TopSheetTabOverrideEntry | undefined>>(
-    {},
-  );
+  const [overrides, setOverrides] = useState<
+    Record<string, TopSheetTabOverrideEntry[] | undefined>
+  >({});
 
   const replaceConfig = useCallback(
     (tabId: string, ownerId: string, config: TopSheetTabOverride | null) => {
       setOverrides((current) => {
-        const currentEntry = current[tabId];
+        const currentEntries = current[tabId] ?? [];
 
         if (config === null) {
-          if (!currentEntry || currentEntry.ownerId !== ownerId) {
+          const nextEntries = currentEntries.filter((entry) => entry.ownerId !== ownerId);
+          if (nextEntries.length === currentEntries.length) {
             return current;
           }
           const next = { ...current };
-          delete next[tabId];
+          if (nextEntries.length === 0) {
+            delete next[tabId];
+          } else {
+            next[tabId] = nextEntries;
+          }
           return next;
         }
 
-        if (
-          currentEntry &&
-          currentEntry.ownerId === ownerId &&
-          areSheetOverridesEqual(currentEntry.config, config)
-        ) {
+        const existingEntry = currentEntries.find((entry) => entry.ownerId === ownerId);
+        if (existingEntry && areSheetOverridesEqual(existingEntry.config, config)) {
           return current;
         }
 
         return {
           ...current,
-          [tabId]: {
-            ownerId,
-            config: { ...config },
-          },
+          [tabId]: [
+            ...currentEntries.filter((entry) => entry.ownerId !== ownerId),
+            {
+              ownerId,
+              config: { ...config },
+            },
+          ],
         };
       });
     },
@@ -165,12 +170,17 @@ export function GlobalTopSheetProvider({ children }: PropsWithChildren) {
 
   const clearConfig = useCallback((tabId: string, ownerId: string) => {
     setOverrides((current) => {
-      const currentEntry = current[tabId];
-      if (!currentEntry || currentEntry.ownerId !== ownerId) {
+      const currentEntries = current[tabId] ?? [];
+      const nextEntries = currentEntries.filter((entry) => entry.ownerId !== ownerId);
+      if (nextEntries.length === currentEntries.length) {
         return current;
       }
       const next = { ...current };
-      delete next[tabId];
+      if (nextEntries.length === 0) {
+        delete next[tabId];
+      } else {
+        next[tabId] = nextEntries;
+      }
       return next;
     });
   }, []);
@@ -197,10 +207,10 @@ function useTopSheetRegistry() {
 
 export function resolveTabSheetConfig(
   tabId: string,
-  overrides: Record<string, TopSheetTabOverrideEntry | undefined>,
+  overrides: Record<string, TopSheetTabOverrideEntry[] | undefined>,
 ): TopSheetTabConfig | null {
   const baseConfig = DEFAULT_TOP_SHEET_CONFIGS[tabId];
-  const overrideConfig = overrides[tabId]?.config;
+  const overrideConfig = overrides[tabId]?.[overrides[tabId]!.length - 1]?.config;
 
   if (!baseConfig && !overrideConfig) {
     return null;
@@ -241,7 +251,7 @@ export function useGlobalTopSheet(
 
 export function useResolvedTabSheetConfig(tabId: string | null) {
   const { overrides } = useTopSheetRegistry();
-  const activeEntry = tabId ? overrides[tabId] : undefined;
+  const activeEntry = tabId ? overrides[tabId]?.[overrides[tabId]!.length - 1] : undefined;
   return useMemo(
     () =>
       tabId

@@ -55,11 +55,11 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
         <Text
           numberOfLines={2}
           style={{
-            ...BrandType.display,
-            fontSize: 32,
-            lineHeight: 36,
+            ...BrandType.heading,
+            fontSize: 28,
+            lineHeight: 32,
             color: palette.onPrimary as string,
-            letterSpacing: -0.6,
+            letterSpacing: -0.3,
             paddingTop: 2,
           }}
         >
@@ -69,9 +69,9 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
         {subtitle ? (
           <Text
             style={{
-              ...BrandType.caption,
+              ...BrandType.body,
               color: palette.onPrimary as string,
-              opacity: 0.72,
+              opacity: 0.7,
               marginTop: 2,
             }}
           >

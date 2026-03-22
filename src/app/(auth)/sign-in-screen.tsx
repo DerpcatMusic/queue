@@ -22,8 +22,6 @@ type Step = "email" | "code";
 const OTP_LENGTH = 6;
 const GOOGLE_RED = "#EA4335";
 
-WebBrowser.maybeCompleteAuthSession();
-
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message;
   return fallback;
@@ -85,6 +83,10 @@ export default function SignInScreen() {
   const { isAuthenticated } = useConvexAuth();
   const { signIn } = useAuthActions();
   const handledMagicCodeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    WebBrowser.maybeCompleteAuthSession();
+  }, []);
 
   const oauthRedirectTo = useMemo(
     () =>

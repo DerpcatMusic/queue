@@ -19,8 +19,6 @@ import {
   type StudioControllerJob,
 } from "./use-studio-feed-controller.helpers";
 
-WebBrowser.maybeCompleteAuthSession();
-
 export type StudioJobsTimeFilter = "all" | "active" | "past";
 
 type UseStudioFeedControllerArgs = {
@@ -28,6 +26,10 @@ type UseStudioFeedControllerArgs = {
 };
 
 export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
+  useEffect(() => {
+    WebBrowser.maybeCompleteAuthSession();
+  }, []);
+
   const currentUser = useQuery(api.users.getCurrentUser);
   const { consumeReturn: consumeCheckoutReturn, latestReturn: latestCheckoutReturn } =
     useRapydReturn("checkout");

@@ -1,7 +1,7 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useMutation, useQuery } from "convex/react";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -35,6 +35,7 @@ import { useBrand } from "@/hooks/use-brand";
 import { useLocationResolution } from "@/hooks/use-location-resolution";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import { omitUndefined } from "@/lib/omit-undefined";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import {
   isPushRegistrationError,
   registerForPushNotificationsAsync,
@@ -59,6 +60,10 @@ function toDisplayLabel(value: string) {
 function trimOptional(value: string) {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function isOnboardingRole(value: string | undefined): value is OnboardingRole {
+  return value === "instructor" || value === "studio";
 }
 
 function getOnboardingPushErrorMessage(error: unknown, t: TFunction): string {
@@ -170,6 +175,7 @@ export default function OnboardingScreen() {
 
 function OnboardingScreenContent() {
   const router = useRouter();
+  const { role: roleParam } = useLocalSearchParams<{ role?: string }>();
   const { t, i18n } = useTranslation();
 
   const palette = useBrand();
@@ -202,6 +208,36 @@ function OnboardingScreenContent() {
     targetStep: null,
   });
   const [selectedRole, setSelectedRole] = useState<OnboardingRole | null>(null);
+  const requestedRole = isOnboardingRole(roleParam) ? roleParam : null;
+
+  const ownedRoles = currentUser?.roles ?? [];
+  const isAdditionalProfileSetup =
+    requestedRole !== null && !ownedRoles.includes(requestedRole);
+  const isForcedWorkspaceSetup = isAdditionalProfileSetup && ownedRoles.length > 0;
+
+  useEffect(() => {
+    if (requestedRole) {
+      setSelectedRole((current) => current ?? requestedRole);
+    }
+  }, [requestedRole]);
+
+  useEffect(() => {
+    if (!isForcedWorkspaceSetup || !requestedRole) {
+      return;
+    }
+
+    setSelectedRole(requestedRole);
+    setStep(1);
+    setVisibleStep(1);
+    setDetailsReady(true);
+    setShowLocationSection(false);
+    setStepTransition({
+      direction: 1,
+      phase: "idle",
+      targetStep: null,
+    });
+  }, [isForcedWorkspaceSetup, requestedRole]);
+
   const effectiveRole: OnboardingRole | null =
     selectedRole ??
     (currentUser?.role === "instructor" || currentUser?.role === "studio"
@@ -209,12 +245,12 @@ function OnboardingScreenContent() {
       : null);
   const role = effectiveRole;
   const isInstructorFlow = effectiveRole === "instructor";
-  const totalSteps = isInstructorFlow ? 3 : 2;
+  const totalSteps = isForcedWorkspaceSetup ? 1 : isInstructorFlow ? 3 : 2;
   const displayedStep = stepTransition.phase === "idle" ? step : visibleStep;
-  const currentStep = displayedStep + 1;
+  const currentStep = isForcedWorkspaceSetup ? Math.max(1, displayedStep) : displayedStep + 1;
 
   const onboardingSheetTitle =
-    displayedStep === 0
+    displayedStep === 0 && !isForcedWorkspaceSetup
       ? t("onboarding.title")
       : displayedStep === 2
         ? t("onboarding.verification.title")
@@ -222,7 +258,7 @@ function OnboardingScreenContent() {
           ? t("onboarding.studioDetailsTitle")
           : t("onboarding.instructorDetailsTitle");
   const onboardingSheetSubtitle =
-    displayedStep === 0
+    displayedStep === 0 && !isForcedWorkspaceSetup
       ? t("onboarding.subtitle")
       : displayedStep === 2
         ? t("onboarding.verification.body")
@@ -326,7 +362,11 @@ function OnboardingScreenContent() {
     return <Redirect href="/sign-in" />;
   }
 
-  if (currentUser.onboardingComplete && !(isInstructorFlow && step === 2)) {
+  if (
+    currentUser.onboardingComplete &&
+    !(isInstructorFlow && step === 2) &&
+    !isAdditionalProfileSetup
+  ) {
     return <Redirect href="/" />;
   }
 
@@ -634,6 +674,10 @@ function OnboardingScreenContent() {
     );
   };
 
+  const handleBackFromWorkspaceSetup = () => {
+    router.replace("/");
+  };
+
   const submitInstructor = async () => {
     if (!displayName.trim()) {
       setErrorMessage(t("onboarding.errors.displayNameRequired"));
@@ -671,6 +715,11 @@ function OnboardingScreenContent() {
           hourlyRateExpectation,
         }),
       });
+
+      if (isForcedWorkspaceSetup) {
+        router.replace(buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile));
+        return;
+      }
 
       setStep(2);
     } catch (error) {
@@ -738,7 +787,7 @@ function OnboardingScreenContent() {
         ...omitUndefined({ contactPhone: trimOptional(studioContactPhone) }),
       });
 
-      router.replace("/");
+      router.replace(buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile));
     } catch (error) {
       const message =
         error instanceof Error && error.message
@@ -840,6 +889,11 @@ function OnboardingScreenContent() {
       ]}
     >
       <ThemedText type="subtitle">{t("onboarding.instructorDetailsTitle")}</ThemedText>
+      {isForcedWorkspaceSetup ? (
+        <ThemedText style={{ color: palette.textMuted }}>
+          {t("onboarding.workspaceSetupInstructorHint")}
+        </ThemedText>
+      ) : null}
       <KitTextField
         label={t("onboarding.displayName")}
         value={displayName}
@@ -847,21 +901,25 @@ function OnboardingScreenContent() {
         autoCapitalize="words"
       />
 
-      <KitTextField
-        label={t("onboarding.bioOptional")}
-        value={bio}
-        onChangeText={setBio}
-        multiline
-        numberOfLines={4}
-        style={styles.multilineInput}
-      />
+      {!isForcedWorkspaceSetup ? (
+        <KitTextField
+          label={t("onboarding.bioOptional")}
+          value={bio}
+          onChangeText={setBio}
+          multiline
+          numberOfLines={4}
+          style={styles.multilineInput}
+        />
+      ) : null}
 
-      <KitTextField
-        label={t("onboarding.hourlyRateOptional")}
-        value={hourlyRate}
-        onChangeText={setHourlyRate}
-        keyboardType="decimal-pad"
-      />
+      {!isForcedWorkspaceSetup ? (
+        <KitTextField
+          label={t("onboarding.hourlyRateOptional")}
+          value={hourlyRate}
+          onChangeText={setHourlyRate}
+          keyboardType="decimal-pad"
+        />
+      ) : null}
 
       <View style={styles.sectionBlock}>
         <ThemedText type="defaultSemiBold">{t("onboarding.sportsTitle")}</ThemedText>
@@ -954,17 +1012,24 @@ function OnboardingScreenContent() {
       ]}
     >
       <ThemedText type="subtitle">{t("onboarding.studioDetailsTitle")}</ThemedText>
+      {isForcedWorkspaceSetup ? (
+        <ThemedText style={{ color: palette.textMuted }}>
+          {t("onboarding.workspaceSetupStudioHint")}
+        </ThemedText>
+      ) : null}
       <KitTextField
         label={t("onboarding.studioName")}
         value={studioName}
         onChangeText={setStudioName}
       />
 
-      <KitTextField
-        label={t("onboarding.phoneOptional")}
-        value={studioContactPhone}
-        onChangeText={setStudioContactPhone}
-      />
+      {!isForcedWorkspaceSetup ? (
+        <KitTextField
+          label={t("onboarding.phoneOptional")}
+          value={studioContactPhone}
+          onChangeText={setStudioContactPhone}
+        />
+      ) : null}
 
       {showLocationSection ? (
         <>
@@ -1116,6 +1181,10 @@ function OnboardingScreenContent() {
                   tone="secondary"
                   fullWidth
                   onPress={() => {
+                    if (isForcedWorkspaceSetup) {
+                      handleBackFromWorkspaceSetup();
+                      return;
+                    }
                     setStep(0);
                     setVisibleStep(0);
                     setDetailsReady(false);
@@ -1189,6 +1258,10 @@ function OnboardingScreenContent() {
                   tone="secondary"
                   fullWidth
                   onPress={() => {
+                    if (isForcedWorkspaceSetup) {
+                      handleBackFromWorkspaceSetup();
+                      return;
+                    }
                     setStep(0);
                     setVisibleStep(0);
                     setDetailsReady(false);
@@ -1277,7 +1350,7 @@ function OnboardingScreenContent() {
               tone="secondary"
               fullWidth
               onPress={() => {
-                router.replace("/");
+                router.replace(buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile));
               }}
             />
           </View>

@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { useBrand } from "@/hooks/use-brand";
 import { formatTime } from "@/lib/jobs-utils";
@@ -10,46 +10,29 @@ import {
   formatDayHeading,
   formatDaySubtitle,
   hashSport,
-  RAIL_DOT_DAY,
-  RAIL_LEFT,
 } from "./calendar-date-utils";
 
 type CalendarTimelineRowProps = {
   item: TimelineListItem;
   todayKey: string;
-  railColor: string;
-  onDayPress: (dayKey: string) => void;
 };
 
-function CalendarTimelineRow({ item, todayKey, railColor, onDayPress }: CalendarTimelineRowProps) {
+function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
 
   if (item.kind === "dayHeader") {
     const isToday = item.dayKey === todayKey;
-    const dotColor = isToday ? (palette.primary as string) : (palette.textMuted as string);
 
     return (
       <Animated.View entering={FadeInUp.duration(180)} style={calendarTimelineStyles.timelineRow}>
-        <View style={calendarTimelineStyles.railGutter}>
-          <View style={[calendarTimelineStyles.railLine, { backgroundColor: railColor }]} />
-          <View
-            style={[
-              calendarTimelineStyles.railDotDay,
-              { backgroundColor: dotColor },
-              isToday && {
-                backgroundColor: palette.primary as string,
-                width: RAIL_DOT_DAY + 2,
-                height: RAIL_DOT_DAY + 2,
-                borderRadius: (RAIL_DOT_DAY + 2) / 2,
-                left: RAIL_LEFT - (RAIL_DOT_DAY + 2) / 2,
-                marginTop: -((RAIL_DOT_DAY + 2) / 2),
-              },
-            ]}
-          />
-        </View>
         <View style={calendarTimelineStyles.dayHeaderContent}>
-          <Text style={[calendarTimelineStyles.dayHeading, { color: palette.text as string }]}>
+          <Text
+            style={[
+              calendarTimelineStyles.dayHeading,
+              { color: isToday ? (palette.primary as string) : (palette.text as string) },
+            ]}
+          >
             {formatDayHeading(item.dayKey, i18n.language)}
           </Text>
           <Text
@@ -65,9 +48,6 @@ function CalendarTimelineRow({ item, todayKey, railColor, onDayPress }: Calendar
   if (item.kind === "empty") {
     return (
       <Animated.View entering={FadeInUp.duration(160)} style={calendarTimelineStyles.timelineRow}>
-        <View style={calendarTimelineStyles.railGutter}>
-          <View style={[calendarTimelineStyles.railLine, { backgroundColor: railColor }]} />
-        </View>
         <View
           style={[
             calendarTimelineStyles.emptyStateCard,
@@ -117,19 +97,7 @@ function CalendarTimelineRow({ item, todayKey, railColor, onDayPress }: Calendar
 
   return (
     <Animated.View entering={FadeInUp.duration(200)} style={calendarTimelineStyles.timelineRow}>
-      <View style={calendarTimelineStyles.railGutter}>
-        <View style={[calendarTimelineStyles.railLine, { backgroundColor: railColor }]} />
-        <View style={[calendarTimelineStyles.railDotLesson, { backgroundColor: accent }]} />
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t("calendarTab.lessonRowAccessibility", {
-          sport: row.sport,
-          start: formatTime(row.startTime, i18n.language),
-          end: formatTime(row.endTime, i18n.language),
-        })}
-        accessibilityHint={t("calendarTab.lessonRowAccessibilityHint")}
-        onPress={() => onDayPress(item.dayKey)}
+      <View
         style={[
           calendarTimelineStyles.lessonCard,
           { backgroundColor: palette.surfaceElevated as string },
@@ -195,7 +163,7 @@ function CalendarTimelineRow({ item, todayKey, railColor, onDayPress }: Calendar
             ) : null}
           </View>
         </View>
-      </Pressable>
+      </View>
     </Animated.View>
   );
 }

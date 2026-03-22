@@ -166,6 +166,8 @@ const he = {
     sections: {
       professional: "מקצועי",
       professionalDesc: "מה שסטודיואים רואים לפני שהם בוחרים בכם.",
+      profiles: "פרופילים",
+      profilesDesc: "עברו בין הפרופילים שכבר זמינים בחשבון הזה.",
       operations: "תפעול",
       operationsDesc: "יומן, משיכות ושליטה בזרימת העבודה.",
       preferences: "העדפות",
@@ -180,6 +182,17 @@ const he = {
     },
     actions: {
       edit: "עריכת פרופיל",
+    },
+    switcher: {
+      activeBadge: "פעיל",
+      instructorActiveHint: "כרגע אתם עובדים מתוך סביבת המדריך/ה.",
+      studioActiveHint: "כרגע אתם עובדים מתוך סביבת הסטודיו.",
+      instructorSwitchHint: "מעבר מהיר ללשוניות, למשרות ולמשיכות של מדריכים.",
+      studioSwitchHint: "מעבר מהיר ללוח התפעול, ליומן ולמשיכות של הסטודיו.",
+      setupInstructorTitle: "הגדרת סביבת מדריך/ה",
+      setupInstructorHint: "צרו את צד המדריך/ה על אותו חיבור קיים.",
+      setupStudioTitle: "הגדרת סביבת סטודיו",
+      setupStudioHint: "צרו את צד הסטודיו על אותו חיבור קיים.",
     },
     setup: {
       verifyIdentity: "אימות זהות",
@@ -276,13 +289,29 @@ const he = {
           apple: "Apple Calendar",
         },
         autoSync: "הוספה אוטומטית של שיעורים מאושרים",
+        pickerDescription: "בחרו את היומן שאליו Queue תכתוב שיעורים מאושרים.",
         futureNote:
           "Queue מסנכרנת ליומן ייעודי במכשיר. סנכרון ענן ל-Google או Apple תלוי בהגדרות החשבון במכשיר.",
         googleConnectRequired: "חברו חשבון Google כדי להפעיל סנכרון ישיר ל-Google Calendar.",
         googleConnectedAs: "מחובר כ-{{email}}",
         applePermissionNote:
           "סנכרון Apple יבקש הרשאת יומן וישמור אירועים ביומן Queue Sessions ייעודי.",
+        connectAction: "חיבור",
+        connectedAction: "מחובר",
+        connectHint: "חיבור יומן",
+        appleConnectedHint: "מחובר במכשיר הזה",
         lastConnected: "חובר בתאריך {{date}}",
+        disconnectGoogleTitle: "לנתק את Google Calendar?",
+        disconnectGoogleBody:
+          "Queue תפסיק לשלוח שיעורים חדשים ליומן Google הזה. ייתכן שגם אירועי Queue קיימים ב-Google יוסרו.",
+        disconnectAppleTitle: "לנתק את Apple Calendar?",
+        disconnectAppleBody: "Queue תפסיק לשלוח שיעורים חדשים ליומן במכשיר הזה.",
+        switchToGoogleTitle: "לעבור ל-Google Calendar?",
+        switchToGoogleBody:
+          "Queue תפסיק לשלוח שיעורים חדשים ל-Apple Calendar ותחבר את Google Calendar במקום.",
+        switchToAppleTitle: "לעבור ל-Apple Calendar?",
+        switchToAppleBody:
+          "Queue תנתק את Google Calendar ותתחיל לשלוח שיעורים חדשים ליומן במכשיר הזה.",
         disconnectCleanupWarningTitle: "ניתוק Google הושלם עם אזהרות",
         disconnectCleanupWarningBody:
           "Queue הסירה את החיבור המקומי, אבל לא הצליחה למחוק אוטומטית חלק מאירועי Google שנוצרו על ידי Queue.",
@@ -475,7 +504,15 @@ const he = {
       bankNotConnected: "חשבון בנק לא מחובר",
       kycVerified: "KYC מאומת",
       kycRequired: "נדרש KYC",
+      statusAllSet: "הכל מוכן למשיכות",
+      statusBankNeeded: "חברו בנק לקבלת משיכות",
+      statusVerificationNeeded: "נדרש אימות זהות",
       kycRequiredHint: "השלימו אימות זהות בפרופיל לפני חיבור בנק או משיכת כספים.",
+      verifyToConnectBankTitle: "נדרש אימות זהות",
+      verifyToConnectBankBody:
+        "כדי לחבר את חשבון הבנק שלכם למשיכות, עליכם קודם לאמת את זהותכם. התהליך לוקח מספר דקות בלבד.",
+      verifyToConnectBankCta: "אימות זהות",
+      verificationInProgress: "האימות בתהליך...",
       onboardingPending: "האונבורדינג נשלח. השלימו את הזרימה והמתינו לאישור הספק.",
       onboardingFailed: "אונבורדינג הבנק נכשל. נסו שוב.",
       available: "זמין",
@@ -529,6 +566,9 @@ const he = {
     },
     identityVerification: {
       title: "אימות זהות",
+      eyebrow: "אימות מאובטח למשיכות",
+      providerPill: "מופעל על ידי Didit ב-SDK מקומי",
+      unlockPill: "פותח משיכות וחיבורי בנק",
       verifiedLegalName: "שם חוקי מאומת",
       verifiedAt: "אומת בתאריך {{date}}",
       lastUpdate: "עדכון אחרון {{date}}",
@@ -536,19 +576,72 @@ const he = {
       refreshStatus: "רענון סטטוס האימות",
       resolvingLabel: "ממתינים ל-Didit כדי לאשר את התוצאה. השאירו את המסך פתוח.",
       resolvingTitle: "מסיימים את האימות שלכם",
-      start: "התחלת אימות Didit",
+      start: "אימות",
       starting: "מתחיל אימות...",
-      resume: "חזרה לאימות",
+      checkStatus: "בדיקת סטטוס האימות",
       restart: "התחלת אימות חדש",
       cancelled: "תהליך האימות בוטל.",
       invalidReturn: "Didit לא החזירה אות סיום תקין.",
       startFailed: "התחלת אימות Didit נכשלה.",
+      nativeUnavailable: "אימות מקומי לא זמין בבילד הזה. עדכנו את האפליקציה ונסו שוב.",
+      externalLinkFailed: "לא הצלחנו לפתוח את קישור הייחוס של האימות.",
       slow: "האימות לוקח יותר זמן מהצפוי. משכו לריענון או נסו שוב בקרוב.",
       approvedInfo: "הזהות אומתה. ה-KYC שלכם פעיל עכשיו.",
       declinedInfo: "Didit דחתה את הניסיון הזה. בדקו את פרטי המסמך ונסו שוב.",
       finishedWithStatus: "האימות הסתיים עם סטטוס: {{status}}.",
       confirmFailed: "לא הצלחנו לאשר את סטטוס האימות האחרון. נסו שוב.",
-      timelineTitle: "פעילות אימות חיה",
+      primaryHint: "האימות רץ בתוך הזרימה המקומית של האפליקציה. לרוב זה לוקח 2 עד 3 דקות.",
+      systemTitle: "איך האימות עובד",
+      systemBody:
+        "Queue משתמשת ב-SDK המקומי של Didit כדי לסרוק מסמך, לבצע בדיקות חיות, ולהחזיר תוצאת אימות מתוך האפליקציה.",
+      systemDocs: "פתיחת תיעוד Didit",
+      systemCode: "צפייה במאגר הספק",
+      prepTitle: "מה להכין מראש",
+      prep: {
+        documentTitle: "הכינו מסמך ממשלתי אמיתי",
+        documentBody:
+          "השתמשו בדרכון או בתעודת זהות שתואמים לשם החוקי שמשמש למשיכות.",
+        faceTitle: "השתמשו בתאורה טובה לסריקת הפנים",
+        faceBody:
+          "Didit עשויה לבקש בדיקת סלפי או חיות כדי לוודא שהמסמך שייך לכם.",
+        timeTitle: "פנו כמה דקות",
+        timeBody:
+          "הזרימה מהירה יותר כשהמסמך נקי, קריא, והמצלמה יציבה.",
+      },
+      stepsTitle: "מה הבדיקה עושה",
+      steps: {
+        one: {
+          title: "1. סריקת מסמך",
+          body: "אנחנו אוספים את תמונות המסמך ש-Didit צריכה כדי לבדוק שהמסמך אמיתי וקריא.",
+        },
+        two: {
+          title: "2. התאמת האדם למסמך",
+          body: "הזרימה המקומית עשויה לבקש סלפי או בדיקת חיות כדי לצמצם התחזות ושימוש במסמכים גנובים.",
+        },
+        three: {
+          title: "3. החזרת התוצאה ל-Queue",
+          body: "כשהספק מסיים, אנחנו מעדכנים את סטטוס החשבון כדי שמשיכות וחיבור בנק יוכלו להמשיך.",
+        },
+      },
+      whyTitle: "למה אנחנו מבקשים את זה",
+      whyIntro:
+        "כי Queue תומכת בפעילות בתשלום ובהגדרת משיכות, אנחנו צריכים לוודא מי מקבל כסף ולצמצם סיכוני הונאה לפני הפעלת משיכות.",
+      why: {
+        payoutsTitle: "משיכות דורשות זהות מאומתת",
+        payoutsBody:
+          "כך אנחנו קושרים משיכות ובדיקות חשבון לאדם אמיתי במקום לפרופיל אנונימי.",
+        fraudTitle: "בקרות הונאה בתשלומים בישראל מתחזקות",
+        fraudBody:
+          "בדיקות זהות עוזרות לצמצם השתלטות על חשבונות, כרטיסים גנובים, וניצול לרעה סביב תשלומים דיגיטליים.",
+        complianceTitle: "יש חשיבות לכללי AML והעברת כספים",
+        complianceBody:
+          "כשכסף נאסף או משולם החוצה, אימות זהות תומך בבקרות למניעת הלבנת הון ומימון טרור.",
+      },
+      whySources: {
+        bankIsrael: "הנחיות בנק ישראל",
+        amlOrder: "צו איסור הלבנת הון",
+      },
+      timelineTitle: "עדכוני אימות אחרונים",
       timelinePending: "ממתין",
       timelineProcessed: "עובד",
       timelineError: "שגיאה",
@@ -570,7 +663,7 @@ const he = {
           "Didit קיבלה את ההגשה שלכם ובודקת אותה כעת. המסך הזה ימשיך לעקוב אחרי שתחזרו מהזרימה.",
         pending: "ההגשה התקבלה. אנחנו מחכים לתוצאת בדיקה סופית מ-Didit.",
         in_progress:
-          "סשן האימות פעיל. חזרו לזרימה ואנחנו נשאיר את המסך הזה נעול עד שתתקבל תוצאה סופית.",
+          "הניסיון האחרון לא הושלם. התחילו אימות מאובטח חדש כדי להמשיך.",
         abandoned: "זרימת האימות בוטלה לפני השלמה. התחילו שוב כשתהיו מוכנים.",
         expired: "תוקף סשן האימות פג. התחילו סשן חדש כדי להמשיך.",
         default: "השלימו אימות זהות כדי לפתוח KYC וגישה למשיכות.",
@@ -648,6 +741,15 @@ const he = {
     sendMagicLinkButton: "Send magic link",
     magicLinkSent: "Magic link sent to {{email}}. Open it on this device to continue.",
     magicLinkVerified: "Magic link verified. Signing you in...",
+    addAccountTitle: "הוספת חשבון",
+    addAccountSubtitle: "התחברו לחשבון נוסף וקשרו אותו לחיבור הנוכחי.",
+    addAccountBody:
+      "השתמשו באימייל, קישור קסם, Google או Apple כדי לחבר חשבון קיים נוסף לחשבון שבו אתם כבר משתמשים.",
+    addInstructorAccountBody:
+      "התחברו לחשבון המדריך/ה שברצונכם לקשר לחיבור הזה.",
+    addStudioAccountBody:
+      "התחברו לחשבון הסטודיו שברצונכם לקשר לחיבור הזה.",
+    addAccountLinked: "החשבון קושר. משלימים את ההגדרה...",
     magicLinkUnavailableNative:
       "Email magic links are not supported in Expo native apps, so this flow uses one-time codes.",
     backToSignInMethods: "Back to sign-in methods",
@@ -711,6 +813,10 @@ const he = {
       verifyNow: "אמתו עכשיו",
       later: "אחר כך",
     },
+    workspaceSetupInstructorHint:
+      "מגדירים את צד המדריך/ה של החשבון הזה. אפשר להשלים ביוגרפיה, תעריף ואימות אחר כך.",
+    workspaceSetupStudioHint:
+      "מגדירים את צד הסטודיו של החשבון הזה. מספיק להוסיף שם סטודיו ומיקום כדי להתחיל.",
     push: {
       description: "הפעילו התראות Push כדי לקבל התראות על משרות חדשות ברגע שהן מתפרסמות.",
       requesting: "מבקש הרשאה...",
@@ -1255,6 +1361,7 @@ const he = {
     cancel: "ביטול",
     clear: "ניקוי",
     discard: "מחיקה",
+    disconnect: "ניתוק",
     discardChanges: "למחוק שינויים?",
     discardChangesMessage: "השינויים שלכם עדיין לא נשמרו.",
     pending: "בהמתנה",

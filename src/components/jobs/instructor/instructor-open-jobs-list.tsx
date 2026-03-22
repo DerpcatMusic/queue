@@ -1,61 +1,25 @@
 import type { TFunction } from "i18next";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { DotStatusPill, MetricCell } from "@/components/home/home-shared";
-import { ActionButton } from "@/components/ui/action-button";
-import { KitSurface } from "@/components/ui/kit";
-import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-import { getZoneLabel } from "@/constants/zones";
-import type { Id } from "@/convex/_generated/dataModel";
-import { toSportLabel } from "@/convex/constants";
-import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import {
-  type BoostPreset,
-  formatDateWithWeekday,
-  formatTime,
-  getApplicationStatusTranslationKey,
-  getBoostPresentation,
-  getExpiryPresentation,
-  type JobClosureReason,
-} from "@/lib/jobs-utils";
-
-type OpenJob = {
-  jobId: Id<"jobs">;
-  sport: string;
-  studioName: string;
-  studioImageUrl?: string | null;
-  applicationStatus?: "pending" | "accepted" | "rejected" | "withdrawn";
-  startTime: number;
-  endTime: number;
-  zone: string;
-  note?: string | null;
-  pay: number;
-  applicationDeadline?: number;
-  closureReason?: JobClosureReason;
-  boostPreset?: BoostPreset;
-  boostBonusAmount?: number;
-  boostActive?: boolean;
-};
+  InstructorJobCard,
+  type InstructorMarketplaceJob,
+} from "@/components/jobs/instructor/instructor-job-card";
+import type { BrandPalette } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 
 type InstructorOpenJobsListProps = {
-  jobs: OpenJob[];
+  jobs: InstructorMarketplaceJob[];
   locale: string;
   zoneLanguage: "en" | "he";
   palette: BrandPalette;
   applyingJobId: Id<"jobs"> | null;
+  now: number;
   onApply: (jobId: Id<"jobs">) => void;
+  onOpenStudio: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
   t: TFunction;
-};
-
-const STATUS_DOT: Record<
-  NonNullable<OpenJob["applicationStatus"]>,
-  { color: keyof BrandPalette; background: keyof BrandPalette }
-> = {
-  pending: { color: "warning", background: "warningSubtle" },
-  accepted: { color: "success", background: "successSubtle" },
-  rejected: { color: "danger", background: "dangerSubtle" },
-  withdrawn: { color: "textMuted", background: "surface" },
 };
 
 export function InstructorOpenJobsList({
@@ -64,7 +28,9 @@ export function InstructorOpenJobsList({
   zoneLanguage,
   palette,
   applyingJobId,
+  now,
   onApply,
+  onOpenStudio,
   t,
 }: InstructorOpenJobsListProps) {
   const { isDesktopWeb: isWideWeb } = useLayoutBreakpoint();
@@ -75,199 +41,30 @@ export function InstructorOpenJobsList({
     <View
       style={{
         gap: isWideWeb ? 10 : BrandSpacing.md,
-        paddingHorizontal: BrandSpacing.lg,
+        paddingHorizontal: BrandSpacing.sm,
       }}
     >
-      {jobs.map((job, index) => {
-        const tone = job.applicationStatus ? STATUS_DOT[job.applicationStatus] : null;
-        const dotColor = tone ? (palette[tone.color] as string) : undefined;
-        const pillBackground = tone ? (palette[tone.background] as string) : undefined;
-        const shiftWindow = `${formatDateWithWeekday(job.startTime, locale)} · ${formatTime(
-          job.startTime,
-          locale,
-        )}-${formatTime(job.endTime, locale)}`;
-        const boost = getBoostPresentation(
-          job.pay,
-          job.boostPreset,
-          job.boostBonusAmount,
-          job.boostActive,
-        );
-        const expiry = getExpiryPresentation(job.applicationDeadline, locale);
-
-        return (
-          <Animated.View
-            key={`animated-${job.jobId}`}
-            entering={FadeInUp.delay(Math.min(index, 6) * 36)
-              .duration(280)
-              .springify()
-              .damping(18)}
-          >
-            <KitSurface
-              tone="base"
-              padding={BrandSpacing.lg}
-              gap={0}
-              style={{
-                borderRadius: isWideWeb ? 28 : BrandRadius.card,
-                borderCurve: "continuous",
-                backgroundColor: tone
-                  ? (palette.surface as string)
-                  : (palette.surfaceAlt as string),
-                paddingHorizontal: isWideWeb ? 18 : BrandSpacing.lg,
-                paddingVertical: isWideWeb ? 18 : 16,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: isWideWeb ? "row" : "column",
-                  alignItems: isWideWeb ? "center" : "stretch",
-                  gap: isWideWeb ? 16 : 12,
-                }}
-              >
-                <View
-                  style={{
-                    flex: isWideWeb ? 1.7 : undefined,
-                    minWidth: 0,
-                    flexDirection: "row",
-                    alignItems: "flex-start",
-                    gap: 12,
-                  }}
-                >
-                  <ProfileAvatar
-                    imageUrl={job.studioImageUrl}
-                    fallbackName={job.studioName}
-                    palette={palette}
-                    size={isWideWeb ? 46 : 44}
-                    roundedSquare
-                  />
-
-                  <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                      <Text
-                        style={{
-                          ...BrandType.heading,
-                          fontSize: isWideWeb ? 24 : 22,
-                          lineHeight: isWideWeb ? 26 : 25,
-                          color: palette.text as string,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {toSportLabel(job.sport as never)}
-                      </Text>
-                      {dotColor && pillBackground ? (
-                        <DotStatusPill
-                          backgroundColor={pillBackground}
-                          color={dotColor}
-                          label={t(getApplicationStatusTranslationKey(job.applicationStatus!))}
-                        />
-                      ) : null}
-                      {boost.badgeKey ? (
-                        <DotStatusPill
-                          backgroundColor={palette.primarySubtle as string}
-                          color={palette.primary as string}
-                          label={t(boost.badgeKey, boost.badgeInterpolation)}
-                        />
-                      ) : null}
-                    </View>
-
-                    <Text
-                      style={{
-                        ...BrandType.bodyStrong,
-                        fontSize: 14,
-                        lineHeight: 17,
-                        color: palette.primary as string,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {job.studioName}
-                    </Text>
-
-                    {job.note ? (
-                      <Text
-                        style={{
-                          ...BrandType.caption,
-                          color: palette.textMuted as string,
-                        }}
-                        numberOfLines={isWideWeb ? 1 : 2}
-                      >
-                        {job.note}
-                      </Text>
-                    ) : null}
-
-                    {expiry ? (
-                      <Text
-                        style={{
-                          ...BrandType.caption,
-                          color: expiry.isExpired
-                            ? (palette.textMuted as string)
-                            : (palette.primary as string),
-                        }}
-                        numberOfLines={isWideWeb ? 1 : 2}
-                      >
-                        {t(expiry.key, expiry.interpolation)}
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-
-                <View style={{ width: isWideWeb ? 220 : undefined }}>
-                  <MetricCell
-                    icon="calendar.badge.clock"
-                    label={t("jobsTab.card.shift")}
-                    value={shiftWindow}
-                    palette={palette}
-                  />
-                </View>
-
-                <View style={{ width: isWideWeb ? 150 : undefined }}>
-                  <MetricCell
-                    icon="mappin.and.ellipse"
-                    label={t("jobsTab.card.zone")}
-                    value={getZoneLabel(job.zone, zoneLanguage)}
-                    palette={palette}
-                  />
-                </View>
-
-                <View style={{ width: isWideWeb ? 135 : undefined }}>
-                  <MetricCell
-                    align={isWideWeb ? "flex-end" : "flex-start"}
-                    icon="creditcard.fill"
-                    label={t("jobsTab.card.payLabel")}
-                    value={t("jobsTab.card.pay", { value: boost.totalPay })}
-                    palette={palette}
-                  />
-                </View>
-
-                <View
-                  style={{
-                    width: isWideWeb ? 154 : undefined,
-                    marginLeft: isWideWeb ? "auto" : undefined,
-                    alignItems: isWideWeb ? "flex-end" : "flex-start",
-                  }}
-                >
-                  {job.applicationStatus ? (
-                    <DotStatusPill
-                      backgroundColor={pillBackground ?? (palette.surface as string)}
-                      color={dotColor ?? (palette.textMuted as string)}
-                      label={t(getApplicationStatusTranslationKey(job.applicationStatus))}
-                    />
-                  ) : (
-                    <ActionButton
-                      label={
-                        applyingJobId === job.jobId
-                          ? t("jobsTab.actions.applying")
-                          : t("jobsTab.actions.apply")
-                      }
-                      onPress={() => onApply(job.jobId)}
-                      palette={palette}
-                      loading={applyingJobId === job.jobId}
-                    />
-                  )}
-                </View>
-              </View>
-            </KitSurface>
-          </Animated.View>
-        );
-      })}
+      {jobs.map((job, index) => (
+        <Animated.View
+          key={`animated-${job.jobId}`}
+          entering={FadeInUp.delay(Math.min(index, 6) * 36)
+            .duration(280)
+            .springify()
+            .damping(18)}
+        >
+          <InstructorJobCard
+            job={job}
+            locale={locale}
+            zoneLanguage={zoneLanguage}
+            palette={palette}
+            applyingJobId={applyingJobId}
+            now={now}
+            onApply={onApply}
+            onOpenStudio={onOpenStudio}
+            t={t}
+          />
+        </Animated.View>
+      ))}
     </View>
   );
 }

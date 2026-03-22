@@ -62,6 +62,7 @@ export default defineSchema({
   ...authTables,
   users: defineTable({
     role: v.union(v.literal("pending"), v.literal("instructor"), v.literal("studio")),
+    roles: v.optional(v.array(v.union(v.literal("instructor"), v.literal("studio")))),
     onboardingComplete: v.boolean(),
     email: v.optional(v.string()),
     fullName: v.optional(v.string()),

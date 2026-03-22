@@ -35,6 +35,16 @@ export type BrandPalette = {
     accentSubtle: string;
     eventSwatches: Array<{ background: string; title: string }>;
   };
+  // Payments (computed, not a seed)
+  payments: {
+    accent: string;
+    accentSubtle: string;
+  };
+  // Didit (computed, not a seed)
+  didit: {
+    accent: string;
+    accentSubtle: string;
+  };
 };
 
 // ─── Explicit semantic palettes ──────────────────────────────────────────────
@@ -71,6 +81,14 @@ const ExplicitBrandPalette: Record<ResolvedBrandScheme, BrandPalette> = {
         { background: "#FFE3E8", title: "#D43B4E" },
       ],
     },
+    payments: {
+      accent: "#10B981",
+      accentSubtle: "#D1FAE5",
+    },
+    didit: {
+      accent: "#2F80FF",
+      accentSubtle: "#E5F0FF",
+    },
   },
   dark: {
     appBg: "#0B0910",
@@ -102,6 +120,14 @@ const ExplicitBrandPalette: Record<ResolvedBrandScheme, BrandPalette> = {
         { background: "#43311A", title: "#FFD28A" },
         { background: "#411A24", title: "#FF9EAA" },
       ],
+    },
+    payments: {
+      accent: "#34D399",
+      accentSubtle: "#064E3B",
+    },
+    didit: {
+      accent: "#2F80FF",
+      accentSubtle: "#1E3A5F",
     },
   },
 };
@@ -289,3 +315,49 @@ export const BrandFonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+// ─── Mesh Gradient Presets ────────────────────────────────────────────────────
+
+export type MeshGradientPreset = "primary" | "primaryDark";
+
+export const BrandMeshGradient = {
+  light: {
+    primary: {
+      // Uses exact brand purple #8B5CF6 with lighter tints
+      gradient: `radial-gradient(ellipse at 25% 25%, #E8DDFF 0%, transparent 55%),
+                  radial-gradient(ellipse at 80% 20%, #A78BFA 0%, transparent 50%),
+                  radial-gradient(ellipse at 70% 80%, #C4B5FD 0%, transparent 45%),
+                  #8B5CF6`,
+      grainOpacity: 0.05,
+    },
+    primaryDark: {
+      // Slightly darker variant
+      gradient: `radial-gradient(ellipse at 25% 25%, #DDD6FE 0%, transparent 55%),
+                 radial-gradient(ellipse at 80% 20%, #C4B5FD 0%, transparent 50%),
+                 radial-gradient(ellipse at 70% 80%, #A78BFA 0%, transparent 45%),
+                 #8B5CF6`,
+      grainOpacity: 0.06,
+    },
+  },
+  dark: {
+    primary: {
+      // Uses exact brand purple #8F6AFB with lighter tints
+      gradient: `radial-gradient(ellipse at 25% 25%, #E8DDFF 0%, transparent 55%),
+                 radial-gradient(ellipse at 80% 20%, #C4B5FD 0%, transparent 50%),
+                 radial-gradient(ellipse at 70% 80%, #DDD6FE 0%, transparent 45%),
+                 #8F6AFB`,
+      grainOpacity: 0.06,
+    },
+    primaryDark: {
+      // Lighter variant for dark surfaces
+      gradient: `radial-gradient(ellipse at 25% 25%, #F0EDFF 0%, transparent 55%),
+                 radial-gradient(ellipse at 80% 20%, #E8DDFF 0%, transparent 50%),
+                 radial-gradient(ellipse at 70% 80%, #DDD6FE 0%, transparent 45%),
+                 #A78BFA`,
+      grainOpacity: 0.08,
+    },
+  },
+} as const satisfies Record<
+  ResolvedBrandScheme,
+  Record<MeshGradientPreset, { gradient: string; grainOpacity: number }>
+>;

@@ -2,30 +2,25 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { ActionButton } from "@/components/ui/action-button";
-import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBrand } from "@/hooks/use-brand";
 import {
   calendarSheetStyles,
-  formatMonthYear,
+  formatSelectedDayDate,
   formatSelectedDayLabel,
 } from "./calendar-date-utils";
 
 type CalendarSheetHeaderProps = {
   canShowGoogleAgenda: boolean;
   selectedDay: string;
-  selectedDayIsToday: boolean;
   showExternalCalendarItems: boolean;
-  onTodayPress: () => void;
   onToggleExternalCalendarItems: () => void;
 };
 
 function CalendarSheetHeader({
   canShowGoogleAgenda,
   selectedDay,
-  selectedDayIsToday,
   showExternalCalendarItems,
-  onTodayPress,
   onToggleExternalCalendarItems,
 }: CalendarSheetHeaderProps) {
   const { t, i18n } = useTranslation();
@@ -53,34 +48,42 @@ function CalendarSheetHeader({
               },
             ]}
           >
-            {formatMonthYear(selectedDay, i18n.language)}
+            {formatSelectedDayDate(selectedDay, i18n.language)}
           </Text>
         </View>
         <View style={calendarSheetStyles.actionsColumn}>
-          {selectedDayIsToday ? null : (
-            <ActionButton
-              label={t("common.today")}
-              onPress={onTodayPress}
-              palette={palette}
-              tone="secondary"
-            />
-          )}
           {canShowGoogleAgenda ? (
-            <IconButton
+            <ActionButton
               accessibilityLabel={t("calendarTab.filters.button")}
               onPress={onToggleExternalCalendarItems}
-              tone={showExternalCalendarItems ? "primary" : "secondary"}
-              size={52}
+              palette={palette}
+              tone="secondary"
+              shape="square"
+              size="lg"
               icon={
-                <IconSymbol
-                  name={showExternalCalendarItems ? "calendar.badge.minus" : "calendar.badge.plus"}
-                  size={20}
-                  color={
-                    showExternalCalendarItems
-                      ? (palette.onPrimary as string)
-                      : (palette.text as string)
-                  }
-                />
+                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                  <IconSymbol
+                    name={
+                      showExternalCalendarItems ? "calendar.badge.minus" : "calendar.badge.plus"
+                    }
+                    size={20}
+                    color={
+                      showExternalCalendarItems
+                        ? (palette.primary as string)
+                        : (palette.textMuted as string)
+                    }
+                  />
+                  <Text
+                    style={{
+                      ...calendarSheetStyles.googleBadge,
+                      color: showExternalCalendarItems
+                        ? (palette.primary as string)
+                        : (palette.textMuted as string),
+                    }}
+                  >
+                    {t("calendarTab.timeline.googleBadge")}
+                  </Text>
+                </View>
               }
             />
           ) : null}

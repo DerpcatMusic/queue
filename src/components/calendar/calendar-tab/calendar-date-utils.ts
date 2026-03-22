@@ -37,7 +37,14 @@ export function formatMonthYear(dayKey: string, locale: string) {
 export function formatSelectedDayLabel(dayKey: string, locale: string) {
   return new Date(dayKeyToTimestamp(dayKey)).toLocaleDateString(locale, {
     weekday: "long",
+  });
+}
+
+export function formatSelectedDayDate(dayKey: string, locale: string) {
+  return new Date(dayKeyToTimestamp(dayKey)).toLocaleDateString(locale, {
     day: "numeric",
+    month: "long",
+    year: "numeric",
   });
 }
 
@@ -78,49 +85,12 @@ export const calendarTimelineStyles = {
     gap: 10,
   },
   timelineRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    paddingLeft: 8,
-  },
-  railGutter: {
-    width: RAIL_LEFT * 2,
-    alignItems: "center",
-    position: "relative",
-  },
-  railLine: {
-    position: "absolute",
-    width: 2,
-    top: 0,
-    bottom: 0,
-    left: RAIL_LEFT - 1,
-    borderRadius: 1,
-    opacity: 0.3,
-  },
-  railDotDay: {
-    position: "absolute",
-    left: RAIL_LEFT - RAIL_DOT_DAY / 2,
-    top: "50%",
-    width: RAIL_DOT_DAY,
-    height: RAIL_DOT_DAY,
-    borderRadius: RAIL_DOT_DAY / 2,
-    marginTop: -(RAIL_DOT_DAY / 2),
-    zIndex: 1,
-  },
-  railDotLesson: {
-    position: "absolute",
-    left: RAIL_LEFT - RAIL_DOT_LESSON / 2,
-    top: "50%",
-    width: RAIL_DOT_LESSON,
-    height: RAIL_DOT_LESSON,
-    borderRadius: RAIL_DOT_LESSON / 2,
-    marginTop: -(RAIL_DOT_LESSON / 2),
-    zIndex: 1,
+    paddingHorizontal: 0,
   },
   dayHeaderContent: {
-    flex: 1,
+    gap: 2,
     paddingTop: 10,
     paddingBottom: 4,
-    paddingRight: 16,
   },
   dayHeading: {
     fontSize: 18,
@@ -247,6 +217,13 @@ export const calendarSheetStyles = {
     flexDirection: "row",
     alignItems: "center",
     gap: BrandSpacing.xs,
+  },
+  googleBadge: {
+    ...BrandType.micro,
+    marginTop: -1,
+    fontSize: 9,
+    lineHeight: 10,
+    letterSpacing: 0.3,
   },
   summaryCountPill: {
     borderRadius: BrandRadius.pill,
