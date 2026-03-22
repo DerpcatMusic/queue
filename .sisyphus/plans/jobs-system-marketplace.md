@@ -664,7 +664,7 @@ Max Concurrent: 5
   - Files: `convex/jobs.ts`, `convex/schema.ts`, `tests/contracts/*`
   - Pre-commit: `bun test tests/contracts && bun run typecheck`
 
-- [ ] 9. Studio cancellation and expiry state transitions
+- [x] 9. Studio cancellation and expiry state transitions
 
   **What to do**:
   - Implement studio cancellation for open and filled jobs, preserving side effects like application-state updates, notification hooks, stats recomputation, and calendar sync.
@@ -731,7 +731,7 @@ Max Concurrent: 5
   - Files: `convex/jobs.ts`, `convex/schema.ts`, `tests/contracts/*`
   - Pre-commit: `bun test tests/contracts && bun run typecheck`
 
-- [ ] 10. Query and filter updates for instructor vs studio visibility
+- [x] 10. Query and filter updates for instructor vs studio visibility
 
   **What to do**:
   - Update backend queries/selectors so instructors only receive live/open opportunities while studios retain expired and cancelled history as designed.
