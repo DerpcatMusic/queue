@@ -633,6 +633,12 @@ export const getAvailableJobsForInstructor = query({
       isRecurring: v.optional(v.boolean()),
       cancellationDeadlineHours: v.optional(v.number()),
       applicationDeadline: v.optional(v.number()),
+      closureReason: v.optional(
+        v.union(v.literal("expired"), v.literal("studio_cancelled"), v.literal("filled")),
+      ),
+      boostPreset: v.optional(v.union(v.literal("small"), v.literal("medium"), v.literal("large"))),
+      boostBonusAmount: v.optional(v.number()),
+      boostActive: v.optional(v.boolean()),
       applicationStatus: v.optional(
         v.union(
           v.literal("pending"),
@@ -685,9 +691,6 @@ export const getAvailableJobsForInstructor = query({
           continue;
         }
         if (job.startTime <= now) continue;
-        if (job.applicationDeadline !== undefined && job.applicationDeadline < now) {
-          continue;
-        }
         matchingById.set(job._id, job);
       }
     }
@@ -770,6 +773,10 @@ export const getAvailableJobsForInstructor = query({
           isRecurring: job.isRecurring,
           cancellationDeadlineHours: job.cancellationDeadlineHours,
           applicationDeadline: job.applicationDeadline,
+          closureReason: job.closureReason,
+          boostPreset: job.boostPreset,
+          boostBonusAmount: job.boostBonusAmount,
+          boostActive: job.boostActive,
           applicationStatus: application?.status,
         }),
       };
@@ -1261,6 +1268,13 @@ export const getMyStudioJobsWithApplications = query({
       postedAt: v.number(),
       applicationsCount: v.number(),
       pendingApplicationsCount: v.number(),
+      applicationDeadline: v.optional(v.number()),
+      closureReason: v.optional(
+        v.union(v.literal("expired"), v.literal("studio_cancelled"), v.literal("filled")),
+      ),
+      boostPreset: v.optional(v.union(v.literal("small"), v.literal("medium"), v.literal("large"))),
+      boostBonusAmount: v.optional(v.number()),
+      boostActive: v.optional(v.boolean()),
       applications: v.array(
         v.object({
           applicationId: v.id("jobApplications"),
@@ -1387,6 +1401,11 @@ export const getMyStudioJobsWithApplications = query({
         ...omitUndefined({
           timeZone: job.timeZone,
           note: job.note,
+          applicationDeadline: job.applicationDeadline,
+          closureReason: job.closureReason,
+          boostPreset: job.boostPreset,
+          boostBonusAmount: job.boostBonusAmount,
+          boostActive: job.boostActive,
         }),
         applications: sortedApplications.map((application) => {
           const profile = profileById.get(String(application.instructorId));
@@ -2000,7 +2019,8 @@ export const autoExpireUnfilledJob = internalMutation({
     }
 
     const studio = await ctx.db.get("studioProfiles", job.studioId);
-    const expireMinutes = studio?.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
+    const expireMinutes =
+      job.expiryOverrideMinutes ?? studio?.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
     const expireCutoff = job.startTime - expireMinutes * 60 * 1000;
 
     if (Date.now() < expireCutoff) {
@@ -2152,16 +2172,31 @@ export const cancelFilledJob = mutation({
         .withIndex("by_job", (q) => q.eq("jobId", job._id))
         .collect();
 
-      for (const application of applications) {
-        if (application.status === "pending") {
-          await ctx.db.patch("jobApplications", application._id, {
-            status: "rejected",
-            updatedAt: Date.now(),
+      const pendingApplications = applications.filter((a) => a.status === "pending");
+      for (const application of pendingApplications) {
+        await ctx.db.patch("jobApplications", application._id, {
+          status: "rejected",
+          updatedAt: Date.now(),
+        });
+      }
+
+      await recomputeJobApplicationStats(ctx, job);
+
+      for (const application of pendingApplications) {
+        const instructor = await ctx.db.get("instructorProfiles", application.instructorId);
+        if (instructor) {
+          await enqueueUserNotification(ctx, {
+            recipientUserId: instructor.userId,
+            kind: "application_rejected",
+            title: "Application rejected",
+            body: `The studio cancelled this ${toDisplayLabel(job.sport)} job.`,
+            jobId: job._id,
+            applicationId: application._id,
           });
         }
       }
 
-      await recomputeJobApplicationStats(ctx, job);
+      await scheduleGoogleCalendarSyncForUser(ctx, studio.userId);
       return { ok: true };
     }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import type { Id } from "../../convex/_generated/dataModel";
-import { applyToJob, cancelFilledJob, postJob } from "../../convex/jobs";
+import { applyToJob, autoExpireUnfilledJob, cancelFilledJob, postJob } from "../../convex/jobs";
 import {
   type ScheduledCall,
   InMemoryConvexDb,
@@ -386,6 +386,69 @@ describe("RED-PHASE: studio cancellation contracts", () => {
       restoreNow();
     }
   });
+
+  it("open job cancellation rejects pending applications and triggers calendar sync", async () => {
+    const restoreNow = freezeNow(FIXED_NOW);
+    try {
+      const db = new InMemoryConvexDb();
+      const seeded = await seedCancellationScenario(db);
+      const schedulerCalls: ScheduledCall[] = [];
+      const runMutationCalls: any[] = [];
+
+      const openJobId = (await db.insert("jobs", {
+        studioId: seeded.studioId,
+        zone: "5001557",
+        sport: "hiit",
+        startTime: FIXED_NOW + 30 * 60 * 1000,
+        endTime: FIXED_NOW + 90 * 60 * 1000,
+        pay: 250,
+        status: "open",
+        postedAt: FIXED_NOW - 10 * 60 * 1000,
+      })) as Id<"jobs">;
+
+      const pendingAppId = (await db.insert("jobApplications", {
+        jobId: openJobId,
+        instructorId: seeded.instructorA,
+        status: "pending",
+        appliedAt: FIXED_NOW - 5 * 60 * 1000,
+        updatedAt: FIXED_NOW - 5 * 60 * 1000,
+      })) as Id<"jobApplications">;
+
+      const ctx = createMutationCtx({
+        db,
+        userId: seeded.studioUserId,
+        schedulerCalls,
+        runMutationCalls,
+        runMutationImpl: async (fn: any, args: any) => {
+          runMutationCalls.push({ fn, args });
+          return undefined;
+        },
+      });
+
+      await expect(
+        (cancelFilledJob as any)._handler(ctx, {
+          jobId: openJobId,
+        }),
+      ).resolves.toEqual({ ok: true });
+
+      const job = await db.get("jobs", openJobId);
+      expect(job?.status).toBe("cancelled");
+      expect(job?.closureReason).toBe("studio_cancelled");
+
+      const app = await db.get("jobApplications", pendingAppId);
+      expect(app?.status).toBe("rejected");
+
+      const notifications = db.list("userNotifications");
+      const rejectedNotifications = notifications.filter(
+        (n) => n.applicationId === pendingAppId && n.kind === "application_rejected",
+      );
+      expect(rejectedNotifications.length).toBe(1);
+
+      expect(schedulerCalls.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      restoreNow();
+    }
+  });
 });
 
 describe("RED-PHASE: expiry fallback contracts", () => {
@@ -506,6 +569,96 @@ describe("RED-PHASE: expiry fallback contracts", () => {
       expect(schedulerCalls.length).toBeGreaterThanOrEqual(3);
       const expiryCall = schedulerCalls[2];
       expect(expiryCall!.delayMs).toBe(expectedDelayMs);
+    } finally {
+      restoreNow();
+    }
+  });
+
+  it("autoExpireUnfilledJob re-check uses per-job override when present", async () => {
+    const restoreNow = freezeNow(FIXED_NOW);
+    try {
+      const db = new InMemoryConvexDb();
+      const seeded = await seedExpiryScenario(db);
+      const schedulerCalls: ScheduledCall[] = [];
+
+      const jobId = (await db.insert("jobs", {
+        studioId: seeded.studioId,
+        zone: "5001557",
+        sport: "hiit",
+        startTime: JOB_START_TIME,
+        endTime: JOB_END_TIME,
+        pay: 250,
+        status: "open",
+        postedAt: FIXED_NOW - 10 * 60 * 1000,
+        expiryOverrideMinutes: 60,
+      })) as Id<"jobs">;
+
+      const laterNow = FIXED_NOW + 65 * 60 * 1000;
+      const restoreLater = freezeNow(laterNow);
+
+      const expireCtx = createMutationCtx({
+        db,
+        userId: seeded.studioUserId,
+        schedulerCalls,
+      });
+
+      const result = await (autoExpireUnfilledJob as any)._handler(expireCtx, {
+        jobId,
+      });
+
+      expect(result.expired).toBe(true);
+      const job = await db.get("jobs", jobId);
+      expect(job?.status).toBe("cancelled");
+      expect(job?.closureReason).toBe("expired");
+
+      restoreLater();
+    } finally {
+      restoreNow();
+    }
+  });
+
+  it("autoExpireUnfilledJob uses studio default when no per-job override", async () => {
+    const restoreNow = freezeNow(FIXED_NOW);
+    try {
+      const db = new InMemoryConvexDb();
+      const { studioUserId, studioId } = await seedExpiryScenario(db);
+
+      await db.patch("studioProfiles", studioId, {
+        autoExpireMinutesBefore: 45,
+      });
+
+      const schedulerCalls: ScheduledCall[] = [];
+
+      const jobId = (await db.insert("jobs", {
+        studioId,
+        zone: "5001557",
+        sport: "hiit",
+        startTime: JOB_START_TIME,
+        endTime: JOB_END_TIME,
+        pay: 250,
+        status: "open",
+        postedAt: FIXED_NOW - 10 * 60 * 1000,
+      })) as Id<"jobs">;
+
+      const laterNow = FIXED_NOW + 75 * 60 * 1000;
+      const restoreLater = freezeNow(laterNow);
+
+      const expireCtx = createMutationCtx({
+        db,
+        userId: studioUserId,
+        schedulerCalls,
+      });
+
+      const result = await (autoExpireUnfilledJob as any)._handler(expireCtx, {
+        jobId,
+      });
+
+      expect(result.expired).toBe(true);
+      const job = await db.get("jobs", jobId);
+      expect(job?.status).toBe("cancelled");
+      expect(job?.closureReason).toBe("expired");
+
+      restoreLater();
     } finally {
       restoreNow();
     }
