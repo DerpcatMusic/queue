@@ -633,3 +633,49 @@ await ctx.db.insert("jobs", {
 2. **OCC handling**: In-memory harness does NOT simulate OCC - tests verify sequential final state
 3. **Loser handling**: When job is already filled, losing applicant gets `status: "rejected"` and a DB record is created (test expects 2 applications: 1 accepted, 1 rejected)
 4. **Existing pending applications**: If instructor has a pending application and auto-accept triggers, the pending app is rejected before creating accepted app
+
+---
+
+## 13. T9 Implementation: Closure Reason Persistence and Notification Hooks (2026-03-22)
+
+### Changes Made to `convex/jobs.ts`
+
+**autoExpireUnfilledJob (lines 2009-2057)**:
+1. Added `closureReason: "expired"` to the job patch
+2. Added rejection of all pending applications after cancelling the job
+3. Added `recomputeJobApplicationStats` call
+4. Added notification to all applicants (not just studio) with message: "This job expired before an instructor was confirmed. Your application was not accepted."
+
+**cancelFilledJob for filled jobs (lines 2180-2183)**:
+1. Added `closureReason: "studio_cancelled"` to the patch for filled job cancellation
+
+### Verification
+- All 95 contract tests pass (`bun test tests/contracts --filter "cancel|expiry"`)
+- No LSP diagnostics on jobs.ts
+- Lint passes
+
+### Implementation Details
+
+**autoExpireUnfilledJob notification pattern**:
+```typescript
+for (const application of applications) {
+  const instructor = await ctx.db.get("instructorProfiles", application.instructorId);
+  if (instructor) {
+    await enqueueUserNotification(ctx, {
+      recipientUserId: instructor.userId,
+      kind: "lesson_completed",
+      title: "Job expired",
+      body: `This job expired before an instructor was confirmed. Your application was not accepted.`,
+      jobId: job._id,
+    });
+  }
+}
+```
+
+**cancelFilledJob filled path patch**:
+```typescript
+await ctx.db.patch("jobs", job._id, {
+  status: "cancelled",
+  closureReason: "studio_cancelled",
+});
+```

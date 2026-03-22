@@ -2007,8 +2007,40 @@ export const autoExpireUnfilledJob = internalMutation({
       return { expired: false };
     }
 
-    await ctx.db.patch("jobs", job._id, { status: "cancelled" });
+    await ctx.db.patch("jobs", job._id, {
+      status: "cancelled",
+      closureReason: "expired",
+    });
     await scheduleGoogleCalendarSyncForUser(ctx, studio?.userId);
+
+    const applications = await ctx.db
+      .query("jobApplications")
+      .withIndex("by_job", (q) => q.eq("jobId", job._id))
+      .collect();
+
+    for (const application of applications) {
+      if (application.status === "pending") {
+        await ctx.db.patch("jobApplications", application._id, {
+          status: "rejected",
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    await recomputeJobApplicationStats(ctx, job);
+
+    for (const application of applications) {
+      const instructor = await ctx.db.get("instructorProfiles", application.instructorId);
+      if (instructor) {
+        await enqueueUserNotification(ctx, {
+          recipientUserId: instructor.userId,
+          kind: "lesson_completed",
+          title: "Job expired",
+          body: `This job expired before an instructor was confirmed. Your application was not accepted.`,
+          jobId: job._id,
+        });
+      }
+    }
 
     if (studio) {
       await enqueueUserNotification(ctx, {
@@ -2147,6 +2179,7 @@ export const cancelFilledJob = mutation({
 
     await ctx.db.patch("jobs", job._id, {
       status: "cancelled",
+      closureReason: "studio_cancelled",
     });
 
     const applications = await ctx.db
