@@ -85,3 +85,13 @@ convex/_generated/
 # Bun/Node cache
 .bun/
 .cache/
+
+# Node compile cache
+node-compile-cache/
+
+# Metro file map and cache
+metro-cache/
+metro-file-map-*
+
+# Bunx cache
+bunx-*/
