@@ -57,3 +57,31 @@ temp_brand_utf8.ts
 
 # local gradle user home
 .gradle-user-home/
+
+# Android build outputs
+android/.gradle/
+android/build/
+android/app/build/
+android/app/release/
+android/app/debug/
+
+# iOS build outputs (if no ios folder)
+ios/Pods/
+ios/build/
+ios/*.xcworkspace
+ios/*.xcodeproj
+
+# Metro bundler cache
+.metro-health-check*
+.metro-*
+
+# Hermes bytecode
+*.hbc
+
+# Convex
+.convex/
+convex/_generated/
+
+# Bun/Node cache
+.bun/
+.cache/

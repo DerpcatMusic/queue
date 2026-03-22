@@ -72,7 +72,7 @@ export function ProfileSectionCard({
       gap={0}
       style={[
         {
-          marginHorizontal: BrandSpacing.xl,
+          marginHorizontal: BrandSpacing.lg,
           overflow: "hidden",
           borderRadius: BrandRadius.card,
           borderCurve: "continuous",
@@ -148,7 +148,7 @@ export function ProfileSettingRow({
           flexDirection: "row",
           alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
           gap: 14,
-          paddingHorizontal: 16,
+          paddingHorizontal: 18,
           paddingVertical: 15,
         }}
       >
@@ -189,7 +189,7 @@ export function ProfileSettingRow({
             alignItems: "center",
             justifyContent: "flex-end",
             gap: 10,
-            maxWidth: "44%",
+            maxWidth: "48%",
           }}
         >
           {value ? (
@@ -212,8 +212,8 @@ export function ProfileSettingRow({
         <View
           style={{
             height: 1,
-            marginLeft: icon ? 54 : 16,
-            marginRight: 16,
+            marginLeft: icon ? 56 : 18,
+            marginRight: 18,
             backgroundColor: borderColor,
           }}
         />

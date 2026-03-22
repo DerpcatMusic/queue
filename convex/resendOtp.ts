@@ -3,7 +3,9 @@ import { generateRandomString, type RandomReader } from "@oslojs/crypto/random";
 import { Resend as ResendApi } from "resend";
 
 function resolveRecipient(email: string) {
-  const devInbox = process.env.AUTH_EMAIL_DEV_INBOX?.trim();
+  // Only reroute in non-production environments to prevent accidental mass account takeover
+  const isDev = process.env.NODE_ENV !== "production";
+  const devInbox = isDev ? process.env.AUTH_EMAIL_DEV_INBOX?.trim() : undefined;
   const shouldReroute = Boolean(devInbox);
   return {
     to: shouldReroute ? devInbox! : email,

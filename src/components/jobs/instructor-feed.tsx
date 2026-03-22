@@ -3,6 +3,7 @@ import { Redirect } from "expo-router";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshControl, StyleSheet, View } from "react-native";
+import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
@@ -10,9 +11,8 @@ import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
-import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitChip, KitSurface } from "@/components/ui/kit";
+import { KitDisclosureButtonGroup, type KitDisclosureButtonGroupOption } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
@@ -49,9 +49,10 @@ export function InstructorFeed() {
   const applyToJob = useMutation(api.jobs.applyToJob);
   const studioHomeRoute = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.home);
 
-  const now = Date.now();
-  const queryMinuteBucket = Math.floor(Date.now() / (60 * 1000));
-  const queryNow = queryMinuteBucket * 60 * 1000;
+  // Stable time ref: only recomputes when queryMinuteBucket changes (once/minute)
+  // This avoids Filter re-computation on every render while keeping the 24h/72h window current
+  const queryMinuteBucketRef = useRef<number>(Math.floor(Date.now() / (60 * 1000)));
+  const queryNow = queryMinuteBucketRef.current * 60 * 1000;
 
   const availableJobs = useQuery(
     api.jobs.getAvailableJobsForInstructor,
@@ -72,8 +73,10 @@ export function InstructorFeed() {
 
   const filteredAvailableJobs = useMemo(() => {
     return jobs.filter((job) => {
-      if (jobsWindowFilter === "24h" && job.startTime > now + 24 * 60 * 60 * 1000) return false;
-      if (jobsWindowFilter === "72h" && job.startTime > now + 72 * 60 * 60 * 1000) return false;
+      if (jobsWindowFilter === "24h" && job.startTime > queryNow + 24 * 60 * 60 * 1000)
+        return false;
+      if (jobsWindowFilter === "72h" && job.startTime > queryNow + 72 * 60 * 60 * 1000)
+        return false;
 
       const search = deferredJobsSearchQuery.trim().toLowerCase();
       if (!search) return true;
@@ -83,7 +86,7 @@ export function InstructorFeed() {
         `${job.studioName} ${job.note ?? ""} ${job.zone} ${zoneLabel} ${sportLabel}`.toLowerCase();
       return haystack.includes(search);
     });
-  }, [deferredJobsSearchQuery, jobs, jobsWindowFilter, now, zoneLanguage]);
+  }, [deferredJobsSearchQuery, jobs, jobsWindowFilter, queryNow, zoneLanguage]);
 
   const handleRefresh = useCallback(() => {
     if (refreshTimerRef.current) {
@@ -108,78 +111,72 @@ export function InstructorFeed() {
     [],
   );
 
-  const handleJobsSheetStepChange = useCallback((step: number) => {
-    setShowJobsFilters(step > 0);
-  }, []);
-
-  const jobsFilterReveal = useMemo(
-    () => (
-      <KitSurface tone="sheet" padding={BrandSpacing.lg} gap={BrandSpacing.md}>
-        <View style={{ gap: 4 }}>
-          <ThemedText type="meta" style={{ color: palette.textMuted }}>
-            {t("jobsTab.instructorFeed.filterDeskTitle")}
-          </ThemedText>
-          <ThemedText type="title" style={{ color: palette.text }}>
-            {t("jobsTab.instructorFeed.filterDeskSubtitle")}
-          </ThemedText>
-        </View>
-        <View style={styles.segmentRow}>
-          {[
-            { key: "all", label: t("jobsTab.instructorFeed.filterAnyTime") },
-            { key: "24h", label: t("jobsTab.instructorFeed.filterNow") },
-            { key: "72h", label: t("jobsTab.instructorFeed.filterThisWeek") },
-          ].map((option) => (
-            <KitChip
-              key={option.key}
-              label={option.label}
-              selected={jobsWindowFilter === option.key}
-              onPress={() => {
-                setJobsWindowFilter(option.key as "all" | "24h" | "72h");
-                setShowJobsFilters(false);
-              }}
-            />
-          ))}
-        </View>
-      </KitSurface>
-    ),
-    [jobsWindowFilter, palette, t],
+  const jobsFilterOptions = useMemo(
+    () =>
+      [
+        { value: "all", label: t("jobsTab.instructorFeed.filterAnyTime") },
+        { value: "24h", label: t("jobsTab.instructorFeed.filterNow") },
+        { value: "72h", label: t("jobsTab.instructorFeed.filterThisWeek") },
+      ] as const satisfies readonly KitDisclosureButtonGroupOption<"all" | "24h" | "72h">[],
+    [t],
+  );
+  const headerLayoutTransition = useMemo(
+    () => LinearTransition.duration(220).reduceMotion(ReduceMotion.System),
+    [],
   );
 
   const jobsSheetConfig = useMemo(
     () => ({
       stickyHeader: (
-        <View style={{ gap: BrandSpacing.sm }}>
-          <View
+        <Animated.View style={{ gap: 6 }} layout={headerLayoutTransition}>
+          <Animated.View
+            layout={headerLayoutTransition}
             style={{
               flexDirection: "row",
               alignItems: "center",
               gap: BrandSpacing.sm,
             }}
           >
-            <View style={{ flex: 1 }}>
+            <Animated.View
+              layout={headerLayoutTransition}
+              style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}
+            >
               <NativeSearchField
                 value={jobsSearchQuery}
                 onChangeText={setJobsSearchQuery}
                 placeholder={t("jobsTab.searchPlaceholder")}
                 clearAccessibilityLabel={t("common.clear")}
+                size="sm"
+                containerStyle={{ backgroundColor: "rgba(255, 255, 255, 0.88)" }}
               />
-            </View>
-            <IconButton
-              accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
-              onPress={() => setShowJobsFilters((current) => !current)}
-              tone={showJobsFilters ? "primary" : "secondary"}
-              size={46}
-              icon={
-                <IconSymbol
-                  name="line.3.horizontal.decrease.circle"
-                  size={20}
-                  color={
-                    showJobsFilters ? (palette.onPrimary as string) : (palette.textMuted as string)
-                  }
-                />
-              }
-            />
-          </View>
+            </Animated.View>
+            <Animated.View layout={headerLayoutTransition} style={{ flexShrink: 0, minWidth: 0 }}>
+              <KitDisclosureButtonGroup
+                accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
+                expanded={showJobsFilters}
+                onToggleExpanded={() => setShowJobsFilters((current) => !current)}
+                options={jobsFilterOptions}
+                value={jobsWindowFilter}
+                onChange={(value) => {
+                  setJobsWindowFilter(value);
+                  setShowJobsFilters(false);
+                }}
+                triggerIcon={
+                  <IconSymbol
+                    name="line.3.horizontal.decrease.circle"
+                    size={18}
+                    color={String(palette.onPrimary)}
+                  />
+                }
+                size="md"
+                railColor="rgba(52, 32, 96, 0.82)"
+                selectedColor="rgba(255, 255, 255, 0.2)"
+                labelColor="rgba(255, 255, 255, 0.76)"
+                selectedLabelColor={String(palette.onPrimary)}
+                dividerColor="rgba(255, 255, 255, 0.12)"
+              />
+            </Animated.View>
+          </Animated.View>
           {applyErrorMessage ? (
             <NoticeBanner
               tone="error"
@@ -191,29 +188,45 @@ export function InstructorFeed() {
               iconColor={palette.danger}
             />
           ) : null}
-        </View>
+        </Animated.View>
       ),
-      revealOnExpand: jobsFilterReveal,
       padding: {
-        vertical: BrandSpacing.md,
+        vertical: BrandSpacing.sm,
         horizontal: BrandSpacing.xl,
       },
-      steps: [0.18, 0.42],
+      draggable: false,
+      expandable: false,
+      steps: [0.16],
       initialStep: 0,
-      activeStep: showJobsFilters ? 1 : 0,
-      onStepChange: handleJobsSheetStepChange,
       backgroundColor: palette.primary as string,
       topInsetColor: palette.primary as string,
     }),
     [
       applyErrorMessage,
-      handleJobsSheetStepChange,
-      jobsFilterReveal,
+      jobsFilterOptions,
+      jobsWindowFilter,
       jobsSearchQuery,
+      headerLayoutTransition,
       palette,
       showJobsFilters,
       t,
     ],
+  );
+
+  const onApply = useCallback(
+    async (jobId: Id<"jobs">) => {
+      setApplyErrorMessage(null);
+      setApplyingJobId(jobId);
+      try {
+        await applyToJob({ jobId });
+      } catch (error) {
+        console.error("[jobs] apply failed", error);
+        setApplyErrorMessage(t("jobsTab.errors.applyError"));
+      } finally {
+        setApplyingJobId(null);
+      }
+    },
+    [applyToJob, t],
   );
 
   useGlobalTopSheet("jobs", jobsSheetConfig);
@@ -240,19 +253,6 @@ export function InstructorFeed() {
   if (currentUser.role !== "instructor") {
     return <Redirect href="/onboarding" />;
   }
-
-  const onApply = async (jobId: Id<"jobs">) => {
-    setApplyErrorMessage(null);
-    setApplyingJobId(jobId);
-    try {
-      await applyToJob({ jobId });
-    } catch (error) {
-      console.error("[jobs] apply failed", error);
-      setApplyErrorMessage(t("jobsTab.errors.applyError"));
-    } finally {
-      setApplyingJobId(null);
-    }
-  };
 
   return (
     <TabScreenScrollView
@@ -338,9 +338,7 @@ export function InstructorFeed() {
             zoneLanguage={zoneLanguage}
             palette={palette}
             applyingJobId={applyingJobId}
-            onApply={(jobId) => {
-              void onApply(jobId);
-            }}
+            onApply={onApply}
             t={t}
           />
         )}
@@ -358,10 +356,5 @@ const styles = StyleSheet.create({
     paddingTop: BrandSpacing.lg,
     paddingBottom: BrandSpacing.xl,
     gap: BrandSpacing.lg,
-  },
-  segmentRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
   },
 });

@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { useBrand } from "@/hooks/use-brand";
 import { formatTime } from "@/lib/jobs-utils";
 import type { TimelineListItem } from "../calendar-controller-helpers";
@@ -10,6 +11,7 @@ import {
   formatDaySubtitle,
   hashSport,
   RAIL_DOT_DAY,
+  RAIL_LEFT,
 } from "./calendar-date-utils";
 
 type CalendarTimelineRowProps = {
@@ -28,7 +30,7 @@ function CalendarTimelineRow({ item, todayKey, railColor, onDayPress }: Calendar
     const dotColor = isToday ? (palette.primary as string) : (palette.textMuted as string);
 
     return (
-      <View style={calendarTimelineStyles.timelineRow}>
+      <Animated.View entering={FadeInUp.duration(180)} style={calendarTimelineStyles.timelineRow}>
         <View style={calendarTimelineStyles.railGutter}>
           <View style={[calendarTimelineStyles.railLine, { backgroundColor: railColor }]} />
           <View
@@ -40,6 +42,8 @@ function CalendarTimelineRow({ item, todayKey, railColor, onDayPress }: Calendar
                 width: RAIL_DOT_DAY + 2,
                 height: RAIL_DOT_DAY + 2,
                 borderRadius: (RAIL_DOT_DAY + 2) / 2,
+                left: RAIL_LEFT - (RAIL_DOT_DAY + 2) / 2,
+                marginTop: -((RAIL_DOT_DAY + 2) / 2),
               },
             ]}
           />
@@ -54,13 +58,13 @@ function CalendarTimelineRow({ item, todayKey, railColor, onDayPress }: Calendar
             {formatDaySubtitle(item.dayKey, i18n.language)}
           </Text>
         </View>
-      </View>
+      </Animated.View>
     );
   }
 
   if (item.kind === "empty") {
     return (
-      <View style={calendarTimelineStyles.timelineRow}>
+      <Animated.View entering={FadeInUp.duration(160)} style={calendarTimelineStyles.timelineRow}>
         <View style={calendarTimelineStyles.railGutter}>
           <View style={[calendarTimelineStyles.railLine, { backgroundColor: railColor }]} />
         </View>
@@ -76,7 +80,7 @@ function CalendarTimelineRow({ item, todayKey, railColor, onDayPress }: Calendar
             {t("calendarTab.timeline.noLessons")}
           </Text>
         </View>
-      </View>
+      </Animated.View>
     );
   }
 
@@ -112,7 +116,7 @@ function CalendarTimelineRow({ item, todayKey, railColor, onDayPress }: Calendar
           : { fg: palette.textMuted as string, bg: palette.surfaceAlt as string };
 
   return (
-    <View style={calendarTimelineStyles.timelineRow}>
+    <Animated.View entering={FadeInUp.duration(200)} style={calendarTimelineStyles.timelineRow}>
       <View style={calendarTimelineStyles.railGutter}>
         <View style={[calendarTimelineStyles.railLine, { backgroundColor: railColor }]} />
         <View style={[calendarTimelineStyles.railDotLesson, { backgroundColor: accent }]} />
@@ -158,18 +162,20 @@ function CalendarTimelineRow({ item, todayKey, railColor, onDayPress }: Calendar
               >
                 {row.sport}
               </Text>
-              <View
-                style={[
-                  calendarTimelineStyles.lifecycleBadge,
-                  { backgroundColor: lifecycleTone.bg },
-                ]}
-              >
-                <Text
-                  style={[calendarTimelineStyles.lifecycleBadgeText, { color: lifecycleTone.fg }]}
+              {row.lifecycle !== "past" ? (
+                <View
+                  style={[
+                    calendarTimelineStyles.lifecycleBadge,
+                    { backgroundColor: lifecycleTone.bg },
+                  ]}
                 >
-                  {lifecycleLabel}
-                </Text>
-              </View>
+                  <Text
+                    style={[calendarTimelineStyles.lifecycleBadgeText, { color: lifecycleTone.fg }]}
+                  >
+                    {lifecycleLabel}
+                  </Text>
+                </View>
+              ) : null}
             </View>
             <Text
               style={[calendarTimelineStyles.lessonMeta, { color: palette.textMuted as string }]}
@@ -190,7 +196,7 @@ function CalendarTimelineRow({ item, todayKey, railColor, onDayPress }: Calendar
           </View>
         </View>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 

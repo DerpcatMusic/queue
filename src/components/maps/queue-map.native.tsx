@@ -317,22 +317,19 @@ export const QueueMap = memo(function QueueMap({
             },
           ]}
         >
-          <KitSurface
-            tone="sheet"
-            style={[
-              styles.stateCard,
-              {
-                backgroundColor: palette.surface as string,
-                borderColor: palette.border as string,
-              },
-            ]}
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              borderCurve: "continuous",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "rgba(255,255,255,0.86)",
+            }}
           >
-            <ActivityIndicator color={palette.text as string} />
-            <ThemedText type="cardTitle">{t("mapTab.loading")}</ThemedText>
-            <ThemedText type="meta" style={{ color: palette.textMuted }}>
-              {t("mapTab.native.loadingBody")}
-            </ThemedText>
-          </KitSurface>
+            <ActivityIndicator color={palette.primary as string} />
+          </View>
         </View>
       ) : null}
 

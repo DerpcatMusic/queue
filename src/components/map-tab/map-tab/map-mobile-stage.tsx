@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
-import type { ViewStyle } from "react-native";
 import { View } from "react-native";
 
+import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { QueueMap } from "@/components/maps/queue-map";
 import type { QueueMapPin } from "@/components/maps/queue-map.types";
 import { IconButton } from "@/components/ui/icon-button";
@@ -27,7 +27,6 @@ type MapMobileStageProps = {
   };
   onPressZone: (zoneId: string) => void;
   onPressMap: () => void;
-  onRefocus: () => void;
   onEditToggle: () => void;
 };
 
@@ -45,7 +44,6 @@ export function MapMobileStage({
   cameraPadding,
   onPressZone,
   onPressMap,
-  onRefocus,
   onEditToggle,
 }: MapMobileStageProps) {
   if (!isFocused) {
@@ -61,56 +59,34 @@ export function MapMobileStage({
         focusZoneId={focusZoneId}
         isEditing={zoneModeActive}
         cameraPadding={cameraPadding}
-        {...(zoneModeActive ? { onPressZone } : {})}
+        onPressZone={onPressZone}
         onPressMap={onPressMap}
         showGpsButton={false}
         showAttributionButton
       />
 
-      <View
-        pointerEvents="box-none"
-        style={
-          {
-            position: "absolute",
-            bottom: overlayBottom + BrandSpacing.xxl,
-            right: BrandSpacing.lg,
-            zIndex: 60,
-          } satisfies ViewStyle
-        }
+      <TabOverlayAnchor
+        side="right"
+        offset={BrandSpacing.lg}
+        style={{ bottom: overlayBottom + BrandSpacing.xs, zIndex: 60 }}
       >
-        <View style={{ gap: BrandSpacing.md }}>
-          <IconButton
-            accessibilityLabel={t("mapTab.actions.refocus")}
-            onPress={onRefocus}
-            tone="secondary"
-            size={56}
-            disabled={isSaving}
-            icon={
-              <IconSymbol
-                name="location.north.line.fill"
-                size={20}
-                color={palette.text as string}
-              />
-            }
-          />
-          <IconButton
-            accessibilityLabel={
-              zoneModeActive ? t("mapTab.mobile.confirmCoverage") : t("mapTab.mobile.editCoverage")
-            }
-            onPress={onEditToggle}
-            tone={zoneModeActive ? "primary" : "secondary"}
-            size={56}
-            disabled={isSaving}
-            icon={
-              <IconSymbol
-                name={zoneModeActive ? "checkmark.circle.fill" : "square.and.pencil"}
-                size={20}
-                color={zoneModeActive ? (palette.onPrimary as string) : (palette.text as string)}
-              />
-            }
-          />
-        </View>
-      </View>
+        <IconButton
+          accessibilityLabel={
+            zoneModeActive ? t("mapTab.mobile.confirmCoverage") : t("mapTab.mobile.editCoverage")
+          }
+          onPress={onEditToggle}
+          tone={zoneModeActive ? "primary" : "primarySubtle"}
+          size={58}
+          disabled={isSaving}
+          icon={
+            <IconSymbol
+              name={zoneModeActive ? "checkmark.circle.fill" : "square.and.pencil"}
+              size={22}
+              color={zoneModeActive ? (palette.onPrimary as string) : (palette.primary as string)}
+            />
+          }
+        />
+      </TabOverlayAnchor>
     </View>
   );
 }

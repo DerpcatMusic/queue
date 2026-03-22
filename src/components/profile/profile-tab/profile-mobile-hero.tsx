@@ -4,7 +4,6 @@ import { Text, View } from "react-native";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitStatusBadge } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
@@ -63,9 +62,9 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
       pointerEvents="box-none"
       style={{
         paddingHorizontal: BrandSpacing.xl,
-        paddingTop: BrandSpacing.sm,
-        paddingBottom: BrandSpacing.lg,
-        gap: BrandSpacing.md,
+        paddingTop: 2,
+        paddingBottom: BrandSpacing.sm,
+        gap: BrandSpacing.sm,
       }}
     >
       <View
@@ -93,7 +92,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             roundedSquare
           />
 
-          <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
+          <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
             <Text
               style={{
                 ...BrandType.micro,
@@ -110,7 +109,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
               style={{
                 ...BrandType.heading,
                 fontSize: 26,
-                lineHeight: 30,
+                lineHeight: 28,
                 color: palette.onPrimary as string,
                 letterSpacing: -0.3,
                 includeFontPadding: false,
@@ -118,18 +117,51 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             >
               {profileName}
             </Text>
-            <Text
-              numberOfLines={1}
-              style={{
-                ...BrandType.bodyMedium,
-                fontSize: 13,
-                color: palette.onPrimary as string,
-                opacity: 0.76,
-                includeFontPadding: false,
-              }}
-            >
-              {sportsLabel}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 18 }}>
+              {resolvedStatusLabel ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <View
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: 3.5,
+                      backgroundColor:
+                        statusTone === "success"
+                          ? (palette.success as string)
+                          : statusTone === "warning"
+                            ? (palette.warning as string)
+                            : "rgba(255,255,255,0.62)",
+                    }}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      ...BrandType.bodyMedium,
+                      fontSize: 13,
+                      color: palette.onPrimary as string,
+                      opacity: 0.74,
+                      includeFontPadding: false,
+                    }}
+                  >
+                    {resolvedStatusLabel}
+                  </Text>
+                </View>
+              ) : null}
+              {sports.length > 0 ? (
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    ...BrandType.bodyMedium,
+                    fontSize: 13,
+                    color: palette.onPrimary as string,
+                    opacity: 0.74,
+                    includeFontPadding: false,
+                  }}
+                >
+                  {sportsLabel}
+                </Text>
+              ) : null}
+            </View>
           </View>
         </View>
 
@@ -140,25 +172,6 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           size={48}
           icon={<IconSymbol name="pencil" size={21} color={palette.primary as string} />}
         />
-      </View>
-
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {resolvedStatusLabel ? (
-          <KitStatusBadge
-            label={resolvedStatusLabel}
-            tone={
-              statusTone === "success"
-                ? "success"
-                : statusTone === "warning"
-                  ? "warning"
-                  : "neutral"
-            }
-            showDot
-          />
-        ) : null}
-        {sports.length > 0 ? (
-          <KitStatusBadge label={sportsLabel} tone="neutral" showDot={false} />
-        ) : null}
       </View>
 
       {summaryLabel ? (

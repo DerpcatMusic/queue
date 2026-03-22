@@ -6,6 +6,8 @@ This project is now Windows-first for Android development.
 
 - Start Android dev flow:
   - `bun run android`
+- Start Android emulator explicitly:
+  - `bun run android:emulator`
 - Run Android doctor checks:
   - `bun run android:doctor`
 
@@ -16,8 +18,11 @@ This project is now Windows-first for Android development.
 3. Starts the first AVD if none is online.
 4. Waits for full Android boot.
 5. Sets `adb reverse` for Expo ports (`8081`, `19000`, `19001`).
-6. Launches the dev client package.
-7. Starts Expo in dev-client mode without `--android` auto-probing.
+6. Builds and installs the debug dev client onto the emulator.
+7. Launches the installed debug dev client package.
+8. Starts Expo in dev-client mode without `--android` auto-probing.
+
+This emulator flow is intentionally separate from physical phone usage. If you want a real device, use `bun run android:phone` / `bun run android:device`.
 
 This avoids failures like:
 

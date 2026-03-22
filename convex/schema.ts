@@ -243,6 +243,8 @@ export default defineSchema({
     notificationsEnabled: v.optional(v.boolean()),
     logoStorageId: v.optional(v.id("_storage")),
     autoExpireMinutesBefore: v.optional(v.number()),
+    // NEW: studio-level marketplace auto-accept default (additive, optional)
+    autoAcceptDefault: v.optional(v.boolean()),
     calendarProvider: v.optional(
       v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
     ),
@@ -287,6 +289,19 @@ export default defineSchema({
     isRecurring: v.optional(v.boolean()),
     cancellationDeadlineHours: v.optional(v.number()),
     applicationDeadline: v.optional(v.number()),
+    // NEW: per-job auto-accept override (additive, optional)
+    autoAcceptEnabled: v.optional(v.boolean()),
+    // NEW: per-job expiry override in MINUTES (additive, optional)
+    expiryOverrideMinutes: v.optional(v.number()),
+    // NEW: boost preset metadata (additive, optional)
+    boostPreset: v.optional(v.union(v.literal("small"), v.literal("medium"), v.literal("large"))),
+    // NEW: boost pay metadata (additive, optional)
+    boostBonusAmount: v.optional(v.number()),
+    boostActive: v.optional(v.boolean()),
+    // NEW: closure reason for cancellation/expiry (additive, optional)
+    closureReason: v.optional(
+      v.union(v.literal("studio_cancelled"), v.literal("expired"), v.literal("filled")),
+    ),
   })
     .index("by_studio", ["studioId"])
     .index("by_studio_postedAt", ["studioId", "postedAt"])

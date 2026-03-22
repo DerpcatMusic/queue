@@ -157,6 +157,26 @@ export const normalizeRapydExternalRecipientId = (
   return normalized;
 };
 
+/**
+ * Resolves the Rapyd checkout mode.
+ *
+ * Explicit override via RAPYD_CHECKOUT_MODE env var is always respected.
+ *
+ * Default behavior is environment-sensitive:
+ * - sandbox: defaults to "flexible" (card-capable) to enable card-based testing
+ *   since IL sandbox does not have A2A/bank pay-in rails available.
+ * - production: defaults to "a2a" (bank-only) for strict A2A Flow A behavior.
+ */
+export const resolveRapydCheckoutMode = (): "a2a" | "flexible" => {
+  const raw = process.env.RAPYD_CHECKOUT_MODE?.trim().toLowerCase();
+  if (raw === "a2a" || raw === "flexible") {
+    return raw;
+  }
+  // Environment-sensitive default: sandbox = flexible (card-capable),
+  // production = a2a (fail-closed bank-only).
+  return resolveRapydMode() === "sandbox" ? "flexible" : "a2a";
+};
+
 export const resolveRapydCountry = (value = process.env.RAPYD_COUNTRY ?? "IL"): string =>
   normalizeIsoCountryCode(value, "RAPYD_COUNTRY");
 

@@ -154,6 +154,24 @@ export function useCalendarTabController() {
         ...current,
         [key]: !current[key],
       };
+      const allOff = !next.queueLessons && !next.timedCalendarEvents && !next.allDayCalendarEvents;
+      if (allOff) {
+        next.queueLessons = true;
+      }
+      void AsyncStorage.setItem(CALENDAR_VISIBILITY_STORAGE_KEY, JSON.stringify(next)).catch(() => {
+        /* best-effort */
+      });
+      return next;
+    });
+  }, []);
+
+  const setExternalCalendarVisibility = useCallback((visible: boolean) => {
+    setVisibilityFilters((current) => {
+      const next = {
+        ...current,
+        timedCalendarEvents: visible,
+        allDayCalendarEvents: visible,
+      };
       void AsyncStorage.setItem(CALENDAR_VISIBILITY_STORAGE_KEY, JSON.stringify(next)).catch(() => {
         /* best-effort */
       });
@@ -323,7 +341,7 @@ export function useCalendarTabController() {
         listRef.current?.scrollToIndex({
           index,
           animated: true,
-          viewPosition: 0,
+          viewPosition: 0.5,
         });
       } catch {
         /* layout not ready */
@@ -503,6 +521,7 @@ export function useCalendarTabController() {
     canShowGoogleAgenda,
     visibilityFilters,
     toggleVisibilityFilter,
+    setExternalCalendarVisibility,
   };
 }
 

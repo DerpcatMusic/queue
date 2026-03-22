@@ -11,6 +11,7 @@ import { calendarSheetStyles, calendarTimelineStyles } from "./calendar-date-uti
 type CalendarTimelineListProps = {
   listRef: RefObject<FlashListRef<TimelineListItem> | null>;
   listItems: TimelineListItem[];
+  extraData: string;
   initialScrollIndex: number;
   overrideItemLayout:
     | ((layout: { span?: number; size?: number }, item: TimelineListItem) => void)
@@ -28,6 +29,7 @@ type CalendarTimelineListProps = {
 function CalendarTimelineList({
   listRef,
   listItems,
+  extraData,
   initialScrollIndex,
   overrideItemLayout,
   onScrollBeginDrag,
@@ -89,6 +91,7 @@ function CalendarTimelineList({
         <FlashList
           ref={listRef}
           data={listItems}
+          extraData={extraData}
           initialScrollIndex={initialScrollIndex}
           keyExtractor={(item) => item.key}
           renderItem={renderItem}
@@ -103,13 +106,6 @@ function CalendarTimelineList({
           scrollIndicatorInsets={{ bottom: safeBottom + BrandSpacing.md }}
           contentContainerStyle={[calendarTimelineStyles.timelineContent, contentContainerStyle]}
           ListHeaderComponent={agendaHeaderComponent}
-        />
-        <View
-          pointerEvents="none"
-          style={[
-            calendarTimelineStyles.timelineBottomMask,
-            { backgroundColor: palette.appBg as string, height: safeBottom + BrandSpacing.xl },
-          ]}
         />
       </View>
     </TabScreenRoot>

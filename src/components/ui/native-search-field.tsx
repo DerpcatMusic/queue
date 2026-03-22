@@ -1,5 +1,12 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Pressable, TextInput, type TextInputProps, View } from "react-native";
+import {
+  Pressable,
+  type StyleProp,
+  TextInput,
+  type TextInputProps,
+  type ViewStyle,
+} from "react-native";
+import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
@@ -8,6 +15,8 @@ type NativeSearchFieldProps = Omit<TextInputProps, "value" | "onChangeText"> & {
   value: string;
   onChangeText: (value: string) => void;
   clearAccessibilityLabel?: string;
+  size?: "md" | "sm";
+  containerStyle?: StyleProp<ViewStyle>;
 };
 
 export function NativeSearchField({
@@ -15,6 +24,8 @@ export function NativeSearchField({
   onChangeText,
   placeholder,
   clearAccessibilityLabel = "Clear search",
+  size = "md",
+  containerStyle,
   style,
   ...rest
 }: NativeSearchFieldProps) {
@@ -24,22 +35,44 @@ export function NativeSearchField({
     resolvedScheme === "dark"
       ? (palette.surfaceElevated as string)
       : (palette.surfaceAlt as string);
+  const metrics =
+    size === "sm"
+      ? {
+          containerMinHeight: 48,
+          inputMinHeight: 44,
+          horizontalPadding: BrandSpacing.md,
+          iconSize: 18,
+          clearIconSize: 17,
+          radius: 18,
+        }
+      : {
+          containerMinHeight: 52,
+          inputMinHeight: 48,
+          horizontalPadding: BrandSpacing.lg,
+          iconSize: 19,
+          clearIconSize: 18,
+          radius: BrandRadius.input,
+        };
 
   return (
-    <View
-      style={{
-        minHeight: 52,
-        borderWidth: 0,
-        borderRadius: BrandRadius.input,
-        borderCurve: "continuous",
-        backgroundColor: surfaceColor,
-        paddingHorizontal: BrandSpacing.lg,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: BrandSpacing.sm,
-      }}
+    <Animated.View
+      layout={LinearTransition.duration(220).reduceMotion(ReduceMotion.System)}
+      style={[
+        {
+          minHeight: metrics.containerMinHeight,
+          borderWidth: 0,
+          borderRadius: metrics.radius,
+          borderCurve: "continuous",
+          backgroundColor: surfaceColor,
+          paddingHorizontal: metrics.horizontalPadding,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: BrandSpacing.sm,
+        },
+        containerStyle,
+      ]}
     >
-      <MaterialIcons name="search" size={19} color={palette.textMuted as string} />
+      <MaterialIcons name="search" size={metrics.iconSize} color={palette.textMuted as string} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -55,7 +88,7 @@ export function NativeSearchField({
         style={[
           {
             flex: 1,
-            minHeight: 48,
+            minHeight: metrics.inputMinHeight,
             color: palette.text,
             fontSize: 16,
             fontWeight: "500",
@@ -74,9 +107,13 @@ export function NativeSearchField({
           hitSlop={8}
           style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
         >
-          <MaterialIcons name="close" size={18} color={palette.textMuted as string} />
+          <MaterialIcons
+            name="close"
+            size={metrics.clearIconSize}
+            color={palette.textMuted as string}
+          />
         </Pressable>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

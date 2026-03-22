@@ -45,9 +45,9 @@ export function MapSelectedZonesStrip({
               fullWidth={false}
               onPress={() => onPressZone(zone.id)}
               style={{
-                minHeight: 40,
+                minHeight: 34,
                 paddingHorizontal: BrandSpacing.md,
-                paddingVertical: 6,
+                paddingVertical: 4,
               }}
             />
           );
@@ -55,11 +55,11 @@ export function MapSelectedZonesStrip({
       ) : (
         <View
           style={{
-            minHeight: 40,
+            minHeight: 34,
             borderRadius: BrandRadius.card - 14,
             borderCurve: "continuous",
             paddingHorizontal: BrandSpacing.md,
-            paddingVertical: 6,
+            paddingVertical: 4,
             backgroundColor: palette.surfaceAlt as string,
             justifyContent: "center",
           }}

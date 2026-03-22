@@ -23,6 +23,10 @@ export type HomeRoleContentProps = {
         isVerified: boolean;
         openMatches: number;
         pendingApplications: number;
+        totalEarningsAgorot: number;
+        lessonEvents: Array<{
+          endTime: number;
+        }>;
         upcomingSessions: Array<{
           applicationId: string;
           sport: string;
@@ -67,12 +71,14 @@ export function HomeRoleContent({
     return (
       <InstructorHomeContent
         isVerified={instructorHomeStats.isVerified}
+        currencyFormatter={currencyFormatter}
         locale={locale}
+        lessonsCompleted={instructorHomeStats.lessonEvents.length}
         openMatches={instructorHomeStats.openMatches}
         pendingApplications={instructorHomeStats.pendingApplications}
         palette={palette}
-        currencyFormatter={currencyFormatter}
         t={t}
+        totalEarningsAgorot={instructorHomeStats.totalEarningsAgorot}
         upcomingSessions={instructorHomeStats.upcomingSessions}
         onOpenJobs={() => router.push(INSTRUCTOR_JOBS_ROUTE)}
         onOpenProfile={() => router.push(INSTRUCTOR_PROFILE_ROUTE)}

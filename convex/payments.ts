@@ -1547,7 +1547,9 @@ export const processRapydBeneficiaryWebhookEvent = internalMutation({
 
     const beneficiaryId = normalizeRapydExternalRecipientId(args.beneficiaryId, "beneficiaryId");
     const payoutMethodType = normalizeRapydPayoutMethodType(
-      args.payoutMethodType ?? process.env.RAPYD_DEFAULT_BANK_PAYOUT_METHOD_TYPE ?? "il_bank",
+      args.payoutMethodType ??
+        process.env.RAPYD_DEFAULT_BANK_PAYOUT_METHOD_TYPE ??
+        "il_general_bank",
       "payoutMethodType",
     );
 

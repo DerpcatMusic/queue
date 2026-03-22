@@ -15,7 +15,6 @@ export default function MapTabScreen() {
     handleEditButtonPress,
     handleFocusSelection,
     handleMapSheetSearchChange,
-    handleMapUtilityPress,
     handleSaveZones,
     hasChanges,
     isFocused,
@@ -121,7 +120,6 @@ export default function MapTabScreen() {
       cameraPadding={mapCameraPadding}
       onPressZone={toggleZone}
       onPressMap={noopMapPress}
-      onRefocus={handleMapUtilityPress}
       onEditToggle={handleEditButtonPress}
     />
   );

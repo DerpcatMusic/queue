@@ -30,13 +30,14 @@ export function MapSheetHeader({
   zoneSearch,
 }: MapSheetHeaderProps) {
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: 4 }}>
       <NativeSearchField
         value={zoneSearch}
         onChangeText={onChangeSearch}
         onFocus={onFocusSearch}
         placeholder={t("mapTab.searchPlaceholder")}
         clearAccessibilityLabel={t("common.clear")}
+        size="sm"
       />
       <MapSelectedZonesStrip
         selectedZones={selectedZones}

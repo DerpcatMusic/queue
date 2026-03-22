@@ -1,6 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, View } from "react-native";
+import {
+  LayoutAnimation,
+  Platform,
+  StyleSheet,
+  Text,
+  UIManager,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
@@ -19,6 +27,7 @@ export default function CalendarTabScreen() {
   const { t } = useTranslation();
   const palette = useBrand();
   const { isDesktopWeb } = useLayoutBreakpoint();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
     topSpacing: BrandSpacing.md,
     bottomSpacing: BrandSpacing.xl,
@@ -36,40 +45,37 @@ export default function CalendarTabScreen() {
     handleTimelineScrollBegin,
     handleDayPress,
     handleTodayPress,
-    openMonthPicker,
     overrideItemLayout,
-    selectedDayTimestamp,
     isLoading,
     canShowGoogleAgenda,
     visibilityFilters,
-    toggleVisibilityFilter,
+    setExternalCalendarVisibility,
   } = useCalendarTabController();
-  const [showCalendarFilters, setShowCalendarFilters] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [pickerDate, setPickerDate] = useState(() => new Date(selectedDayTimestamp));
+  const showExternalCalendarItems =
+    visibilityFilters.timedCalendarEvents || visibilityFilters.allDayCalendarEvents;
+  const listAnimationKey = `${showExternalCalendarItems}:${selectedDay}:${listItems.length}`;
   const selectedLessonCount = lessonCountByDay.get(selectedDay) ?? 0;
   const railColor = (palette.border as string) ?? "#E5E5E5";
 
   useEffect(() => {
-    setPickerDate(new Date(selectedDayTimestamp));
-  }, [selectedDayTimestamp]);
-
-  const handleDoneWithDatePicker = useCallback(() => {
-    setShowDatePicker(false);
-    const nextDayKey = toDayKey(pickerDate.getTime());
-    if (nextDayKey !== selectedDay) {
-      handleDayPress(nextDayKey);
+    if (Platform.OS === "android") {
+      UIManager.setLayoutAnimationEnabledExperimental?.(true);
     }
-  }, [handleDayPress, pickerDate, selectedDay]);
+  }, []);
 
-  const handleChooseDatePress = useCallback(() => {
-    if (showDatePicker) {
-      handleDoneWithDatePicker();
-      return;
-    }
-    setShowDatePicker(true);
-    openMonthPicker();
-  }, [handleDoneWithDatePicker, openMonthPicker, showDatePicker]);
+  const handleExternalCalendarToggle = useCallback(() => {
+    listRef.current?.prepareForLayoutAnimationRender?.();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExternalCalendarVisibility(!showExternalCalendarItems);
+  }, [listRef, setExternalCalendarVisibility, showExternalCalendarItems]);
+
+  const calendarSheetStep = useMemo(() => {
+    const availableHeight = Math.max(screenHeight, 1);
+    const desiredHeight = 176;
+    return Math.max(0.18, Math.min(0.48, desiredHeight / availableHeight));
+  }, [screenHeight]);
+
+  const calendarHorizontalPadding = screenWidth < 390 ? BrandSpacing.lg : BrandSpacing.xl;
 
   const calendarSheetConfig = useMemo(
     () => ({
@@ -77,38 +83,31 @@ export default function CalendarTabScreen() {
         <CalendarSheetHeader
           canShowGoogleAgenda={canShowGoogleAgenda}
           selectedDay={selectedDay}
-          selectedLessonCount={selectedLessonCount}
           selectedDayIsToday={selectedDay === todayKey}
-          showCalendarFilters={showCalendarFilters}
-          showDatePicker={showDatePicker}
-          visibilityFilters={visibilityFilters}
-          onToggleFilters={() => setShowCalendarFilters((current) => !current)}
+          showExternalCalendarItems={showExternalCalendarItems}
           onTodayPress={handleTodayPress}
-          onChooseDatePress={handleChooseDatePress}
-          onToggleVisibilityFilter={toggleVisibilityFilter}
+          onToggleExternalCalendarItems={handleExternalCalendarToggle}
         />
       ),
       padding: {
-        vertical: BrandSpacing.lg,
-        horizontal: BrandSpacing.xl,
+        vertical: BrandSpacing.sm,
+        horizontal: calendarHorizontalPadding,
       },
-      steps: [0.28],
+      steps: [calendarSheetStep],
       initialStep: 0,
       backgroundColor: palette.primary as string,
       topInsetColor: palette.primary as string,
     }),
     [
       canShowGoogleAgenda,
-      handleChooseDatePress,
+      handleExternalCalendarToggle,
       handleTodayPress,
+      calendarHorizontalPadding,
+      calendarSheetStep,
       palette,
       selectedDay,
-      selectedLessonCount,
-      showCalendarFilters,
-      showDatePicker,
+      showExternalCalendarItems,
       todayKey,
-      toggleVisibilityFilter,
-      visibilityFilters,
     ],
   );
 
@@ -151,6 +150,7 @@ export default function CalendarTabScreen() {
     <CalendarTimelineList
       listRef={listRef}
       listItems={listItems}
+      extraData={listAnimationKey}
       initialScrollIndex={initialScrollIndex}
       overrideItemLayout={overrideItemLayout}
       onScrollBeginDrag={handleTimelineScrollBegin}

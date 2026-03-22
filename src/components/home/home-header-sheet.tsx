@@ -6,8 +6,8 @@ import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 
-const SHEET_EXPANDED_CONTENT_HEIGHT = 92;
-const SHEET_CONTENT_GAP = BrandSpacing.md;
+const SHEET_EXPANDED_CONTENT_HEIGHT = 84;
+const SHEET_CONTENT_GAP = BrandSpacing.sm;
 
 export function getHomeHeaderExpandedHeight(safeTop: number) {
   return safeTop + SHEET_EXPANDED_CONTENT_HEIGHT;
@@ -47,8 +47,8 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
         alignItems: "center",
         justifyContent: "space-between",
         paddingHorizontal: BrandSpacing.xl,
-        paddingTop: BrandSpacing.sm,
-        paddingBottom: BrandSpacing.lg,
+        paddingTop: 2,
+        paddingBottom: BrandSpacing.md,
       }}
     >
       <View style={{ flex: 1, justifyContent: "center" }}>
