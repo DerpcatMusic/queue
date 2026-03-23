@@ -18,7 +18,6 @@ type MapMobileStageProps = {
   focusZoneId: string | null;
   zoneModeActive: boolean;
   isSaving: boolean;
-  overlayBottom: number;
   cameraPadding: {
     top: number;
     right: number;
@@ -40,7 +39,6 @@ export function MapMobileStage({
   focusZoneId,
   zoneModeActive,
   isSaving,
-  overlayBottom,
   cameraPadding,
   onPressZone,
   onPressMap,
@@ -65,11 +63,7 @@ export function MapMobileStage({
         showAttributionButton
       />
 
-      <TabOverlayAnchor
-        side="right"
-        offset={BrandSpacing.lg}
-        style={{ bottom: overlayBottom + BrandSpacing.xs, zIndex: 60 }}
-      >
+      <TabOverlayAnchor side="right" offset={BrandSpacing.lg} style={{ zIndex: 60 }}>
         <IconButton
           accessibilityLabel={
             zoneModeActive ? t("mapTab.mobile.confirmCoverage") : t("mapTab.mobile.editCoverage")
@@ -80,7 +74,7 @@ export function MapMobileStage({
           disabled={isSaving}
           icon={
             <IconSymbol
-              name={zoneModeActive ? "checkmark.circle.fill" : "square.and.pencil"}
+              name={zoneModeActive ? "checkmark.circle.fill" : "pencil"}
               size={22}
               color={zoneModeActive ? (palette.onPrimary as string) : (palette.primary as string)}
             />

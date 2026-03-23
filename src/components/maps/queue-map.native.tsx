@@ -64,6 +64,7 @@ export const QueueMap = memo(function QueueMap({
   const [retryNonce, setRetryNonce] = useState(0);
   const [mapErrorMessage, setMapErrorMessage] = useState<string | null>(null);
   const [baseMapStyle, setBaseMapStyle] = useState<AnyStyleSpec | null>(null);
+  const [showLabelLayers, setShowLabelLayers] = useState(false);
   const preferredStyleUrl =
     resolvedScheme === "dark" ? APPLE_MAP_THEME.mapStyleDarkUrl : APPLE_MAP_THEME.mapStyleLightUrl;
   const styleFetchUrl =
@@ -132,6 +133,21 @@ export const QueueMap = memo(function QueueMap({
     const timeout = setTimeout(() => {
       setShowLoadingOverlay(true);
     }, MAP_LOADING_OVERLAY_DELAY_MS);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [mapLoadState]);
+
+  useEffect(() => {
+    if (mapLoadState !== "ready") {
+      setShowLabelLayers(false);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setShowLabelLayers(true);
+    }, 180);
 
     return () => {
       clearTimeout(timeout);
@@ -295,6 +311,7 @@ export const QueueMap = memo(function QueueMap({
         <QueueMapZonePolygons
           mode={mode}
           isEditing={isEditing}
+          showLabelLayers={showLabelLayers}
           selectedZoneFilter={selectedZoneFilter}
           zoneGeoJson={zoneGeoJson}
           zoneIdProperty={zoneIdProperty}

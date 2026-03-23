@@ -3,7 +3,7 @@ import { View } from "react-native";
 
 import { MapSelectedZonesStrip } from "@/components/map-tab/map/map-selected-zones-strip";
 import { NativeSearchField } from "@/components/ui/native-search-field";
-import { type BrandPalette, BrandSpacing } from "@/constants/brand";
+import { type BrandPalette, BrandSpacing, type getMapBrandPalette } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
 
 type MapSheetHeaderProps = {
@@ -11,6 +11,7 @@ type MapSheetHeaderProps = {
   onChangeSearch: (text: string) => void;
   onFocusSearch: () => void;
   palette: BrandPalette;
+  mapPalette: ReturnType<typeof getMapBrandPalette>;
   selectedZones: ZoneOption[];
   onPressZone: (zoneId: string | null) => void;
   t: TFunction;
@@ -23,6 +24,7 @@ export function MapSheetHeader({
   onChangeSearch,
   onFocusSearch,
   palette,
+  mapPalette,
   selectedZones,
   onPressZone,
   t,
@@ -38,12 +40,14 @@ export function MapSheetHeader({
         placeholder={t("mapTab.searchPlaceholder")}
         clearAccessibilityLabel={t("common.clear")}
         size="sm"
+        containerStyle={{ backgroundColor: mapPalette.surfaceAlt as string }}
       />
       <MapSelectedZonesStrip
         selectedZones={selectedZones}
         focusZoneId={focusZoneId}
         zoneLanguage={zoneLanguage}
         palette={palette}
+        mapPalette={mapPalette}
         onPressZone={onPressZone}
       />
     </View>

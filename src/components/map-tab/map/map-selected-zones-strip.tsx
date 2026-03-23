@@ -1,7 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { ScrollView, Text, View } from "react-native";
 import { ChoicePill } from "@/components/ui/choice-pill";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import {
+  type BrandPalette,
+  BrandRadius,
+  BrandSpacing,
+  BrandType,
+  type getMapBrandPalette,
+} from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
 
 const COMPACT_ZONE_PILL_MIN_HEIGHT = BrandSpacing.controlSm - BrandSpacing.xs;
@@ -12,6 +18,7 @@ type MapSelectedZonesStripProps = {
   focusZoneId: string | null;
   zoneLanguage: "en" | "he";
   palette: BrandPalette;
+  mapPalette: ReturnType<typeof getMapBrandPalette>;
   onPressZone: (zoneId: string) => void;
 };
 
@@ -20,6 +27,7 @@ export function MapSelectedZonesStrip({
   focusZoneId,
   zoneLanguage,
   palette,
+  mapPalette,
   onPressZone,
 }: MapSelectedZonesStripProps) {
   const { t } = useTranslation();
@@ -47,6 +55,10 @@ export function MapSelectedZonesStrip({
               compact
               fullWidth={false}
               onPress={() => onPressZone(zone.id)}
+              backgroundColor={mapPalette.surfaceAlt}
+              selectedBackgroundColor={palette.surfaceElevated}
+              labelColor={palette.text}
+              selectedLabelColor={palette.primary}
               style={{
                 minHeight: COMPACT_ZONE_PILL_MIN_HEIGHT,
                 paddingHorizontal: BrandSpacing.md,
@@ -63,7 +75,7 @@ export function MapSelectedZonesStrip({
             borderCurve: "continuous",
             paddingHorizontal: BrandSpacing.md,
             paddingVertical: BrandSpacing.xs,
-            backgroundColor: palette.surfaceAlt as string,
+            backgroundColor: mapPalette.surfaceAlt as string,
             justifyContent: "center",
           }}
         >

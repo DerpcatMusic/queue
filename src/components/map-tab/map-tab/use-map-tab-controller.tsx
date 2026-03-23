@@ -347,6 +347,7 @@ export function useMapTabController() {
         zoneLanguage={zoneLanguage}
         zoneModeActive={zoneModeActive}
         palette={palette}
+        mapPalette={mapPalette}
         onPressZone={handleZoneResultPress}
         onPressCity={handleCityResultPress}
         onToggleCityExpanded={toggleCityExpanded}
@@ -356,6 +357,7 @@ export function useMapTabController() {
       isSheetExpanded,
       handleCityResultPress,
       handleZoneResultPress,
+      mapPalette,
       palette,
       saveError,
       toggleCityExpanded,
@@ -374,6 +376,7 @@ export function useMapTabController() {
             onChangeSearch={handleMapSheetSearchChange}
             onFocusSearch={openSearchSheet}
             palette={palette}
+            mapPalette={mapPalette}
             selectedZones={selectedZones}
             onPressZone={setFocusZoneId}
             t={t}
@@ -405,6 +408,7 @@ export function useMapTabController() {
       handleMapSheetSearchChange,
       handleSheetStepChange,
       mapExpandedResults,
+      mapPalette,
       openSearchSheet,
       palette,
       selectedZones,

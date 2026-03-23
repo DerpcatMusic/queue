@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { type StyleProp, View, type ViewStyle } from "react-native";
+import { BrandSpacing } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
 
 export type TabOverlayAnchorProps = PropsWithChildren<{
@@ -11,7 +12,7 @@ export type TabOverlayAnchorProps = PropsWithChildren<{
 export function TabOverlayAnchor({
   children,
   side = "right",
-  offset = 16,
+  offset = BrandSpacing.lg,
   style,
 }: TabOverlayAnchorProps) {
   const { overlayBottom } = useAppInsets();

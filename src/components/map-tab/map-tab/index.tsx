@@ -24,11 +24,9 @@ export default function MapTabScreen() {
     mapPalette,
     mapPin,
     noopMapPress,
-    overlayBottom,
     palette,
     pendingChangeCount,
     persistedZoneIds,
-    remoteZones,
     saveError,
     selectedZoneIds,
     selectedZones,
@@ -60,7 +58,7 @@ export default function MapTabScreen() {
     return <Redirect href="/studio" />;
   }
 
-  if (!isMapBodyReady || remoteZones === undefined) {
+  if (!isMapBodyReady) {
     return (
       <TabScreenRoot
         mode="static"
@@ -116,7 +114,6 @@ export default function MapTabScreen() {
       focusZoneId={focusZoneId}
       zoneModeActive={zoneModeActive}
       isSaving={isSaving}
-      overlayBottom={overlayBottom}
       cameraPadding={mapCameraPadding}
       onPressZone={toggleZone}
       onPressMap={noopMapPress}

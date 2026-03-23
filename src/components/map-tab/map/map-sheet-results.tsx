@@ -3,7 +3,13 @@ import { FlatList, Pressable, Text, View } from "react-native";
 import type { ZoneCityListItem } from "@/components/map-tab/zone-city-tree";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import {
+  type BrandPalette,
+  BrandRadius,
+  BrandSpacing,
+  BrandType,
+  type getMapBrandPalette,
+} from "@/constants/brand";
 import { useIsRtl } from "@/hooks/use-is-rtl";
 
 const MAP_RESULT_INDENT = BrandSpacing.xl + BrandSpacing.lg;
@@ -16,6 +22,7 @@ type MapSheetResultsProps = {
   zoneLanguage: "en" | "he";
   zoneModeActive: boolean;
   palette: BrandPalette;
+  mapPalette: ReturnType<typeof getMapBrandPalette>;
   onPressZone: (zoneId: string) => void;
   onPressCity: (cityKey: string) => void;
   onToggleCityExpanded: (cityKey: string) => void;
@@ -28,6 +35,7 @@ export function MapSheetResults({
   zoneLanguage,
   zoneModeActive,
   palette,
+  mapPalette,
   onPressZone,
   onPressCity,
   onToggleCityExpanded,
@@ -66,9 +74,9 @@ export function MapSheetResults({
           gap: BrandSpacing.xs,
         }}
         keyboardShouldPersistTaps="handled"
-        initialNumToRender={20}
-        maxToRenderPerBatch={28}
-        windowSize={9}
+        initialNumToRender={12}
+        maxToRenderPerBatch={18}
+        windowSize={5}
         ItemSeparatorComponent={() => <View style={{ height: BrandSpacing.sm }} />}
         ListEmptyComponent={
           <View
@@ -78,7 +86,7 @@ export function MapSheetResults({
               paddingHorizontal: BrandSpacing.lg,
               paddingVertical: BrandSpacing.lg,
               gap: BrandSpacing.xs,
-              backgroundColor: palette.surfaceAlt as string,
+              backgroundColor: mapPalette.surfaceAlt as string,
             }}
           >
             <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
@@ -100,8 +108,8 @@ export function MapSheetResults({
                   borderRadius: MAP_RESULT_RADIUS,
                   borderCurve: "continuous",
                   backgroundColor: item.selected
-                    ? (palette.primarySubtle as string)
-                    : (palette.surfaceAlt as string),
+                    ? (palette.surfaceElevated as string)
+                    : (mapPalette.surfaceAlt as string),
                 }}
               >
                 <Pressable
@@ -114,7 +122,7 @@ export function MapSheetResults({
                     paddingLeft: MAP_RESULT_INDENT,
                     paddingRight: BrandSpacing.lg,
                     paddingVertical: BrandSpacing.sm,
-                    opacity: pressed ? 0.92 : 1,
+                    backgroundColor: pressed ? (palette.surface as string) : undefined,
                   })}
                 >
                   <View
@@ -168,10 +176,10 @@ export function MapSheetResults({
                 gap: BrandSpacing.md,
                 backgroundColor:
                   zoneModeActive && isFullySelected
-                    ? (palette.primarySubtle as string)
+                    ? (palette.surfaceElevated as string)
                     : isPartiallySelected
-                      ? (palette.primarySubtle as string)
-                      : (palette.surfaceAlt as string),
+                      ? (palette.surfaceElevated as string)
+                      : (mapPalette.surfaceAlt as string),
                 borderRadius: MAP_RESULT_RADIUS,
                 borderCurve: "continuous",
               }}
@@ -185,7 +193,7 @@ export function MapSheetResults({
                   gap: BrandSpacing.md,
                   paddingHorizontal: BrandSpacing.lg,
                   paddingVertical: BrandSpacing.sm,
-                  opacity: pressed ? 0.92 : 1,
+                  backgroundColor: pressed ? (palette.surface as string) : undefined,
                 })}
               >
                 <View style={{ flex: 1, gap: BrandSpacing.xs }}>
@@ -210,7 +218,6 @@ export function MapSheetResults({
                           : zoneModeActive && isFullySelected
                             ? (palette.primary as string)
                             : (palette.textMuted as string),
-                        opacity: 0.92,
                       }}
                     >
                       {summary}
@@ -238,7 +245,7 @@ export function MapSheetResults({
                   style={({ pressed }) => ({
                     paddingHorizontal: BrandSpacing.controlX,
                     paddingVertical: BrandSpacing.sm,
-                    opacity: pressed ? 0.82 : 1,
+                    backgroundColor: pressed ? (palette.surface as string) : undefined,
                   })}
                 >
                   <IconSymbol
