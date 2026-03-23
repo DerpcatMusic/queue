@@ -105,10 +105,11 @@ done
 
 APP_ID="$(node -e "const fs=require('fs');const p='app.json';let id='com.derpcat.queue';try{const j=JSON.parse(fs.readFileSync(p,'utf8'));id=(j.expo&&j.expo.android&&j.expo.android.package)||id;}catch{};process.stdout.write(id)")"
 METRO_PORT="${EXPO_METRO_PORT:-8081}"
+ANDROID_BUILD_VARIANT="${EXPO_ANDROID_BUILD_VARIANT:-debugOptimized}"
 
 if ! adb -s "$SERIAL" shell pm list packages "$APP_ID" | tr -d '\r' | grep -q "package:$APP_ID"; then
-  echo "Dev client not installed ($APP_ID). Building/installing now..."
-  npx expo run:android
+  echo "Dev client not installed ($APP_ID). Building/installing variant '$ANDROID_BUILD_VARIANT'..."
+  npx expo run:android --variant "$ANDROID_BUILD_VARIANT"
 fi
 
 echo "Launching Expo dev client on $SERIAL"
