@@ -5,7 +5,9 @@ import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+
+const IMAGE_PANEL_WIDTH_PERCENT = "44%";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -77,10 +79,10 @@ function StudioImagePanel({
         top: 0,
         right: 0,
         bottom: 0,
-        width: "44%",
+        width: IMAGE_PANEL_WIDTH_PERCENT,
         overflow: "hidden",
-        borderTopLeftRadius: 28,
-        borderBottomLeftRadius: 28,
+        borderTopLeftRadius: BrandRadius.card,
+        borderBottomLeftRadius: BrandRadius.card,
         borderCurve: "continuous",
         backgroundColor: palette.surfaceElevated as string,
       }}
@@ -135,11 +137,11 @@ function JobExpiryPill({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
-        borderRadius: 999,
+        gap: BrandSpacing.sm,
+        borderRadius: BrandRadius.pill,
         backgroundColor,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        paddingHorizontal: BrandSpacing.sm,
+        paddingVertical: BrandSpacing.xs + 1,
       }}
     >
       <IconSymbol name="clock.fill" size={12} color={color} />

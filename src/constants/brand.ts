@@ -213,12 +213,13 @@ export const MapBrandPalette = NativeMapBrandPalette;
 
 export const BrandRadius = {
   card: 24,
-  cardSubtle: 18, // card - 6, for nested/inner elements
+  cardSubtle: 18,
   button: 20,
-  buttonSubtle: 14, // for smaller button-like elements
+  buttonSubtle: 14,
   input: 20,
   pill: 999,
-  icon: 999, // circular for icon containers
+  icon: 999,
+  circle: 999,
 } as const;
 
 export const BrandSpacing = {
@@ -228,8 +229,12 @@ export const BrandSpacing = {
   lg: 16,
   xl: 24,
   xxl: 32,
-  componentPadding: 14, // standard inner padding for cards/components
-  iconContainer: 38, // standard icon button/touch target size
+  componentPadding: 14,
+  iconContainer: 38,
+  iconContainerLarge: 78,
+  haloSize: 180,
+  mapMinHeight: 300,
+  multilineInputMinHeight: 96,
 } as const;
 
 // ─── Typography ──────────────────────────────────────────────────────────────

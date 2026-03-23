@@ -12,7 +12,7 @@ import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-cont
 import { LoadingScreen } from "@/components/loading-screen";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -88,7 +88,7 @@ export default function InstructorStudioProfileRoute() {
     if (!studioProfile || !pathname?.startsWith("/instructor/jobs/studios/")) {
       return null;
     }
-    const headerHeight = 284;
+    const headerHeight = BrandSpacing.iconContainer * 7 + BrandSpacing.componentPadding + BrandSpacing.xs;
     const availableHeight = Math.max(1, screenHeight - safeTop - 80);
     const collapsedStep = Math.max(0.24, Math.min(0.42, headerHeight / availableHeight));
 
@@ -99,8 +99,8 @@ export default function InstructorStudioProfileRoute() {
             height: headerHeight,
             justifyContent: "space-between",
             overflow: "hidden",
-            borderBottomLeftRadius: 28,
-            borderBottomRightRadius: 28,
+            borderBottomLeftRadius: BrandRadius.cardSubtle + 10,
+            borderBottomRightRadius: BrandRadius.cardSubtle + 10,
             borderCurve: "continuous",
             backgroundColor: palette.primary as string,
           }}
@@ -146,7 +146,7 @@ export default function InstructorStudioProfileRoute() {
             style={{
               paddingHorizontal: BrandSpacing.xl,
               paddingBottom: BrandSpacing.xxl,
-              gap: 8,
+              gap: BrandSpacing.sm,
             }}
           >
             <Text

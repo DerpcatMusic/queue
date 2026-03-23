@@ -16,6 +16,12 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitDisclosureButtonGroup, type KitDisclosureButtonGroupOption } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing } from "@/constants/brand";
+
+const RAIL_COLOR = "rgba(52, 32, 96, 0.82)";
+const SELECTED_COLOR = "rgba(255, 255, 255, 0.2)";
+const LABEL_COLOR = "rgba(255, 255, 255, 0.76)";
+const DIVIDER_COLOR = "rgba(255, 255, 255, 0.12)";
+const SEARCH_BG_COLOR = "rgba(255, 255, 255, 0.88)";
 import { getZoneLabel } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -150,7 +156,7 @@ export function InstructorFeed() {
                 placeholder={t("jobsTab.searchPlaceholder")}
                 clearAccessibilityLabel={t("common.clear")}
                 size="sm"
-                containerStyle={{ backgroundColor: "rgba(255, 255, 255, 0.88)" }}
+                containerStyle={{ backgroundColor: SEARCH_BG_COLOR }}
               />
             </Animated.View>
             <Animated.View layout={headerLayoutTransition} style={{ flexShrink: 0, minWidth: 0 }}>
@@ -171,11 +177,11 @@ export function InstructorFeed() {
                   />
                 }
                 size="sm"
-                railColor="rgba(52, 32, 96, 0.82)"
-                selectedColor="rgba(255, 255, 255, 0.2)"
-                labelColor="rgba(255, 255, 255, 0.76)"
+                railColor={RAIL_COLOR}
+                selectedColor={SELECTED_COLOR}
+                labelColor={LABEL_COLOR}
                 selectedLabelColor={String(palette.onPrimary)}
-                dividerColor="rgba(255, 255, 255, 0.12)"
+                dividerColor={DIVIDER_COLOR}
               />
             </Animated.View>
           </Animated.View>

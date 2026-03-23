@@ -15,6 +15,9 @@ import {
   type StatusTone,
 } from "@/lib/payments-utils";
 
+const STATUS_DOT_SIZE = 8;
+const STATUS_DOT_RADIUS = 4;
+
 type PaymentActivityItem = {
   payment: {
     _id: Id<"payments">;
@@ -52,17 +55,17 @@ function StatusDot({ tone, palette }: { tone: StatusTone; palette: BrandPalette 
   const colors: Record<StatusTone, string> = {
     success: palette.success as string,
     warning: palette.warning as string,
-    danger: palette.danger,
+    danger: palette.danger as string,
     primary: palette.primary as string,
-    neutral: palette.textMuted,
+    muted: palette.textMuted as string,
   };
   return (
     <View
       style={{
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: colors[tone] ?? colors.neutral,
+        width: STATUS_DOT_SIZE,
+        height: STATUS_DOT_SIZE,
+        borderRadius: STATUS_DOT_RADIUS,
+        backgroundColor: colors[tone] ?? colors.muted,
       }}
     />
   );
@@ -133,22 +136,20 @@ export function PaymentActivityList({
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  paddingVertical: 12,
+                  paddingVertical: BrandSpacing.md,
                   paddingHorizontal: BrandSpacing.md,
                   backgroundColor: pressed && onSelectPaymentId ? palette.surfaceAlt : "transparent",
                   borderBottomWidth: index < items.length - 1 ? 1 : 0,
                   borderBottomColor: palette.border,
                 })}
               >
-                <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: BrandSpacing.md }}>
                   <StatusDot
                     tone={getPaymentStatusTone(item.payment.status)}
                     palette={palette}
                   />
                   <View style={{ flex: 1 }}>
-                    <ThemedText type="bodyStrong" style={{ fontSize: 15 }}>
-                      {sportLabel}
-                    </ThemedText>
+                    <ThemedText type="bodyStrong">{sportLabel}</ThemedText>
                     <ThemedText type="caption" style={{ color: palette.textMuted }}>
                       {item.job
                         ? formatDateTime(item.job.startTime, locale)
@@ -179,7 +180,7 @@ export function PaymentActivityList({
                           item.payment.currency,
                         )}
                   </ThemedText>
-                  <ThemedText type="caption" style={{ color: palette.textMuted, fontSize: 11 }}>
+                  <ThemedText type="caption" style={{ color: palette.textMuted }}>
                     {paymentStatus}
                   </ThemedText>
                 </View>

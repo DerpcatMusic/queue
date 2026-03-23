@@ -35,6 +35,7 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { BrandSpacing } from "@/constants/brand";
 import { EXPIRY_OVERRIDE_PRESETS } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
@@ -102,7 +103,7 @@ export default function StudioProfileScreen() {
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
   const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
   const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<number | undefined>(undefined);
-  const [isSavingAutoExpireMinutes, setIsSavingAutoExpireMinutes] = useState(false);
+  const [, setIsSavingAutoExpireMinutes] = useState(false);
 
   useEffect(() => {
     if (studioSettings) {
@@ -639,10 +640,10 @@ export default function StudioProfileScreen() {
           routeKey="studio/profile"
           style={styles.screen}
           contentContainerStyle={{
-            gap: 18,
+            gap: BrandSpacing.lg + 2,
           }}
-          topSpacing={18}
-          bottomSpacing={32}
+          topSpacing={BrandSpacing.lg + 2}
+          bottomSpacing={BrandSpacing.xxl}
         >
           <View style={styles.mobileContentPadding}>
             <ProfileSectionHeader
@@ -903,7 +904,7 @@ const styles = StyleSheet.create({
   desktopShell: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 24,
+    gap: BrandSpacing.xl,
   },
   desktopRail: {
     width: 360,
@@ -912,7 +913,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 24,
+    gap: BrandSpacing.xl,
   },
   desktopMainColumn: {
     flex: 1,
@@ -925,6 +926,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
   },
   mobileContentPadding: {
-    paddingHorizontal: 24,
+    paddingHorizontal: BrandSpacing.xl,
   },
 });

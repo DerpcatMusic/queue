@@ -1,0 +1,49 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+@import "nativewind/theme";
+
+@theme {
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+
+  --radius-card: 24px;
+  --radius-card-subtle: 18px;
+  --radius-button: 20px;
+  --radius-button-subtle: 14px;
+  --radius-input: 20px;
+  --radius-pill: 999px;
+
+  --color-primary: #8B5CF6;
+  --color-primary-subtle: #E8DDFF;
+  --color-success: #169C52;
+  --color-success-subtle: #DDF7E6;
+  --color-danger: #D43B4E;
+  --color-danger-subtle: #FFE3E8;
+  --color-warning: #D68116;
+  --color-warning-subtle: #FFF1D8;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #F1ECF8;
+  --color-app-bg: #F6F4FB;
+  --color-border: #DDD6EA;
+  --color-text: #181522;
+  --color-text-muted: #6D6580;
+}
+
+@media ios {
+  :root {
+    --font-sans: system-ui;
+    --font-rounded: ui-rounded;
+  }
+}
+
+@media android {
+  :root {
+    --font-sans: normal;
+    --font-rounded: normal;
+  }
+}

@@ -4,7 +4,15 @@ import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated"
 
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
+import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
+
+const LAUNCH_ICON_SIZE = 236;
+const LAUNCH_ICON_RADIUS = 118;
+const LAUNCH_INNER_SIZE = 112;
+const LAUNCH_INNER_RADIUS = 36;
+const LAUNCH_SYMBOL_WRAPPER_SIZE = 84;
+const LAUNCH_SYMBOL_WRAPPER_RADIUS = 28;
 
 type LoadingScreenProps = {
   variant?: "inline" | "launch";
@@ -49,15 +57,15 @@ export function LoadingScreen({
             style={{
               alignItems: "center",
               justifyContent: "center",
-              gap: 26,
+              gap: BrandSpacing.xxl,
             }}
           >
             <Animated.View
               entering={FadeInUp.duration(420)}
               style={{
-                width: 236,
-                height: 236,
-                borderRadius: 118,
+                width: LAUNCH_ICON_SIZE,
+                height: LAUNCH_ICON_SIZE,
+                borderRadius: LAUNCH_ICON_RADIUS,
                 backgroundColor: "rgba(255,255,255,0.1)",
                 position: "absolute",
               }}
@@ -65,9 +73,9 @@ export function LoadingScreen({
             <Animated.View
               entering={FadeInDown.duration(380)}
               style={{
-                width: 112,
-                height: 112,
-                borderRadius: 36,
+                width: LAUNCH_INNER_SIZE,
+                height: LAUNCH_INNER_SIZE,
+                borderRadius: LAUNCH_INNER_RADIUS,
                 borderCurve: "continuous",
                 backgroundColor: "rgba(255,255,255,0.14)",
                 alignItems: "center",
@@ -77,9 +85,9 @@ export function LoadingScreen({
               {showBrandMark ? (
                 <View
                   style={{
-                    width: 84,
-                    height: 84,
-                    borderRadius: 28,
+                    width: LAUNCH_SYMBOL_WRAPPER_SIZE,
+                    height: LAUNCH_SYMBOL_WRAPPER_SIZE,
+                    borderRadius: LAUNCH_SYMBOL_WRAPPER_RADIUS,
                     borderCurve: "continuous",
                     backgroundColor: "rgba(255,255,255,0.94)",
                     alignItems: "center",

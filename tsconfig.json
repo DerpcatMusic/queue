@@ -8,9 +8,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "resolveJsonModule": true,
-    "types": ["bun-types"],
+    "types": [
+      "bun-types"
+    ],
     "paths": {
-      "@/*": ["./src/*", "./*"]
+      "@/*": [
+        "./src/*",
+        "./*"
+      ]
     },
     "incremental": true,
     "skipLibCheck": true
@@ -22,7 +27,8 @@
     "convex/**/*.ts",
     "convex/**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "nativewind-env.d.ts"
   ],
   "exclude": [
     "node_modules",

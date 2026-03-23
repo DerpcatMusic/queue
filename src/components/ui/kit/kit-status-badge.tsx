@@ -1,6 +1,7 @@
 import { View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { KitStatusBadgeProps } from "./types";
 import { useKitTheme } from "./use-kit-theme";
 
@@ -45,16 +46,12 @@ export function KitStatusBadge({
 
   return (
     <View
+      className="flex-row items-center rounded-full px-[10px] py-[6px]"
       style={[
         {
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 6,
-          paddingHorizontal: 10,
-          paddingVertical: 6,
-          borderRadius: 999,
-          borderCurve: "continuous",
+          gap: BrandSpacing.xs + 2,
           backgroundColor: resolvedTone.backgroundColor,
+          borderCurve: "continuous",
         },
         style,
       ]}
@@ -62,9 +59,9 @@ export function KitStatusBadge({
       {showDot ? (
         <View
           style={{
-            width: 7,
-            height: 7,
-            borderRadius: 999,
+            width: BrandSpacing.xs + 3,
+            height: BrandSpacing.xs + 3,
+            borderRadius: BrandRadius.pill,
             backgroundColor: resolvedTone.accent,
           }}
         />

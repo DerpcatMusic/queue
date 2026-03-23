@@ -17,7 +17,7 @@ import {
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSegmentedToggle, KitStatusBadge, KitSuccessBurst } from "@/components/ui/kit";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useRapydReturn } from "@/contexts/rapyd-return-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -388,10 +388,10 @@ export default function ProfilePaymentsScreen() {
         <View
           style={{
             backgroundColor: palette.surfaceAlt,
-            borderRadius: 28,
+            borderRadius: BrandRadius.card,
             borderCurve: "continuous",
-            padding: 24,
-            gap: 10,
+            padding: BrandSpacing.xl,
+            gap: BrandSpacing.sm,
             alignItems: "center",
           }}
         >
@@ -456,10 +456,10 @@ export default function ProfilePaymentsScreen() {
           <View
             style={{
               backgroundColor: palette.surfaceAlt,
-              borderRadius: 28,
+              borderRadius: BrandRadius.card,
               borderCurve: "continuous",
-              padding: 24,
-              gap: 20,
+              padding: BrandSpacing.xl,
+              gap: BrandSpacing.md,
               alignItems: "center",
             }}
           >
@@ -472,10 +472,10 @@ export default function ProfilePaymentsScreen() {
                 alignItems: "center",
                 justifyContent: "center",
                 borderWidth: 3,
-                borderColor: "rgba(255,255,255,0.3)",
+                borderColor: palette.primarySubtle,
               }}
             >
-              <IconSymbol name="person.crop.circle.fill" size={40} color="#FFF" />
+              <IconSymbol name="person.crop.circle.fill" size={40} color={palette.onPrimary} />
             </View>
             <ThemedText type="title" style={{ textAlign: "center" }}>
               {t("profile.payments.verifyToConnectBankTitle")}
@@ -490,10 +490,10 @@ export default function ProfilePaymentsScreen() {
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 6,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 999,
+                gap: BrandSpacing.xs + 2,
+                paddingHorizontal: BrandSpacing.sm + 4,
+                paddingVertical: BrandSpacing.xs + 2,
+                borderRadius: BrandRadius.pill,
                 backgroundColor: palette.didit.accentSubtle,
               }}
             >
@@ -510,16 +510,16 @@ export default function ProfilePaymentsScreen() {
               }}
               style={({ pressed }) => ({
                 width: "100%",
-                paddingVertical: 16,
-                paddingHorizontal: 18,
-                borderRadius: 20,
+                paddingVertical: BrandSpacing.md,
+                paddingHorizontal: BrandSpacing.md + 2,
+                borderRadius: BrandRadius.button,
                 borderCurve: "continuous",
                 alignItems: "center",
                 backgroundColor: palette.didit.accent,
                 opacity: pressed ? 0.85 : 1,
               })}
             >
-              <ThemedText type="bodyStrong" style={{ color: "#FFF" }}>
+              <ThemedText type="bodyStrong" style={{ color: palette.onPrimary }}>
                 {t("profile.payments.verifyToConnectBankCta")}
               </ThemedText>
             </Pressable>
@@ -559,9 +559,9 @@ export default function ProfilePaymentsScreen() {
           <View
             style={{
               backgroundColor: palette.dangerSubtle,
-              borderRadius: 12,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
+              borderRadius: BrandRadius.buttonSubtle,
+              paddingHorizontal: BrandSpacing.sm + 2,
+              paddingVertical: BrandSpacing.sm + 2,
               borderWidth: 1,
               borderColor: palette.danger as string,
             }}
@@ -574,9 +574,9 @@ export default function ProfilePaymentsScreen() {
           <View
             style={{
               backgroundColor: palette.surfaceAlt,
-              borderRadius: 12,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
+              borderRadius: BrandRadius.buttonSubtle,
+              paddingHorizontal: BrandSpacing.sm + 2,
+              paddingVertical: BrandSpacing.sm + 2,
             }}
           >
             <ThemedText type="caption" style={{ color: palette.textMuted }}>
@@ -612,9 +612,9 @@ export default function ProfilePaymentsScreen() {
             onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
             style={({ pressed }) => ({
               alignSelf: "flex-start",
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              borderRadius: 999,
+              paddingHorizontal: BrandSpacing.sm + 2,
+              paddingVertical: BrandSpacing.sm,
+              borderRadius: BrandRadius.pill,
               borderCurve: "continuous",
               backgroundColor: pressed ? palette.surfaceAlt : palette.primarySubtle,
               borderWidth: 1,
@@ -641,9 +641,9 @@ export default function ProfilePaymentsScreen() {
         <View
           style={{
             backgroundColor: palette.payments.accent,
-            borderRadius: 28,
-            padding: 24,
-            gap: 24,
+            borderRadius: BrandRadius.card,
+            padding: BrandSpacing.xl,
+            gap: BrandSpacing.xl,
             borderCurve: "continuous",
           }}
         >
@@ -652,14 +652,15 @@ export default function ProfilePaymentsScreen() {
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "flex-start",
-              gap: 12,
+              gap: BrandSpacing.sm + 4,
             }}
           >
             <View style={{ flex: 1, minWidth: 0 }}>
               <ThemedText
                 type="caption"
                 style={{
-                  color: "rgba(255,255,255,0.8)",
+                  color: palette.onPrimary,
+                  opacity: 0.8,
                   textTransform: "uppercase",
                   letterSpacing: 1,
                   fontWeight: "600",
@@ -672,12 +673,12 @@ export default function ProfilePaymentsScreen() {
                 minimumFontScale={0.76}
                 adjustsFontSizeToFit
                 style={{
-                  color: "#FFF",
-                  fontSize: 40,
-                  lineHeight: 44,
+                  color: palette.onPrimary,
+                  fontSize: BrandType.display.fontSize,
+                  lineHeight: BrandType.display.lineHeight,
                   fontWeight: "800",
                   fontVariant: ["tabular-nums"],
-                  marginTop: 4,
+                  marginTop: BrandSpacing.xs,
                   letterSpacing: -1,
                   flexShrink: 1,
                 }}
@@ -691,13 +692,14 @@ export default function ProfilePaymentsScreen() {
             </View>
             <View
               style={{
-                backgroundColor: "rgba(255,255,255,0.2)",
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 999,
+                backgroundColor: palette.onPrimary,
+                opacity: 0.2,
+                paddingHorizontal: BrandSpacing.sm + 2,
+                paddingVertical: BrandSpacing.xs,
+                borderRadius: BrandRadius.pill,
               }}
             >
-              <ThemedText type="micro" style={{ color: "#FFF", fontWeight: "700" }}>
+              <ThemedText type="micro" style={{ color: palette.onPrimary, fontWeight: "700" }}>
                 {payoutSummary?.currency ?? "ILS"}
               </ThemedText>
             </View>
@@ -707,27 +709,29 @@ export default function ProfilePaymentsScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t("profile.payments.withdrawToBank")}
-              style={({ pressed }) => ({
-                flex: 1,
-                backgroundColor:
+              style={({ pressed }) => {
+                const isDisabled =
                   !isManualPayoutMode ||
                   !isIdentityVerified ||
                   !payoutSummary?.hasVerifiedDestination ||
-                  (payoutSummary?.availableAmountAgorot ?? 0) <= 0
-                    ? "rgba(255,255,255,0.1)"
-                    : "rgba(255,255,255,0.25)",
-                borderRadius: 20,
-                minHeight: 54,
-                padding: 14,
-                alignItems: "center",
-                borderCurve: "continuous",
-                opacity: withdrawBusy ? 0.5 : 1,
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: 8,
-                overflow: "hidden",
-                transform: [{ scale: pressed ? 0.985 : 1 }],
-              })}
+                  (payoutSummary?.availableAmountAgorot ?? 0) <= 0;
+                const bgOpacity = isDisabled ? 0.1 : 0.25;
+                return {
+                  flex: 1,
+                  backgroundColor: palette.onPrimary,
+                  opacity: withdrawBusy ? 0.5 : bgOpacity,
+                  borderRadius: BrandRadius.button,
+                  minHeight: 54,
+                  padding: BrandSpacing.sm + 6,
+                  alignItems: "center",
+                  borderCurve: "continuous",
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  gap: BrandSpacing.sm,
+                  overflow: "hidden",
+                  transform: [{ scale: pressed ? 0.985 : 1 }],
+                };
+              }}
               onPress={() => {
                 confirmWithdrawToBank();
               }}
@@ -739,8 +743,8 @@ export default function ProfilePaymentsScreen() {
                 (payoutSummary?.availableAmountAgorot ?? 0) <= 0
               }
             >
-              <IconSymbol name="arrow.down" size={18} color="#FFF" />
-              <ThemedText type="bodyStrong" style={{ color: "#FFF", fontSize: 16 }}>
+              <IconSymbol name="arrow.down" size={18} color={palette.onPrimary} />
+              <ThemedText type="bodyStrong" style={{ color: palette.onPrimary, fontSize: 16 }}>
                 {t("profile.payments.withdraw")}
               </ThemedText>
             </Pressable>
@@ -755,25 +759,28 @@ export default function ProfilePaymentsScreen() {
               style={({ pressed }) => ({
                 flex: 1,
                 backgroundColor: payoutSummary?.hasVerifiedDestination
+                  ? palette.onPrimary
+                  : palette.text,
+                opacity: payoutSummary?.hasVerifiedDestination
                   ? pressed
-                    ? "rgba(255,255,255,0.2)"
-                    : "rgba(255,255,255,0.14)"
+                    ? 0.2
+                    : 0.14
                   : pressed
-                    ? "rgba(0,0,0,0.88)"
-                    : "#000",
-                borderRadius: 20,
+                    ? 0.88
+                    : 1,
+                borderRadius: BrandRadius.button,
                 minHeight: 54,
-                padding: 14,
+                padding: BrandSpacing.sm + 6,
                 alignItems: "center",
                 borderCurve: "continuous",
                 flexDirection: "row",
                 justifyContent: "center",
-                gap: 8,
+                gap: BrandSpacing.sm,
                 overflow: "hidden",
                 borderWidth: 1,
                 borderColor: payoutSummary?.hasVerifiedDestination
-                  ? "rgba(255,255,255,0.18)"
-                  : "rgba(255,255,255,0.22)",
+                  ? palette.onPrimary
+                  : palette.border,
                 transform: [{ scale: pressed ? 0.985 : 1 }],
               })}
               onPress={() => {
@@ -785,8 +792,8 @@ export default function ProfilePaymentsScreen() {
               }}
               disabled={onboardingBusy}
             >
-              <IconSymbol name="building.columns.fill" size={18} color="#FFF" />
-              <ThemedText type="bodyStrong" style={{ color: "#FFF", fontSize: 16 }}>
+              <IconSymbol name="building.columns.fill" size={18} color={palette.onPrimary} />
+              <ThemedText type="bodyStrong" style={{ color: palette.onPrimary, fontSize: 16 }}>
                 {payoutSummary?.hasVerifiedDestination
                   ? t("profile.payments.manageBank")
                   : t("profile.payments.connectBank")}
@@ -796,8 +803,8 @@ export default function ProfilePaymentsScreen() {
         </View>
 
         {/* Stats Row - Merged into Hero Card */}
-        <View style={{ flexDirection: "row", justifyContent: "center", gap: 24 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: BrandSpacing.xl }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs + 2 }}>
             <View
               style={{
                 width: 8,
@@ -806,10 +813,10 @@ export default function ProfilePaymentsScreen() {
                 backgroundColor: palette.warning,
               }}
             />
-            <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.7)" }}>
+            <ThemedText type="caption" style={{ color: palette.onPrimary, opacity: 0.7 }}>
               {t("profile.payments.pending")}
             </ThemedText>
-            <ThemedText type="bodyStrong" style={{ color: "#FFF", fontVariant: ["tabular-nums"] }}>
+            <ThemedText type="bodyStrong" style={{ color: palette.onPrimary, fontVariant: ["tabular-nums"] }}>
               {formatAgorotCurrency(
                 payoutSummary?.pendingAmountAgorot ?? 0,
                 locale,
@@ -817,7 +824,7 @@ export default function ProfilePaymentsScreen() {
               )}
             </ThemedText>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs + 2 }}>
             <View
               style={{
                 width: 8,
@@ -826,10 +833,10 @@ export default function ProfilePaymentsScreen() {
                 backgroundColor: palette.success,
               }}
             />
-            <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.7)" }}>
+            <ThemedText type="caption" style={{ color: palette.onPrimary, opacity: 0.7 }}>
               {t("profile.payments.paid")}
             </ThemedText>
-            <ThemedText type="bodyStrong" style={{ color: "#FFF", fontVariant: ["tabular-nums"] }}>
+            <ThemedText type="bodyStrong" style={{ color: palette.onPrimary, fontVariant: ["tabular-nums"] }}>
               {formatAgorotCurrency(
                 payoutSummary?.paidAmountAgorot ?? 0,
                 locale,
@@ -875,20 +882,20 @@ export default function ProfilePaymentsScreen() {
         </ThemedText>
 
         {effectivePreferenceMode === "scheduled_date" ? (
-          <View style={{ gap: 12 }}>
+          <View style={{ gap: BrandSpacing.sm + 4 }}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t("profile.payments.preferenceChooseDate")}
               onPress={() => setShowSchedulePicker((value) => !value)}
               style={({ pressed }) => ({
-                borderRadius: 16,
+                borderRadius: BrandRadius.buttonSubtle,
                 borderCurve: "continuous",
                 borderWidth: 1,
                 borderColor: palette.border as string,
                 backgroundColor: pressed ? palette.surface : palette.appBg,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                gap: 4,
+                paddingHorizontal: BrandSpacing.lg,
+                paddingVertical: BrandSpacing.sm + 4,
+                gap: BrandSpacing.xs,
               })}
             >
               <ThemedText type="micro" style={{ color: palette.textMuted }}>
@@ -900,13 +907,13 @@ export default function ProfilePaymentsScreen() {
             {showSchedulePicker ? (
               <View
                 style={{
-                  borderRadius: 16,
+                  borderRadius: BrandRadius.buttonSubtle,
                   borderCurve: "continuous",
                   borderWidth: 1,
                   borderColor: palette.border as string,
                   backgroundColor: palette.appBg,
-                  padding: 12,
-                  gap: 10,
+                  padding: BrandSpacing.sm + 4,
+                  gap: BrandSpacing.sm + 2,
                 }}
               >
                 <DateTimePicker
@@ -931,9 +938,9 @@ export default function ProfilePaymentsScreen() {
                     onPress={() => setShowSchedulePicker(false)}
                     style={({ pressed }) => ({
                       alignSelf: "flex-start",
-                      paddingHorizontal: 14,
-                      paddingVertical: 10,
-                      borderRadius: 999,
+                      paddingHorizontal: BrandSpacing.sm + 6,
+                      paddingVertical: BrandSpacing.sm + 2,
+                      borderRadius: BrandRadius.pill,
                       borderCurve: "continuous",
                       backgroundColor: pressed ? palette.surface : palette.primarySubtle,
                     })}
@@ -946,7 +953,7 @@ export default function ProfilePaymentsScreen() {
               </View>
             ) : null}
 
-            <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={{ flexDirection: "row", gap: BrandSpacing.sm + 4 }}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t("common.cancel")}
@@ -961,8 +968,8 @@ export default function ProfilePaymentsScreen() {
                   flex: 1,
                   alignItems: "center",
                   justifyContent: "center",
-                  minHeight: 44,
-                  borderRadius: 16,
+                  minHeight: BrandSpacing.iconContainer + 6,
+                  borderRadius: BrandRadius.buttonSubtle,
                   borderCurve: "continuous",
                   borderWidth: 1,
                   borderColor: palette.border as string,
@@ -982,15 +989,15 @@ export default function ProfilePaymentsScreen() {
                   flex: 1,
                   alignItems: "center",
                   justifyContent: "center",
-                  minHeight: 44,
-                  borderRadius: 16,
+                  minHeight: BrandSpacing.iconContainer + 6,
+                  borderRadius: BrandRadius.buttonSubtle,
                   borderCurve: "continuous",
                   backgroundColor: palette.payments.accent,
                   opacity: preferenceBusy ? 0.6 : 1,
                   transform: [{ scale: pressed ? 0.985 : 1 }],
                 })}
               >
-                <ThemedText type="bodyStrong" style={{ color: "#FFFFFF" }}>
+                <ThemedText type="bodyStrong" style={{ color: palette.onPrimary }}>
                   {preferenceBusy
                     ? t("profile.payments.preferenceSaving")
                     : t("profile.payments.preferenceSaveSchedule")}
@@ -1012,7 +1019,7 @@ export default function ProfilePaymentsScreen() {
       </View>
 
       {selectedPaymentId ? (
-        <View style={{ paddingHorizontal: BrandSpacing.md, gap: 12, marginTop: 8 }}>
+        <View style={{ paddingHorizontal: BrandSpacing.md, gap: BrandSpacing.sm + 4, marginTop: BrandSpacing.sm }}>
           <View
             style={{
               flexDirection: "row",
@@ -1027,9 +1034,9 @@ export default function ProfilePaymentsScreen() {
               onPress={() => setSelectedPaymentId(null)}
               style={({ pressed }) => ({
                 backgroundColor: palette.surfaceAlt,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 999,
+                paddingHorizontal: BrandSpacing.sm + 4,
+                paddingVertical: BrandSpacing.xs + 2,
+                borderRadius: BrandRadius.pill,
                 opacity: pressed ? 0.84 : 1,
               })}
             >
@@ -1042,8 +1049,8 @@ export default function ProfilePaymentsScreen() {
             <View
               style={{
                 backgroundColor: palette.surfaceAlt,
-                padding: 24,
-                borderRadius: 24,
+                padding: BrandSpacing.xl,
+                borderRadius: BrandRadius.card,
                 alignItems: "center",
               }}
             >
@@ -1055,8 +1062,8 @@ export default function ProfilePaymentsScreen() {
             <View
               style={{
                 backgroundColor: palette.surfaceAlt,
-                padding: 24,
-                borderRadius: 24,
+                padding: BrandSpacing.xl,
+                borderRadius: BrandRadius.card,
                 alignItems: "center",
               }}
             >
@@ -1068,19 +1075,19 @@ export default function ProfilePaymentsScreen() {
             <View
               style={{
                 backgroundColor: palette.surfaceAlt,
-                borderRadius: 24,
+                borderRadius: BrandRadius.card,
                 borderCurve: "continuous",
                 overflow: "hidden",
               }}
             >
               <View
                 style={{
-                  padding: 20,
+                  padding: BrandSpacing.lg + 4,
                   borderBottomWidth: 1,
                   borderBottomColor: palette.border,
                   borderStyle: "dashed",
                   alignItems: "center",
-                  gap: 8,
+                  gap: BrandSpacing.sm,
                 }}
               >
                 <View
@@ -1091,7 +1098,7 @@ export default function ProfilePaymentsScreen() {
                     backgroundColor: palette.successSubtle,
                     alignItems: "center",
                     justifyContent: "center",
-                    marginBottom: 4,
+                    marginBottom: BrandSpacing.xs,
                   }}
                 >
                   <IconSymbol
@@ -1100,7 +1107,7 @@ export default function ProfilePaymentsScreen() {
                     color={palette.success as import("react-native").ColorValue}
                   />
                 </View>
-                <ThemedText type="title" style={{ fontSize: 32, fontVariant: ["tabular-nums"] }}>
+                <ThemedText type="title" style={{ fontSize: BrandType.heroCompact.fontSize, fontVariant: ["tabular-nums"] }}>
                   {formatAgorotCurrency(
                     role === "studio"
                       ? selectedPaymentDetail.payment.studioChargeAmountAgorot
@@ -1113,7 +1120,7 @@ export default function ProfilePaymentsScreen() {
                   {formatDateTime(selectedPaymentDetail.payment.createdAt, locale)}
                 </ThemedText>
               </View>
-              <View style={{ padding: 20, gap: 16 }}>
+              <View style={{ padding: BrandSpacing.lg + 4, gap: BrandSpacing.md + 4 }}>
                 <View
                   style={{
                     flexDirection: "row",
@@ -1155,7 +1162,7 @@ export default function ProfilePaymentsScreen() {
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      paddingVertical: 8,
+                      paddingVertical: BrandSpacing.sm,
                       opacity: pressed ? 0.84 : 1,
                     })}
                   >

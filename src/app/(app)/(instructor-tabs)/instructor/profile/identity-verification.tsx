@@ -32,7 +32,7 @@ import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSuccessBurst } from "@/components/ui/kit";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
@@ -172,7 +172,7 @@ function LinkPill({
         style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 6,
+          gap: BrandSpacing.xs,
         }}
       >
         <ThemedText type="caption" style={{ color }}>
@@ -207,9 +207,9 @@ function LoaderDot({ delay, color }: { delay: number; color: string }) {
     <Animated.View
       style={[
         {
-          width: 12,
-          height: 12,
-          borderRadius: 999,
+          width: BrandSpacing.sm,
+          height: BrandSpacing.sm,
+          borderRadius: BrandRadius.pill,
           backgroundColor: color,
         },
         animatedStyle,
@@ -272,7 +272,7 @@ function VerificationResolvingState({ label }: { label: string }) {
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        paddingHorizontal: 28,
+        paddingHorizontal: BrandSpacing.xl,
         backgroundColor: palette.appBg,
       }}
     >
@@ -287,11 +287,11 @@ function VerificationResolvingState({ label }: { label: string }) {
           style={[
             {
               position: "absolute",
-              top: 28,
-              left: 34,
-              width: 16,
-              height: 16,
-              borderRadius: 999,
+              top: BrandSpacing.xl,
+              left: BrandSpacing.lg,
+              width: BrandSpacing.sm,
+              height: BrandSpacing.sm,
+              borderRadius: BrandRadius.pill,
               backgroundColor: palette.primarySubtle as string,
             },
             bubbleLeftStyle,
@@ -301,11 +301,11 @@ function VerificationResolvingState({ label }: { label: string }) {
           style={[
             {
               position: "absolute",
-              right: 40,
-              bottom: 34,
-              width: 12,
-              height: 12,
-              borderRadius: 999,
+              right: BrandSpacing.xl,
+              bottom: BrandSpacing.lg,
+              width: BrandSpacing.sm,
+              height: BrandSpacing.sm,
+              borderRadius: BrandRadius.pill,
               backgroundColor: palette.primarySubtle as string,
             },
             bubbleRightStyle,
@@ -315,12 +315,12 @@ function VerificationResolvingState({ label }: { label: string }) {
         <Animated.View
           style={[
             {
-              gap: 18,
+              gap: BrandSpacing.md,
               alignItems: "center",
               justifyContent: "center",
-              paddingVertical: 34,
-              paddingHorizontal: 24,
-              borderRadius: 28,
+              paddingVertical: BrandSpacing.lg,
+              paddingHorizontal: BrandSpacing.lg,
+              borderRadius: BrandRadius.card,
               borderCurve: "continuous",
               borderWidth: 1,
               borderColor: palette.border as string,
@@ -334,9 +334,9 @@ function VerificationResolvingState({ label }: { label: string }) {
             style={[
               {
                 position: "absolute",
-                width: 180,
-                height: 180,
-                borderRadius: 999,
+                width: BrandSpacing.haloSize,
+                height: BrandSpacing.haloSize,
+                borderRadius: BrandRadius.circle,
                 backgroundColor: palette.primarySubtle as string,
               },
               haloStyle,
@@ -346,9 +346,9 @@ function VerificationResolvingState({ label }: { label: string }) {
           <Animated.View
             entering={FadeInDown.delay(90).duration(280)}
             style={{
-              width: 78,
-              height: 78,
-              borderRadius: 999,
+              width: BrandSpacing.iconContainerLarge,
+              height: BrandSpacing.iconContainerLarge,
+              borderRadius: BrandRadius.circle,
               alignItems: "center",
               justifyContent: "center",
               borderWidth: 1,
@@ -356,7 +356,7 @@ function VerificationResolvingState({ label }: { label: string }) {
               backgroundColor: palette.surface as string,
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
               <LoaderDot delay={0} color={palette.primary as string} />
               <LoaderDot delay={140} color={palette.primary as string} />
               <LoaderDot delay={280} color={palette.primary as string} />
@@ -365,7 +365,7 @@ function VerificationResolvingState({ label }: { label: string }) {
 
           <Animated.View
             entering={FadeInDown.delay(150).duration(320)}
-            style={{ gap: 8, alignItems: "center" }}
+            style={{ gap: BrandSpacing.sm, alignItems: "center" }}
           >
             <ThemedText type="title" style={{ textAlign: "center" }}>
               {t("profile.identityVerification.resolvingTitle")}
@@ -422,9 +422,9 @@ export default function IdentityVerificationScreen() {
   const lastEventAtLabel = formatDateTime(diditVerification?.lastEventAt);
   const isInProgressState =
     status === "in_progress" || status === "pending" || status === "in_review";
-  const diditStatusBackground = resolvedScheme === "dark" ? "#16243B" : "#EEF5FF";
-  const diditSectionBackground = resolvedScheme === "dark" ? "#141C2A" : "#F6F7FB";
-  const diditPressedBlue = resolvedScheme === "dark" ? "#4C96FF" : "#256FE0";
+  const diditStatusBackground = resolvedScheme === "dark" ? palette.accentDark : palette.accentLight;
+  const diditSectionBackground = resolvedScheme === "dark" ? palette.accentRowBgDark : palette.accentRowBgLight;
+  const diditPressedBlue = palette.didit.accent;
   const openExternalUrl = useCallback(
     (url: string) => {
       void ExpoLinking.openURL(url).catch(() => {
@@ -457,16 +457,16 @@ export default function IdentityVerificationScreen() {
       <IconButton
         size={40}
         tone="primarySubtle"
-        backgroundColorOverride="rgba(255,255,255,0.18)"
+        backgroundColorOverride={String(palette.primarySubtle) + "CC"}
         accessibilityLabel={t("profile.identityVerification.refreshStatus")}
         disabled={busy || isRefreshing}
         onPress={() => {
           void refreshVerificationStatus();
         }}
-        icon={<IconSymbol name="arrow.clockwise" size={18} color="#FFFFFF" />}
+        icon={<IconSymbol name="arrow.clockwise" size={18} color={palette.onPrimary as string} />}
       />
     ),
-    [busy, isRefreshing, refreshVerificationStatus, t],
+    [busy, isRefreshing, palette.onPrimary, palette.primarySubtle, refreshVerificationStatus, t],
   );
   useProfileSubpageSheet({
     title: t("profile.navigation.identityVerification"),
@@ -679,7 +679,7 @@ export default function IdentityVerificationScreen() {
       routeKey="instructor/profile/identity-verification"
       style={{ flex: 1, backgroundColor: palette.appBg }}
       contentContainerStyle={{
-        gap: 22,
+        gap: BrandSpacing.xl,
       }}
       topSpacing={16}
       bottomSpacing={44}
@@ -698,15 +698,15 @@ export default function IdentityVerificationScreen() {
 
         <View
           style={{
-            gap: 16,
-            padding: 18,
-            borderRadius: 24,
+            gap: BrandSpacing.lg,
+            padding: BrandSpacing.md,
+            borderRadius: BrandRadius.card,
             borderCurve: "continuous",
             backgroundColor: isInProgressState ? diditStatusBackground : (palette.surface as string),
-            paddingBottom: 18,
+            paddingBottom: BrandSpacing.md,
           }}
         >
-          <View style={{ gap: 8 }}>
+          <View style={{ gap: BrandSpacing.sm }}>
             <ThemedText type="micro" style={{ color: palette.textMuted }}>
               {t("profile.identityVerification.eyebrow")}
             </ThemedText>
@@ -715,16 +715,16 @@ export default function IdentityVerificationScreen() {
                 flexDirection: "row",
                 alignItems: "flex-start",
                 justifyContent: "space-between",
-                gap: 12,
+                gap: BrandSpacing.sm,
               }}
             >
-              <View style={{ flex: 1, gap: 6 }}>
-                <ThemedText type="title" style={{ letterSpacing: -0.3 }}>
+              <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                <ThemedText type="title" style={{ letterSpacing: BrandType.title.letterSpacing }}>
                   {getStatusHeadline(status, t)}
                 </ThemedText>
                 <ThemedText
                   type="caption"
-                  style={{ color: palette.textMuted, maxWidth: 520, lineHeight: 20 }}
+                  style={{ color: palette.textMuted, maxWidth: 520 }}
                 >
                   {getStatusBody(status, t)}
                 </ThemedText>
@@ -736,7 +736,7 @@ export default function IdentityVerificationScreen() {
           {legalName ? (
             <View
               style={{
-                gap: 6,
+                gap: BrandSpacing.xs,
               }}
             >
               <ThemedText type="micro" style={{ color: palette.textMuted }}>
@@ -747,7 +747,7 @@ export default function IdentityVerificationScreen() {
           ) : null}
 
           {verifiedAtLabel || lastEventAtLabel ? (
-            <View style={{ gap: 4, paddingTop: 2 }}>
+            <View style={{ gap: BrandSpacing.xs }}>
               {verifiedAtLabel ? (
                 <ThemedText type="caption" style={{ color: palette.textMuted }}>
                   {t("profile.identityVerification.verifiedAt", {
@@ -773,11 +773,11 @@ export default function IdentityVerificationScreen() {
             }}
             disabled={busy || isRefreshing}
             style={({ pressed }) => ({
-              borderRadius: 20,
+              borderRadius: BrandRadius.button,
               borderCurve: "continuous",
               alignItems: "center",
-              paddingVertical: 17,
-              paddingHorizontal: 18,
+              paddingVertical: BrandSpacing.md,
+              paddingHorizontal: BrandSpacing.md,
               borderWidth: 1,
               borderColor: busy || isRefreshing ? (palette.borderStrong as string) : palette.didit.accent,
               backgroundColor: busy || isRefreshing
@@ -814,22 +814,22 @@ export default function IdentityVerificationScreen() {
 
         <View
           style={{
-            gap: 10,
-            padding: 18,
-            borderRadius: 24,
+            gap: BrandSpacing.sm,
+            padding: BrandSpacing.md,
+            borderRadius: BrandRadius.card,
             borderCurve: "continuous",
             backgroundColor: diditSectionBackground,
-            paddingTop: 6,
+            paddingTop: BrandSpacing.xs,
           }}
         >
           <ThemedText type="bodyStrong">{t("profile.identityVerification.whyTitle")}</ThemedText>
           <ThemedText
             type="caption"
-            style={{ color: palette.textMuted, maxWidth: 580, lineHeight: 20 }}
+            style={{ color: palette.textMuted, maxWidth: 580 }}
           >
             {t("profile.identityVerification.whyIntro")}
           </ThemedText>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
             <LinkPill
               label={t("profile.identityVerification.systemDocs")}
               color={palette.didit.accent as string}

@@ -5,8 +5,10 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { HomeSectionHeading, HomeSurface } from "@/components/home/home-dashboard-layout";
 import { getRelativeTimeLabel } from "@/components/home/home-shared";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { toSportLabel } from "@/convex/constants";
+
+const TIME_WIDTH = 56;
 
 type AgendaItem = {
   id: string;
@@ -138,23 +140,21 @@ export function HomeAgendaWidget({
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    paddingVertical: 10,
-                    gap: 12,
+                    paddingVertical: BrandSpacing.sm + 2,
+                    gap: BrandSpacing.md,
                     borderBottomWidth: index < visibleItems.length - 1 ? 1 : 0,
                     borderBottomColor: (palette.border as string) ?? "rgba(0,0,0,0.06)",
                   }}
                 >
                   <View
                     style={{
-                      width: 56,
+                      width: TIME_WIDTH,
                       alignItems: "flex-end",
                     }}
                   >
                     <Text
                       style={{
-                        ...BrandType.heading,
-                        fontSize: 15,
-                        lineHeight: 18,
+                        ...BrandType.bodyStrong,
                         color: palette.text as string,
                         fontVariant: ["tabular-nums"],
                       }}
@@ -164,9 +164,7 @@ export function HomeAgendaWidget({
                     <Text
                       style={{
                         ...BrandType.micro,
-                        fontSize: 10,
                         color: palette.textMuted as string,
-                        lineHeight: 14,
                       }}
                     >
                       {isToday ? relativeTime : formatGroupDate(item.startTime, locale)}
@@ -176,7 +174,6 @@ export function HomeAgendaWidget({
                     <Text
                       style={{
                         ...BrandType.bodyStrong,
-                        fontSize: 15,
                         color: palette.text as string,
                       }}
                       numberOfLines={1}
@@ -203,7 +200,7 @@ export function HomeAgendaWidget({
                       style={{
                         width: 6,
                         height: 6,
-                        borderRadius: 3,
+                        borderRadius: BrandRadius.icon,
                         backgroundColor: isToday
                           ? (palette.primary as string)
                           : (palette.textMuted as string),
@@ -228,7 +225,6 @@ export function HomeAgendaWidget({
               style={{
                 ...BrandType.caption,
                 color: palette.primary as string,
-                fontSize: 13,
               }}
               onPress={onPressAll}
             >

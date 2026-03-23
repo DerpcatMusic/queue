@@ -11,6 +11,24 @@ import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 
+const SEARCH_SIZE_SM = {
+  containerMinHeight: 48,
+  inputMinHeight: 44,
+  horizontalPadding: BrandSpacing.md,
+  iconSize: 18,
+  clearIconSize: 17,
+  radius: 18,
+} as const;
+
+const SEARCH_SIZE_MD = {
+  containerMinHeight: 52,
+  inputMinHeight: 48,
+  horizontalPadding: BrandSpacing.lg,
+  iconSize: 19,
+  clearIconSize: 18,
+  radius: BrandRadius.input,
+} as const;
+
 type NativeSearchFieldProps = Omit<TextInputProps, "value" | "onChangeText"> & {
   value: string;
   onChangeText: (value: string) => void;
@@ -35,24 +53,7 @@ export function NativeSearchField({
     resolvedScheme === "dark"
       ? (palette.surfaceElevated as string)
       : (palette.surfaceAlt as string);
-  const metrics =
-    size === "sm"
-      ? {
-          containerMinHeight: 48,
-          inputMinHeight: 44,
-          horizontalPadding: BrandSpacing.md,
-          iconSize: 18,
-          clearIconSize: 17,
-          radius: 18,
-        }
-      : {
-          containerMinHeight: 52,
-          inputMinHeight: 48,
-          horizontalPadding: BrandSpacing.lg,
-          iconSize: 19,
-          clearIconSize: 18,
-          radius: BrandRadius.input,
-        };
+  const metrics = size === "sm" ? SEARCH_SIZE_SM : SEARCH_SIZE_MD;
 
   return (
     <Animated.View
