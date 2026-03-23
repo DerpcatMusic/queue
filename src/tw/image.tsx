@@ -9,12 +9,22 @@ const AnimatedExpoImage = Animated.createAnimatedComponent(RNImage);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CSSImage(props: any) {
   const { objectFit, objectPosition, ...style } = StyleSheet.flatten(props.style) || {};
+  const normalizedSource = typeof props.source === "string" ? { uri: props.source } : props.source;
+  const derivedRecyclingKey =
+    props.recyclingKey ??
+    (normalizedSource &&
+    typeof normalizedSource === "object" &&
+    !Array.isArray(normalizedSource) &&
+    "uri" in normalizedSource
+      ? normalizedSource.uri
+      : undefined);
   return (
     <AnimatedExpoImage
       contentFit={objectFit}
       contentPosition={objectPosition}
       {...props}
-      source={typeof props.source === "string" ? { uri: props.source } : props.source}
+      source={normalizedSource}
+      recyclingKey={derivedRecyclingKey}
       style={style}
     />
   );

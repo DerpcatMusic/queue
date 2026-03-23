@@ -4,9 +4,9 @@ import {
   type StyleProp,
   TextInput,
   type TextInputProps,
+  View,
   type ViewStyle,
 } from "react-native";
-import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
@@ -56,8 +56,7 @@ export function NativeSearchField({
   const metrics = size === "sm" ? SEARCH_SIZE_SM : SEARCH_SIZE_MD;
 
   return (
-    <Animated.View
-      layout={LinearTransition.duration(220).reduceMotion(ReduceMotion.System)}
+    <View
       style={[
         {
           minHeight: metrics.containerMinHeight,
@@ -113,6 +112,6 @@ export function NativeSearchField({
           />
         </Pressable>
       ) : null}
-    </Animated.View>
+    </View>
   );
 }
