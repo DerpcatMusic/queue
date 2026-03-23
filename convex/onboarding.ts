@@ -348,11 +348,13 @@ export const completeStudioOnboarding = mutation({
           studioName,
           address,
           zone,
-          contactPhone,
-          latitude,
-          longitude,
-          expoPushToken,
           notificationsEnabled,
+          ...omitUndefined({
+            contactPhone,
+            latitude,
+            longitude,
+            expoPushToken,
+          }),
         },
         now,
       );

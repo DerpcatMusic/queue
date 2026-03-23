@@ -7,6 +7,7 @@ import {
   action,
   internalMutation,
   internalQuery,
+  mutation,
   type MutationCtx,
   query,
 } from "./_generated/server";
@@ -2191,7 +2192,7 @@ export const backfillStudioBranchInfrastructure = mutation({
 
       const jobs = await ctx.db
         .query("jobs")
-        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+        .withIndex("by_studio", (q: any) => q.eq("studioId", studio._id))
         .collect();
       for (const job of jobs) {
         const patch = omitUndefined({
@@ -2207,7 +2208,7 @@ export const backfillStudioBranchInfrastructure = mutation({
 
       const applications = await ctx.db
         .query("jobApplications")
-        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+        .withIndex("by_studio", (q: any) => q.eq("studioId", studio._id))
         .collect();
       for (const application of applications) {
         if (!application.branchId) {
@@ -2218,7 +2219,7 @@ export const backfillStudioBranchInfrastructure = mutation({
 
       const stats = await ctx.db
         .query("jobApplicationStats")
-        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+        .withIndex("by_studio", (q: any) => q.eq("studioId", studio._id))
         .collect();
       for (const stat of stats) {
         if (!stat.branchId) {
@@ -2229,7 +2230,7 @@ export const backfillStudioBranchInfrastructure = mutation({
 
       const payments = await ctx.db
         .query("payments")
-        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+        .withIndex("by_studio", (q: any) => q.eq("studioId", studio._id))
         .collect();
       for (const payment of payments) {
         const patch = omitUndefined({
@@ -2244,7 +2245,7 @@ export const backfillStudioBranchInfrastructure = mutation({
 
       const payouts = await ctx.db
         .query("payouts")
-        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+        .withIndex("by_studio", (q: any) => q.eq("studioId", studio._id))
         .collect();
       for (const payout of payouts) {
         if (!payout.branchId) {
@@ -2255,7 +2256,7 @@ export const backfillStudioBranchInfrastructure = mutation({
 
       const integrations = await ctx.db
         .query("calendarIntegrations")
-        .withIndex("by_studio_provider", (q) => q.eq("studioId", studio._id))
+        .withIndex("by_studio_provider", (q: any) => q.eq("studioId", studio._id))
         .collect();
       for (const integration of integrations) {
         if (!integration.branchId) {

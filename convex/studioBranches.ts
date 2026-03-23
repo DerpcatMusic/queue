@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { type Doc, type Id } from "./_generated/dataModel";
+import { type Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { normalizeZoneId } from "./lib/domainValidation";
 import {
@@ -38,11 +38,17 @@ function normalizeBranchUpdateArgs(args: {
   const name = normalizeRequiredString(args.name, MAX_BRANCH_NAME_LENGTH, "Branch name");
   const address = normalizeRequiredString(args.address, MAX_ADDRESS_LENGTH, "Address");
   const zone = normalizeZoneId(args.zone);
-  const contactPhone = normalizeOptionalString(args.contactPhone, MAX_PHONE_LENGTH, "Contact phone");
-  const { latitude, longitude } = normalizeCoordinates({
-    latitude: args.latitude,
-    longitude: args.longitude,
-  });
+  const contactPhone = normalizeOptionalString(
+    args.contactPhone,
+    MAX_PHONE_LENGTH,
+    "Contact phone",
+  );
+  const { latitude, longitude } = normalizeCoordinates(
+    omitUndefined({
+      latitude: args.latitude,
+      longitude: args.longitude,
+    }),
+  );
   let autoExpireMinutesBefore: number | undefined;
   if (args.autoExpireMinutesBefore !== undefined) {
     const val = args.autoExpireMinutesBefore;
@@ -222,10 +228,10 @@ export const createStudioBranch = mutation({
     const normalized = normalizeBranchUpdateArgs(args);
     const branch = await createStudioBranchRecord(ctx, {
       studioId: studio._id,
-      ...normalized,
       isPrimary: false,
       status: "active",
       now,
+      ...omitUndefined(normalized),
     });
     return { branchId: branch._id };
   },
