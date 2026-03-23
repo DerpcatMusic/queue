@@ -205,55 +205,55 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: BrandSpacing.lg, // 16px
+    paddingVertical: BrandSpacing.md + 2, // 14px
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
+    gap: BrandSpacing.md,
   },
   headerTextBlock: {
     flex: 1,
-    gap: 2,
+    gap: BrandSpacing.xs,
   },
   headerBadge: {
-    borderRadius: 999,
+    borderRadius: BrandRadius.pill,
     borderCurve: "continuous",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: BrandSpacing.sm + 2, // 10px
+    paddingVertical: BrandSpacing.xs + 2, // 6px
   },
   panel: {
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-    gap: 12,
+    paddingHorizontal: BrandSpacing.componentPadding, // 14px
+    paddingBottom: BrandSpacing.componentPadding, // 14px
+    gap: BrandSpacing.md,
   },
   panelContentOnly: {
     paddingHorizontal: 0,
     paddingBottom: 0,
   },
   section: {
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   sectionLabel: {
     ...BrandType.micro,
-    letterSpacing: 0.6,
+    letterSpacing: BrandType.micro.letterSpacing,
     textTransform: "uppercase",
   },
   resultsViewport: {
     maxHeight: 260,
   },
   resultsList: {
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   resultRow: {
-    minHeight: 56,
-    borderRadius: BrandRadius.card - 6,
+    minHeight: BrandSpacing.iconContainer + 18, // 56px - touch target friendly
+    borderRadius: BrandRadius.cardSubtle, // card - 6 = 18px
     borderCurve: "continuous",
     paddingHorizontal: BrandSpacing.md,
     paddingVertical: BrandSpacing.md,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: BrandSpacing.md,
   },
   resultTitle: {
     ...BrandType.bodyStrong,
@@ -262,10 +262,10 @@ const styles = StyleSheet.create({
     ...BrandType.micro,
   },
   emptyState: {
-    borderRadius: BrandRadius.card - 6,
+    borderRadius: BrandRadius.cardSubtle,
     borderCurve: "continuous",
     paddingHorizontal: BrandSpacing.md,
     paddingVertical: BrandSpacing.md,
-    gap: 4,
+    gap: BrandSpacing.xs,
   },
 });

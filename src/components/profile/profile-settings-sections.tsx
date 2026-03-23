@@ -27,16 +27,17 @@ export function ProfileSectionHeader({
         paddingHorizontal: flush ? 0 : BrandSpacing.xl,
         paddingTop: BrandSpacing.xl,
         paddingBottom: BrandSpacing.sm,
-        gap: 4,
+        gap: BrandSpacing.xs,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
         {icon ? <IconSymbol name={icon} size={14} color={palette.textMuted as string} /> : null}
         <Text
           style={{
             ...BrandType.micro,
             color: palette.textMuted as string,
-            letterSpacing: 0.4,
+            letterSpacing: BrandType.micro.letterSpacing,
+            textTransform: "uppercase",
           }}
         >
           {label}
@@ -138,37 +139,47 @@ export function ProfileSettingRow({
 }) {
   const { resolvedScheme } = useThemePreference();
   const resolvedAccentColor = accentColor ?? palette.didit.accent;
+
   const titleColor =
     tone === "danger"
       ? (palette.danger as string)
       : tone === "accent"
         ? resolvedAccentColor
         : (palette.text as string);
+
   const secondaryColor =
     tone === "danger"
       ? (palette.danger as string)
       : tone === "accent"
         ? resolvedScheme === "dark"
-          ? "#AFC3E8"
-          : "#5B6B8A"
+          ? (palette.accentTextDark as string)
+          : (palette.accentTextLight as string)
         : (palette.textMuted as string);
+
   const iconBackground =
     tone === "danger"
       ? (palette.dangerSubtle as string)
       : tone === "accent"
         ? resolvedScheme === "dark"
-          ? "#1B2D49"
-          : "#EEF5FF"
+          ? (palette.accentDark as string)
+          : (palette.accentLight as string)
         : (palette.surfaceAlt as string);
+
   const iconColor =
     tone === "danger"
       ? (palette.danger as string)
       : tone === "accent"
         ? resolvedAccentColor
         : (palette.primary as string);
+
   const borderColor = tone === "danger" ? "transparent" : (palette.border as string);
+
   const rowBackground =
-    tone === "accent" ? (resolvedScheme === "dark" ? "#141C2A" : "#F7FAFF") : "transparent";
+    tone === "accent"
+      ? resolvedScheme === "dark"
+        ? (palette.accentRowBgDark as string)
+        : (palette.accentRowBgLight as string)
+      : "transparent";
 
   const content = (
     <View>
@@ -176,18 +187,18 @@ export function ProfileSettingRow({
         style={{
           flexDirection: "row",
           alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
-          gap: 14,
-          paddingHorizontal: 18,
-          paddingVertical: 15,
+          gap: BrandSpacing.md + 2, // 14px
+          paddingHorizontal: BrandSpacing.md + 6, // 18px
+          paddingVertical: BrandSpacing.md + 3, // 15px
           backgroundColor: rowBackground,
         }}
       >
         {icon ? (
           <View
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: 19,
+              width: BrandSpacing.iconContainer, // 38px
+              height: BrandSpacing.iconContainer, // 38px
+              borderRadius: BrandRadius.icon,
               borderCurve: "continuous",
               alignItems: "center",
               justifyContent: "center",
@@ -198,12 +209,11 @@ export function ProfileSettingRow({
           </View>
         ) : null}
 
-        <View style={{ flex: 1, gap: subtitle ? 3 : 0, minWidth: 0 }}>
+        <View style={{ flex: 1, gap: subtitle ? BrandSpacing.xs + 1 : 0, minWidth: 0 }}>
           <Text
             style={{
               ...BrandType.bodyStrong,
               color: titleColor,
-              letterSpacing: -0.1,
             }}
           >
             {title}
@@ -218,7 +228,7 @@ export function ProfileSettingRow({
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "flex-end",
-            gap: 10,
+            gap: BrandSpacing.md,
             maxWidth: "48%",
           }}
         >
@@ -242,8 +252,10 @@ export function ProfileSettingRow({
         <View
           style={{
             height: 1,
-            marginLeft: icon ? 56 : 18,
-            marginRight: 18,
+            marginLeft: icon
+              ? BrandSpacing.iconContainer + BrandSpacing.md + 6
+              : BrandSpacing.md + 6, // 38 + 12 + 6 = 56 : 18
+            marginRight: BrandSpacing.md + 6, // 18px
             backgroundColor: borderColor,
           }}
         />

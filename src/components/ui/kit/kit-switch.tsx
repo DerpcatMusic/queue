@@ -13,6 +13,12 @@ type KitSwitchProps = {
   accessibilityLabel?: string;
 };
 
+/**
+ * iOS Human Interface Guidelines switch dimensions.
+ * These are intentional design constants, not arbitrary values.
+ * Track: 52x32pt with 26pt thumb provides optimal thumb travel distance.
+ * TRACK_PADDING = (TRACK_HEIGHT - THUMB_SIZE) / 2 = (32 - 26) / 2 = 3pt
+ */
 const TRACK_WIDTH = 52;
 const TRACK_HEIGHT = 32;
 const TRACK_PADDING = 3;
