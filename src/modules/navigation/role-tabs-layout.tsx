@@ -1,7 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
@@ -31,7 +30,6 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   const tabBarBackgroundColor = palette.surfaceElevated as string;
   const defaultIconColor = palette.textMicro as string;
   const selectedIconColor = palette.primary as string;
-  const getSelectedMaterialIconName = (name: string) => name.replaceAll("_", "-");
 
   return (
     <ScrollSheetProvider>
@@ -72,24 +70,29 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                   contentStyle={{ backgroundColor: sceneBackgroundColor }}
                 >
                   <NativeTabs.Trigger.Icon
+                    md={tab.icon.md}
                     sf={{
                       default: tab.icon.sfDefault as never,
                       selected: tab.icon.sfSelected as never,
                     }}
-                    src={{
-                      default: (
-                        <NativeTabs.Trigger.VectorIcon
-                          family={MaterialCommunityIcons}
-                          name={tab.icon.mdDefaultVector as any}
-                        />
-                      ),
-                      selected: (
-                        <NativeTabs.Trigger.VectorIcon
-                          family={MaterialIcons}
-                          name={getSelectedMaterialIconName(tab.icon.md) as any}
-                        />
-                      ),
-                    }}
+                    src={
+                      Platform.OS === "android"
+                        ? undefined
+                        : {
+                            default: (
+                              <NativeTabs.Trigger.VectorIcon
+                                family={MaterialCommunityIcons}
+                                name={tab.icon.mdDefaultVector as any}
+                              />
+                            ),
+                            selected: (
+                              <NativeTabs.Trigger.VectorIcon
+                                family={MaterialCommunityIcons}
+                                name={tab.icon.mdSelectedVector as any}
+                              />
+                            ),
+                          }
+                    }
                   />
                   <NativeTabBadge count={badgeCountByRoute[tab.routeName] ?? 0} />
                 </NativeTabs.Trigger>
