@@ -1,9 +1,8 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
-import { DotStatusPill } from "@/components/home/home-shared";
+import { Pressable, View } from "react-native";
 import {
   InstructorJobCard,
   type InstructorMarketplaceJob,
@@ -12,11 +11,11 @@ import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provid
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { IconButton } from "@/components/ui/icon-button";
-import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing } from "@/constants/brand";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
+import { toSportLabel } from "@/convex/constants";
 import {
-  getApplicationStatusTranslationKey,
   getJobStatusToneWithReason,
   getJobStatusTranslationKey,
   type JobClosureReason,
@@ -47,7 +46,7 @@ function formatArchiveDate(locale: string, timestamp: number) {
   }).format(timestamp);
 }
 
-function getStatusColors(
+function getStatusTokens(
   tone: "primary" | "success" | "gray" | "amber" | "muted",
   palette: BrandPalette,
 ) {
@@ -75,6 +74,151 @@ function getStatusColors(
   };
 }
 
+function ArchiveStatusChip({
+  label,
+  palette,
+  tone,
+}: {
+  label: string;
+  palette: BrandPalette;
+  tone: "primary" | "success" | "gray" | "amber" | "muted";
+}) {
+  const tokens = getStatusTokens(tone, palette);
+
+  return (
+    <View
+      style={{
+        borderRadius: BrandRadius.pill,
+        borderCurve: "continuous",
+        backgroundColor: tokens.backgroundColor,
+        paddingHorizontal: BrandSpacing.controlX,
+        paddingVertical: BrandSpacing.xs,
+      }}
+    >
+      <ThemedText type="caption" style={{ color: tokens.color }}>
+        {label}
+      </ThemedText>
+    </View>
+  );
+}
+
+function ArchiveCompactRow({
+  expanded,
+  locale,
+  onOpenStudio,
+  onToggle,
+  palette,
+  row,
+  t,
+  zoneLanguage,
+  now,
+}: {
+  expanded: boolean;
+  locale: string;
+  onOpenStudio: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
+  onToggle: () => void;
+  palette: BrandPalette;
+  row: InstructorArchiveRow;
+  t: ReturnType<typeof useTranslation>["t"];
+  zoneLanguage: "en" | "he";
+  now: number;
+}) {
+  const sportLabel = useMemo(() => toSportLabel(row.sport as never), [row.sport]);
+  const statusTone = getJobStatusToneWithReason(row.jobStatus, row.closureReason);
+  const statusLabel = t(getJobStatusTranslationKey(row.jobStatus, row.closureReason));
+
+  return (
+    <View
+      style={{
+        borderRadius: BrandRadius.soft,
+        borderCurve: "continuous",
+        backgroundColor: palette.surface as string,
+        overflow: "hidden",
+      }}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${row.studioName} ${sportLabel}`}
+        onPress={onToggle}
+        style={({ pressed }) => ({
+          backgroundColor: pressed ? (palette.surfaceAlt as string) : (palette.surface as string),
+        })}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: BrandSpacing.md,
+            paddingHorizontal: BrandSpacing.lg,
+            paddingVertical: BrandSpacing.md,
+          }}
+        >
+          <View
+            style={{
+              minWidth: BrandSpacing.iconContainer + BrandSpacing.controlX,
+              gap: BrandSpacing.xs,
+            }}
+          >
+            <ThemedText type="bodyStrong" style={{ color: palette.text as string }}>
+              {formatArchiveDate(locale, row.startTime)}
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+              {t("jobsTab.instructorFeed.archiveAppliedOn", {
+                date: formatArchiveDate(locale, row.appliedAt),
+              })}
+            </ThemedText>
+          </View>
+          <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xs }}>
+            <ThemedText
+              numberOfLines={1}
+              type="bodyStrong"
+              style={{ color: palette.text as string }}
+            >
+              {sportLabel}
+            </ThemedText>
+            <ThemedText
+              numberOfLines={1}
+              style={{
+                ...BrandType.caption,
+                color: palette.textMuted as string,
+              }}
+            >
+              {row.studioName}
+            </ThemedText>
+          </View>
+          <ArchiveStatusChip label={statusLabel} palette={palette} tone={statusTone} />
+          <IconSymbol
+            name={expanded ? "chevron.down" : "chevron.right"}
+            size={16}
+            color={palette.textMuted as string}
+          />
+        </View>
+      </Pressable>
+      {expanded ? (
+        <View
+          style={{
+            gap: BrandSpacing.sm,
+            borderTopWidth: 1,
+            borderTopColor: palette.border as string,
+            backgroundColor: palette.surfaceElevated as string,
+            padding: BrandSpacing.sm,
+          }}
+        >
+          <InstructorJobCard
+            job={row}
+            locale={locale}
+            zoneLanguage={zoneLanguage}
+            palette={palette}
+            now={now}
+            onOpenStudio={onOpenStudio}
+            t={t}
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export function InstructorJobsArchiveSheet({
   innerRef,
   onDismissed,
@@ -87,7 +231,8 @@ export function InstructorJobsArchiveSheet({
 }: InstructorJobsArchiveSheetProps) {
   const { t } = useTranslation();
   const collapsedSheetHeight = useCollapsedSheetHeight();
-  const snapPoints = ["82%"];
+  const [expandedApplicationId, setExpandedApplicationId] = useState<string | null>(null);
+  const snapPoints = ["78%"];
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -95,11 +240,15 @@ export function InstructorJobsArchiveSheet({
         {...props}
         disappearsAt={-1}
         appearsAt={0}
-        style={[props.style, { backgroundColor: palette.surface as string }]}
+        style={[props.style, { backgroundColor: palette.appBg as string }]}
       />
     ),
-    [palette.surface],
+    [palette.appBg],
   );
+
+  const toggleExpanded = useCallback((applicationId: string) => {
+    setExpandedApplicationId((current) => (current === applicationId ? null : applicationId));
+  }, []);
 
   return (
     <BottomSheet
@@ -108,17 +257,20 @@ export function InstructorJobsArchiveSheet({
       snapPoints={snapPoints}
       topInset={collapsedSheetHeight}
       enablePanDownToClose
-      onClose={onDismissed}
+      onClose={() => {
+        setExpandedApplicationId(null);
+        onDismissed();
+      }}
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={{ backgroundColor: palette.borderStrong as string }}
-      backgroundStyle={{ backgroundColor: palette.appBg as string }}
+      backgroundStyle={{ backgroundColor: palette.surfaceElevated as string }}
     >
       <BottomSheetScrollView
         contentContainerStyle={{
           paddingHorizontal: BrandSpacing.lg,
           paddingTop: BrandSpacing.lg,
           paddingBottom: BrandSpacing.xxl,
-          gap: BrandSpacing.lg,
+          gap: BrandSpacing.md,
         }}
       >
         <View
@@ -159,51 +311,20 @@ export function InstructorJobsArchiveSheet({
             </ThemedText>
           </View>
         ) : (
-          rows.map((row) => {
-            const jobStatusTone = getJobStatusToneWithReason(row.jobStatus, row.closureReason);
-            const jobStatusColors = getStatusColors(jobStatusTone, palette);
-
-            return (
-              <View key={String(row.applicationId)} style={{ gap: BrandSpacing.sm }}>
-                <InstructorJobCard
-                  job={row}
-                  locale={locale}
-                  zoneLanguage={zoneLanguage}
-                  palette={palette}
-                  now={now}
-                  onOpenStudio={onOpenStudio}
-                  t={t}
-                />
-                <View
-                  style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    gap: BrandSpacing.sm,
-                    paddingHorizontal: BrandSpacing.sm,
-                  }}
-                >
-                  <DotStatusPill
-                    backgroundColor={jobStatusColors.backgroundColor}
-                    color={jobStatusColors.color}
-                    label={t(getJobStatusTranslationKey(row.jobStatus, row.closureReason))}
-                  />
-                  <DotStatusPill
-                    backgroundColor={palette.surfaceAlt as string}
-                    color={palette.text as string}
-                    label={t(
-                      getApplicationStatusTranslationKey(row.applicationStatus ?? "pending"),
-                    )}
-                  />
-                  <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
-                    {t("jobsTab.instructorFeed.archiveAppliedOn", {
-                      date: formatArchiveDate(locale, row.appliedAt),
-                    })}
-                  </ThemedText>
-                </View>
-              </View>
-            );
-          })
+          rows.map((row) => (
+            <ArchiveCompactRow
+              key={String(row.applicationId)}
+              expanded={expandedApplicationId === String(row.applicationId)}
+              locale={locale}
+              onOpenStudio={onOpenStudio}
+              onToggle={() => toggleExpanded(String(row.applicationId))}
+              palette={palette}
+              row={row}
+              t={t}
+              zoneLanguage={zoneLanguage}
+              now={now}
+            />
+          ))
         )}
       </BottomSheetScrollView>
     </BottomSheet>

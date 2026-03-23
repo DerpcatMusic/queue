@@ -56,6 +56,7 @@ const MAPPING = {
   sparkles: "auto-awesome",
   "checkmark.circle.fill": "check-circle",
   banknote: "payments",
+  "chevron.down": "expand-more",
   "location.fill": "my-location",
   "line.3.horizontal.decrease.circle": "filter-list",
   "paperplane.fill": "send",
