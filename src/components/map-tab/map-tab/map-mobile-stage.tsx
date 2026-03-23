@@ -72,9 +72,12 @@ export function MapMobileStage({
           tone={zoneModeActive ? "primary" : "primarySubtle"}
           size={58}
           disabled={isSaving}
+          backgroundColorOverride={
+            zoneModeActive ? (palette.primary as string) : (palette.surface as string)
+          }
           icon={
             <IconSymbol
-              name={zoneModeActive ? "checkmark.circle.fill" : "pencil"}
+              name={zoneModeActive ? "checkmark.circle.fill" : "slider.horizontal.3"}
               size={22}
               color={zoneModeActive ? (palette.onPrimary as string) : (palette.primary as string)}
             />

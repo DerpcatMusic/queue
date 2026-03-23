@@ -396,7 +396,7 @@ export function useMapTabController() {
       }),
       draggable: true,
       expandable: true,
-      steps: [0.24, 0.56, 0.94],
+      steps: [0.19, 0.56, 0.94],
       initialStep: 0,
       activeStep: sheetStep,
       expandMode: "overlay" as const,
