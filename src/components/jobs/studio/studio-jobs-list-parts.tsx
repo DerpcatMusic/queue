@@ -7,6 +7,9 @@ import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+
+const AVATAR_SIZE = 42;
+const AVATAR_RADIUS = 16;
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -112,11 +115,11 @@ function MetaPill({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
+        gap: BrandSpacing.sm,
         borderRadius: BrandRadius.pill,
         backgroundColor,
-        paddingHorizontal: 10,
-        paddingVertical: 7,
+        paddingHorizontal: BrandSpacing.sm,
+        paddingVertical: BrandSpacing.xs + 1,
       }}
     >
       <IconSymbol name={icon} size={12} color={color} />
@@ -234,11 +237,11 @@ export const ApplicationRow = memo(function ApplicationRow({
           >
             <View
               style={{
-                width: 42,
-                height: 42,
+                width: AVATAR_SIZE,
+                height: AVATAR_SIZE,
                 alignItems: "center",
                 justifyContent: "center",
-                borderRadius: 16,
+                borderRadius: AVATAR_RADIUS,
                 borderCurve: "continuous",
                 backgroundColor: statusBackground,
               }}

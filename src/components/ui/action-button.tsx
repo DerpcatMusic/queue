@@ -8,6 +8,10 @@ type ActionButtonTone = "primary" | "secondary";
 type ActionButtonShape = "pill" | "square";
 type ActionButtonSize = "md" | "lg";
 
+const BUTTON_HEIGHT_LG = 54;
+const BUTTON_HEIGHT_MD = 42;
+const BUTTON_MIN_WIDTH = 96;
+
 type ActionButtonProps = {
   label?: string;
   onPress: () => void;
@@ -44,8 +48,8 @@ export function ActionButton({
 
   const isDisabled = disabled || loading;
   const isIconOnly = Boolean(icon) && !label;
-  const minHeight = size === "lg" ? 54 : 42;
-  const minWidth = shape === "square" ? minHeight : 96;
+  const minHeight = size === "lg" ? BUTTON_HEIGHT_LG : BUTTON_HEIGHT_MD;
+  const minWidth = shape === "square" ? minHeight : BUTTON_MIN_WIDTH;
   const useMeshGradient = meshGradient && tone === "primary" && !isDisabled;
   const backgroundColor = isDisabled
     ? tone === "primary"

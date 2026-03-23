@@ -2,6 +2,7 @@ import { Link } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native";
 
+import { BrandSpacing } from "@/constants/brand";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
@@ -23,10 +24,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: BrandSpacing.lg,
   },
   link: {
-    marginTop: 15,
-    paddingVertical: 15,
+    marginTop: BrandSpacing.componentPadding,
+    paddingVertical: BrandSpacing.componentPadding,
   },
 });

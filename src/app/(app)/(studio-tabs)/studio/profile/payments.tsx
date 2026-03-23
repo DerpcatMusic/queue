@@ -75,8 +75,8 @@ export default function ProfilePaymentsScreen() {
       routeKey="studio/profile/payments"
       style={{ flex: 1, backgroundColor: palette.appBg }}
       contentContainerStyle={{
-        paddingBottom: 28,
-        gap: 16,
+        paddingBottom: BrandSpacing.xxl,
+        gap: BrandSpacing.lg,
       }}
       topSpacing={BrandSpacing.md}
     >

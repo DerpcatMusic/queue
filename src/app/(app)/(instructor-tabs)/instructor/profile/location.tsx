@@ -600,8 +600,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   heroIconWrap: {
-    width: BrandSpacing.iconContainer + 8, // 46px
-    height: BrandSpacing.iconContainer + 8, // 46px
+    width: BrandSpacing.iconContainer + BrandSpacing.xs + 2,
+    height: BrandSpacing.iconContainer + BrandSpacing.xs + 2,
     borderRadius: BrandRadius.icon,
     borderCurve: "continuous",
     alignItems: "center",
@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
   },
   heroSignalsRow: {
     flexDirection: "row",
-    gap: BrandSpacing.sm + 2, // 10px
+    gap: BrandSpacing.sm + 2,
   },
   sectionBody: {
     padding: BrandSpacing.lg,
@@ -651,6 +651,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: BrandSpacing.lg,
     right: BrandSpacing.lg,
-    gap: BrandSpacing.sm + 2, // 10px
+    gap: BrandSpacing.sm + 2,
   },
 });

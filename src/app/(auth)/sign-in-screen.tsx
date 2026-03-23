@@ -20,7 +20,6 @@ import { useBrand } from "@/hooks/use-brand";
 type Step = "email" | "code";
 
 const OTP_LENGTH = 6;
-const GOOGLE_RED = "#EA4335";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message;
@@ -332,7 +331,7 @@ export default function SignInScreen() {
                 <View style={styles.providerRow}>
                   <IconButton
                     accessibilityLabel="Continue with Google"
-                    icon={<FontAwesome5 name="google" size={26} color={GOOGLE_RED} />}
+                    icon={<FontAwesome5 name="google" size={26} color={palette.danger as string} />}
                     onPress={() => {
                       void handleOAuth("google");
                     }}
@@ -405,7 +404,7 @@ export default function SignInScreen() {
             )}
           </View>
 
-          <View style={{ gap: 10 }}>
+          <View style={{ gap: BrandSpacing.sm + 2 }}>
             {infoMessage ? (
               <MessageBanner tone="info" message={infoMessage} palette={palette} />
             ) : null}
@@ -440,7 +439,7 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: BrandSpacing.sm + 2,
   },
   rowAction: {
     flex: 1,
@@ -449,7 +448,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: BrandSpacing.sm,
-    paddingVertical: 6,
+    paddingVertical: BrandSpacing.xs + 2,
   },
   dividerLine: {
     flex: 1,
@@ -459,6 +458,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "stretch",
     justifyContent: "center",
-    gap: 14,
+    gap: BrandSpacing.componentPadding,
   },
 });

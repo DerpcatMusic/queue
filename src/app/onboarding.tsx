@@ -27,7 +27,7 @@ import { ChoicePill } from "@/components/ui/choice-pill";
 import { IconButton } from "@/components/ui/icon-button";
 import { KitChip, KitTextField } from "@/components/ui/kit";
 import { SheetHeaderBlock } from "@/components/ui/sheet-header-block";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { ZONE_OPTIONS } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import { SPORT_TYPES } from "@/convex/constants";
@@ -1412,9 +1412,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    gap: 12,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.lg,
+    gap: BrandSpacing.sm,
   },
   stageViewport: {
     minHeight: 1,
@@ -1422,16 +1422,16 @@ const styles = StyleSheet.create({
   detailsLoadingStage: {
     minHeight: 260,
     justifyContent: "center",
-    gap: 12,
-    paddingVertical: 12,
+    gap: BrandSpacing.sm,
+    paddingVertical: BrandSpacing.sm,
   },
   detailsLoadingHeader: {
-    gap: 4,
+    gap: BrandSpacing.xs,
   },
   detailsLoadingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: BrandSpacing.sm,
   },
   contentGrow: {
     flexGrow: 1,
@@ -1444,12 +1444,12 @@ const styles = StyleSheet.create({
     paddingBottom: BrandSpacing.xl,
   },
   roleStageHeader: {
-    gap: 6,
+    gap: BrandSpacing.xs,
   },
   roleGrid: {
     flexDirection: "row",
     alignItems: "stretch",
-    gap: 12,
+    gap: BrandSpacing.sm,
     marginTop: BrandSpacing.md,
   },
   roleOption: {
@@ -1468,91 +1468,91 @@ const styles = StyleSheet.create({
   },
   navRowSplit: {
     flexDirection: "row",
-    gap: 12,
+    gap: BrandSpacing.sm,
   },
   navAction: {
     flex: 1,
   },
   stepTwoWrap: {
-    gap: 14,
+    gap: BrandSpacing.md,
   },
   stepTwoDesktop: {
     flexDirection: "row",
     alignItems: "stretch",
   },
   formPanel: {
-    gap: 12,
+    gap: BrandSpacing.sm,
     flex: 1,
     minWidth: 320,
-    borderRadius: 24,
+    borderRadius: BrandRadius.card,
     borderCurve: "continuous",
-    padding: 16,
+    padding: BrandSpacing.md,
   },
   mapPanel: {
     flex: 1,
     minWidth: 320,
     minHeight: 360,
-    gap: 10,
-    borderRadius: 24,
+    gap: BrandSpacing.sm,
+    borderRadius: BrandRadius.card,
     borderCurve: "continuous",
-    padding: 16,
+    padding: BrandSpacing.md,
   },
   mapHeader: {
-    gap: 4,
+    gap: BrandSpacing.xs,
   },
   mapHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   mapWrap: {
     flex: 1,
-    minHeight: 300,
+    minHeight: BrandSpacing.mapMinHeight,
   },
   mapLoadingState: {
     flex: 1,
-    minHeight: 300,
+    minHeight: BrandSpacing.mapMinHeight,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    borderRadius: 20,
+    gap: BrandSpacing.sm,
+    borderRadius: BrandRadius.button,
     borderCurve: "continuous",
   },
   chipGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   sectionBlock: {
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   inlineActions: {
     flexDirection: "row",
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   locationPreviewRow: {
     minHeight: 44,
     justifyContent: "center",
   },
   multilineInput: {
-    minHeight: 96,
+    minHeight: BrandSpacing.multilineInputMinHeight,
     textAlignVertical: "top",
   },
   verifyActions: {
-    gap: 10,
+    gap: BrandSpacing.sm,
   },
   verifyStage: {
-    gap: 12,
+    gap: BrandSpacing.sm,
     borderWidth: 1.5,
-    borderRadius: 24,
+    borderRadius: BrandRadius.card,
     borderCurve: "continuous",
-    padding: 16,
+    padding: BrandSpacing.md,
   },
   errorBanner: {
     borderWidth: 1.5,
-    borderRadius: 20,
+    borderRadius: BrandRadius.button,
     borderCurve: "continuous",
-    padding: 14,
+    padding: BrandSpacing.md,
   },
 });

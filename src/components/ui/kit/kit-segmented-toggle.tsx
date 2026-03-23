@@ -1,6 +1,6 @@
 import { Pressable, type StyleProp, Text, View, type ViewStyle } from "react-native";
 
-import { BrandRadius, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { triggerSelectionHaptic } from "./native-interaction";
 
@@ -27,15 +27,10 @@ export function KitSegmentedToggle<T extends string>({
 
   return (
     <View
+      className="flex-row overflow-hidden rounded-[20px] p-1 gap-1"
       style={[
         {
-          borderRadius: BrandRadius.button,
-          borderCurve: "continuous",
           backgroundColor: palette.primarySubtle as string,
-          padding: 4,
-          flexDirection: "row",
-          gap: 4,
-          overflow: "hidden",
         },
         style,
       ]}
@@ -54,8 +49,8 @@ export function KitSegmentedToggle<T extends string>({
             }}
             style={({ pressed }) => ({
               flex: 1,
-              minHeight: 48,
-              borderRadius: BrandRadius.button - 8,
+              minHeight: BrandSpacing.iconContainer + 10,
+              borderRadius: BrandRadius.buttonSubtle,
               borderCurve: "continuous",
               backgroundColor: selected
                 ? (palette.primary as string)
@@ -69,7 +64,6 @@ export function KitSegmentedToggle<T extends string>({
               style={{
                 ...BrandType.micro,
                 color: selected ? (palette.onPrimary as string) : (palette.primary as string),
-                fontSize: 14,
                 fontWeight: "700",
                 includeFontPadding: false,
               }}

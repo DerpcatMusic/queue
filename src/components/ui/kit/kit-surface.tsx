@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import { View, type ViewProps } from "react-native";
 
-import { BrandRadius } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 
@@ -40,8 +40,8 @@ function getGlassModule(): GlassModule | null {
 
 export function KitSurface({
   tone = "base",
-  padding = 16,
-  gap = 10,
+  padding = BrandSpacing.lg,
+  gap = BrandSpacing.sm + 2,
   children,
   style,
   ...rest

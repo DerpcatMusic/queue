@@ -1,3 +1,4 @@
+import "@/global.css";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { BarlowCondensed_800ExtraBold } from "@expo-google-fonts/barlow-condensed";
@@ -7,6 +8,7 @@ import {
   Rubik_600SemiBold,
   Rubik_700Bold,
 } from "@expo-google-fonts/rubik";
+import { BrandSpacing } from "@/constants/brand";
 import {
   DarkTheme,
   DefaultTheme,
@@ -203,7 +205,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
-    paddingHorizontal: 24,
+    gap: BrandSpacing.md,
+    paddingHorizontal: BrandSpacing.xl,
   },
 });

@@ -11,6 +11,12 @@ import { BrandRadius, BrandSpacing, getMapBrandPalette } from "@/constants/brand
 import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+
+const GPS_BUTTON_SIZE = 58;
+const GPS_ICON_SIZE = 20;
+const ATTRIBUTION_SIZE = 34;
+const LOADING_ICON_SIZE = 44;
+const LOADING_ICON_RADIUS = 22;
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
@@ -319,9 +325,9 @@ export const QueueMap = memo(function QueueMap({
         >
           <View
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
+              width: LOADING_ICON_SIZE,
+              height: LOADING_ICON_SIZE,
+              borderRadius: LOADING_ICON_RADIUS,
               borderCurve: "continuous",
               alignItems: "center",
               justifyContent: "center",
@@ -374,8 +380,8 @@ export const QueueMap = memo(function QueueMap({
           style={({ pressed }) => [
             styles.gps,
             {
-              width: 58,
-              height: 58,
+              width: GPS_BUTTON_SIZE,
+              height: GPS_BUTTON_SIZE,
               alignItems: "center",
               justifyContent: "center",
               borderWidth: 1.2,
@@ -388,7 +394,7 @@ export const QueueMap = memo(function QueueMap({
             },
           ]}
         >
-          <IconSymbol name="location.fill" size={20} color={palette.text} />
+          <IconSymbol name="location.fill" size={GPS_ICON_SIZE} color={palette.text} />
         </Pressable>
       ) : null}
 
@@ -409,7 +415,7 @@ export const QueueMap = memo(function QueueMap({
             },
           ]}
         >
-          <IconSymbol name="info.circle.fill" size={15} color={palette.text} />
+          <IconSymbol name="info.circle.fill" size={BrandSpacing.sm + 3} color={palette.text} />
         </Pressable>
       ) : null}
     </View>
@@ -428,9 +434,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: BrandSpacing.lg,
     bottom: BrandSpacing.lg,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: ATTRIBUTION_SIZE,
+    height: ATTRIBUTION_SIZE,
+    borderRadius: BrandSpacing.iconContainer / 2,
     alignItems: "center",
     justifyContent: "center",
   },

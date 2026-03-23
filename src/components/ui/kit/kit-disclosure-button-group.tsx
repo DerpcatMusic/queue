@@ -8,7 +8,7 @@ import Animated, {
   ReduceMotion,
 } from "react-native-reanimated";
 
-import { BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { triggerSelectionHaptic } from "./native-interaction";
 
@@ -39,20 +39,20 @@ type KitDisclosureButtonGroupProps<T extends string> = {
 
 const SIZE_PRESETS = {
   sm: {
-    railPadding: 4,
-    railRadius: 16,
-    sectionRadius: 12,
-    minHeight: 40,
-    paddingHorizontal: 14,
-    separatorInset: 10,
+    railPadding: BrandSpacing.xs,
+    railRadius: BrandRadius.cardSubtle,
+    sectionRadius: BrandRadius.buttonSubtle,
+    minHeight: BrandSpacing.iconContainer,
+    paddingHorizontal: BrandSpacing.componentPadding,
+    separatorInset: BrandSpacing.sm + 2,
   },
   md: {
-    railPadding: 5,
-    railRadius: 18,
-    sectionRadius: 14,
-    minHeight: 44,
-    paddingHorizontal: 16,
-    separatorInset: 11,
+    railPadding: BrandSpacing.xs + 1,
+    railRadius: BrandRadius.cardSubtle + 2,
+    sectionRadius: BrandRadius.buttonSubtle,
+    minHeight: BrandSpacing.iconContainer + 6,
+    paddingHorizontal: BrandSpacing.lg,
+    separatorInset: BrandSpacing.sm + 3,
   },
 } as const;
 
@@ -77,15 +77,16 @@ export function KitDisclosureButtonGroup<T extends string>({
 }: KitDisclosureButtonGroupProps<T>) {
   const palette = useBrand();
   const metrics = SIZE_PRESETS[size];
-  const resolvedRailColor = railColor ?? "rgba(24, 14, 46, 0.66)";
-  const resolvedSelectedColor = selectedColor ?? "rgba(255, 255, 255, 0.18)";
-  const resolvedLabelColor = labelColor ?? "rgba(255, 255, 255, 0.72)";
-  const resolvedSelectedLabelColor = selectedLabelColor ?? (palette.onPrimary as string);
-  const resolvedDividerColor = dividerColor ?? "rgba(255, 255, 255, 0.12)";
+  const resolvedRailColor = railColor ?? `${String(palette.text)}CC`;
+  const resolvedSelectedColor = selectedColor ?? `${String(palette.onPrimary)}33`;
+  const resolvedLabelColor = labelColor ?? `${String(palette.onPrimary)}B8`;
+  const resolvedSelectedLabelColor = selectedLabelColor ?? String(palette.onPrimary);
+  const resolvedDividerColor = dividerColor ?? `${String(palette.onPrimary)}1F`;
 
   return (
     <Animated.View
       layout={DISCLOSURE_LAYOUT}
+      className="overflow-hidden"
       style={[
         styles.rail,
         {
@@ -102,7 +103,7 @@ export function KitDisclosureButtonGroup<T extends string>({
           layout={DISCLOSURE_LAYOUT}
           entering={FadeInRight.duration(180)}
           exiting={FadeOutRight.duration(140)}
-          style={styles.optionsRow}
+          className="flex-row items-stretch"
         >
           {options.map((option, index) => {
             const selected = option.value === value;
@@ -113,7 +114,6 @@ export function KitDisclosureButtonGroup<T extends string>({
                     pointerEvents="none"
                     style={[
                       styles.divider,
-                      { backgroundColor: "rgba(255, 255, 255, 0.12)" },
                       {
                         top: metrics.separatorInset,
                         bottom: metrics.separatorInset,
@@ -149,8 +149,8 @@ export function KitDisclosureButtonGroup<T extends string>({
                   style={({ pressed }) => [styles.segmentButton, { opacity: pressed ? 0.9 : 1 }]}
                 >
                   <View
+                    className="flex-row items-center justify-center"
                     style={[
-                      styles.segmentContent,
                       {
                         minHeight: metrics.minHeight,
                         paddingHorizontal: metrics.paddingHorizontal,
@@ -192,18 +192,19 @@ export function KitDisclosureButtonGroup<T extends string>({
         ]}
       >
         <View
+          className="flex-row items-center justify-center"
           style={[
             styles.triggerButton,
             {
               minHeight: metrics.minHeight,
-              paddingHorizontal: triggerLabel ? metrics.paddingHorizontal : 12,
+              paddingHorizontal: triggerLabel ? metrics.paddingHorizontal : BrandSpacing.md,
               borderRadius: metrics.sectionRadius,
             } satisfies ViewStyle,
           ]}
         >
           {triggerIcon ? <View style={styles.iconWrap}>{triggerIcon}</View> : null}
           {triggerLabel ? (
-            <Text style={[styles.segmentLabel, { color: palette.onPrimary as string }]}>
+            <Text style={[styles.segmentLabel, { color: String(palette.onPrimary) }]}>
               {triggerLabel}
             </Text>
           ) : null}
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: BrandSpacing.xs + 2,
   },
   triggerPressable: {
     justifyContent: "center",
@@ -253,7 +254,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: 6,
+    gap: BrandSpacing.xs + 2,
   },
   iconWrap: {
     alignItems: "center",
@@ -261,7 +262,6 @@ const styles = StyleSheet.create({
   },
   segmentLabel: {
     ...BrandType.bodyMedium,
-    fontSize: 15,
     fontWeight: "700",
     includeFontPadding: false,
     textAlign: "center",

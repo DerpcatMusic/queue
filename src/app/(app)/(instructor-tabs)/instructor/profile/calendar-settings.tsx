@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: BrandSpacing.lg,
-    paddingBottom: 112,
+    paddingBottom: BrandSpacing.xxl + BrandSpacing.xxl + BrandSpacing.xxl + BrandSpacing.md,
     gap: BrandSpacing.lg,
   },
   connectionList: {
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
     ...BrandType.body,
   },
   actionStack: {
-    gap: 10,
+    gap: BrandSpacing.sm + 2,
   },
   footerAction: {
     position: "absolute",

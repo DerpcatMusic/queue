@@ -4,10 +4,12 @@ import { Pressable, Text, View } from "react-native";
 import { KitFloatingBadge } from "@/components/ui/kit/kit-floating-badge";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
 const SHEET_EXPANDED_CONTENT_HEIGHT = 84;
 const SHEET_CONTENT_GAP = BrandSpacing.sm;
+const AVATAR_SIZE = 68;
+const BADGE_SIZE = 22;
 
 export function getHomeHeaderExpandedHeight(safeTop: number) {
   return safeTop + SHEET_EXPANDED_CONTENT_HEIGHT;
@@ -85,19 +87,19 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
         accessibilityLabel={onPressAvatar ? t("home.actions.profileTitle") : undefined}
         onPress={onPressAvatar}
         disabled={!onPressAvatar}
-        style={{ borderRadius: 24 }}
+        style={{ borderRadius: BrandRadius.card }}
       >
         <View style={{ position: "relative" }}>
           <ProfileAvatar
             imageUrl={profileImageUrl}
             fallbackName={displayName}
             palette={palette}
-            size={68}
+            size={AVATAR_SIZE}
             roundedSquare
           />
           <KitFloatingBadge
             visible={isVerified}
-            size={22}
+            size={BADGE_SIZE}
             motion="none"
             style={{ top: -12, left: 16 }}
           >

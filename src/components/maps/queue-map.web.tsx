@@ -3,10 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { BrandRadius, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import type { QueueMapProps } from "./queue-map.types";
 import { buildCoverageNodes, getResponseLabel, getZone } from "./queue-map.web.helpers";
+
+const MAP_RADIUS = 28;
+const INNER_RADIUS = 22;
+const MAP_MIN_HEIGHT = 320;
 
 export function QueueMap(props: QueueMapProps) {
   const { t, i18n } = useTranslation();
@@ -37,13 +41,13 @@ export function QueueMap(props: QueueMapProps) {
       style={{
         flex: 1,
         backgroundColor: palette.surfaceAlt as string,
-        padding: 20,
+        padding: BrandSpacing.lg,
       }}
     >
       <View
         style={{
           flex: 1,
-          borderRadius: 28,
+          borderRadius: MAP_RADIUS,
           borderCurve: "continuous",
           backgroundColor: palette.surface as string,
           overflow: "hidden",
@@ -53,7 +57,7 @@ export function QueueMap(props: QueueMapProps) {
           style={{
             flex: 1,
             justifyContent: "space-between",
-            padding: 22,
+            padding: BrandSpacing.lg + 2,
             backgroundColor: palette.surfaceAlt as string,
           }}
         >
@@ -66,7 +70,7 @@ export function QueueMap(props: QueueMapProps) {
                 gap: 12,
               }}
             >
-              <View style={{ gap: 4, flex: 1 }}>
+              <View style={{ gap: BrandSpacing.xs, flex: 1 }}>
                 <Text
                   style={{
                     ...BrandType.micro,
@@ -79,10 +83,7 @@ export function QueueMap(props: QueueMapProps) {
                 </Text>
                 <Text
                   style={{
-                    fontFamily: "BarlowCondensed_800ExtraBold",
-                    fontSize: 38,
-                    lineHeight: 36,
-                    letterSpacing: -1,
+                    ...BrandType.hero,
                     color: palette.text as string,
                   }}
                 >
@@ -92,9 +93,9 @@ export function QueueMap(props: QueueMapProps) {
 
               <View
                 style={{
-                  width: 68,
-                  height: 68,
-                  borderRadius: 22,
+                  width: BrandSpacing.iconContainer + BrandSpacing.xl,
+                  height: BrandSpacing.iconContainer + BrandSpacing.xl,
+                  borderRadius: INNER_RADIUS,
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor: palette.primary as string,
@@ -118,11 +119,11 @@ export function QueueMap(props: QueueMapProps) {
           <View
             style={{
               flex: 1,
-              minHeight: 320,
-              borderRadius: 28,
+              minHeight: MAP_MIN_HEIGHT,
+              borderRadius: MAP_RADIUS,
               borderCurve: "continuous",
               backgroundColor: palette.appBg as string,
-              marginVertical: 18,
+              marginVertical: BrandSpacing.lg + 2,
               overflow: "hidden",
             }}
           >
@@ -187,29 +188,29 @@ export function QueueMap(props: QueueMapProps) {
               />
             </View>
 
-            <View
-              style={{
-                position: "absolute",
-                top: 18,
-                left: 18,
-                right: 18,
-                flexDirection: "row",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
               <View
                 style={{
-                  maxWidth: 320,
-                  borderRadius: 22,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.surface as string,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                  gap: 4,
+                  position: "absolute",
+                  top: BrandSpacing.lg + 2,
+                  left: BrandSpacing.lg + 2,
+                  right: BrandSpacing.lg + 2,
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: BrandSpacing.md,
                 }}
               >
+                <View
+                  style={{
+                    maxWidth: 320,
+                    borderRadius: INNER_RADIUS,
+                    borderCurve: "continuous",
+                    backgroundColor: palette.surface as string,
+                    paddingHorizontal: BrandSpacing.md + 2,
+                    paddingVertical: BrandSpacing.md,
+                    gap: BrandSpacing.xs,
+                  }}
+                >
                 <Text
                   style={{
                     ...BrandType.micro,
@@ -239,16 +240,16 @@ export function QueueMap(props: QueueMapProps) {
                 </Text>
               </View>
 
-              <View
-                style={{
-                  borderRadius: 22,
-                  borderCurve: "continuous",
-                  backgroundColor: palette.primary as string,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                  gap: 2,
-                }}
-              >
+                <View
+                  style={{
+                    borderRadius: INNER_RADIUS,
+                    borderCurve: "continuous",
+                    backgroundColor: palette.primary as string,
+                    paddingHorizontal: BrandSpacing.md + 2,
+                    paddingVertical: BrandSpacing.md,
+                    gap: 2,
+                  }}
+                >
                 <Text
                   style={{
                     ...BrandType.micro,
@@ -262,9 +263,7 @@ export function QueueMap(props: QueueMapProps) {
                 </Text>
                 <Text
                   style={{
-                    fontFamily: "BarlowCondensed_800ExtraBold",
-                    fontSize: 30,
-                    lineHeight: 28,
+                    ...BrandType.heroSmall,
                     color: palette.onPrimary as string,
                     fontVariant: ["tabular-nums"],
                   }}
@@ -287,7 +286,7 @@ export function QueueMap(props: QueueMapProps) {
                   : (palette.text as string);
               const metaColor =
                 node.focused || node.selected
-                  ? "rgba(255,255,255,0.78)"
+                  ? (palette.onPrimary as string)
                   : (palette.textMuted as string);
 
               return (
@@ -302,11 +301,11 @@ export function QueueMap(props: QueueMapProps) {
                     top: `${node.top}%` as `${number}%`,
                     width: `${node.width}%` as `${number}%`,
                     height: `${node.height}%` as `${number}%`,
-                    borderRadius: 24,
+                    borderRadius: INNER_RADIUS,
                     borderCurve: "continuous",
                     backgroundColor: blockBackground,
-                    paddingHorizontal: 12,
-                    paddingVertical: 12,
+                    paddingHorizontal: BrandSpacing.md,
+                    paddingVertical: BrandSpacing.md,
                     justifyContent: "space-between",
                     transform: [{ rotate: `${String(node.rotate)}deg` }],
                     opacity: pressed ? 0.84 : node.selected || node.focused ? 1 : 0.92,
@@ -353,17 +352,17 @@ export function QueueMap(props: QueueMapProps) {
             style={{
               flexDirection: "row",
               alignItems: "stretch",
-              gap: 14,
+              gap: BrandSpacing.md + 2,
             }}
           >
             <View
               style={{
                 flex: 1,
-                borderRadius: 24,
+                borderRadius: INNER_RADIUS,
                 borderCurve: "continuous",
                 backgroundColor: palette.primary as string,
-                paddingHorizontal: 16,
-                paddingVertical: 14,
+                paddingHorizontal: BrandSpacing.lg,
+                paddingVertical: BrandSpacing.md + 2,
                 gap: 2,
               }}
             >
@@ -380,9 +379,7 @@ export function QueueMap(props: QueueMapProps) {
               </Text>
               <Text
                 style={{
-                  fontFamily: "BarlowCondensed_800ExtraBold",
-                  fontSize: 30,
-                  lineHeight: 28,
+                  ...BrandType.heroSmall,
                   color: palette.onPrimary as string,
                 }}
               >
@@ -393,12 +390,12 @@ export function QueueMap(props: QueueMapProps) {
             <View
               style={{
                 flex: 1.5,
-                borderRadius: 24,
+                borderRadius: INNER_RADIUS,
                 borderCurve: "continuous",
                 backgroundColor: palette.surface as string,
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                gap: 10,
+                paddingHorizontal: BrandSpacing.lg,
+                paddingVertical: BrandSpacing.md + 2,
+                gap: BrandSpacing.sm,
               }}
             >
               <Text
@@ -413,7 +410,7 @@ export function QueueMap(props: QueueMapProps) {
               </Text>
 
               {selectedPreview.length > 0 ? (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
                   {selectedPreview.map((node) => (
                     <View
                       key={node.zoneId}
@@ -423,8 +420,8 @@ export function QueueMap(props: QueueMapProps) {
                         backgroundColor: node.focused
                           ? (palette.primarySubtle as string)
                           : (palette.surfaceAlt as string),
-                        paddingHorizontal: 10,
-                        paddingVertical: 7,
+                        paddingHorizontal: BrandSpacing.sm,
+                        paddingVertical: BrandSpacing.xs + 1,
                       }}
                     >
                       <Text

@@ -6,7 +6,11 @@ import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+
+const AVATAR_SIZE = 72;
+const ICON_SIZE = 48;
+const ICON_SYMBOL_SIZE = 21;
 import {
   getActiveSocialCount,
   getProfileSummary,
@@ -88,7 +92,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             imageUrl={profileImageUrl}
             fallbackName={profileName}
             palette={palette}
-            size={72}
+            size={AVATAR_SIZE}
             roundedSquare
           />
 
@@ -117,14 +121,14 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             >
               {profileName}
             </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 18 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm, minHeight: 18 }}>
               {resolvedStatusLabel ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
                   <View
                     style={{
                       width: 7,
                       height: 7,
-                      borderRadius: 3.5,
+                      borderRadius: BrandRadius.icon,
                       backgroundColor:
                         statusTone === "success"
                           ? (palette.success as string)
@@ -169,8 +173,8 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           accessibilityLabel={resolvedPrimaryActionLabel}
           onPress={onRequestEdit}
           tone="primarySubtle"
-          size={48}
-          icon={<IconSymbol name="pencil" size={21} color={palette.primary as string} />}
+          size={ICON_SIZE}
+          icon={<IconSymbol name="pencil" size={ICON_SYMBOL_SIZE} color={palette.primary as string} />}
         />
       </View>
 

@@ -10,6 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
+import { BrandSpacing } from "@/constants/brand";
 import { useKitTheme } from "./use-kit-theme";
 
 type BurstBubbleConfig = {
@@ -20,11 +21,11 @@ type BurstBubbleConfig = {
 };
 
 const BUBBLES: readonly BurstBubbleConfig[] = [
-  { id: "left-top", x: -48, y: -12, size: 10 },
-  { id: "right-top", x: 46, y: -18, size: 12 },
-  { id: "left-bottom", x: -34, y: 28, size: 8 },
-  { id: "right-bottom", x: 38, y: 26, size: 10 },
-  { id: "top", x: 0, y: -42, size: 9 },
+  { id: "left-top", x: -BrandSpacing.xxl * 2 - 4, y: -BrandSpacing.md - 4, size: BrandSpacing.sm + 2 },
+  { id: "right-top", x: BrandSpacing.xxl * 2 - 2, y: -BrandSpacing.md - 6, size: BrandSpacing.sm + 4 },
+  { id: "left-bottom", x: -BrandSpacing.xxl - 2, y: BrandSpacing.lg + 12, size: BrandSpacing.xs + 4 },
+  { id: "right-bottom", x: BrandSpacing.xxl - 2, y: BrandSpacing.lg + 10, size: BrandSpacing.sm + 2 },
+  { id: "top", x: 0, y: -BrandSpacing.xxl * 2 + 2, size: BrandSpacing.xs + 5 },
 ] as const;
 
 type KitSuccessBurstProps = {
@@ -56,12 +57,11 @@ function BurstBubble({
 
   return (
     <Animated.View
+      className="absolute rounded-full"
       style={[
         {
-          position: "absolute",
           width: size,
           height: size,
-          borderRadius: 999,
           backgroundColor: color,
         },
         bubbleStyle,
@@ -72,7 +72,7 @@ function BurstBubble({
 
 export function KitSuccessBurst({
   iconName = "checkmark.circle.fill",
-  height = 112,
+  height = BrandSpacing.xxl * 4 + 16,
 }: KitSuccessBurstProps) {
   const { color, background } = useKitTheme();
   const badgeScale = useSharedValue(0.7);
@@ -105,14 +105,13 @@ export function KitSuccessBurst({
   }));
 
   return (
-    <View style={{ height, alignItems: "center", justifyContent: "center" }}>
+    <View className="items-center justify-center" style={{ height }}>
       <Animated.View
+        className="absolute rounded-full"
         style={[
           {
-            position: "absolute",
-            width: 72,
-            height: 72,
-            borderRadius: 999,
+            width: BrandSpacing.iconContainer + BrandSpacing.xxl,
+            height: BrandSpacing.iconContainer + BrandSpacing.xxl,
             borderWidth: 3,
             borderColor: color.success as string,
           },
@@ -132,13 +131,11 @@ export function KitSuccessBurst({
       ))}
 
       <Animated.View
+        className="items-center justify-center rounded-full"
         style={[
           {
-            width: 56,
-            height: 56,
-            borderRadius: 999,
-            alignItems: "center",
-            justifyContent: "center",
+            width: BrandSpacing.xxl + 8,
+            height: BrandSpacing.xxl + 8,
             backgroundColor: background.primarySubtle as string,
             borderWidth: 1,
             borderColor: color.success as string,
@@ -146,7 +143,7 @@ export function KitSuccessBurst({
           badgeStyle,
         ]}
       >
-        <AppSymbol name={iconName} size={34} tintColor={color.success as string} />
+        <AppSymbol name={iconName} size={BrandSpacing.lg + 6} tintColor={color.success as string} />
       </Animated.View>
     </View>
   );
