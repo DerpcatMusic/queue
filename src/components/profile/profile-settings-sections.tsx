@@ -8,6 +8,21 @@ import { useThemePreference } from "@/hooks/use-theme-preference";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
+const PROFILE_SECTION_HEADER_ICON_SIZE = 14;
+
+const PROFILE_SECTION_CARD_MARGIN_HORIZONTAL = BrandSpacing.inset;
+
+const PROFILE_SETTING_ROW_GAP = 14;
+const PROFILE_SETTING_ROW_PADDING_HORIZONTAL = 18;
+const PROFILE_SETTING_ROW_PADDING_VERTICAL = 15;
+const PROFILE_SETTING_ROW_ICON_SIZE = BrandSpacing.iconContainer;
+const PROFILE_SETTING_ROW_SECONDARY_GAP = 5;
+const PROFILE_SETTING_ROW_VALUE_GAP = BrandSpacing.inset;
+const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = 56;
+const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = 18;
+const PROFILE_SETTING_ROW_DIVIDER_RIGHT = 18;
+const PROFILE_ICON_BUTTON_SIZE = 40;
+
 export function ProfileSectionHeader({
   label,
   description,
@@ -22,16 +37,15 @@ export function ProfileSectionHeader({
   flush?: boolean;
 }) {
   return (
-    <View
-      style={{
-        paddingHorizontal: flush ? 0 : BrandSpacing.xl,
-        paddingTop: BrandSpacing.xl,
-        paddingBottom: BrandSpacing.sm,
-        gap: BrandSpacing.xs,
-      }}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
-        {icon ? <IconSymbol name={icon} size={14} color={palette.textMuted as string} /> : null}
+    <View className={`gap-xs pt-section pb-stack-tight ${flush ? "px-0" : "px-section"}`}>
+      <View className="flex-row items-center gap-sm">
+        {icon ? (
+          <IconSymbol
+            name={icon}
+            size={PROFILE_SECTION_HEADER_ICON_SIZE}
+            color={palette.textMuted as string}
+          />
+        ) : null}
         <Text
           style={{
             ...BrandType.micro,
@@ -74,9 +88,9 @@ export function ProfileSectionCard({
       gap={0}
       style={[
         {
-          marginHorizontal: BrandSpacing.lg,
+          marginHorizontal: PROFILE_SECTION_CARD_MARGIN_HORIZONTAL,
           overflow: "hidden",
-          borderRadius: BrandRadius.card,
+          borderRadius: BrandRadius.soft,
           borderCurve: "continuous",
           backgroundColor: palette.surface as string,
         },
@@ -109,7 +123,7 @@ export function ProfileIconButton({
       icon={<IconSymbol name={icon} size={18} color={iconColor} />}
       onPress={onPress}
       tone={tone === "accent" ? "primarySubtle" : "secondary"}
-      size={40}
+      size={PROFILE_ICON_BUTTON_SIZE}
     />
   );
 }
@@ -187,18 +201,18 @@ export function ProfileSettingRow({
         style={{
           flexDirection: "row",
           alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
-          gap: BrandSpacing.md + 2, // 14px
-          paddingHorizontal: BrandSpacing.md + 6, // 18px
-          paddingVertical: BrandSpacing.md + 3, // 15px
+          gap: PROFILE_SETTING_ROW_GAP,
+          paddingHorizontal: PROFILE_SETTING_ROW_PADDING_HORIZONTAL,
+          paddingVertical: PROFILE_SETTING_ROW_PADDING_VERTICAL,
           backgroundColor: rowBackground,
         }}
       >
         {icon ? (
           <View
             style={{
-              width: BrandSpacing.iconContainer, // 38px
-              height: BrandSpacing.iconContainer, // 38px
-              borderRadius: BrandRadius.icon,
+              width: PROFILE_SETTING_ROW_ICON_SIZE,
+              height: PROFILE_SETTING_ROW_ICON_SIZE,
+              borderRadius: BrandRadius.pill,
               borderCurve: "continuous",
               alignItems: "center",
               justifyContent: "center",
@@ -209,7 +223,9 @@ export function ProfileSettingRow({
           </View>
         ) : null}
 
-        <View style={{ flex: 1, gap: subtitle ? BrandSpacing.xs + 1 : 0, minWidth: 0 }}>
+        <View
+          style={{ flex: 1, gap: subtitle ? PROFILE_SETTING_ROW_SECONDARY_GAP : 0, minWidth: 0 }}
+        >
           <Text
             style={{
               ...BrandType.bodyStrong,
@@ -228,7 +244,7 @@ export function ProfileSettingRow({
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "flex-end",
-            gap: BrandSpacing.md,
+            gap: PROFILE_SETTING_ROW_VALUE_GAP,
             maxWidth: "48%",
           }}
         >
@@ -253,9 +269,9 @@ export function ProfileSettingRow({
           style={{
             height: 1,
             marginLeft: icon
-              ? BrandSpacing.iconContainer + BrandSpacing.md + 6
-              : BrandSpacing.md + 6, // 38 + 12 + 6 = 56 : 18
-            marginRight: BrandSpacing.md + 6, // 18px
+              ? PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON
+              : PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON,
+            marginRight: PROFILE_SETTING_ROW_DIVIDER_RIGHT,
             backgroundColor: borderColor,
           }}
         />

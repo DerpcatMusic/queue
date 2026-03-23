@@ -4,6 +4,9 @@ import { ChoicePill } from "@/components/ui/choice-pill";
 import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
 
+const COMPACT_ZONE_PILL_MIN_HEIGHT = BrandSpacing.controlSm - BrandSpacing.xs;
+const COMPACT_ZONE_PILL_RADIUS = BrandRadius.cardSubtle - BrandSpacing.sm;
+
 type MapSelectedZonesStripProps = {
   selectedZones: ZoneOption[];
   focusZoneId: string | null;
@@ -45,9 +48,9 @@ export function MapSelectedZonesStrip({
               fullWidth={false}
               onPress={() => onPressZone(zone.id)}
               style={{
-                minHeight: 34,
+                minHeight: COMPACT_ZONE_PILL_MIN_HEIGHT,
                 paddingHorizontal: BrandSpacing.md,
-                paddingVertical: 4,
+                paddingVertical: BrandSpacing.xs,
               }}
             />
           );
@@ -55,11 +58,11 @@ export function MapSelectedZonesStrip({
       ) : (
         <View
           style={{
-            minHeight: 34,
-            borderRadius: BrandRadius.card - 14,
+            minHeight: COMPACT_ZONE_PILL_MIN_HEIGHT,
+            borderRadius: COMPACT_ZONE_PILL_RADIUS,
             borderCurve: "continuous",
             paddingHorizontal: BrandSpacing.md,
-            paddingVertical: 4,
+            paddingVertical: BrandSpacing.xs,
             backgroundColor: palette.surfaceAlt as string,
             justifyContent: "center",
           }}

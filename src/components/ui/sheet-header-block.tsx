@@ -1,7 +1,7 @@
 import { I18nManager, Pressable, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 
 type SheetHeaderBlockProps = {
@@ -45,21 +45,18 @@ export function SheetHeaderBlock({
         : (palette.text as string);
 
   return (
-    <View style={{ gap: BrandSpacing.md }}>
+    <View className="gap-md">
       <View
+        className="items-center justify-between gap-md"
         style={{
           flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: BrandSpacing.md,
         }}
       >
         {progressCount && progressIndex ? (
           <View
+            className="items-center gap-sm"
             style={{
               flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
-              alignItems: "center",
-              gap: BrandSpacing.sm,
             }}
           >
             {Array.from({ length: progressCount }, (_, index) => {
@@ -68,10 +65,10 @@ export function SheetHeaderBlock({
               return (
                 <View
                   key={`progress-${index + 1}`}
+                  className="rounded-pill"
                   style={{
                     width: isCurrent ? 28 : 18,
                     height: 8,
-                    borderRadius: BrandRadius.pill,
                     backgroundColor: (isActive ? foregroundColor : inactiveProgress) as string,
                     opacity: isCurrent ? 1 : isActive ? 0.82 : 0.48,
                   }}
@@ -93,17 +90,14 @@ export function SheetHeaderBlock({
             })}
           >
             <View
+              className="flex-row items-center justify-center gap-xs rounded-medium"
               style={{
-                minHeight: 42,
-                borderRadius: BrandRadius.button - 2,
+                minHeight: BrandSpacing.controlMd,
                 borderCurve: "continuous",
                 backgroundColor: trailingBackgroundColor,
-                paddingHorizontal: 14,
-                paddingVertical: 9,
+                paddingHorizontal: BrandSpacing.controlX,
+                paddingVertical: BrandSpacing.sm,
                 flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
               }}
             >
               {trailingIcon}
@@ -115,7 +109,7 @@ export function SheetHeaderBlock({
         ) : null}
       </View>
 
-      <View style={{ gap: 6 }}>
+      <View className="gap-xs">
         <ThemedText type="title" style={{ color: foregroundColor as string }}>
           {title}
         </ThemedText>

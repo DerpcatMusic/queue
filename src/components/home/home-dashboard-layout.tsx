@@ -11,8 +11,8 @@ export function useHomeDashboardLayout() {
   return {
     isWideWeb,
     isExpandedWeb,
-    sectionGap: isWideWeb ? BrandSpacing.xl + 4 : BrandSpacing.xl,
-    topRowGap: isWideWeb ? 20 : BrandSpacing.xl,
+    sectionGap: BrandSpacing.xl,
+    topRowGap: BrandSpacing.xl,
     chartFlex: isWideWeb ? 1.18 : 1,
     heroFlex: isWideWeb ? 0.82 : 1,
     actionColumnWidth: isWideWeb ? 170 : undefined,
@@ -60,21 +60,18 @@ export function HomeSectionHeading({
   eyebrow?: string;
 }) {
   return (
-    <View style={{ gap: 2 }}>
+    <View style={{ gap: BrandSpacing.xs }}>
       {eyebrow ? (
         <Text
           style={{
             ...BrandType.micro,
             color: palette.textMuted as string,
-            letterSpacing: 0.6,
           }}
         >
           {eyebrow}
         </Text>
       ) : null}
-      <Text style={{ ...BrandType.heading, fontSize: 26, color: palette.text as string }}>
-        {title}
-      </Text>
+      <Text style={{ ...BrandType.heading, color: palette.text as string }}>{title}</Text>
     </View>
   );
 }

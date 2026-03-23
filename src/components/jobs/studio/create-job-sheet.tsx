@@ -2,10 +2,11 @@ import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
+import { IconButton } from "@/components/ui/icon-button";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing } from "@/constants/brand";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
@@ -165,23 +166,15 @@ export function CreateJobSheet({
     >
       <BottomSheetScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <ThemedText type="title" style={{ fontSize: 28 }}>
-            {t("jobsTab.studioCreateTitle")}
-          </ThemedText>
-          <Pressable
-            accessibilityRole="button"
+          <ThemedText type="heading">{t("jobsTab.studioCreateTitle")}</ThemedText>
+          <IconButton
             accessibilityLabel={t("common.close")}
             onPress={() => innerRef.current?.close()}
-            style={({ pressed }) => [
-              styles.closeButton,
-              {
-                backgroundColor: palette.surfaceAlt as string,
-                opacity: pressed ? 0.72 : 1,
-              },
-            ]}
-          >
-            <AppSymbol name="xmark" size={18} tintColor={palette.textMuted as string} />
-          </Pressable>
+            size={BrandSpacing.controlSm}
+            tone="secondary"
+            backgroundColorOverride={String(palette.surfaceAlt)}
+            icon={<AppSymbol name="xmark" size={18} tintColor={palette.textMuted as string} />}
+          />
         </View>
 
         <View style={styles.form}>
@@ -264,16 +257,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 24,
-  },
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
+    marginBottom: BrandSpacing.xl,
   },
   form: {
-    gap: 20,
+    gap: BrandSpacing.stackLoose,
   },
 });

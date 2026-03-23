@@ -11,6 +11,7 @@ export type CalendarVisibilityFilters = Record<CalendarVisibilityFilterKey, bool
 
 export type GoogleCalendarStatus = {
   connected: boolean;
+  hasRefreshToken: boolean;
 };
 
 export type GoogleAgendaRow = {

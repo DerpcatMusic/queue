@@ -86,13 +86,12 @@ export function KitDisclosureButtonGroup<T extends string>({
   return (
     <Animated.View
       layout={DISCLOSURE_LAYOUT}
-      className="overflow-hidden"
+      className="overflow-hidden rounded-button"
       style={[
         {
           backgroundColor: resolvedRailColor,
           minHeight: metrics.minHeight,
           padding: metrics.railPadding,
-          borderRadius: BrandRadius.button,
         },
         style,
       ]}
@@ -127,11 +126,10 @@ export function KitDisclosureButtonGroup<T extends string>({
                 {selected ? (
                   <View
                     pointerEvents="none"
-                    className="absolute inset-0"
+                    className="absolute inset-0 rounded-button-subtle"
                     style={[
                       {
                         backgroundColor: resolvedSelectedColor,
-                        borderRadius: BrandRadius.buttonSubtle,
                       },
                     ]}
                   />
@@ -148,7 +146,7 @@ export function KitDisclosureButtonGroup<T extends string>({
                   style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
                 >
                   <View
-                    className="flex-row items-center justify-center"
+                    className="flex-row items-center justify-center rounded-button-subtle"
                     style={[
                       {
                         minHeight: metrics.minHeight,
@@ -156,7 +154,9 @@ export function KitDisclosureButtonGroup<T extends string>({
                       } satisfies ViewStyle,
                     ]}
                   >
-                    {option.icon ? <View className="items-center justify-center">{option.icon}</View> : null}
+                    {option.icon ? (
+                      <View className="items-center justify-center">{option.icon}</View>
+                    ) : null}
                     <Text
                       numberOfLines={1}
                       className="text-center font-bold"
@@ -195,12 +195,11 @@ export function KitDisclosureButtonGroup<T extends string>({
         ]}
       >
         <View
-          className="flex-row items-center justify-center"
+          className="flex-row items-center justify-center rounded-button-subtle"
           style={[
             {
               minHeight: metrics.minHeight,
               paddingHorizontal: triggerLabel ? metrics.paddingHorizontal : BrandSpacing.md,
-              borderRadius: BrandRadius.buttonSubtle,
             } satisfies ViewStyle,
           ]}
         >

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View, type ViewProps } from "react-native";
 import Svg, { Defs, Pattern, Rect } from "react-native-svg";
 import type { MeshGradientPreset } from "@/constants/brand";
 import { BrandMeshGradient } from "@/constants/brand";
+import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 
 type MeshGradientViewProps = ViewProps & {
@@ -18,19 +19,17 @@ type MeshGradientViewProps = ViewProps & {
   darkVariant?: boolean;
 };
 
-/**
- * TexturedOverlay - Subtle dot pattern for texture/grain feel
- * Uses a repeating SVG pattern of tiny semi-transparent dots.
- * Works on both native and web platforms.
- */
-function TexturedOverlay() {
+type TexturedOverlayProps = {
+  tintColor: string;
+};
+
+function TexturedOverlay({ tintColor }: TexturedOverlayProps) {
   return (
     <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
       <Defs>
-        {/* Tiny dot pattern for subtle grain texture */}
         <Pattern id="grain" patternUnits="userSpaceOnUse" width="4" height="4">
-          <Rect x="0" y="0" width="1" height="1" fill="rgba(255,255,255,0.12)" />
-          <Rect x="2" y="2" width="1" height="1" fill="rgba(255,255,255,0.08)" />
+          <Rect x="0" y="0" width="1" height="1" fill={tintColor} opacity={0.12} />
+          <Rect x="2" y="2" width="1" height="1" fill={tintColor} opacity={0.08} />
         </Pattern>
       </Defs>
       <Rect x="0" y="0" width="100%" height="100%" fill="url(#grain)" />
@@ -55,6 +54,7 @@ export function MeshGradientView({
   children,
   ...props
 }: MeshGradientViewProps) {
+  const palette = useBrand();
   const { resolvedScheme } = useThemePreference();
 
   const { gradient, grainOpacity: defaultGrainOpacity } = useMemo(() => {
@@ -63,6 +63,7 @@ export function MeshGradientView({
   }, [resolvedScheme, preset, darkVariant]);
 
   const effectiveGrainOpacity = grainOpacity ?? defaultGrainOpacity;
+  const tintColor = palette.onPrimary as string;
 
   const containerStyle = useMemo(
     () => [
@@ -83,7 +84,7 @@ export function MeshGradientView({
         style={[styles.textureOverlay, { opacity: effectiveGrainOpacity }]}
         pointerEvents="none"
       >
-        <TexturedOverlay />
+        <TexturedOverlay tintColor={tintColor} />
       </View>
     </View>
   );
@@ -98,7 +99,7 @@ export function MeshGradientView({
               style={[styles.textureOverlay, { opacity: effectiveGrainOpacity }]}
               pointerEvents="none"
             >
-              <TexturedOverlay />
+              <TexturedOverlay tintColor={tintColor} />
             </View>
           </View>
         )}

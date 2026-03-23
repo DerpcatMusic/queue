@@ -16,6 +16,8 @@ export type BrandPalette = {
   text: ColorValue;
   textMuted: ColorValue;
   textMicro: ColorValue;
+  onPrimaryShadowStrong: ColorValue;
+  onPrimaryShadowSoft: ColorValue;
   // Brand
   primary: ColorValue;
   primarySubtle: ColorValue;
@@ -67,6 +69,8 @@ const ExplicitBrandPalette: Record<ResolvedBrandScheme, BrandPalette> = {
     text: "#181522",
     textMuted: "#6D6580",
     textMicro: "#8E86A0",
+    onPrimaryShadowStrong: "#00000052",
+    onPrimaryShadowSoft: "#0000003D",
     primary: "#8B5CF6",
     primarySubtle: "#E8DDFF",
     primaryPressed: "#7443F0",
@@ -113,6 +117,8 @@ const ExplicitBrandPalette: Record<ResolvedBrandScheme, BrandPalette> = {
     text: "#F7F4FE",
     textMuted: "#B8B0CA",
     textMicro: "#8C849E",
+    onPrimaryShadowStrong: "#00000052",
+    onPrimaryShadowSoft: "#0000003D",
     primary: "#8F6AFB",
     primarySubtle: "#36285C",
     primaryPressed: "#7A55F3",
@@ -212,17 +218,21 @@ export const MapBrandPalette = NativeMapBrandPalette;
 // ─── Spacing & Radius ────────────────────────────────────────────────────────
 
 export const BrandRadius = {
+  hard: 12,
+  medium: 18,
+  soft: 24,
+  pill: 999,
   card: 24,
   cardSubtle: 18,
   button: 20,
   buttonSubtle: 14,
   input: 20,
-  pill: 999,
   icon: 999,
   circle: 999,
 } as const;
 
 export const BrandSpacing = {
+  xxs: 2,
   xs: 4,
   sm: 8,
   md: 12,
@@ -234,7 +244,31 @@ export const BrandSpacing = {
   iconContainerLarge: 78,
   haloSize: 180,
   mapMinHeight: 300,
+  mapCanvasMinHeight: 320,
   multilineInputMinHeight: 96,
+  stackTight: 8,
+  stack: 12,
+  stackRoomy: 16,
+  stackLoose: 24,
+  insetTight: 12,
+  inset: 16,
+  insetRoomy: 24,
+  section: 32,
+  controlX: 14,
+  controlY: 12,
+  controlSm: 38,
+  controlMd: 44,
+  controlLg: 52,
+  iconSm: 18,
+  iconMd: 24,
+  iconLg: 32,
+  avatarSm: 38,
+  avatarMd: 48,
+  avatarLg: 78,
+  shellRail: 236,
+  shellPanel: 320,
+  shellCommandPanel: 360,
+  statusDot: 6,
 } as const;
 
 // ─── Typography ──────────────────────────────────────────────────────────────

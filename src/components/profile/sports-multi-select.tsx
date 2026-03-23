@@ -19,6 +19,22 @@ type SportsMultiSelectProps = {
   variant?: "card" | "content";
 };
 
+const SPORTS_HEADER_HORIZONTAL_PADDING = BrandSpacing.lg;
+const SPORTS_HEADER_VERTICAL_PADDING = BrandSpacing.componentPadding;
+const SPORTS_HEADER_BADGE_HORIZONTAL_PADDING = BrandSpacing.sm;
+const SPORTS_HEADER_BADGE_VERTICAL_PADDING = BrandSpacing.xs;
+const SPORTS_PANEL_HORIZONTAL_PADDING = BrandSpacing.componentPadding;
+const SPORTS_PANEL_BOTTOM_PADDING = BrandSpacing.componentPadding;
+const SPORTS_PANEL_GAP = BrandSpacing.md;
+const SPORTS_SECTION_GAP = BrandSpacing.sm;
+const SPORTS_RESULT_ROW_MIN_HEIGHT = BrandSpacing.controlLg + BrandSpacing.xs;
+const SPORTS_RESULT_ROW_PADDING_HORIZONTAL = BrandSpacing.md;
+const SPORTS_RESULT_ROW_PADDING_VERTICAL = BrandSpacing.md;
+const SPORTS_RESULT_ROW_GAP = BrandSpacing.md;
+const SPORTS_RESULT_EMPTY_GAP = BrandSpacing.xs;
+const SPORTS_SELECTED_SPORT_GAP = BrandSpacing.xs / 2;
+const SPORTS_RESULTS_MAX_HEIGHT = 260;
+
 export function SportsMultiSelect({
   palette,
   selectedSports,
@@ -72,7 +88,7 @@ export function SportsMultiSelect({
                   },
                 ]}
               >
-                <View style={{ flex: 1, gap: 2 }}>
+                <View style={{ flex: 1, gap: SPORTS_SELECTED_SPORT_GAP }}>
                   <Text style={[styles.resultTitle, { color: palette.text as string }]}>
                     {isSportType(sport) ? toSportLabel(sport) : sport}
                   </Text>
@@ -200,13 +216,13 @@ export function SportsMultiSelect({
 
 const styles = StyleSheet.create({
   shell: {
-    borderRadius: BrandRadius.card,
+    borderRadius: BrandRadius.soft,
     borderCurve: "continuous",
     overflow: "hidden",
   },
   header: {
-    paddingHorizontal: BrandSpacing.lg, // 16px
-    paddingVertical: BrandSpacing.md + 2, // 14px
+    paddingHorizontal: SPORTS_HEADER_HORIZONTAL_PADDING,
+    paddingVertical: SPORTS_HEADER_VERTICAL_PADDING,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -219,20 +235,20 @@ const styles = StyleSheet.create({
   headerBadge: {
     borderRadius: BrandRadius.pill,
     borderCurve: "continuous",
-    paddingHorizontal: BrandSpacing.sm + 2, // 10px
-    paddingVertical: BrandSpacing.xs + 2, // 6px
+    paddingHorizontal: SPORTS_HEADER_BADGE_HORIZONTAL_PADDING,
+    paddingVertical: SPORTS_HEADER_BADGE_VERTICAL_PADDING,
   },
   panel: {
-    paddingHorizontal: BrandSpacing.componentPadding, // 14px
-    paddingBottom: BrandSpacing.componentPadding, // 14px
-    gap: BrandSpacing.md,
+    paddingHorizontal: SPORTS_PANEL_HORIZONTAL_PADDING,
+    paddingBottom: SPORTS_PANEL_BOTTOM_PADDING,
+    gap: SPORTS_PANEL_GAP,
   },
   panelContentOnly: {
-    paddingHorizontal: 0,
-    paddingBottom: 0,
+    paddingHorizontal: BrandSpacing.xs - BrandSpacing.xs,
+    paddingBottom: BrandSpacing.xs - BrandSpacing.xs,
   },
   section: {
-    gap: BrandSpacing.sm,
+    gap: SPORTS_SECTION_GAP,
   },
   sectionLabel: {
     ...BrandType.micro,
@@ -240,20 +256,20 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   resultsViewport: {
-    maxHeight: 260,
+    maxHeight: SPORTS_RESULTS_MAX_HEIGHT,
   },
   resultsList: {
-    gap: BrandSpacing.sm,
+    gap: SPORTS_SECTION_GAP,
   },
   resultRow: {
-    minHeight: BrandSpacing.iconContainer + 18, // 56px - touch target friendly
-    borderRadius: BrandRadius.cardSubtle, // card - 6 = 18px
+    minHeight: SPORTS_RESULT_ROW_MIN_HEIGHT,
+    borderRadius: BrandRadius.medium,
     borderCurve: "continuous",
-    paddingHorizontal: BrandSpacing.md,
-    paddingVertical: BrandSpacing.md,
+    paddingHorizontal: SPORTS_RESULT_ROW_PADDING_HORIZONTAL,
+    paddingVertical: SPORTS_RESULT_ROW_PADDING_VERTICAL,
     flexDirection: "row",
     alignItems: "center",
-    gap: BrandSpacing.md,
+    gap: SPORTS_RESULT_ROW_GAP,
   },
   resultTitle: {
     ...BrandType.bodyStrong,
@@ -262,10 +278,10 @@ const styles = StyleSheet.create({
     ...BrandType.micro,
   },
   emptyState: {
-    borderRadius: BrandRadius.cardSubtle,
+    borderRadius: BrandRadius.medium,
     borderCurve: "continuous",
-    paddingHorizontal: BrandSpacing.md,
-    paddingVertical: BrandSpacing.md,
-    gap: BrandSpacing.xs,
+    paddingHorizontal: SPORTS_RESULT_ROW_PADDING_HORIZONTAL,
+    paddingVertical: SPORTS_RESULT_ROW_PADDING_VERTICAL,
+    gap: SPORTS_RESULT_EMPTY_GAP,
   },
 });

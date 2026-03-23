@@ -7,26 +7,25 @@ import {
   type ViewStyle,
 } from "react-native";
 import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 
-// Search field sizes - sm for inline/compact use, md for standard use
 const SEARCH_SIZE_SM = {
-  containerMinHeight: BrandSpacing.iconContainer + BrandSpacing.sm, // 38 + 8 = 46px
-  inputMinHeight: BrandSpacing.iconContainer + BrandSpacing.xs, // 38 + 4 = 42px
+  containerMinHeight: BrandSpacing.controlSm + BrandSpacing.sm,
+  inputMinHeight: BrandSpacing.controlSm + BrandSpacing.xxs + BrandSpacing.xxs,
   horizontalPadding: BrandSpacing.md,
-  iconSize: BrandSpacing.md + BrandSpacing.xs, // 12 + 4 = 16px
-  clearIconSize: BrandSpacing.md + BrandSpacing.xs - 1, // 12 + 4 - 1 = 15px
-  radius: BrandRadius.cardSubtle - BrandSpacing.xs, // 18 - 4 = 14px
+  iconSize: BrandSpacing.iconSm - BrandSpacing.xxs,
+  clearIconSize: BrandSpacing.iconSm - BrandSpacing.xxs,
+  radius: BrandRadius.buttonSubtle,
 } as const;
 
 const SEARCH_SIZE_MD = {
-  containerMinHeight: BrandSpacing.iconContainer + BrandSpacing.md, // 38 + 12 = 50px
-  inputMinHeight: BrandSpacing.iconContainer + BrandSpacing.sm, // 38 + 8 = 46px
+  containerMinHeight: BrandSpacing.controlSm + BrandSpacing.md,
+  inputMinHeight: BrandSpacing.controlSm + BrandSpacing.sm,
   horizontalPadding: BrandSpacing.lg,
-  iconSize: BrandSpacing.md + BrandSpacing.sm, // 12 + 8 = 20px
-  clearIconSize: BrandSpacing.md + BrandSpacing.xs, // 12 + 4 = 16px
+  iconSize: BrandSpacing.iconSm + BrandSpacing.xxs,
+  clearIconSize: BrandSpacing.iconSm - BrandSpacing.xxs,
   radius: BrandRadius.input,
 } as const;
 
@@ -91,11 +90,9 @@ export function NativeSearchField({
           {
             flex: 1,
             minHeight: metrics.inputMinHeight,
+            ...BrandType.bodyMedium,
             color: palette.text,
-            fontSize: 16,
-            fontWeight: "500",
             includeFontPadding: false,
-            paddingVertical: 0,
           },
           style,
         ]}

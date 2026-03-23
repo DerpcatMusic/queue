@@ -1,5 +1,4 @@
 import "@/global.css";
-import { BrandSpacing } from "@/constants/brand";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { BarlowCondensed_800ExtraBold } from "@expo-google-fonts/barlow-condensed";
@@ -24,9 +23,9 @@ import { LogBox, Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-
 import { AppSafeRoot } from "@/components/layout/app-safe-root";
 import { ThemedText } from "@/components/themed-text";
+import { BrandSpacing } from "@/constants/brand";
 import { RapydReturnProvider } from "@/contexts/rapyd-return-context";
 import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
 import { UserProvider } from "@/contexts/user-context";
@@ -132,7 +131,10 @@ function RootLayoutContent() {
 
   if (!isConvexUrlConfigured || !convex) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ gap: BrandSpacing.lg, paddingHorizontal: BrandSpacing.xl }}>
+      <View
+        className="flex-1 items-center justify-center"
+        style={{ gap: BrandSpacing.lg, paddingHorizontal: BrandSpacing.xl }}
+      >
         <ThemedText type="title">{i18n.t("errors.configuration.title")}</ThemedText>
         <ThemedText>{i18n.t("errors.configuration.body")}</ThemedText>
       </View>
@@ -152,7 +154,7 @@ function RootLayoutContent() {
   const statusInsetColor = topInsetBackgroundColor ?? fallbackBackgroundColor;
 
   return (
-    <GestureHandlerRootView className="flex-1">
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <ConvexAuthProvider client={convex} {...(nativeStorage ? { storage: nativeStorage } : {})}>
         <UserProvider>
           <RapydReturnProvider>

@@ -62,7 +62,7 @@ export const calendarTimelineStyles = {
     position: "relative",
   },
   timelineContent: {
-    paddingTop: 4,
+    paddingTop: BrandSpacing.xs,
   },
   timelineBottomMask: {
     position: "absolute",
@@ -72,25 +72,23 @@ export const calendarTimelineStyles = {
     opacity: 1,
   },
   visibilitySection: {
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   visibilityChipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   headerControlsRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: BrandSpacing.sm + BrandSpacing.xxs,
   },
-  timelineRow: {
-    paddingHorizontal: 0,
-  },
+  timelineRow: {},
   dayHeaderContent: {
-    gap: 2,
-    paddingTop: 10,
-    paddingBottom: 4,
+    gap: BrandSpacing.xxs,
+    paddingTop: BrandSpacing.sm + BrandSpacing.xxs,
+    paddingBottom: BrandSpacing.xs,
   },
   dayHeading: {
     fontSize: 18,
@@ -100,27 +98,26 @@ export const calendarTimelineStyles = {
   daySubtitle: {
     fontSize: 12,
     fontWeight: "400",
-    marginTop: 1,
   },
   lessonCard: {
     flex: 1,
-    marginRight: 16,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 16,
+    marginRight: BrandSpacing.lg,
+    marginBottom: BrandSpacing.sm,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.sm + BrandSpacing.xxs,
+    borderRadius: BrandRadius.cardSubtle - BrandSpacing.xxs,
     borderCurve: "continuous",
   },
   lessonRowCompact: {
     flexDirection: "row",
     alignItems: "stretch",
-    gap: 10,
+    gap: BrandSpacing.sm + BrandSpacing.xxs,
   },
   lessonTimeColumn: {
     width: 64,
     alignItems: "flex-start",
     justifyContent: "center",
-    gap: 1,
+    gap: BrandSpacing.xxs / 2,
   },
   lessonTimePrimary: {
     fontSize: 13,
@@ -140,17 +137,17 @@ export const calendarTimelineStyles = {
   lessonContent: {
     flex: 1,
     minWidth: 0,
-    gap: 2,
+    gap: BrandSpacing.xxs,
   },
   lessonTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   lifecycleBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingHorizontal: BrandSpacing.sm,
+    paddingVertical: BrandSpacing.xxs,
     borderRadius: BrandRadius.pill,
     borderCurve: "continuous",
   },
@@ -176,11 +173,11 @@ export const calendarTimelineStyles = {
   },
   emptyStateCard: {
     flex: 1,
-    marginRight: 16,
-    marginBottom: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 16,
+    marginRight: BrandSpacing.lg,
+    marginBottom: BrandSpacing.sm,
+    paddingHorizontal: BrandSpacing.controlX,
+    paddingVertical: BrandSpacing.md,
+    borderRadius: BrandRadius.card - BrandSpacing.sm,
     borderCurve: "continuous",
     justifyContent: "center",
   },
@@ -198,11 +195,11 @@ export const calendarSheetStyles = {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 12,
+    gap: BrandSpacing.md,
   },
   titleColumn: {
     flex: 1,
-    gap: 4,
+    gap: BrandSpacing.xs,
   },
   title: {
     ...BrandType.heading,
@@ -228,8 +225,8 @@ export const calendarSheetStyles = {
   summaryCountPill: {
     borderRadius: BrandRadius.pill,
     borderCurve: "continuous",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.sm - BrandSpacing.xxs,
   },
   agendaHeader: {
     gap: BrandSpacing.xs,

@@ -42,9 +42,27 @@ const SIZE_PRESET: Record<
   KitButtonGroupSize,
   { minHeight: number; radius: number; paddingX: number; inset: number; separatorInset: number }
 > = {
-  sm: { minHeight: BrandSpacing.iconContainer, radius: BrandRadius.buttonSubtle, paddingX: BrandSpacing.componentPadding, inset: 2, separatorInset: BrandSpacing.sm + 1 },
-  md: { minHeight: BrandSpacing.iconContainer, radius: BrandRadius.button, paddingX: BrandSpacing.lg, inset: 3, separatorInset: BrandSpacing.sm + 3 },
-  lg: { minHeight: BrandSpacing.xxl + 6, radius: BrandRadius.button, paddingX: BrandSpacing.xl - 2, inset: 3, separatorInset: BrandSpacing.sm + 4 },
+  sm: {
+    minHeight: BrandSpacing.iconContainer,
+    radius: BrandRadius.buttonSubtle,
+    paddingX: BrandSpacing.componentPadding,
+    inset: 2,
+    separatorInset: BrandSpacing.sm + 1,
+  },
+  md: {
+    minHeight: BrandSpacing.iconContainer,
+    radius: BrandRadius.button,
+    paddingX: BrandSpacing.lg,
+    inset: 3,
+    separatorInset: BrandSpacing.sm + 3,
+  },
+  lg: {
+    minHeight: BrandSpacing.xxl + 6,
+    radius: BrandRadius.button,
+    paddingX: BrandSpacing.xl - 2,
+    inset: 3,
+    separatorInset: BrandSpacing.sm + 4,
+  },
 };
 
 export function KitButtonGroup<T extends string>({
@@ -72,16 +90,24 @@ export function KitButtonGroup<T extends string>({
   const wraps = resolvedColumns < options.length;
   const slotBasis = `${100 / resolvedColumns}%` as DimensionValue;
 
-  const resolvedGroupBg = groupBackgroundColor ?? (tone === "onPrimary" ? `${String(palette.text)}CC` : String(palette.surfaceAlt));
-  const resolvedSelectedBg = selectedBackgroundColor ?? (tone === "onPrimary" ? `${String(palette.onPrimary)}33` : String(palette.surfaceElevated));
-  const resolvedLabelColorFinal = labelColor ?? (tone === "onPrimary" ? `${String(palette.onPrimary)}B8` : String(palette.textMuted));
+  const resolvedGroupBg =
+    groupBackgroundColor ??
+    (tone === "onPrimary" ? `${String(palette.text)}CC` : String(palette.surfaceAlt));
+  const resolvedSelectedBg =
+    selectedBackgroundColor ??
+    (tone === "onPrimary" ? `${String(palette.onPrimary)}33` : String(palette.surfaceElevated));
+  const resolvedLabelColorFinal =
+    labelColor ??
+    (tone === "onPrimary" ? `${String(palette.onPrimary)}B8` : String(palette.textMuted));
   const resolvedSelectedLabelColorFinal = selectedLabelColor ?? String(palette.onPrimary);
-  const resolvedDividerColorFinal = dividerColor ?? (tone === "onPrimary" ? `${String(palette.onPrimary)}24` : String(palette.borderStrong));
+  const resolvedDividerColorFinal =
+    dividerColor ??
+    (tone === "onPrimary" ? `${String(palette.onPrimary)}24` : String(palette.borderStrong));
 
   return (
     <View
       accessible
-      className="overflow-hidden"
+      className="overflow-hidden rounded-button"
       style={[
         {
           width: fullWidth ? "100%" : width,
@@ -89,7 +115,6 @@ export function KitButtonGroup<T extends string>({
           alignSelf: fullWidth ? "stretch" : alignSelfMap[align],
           backgroundColor: resolvedGroupBg,
           flexWrap: wraps ? "wrap" : "nowrap",
-          borderRadius: BrandRadius.button,
           padding: BrandSpacing.sm - 2,
         },
         style,
@@ -169,7 +194,9 @@ export function KitButtonGroup<T extends string>({
                   },
                 ]}
               >
-                {option.icon ? <View className="items-center justify-center">{option.icon}</View> : null}
+                {option.icon ? (
+                  <View className="items-center justify-center">{option.icon}</View>
+                ) : null}
                 <Text
                   numberOfLines={1}
                   className="text-center font-bold"

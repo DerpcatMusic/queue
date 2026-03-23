@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { LoadingScreen } from "@/components/loading-screen";
 import {
@@ -18,7 +18,7 @@ import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -267,27 +267,27 @@ export default function LocationScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
+    <View className="flex-1 relative" style={{ backgroundColor: palette.appBg }}>
       <ProfileSubpageScrollView
         routeKey="instructor/profile/location"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
-          paddingHorizontal: BrandSpacing.lg,
+          paddingHorizontal: BrandSpacing.inset,
           paddingBottom: overlayBottom + 92,
-          gap: BrandSpacing.lg,
+          gap: BrandSpacing.stackRoomy,
         }}
       >
         <View
-          style={[
-            styles.heroCard,
-            {
-              backgroundColor: palette.surfaceAlt as string,
-              borderColor: palette.border as string,
-            },
-          ]}
+          className="gap-stack-roomy rounded-soft p-inset-roomy"
+          style={{
+            backgroundColor: palette.surfaceAlt as string,
+            borderColor: palette.border as string,
+            borderWidth: 1,
+            borderCurve: "continuous",
+          }}
         >
-          <View style={styles.heroHeaderRow}>
-            <View style={styles.heroCopy}>
+          <View className="flex-row items-start gap-stack">
+            <View className="flex-1 gap-stack-tight min-w-0">
               <Text
                 style={{
                   ...BrandType.micro,
@@ -315,13 +315,23 @@ export default function LocationScreen() {
               </Text>
             </View>
             <View
-              style={[styles.heroIconWrap, { backgroundColor: palette.primarySubtle as string }]}
+              className="items-center justify-center rounded-pill"
+              style={[
+                {
+                  width: BrandSpacing.avatarMd,
+                  height: BrandSpacing.avatarMd,
+                  borderWidth: 1,
+                  borderCurve: "continuous",
+                  borderColor: palette.border as string,
+                  backgroundColor: palette.primarySubtle as string,
+                },
+              ]}
             >
               <IconSymbol name="mappin.and.ellipse" size={22} color={palette.primary as string} />
             </View>
           </View>
 
-          <View style={styles.heroSignalsRow}>
+          <View className="flex-row gap-stack-tight">
             <StatusSignal
               label={t("profile.location.signalAddress")}
               value={
@@ -340,7 +350,7 @@ export default function LocationScreen() {
           </View>
         </View>
 
-        <View style={{ gap: BrandSpacing.sm }}>
+        <View className="gap-stack-tight">
           <ProfileSectionHeader
             label={t("profile.location.commandLabel")}
             description={t("profile.settings.location.instructorDescription")}
@@ -349,8 +359,8 @@ export default function LocationScreen() {
             flush
           />
           <ProfileSectionCard palette={palette} style={{ marginHorizontal: 0 }}>
-            <View style={styles.sectionBody}>
-              <View style={{ gap: 4 }}>
+            <View className="gap-stack-roomy p-inset-roomy">
+              <View className="gap-stack-tight">
                 <Text
                   style={{
                     ...BrandType.title,
@@ -399,13 +409,13 @@ export default function LocationScreen() {
 
               {coordinateLabel ? (
                 <View
-                  style={[
-                    styles.metaStrip,
-                    {
-                      borderColor: palette.border as string,
-                      backgroundColor: palette.surfaceElevated as string,
-                    },
-                  ]}
+                  className="gap-stack-tight rounded-medium px-control-x py-control-y"
+                  style={{
+                    borderWidth: 1,
+                    borderCurve: "continuous",
+                    borderColor: palette.border as string,
+                    backgroundColor: palette.surfaceElevated as string,
+                  }}
                 >
                   <Text
                     style={{
@@ -431,7 +441,7 @@ export default function LocationScreen() {
           </ProfileSectionCard>
         </View>
 
-        <View style={{ gap: BrandSpacing.sm }}>
+        <View className="gap-stack-tight">
           <ProfileSectionHeader
             label={t("profile.location.zoneLabel")}
             description={t("profile.location.zoneDescription")}
@@ -440,19 +450,19 @@ export default function LocationScreen() {
             flush
           />
           <ProfileSectionCard palette={palette} style={{ marginHorizontal: 0 }}>
-            <View style={styles.sectionBody}>
+            <View className="gap-stack-roomy p-inset-roomy">
               <View
-                style={[
-                  styles.zoneStateCard,
-                  {
-                    borderColor: hasDetectedZone
-                      ? (palette.primary as string)
-                      : (palette.border as string),
-                    backgroundColor: hasDetectedZone
-                      ? (palette.primarySubtle as string)
-                      : (palette.surfaceElevated as string),
-                  },
-                ]}
+                className="gap-stack-tight rounded-medium p-inset"
+                style={{
+                  borderWidth: 1,
+                  borderCurve: "continuous",
+                  borderColor: hasDetectedZone
+                    ? (palette.primary as string)
+                    : (palette.border as string),
+                  backgroundColor: hasDetectedZone
+                    ? (palette.primarySubtle as string)
+                    : (palette.surfaceElevated as string),
+                }}
               >
                 <Text
                   style={{
@@ -490,15 +500,15 @@ export default function LocationScreen() {
 
               {hasDetectedZone ? (
                 <View
-                  style={[
-                    styles.toggleRow,
-                    {
-                      borderColor: palette.border as string,
-                      backgroundColor: palette.surfaceElevated as string,
-                    },
-                  ]}
+                  className="flex-row items-center gap-stack rounded-medium px-control-x py-control-y"
+                  style={{
+                    borderWidth: 1,
+                    borderCurve: "continuous",
+                    borderColor: palette.border as string,
+                    backgroundColor: palette.surfaceElevated as string,
+                  }}
                 >
-                  <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
+                  <View className="flex-1 gap-stack-tight min-w-0">
                     <Text
                       style={{
                         ...BrandType.bodyStrong,
@@ -525,13 +535,13 @@ export default function LocationScreen() {
 
         {errorMessage ? (
           <View
-            style={[
-              styles.errorCard,
-              {
-                borderColor: palette.danger as string,
-                backgroundColor: palette.dangerSubtle as string,
-              },
-            ]}
+            className="rounded-medium px-control-x py-control-y"
+            style={{
+              borderWidth: 1,
+              borderCurve: "continuous",
+              borderColor: palette.danger as string,
+              backgroundColor: palette.dangerSubtle as string,
+            }}
           >
             <Text
               style={{
@@ -546,13 +556,11 @@ export default function LocationScreen() {
       </ProfileSubpageScrollView>
 
       <View
-        style={[
-          styles.actionRail,
-          {
-            bottom: overlayBottom,
-            backgroundColor: palette.appBg as string,
-          },
-        ]}
+        className="absolute left-inset right-inset gap-stack-tight"
+        style={{
+          bottom: overlayBottom,
+          backgroundColor: palette.appBg as string,
+        }}
       >
         <ActionButton
           label={
@@ -576,81 +584,3 @@ export default function LocationScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    position: "relative",
-  },
-  heroCard: {
-    gap: BrandSpacing.lg,
-    borderWidth: 1,
-    borderRadius: BrandRadius.card,
-    borderCurve: "continuous",
-    padding: BrandSpacing.xl,
-  },
-  heroHeaderRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: BrandSpacing.md,
-  },
-  heroCopy: {
-    flex: 1,
-    gap: BrandSpacing.sm,
-    minWidth: 0,
-  },
-  heroIconWrap: {
-    width: BrandSpacing.iconContainer + BrandSpacing.xs + 2,
-    height: BrandSpacing.iconContainer + BrandSpacing.xs + 2,
-    borderRadius: BrandRadius.icon,
-    borderCurve: "continuous",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroSignalsRow: {
-    flexDirection: "row",
-    gap: BrandSpacing.sm + 2,
-  },
-  sectionBody: {
-    padding: BrandSpacing.lg,
-    gap: BrandSpacing.md,
-  },
-  metaStrip: {
-    gap: BrandSpacing.xs,
-    borderWidth: 1,
-    borderRadius: BrandRadius.button,
-    borderCurve: "continuous",
-    paddingHorizontal: BrandSpacing.componentPadding, // 14px
-    paddingVertical: BrandSpacing.md, // 12px
-  },
-  zoneStateCard: {
-    gap: BrandSpacing.sm,
-    borderWidth: 1,
-    borderRadius: BrandRadius.cardSubtle, // card - 6
-    borderCurve: "continuous",
-    padding: BrandSpacing.lg,
-  },
-  toggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: BrandSpacing.md,
-    borderWidth: 1,
-    borderRadius: BrandRadius.button,
-    borderCurve: "continuous",
-    paddingHorizontal: BrandSpacing.componentPadding, // 14px
-    paddingVertical: BrandSpacing.md, // 12px
-  },
-  errorCard: {
-    borderWidth: 1,
-    borderRadius: BrandRadius.button,
-    borderCurve: "continuous",
-    paddingHorizontal: BrandSpacing.componentPadding, // 14px
-    paddingVertical: BrandSpacing.md, // 12px
-  },
-  actionRail: {
-    position: "absolute",
-    left: BrandSpacing.lg,
-    right: BrandSpacing.lg,
-    gap: BrandSpacing.sm + 2,
-  },
-});

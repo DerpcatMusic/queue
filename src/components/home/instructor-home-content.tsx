@@ -12,7 +12,7 @@ import {
 import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAppInsets } from "@/hooks/use-app-insets";
 
@@ -73,10 +73,10 @@ export function InstructorHomeContent({
         style={{ flex: 1 }}
         topInsetTone="sheet"
         contentContainerStyle={{
-          paddingHorizontal: BrandSpacing.xl,
+          paddingHorizontal: BrandSpacing.insetRoomy,
           paddingTop: getHomeHeaderScrollTopPadding(safeTop),
-          paddingBottom: BrandSpacing.xxl,
-          gap: layout.sectionGap,
+          paddingBottom: BrandSpacing.section,
+          gap: BrandSpacing.section,
         }}
       >
         <Animated.View
@@ -91,14 +91,14 @@ export function InstructorHomeContent({
             <View
               style={{
                 flex: layout.heroFlex,
-                gap: BrandSpacing.sm,
+                gap: BrandSpacing.stackTight,
               }}
             >
               {visibleAvailableJobs.map((job) => (
                 <View
                   key={job.jobId}
                   style={{
-                    borderRadius: 24,
+                    borderRadius: BrandRadius.soft,
                     overflow: "hidden",
                   }}
                 >
@@ -117,8 +117,8 @@ export function InstructorHomeContent({
             </View>
           ) : null}
 
-          <View style={{ flex: layout.chartFlex, gap: BrandSpacing.sm }}>
-            <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+          <View style={{ flex: layout.chartFlex, gap: BrandSpacing.stackTight }}>
+            <View style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
               <HomeSignalTile
                 label={t("home.actions.jobsTitle")}
                 value={String(availableJobsCount)}
@@ -134,7 +134,7 @@ export function InstructorHomeContent({
                 icon="clock.badge.checkmark"
               />
             </View>
-            <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+            <View style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
               <HomeSignalTile
                 label={t("home.performance.earnings")}
                 value={earningsLabel}

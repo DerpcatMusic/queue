@@ -21,6 +21,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "check": "biome check .",
+    "check:no-hardcoded-styles": "node ./scripts/check-no-hardcoded-styles.mjs",
     "audit:knip": "knip --config knip.json --include files,dependencies,unlisted,binaries",
     "knip:full": "knip --config knip.json",
     "knip:production": "knip --config knip.json --production --include files,dependencies,unlisted,binaries",
@@ -87,12 +88,12 @@
     "expo-web-browser": "~55.0.10",
     "geojson": "^0.5.0",
     "i18next": "^25.9.0",
-    "nativewind": "5.0.0-preview.2",
+    "nativewind": "5.0.0-preview.3",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-i18next": "^16.5.8",
     "react-native": "0.83.2",
-    "react-native-css": "0.0.0-nightly.5ce6396",
+    "react-native-css": "3.0.6",
     "react-native-gesture-handler": "~2.30.0",
     "react-native-reanimated": "4.2.1",
     "react-native-safe-area-context": "~5.6.2",
@@ -124,6 +125,9 @@
   },
   "private": true,
   "resolutions": {
+    "lightningcss": "1.30.1"
+  },
+  "overrides": {
     "lightningcss": "1.30.1"
   }
 }

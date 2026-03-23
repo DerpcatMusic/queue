@@ -7,12 +7,12 @@ import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/const
 import type { ZoneOption } from "@/constants/zones";
 
 // Map web command panel - desktop-focused with fixed width panel
-const PANEL_WIDTH = BrandSpacing.iconContainer * 9 + BrandSpacing.xl; // ~360px responsive width
-const PANEL_RADIUS = BrandRadius.card + BrandSpacing.sm; // 24 + 8 = 32px - between card and cardSubtle
-const INNER_RADIUS = BrandRadius.cardSubtle; // 18px
-const METRIC_RADIUS = BrandRadius.cardSubtle - BrandSpacing.xs; // 18 - 4 = 14px
-const TERRITORY_RADIUS = BrandRadius.cardSubtle - BrandSpacing.xs; // 18 - 4 = 14px
-const ZONE_SELECT_RADIUS = BrandRadius.cardSubtle - BrandSpacing.xs; // 18 - 4 = 14px
+const PANEL_WIDTH = BrandSpacing.shellCommandPanel;
+const PANEL_RADIUS = BrandRadius.soft;
+const INNER_RADIUS = BrandRadius.medium;
+const METRIC_RADIUS = BrandRadius.hard;
+const TERRITORY_RADIUS = BrandRadius.hard;
+const ZONE_SELECT_RADIUS = BrandRadius.hard;
 
 type MapWebCommandPanelProps = {
   t: TFunction;
@@ -54,14 +54,13 @@ export function MapWebCommandPanel({
         backgroundColor: palette.surfaceAlt as string,
         paddingHorizontal: BrandSpacing.lg,
         paddingVertical: BrandSpacing.lg,
-        gap: BrandSpacing.lg - 2,
+        gap: BrandSpacing.lg,
       }}
     >
       <View style={{ gap: BrandSpacing.xs }}>
         <Text
           style={{
             ...BrandType.heading,
-            fontSize: 26,
             color: palette.text as string,
           }}
         >
@@ -82,8 +81,8 @@ export function MapWebCommandPanel({
           borderRadius: INNER_RADIUS,
           borderCurve: "continuous",
           backgroundColor: palette.surface as string,
-          paddingHorizontal: BrandSpacing.md + 2,
-          paddingVertical: BrandSpacing.md + 2,
+          paddingHorizontal: BrandSpacing.controlX,
+          paddingVertical: BrandSpacing.controlY,
           gap: BrandSpacing.sm,
         }}
       >
@@ -94,9 +93,9 @@ export function MapWebCommandPanel({
               borderRadius: METRIC_RADIUS,
               borderCurve: "continuous",
               backgroundColor: palette.surfaceAlt as string,
-              paddingHorizontal: BrandSpacing.md,
+              paddingHorizontal: BrandSpacing.controlX,
               paddingVertical: BrandSpacing.sm,
-              gap: 2,
+              gap: BrandSpacing.xs,
             }}
           >
             <Text
@@ -125,9 +124,9 @@ export function MapWebCommandPanel({
               borderRadius: METRIC_RADIUS,
               borderCurve: "continuous",
               backgroundColor: palette.surfaceAlt as string,
-              paddingHorizontal: BrandSpacing.md,
+              paddingHorizontal: BrandSpacing.controlX,
               paddingVertical: BrandSpacing.sm,
-              gap: 2,
+              gap: BrandSpacing.xs,
             }}
           >
             <Text
@@ -179,7 +178,7 @@ export function MapWebCommandPanel({
             borderRadius: TERRITORY_RADIUS,
             borderCurve: "continuous",
             backgroundColor: palette.dangerSubtle as string,
-            paddingHorizontal: BrandSpacing.md + 2,
+            paddingHorizontal: BrandSpacing.controlX,
             paddingVertical: BrandSpacing.md,
           }}
         >
@@ -194,7 +193,7 @@ export function MapWebCommandPanel({
         </View>
       ) : null}
 
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: BrandSpacing.md }}>
         <Text
           style={{
             ...BrandType.micro,
@@ -207,7 +206,7 @@ export function MapWebCommandPanel({
         </Text>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
+          contentContainerStyle={{ gap: BrandSpacing.sm, paddingBottom: BrandSpacing.xs }}
         >
           {selectedZones.length === 0 ? (
             <View
@@ -215,7 +214,7 @@ export function MapWebCommandPanel({
                 borderRadius: TERRITORY_RADIUS,
                 borderCurve: "continuous",
                 backgroundColor: palette.surface as string,
-                paddingHorizontal: BrandSpacing.md + 2,
+                paddingHorizontal: BrandSpacing.controlX,
                 paddingVertical: BrandSpacing.lg,
                 gap: BrandSpacing.xs,
               }}
@@ -263,18 +262,18 @@ export function MapWebCommandPanel({
                     alignItems: "center",
                     justifyContent: "space-between",
                     gap: BrandSpacing.md,
-                    paddingHorizontal: BrandSpacing.md + 2,
-                    paddingVertical: BrandSpacing.md + 2,
+                    paddingHorizontal: BrandSpacing.controlX,
+                    paddingVertical: BrandSpacing.controlY,
                     opacity: pressed ? 0.92 : 1,
                   })}
                 >
-                  <View style={{ flex: 1, gap: 2 }}>
+                  <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                     <Text
                       style={{
                         ...BrandType.bodyStrong,
                         color:
                           focusZoneId === zone.id
-                            ? (palette.onPrimary as string)
+                            ? (palette.primary as string)
                             : (palette.text as string),
                       }}
                     >
@@ -285,8 +284,9 @@ export function MapWebCommandPanel({
                         ...BrandType.micro,
                         color:
                           focusZoneId === zone.id
-                            ? "rgba(255,255,255,0.72)"
+                            ? (palette.primary as string)
                             : (palette.textMuted as string),
+                        opacity: focusZoneId === zone.id ? 0.78 : 1,
                       }}
                     >
                       {focusZoneId === zone.id
@@ -305,18 +305,18 @@ export function MapWebCommandPanel({
                   style={({ pressed }) => ({
                     alignItems: "center",
                     justifyContent: "center",
-                    paddingHorizontal: BrandSpacing.md + 2,
-                    paddingVertical: BrandSpacing.md + 2,
+                    paddingHorizontal: BrandSpacing.controlX,
+                    paddingVertical: BrandSpacing.controlY,
                     backgroundColor:
                       focusZoneId === zone.id
-                        ? "rgba(255,255,255,0.14)"
+                        ? (palette.primaryPressed as string)
                         : (palette.surfaceAlt as string),
                     opacity: pressed ? 0.88 : 1,
                   })}
                 >
                   <IconSymbol
                     name="minus"
-                    size={14}
+                    size={BrandSpacing.xs + BrandSpacing.sm}
                     color={
                       focusZoneId === zone.id
                         ? (palette.onPrimary as string)
@@ -330,7 +330,7 @@ export function MapWebCommandPanel({
         </ScrollView>
       </View>
 
-      <View style={{ gap: 10, flex: 1, minHeight: 0 }}>
+      <View style={{ gap: BrandSpacing.md, flex: 1, minHeight: 0 }}>
         <Text
           style={{
             ...BrandType.micro,
@@ -343,7 +343,7 @@ export function MapWebCommandPanel({
         </Text>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
+          contentContainerStyle={{ gap: BrandSpacing.sm, paddingBottom: BrandSpacing.sm }}
         >
           {filteredZones.map((zone) => {
             const selected = selectedZones.some((entry) => entry.id === zone.id);
@@ -358,7 +358,7 @@ export function MapWebCommandPanel({
                   backgroundColor: selected
                     ? (palette.primary as string)
                     : (palette.surface as string),
-                  paddingHorizontal: BrandSpacing.md + 2,
+                  paddingHorizontal: BrandSpacing.controlX,
                   paddingVertical: BrandSpacing.md,
                   opacity: pressed ? 0.92 : 1,
                 })}
@@ -368,7 +368,7 @@ export function MapWebCommandPanel({
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    gap: 12,
+                    gap: BrandSpacing.md,
                   }}
                 >
                   <Text
@@ -382,7 +382,10 @@ export function MapWebCommandPanel({
                   <Text
                     style={{
                       ...BrandType.micro,
-                      color: selected ? "rgba(255,255,255,0.72)" : (palette.textMuted as string),
+                      color: selected
+                        ? (palette.onPrimary as string)
+                        : (palette.textMuted as string),
+                      opacity: selected ? 0.72 : 1,
                     }}
                   >
                     {selected ? t("mapTab.web.live") : t("mapTab.web.add")}

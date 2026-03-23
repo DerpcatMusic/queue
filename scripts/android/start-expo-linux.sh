@@ -117,11 +117,12 @@ open_dev_client_when_ready() {
     if curl -fsS "http://127.0.0.1:$METRO_PORT" >/dev/null 2>&1; then
       DEV_URL_LOCAL="queue://expo-development-client/?url=http://127.0.0.1:$METRO_PORT"
       DEV_URL_EXP="exp+queue://expo-development-client/?url=http://127.0.0.1:$METRO_PORT"
-      for _ in $(seq 1 30); do
+      # Relaunch exactly once when Metro becomes reachable.
+      for _ in $(seq 1 1); do
         adb -s "$SERIAL" shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
         adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$DEV_URL_LOCAL" >/dev/null 2>&1 || true
         adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$DEV_URL_EXP" >/dev/null 2>&1 || true
-        sleep 2
+        sleep 3
       done
       return 0
     fi

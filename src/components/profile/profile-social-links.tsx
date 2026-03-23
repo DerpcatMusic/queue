@@ -3,6 +3,7 @@ import { View } from "react-native";
 
 import { KitSocialIconButton } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 
 export const PROFILE_SOCIAL_FIELDS = [
   {
@@ -67,7 +68,7 @@ function toOpenableUrl(key: ProfileSocialKey, value: string) {
 export function ProfileSocialLinksRow({
   socialLinks,
   palette,
-  iconSize = 36,
+  iconSize = BrandSpacing.iconContainer - BrandSpacing.xs / 2,
 }: {
   socialLinks: ProfileSocialLinks | undefined;
   palette: BrandPalette;
@@ -80,7 +81,9 @@ export function ProfileSocialLinksRow({
   }
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+    <View
+      style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm, flexWrap: "wrap" }}
+    >
       {activeFields.map((field) => (
         <KitSocialIconButton
           key={field.key}
