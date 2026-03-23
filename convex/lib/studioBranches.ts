@@ -91,8 +91,8 @@ export async function requireStudioOwnerMembership(
 ) {
   return await requireStudioMembership(ctx, {
     studioId,
-    userId,
     allowedRoles: ["owner"],
+    ...(userId ? { userId } : {}),
   });
 }
 
@@ -293,17 +293,19 @@ export async function ensurePrimaryStudioBranch(
     zone: studio.zone,
     isPrimary: true,
     status: "active",
-    latitude: studio.latitude,
-    longitude: studio.longitude,
-    contactPhone: studio.contactPhone,
-    expoPushToken: studio.expoPushToken,
-    notificationsEnabled: studio.notificationsEnabled,
-    autoExpireMinutesBefore: studio.autoExpireMinutesBefore,
-    autoAcceptDefault: studio.autoAcceptDefault,
     calendarProvider: studio.calendarProvider ?? "none",
     calendarSyncEnabled: studio.calendarSyncEnabled ?? false,
-    calendarConnectedAt: studio.calendarConnectedAt,
     now,
+    ...omitUndefined({
+      latitude: studio.latitude,
+      longitude: studio.longitude,
+      contactPhone: studio.contactPhone,
+      expoPushToken: studio.expoPushToken,
+      notificationsEnabled: studio.notificationsEnabled,
+      autoExpireMinutesBefore: studio.autoExpireMinutesBefore,
+      autoAcceptDefault: studio.autoAcceptDefault,
+      calendarConnectedAt: studio.calendarConnectedAt,
+    }),
   });
 }
 
@@ -413,8 +415,8 @@ export async function requireAccessibleStudioBranch(
 ) {
   const membershipResult = await requireStudioMembership(ctx, {
     studioId: args.studioId,
-    userId: args.userId,
-    allowedRoles: args.allowedRoles,
+    ...(args.userId ? { userId: args.userId } : {}),
+    ...(args.allowedRoles ? { allowedRoles: args.allowedRoles } : {}),
   });
   const branch = await ctx.db.get(args.branchId);
   if (!branch || branch.studioId !== args.studioId) {

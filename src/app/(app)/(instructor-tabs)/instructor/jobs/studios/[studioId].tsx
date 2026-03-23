@@ -80,7 +80,7 @@ export default function InstructorStudioProfileRoute() {
   }, [jobId, studioProfile?.jobs]);
 
   const sportsLabels = useMemo(
-    () => (studioProfile?.sports ?? []).map((sport) => toSportLabel(sport as never)),
+    () => (studioProfile?.sports ?? []).map((sport: string) => toSportLabel(sport as never)),
     [studioProfile?.sports],
   );
 
@@ -240,7 +240,7 @@ export default function InstructorStudioProfileRoute() {
           >
             {sportsLabels.length > 0 ? (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {sportsLabels.map((label) => (
+                {sportsLabels.map((label: string) => (
                   <DotStatusPill
                     key={label}
                     backgroundColor={palette.primarySubtle as string}
