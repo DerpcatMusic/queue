@@ -10,6 +10,7 @@ import {
 } from "./lib/auth";
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
+import { loadInstructorEligibility } from "./lib/instructorEligibility";
 import {
   normalizeCoordinates,
   normalizeOptionalString,
@@ -744,6 +745,68 @@ export const getMyStudioSettings = query({
         ? { calendarConnectedAt: profile.calendarConnectedAt }
         : {}),
     };
+  },
+});
+
+export const getInstructorMapStudios = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      studioId: v.id("studioProfiles"),
+      studioName: v.string(),
+      zone: v.string(),
+      latitude: v.number(),
+      longitude: v.number(),
+      address: v.optional(v.string()),
+      logoImageUrl: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx) => {
+    const user = await getCurrentUserDoc(ctx);
+    if (!user || !user.isActive || user.role !== "instructor") {
+      return [];
+    }
+
+    const instructor = await requireInstructorProfileByUserId(ctx, user._id);
+    if (!instructor) {
+      return [];
+    }
+
+    const eligibility = await loadInstructorEligibility(ctx, instructor._id);
+    if (eligibility.coverageCount === 0) {
+      return [];
+    }
+
+    const zoneIds = [...new Set(eligibility.coveragePairs.map((pair) => pair.zone))];
+    const studioGroups = await Promise.all(
+      zoneIds.map((zoneId) =>
+        ctx.db
+          .query("studioProfiles")
+          .withIndex("by_zone", (q) => q.eq("zone", zoneId))
+          .collect(),
+      ),
+    );
+    const studios = [
+      ...new Map(studioGroups.flat().map((studio) => [String(studio._id), studio])).values(),
+    ].filter((studio) => studio.latitude !== undefined && studio.longitude !== undefined);
+
+    const logoUrls = await Promise.all(
+      studios.map((studio) =>
+        studio.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
+      ),
+    );
+
+    return studios.map((studio, index) => ({
+      studioId: studio._id,
+      studioName: studio.studioName,
+      zone: studio.zone,
+      latitude: studio.latitude!,
+      longitude: studio.longitude!,
+      ...omitUndefined({
+        address: studio.address,
+        logoImageUrl: logoUrls[index] ?? undefined,
+      }),
+    }));
   },
 });
 

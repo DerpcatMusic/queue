@@ -3,7 +3,7 @@ import { OfflineManager } from "@maplibre/maplibre-react-native";
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import type { getMapBrandPalette } from "@/constants/brand";
 import { ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
-import type { QueueMapPin } from "./queue-map.types";
+import type { QueueMapPin, StudioMapMarker } from "./queue-map.types";
 
 export type Expression = unknown;
 export type AnyStyleLayer = Record<string, any>;
@@ -235,6 +235,48 @@ export function createPinShape(pin: QueueMapPin | null): GeoJSON.FeatureCollecti
         },
       },
     ],
+  };
+}
+
+const STUDIO_MARKER_IMAGE_PREFIX = "studio-marker:";
+
+export function getStudioMarkerImageEntries(studios: readonly StudioMapMarker[]) {
+  return Object.fromEntries(
+    studios
+      .filter((studio) => typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0)
+      .map((studio) => [
+        `${STUDIO_MARKER_IMAGE_PREFIX}${studio.studioId}`,
+        studio.logoImageUrl as string,
+      ]),
+  );
+}
+
+export function createStudioMarkersGeoJson(
+  studios: readonly StudioMapMarker[],
+  variant: "logo" | "fallback",
+): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: studios
+      .filter((studio) =>
+        variant === "logo" ? Boolean(studio.logoImageUrl) : !studio.logoImageUrl,
+      )
+      .map((studio) => ({
+        type: "Feature" as const,
+        properties: {
+          studioId: studio.studioId,
+          studioName: studio.studioName,
+          zone: studio.zone,
+          label: studio.studioName.slice(0, 1).toUpperCase(),
+          ...(variant === "logo"
+            ? { iconKey: `${STUDIO_MARKER_IMAGE_PREFIX}${studio.studioId}` }
+            : {}),
+        },
+        geometry: {
+          type: "Point" as const,
+          coordinates: [studio.longitude, studio.latitude],
+        },
+      })),
   };
 }
 

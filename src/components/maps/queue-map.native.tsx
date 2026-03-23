@@ -1,4 +1,10 @@
-import { Camera, GeoJSONSource, Layer, Map as MapLibreMap } from "@maplibre/maplibre-react-native";
+import {
+  Camera,
+  GeoJSONSource,
+  Images,
+  Layer,
+  Map as MapLibreMap,
+} from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -17,10 +23,12 @@ import { KitSurface } from "../ui/kit";
 import {
   type AnyStyleSpec,
   createPinShape,
+  createStudioMarkersGeoJson,
   createZoneFilter,
   ensureVectorOfflinePack,
   fetchMapStyleSpec,
   getCachedMapStyleSpec,
+  getStudioMarkerImageEntries,
   resolveThemedMapStyle,
   sanitizeZoom,
   toBounds,
@@ -42,6 +50,7 @@ const MAP_LOADING_OVERLAY_DELAY_MS = 180;
 export const QueueMap = memo(function QueueMap({
   mode,
   pin,
+  studios = [],
   selectedZoneIds,
   focusZoneId,
   isEditing = mode === "zoneSelect",
@@ -49,6 +58,7 @@ export const QueueMap = memo(function QueueMap({
   zoneIdProperty = "id",
   onPressZone,
   onPressMap,
+  onPressStudio,
   onUseGps,
   showGpsButton = true,
   showAttributionButton = true,
@@ -98,6 +108,12 @@ export const QueueMap = memo(function QueueMap({
     [selectedZoneIds, zoneIdProperty],
   );
   const pinShape = useMemo(() => createPinShape(pin), [pin]);
+  const studioMarkerImages = useMemo(() => getStudioMarkerImageEntries(studios), [studios]);
+  const studioLogoShape = useMemo(() => createStudioMarkersGeoJson(studios, "logo"), [studios]);
+  const studioFallbackShape = useMemo(
+    () => createStudioMarkersGeoJson(studios, "fallback"),
+    [studios],
+  );
   const handleRetry = useCallback(() => {
     setBaseMapStyle(null);
     setMapErrorMessage(null);
@@ -318,6 +334,81 @@ export const QueueMap = memo(function QueueMap({
           mapPalette={mapPalette}
           onPressZone={onPressZone}
         />
+
+        {Object.keys(studioMarkerImages).length > 0 ? <Images images={studioMarkerImages} /> : null}
+
+        <GeoJSONSource
+          id="queue-studio-fallback-source"
+          data={studioFallbackShape}
+          onPress={(event: any) => {
+            if (!onPressStudio) return;
+            const native = event?.nativeEvent ?? event;
+            const studioId = native?.features?.[0]?.properties?.studioId;
+            if (typeof studioId === "string") {
+              onPressStudio(studioId);
+            }
+          }}
+        >
+          <Layer
+            id="queue-studio-fallback-circle"
+            type="circle"
+            paint={{
+              "circle-radius": 12,
+              "circle-color": mapPalette.surfaceAlt,
+              "circle-stroke-color": mapPalette.primary,
+              "circle-stroke-width": 2,
+            }}
+          />
+          <Layer
+            id="queue-studio-fallback-label"
+            type="symbol"
+            layout={{
+              "text-field": ["get", "label"] as any,
+              "text-size": 10,
+              "text-font": ["Noto Sans Bold"] as any,
+              "text-allow-overlap": true,
+            }}
+            paint={{
+              "text-color": mapPalette.primary,
+              "text-halo-color": mapPalette.surfaceAlt,
+              "text-halo-width": 0.2,
+            }}
+          />
+        </GeoJSONSource>
+
+        <GeoJSONSource
+          id="queue-studio-logo-source"
+          data={studioLogoShape}
+          onPress={(event: any) => {
+            if (!onPressStudio) return;
+            const native = event?.nativeEvent ?? event;
+            const studioId = native?.features?.[0]?.properties?.studioId;
+            if (typeof studioId === "string") {
+              onPressStudio(studioId);
+            }
+          }}
+        >
+          <Layer
+            id="queue-studio-logo-halo"
+            type="circle"
+            paint={{
+              "circle-radius": 14,
+              "circle-color": mapPalette.surfaceAlt,
+              "circle-stroke-color": mapPalette.primary,
+              "circle-stroke-width": 2,
+            }}
+          />
+          <Layer
+            id="queue-studio-logo-symbol"
+            type="symbol"
+            layout={{
+              "icon-image": ["get", "iconKey"] as any,
+              "icon-size": 0.35,
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true,
+            }}
+          />
+        </GeoJSONSource>
 
         <GeoJSONSource id="queue-pin-source" data={pinShape}>
           <Layer

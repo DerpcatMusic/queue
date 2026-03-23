@@ -16,6 +16,7 @@ export default function InstructorTabsLayout() {
   const instructorTabCounts = useQuery(api.jobs.getInstructorTabCounts, tabCountsArgs);
   const unreadNotificationCount = useQuery(api.inbox.getMyUnreadNotificationCount, emptyArgs);
   useQuery(api.instructorZones.getMyInstructorZones, emptyArgs);
+  useQuery(api.users.getInstructorMapStudios, emptyArgs);
 
   const jobsBadgeCount = instructorTabCounts?.jobsBadgeCount ?? 0;
   const calendarBadgeCount = instructorTabCounts?.calendarBadgeCount ?? 0;

@@ -1090,6 +1090,10 @@ const he = {
       emptyInstructorFreshTwo: "הלוח שקט כרגע.",
       emptyInstructorFreshThree: "נסו שוב עוד מעט.",
       emptyRefreshHint: "משכו לרענון כדי לקבל שורה חדשה.",
+      openArchive: "פתיחת ארכיון",
+      archiveSubtitle: "פניות קודמות ומשרות שעברו נשארות כאן.",
+      archiveEmpty: "עדיין אין משרות בארכיון.",
+      archiveAppliedOn: "הוגש ב־{{date}}",
     },
     studioFeed: {
       eyebrow: "תפעול סטודיו",
