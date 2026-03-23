@@ -228,10 +228,19 @@ export const createStudioBranch = mutation({
     const normalized = normalizeBranchUpdateArgs(args);
     const branch = await createStudioBranchRecord(ctx, {
       studioId: studio._id,
+      name: normalized.name,
+      address: normalized.address,
+      zone: normalized.zone,
       isPrimary: false,
       status: "active",
       now,
-      ...omitUndefined(normalized),
+      ...omitUndefined({
+        contactPhone: normalized.contactPhone,
+        latitude: normalized.latitude,
+        longitude: normalized.longitude,
+        autoExpireMinutesBefore: normalized.autoExpireMinutesBefore,
+        autoAcceptDefault: normalized.autoAcceptDefault,
+      }),
     });
     return { branchId: branch._id };
   },
