@@ -47,6 +47,8 @@ export default function InstructorTabsLayout() {
 
       void import("@/components/maps/queue-map.native");
       void import("@/constants/zones-map");
+      void import("@/components/map-tab/map-tab/use-map-tab-controller");
+      void import("@/components/map-tab/map-tab/map-sheet-header");
     };
 
     if (typeof globalThis.requestIdleCallback === "function") {
