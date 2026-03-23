@@ -16,7 +16,7 @@ import {
 } from "@/components/profile/profile-subpage-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitSegmentedToggle, KitSuccessBurst } from "@/components/ui/kit";
+import { KitSegmentedToggle, KitStatusBadge, KitSuccessBurst } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useRapydReturn } from "@/contexts/rapyd-return-context";
 import { api } from "@/convex/_generated/api";
@@ -29,7 +29,6 @@ import {
   getPayoutStatusLabel,
 } from "@/lib/payments-utils";
 import { buildRapydBridgeUrl, resolveRapydAppReturnUrl } from "@/lib/rapyd-hosted-flow";
-import { useThemePreference } from "@/hooks/use-theme-preference";
 
 const INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE = "/instructor/profile/identity-verification" as const;
 type PayoutPreferenceMode = "immediate_when_eligible" | "scheduled_date" | "manual_hold";
@@ -49,7 +48,6 @@ export default function ProfilePaymentsScreen() {
   const palette = useBrand();
   const locale = i18n.resolvedLanguage ?? "en";
   const router = useRouter();
-  const { resolvedScheme } = useThemePreference();
   useEffect(() => {
     WebBrowser.maybeCompleteAuthSession();
   }, []);
@@ -69,10 +67,6 @@ export default function ProfilePaymentsScreen() {
   );
   const payoutSummary = useQuery(
     api.payments.getMyPayoutSummary,
-    currentUser?.role === "instructor" ? {} : "skip",
-  );
-  const diditVerification = useQuery(
-    api.didit.getMyDiditVerification,
     currentUser?.role === "instructor" ? {} : "skip",
   );
   const requestPayoutWithdrawal = useMutation(api.payments.requestMyPayoutWithdrawal);
@@ -531,19 +525,19 @@ export default function ProfilePaymentsScreen() {
             </Pressable>
             <Pressable
               accessibilityRole="button"
-            accessibilityLabel={t("common.cancel")}
-            onPress={() => setShowVerifyModal(false)}
-            style={({ pressed }) => ({
-              paddingVertical: 10,
-              paddingHorizontal: 14,
-              opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <ThemedText type="caption" style={{ color: palette.textMuted }}>
-              {t("common.cancel")}
-            </ThemedText>
-          </Pressable>
-        </View>
+              accessibilityLabel={t("common.cancel")}
+              onPress={() => setShowVerifyModal(false)}
+              style={({ pressed }) => ({
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                {t("common.cancel")}
+              </ThemedText>
+            </Pressable>
+          </View>
         </ProfileSubpageScrollView>
       </Animated.View>
     );
@@ -559,89 +553,85 @@ export default function ProfilePaymentsScreen() {
       topSpacing={BrandSpacing.md}
       bottomSpacing={40}
     >
-      <View style={{ paddingHorizontal: BrandSpacing.lg }}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-            alignSelf: "flex-start",
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            borderRadius: 999,
-            backgroundColor:
-              isIdentityVerified && payoutSummary?.hasVerifiedDestination
-                ? palette.successSubtle
-                : isIdentityVerified || payoutSummary?.hasVerifiedDestination
-                  ? palette.warningSubtle
-                  : palette.dangerSubtle,
-          }}
-        >
+      <View style={{ paddingHorizontal: BrandSpacing.lg, gap: 8 }}>
+        {/* Consolidated Error/Info Banner */}
+        {destinationError || withdrawError || preferenceError ? (
           <View
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor:
-                isIdentityVerified && payoutSummary?.hasVerifiedDestination
-                  ? palette.success
-                  : isIdentityVerified || payoutSummary?.hasVerifiedDestination
-                    ? palette.warning
-                    : palette.danger,
-            }}
-          />
-          <ThemedText
-            type="micro"
-            style={{
-              color:
-                isIdentityVerified && payoutSummary?.hasVerifiedDestination
-                  ? palette.success
-                  : isIdentityVerified || payoutSummary?.hasVerifiedDestination
-                    ? palette.warning
-                    : palette.danger,
-              fontWeight: "700",
+              backgroundColor: palette.dangerSubtle,
+              borderRadius: 12,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              borderWidth: 1,
+              borderColor: palette.danger as string,
             }}
           >
-            {isIdentityVerified && payoutSummary?.hasVerifiedDestination
+            <ThemedText type="caption" style={{ color: palette.danger }}>
+              {destinationError || withdrawError || preferenceError}
+            </ThemedText>
+          </View>
+        ) : destinationInfo || withdrawInfo || preferenceInfo ? (
+          <View
+            style={{
+              backgroundColor: palette.surfaceAlt,
+              borderRadius: 12,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+            }}
+          >
+            <ThemedText type="caption" style={{ color: palette.textMuted }}>
+              {destinationInfo || withdrawInfo || preferenceInfo}
+            </ThemedText>
+          </View>
+        ) : null}
+
+        {/* Simplified Status Pill */}
+        <KitStatusBadge
+          label={
+            isIdentityVerified && payoutSummary?.hasVerifiedDestination
               ? t("profile.payments.statusAllSet")
               : isIdentityVerified
                 ? t("profile.payments.statusBankNeeded")
-                : t("profile.payments.statusVerificationNeeded")}
-          </ThemedText>
-        </View>
-        {!isIdentityVerified && !payoutSummary?.hasVerifiedDestination ? (
-          <View style={{ marginTop: 12, gap: 12, alignItems: "flex-start" }}>
-            <ThemedText type="caption" style={{ color: palette.textMuted }}>
-              {t("profile.payments.kycRequiredHint")}
+                : t("profile.payments.statusVerificationNeeded")
+          }
+          tone={
+            isIdentityVerified && payoutSummary?.hasVerifiedDestination
+              ? "success"
+              : isIdentityVerified || payoutSummary?.hasVerifiedDestination
+                ? "warning"
+                : "danger"
+          }
+          showDot
+        />
+
+        {/* Action hint if needed */}
+        {!isIdentityVerified ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("profile.setup.verifyIdentity")}
+            onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
+            style={({ pressed }) => ({
+              alignSelf: "flex-start",
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderRadius: 999,
+              borderCurve: "continuous",
+              backgroundColor: pressed ? palette.surfaceAlt : palette.primarySubtle,
+              borderWidth: 1,
+              borderColor: palette.primary as string,
+            })}
+          >
+            <ThemedText type="caption" style={{ color: palette.primary }}>
+              {t("profile.setup.verifyIdentity")}
             </ThemedText>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("profile.setup.verifyIdentity")}
-              onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
-              style={({ pressed }) => ({
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 999,
-                borderCurve: "continuous",
-                backgroundColor: pressed ? palette.surfaceAlt : palette.primarySubtle,
-                borderWidth: 1,
-                borderColor: palette.primary as string,
-              })}
-            >
-              <ThemedText type="bodyStrong" style={{ color: palette.primary }}>
-                {t("profile.setup.verifyIdentity")}
-              </ThemedText>
-            </Pressable>
-          </View>
-        ) : null}
-        {!payoutSummary?.hasVerifiedDestination && payoutSummary?.onboardingStatus === "pending" ? (
-          <ThemedText type="caption" style={{ color: palette.textMuted, marginTop: 6 }}>
-            {t("profile.payments.onboardingPending")}
-          </ThemedText>
-        ) : null}
-        {!payoutSummary?.hasVerifiedDestination && payoutSummary?.onboardingStatus === "failed" ? (
-          <ThemedText type="caption" style={{ color: palette.danger, marginTop: 6 }}>
-            {payoutSummary?.onboardingLastError ?? t("profile.payments.onboardingFailed")}
+          </Pressable>
+        ) : !payoutSummary?.hasVerifiedDestination ? (
+          <ThemedText type="caption" style={{ color: palette.textMuted }}>
+            {payoutSummary?.onboardingStatus === "pending"
+              ? t("profile.payments.onboardingPending")
+              : payoutSummary?.onboardingStatus === "failed"
+                ? (payoutSummary?.onboardingLastError ?? t("profile.payments.onboardingFailed"))
+                : t("profile.payments.kycRequiredHint")}
           </ThemedText>
         ) : null}
       </View>
@@ -805,32 +795,55 @@ export default function ProfilePaymentsScreen() {
           </View>
         </View>
 
-        {withdrawError || destinationError ? (
-          <ThemedText
-            style={{
-              color: palette.danger,
-              marginTop: 12,
-              textAlign: "center",
-              fontWeight: "500",
-            }}
-          >
-            {withdrawError || destinationError}
-          </ThemedText>
-        ) : withdrawInfo || destinationInfo ? (
-          <ThemedText
-            style={{
-              color: palette.textMuted,
-              marginTop: 12,
-              textAlign: "center",
-            }}
-          >
-            {withdrawInfo || destinationInfo}
-          </ThemedText>
-        ) : null}
+        {/* Stats Row - Merged into Hero Card */}
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 24 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: palette.warning,
+              }}
+            />
+            <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.7)" }}>
+              {t("profile.payments.pending")}
+            </ThemedText>
+            <ThemedText type="bodyStrong" style={{ color: "#FFF", fontVariant: ["tabular-nums"] }}>
+              {formatAgorotCurrency(
+                payoutSummary?.pendingAmountAgorot ?? 0,
+                locale,
+                payoutSummary?.currency ?? "ILS",
+              )}
+            </ThemedText>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: palette.success,
+              }}
+            />
+            <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.7)" }}>
+              {t("profile.payments.paid")}
+            </ThemedText>
+            <ThemedText type="bodyStrong" style={{ color: "#FFF", fontVariant: ["tabular-nums"] }}>
+              {formatAgorotCurrency(
+                payoutSummary?.paidAmountAgorot ?? 0,
+                locale,
+                payoutSummary?.currency ?? "ILS",
+              )}
+            </ThemedText>
+          </View>
+        </View>
       </View>
 
       <View style={{ paddingHorizontal: BrandSpacing.md, gap: 12 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <View
+          style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
+        >
           <ThemedText type="bodyStrong">{t("profile.payments.preferenceTitle")}</ThemedText>
         </View>
 
@@ -996,56 +1009,6 @@ export default function ProfilePaymentsScreen() {
             {preferenceInfo}
           </ThemedText>
         ) : null}
-      </View>
-
-      {/* Stats Row */}
-      <View
-        style={{
-          flexDirection: "row",
-          paddingHorizontal: BrandSpacing.md,
-          gap: 24,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <View
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: palette.warning as import("react-native").ColorValue,
-            }}
-          />
-          <ThemedText type="caption" style={{ color: palette.textMuted }}>
-            {t("profile.payments.pending")}
-          </ThemedText>
-          <ThemedText type="bodyStrong" style={{ fontVariant: ["tabular-nums"] }}>
-            {formatAgorotCurrency(
-              payoutSummary?.pendingAmountAgorot ?? 0,
-              locale,
-              payoutSummary?.currency ?? "ILS",
-            )}
-          </ThemedText>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <View
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: palette.success as import("react-native").ColorValue,
-            }}
-          />
-          <ThemedText type="caption" style={{ color: palette.textMuted }}>
-            {t("profile.payments.paid")}
-          </ThemedText>
-          <ThemedText type="bodyStrong" style={{ fontVariant: ["tabular-nums"] }}>
-            {formatAgorotCurrency(
-              payoutSummary?.paidAmountAgorot ?? 0,
-              locale,
-              payoutSummary?.currency ?? "ILS",
-            )}
-          </ThemedText>
-        </View>
       </View>
 
       {selectedPaymentId ? (

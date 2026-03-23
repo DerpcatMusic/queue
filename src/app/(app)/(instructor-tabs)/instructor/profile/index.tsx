@@ -10,12 +10,12 @@ import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
+import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
-import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
 import {
   getProfileHeaderExpandedHeight,
@@ -23,6 +23,7 @@ import {
   ProfileHeaderSheet,
 } from "@/components/profile/profile-tab";
 import { KitSwitch } from "@/components/ui/kit";
+import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
@@ -106,7 +107,9 @@ export default function InstructorProfileScreen() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const switchActiveRole = useMutation(api.users.switchActiveRole);
   const [hasActivated, setHasActivated] = useState(false);
-  const [pendingProfileRole, setPendingProfileRole] = useState<"instructor" | "studio" | null>(null);
+  const [pendingProfileRole, setPendingProfileRole] = useState<"instructor" | "studio" | null>(
+    null,
+  );
   const isBodyReady = useDeferredTabMount(pathname === INSTRUCTOR_PROFILE_ROUTE, { delayMs: 36 });
 
   useEffect(() => {
@@ -750,28 +753,30 @@ const styles = StyleSheet.create({
   desktopShell: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 24,
+    gap: BrandSpacing.xl,
   },
   desktopRail: {
-    width: 360,
+    width: 360, // Fixed width for hero panel on desktop
+    flexShrink: 0,
   },
   desktopContent: {
     flex: 1,
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 24,
+    gap: BrandSpacing.xl,
   },
   desktopMainColumn: {
     flex: 1,
     minWidth: 0,
   },
   desktopSideColumn: {
-    width: 340,
+    width: 340, // Fixed width for settings column on desktop
+    flexShrink: 0,
   },
   desktopCardGroup: {
     marginHorizontal: 0,
   },
   mobileContentPadding: {
-    paddingHorizontal: 16,
+    paddingHorizontal: BrandSpacing.lg, // 16px
   },
 });

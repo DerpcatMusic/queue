@@ -29,6 +29,13 @@ export type BrandPalette = {
   dangerSubtle: ColorValue;
   warning: string;
   warningSubtle: string;
+  // Accent tones (for "accent" mode in rows/cards)
+  accentLight: string; // accent background light mode
+  accentDark: string; // accent background dark mode
+  accentTextLight: string; // accent text light mode
+  accentTextDark: string; // accent text dark mode
+  accentRowBgLight: string; // accent row background light mode
+  accentRowBgDark: string; // accent row background dark mode
   // Calendar (computed, not a seed)
   calendar: {
     accent: string;
@@ -71,6 +78,12 @@ const ExplicitBrandPalette: Record<ResolvedBrandScheme, BrandPalette> = {
     dangerSubtle: "#FFE3E8",
     warning: "#D68116",
     warningSubtle: "#FFF1D8",
+    accentLight: "#EEF5FF",
+    accentDark: "#1B2D49",
+    accentTextLight: "#5B6B8A",
+    accentTextDark: "#AFC3E8",
+    accentRowBgLight: "#F7FAFF",
+    accentRowBgDark: "#141C2A",
     calendar: {
       accent: "#8B5CF6",
       accentSubtle: "#E8DDFF",
@@ -111,6 +124,12 @@ const ExplicitBrandPalette: Record<ResolvedBrandScheme, BrandPalette> = {
     dangerSubtle: "#411A24",
     warning: "#FFB84D",
     warningSubtle: "#43311A",
+    accentLight: "#EEF5FF",
+    accentDark: "#1B2D49",
+    accentTextLight: "#5B6B8A",
+    accentTextDark: "#AFC3E8",
+    accentRowBgLight: "#F7FAFF",
+    accentRowBgDark: "#141C2A",
     calendar: {
       accent: "#8F6AFB",
       accentSubtle: "#36285C",
@@ -194,9 +213,12 @@ export const MapBrandPalette = NativeMapBrandPalette;
 
 export const BrandRadius = {
   card: 24,
+  cardSubtle: 18, // card - 6, for nested/inner elements
   button: 20,
+  buttonSubtle: 14, // for smaller button-like elements
   input: 20,
   pill: 999,
+  icon: 999, // circular for icon containers
 } as const;
 
 export const BrandSpacing = {
@@ -206,6 +228,8 @@ export const BrandSpacing = {
   lg: 16,
   xl: 24,
   xxl: 32,
+  componentPadding: 14, // standard inner padding for cards/components
+  iconContainer: 38, // standard icon button/touch target size
 } as const;
 
 // ─── Typography ──────────────────────────────────────────────────────────────

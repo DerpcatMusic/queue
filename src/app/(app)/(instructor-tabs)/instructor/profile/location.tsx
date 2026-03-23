@@ -13,11 +13,12 @@ import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
+import { StatusSignal } from "@/components/profile/status-signal";
 import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -46,58 +47,6 @@ function formatCoordinateLabel(latitude?: number, longitude?: number) {
   }
 
   return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-}
-
-function StatusSignal({
-  label,
-  value,
-  palette,
-  tone = "surface",
-}: {
-  label: string;
-  value: string;
-  palette: BrandPalette;
-  tone?: "surface" | "accent";
-}) {
-  const backgroundColor =
-    tone === "accent" ? (palette.primarySubtle as string) : (palette.surfaceElevated as string);
-  const labelColor =
-    tone === "accent" ? (palette.primary as string) : (palette.textMuted as string);
-
-  return (
-    <View
-      style={{
-        flex: 1,
-        minWidth: 0,
-        gap: 2,
-        borderRadius: BrandRadius.card - 6,
-        borderCurve: "continuous",
-        backgroundColor,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-      }}
-    >
-      <Text
-        style={{
-          ...BrandType.micro,
-          color: labelColor,
-          letterSpacing: 0.6,
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </Text>
-      <Text
-        numberOfLines={1}
-        style={{
-          ...BrandType.bodyStrong,
-          color: palette.text as string,
-        }}
-      >
-        {value}
-      </Text>
-    </View>
-  );
 }
 
 export default function LocationScreen() {
@@ -631,6 +580,7 @@ export default function LocationScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    position: "relative",
   },
   heroCard: {
     gap: BrandSpacing.lg,
@@ -646,37 +596,37 @@ const styles = StyleSheet.create({
   },
   heroCopy: {
     flex: 1,
-    gap: 6,
+    gap: BrandSpacing.sm,
     minWidth: 0,
   },
   heroIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: BrandSpacing.iconContainer + 8, // 46px
+    height: BrandSpacing.iconContainer + 8, // 46px
+    borderRadius: BrandRadius.icon,
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
   },
   heroSignalsRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: BrandSpacing.sm + 2, // 10px
   },
   sectionBody: {
     padding: BrandSpacing.lg,
     gap: BrandSpacing.md,
   },
   metaStrip: {
-    gap: 2,
+    gap: BrandSpacing.xs,
     borderWidth: 1,
     borderRadius: BrandRadius.button,
     borderCurve: "continuous",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: BrandSpacing.componentPadding, // 14px
+    paddingVertical: BrandSpacing.md, // 12px
   },
   zoneStateCard: {
-    gap: 6,
+    gap: BrandSpacing.sm,
     borderWidth: 1,
-    borderRadius: BrandRadius.card - 4,
+    borderRadius: BrandRadius.cardSubtle, // card - 6
     borderCurve: "continuous",
     padding: BrandSpacing.lg,
   },
@@ -687,20 +637,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: BrandRadius.button,
     borderCurve: "continuous",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: BrandSpacing.componentPadding, // 14px
+    paddingVertical: BrandSpacing.md, // 12px
   },
   errorCard: {
     borderWidth: 1,
     borderRadius: BrandRadius.button,
     borderCurve: "continuous",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: BrandSpacing.componentPadding, // 14px
+    paddingVertical: BrandSpacing.md, // 12px
   },
   actionRail: {
     position: "absolute",
     left: BrandSpacing.lg,
     right: BrandSpacing.lg,
-    gap: 10,
+    gap: BrandSpacing.sm + 2, // 10px
   },
 });

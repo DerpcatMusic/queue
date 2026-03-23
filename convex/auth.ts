@@ -48,6 +48,36 @@ export function canResolveLinkedUserByEmail(email: string | undefined, isEmailVe
   return Boolean(email) && isEmailVerified;
 }
 
+export function resolveProfileEmailVerified(args: {
+  profile: Record<string, unknown>;
+  provider: {
+    type?: string | undefined;
+    allowDangerousEmailAccountLinking?: boolean | undefined;
+  };
+}) {
+  const { profile, provider } = args;
+  const explicitEmailVerified = profile.emailVerified;
+  if (explicitEmailVerified === true) {
+    return true;
+  }
+  if (explicitEmailVerified === false) {
+    return false;
+  }
+
+  const rawEmailVerified = profile.email_verified;
+  if (rawEmailVerified === true || rawEmailVerified === "true") {
+    return true;
+  }
+  if (rawEmailVerified === false || rawEmailVerified === "false") {
+    return false;
+  }
+
+  return (
+    (provider.type === "oauth" || provider.type === "oidc") &&
+    provider.allowDangerousEmailAccountLinking !== false
+  );
+}
+
 function normalizeOrigin(value: string | undefined) {
   if (!value) return null;
   try {
@@ -107,8 +137,11 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       const email = normalizeEmail(rawEmail);
       const phone = typeof args.profile.phone === "string" ? args.profile.phone : undefined;
       const image = typeof args.profile.image === "string" ? args.profile.image : undefined;
-      const emailVerificationTime = args.profile.emailVerified === true ? now : undefined;
-      const isEmailVerified = args.profile.emailVerified === true;
+      const isEmailVerified = resolveProfileEmailVerified({
+        profile: args.profile,
+        provider: args.provider,
+      });
+      const emailVerificationTime = isEmailVerified ? now : undefined;
       const phoneVerificationTime = args.profile.phoneVerified === true ? now : undefined;
       const isAnonymous =
         typeof args.profile.isAnonymous === "boolean" ? args.profile.isAnonymous : undefined;
