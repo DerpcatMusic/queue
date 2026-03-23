@@ -1,4 +1,5 @@
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BrandSpacing } from "@/constants/brand";
 
 export type AppInsets = {
   safeTop: number;
@@ -13,7 +14,7 @@ export function useAppInsets(): AppInsets {
   const safeBottom = insets.bottom;
   // Native tabs already reserve baseline content space. Only floating overlays/buttons should
   // clear the bottom chrome manually.
-  const overlayBottom = Math.max(safeBottom, 16) + 16;
+  const overlayBottom = safeBottom + BrandSpacing.lg;
 
   return {
     safeTop,
