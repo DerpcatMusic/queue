@@ -747,6 +747,52 @@ export const getMyStudioSettings = query({
   },
 });
 
+export const getStudiosWithLocations = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      studioId: v.id("studioProfiles"),
+      studioName: v.string(),
+      address: v.string(),
+      latitude: v.number(),
+      longitude: v.number(),
+      profileImageUrl: v.optional(v.string()),
+      sport: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx) => {
+    const studios = await ctx.db.query("studioProfiles").collect();
+
+    const studiosWithLocation = await Promise.all(
+      studios
+        .filter((s) => typeof s.latitude === "number" && typeof s.longitude === "number")
+        .map(async (studio) => {
+          const [logoUrl, sportsRow] = await Promise.all([
+            studio.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
+            ctx.db
+              .query("studioSports")
+              .withIndex("by_studio_id", (q) => q.eq("studioId", studio._id))
+              .first(),
+          ]);
+
+          return {
+            studioId: studio._id,
+            studioName: studio.studioName,
+            address: studio.address,
+            latitude: studio.latitude as number,
+            longitude: studio.longitude as number,
+            ...omitUndefined({
+              profileImageUrl: logoUrl ?? undefined,
+              sport: sportsRow?.sport,
+            }),
+          };
+        }),
+    );
+
+    return studiosWithLocation;
+  },
+});
+
 export const updateMyStudioCalendarSettings = mutation({
   args: {
     calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
