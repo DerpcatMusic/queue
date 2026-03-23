@@ -1,4 +1,5 @@
-import { Redirect } from "expo-router";
+import type { Href } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Platform, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { MapMobileStage } from "@/components/map-tab/map-tab/map-mobile-stage";
@@ -6,6 +7,7 @@ import { MapWebWorkbench } from "@/components/map-tab/map-tab/map-web-workbench"
 import { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
 
 export default function MapTabScreen() {
+  const router = useRouter();
   const {
     currentUser,
     filteredZones,
@@ -23,6 +25,7 @@ export default function MapTabScreen() {
     mapCameraPadding,
     mapPalette,
     mapPin,
+    studios,
     noopMapPress,
     palette,
     pendingChangeCount,
@@ -37,6 +40,9 @@ export default function MapTabScreen() {
     zoneSearch,
     zoneModeActive,
   } = useMapTabController();
+  const handlePressStudio = (studioId: string) => {
+    router.push(`/instructor/jobs/studios/${encodeURIComponent(studioId)}` as Href);
+  };
 
   if (currentUser === undefined) {
     return (
@@ -110,6 +116,7 @@ export default function MapTabScreen() {
       mapBackgroundColor={mapPalette.styleBackground}
       isFocused={isFocused}
       mapPin={mapPin}
+      studios={studios}
       selectedZoneIds={selectedZoneIds}
       focusZoneId={focusZoneId}
       zoneModeActive={zoneModeActive}
@@ -117,6 +124,7 @@ export default function MapTabScreen() {
       cameraPadding={mapCameraPadding}
       onPressZone={toggleZone}
       onPressMap={noopMapPress}
+      onPressStudio={handlePressStudio}
       onEditToggle={handleEditButtonPress}
     />
   );

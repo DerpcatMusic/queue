@@ -5,6 +5,16 @@ export type QueueMapPin = {
   longitude: number;
 };
 
+export type StudioMapMarker = {
+  studioId: string;
+  studioName: string;
+  zone: string;
+  latitude: number;
+  longitude: number;
+  address?: string;
+  logoImageUrl?: string;
+};
+
 export type QueueMapMode = "zoneSelect" | "pinDrop";
 
 export type QueueMapViewPadding = {
@@ -17,6 +27,7 @@ export type QueueMapViewPadding = {
 export type QueueMapProps = {
   mode: QueueMapMode;
   pin: QueueMapPin | null;
+  studios?: StudioMapMarker[];
   selectedZoneIds: string[];
   focusZoneId: string | null;
   isEditing?: boolean;
@@ -24,6 +35,7 @@ export type QueueMapProps = {
   zoneIdProperty?: string;
   onPressZone?: (zoneId: string) => void;
   onPressMap?: (pin: QueueMapPin) => void;
+  onPressStudio?: (studioId: string) => void;
   onUseGps?: () => void;
   showGpsButton?: boolean;
   showAttributionButton?: boolean;

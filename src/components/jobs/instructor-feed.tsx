@@ -1,16 +1,24 @@
+import type BottomSheet from "@gorhom/bottom-sheet";
 import { useMutation, useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshControl, StyleSheet, View } from "react-native";
+import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
+import {
+  type InstructorArchiveRow,
+  InstructorJobsArchiveSheet,
+} from "@/components/jobs/instructor/instructor-jobs-archive-sheet";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
+import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
+import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitDisclosureButtonGroup, type KitDisclosureButtonGroupOption } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
@@ -40,6 +48,7 @@ export function InstructorFeed() {
   const [applyingJobId, setApplyingJobId] = useState<Id<"jobs"> | null>(null);
   const [applyErrorMessage, setApplyErrorMessage] = useState<string | null>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const archiveSheetRef = useRef<BottomSheet>(null);
   const deferredJobsSearchQuery = useDeferredValue(jobsSearchQuery);
   const { contentContainerStyle: sheetContentInsets, progressViewOffset } =
     useTopSheetContentInsets({
@@ -59,6 +68,10 @@ export function InstructorFeed() {
   const availableJobs = useQuery(
     api.jobs.getAvailableJobsForInstructor,
     currentUser?.role === "instructor" ? { limit: 60, now: queryNow } : "skip",
+  );
+  const myApplications = useQuery(
+    api.jobs.getMyApplications,
+    currentUser?.role === "instructor" ? { limit: 120 } : "skip",
   );
 
   type AvailableJob = NonNullable<typeof availableJobs>[number];
@@ -89,6 +102,37 @@ export function InstructorFeed() {
       return haystack.includes(search);
     });
   }, [deferredJobsSearchQuery, jobs, jobsWindowFilter, queryNow, zoneLanguage]);
+  const archiveRows = useMemo<InstructorArchiveRow[]>(
+    () =>
+      (myApplications ?? [])
+        .filter((application) => {
+          if (application.jobStatus === "completed" || application.jobStatus === "cancelled") {
+            return true;
+          }
+          if (application.status === "rejected" || application.status === "withdrawn") {
+            return true;
+          }
+          return application.endTime <= queryNow;
+        })
+        .map((application) => ({
+          applicationId: application.applicationId,
+          jobId: application.jobId,
+          studioId: application.studioId,
+          studioName: application.studioName,
+          sport: application.sport,
+          zone: application.zone,
+          startTime: application.startTime,
+          endTime: application.endTime,
+          pay: application.pay,
+          appliedAt: application.appliedAt,
+          jobStatus: application.jobStatus,
+          applicationStatus: application.status,
+          ...(application.studioImageUrl ? { studioImageUrl: application.studioImageUrl } : {}),
+          ...(application.closureReason ? { closureReason: application.closureReason } : {}),
+        }))
+        .sort((left, right) => right.startTime - left.startTime),
+    [myApplications, queryNow],
+  );
 
   const handleRefresh = useCallback(() => {
     if (refreshTimerRef.current) {
@@ -122,29 +166,38 @@ export function InstructorFeed() {
       ] as const satisfies readonly KitDisclosureButtonGroupOption<"all" | "24h" | "72h">[],
     [t],
   );
+  const headerLayoutTransition = useMemo(
+    () => LinearTransition.duration(220).reduceMotion(ReduceMotion.System),
+    [],
+  );
 
   const jobsSheetConfig = useMemo(
     () => ({
       stickyHeader: (
-        <View style={{ gap: BrandSpacing.xs }}>
-          <View
+        <Animated.View style={{ gap: BrandSpacing.xs }} layout={headerLayoutTransition}>
+          <Animated.View
+            layout={headerLayoutTransition}
             style={{
               flexDirection: "row",
               alignItems: "center",
               gap: BrandSpacing.sm,
             }}
           >
-            <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}>
+            <Animated.View
+              layout={headerLayoutTransition}
+              style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}
+            >
               <NativeSearchField
                 value={jobsSearchQuery}
                 onChangeText={setJobsSearchQuery}
                 placeholder={t("jobsTab.searchPlaceholder")}
                 clearAccessibilityLabel={t("common.clear")}
                 size="sm"
+                animateLayout
                 containerStyle={{ backgroundColor: String(palette.surface) }}
               />
-            </View>
-            <View style={{ flexShrink: 0, minWidth: 0 }}>
+            </Animated.View>
+            <Animated.View layout={headerLayoutTransition} style={{ flexShrink: 0, minWidth: 0 }}>
               <KitDisclosureButtonGroup
                 accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
                 expanded={showJobsFilters}
@@ -162,14 +215,14 @@ export function InstructorFeed() {
                   />
                 }
                 size="sm"
-                railColor={String(palette.primarySubtle)}
-                selectedColor={String(palette.surface)}
+                railColor={String(palette.surface)}
+                selectedColor={String(palette.primarySubtle)}
                 labelColor={String(palette.text)}
                 selectedLabelColor={String(palette.primaryPressed)}
                 dividerColor={String(palette.border)}
               />
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
           {applyErrorMessage ? (
             <NoticeBanner
               tone="error"
@@ -177,7 +230,7 @@ export function InstructorFeed() {
               onDismiss={() => setApplyErrorMessage(null)}
             />
           ) : null}
-        </View>
+        </Animated.View>
       ),
       padding: {
         vertical: BrandSpacing.sm,
@@ -195,6 +248,7 @@ export function InstructorFeed() {
       jobsFilterOptions,
       jobsWindowFilter,
       jobsSearchQuery,
+      headerLayoutTransition,
       palette,
       showJobsFilters,
       t,
@@ -252,97 +306,119 @@ export function InstructorFeed() {
   }
 
   return (
-    <TabScreenScrollView
-      routeKey="instructor/jobs/index"
-      style={styles.screen}
-      contentContainerStyle={[styles.content, sheetContentInsets]}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          tintColor={palette.primary as string}
-          colors={[palette.primary as string]}
-          progressViewOffset={progressViewOffset}
-        />
-      }
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={{ flex: 1, gap: BrandSpacing.lg }}>
-        {jobs.length === 0 ? (
-          <View
-            style={{
-              minHeight: listViewportMinHeight,
-              justifyContent: "center",
-              alignItems: "center",
-              paddingHorizontal: BrandSpacing.lg,
-            }}
-          >
-            <View style={{ alignItems: "center", gap: BrandSpacing.md }}>
-              <IconSymbol name="briefcase.fill" size={30} color={palette.textMuted as string} />
-              <View style={{ alignItems: "center", gap: BrandSpacing.xs }}>
+    <View style={styles.screen}>
+      <TabScreenScrollView
+        routeKey="instructor/jobs/index"
+        style={styles.screen}
+        contentContainerStyle={[styles.content, sheetContentInsets]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={palette.primary as string}
+            colors={[palette.primary as string]}
+            progressViewOffset={progressViewOffset}
+          />
+        }
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={{ flex: 1, gap: BrandSpacing.lg }}>
+          {jobs.length === 0 ? (
+            <View
+              style={{
+                minHeight: listViewportMinHeight,
+                justifyContent: "center",
+                alignItems: "center",
+                paddingHorizontal: BrandSpacing.lg,
+              }}
+            >
+              <View style={{ alignItems: "center", gap: BrandSpacing.md }}>
+                <IconSymbol name="briefcase.fill" size={30} color={palette.textMuted as string} />
+                <View style={{ alignItems: "center", gap: BrandSpacing.xs }}>
+                  <ThemedText type="meta" style={{ color: palette.textMuted as string }}>
+                    {t("jobsTab.instructorFeed.emptyInstructorShort")}
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: palette.textMuted as string,
+                      textAlign: "center",
+                    }}
+                  >
+                    {emptyJobsCopy}
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: palette.textMuted as string,
+                      textAlign: "center",
+                    }}
+                  >
+                    {t("jobsTab.instructorFeed.emptyRefreshHint")}
+                  </ThemedText>
+                </View>
+              </View>
+            </View>
+          ) : filteredAvailableJobs.length === 0 ? (
+            <View
+              style={{
+                minHeight: Math.max(220, listViewportMinHeight * 0.75),
+                justifyContent: "center",
+                alignItems: "center",
+                paddingHorizontal: BrandSpacing.lg,
+              }}
+            >
+              <View style={{ alignItems: "center", gap: BrandSpacing.sm }}>
+                <IconSymbol name="magnifyingglass" size={24} color={palette.textMuted as string} />
                 <ThemedText type="meta" style={{ color: palette.textMuted as string }}>
-                  {t("jobsTab.instructorFeed.emptyInstructorShort")}
+                  {t("jobsTab.noJobsFound")}
                 </ThemedText>
                 <ThemedText
                   type="caption"
-                  style={{
-                    color: palette.textMuted as string,
-                    textAlign: "center",
-                    opacity: 0.82,
-                  }}
+                  style={{ color: palette.textMuted as string, textAlign: "center" }}
                 >
-                  {emptyJobsCopy}
-                </ThemedText>
-                <ThemedText
-                  type="caption"
-                  style={{
-                    color: palette.textMuted as string,
-                    textAlign: "center",
-                    opacity: 0.72,
-                  }}
-                >
-                  {t("jobsTab.instructorFeed.emptyRefreshHint")}
+                  {t("jobsTab.tryDifferentSearchOrTimeFilter")}
                 </ThemedText>
               </View>
             </View>
-          </View>
-        ) : filteredAvailableJobs.length === 0 ? (
-          <View
-            style={{
-              minHeight: Math.max(220, listViewportMinHeight * 0.75),
-              justifyContent: "center",
-              alignItems: "center",
-              paddingHorizontal: BrandSpacing.lg,
-            }}
-          >
-            <View style={{ alignItems: "center", gap: BrandSpacing.sm }}>
-              <IconSymbol name="magnifyingglass" size={24} color={palette.textMuted as string} />
-              <ThemedText type="meta" style={{ color: palette.textMuted as string }}>
-                {t("jobsTab.noJobsFound")}
-              </ThemedText>
-              <ThemedText
-                type="caption"
-                style={{ color: palette.textMuted as string, textAlign: "center", opacity: 0.82 }}
-              >
-                {t("jobsTab.tryDifferentSearchOrTimeFilter")}
-              </ThemedText>
-            </View>
-          </View>
-        ) : (
-          <InstructorOpenJobsList
-            jobs={filteredAvailableJobs}
-            locale={locale}
-            zoneLanguage={zoneLanguage}
-            palette={palette}
-            applyingJobId={applyingJobId}
-            now={liveNow}
-            onApply={onApply}
-            onOpenStudio={onOpenStudio}
-            t={t}
-          />
-        )}
-      </View>
-    </TabScreenScrollView>
+          ) : (
+            <InstructorOpenJobsList
+              jobs={filteredAvailableJobs}
+              locale={locale}
+              zoneLanguage={zoneLanguage}
+              palette={palette}
+              applyingJobId={applyingJobId}
+              now={liveNow}
+              onApply={onApply}
+              onOpenStudio={onOpenStudio}
+              t={t}
+            />
+          )}
+        </View>
+      </TabScreenScrollView>
+      <TabOverlayAnchor side="right" offset={BrandSpacing.lg} style={{ zIndex: 60 }}>
+        <IconButton
+          accessibilityLabel={t("jobsTab.instructorFeed.openArchive")}
+          onPress={() => {
+            archiveSheetRef.current?.expand();
+          }}
+          tone="secondary"
+          size={58}
+          backgroundColorOverride={String(palette.surface)}
+          icon={<IconSymbol name="archivebox.fill" size={22} color={String(palette.primary)} />}
+        />
+      </TabOverlayAnchor>
+      <InstructorJobsArchiveSheet
+        innerRef={archiveSheetRef}
+        onDismissed={() => {}}
+        rows={archiveRows}
+        palette={palette}
+        locale={locale}
+        zoneLanguage={zoneLanguage}
+        now={liveNow}
+        onOpenStudio={onOpenStudio}
+      />
+    </View>
   );
 }
 

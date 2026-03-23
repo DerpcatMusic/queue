@@ -1153,6 +1153,10 @@ const en = {
       emptyInstructorFreshTwo: "The board is quiet.",
       emptyInstructorFreshThree: "Check back in a bit.",
       emptyRefreshHint: "Pull to refresh for a new line.",
+      openArchive: "Open archive",
+      archiveSubtitle: "Previous applications and past jobs stay here.",
+      archiveEmpty: "No archived jobs yet.",
+      archiveAppliedOn: "Applied {{date}}",
     },
     studioFeed: {
       eyebrow: "Studio operations",

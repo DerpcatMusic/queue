@@ -10,7 +10,7 @@ import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
 import { MapSheetResults } from "@/components/map-tab/map/map-sheet-results";
 import { buildZoneCityGroups, buildZoneCityListItems } from "@/components/map-tab/zone-city-tree";
-import type { QueueMapPin } from "@/components/maps/queue-map.types";
+import type { QueueMapPin, StudioMapMarker } from "@/components/maps/queue-map.types";
 import { BrandSpacing, getMapBrandPalette } from "@/constants/brand";
 import { ZONE_OPTIONS } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
@@ -56,6 +56,10 @@ export function useMapTabController() {
   const { currentUser } = useUser();
   const remoteZones = useQuery(
     api.instructorZones.getMyInstructorZones,
+    currentUser?.role === "instructor" ? {} : "skip",
+  );
+  const remoteStudios = useQuery(
+    api.users.getInstructorMapStudios,
     currentUser?.role === "instructor" ? {} : "skip",
   );
   const saveZones = useMutation(api.instructorZones.setMyInstructorZones);
@@ -178,6 +182,13 @@ export function useMapTabController() {
         .map((zoneId) => STATIC_ZONE_BY_ID.get(zoneId))
         .filter((zone): zone is NonNullable<typeof zone> => Boolean(zone)),
     [selectedZoneIds],
+  );
+  const visibleStudioMarkers = useMemo<StudioMapMarker[]>(
+    () =>
+      (remoteStudios ?? []).filter((studio) =>
+        selectedZoneIds.length > 0 ? selectedZoneIds.includes(studio.zone) : true,
+      ),
+    [remoteStudios, selectedZoneIds],
   );
   const focusedZone = useMemo(
     () => (focusZoneId ? (STATIC_ZONE_BY_ID.get(focusZoneId) ?? null) : null),
@@ -438,6 +449,7 @@ export function useMapTabController() {
     mapCameraPadding,
     mapPalette,
     mapPin,
+    studios: visibleStudioMarkers,
     noopMapPress,
     overlayBottom,
     palette,

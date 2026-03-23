@@ -981,6 +981,7 @@ export const getMyApplications = query({
       applicationId: v.id("jobApplications"),
       jobId: v.id("jobs"),
       instructorId: v.id("instructorProfiles"),
+      studioId: v.id("studioProfiles"),
       status: v.union(
         v.literal("pending"),
         v.literal("accepted"),
@@ -990,6 +991,7 @@ export const getMyApplications = query({
       appliedAt: v.number(),
       message: v.optional(v.string()),
       studioName: v.string(),
+      studioImageUrl: v.optional(v.string()),
       sport: v.string(),
       zone: v.string(),
       startTime: v.number(),
@@ -1009,6 +1011,9 @@ export const getMyApplications = query({
         v.literal("filled"),
         v.literal("cancelled"),
         v.literal("completed"),
+      ),
+      closureReason: v.optional(
+        v.union(v.literal("expired"), v.literal("studio_cancelled"), v.literal("filled")),
       ),
     }),
   ),
@@ -1041,12 +1046,22 @@ export const getMyApplications = query({
     const studios = await Promise.all(
       studioIds.map((studioId) => ctx.db.get("studioProfiles", studioId)),
     );
+    const studioImageUrls = await Promise.all(
+      studios.map((studio) =>
+        studio?.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
+      ),
+    );
     const studioById = new Map<string, Doc<"studioProfiles">>();
+    const studioImageUrlById = new Map<string, string>();
     for (let i = 0; i < studioIds.length; i += 1) {
       const studioId = studioIds[i];
       const studio = studios[i];
       if (studio) {
         studioById.set(String(studioId), studio);
+      }
+      const studioImageUrl = studioImageUrls[i];
+      if (studioImageUrl) {
+        studioImageUrlById.set(String(studioId), studioImageUrl);
       }
     }
 
@@ -1070,6 +1085,7 @@ export const getMyApplications = query({
         applicationId: application._id,
         jobId: application.jobId,
         instructorId: application.instructorId,
+        studioId: job.studioId,
         status: application.status,
         appliedAt: application.appliedAt,
         studioName: studio?.studioName ?? "Unknown studio",
@@ -1081,9 +1097,11 @@ export const getMyApplications = query({
         jobStatus: job.status,
         ...omitUndefined({
           message: application.message,
+          studioImageUrl: studioImageUrlById.get(String(job.studioId)),
           timeZone: job.timeZone,
           note: job.note,
           paymentDetails: paymentDetailsByJobId.get(String(job._id)),
+          closureReason: job.closureReason,
         }),
       });
     }
