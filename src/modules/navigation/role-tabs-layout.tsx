@@ -1,4 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { View } from "react-native";
 
@@ -30,6 +31,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   const tabBarBackgroundColor = palette.surfaceElevated as string;
   const defaultIconColor = palette.textMicro as string;
   const selectedIconColor = palette.primary as string;
+  const getSelectedMaterialIconName = (name: string) => name.replaceAll("_", "-");
 
   return (
     <ScrollSheetProvider>
@@ -59,7 +61,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
               badgeBackgroundColor={palette.primary as string}
               badgeTextColor={palette.onPrimary as string}
               indicatorColor={palette.primarySubtle as string}
-              shadowColor="transparent"
+              shadowColor={palette.surface as string}
               labelVisibilityMode="unlabeled"
               disableTransparentOnScrollEdge
             >
@@ -83,8 +85,8 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                       ),
                       selected: (
                         <NativeTabs.Trigger.VectorIcon
-                          family={MaterialCommunityIcons}
-                          name={tab.icon.mdSelectedVector as any}
+                          family={MaterialIcons}
+                          name={getSelectedMaterialIconName(tab.icon.md) as any}
                         />
                       ),
                     }}

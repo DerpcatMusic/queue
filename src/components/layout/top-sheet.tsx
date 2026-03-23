@@ -3,7 +3,6 @@ import type { ColorValue, StyleProp, ViewStyle } from "react-native";
 import { useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -81,7 +80,6 @@ function DragHandle({ borderColor }: { borderColor: ColorValue }) {
           height: HANDLE_PILL_HEIGHT,
           borderRadius: BrandRadius.pill,
           backgroundColor: borderColor,
-          opacity: 0.5,
         }}
       />
     </View>
@@ -266,12 +264,12 @@ export function TopSheet({
     backgroundColor: animatedBackground.value,
   }));
   const revealStyle = useAnimatedStyle(() => ({
-    flex: 1,
+    flex: expandedProgress.value,
     minHeight: 0,
-    opacity: expandedProgress.value,
+    overflow: "hidden",
     transform: [
       {
-        translateY: interpolate(expandedProgress.value, [0, 1], [8, 0]),
+        translateY: (1 - expandedProgress.value) * 8,
       },
     ],
   }));

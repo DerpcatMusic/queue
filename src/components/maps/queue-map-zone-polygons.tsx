@@ -11,6 +11,7 @@ type Expression = unknown;
 type QueueMapZonePolygonsProps = {
   mode: QueueMapProps["mode"];
   isEditing: boolean;
+  showLabelLayers: boolean;
   selectedZoneFilter: Expression;
   zoneGeoJson: QueueMapProps["zoneGeoJson"];
   zoneIdProperty: string;
@@ -29,6 +30,7 @@ function getPressedZoneId(
 export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
   mode,
   isEditing,
+  showLabelLayers,
   selectedZoneFilter,
   zoneGeoJson,
   zoneIdProperty,
@@ -39,14 +41,14 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
   const zoneOutlineWidth = showAllZones
     ? Math.max(APPLE_MAP_THEME.overlay.baseOutlineWidth, 1.35)
     : APPLE_MAP_THEME.overlay.baseOutlineWidth;
-  const selectedLabelOpacity = 1;
+  const selectedLabelOpacity = showLabelLayers ? 1 : 0;
   const previewFillOpacity = showAllZones
     ? Math.max(APPLE_MAP_THEME.overlay.touchFillOpacity, 0.1)
     : 0;
   const previewOutlineOpacity = showAllZones
     ? Math.max(APPLE_MAP_THEME.overlay.baseOutlineOpacity, 0.88)
     : 0;
-  const allZonesLabelOpacity = showAllZones ? 0.92 : 0;
+  const allZonesLabelOpacity = showAllZones && showLabelLayers ? 0.78 : 0;
 
   return (
     <GeoJSONSource
