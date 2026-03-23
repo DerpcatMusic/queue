@@ -22,8 +22,11 @@ import {
 export type InstructorMarketplaceJob = {
   jobId: Id<"jobs">;
   studioId: Id<"studioProfiles">;
+  branchId: Id<"studioBranches">;
   sport: string;
   studioName: string;
+  branchName: string;
+  branchAddress?: string;
   studioImageUrl?: string | null;
   studioAddress?: string;
   applicationStatus?: "pending" | "accepted" | "rejected" | "withdrawn";
@@ -182,13 +185,14 @@ export function InstructorJobCard({
   const expiry = getExpiryPresentation(job.applicationDeadline, locale, now);
   const isExpired = expiry?.isExpired ?? false;
   const street = job.studioAddress?.split(",")[0]?.trim();
+  const branchStreet = job.branchAddress?.split(",")[0]?.trim();
   const zoneLabel = getZoneLabel(job.zone, zoneLanguage);
-  const shortLocation = street ? `${street} · ${zoneLabel}` : zoneLabel;
-  const primaryTitle =
-    variant === "studioDetail" ? toSportLabel(job.sport as never) : job.studioName;
-  const secondaryTitle =
-    variant === "studioDetail" ? shortLocation : toSportLabel(job.sport as never);
-  const metaLine = variant === "studioDetail" ? job.studioName : shortLocation;
+  const locationStreet = branchStreet ?? street;
+  const shortLocation = locationStreet ? `${locationStreet} · ${zoneLabel}` : zoneLabel;
+  const studioLabel = `${job.studioName} · ${job.branchName}`;
+  const primaryTitle = variant === "studioDetail" ? toSportLabel(job.sport as never) : studioLabel;
+  const secondaryTitle = variant === "studioDetail" ? shortLocation : toSportLabel(job.sport as never);
+  const metaLine = variant === "studioDetail" ? studioLabel : shortLocation;
   const contentWidth = showStudioImage ? (isWideWeb ? "52%" : "53%") : "100%";
   const isPressable = Boolean(onOpenStudio);
 

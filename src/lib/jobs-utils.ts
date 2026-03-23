@@ -1,3 +1,5 @@
+import type { Id } from "@/convex/_generated/dataModel";
+
 export const MINUTE_MS = 60 * 1000;
 export const DEVICE_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
 export const DURATION_PRESETS = [45, 60, 75, 90] as const;
@@ -58,6 +60,7 @@ type BoostPresentation = {
 };
 
 export type StudioDraft = {
+  branchId: Id<"studioBranches"> | null;
   sport: string;
   startTime: number;
   endTime: number;
@@ -94,6 +97,7 @@ export function sanitizeDecimalInput(value: string): string {
 export function createDefaultStudioDraft(): StudioDraft {
   const startTime = Date.now() + 90 * MINUTE_MS;
   return {
+    branchId: null,
     sport: "",
     startTime,
     endTime: startTime + 60 * MINUTE_MS,
