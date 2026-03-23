@@ -1,6 +1,6 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
@@ -9,6 +9,7 @@ import { AppSymbol } from "@/components/ui/app-symbol";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing } from "@/constants/brand";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
+import type { Id } from "@/convex/_generated/dataModel";
 import type { StudioDraft } from "@/lib/jobs-utils";
 import { createDefaultStudioDraft } from "@/lib/jobs-utils";
 import {
@@ -27,6 +28,13 @@ type CreateJobSheetProps = {
   onPost: (draft: StudioDraft) => Promise<void>;
   isSubmitting: boolean;
   palette: BrandPalette;
+  branches: Array<{
+    branchId: Id<"studioBranches">;
+    name: string;
+    address: string;
+    isPrimary: boolean;
+  }>;
+  defaultBranchId?: Id<"studioBranches"> | null;
 };
 
 export function CreateJobSheet({
@@ -35,6 +43,8 @@ export function CreateJobSheet({
   onPost,
   isSubmitting,
   palette,
+  branches,
+  defaultBranchId = null,
 }: CreateJobSheetProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? "en";
@@ -46,6 +56,11 @@ export function CreateJobSheet({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+
+  const selectedBranch = useMemo(
+    () => branches.find((branch) => branch.branchId === draft.branchId) ?? null,
+    [branches, draft.branchId],
+  );
 
   const snapPoints = ["100%"];
   const filteredSports = useMemo(() => {
@@ -142,14 +157,25 @@ export function CreateJobSheet({
   };
 
   const handleDismissed = useCallback(() => {
-    setDraft(createDefaultStudioDraft());
+    setDraft({
+      ...createDefaultStudioDraft(),
+      branchId: defaultBranchId,
+    });
     setSportQuery("");
     setSportPickerOpen(false);
     setShowDatePicker(false);
     setShowStartTimePicker(false);
     setShowEndTimePicker(false);
     onDismissed();
-  }, [onDismissed]);
+  }, [defaultBranchId, onDismissed]);
+
+  const initialBranchId = defaultBranchId ?? branches[0]?.branchId ?? null;
+
+  useEffect(() => {
+    if (draft.branchId === null && initialBranchId) {
+      setDraft((current) => ({ ...current, branchId: initialBranchId }));
+    }
+  }, [draft.branchId, initialBranchId]);
 
   return (
     <BottomSheet
@@ -185,6 +211,49 @@ export function CreateJobSheet({
         </View>
 
         <View style={styles.form}>
+          <View style={styles.section}>
+            <ThemedText type="defaultSemiBold">{t("profile.settings.location")}</ThemedText>
+            <View style={styles.branchList}>
+              {branches.map((branch) => {
+                const isSelected = draft.branchId === branch.branchId;
+                return (
+                  <Pressable
+                    key={String(branch.branchId)}
+                    accessibilityRole="button"
+                    onPress={() => setDraft((current) => ({ ...current, branchId: branch.branchId }))}
+                    style={({ pressed }) => [
+                      styles.branchChip,
+                      {
+                        backgroundColor: isSelected
+                          ? (palette.primarySubtle as string)
+                          : (palette.surfaceAlt as string),
+                        borderColor: isSelected
+                          ? (palette.primary as string)
+                          : (palette.border as string),
+                        opacity: pressed ? 0.88 : 1,
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={{ color: isSelected ? (palette.primary as string) : (palette.text as string) }}
+                    >
+                      {branch.name}
+                    </ThemedText>
+                    <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+                      {branch.address}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {selectedBranch ? (
+              <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+                {selectedBranch.isPrimary ? `${selectedBranch.name} · Primary branch` : selectedBranch.name}
+              </ThemedText>
+            ) : null}
+          </View>
+
           <SportPickerSection
             draft={draft}
             sportQuery={sportQuery}
@@ -275,5 +344,18 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 20,
+  },
+  section: {
+    gap: BrandSpacing.sm,
+  },
+  branchList: {
+    gap: BrandSpacing.sm,
+  },
+  branchChip: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.md,
+    gap: 4,
   },
 });

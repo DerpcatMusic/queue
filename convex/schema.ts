@@ -142,6 +142,7 @@ export default defineSchema({
     role: v.union(v.literal("instructor"), v.literal("studio")),
     instructorId: v.optional(v.id("instructorProfiles")),
     studioId: v.optional(v.id("studioProfiles")),
+    branchId: v.optional(v.id("studioBranches")),
     provider: v.union(v.literal("google"), v.literal("apple")),
     status: v.union(v.literal("connected"), v.literal("error"), v.literal("revoked")),
     accountEmail: v.optional(v.string()),
@@ -157,7 +158,9 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_user_provider", ["userId", "provider"])
-    .index("by_instructor_provider", ["instructorId", "provider"]),
+    .index("by_instructor_provider", ["instructorId", "provider"])
+    .index("by_studio_provider", ["studioId", "provider"])
+    .index("by_branch_provider", ["branchId", "provider"]),
 
   calendarEventMappings: defineTable({
     integrationId: v.id("calendarIntegrations"),
@@ -257,8 +260,67 @@ export default defineSchema({
     .index("by_user_id", ["userId"])
     .index("by_zone", ["zone"]),
 
+  studioBranches: defineTable({
+    studioId: v.id("studioProfiles"),
+    name: v.string(),
+    slug: v.string(),
+    address: v.string(),
+    zone: v.string(),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    contactPhone: v.optional(v.string()),
+    expoPushToken: v.optional(v.string()),
+    notificationsEnabled: v.optional(v.boolean()),
+    autoExpireMinutesBefore: v.optional(v.number()),
+    autoAcceptDefault: v.optional(v.boolean()),
+    calendarProvider: v.optional(
+      v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
+    ),
+    calendarSyncEnabled: v.optional(v.boolean()),
+    calendarConnectedAt: v.optional(v.number()),
+    isPrimary: v.boolean(),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_studio_id", ["studioId"])
+    .index("by_studio_active", ["studioId", "status"])
+    .index("by_studio_slug", ["studioId", "slug"])
+    .index("by_studio_primary", ["studioId", "isPrimary"])
+    .index("by_zone", ["zone"]),
+
+  studioMemberships: defineTable({
+    studioId: v.id("studioProfiles"),
+    userId: v.id("users"),
+    role: v.union(v.literal("owner"), v.literal("admin"), v.literal("branch_manager")),
+    branchIds: v.optional(v.array(v.id("studioBranches"))),
+    status: v.union(v.literal("active"), v.literal("invited"), v.literal("revoked")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_studio", ["studioId"])
+    .index("by_user", ["userId"])
+    .index("by_studio_user", ["studioId", "userId"])
+    .index("by_studio_status", ["studioId", "status"]),
+
+  studioEntitlements: defineTable({
+    studioId: v.id("studioProfiles"),
+    planKey: v.union(v.literal("free"), v.literal("growth"), v.literal("custom")),
+    maxBranches: v.number(),
+    branchesFeatureEnabled: v.boolean(),
+    subscriptionStatus: v.union(
+      v.literal("active"),
+      v.literal("trialing"),
+      v.literal("past_due"),
+      v.literal("canceled"),
+    ),
+    effectiveAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_studio_id", ["studioId"]),
+
   jobs: defineTable({
     studioId: v.id("studioProfiles"),
+    branchId: v.id("studioBranches"),
     zone: v.string(),
     sport: v.string(),
     startTime: v.number(),
@@ -299,6 +361,8 @@ export default defineSchema({
     // NEW: boost pay metadata (additive, optional)
     boostBonusAmount: v.optional(v.number()),
     boostActive: v.optional(v.boolean()),
+    branchNameSnapshot: v.optional(v.string()),
+    branchAddressSnapshot: v.optional(v.string()),
     // NEW: closure reason for cancellation/expiry (additive, optional)
     closureReason: v.optional(
       v.union(v.literal("studio_cancelled"), v.literal("expired"), v.literal("filled")),
@@ -307,6 +371,8 @@ export default defineSchema({
     .index("by_studio", ["studioId"])
     .index("by_studio_postedAt", ["studioId", "postedAt"])
     .index("by_studio_startTime", ["studioId", "startTime"])
+    .index("by_branch_postedAt", ["branchId", "postedAt"])
+    .index("by_branch_startTime", ["branchId", "startTime"])
     .index("by_status", ["status"])
     .index("by_status_postedAt", ["status", "postedAt"])
     .index("by_filledByInstructor_startTime", ["filledByInstructorId", "startTime"])
@@ -317,6 +383,7 @@ export default defineSchema({
   jobApplications: defineTable({
     jobId: v.id("jobs"),
     studioId: v.optional(v.id("studioProfiles")),
+    branchId: v.optional(v.id("studioBranches")),
     instructorId: v.id("instructorProfiles"),
     status: v.union(
       v.literal("pending"),
@@ -330,6 +397,7 @@ export default defineSchema({
   })
     .index("by_job", ["jobId"])
     .index("by_studio", ["studioId"])
+    .index("by_branch", ["branchId"])
     .index("by_instructor", ["instructorId"])
     .index("by_instructor_appliedAt", ["instructorId", "appliedAt"])
     .index("by_job_and_instructor", ["jobId", "instructorId"]),
@@ -337,17 +405,20 @@ export default defineSchema({
   jobApplicationStats: defineTable({
     jobId: v.id("jobs"),
     studioId: v.id("studioProfiles"),
+    branchId: v.optional(v.id("studioBranches")),
     applicationsCount: v.number(),
     pendingApplicationsCount: v.number(),
     updatedAt: v.number(),
   })
     .index("by_job", ["jobId"])
-    .index("by_studio", ["studioId"]),
+    .index("by_studio", ["studioId"])
+    .index("by_branch", ["branchId"]),
 
   payments: defineTable({
     paymentOrderId: v.optional(v.id("paymentOrders")),
     jobId: v.id("jobs"),
     studioId: v.id("studioProfiles"),
+    branchId: v.optional(v.id("studioBranches")),
     studioUserId: v.id("users"),
     instructorId: v.optional(v.id("instructorProfiles")),
     instructorUserId: v.optional(v.id("users")),
@@ -370,12 +441,14 @@ export default defineSchema({
     platformMarkupBps: v.number(),
     idempotencyKey: v.string(),
     metadata: v.optional(paymentMetadataValidator),
+    branchNameSnapshot: v.optional(v.string()),
     lastError: v.optional(v.string()),
     capturedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_studio", ["studioId", "createdAt"])
+    .index("by_branch", ["branchId", "createdAt"])
     .index("by_studio_user", ["studioUserId", "createdAt"])
     .index("by_instructor_user", ["instructorUserId", "createdAt"])
     .index("by_job", ["jobId", "createdAt"])
@@ -440,6 +513,7 @@ export default defineSchema({
     paymentId: v.id("payments"),
     jobId: v.id("jobs"),
     studioId: v.id("studioProfiles"),
+    branchId: v.optional(v.id("studioBranches")),
     studioUserId: v.id("users"),
     instructorId: v.id("instructorProfiles"),
     instructorUserId: v.id("users"),
@@ -471,6 +545,8 @@ export default defineSchema({
     .index("by_payment", ["paymentId", "createdAt"])
     .index("by_payment_order", ["paymentOrderId", "createdAt"])
     .index("by_schedule", ["payoutScheduleId", "createdAt"])
+    .index("by_studio", ["studioId", "createdAt"])
+    .index("by_branch", ["branchId", "createdAt"])
     .index("by_instructor_user", ["instructorUserId", "createdAt"])
     .index("by_destination", ["destinationId", "createdAt"])
     .index("by_status_retryAt", ["status", "nextRetryAt"])
