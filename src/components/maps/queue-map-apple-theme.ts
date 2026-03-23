@@ -1,4 +1,4 @@
-const DEFAULT_MAP_STYLE_LIGHT_URL = "https://tiles.openfreemap.org/styles/positron";
+const DEFAULT_MAP_STYLE_LIGHT_URL = "https://tiles.openfreemap.org/styles/liberty";
 const DEFAULT_MAP_STYLE_DARK_URL = "https://tiles.openfreemap.org/styles/dark";
 
 function parseNumber(value: string | undefined, fallback: number) {

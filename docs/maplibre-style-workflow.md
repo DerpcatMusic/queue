@@ -9,6 +9,11 @@ This app already supports remote vector style URLs through:
 
 The current defaults live in [src/components/maps/queue-map-apple-theme.ts](/home/derpcat/projects/queue-nativewind-styling/src/components/maps/queue-map-apple-theme.ts).
 
+Current default direction:
+
+- light: OpenFreeMap `liberty`
+- dark: OpenFreeMap `dark`
+
 ## Recommended workflow
 
 1. Open the target style in Maputnik.

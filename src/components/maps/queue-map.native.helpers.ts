@@ -51,6 +51,26 @@ function isRoadNumberLayer(layer: AnyStyleLayer) {
   return false;
 }
 
+function isLowValueSymbolLayer(layer: AnyStyleLayer) {
+  const id = String(layer?.id ?? "").toLowerCase();
+  const sourceLayer = String(layer?.["source-layer"] ?? "").toLowerCase();
+  if (String(layer?.type ?? "") !== "symbol") {
+    return false;
+  }
+
+  const value = `${id} ${sourceLayer}`;
+  return (
+    value.includes("poi") ||
+    value.includes("transit") ||
+    value.includes("rail") ||
+    value.includes("bus") ||
+    value.includes("parking") ||
+    value.includes("ferry") ||
+    value.includes("airport") ||
+    value.includes("aerialway")
+  );
+}
+
 export function withMapPersonality(
   style: AnyStyleSpec,
   palette: ReturnType<typeof getMapBrandPalette>,
@@ -59,6 +79,7 @@ export function withMapPersonality(
   const layers = (style.layers ?? [])
     .filter((layer) => !isRoadNumberLayer(layer))
     .filter((layer) => (showBaseLabels ? true : String(layer?.type ?? "") !== "symbol"))
+    .filter((layer) => !isLowValueSymbolLayer(layer))
     .map((layer) => {
       const nextLayer = { ...layer };
       const id = String(nextLayer.id ?? "").toLowerCase();
@@ -92,6 +113,7 @@ export function withMapPersonality(
       }
       if (sourceLayer.includes("road") && layerType === "line") {
         paint["line-color"] = palette.roadLine;
+        paint["line-opacity"] = 0.92;
       }
       if ((sourceLayer.includes("building") || id.includes("building")) && layerType === "fill") {
         paint["fill-color"] = palette.buildingFill;
@@ -99,7 +121,7 @@ export function withMapPersonality(
       if (layerType === "symbol") {
         paint["text-color"] = palette.text;
         paint["text-halo-color"] = palette.textHalo;
-        paint["text-halo-width"] = 1;
+        paint["text-halo-width"] = 0.8;
       }
 
       nextLayer.paint = paint;
