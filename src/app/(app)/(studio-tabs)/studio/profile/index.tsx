@@ -321,7 +321,11 @@ export default function StudioProfileScreen() {
 
   const isProfileIndexRoute = pathname === STUDIO_PROFILE_ROUTE || pathname.endsWith("/profile");
 
-  useGlobalTopSheet("profile", !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null);
+  useGlobalTopSheet(
+    "profile",
+    !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null,
+    "profile:index:studio",
+  );
 
   if (
     !hasActivated ||

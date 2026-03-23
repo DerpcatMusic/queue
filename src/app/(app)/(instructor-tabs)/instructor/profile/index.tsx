@@ -304,7 +304,11 @@ export default function InstructorProfileScreen() {
   const isProfileIndexRoute =
     pathname === INSTRUCTOR_PROFILE_ROUTE || pathname.endsWith("/profile");
 
-  useGlobalTopSheet("profile", !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null);
+  useGlobalTopSheet(
+    "profile",
+    !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null,
+    "profile:index:instructor",
+  );
 
   if (
     !hasActivated ||
