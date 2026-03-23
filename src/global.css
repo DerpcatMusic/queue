@@ -6,6 +6,20 @@
 /* ─── Brand Spacing ──────────────────────────────────────────── */
 /* These map to Tailwind spacing utilities: gap-lg, px-lg, py-lg, mx-lg, my-lg, etc. */
 @theme {
+  --spacing-xxs: 2px;
+  --spacing-stack-tight: 8px;
+  --spacing-stack: 12px;
+  --spacing-stack-roomy: 16px;
+  --spacing-stack-loose: 24px;
+  --spacing-inset-tight: 12px;
+  --spacing-inset: 16px;
+  --spacing-inset-roomy: 24px;
+  --spacing-section: 32px;
+  --spacing-control-x: 14px;
+  --spacing-control-y: 12px;
+  --spacing-control-sm: 38px;
+  --spacing-control-md: 44px;
+  --spacing-control-lg: 52px;
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 12px;
@@ -15,14 +29,22 @@
   --spacing-component-padding: 14px;
   --spacing-icon-container: 38px;
   --spacing-icon-container-large: 78px;
+  --spacing-shell-rail: 236px;
+  --spacing-shell-panel: 320px;
+  --spacing-shell-command-panel: 360px;
   --spacing-halo-size: 180px;
   --spacing-map-min-height: 300px;
+  --spacing-map-canvas-min-height: 320px;
   --spacing-multiline-input-min-height: 96px;
 }
 
 /* ─── Brand Radius ───────────────────────────────────────────── */
 /* These map to: rounded-card, rounded-button, rounded-pill, etc. */
 @theme {
+  --radius-hard: 12px;
+  --radius-medium: 18px;
+  --radius-soft: 24px;
+  --radius-pill: 999px;
   --radius-card: 24px;
   --radius-card-subtle: 18px;
   --radius-button: 20px;
@@ -37,56 +59,56 @@
 /* Dynamic runtime colors are injected via CSS variables (set by vars() or VariableContextProvider) */
 @theme {
   /* Brand */
-  --color-primary: #8B5CF6;
-  --color-primary-subtle: #E8DDFF;
-  --color-primary-pressed: #7443F0;
+  --color-primary: #8b5cf6;
+  --color-primary-subtle: #e8ddff;
+  --color-primary-pressed: #7443f0;
 
   /* Semantic */
-  --color-success: #169C52;
-  --color-success-subtle: #DDF7E6;
-  --color-danger: #D43B4E;
-  --color-danger-subtle: #FFE3E8;
-  --color-warning: #D68116;
-  --color-warning-subtle: #FFF1D8;
+  --color-success: #169c52;
+  --color-success-subtle: #ddf7e6;
+  --color-danger: #d43b4e;
+  --color-danger-subtle: #ffe3e8;
+  --color-warning: #d68116;
+  --color-warning-subtle: #fff1d8;
 
   /* Surfaces */
-  --color-surface: #FFFFFF;
-  --color-surface-alt: #F1ECF8;
-  --color-surface-elevated: #FFFFFF;
-  --color-app-bg: #F6F4FB;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f1ecf8;
+  --color-surface-elevated: #ffffff;
+  --color-app-bg: #f6f4fb;
 
   /* Borders */
-  --color-border: #DDD6EA;
-  --color-border-strong: #B8AFCB;
+  --color-border: #ddd6ea;
+  --color-border-strong: #b8afcb;
 
   /* Text */
   --color-text: #181522;
-  --color-text-muted: #6D6580;
-  --color-text-micro: #8E86A0;
+  --color-text-muted: #6d6580;
+  --color-text-micro: #8e86a0;
 
   /* Accent (overridable via vars() at runtime) */
-  --color-accent: #8B5CF6;
-  --color-accent-subtle: #E8DDFF;
+  --color-accent: #8b5cf6;
+  --color-accent-subtle: #e8ddff;
 }
 
 /* ─── Dark Mode ──────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-primary: #8F6AFB;
-    --color-primary-subtle: #2D2066;
-    --color-primary-pressed: #A78BFA;
+    --color-primary: #8f6afb;
+    --color-primary-subtle: #2d2066;
+    --color-primary-pressed: #a78bfa;
 
     --color-surface: #121020;
-    --color-surface-alt: #1C1830;
+    --color-surface-alt: #1c1830;
     --color-surface-elevated: #252238;
-    --color-app-bg: #0B0910;
+    --color-app-bg: #0b0910;
 
-    --color-border: #2D2850;
-    --color-border-strong: #3D3870;
+    --color-border: #2d2850;
+    --color-border-strong: #3d3870;
 
-    --color-text: #F5F3FF;
-    --color-text-muted: #A8A0C0;
-    --color-text-micro: #7870A0;
+    --color-text: #f5f3ff;
+    --color-text-muted: #a8a0c0;
+    --color-text-micro: #7870a0;
   }
 }
 

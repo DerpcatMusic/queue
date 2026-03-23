@@ -74,11 +74,9 @@ export function StatusPill({ label, status, palette }: StatusPillProps) {
 
   return (
     <View
+      className="rounded-pill px-sm py-xs"
       style={{
-        borderRadius: BrandRadius.buttonSubtle,
         borderCurve: "continuous",
-        paddingHorizontal: BrandSpacing.sm,
-        paddingVertical: BrandSpacing.xs,
         backgroundColor: tokens.bg,
       }}
     >
@@ -101,21 +99,16 @@ type DotStatusPillProps = {
 export function DotStatusPill({ backgroundColor, color, label }: DotStatusPillProps) {
   return (
     <View
+      className="flex-row items-center rounded-pill px-sm py-xs gap-xs"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: BrandSpacing.sm,
-        borderRadius: BrandRadius.pill,
         backgroundColor,
-        paddingHorizontal: BrandSpacing.sm,
-        paddingVertical: BrandSpacing.xs + 2,
       }}
     >
       <View
         style={{
           width: 7,
           height: 7,
-          borderRadius: BrandRadius.icon,
+          borderRadius: BrandRadius.pill,
           backgroundColor: color,
         }}
       />
@@ -143,7 +136,7 @@ type MetricCellProps = {
 /** Label + value metric pair used in job cards. */
 export function MetricCell({ align = "flex-start", icon, label, value, palette }: MetricCellProps) {
   return (
-    <View style={{ gap: 3, alignItems: align }}>
+    <View style={{ gap: BrandSpacing.xs, alignItems: align }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
         {icon ? <IconSymbol name={icon} size={12} color={palette.textMuted as string} /> : null}
         <Text
@@ -214,15 +207,10 @@ export function HomeSignalTile({
 
   return (
     <View
+      className="min-w-0 flex-1 gap-xs rounded-medium px-control-x py-control-y"
       style={{
-        flex: 1,
-        minWidth: 0,
-        borderRadius: BrandRadius.cardSubtle,
         borderCurve: "continuous",
         backgroundColor,
-        paddingHorizontal: BrandSpacing.md,
-        paddingVertical: BrandSpacing.md - 2,
-        gap: 3,
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>

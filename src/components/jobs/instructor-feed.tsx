@@ -16,12 +16,6 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitDisclosureButtonGroup, type KitDisclosureButtonGroupOption } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing } from "@/constants/brand";
-
-const RAIL_COLOR = "rgba(52, 32, 96, 0.82)";
-const SELECTED_COLOR = "rgba(255, 255, 255, 0.2)";
-const LABEL_COLOR = "rgba(255, 255, 255, 0.76)";
-const DIVIDER_COLOR = "rgba(255, 255, 255, 0.12)";
-const SEARCH_BG_COLOR = "rgba(255, 255, 255, 0.88)";
 import { getZoneLabel } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -137,7 +131,7 @@ export function InstructorFeed() {
   const jobsSheetConfig = useMemo(
     () => ({
       stickyHeader: (
-        <Animated.View style={{ gap: 6 }} layout={headerLayoutTransition}>
+        <Animated.View style={{ gap: BrandSpacing.xs }} layout={headerLayoutTransition}>
           <Animated.View
             layout={headerLayoutTransition}
             style={{
@@ -156,7 +150,7 @@ export function InstructorFeed() {
                 placeholder={t("jobsTab.searchPlaceholder")}
                 clearAccessibilityLabel={t("common.clear")}
                 size="sm"
-                containerStyle={{ backgroundColor: SEARCH_BG_COLOR }}
+                containerStyle={{ backgroundColor: String(palette.surface) }}
               />
             </Animated.View>
             <Animated.View layout={headerLayoutTransition} style={{ flexShrink: 0, minWidth: 0 }}>
@@ -173,15 +167,15 @@ export function InstructorFeed() {
                   <IconSymbol
                     name="line.3.horizontal.decrease.circle"
                     size={18}
-                    color={String(palette.onPrimary)}
+                    color={String(palette.text)}
                   />
                 }
                 size="sm"
-                railColor={RAIL_COLOR}
-                selectedColor={SELECTED_COLOR}
-                labelColor={LABEL_COLOR}
-                selectedLabelColor={String(palette.onPrimary)}
-                dividerColor={DIVIDER_COLOR}
+                railColor={String(palette.primarySubtle)}
+                selectedColor={String(palette.surface)}
+                labelColor={String(palette.text)}
+                selectedLabelColor={String(palette.primaryPressed)}
+                dividerColor={String(palette.border)}
               />
             </Animated.View>
           </Animated.View>
@@ -190,10 +184,6 @@ export function InstructorFeed() {
               tone="error"
               message={applyErrorMessage}
               onDismiss={() => setApplyErrorMessage(null)}
-              borderColor="transparent"
-              backgroundColor={palette.dangerSubtle}
-              textColor={palette.danger}
-              iconColor={palette.danger}
             />
           ) : null}
         </Animated.View>
@@ -294,12 +284,12 @@ export function InstructorFeed() {
               minHeight: listViewportMinHeight,
               justifyContent: "center",
               alignItems: "center",
-              paddingHorizontal: BrandSpacing.xl,
+              paddingHorizontal: BrandSpacing.lg,
             }}
           >
             <View style={{ alignItems: "center", gap: BrandSpacing.md }}>
               <IconSymbol name="briefcase.fill" size={30} color={palette.textMuted as string} />
-              <View style={{ alignItems: "center", gap: 4 }}>
+              <View style={{ alignItems: "center", gap: BrandSpacing.xs }}>
                 <ThemedText type="meta" style={{ color: palette.textMuted as string }}>
                   {t("jobsTab.instructorFeed.emptyInstructorShort")}
                 </ThemedText>

@@ -2,22 +2,21 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import { vars } from "nativewind";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Platform, Text, View } from "react-native";
-
 import appleCalendarIcon from "@/assets/images/calendar-apple-app-icon.jpg";
 import googleCalendarIcon from "@/assets/images/calendar-google-app-icon.jpg";
-import { CalendarConnectionRow } from "@/components/profile/calendar-connection-row";
 import { LoadingScreen } from "@/components/loading-screen";
+import { CalendarConnectionRow } from "@/components/profile/calendar-connection-row";
 import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitList, KitSwitchRow } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { vars } from "nativewind";
+import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
@@ -53,6 +52,7 @@ type StudioSettings = {
 
 type GoogleCalendarStatus = {
   connected: boolean;
+  hasRefreshToken: boolean;
   accountEmail?: string | undefined;
   lastError?: string | undefined;
 };
@@ -149,7 +149,10 @@ export default function StudioCalendarSettingsScreen() {
   }
 
   const hasGoogleConnection = Boolean(googleStatus?.connected);
-  const isGoogleConnected = provider === "google" && hasGoogleConnection;
+  const hasGoogleRefreshToken = Boolean(googleStatus?.hasRefreshToken);
+  const needsGoogleReconnect = hasGoogleConnection && !hasGoogleRefreshToken;
+  const canUseGoogleCalendar = hasGoogleConnection && hasGoogleRefreshToken;
+  const isGoogleConnected = provider === "google" && canUseGoogleCalendar;
   const isAppleConnected = provider === "apple";
   const isBusy = isSaving || isConnectingGoogle || isDisconnectingGoogle || isSyncingGoogle;
 
@@ -320,6 +323,13 @@ export default function StudioCalendarSettingsScreen() {
   };
 
   const onSyncGoogleNow = async () => {
+    if (!canUseGoogleCalendar) {
+      Alert.alert(
+        t("profile.settings.errors.saveFailed"),
+        t("profile.settings.calendar.googleReconnectRequired"),
+      );
+      return;
+    }
     setIsSyncingGoogle(true);
     try {
       await syncGoogleCalendar({});
@@ -428,7 +438,11 @@ export default function StudioCalendarSettingsScreen() {
         routeKey="studio/profile/calendar-settings"
         className="flex-1"
         style={{ backgroundColor: palette.appBg }}
-        contentContainerStyle={{ paddingHorizontal: BrandSpacing.lg, paddingBottom: 128, gap: BrandSpacing.md }}
+        contentContainerStyle={{
+          paddingHorizontal: BrandSpacing.lg,
+          paddingBottom: 128,
+          gap: BrandSpacing.md,
+        }}
       >
         <View
           className="overflow-hidden rounded-card"
@@ -440,7 +454,9 @@ export default function StudioCalendarSettingsScreen() {
             detail={
               isGoogleConnected
                 ? (googleStatus?.accountEmail ?? t("profile.calendar.googleAccountFallback"))
-                : t("profile.settings.calendar.connectHint")
+                : needsGoogleReconnect
+                  ? t("profile.settings.calendar.googleReconnectRequired")
+                  : t("profile.settings.calendar.connectHint")
             }
             connected={isGoogleConnected}
             loading={isConnectingGoogle || isDisconnectingGoogle}
@@ -487,11 +503,23 @@ export default function StudioCalendarSettingsScreen() {
               borderWidth: 1,
             })}
           >
-            <Text
-              className="text-base"
-              style={{ color: palette.danger as string }}
-            >
+            <Text className="text-base" style={{ color: palette.danger as string }}>
               {googleStatus.lastError}
+            </Text>
+          </View>
+        ) : null}
+
+        {needsGoogleReconnect ? (
+          <View
+            className="px-3 py-3 rounded-button-subtle"
+            style={vars({
+              backgroundColor: String(palette.warningSubtle),
+              borderColor: String(palette.warning),
+              borderWidth: 1,
+            })}
+          >
+            <Text className="text-base" style={{ color: palette.warning }}>
+              {t("profile.settings.calendar.googleReconnectRequired")}
             </Text>
           </View>
         ) : null}
@@ -511,7 +539,7 @@ export default function StudioCalendarSettingsScreen() {
           </View>
         ) : null}
 
-        {isGoogleConnected ? (
+        {provider === "google" ? (
           <View style={vars({ gap: BrandSpacing.sm + 2 })}>
             <ActionButton
               label={
@@ -522,7 +550,7 @@ export default function StudioCalendarSettingsScreen() {
               onPress={() => {
                 void onSyncGoogleNow();
               }}
-              disabled={isSyncingGoogle || isBusy}
+              disabled={!canUseGoogleCalendar || isSyncingGoogle || isBusy}
               palette={palette}
               fullWidth
             />

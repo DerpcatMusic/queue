@@ -6,9 +6,6 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-
-// Image panel takes 44% on mobile, responsive adjustment handled via layout breakpoint
-const IMAGE_PANEL_WIDTH_PERCENT = "44%"; // Keep as percent for fluid layout
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -21,6 +18,9 @@ import {
   getExpiryPresentation,
   type JobClosureReason,
 } from "@/lib/jobs-utils";
+
+// Image panel takes 44% on mobile, responsive adjustment handled via layout breakpoint.
+const IMAGE_PANEL_WIDTH_PERCENT = "44%";
 
 export type InstructorMarketplaceJob = {
   jobId: Id<"jobs">;
@@ -75,17 +75,17 @@ function StudioImagePanel({
 }) {
   return (
     <View
+      className="overflow-hidden"
       style={{
         position: "absolute",
         top: 0,
         right: 0,
         bottom: 0,
         width: IMAGE_PANEL_WIDTH_PERCENT,
-        overflow: "hidden",
-        borderTopLeftRadius: BrandRadius.card,
-        borderBottomLeftRadius: BrandRadius.card,
         borderCurve: "continuous",
         backgroundColor: palette.surfaceElevated as string,
+        borderTopLeftRadius: BrandRadius.soft,
+        borderBottomLeftRadius: BrandRadius.soft,
       }}
     >
       {imageUrl ? (
@@ -135,15 +135,8 @@ function JobExpiryPill({
 
   return (
     <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: BrandSpacing.sm,
-        borderRadius: BrandRadius.pill,
-        backgroundColor,
-        paddingHorizontal: BrandSpacing.sm,
-        paddingVertical: BrandSpacing.xs + 1,
-      }}
+      className="flex-row items-center gap-stack-tight rounded-pill px-sm py-xs"
+      style={{ backgroundColor }}
     >
       <IconSymbol name="clock.fill" size={12} color={color} />
       <Text
@@ -212,20 +205,20 @@ export function InstructorJobCard({
         padding={0}
         gap={0}
         style={{
-          borderRadius: isWideWeb ? 28 : BrandRadius.card,
+          borderRadius: BrandRadius.soft,
           borderCurve: "continuous",
           backgroundColor: palette.surface as string,
           overflow: "hidden",
         }}
       >
         <View
+          className="justify-between"
           style={{
             minHeight: variant === "studioDetail" ? (isWideWeb ? 174 : 164) : isWideWeb ? 190 : 172,
             position: "relative",
-            justifyContent: "space-between",
-            paddingLeft: isWideWeb ? 20 : 16,
+            paddingLeft: BrandSpacing.lg,
             paddingRight: showStudioImage ? 0 : isWideWeb ? 20 : 16,
-            paddingVertical: isWideWeb ? 18 : 16,
+            paddingVertical: BrandSpacing.lg,
           }}
         >
           {showStudioImage ? (
@@ -236,7 +229,7 @@ export function InstructorJobCard({
             />
           ) : null}
 
-          <View style={{ width: contentWidth, gap: 6 }}>
+          <View className="gap-stack-tight" style={{ width: contentWidth }}>
             <Text
               numberOfLines={1}
               style={{
@@ -266,7 +259,7 @@ export function InstructorJobCard({
             >
               {metaLine}
             </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View className="flex-row items-center gap-stack-tight">
               <IconSymbol name="clock.fill" size={14} color={palette.textMuted as string} />
               <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
                 {formatTime(job.startTime, locale)}
@@ -276,7 +269,7 @@ export function InstructorJobCard({
                 {formatTime(job.endTime, locale)}
               </Text>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <View className="flex-row flex-wrap items-center gap-sm">
               {expiry ? (
                 <JobExpiryPill
                   label={t(expiry.key, expiry.interpolation)}
@@ -303,12 +296,7 @@ export function InstructorJobCard({
             </View>
           </View>
 
-          <View
-            style={{
-              width: contentWidth,
-              paddingTop: 12,
-            }}
-          >
+          <View className="pt-sm" style={{ width: contentWidth }}>
             {job.applicationStatus ? (
               <DotStatusPill
                 backgroundColor={pillBackground ?? (palette.surface as string)}

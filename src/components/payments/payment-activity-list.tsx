@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
-import { type BrandPalette, BrandSpacing } from "@/constants/brand";
+import type { BrandPalette } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { isSportType, toSportLabel } from "@/convex/constants";
 import { formatDateTime } from "@/lib/jobs-utils";
@@ -14,9 +14,6 @@ import {
   type PayoutStatus,
   type StatusTone,
 } from "@/lib/payments-utils";
-
-const STATUS_DOT_SIZE = 8;
-const STATUS_DOT_RADIUS = 4;
 
 type PaymentActivityItem = {
   payment: {
@@ -61,12 +58,8 @@ function StatusDot({ tone, palette }: { tone: StatusTone; palette: BrandPalette 
   };
   return (
     <View
-      style={{
-        width: STATUS_DOT_SIZE,
-        height: STATUS_DOT_SIZE,
-        borderRadius: STATUS_DOT_RADIUS,
-        backgroundColor: colors[tone] ?? colors.muted,
-      }}
+      className="size-2 rounded-full"
+      style={{ backgroundColor: colors[tone] ?? colors.muted }}
     />
   );
 }
@@ -83,16 +76,9 @@ export function PaymentActivityList({
 }: PaymentActivityListProps) {
   const { t } = useTranslation();
   return (
-    <View style={{ gap: BrandSpacing.sm }}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingHorizontal: BrandSpacing.md,
-        }}
-      >
-        <View style={{ gap: 2 }}>
+    <View className="gap-sm">
+      <View className="flex-row items-center justify-between px-md">
+        <View className="gap-stack-tight">
           <ThemedText type="bodyStrong">{title}</ThemedText>
           {subtitle ? (
             <ThemedText type="caption" style={{ color: palette.textMuted }}>
@@ -108,7 +94,7 @@ export function PaymentActivityList({
       </View>
 
       {items.length === 0 ? (
-        <View style={{ paddingHorizontal: BrandSpacing.md }}>
+        <View className="px-md">
           <ThemedText type="caption" style={{ color: palette.textMuted }}>
             {emptyLabel}
           </ThemedText>
@@ -132,22 +118,16 @@ export function PaymentActivityList({
                 key={item.payment._id}
                 {...listItemPressProps}
                 accessibilityRole={onSelectPaymentId ? "button" : undefined}
+                className="flex-row items-center justify-between px-md py-md"
                 style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  paddingVertical: BrandSpacing.md,
-                  paddingHorizontal: BrandSpacing.md,
-                  backgroundColor: pressed && onSelectPaymentId ? palette.surfaceAlt : "transparent",
+                  backgroundColor:
+                    pressed && onSelectPaymentId ? palette.surfaceAlt : "transparent",
                   borderBottomWidth: index < items.length - 1 ? 1 : 0,
                   borderBottomColor: palette.border,
                 })}
               >
-                <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: BrandSpacing.md }}>
-                  <StatusDot
-                    tone={getPaymentStatusTone(item.payment.status)}
-                    palette={palette}
-                  />
+                <View className="flex-1 flex-row items-center gap-md">
+                  <StatusDot tone={getPaymentStatusTone(item.payment.status)} palette={palette} />
                   <View style={{ flex: 1 }}>
                     <ThemedText type="bodyStrong">{sportLabel}</ThemedText>
                     <ThemedText type="caption" style={{ color: palette.textMuted }}>
@@ -159,7 +139,7 @@ export function PaymentActivityList({
                   </View>
                 </View>
 
-                <View style={{ alignItems: "flex-end" }}>
+                <View className="items-end">
                   <ThemedText
                     type="bodyStrong"
                     selectable

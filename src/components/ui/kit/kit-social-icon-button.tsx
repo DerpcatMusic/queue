@@ -2,7 +2,7 @@ import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { Pressable, View } from "react-native";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
-import type { BrandPalette } from "@/constants/brand";
+import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
 import { triggerSelectionHaptic } from "./native-interaction";
 
 type BrandIconName = "instagram" | "tiktok" | "whatsapp" | "facebook" | "linkedin";
@@ -22,15 +22,15 @@ export function KitSocialIconButton({
   palette,
   onPress,
   active = true,
-  size = 36,
+  size = BrandSpacing.controlSm - BrandSpacing.xxs,
 }: KitSocialIconButtonProps) {
-  const iconSize = Math.max(14, Math.round(size * 0.44));
+  const iconSize = Math.max(BrandSpacing.md + BrandSpacing.xxs, Math.round(size * 0.44));
   const circle = (
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: 999,
+        borderRadius: BrandRadius.pill,
         borderCurve: "continuous",
         alignItems: "center",
         justifyContent: "center",
@@ -70,7 +70,7 @@ export function KitSocialIconButton({
         onPress();
       }}
       style={({ pressed }) => ({
-        borderRadius: 999,
+        borderRadius: BrandRadius.pill,
         opacity: pressed ? 0.84 : 1,
       })}
     >

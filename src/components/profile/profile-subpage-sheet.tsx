@@ -41,6 +41,11 @@ const ProfileSubpageAccessoryContext = createContext<ProfileSubpageAccessoryCont
   null,
 );
 
+const PROFILE_SUBPAGE_HEADER_HEIGHT = BrandSpacing.controlMd;
+const PROFILE_SUBPAGE_EDGE_SLOT_MIN_WIDTH = BrandSpacing.controlMd - BrandSpacing.xs;
+const PROFILE_SUBPAGE_SCROLL_TOP_SPACING = BrandSpacing.inset;
+const PROFILE_SUBPAGE_SCROLL_BOTTOM_SPACING = BrandSpacing.insetRoomy;
+
 function isProfileSubpageRouteActive(pathname: string | null, routeMatchPath: string) {
   if (!pathname) {
     return false;
@@ -62,24 +67,25 @@ function ProfileSubpageSheetHeader({
   const palette = useBrand();
   const { t } = useTranslation();
   const isCustomAccent = Boolean(accentColor);
-  const foregroundColor = isCustomAccent ? "#FFFFFF" : String(palette.text);
+  const foregroundColor = isCustomAccent ? String(palette.onPrimary) : String(palette.text);
 
   return (
-    <View style={styles.headerRow}>
+    <View
+      className="flex-row items-center justify-between gap-sm"
+      style={{ minHeight: PROFILE_SUBPAGE_HEADER_HEIGHT }}
+    >
       <View style={styles.edgeSlot}>
         <IconButton
-          size={40}
+          size={PROFILE_SUBPAGE_EDGE_SLOT_MIN_WIDTH}
           tone={isCustomAccent ? "primarySubtle" : "secondary"}
-          {...(isCustomAccent
-            ? { backgroundColorOverride: "rgba(255,255,255,0.18)" }
-            : {})}
+          {...(isCustomAccent ? { backgroundColorOverride: String(palette.onPrimary) } : {})}
           accessibilityLabel={t("common.back")}
           onPress={onBack}
           icon={
             <IconSymbol
               name="chevron.right"
               size={20}
-              color={foregroundColor}
+              color={isCustomAccent ? String(accentColor) : foregroundColor}
               style={{
                 transform: [{ rotate: I18nManager.isRTL ? "0deg" : "180deg" }],
               }}
@@ -203,8 +209,8 @@ export function ProfileSubpageSheetHost({
         />
       ),
       padding: {
-        vertical: BrandSpacing.sm,
-        horizontal: BrandSpacing.lg,
+        vertical: BrandSpacing.stackTight,
+        horizontal: BrandSpacing.inset,
       },
       steps: [0.12],
       initialStep: 0,
@@ -213,7 +219,14 @@ export function ProfileSubpageSheetHost({
       backgroundColor: accentColor,
       topInsetColor: accentColor,
     };
-  }, [activeRoute, accessoryContext?.accessories, palette.primary, palette.didit.accent, palette.payments.accent, router]);
+  }, [
+    activeRoute,
+    accessoryContext?.accessories,
+    palette.primary,
+    palette.didit.accent,
+    palette.payments.accent,
+    router,
+  ]);
 
   useGlobalTopSheet("profile", config, ownerId);
 
@@ -231,8 +244,8 @@ type ProfileSubpageScrollViewProps = Omit<
 
 export function ProfileSubpageScrollView({
   contentContainerStyle,
-  topSpacing = BrandSpacing.lg,
-  bottomSpacing = BrandSpacing.xl,
+  topSpacing = PROFILE_SUBPAGE_SCROLL_TOP_SPACING,
+  bottomSpacing = PROFILE_SUBPAGE_SCROLL_BOTTOM_SPACING,
   ...props
 }: ProfileSubpageScrollViewProps) {
   const collapsedSheetHeight = useCollapsedSheetHeight();
@@ -254,8 +267,8 @@ export function ProfileSubpageScrollView({
 
 export function ProfileIndexScrollView({
   contentContainerStyle,
-  topSpacing = BrandSpacing.lg,
-  bottomSpacing = BrandSpacing.xl,
+  topSpacing = PROFILE_SUBPAGE_SCROLL_TOP_SPACING,
+  bottomSpacing = PROFILE_SUBPAGE_SCROLL_BOTTOM_SPACING,
   ...props
 }: ProfileSubpageScrollViewProps) {
   const collapsedSheetHeight = useCollapsedSheetHeight();
@@ -268,7 +281,6 @@ export function ProfileIndexScrollView({
         {
           paddingTop: collapsedSheetHeight + topSpacing,
           paddingBottom: bottomSpacing + safeBottom,
-          paddingHorizontal: 0,
         },
         contentContainerStyle,
       ]}
@@ -277,15 +289,8 @@ export function ProfileIndexScrollView({
 }
 
 const styles = StyleSheet.create({
-  headerRow: {
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: BrandSpacing.sm,
-  },
   edgeSlot: {
-    minWidth: 40,
+    minWidth: PROFILE_SUBPAGE_EDGE_SLOT_MIN_WIDTH,
     alignItems: "flex-start",
     justifyContent: "center",
   },

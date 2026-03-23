@@ -559,7 +559,7 @@ export default function InstructorProfileScreen() {
           routeKey="instructor/profile"
           style={styles.screen}
           contentContainerStyle={{
-            gap: 18,
+            gap: BrandSpacing.xl,
           }}
           topSpacing={18}
           bottomSpacing={32}

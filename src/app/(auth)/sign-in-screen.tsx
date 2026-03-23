@@ -45,10 +45,7 @@ function MessageBanner({
   const textColor = tone === "danger" ? (palette.danger as string) : (palette.textMuted as string);
 
   return (
-    <View
-      className="rounded-[20px]"
-      style={{ backgroundColor }}
-    >
+    <View className="rounded-medium px-md py-sm" style={{ backgroundColor }}>
       <Text
         selectable
         className="text-sm"
@@ -278,7 +275,7 @@ export default function SignInScreen() {
 
             {step === "email" ? (
               <>
-                <View className="flex-row" style={{ gap: BrandSpacing.sm + 2 }}>
+                <View className="flex-row gap-stack-tight">
                   <View className="flex-1">
                     <ActionButton
                       label={isSubmitting ? t("auth.signingIn") : t("auth.sendCodeButton")}
@@ -306,8 +303,11 @@ export default function SignInScreen() {
                   </View>
                 </View>
 
-                <View className="flex-row items-center gap-2 py-1">
-                  <View className="flex-1 h-px" style={{ backgroundColor: palette.border as string }} />
+                <View className="flex-row items-center gap-stack-tight py-xs">
+                  <View
+                    className="flex-1 h-px"
+                    style={{ backgroundColor: palette.border as string }}
+                  />
                   <Text
                     className="uppercase"
                     style={{
@@ -318,10 +318,13 @@ export default function SignInScreen() {
                   >
                     {t("auth.or")}
                   </Text>
-                  <View className="flex-1 h-px" style={{ backgroundColor: palette.border as string }} />
+                  <View
+                    className="flex-1 h-px"
+                    style={{ backgroundColor: palette.border as string }}
+                  />
                 </View>
 
-                <View className="flex-row items-stretch justify-center gap-3">
+                <View className="flex-row items-stretch justify-center gap-stack">
                   <IconButton
                     accessibilityLabel="Continue with Google"
                     icon={<FontAwesome5 name="google" size={26} color={palette.danger as string} />}
@@ -341,7 +344,7 @@ export default function SignInScreen() {
                 </View>
               </>
             ) : (
-              <View className="gap-4">
+              <View className="gap-stack-tight">
                 <Text
                   className="text-center"
                   style={{
@@ -363,7 +366,7 @@ export default function SignInScreen() {
                   placeholder="123456"
                   style={styles.codeInput}
                 />
-                <View className="flex-row" style={{ gap: BrandSpacing.sm + 2 }}>
+                <View className="flex-row gap-stack-tight">
                   <View className="flex-1">
                     <ActionButton
                       label={isSubmitting ? t("auth.verifyingCode") : t("auth.verifyCodeButton")}
@@ -397,7 +400,7 @@ export default function SignInScreen() {
             )}
           </View>
 
-          <View className="gap-2">
+          <View className="gap-stack-tight">
             {infoMessage ? (
               <MessageBanner tone="info" message={infoMessage} palette={palette} />
             ) : null}

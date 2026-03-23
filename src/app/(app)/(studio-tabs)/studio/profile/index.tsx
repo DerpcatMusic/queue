@@ -6,27 +6,26 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
-
-import { ThemedText } from "@/components/themed-text";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
+import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
-import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
 import {
   getProfileHeaderExpandedHeight,
   ProfileDesktopHeroPanel,
   ProfileHeaderSheet,
 } from "@/components/profile/profile-tab";
+import { ThemedText } from "@/components/themed-text";
 import { ChoicePill } from "@/components/ui/choice-pill";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
@@ -35,7 +34,6 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { BrandSpacing } from "@/constants/brand";
 import { EXPIRY_OVERRIDE_PRESETS } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
@@ -102,8 +100,9 @@ export default function StudioProfileScreen() {
   const switchActiveRole = useMutation(api.users.switchActiveRole);
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
   const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
-  const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<number | undefined>(undefined);
-  const [isSavingAutoExpireMinutes, setIsSavingAutoExpireMinutes] = useState(false);
+  const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<number | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     if (studioSettings) {
@@ -155,7 +154,6 @@ export default function StudioProfileScreen() {
       }
       const previousValue = autoExpireMinutesBefore;
       setAutoExpireMinutesBefore(minutes);
-      setIsSavingAutoExpireMinutes(true);
       void updateMyStudioSettings({
         studioName: studioSettings.studioName ?? "",
         address: studioSettings.address ?? "",
@@ -168,13 +166,9 @@ export default function StudioProfileScreen() {
           latitude: studioSettings.latitude,
           longitude: studioSettings.longitude,
         }),
-      })
-        .catch(() => {
-          setAutoExpireMinutesBefore(previousValue);
-        })
-        .finally(() => {
-          setIsSavingAutoExpireMinutes(false);
-        });
+      }).catch(() => {
+        setAutoExpireMinutesBefore(previousValue);
+      });
     },
     [autoExpireMinutesBefore, studioSettings, updateMyStudioSettings],
   );
@@ -527,16 +521,16 @@ export default function StudioProfileScreen() {
                   style={{
                     flexDirection: "row",
                     alignItems: "flex-start",
-                    gap: 14,
-                    paddingHorizontal: 18,
-                    paddingVertical: 15,
+                    gap: BrandSpacing.componentPadding,
+                    paddingHorizontal: BrandSpacing.lg,
+                    paddingVertical: BrandSpacing.componentPadding,
                   }}
                 >
                   <View
                     style={{
                       width: 38,
                       height: 38,
-                      borderRadius: 19,
+                      borderRadius: BrandRadius.cardSubtle,
                       borderCurve: "continuous",
                       alignItems: "center",
                       justifyContent: "center",
@@ -545,7 +539,7 @@ export default function StudioProfileScreen() {
                   >
                     <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
                   </View>
-                  <View style={{ flex: 1, gap: 4 }}>
+                  <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                     <Text
                       style={{
                         fontSize: 16,
@@ -558,7 +552,14 @@ export default function StudioProfileScreen() {
                     <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
                       {t("profile.settings.autoExpire.description")}
                     </ThemedText>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: BrandSpacing.sm,
+                        marginTop: BrandSpacing.sm,
+                      }}
+                    >
                       <ChoicePill
                         label={t("jobsTab.form.useStudioDefault")}
                         selected={autoExpireMinutesBefore === undefined}
@@ -785,16 +786,16 @@ export default function StudioProfileScreen() {
                 style={{
                   flexDirection: "row",
                   alignItems: "flex-start",
-                  gap: 14,
-                  paddingHorizontal: 18,
-                  paddingVertical: 15,
+                  gap: BrandSpacing.componentPadding,
+                  paddingHorizontal: BrandSpacing.lg,
+                  paddingVertical: BrandSpacing.componentPadding,
                 }}
               >
                 <View
                   style={{
                     width: 38,
                     height: 38,
-                    borderRadius: 19,
+                    borderRadius: BrandRadius.cardSubtle,
                     borderCurve: "continuous",
                     alignItems: "center",
                     justifyContent: "center",
@@ -803,7 +804,7 @@ export default function StudioProfileScreen() {
                 >
                   <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
                 </View>
-                <View style={{ flex: 1, gap: 4 }}>
+                <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                   <Text
                     style={{
                       fontSize: 16,
@@ -816,7 +817,14 @@ export default function StudioProfileScreen() {
                   <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
                     {t("profile.settings.autoExpire.description")}
                   </ThemedText>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      gap: BrandSpacing.sm,
+                      marginTop: BrandSpacing.sm,
+                    }}
+                  >
                     <ChoicePill
                       label={t("jobsTab.form.useStudioDefault")}
                       selected={autoExpireMinutesBefore === undefined}

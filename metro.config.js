@@ -62,5 +62,5 @@ config.transformer.getTransformOptions = async () => ({
 
 module.exports = withNativewind(config, {
   inlineVariables: false,
-  globalClassNamePolyfill: false,
+  globalClassNamePolyfill: true,
 });

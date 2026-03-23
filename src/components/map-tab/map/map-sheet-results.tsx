@@ -7,7 +7,7 @@ import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/const
 import { useIsRtl } from "@/hooks/use-is-rtl";
 
 const MAP_RESULT_INDENT = BrandSpacing.xl + BrandSpacing.lg;
-const MAP_RESULT_RADIUS = BrandRadius.card - BrandSpacing.md;
+const MAP_RESULT_RADIUS = BrandRadius.hard;
 
 type MapSheetResultsProps = {
   isVisible: boolean;
@@ -44,7 +44,7 @@ export function MapSheetResults({
       {saveError ? (
         <View
           style={{
-            borderRadius: BrandRadius.card - BrandSpacing.sm,
+            borderRadius: BrandRadius.medium,
             borderCurve: "continuous",
             paddingHorizontal: BrandSpacing.lg,
             paddingVertical: BrandSpacing.md,
@@ -73,9 +73,9 @@ export function MapSheetResults({
         ListEmptyComponent={
           <View
             style={{
-              borderRadius: 20,
+              borderRadius: BrandRadius.medium,
               borderCurve: "continuous",
-              paddingHorizontal: BrandSpacing.lg + BrandSpacing.xs / 2,
+              paddingHorizontal: BrandSpacing.lg,
               paddingVertical: BrandSpacing.lg,
               gap: BrandSpacing.xs,
               backgroundColor: palette.surfaceAlt as string,
@@ -236,7 +236,7 @@ export function MapSheetResults({
                   hitSlop={8}
                   onPress={() => onToggleCityExpanded(item.group.cityKey)}
                   style={({ pressed }) => ({
-                    paddingHorizontal: BrandSpacing.md,
+                    paddingHorizontal: BrandSpacing.controlX,
                     paddingVertical: BrandSpacing.sm,
                     opacity: pressed ? 0.82 : 1,
                   })}

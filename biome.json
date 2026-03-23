@@ -63,5 +63,13 @@
     "formatter": {
       "trailingCommas": "none"
     }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    },
+    "formatter": {
+      "enabled": true
+    }
   }
 }

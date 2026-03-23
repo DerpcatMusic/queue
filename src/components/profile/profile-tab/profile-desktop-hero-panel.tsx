@@ -4,7 +4,7 @@ import { ActionButton } from "@/components/ui/action-button";
 import { KitStatusBadge } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import type { ProfileHeroAction } from "./profile-hero-utils";
 
 type ProfileDesktopHeroPanelProps = {
@@ -35,23 +35,25 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
   return (
     <View
       style={{
-        borderRadius: 34,
+        borderRadius: BrandRadius.soft,
         borderCurve: "continuous",
         backgroundColor: palette.surface as string,
-        paddingHorizontal: 22,
-        paddingVertical: 22,
-        gap: 18,
+        paddingHorizontal: BrandSpacing.xl,
+        paddingVertical: BrandSpacing.xl,
+        gap: BrandSpacing.lg,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+      <View
+        style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.componentPadding }}
+      >
         <ProfileAvatar
           imageUrl={profileImageUrl}
           fallbackName={profileName}
           palette={palette}
-          size={84}
+          size={BrandSpacing.iconContainerLarge + BrandSpacing.xs + BrandSpacing.xs / 2}
           roundedSquare
         />
-        <View style={{ flex: 1, gap: 5 }}>
+        <View style={{ flex: 1, gap: BrandSpacing.xs }}>
           <Text
             style={{
               ...BrandType.micro,
@@ -76,7 +78,7 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
         </View>
       </View>
 
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: BrandSpacing.sm }}>
         <KitStatusBadge
           label={statusLabel}
           tone={
@@ -106,7 +108,7 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
         ) : null}
       </View>
 
-      <View style={{ flexDirection: "row", gap: 10 }}>
+      <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
         <View style={{ flex: 1 }}>
           <ActionButton
             label={primaryAction.label}

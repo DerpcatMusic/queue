@@ -4,7 +4,7 @@ import { ActionButton } from "@/components/ui/action-button";
 import { KitSurface } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 
 type ProfileEditorIdentityPanelProps = {
   palette: BrandPalette;
@@ -34,8 +34,8 @@ export function ProfileEditorIdentityPanel({
   return (
     <KitSurface
       tone="base"
-      padding={24}
-      gap={18}
+      padding={BrandSpacing.xl}
+      gap={BrandSpacing.lg}
       style={
         isDesktopWeb
           ? {
@@ -44,15 +44,15 @@ export function ProfileEditorIdentityPanel({
           : undefined
       }
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.lg }}>
         <ProfileAvatar
           imageUrl={profileImageUrl}
           fallbackName={profileName}
           palette={palette}
-          size={76}
+          size={BrandSpacing.iconContainerLarge - BrandSpacing.xs / 2}
           roundedSquare
         />
-        <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flex: 1, gap: BrandSpacing.xs }}>
           <Text
             style={{
               ...BrandType.bodyMedium,

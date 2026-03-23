@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
 import { useMemo } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { HomeSectionHeading, HomeSurface } from "@/components/home/home-dashboard-layout";
 import { getRelativeTimeLabel } from "@/components/home/home-shared";
@@ -8,7 +8,7 @@ import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { toSportLabel } from "@/convex/constants";
 
-const TIME_WIDTH = BrandSpacing.iconContainerLarge; // 78px - equal to icon container large for alignment
+const TIME_WIDTH = BrandSpacing.avatarLg;
 
 type AgendaItem = {
   id: string;
@@ -90,8 +90,8 @@ export function HomeAgendaWidget({
       <HomeSurface
         palette={palette}
         style={{
-          padding: BrandSpacing.lg,
-          gap: 8,
+          padding: BrandSpacing.inset,
+          gap: BrandSpacing.stackTight,
         }}
       >
         <HomeSectionHeading title={heading} palette={palette} />
@@ -112,8 +112,7 @@ export function HomeAgendaWidget({
       <HomeSurface
         palette={palette}
         style={{
-          padding: BrandSpacing.lg,
-          gap: 0,
+          padding: BrandSpacing.inset,
         }}
       >
         <HomeSectionHeading title={heading} palette={palette} />
@@ -122,7 +121,6 @@ export function HomeAgendaWidget({
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
           style={maxHeight ? { maxHeight } : undefined}
-          contentContainerStyle={{ gap: 0 }}
         >
           {visibleItems.map((item, index) => {
             const isToday = item.startTime <= todayEnd;
@@ -140,10 +138,11 @@ export function HomeAgendaWidget({
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    paddingVertical: BrandSpacing.sm + 2,
-                    gap: BrandSpacing.md,
-                    borderBottomWidth: index < visibleItems.length - 1 ? 1 : 0,
-                    borderBottomColor: (palette.border as string) ?? "rgba(0,0,0,0.06)",
+                    paddingVertical: BrandSpacing.controlY,
+                    gap: BrandSpacing.stack,
+                    borderBottomWidth:
+                      index < visibleItems.length - 1 ? StyleSheet.hairlineWidth : 0,
+                    borderBottomColor: palette.border as string,
                   }}
                 >
                   <View
@@ -170,7 +169,7 @@ export function HomeAgendaWidget({
                       {isToday ? relativeTime : formatGroupDate(item.startTime, locale)}
                     </Text>
                   </View>
-                  <View style={{ flex: 1, gap: 1 }}>
+                  <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                     <Text
                       style={{
                         ...BrandType.bodyStrong,
@@ -192,15 +191,15 @@ export function HomeAgendaWidget({
                   </View>
                   <View
                     style={{
-                      width: 20,
+                      width: BrandSpacing.iconSm,
                       alignItems: "center",
                     }}
                   >
                     <View
                       style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: BrandRadius.icon,
+                        width: BrandSpacing.statusDot,
+                        height: BrandSpacing.statusDot,
+                        borderRadius: BrandRadius.pill,
                         backgroundColor: isToday
                           ? (palette.primary as string)
                           : (palette.textMuted as string),
@@ -217,7 +216,7 @@ export function HomeAgendaWidget({
         {onPressAll ? (
           <View
             style={{
-              marginTop: 8,
+              marginTop: BrandSpacing.sm,
               alignItems: "flex-end",
             }}
           >

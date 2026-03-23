@@ -51,6 +51,9 @@ type GoogleIntegrationRecord = {
   agendaSyncToken?: string;
 };
 
+const GOOGLE_REFRESH_CREDENTIALS_MISSING_ERROR =
+  "Google Calendar integration is missing refresh credentials";
+
 type CalendarOwnerProfile = {
   role: CalendarOwnerRole;
   calendarProvider: "none" | "google" | "apple";
@@ -345,7 +348,7 @@ async function getGoogleAccessToken(ctx: any, integration: GoogleIntegrationReco
   if (!accessToken || accessTokenExpiresAt < now + 60_000) {
     const refreshToken = decryptCalendarToken(integration.refreshToken);
     if (!refreshToken || !integration.oauthClientId) {
-      throw new ConvexError("Google Calendar integration is missing refresh credentials");
+      throw new ConvexError(GOOGLE_REFRESH_CREDENTIALS_MISSING_ERROR);
     }
     const refreshed = await refreshGoogleAccessToken({
       refreshToken,
@@ -599,6 +602,15 @@ async function runGoogleCalendarSync(
       integrationId: integration._id,
       lastError: message,
     });
+    if (message === GOOGLE_REFRESH_CREDENTIALS_MISSING_ERROR) {
+      return {
+        ok: true,
+        syncedCount: 0,
+        removedCount: 0,
+        importedCount: 0,
+        importedRemovedCount: 0,
+      };
+    }
     throw error;
   }
 }

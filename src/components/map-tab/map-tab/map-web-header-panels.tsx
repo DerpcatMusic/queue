@@ -5,8 +5,8 @@ import { ActionButton } from "@/components/ui/action-button";
 import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
 // Map web header panels - shares radii with command panel
-const PANEL_RADIUS = BrandRadius.card + BrandSpacing.xs; // 24 + 4 = 28px
-const INNER_RADIUS = BrandRadius.cardSubtle; // 18px
+const PANEL_RADIUS = BrandRadius.soft;
+const INNER_RADIUS = BrandRadius.medium;
 
 type MapWebHeaderPanelsProps = {
   t: TFunction;
@@ -39,8 +39,8 @@ export function MapWebHeaderPanels({
           borderRadius: PANEL_RADIUS,
           borderCurve: "continuous",
           backgroundColor: palette.surfaceAlt as string,
-          paddingHorizontal: BrandSpacing.lg + 2,
-          paddingVertical: BrandSpacing.lg + 2,
+          paddingHorizontal: BrandSpacing.lg,
+          paddingVertical: BrandSpacing.lg,
           gap: BrandSpacing.xs,
         }}
       >
@@ -74,12 +74,12 @@ export function MapWebHeaderPanels({
 
       <View
         style={{
-          width: 320,
+          width: BrandSpacing.shellPanel,
           borderRadius: PANEL_RADIUS,
           borderCurve: "continuous",
           backgroundColor: palette.primary as string,
-          paddingHorizontal: BrandSpacing.lg + 2,
-          paddingVertical: BrandSpacing.lg + 2,
+          paddingHorizontal: BrandSpacing.lg,
+          paddingVertical: BrandSpacing.lg,
           gap: BrandSpacing.sm,
         }}
       >
@@ -119,17 +119,16 @@ export function MapWebHeaderPanels({
               flex: 1,
               borderRadius: INNER_RADIUS,
               borderCurve: "continuous",
-              backgroundColor: "rgba(255,255,255,0.14)",
-              paddingHorizontal: BrandSpacing.md,
+              backgroundColor: palette.surfaceElevated as string,
+              paddingHorizontal: BrandSpacing.controlX,
               paddingVertical: BrandSpacing.sm,
-              gap: 2,
+              gap: BrandSpacing.xs,
             }}
           >
             <Text
               style={{
                 ...BrandType.micro,
-                color: palette.onPrimary as string,
-                opacity: 0.72,
+                color: palette.textMuted as string,
                 letterSpacing: 1,
                 textTransform: "uppercase",
               }}
@@ -139,7 +138,7 @@ export function MapWebHeaderPanels({
             <Text
               style={{
                 ...BrandType.bodyStrong,
-                color: palette.onPrimary as string,
+                color: palette.text as string,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -151,17 +150,16 @@ export function MapWebHeaderPanels({
               flex: 1.25,
               borderRadius: INNER_RADIUS,
               borderCurve: "continuous",
-              backgroundColor: "rgba(255,255,255,0.14)",
-              paddingHorizontal: BrandSpacing.md,
+              backgroundColor: palette.surfaceElevated as string,
+              paddingHorizontal: BrandSpacing.controlX,
               paddingVertical: BrandSpacing.sm,
-              gap: 2,
+              gap: BrandSpacing.xs,
             }}
           >
             <Text
               style={{
                 ...BrandType.micro,
-                color: palette.onPrimary as string,
-                opacity: 0.72,
+                color: palette.textMuted as string,
                 letterSpacing: 1,
                 textTransform: "uppercase",
               }}
@@ -172,7 +170,7 @@ export function MapWebHeaderPanels({
               numberOfLines={1}
               style={{
                 ...BrandType.bodyStrong,
-                color: palette.onPrimary as string,
+                color: palette.text as string,
               }}
             >
               {focusedZoneLabel

@@ -81,10 +81,10 @@ export function StudioHomeContent({
         style={{ flex: 1 }}
         topInsetTone="sheet"
         contentContainerStyle={{
-          paddingHorizontal: BrandSpacing.xl,
+          paddingHorizontal: BrandSpacing.insetRoomy,
           paddingTop: getHomeHeaderScrollTopPadding(safeTop),
-          paddingBottom: BrandSpacing.xxl,
-          gap: BrandSpacing.xl,
+          paddingBottom: BrandSpacing.section,
+          gap: BrandSpacing.section,
         }}
       >
         <Animated.View entering={FadeInUp.delay(80).duration(280)}>
@@ -92,11 +92,11 @@ export function StudioHomeContent({
             palette={palette}
             tone="primary"
             style={{
-              padding: BrandSpacing.xl,
-              gap: BrandSpacing.lg,
+              padding: BrandSpacing.insetRoomy,
+              gap: BrandSpacing.stackRoomy,
             }}
           >
-            <View style={{ gap: 6 }}>
+            <View style={{ gap: BrandSpacing.stackTight }}>
               <Text
                 style={{
                   ...BrandType.micro,
@@ -134,7 +134,7 @@ export function StudioHomeContent({
               </Text>
             </View>
 
-            <View style={{ flexDirection: "row", gap: 10 }}>
+            <View style={{ flexDirection: "row", gap: BrandSpacing.stack }}>
               <HomeSignalTile
                 label={t("home.actions.jobsTitle")}
                 value={String(openJobs)}
@@ -161,7 +161,7 @@ export function StudioHomeContent({
             <View
               style={{
                 flexDirection: layout.isWideWeb ? "row" : "column",
-                gap: 10,
+                gap: BrandSpacing.stack,
               }}
             >
               <View style={{ flex: 1 }}>
@@ -197,14 +197,14 @@ export function StudioHomeContent({
           {jobsNeedingReview.length > 0 ? (
             <Animated.View
               entering={FadeInUp.delay(180).duration(320)}
-              style={{ flex: layout.isWideWeb ? 1.08 : undefined, gap: 12 }}
+              style={{ flex: layout.isWideWeb ? 1.08 : undefined, gap: BrandSpacing.stack }}
             >
               <HomeSectionHeading
                 title={t("home.studio.needsReview")}
                 eyebrow={t("home.studio.queueEyebrow")}
                 palette={palette}
               />
-              <View style={{ gap: 10 }}>
+              <View style={{ gap: BrandSpacing.stack }}>
                 {jobsNeedingReview.map((job, index) => (
                   <Animated.View
                     key={job.jobId}
@@ -221,16 +221,16 @@ export function StudioHomeContent({
                         opacity: pressed ? 0.94 : 1,
                       })}
                     >
-                      <HomeSurface palette={palette} style={{ padding: 16 }}>
+                      <HomeSurface palette={palette} style={{ padding: BrandSpacing.inset }}>
                         <View
                           style={{
                             flexDirection: "row",
                             alignItems: "flex-start",
                             justifyContent: "space-between",
-                            gap: 12,
+                            gap: BrandSpacing.stack,
                           }}
                         >
-                          <View style={{ flex: 1, gap: 3 }}>
+                          <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                             <Text
                               style={{
                                 ...BrandType.micro,
@@ -286,12 +286,15 @@ export function StudioHomeContent({
             entering={FadeInUp.delay(jobsNeedingReview.length > 0 ? 220 : 180).duration(320)}
             style={{
               flex: layout.isWideWeb && jobsNeedingReview.length > 0 ? 0.92 : undefined,
-              gap: 12,
+              gap: BrandSpacing.stack,
             }}
           >
             <HomeSectionHeading title={t("home.studio.boardEyebrow")} palette={palette} />
             {recentJobs.length === 0 ? (
-              <HomeSurface palette={palette} style={{ padding: 18, gap: 6 }}>
+              <HomeSurface
+                palette={palette}
+                style={{ padding: BrandSpacing.inset, gap: BrandSpacing.stackTight }}
+              >
                 <Text style={{ ...BrandType.title, color: palette.text as string }}>
                   {t("home.studio.noRecent")}
                 </Text>
@@ -305,7 +308,7 @@ export function StudioHomeContent({
                 </Text>
               </HomeSurface>
             ) : (
-              <View style={{ gap: 10 }}>
+              <View style={{ gap: BrandSpacing.stack }}>
                 {visibleRecentJobs.map((job, index) => (
                   <Animated.View
                     key={job.jobId}
@@ -314,16 +317,19 @@ export function StudioHomeContent({
                       .springify()
                       .damping(18)}
                   >
-                    <HomeSurface palette={palette} style={{ padding: 16, gap: 4 }}>
+                    <HomeSurface
+                      palette={palette}
+                      style={{ padding: BrandSpacing.inset, gap: BrandSpacing.xs }}
+                    >
                       <View
                         style={{
                           flexDirection: "row",
                           alignItems: "flex-start",
                           justifyContent: "space-between",
-                          gap: 12,
+                          gap: BrandSpacing.stack,
                         }}
                       >
-                        <View style={{ flex: 1, gap: 2 }}>
+                        <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                           <Text
                             style={{
                               ...BrandType.title,

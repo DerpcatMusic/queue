@@ -3,7 +3,7 @@ import { View } from "react-native";
 
 import { MapSelectedZonesStrip } from "@/components/map-tab/map/map-selected-zones-strip";
 import { NativeSearchField } from "@/components/ui/native-search-field";
-import type { BrandPalette } from "@/constants/brand";
+import { type BrandPalette, BrandSpacing } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
 
 type MapSheetHeaderProps = {
@@ -30,7 +30,7 @@ export function MapSheetHeader({
   zoneSearch,
 }: MapSheetHeaderProps) {
   return (
-    <View style={{ gap: 4 }}>
+    <View style={{ gap: BrandSpacing.xs }}>
       <NativeSearchField
         value={zoneSearch}
         onChangeText={onChangeSearch}

@@ -13,6 +13,11 @@ export type StatusSignalProps = {
   icon?: ReactNode;
 };
 
+const STATUS_SIGNAL_MIN_HEIGHT = 44;
+const STATUS_SIGNAL_HORIZONTAL_PADDING = BrandSpacing.controlX;
+const STATUS_SIGNAL_VERTICAL_PADDING = BrandSpacing.controlY;
+const STATUS_SIGNAL_CONTENT_GAP = 2;
+
 export function StatusSignal({ label, value, palette, tone = "surface", icon }: StatusSignalProps) {
   const backgroundColor =
     tone === "accent" ? (palette.primarySubtle as string) : (palette.surfaceElevated as string);
@@ -26,7 +31,7 @@ export function StatusSignal({ label, value, palette, tone = "surface", icon }: 
           styles.inner,
           {
             backgroundColor,
-            borderRadius: BrandRadius.cardSubtle,
+            borderRadius: BrandRadius.medium,
             borderCurve: "continuous",
           },
         ]}
@@ -66,13 +71,14 @@ const styles = StyleSheet.create({
   inner: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: BrandSpacing.componentPadding,
-    paddingVertical: BrandSpacing.md,
+    minHeight: STATUS_SIGNAL_MIN_HEIGHT,
+    paddingHorizontal: STATUS_SIGNAL_HORIZONTAL_PADDING,
+    paddingVertical: STATUS_SIGNAL_VERTICAL_PADDING,
     gap: BrandSpacing.sm,
   },
   content: {
     flex: 1,
-    gap: 2,
+    gap: STATUS_SIGNAL_CONTENT_GAP,
     minWidth: 0,
   },
   label: {

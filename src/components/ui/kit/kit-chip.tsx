@@ -1,6 +1,6 @@
 import { Pressable, Text } from "react-native";
 
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { triggerSelectionHaptic } from "./native-interaction";
 import type { KitChipProps } from "./types";
@@ -23,16 +23,12 @@ export function KitChip({
         triggerSelectionHaptic();
         onPress();
       }}
-      className="items-center justify-center"
+      className="items-center justify-center min-h-icon-container px-component-padding py-sm rounded-button-subtle"
       style={({ pressed }) => [
         {
-          minHeight: BrandSpacing.iconContainer,
-          paddingHorizontal: BrandSpacing.componentPadding,
-          paddingVertical: BrandSpacing.sm,
           backgroundColor: selected ? (palette.primary as string) : (palette.surfaceAlt as string),
           opacity: disabled ? 0.72 : 1,
           transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
-          borderRadius: BrandRadius.buttonSubtle,
         },
         style,
       ]}

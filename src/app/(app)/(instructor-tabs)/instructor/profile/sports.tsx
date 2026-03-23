@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { LoadingScreen } from "@/components/loading-screen";
 import {
@@ -18,7 +18,7 @@ import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
 import { StatusSignal } from "@/components/profile/status-signal";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -122,26 +122,26 @@ export default function SportsScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
+    <View className="flex-1 relative" style={{ backgroundColor: palette.appBg }}>
       <ProfileSubpageScrollView
         routeKey="instructor/profile/sports"
         contentContainerStyle={{
-          paddingHorizontal: BrandSpacing.lg,
+          paddingHorizontal: BrandSpacing.inset,
           paddingBottom: overlayBottom + 92,
-          gap: BrandSpacing.lg,
+          gap: BrandSpacing.stackRoomy,
         }}
       >
         <View
-          style={[
-            styles.heroCard,
-            {
-              backgroundColor: palette.surfaceAlt as string,
-              borderColor: palette.border as string,
-            },
-          ]}
+          className="gap-stack-roomy rounded-soft p-inset-roomy"
+          style={{
+            borderWidth: 1,
+            borderCurve: "continuous",
+            backgroundColor: palette.surfaceAlt as string,
+            borderColor: palette.border as string,
+          }}
         >
-          <View style={styles.heroHeaderRow}>
-            <View style={styles.heroCopy}>
+          <View className="flex-row items-start gap-stack">
+            <View className="flex-1 gap-stack-tight min-w-0">
               <Text
                 style={{
                   ...BrandType.micro,
@@ -169,13 +169,21 @@ export default function SportsScreen() {
               </Text>
             </View>
             <View
-              style={[styles.heroIconWrap, { backgroundColor: palette.primarySubtle as string }]}
+              className="items-center justify-center rounded-pill"
+              style={{
+                width: BrandSpacing.avatarMd,
+                height: BrandSpacing.avatarMd,
+                borderWidth: 1,
+                borderCurve: "continuous",
+                backgroundColor: palette.primarySubtle as string,
+                borderColor: palette.primarySubtle as string,
+              }}
             >
               <IconSymbol name="sparkles" size={22} color={palette.primary as string} />
             </View>
           </View>
 
-          <View style={styles.heroSignalsRow}>
+          <View className="flex-row gap-stack-tight">
             <StatusSignal
               label={t("profile.sports.signalSelected")}
               value={t("profile.settings.sports.selected", {
@@ -192,7 +200,7 @@ export default function SportsScreen() {
           </View>
         </View>
 
-        <View style={{ gap: BrandSpacing.sm }}>
+        <View className="gap-stack-tight">
           <ProfileSectionHeader
             label={t("profile.sports.boardLabel")}
             description={t("profile.sports.boardBody")}
@@ -216,13 +224,13 @@ export default function SportsScreen() {
 
         {errorMessage ? (
           <View
-            style={[
-              styles.errorCard,
-              {
-                borderColor: palette.danger as string,
-                backgroundColor: palette.dangerSubtle as string,
-              },
-            ]}
+            className="rounded-medium px-control-x py-control-y"
+            style={{
+              borderWidth: 1,
+              borderCurve: "continuous",
+              borderColor: palette.danger as string,
+              backgroundColor: palette.dangerSubtle as string,
+            }}
           >
             <Text
               selectable
@@ -238,13 +246,11 @@ export default function SportsScreen() {
       </ProfileSubpageScrollView>
 
       <View
-        style={[
-          styles.actionRail,
-          {
-            bottom: overlayBottom,
-            backgroundColor: palette.appBg as string,
-          },
-        ]}
+        className="absolute left-inset right-inset gap-stack-tight"
+        style={{
+          bottom: overlayBottom,
+          backgroundColor: palette.appBg as string,
+        }}
       >
         <ActionButton
           label={
@@ -268,52 +274,3 @@ export default function SportsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    position: "relative",
-  },
-  heroCard: {
-    gap: BrandSpacing.lg,
-    borderWidth: 1,
-    borderRadius: BrandRadius.card,
-    borderCurve: "continuous",
-    padding: BrandSpacing.xl,
-  },
-  heroHeaderRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: BrandSpacing.md,
-  },
-  heroCopy: {
-    flex: 1,
-    gap: BrandSpacing.sm,
-    minWidth: 0,
-  },
-  heroIconWrap: {
-    width: BrandSpacing.iconContainer + 8, // 46px
-    height: BrandSpacing.iconContainer + 8, // 46px
-    borderRadius: BrandRadius.icon,
-    borderCurve: "continuous",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroSignalsRow: {
-    flexDirection: "row",
-    gap: BrandSpacing.sm + 2, // 10px
-  },
-  errorCard: {
-    borderWidth: 1,
-    borderRadius: BrandRadius.button,
-    borderCurve: "continuous",
-    paddingHorizontal: BrandSpacing.componentPadding, // 14px
-    paddingVertical: BrandSpacing.md, // 12px
-  },
-  actionRail: {
-    position: "absolute",
-    left: BrandSpacing.lg,
-    right: BrandSpacing.lg,
-    gap: BrandSpacing.sm + 2, // 10px
-  },
-});

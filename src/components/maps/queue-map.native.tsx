@@ -11,13 +11,6 @@ import { BrandRadius, BrandSpacing, getMapBrandPalette } from "@/constants/brand
 import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-
-// Map native controls - GPS and attribution buttons
-const GPS_BUTTON_SIZE = BrandSpacing.iconContainer + BrandSpacing.lg; // 38 + 16 = 54px
-const GPS_ICON_SIZE = BrandSpacing.md + BrandSpacing.xs; // 12 + 4 = 16px
-const ATTRIBUTION_SIZE = BrandSpacing.iconContainer - BrandSpacing.xs; // 38 - 4 = 34px
-const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm; // 38 + 8 = 46px
-const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2; // 23px
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
@@ -34,6 +27,14 @@ import {
   warmMapStyleSpec,
 } from "./queue-map.native.helpers";
 import type { QueueMapProps } from "./queue-map.types";
+
+// Map native controls - GPS and attribution buttons
+const GPS_BUTTON_SIZE = BrandSpacing.iconContainer + BrandSpacing.lg;
+const GPS_ICON_SIZE = BrandSpacing.md + BrandSpacing.xs;
+const ATTRIBUTION_SIZE = BrandSpacing.iconContainer - BrandSpacing.xs;
+const ATTRIBUTION_ICON_SIZE = BrandSpacing.sm + BrandSpacing.xs;
+const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm;
+const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2;
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 180;
@@ -233,9 +234,9 @@ export const QueueMap = memo(function QueueMap({
           styles.fallback,
           {
             backgroundColor: palette.surfaceAlt as string,
-            borderRadius: 28,
+            borderRadius: BrandRadius.soft,
             borderCurve: "continuous",
-            margin: 18,
+            margin: BrandSpacing.lg,
           },
         ]}
       >
@@ -332,7 +333,7 @@ export const QueueMap = memo(function QueueMap({
               borderCurve: "continuous",
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: "rgba(255,255,255,0.86)",
+              backgroundColor: palette.surfaceElevated as string,
             }}
           >
             <ActivityIndicator color={palette.primary as string} />
@@ -385,7 +386,7 @@ export const QueueMap = memo(function QueueMap({
               height: GPS_BUTTON_SIZE,
               alignItems: "center",
               justifyContent: "center",
-              borderWidth: 1.2,
+              borderWidth: StyleSheet.hairlineWidth,
               borderRadius: BrandRadius.button,
               borderCurve: "continuous",
               backgroundColor: palette.surface as string,
@@ -411,12 +412,12 @@ export const QueueMap = memo(function QueueMap({
             {
               backgroundColor: palette.surfaceElevated as string,
               borderColor: palette.borderStrong as string,
-              borderWidth: 1,
+              borderWidth: StyleSheet.hairlineWidth,
               opacity: pressed ? 0.82 : 1,
             },
           ]}
         >
-          <IconSymbol name="info.circle.fill" size={BrandSpacing.sm + 3} color={palette.text} />
+          <IconSymbol name="info.circle.fill" size={ATTRIBUTION_ICON_SIZE} color={palette.text} />
         </Pressable>
       ) : null}
     </View>
@@ -437,30 +438,30 @@ const styles = StyleSheet.create({
     bottom: BrandSpacing.lg,
     width: ATTRIBUTION_SIZE,
     height: ATTRIBUTION_SIZE,
-    borderRadius: BrandSpacing.iconContainer / 2,
+    borderRadius: BrandRadius.pill,
     alignItems: "center",
     justifyContent: "center",
   },
   fallback: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    gap: BrandSpacing.sm,
+    paddingHorizontal: BrandSpacing.lg,
+    paddingVertical: BrandSpacing.lg,
   },
   stateOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    padding: 18,
+    padding: BrandSpacing.lg,
   },
   stateCard: {
     width: "100%",
-    maxWidth: 360,
+    maxWidth: BrandSpacing.shellCommandPanel,
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    gap: BrandSpacing.sm,
+    paddingHorizontal: BrandSpacing.lg,
+    paddingVertical: BrandSpacing.lg,
     borderWidth: StyleSheet.hairlineWidth,
   },
 });

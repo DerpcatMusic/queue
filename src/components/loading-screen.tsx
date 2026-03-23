@@ -11,9 +11,9 @@ import { useBrand } from "@/hooks/use-brand";
 const LAUNCH_ICON_SIZE = BrandSpacing.haloSize; // 180px - matches brand halo size for visual impact
 const LAUNCH_ICON_RADIUS = LAUNCH_ICON_SIZE / 2; // 90px
 const LAUNCH_INNER_SIZE = BrandSpacing.iconContainerLarge + BrandSpacing.xl; // 78 + 24 = 102px
-const LAUNCH_INNER_RADIUS = BrandRadius.card; // 24px - matches card radius
+const LAUNCH_INNER_RADIUS = BrandRadius.soft; // 24px - matches card radius
 const LAUNCH_SYMBOL_WRAPPER_SIZE = BrandSpacing.iconContainerLarge; // 78px
-const LAUNCH_SYMBOL_WRAPPER_RADIUS = BrandRadius.cardSubtle; // 18px
+const LAUNCH_SYMBOL_WRAPPER_RADIUS = BrandRadius.medium; // 18px
 
 type LoadingScreenProps = {
   variant?: "inline" | "launch";
@@ -49,25 +49,20 @@ export function LoadingScreen({
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: "center",
-            paddingHorizontal: 24,
-            paddingVertical: 40,
+            paddingHorizontal: BrandSpacing.xl,
+            paddingVertical: BrandSpacing.section,
           }}
           showsVerticalScrollIndicator={false}
         >
-          <View
-            style={{
-              alignItems: "center",
-              justifyContent: "center",
-              gap: BrandSpacing.xxl,
-            }}
-          >
+          <View className="items-center justify-center gap-section">
             <Animated.View
               entering={FadeInUp.duration(420)}
               style={{
                 width: LAUNCH_ICON_SIZE,
                 height: LAUNCH_ICON_SIZE,
                 borderRadius: LAUNCH_ICON_RADIUS,
-                backgroundColor: "rgba(255,255,255,0.1)",
+                backgroundColor: palette.onPrimary as string,
+                opacity: 0.1,
                 position: "absolute",
               }}
             />
@@ -78,7 +73,7 @@ export function LoadingScreen({
                 height: LAUNCH_INNER_SIZE,
                 borderRadius: LAUNCH_INNER_RADIUS,
                 borderCurve: "continuous",
-                backgroundColor: "rgba(255,255,255,0.14)",
+                backgroundColor: palette.surfaceAlt as string,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -90,7 +85,7 @@ export function LoadingScreen({
                     height: LAUNCH_SYMBOL_WRAPPER_SIZE,
                     borderRadius: LAUNCH_SYMBOL_WRAPPER_RADIUS,
                     borderCurve: "continuous",
-                    backgroundColor: "rgba(255,255,255,0.94)",
+                    backgroundColor: palette.surface as string,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -105,7 +100,7 @@ export function LoadingScreen({
             </Animated.View>
             <Animated.View
               entering={FadeInUp.delay(60).duration(420)}
-              style={{ gap: 8, alignItems: "center" }}
+              className="items-center gap-stack-tight"
             >
               <ThemedText
                 type="title"
@@ -117,7 +112,8 @@ export function LoadingScreen({
               <ThemedText
                 type="caption"
                 style={{
-                  color: "rgba(255,255,255,0.78)",
+                  color: palette.onPrimary as string,
+                  opacity: 0.78,
                   textAlign: "center",
                 }}
                 selectable
@@ -137,12 +133,8 @@ export function LoadingScreen({
   return (
     <Animated.View
       entering={FadeIn.duration(240)}
+      className="flex-1 items-center justify-center gap-lg px-xl"
       style={{
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
-        paddingHorizontal: 24,
         backgroundColor: palette.appBg,
       }}
       accessibilityRole="progressbar"
