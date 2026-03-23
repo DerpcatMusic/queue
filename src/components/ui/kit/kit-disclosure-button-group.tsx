@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { TextStyle, ViewStyle } from "react-native";
+import type { ViewStyle } from "react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   FadeInRight,
@@ -88,12 +88,11 @@ export function KitDisclosureButtonGroup<T extends string>({
       layout={DISCLOSURE_LAYOUT}
       className="overflow-hidden"
       style={[
-        styles.rail,
         {
           backgroundColor: resolvedRailColor,
           minHeight: metrics.minHeight,
-          borderRadius: metrics.railRadius,
           padding: metrics.railPadding,
+          borderRadius: BrandRadius.button,
         },
         style,
       ]}
@@ -108,13 +107,16 @@ export function KitDisclosureButtonGroup<T extends string>({
           {options.map((option, index) => {
             const selected = option.value === value;
             return (
-              <View key={option.value} style={styles.segmentWrap}>
+              <View key={option.value} className="relative">
                 {index > 0 ? (
                   <View
                     pointerEvents="none"
+                    className="absolute"
                     style={[
-                      styles.divider,
                       {
+                        left: 0,
+                        width: StyleSheet.hairlineWidth,
+                        opacity: 0.5,
                         top: metrics.separatorInset,
                         bottom: metrics.separatorInset,
                         backgroundColor: resolvedDividerColor,
@@ -125,15 +127,11 @@ export function KitDisclosureButtonGroup<T extends string>({
                 {selected ? (
                   <View
                     pointerEvents="none"
+                    className="absolute inset-0"
                     style={[
-                      styles.selectionFill,
                       {
-                        top: 0,
-                        right: 0,
-                        bottom: 0,
-                        left: 0,
-                        borderRadius: metrics.sectionRadius,
                         backgroundColor: resolvedSelectedColor,
+                        borderRadius: BrandRadius.buttonSubtle,
                       },
                     ]}
                   />
@@ -146,7 +144,8 @@ export function KitDisclosureButtonGroup<T extends string>({
                     triggerSelectionHaptic();
                     onChange(option.value);
                   }}
-                  style={({ pressed }) => [styles.segmentButton, { opacity: pressed ? 0.9 : 1 }]}
+                  className="relative z-10"
+                  style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
                 >
                   <View
                     className="flex-row items-center justify-center"
@@ -157,14 +156,17 @@ export function KitDisclosureButtonGroup<T extends string>({
                       } satisfies ViewStyle,
                     ]}
                   >
-                    {option.icon ? <View style={styles.iconWrap}>{option.icon}</View> : null}
+                    {option.icon ? <View className="items-center justify-center">{option.icon}</View> : null}
                     <Text
                       numberOfLines={1}
+                      className="text-center font-bold"
                       style={[
-                        styles.segmentLabel,
                         {
                           color: selected ? resolvedSelectedLabelColor : resolvedLabelColor,
-                        } satisfies TextStyle,
+                          ...BrandType.bodyMedium,
+                          includeFontPadding: false,
+                          textAlignVertical: "center" as const,
+                        },
                       ]}
                     >
                       {option.label}
@@ -185,26 +187,26 @@ export function KitDisclosureButtonGroup<T extends string>({
           triggerSelectionHaptic();
           onToggleExpanded();
         }}
+        className="justify-center"
         style={({ pressed }) => [
-          styles.segmentWrap,
-          styles.triggerPressable,
-          { opacity: pressed ? 0.92 : 1 },
+          {
+            opacity: pressed ? 0.92 : 1,
+          },
         ]}
       >
         <View
           className="flex-row items-center justify-center"
           style={[
-            styles.triggerButton,
             {
               minHeight: metrics.minHeight,
               paddingHorizontal: triggerLabel ? metrics.paddingHorizontal : BrandSpacing.md,
-              borderRadius: metrics.sectionRadius,
+              borderRadius: BrandRadius.buttonSubtle,
             } satisfies ViewStyle,
           ]}
         >
-          {triggerIcon ? <View style={styles.iconWrap}>{triggerIcon}</View> : null}
+          {triggerIcon ? <View className="items-center justify-center">{triggerIcon}</View> : null}
           {triggerLabel ? (
-            <Text style={[styles.segmentLabel, { color: String(palette.onPrimary) }]}>
+            <Text className="font-bold" style={{ color: String(palette.onPrimary) }}>
               {triggerLabel}
             </Text>
           ) : null}
@@ -213,58 +215,3 @@ export function KitDisclosureButtonGroup<T extends string>({
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  rail: {
-    borderCurve: "continuous",
-    flexDirection: "row",
-    alignItems: "stretch",
-    overflow: "hidden",
-  },
-  optionsRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-  },
-  segmentWrap: {
-    position: "relative",
-  },
-  divider: {
-    position: "absolute",
-    left: 0,
-    width: StyleSheet.hairlineWidth,
-    opacity: 0.5,
-  },
-  selectionFill: {
-    position: "absolute",
-  },
-  segmentButton: {
-    position: "relative",
-    zIndex: 1,
-  },
-  segmentContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: BrandSpacing.xs + 2,
-  },
-  triggerPressable: {
-    justifyContent: "center",
-  },
-  triggerButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: BrandSpacing.xs + 2,
-  },
-  iconWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  segmentLabel: {
-    ...BrandType.bodyMedium,
-    fontWeight: "700",
-    includeFontPadding: false,
-    textAlign: "center",
-    textAlignVertical: "center",
-  },
-});

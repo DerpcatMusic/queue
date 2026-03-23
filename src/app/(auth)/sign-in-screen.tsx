@@ -14,7 +14,7 @@ import { ActionButton } from "@/components/ui/action-button";
 import { IconButton } from "@/components/ui/icon-button";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
 import { SheetHeaderBlock } from "@/components/ui/sheet-header-block";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { type BrandPalette, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 
 type Step = "email" | "code";
@@ -46,16 +46,12 @@ function MessageBanner({
 
   return (
     <View
-      style={{
-        backgroundColor,
-        borderRadius: BrandRadius.button,
-        borderCurve: "continuous",
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-      }}
+      className="rounded-[20px]"
+      style={{ backgroundColor }}
     >
       <Text
         selectable
+        className="text-sm"
         style={{
           ...BrandType.caption,
           color: textColor,
@@ -248,7 +244,8 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: palette.appBg as string }}
+      className="flex-1"
+      style={{ backgroundColor: palette.appBg as string }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
@@ -262,8 +259,8 @@ export default function SignInScreen() {
           ...(sheetContentInsets as object),
         }}
       >
-        <View style={styles.screen}>
-          <View style={{ gap: BrandSpacing.md }}>
+        <View className="flex-1 justify-between gap-6">
+          <View className="gap-4">
             <KitTextField
               value={email}
               onChangeText={setEmail}
@@ -281,8 +278,8 @@ export default function SignInScreen() {
 
             {step === "email" ? (
               <>
-                <View style={styles.actionRow}>
-                  <View style={styles.rowAction}>
+                <View className="flex-row" style={{ gap: BrandSpacing.sm + 2 }}>
+                  <View className="flex-1">
                     <ActionButton
                       label={isSubmitting ? t("auth.signingIn") : t("auth.sendCodeButton")}
                       onPress={() => {
@@ -294,7 +291,7 @@ export default function SignInScreen() {
                       size="lg"
                     />
                   </View>
-                  <View style={styles.rowAction}>
+                  <View className="flex-1">
                     <ActionButton
                       label={t("auth.sendMagicLinkButton")}
                       onPress={() => {
@@ -309,26 +306,22 @@ export default function SignInScreen() {
                   </View>
                 </View>
 
-                <View style={styles.dividerRow}>
-                  <View
-                    style={[styles.dividerLine, { backgroundColor: palette.border as string }]}
-                  />
+                <View className="flex-row items-center gap-2 py-1">
+                  <View className="flex-1 h-px" style={{ backgroundColor: palette.border as string }} />
                   <Text
+                    className="uppercase"
                     style={{
                       ...BrandType.micro,
                       color: palette.textMuted as string,
-                      textTransform: "uppercase",
                       letterSpacing: 0.7,
                     }}
                   >
                     {t("auth.or")}
                   </Text>
-                  <View
-                    style={[styles.dividerLine, { backgroundColor: palette.border as string }]}
-                  />
+                  <View className="flex-1 h-px" style={{ backgroundColor: palette.border as string }} />
                 </View>
 
-                <View style={styles.providerRow}>
+                <View className="flex-row items-stretch justify-center gap-3">
                   <IconButton
                     accessibilityLabel="Continue with Google"
                     icon={<FontAwesome5 name="google" size={26} color={palette.danger as string} />}
@@ -348,12 +341,12 @@ export default function SignInScreen() {
                 </View>
               </>
             ) : (
-              <View style={{ gap: BrandSpacing.md }}>
+              <View className="gap-4">
                 <Text
+                  className="text-center"
                   style={{
                     ...BrandType.caption,
                     color: palette.textMuted as string,
-                    textAlign: "center",
                   }}
                 >
                   {normalizedEmail}
@@ -370,8 +363,8 @@ export default function SignInScreen() {
                   placeholder="123456"
                   style={styles.codeInput}
                 />
-                <View style={styles.actionRow}>
-                  <View style={styles.rowAction}>
+                <View className="flex-row" style={{ gap: BrandSpacing.sm + 2 }}>
+                  <View className="flex-1">
                     <ActionButton
                       label={isSubmitting ? t("auth.verifyingCode") : t("auth.verifyCodeButton")}
                       onPress={() => {
@@ -383,7 +376,7 @@ export default function SignInScreen() {
                       size="lg"
                     />
                   </View>
-                  <View style={styles.rowAction}>
+                  <View className="flex-1">
                     <ActionButton
                       label={t("auth.backToSignInMethods")}
                       onPress={() => {
@@ -404,7 +397,7 @@ export default function SignInScreen() {
             )}
           </View>
 
-          <View style={{ gap: BrandSpacing.sm + 2 }}>
+          <View className="gap-2">
             {infoMessage ? (
               <MessageBanner tone="info" message={infoMessage} palette={palette} />
             ) : null}
@@ -419,11 +412,6 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    justifyContent: "space-between",
-    gap: BrandSpacing.xl,
-  },
   emailInput: {
     ...BrandType.bodyMedium,
     includeFontPadding: false,
@@ -436,28 +424,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
     includeFontPadding: false,
     fontVariant: ["tabular-nums"],
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: BrandSpacing.sm + 2,
-  },
-  rowAction: {
-    flex: 1,
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: BrandSpacing.sm,
-    paddingVertical: BrandSpacing.xs + 2,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  providerRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    justifyContent: "center",
-    gap: BrandSpacing.componentPadding,
   },
 });

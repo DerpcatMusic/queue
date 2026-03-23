@@ -12,11 +12,12 @@ import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zo
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 
-const GPS_BUTTON_SIZE = 58;
-const GPS_ICON_SIZE = 20;
-const ATTRIBUTION_SIZE = 34;
-const LOADING_ICON_SIZE = 44;
-const LOADING_ICON_RADIUS = 22;
+// Map native controls - GPS and attribution buttons
+const GPS_BUTTON_SIZE = BrandSpacing.iconContainer + BrandSpacing.lg; // 38 + 16 = 54px
+const GPS_ICON_SIZE = BrandSpacing.md + BrandSpacing.xs; // 12 + 4 = 16px
+const ATTRIBUTION_SIZE = BrandSpacing.iconContainer - BrandSpacing.xs; // 38 - 4 = 34px
+const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm; // 38 + 8 = 46px
+const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2; // 23px
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";

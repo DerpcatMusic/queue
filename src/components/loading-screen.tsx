@@ -4,15 +4,16 @@ import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated"
 
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 
-const LAUNCH_ICON_SIZE = 236;
-const LAUNCH_ICON_RADIUS = 118;
-const LAUNCH_INNER_SIZE = 112;
-const LAUNCH_INNER_RADIUS = 36;
-const LAUNCH_SYMBOL_WRAPPER_SIZE = 84;
-const LAUNCH_SYMBOL_WRAPPER_RADIUS = 28;
+// Loading screen uses a large centered launch icon with concentric rings
+const LAUNCH_ICON_SIZE = BrandSpacing.haloSize; // 180px - matches brand halo size for visual impact
+const LAUNCH_ICON_RADIUS = LAUNCH_ICON_SIZE / 2; // 90px
+const LAUNCH_INNER_SIZE = BrandSpacing.iconContainerLarge + BrandSpacing.xl; // 78 + 24 = 102px
+const LAUNCH_INNER_RADIUS = BrandRadius.card; // 24px - matches card radius
+const LAUNCH_SYMBOL_WRAPPER_SIZE = BrandSpacing.iconContainerLarge; // 78px
+const LAUNCH_SYMBOL_WRAPPER_RADIUS = BrandRadius.cardSubtle; // 18px
 
 type LoadingScreenProps = {
   variant?: "inline" | "launch";

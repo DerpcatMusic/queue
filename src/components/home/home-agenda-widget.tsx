@@ -8,7 +8,7 @@ import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { toSportLabel } from "@/convex/constants";
 
-const TIME_WIDTH = 56;
+const TIME_WIDTH = BrandSpacing.iconContainerLarge; // 78px - equal to icon container large for alignment
 
 type AgendaItem = {
   id: string;

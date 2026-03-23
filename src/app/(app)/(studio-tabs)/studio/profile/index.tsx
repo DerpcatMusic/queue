@@ -103,7 +103,7 @@ export default function StudioProfileScreen() {
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
   const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
   const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<number | undefined>(undefined);
-  const [, setIsSavingAutoExpireMinutes] = useState(false);
+  const [isSavingAutoExpireMinutes, setIsSavingAutoExpireMinutes] = useState(false);
 
   useEffect(() => {
     if (studioSettings) {

@@ -3,6 +3,8 @@
 @import "tailwindcss/utilities.css";
 @import "nativewind/theme";
 
+/* ─── Brand Spacing ──────────────────────────────────────────── */
+/* These map to Tailwind spacing utilities: gap-lg, px-lg, py-lg, mx-lg, my-lg, etc. */
 @theme {
   --spacing-xs: 4px;
   --spacing-sm: 8px;
@@ -10,30 +12,85 @@
   --spacing-lg: 16px;
   --spacing-xl: 24px;
   --spacing-xxl: 32px;
+  --spacing-component-padding: 14px;
+  --spacing-icon-container: 38px;
+  --spacing-icon-container-large: 78px;
+  --spacing-halo-size: 180px;
+  --spacing-map-min-height: 300px;
+  --spacing-multiline-input-min-height: 96px;
+}
 
+/* ─── Brand Radius ───────────────────────────────────────────── */
+/* These map to: rounded-card, rounded-button, rounded-pill, etc. */
+@theme {
   --radius-card: 24px;
   --radius-card-subtle: 18px;
   --radius-button: 20px;
   --radius-button-subtle: 14px;
   --radius-input: 20px;
   --radius-pill: 999px;
+  --radius-circle: 999px;
+}
 
+/* ─── Brand Colors (Light Mode) ─────────────────────────────── */
+/* These map to: text-primary, bg-primary, border-primary, ring-primary, etc. */
+/* Dynamic runtime colors are injected via CSS variables (set by vars() or VariableContextProvider) */
+@theme {
+  /* Brand */
   --color-primary: #8B5CF6;
   --color-primary-subtle: #E8DDFF;
+  --color-primary-pressed: #7443F0;
+
+  /* Semantic */
   --color-success: #169C52;
   --color-success-subtle: #DDF7E6;
   --color-danger: #D43B4E;
   --color-danger-subtle: #FFE3E8;
   --color-warning: #D68116;
   --color-warning-subtle: #FFF1D8;
+
+  /* Surfaces */
   --color-surface: #FFFFFF;
   --color-surface-alt: #F1ECF8;
+  --color-surface-elevated: #FFFFFF;
   --color-app-bg: #F6F4FB;
+
+  /* Borders */
   --color-border: #DDD6EA;
+  --color-border-strong: #B8AFCB;
+
+  /* Text */
   --color-text: #181522;
   --color-text-muted: #6D6580;
+  --color-text-micro: #8E86A0;
+
+  /* Accent (overridable via vars() at runtime) */
+  --color-accent: #8B5CF6;
+  --color-accent-subtle: #E8DDFF;
 }
 
+/* ─── Dark Mode ──────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #8F6AFB;
+    --color-primary-subtle: #2D2066;
+    --color-primary-pressed: #A78BFA;
+
+    --color-surface: #121020;
+    --color-surface-alt: #1C1830;
+    --color-surface-elevated: #252238;
+    --color-app-bg: #0B0910;
+
+    --color-border: #2D2850;
+    --color-border-strong: #3D3870;
+
+    --color-text: #F5F3FF;
+    --color-text-muted: #A8A0C0;
+    --color-text-micro: #7870A0;
+  }
+}
+
+/* ─── Platform Fonts ─────────────────────────────────────────── */
 @media ios {
   :root {
     --font-sans: system-ui;

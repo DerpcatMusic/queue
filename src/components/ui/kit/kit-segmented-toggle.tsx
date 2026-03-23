@@ -27,9 +27,12 @@ export function KitSegmentedToggle<T extends string>({
 
   return (
     <View
-      className="flex-row overflow-hidden rounded-[20px] p-1 gap-1"
+      className="flex-row overflow-hidden"
       style={[
         {
+          borderRadius: BrandRadius.button,
+          padding: BrandSpacing.xs,
+          gap: BrandSpacing.xs,
           backgroundColor: palette.primarySubtle as string,
         },
         style,

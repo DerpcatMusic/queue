@@ -11,21 +11,22 @@ import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 
+// Search field sizes - sm for inline/compact use, md for standard use
 const SEARCH_SIZE_SM = {
-  containerMinHeight: 48,
-  inputMinHeight: 44,
+  containerMinHeight: BrandSpacing.iconContainer + BrandSpacing.sm, // 38 + 8 = 46px
+  inputMinHeight: BrandSpacing.iconContainer + BrandSpacing.xs, // 38 + 4 = 42px
   horizontalPadding: BrandSpacing.md,
-  iconSize: 18,
-  clearIconSize: 17,
-  radius: 18,
+  iconSize: BrandSpacing.md + BrandSpacing.xs, // 12 + 4 = 16px
+  clearIconSize: BrandSpacing.md + BrandSpacing.xs - 1, // 12 + 4 - 1 = 15px
+  radius: BrandRadius.cardSubtle - BrandSpacing.xs, // 18 - 4 = 14px
 } as const;
 
 const SEARCH_SIZE_MD = {
-  containerMinHeight: 52,
-  inputMinHeight: 48,
+  containerMinHeight: BrandSpacing.iconContainer + BrandSpacing.md, // 38 + 12 = 50px
+  inputMinHeight: BrandSpacing.iconContainer + BrandSpacing.sm, // 38 + 8 = 46px
   horizontalPadding: BrandSpacing.lg,
-  iconSize: 19,
-  clearIconSize: 18,
+  iconSize: BrandSpacing.md + BrandSpacing.sm, // 12 + 8 = 20px
+  clearIconSize: BrandSpacing.md + BrandSpacing.xs, // 12 + 4 = 16px
   radius: BrandRadius.input,
 } as const;
 

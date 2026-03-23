@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Platform, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, Text, View } from "react-native";
 
 import appleCalendarIcon from "@/assets/images/calendar-apple-app-icon.jpg";
 import googleCalendarIcon from "@/assets/images/calendar-google-app-icon.jpg";
@@ -16,7 +16,8 @@ import {
 } from "@/components/profile/profile-subpage-sheet";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitList, KitSwitchRow } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { vars } from "nativewind";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
@@ -422,19 +423,16 @@ export default function StudioCalendarSettingsScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
+    <View className="flex-1" style={{ backgroundColor: palette.appBg }}>
       <ProfileSubpageScrollView
         routeKey="studio/profile/calendar-settings"
-        style={[styles.screen, { backgroundColor: palette.appBg }]}
-        contentContainerStyle={styles.content}
+        className="flex-1"
+        style={{ backgroundColor: palette.appBg }}
+        contentContainerStyle={{ paddingHorizontal: BrandSpacing.lg, paddingBottom: 128, gap: BrandSpacing.md }}
       >
         <View
-          style={[
-            styles.connectionList,
-            {
-              backgroundColor: palette.surface as string,
-            },
-          ]}
+          className="overflow-hidden rounded-card"
+          style={vars({ backgroundColor: String(palette.surface) })}
         >
           <CalendarConnectionRow
             iconSource={googleCalendarIcon}
@@ -482,15 +480,17 @@ export default function StudioCalendarSettingsScreen() {
 
         {googleStatus?.lastError ? (
           <View
-            style={[
-              styles.feedbackCard,
-              {
-                backgroundColor: palette.dangerSubtle as string,
-                borderColor: palette.danger as string,
-              },
-            ]}
+            className="px-3 py-3 rounded-button-subtle"
+            style={vars({
+              backgroundColor: String(palette.dangerSubtle),
+              borderColor: String(palette.danger),
+              borderWidth: 1,
+            })}
           >
-            <Text style={[styles.feedbackText, { color: palette.danger as string }]}>
+            <Text
+              className="text-base"
+              style={{ color: palette.danger as string }}
+            >
               {googleStatus.lastError}
             </Text>
           </View>
@@ -498,20 +498,21 @@ export default function StudioCalendarSettingsScreen() {
 
         {googleConfigError ? (
           <View
-            style={[
-              styles.feedbackCard,
-              {
-                backgroundColor: palette.warningSubtle,
-                borderColor: palette.warning,
-              },
-            ]}
+            className="px-3 py-3 rounded-button-subtle"
+            style={vars({
+              backgroundColor: String(palette.warningSubtle),
+              borderColor: String(palette.warning),
+              borderWidth: 1,
+            })}
           >
-            <Text style={[styles.feedbackText, { color: palette.warning }]}>{googleConfigError}</Text>
+            <Text className="text-base" style={{ color: palette.warning }}>
+              {googleConfigError}
+            </Text>
           </View>
         ) : null}
 
         {isGoogleConnected ? (
-          <View style={styles.actionStack}>
+          <View style={vars({ gap: BrandSpacing.sm + 2 })}>
             <ActionButton
               label={
                 isSyncingGoogle
@@ -529,7 +530,7 @@ export default function StudioCalendarSettingsScreen() {
         ) : null}
       </ProfileSubpageScrollView>
 
-      <View style={styles.footerAction}>
+      <View className="absolute left-4 right-4 bottom-4">
         <ActionButton
           label={t("common.done")}
           onPress={() => router.back()}
@@ -540,36 +541,3 @@ export default function StudioCalendarSettingsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: BrandSpacing.lg,
-    paddingBottom: BrandSpacing.xxl + BrandSpacing.xxl + BrandSpacing.xxl + BrandSpacing.md,
-    gap: BrandSpacing.lg,
-  },
-  connectionList: {
-    borderRadius: BrandRadius.card,
-    overflow: "hidden",
-  },
-  feedbackCard: {
-    borderWidth: 1,
-    borderRadius: BrandRadius.input,
-    paddingHorizontal: BrandSpacing.md,
-    paddingVertical: BrandSpacing.md,
-  },
-  feedbackText: {
-    ...BrandType.body,
-  },
-  actionStack: {
-    gap: BrandSpacing.sm + 2,
-  },
-  footerAction: {
-    position: "absolute",
-    left: BrandSpacing.lg,
-    right: BrandSpacing.lg,
-    bottom: BrandSpacing.lg,
-  },
-});
