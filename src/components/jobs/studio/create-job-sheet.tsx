@@ -83,9 +83,14 @@ export function CreateJobSheet({
 
   const renderBackdrop = useCallback(
     (props: any) => (
-      <BottomSheetBackdrop {...props} disappearsAt={-1} appearsAt={0} opacity={0.5} />
+      <BottomSheetBackdrop
+        {...props}
+        disappearsAt={-1}
+        appearsAt={0}
+        style={[props.style, { backgroundColor: palette.appBg as string }]}
+      />
     ),
-    [],
+    [palette.appBg],
   );
 
   const handleDateChange = (_event: any, selectedDate?: Date) => {
@@ -162,7 +167,7 @@ export function CreateJobSheet({
       onClose={handleDismissed}
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={{ backgroundColor: palette.borderStrong as string }}
-      backgroundStyle={{ backgroundColor: palette.appBg as string }}
+      backgroundStyle={{ backgroundColor: palette.surfaceElevated as string }}
     >
       <BottomSheetScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>

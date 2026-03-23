@@ -12,9 +12,9 @@ export function useAppInsets(): AppInsets {
 
   const safeTop = insets.top;
   const safeBottom = insets.bottom;
-  // Native tabs already reserve baseline content space. Only floating overlays/buttons should
-  // clear the bottom chrome manually.
-  const overlayBottom = safeBottom + BrandSpacing.lg;
+  // Native tabs already account for bottom safe area. Floating controls should use the same
+  // semantic gutter on both axes instead of double-counting the bottom inset.
+  const overlayBottom = BrandSpacing.lg;
 
   return {
     safeTop,
