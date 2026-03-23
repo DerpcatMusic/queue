@@ -5,6 +5,16 @@ export type QueueMapPin = {
   longitude: number;
 };
 
+/** A studio shown as a marker on the map with its logo avatar. */
+export type StudioMarker = {
+  studioId: string;
+  studioName: string;
+  latitude: number;
+  longitude: number;
+  profileImageUrl?: string;
+  sport?: string;
+};
+
 export type QueueMapMode = "zoneSelect" | "pinDrop";
 
 export type QueueMapViewPadding = {
@@ -22,6 +32,8 @@ export type QueueMapProps = {
   isEditing?: boolean;
   zoneGeoJson?: FeatureCollection;
   zoneIdProperty?: string;
+  studios?: StudioMarker[];
+  onPressStudio?: (studioId: string) => void;
   onPressZone?: (zoneId: string) => void;
   onPressMap?: (pin: QueueMapPin) => void;
   onUseGps?: () => void;

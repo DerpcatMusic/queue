@@ -46,6 +46,10 @@ export function useMapTabController() {
     api.instructorZones.getMyInstructorZones,
     currentUser?.role === "instructor" ? {} : "skip",
   );
+  const studiosWithLocations = useQuery(
+    api.users.getStudiosWithLocations,
+    currentUser?.role === "instructor" ? {} : "skip",
+  );
   const saveZones = useMutation(api.instructorZones.setMyInstructorZones);
 
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>([]);
@@ -444,6 +448,7 @@ export function useMapTabController() {
     selectedZoneIds,
     selectedZones,
     setFocusZoneId,
+    studios: studiosWithLocations ?? [],
     t,
     toggleZone,
     zoneLanguage,

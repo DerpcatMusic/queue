@@ -1,4 +1,10 @@
-import { Camera, GeoJSONSource, Layer, Map as MapLibreMap } from "@maplibre/maplibre-react-native";
+import {
+  Camera,
+  GeoJSONSource,
+  Images,
+  Layer,
+  Map as MapLibreMap,
+} from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -17,10 +23,12 @@ import { KitSurface } from "../ui/kit";
 import {
   type AnyStyleSpec,
   createPinShape,
+  createStudioMarkersGeoJSON,
   createZoneFilter,
   ensureVectorOfflinePack,
   fetchMapStyleSpec,
   getCachedMapStyleSpec,
+  getStudioImageEntries,
   resolveThemedMapStyle,
   sanitizeZoom,
   toBounds,
@@ -39,6 +47,8 @@ export const QueueMap = memo(function QueueMap({
   isEditing = mode === "zoneSelect",
   zoneGeoJson,
   zoneIdProperty = "id",
+  studios,
+  onPressStudio,
   onPressZone,
   onPressMap,
   onUseGps,
@@ -89,6 +99,28 @@ export const QueueMap = memo(function QueueMap({
     [selectedZoneIds, zoneIdProperty],
   );
   const pinShape = useMemo(() => createPinShape(pin), [pin]);
+  const studioMarkersGeoJSON = useMemo(() => createStudioMarkersGeoJSON(studios ?? []), [studios]);
+  const studioImageEntries = useMemo(() => getStudioImageEntries(studios ?? []), [studios]);
+  const handleMapPress = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (event: any) => {
+      const features = event?.nativeEvent?.features ?? [];
+      const firstFeature = features[0];
+      // Studio marker tapped — navigate to studio profile
+      if (firstFeature?.properties?.studioId) {
+        onPressStudio?.(firstFeature.properties.studioId);
+        return;
+      }
+      // Pin-drop mode: record dropped pin coordinate
+      if (mode !== "pinDrop") return;
+      if (!onPressMap) return;
+      const native = event?.nativeEvent ?? event;
+      const coordinates = native?.lngLat as [number, number] | undefined;
+      if (!coordinates) return;
+      onPressMap({ latitude: coordinates[1], longitude: coordinates[0] });
+    },
+    [mode, onPressMap, onPressStudio],
+  );
   const handleRetry = useCallback(() => {
     setBaseMapStyle(null);
     setMapErrorMessage(null);
@@ -264,14 +296,7 @@ export const QueueMap = memo(function QueueMap({
         onDidFailLoadingMap={() => {
           updateMapLoadState("error", t("mapTab.native.unavailableBody"));
         }}
-        onPress={(event: any) => {
-          if (mode !== "pinDrop") return;
-          if (!onPressMap) return;
-          const native = event?.nativeEvent ?? event;
-          const coordinates = native?.lngLat as [number, number] | undefined;
-          if (!coordinates) return;
-          onPressMap({ latitude: coordinates[1], longitude: coordinates[0] });
-        }}
+        onPress={handleMapPress as any}
       >
         <Camera
           ref={cameraRef as any}
@@ -306,6 +331,32 @@ export const QueueMap = memo(function QueueMap({
             }}
           />
         </GeoJSONSource>
+
+        {studioImageEntries.length > 0 ? (
+          <>
+            <Images
+              images={Object.fromEntries(
+                studioImageEntries.map(({ imageKey, imageUrl }) => [imageKey, imageUrl]),
+              )}
+            />
+            <GeoJSONSource id="studio-markers" data={studioMarkersGeoJSON}>
+              <Layer
+                id="studio-markers-symbol"
+                type="symbol"
+                layout={{
+                  "icon-image": ["case", ["get", "hasImage"], ["get", "imageKey"], ""],
+                  "icon-size": 0.3,
+                  "icon-anchor": "bottom",
+                  "icon-allow-overlap": true,
+                  "icon-offset": [0, -12],
+                }}
+                paint={{
+                  "icon-opacity": 1,
+                }}
+              />
+            </GeoJSONSource>
+          </>
+        ) : null}
       </MapLibreMap>
 
       {mapLoadState === "loading" && showLoadingOverlay ? (

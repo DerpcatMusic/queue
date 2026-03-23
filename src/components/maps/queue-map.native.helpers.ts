@@ -3,7 +3,7 @@ import { OfflineManager } from "@maplibre/maplibre-react-native";
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import type { getMapBrandPalette } from "@/constants/brand";
 import { ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
-import type { QueueMapPin } from "./queue-map.types";
+import type { QueueMapPin, StudioMarker } from "./queue-map.types";
 
 export type Expression = unknown;
 export type AnyStyleLayer = Record<string, any>;
@@ -213,6 +213,42 @@ export function createPinShape(pin: QueueMapPin | null): GeoJSON.FeatureCollecti
         },
       },
     ],
+  };
+}
+
+/** Returns unique studio image URLs and their assigned keys, for registration via <Image />. */
+export function getStudioImageEntries(
+  studios: StudioMarker[],
+): Array<{ imageKey: string; imageUrl: string }> {
+  const seen = new Set<string>();
+  const entries: Array<{ imageKey: string; imageUrl: string }> = [];
+  for (const studio of studios) {
+    if (!studio.profileImageUrl) continue;
+    if (seen.has(studio.profileImageUrl)) continue;
+    seen.add(studio.profileImageUrl);
+    const imageKey = `studio-img-${entries.length}`;
+    entries.push({ imageKey, imageUrl: studio.profileImageUrl });
+  }
+  return entries;
+}
+
+export function createStudioMarkersGeoJSON(studios: StudioMarker[]): GeoJSON.FeatureCollection {
+  if (studios.length === 0) return { type: "FeatureCollection", features: [] };
+  return {
+    type: "FeatureCollection",
+    features: studios.map((studio, index) => ({
+      type: "Feature" as const,
+      properties: {
+        imageKey: studio.profileImageUrl ? `studio-img-${index}` : "",
+        studioId: studio.studioId,
+        studioName: studio.studioName,
+        hasImage: Boolean(studio.profileImageUrl),
+      },
+      geometry: {
+        type: "Point" as const,
+        coordinates: [studio.longitude, studio.latitude],
+      },
+    })),
   };
 }
 

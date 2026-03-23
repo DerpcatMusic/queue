@@ -1,4 +1,4 @@
-import { Redirect } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Platform, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { MapMobileStage } from "@/components/map-tab/map-tab/map-mobile-stage";
@@ -33,12 +33,19 @@ export default function MapTabScreen() {
     selectedZoneIds,
     selectedZones,
     setFocusZoneId,
+    studios,
     t,
     toggleZone,
     zoneLanguage,
     zoneSearch,
     zoneModeActive,
   } = useMapTabController();
+
+  const router = useRouter();
+
+  const handlePressStudio = (studioId: string) => {
+    router.push(`/instructor/jobs/studios/${studioId}` as never);
+  };
 
   if (currentUser === undefined) {
     return (
@@ -118,6 +125,8 @@ export default function MapTabScreen() {
       isSaving={isSaving}
       overlayBottom={overlayBottom}
       cameraPadding={mapCameraPadding}
+      studios={studios}
+      onPressStudio={handlePressStudio}
       onPressZone={toggleZone}
       onPressMap={noopMapPress}
       onEditToggle={handleEditButtonPress}

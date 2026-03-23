@@ -3,7 +3,7 @@ import { View } from "react-native";
 
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { QueueMap } from "@/components/maps/queue-map";
-import type { QueueMapPin } from "@/components/maps/queue-map.types";
+import type { QueueMapPin, StudioMarker } from "@/components/maps/queue-map.types";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { type BrandPalette, BrandSpacing } from "@/constants/brand";
@@ -25,6 +25,8 @@ type MapMobileStageProps = {
     bottom: number;
     left: number;
   };
+  studios: StudioMarker[];
+  onPressStudio: (studioId: string) => void;
   onPressZone: (zoneId: string) => void;
   onPressMap: () => void;
   onEditToggle: () => void;
@@ -42,6 +44,8 @@ export function MapMobileStage({
   isSaving,
   overlayBottom,
   cameraPadding,
+  studios,
+  onPressStudio,
   onPressZone,
   onPressMap,
   onEditToggle,
@@ -59,6 +63,8 @@ export function MapMobileStage({
         focusZoneId={focusZoneId}
         isEditing={zoneModeActive}
         cameraPadding={cameraPadding}
+        studios={studios}
+        onPressStudio={onPressStudio}
         onPressZone={onPressZone}
         onPressMap={onPressMap}
         showGpsButton={false}
