@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
@@ -70,7 +70,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                   contentStyle={{ backgroundColor: sceneBackgroundColor }}
                 >
                   <NativeTabs.Trigger.Icon
-                    {...(Platform.OS === "android" ? {} : { md: tab.icon.md })}
+                    md={tab.icon.md}
                     sf={{
                       default: tab.icon.sfDefault as never,
                       selected: tab.icon.sfSelected as never,
