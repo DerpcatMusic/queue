@@ -46,10 +46,12 @@ export function KitStatusBadge({
 
   return (
     <View
-      className="flex-row items-center rounded-full px-[10px] py-[6px]"
+      className="flex-row items-center rounded-full"
       style={[
         {
           gap: BrandSpacing.xs + 2,
+          paddingHorizontal: BrandSpacing.sm + 2,
+          paddingVertical: BrandSpacing.xs + 2,
           backgroundColor: resolvedTone.backgroundColor,
           borderCurve: "continuous",
         },

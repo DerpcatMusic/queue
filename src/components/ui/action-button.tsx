@@ -2,15 +2,16 @@ import type { ReactNode } from "react";
 import { ActivityIndicator, I18nManager, Pressable, Text, View } from "react-native";
 import { MeshGradientView } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
 type ActionButtonTone = "primary" | "secondary";
 type ActionButtonShape = "pill" | "square";
 type ActionButtonSize = "md" | "lg";
 
-const BUTTON_HEIGHT_LG = 54;
-const BUTTON_HEIGHT_MD = 42;
-const BUTTON_MIN_WIDTH = 96;
+// Button heights follow the spacing scale for consistency
+const BUTTON_HEIGHT_LG = BrandSpacing.iconContainer + BrandSpacing.md; // 38 + 12 = 50px
+const BUTTON_HEIGHT_MD = BrandSpacing.iconContainer + BrandSpacing.xs; // 38 + 4 = 42px  
+const BUTTON_MIN_WIDTH = BrandSpacing.iconContainer * 2 + BrandSpacing.sm; // 38*2 + 8 = 84px
 
 type ActionButtonProps = {
   label?: string;

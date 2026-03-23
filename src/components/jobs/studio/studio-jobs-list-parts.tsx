@@ -7,9 +7,6 @@ import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-
-const AVATAR_SIZE = 42;
-const AVATAR_RADIUS = 16;
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -26,6 +23,9 @@ import {
 import type { PaymentStatus, PayoutStatus } from "@/lib/payments-utils";
 import { appStatusDot, paymentDotColor } from "./studio-jobs-list.helpers";
 import type { StudioJob, StudioJobApplication } from "./studio-jobs-list.types";
+
+const AVATAR_SIZE = BrandSpacing.xxl + BrandSpacing.xxl + 2;
+const AVATAR_RADIUS = BrandRadius.card;
 
 const PAYMENT_STATUS_KEY: Record<PaymentStatus, string> = {
   created: "jobsTab.checkout.paymentStatus.created",

@@ -3,15 +3,16 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { NativeSearchField } from "@/components/ui/native-search-field";
-import { type BrandPalette, BrandSpacing, BrandType } from "@/constants/brand";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
 
-const PANEL_WIDTH = 360;
-const PANEL_RADIUS = 34;
-const INNER_RADIUS = 24;
-const METRIC_RADIUS = 18;
-const TERRITORY_RADIUS = 22;
-const ZONE_SELECT_RADIUS = 20;
+// Map web command panel - desktop-focused with fixed width panel
+const PANEL_WIDTH = BrandSpacing.iconContainer * 9 + BrandSpacing.xl; // ~360px responsive width
+const PANEL_RADIUS = BrandRadius.card + BrandSpacing.sm; // 24 + 8 = 32px - between card and cardSubtle
+const INNER_RADIUS = BrandRadius.cardSubtle; // 18px
+const METRIC_RADIUS = BrandRadius.cardSubtle - BrandSpacing.xs; // 18 - 4 = 14px
+const TERRITORY_RADIUS = BrandRadius.cardSubtle - BrandSpacing.xs; // 18 - 4 = 14px
+const ZONE_SELECT_RADIUS = BrandRadius.cardSubtle - BrandSpacing.xs; // 18 - 4 = 14px
 
 type MapWebCommandPanelProps = {
   t: TFunction;

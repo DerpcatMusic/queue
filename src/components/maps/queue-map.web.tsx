@@ -8,9 +8,10 @@ import { useBrand } from "@/hooks/use-brand";
 import type { QueueMapProps } from "./queue-map.types";
 import { buildCoverageNodes, getResponseLabel, getZone } from "./queue-map.web.helpers";
 
-const MAP_RADIUS = 28;
-const INNER_RADIUS = 22;
-const MAP_MIN_HEIGHT = 320;
+// Map web - desktop-focused map display with placeholder grid pattern
+const MAP_RADIUS = BrandRadius.card + BrandSpacing.xs; // 24 + 4 = 28px
+const INNER_RADIUS = BrandRadius.cardSubtle + BrandSpacing.xs; // 18 + 4 = 22px
+const MAP_MIN_HEIGHT = BrandSpacing.mapMinHeight + BrandSpacing.lg; // 300 + 16 = 320px
 
 export function QueueMap(props: QueueMapProps) {
   const { t, i18n } = useTranslation();

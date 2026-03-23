@@ -1,6 +1,6 @@
 import { Text, TextInput, View } from "react-native";
 
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import type { KitTextFieldProps } from "./types";
 
@@ -34,12 +34,14 @@ export function KitTextField({
         </Text>
       ) : null}
       <View
-        className="flex-row items-center px-3 py-2"
+        className="flex-row items-center"
         style={{
           minHeight: BrandSpacing.xxl + 18,
+          paddingHorizontal: BrandSpacing.md,
+          paddingVertical: BrandSpacing.sm,
           borderWidth: 1,
           borderColor: hasError ? (palette.danger as string) : (palette.borderStrong as string),
-          borderRadius: BrandSpacing.lg + 4,
+          borderRadius: BrandRadius.input,
           borderCurve: "continuous",
           gap: BrandSpacing.sm,
           backgroundColor: hasError

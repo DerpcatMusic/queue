@@ -23,18 +23,16 @@ export function KitChip({
         triggerSelectionHaptic();
         onPress();
       }}
+      className="items-center justify-center"
       style={({ pressed }) => [
         {
           minHeight: BrandSpacing.iconContainer,
-          borderRadius: BrandRadius.buttonSubtle,
-          borderCurve: "continuous",
-          alignItems: "center",
-          justifyContent: "center",
           paddingHorizontal: BrandSpacing.componentPadding,
           paddingVertical: BrandSpacing.sm,
           backgroundColor: selected ? (palette.primary as string) : (palette.surfaceAlt as string),
           opacity: disabled ? 0.72 : 1,
           transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
+          borderRadius: BrandRadius.buttonSubtle,
         },
         style,
       ]}

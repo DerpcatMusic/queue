@@ -8,9 +8,9 @@ import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
-const AVATAR_SIZE = 72;
-const ICON_SIZE = 48;
-const ICON_SYMBOL_SIZE = 21;
+const AVATAR_SIZE = BrandSpacing.iconContainerLarge; // 78px - consistent with home-header-sheet
+const ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm; // ~46px
+const ICON_SYMBOL_SIZE = BrandSpacing.md + BrandSpacing.xs; // ~16px
 import {
   getActiveSocialCount,
   getProfileSummary,

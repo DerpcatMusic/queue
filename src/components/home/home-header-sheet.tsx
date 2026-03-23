@@ -6,10 +6,10 @@ import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
-const SHEET_EXPANDED_CONTENT_HEIGHT = 84;
+const SHEET_EXPANDED_CONTENT_HEIGHT = BrandSpacing.iconContainerLarge + BrandSpacing.lg; // 78 + 16 = 94 for expanded content area
 const SHEET_CONTENT_GAP = BrandSpacing.sm;
-const AVATAR_SIZE = 68;
-const BADGE_SIZE = 22;
+const AVATAR_SIZE = BrandSpacing.iconContainerLarge; // 78px - large avatar for header
+const BADGE_SIZE = BrandSpacing.lg; // 24px - appropriate badge size
 
 export function getHomeHeaderExpandedHeight(safeTop: number) {
   return safeTop + SHEET_EXPANDED_CONTENT_HEIGHT;

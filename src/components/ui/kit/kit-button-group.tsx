@@ -83,13 +83,14 @@ export function KitButtonGroup<T extends string>({
       accessible
       className="overflow-hidden"
       style={[
-        styles.group,
         {
           width: fullWidth ? "100%" : width,
           maxWidth,
           alignSelf: fullWidth ? "stretch" : alignSelfMap[align],
           backgroundColor: resolvedGroupBg,
           flexWrap: wraps ? "wrap" : "nowrap",
+          borderRadius: BrandRadius.button,
+          padding: BrandSpacing.sm - 2,
         },
         style,
       ]}
@@ -101,8 +102,8 @@ export function KitButtonGroup<T extends string>({
         return (
           <View
             key={option.value}
+            className="relative flex-1"
             style={[
-              styles.slot,
               {
                 width: slotBasis,
                 maxWidth: wraps ? slotBasis : undefined,
@@ -113,9 +114,12 @@ export function KitButtonGroup<T extends string>({
             {showDivider ? (
               <View
                 pointerEvents="none"
+                className="absolute"
                 style={[
-                  styles.divider,
                   {
+                    left: 0,
+                    width: StyleSheet.hairlineWidth,
+                    opacity: 0.4,
                     top: metrics.separatorInset,
                     bottom: metrics.separatorInset,
                     backgroundColor: resolvedDividerColorFinal,
@@ -126,8 +130,8 @@ export function KitButtonGroup<T extends string>({
             {selected ? (
               <View
                 pointerEvents="none"
+                className="absolute"
                 style={[
-                  styles.selectionFill,
                   {
                     top: metrics.inset,
                     right: metrics.inset,
@@ -149,8 +153,8 @@ export function KitButtonGroup<T extends string>({
                 triggerSelectionHaptic();
                 onChange(option.value);
               }}
+              className="w-full"
               style={({ pressed }) => [
-                styles.segmentPressable,
                 {
                   opacity: option.disabled ? 0.45 : pressed ? 0.9 : 1,
                 },
@@ -165,15 +169,17 @@ export function KitButtonGroup<T extends string>({
                   },
                 ]}
               >
-                {option.icon ? <View style={styles.iconWrap}>{option.icon}</View> : null}
+                {option.icon ? <View className="items-center justify-center">{option.icon}</View> : null}
                 <Text
                   numberOfLines={1}
-                  style={[
-                    styles.label as TextStyle,
+                  className="text-center font-bold"
+                  style={
                     {
                       color: selected ? resolvedSelectedLabelColorFinal : resolvedLabelColorFinal,
-                    },
-                  ]}
+                      ...BrandType.bodyMedium,
+                      includeFontPadding: false,
+                    } as TextStyle
+                  }
                 >
                   {option.label}
                 </Text>
@@ -191,50 +197,3 @@ const alignSelfMap: Record<KitButtonGroupAlign, "flex-start" | "center" | "stret
   center: "center",
   stretch: "stretch",
 };
-
-const styles = StyleSheet.create({
-  group: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    borderRadius: BrandRadius.card,
-    borderCurve: "continuous",
-    padding: BrandSpacing.xs + 2,
-    overflow: "hidden",
-  },
-  slot: {
-    position: "relative",
-    alignSelf: "stretch",
-    flex: 1,
-  },
-  divider: {
-    position: "absolute",
-    left: 0,
-    width: StyleSheet.hairlineWidth,
-    opacity: 0.4,
-  },
-  selectionFill: {
-    position: "absolute",
-  },
-  segmentPressable: {
-    width: "100%",
-  },
-  segmentContent: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: BrandSpacing.xs + 2,
-    position: "relative",
-    zIndex: 1,
-  },
-  iconWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  label: {
-    ...BrandType.bodyMedium,
-    fontWeight: "700",
-    includeFontPadding: false,
-    textAlign: "center",
-  },
-});

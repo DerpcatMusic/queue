@@ -2,10 +2,11 @@ import type { TFunction } from "i18next";
 import { Text, View } from "react-native";
 
 import { ActionButton } from "@/components/ui/action-button";
-import { type BrandPalette, BrandSpacing, BrandType } from "@/constants/brand";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
-const PANEL_RADIUS = 30;
-const INNER_RADIUS = 18;
+// Map web header panels - shares radii with command panel
+const PANEL_RADIUS = BrandRadius.card + BrandSpacing.xs; // 24 + 4 = 28px
+const INNER_RADIUS = BrandRadius.cardSubtle; // 18px
 
 type MapWebHeaderPanelsProps = {
   t: TFunction;

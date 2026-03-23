@@ -7,7 +7,8 @@ import { KitSurface } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
-const IMAGE_PANEL_WIDTH_PERCENT = "44%";
+// Image panel takes 44% on mobile, responsive adjustment handled via layout breakpoint
+const IMAGE_PANEL_WIDTH_PERCENT = "44%"; // Keep as percent for fluid layout
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";

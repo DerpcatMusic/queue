@@ -1,4 +1,5 @@
 import "@/global.css";
+import { BrandSpacing } from "@/constants/brand";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { BarlowCondensed_800ExtraBold } from "@expo-google-fonts/barlow-condensed";
@@ -8,7 +9,6 @@ import {
   Rubik_600SemiBold,
   Rubik_700Bold,
 } from "@expo-google-fonts/rubik";
-import { BrandSpacing } from "@/constants/brand";
 import {
   DarkTheme,
   DefaultTheme,
@@ -20,7 +20,7 @@ import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
 import { useMemo } from "react";
-import { LogBox, Platform, StyleSheet, View } from "react-native";
+import { LogBox, Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -132,7 +132,7 @@ function RootLayoutContent() {
 
   if (!isConvexUrlConfigured || !convex) {
     return (
-      <View style={styles.errorContainer}>
+      <View className="flex-1 items-center justify-center" style={{ gap: BrandSpacing.lg, paddingHorizontal: BrandSpacing.xl }}>
         <ThemedText type="title">{i18n.t("errors.configuration.title")}</ThemedText>
         <ThemedText>{i18n.t("errors.configuration.body")}</ThemedText>
       </View>
@@ -152,13 +152,13 @@ function RootLayoutContent() {
   const statusInsetColor = topInsetBackgroundColor ?? fallbackBackgroundColor;
 
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <GestureHandlerRootView className="flex-1">
       <ConvexAuthProvider client={convex} {...(nativeStorage ? { storage: nativeStorage } : {})}>
         <UserProvider>
           <RapydReturnProvider>
             <ThemeProvider value={navigationTheme}>
               <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
-                <View style={styles.stackContainer}>
+                <View className="flex-1">
                   <Stack
                     screenOptions={{
                       headerTintColor: palette.text as string,
@@ -193,19 +193,3 @@ function RootLayoutContent() {
     </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  stackContainer: {
-    flex: 1,
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: BrandSpacing.md,
-    paddingHorizontal: BrandSpacing.xl,
-  },
-});
