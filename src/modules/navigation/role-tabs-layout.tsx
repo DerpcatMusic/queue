@@ -70,29 +70,25 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                   contentStyle={{ backgroundColor: sceneBackgroundColor }}
                 >
                   <NativeTabs.Trigger.Icon
-                    md={tab.icon.md}
+                    {...(Platform.OS === "android" ? {} : { md: tab.icon.md })}
                     sf={{
                       default: tab.icon.sfDefault as never,
                       selected: tab.icon.sfSelected as never,
                     }}
-                    src={
-                      Platform.OS === "android"
-                        ? undefined
-                        : {
-                            default: (
-                              <NativeTabs.Trigger.VectorIcon
-                                family={MaterialCommunityIcons}
-                                name={tab.icon.mdDefaultVector as any}
-                              />
-                            ),
-                            selected: (
-                              <NativeTabs.Trigger.VectorIcon
-                                family={MaterialCommunityIcons}
-                                name={tab.icon.mdSelectedVector as any}
-                              />
-                            ),
-                          }
-                    }
+                    src={{
+                      default: (
+                        <NativeTabs.Trigger.VectorIcon
+                          family={MaterialCommunityIcons}
+                          name={tab.icon.mdDefaultVector as any}
+                        />
+                      ),
+                      selected: (
+                        <NativeTabs.Trigger.VectorIcon
+                          family={MaterialCommunityIcons}
+                          name={tab.icon.mdSelectedVector as any}
+                        />
+                      ),
+                    }}
                   />
                   <NativeTabBadge count={badgeCountByRoute[tab.routeName] ?? 0} />
                 </NativeTabs.Trigger>

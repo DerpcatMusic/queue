@@ -241,9 +241,11 @@ export function GlobalTopSheet() {
               stickyFooter={renderTransitionedNode("sticky-footer", richStickyFooter)}
               revealOnExpand={renderTransitionedNode("reveal", richRevealOnExpand, { flex: 1 })}
             >
-              {renderTransitionedNode("children", richChildren ?? <View style={{ flex: 1 }} />, {
-                flex: 1,
-              })}
+              {renderTransitionedNode(
+                "children",
+                richChildren,
+                richChildren ? { flex: 1 } : undefined,
+              )}
             </TopSheet>
           </Reanimated.View>
           {renderTransitionedNode("overlay", activeConfig.overlay, styles.overlayLayer)}

@@ -306,7 +306,9 @@ export default function StudioProfileScreen() {
 
   const profileSheetConfig = useMemo(
     () => ({
-      content: profileSheetContent,
+      render: () => ({
+        children: profileSheetContent,
+      }),
       steps: [profileSheetStep],
       initialStep: 0,
       padding: {
