@@ -250,6 +250,7 @@ export default defineSchema({
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     contactPhone: v.optional(v.string()),
+    mapMarkerColor: v.optional(v.string()),
     expoPushToken: v.optional(v.string()),
     notificationsEnabled: v.optional(v.boolean()),
     logoStorageId: v.optional(v.id("_storage")),

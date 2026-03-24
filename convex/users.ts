@@ -55,6 +55,16 @@ function normalizeEmail(email: string | undefined): string | undefined {
   return value.length > 0 ? value : undefined;
 }
 
+function normalizeOptionalMapMarkerColor(value: string | undefined) {
+  if (!value) return undefined;
+  const normalized = value.trim().toUpperCase();
+  if (normalized.length === 0) return undefined;
+  if (!/^#[0-9A-F]{6}$/.test(normalized)) {
+    throw new ConvexError("Map marker color must be a 6-digit hex color");
+  }
+  return normalized;
+}
+
 function createUploadSessionToken(userId: Doc<"users">["_id"], now: number) {
   const entropy = Math.random().toString(36).slice(2, 12);
   return `${String(userId)}:${now}:${entropy}`;
@@ -735,6 +745,7 @@ export const getMyStudioSettings = query({
       socialLinks: v.optional(socialLinksValidator),
       autoExpireMinutesBefore: v.number(),
       autoAcceptDefault: v.optional(v.boolean()),
+      mapMarkerColor: v.optional(v.string()),
       sports: v.array(v.string()),
       calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
       calendarSyncEnabled: v.boolean(),
@@ -775,6 +786,7 @@ export const getMyStudioSettings = query({
         contactPhone: profile.contactPhone,
         profileImageUrl,
         socialLinks: toOptionalSocialLinksPayload(profile.socialLinks),
+        mapMarkerColor: profile.mapMarkerColor,
         addressCity: profile.addressCity,
         addressStreet: profile.addressStreet,
         addressNumber: profile.addressNumber,
@@ -806,6 +818,7 @@ export const getInstructorMapStudios = query({
       longitude: v.number(),
       address: v.optional(v.string()),
       logoImageUrl: v.optional(v.string()),
+      mapMarkerColor: v.optional(v.string()),
     }),
   ),
   handler: async (ctx) => {
@@ -852,6 +865,7 @@ export const getInstructorMapStudios = query({
       ...omitUndefined({
         address: studio.address,
         logoImageUrl: logoUrls[index] ?? undefined,
+        mapMarkerColor: studio.mapMarkerColor,
       }),
     }));
   },
@@ -907,6 +921,7 @@ export const updateMyStudioSettings = mutation({
     longitude: v.optional(v.number()),
     autoExpireMinutesBefore: v.optional(v.number()),
     autoAcceptDefault: v.optional(v.boolean()),
+    mapMarkerColor: v.optional(v.string()),
     sports: v.optional(v.array(v.string())),
   },
   returns: v.object({
@@ -952,6 +967,7 @@ export const updateMyStudioSettings = mutation({
         longitude: args.longitude,
       }),
     );
+    const mapMarkerColor = normalizeOptionalMapMarkerColor(args.mapMarkerColor);
 
     let autoExpireMinutesBefore: number | undefined;
     if (args.autoExpireMinutesBefore !== undefined) {
@@ -976,6 +992,7 @@ export const updateMyStudioSettings = mutation({
         contactPhone,
         latitude,
         longitude,
+        mapMarkerColor,
         autoExpireMinutesBefore,
         autoAcceptDefault: args.autoAcceptDefault,
         addressCity,
