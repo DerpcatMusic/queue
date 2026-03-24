@@ -8,6 +8,12 @@ import { requireUserRole } from "./lib/auth";
 import { isKnownZoneId, normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
 import { hasCoverageKey, loadInstructorEligibility } from "./lib/instructorEligibility";
 import {
+  ensureStudioInfrastructure,
+  getPrimaryStudioBranch,
+  requireAccessibleStudioBranch,
+  requireStudioOwnerContext,
+} from "./lib/studioBranches";
+import {
   assertPositiveInteger,
   assertValidJobApplicationDeadline,
   omitUndefined,
@@ -351,18 +357,7 @@ async function requireInstructorProfile(ctx: QueryCtx | MutationCtx) {
 }
 
 async function requireStudioProfile(ctx: QueryCtx | MutationCtx) {
-  const user = await requireUserRole(ctx, ["studio"]);
-  const studios = await ctx.db
-    .query("studioProfiles")
-    .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-    .take(2);
-  if (studios.length > 1) {
-    throw new ConvexError("Multiple studio profiles found for this account");
-  }
-  const studio = studios[0];
-
-  if (!studio) throw new ConvexError("Studio profile not found");
-
+  const { studio } = await requireStudioOwnerContext(ctx);
   return studio;
 }
 
@@ -384,6 +379,7 @@ async function recomputeJobApplicationStats(ctx: MutationCtx, job: Doc<"jobs">) 
     .unique();
   const next = {
     studioId: job.studioId,
+    branchId: job.branchId,
     applicationsCount,
     pendingApplicationsCount,
     updatedAt: Date.now(),
@@ -459,6 +455,7 @@ async function enqueueUserNotification(
 
 export const postJob = mutation({
   args: {
+    branchId: v.id("studioBranches"),
     sport: v.string(),
     startTime: v.number(),
     endTime: v.number(),
@@ -488,11 +485,17 @@ export const postJob = mutation({
     jobId: v.id("jobs"),
   }),
   handler: async (ctx, args) => {
-    const studio = await requireStudioProfile(ctx);
     const now = Date.now();
+    const { studio } = await requireStudioOwnerContext(ctx);
+    const { branch } = await requireAccessibleStudioBranch(ctx, {
+      studioId: studio._id,
+      branchId: args.branchId,
+      allowedRoles: ["owner"],
+    });
+    await ensureStudioInfrastructure(ctx, studio, now);
 
     const sport = normalizeSportType(args.sport);
-    const studioZone = normalizeZoneId(normalizeRequired(studio.zone, "studio zone"));
+    const branchZone = normalizeZoneId(normalizeRequired(branch.zone, "branch zone"));
     const timeZone = normalizeTimeZone(args.timeZone);
 
     assertPositiveNumber(args.pay, "pay");
@@ -534,7 +537,8 @@ export const postJob = mutation({
 
     const jobId = await ctx.db.insert("jobs", {
       studioId: studio._id,
-      zone: studioZone,
+      branchId: branch._id,
+      zone: branchZone,
       sport,
       startTime: args.startTime,
       endTime: args.endTime,
@@ -542,6 +546,8 @@ export const postJob = mutation({
       status: "open",
       postedAt: now,
       ...omitUndefined({
+        branchNameSnapshot: branch.name,
+        branchAddressSnapshot: branch.address,
         timeZone,
         note: trimOptionalString(args.note),
         requiredLevel: args.requiredLevel,
@@ -555,16 +561,9 @@ export const postJob = mutation({
         boostPreset: args.boostPreset,
         boostBonusAmount,
         boostActive,
-        autoAcceptEnabled: studio.autoAcceptDefault,
+        autoAcceptEnabled: branch.autoAcceptDefault ?? studio.autoAcceptDefault,
       }),
     });
-
-    if (studio.zone !== studioZone) {
-      await ctx.db.patch("studioProfiles", studio._id, {
-        zone: studioZone,
-        updatedAt: now,
-      });
-    }
 
     await ctx.scheduler.runAfter(0, internal.notifications.sendJobNotifications, { jobId });
     await ctx.scheduler.runAfter(
@@ -574,7 +573,10 @@ export const postJob = mutation({
     );
 
     const expireMinutes =
-      args.expiryOverrideMinutes ?? studio.autoExpireMinutesBefore ?? DEFAULT_AUTO_EXPIRE_MINUTES;
+      args.expiryOverrideMinutes ??
+      branch.autoExpireMinutesBefore ??
+      studio.autoExpireMinutesBefore ??
+      DEFAULT_AUTO_EXPIRE_MINUTES;
     const expireAt = args.startTime - expireMinutes * 60 * 1000;
     const expireDelay = Math.max(expireAt - now, 0);
     if (expireAt > now) {
@@ -596,7 +598,10 @@ export const getAvailableJobsForInstructor = query({
     v.object({
       jobId: v.id("jobs"),
       studioId: v.id("studioProfiles"),
+      branchId: v.id("studioBranches"),
       studioName: v.string(),
+      branchName: v.string(),
+      branchAddress: v.optional(v.string()),
       studioImageUrl: v.optional(v.string()),
       studioAddress: v.optional(v.string()),
       sport: v.string(),
@@ -734,10 +739,13 @@ export const getAvailableJobsForInstructor = query({
     }
 
     const studioIds = [...new Set(matchingJobs.map((job) => job.studioId))];
+    const branchIds = [...new Set(matchingJobs.map((job) => job.branchId))];
     const studioById = new Map<string, Doc<"studioProfiles">>();
+    const branchById = new Map<string, Doc<"studioBranches">>();
     const studios = await Promise.all(
       studioIds.map((studioId) => ctx.db.get("studioProfiles", studioId)),
     );
+    const branches = await Promise.all(branchIds.map((branchId) => ctx.db.get("studioBranches", branchId)));
     const studioImageUrls = await Promise.all(
       studios.map((studio) =>
         studio?.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
@@ -755,14 +763,24 @@ export const getAvailableJobsForInstructor = query({
         studioImageUrlById.set(String(studioId), studioImageUrl);
       }
     }
+    for (let i = 0; i < branchIds.length; i += 1) {
+      const branchId = branchIds[i];
+      const branch = branches[i];
+      if (branch) {
+        branchById.set(String(branchId), branch);
+      }
+    }
 
     return matchingJobs.map((job) => {
       const studio = studioById.get(String(job.studioId));
+      const branch = branchById.get(String(job.branchId));
       const application = applicationByJobId.get(String(job._id));
       return {
         jobId: job._id,
         studioId: job.studioId,
+        branchId: job.branchId,
         studioName: studio?.studioName ?? "Unknown studio",
+        branchName: job.branchNameSnapshot ?? branch?.name ?? "Main branch",
         sport: job.sport,
         zone: trimOptionalString(job.zone) ?? job.zone,
         startTime: job.startTime,
@@ -772,7 +790,8 @@ export const getAvailableJobsForInstructor = query({
         postedAt: job.postedAt,
         ...omitUndefined({
           studioImageUrl: studioImageUrlById.get(String(job.studioId)),
-          studioAddress: studio?.address,
+          branchAddress: job.branchAddressSnapshot ?? branch?.address,
+          studioAddress: job.branchAddressSnapshot ?? branch?.address ?? studio?.address,
           timeZone: job.timeZone,
           note: job.note,
           requiredLevel: job.requiredLevel,
@@ -812,7 +831,10 @@ export const getStudioProfileForInstructor = query({
         v.object({
           jobId: v.id("jobs"),
           studioId: v.id("studioProfiles"),
+          branchId: v.id("studioBranches"),
           studioName: v.string(),
+          branchName: v.string(),
+          branchAddress: v.optional(v.string()),
           studioImageUrl: v.optional(v.string()),
           studioAddress: v.optional(v.string()),
           sport: v.string(),
@@ -879,7 +901,7 @@ export const getStudioProfileForInstructor = query({
       return null;
     }
 
-    const [sportsRows, jobsForStudio, studioImageUrl] = await Promise.all([
+    const [sportsRows, jobsForStudio, studioImageUrl, primaryBranch] = await Promise.all([
       ctx.db
         .query("studioSports")
         .withIndex("by_studio_id", (q) => q.eq("studioId", args.studioId))
@@ -890,9 +912,10 @@ export const getStudioProfileForInstructor = query({
         .order("desc")
         .take(40),
       studio.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
+      getPrimaryStudioBranch(ctx, args.studioId),
     ]);
 
-    const visibleJobs = jobsForStudio.filter((job) => {
+    const visibleJobs: Doc<"jobs">[] = jobsForStudio.filter((job: Doc<"jobs">) => {
       if (job.status !== "open" || job.startTime <= now) {
         return false;
       }
@@ -927,22 +950,38 @@ export const getStudioProfileForInstructor = query({
       }
     }
 
+    const branchIds = [...new Set(visibleJobs.map((job) => job.branchId))];
+    const branches = await Promise.all(
+      branchIds.map((branchId) => ctx.db.get("studioBranches", branchId)),
+    );
+    const branchById = new Map<string, Doc<"studioBranches">>();
+    for (let index = 0; index < branchIds.length; index += 1) {
+      const branchId = branchIds[index];
+      const branch = branches[index];
+      if (branch) {
+        branchById.set(String(branchId), branch);
+      }
+    }
+
     return {
       studioId: studio._id,
       studioName: studio.studioName,
-      studioAddress: studio.address,
-      zone: studio.zone,
-      sports: [...new Set(sportsRows.map((row) => row.sport))].sort(),
+      studioAddress: primaryBranch?.address ?? studio.address,
+      zone: primaryBranch?.zone ?? studio.zone,
+      sports: [...new Set(sportsRows.map((row: Doc<"studioSports">) => row.sport))].sort(),
       ...omitUndefined({
         bio: studio.bio,
         studioImageUrl: studioImageUrl ?? undefined,
       }),
-      jobs: visibleJobs.map((job) => {
+      jobs: visibleJobs.map((job: Doc<"jobs">) => {
         const application = applicationByJobId.get(String(job._id));
+        const branch = branchById.get(String(job.branchId));
         return {
           jobId: job._id,
           studioId: studio._id,
+          branchId: job.branchId,
           studioName: studio.studioName,
+          branchName: job.branchNameSnapshot ?? branch?.name ?? "Main branch",
           sport: job.sport,
           zone: trimOptionalString(job.zone) ?? job.zone,
           startTime: job.startTime,
@@ -952,7 +991,8 @@ export const getStudioProfileForInstructor = query({
           postedAt: job.postedAt,
           ...omitUndefined({
             studioImageUrl: studioImageUrl ?? undefined,
-            studioAddress: studio.address,
+            branchAddress: job.branchAddressSnapshot ?? branch?.address,
+            studioAddress: job.branchAddressSnapshot ?? branch?.address ?? studio.address,
             timeZone: job.timeZone,
             note: job.note,
             requiredLevel: job.requiredLevel,
@@ -1174,6 +1214,7 @@ export const applyToJob = mutation({
 
         await ctx.db.patch("jobApplications", existing._id, {
           studioId: job.studioId,
+          branchId: job.branchId,
           status: "pending",
           ...omitUndefined({ message }),
           updatedAt: now,
@@ -1198,6 +1239,7 @@ export const applyToJob = mutation({
       const applicationId = await ctx.db.insert("jobApplications", {
         jobId: args.jobId,
         studioId: job.studioId,
+        branchId: job.branchId,
         instructorId: instructor._id,
         status: "pending",
         appliedAt: now,
@@ -1232,6 +1274,7 @@ export const applyToJob = mutation({
       const applicationId = await ctx.db.insert("jobApplications", {
         jobId: args.jobId,
         studioId: job.studioId,
+        branchId: job.branchId,
         instructorId: instructor._id,
         status: "rejected",
         appliedAt: now,
@@ -1275,6 +1318,7 @@ export const applyToJob = mutation({
       }
       await ctx.db.patch("jobApplications", existing._id, {
         studioId: job.studioId,
+        branchId: job.branchId,
         status: "rejected",
         updatedAt: now,
       });
@@ -1283,6 +1327,7 @@ export const applyToJob = mutation({
     const applicationId = await ctx.db.insert("jobApplications", {
       jobId: args.jobId,
       studioId: job.studioId,
+      branchId: job.branchId,
       instructorId: instructor._id,
       status: "accepted",
       appliedAt: now,
@@ -1304,6 +1349,7 @@ export const applyToJob = mutation({
       if (row._id !== applicationId) {
         await ctx.db.patch("jobApplications", row._id, {
           studioId: job.studioId,
+          branchId: job.branchId,
           status: "rejected",
           updatedAt: now,
         });
@@ -1358,10 +1404,13 @@ export const withdrawApplication = mutation({
 });
 
 export const getMyStudioJobs = query({
-  args: { limit: v.optional(v.number()) },
+  args: { limit: v.optional(v.number()), branchId: v.optional(v.id("studioBranches")) },
   returns: v.array(
     v.object({
       jobId: v.id("jobs"),
+      branchId: v.id("studioBranches"),
+      branchName: v.string(),
+      branchAddress: v.optional(v.string()),
       sport: v.string(),
       zone: v.string(),
       startTime: v.number(),
@@ -1382,16 +1431,40 @@ export const getMyStudioJobs = query({
   ),
   handler: async (ctx, args) => {
     const studio = await requireStudioProfile(ctx);
+    if (args.branchId) {
+      await requireAccessibleStudioBranch(ctx, {
+        studioId: studio._id,
+        branchId: args.branchId,
+        allowedRoles: ["owner"],
+      });
+    }
 
     const rawLimit = args.limit ?? 50;
     assertPositiveInteger(rawLimit, "limit");
     const limit = Math.min(rawLimit, 200);
 
-    const jobs = await ctx.db
-      .query("jobs")
-      .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
-      .order("desc")
-      .take(limit);
+    const jobs = args.branchId
+      ? await ctx.db
+          .query("jobs")
+          .withIndex("by_branch_postedAt", (q) => q.eq("branchId", args.branchId!))
+          .order("desc")
+          .take(limit)
+      : await ctx.db
+          .query("jobs")
+          .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
+          .order("desc")
+          .take(limit);
+    const branchIds = [...new Set(jobs.map((job) => job.branchId))];
+    const branches = await Promise.all(
+      branchIds.map((branchId) => ctx.db.get("studioBranches", branchId)),
+    );
+    const branchById = new Map<string, Doc<"studioBranches">>();
+    for (let index = 0; index < branchIds.length; index += 1) {
+      const branch = branches[index];
+      if (branch) {
+        branchById.set(String(branch._id), branch);
+      }
+    }
     const jobIds = new Set(jobs.map((job) => String(job._id)));
     const statsByJobId = new Map<string, Doc<"jobApplicationStats">>();
     const fallbackApplicationsByJobId = new Map<string, Doc<"jobApplications">[]>();
@@ -1429,6 +1502,8 @@ export const getMyStudioJobs = query({
 
       rows.push({
         jobId: job._id,
+        branchId: job.branchId,
+        branchName: job.branchNameSnapshot ?? branchById.get(String(job.branchId))?.name ?? "Main branch",
         sport: job.sport,
         zone: job.zone,
         startTime: job.startTime,
@@ -1445,6 +1520,7 @@ export const getMyStudioJobs = query({
             (application) => application.status === "pending",
           ).length,
         ...omitUndefined({
+          branchAddress: job.branchAddressSnapshot ?? branchById.get(String(job.branchId))?.address,
           timeZone: job.timeZone,
           note: job.note,
         }),
@@ -1456,10 +1532,13 @@ export const getMyStudioJobs = query({
 });
 
 export const getMyStudioJobsWithApplications = query({
-  args: { limit: v.optional(v.number()) },
+  args: { limit: v.optional(v.number()), branchId: v.optional(v.id("studioBranches")) },
   returns: v.array(
     v.object({
       jobId: v.id("jobs"),
+      branchId: v.id("studioBranches"),
+      branchName: v.string(),
+      branchAddress: v.optional(v.string()),
       sport: v.string(),
       zone: v.string(),
       startTime: v.number(),
@@ -1502,16 +1581,40 @@ export const getMyStudioJobsWithApplications = query({
   ),
   handler: async (ctx, args) => {
     const studio = await requireStudioProfile(ctx);
+    if (args.branchId) {
+      await requireAccessibleStudioBranch(ctx, {
+        studioId: studio._id,
+        branchId: args.branchId,
+        allowedRoles: ["owner"],
+      });
+    }
 
     const rawLimit = args.limit ?? 50;
     assertPositiveInteger(rawLimit, "limit");
     const limit = Math.min(rawLimit, 200);
 
-    const jobs = await ctx.db
-      .query("jobs")
-      .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
-      .order("desc")
-      .take(limit);
+    const jobs = args.branchId
+      ? await ctx.db
+          .query("jobs")
+          .withIndex("by_branch_postedAt", (q) => q.eq("branchId", args.branchId!))
+          .order("desc")
+          .take(limit)
+      : await ctx.db
+          .query("jobs")
+          .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
+          .order("desc")
+          .take(limit);
+    const branchIds = [...new Set(jobs.map((job) => job.branchId))];
+    const branches = await Promise.all(
+      branchIds.map((branchId) => ctx.db.get("studioBranches", branchId)),
+    );
+    const branchById = new Map<string, Doc<"studioBranches">>();
+    for (let index = 0; index < branchIds.length; index += 1) {
+      const branch = branches[index];
+      if (branch) {
+        branchById.set(String(branch._id), branch);
+      }
+    }
     const jobIds = new Set(jobs.map((job) => String(job._id)));
     const statsByJobId = new Map<string, Doc<"jobApplicationStats">>();
     if (USE_JOB_APPLICATION_STATS) {
@@ -1595,6 +1698,8 @@ export const getMyStudioJobsWithApplications = query({
 
       rows.push({
         jobId: job._id,
+        branchId: job.branchId,
+        branchName: job.branchNameSnapshot ?? branchById.get(String(job.branchId))?.name ?? "Main branch",
         sport: job.sport,
         zone: job.zone,
         startTime: job.startTime,
@@ -1607,6 +1712,7 @@ export const getMyStudioJobsWithApplications = query({
           stat?.pendingApplicationsCount ??
           applications.filter((a) => a.status === "pending").length,
         ...omitUndefined({
+          branchAddress: job.branchAddressSnapshot ?? branchById.get(String(job.branchId))?.address,
           timeZone: job.timeZone,
           note: job.note,
           applicationDeadline: job.applicationDeadline,
@@ -1927,6 +2033,7 @@ export const reviewApplication = mutation({
       for (const row of competingApplications) {
         await ctx.db.patch("jobApplications", row._id, {
           studioId: job.studioId,
+          branchId: job.branchId,
           status: row._id === application._id ? "accepted" : "rejected",
           updatedAt: Date.now(),
         });
@@ -1942,6 +2049,7 @@ export const reviewApplication = mutation({
     } else {
       await ctx.db.patch("jobApplications", application._id, {
         studioId: job.studioId,
+        branchId: job.branchId,
         status: "rejected",
         updatedAt: Date.now(),
       });

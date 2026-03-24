@@ -55,6 +55,10 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     api.payments.listMyPayments,
     currentUser?.role === "studio" ? { limit: 200 } : "skip",
   );
+  const studioBranches = useQuery(
+    api.studioBranches.getMyStudioBranches,
+    currentUser?.role === "studio" ? {} : "skip",
+  );
 
   const createJobSheetRef = useRef<BottomSheet>(null);
   const [isSubmittingStudio, setIsSubmittingStudio] = useState(false);
@@ -218,6 +222,10 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
       setErrorMessage(t("jobsTab.errors.payRequired"));
       return;
     }
+    if (!draft.branchId) {
+      setErrorMessage("Select a branch before posting");
+      return;
+    }
 
     if (draft.startTime <= referenceNow) {
       setErrorMessage(t("jobsTab.errors.startMustBeFuture"));
@@ -244,6 +252,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     try {
       const note = trimOptional(draft.note);
       await postJob({
+        branchId: draft.branchId,
         sport: draft.sport,
         startTime: draft.startTime,
         endTime: draft.endTime,
@@ -435,6 +444,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     statusMessage,
     studioJobs,
     studioNotificationSettings,
+    studioBranches,
     toggleStudioPush,
   };
 }

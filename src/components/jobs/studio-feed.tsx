@@ -59,6 +59,7 @@ export function StudioFeed() {
     setStatusMessage,
     startStudioCheckout,
     statusMessage,
+    studioBranches,
     studioJobs,
     studioNotificationSettings,
     toggleStudioPush,
@@ -306,6 +307,13 @@ export function StudioFeed() {
           innerRef={createJobSheetRef as never}
           palette={palette}
           isSubmitting={isSubmittingStudio}
+          branches={(studioBranches ?? []).map((branch) => ({
+            branchId: branch.branchId,
+            name: branch.name,
+            address: branch.address,
+            isPrimary: branch.isPrimary,
+          }))}
+          defaultBranchId={studioBranches?.find((branch) => branch.isPrimary)?.branchId ?? null}
           onDismissed={() => setIsCreateSheetVisible(false)}
           onPost={postStudioJob}
         />
