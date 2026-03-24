@@ -30,6 +30,7 @@ import {
 } from "@/lib/google-places";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import type { ResolvedLocation } from "@/lib/location-zone";
+import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 
 let zoneLabelByIdPromise: Promise<Map<string, { en: string; he: string }>> | null = null;
 
@@ -298,6 +299,14 @@ export default function LocationScreen() {
   const resolveByGps = useCallback(async () => {
     const result = await locationResolver.resolveFromGps();
     if (!result.ok) {
+      if (result.error.code === "permission_blocked") {
+        showOpenSettingsAlert({
+          title: t("common.permissionRequired"),
+          body: t("profile.settings.errors.locationPermissionBlocked"),
+          cancelLabel: t("common.cancel"),
+          settingsLabel: t("common.openSettings"),
+        });
+      }
       setErrorMessage(
         getLocationResolveErrorMessage({
           code: result.error.code,

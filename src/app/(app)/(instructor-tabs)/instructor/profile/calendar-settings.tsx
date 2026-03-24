@@ -26,6 +26,7 @@ import {
   connectGoogleCalendarNative,
   disconnectGoogleCalendarNative,
 } from "@/lib/google-calendar-native-auth";
+import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 
 type CalendarProvider = "none" | "google" | "apple";
 
@@ -56,6 +57,15 @@ type DisconnectGoogleCalendarResult = {
   ok: boolean;
   deletedRemoteEvents: boolean;
 };
+
+function showCalendarPermissionAlert(t: ReturnType<typeof useTranslation>["t"]) {
+  showOpenSettingsAlert({
+    title: t("common.permissionRequired"),
+    body: t("profile.settings.calendar.permissionRequiredBody"),
+    cancelLabel: t("common.cancel"),
+    settingsLabel: t("common.openSettings"),
+  });
+}
 
 export default function CalendarSettingsScreen() {
   const { t } = useTranslation();
@@ -280,6 +290,9 @@ export default function CalendarSettingsScreen() {
     try {
       const preparation = await prepareDeviceCalendarSync();
       if (!preparation.ok) {
+        if (preparation.reason === "permission_denied") {
+          showCalendarPermissionAlert(t);
+        }
         return;
       }
 
@@ -315,6 +328,9 @@ export default function CalendarSettingsScreen() {
       if (provider === "apple" && nextValue) {
         const preparation = await prepareDeviceCalendarSync();
         if (!preparation.ok) {
+          if (preparation.reason === "permission_denied") {
+            showCalendarPermissionAlert(t);
+          }
           setSyncEnabled(previousValue);
           return;
         }

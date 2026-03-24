@@ -12,7 +12,11 @@ import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
-import { useProfileImageUpload } from "@/hooks/use-profile-image-upload";
+import {
+  isProfileImageUploadError,
+  useProfileImageUpload,
+} from "@/hooks/use-profile-image-upload";
+import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 
 function toSocialLinksDraft(value: ProfileSocialLinks | undefined) {
   return { ...(value ?? {}) };
@@ -102,6 +106,14 @@ export default function StudioProfileEditScreen() {
       setProfilePhotoUrl(uploadedUrl);
       setFeedbackLabel(t("profile.editor.photoUpdated"));
     } catch (error) {
+      if (isProfileImageUploadError(error) && error.code === "permission_blocked") {
+        showOpenSettingsAlert({
+          title: t("common.permissionRequired"),
+          body: error.message,
+          cancelLabel: t("common.cancel"),
+          settingsLabel: t("common.openSettings"),
+        });
+      }
       setFeedbackLabel(
         error instanceof Error ? error.message : t("profile.editor.photoUpdateFailed"),
       );

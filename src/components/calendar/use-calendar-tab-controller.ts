@@ -282,8 +282,11 @@ export function useCalendarTabController() {
     if (appleSyncSignature === lastAppleSyncSignatureRef.current) {
       return;
     }
-    lastAppleSyncSignatureRef.current = appleSyncSignature;
-    void syncDeviceCalendarEvents(syncEvents);
+    void syncDeviceCalendarEvents(syncEvents).then((result) => {
+      if (result.ok) {
+        lastAppleSyncSignatureRef.current = appleSyncSignature;
+      }
+    });
   }, [appleSyncSignature, calendarSettings, role, syncEvents]);
 
   const lastGoogleSyncAtRef = useRef(0);

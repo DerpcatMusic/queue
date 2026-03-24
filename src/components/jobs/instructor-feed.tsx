@@ -76,6 +76,7 @@ export function InstructorFeed() {
   );
 
   type AvailableJob = NonNullable<typeof availableJobs>[number];
+  type MyApplication = NonNullable<typeof myApplications>[number];
 
   const jobs = (availableJobs ?? []) as AvailableJob[];
   const emptyVariants = [
@@ -105,8 +106,8 @@ export function InstructorFeed() {
   }, [deferredJobsSearchQuery, jobs, jobsWindowFilter, queryNow, zoneLanguage]);
   const archiveRows = useMemo<InstructorArchiveRow[]>(
     () =>
-      (myApplications ?? [])
-        .filter((application) => {
+      ((myApplications ?? []) as MyApplication[])
+        .filter((application: MyApplication) => {
           if (application.jobStatus === "completed" || application.jobStatus === "cancelled") {
             return true;
           }
@@ -115,7 +116,7 @@ export function InstructorFeed() {
           }
           return application.endTime <= queryNow;
         })
-        .map((application) => ({
+        .map((application: MyApplication) => ({
           applicationId: application.applicationId,
           jobId: application.jobId,
           studioId: application.studioId,
@@ -134,7 +135,10 @@ export function InstructorFeed() {
           ...(application.studioImageUrl ? { studioImageUrl: application.studioImageUrl } : {}),
           ...(application.closureReason ? { closureReason: application.closureReason } : {}),
         }))
-        .sort((left, right) => right.startTime - left.startTime),
+        .sort(
+          (left: InstructorArchiveRow, right: InstructorArchiveRow) =>
+            right.startTime - left.startTime,
+        ),
     [myApplications, queryNow],
   );
 

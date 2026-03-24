@@ -10,7 +10,11 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { DEVICE_TIME_ZONE, MINUTE_MS, type StudioDraft, trimOptional } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { createPerfTimer, logPerfSummary, recordPerfMetric } from "@/lib/perf-telemetry";
-import { registerForPushNotificationsAsync } from "@/lib/push-notifications";
+import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
+import {
+  isPushRegistrationError,
+  registerForPushNotificationsAsync,
+} from "@/lib/push-notifications";
 import { buildRapydBridgeUrl, resolveRapydAppReturnUrl } from "@/lib/rapyd-hosted-flow";
 import {
   buildLatestPaymentByJobId,
@@ -324,6 +328,14 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
       });
       setStatusMessage(t("jobsTab.success.pushEnabled"));
     } catch (error) {
+      if (isPushRegistrationError(error) && error.code === "permission_denied") {
+        showOpenSettingsAlert({
+          title: t("common.permissionRequired"),
+          body: t("jobsTab.errors.pushPermissionRequired"),
+          cancelLabel: t("common.cancel"),
+          settingsLabel: t("common.openSettings"),
+        });
+      }
       setErrorMessage(getStudioPushErrorMessage(error, t));
     } finally {
       setIsEnablingStudioPush(false);

@@ -9,6 +9,27 @@ const PROFILE_IMAGE_EDGE_PX = 512;
 const PROFILE_IMAGE_COMPRESSION = 0.72;
 
 type ProfileImageUploadPhase = "idle" | "selecting" | "compressing" | "uploading";
+export type ProfileImageUploadErrorCode =
+  | "picker_unavailable"
+  | "permission_denied"
+  | "permission_blocked"
+  | "compression_unavailable"
+  | "upload_unavailable"
+  | "upload_failed";
+
+export class ProfileImageUploadError extends Error {
+  constructor(
+    readonly code: ProfileImageUploadErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ProfileImageUploadError";
+  }
+}
+
+export function isProfileImageUploadError(error: unknown): error is ProfileImageUploadError {
+  return error instanceof ProfileImageUploadError;
+}
 
 type UploadResponse = {
   storageId?: string;
@@ -27,7 +48,14 @@ type ImagePickerResult = {
 
 type ImagePickerModule = {
   MediaTypeOptions: { Images: string | number };
-  requestMediaLibraryPermissionsAsync: () => Promise<{ granted: boolean }>;
+  getMediaLibraryPermissionsAsync?: () => Promise<{
+    granted: boolean;
+    canAskAgain?: boolean;
+  }>;
+  requestMediaLibraryPermissionsAsync: () => Promise<{
+    granted: boolean;
+    canAskAgain?: boolean;
+  }>;
   launchImageLibraryAsync: (options: {
     mediaTypes: string | number;
     allowsEditing: boolean;
@@ -153,12 +181,30 @@ export function useProfileImageUpload() {
     try {
       const imagePicker = resolveImagePickerModule();
       if (!imagePicker) {
-        throw new Error(t("profile.editor.photoPickerUnavailable"));
+        throw new ProfileImageUploadError(
+          "picker_unavailable",
+          t("profile.editor.photoPickerUnavailable"),
+        );
+      }
+
+      const existingPermission = await imagePicker.getMediaLibraryPermissionsAsync?.();
+      if (existingPermission?.granted !== true && existingPermission?.canAskAgain === false) {
+        throw new ProfileImageUploadError(
+          "permission_blocked",
+          t("profile.editor.photoPermissionBlocked"),
+        );
       }
 
       const permission = await imagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        throw new Error(t("profile.editor.photoPermissionRequired"));
+        throw new ProfileImageUploadError(
+          permission.canAskAgain === false ? "permission_blocked" : "permission_denied",
+          t(
+            permission.canAskAgain === false
+              ? "profile.editor.photoPermissionBlocked"
+              : "profile.editor.photoPermissionRequired",
+          ),
+        );
       }
 
       const picked = await imagePicker.launchImageLibraryAsync({
@@ -176,7 +222,10 @@ export function useProfileImageUpload() {
       setUploadPhase("compressing");
       const imageManipulator = resolveImageManipulatorModule();
       if (!imageManipulator) {
-        throw new Error(t("profile.editor.photoCompressionUnavailable"));
+        throw new ProfileImageUploadError(
+          "compression_unavailable",
+          t("profile.editor.photoCompressionUnavailable"),
+        );
       }
 
       const processedAsset = await imageManipulator.manipulateAsync(
@@ -192,7 +241,10 @@ export function useProfileImageUpload() {
       const { uploadUrl, sessionToken } = await createUploadSession({});
       const fileSystemLegacy = resolveFileSystemLegacyModule();
       if (!fileSystemLegacy) {
-        throw new Error(t("profile.editor.photoUploadUnavailable"));
+        throw new ProfileImageUploadError(
+          "upload_unavailable",
+          t("profile.editor.photoUploadUnavailable"),
+        );
       }
 
       const uploadResponse = await fileSystemLegacy.uploadAsync(uploadUrl, processedAsset.uri, {
@@ -203,12 +255,15 @@ export function useProfileImageUpload() {
         },
       });
       if (uploadResponse.status < 200 || uploadResponse.status >= 300) {
-        throw new Error(t("profile.editor.photoUploadFailed"));
+        throw new ProfileImageUploadError("upload_failed", t("profile.editor.photoUploadFailed"));
       }
 
       const uploadResult = JSON.parse(uploadResponse.body) as UploadResponse;
       if (!uploadResult.storageId) {
-        throw new Error(t("profile.editor.photoUploadMissingStorageId"));
+        throw new ProfileImageUploadError(
+          "upload_failed",
+          t("profile.editor.photoUploadMissingStorageId"),
+        );
       }
 
       const completed = await completeUpload({

@@ -140,9 +140,11 @@ const en = {
     close: "Close",
     edit: "Edit",
     loading: "Loading...",
+    permissionRequired: "Permission required",
     returningToPayoutSetup: "Returning to payout setup...",
     returningToCheckoutStatus: "Returning to checkout status...",
     address: "Address",
+    openSettings: "Open Settings",
     searching: "Searching...",
   },
   profile: {
@@ -209,14 +211,26 @@ const en = {
     },
     switcher: {
       activeBadge: "Active",
-      instructorActiveHint: "You are using your instructor workspace right now.",
-      studioActiveHint: "You are using your studio workspace right now.",
+      currentAccountBadge: "Current account",
+      loadingLabel: "Switching...",
+      openAction: "Switch account",
+      sheetTitle: "Account switcher",
+      sheetBody: "Review the active account on this device, use another account, or sign out.",
+      accountRowHint: "Open account actions for this device.",
+      profilesTitle: "Profiles on this account",
+      profilesBody: "Quick access to the roles currently attached to this login.",
+      accountsTitle: "Account actions",
+      accountsBody: "Sign in with another account or end the current session on this device.",
+      useAnotherAccountTitle: "Use another account",
+      useAnotherAccountHint: "Sign out here, then continue with a different email or provider.",
+      instructorActiveHint: "You are using your instructor profile right now.",
+      studioActiveHint: "You are using your studio profile right now.",
       instructorSwitchHint: "Jump into instructor tabs, jobs, and payouts.",
       studioSwitchHint: "Jump into studio scheduling, ops, and payouts.",
-      setupInstructorTitle: "Set up instructor workspace",
-      setupInstructorHint: "Create the instructor side on this same login.",
-      setupStudioTitle: "Set up studio workspace",
-      setupStudioHint: "Create the studio side on this same login.",
+      setupInstructorTitle: "Set up instructor profile",
+      setupInstructorHint: "Create the instructor side on this same account.",
+      setupStudioTitle: "Set up studio profile",
+      setupStudioHint: "Create the studio side on this same account.",
     },
     setup: {
       verifyIdentity: "Verify identity",
@@ -379,6 +393,8 @@ const en = {
         googleConnectedAs: "Connected as {{email}}",
         applePermissionNote:
           "Apple sync requests calendar access and writes to a dedicated Queue Sessions calendar.",
+        permissionRequiredBody:
+          "Queue needs calendar access to sync accepted sessions on this device. Enable calendar access in system settings and try again.",
         connectAction: "Connect",
         connectedAction: "Connected",
         connectHint: "Connect calendar",
@@ -558,6 +574,8 @@ const en = {
       photoUpdateFailed: "Failed to update profile photo.",
       photoPickerUnavailable:
         "Image picker is unavailable in this build. Update Expo Go or rebuild your development client.",
+      photoPermissionBlocked:
+        "Photo library access is blocked. Enable photo access in system settings.",
       photoPermissionRequired: "Photo library permission is required.",
       photoCompressionUnavailable:
         "Image compression is unavailable in this build. Update Expo Go or rebuild your development client.",

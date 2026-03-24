@@ -64,6 +64,8 @@ export function useMapTabController() {
   );
   const saveZones = useMutation(api.instructorZones.setMyInstructorZones);
 
+  type RemoteStudio = NonNullable<typeof remoteStudios>[number];
+
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>([]);
   const [zoneModeActive, setZoneModeActive] = useState(false);
   const [sheetStep, setSheetStep] = useState(0);
@@ -185,7 +187,7 @@ export function useMapTabController() {
   );
   const visibleStudioMarkers = useMemo<StudioMapMarker[]>(
     () =>
-      (remoteStudios ?? []).filter((studio) =>
+      ((remoteStudios ?? []) as RemoteStudio[]).filter((studio: RemoteStudio) =>
         selectedZoneIds.length > 0 ? selectedZoneIds.includes(studio.zone) : true,
       ),
     [remoteStudios, selectedZoneIds],

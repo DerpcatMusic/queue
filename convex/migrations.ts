@@ -11,7 +11,11 @@ import {
   type MutationCtx,
   query,
 } from "./_generated/server";
-import { dedupeUsersByEmail, normalizeEmail } from "./lib/authDedupe";
+import {
+  dedupeUsersByEmail,
+  normalizeEmail,
+  resolveCanonicalUserByEmail,
+} from "./lib/authDedupe";
 import { isKnownZoneId } from "./lib/domainValidation";
 import { mapLegacyPaymentStatusToOrderStatus, summarizeLedgerBalances } from "./lib/marketplace";
 import { ensureStudioInfrastructure } from "./lib/studioBranches";
@@ -66,6 +70,51 @@ type DevelopmentResetResult = {
     deleted: number;
   }>;
 };
+
+const appRoleValidator = v.union(v.literal("instructor"), v.literal("studio"));
+const duplicateUserEmailReportEntryValidator = v.object({
+  email: v.string(),
+  userCount: v.number(),
+  canonicalUserId: v.optional(v.id("users")),
+  users: v.array(
+    v.object({
+      userId: v.id("users"),
+      role: v.union(v.literal("pending"), v.literal("instructor"), v.literal("studio")),
+      roles: v.array(appRoleValidator),
+      onboardingComplete: v.boolean(),
+      isActive: v.boolean(),
+      emailVerified: v.boolean(),
+      hasInstructorProfile: v.boolean(),
+      hasStudioProfile: v.boolean(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+});
+
+type DuplicateUserEmailReportEntry = {
+  email: string;
+  userCount: number;
+  canonicalUserId?: Id<"users">;
+  users: Array<{
+    userId: Id<"users">;
+    role: "pending" | "instructor" | "studio";
+    roles: Array<"instructor" | "studio">;
+    onboardingComplete: boolean;
+    isActive: boolean;
+    emailVerified: boolean;
+    hasInstructorProfile: boolean;
+    hasStudioProfile: boolean;
+    createdAt: number;
+    updatedAt: number;
+  }>;
+};
+
+function isDuplicateUserEmailReportEntry(
+  entry: DuplicateUserEmailReportEntry | null,
+): entry is DuplicateUserEmailReportEntry {
+  return entry !== null;
+}
 
 function toCleanZone(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
@@ -2009,6 +2058,45 @@ export const dedupeDuplicateUsersByEmail = action({
   },
 });
 
+export const getDuplicateUserEmailReport = action({
+  args: {
+    email: v.optional(v.string()),
+    limit: v.optional(v.number()),
+    accessToken: v.optional(v.string()),
+  },
+  returns: v.object({
+    scannedEmails: v.number(),
+    duplicateEmails: v.array(duplicateUserEmailReportEntryValidator),
+  }),
+  handler: async (ctx, args): Promise<{
+    scannedEmails: number;
+    duplicateEmails: DuplicateUserEmailReportEntry[];
+  }> => {
+    requireMigrationsAccessToken(args.accessToken);
+    const normalizedTargetEmail = normalizeEmail(args.email);
+    const duplicateEmails: string[] = normalizedTargetEmail
+      ? [normalizedTargetEmail]
+      : await ctx.runQuery(internal.migrations.getDuplicateUserEmails, {});
+    const targetEmails: string[] = duplicateEmails.slice(
+      0,
+      Math.max(args.limit ?? duplicateEmails.length, 0),
+    );
+
+    const reportEntries: DuplicateUserEmailReportEntry[] = (
+      await Promise.all(
+        targetEmails.map((email: string) =>
+          ctx.runQuery(internal.migrations.getDuplicateUserEmailReportEntry, { email }),
+        ),
+      )
+    ).filter(isDuplicateUserEmailReportEntry);
+
+    return {
+      scannedEmails: targetEmails.length,
+      duplicateEmails: reportEntries,
+    };
+  },
+});
+
 export const resetDevelopmentData = action({
   args: {
     accessToken: v.optional(v.string()),
@@ -2056,6 +2144,72 @@ export const getDuplicateUserEmails = internalQuery({
       .filter(([, count]) => count.total > 1 && count.verified > 0)
       .map(([email]) => email)
       .sort();
+  },
+});
+
+export const getDuplicateUserEmailReportEntry = internalQuery({
+  args: {
+    email: v.string(),
+  },
+  returns: v.union(duplicateUserEmailReportEntryValidator, v.null()),
+  handler: async (ctx, args) => {
+    const normalizedEmail = normalizeEmail(args.email);
+    if (!normalizedEmail) {
+      return null;
+    }
+
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+      .collect();
+    if (users.length <= 1) {
+      return null;
+    }
+
+    const canonicalUserId =
+      (await resolveCanonicalUserByEmail({
+        ctx,
+        normalizedEmail,
+      })) ?? undefined;
+
+    const userEntries = await Promise.all(
+      users.map(async (user) => {
+        const [instructorProfiles, studioProfiles] = await Promise.all([
+          ctx.db
+            .query("instructorProfiles")
+            .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+            .take(1),
+          ctx.db
+            .query("studioProfiles")
+            .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+            .take(1),
+        ]);
+
+        return {
+          userId: user._id,
+          role: user.role,
+          roles: (user.roles ?? []).filter(
+            (role): role is "instructor" | "studio" => role === "instructor" || role === "studio",
+          ),
+          onboardingComplete: user.onboardingComplete,
+          isActive: user.isActive,
+          emailVerified: user.emailVerificationTime !== undefined,
+          hasInstructorProfile: instructorProfiles.length > 0,
+          hasStudioProfile: studioProfiles.length > 0,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        };
+      }),
+    );
+
+    return {
+      email: normalizedEmail,
+      userCount: users.length,
+      ...omitUndefined({
+        canonicalUserId,
+      }),
+      users: userEntries.sort((left, right) => left.createdAt - right.createdAt),
+    };
   },
 });
 
