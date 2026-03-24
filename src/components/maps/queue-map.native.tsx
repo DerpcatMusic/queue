@@ -4,7 +4,8 @@ import {
   Layer,
   Map as MapLibreMap,
   type MapRef,
-  Marker,
+  ViewAnnotation,
+  type ViewAnnotationRef,
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -66,9 +67,8 @@ function getStudioMarkerMetrics(zoom: number) {
 }
 
 function getStudioPinScale(zoom: number) {
-  if (zoom <= 13) return 1;
-  if (zoom >= 15.75) return 1.1;
-  return 1 + ((zoom - 13) / (15.75 - 13)) * 0.1;
+  void zoom;
+  return 1;
 }
 
 function StudioMapPin({
@@ -77,6 +77,7 @@ function StudioMapPin({
   label,
   imageSize,
   imageTop,
+  onImageLoad,
   pinHeight,
   pinWidth,
   textColor,
@@ -86,6 +87,7 @@ function StudioMapPin({
   label: string;
   imageSize: number;
   imageTop: number;
+  onImageLoad?: () => void;
   pinHeight: number;
   pinWidth: number;
   textColor: string;
@@ -120,6 +122,7 @@ function StudioMapPin({
         {imageUrl ? (
           <Image
             source={imageUrl}
+            onLoad={onImageLoad}
             style={{
               width: imageSize,
               height: imageSize,
@@ -190,6 +193,7 @@ export const QueueMap = memo(function QueueMap({
   const mapKey = `${resolvedScheme}:${retryNonce}`;
 
   const mapRef = useRef<MapRef | null>(null);
+  const studioAnnotationRefs = useRef<Record<string, ViewAnnotationRef | null>>({});
   const mapLoadStateRef = useRef<MapLoadState>("loading");
   const cameraRef = useRef<{
     setStop: (config: unknown) => void;
@@ -439,11 +443,14 @@ export const QueueMap = memo(function QueueMap({
               const markerImageTop = markerHeight * 0.12;
 
               return (
-                <Marker
+                <ViewAnnotation
                   key={`studio-marker:${studio.studioId}`}
                   id={`studio-marker:${studio.studioId}`}
                   anchor="bottom"
                   lngLat={[studio.longitude, studio.latitude]}
+                  ref={(value) => {
+                    studioAnnotationRefs.current[studio.studioId] = value;
+                  }}
                 >
                   <Pressable
                     accessible
@@ -472,13 +479,20 @@ export const QueueMap = memo(function QueueMap({
                         imageSize={markerImageSize}
                         imageTop={markerImageTop}
                         label={studio.studioName.slice(0, 1).toUpperCase()}
+                        {...(hasLogo
+                          ? {
+                              onImageLoad: () => {
+                                studioAnnotationRefs.current[studio.studioId]?.refresh();
+                              },
+                            }
+                          : {})}
                         pinHeight={markerHeight}
                         pinWidth={markerWidth}
                         textColor={palette.onPrimary as string}
                       />
                     </View>
                   </Pressable>
-                </Marker>
+                </ViewAnnotation>
               );
             })
           : null}
