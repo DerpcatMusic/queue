@@ -22,6 +22,7 @@ import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { ZONE_OPTIONS, getZoneLabel } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useUser } from "@/contexts/user-context";
 import { useBrand } from "@/hooks/use-brand";
 import { EXPIRY_OVERRIDE_PRESETS } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
@@ -90,6 +91,7 @@ function buildBranchFormState(
 export default function StudioBranchesScreen() {
   const { t, i18n } = useTranslation();
   const palette = useBrand();
+  const { currentUser } = useUser();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
 
@@ -98,12 +100,13 @@ export default function StudioBranchesScreen() {
     routeMatchPath: "/profile/branches",
   });
 
-  const branches = useQuery(api.studioBranches.getMyStudioBranches, {
-    includeArchived: true,
-  }) as StudioBranchRecord[] | undefined;
+  const branches = useQuery(
+    api.studioBranches.getMyStudioBranches,
+    currentUser?.role === "studio" ? { includeArchived: true } : "skip",
+  ) as StudioBranchRecord[] | undefined;
   const entitlement = useQuery(
     api.studioBranches.getStudioBranchEntitlementStatus,
-    {},
+    currentUser?.role === "studio" ? {} : "skip",
   ) as BranchEntitlementStatus | undefined;
   const createBranch = useMutation(api.studioBranches.createStudioBranch);
   const updateBranch = useMutation(api.studioBranches.updateStudioBranch);
@@ -309,7 +312,15 @@ export default function StudioBranchesScreen() {
     );
   };
 
-  if (branches === undefined || entitlement === undefined) {
+  if (currentUser === undefined || (currentUser?.role === "studio" && branches === undefined)) {
+    return <LoadingScreen label={t("profile.settings.loading")} />;
+  }
+
+  if (currentUser?.role !== "studio") {
+    return <LoadingScreen label={t("profile.settings.unavailable")} />;
+  }
+
+  if (entitlement === undefined) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
 
