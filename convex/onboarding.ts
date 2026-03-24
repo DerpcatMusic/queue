@@ -30,6 +30,17 @@ function mergeOwnedRoles(existingRoles: AppRole[] | undefined, nextRole: AppRole
   return (["instructor", "studio"] as const).filter((role) => roleSet.has(role));
 }
 
+export function assertRoleCanCompleteOnboarding(user: Doc<"users">, targetRole: AppRole) {
+  const activeRole = user.role;
+  const oppositeRole: AppRole = targetRole === "instructor" ? "studio" : "instructor";
+
+  if (activeRole === oppositeRole && user.onboardingComplete) {
+    throw new ConvexError(
+      `This account is already set up as a ${oppositeRole}. Sign out and use another account for a separate ${targetRole} account.`,
+    );
+  }
+}
+
 export function resolveGetOrCreateProfileAction(
   profileCount: number,
   profileType: "instructor" | "studio",
@@ -116,6 +127,7 @@ export const completeInstructorOnboarding = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const user = await requireCurrentUser(ctx);
+    assertRoleCanCompleteOnboarding(user, "instructor");
     const existingRoles = mergeOwnedRoles(user.roles, "instructor");
 
     const requestedDisplayName = normalizeRequiredString(
@@ -271,6 +283,7 @@ export const completeStudioOnboarding = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const user = await requireCurrentUser(ctx);
+    assertRoleCanCompleteOnboarding(user, "studio");
     const existingRoles = mergeOwnedRoles(user.roles, "studio");
 
     const studioName = normalizeRequiredString(

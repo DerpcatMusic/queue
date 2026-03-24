@@ -55,6 +55,7 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
       ]
@@ -113,6 +114,12 @@
         {
           "calendarPermission": "Allow Queue to sync accepted sessions to your calendar.",
           "remindersPermission": "Allow Queue to access reminders for calendar sync support."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Queue to access your photos so you can update your profile image."
         }
       ],
       "expo-notifications",

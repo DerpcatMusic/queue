@@ -1,9 +1,10 @@
+import type BottomSheet from "@gorhom/bottom-sheet";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 
@@ -12,7 +13,7 @@ import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helper
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
 import { useMeasuredContentHeight } from "@/components/layout/use-measured-content-height";
-import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
+import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
@@ -46,6 +47,7 @@ const INSTRUCTOR_LOCATION_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/location` as cons
 const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
 const INSTRUCTOR_PAYMENTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
 const INSTRUCTOR_EDIT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/edit` as const;
+const SIGN_IN_ROUTE = "/sign-in" as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
   if (sports.length === 0) {
@@ -92,7 +94,7 @@ function getIdentityVerificationSummary(
 
 export default function InstructorProfileScreen() {
   const { signOut } = useAuthActions();
-  const { currentUser, availableRoles } = useUser();
+  const { currentUser } = useUser();
   const { language, setLanguage } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
   const { t, i18n } = useTranslation();
@@ -103,11 +105,8 @@ export default function InstructorProfileScreen() {
   const { safeTop } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
-  const switchActiveRole = useMutation(api.users.switchActiveRole);
+  const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [hasActivated, setHasActivated] = useState(false);
-  const [pendingProfileRole, setPendingProfileRole] = useState<"instructor" | "studio" | null>(
-    null,
-  );
   const isBodyReady = useDeferredTabMount(pathname === INSTRUCTOR_PROFILE_ROUTE, { delayMs: 36 });
 
   useEffect(() => {
@@ -141,31 +140,19 @@ export default function InstructorProfileScreen() {
     router.push(INSTRUCTOR_EDIT_ROUTE as Href);
   }, [router]);
 
-  const handleSwitchProfile = useCallback(
-    async (role: "instructor" | "studio") => {
-      if (pendingProfileRole || currentUser?.role === role) {
-        return;
-      }
-
-      setPendingProfileRole(role);
-      try {
-        await switchActiveRole({ role });
-        router.replace(buildRoleTabRoute(role, ROLE_TAB_ROUTE_NAMES.profile) as Href);
-      } finally {
-        setPendingProfileRole(null);
-      }
-    },
-    [currentUser?.role, pendingProfileRole, router, switchActiveRole],
-  );
-
-  const handleSetupRole = useCallback(
-    (role: "instructor" | "studio") => {
-      router.push(`/onboarding?role=${role}` as Href);
-    },
-    [router],
-  );
-  const missingRole = availableRoles.includes("studio") ? null : "studio";
-
+  const handleOpenAccountSwitcher = useCallback(() => {
+    accountSwitcherSheetRef.current?.snapToIndex(0);
+  }, []);
+  const handleSignOut = useCallback(() => {
+    accountSwitcherSheetRef.current?.close();
+    void signOut();
+  }, [signOut]);
+  const handleUseAnotherAccount = useCallback(() => {
+    accountSwitcherSheetRef.current?.close();
+    void signOut().finally(() => {
+      router.replace(SIGN_IN_ROUTE as Href);
+    });
+  }, [router, signOut]);
   const nameValue =
     instructorSettings?.displayName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
@@ -268,6 +255,7 @@ export default function InstructorProfileScreen() {
           profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
           palette={palette}
           onRequestEdit={handleRequestEdit}
+          onOpenSwitcher={handleOpenAccountSwitcher}
           primaryActionLabel={t("profile.actions.edit")}
           status={profileStatus}
           bio={instructorSettings?.bio}
@@ -278,6 +266,7 @@ export default function InstructorProfileScreen() {
     ),
     [
       currentUser?.image,
+      handleOpenAccountSwitcher,
       handleRequestEdit,
       identityVerified,
       instructorSettings?.bio,
@@ -378,6 +367,8 @@ export default function InstructorProfileScreen() {
                 label: t("profile.actions.edit"),
                 onPress: handleRequestEdit,
               }}
+              onOpenSwitcher={handleOpenAccountSwitcher}
+              switcherActionLabel={t("profile.switcher.openAction")}
             />
           </View>
 
@@ -416,32 +407,6 @@ export default function InstructorProfileScreen() {
                 />
               </ProfileSectionCard>
 
-              <ProfileSectionHeader
-                label={t("profile.sections.profiles")}
-                description={t("profile.sections.profilesDesc")}
-                icon="person.2.fill"
-                palette={palette}
-                flush
-              />
-              <ProfileRoleSwitcherCard
-                activeRole="instructor"
-                availableRoles={availableRoles}
-                isSwitching={pendingProfileRole !== null}
-                pendingRole={pendingProfileRole}
-                onSwitchRole={handleSwitchProfile}
-                palette={palette}
-              />
-              {missingRole ? (
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
-                  <ProfileSettingRow
-                    title={t("profile.switcher.setupStudioTitle")}
-                    subtitle={t("profile.switcher.setupStudioHint")}
-                    icon="plus.circle.fill"
-                    onPress={() => handleSetupRole(missingRole)}
-                    palette={palette}
-                  />
-                </ProfileSectionCard>
-              ) : null}
             </View>
 
             <View style={styles.desktopSideColumn}>
@@ -452,6 +417,14 @@ export default function InstructorProfileScreen() {
                 flush
               />
               <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+                <ProfileSettingRow
+                  title={t("profile.switcher.openAction")}
+                  subtitle={t("profile.switcher.accountRowHint")}
+                  icon="person.2.fill"
+                  onPress={handleOpenAccountSwitcher}
+                  palette={palette}
+                  showDivider
+                />
                 <ProfileSettingRow
                   title={t("profile.account.nameLabel")}
                   value={currentUser?.fullName ?? nameValue}
@@ -558,7 +531,7 @@ export default function InstructorProfileScreen() {
                   title={t("auth.signOutButton")}
                   subtitle={t("profile.settings.signOutDesc")}
                   icon="arrow.right.square"
-                  onPress={() => void signOut()}
+                  onPress={handleSignOut}
                   palette={palette}
                   tone="danger"
                 />
@@ -610,37 +583,19 @@ export default function InstructorProfileScreen() {
             </ProfileSectionCard>
 
             <ProfileSectionHeader
-              label={t("profile.sections.profiles")}
-              description={t("profile.sections.profilesDesc")}
-              icon="person.2.fill"
-              palette={palette}
-            />
-            <ProfileRoleSwitcherCard
-              activeRole="instructor"
-              availableRoles={availableRoles}
-              isSwitching={pendingProfileRole !== null}
-              pendingRole={pendingProfileRole}
-              onSwitchRole={handleSwitchProfile}
-              palette={palette}
-            />
-            {missingRole ? (
-              <ProfileSectionCard palette={palette}>
-                <ProfileSettingRow
-                  title={t("profile.switcher.setupStudioTitle")}
-                  subtitle={t("profile.switcher.setupStudioHint")}
-                  icon="plus.circle.fill"
-                  onPress={() => handleSetupRole(missingRole)}
-                  palette={palette}
-                />
-              </ProfileSectionCard>
-            ) : null}
-
-            <ProfileSectionHeader
               label={t("profile.account.title")}
               icon="person.crop.circle.fill"
               palette={palette}
             />
             <ProfileSectionCard palette={palette}>
+              <ProfileSettingRow
+                title={t("profile.switcher.openAction")}
+                subtitle={t("profile.switcher.accountRowHint")}
+                icon="person.2.fill"
+                onPress={handleOpenAccountSwitcher}
+                palette={palette}
+                showDivider
+              />
               <ProfileSettingRow
                 title={t("profile.account.nameLabel")}
                 value={currentUser?.fullName ?? nameValue}
@@ -746,7 +701,7 @@ export default function InstructorProfileScreen() {
                 title={t("auth.signOutButton")}
                 subtitle={t("profile.settings.signOutDesc")}
                 icon="arrow.right.square"
-                onPress={() => void signOut()}
+                onPress={handleSignOut}
                 palette={palette}
                 tone="danger"
               />
@@ -754,6 +709,17 @@ export default function InstructorProfileScreen() {
           </View>
         </ProfileIndexScrollView>
       )}
+      <ProfileAccountSwitcherSheet
+        innerRef={accountSwitcherSheetRef}
+        onDismissed={() => undefined}
+        currentAccountName={nameValue}
+        currentAccountEmail={currentUser?.email}
+        currentRoleLabel={roleValue}
+        onSignOut={handleSignOut}
+        onUseAnotherAccount={handleUseAnotherAccount}
+        palette={palette}
+        profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+      />
     </TabScreenRoot>
   );
 }

@@ -18,6 +18,8 @@ type ProfileDesktopHeroPanelProps = {
   metaLabel?: string | undefined;
   primaryAction: ProfileHeroAction;
   secondaryAction?: ProfileHeroAction | undefined;
+  onOpenSwitcher?: () => void;
+  switcherActionLabel?: string;
 };
 
 export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
@@ -31,6 +33,8 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
   metaLabel,
   primaryAction,
   secondaryAction,
+  onOpenSwitcher,
+  switcherActionLabel,
 }: ProfileDesktopHeroPanelProps) {
   return (
     <View
@@ -117,6 +121,17 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
             fullWidth
           />
         </View>
+        {onOpenSwitcher ? (
+          <View style={{ flex: 1 }}>
+            <ActionButton
+              label={switcherActionLabel ?? "Switch account"}
+              onPress={onOpenSwitcher}
+              palette={palette}
+              tone="secondary"
+              fullWidth
+            />
+          </View>
+        ) : null}
         {secondaryAction ? (
           <View style={{ flex: 1 }}>
             <ActionButton

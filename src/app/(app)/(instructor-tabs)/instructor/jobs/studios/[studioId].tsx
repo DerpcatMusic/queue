@@ -79,7 +79,7 @@ export default function InstructorStudioProfileRoute() {
     });
   }, [jobId, studioProfile?.jobs]);
 
-  const sportsLabels = useMemo(
+  const sportsLabels = useMemo<string[]>(
     () => (studioProfile?.sports ?? []).map((sport: string) => toSportLabel(sport as never)),
     [studioProfile?.sports],
   );

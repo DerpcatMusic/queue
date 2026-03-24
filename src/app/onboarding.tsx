@@ -35,6 +35,7 @@ import { useBrand } from "@/hooks/use-brand";
 import { useLocationResolution } from "@/hooks/use-location-resolution";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import { omitUndefined } from "@/lib/omit-undefined";
+import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 import {
   isPushRegistrationError,
   registerForPushNotificationsAsync,
@@ -85,6 +86,19 @@ function getOnboardingPushErrorMessage(error: unknown, t: TFunction): string {
   return error instanceof Error && error.message
     ? error.message
     : t("onboarding.push.requestFailed");
+}
+
+function maybeShowLocationSettingsAlert(code: string, t: TFunction) {
+  if (code !== "permission_blocked") {
+    return;
+  }
+
+  showOpenSettingsAlert({
+    title: t("common.permissionRequired"),
+    body: t("onboarding.errors.locationPermissionBlocked"),
+    cancelLabel: t("common.cancel"),
+    settingsLabel: t("common.openSettings"),
+  });
 }
 
 function OnboardingStageLayer({
@@ -207,6 +221,11 @@ function OnboardingScreenContent() {
   const ownedRoles = currentUser?.roles ?? [];
   const isAdditionalProfileSetup = requestedRole !== null && !ownedRoles.includes(requestedRole);
   const isForcedWorkspaceSetup = isAdditionalProfileSetup && ownedRoles.length > 0;
+  const isBlockedAlternateAccountSetup =
+    currentUser?.onboardingComplete === true &&
+    requestedRole !== null &&
+    (currentUser.role === "instructor" || currentUser.role === "studio") &&
+    currentUser.role !== requestedRole;
 
   useEffect(() => {
     if (requestedRole) {
@@ -355,6 +374,14 @@ function OnboardingScreenContent() {
     return <Redirect href="/sign-in" />;
   }
 
+  if (isBlockedAlternateAccountSetup) {
+    return (
+      <Redirect
+        href={buildRoleTabRoute(currentUser.role as "instructor" | "studio", ROLE_TAB_ROUTE_NAMES.profile)}
+      />
+    );
+  }
+
   if (
     currentUser.onboardingComplete &&
     !(isInstructorFlow && step === 2) &&
@@ -489,6 +516,7 @@ function OnboardingScreenContent() {
     setErrorMessage(null);
     const result = await instructorResolver.resolveFromGps();
     if (!result.ok) {
+      maybeShowLocationSettingsAlert(result.error.code, t);
       setErrorMessage(
         getLocationResolveErrorMessage({
           code: result.error.code,
@@ -551,6 +579,7 @@ function OnboardingScreenContent() {
     setErrorMessage(null);
     const result = await studioResolver.resolveFromGps();
     if (!result.ok) {
+      maybeShowLocationSettingsAlert(result.error.code, t);
       setErrorMessage(
         getLocationResolveErrorMessage({
           code: result.error.code,
@@ -593,6 +622,14 @@ function OnboardingScreenContent() {
       const token = await registerForPushNotificationsAsync();
       setPushToken(token);
     } catch (error) {
+      if (isPushRegistrationError(error) && error.code === "permission_denied") {
+        showOpenSettingsAlert({
+          title: t("common.permissionRequired"),
+          body: t("onboarding.push.permissionNotGranted"),
+          cancelLabel: t("common.cancel"),
+          settingsLabel: t("common.openSettings"),
+        });
+      }
       setErrorMessage(getOnboardingPushErrorMessage(error, t));
     } finally {
       setIsRequestingPush(false);
