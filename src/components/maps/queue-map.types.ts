@@ -13,6 +13,7 @@ export type StudioMapMarker = {
   longitude: number;
   address?: string;
   logoImageUrl?: string;
+  mapMarkerColor?: string;
 };
 
 export type QueueMapMode = "zoneSelect" | "pinDrop";
