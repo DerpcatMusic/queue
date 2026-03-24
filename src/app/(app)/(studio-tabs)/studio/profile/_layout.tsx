@@ -41,11 +41,13 @@ export default function ProfileLayout() {
         ]}
       />
       <Stack
+        initialRouteName="index"
         screenOptions={{
           headerShown: false,
           animation: "slide_from_right",
         }}
       >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
           name="branches"
           options={{ title: t("profile.navigation.branches") }}
@@ -54,7 +56,6 @@ export default function ProfileLayout() {
           name="add-account"
           options={{ title: t("profile.navigation.addAccount") }}
         />
-        <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
           name="calendar-settings"
           options={{ title: t("profile.navigation.calendar") }}
