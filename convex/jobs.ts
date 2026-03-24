@@ -1022,6 +1022,7 @@ export const getMyApplications = query({
       jobId: v.id("jobs"),
       instructorId: v.id("instructorProfiles"),
       studioId: v.id("studioProfiles"),
+      branchId: v.id("studioBranches"),
       status: v.union(
         v.literal("pending"),
         v.literal("accepted"),
@@ -1031,6 +1032,7 @@ export const getMyApplications = query({
       appliedAt: v.number(),
       message: v.optional(v.string()),
       studioName: v.string(),
+      branchName: v.string(),
       studioImageUrl: v.optional(v.string()),
       sport: v.string(),
       zone: v.string(),
@@ -1039,6 +1041,7 @@ export const getMyApplications = query({
       timeZone: v.optional(v.string()),
       pay: v.number(),
       note: v.optional(v.string()),
+      branchAddress: v.optional(v.string()),
       paymentDetails: v.optional(
         v.object({
           status: v.string(),
@@ -1083,8 +1086,12 @@ export const getMyApplications = query({
     }
 
     const studioIds = [...new Set(jobs.filter(isPresent).map((job) => job.studioId))];
+    const branchIds = [...new Set(jobs.filter(isPresent).map((job) => job.branchId))];
     const studios = await Promise.all(
       studioIds.map((studioId) => ctx.db.get("studioProfiles", studioId)),
+    );
+    const branches = await Promise.all(
+      branchIds.map((branchId) => ctx.db.get("studioBranches", branchId)),
     );
     const studioImageUrls = await Promise.all(
       studios.map((studio) =>
@@ -1092,6 +1099,7 @@ export const getMyApplications = query({
       ),
     );
     const studioById = new Map<string, Doc<"studioProfiles">>();
+    const branchById = new Map<string, Doc<"studioBranches">>();
     const studioImageUrlById = new Map<string, string>();
     for (let i = 0; i < studioIds.length; i += 1) {
       const studioId = studioIds[i];
@@ -1102,6 +1110,13 @@ export const getMyApplications = query({
       const studioImageUrl = studioImageUrls[i];
       if (studioImageUrl) {
         studioImageUrlById.set(String(studioId), studioImageUrl);
+      }
+    }
+    for (let i = 0; i < branchIds.length; i += 1) {
+      const branchId = branchIds[i];
+      const branch = branches[i];
+      if (branch) {
+        branchById.set(String(branchId), branch);
       }
     }
 
@@ -1120,15 +1135,18 @@ export const getMyApplications = query({
       const job = jobById.get(String(application.jobId));
       if (!job) continue;
       const studio = studioById.get(String(job.studioId));
+      const branch = branchById.get(String(job.branchId));
 
       rows.push({
         applicationId: application._id,
         jobId: application.jobId,
         instructorId: application.instructorId,
         studioId: job.studioId,
+        branchId: job.branchId,
         status: application.status,
         appliedAt: application.appliedAt,
         studioName: studio?.studioName ?? "Unknown studio",
+        branchName: job.branchNameSnapshot ?? branch?.name ?? "Main branch",
         sport: job.sport,
         zone: job.zone,
         startTime: job.startTime,
@@ -1137,6 +1155,7 @@ export const getMyApplications = query({
         jobStatus: job.status,
         ...omitUndefined({
           message: application.message,
+          branchAddress: job.branchAddressSnapshot ?? branch?.address,
           studioImageUrl: studioImageUrlById.get(String(job.studioId)),
           timeZone: job.timeZone,
           note: job.note,
