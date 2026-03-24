@@ -236,18 +236,11 @@ const en = {
       setupStudioHint: "Create the studio side on this same account.",
       addAccountTitle: "Add another account",
       addAccountBody:
-        "Pick how to continue first. Your current account stays active until you confirm one of the actions below.",
-      addAccountCurrentTitle: "Current session stays active",
-      addAccountCurrentBody:
-        "If you back out here, nothing changes. You only leave this account after choosing sign in or create account.",
-      signInAnotherTitle: "Sign in to another account",
-      signInAnotherHint: "Leave this session, then continue with an existing email or provider.",
-      createAnotherTitle: "Create another account",
-      createAnotherHint: "Leave this session, then start a fresh account with a new email or provider.",
-      cancelAddAccountTitle: "Keep current account",
-      cancelAddAccountHint: "Close this flow and stay signed in where you are.",
-      signingInAnother: "Preparing sign in...",
-      creatingAnother: "Preparing account creation...",
+        "Enter the email for the account you want to use next. You will only leave the current session after you continue.",
+      addAccountFieldHint:
+        "The next screen uses the normal sign-in flow. If this email does not have an account yet, Queue can create one after verification.",
+      continueWithEmail: "Continue with this email",
+      continuingWithEmail: "Opening sign-in...",
     },
     setup: {
       verifyIdentity: "Verify identity",
