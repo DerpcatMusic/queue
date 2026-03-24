@@ -100,6 +100,42 @@ function isRoadLayer(id: string, sourceLayer: string) {
   );
 }
 
+function isMainRoadLayer(id: string, sourceLayer: string) {
+  const value = `${id} ${sourceLayer}`;
+  return (
+    value.includes("motorway") ||
+    value.includes("trunk") ||
+    value.includes("primary") ||
+    value.includes("highway") ||
+    value.includes("major")
+  );
+}
+
+function isSecondaryRoadLayer(id: string, sourceLayer: string) {
+  const value = `${id} ${sourceLayer}`;
+  return (
+    value.includes("secondary") ||
+    value.includes("tertiary") ||
+    value.includes("residential") ||
+    value.includes("service") ||
+    value.includes("street") ||
+    value.includes("unclassified")
+  );
+}
+
+function isLocalRoadLayer(id: string, sourceLayer: string) {
+  const value = `${id} ${sourceLayer}`;
+  return (
+    value.includes("path") ||
+    value.includes("track") ||
+    value.includes("service") ||
+    value.includes("living") ||
+    value.includes("lane") ||
+    value.includes("alley") ||
+    value.includes("minor")
+  );
+}
+
 export function withMapPersonality(
   style: AnyStyleSpec,
   palette: ReturnType<typeof getMapBrandPalette>,
@@ -143,11 +179,32 @@ export function withMapPersonality(
         paint["fill-color"] = palette.landcover;
       }
       if (isRoadLayer(id, sourceLayer) && layerType === "line") {
-        paint["line-color"] = palette.roadLine;
+        const mainRoad = isMainRoadLayer(id, sourceLayer);
+        const secondaryRoad = isSecondaryRoadLayer(id, sourceLayer);
+        const localRoad = isLocalRoadLayer(id, sourceLayer);
+        const roadColor = mainRoad
+          ? palette.roadPrimary
+          : secondaryRoad
+            ? palette.roadSecondary
+            : palette.roadTertiary;
+        paint["line-color"] = roadColor;
+        paint["line-width"] = mainRoad
+          ? ["interpolate", ["linear"], ["zoom"], 6, 0.4, 10, 0.82, 14, 1.7]
+          : secondaryRoad
+            ? ["interpolate", ["linear"], ["zoom"], 6, 0.28, 10, 0.58, 14, 1.12]
+            : localRoad
+              ? ["interpolate", ["linear"], ["zoom"], 6, 0.18, 10, 0.38, 14, 0.78]
+              : ["interpolate", ["linear"], ["zoom"], 6, 0.2, 10, 0.42, 14, 0.84];
         paint["line-opacity"] = 1;
+        layout["line-cap"] = "round";
+        layout["line-join"] = "round";
       }
       if (isRoadLayer(id, sourceLayer) && layerType === "fill") {
-        paint["fill-color"] = palette.roadLine;
+        paint["fill-color"] = isMainRoadLayer(id, sourceLayer)
+          ? palette.roadPrimary
+          : isSecondaryRoadLayer(id, sourceLayer)
+            ? palette.roadSecondary
+            : palette.roadTertiary;
         paint["fill-opacity"] = 1;
       }
       if ((sourceLayer.includes("building") || id.includes("building")) && layerType === "fill") {
