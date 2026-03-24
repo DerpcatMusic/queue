@@ -24,6 +24,7 @@ import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
 import {
   type AnyStyleSpec,
+  createFallbackMapStyle,
   createPinShape,
   createZoneFilter,
   ensureVectorOfflinePack,
@@ -43,10 +44,10 @@ const ATTRIBUTION_SIZE = BrandSpacing.iconContainer - BrandSpacing.xs;
 const ATTRIBUTION_ICON_SIZE = BrandSpacing.sm + BrandSpacing.xs;
 const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm;
 const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2;
-const STUDIO_MARKER_MIN_ZOOM = 11.75;
+const STUDIO_MARKER_MIN_ZOOM = 11.35;
 const STUDIO_CLUSTER_MAX_ZOOM = 13;
 const STUDIO_PIN_ICON_KEY_PREFIX = "studio-pin:";
-const STUDIO_PIN_LABEL_MIN_ZOOM = 14.2;
+const STUDIO_PIN_LABEL_MIN_ZOOM = 14;
 const STUDIO_PIN_SHELL_IMAGE = require("../../../assets/images/map/studio-pin-shell-sdf.png");
 
 type MapLoadState = "loading" | "ready" | "error";
@@ -100,7 +101,8 @@ export const QueueMap = memo(function QueueMap({
       mode !== "zoneSelect",
     );
   }, [baseMapStyle, mapPalette, mode, themedStyleCacheKey]);
-  const mapStyle = themedMapStyle ?? preferredStyleUrl;
+  const fallbackMapStyle = useMemo(() => createFallbackMapStyle(mapPalette), [mapPalette]);
+  const mapStyle = themedMapStyle ?? fallbackMapStyle;
   const mapKey = `${resolvedScheme}:${retryNonce}`;
 
   const mapRef = useRef<MapRef | null>(null);
@@ -448,11 +450,11 @@ export const QueueMap = memo(function QueueMap({
                   ["linear"],
                   ["zoom"],
                   STUDIO_MARKER_MIN_ZOOM,
-                  0.28,
+                  0.24,
                   13.5,
-                  0.34,
+                  0.31,
                   16,
-                  0.42,
+                  0.39,
                 ] as any,
                 "icon-allow-overlap": true,
                 "icon-ignore-placement": true,

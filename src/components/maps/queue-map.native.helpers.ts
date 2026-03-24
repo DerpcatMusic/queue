@@ -20,6 +20,7 @@ let offlinePackBootstrapPromise: Promise<void> | null = null;
 const mapStyleResponseCache = new Map<string, AnyStyleSpec | null>();
 const mapStyleResponsePromiseCache = new Map<string, Promise<AnyStyleSpec | null>>();
 const themedMapStyleCache = new Map<string, AnyStyleSpec>();
+const MAPLIBRE_GLYPHS_URL = "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf";
 
 export function sanitizeZoom(value: number, fallback: number) {
   if (!Number.isFinite(value)) return fallback;
@@ -143,22 +144,22 @@ export function withMapPersonality(
       }
       if (isRoadLayer(id, sourceLayer) && layerType === "line") {
         paint["line-color"] = palette.roadLine;
-        paint["line-opacity"] = 0.62;
+        paint["line-opacity"] = 1;
       }
       if (isRoadLayer(id, sourceLayer) && layerType === "fill") {
         paint["fill-color"] = palette.roadLine;
-        paint["fill-opacity"] = 0.5;
+        paint["fill-opacity"] = 1;
       }
       if ((sourceLayer.includes("building") || id.includes("building")) && layerType === "fill") {
         paint["fill-color"] = palette.buildingFill;
-        paint["fill-opacity"] = 0.52;
+        paint["fill-opacity"] = 1;
       }
       if (layerType === "symbol") {
         layout["text-font"] = ["Noto Sans Regular"];
         paint["text-color"] = palette.text;
         paint["text-halo-color"] = palette.textHalo;
         paint["text-halo-width"] = 0.55;
-        paint["text-opacity"] = 0.82;
+        paint["text-opacity"] = 1;
       }
 
       nextLayer.paint = paint;
@@ -166,7 +167,26 @@ export function withMapPersonality(
       return nextLayer;
     });
 
-  return { ...style, layers };
+  return { ...style, glyphs: MAPLIBRE_GLYPHS_URL, layers };
+}
+
+export function createFallbackMapStyle(
+  palette: ReturnType<typeof getMapBrandPalette>,
+): AnyStyleSpec {
+  return {
+    version: 8,
+    glyphs: MAPLIBRE_GLYPHS_URL,
+    sources: {},
+    layers: [
+      {
+        id: "queue-map-background",
+        type: "background",
+        paint: {
+          "background-color": palette.styleBackground,
+        },
+      },
+    ],
+  };
 }
 
 export async function fetchMapStyleSpec(styleUrl: string): Promise<AnyStyleSpec | null> {
