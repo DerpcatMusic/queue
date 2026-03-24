@@ -56,8 +56,8 @@ function getStudioMarkerMetrics(zoom: number) {
   return {
     width: BrandSpacing.avatarMd,
     height: BrandSpacing.avatarMd + BrandSpacing.lg,
-    imageSize: BrandSpacing.controlSm,
-    imageTop: BrandSpacing.xs,
+    imageSize: BrandSpacing.iconContainer - BrandSpacing.xs,
+    imageTop: BrandSpacing.sm - BrandSpacing.xxs,
   };
 }
 
@@ -92,39 +92,36 @@ function StudioMapPin({
       >
         <Path d={STUDIO_PIN_PATH} fill={accentColor} />
       </Svg>
-      {imageUrl ? (
-        <Image
-          source={imageUrl}
-          style={{
-            position: "absolute",
-            top: imageTop,
-            left: imageInset,
-            width: imageSize,
-            height: imageSize,
-            borderRadius: imageSize / 2,
-            borderCurve: "continuous",
-          }}
-          contentFit="cover"
-        />
-      ) : (
-        <View
-          style={{
-            position: "absolute",
-            top: imageTop,
-            left: imageInset,
-            width: imageSize,
-            height: imageSize,
-            borderRadius: imageSize / 2,
-            borderCurve: "continuous",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+      <View
+        style={{
+          position: "absolute",
+          top: imageTop,
+          left: imageInset,
+          width: imageSize,
+          height: imageSize,
+          borderRadius: imageSize / 2,
+          borderCurve: "continuous",
+          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: accentColor,
+        }}
+      >
+        {imageUrl ? (
+          <Image
+            source={imageUrl}
+            style={{
+              width: imageSize,
+              height: imageSize,
+            }}
+            contentFit="cover"
+          />
+        ) : (
           <ThemedText type="bodyStrong" style={{ color: textColor }}>
             {label}
           </ThemedText>
-        </View>
-      )}
+        )}
+      </View>
     </View>
   );
 }
