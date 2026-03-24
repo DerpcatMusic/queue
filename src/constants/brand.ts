@@ -177,6 +177,7 @@ const NativeMapBrandPalette = {
     selectedOutlineOpacity: 1.0,
     surfaceAlt: "#F7FBF4",
     primary: "#7C3AED", // Vibrant purple
+    markerAccent: "#19B5FF",
     text: "#182018",
     textHalo: "#F7FBF4",
   },
@@ -197,6 +198,7 @@ const NativeMapBrandPalette = {
     selectedOutlineOpacity: 1.0,
     surfaceAlt: "#141C17",
     primary: "#A78BFA", // Vibrant light purple
+    markerAccent: "#5FD6FF",
     text: "#EEF3EA",
     textHalo: "#0E1412",
   },

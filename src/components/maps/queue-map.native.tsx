@@ -4,13 +4,13 @@ import {
   Layer,
   Map as MapLibreMap,
   type MapRef,
-  ViewAnnotation,
+  Marker,
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
-import Svg, { Circle, ClipPath, Defs, Path, Image as SvgImage } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons";
@@ -19,6 +19,7 @@ import { BrandRadius, BrandSpacing, getMapBrandPalette } from "@/constants/brand
 import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { Image } from "@/tw/image";
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
@@ -52,11 +53,6 @@ const STUDIO_PIN_VIEWBOX = {
 } as const;
 const STUDIO_PIN_PATH =
   "M1098.489,2606.868C1098.489,1957.824 1625.431,1430.882 2274.475,1430.882C2923.519,1430.882 3450.461,1957.824 3450.461,2606.868C3450.461,3456.164 3031.901,4240.917 2274.475,5087.183C1517.049,4240.917 1098.489,3456.164 1098.489,2606.868Z";
-const STUDIO_PIN_HOLE = {
-  cx: 2274.475,
-  cy: 2606.868,
-  radius: 1036.897,
-} as const;
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 180;
@@ -79,6 +75,8 @@ function StudioMapPin({
   accentColor,
   imageUrl,
   label,
+  imageSize,
+  imageTop,
   pinHeight,
   pinWidth,
   textColor,
@@ -86,19 +84,13 @@ function StudioMapPin({
   accentColor: string;
   imageUrl?: string;
   label: string;
+  imageSize: number;
+  imageTop: number;
   pinHeight: number;
   pinWidth: number;
   textColor: string;
 }) {
-  const clipRadius = STUDIO_PIN_HOLE.radius * 0.92;
-  const clipCenterY = STUDIO_PIN_HOLE.cy + STUDIO_PIN_HOLE.radius * 0.07;
-  const fallbackSize = (clipRadius * 2 * pinWidth) / STUDIO_PIN_VIEWBOX.width;
-  const fallbackLeft =
-    ((STUDIO_PIN_HOLE.cx - clipRadius - STUDIO_PIN_VIEWBOX.x) * pinWidth) /
-    STUDIO_PIN_VIEWBOX.width;
-  const fallbackTop =
-    ((clipCenterY - clipRadius - STUDIO_PIN_VIEWBOX.y) * pinHeight) / STUDIO_PIN_VIEWBOX.height;
-  const clipId = `studio-pin-hole-${label}`;
+  const imageInset = (pinWidth - imageSize) / 2;
 
   return (
     <View style={{ width: pinWidth, height: pinHeight }}>
@@ -109,45 +101,39 @@ function StudioMapPin({
         style={{ position: "absolute", top: 0, left: 0 }}
       >
         <Path d={STUDIO_PIN_PATH} fill={accentColor} />
-        {imageUrl ? (
-          <>
-            <Defs>
-              <ClipPath id={clipId}>
-                <Circle cx={STUDIO_PIN_HOLE.cx} cy={clipCenterY} r={clipRadius} />
-              </ClipPath>
-            </Defs>
-            <Circle cx={STUDIO_PIN_HOLE.cx} cy={clipCenterY} r={clipRadius} fill={accentColor} />
-            <SvgImage
-              href={{ uri: imageUrl }}
-              x={STUDIO_PIN_HOLE.cx - clipRadius}
-              y={clipCenterY - clipRadius}
-              width={clipRadius * 2}
-              height={clipRadius * 2}
-              preserveAspectRatio="xMidYMid slice"
-              clipPath={`url(#${clipId})`}
-            />
-          </>
-        ) : null}
       </Svg>
-      {!imageUrl ? (
-        <View
-          style={{
-            position: "absolute",
-            top: fallbackTop,
-            left: fallbackLeft,
-            width: fallbackSize,
-            height: fallbackSize,
-            borderRadius: fallbackSize / 2,
-            borderCurve: "continuous",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+      <View
+        style={{
+          position: "absolute",
+          top: imageTop,
+          left: imageInset,
+          width: imageSize,
+          height: imageSize,
+          borderRadius: imageSize / 2,
+          borderCurve: "continuous",
+          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: accentColor,
+        }}
+      >
+        {imageUrl ? (
+          <Image
+            source={imageUrl}
+            style={{
+              width: imageSize,
+              height: imageSize,
+              borderRadius: imageSize / 2,
+              borderCurve: "continuous",
+            }}
+            contentFit="cover"
+          />
+        ) : (
           <ThemedText type="bodyStrong" style={{ color: textColor }}>
             {label}
           </ThemedText>
-        </View>
-      ) : null}
+        )}
+      </View>
     </View>
   );
 }
@@ -446,29 +432,29 @@ export const QueueMap = memo(function QueueMap({
           ? studios.map((studio) => {
               const markerWidth = studioMarkerMetrics.width;
               const markerHeight = studioMarkerMetrics.height;
-              const markerAccent = palette.didit.accent as string;
+              const markerAccent = mapPalette.markerAccent;
               const hasLogo =
                 typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
+              const markerImageSize = markerWidth * 0.68;
+              const markerImageTop = markerHeight * 0.12;
 
               return (
-                <ViewAnnotation
+                <Marker
                   key={`studio-marker:${studio.studioId}`}
                   id={`studio-marker:${studio.studioId}`}
                   anchor="bottom"
                   lngLat={[studio.longitude, studio.latitude]}
-                  style={{ zIndex: 100, elevation: 100 }}
-                  onSelected={() => {
-                    onPressStudio?.(studio.studioId);
-                  }}
                 >
-                  <View
+                  <Pressable
                     accessible
                     accessibilityRole="button"
                     accessibilityLabel={studio.studioName}
+                    onPress={() => {
+                      onPressStudio?.(studio.studioId);
+                    }}
                     style={{ width: markerWidth, height: markerHeight, overflow: "visible" }}
                   >
                     <View
-                      pointerEvents="none"
                       style={{
                         position: "absolute",
                         bottom: 0,
@@ -483,14 +469,16 @@ export const QueueMap = memo(function QueueMap({
                       <StudioMapPin
                         accentColor={markerAccent}
                         {...(hasLogo ? { imageUrl: studio.logoImageUrl as string } : {})}
+                        imageSize={markerImageSize}
+                        imageTop={markerImageTop}
                         label={studio.studioName.slice(0, 1).toUpperCase()}
                         pinHeight={markerHeight}
                         pinWidth={markerWidth}
                         textColor={palette.onPrimary as string}
                       />
                     </View>
-                  </View>
-                </ViewAnnotation>
+                  </Pressable>
+                </Marker>
               );
             })
           : null}
