@@ -4,7 +4,8 @@ import {
   Layer,
   Map as MapLibreMap,
   type MapRef,
-  Marker,
+  ViewAnnotation,
+  type ViewAnnotationRef,
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -109,6 +110,7 @@ export const QueueMap = memo(function QueueMap({
   const mapKey = `${resolvedScheme}:${retryNonce}`;
 
   const mapRef = useRef<MapRef | null>(null);
+  const studioAnnotationRefs = useRef<Record<string, ViewAnnotationRef | null>>({});
   const mapLoadStateRef = useRef<MapLoadState>("loading");
   const cameraRef = useRef<{
     setStop: (config: unknown) => void;
@@ -356,11 +358,17 @@ export const QueueMap = memo(function QueueMap({
                 typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
 
               return (
-                <Marker
+                <ViewAnnotation
                   key={`studio-marker:${studio.studioId}`}
                   id={`studio-marker:${studio.studioId}`}
                   anchor="bottom"
                   lngLat={[studio.longitude, studio.latitude]}
+                  ref={(value) => {
+                    studioAnnotationRefs.current[studio.studioId] = value;
+                  }}
+                  onSelected={() => {
+                    onPressStudio?.(studio.studioId);
+                  }}
                 >
                   <View style={{ alignItems: "center", paddingBottom: tailSize - tailOverlap }}>
                     <View
@@ -377,11 +385,11 @@ export const QueueMap = memo(function QueueMap({
                         transform: [{ rotate: "45deg" }],
                       }}
                     />
-                    <Pressable
+                    <View
+                      accessible
                       accessibilityRole="button"
                       accessibilityLabel={studio.studioName}
-                      onPress={() => onPressStudio?.(studio.studioId)}
-                      style={({ pressed }) => ({
+                      style={{
                         width: markerSize,
                         height: markerSize,
                         borderRadius: markerSize / 2,
@@ -391,12 +399,15 @@ export const QueueMap = memo(function QueueMap({
                         alignItems: "center",
                         justifyContent: "center",
                         overflow: "hidden",
-                        backgroundColor: pressed ? (palette.primarySubtle as string) : markerAccent,
-                      })}
+                        backgroundColor: markerAccent,
+                      }}
                     >
                       {hasLogo ? (
                         <Image
                           source={studio.logoImageUrl as string}
+                          onLoad={() => {
+                            studioAnnotationRefs.current[studio.studioId]?.refresh();
+                          }}
                           style={{
                             width: markerSize,
                             height: markerSize,
@@ -413,9 +424,9 @@ export const QueueMap = memo(function QueueMap({
                           {studio.studioName.slice(0, 1).toUpperCase()}
                         </ThemedText>
                       )}
-                    </Pressable>
+                    </View>
                   </View>
-                </Marker>
+                </ViewAnnotation>
               );
             })
           : null}
