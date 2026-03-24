@@ -1316,6 +1316,8 @@ const he = {
       nextSubtitle: "השיעורים המאושרים הבאים שלך.",
       noUpcoming: "אין עדיין שיעורים קרובים. שווה לבדוק התאמות פתוחות.",
       emptySchedule: "לוח המשרות זמין כשתרצו את השיעור הבא.",
+      noJobsAvailable: "אין משרות זמינות",
+      noJobsHint: "בדקו שוב מאוחר יותר לפתיחות חדשות.",
     },
     studio: {
       title: "בית",
@@ -1346,6 +1348,8 @@ const he = {
       recentTitle: "משרות אחרונות",
       noRecent: "עדיין לא פורסמו משרות.",
       emptyBoard: 'פרסמו משמרת כדי להתחיל למלא את הלו"ז.',
+      noReviewJobs: "תור הבדיקה פנוי",
+      noReviewJobsHint: "כל המועמדים נבדקו.",
     },
   },
   explore: {

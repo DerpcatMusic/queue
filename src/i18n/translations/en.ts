@@ -1372,6 +1372,8 @@ const en = {
       nextSubtitle: "Your next confirmed classes.",
       noUpcoming: "No upcoming sessions yet. Keep an eye on open matches.",
       emptySchedule: "The jobs board is live when you want the next one.",
+      noJobsAvailable: "No jobs available",
+      noJobsHint: "Check back later for new openings.",
     },
     studio: {
       title: "Home",
@@ -1402,6 +1404,8 @@ const en = {
       recentTitle: "Recent job posts",
       noRecent: "No jobs posted yet.",
       emptyBoard: "Post a shift to start filling your schedule.",
+      noReviewJobs: "Review queue is clear",
+      noReviewJobsHint: "All applicants have been reviewed.",
     },
   },
   explore: {
