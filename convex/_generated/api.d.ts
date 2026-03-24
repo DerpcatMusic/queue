@@ -31,6 +31,7 @@ import type * as lib_domainValidation from "../lib/domainValidation.js";
 import type * as lib_instructorCoverage from "../lib/instructorCoverage.js";
 import type * as lib_instructorEligibility from "../lib/instructorEligibility.js";
 import type * as lib_marketplace from "../lib/marketplace.js";
+import type * as lib_resendDevRouting from "../lib/resendDevRouting.js";
 import type * as lib_studioBranches from "../lib/studioBranches.js";
 import type * as lib_validation from "../lib/validation.js";
 import type * as migrations from "../migrations.js";
@@ -80,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   "lib/instructorCoverage": typeof lib_instructorCoverage;
   "lib/instructorEligibility": typeof lib_instructorEligibility;
   "lib/marketplace": typeof lib_marketplace;
+  "lib/resendDevRouting": typeof lib_resendDevRouting;
   "lib/studioBranches": typeof lib_studioBranches;
   "lib/validation": typeof lib_validation;
   migrations: typeof migrations;
