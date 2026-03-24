@@ -83,6 +83,22 @@ function is3DBuildingLayer(layer: AnyStyleLayer) {
   );
 }
 
+function isRoadLayer(id: string, sourceLayer: string) {
+  const value = `${id} ${sourceLayer}`;
+  return (
+    value.includes("road") ||
+    value.includes("street") ||
+    value.includes("highway") ||
+    value.includes("motorway") ||
+    value.includes("trunk") ||
+    value.includes("primary") ||
+    value.includes("secondary") ||
+    value.includes("tertiary") ||
+    value.includes("bridge") ||
+    value.includes("tunnel")
+  );
+}
+
 export function withMapPersonality(
   style: AnyStyleSpec,
   palette: ReturnType<typeof getMapBrandPalette>,
@@ -98,6 +114,7 @@ export function withMapPersonality(
       const id = String(nextLayer.id ?? "").toLowerCase();
       const sourceLayer = String(nextLayer["source-layer"] ?? "").toLowerCase();
       const paint = { ...(nextLayer.paint ?? {}) };
+      const layout = { ...(nextLayer.layout ?? {}) };
       const layerType = String(nextLayer.type ?? "");
 
       if (layerType === "background") {
@@ -124,22 +141,28 @@ export function withMapPersonality(
       ) {
         paint["fill-color"] = palette.landcover;
       }
-      if (sourceLayer.includes("road") && layerType === "line") {
+      if (isRoadLayer(id, sourceLayer) && layerType === "line") {
         paint["line-color"] = palette.roadLine;
-        paint["line-opacity"] = 0.72;
+        paint["line-opacity"] = 0.62;
+      }
+      if (isRoadLayer(id, sourceLayer) && layerType === "fill") {
+        paint["fill-color"] = palette.roadLine;
+        paint["fill-opacity"] = 0.5;
       }
       if ((sourceLayer.includes("building") || id.includes("building")) && layerType === "fill") {
         paint["fill-color"] = palette.buildingFill;
-        paint["fill-opacity"] = 0.68;
+        paint["fill-opacity"] = 0.52;
       }
       if (layerType === "symbol") {
+        layout["text-font"] = ["Noto Sans Regular"];
         paint["text-color"] = palette.text;
         paint["text-halo-color"] = palette.textHalo;
         paint["text-halo-width"] = 0.55;
-        paint["text-opacity"] = 0.9;
+        paint["text-opacity"] = 0.82;
       }
 
       nextLayer.paint = paint;
+      nextLayer.layout = layout;
       return nextLayer;
     });
 
