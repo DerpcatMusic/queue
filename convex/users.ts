@@ -433,6 +433,11 @@ export const getMyInstructorSettings = query({
       profileImageUrl: v.optional(v.string()),
       socialLinks: v.optional(socialLinksValidator),
       address: v.optional(v.string()),
+      addressCity: v.optional(v.string()),
+      addressStreet: v.optional(v.string()),
+      addressNumber: v.optional(v.string()),
+      addressFloor: v.optional(v.string()),
+      addressPostalCode: v.optional(v.string()),
       latitude: v.optional(v.number()),
       longitude: v.optional(v.number()),
       calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
@@ -472,6 +477,11 @@ export const getMyInstructorSettings = query({
         profileImageUrl,
         socialLinks: toOptionalSocialLinksPayload(profile.socialLinks),
         address: profile.address,
+        addressCity: profile.addressCity,
+        addressStreet: profile.addressStreet,
+        addressNumber: profile.addressNumber,
+        addressFloor: profile.addressFloor,
+        addressPostalCode: profile.addressPostalCode,
         latitude: profile.latitude,
         longitude: profile.longitude,
       }),
@@ -488,6 +498,11 @@ export const updateMyInstructorSettings = mutation({
     hourlyRateExpectation: v.optional(v.number()),
     sports: v.array(v.string()),
     address: v.optional(v.string()),
+    addressCity: v.optional(v.string()),
+    addressStreet: v.optional(v.string()),
+    addressNumber: v.optional(v.string()),
+    addressFloor: v.optional(v.string()),
+    addressPostalCode: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     includeDetectedZone: v.optional(v.boolean()),
@@ -524,6 +539,23 @@ export const updateMyInstructorSettings = mutation({
       throw new ConvexError("Too many sports selected");
     }
     const address = normalizeOptionalString(args.address, MAX_ADDRESS_LENGTH, "Address");
+    const addressCity = normalizeOptionalString(
+      args.addressCity,
+      MAX_ADDRESS_LENGTH,
+      "AddressCity",
+    );
+    const addressStreet = normalizeOptionalString(
+      args.addressStreet,
+      MAX_ADDRESS_LENGTH,
+      "AddressStreet",
+    );
+    const addressNumber = normalizeOptionalString(args.addressNumber, 20, "AddressNumber");
+    const addressFloor = normalizeOptionalString(args.addressFloor, 20, "AddressFloor");
+    const addressPostalCode = normalizeOptionalString(
+      args.addressPostalCode,
+      20,
+      "AddressPostalCode",
+    );
     const { latitude, longitude } = normalizeCoordinates(
       omitUndefined({
         latitude: args.latitude,
@@ -583,6 +615,11 @@ export const updateMyInstructorSettings = mutation({
       ...omitUndefined({
         hourlyRateExpectation: args.hourlyRateExpectation,
         address,
+        addressCity,
+        addressStreet,
+        addressNumber,
+        addressFloor,
+        addressPostalCode,
         latitude,
         longitude,
       }),
@@ -682,6 +719,11 @@ export const getMyStudioSettings = query({
       studioId: v.id("studioProfiles"),
       studioName: v.string(),
       address: v.string(),
+      addressCity: v.optional(v.string()),
+      addressStreet: v.optional(v.string()),
+      addressNumber: v.optional(v.string()),
+      addressFloor: v.optional(v.string()),
+      addressPostalCode: v.optional(v.string()),
       zone: v.string(),
       latitude: v.optional(v.number()),
       longitude: v.optional(v.number()),
@@ -733,6 +775,11 @@ export const getMyStudioSettings = query({
         contactPhone: profile.contactPhone,
         profileImageUrl,
         socialLinks: toOptionalSocialLinksPayload(profile.socialLinks),
+        addressCity: profile.addressCity,
+        addressStreet: profile.addressStreet,
+        addressNumber: profile.addressNumber,
+        addressFloor: profile.addressFloor,
+        addressPostalCode: profile.addressPostalCode,
       }),
       notificationsEnabled,
       hasExpoPushToken,
@@ -849,6 +896,11 @@ export const updateMyStudioSettings = mutation({
   args: {
     studioName: v.string(),
     address: v.string(),
+    addressCity: v.optional(v.string()),
+    addressStreet: v.optional(v.string()),
+    addressNumber: v.optional(v.string()),
+    addressFloor: v.optional(v.string()),
+    addressPostalCode: v.optional(v.string()),
     zone: v.string(),
     contactPhone: v.optional(v.string()),
     latitude: v.optional(v.number()),
@@ -871,6 +923,23 @@ export const updateMyStudioSettings = mutation({
       "Studio name",
     );
     const address = normalizeRequiredString(args.address, MAX_ADDRESS_LENGTH, "Address");
+    const addressCity = normalizeOptionalString(
+      args.addressCity,
+      MAX_ADDRESS_LENGTH,
+      "AddressCity",
+    );
+    const addressStreet = normalizeOptionalString(
+      args.addressStreet,
+      MAX_ADDRESS_LENGTH,
+      "AddressStreet",
+    );
+    const addressNumber = normalizeOptionalString(args.addressNumber, 20, "AddressNumber");
+    const addressFloor = normalizeOptionalString(args.addressFloor, 20, "AddressFloor");
+    const addressPostalCode = normalizeOptionalString(
+      args.addressPostalCode,
+      20,
+      "AddressPostalCode",
+    );
     const zone = normalizeZoneId(args.zone);
     const contactPhone = normalizeOptionalString(
       args.contactPhone,
@@ -909,6 +978,11 @@ export const updateMyStudioSettings = mutation({
         longitude,
         autoExpireMinutesBefore,
         autoAcceptDefault: args.autoAcceptDefault,
+        addressCity,
+        addressStreet,
+        addressNumber,
+        addressFloor,
+        addressPostalCode,
       }),
       updatedAt: Date.now(),
     });

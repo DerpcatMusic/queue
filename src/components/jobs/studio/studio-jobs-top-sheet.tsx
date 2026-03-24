@@ -73,8 +73,8 @@ export function StudioJobsTopSheetHeader({
           />
         }
         size="sm"
-        railColor={String(palette.primarySubtle)}
-        selectedColor={String(palette.surface)}
+        railColor={String(palette.surface)}
+        selectedColor={String(palette.primarySubtle)}
         labelColor={String(palette.text)}
         selectedLabelColor={String(palette.primaryPressed)}
         dividerColor={String(palette.border)}

@@ -47,6 +47,15 @@ export function ChoicePill({
   const resolvedLabelColor = selected
     ? (selectedLabelColor ?? palette.onPrimary)
     : (labelColor ?? palette.text);
+  const pressedBackgroundColor = selected
+    ? (palette.primaryPressed as ColorValue)
+    : (palette.surfaceElevated as ColorValue);
+  const disabledBackgroundColor = selected
+    ? (palette.primarySubtle as ColorValue)
+    : (palette.surface as ColorValue);
+  const disabledLabelColor = selected
+    ? (palette.primary as ColorValue)
+    : (palette.textMuted as ColorValue);
 
   return (
     <Pressable
@@ -58,18 +67,14 @@ export function ChoicePill({
         {
           width: fullWidth ? "100%" : undefined,
           alignSelf: fullWidth ? "stretch" : "flex-start",
-          opacity: disabled ? 0.64 : pressed ? 0.92 : 1,
-        },
-        style,
-      ]}
-    >
-      <View
-        style={{
           minHeight: compact ? 40 : 58,
-          width: fullWidth ? "100%" : undefined,
           borderRadius: compact ? BrandRadius.card - 14 : BrandRadius.card - 10,
           borderCurve: "continuous",
-          backgroundColor: resolvedBackgroundColor,
+          backgroundColor: disabled
+            ? disabledBackgroundColor
+            : pressed
+              ? pressedBackgroundColor
+              : resolvedBackgroundColor,
           paddingHorizontal: compact ? 10 : 16,
           paddingVertical: compact ? 8 : 12,
           alignItems: "center",
@@ -77,20 +82,21 @@ export function ChoicePill({
           flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
           gap: icon ? (compact ? 8 : 10) : 0,
           overflow: "hidden",
+        },
+        style,
+      ]}
+    >
+      {icon ? <View>{icon}</View> : null}
+      <Text
+        style={{
+          ...(compact ? BrandType.micro : BrandType.bodyMedium),
+          color: (disabled ? disabledLabelColor : resolvedLabelColor) as string,
+          includeFontPadding: false,
+          flexShrink: 1,
         }}
       >
-        {icon ? <View>{icon}</View> : null}
-        <Text
-          style={{
-            ...(compact ? BrandType.micro : BrandType.bodyMedium),
-            color: resolvedLabelColor as string,
-            includeFontPadding: false,
-            flexShrink: 1,
-          }}
-        >
-          {label}
-        </Text>
-      </View>
+        {label}
+      </Text>
     </Pressable>
   );
 }

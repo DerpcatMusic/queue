@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, I18nManager, Pressable, Text, View } from "react-native";
-import { MeshGradientView } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
@@ -10,7 +9,7 @@ type ActionButtonSize = "md" | "lg";
 
 // Button heights follow the spacing scale for consistency
 const BUTTON_HEIGHT_LG = BrandSpacing.iconContainer + BrandSpacing.md; // 38 + 12 = 50px
-const BUTTON_HEIGHT_MD = BrandSpacing.iconContainer + BrandSpacing.xs; // 38 + 4 = 42px  
+const BUTTON_HEIGHT_MD = BrandSpacing.iconContainer + BrandSpacing.xs; // 38 + 4 = 42px
 const BUTTON_MIN_WIDTH = BrandSpacing.iconContainer * 2 + BrandSpacing.sm; // 38*2 + 8 = 84px
 
 type ActionButtonProps = {
@@ -25,7 +24,6 @@ type ActionButtonProps = {
   accessibilityLabel?: string;
   shape?: ActionButtonShape;
   size?: ActionButtonSize;
-  /** Use mesh gradient background instead of solid color (Vercel/Linear style) */
   meshGradient?: boolean;
 };
 
@@ -41,7 +39,7 @@ export function ActionButton({
   accessibilityLabel,
   shape = "pill",
   size = "md",
-  meshGradient = false,
+  meshGradient: _meshGradient = false,
 }: ActionButtonProps) {
   if (!label && !icon) {
     throw new Error("ActionButton requires a label, an icon, or both.");
@@ -51,7 +49,6 @@ export function ActionButton({
   const isIconOnly = Boolean(icon) && !label;
   const minHeight = size === "lg" ? BUTTON_HEIGHT_LG : BUTTON_HEIGHT_MD;
   const minWidth = shape === "square" ? minHeight : BUTTON_MIN_WIDTH;
-  const useMeshGradient = meshGradient && tone === "primary" && !isDisabled;
   const backgroundColor = isDisabled
     ? tone === "primary"
       ? (palette.primaryPressed as string)
@@ -59,6 +56,11 @@ export function ActionButton({
     : tone === "primary"
       ? (palette.primary as string)
       : (palette.surfaceAlt as string);
+  const pressedBackgroundColor = isDisabled
+    ? backgroundColor
+    : tone === "primary"
+      ? (palette.primaryPressed as string)
+      : (palette.surfaceElevated as string);
   const textColor = isDisabled
     ? tone === "primary"
       ? (palette.onPrimary as string)
@@ -89,9 +91,8 @@ export function ActionButton({
         paddingVertical: shape === "square" ? 0 : 10,
         borderRadius,
         borderCurve: "continuous",
-        backgroundColor: useMeshGradient ? "transparent" : backgroundColor,
+        backgroundColor: pressed && !isDisabled ? pressedBackgroundColor : backgroundColor,
         overflow: "hidden",
-        opacity: pressed && !isDisabled ? 0.92 : 1,
       })}
     >
       {loading ? (
@@ -120,22 +121,6 @@ export function ActionButton({
       )}
     </Pressable>
   );
-
-  if (useMeshGradient) {
-    return (
-      <MeshGradientView
-        borderRadius={borderRadius}
-        style={{
-          minHeight,
-          minWidth,
-          width: fullWidth ? "100%" : undefined,
-          alignSelf: fullWidth ? "stretch" : "flex-start",
-        }}
-      >
-        {buttonContent}
-      </MeshGradientView>
-    );
-  }
 
   return buttonContent;
 }

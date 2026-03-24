@@ -179,13 +179,13 @@ function LinkPill({
 }
 
 function LoaderDot({ delay, color }: { delay: number; color: string }) {
-  const pulse = useSharedValue(0.45);
+  const pulse = useSharedValue(0.72);
 
   useEffect(() => {
     pulse.value = withDelay(
       delay,
       withRepeat(
-        withSequence(withTiming(1, { duration: 420 }), withTiming(0.45, { duration: 420 })),
+        withSequence(withTiming(1, { duration: 420 }), withTiming(0.72, { duration: 420 })),
         -1,
         false,
       ),
@@ -193,7 +193,6 @@ function LoaderDot({ delay, color }: { delay: number; color: string }) {
   }, [delay, pulse]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    opacity: pulse.value,
     transform: [{ scale: 0.8 + pulse.value * 0.35 }],
   }));
 
@@ -233,22 +232,18 @@ function VerificationResolvingState({ label }: { label: string }) {
   }, [bubbleFloat, cardFloat, halo, settle]);
 
   const haloStyle = useAnimatedStyle(() => ({
-    opacity: 0.18 + halo.value * 0.18,
     transform: [{ scale: halo.value }],
   }));
 
   const cardStyle = useAnimatedStyle(() => ({
-    opacity: 0.72 + settle.value * 0.28,
     transform: [{ translateY: cardFloat.value }, { scale: 0.96 + settle.value * 0.04 }],
   }));
 
   const bubbleLeftStyle = useAnimatedStyle(() => ({
-    opacity: 0.16 + settle.value * 0.1,
     transform: [{ translateY: bubbleFloat.value }, { scale: 0.92 + settle.value * 0.08 }],
   }));
 
   const bubbleRightStyle = useAnimatedStyle(() => ({
-    opacity: 0.14 + settle.value * 0.1,
     transform: [{ translateY: bubbleFloat.value * -0.7 }, { scale: 0.9 + settle.value * 0.1 }],
   }));
 

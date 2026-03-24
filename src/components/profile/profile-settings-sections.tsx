@@ -186,14 +186,14 @@ export function ProfileSettingRow({
         ? resolvedAccentColor
         : (palette.primary as string);
 
-  const borderColor = tone === "danger" ? "transparent" : (palette.border as string);
+  const borderColor = tone === "danger" ? (palette.danger as string) : (palette.border as string);
 
   const rowBackground =
     tone === "accent"
       ? resolvedScheme === "dark"
         ? (palette.accentRowBgDark as string)
         : (palette.accentRowBgLight as string)
-      : "transparent";
+      : (palette.surface as string);
 
   const content = (
     <View>

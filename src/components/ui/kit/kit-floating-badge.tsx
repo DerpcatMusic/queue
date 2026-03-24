@@ -30,7 +30,10 @@ export function KitFloatingBadge({
     }
 
     floatOffset.value = withRepeat(
-      withSequence(withTiming(-BrandSpacing.xs - 1, { duration: 900 }), withTiming(0, { duration: 900 })),
+      withSequence(
+        withTiming(-BrandSpacing.xs - 1, { duration: 900 }),
+        withTiming(0, { duration: 900 }),
+      ),
       -1,
       false,
     );

@@ -29,7 +29,6 @@ export function SheetHeaderBlock({
 }: SheetHeaderBlockProps) {
   const palette = useBrand();
   const foregroundColor = tone === "primary" ? palette.onPrimary : palette.text;
-  const mutedColor = tone === "primary" ? palette.onPrimary : palette.textMuted;
   const inactiveProgress = tone === "primary" ? palette.primaryPressed : palette.surfaceAlt;
   const trailingBackgroundColor =
     trailingTone === "danger"
@@ -43,6 +42,13 @@ export function SheetHeaderBlock({
       : tone === "primary"
         ? (palette.onPrimary as string)
         : (palette.text as string);
+  const subtitleColor = tone === "primary" ? palette.onPrimary : palette.textMuted;
+  const pressedTrailingBackgroundColor =
+    trailingTone === "danger"
+      ? (palette.danger as string)
+      : tone === "primary"
+        ? (palette.primary as string)
+        : (palette.surfaceElevated as string);
 
   return (
     <View className="gap-md">
@@ -70,7 +76,6 @@ export function SheetHeaderBlock({
                     width: isCurrent ? 28 : 18,
                     height: 8,
                     backgroundColor: (isActive ? foregroundColor : inactiveProgress) as string,
-                    opacity: isCurrent ? 1 : isActive ? 0.82 : 0.48,
                   }}
                 />
               );
@@ -85,9 +90,13 @@ export function SheetHeaderBlock({
             accessibilityRole="button"
             accessibilityLabel={trailingLabel}
             onPress={onPressTrailing}
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.72 : 1,
-            })}
+            style={({ pressed }) => [
+              {
+                borderRadius: BrandSpacing.lg,
+                borderCurve: "continuous",
+                backgroundColor: pressed ? pressedTrailingBackgroundColor : trailingBackgroundColor,
+              },
+            ]}
           >
             <View
               className="flex-row items-center justify-center gap-xs rounded-medium"
@@ -114,7 +123,7 @@ export function SheetHeaderBlock({
           {title}
         </ThemedText>
         {subtitle ? (
-          <ThemedText type="caption" style={{ color: mutedColor as string, opacity: 0.84 }}>
+          <ThemedText type="caption" style={{ color: subtitleColor as string }}>
             {subtitle}
           </ThemedText>
         ) : null}

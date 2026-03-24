@@ -61,8 +61,7 @@ export function LoadingScreen({
                 width: LAUNCH_ICON_SIZE,
                 height: LAUNCH_ICON_SIZE,
                 borderRadius: LAUNCH_ICON_RADIUS,
-                backgroundColor: palette.onPrimary as string,
-                opacity: 0.1,
+                backgroundColor: palette.primaryPressed as string,
                 position: "absolute",
               }}
             />
@@ -113,7 +112,6 @@ export function LoadingScreen({
                 type="caption"
                 style={{
                   color: palette.onPrimary as string,
-                  opacity: 0.78,
                   textAlign: "center",
                 }}
                 selectable

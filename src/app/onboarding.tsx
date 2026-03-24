@@ -35,11 +35,11 @@ import { useBrand } from "@/hooks/use-brand";
 import { useLocationResolution } from "@/hooks/use-location-resolution";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import { omitUndefined } from "@/lib/omit-undefined";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import {
   isPushRegistrationError,
   registerForPushNotificationsAsync,
 } from "@/lib/push-notifications";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 type OnboardingRole = "instructor" | "studio";
 type OnboardingStep = 0 | 1 | 2;
@@ -97,7 +97,6 @@ function OnboardingStageLayer({
   children: React.ReactNode;
 }) {
   const translateX = useSharedValue(0);
-  const opacity = useSharedValue(1);
 
   useEffect(() => {
     const incomingOffset = 20 * direction;
@@ -105,24 +104,19 @@ function OnboardingStageLayer({
 
     if (phase === "enter") {
       translateX.value = incomingOffset;
-      opacity.value = 0;
       translateX.value = withTiming(0, { duration: STEP_ENTER_MS });
-      opacity.value = withTiming(1, { duration: STEP_ENTER_MS });
       return;
     }
 
     if (phase === "exit") {
       translateX.value = withTiming(outgoingOffset, { duration: STEP_EXIT_MS });
-      opacity.value = withTiming(0, { duration: STEP_EXIT_MS });
       return;
     }
 
     translateX.value = 0;
-    opacity.value = 1;
-  }, [direction, opacity, phase, translateX]);
+  }, [direction, phase, translateX]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
     transform: [{ translateX: translateX.value }],
   }));
 
@@ -211,8 +205,7 @@ function OnboardingScreenContent() {
   const requestedRole = isOnboardingRole(roleParam) ? roleParam : null;
 
   const ownedRoles = currentUser?.roles ?? [];
-  const isAdditionalProfileSetup =
-    requestedRole !== null && !ownedRoles.includes(requestedRole);
+  const isAdditionalProfileSetup = requestedRole !== null && !ownedRoles.includes(requestedRole);
   const isForcedWorkspaceSetup = isAdditionalProfileSetup && ownedRoles.length > 0;
 
   useEffect(() => {

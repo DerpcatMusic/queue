@@ -92,17 +92,16 @@ export function KitButtonGroup<T extends string>({
 
   const resolvedGroupBg =
     groupBackgroundColor ??
-    (tone === "onPrimary" ? `${String(palette.text)}CC` : String(palette.surfaceAlt));
+    (tone === "onPrimary" ? String(palette.primaryPressed) : String(palette.surfaceAlt));
   const resolvedSelectedBg =
     selectedBackgroundColor ??
-    (tone === "onPrimary" ? `${String(palette.onPrimary)}33` : String(palette.surfaceElevated));
+    (tone === "onPrimary" ? String(palette.primary) : String(palette.surfaceElevated));
   const resolvedLabelColorFinal =
-    labelColor ??
-    (tone === "onPrimary" ? `${String(palette.onPrimary)}B8` : String(palette.textMuted));
+    labelColor ?? (tone === "onPrimary" ? String(palette.onPrimary) : String(palette.textMuted));
   const resolvedSelectedLabelColorFinal = selectedLabelColor ?? String(palette.onPrimary);
   const resolvedDividerColorFinal =
     dividerColor ??
-    (tone === "onPrimary" ? `${String(palette.onPrimary)}24` : String(palette.borderStrong));
+    (tone === "onPrimary" ? String(palette.onPrimary) : String(palette.borderStrong));
 
   return (
     <View
@@ -144,7 +143,6 @@ export function KitButtonGroup<T extends string>({
                   {
                     left: 0,
                     width: StyleSheet.hairlineWidth,
-                    opacity: 0.4,
                     top: metrics.separatorInset,
                     bottom: metrics.separatorInset,
                     backgroundColor: resolvedDividerColorFinal,
@@ -181,7 +179,14 @@ export function KitButtonGroup<T extends string>({
               className="w-full"
               style={({ pressed }) => [
                 {
-                  opacity: option.disabled ? 0.45 : pressed ? 0.9 : 1,
+                  borderRadius: metrics.radius,
+                  backgroundColor: option.disabled
+                    ? String(palette.surface)
+                    : pressed
+                      ? tone === "onPrimary"
+                        ? String(palette.primaryPressed)
+                        : String(palette.surface)
+                      : undefined,
                 },
               ]}
             >

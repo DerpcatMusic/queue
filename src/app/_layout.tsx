@@ -146,11 +146,9 @@ function RootLayoutContent() {
       ? palette.primary
       : topInsetTone === "card"
         ? palette.surface
-        : topInsetTone === "transparent"
-          ? "transparent"
-          : topInsetTone === "app"
-            ? palette.primary
-            : palette.appBg;
+        : topInsetTone === "app"
+          ? palette.primary
+          : palette.appBg;
   const statusInsetColor = topInsetBackgroundColor ?? fallbackBackgroundColor;
 
   return (

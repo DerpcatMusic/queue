@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type ColorValue, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import {
   fetchPlaceAutocomplete,
@@ -11,7 +12,6 @@ import {
   type PlacePrediction,
   resetPlacesSession,
 } from "@/lib/google-places";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
 
 type AddressAutocompleteProps = {
   value: string;
@@ -170,7 +170,7 @@ export function AddressAutocomplete({
               style={({ pressed }) => [
                 styles.suggestion,
                 {
-                  backgroundColor: pressed ? palette.primarySubtle : "transparent",
+                  backgroundColor: pressed ? palette.primarySubtle : palette.surface,
                 },
               ]}
               onPress={() => {

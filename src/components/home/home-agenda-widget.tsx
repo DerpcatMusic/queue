@@ -202,8 +202,7 @@ export function HomeAgendaWidget({
                         borderRadius: BrandRadius.pill,
                         backgroundColor: isToday
                           ? (palette.primary as string)
-                          : (palette.textMuted as string),
-                        opacity: isToday ? 1 : 0.3,
+                          : (palette.textMicro as string),
                       }}
                     />
                   </View>

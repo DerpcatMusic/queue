@@ -8,14 +8,9 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "resolveJsonModule": true,
-    "types": [
-      "bun-types"
-    ],
+    "types": ["bun-types"],
     "paths": {
-      "@/*": [
-        "./src/*",
-        "./*"
-      ]
+      "@/*": ["./src/*", "./*"]
     },
     "incremental": true,
     "skipLibCheck": true
