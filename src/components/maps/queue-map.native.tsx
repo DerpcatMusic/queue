@@ -4,7 +4,7 @@ import {
   Layer,
   Map as MapLibreMap,
   type MapRef,
-  Marker,
+  ViewAnnotation,
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -426,11 +426,14 @@ export const QueueMap = memo(function QueueMap({
                 typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
 
               return (
-                <Marker
+                <ViewAnnotation
                   key={`studio-marker:${studio.studioId}`}
                   id={`studio-marker:${studio.studioId}`}
                   anchor="bottom"
                   lngLat={[studio.longitude, studio.latitude]}
+                  onSelected={() => {
+                    onPressStudio?.(studio.studioId);
+                  }}
                 >
                   <View
                     accessible
@@ -438,23 +441,18 @@ export const QueueMap = memo(function QueueMap({
                     accessibilityLabel={studio.studioName}
                     style={{ width: markerWidth, height: markerHeight }}
                   >
-                    <Pressable
-                      onPress={() => onPressStudio?.(studio.studioId)}
-                      style={{ width: markerWidth, height: markerHeight }}
-                    >
-                      <StudioMapPin
-                        accentColor={markerAccent}
-                        imageSize={imageSize}
-                        imageTop={imageTop}
-                        {...(hasLogo ? { imageUrl: studio.logoImageUrl as string } : {})}
-                        label={studio.studioName.slice(0, 1).toUpperCase()}
-                        pinHeight={markerHeight}
-                        pinWidth={markerWidth}
-                        textColor={palette.onPrimary as string}
-                      />
-                    </Pressable>
+                    <StudioMapPin
+                      accentColor={markerAccent}
+                      imageSize={imageSize}
+                      imageTop={imageTop}
+                      {...(hasLogo ? { imageUrl: studio.logoImageUrl as string } : {})}
+                      label={studio.studioName.slice(0, 1).toUpperCase()}
+                      pinHeight={markerHeight}
+                      pinWidth={markerWidth}
+                      textColor={palette.onPrimary as string}
+                    />
                   </View>
-                </Marker>
+                </ViewAnnotation>
               );
             })
           : null}
