@@ -43,6 +43,7 @@ export function InstructorFeed() {
   const [jobsSearchQuery, setJobsSearchQuery] = useState("");
   const [jobsWindowFilter, setJobsWindowFilter] = useState<"all" | "24h" | "72h">("all");
   const [showJobsFilters, setShowJobsFilters] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [emptyVariantIndex, setEmptyVariantIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [applyingJobId, setApplyingJobId] = useState<Id<"jobs"> | null>(null);
@@ -400,17 +401,30 @@ export function InstructorFeed() {
         <IconButton
           accessibilityLabel={t("jobsTab.instructorFeed.openArchive")}
           onPress={() => {
+            if (isArchiveOpen) {
+              archiveSheetRef.current?.close();
+              return;
+            }
             archiveSheetRef.current?.expand();
           }}
-          tone="secondary"
+          tone={isArchiveOpen ? "primary" : "secondary"}
           size={58}
-          backgroundColorOverride={String(palette.surface)}
-          icon={<IconSymbol name="archivebox.fill" size={22} color={String(palette.primary)} />}
+          backgroundColorOverride={String(isArchiveOpen ? palette.primary : palette.surface)}
+          icon={
+            <IconSymbol
+              name="archivebox.fill"
+              size={22}
+              color={String(isArchiveOpen ? palette.onPrimary : palette.primary)}
+            />
+          }
         />
       </TabOverlayAnchor>
       <InstructorJobsArchiveSheet
         innerRef={archiveSheetRef}
-        onDismissed={() => {}}
+        onDismissed={() => {
+          setIsArchiveOpen(false);
+        }}
+        onOpenStateChange={setIsArchiveOpen}
         rows={archiveRows}
         palette={palette}
         locale={locale}

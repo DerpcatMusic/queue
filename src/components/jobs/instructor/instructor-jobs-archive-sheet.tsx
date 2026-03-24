@@ -31,6 +31,7 @@ export type InstructorArchiveRow = InstructorMarketplaceJob & {
 type InstructorJobsArchiveSheetProps = {
   innerRef: React.RefObject<BottomSheet | null>;
   onDismissed: () => void;
+  onOpenStateChange?: (open: boolean) => void;
   rows: InstructorArchiveRow[];
   palette: BrandPalette;
   locale: string;
@@ -132,7 +133,7 @@ function ArchiveCompactRow({
       style={{
         borderRadius: BrandRadius.soft,
         borderCurve: "continuous",
-        backgroundColor: palette.surface as string,
+        backgroundColor: palette.surfaceAlt as string,
         overflow: "hidden",
       }}
     >
@@ -141,7 +142,9 @@ function ArchiveCompactRow({
         accessibilityLabel={`${row.studioName} ${sportLabel}`}
         onPress={onToggle}
         style={({ pressed }) => ({
-          backgroundColor: pressed ? (palette.surfaceAlt as string) : (palette.surface as string),
+          backgroundColor: pressed
+            ? (palette.surfaceElevated as string)
+            : (palette.surfaceAlt as string),
         })}
       >
         <View
@@ -200,7 +203,7 @@ function ArchiveCompactRow({
             gap: BrandSpacing.sm,
             borderTopWidth: 1,
             borderTopColor: palette.border as string,
-            backgroundColor: palette.surfaceElevated as string,
+            backgroundColor: palette.surface as string,
             padding: BrandSpacing.sm,
           }}
         >
@@ -222,6 +225,7 @@ function ArchiveCompactRow({
 export function InstructorJobsArchiveSheet({
   innerRef,
   onDismissed,
+  onOpenStateChange,
   rows,
   palette,
   locale,
@@ -257,13 +261,21 @@ export function InstructorJobsArchiveSheet({
       snapPoints={snapPoints}
       topInset={collapsedSheetHeight}
       enablePanDownToClose
+      onChange={(index) => {
+        onOpenStateChange?.(index >= 0);
+      }}
       onClose={() => {
+        onOpenStateChange?.(false);
         setExpandedApplicationId(null);
         onDismissed();
       }}
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={{ backgroundColor: palette.borderStrong as string }}
-      backgroundStyle={{ backgroundColor: palette.surfaceElevated as string }}
+      backgroundStyle={{
+        backgroundColor: palette.surface as string,
+        borderTopWidth: BrandSpacing.xxs,
+        borderTopColor: palette.borderStrong as string,
+      }}
     >
       <BottomSheetScrollView
         contentContainerStyle={{
@@ -292,8 +304,8 @@ export function InstructorJobsArchiveSheet({
             onPress={() => innerRef.current?.close()}
             size={BrandSpacing.controlSm}
             tone="secondary"
-            backgroundColorOverride={String(palette.surfaceAlt)}
-            icon={<AppSymbol name="xmark" size={18} tintColor={palette.textMuted as string} />}
+            backgroundColorOverride={String(palette.primarySubtle)}
+            icon={<AppSymbol name="xmark" size={18} tintColor={palette.primary as string} />}
           />
         </View>
 
