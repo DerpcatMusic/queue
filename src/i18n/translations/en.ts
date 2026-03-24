@@ -316,6 +316,8 @@ const en = {
         futureNote:
           "Queue syncs to a dedicated device calendar. Cloud sync to Google or Apple depends on your phone account settings.",
         googleConnectRequired: "Connect your Google account to enable direct Google Calendar sync.",
+        googleReconnectRequired:
+          "Reconnect Google Calendar to restore sync. This connection is missing refresh credentials.",
         googleConnectedAs: "Connected as {{email}}",
         applePermissionNote:
           "Apple sync requests calendar access and writes to a dedicated Queue Sessions calendar.",
@@ -426,6 +428,17 @@ const en = {
       zoneWaitingLabel: "Zone pending",
       zonePendingBody: "Search an address or use GPS to resolve the service zone automatically.",
       commandLabel: "Command",
+      enterManually: "Enter manually",
+      backToSearch: "Back to search",
+      findByZip: "Find by postal code",
+      fieldCity: "City",
+      fieldStreet: "Street",
+      fieldNumber: "Number",
+      fieldFloor: "Floor",
+      fieldZipCode: "Postal code",
+      fieldCityPlaceholder: "e.g. Tel Aviv",
+      fieldStreetPlaceholder: "e.g. Ibn Gabirol",
+      zipNotFound: "No addresses found for this postal code",
     },
     calendar: {
       syncOff: "Off",
@@ -621,7 +634,8 @@ const en = {
       cancelled: "Verification flow was cancelled.",
       invalidReturn: "Didit did not return a valid completion signal.",
       startFailed: "Failed to start Didit verification.",
-      nativeUnavailable: "Native verification is not available in this build. Update the app and try again.",
+      nativeUnavailable:
+        "Native verification is not available in this build. Update the app and try again.",
       externalLinkFailed: "Could not open the verification reference link.",
       slow: "Verification is taking longer than expected. Pull to refresh or try again shortly.",
       approvedInfo: "Identity verified. Your KYC is now active.",
@@ -641,8 +655,7 @@ const en = {
         documentBody:
           "Use a passport or national identity document that matches the legal name you use for payouts.",
         faceTitle: "Use good lighting for the selfie check",
-        faceBody:
-          "Didit may ask for a live face scan to confirm the document belongs to you.",
+        faceBody: "Didit may ask for a live face scan to confirm the document belongs to you.",
         timeTitle: "Set aside a couple of minutes",
         timeBody:
           "The flow is quickest when your document is clean, readable, and your camera is steady.",
@@ -779,10 +792,8 @@ const en = {
     addAccountSubtitle: "Sign in to another account and link it to this login.",
     addAccountBody:
       "Use email, magic link, Google, or Apple to connect another existing account to the one you are already using.",
-    addInstructorAccountBody:
-      "Sign in to the instructor account you want to link to this login.",
-    addStudioAccountBody:
-      "Sign in to the studio account you want to link to this login.",
+    addInstructorAccountBody: "Sign in to the instructor account you want to link to this login.",
+    addStudioAccountBody: "Sign in to the studio account you want to link to this login.",
     addAccountLinked: "Account linked. Finishing setup...",
     magicLinkUnavailableNative:
       "Email magic links are not supported in Expo native apps, so this flow uses one-time codes.",
@@ -1153,6 +1164,10 @@ const en = {
       emptyInstructorFreshTwo: "The board is quiet.",
       emptyInstructorFreshThree: "Check back in a bit.",
       emptyRefreshHint: "Pull to refresh for a new line.",
+      openArchive: "Open archive",
+      archiveSubtitle: "Previous applications and past jobs stay here.",
+      archiveEmpty: "No archived jobs yet.",
+      archiveAppliedOn: "Applied {{date}}",
     },
     studioFeed: {
       eyebrow: "Studio operations",
@@ -1357,6 +1372,8 @@ const en = {
       nextSubtitle: "Your next confirmed classes.",
       noUpcoming: "No upcoming sessions yet. Keep an eye on open matches.",
       emptySchedule: "The jobs board is live when you want the next one.",
+      noJobsAvailable: "No jobs available",
+      noJobsHint: "Check back later for new openings.",
     },
     studio: {
       title: "Home",
@@ -1387,6 +1404,8 @@ const en = {
       recentTitle: "Recent job posts",
       noRecent: "No jobs posted yet.",
       emptyBoard: "Post a shift to start filling your schedule.",
+      noReviewJobs: "Review queue is clear",
+      noReviewJobsHint: "All applicants have been reviewed.",
     },
   },
   explore: {

@@ -1,14 +1,6 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  LayoutAnimation,
-  Platform,
-  StyleSheet,
-  Text,
-  UIManager,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { LayoutAnimation, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
@@ -51,12 +43,6 @@ export default function CalendarTabScreen() {
   const showExternalCalendarItems =
     visibilityFilters.timedCalendarEvents || visibilityFilters.allDayCalendarEvents;
   const listAnimationKey = `${showExternalCalendarItems}:${selectedDay}:${listItems.length}`;
-
-  useEffect(() => {
-    if (Platform.OS === "android") {
-      UIManager.setLayoutAnimationEnabledExperimental?.(true);
-    }
-  }, []);
 
   const handleExternalCalendarToggle = useCallback(() => {
     listRef.current?.prepareForLayoutAnimationRender?.();

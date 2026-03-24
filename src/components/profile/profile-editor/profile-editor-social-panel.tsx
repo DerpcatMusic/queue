@@ -8,7 +8,7 @@ import {
 } from "@/components/profile/profile-social-links";
 import { KitSurface, KitTextField } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 
 type ProfileEditorSocialPanelProps = {
   palette: BrandPalette;
@@ -30,16 +30,20 @@ export function ProfileEditorSocialPanel({
   const [showSocialFields, setShowSocialFields] = useState(activeSocialCount > 0);
 
   return (
-    <KitSurface tone="base" padding={20} gap={14}>
+    <KitSurface
+      tone="base"
+      padding={BrandSpacing.lg + BrandSpacing.xs}
+      gap={BrandSpacing.componentPadding}
+    >
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 12,
+          gap: BrandSpacing.md,
         }}
       >
-        <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flex: 1, gap: BrandSpacing.xs }}>
           <Text
             style={{
               ...BrandType.title,
@@ -68,8 +72,8 @@ export function ProfileEditorSocialPanel({
           onPress={() => setShowSocialFields((value) => !value)}
           style={({ pressed }) => ({
             opacity: pressed ? 0.68 : 1,
-            paddingHorizontal: 6,
-            paddingVertical: 4,
+            paddingHorizontal: BrandSpacing.sm,
+            paddingVertical: BrandSpacing.xs,
           })}
         >
           <Text
@@ -85,7 +89,7 @@ export function ProfileEditorSocialPanel({
       </View>
 
       {showSocialFields ? (
-        <View style={{ gap: 12 }}>
+        <View style={{ gap: BrandSpacing.md }}>
           {PROFILE_SOCIAL_FIELDS.map((field) => (
             <KitTextField
               key={field.key}

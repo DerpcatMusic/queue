@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Calendar from "expo-calendar";
 import { Platform } from "react-native";
+import { Brand } from "@/constants/brand";
 
 const QUEUE_CALENDAR_TITLE = "Queue Sessions";
 const STORAGE_KEY = "calendar:device-sync:v1";
@@ -69,7 +70,7 @@ async function createQueueCalendar() {
     if (!sourceId) return null;
     return Calendar.createCalendarAsync({
       title: QUEUE_CALENDAR_TITLE,
-      color: "#2A6CF0",
+      color: String(Brand.primary),
       entityType: Calendar.EntityTypes.EVENT,
       sourceId,
       name: QUEUE_CALENDAR_TITLE,
@@ -80,7 +81,7 @@ async function createQueueCalendar() {
 
   return Calendar.createCalendarAsync({
     title: QUEUE_CALENDAR_TITLE,
-    color: "#2A6CF0",
+    color: String(Brand.primary),
     entityType: Calendar.EntityTypes.EVENT,
     name: QUEUE_CALENDAR_TITLE,
     ownerAccount: "personal",

@@ -3,11 +3,11 @@ import { Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import type { JobStatus } from "@/lib/status-tokens";
 import { getJobStatusTokens } from "@/lib/status-tokens";
 
-export const CONTENT_VERTICAL_PADDING = 20;
+export const CONTENT_VERTICAL_PADDING = BrandSpacing.lg;
 
 type IntlWithOptionalRelativeTimeFormat = typeof Intl & {
   RelativeTimeFormat?: typeof Intl.RelativeTimeFormat;
@@ -74,11 +74,9 @@ export function StatusPill({ label, status, palette }: StatusPillProps) {
 
   return (
     <View
+      className="rounded-pill px-sm py-xs"
       style={{
-        borderRadius: BrandRadius.button - 4,
         borderCurve: "continuous",
-        paddingHorizontal: 10,
-        paddingVertical: 5,
         backgroundColor: tokens.bg,
       }}
     >
@@ -101,21 +99,16 @@ type DotStatusPillProps = {
 export function DotStatusPill({ backgroundColor, color, label }: DotStatusPillProps) {
   return (
     <View
+      className="flex-row items-center rounded-pill px-sm py-xs gap-xs"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        borderRadius: 999,
         backgroundColor,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
       }}
     >
       <View
         style={{
           width: 7,
           height: 7,
-          borderRadius: 3.5,
+          borderRadius: BrandRadius.pill,
           backgroundColor: color,
         }}
       />
@@ -143,8 +136,8 @@ type MetricCellProps = {
 /** Label + value metric pair used in job cards. */
 export function MetricCell({ align = "flex-start", icon, label, value, palette }: MetricCellProps) {
   return (
-    <View style={{ gap: 3, alignItems: align }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+    <View style={{ gap: BrandSpacing.xs, alignItems: align }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
         {icon ? <IconSymbol name={icon} size={12} color={palette.textMuted as string} /> : null}
         <Text
           style={{
@@ -160,7 +153,7 @@ export function MetricCell({ align = "flex-start", icon, label, value, palette }
         selectable
         style={{
           ...BrandType.bodyStrong,
-          fontSize: 15,
+          fontSize: BrandType.body.fontSize,
           lineHeight: 18,
           color: palette.text as string,
           textAlign: align === "flex-end" ? "right" : "left",
@@ -214,18 +207,13 @@ export function HomeSignalTile({
 
   return (
     <View
+      className="min-w-0 flex-1 gap-xs rounded-medium px-control-x py-control-y"
       style={{
-        flex: 1,
-        minWidth: 0,
-        borderRadius: BrandRadius.card - 6,
         borderCurve: "continuous",
         backgroundColor,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        gap: 3,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
         {icon ? <IconSymbol name={icon} size={13} color={labelColor} /> : null}
         <Text
           style={{

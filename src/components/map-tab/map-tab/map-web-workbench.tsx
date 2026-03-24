@@ -3,7 +3,7 @@ import { View } from "react-native";
 
 import { QueueMap } from "@/components/maps/queue-map";
 import type { QueueMapPin } from "@/components/maps/queue-map.types";
-import type { BrandPalette } from "@/constants/brand";
+import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
 import { MapWebCommandPanel } from "./map-web-command-panel";
 import { MapWebHeaderPanels } from "./map-web-header-panels";
@@ -54,7 +54,15 @@ export function MapWebWorkbench({
   onSearchChange,
 }: MapWebWorkbenchProps) {
   return (
-    <View style={{ flex: 1, paddingHorizontal: 22, paddingTop: 22, paddingBottom: 22, gap: 18 }}>
+    <View
+      style={{
+        flex: 1,
+        paddingHorizontal: BrandSpacing.xl,
+        paddingTop: BrandSpacing.xl,
+        paddingBottom: BrandSpacing.xl,
+        gap: BrandSpacing.lg,
+      }}
+    >
       <MapWebHeaderPanels
         t={t}
         palette={palette}
@@ -67,12 +75,12 @@ export function MapWebWorkbench({
         onReset={onHandleDiscardChanges}
       />
 
-      <View style={{ flex: 1, minHeight: 0, flexDirection: "row", gap: 18 }}>
+      <View style={{ flex: 1, minHeight: 0, flexDirection: "row", gap: BrandSpacing.lg }}>
         <View
           style={{
             flex: 1.45,
             minWidth: 0,
-            borderRadius: 34,
+            borderRadius: BrandRadius.soft,
             borderCurve: "continuous",
             overflow: "hidden",
             backgroundColor: palette.surfaceAlt as string,

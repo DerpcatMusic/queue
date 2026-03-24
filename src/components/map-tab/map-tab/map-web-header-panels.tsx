@@ -2,7 +2,11 @@ import type { TFunction } from "i18next";
 import { Text, View } from "react-native";
 
 import { ActionButton } from "@/components/ui/action-button";
-import { type BrandPalette, BrandType } from "@/constants/brand";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+
+// Map web header panels - shares radii with command panel
+const PANEL_RADIUS = BrandRadius.soft;
+const INNER_RADIUS = BrandRadius.medium;
 
 type MapWebHeaderPanelsProps = {
   t: TFunction;
@@ -28,16 +32,16 @@ export function MapWebHeaderPanels({
   onReset,
 }: MapWebHeaderPanelsProps) {
   return (
-    <View style={{ flexDirection: "row", gap: 16 }}>
+    <View style={{ flexDirection: "row", gap: BrandSpacing.lg }}>
       <View
         style={{
           flex: 1,
-          borderRadius: 30,
+          borderRadius: PANEL_RADIUS,
           borderCurve: "continuous",
           backgroundColor: palette.surfaceAlt as string,
-          paddingHorizontal: 18,
-          paddingVertical: 18,
-          gap: 6,
+          paddingHorizontal: BrandSpacing.lg,
+          paddingVertical: BrandSpacing.lg,
+          gap: BrandSpacing.xs,
         }}
       >
         <Text
@@ -52,10 +56,7 @@ export function MapWebHeaderPanels({
         </Text>
         <Text
           style={{
-            fontFamily: "BarlowCondensed_800ExtraBold",
-            fontSize: 42,
-            lineHeight: 38,
-            letterSpacing: -1,
+            ...BrandType.display,
             color: palette.text as string,
           }}
         >
@@ -73,13 +74,13 @@ export function MapWebHeaderPanels({
 
       <View
         style={{
-          width: 320,
-          borderRadius: 30,
+          width: BrandSpacing.shellPanel,
+          borderRadius: PANEL_RADIUS,
           borderCurve: "continuous",
           backgroundColor: palette.primary as string,
-          paddingHorizontal: 18,
-          paddingVertical: 18,
-          gap: 8,
+          paddingHorizontal: BrandSpacing.lg,
+          paddingVertical: BrandSpacing.lg,
+          gap: BrandSpacing.sm,
         }}
       >
         <Text
@@ -95,10 +96,7 @@ export function MapWebHeaderPanels({
         </Text>
         <Text
           style={{
-            fontFamily: "BarlowCondensed_800ExtraBold",
-            fontSize: 34,
-            lineHeight: 32,
-            letterSpacing: -0.8,
+            ...BrandType.heroSmall,
             color: palette.onPrimary as string,
           }}
         >
@@ -115,23 +113,22 @@ export function MapWebHeaderPanels({
         >
           {hasChanges ? t("mapTab.web.statePending") : t("mapTab.web.stateReady")}
         </Text>
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+        <View style={{ flexDirection: "row", gap: BrandSpacing.sm, marginTop: BrandSpacing.xs }}>
           <View
             style={{
               flex: 1,
-              borderRadius: 18,
+              borderRadius: INNER_RADIUS,
               borderCurve: "continuous",
-              backgroundColor: "rgba(255,255,255,0.14)",
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              gap: 2,
+              backgroundColor: palette.surfaceElevated as string,
+              paddingHorizontal: BrandSpacing.controlX,
+              paddingVertical: BrandSpacing.sm,
+              gap: BrandSpacing.xs,
             }}
           >
             <Text
               style={{
                 ...BrandType.micro,
-                color: palette.onPrimary as string,
-                opacity: 0.72,
+                color: palette.textMuted as string,
                 letterSpacing: 1,
                 textTransform: "uppercase",
               }}
@@ -141,7 +138,7 @@ export function MapWebHeaderPanels({
             <Text
               style={{
                 ...BrandType.bodyStrong,
-                color: palette.onPrimary as string,
+                color: palette.text as string,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -151,19 +148,18 @@ export function MapWebHeaderPanels({
           <View
             style={{
               flex: 1.25,
-              borderRadius: 18,
+              borderRadius: INNER_RADIUS,
               borderCurve: "continuous",
-              backgroundColor: "rgba(255,255,255,0.14)",
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              gap: 2,
+              backgroundColor: palette.surfaceElevated as string,
+              paddingHorizontal: BrandSpacing.controlX,
+              paddingVertical: BrandSpacing.sm,
+              gap: BrandSpacing.xs,
             }}
           >
             <Text
               style={{
                 ...BrandType.micro,
-                color: palette.onPrimary as string,
-                opacity: 0.72,
+                color: palette.textMuted as string,
                 letterSpacing: 1,
                 textTransform: "uppercase",
               }}
@@ -174,7 +170,7 @@ export function MapWebHeaderPanels({
               numberOfLines={1}
               style={{
                 ...BrandType.bodyStrong,
-                color: palette.onPrimary as string,
+                color: palette.text as string,
               }}
             >
               {focusedZoneLabel
@@ -183,7 +179,7 @@ export function MapWebHeaderPanels({
             </Text>
           </View>
         </View>
-        <View style={{ flexDirection: "row", gap: 10, marginTop: "auto" }}>
+        <View style={{ flexDirection: "row", gap: BrandSpacing.sm, marginTop: "auto" }}>
           <ActionButton
             label={t("mapTab.web.saveCoverage")}
             onPress={onSave}

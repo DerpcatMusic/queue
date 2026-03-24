@@ -6,27 +6,24 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
-
-import { ThemedText } from "@/components/themed-text";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
+import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
+import { useMeasuredContentHeight } from "@/components/layout/use-measured-content-height";
+import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
-import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
-import {
-  getProfileHeaderExpandedHeight,
-  ProfileDesktopHeroPanel,
-  ProfileHeaderSheet,
-} from "@/components/profile/profile-tab";
+import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
+import { ThemedText } from "@/components/themed-text";
 import { ChoicePill } from "@/components/ui/choice-pill";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
@@ -101,8 +98,9 @@ export default function StudioProfileScreen() {
   const switchActiveRole = useMutation(api.users.switchActiveRole);
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
   const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
-  const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<number | undefined>(undefined);
-  const [isSavingAutoExpireMinutes, setIsSavingAutoExpireMinutes] = useState(false);
+  const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<number | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     if (studioSettings) {
@@ -154,7 +152,6 @@ export default function StudioProfileScreen() {
       }
       const previousValue = autoExpireMinutesBefore;
       setAutoExpireMinutesBefore(minutes);
-      setIsSavingAutoExpireMinutes(true);
       void updateMyStudioSettings({
         studioName: studioSettings.studioName ?? "",
         address: studioSettings.address ?? "",
@@ -167,13 +164,9 @@ export default function StudioProfileScreen() {
           latitude: studioSettings.latitude,
           longitude: studioSettings.longitude,
         }),
-      })
-        .catch(() => {
-          setAutoExpireMinutesBefore(previousValue);
-        })
-        .finally(() => {
-          setIsSavingAutoExpireMinutes(false);
-        });
+      }).catch(() => {
+        setAutoExpireMinutesBefore(previousValue);
+      });
     },
     [autoExpireMinutesBefore, studioSettings, updateMyStudioSettings],
   );
@@ -275,29 +268,37 @@ export default function StudioProfileScreen() {
     (socialCount > 0
       ? t("profile.settings.publicProfileActive", { count: socialCount })
       : t("profile.settings.publicProfilePrompt"));
-  const profileHeaderHeight = useMemo(() => getProfileHeaderExpandedHeight(safeTop), [safeTop]);
+  const { measuredHeight: profileMeasuredHeight, onLayout: onProfileHeaderLayout } =
+    useMeasuredContentHeight();
+  const profileHeaderHeight = useMemo(
+    () => safeTop + (profileMeasuredHeight > 0 ? profileMeasuredHeight : 128),
+    [profileMeasuredHeight, safeTop],
+  );
   const profileSheetStep = useMemo(() => {
-    const availableHeight = Math.max(1, screenHeight - safeTop - 80);
+    const availableHeight = Math.max(1, getTopSheetAvailableHeight(screenHeight, safeTop, 0));
     return Math.max(0.12, Math.min(0.34, profileHeaderHeight / availableHeight));
   }, [profileHeaderHeight, safeTop, screenHeight]);
   const profileSheetContent = useMemo(
     () => (
-      <ProfileHeaderSheet
-        profileName={profileName}
-        roleLabel={t("profile.hero.studioProfile")}
-        profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
-        palette={palette}
-        onRequestEdit={handleRequestEdit}
-        primaryActionLabel={t("profile.actions.edit")}
-        status={profileStatus}
-        bio={studioSettings?.bio}
-        socialLinks={studioSettings?.socialLinks}
-        sports={studioSettings?.sports ?? []}
-      />
+      <View onLayout={onProfileHeaderLayout}>
+        <ProfileHeaderSheet
+          profileName={profileName}
+          roleLabel={t("profile.hero.studioProfile")}
+          profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
+          palette={palette}
+          onRequestEdit={handleRequestEdit}
+          primaryActionLabel={t("profile.actions.edit")}
+          status={profileStatus}
+          bio={studioSettings?.bio}
+          socialLinks={studioSettings?.socialLinks}
+          sports={studioSettings?.sports ?? []}
+        />
+      </View>
     ),
     [
       currentUser?.image,
       handleRequestEdit,
+      onProfileHeaderLayout,
       palette,
       profileName,
       profileStatus,
@@ -311,7 +312,9 @@ export default function StudioProfileScreen() {
 
   const profileSheetConfig = useMemo(
     () => ({
-      content: profileSheetContent,
+      render: () => ({
+        children: profileSheetContent,
+      }),
       steps: [profileSheetStep],
       initialStep: 0,
       padding: {
@@ -326,7 +329,11 @@ export default function StudioProfileScreen() {
 
   const isProfileIndexRoute = pathname === STUDIO_PROFILE_ROUTE || pathname.endsWith("/profile");
 
-  useGlobalTopSheet("profile", !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null);
+  useGlobalTopSheet(
+    "profile",
+    !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null,
+    "profile:index:studio",
+  );
 
   if (
     !hasActivated ||
@@ -526,16 +533,16 @@ export default function StudioProfileScreen() {
                   style={{
                     flexDirection: "row",
                     alignItems: "flex-start",
-                    gap: 14,
-                    paddingHorizontal: 18,
-                    paddingVertical: 15,
+                    gap: BrandSpacing.componentPadding,
+                    paddingHorizontal: BrandSpacing.lg,
+                    paddingVertical: BrandSpacing.componentPadding,
                   }}
                 >
                   <View
                     style={{
                       width: 38,
                       height: 38,
-                      borderRadius: 19,
+                      borderRadius: BrandRadius.cardSubtle,
                       borderCurve: "continuous",
                       alignItems: "center",
                       justifyContent: "center",
@@ -544,7 +551,7 @@ export default function StudioProfileScreen() {
                   >
                     <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
                   </View>
-                  <View style={{ flex: 1, gap: 4 }}>
+                  <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                     <Text
                       style={{
                         fontSize: 16,
@@ -557,7 +564,14 @@ export default function StudioProfileScreen() {
                     <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
                       {t("profile.settings.autoExpire.description")}
                     </ThemedText>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: BrandSpacing.sm,
+                        marginTop: BrandSpacing.sm,
+                      }}
+                    >
                       <ChoicePill
                         label={t("jobsTab.form.useStudioDefault")}
                         selected={autoExpireMinutesBefore === undefined}
@@ -639,10 +653,10 @@ export default function StudioProfileScreen() {
           routeKey="studio/profile"
           style={styles.screen}
           contentContainerStyle={{
-            gap: 18,
+            gap: BrandSpacing.lg + 2,
           }}
-          topSpacing={18}
-          bottomSpacing={32}
+          topSpacing={BrandSpacing.lg + 2}
+          bottomSpacing={BrandSpacing.xxl}
         >
           <View style={styles.mobileContentPadding}>
             <ProfileSectionHeader
@@ -784,16 +798,16 @@ export default function StudioProfileScreen() {
                 style={{
                   flexDirection: "row",
                   alignItems: "flex-start",
-                  gap: 14,
-                  paddingHorizontal: 18,
-                  paddingVertical: 15,
+                  gap: BrandSpacing.componentPadding,
+                  paddingHorizontal: BrandSpacing.lg,
+                  paddingVertical: BrandSpacing.componentPadding,
                 }}
               >
                 <View
                   style={{
                     width: 38,
                     height: 38,
-                    borderRadius: 19,
+                    borderRadius: BrandRadius.cardSubtle,
                     borderCurve: "continuous",
                     alignItems: "center",
                     justifyContent: "center",
@@ -802,7 +816,7 @@ export default function StudioProfileScreen() {
                 >
                   <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
                 </View>
-                <View style={{ flex: 1, gap: 4 }}>
+                <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                   <Text
                     style={{
                       fontSize: 16,
@@ -815,7 +829,14 @@ export default function StudioProfileScreen() {
                   <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
                     {t("profile.settings.autoExpire.description")}
                   </ThemedText>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      gap: BrandSpacing.sm,
+                      marginTop: BrandSpacing.sm,
+                    }}
+                  >
                     <ChoicePill
                       label={t("jobsTab.form.useStudioDefault")}
                       selected={autoExpireMinutesBefore === undefined}
@@ -903,7 +924,7 @@ const styles = StyleSheet.create({
   desktopShell: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 24,
+    gap: BrandSpacing.xl,
   },
   desktopRail: {
     width: 360,
@@ -912,7 +933,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 24,
+    gap: BrandSpacing.xl,
   },
   desktopMainColumn: {
     flex: 1,
@@ -925,6 +946,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
   },
   mobileContentPadding: {
-    paddingHorizontal: 24,
+    paddingHorizontal: BrandSpacing.xl,
   },
 });

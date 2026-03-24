@@ -1,6 +1,6 @@
 import { Pressable, type StyleProp, Text, View, type ViewStyle } from "react-native";
 
-import { BrandRadius, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { triggerSelectionHaptic } from "./native-interaction";
 
@@ -24,18 +24,18 @@ export function KitSegmentedToggle<T extends string>({
   style,
 }: KitSegmentedToggleProps<T>) {
   const palette = useBrand();
+  const disabledBackgroundColor = palette.surface as string;
+  const pressedBackgroundColor = palette.surfaceElevated as string;
 
   return (
     <View
+      className="flex-row overflow-hidden"
       style={[
         {
           borderRadius: BrandRadius.button,
-          borderCurve: "continuous",
+          padding: BrandSpacing.xs,
+          gap: BrandSpacing.xs,
           backgroundColor: palette.primarySubtle as string,
-          padding: 4,
-          flexDirection: "row",
-          gap: 4,
-          overflow: "hidden",
         },
         style,
       ]}
@@ -54,22 +54,24 @@ export function KitSegmentedToggle<T extends string>({
             }}
             style={({ pressed }) => ({
               flex: 1,
-              minHeight: 48,
-              borderRadius: BrandRadius.button - 8,
+              minHeight: BrandSpacing.iconContainer + 10,
+              borderRadius: BrandRadius.buttonSubtle,
               borderCurve: "continuous",
-              backgroundColor: selected
-                ? (palette.primary as string)
-                : (palette.surfaceAlt as string),
+              backgroundColor: option.disabled
+                ? disabledBackgroundColor
+                : selected
+                  ? (palette.primary as string)
+                  : pressed
+                    ? pressedBackgroundColor
+                    : (palette.surfaceAlt as string),
               alignItems: "center",
               justifyContent: "center",
-              opacity: option.disabled ? 0.72 : pressed ? 0.86 : 1,
             })}
           >
             <Text
               style={{
                 ...BrandType.micro,
                 color: selected ? (palette.onPrimary as string) : (palette.primary as string),
-                fontSize: 14,
                 fontWeight: "700",
                 includeFontPadding: false,
               }}

@@ -26,9 +26,9 @@ export function KitList({ children, style, inset = true }: KitListProps) {
 
   return (
     <View
+      className="overflow-hidden"
       style={[
         {
-          overflow: "hidden",
           borderWidth: 1,
           borderColor: border.primary,
           backgroundColor: background.surfaceElevated,
@@ -78,7 +78,7 @@ export function KitListItem({
   const content = (
     <>
       {leading ? <View style={{ marginEnd: BrandSpacing.md }}>{leading}</View> : null}
-      <View style={{ flex: 1, justifyContent: "center", gap: children ? 2 : 0 }}>
+      <View style={{ flex: 1, justifyContent: "center", gap: children ? BrandSpacing.xs : 0 }}>
         {title ? (
           <ThemedText type="bodyStrong" style={{ color: foreground.secondary }}>
             {title}
@@ -101,7 +101,7 @@ export function KitListItem({
             alignItems: "center",
             paddingHorizontal: BrandSpacing.lg,
             paddingVertical: BrandSpacing.md,
-            minHeight: 56,
+            minHeight: BrandSpacing.xxl + 24,
             backgroundColor: pressed ? background.surfaceSecondary : background.surfaceElevated,
           },
           style,
@@ -114,13 +114,12 @@ export function KitListItem({
 
   return (
     <View
+      className="flex-row items-center"
       style={[
         {
-          flexDirection: "row",
-          alignItems: "center",
           paddingHorizontal: BrandSpacing.lg,
           paddingVertical: BrandSpacing.md,
-          minHeight: 56,
+          minHeight: BrandSpacing.xxl + 24,
         },
         style,
       ]}

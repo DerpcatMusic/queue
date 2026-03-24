@@ -1,5 +1,6 @@
 const path = require("node:path");
 const { getDefaultConfig } = require("expo/metro-config");
+const { withNativewind } = require("nativewind/metro");
 
 const config = getDefaultConfig(__dirname);
 
@@ -59,4 +60,7 @@ config.transformer.getTransformOptions = async () => ({
   },
 });
 
-module.exports = config;
+module.exports = withNativewind(config, {
+  inlineVariables: false,
+  globalClassNamePolyfill: true,
+});

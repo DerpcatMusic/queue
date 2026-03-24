@@ -17,6 +17,7 @@ type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
+  "archivebox.fill": "archive",
   "arrow.clockwise": "autorenew",
   "arrow.down": "south",
   "arrow.right": "arrow-forward",
@@ -55,6 +56,7 @@ const MAPPING = {
   sparkles: "auto-awesome",
   "checkmark.circle.fill": "check-circle",
   banknote: "payments",
+  "chevron.down": "expand-more",
   "location.fill": "my-location",
   "line.3.horizontal.decrease.circle": "filter-list",
   "paperplane.fill": "send",

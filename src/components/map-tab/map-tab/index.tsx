@@ -1,3 +1,4 @@
+import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
 import { Platform, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
@@ -6,6 +7,7 @@ import { MapWebWorkbench } from "@/components/map-tab/map-tab/map-web-workbench"
 import { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
 
 export default function MapTabScreen() {
+  const router = useRouter();
   const {
     currentUser,
     filteredZones,
@@ -23,28 +25,23 @@ export default function MapTabScreen() {
     mapCameraPadding,
     mapPalette,
     mapPin,
+    studios,
     noopMapPress,
-    overlayBottom,
     palette,
     pendingChangeCount,
     persistedZoneIds,
-    remoteZones,
     saveError,
     selectedZoneIds,
     selectedZones,
     setFocusZoneId,
-    studios,
     t,
     toggleZone,
     zoneLanguage,
     zoneSearch,
     zoneModeActive,
   } = useMapTabController();
-
-  const router = useRouter();
-
   const handlePressStudio = (studioId: string) => {
-    router.push(`/instructor/jobs/studios/${studioId}` as never);
+    router.push(`/instructor/jobs/studios/${encodeURIComponent(studioId)}` as Href);
   };
 
   if (currentUser === undefined) {
@@ -67,7 +64,7 @@ export default function MapTabScreen() {
     return <Redirect href="/studio" />;
   }
 
-  if (!isMapBodyReady || remoteZones === undefined) {
+  if (!isMapBodyReady) {
     return (
       <TabScreenRoot
         mode="static"
@@ -119,16 +116,15 @@ export default function MapTabScreen() {
       mapBackgroundColor={mapPalette.styleBackground}
       isFocused={isFocused}
       mapPin={mapPin}
+      studios={studios}
       selectedZoneIds={selectedZoneIds}
       focusZoneId={focusZoneId}
       zoneModeActive={zoneModeActive}
       isSaving={isSaving}
-      overlayBottom={overlayBottom}
       cameraPadding={mapCameraPadding}
-      studios={studios}
-      onPressStudio={handlePressStudio}
       onPressZone={toggleZone}
       onPressMap={noopMapPress}
+      onPressStudio={handlePressStudio}
       onEditToggle={handleEditButtonPress}
     />
   );

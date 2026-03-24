@@ -49,7 +49,7 @@ export default function HomeScreen() {
     homeBodyReady && !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
 
   const myStudioJobs = useQuery(
-    api.jobs.getMyStudioJobs,
+    api.jobs.getMyStudioJobsWithApplications,
     canQueryStudio ? { limit: HOME_STUDIO_JOBS_LIMIT } : "skip",
   );
   const availableInstructorJobs = useQuery(
@@ -145,7 +145,7 @@ export default function HomeScreen() {
     [activeRole, homeSheetContent, homeSheetStep, palette],
   );
 
-  useGlobalTopSheet("index", homeSheetConfig);
+  useGlobalTopSheet("index", homeSheetConfig, "home:sheet");
 
   if (isAuthLoading) {
     return <LoadingScreen label={t("home.loading")} />;

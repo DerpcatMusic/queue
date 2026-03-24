@@ -3,7 +3,7 @@ import { View } from "react-native";
 
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { QueueMap } from "@/components/maps/queue-map";
-import type { QueueMapPin, StudioMarker } from "@/components/maps/queue-map.types";
+import type { QueueMapPin, StudioMapMarker } from "@/components/maps/queue-map.types";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { type BrandPalette, BrandSpacing } from "@/constants/brand";
@@ -14,21 +14,20 @@ type MapMobileStageProps = {
   mapBackgroundColor: string;
   isFocused: boolean;
   mapPin: QueueMapPin | null;
+  studios: StudioMapMarker[];
   selectedZoneIds: string[];
   focusZoneId: string | null;
   zoneModeActive: boolean;
   isSaving: boolean;
-  overlayBottom: number;
   cameraPadding: {
     top: number;
     right: number;
     bottom: number;
     left: number;
   };
-  studios: StudioMarker[];
-  onPressStudio: (studioId: string) => void;
   onPressZone: (zoneId: string) => void;
   onPressMap: () => void;
+  onPressStudio: (studioId: string) => void;
   onEditToggle: () => void;
 };
 
@@ -38,16 +37,15 @@ export function MapMobileStage({
   mapBackgroundColor,
   isFocused,
   mapPin,
+  studios,
   selectedZoneIds,
   focusZoneId,
   zoneModeActive,
   isSaving,
-  overlayBottom,
   cameraPadding,
-  studios,
-  onPressStudio,
   onPressZone,
   onPressMap,
+  onPressStudio,
   onEditToggle,
 }: MapMobileStageProps) {
   if (!isFocused) {
@@ -59,23 +57,19 @@ export function MapMobileStage({
       <QueueMap
         mode="zoneSelect"
         pin={mapPin}
+        studios={studios}
         selectedZoneIds={selectedZoneIds}
         focusZoneId={focusZoneId}
         isEditing={zoneModeActive}
         cameraPadding={cameraPadding}
-        studios={studios}
-        onPressStudio={onPressStudio}
         onPressZone={onPressZone}
         onPressMap={onPressMap}
+        onPressStudio={onPressStudio}
         showGpsButton={false}
         showAttributionButton
       />
 
-      <TabOverlayAnchor
-        side="right"
-        offset={BrandSpacing.lg}
-        style={{ bottom: overlayBottom + BrandSpacing.xs, zIndex: 60 }}
-      >
+      <TabOverlayAnchor side="right" offset={BrandSpacing.lg} style={{ zIndex: 60 }}>
         <IconButton
           accessibilityLabel={
             zoneModeActive ? t("mapTab.mobile.confirmCoverage") : t("mapTab.mobile.editCoverage")
@@ -83,10 +77,14 @@ export function MapMobileStage({
           onPress={onEditToggle}
           tone={zoneModeActive ? "primary" : "primarySubtle"}
           size={58}
+          floating
           disabled={isSaving}
+          backgroundColorOverride={
+            zoneModeActive ? (palette.primary as string) : (palette.surface as string)
+          }
           icon={
             <IconSymbol
-              name={zoneModeActive ? "checkmark.circle.fill" : "square.and.pencil"}
+              name={zoneModeActive ? "checkmark.circle.fill" : "slider.horizontal.3"}
               size={22}
               color={zoneModeActive ? (palette.onPrimary as string) : (palette.primary as string)}
             />

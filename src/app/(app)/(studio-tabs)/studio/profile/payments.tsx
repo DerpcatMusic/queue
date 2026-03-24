@@ -74,19 +74,17 @@ export default function ProfilePaymentsScreen() {
     <ProfileSubpageScrollView
       routeKey="studio/profile/payments"
       style={{ flex: 1, backgroundColor: palette.appBg }}
-      contentContainerStyle={{
-        paddingBottom: 28,
-        gap: 16,
-      }}
+      contentContainerClassName="gap-lg"
       topSpacing={BrandSpacing.md}
+      bottomSpacing={BrandSpacing.xxl}
     >
-      <View style={{ paddingHorizontal: BrandSpacing.lg, gap: 4 }}>
+      <View className="px-lg gap-xs">
         <ThemedText type="caption" style={{ color: palette.textMuted }}>
           {t("profile.payments.summarySubtitle")}
         </ThemedText>
       </View>
 
-      <View style={{ paddingHorizontal: BrandSpacing.sm }}>
+      <View className="px-sm">
         <KitList inset>
           <KitListItem
             title={t("profile.payments.processedPayments")}
@@ -121,15 +119,8 @@ export default function ProfilePaymentsScreen() {
       />
 
       {selectedPaymentId ? (
-        <View style={{ gap: 8, paddingHorizontal: BrandSpacing.sm }}>
-          <View
-            style={{
-              paddingHorizontal: BrandSpacing.xs,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
+        <View className="gap-sm px-sm">
+          <View className="flex-row items-center justify-between px-xs">
             <ThemedText type="title">{t("profile.payments.detailTitle")}</ThemedText>
             <Pressable
               accessibilityRole="button"
@@ -161,7 +152,7 @@ export default function ProfilePaymentsScreen() {
               </KitListItem>
             </KitList>
           ) : (
-            <View style={{ gap: 8 }}>
+            <View className="gap-sm">
               <KitList inset>
                 <KitListItem
                   title={t("profile.payments.paymentStatus")}
@@ -279,7 +270,7 @@ export default function ProfilePaymentsScreen() {
         </View>
       ) : null}
 
-      <View style={{ paddingHorizontal: BrandSpacing.sm }}>
+      <View className="px-sm">
         <KitList inset>
           <KitListItem>
             <ThemedText type="caption" style={{ color: palette.textMuted }}>

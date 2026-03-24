@@ -7,9 +7,27 @@ import {
   type ViewStyle,
 } from "react-native";
 import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+
+const SEARCH_SIZE_SM = {
+  containerMinHeight: BrandSpacing.controlSm + BrandSpacing.sm,
+  inputMinHeight: BrandSpacing.controlSm + BrandSpacing.xxs + BrandSpacing.xxs,
+  horizontalPadding: BrandSpacing.md,
+  iconSize: BrandSpacing.iconSm - BrandSpacing.xxs,
+  clearIconSize: BrandSpacing.iconSm - BrandSpacing.xxs,
+  radius: BrandRadius.buttonSubtle,
+} as const;
+
+const SEARCH_SIZE_MD = {
+  containerMinHeight: BrandSpacing.controlSm + BrandSpacing.md,
+  inputMinHeight: BrandSpacing.controlSm + BrandSpacing.sm,
+  horizontalPadding: BrandSpacing.lg,
+  iconSize: BrandSpacing.iconSm + BrandSpacing.xxs,
+  clearIconSize: BrandSpacing.iconSm - BrandSpacing.xxs,
+  radius: BrandRadius.input,
+} as const;
 
 type NativeSearchFieldProps = Omit<TextInputProps, "value" | "onChangeText"> & {
   value: string;
@@ -17,6 +35,7 @@ type NativeSearchFieldProps = Omit<TextInputProps, "value" | "onChangeText"> & {
   clearAccessibilityLabel?: string;
   size?: "md" | "sm";
   containerStyle?: StyleProp<ViewStyle>;
+  animateLayout?: boolean;
 };
 
 export function NativeSearchField({
@@ -26,6 +45,7 @@ export function NativeSearchField({
   clearAccessibilityLabel = "Clear search",
   size = "md",
   containerStyle,
+  animateLayout = false,
   style,
   ...rest
 }: NativeSearchFieldProps) {
@@ -35,30 +55,22 @@ export function NativeSearchField({
     resolvedScheme === "dark"
       ? (palette.surfaceElevated as string)
       : (palette.surfaceAlt as string);
-  const metrics =
-    size === "sm"
-      ? {
-          containerMinHeight: 48,
-          inputMinHeight: 44,
-          horizontalPadding: BrandSpacing.md,
-          iconSize: 18,
-          clearIconSize: 17,
-          radius: 18,
-        }
-      : {
-          containerMinHeight: 52,
-          inputMinHeight: 48,
-          horizontalPadding: BrandSpacing.lg,
-          iconSize: 19,
-          clearIconSize: 18,
-          radius: BrandRadius.input,
-        };
+  const metrics = size === "sm" ? SEARCH_SIZE_SM : SEARCH_SIZE_MD;
+  const pressedBackgroundColor =
+    resolvedScheme === "dark" ? (palette.surface as string) : (palette.surfaceElevated as string);
+  const clearButtonBackground = palette.textMuted as string;
 
   return (
     <Animated.View
-      layout={LinearTransition.duration(220).reduceMotion(ReduceMotion.System)}
+      {...(animateLayout
+        ? {
+            layout: LinearTransition.duration(220).reduceMotion(ReduceMotion.System),
+          }
+        : {})}
       style={[
         {
+          width: "100%",
+          minWidth: 0,
           minHeight: metrics.containerMinHeight,
           borderWidth: 0,
           borderRadius: metrics.radius,
@@ -88,12 +100,11 @@ export function NativeSearchField({
         style={[
           {
             flex: 1,
+            minWidth: 0,
             minHeight: metrics.inputMinHeight,
+            ...BrandType.bodyMedium,
             color: palette.text,
-            fontSize: 16,
-            fontWeight: "500",
             includeFontPadding: false,
-            paddingVertical: 0,
           },
           style,
         ]}
@@ -105,12 +116,15 @@ export function NativeSearchField({
           accessibilityLabel={clearAccessibilityLabel}
           onPress={() => onChangeText("")}
           hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
+          style={({ pressed }) => ({
+            borderRadius: BrandRadius.pill,
+            backgroundColor: pressed ? pressedBackgroundColor : clearButtonBackground,
+          })}
         >
           <MaterialIcons
             name="close"
             size={metrics.clearIconSize}
-            color={palette.textMuted as string}
+            color={palette.onPrimary as string}
           />
         </Pressable>
       ) : null}

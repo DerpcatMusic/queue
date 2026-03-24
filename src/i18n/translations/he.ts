@@ -293,6 +293,8 @@ const he = {
         futureNote:
           "Queue מסנכרנת ליומן ייעודי במכשיר. סנכרון ענן ל-Google או Apple תלוי בהגדרות החשבון במכשיר.",
         googleConnectRequired: "חברו חשבון Google כדי להפעיל סנכרון ישיר ל-Google Calendar.",
+        googleReconnectRequired:
+          "חברו מחדש את Google Calendar כדי לשחזר את הסנכרון. לחיבור הזה חסרות הרשאות רענון.",
         googleConnectedAs: "מחובר כ-{{email}}",
         applePermissionNote:
           "סנכרון Apple יבקש הרשאת יומן וישמור אירועים ביומן Queue Sessions ייעודי.",
@@ -396,6 +398,17 @@ const he = {
       zoneWaitingLabel: "האזור ממתין",
       zonePendingBody: "חפשו כתובת או השתמשו ב-GPS כדי לפתור את אזור השירות אוטומטית.",
       commandLabel: "שליטה",
+      enterManually: "הזנה ידנית",
+      backToSearch: "חזרה לחיפוש",
+      findByZip: "חיפוש לפי מיקוד",
+      fieldCity: "עיר",
+      fieldStreet: "רחוב",
+      fieldNumber: "מספר",
+      fieldFloor: "קומה",
+      fieldZipCode: "מיקוד",
+      fieldCityPlaceholder: "לדוגמה תל אביב",
+      fieldStreetPlaceholder: "לדוגמה אבן גבירול",
+      zipNotFound: "לא נמצאו כתובות למיקוד זה",
     },
     calendar: {
       syncOff: "כבוי",
@@ -599,14 +612,11 @@ const he = {
       prepTitle: "מה להכין מראש",
       prep: {
         documentTitle: "הכינו מסמך ממשלתי אמיתי",
-        documentBody:
-          "השתמשו בדרכון או בתעודת זהות שתואמים לשם החוקי שמשמש למשיכות.",
+        documentBody: "השתמשו בדרכון או בתעודת זהות שתואמים לשם החוקי שמשמש למשיכות.",
         faceTitle: "השתמשו בתאורה טובה לסריקת הפנים",
-        faceBody:
-          "Didit עשויה לבקש בדיקת סלפי או חיות כדי לוודא שהמסמך שייך לכם.",
+        faceBody: "Didit עשויה לבקש בדיקת סלפי או חיות כדי לוודא שהמסמך שייך לכם.",
         timeTitle: "פנו כמה דקות",
-        timeBody:
-          "הזרימה מהירה יותר כשהמסמך נקי, קריא, והמצלמה יציבה.",
+        timeBody: "הזרימה מהירה יותר כשהמסמך נקי, קריא, והמצלמה יציבה.",
       },
       stepsTitle: "מה הבדיקה עושה",
       steps: {
@@ -628,8 +638,7 @@ const he = {
         "כי Queue תומכת בפעילות בתשלום ובהגדרת משיכות, אנחנו צריכים לוודא מי מקבל כסף ולצמצם סיכוני הונאה לפני הפעלת משיכות.",
       why: {
         payoutsTitle: "משיכות דורשות זהות מאומתת",
-        payoutsBody:
-          "כך אנחנו קושרים משיכות ובדיקות חשבון לאדם אמיתי במקום לפרופיל אנונימי.",
+        payoutsBody: "כך אנחנו קושרים משיכות ובדיקות חשבון לאדם אמיתי במקום לפרופיל אנונימי.",
         fraudTitle: "בקרות הונאה בתשלומים בישראל מתחזקות",
         fraudBody:
           "בדיקות זהות עוזרות לצמצם השתלטות על חשבונות, כרטיסים גנובים, וניצול לרעה סביב תשלומים דיגיטליים.",
@@ -662,8 +671,7 @@ const he = {
         in_review:
           "Didit קיבלה את ההגשה שלכם ובודקת אותה כעת. המסך הזה ימשיך לעקוב אחרי שתחזרו מהזרימה.",
         pending: "ההגשה התקבלה. אנחנו מחכים לתוצאת בדיקה סופית מ-Didit.",
-        in_progress:
-          "הניסיון האחרון לא הושלם. התחילו אימות מאובטח חדש כדי להמשיך.",
+        in_progress: "הניסיון האחרון לא הושלם. התחילו אימות מאובטח חדש כדי להמשיך.",
         abandoned: "זרימת האימות בוטלה לפני השלמה. התחילו שוב כשתהיו מוכנים.",
         expired: "תוקף סשן האימות פג. התחילו סשן חדש כדי להמשיך.",
         default: "השלימו אימות זהות כדי לפתוח KYC וגישה למשיכות.",
@@ -745,10 +753,8 @@ const he = {
     addAccountSubtitle: "התחברו לחשבון נוסף וקשרו אותו לחיבור הנוכחי.",
     addAccountBody:
       "השתמשו באימייל, קישור קסם, Google או Apple כדי לחבר חשבון קיים נוסף לחשבון שבו אתם כבר משתמשים.",
-    addInstructorAccountBody:
-      "התחברו לחשבון המדריך/ה שברצונכם לקשר לחיבור הזה.",
-    addStudioAccountBody:
-      "התחברו לחשבון הסטודיו שברצונכם לקשר לחיבור הזה.",
+    addInstructorAccountBody: "התחברו לחשבון המדריך/ה שברצונכם לקשר לחיבור הזה.",
+    addStudioAccountBody: "התחברו לחשבון הסטודיו שברצונכם לקשר לחיבור הזה.",
     addAccountLinked: "החשבון קושר. משלימים את ההגדרה...",
     magicLinkUnavailableNative:
       "Email magic links are not supported in Expo native apps, so this flow uses one-time codes.",
@@ -1095,6 +1101,10 @@ const he = {
       emptyInstructorFreshTwo: "הלוח שקט כרגע.",
       emptyInstructorFreshThree: "נסו שוב עוד מעט.",
       emptyRefreshHint: "משכו לרענון כדי לקבל שורה חדשה.",
+      openArchive: "פתיחת ארכיון",
+      archiveSubtitle: "פניות קודמות ומשרות שעברו נשארות כאן.",
+      archiveEmpty: "עדיין אין משרות בארכיון.",
+      archiveAppliedOn: "הוגש ב־{{date}}",
     },
     studioFeed: {
       eyebrow: "תפעול סטודיו",
@@ -1306,6 +1316,8 @@ const he = {
       nextSubtitle: "השיעורים המאושרים הבאים שלך.",
       noUpcoming: "אין עדיין שיעורים קרובים. שווה לבדוק התאמות פתוחות.",
       emptySchedule: "לוח המשרות זמין כשתרצו את השיעור הבא.",
+      noJobsAvailable: "אין משרות זמינות",
+      noJobsHint: "בדקו שוב מאוחר יותר לפתיחות חדשות.",
     },
     studio: {
       title: "בית",
@@ -1336,6 +1348,8 @@ const he = {
       recentTitle: "משרות אחרונות",
       noRecent: "עדיין לא פורסמו משרות.",
       emptyBoard: 'פרסמו משמרת כדי להתחיל למלא את הלו"ז.',
+      noReviewJobs: "תור הבדיקה פנוי",
+      noReviewJobsHint: "כל המועמדים נבדקו.",
     },
   },
   explore: {

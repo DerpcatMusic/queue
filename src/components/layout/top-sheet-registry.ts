@@ -4,7 +4,7 @@ import {
   type PropsWithChildren,
   useCallback,
   useContext,
-  useLayoutEffect,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -229,24 +229,18 @@ export function useGlobalTopSheet(
   explicitOwnerId?: string,
 ) {
   const { replaceConfig, clearConfig } = useTopSheetRegistry();
-  const latestTabIdRef = useRef(tabId);
   const ownerIdRef = useRef<string | null>(null);
   if (!ownerIdRef.current) {
     ownerIdRef.current = `${tabId}:${Math.random().toString(36).slice(2, 10)}`;
   }
   const ownerId = explicitOwnerId ?? ownerIdRef.current;
-  latestTabIdRef.current = tabId;
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     replaceConfig(tabId, ownerId, config);
-  }, [config, ownerId, replaceConfig, tabId]);
-
-  useLayoutEffect(
-    () => () => {
-      clearConfig(latestTabIdRef.current, ownerId);
-    },
-    [clearConfig, ownerId],
-  );
+    return () => {
+      clearConfig(tabId, ownerId);
+    };
+  }, [clearConfig, config, ownerId, replaceConfig, tabId]);
 }
 
 export function useResolvedTabSheetConfig(tabId: string | null) {

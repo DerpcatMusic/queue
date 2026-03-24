@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type ColorValue, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import {
   fetchPlaceAutocomplete,
@@ -169,7 +170,7 @@ export function AddressAutocomplete({
               style={({ pressed }) => [
                 styles.suggestion,
                 {
-                  backgroundColor: pressed ? palette.primarySubtle : "transparent",
+                  backgroundColor: pressed ? palette.primarySubtle : palette.surface,
                 },
               ]}
               onPress={() => {
@@ -205,29 +206,29 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: BrandRadius.buttonSubtle,
     borderCurve: "continuous",
-    minHeight: 46,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    minHeight: BrandSpacing.iconContainer + BrandSpacing.xs,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.sm,
     fontSize: 16,
   },
   loadingBar: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginTop: 4,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.xs,
+    borderRadius: BrandRadius.cardSubtle,
+    marginTop: BrandSpacing.xs,
   },
   dropdown: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: BrandRadius.buttonSubtle,
     borderCurve: "continuous",
-    marginTop: 4,
+    marginTop: BrandSpacing.xs,
     overflow: "hidden",
   },
   suggestion: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 2,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.sm,
+    gap: BrandSpacing.xs,
   },
 });
