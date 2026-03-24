@@ -43,10 +43,10 @@ const ATTRIBUTION_SIZE = BrandSpacing.iconContainer - BrandSpacing.xs;
 const ATTRIBUTION_ICON_SIZE = BrandSpacing.sm + BrandSpacing.xs;
 const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm;
 const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2;
-const STUDIO_MARKER_MIN_ZOOM = 10;
-const STUDIO_CLUSTER_MAX_ZOOM = 12;
+const STUDIO_MARKER_MIN_ZOOM = 11.75;
+const STUDIO_CLUSTER_MAX_ZOOM = 13;
 const STUDIO_PIN_ICON_KEY_PREFIX = "studio-pin:";
-const STUDIO_PIN_LABEL_MIN_ZOOM = 13.25;
+const STUDIO_PIN_LABEL_MIN_ZOOM = 14.2;
 const STUDIO_PIN_SHELL_IMAGE = require("../../../assets/images/map/studio-pin-shell-sdf.png");
 
 type MapLoadState = "loading" | "ready" | "error";
@@ -448,11 +448,11 @@ export const QueueMap = memo(function QueueMap({
                   ["linear"],
                   ["zoom"],
                   STUDIO_MARKER_MIN_ZOOM,
-                  0.8,
+                  0.28,
                   13.5,
-                  0.86,
+                  0.34,
                   16,
-                  0.92,
+                  0.42,
                 ] as any,
                 "icon-allow-overlap": true,
                 "icon-ignore-placement": true,
@@ -474,13 +474,13 @@ export const QueueMap = memo(function QueueMap({
                   ["linear"],
                   ["zoom"],
                   STUDIO_PIN_LABEL_MIN_ZOOM,
-                  11,
+                  10,
                   16,
-                  13,
+                  12,
                 ] as any,
                 "text-anchor": "bottom",
-                "text-offset": [0, -2.05] as any,
-                "text-max-width": 10 as any,
+                "text-offset": [0, -1.45] as any,
+                "text-max-width": 8 as any,
                 "text-allow-overlap": false,
               }}
               paint={{
@@ -493,8 +493,8 @@ export const QueueMap = memo(function QueueMap({
                   ["zoom"],
                   STUDIO_PIN_LABEL_MIN_ZOOM,
                   0,
-                  14,
-                  0.92,
+                  14.8,
+                  0.82,
                 ] as any,
               }}
             />

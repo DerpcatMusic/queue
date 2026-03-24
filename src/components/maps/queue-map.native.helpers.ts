@@ -71,6 +71,18 @@ function isLowValueSymbolLayer(layer: AnyStyleLayer) {
   );
 }
 
+function is3DBuildingLayer(layer: AnyStyleLayer) {
+  const id = String(layer?.id ?? "").toLowerCase();
+  const sourceLayer = String(layer?.["source-layer"] ?? "").toLowerCase();
+  const type = String(layer?.type ?? "").toLowerCase();
+  return (
+    type === "fill-extrusion" ||
+    id.includes("extrusion") ||
+    id.includes("3d-building") ||
+    sourceLayer.includes("building-3d")
+  );
+}
+
 export function withMapPersonality(
   style: AnyStyleSpec,
   palette: ReturnType<typeof getMapBrandPalette>,
@@ -78,6 +90,7 @@ export function withMapPersonality(
 ) {
   const layers = (style.layers ?? [])
     .filter((layer) => !isRoadNumberLayer(layer))
+    .filter((layer) => !is3DBuildingLayer(layer))
     .filter((layer) => (showBaseLabels ? true : String(layer?.type ?? "") !== "symbol"))
     .filter((layer) => !isLowValueSymbolLayer(layer))
     .map((layer) => {
@@ -113,15 +126,17 @@ export function withMapPersonality(
       }
       if (sourceLayer.includes("road") && layerType === "line") {
         paint["line-color"] = palette.roadLine;
-        paint["line-opacity"] = 0.92;
+        paint["line-opacity"] = 0.72;
       }
       if ((sourceLayer.includes("building") || id.includes("building")) && layerType === "fill") {
         paint["fill-color"] = palette.buildingFill;
+        paint["fill-opacity"] = 0.68;
       }
       if (layerType === "symbol") {
         paint["text-color"] = palette.text;
         paint["text-halo-color"] = palette.textHalo;
-        paint["text-halo-width"] = 0.8;
+        paint["text-halo-width"] = 0.55;
+        paint["text-opacity"] = 0.9;
       }
 
       nextLayer.paint = paint;
