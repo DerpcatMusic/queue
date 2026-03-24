@@ -9,6 +9,7 @@ import {
   internalQuery,
   mutation,
   type MutationCtx,
+  type QueryCtx,
   query,
 } from "./_generated/server";
 import {
@@ -91,6 +92,18 @@ const duplicateUserEmailReportEntryValidator = v.object({
     }),
   ),
 });
+const authEmailLinkStateEntryValidator = v.object({
+  userId: v.id("users"),
+  provider: v.string(),
+  providerAccountId: v.string(),
+  userEmail: v.optional(v.string()),
+  role: v.union(v.literal("pending"), v.literal("instructor"), v.literal("studio")),
+  onboardingComplete: v.boolean(),
+  isActive: v.boolean(),
+  emailVerified: v.boolean(),
+  hasInstructorProfile: v.boolean(),
+  hasStudioProfile: v.boolean(),
+});
 
 type DuplicateUserEmailReportEntry = {
   email: string;
@@ -108,6 +121,19 @@ type DuplicateUserEmailReportEntry = {
     createdAt: number;
     updatedAt: number;
   }>;
+};
+
+type AuthEmailLinkStateEntry = {
+  userId: Id<"users">;
+  provider: string;
+  providerAccountId: string;
+  userEmail?: string;
+  role: "pending" | "instructor" | "studio";
+  onboardingComplete: boolean;
+  isActive: boolean;
+  emailVerified: boolean;
+  hasInstructorProfile: boolean;
+  hasStudioProfile: boolean;
 };
 
 function isDuplicateUserEmailReportEntry(
@@ -136,8 +162,27 @@ function resolveZoneId(value: string | undefined): string | undefined {
   return LEGACY_ZONE_TO_ID.get(cleaned.toLowerCase());
 }
 
+async function resolveUserProfileState(ctx: QueryCtx, userId: Id<"users">) {
+  const [instructorProfile, studioProfile] = await Promise.all([
+    ctx.db
+      .query("instructorProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .unique(),
+    ctx.db
+      .query("studioProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .unique(),
+  ]);
+
+  return {
+    hasInstructorProfile: instructorProfile !== null,
+    hasStudioProfile: studioProfile !== null,
+  };
+}
+
 const MIGRATIONS_ACCESS_TOKEN_ENV = "MIGRATIONS_ACCESS_TOKEN";
 const DEVELOPMENT_RESET_CONFIRMATION = "DELETE_ALL_DEV_DATA";
+const EMAIL_AUTH_PROVIDER_IDS = ["resend", "resend-otp"] as const;
 const DEVELOPMENT_RESET_TABLES = [
   "authAccounts",
   "authRateLimits",
@@ -2093,6 +2138,168 @@ export const getDuplicateUserEmailReport = action({
     return {
       scannedEmails: targetEmails.length,
       duplicateEmails: reportEntries,
+    };
+  },
+});
+
+export const inspectUserEmailLinkState = query({
+  args: {
+    email: v.string(),
+    accessToken: v.optional(v.string()),
+  },
+  returns: v.object({
+    normalizedEmail: v.string(),
+    usersByEmail: v.array(
+      v.object({
+        userId: v.id("users"),
+        role: v.union(v.literal("pending"), v.literal("instructor"), v.literal("studio")),
+        onboardingComplete: v.boolean(),
+        isActive: v.boolean(),
+        emailVerified: v.boolean(),
+        hasInstructorProfile: v.boolean(),
+        hasStudioProfile: v.boolean(),
+      }),
+    ),
+    usersFromEmailAuthAccounts: v.array(authEmailLinkStateEntryValidator),
+  }),
+  handler: async (ctx, args) => {
+    requireMigrationsAccessToken(args.accessToken);
+    const normalizedEmail = normalizeEmail(args.email);
+    if (!normalizedEmail) {
+      throw new Error("Email is required");
+    }
+
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+      .collect();
+    const usersByEmail = await Promise.all(
+      users.map(async (user) => ({
+        userId: user._id,
+        role: user.role,
+        onboardingComplete: user.onboardingComplete,
+        isActive: user.isActive,
+        emailVerified: user.emailVerificationTime !== undefined,
+        ...(await resolveUserProfileState(ctx, user._id)),
+      })),
+    );
+
+    const usersFromEmailAuthAccounts: AuthEmailLinkStateEntry[] = [];
+    for (const providerId of EMAIL_AUTH_PROVIDER_IDS) {
+      const accounts = await ctx.db
+        .query("authAccounts")
+        .withIndex("providerAndAccountId", (q) =>
+          q.eq("provider", providerId).eq("providerAccountId", normalizedEmail),
+        )
+        .collect();
+
+      for (const account of accounts) {
+        const user = await ctx.db.get(account.userId);
+        if (!user) {
+          continue;
+        }
+
+        usersFromEmailAuthAccounts.push({
+          userId: user._id,
+          provider: account.provider,
+          providerAccountId: account.providerAccountId,
+          role: user.role,
+          onboardingComplete: user.onboardingComplete,
+          isActive: user.isActive,
+          emailVerified:
+            user.emailVerificationTime !== undefined || account.emailVerified !== undefined,
+          ...(await resolveUserProfileState(ctx, user._id)),
+          ...omitUndefined({
+            userEmail: user.email,
+          }),
+        });
+      }
+    }
+
+    return {
+      normalizedEmail,
+      usersByEmail,
+      usersFromEmailAuthAccounts,
+    };
+  },
+});
+
+export const repairUserEmailFromAuthAccounts = mutation({
+  args: {
+    email: v.string(),
+    accessToken: v.optional(v.string()),
+  },
+  returns: v.object({
+    normalizedEmail: v.string(),
+    inspectedUsers: v.number(),
+    updatedUsers: v.number(),
+    updatedUserIds: v.array(v.id("users")),
+  }),
+  handler: async (ctx, args) => {
+    requireMigrationsAccessToken(args.accessToken);
+    const normalizedEmail = normalizeEmail(args.email);
+    if (!normalizedEmail) {
+      throw new Error("Email is required");
+    }
+
+    const candidates = new Map<
+      string,
+      {
+        userId: Id<"users">;
+        shouldMarkVerified: boolean;
+      }
+    >();
+
+    for (const providerId of EMAIL_AUTH_PROVIDER_IDS) {
+      const accounts = await ctx.db
+        .query("authAccounts")
+        .withIndex("providerAndAccountId", (q) =>
+          q.eq("provider", providerId).eq("providerAccountId", normalizedEmail),
+        )
+        .collect();
+
+      for (const account of accounts) {
+        const key = String(account.userId);
+        const existing = candidates.get(key);
+        const shouldMarkVerified = account.emailVerified === normalizedEmail;
+        candidates.set(key, {
+          userId: account.userId,
+          shouldMarkVerified: existing?.shouldMarkVerified === true || shouldMarkVerified,
+        });
+      }
+    }
+
+    const updatedUserIds: Id<"users">[] = [];
+    const now = Date.now();
+
+    for (const candidate of candidates.values()) {
+      const user = await ctx.db.get(candidate.userId);
+      if (!user) {
+        continue;
+      }
+
+      const userEmail = normalizeEmail(user.email);
+      const shouldUpdateEmail = userEmail !== normalizedEmail;
+      const shouldUpdateVerification =
+        candidate.shouldMarkVerified && user.emailVerificationTime === undefined;
+
+      if (!shouldUpdateEmail && !shouldUpdateVerification) {
+        continue;
+      }
+
+      await ctx.db.patch("users", user._id, {
+        ...(shouldUpdateEmail ? { email: normalizedEmail } : {}),
+        ...(shouldUpdateVerification ? { emailVerificationTime: now } : {}),
+        updatedAt: now,
+      });
+      updatedUserIds.push(user._id);
+    }
+
+    return {
+      normalizedEmail,
+      inspectedUsers: candidates.size,
+      updatedUsers: updatedUserIds.length,
+      updatedUserIds,
     };
   },
 });

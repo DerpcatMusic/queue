@@ -152,6 +152,39 @@ async function findMatchedUserIdsFromEmailAccounts(
   return Array.from(matchedUserIds) as Id<"users">[];
 }
 
+async function findMatchedUserIdsFromProviderAccountHint(
+  ctx: any,
+  profile: Record<string, unknown>,
+): Promise<Id<"users">[]> {
+  const providerAccountIdHint =
+    typeof profile.providerAccountIdHint === "string" ? profile.providerAccountIdHint : undefined;
+  const providerAccountProviders = Array.isArray(profile.providerAccountProviders)
+    ? profile.providerAccountProviders.filter(
+        (providerId): providerId is string => typeof providerId === "string" && providerId.length > 0,
+      )
+    : [];
+
+  if (!providerAccountIdHint || providerAccountProviders.length === 0) {
+    return [];
+  }
+
+  const matchedUserIds = new Set<string>();
+  for (const providerId of providerAccountProviders) {
+    const account = await ctx.db
+      .query("authAccounts")
+      .withIndex("providerAndAccountId", (q: any) =>
+        q.eq("provider", providerId).eq("providerAccountId", providerAccountIdHint),
+      )
+      .unique();
+
+    if (account?.userId) {
+      matchedUserIds.add(String(account.userId));
+    }
+  }
+
+  return Array.from(matchedUserIds) as Id<"users">[];
+}
+
 async function upsertAuthenticatedUser(ctx: any, args: {
   existingUserId: Id<"users"> | null | undefined;
   profile: Record<string, unknown>;
@@ -175,6 +208,7 @@ async function upsertAuthenticatedUser(ctx: any, args: {
   const isAnonymous =
     typeof args.profile.isAnonymous === "boolean" ? args.profile.isAnonymous : undefined;
 
+  const hintedMatchedUserIds = await findMatchedUserIdsFromProviderAccountHint(ctx, args.profile);
   const emailMatches = canResolveLinkedUserByEmail(email, isEmailVerified)
     ? await ((ctx.db.query("users") as any)
         .withIndex("by_email", (q: any) => q.eq("email", email))
@@ -185,11 +219,13 @@ async function upsertAuthenticatedUser(ctx: any, args: {
     : [];
   const normalizedEmailMatches = Array.from(
     new Set([
+      ...hintedMatchedUserIds.map((userId) => String(userId)),
       ...emailMatches.map((row) => String(row._id)),
       ...accountMatchedUserIds.map((userId) => String(userId)),
     ]),
   ) as Id<"users">[];
-  let linkedUserId: Id<"users"> | null | undefined = null;
+  const preferredHintedUserId = hintedMatchedUserIds.length === 1 ? hintedMatchedUserIds[0] : null;
+  let linkedUserId: Id<"users"> | null | undefined = preferredHintedUserId;
   const dedupedUserId =
     canResolveLinkedUserByEmail(email, isEmailVerified) && normalizedEmailMatches.length > 1
       ? await dedupeUsersByEmail({
@@ -233,6 +269,26 @@ async function upsertAuthenticatedUser(ctx: any, args: {
       ...(phoneVerificationTime ? { phoneVerificationTime } : {}),
       ...(isAnonymous !== undefined ? { isAnonymous } : {}),
     });
+
+    if (email && isEmailVerified) {
+      const duplicateUsers = await ((ctx.db.query("users") as any)
+        .withIndex("by_email", (q: any) => q.eq("email", email))
+        .collect() as Promise<Array<{ _id: Id<"users"> }>>);
+      if (duplicateUsers.length > 1) {
+        const dedupedUserId = await dedupeUsersByEmail({
+          ctx,
+          normalizedEmail: email,
+          preferredUserId: linkedUserId,
+          now,
+          requireVerifiedUser: true,
+          emailOwnershipVerified: true,
+        });
+        if (dedupedUserId) {
+          linkedUserId = dedupedUserId;
+        }
+      }
+    }
+
     return linkedUserId;
   }
 
@@ -286,6 +342,8 @@ if (googleNativeWebClientId && googleNativeTokenAudiences.length > 0) {
           ...(payload.email_verified === true ? { emailVerified: true } : {}),
           ...(typeof payload.name === "string" ? { name: payload.name } : {}),
           ...(typeof payload.picture === "string" ? { image: payload.picture } : {}),
+          providerAccountIdHint: String(accountId),
+          providerAccountProviders: ["google", "google-native"],
         } as any;
         const created = await createAccount(ctx, {
           provider: "google-native",

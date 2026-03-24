@@ -64,6 +64,7 @@ export function StudioFeed() {
     studioNotificationSettings,
     toggleStudioPush,
   } = useStudioFeedController({ t });
+  type StudioBranchOption = NonNullable<typeof studioBranches>[number];
   const reviewQueueJobs = filteredStudioJobsWithPayments.filter(
     (job) => job.pendingApplicationsCount > 0,
   );
@@ -307,7 +308,7 @@ export function StudioFeed() {
           innerRef={createJobSheetRef as never}
           palette={palette}
           isSubmitting={isSubmittingStudio}
-          branches={(studioBranches ?? []).map((branch) => ({
+          branches={(studioBranches ?? []).map((branch: StudioBranchOption) => ({
             branchId: branch.branchId,
             name: branch.name,
             address: branch.address,
@@ -315,7 +316,10 @@ export function StudioFeed() {
             zone: branch.zone,
             status: branch.status,
           }))}
-          defaultBranchId={studioBranches?.find((branch) => branch.isPrimary)?.branchId ?? null}
+          defaultBranchId={
+            studioBranches?.find((branch: StudioBranchOption) => branch.isPrimary)?.branchId ??
+            null
+          }
           onDismissed={() => setIsCreateSheetVisible(false)}
           onPost={postStudioJob}
         />
