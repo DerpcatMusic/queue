@@ -1,16 +1,6 @@
 import { Email } from "@convex-dev/auth/providers/Email";
 import { Resend as ResendApi } from "resend";
-
-function resolveRecipient(email: string) {
-  // Only reroute in non-production environments to prevent accidental mass account takeover
-  const isDev = process.env.NODE_ENV !== "production";
-  const devInbox = isDev ? process.env.AUTH_EMAIL_DEV_INBOX?.trim() : undefined;
-  const shouldReroute = Boolean(devInbox);
-  return {
-    to: shouldReroute ? devInbox! : email,
-    shouldReroute,
-  };
-}
+import { sendResendEmailWithDevFallback } from "./lib/resendDevRouting";
 
 export const ResendMagicLink = Email({
   id: "resend",
@@ -20,27 +10,14 @@ export const ResendMagicLink = Email({
   },
   maxAge: 60 * 30,
   async sendVerificationRequest({ identifier: email, provider, url }) {
-    const { to, shouldReroute } = resolveRecipient(email);
     const resend = new ResendApi(provider.apiKey);
-    const { error } = await resend.emails.send({
+    await sendResendEmailWithDevFallback({
+      resend,
       from: process.env.AUTH_EMAIL_FROM ?? "Queue <onboarding@resend.dev>",
-      to: [to],
+      originalTo: email,
       subject: "Your Queue magic sign-in link",
-      text: shouldReroute
-        ? `Dev reroute target: ${email}\nUse this sign-in link: ${url}`
-        : `Use this sign-in link: ${url}`,
-      html: shouldReroute
-        ? `<p>Dev reroute target: <strong>${email}</strong></p><p><a href="${url}">Sign in to Queue</a></p>`
-        : `<p><a href="${url}">Sign in to Queue</a></p>`,
+      text: `Use this sign-in link: ${url}`,
+      html: `<p><a href="${url}">Sign in to Queue</a></p>`,
     });
-
-    if (error) {
-      throw new Error(
-        JSON.stringify({
-          ...error,
-          hint: "If using Resend test mode, set AUTH_EMAIL_DEV_INBOX to your verified testing inbox or verify a sender domain and use AUTH_EMAIL_FROM.",
-        }),
-      );
-    }
   },
 });
