@@ -1,6 +1,13 @@
 import { usePathname } from "expo-router";
 import { isValidElement, useCallback, useEffect, useRef } from "react";
-import { Platform, StyleSheet, type StyleProp, useWindowDimensions, View, type ViewStyle } from "react-native";
+import {
+  Platform,
+  type StyleProp,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from "react-native";
 import Reanimated, {
   FadeIn,
   FadeOut,
@@ -19,10 +26,7 @@ import {
 } from "@/components/layout/top-sheet-registry";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
-import {
-  getFallbackSheetColors,
-  resolveTopSheetRouteTab,
-} from "./global-top-sheet.helpers";
+import { getFallbackSheetColors, resolveTopSheetRouteTab } from "./global-top-sheet.helpers";
 import { getTopSheetStepHeights } from "./top-sheet.helpers";
 
 /**
@@ -159,7 +163,11 @@ export function GlobalTopSheet() {
     if (!node) return null;
     return (
       <View style={[styles.contentClip, style]}>
-        <Reanimated.View key={`${transitionKey}:${slotKey}`} style={style} {...contentTransitionProps}>
+        <Reanimated.View
+          key={`${transitionKey}:${slotKey}`}
+          style={style}
+          {...contentTransitionProps}
+        >
           {node}
         </Reanimated.View>
       </View>
@@ -190,7 +198,11 @@ export function GlobalTopSheet() {
             stickyFooter={renderTransitionedNode("sticky-footer", richStickyFooter)}
             revealOnExpand={renderTransitionedNode("reveal", richRevealOnExpand, { flex: 1 })}
           >
-            {renderTransitionedNode("children", richChildren, richChildren ? { flex: 1 } : undefined)}
+            {renderTransitionedNode(
+              "children",
+              richChildren,
+              richChildren ? { flex: 1 } : undefined,
+            )}
           </TopSheet>
           {activeConfig.overlay ? (
             <Reanimated.View
@@ -236,7 +248,11 @@ export function GlobalTopSheet() {
   return (
     <View pointerEvents="box-none" style={rootStyle}>
       <TopSheet {...baseSheetProps!}>
-        {renderTransitionedNode("content", activeConfig.content, activeConfig.content ? { flex: 1 } : undefined)}
+        {renderTransitionedNode(
+          "content",
+          activeConfig.content,
+          activeConfig.content ? { flex: 1 } : undefined,
+        )}
       </TopSheet>
       {activeConfig.overlay ? (
         <Reanimated.View
