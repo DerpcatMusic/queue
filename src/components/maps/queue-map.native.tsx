@@ -1,6 +1,7 @@
 import {
   Camera,
   GeoJSONSource,
+  type GeoJSONSourceRef,
   Images,
   Layer,
   Map as MapLibreMap,
@@ -43,25 +44,24 @@ const ATTRIBUTION_ICON_SIZE = BrandSpacing.sm + BrandSpacing.xs;
 const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm;
 const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2;
 const STUDIO_MARKER_MIN_ZOOM = 10;
+const STUDIO_CLUSTER_MAX_ZOOM = 12;
 const STUDIO_PIN_ICON_KEY_PREFIX = "studio-pin:";
+const STUDIO_PIN_SHELL_IMAGE = require("../../../assets/images/map/studio-pin-shell-cyan.png");
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 180;
 
-function buildStudioPinDataUri({
-  accentColor,
+function buildStudioFallbackPhotoDataUri({
   label,
   textColor,
 }: {
-  accentColor: string;
   label: string;
   textColor: string;
 }) {
   const safeLabel = label.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="76" viewBox="0 0 64 76">
-      <path fill="${accentColor}" d="M32 76C20.7 63.7 8 50 8 31.4C8 18.5 18.5 8 31.4 8h1.2C45.5 8 56 18.5 56 31.4C56 50 43.3 63.7 32 76Z"/>
-      <circle cx="32" cy="31" r="21" fill="${accentColor}"/>
+    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="24" fill="#FFFFFF"/>
       <text x="32" y="38" text-anchor="middle" font-size="20" font-family="Arial, sans-serif" font-weight="700" fill="${textColor}">${safeLabel}</text>
     </svg>
   `.trim();
@@ -120,6 +120,7 @@ export const QueueMap = memo(function QueueMap({
   const mapKey = `${resolvedScheme}:${retryNonce}`;
 
   const mapRef = useRef<MapRef | null>(null);
+  const studioSourceRef = useRef<GeoJSONSourceRef | null>(null);
   const mapLoadStateRef = useRef<MapLoadState>("loading");
   const cameraRef = useRef<{
     setStop: (config: unknown) => void;
@@ -132,18 +133,8 @@ export const QueueMap = memo(function QueueMap({
   const pinShape = useMemo(() => createPinShape(pin), [pin]);
   const showStudioMarkers = studios.length > 0 && currentZoom >= STUDIO_MARKER_MIN_ZOOM;
   const studioMarkerImages = useMemo(
-    () =>
-      Object.fromEntries(
-        studios.map((studio) => [
-          `${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}`,
-          buildStudioPinDataUri({
-            accentColor: mapPalette.markerAccent,
-            label: studio.studioName.slice(0, 1).toUpperCase(),
-            textColor: palette.onPrimary as string,
-          }),
-        ]),
-      ),
-    [mapPalette.markerAccent, palette.onPrimary, studios],
+    () => ({ [`${STUDIO_PIN_ICON_KEY_PREFIX}shell`]: STUDIO_PIN_SHELL_IMAGE }),
+    [],
   );
   const studioMarkerSource = useMemo(
     () => ({
@@ -156,10 +147,12 @@ export const QueueMap = memo(function QueueMap({
         },
         properties: {
           studioId: studio.studioId,
-          iconKey: `${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}`,
+          iconKey: `${STUDIO_PIN_ICON_KEY_PREFIX}shell`,
           ...(studio.logoImageUrl
             ? { photoIconKey: `${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}:photo` }
-            : {}),
+            : {
+                photoIconKey: `${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}:fallback`,
+              }),
         },
       })),
     }),
@@ -171,10 +164,18 @@ export const QueueMap = memo(function QueueMap({
         studios.flatMap((studio) =>
           studio.logoImageUrl
             ? [[`${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}:photo`, studio.logoImageUrl]]
-            : [],
+            : [
+                [
+                  `${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}:fallback`,
+                  buildStudioFallbackPhotoDataUri({
+                    label: studio.studioName.slice(0, 1).toUpperCase(),
+                    textColor: palette.text as string,
+                  }),
+                ],
+              ],
         ),
       ),
-    [studios],
+    [palette.text, studios],
   );
   const handleRetry = useCallback(() => {
     setBaseMapStyle(null);
@@ -406,20 +407,102 @@ export const QueueMap = memo(function QueueMap({
         ) : null}
         {showStudioMarkers ? (
           <GeoJSONSource
+            ref={studioSourceRef as any}
             id="queue-studio-marker-source"
             data={studioMarkerSource as any}
+            cluster
+            clusterRadius={44}
+            clusterMinPoints={2}
+            clusterMaxZoom={STUDIO_CLUSTER_MAX_ZOOM}
             onPress={(event: any) => {
               const native = event?.nativeEvent ?? event;
-              const studioId = native?.features?.[0]?.properties?.studioId;
+              const feature = native?.features?.[0];
+              const clusterId = feature?.properties?.cluster_id;
+              if (typeof clusterId === "number") {
+                void studioSourceRef.current?.getClusterExpansionZoom(clusterId).then((zoom) => {
+                  const coordinates = feature?.geometry?.coordinates;
+                  if (!Array.isArray(coordinates) || coordinates.length < 2) return;
+                  cameraRef.current?.flyTo({
+                    center: [coordinates[0], coordinates[1]],
+                    zoom,
+                    duration: 280,
+                  });
+                });
+                return;
+              }
+              const studioId = feature?.properties?.studioId;
               if (typeof studioId === "string") {
                 onPressStudio?.(studioId);
               }
             }}
           >
             <Layer
+              id="queue-studio-cluster-bubble"
+              type="circle"
+              filter={["has", "point_count"] as any}
+              maxzoom={STUDIO_CLUSTER_MAX_ZOOM as any}
+              paint={{
+                "circle-color": mapPalette.markerAccent,
+                "circle-radius": [
+                  "step",
+                  ["get", "point_count"],
+                  20,
+                  10,
+                  24,
+                  25,
+                  28,
+                  75,
+                  32,
+                ] as any,
+                "circle-stroke-color": palette.surface as string,
+                "circle-stroke-width": 3,
+              }}
+            />
+            <Layer
+              id="queue-studio-cluster-count"
+              type="symbol"
+              filter={["has", "point_count"] as any}
+              maxzoom={STUDIO_CLUSTER_MAX_ZOOM as any}
+              layout={{
+                "text-field": ["get", "point_count_abbreviated"] as any,
+                "text-size": 13 as any,
+                "text-font": ["Noto Sans Bold"] as any,
+                "text-allow-overlap": true,
+              }}
+              paint={{
+                "text-color": palette.onPrimary as string,
+              }}
+            />
+            <Layer
+              id="queue-studio-photo-layer"
+              type="symbol"
+              minzoom={14 as any}
+              filter={["all", ["!", ["has", "point_count"]], ["has", "photoIconKey"]] as any}
+              layout={{
+                "icon-image": ["get", "photoIconKey"] as any,
+                "icon-anchor": "center",
+                "icon-offset": [0, -1.28] as any,
+                "icon-size": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  STUDIO_MARKER_MIN_ZOOM,
+                  0.34,
+                  13.5,
+                  0.38,
+                  16,
+                  0.42,
+                ] as any,
+                "icon-allow-overlap": true,
+                "icon-ignore-placement": true,
+              }}
+              paint={{ "icon-opacity": 1 }}
+            />
+            <Layer
               id="queue-studio-marker-layer"
               type="symbol"
               minzoom={STUDIO_MARKER_MIN_ZOOM as any}
+              filter={["!", ["has", "point_count"]] as any}
               layout={{
                 "icon-image": ["get", "iconKey"] as any,
                 "icon-anchor": "bottom",
@@ -428,36 +511,11 @@ export const QueueMap = memo(function QueueMap({
                   ["linear"],
                   ["zoom"],
                   STUDIO_MARKER_MIN_ZOOM,
+                  0.8,
+                  13.5,
+                  0.86,
+                  16,
                   0.92,
-                  13.5,
-                  1,
-                  16,
-                  1.08,
-                ] as any,
-                "icon-allow-overlap": true,
-                "icon-ignore-placement": true,
-              }}
-              paint={{ "icon-opacity": 1 }}
-            />
-            <Layer
-              id="queue-studio-photo-layer"
-              type="symbol"
-              minzoom={STUDIO_MARKER_MIN_ZOOM as any}
-              filter={["has", "photoIconKey"] as any}
-              layout={{
-                "icon-image": ["get", "photoIconKey"] as any,
-                "icon-anchor": "center",
-                "icon-offset": [0, -1.05] as any,
-                "icon-size": [
-                  "interpolate",
-                  ["linear"],
-                  ["zoom"],
-                  STUDIO_MARKER_MIN_ZOOM,
-                  0.52,
-                  13.5,
-                  0.58,
-                  16,
-                  0.64,
                 ] as any,
                 "icon-allow-overlap": true,
                 "icon-ignore-placement": true,
