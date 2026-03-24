@@ -4,8 +4,7 @@ import {
   Layer,
   Map as MapLibreMap,
   type MapRef,
-  ViewAnnotation,
-  type ViewAnnotationRef,
+  Marker,
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -57,8 +56,8 @@ function getStudioMarkerMetrics(zoom: number) {
   return {
     width: BrandSpacing.avatarMd,
     height: BrandSpacing.avatarMd + BrandSpacing.lg,
-    imageSize: BrandSpacing.controlMd,
-    imageTop: BrandSpacing.xxs,
+    imageSize: BrandSpacing.controlSm,
+    imageTop: BrandSpacing.xs,
   };
 }
 
@@ -68,7 +67,6 @@ function StudioMapPin({
   imageTop,
   imageUrl,
   label,
-  onImageLoad,
   pinHeight,
   pinWidth,
   textColor,
@@ -78,7 +76,6 @@ function StudioMapPin({
   imageTop: number;
   imageUrl?: string;
   label: string;
-  onImageLoad: () => void;
   pinHeight: number;
   pinWidth: number;
   textColor: string;
@@ -98,7 +95,6 @@ function StudioMapPin({
       {imageUrl ? (
         <Image
           source={imageUrl}
-          onLoad={onImageLoad}
           style={{
             position: "absolute",
             top: imageTop,
@@ -185,7 +181,6 @@ export const QueueMap = memo(function QueueMap({
   const mapKey = `${resolvedScheme}:${retryNonce}`;
 
   const mapRef = useRef<MapRef | null>(null);
-  const studioAnnotationRefs = useRef<Record<string, ViewAnnotationRef | null>>({});
   const mapLoadStateRef = useRef<MapLoadState>("loading");
   const cameraRef = useRef<{
     setStop: (config: unknown) => void;
@@ -434,17 +429,11 @@ export const QueueMap = memo(function QueueMap({
                 typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
 
               return (
-                <ViewAnnotation
+                <Marker
                   key={`studio-marker:${studio.studioId}`}
                   id={`studio-marker:${studio.studioId}`}
                   anchor="bottom"
                   lngLat={[studio.longitude, studio.latitude]}
-                  ref={(value) => {
-                    studioAnnotationRefs.current[studio.studioId] = value;
-                  }}
-                  onSelected={() => {
-                    onPressStudio?.(studio.studioId);
-                  }}
                 >
                   <View
                     accessible
@@ -452,21 +441,23 @@ export const QueueMap = memo(function QueueMap({
                     accessibilityLabel={studio.studioName}
                     style={{ width: markerWidth, height: markerHeight }}
                   >
-                    <StudioMapPin
-                      accentColor={markerAccent}
-                      imageSize={imageSize}
-                      imageTop={imageTop}
-                      {...(hasLogo ? { imageUrl: studio.logoImageUrl as string } : {})}
-                      label={studio.studioName.slice(0, 1).toUpperCase()}
-                      onImageLoad={() => {
-                        studioAnnotationRefs.current[studio.studioId]?.refresh();
-                      }}
-                      pinHeight={markerHeight}
-                      pinWidth={markerWidth}
-                      textColor={palette.onPrimary as string}
-                    />
+                    <Pressable
+                      onPress={() => onPressStudio?.(studio.studioId)}
+                      style={{ width: markerWidth, height: markerHeight }}
+                    >
+                      <StudioMapPin
+                        accentColor={markerAccent}
+                        imageSize={imageSize}
+                        imageTop={imageTop}
+                        {...(hasLogo ? { imageUrl: studio.logoImageUrl as string } : {})}
+                        label={studio.studioName.slice(0, 1).toUpperCase()}
+                        pinHeight={markerHeight}
+                        pinWidth={markerWidth}
+                        textColor={palette.onPrimary as string}
+                      />
+                    </Pressable>
                   </View>
-                </ViewAnnotation>
+                </Marker>
               );
             })
           : null}
