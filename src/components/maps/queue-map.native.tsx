@@ -352,7 +352,9 @@ export const QueueMap = memo(function QueueMap({
           ? studios.map((studio) => {
               const markerSize = studioMarkerMetrics.outerSize;
               const tailSize = studioMarkerMetrics.tailSize;
-              const tailOverlap = BrandSpacing.xs + BrandSpacing.xxs;
+              const tailOverlap = BrandSpacing.sm;
+              const tailBridgeWidth = BrandSpacing.sm;
+              const tailBridgeHeight = BrandSpacing.sm;
               const markerAccent = palette.didit.accent as string;
               const hasLogo =
                 typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
@@ -375,12 +377,18 @@ export const QueueMap = memo(function QueueMap({
                       style={{
                         position: "absolute",
                         top: markerSize - tailOverlap,
+                        width: tailBridgeWidth,
+                        height: tailBridgeHeight,
+                        borderRadius: BrandRadius.hard,
+                        backgroundColor: markerAccent,
+                      }}
+                    />
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: markerSize - tailOverlap + BrandSpacing.xxs,
                         width: tailSize,
                         height: tailSize,
-                        borderLeftWidth: STUDIO_MARKER_BORDER_WIDTH,
-                        borderBottomWidth: STUDIO_MARKER_BORDER_WIDTH,
-                        borderLeftColor: markerAccent,
-                        borderBottomColor: markerAccent,
                         backgroundColor: markerAccent,
                         transform: [{ rotate: "45deg" }],
                       }}
