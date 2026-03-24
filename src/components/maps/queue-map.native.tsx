@@ -57,6 +57,7 @@ const STUDIO_PIN_HOLE = {
   cy: 2606.868,
   radius: 1036.897,
 } as const;
+const STUDIO_PIN_OUTLINE_WIDTH = 168;
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 180;
@@ -64,9 +65,15 @@ const MAP_LOADING_OVERLAY_DELAY_MS = 180;
 function getStudioMarkerMetrics(zoom: number) {
   void zoom;
   return {
-    width: BrandSpacing.avatarMd,
-    height: BrandSpacing.avatarMd + BrandSpacing.lg,
+    width: BrandSpacing.avatarLg,
+    height: BrandSpacing.avatarLg + BrandSpacing.xl,
   };
+}
+
+function getStudioPinScale(zoom: number) {
+  if (zoom <= STUDIO_MARKER_MIN_ZOOM) return 1;
+  if (zoom >= 15.5) return 1.18;
+  return 1 + ((zoom - STUDIO_MARKER_MIN_ZOOM) / (15.5 - STUDIO_MARKER_MIN_ZOOM)) * 0.18;
 }
 
 function StudioMapPin({
@@ -75,6 +82,7 @@ function StudioMapPin({
   label,
   pinHeight,
   pinWidth,
+  strokeColor,
   textColor,
 }: {
   accentColor: string;
@@ -82,6 +90,7 @@ function StudioMapPin({
   label: string;
   pinHeight: number;
   pinWidth: number;
+  strokeColor: string;
   textColor: string;
 }) {
   const clipRadius = STUDIO_PIN_HOLE.radius * 0.92;
@@ -102,7 +111,13 @@ function StudioMapPin({
         viewBox={`${STUDIO_PIN_VIEWBOX.x} ${STUDIO_PIN_VIEWBOX.y} ${STUDIO_PIN_VIEWBOX.width} ${STUDIO_PIN_VIEWBOX.height}`}
         style={{ position: "absolute", top: 0, left: 0 }}
       >
-        <Path d={STUDIO_PIN_PATH} fill={accentColor} />
+        <Path
+          d={STUDIO_PIN_PATH}
+          fill={accentColor}
+          stroke={strokeColor}
+          strokeWidth={STUDIO_PIN_OUTLINE_WIDTH}
+          strokeLinejoin="round"
+        />
         {imageUrl ? (
           <>
             <Defs>
@@ -208,6 +223,7 @@ export const QueueMap = memo(function QueueMap({
   );
   const pinShape = useMemo(() => createPinShape(pin), [pin]);
   const studioMarkerMetrics = useMemo(() => getStudioMarkerMetrics(currentZoom), [currentZoom]);
+  const studioPinScale = useMemo(() => getStudioPinScale(currentZoom), [currentZoom]);
   const showStudioMarkers = studios.length > 0 && currentZoom >= STUDIO_MARKER_MIN_ZOOM;
   const handleRetry = useCallback(() => {
     setBaseMapStyle(null);
@@ -439,6 +455,7 @@ export const QueueMap = memo(function QueueMap({
               const markerWidth = studioMarkerMetrics.width;
               const markerHeight = studioMarkerMetrics.height;
               const markerAccent = palette.didit.accent as string;
+              const markerStroke = mapPalette.styleBackground;
               const hasLogo =
                 typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
 
@@ -456,16 +473,31 @@ export const QueueMap = memo(function QueueMap({
                     accessible
                     accessibilityRole="button"
                     accessibilityLabel={studio.studioName}
-                    style={{ width: markerWidth, height: markerHeight }}
+                    style={{ width: markerWidth, height: markerHeight, overflow: "visible" }}
                   >
-                    <StudioMapPin
-                      accentColor={markerAccent}
-                      {...(hasLogo ? { imageUrl: studio.logoImageUrl as string } : {})}
-                      label={studio.studioName.slice(0, 1).toUpperCase()}
-                      pinHeight={markerHeight}
-                      pinWidth={markerWidth}
-                      textColor={palette.onPrimary as string}
-                    />
+                    <View
+                      pointerEvents="none"
+                      style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: 0,
+                        width: markerWidth,
+                        height: markerHeight,
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        transform: [{ scale: studioPinScale }],
+                      }}
+                    >
+                      <StudioMapPin
+                        accentColor={markerAccent}
+                        {...(hasLogo ? { imageUrl: studio.logoImageUrl as string } : {})}
+                        label={studio.studioName.slice(0, 1).toUpperCase()}
+                        pinHeight={markerHeight}
+                        pinWidth={markerWidth}
+                        strokeColor={markerStroke}
+                        textColor={palette.onPrimary as string}
+                      />
+                    </View>
                   </View>
                 </ViewAnnotation>
               );
