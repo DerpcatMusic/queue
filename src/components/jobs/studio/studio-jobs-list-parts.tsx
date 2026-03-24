@@ -24,6 +24,9 @@ import type { PaymentStatus, PayoutStatus } from "@/lib/payments-utils";
 import { appStatusDot, paymentDotColor } from "./studio-jobs-list.helpers";
 import type { StudioJob, StudioJobApplication } from "./studio-jobs-list.types";
 
+const AVATAR_SIZE = BrandSpacing.xxl + BrandSpacing.xxl + 2;
+const AVATAR_RADIUS = BrandRadius.soft;
+
 const PAYMENT_STATUS_KEY: Record<PaymentStatus, string> = {
   created: "jobsTab.checkout.paymentStatus.created",
   pending: "jobsTab.checkout.paymentStatus.pending",
@@ -109,14 +112,9 @@ function MetaPill({
 
   return (
     <View
+      className="flex-row items-center gap-stack-tight rounded-pill px-sm py-xs"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        borderRadius: BrandRadius.pill,
         backgroundColor,
-        paddingHorizontal: 10,
-        paddingVertical: 7,
       }}
     >
       <IconSymbol name={icon} size={12} color={color} />
@@ -145,8 +143,8 @@ function InlineMeta({
   strong?: boolean;
 }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-      <IconSymbol name={icon} size={15} color={palette.textMuted as string} />
+    <View className="flex-row items-center gap-stack-tight">
+      <IconSymbol name={icon} size={16} color={palette.textMuted as string} />
       <Text
         numberOfLines={1}
         style={[
@@ -206,39 +204,30 @@ export const ApplicationRow = memo(function ApplicationRow({
   return (
     <Animated.View entering={FadeInUp.duration(220).springify().damping(18)}>
       <View
-        style={{
-          gap: 12,
-          borderRadius: BrandRadius.card - 4,
-          borderCurve: "continuous",
-          backgroundColor: palette.surface as string,
-          paddingHorizontal: 14,
-          paddingVertical: 13,
-        }}
+        className="gap-stack rounded-medium px-control-x py-control-y"
+        style={{ borderCurve: "continuous", backgroundColor: palette.surface as string }}
       >
         <View
+          className="gap-stack"
           style={{
             flexDirection: isWideWeb ? "row" : "column",
             alignItems: isWideWeb ? "center" : "stretch",
             justifyContent: "space-between",
-            gap: 12,
           }}
         >
           <View
+            className="flex-row items-start gap-stack"
             style={{
               flex: 1,
               minWidth: 0,
-              flexDirection: "row",
-              alignItems: "flex-start",
-              gap: 12,
             }}
           >
             <View
+              className="items-center justify-center rounded-pill"
               style={{
-                width: 42,
-                height: 42,
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 16,
+                width: AVATAR_SIZE,
+                height: AVATAR_SIZE,
+                borderRadius: AVATAR_RADIUS,
                 borderCurve: "continuous",
                 backgroundColor: statusBackground,
               }}
@@ -255,7 +244,7 @@ export const ApplicationRow = memo(function ApplicationRow({
               </Text>
             </View>
 
-            <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+            <View className="flex-1 min-w-0 gap-xs">
               <Text
                 numberOfLines={1}
                 style={{
@@ -292,12 +281,8 @@ export const ApplicationRow = memo(function ApplicationRow({
           </View>
 
           <View
-            style={{
-              alignSelf: isWideWeb ? "center" : "flex-start",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-            }}
+            className="flex-row items-center gap-stack-tight"
+            style={{ alignSelf: isWideWeb ? "center" : "flex-start" }}
           >
             <DotStatusPill
               backgroundColor={palette.surfaceAlt as string}
@@ -312,9 +297,7 @@ export const ApplicationRow = memo(function ApplicationRow({
         ) : null}
 
         {canReview ? (
-          <View
-            style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm, paddingTop: 2 }}
-          >
+          <View className="flex-row flex-wrap gap-sm pt-xs">
             <ActionButton
               label={isReviewing ? t("jobsTab.actions.rejecting") : t("jobsTab.actions.reject")}
               onPress={() => onReview(application.applicationId, "rejected")}
@@ -403,29 +386,16 @@ export const StudioJobCard = memo(function StudioJobCard({
         padding={0}
         gap={0}
         style={{
-          borderRadius: isWideWeb ? 28 : BrandRadius.card,
+          borderRadius: BrandRadius.soft,
           borderCurve: "continuous",
           backgroundColor: cardBackground,
           overflow: "hidden",
         }}
       >
-        <View
-          style={{
-            gap: 16,
-            paddingHorizontal: isWideWeb ? 20 : 18,
-            paddingVertical: isWideWeb ? 18 : 16,
-          }}
-        >
-          <View style={{ gap: 14 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
-              <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+        <View className="gap-lg px-lg py-lg">
+          <View className="gap-md">
+            <View className="flex-row items-start justify-between gap-stack">
+              <View className="flex-1 min-w-0 gap-stack-tight">
                 <Text
                   numberOfLines={1}
                   style={{
@@ -454,7 +424,7 @@ export const StudioJobCard = memo(function StudioJobCard({
                 </Text>
               </View>
 
-              <View style={{ alignItems: "flex-end", gap: 8 }}>
+              <View className="items-end gap-stack-tight">
                 <DotStatusPill
                   backgroundColor={statusPill.backgroundColor}
                   color={statusPill.color}
@@ -471,28 +441,14 @@ export const StudioJobCard = memo(function StudioJobCard({
             </View>
 
             <View
-              style={{
-                gap: 10,
-                borderRadius: BrandRadius.card - 4,
-                borderCurve: "continuous",
-                backgroundColor: palette.surface as string,
-                paddingHorizontal: 14,
-                paddingVertical: 13,
-              }}
+              className="gap-stack rounded-medium px-control-x py-control-y"
+              style={{ borderCurve: "continuous", backgroundColor: palette.surface as string }}
             >
               <InlineMeta icon="calendar" text={dateLabel} palette={palette} />
               <InlineMeta icon="clock" text={timeLabel} palette={palette} strong />
               <InlineMeta icon="mappin.and.ellipse" text={zoneLabel} palette={palette} />
 
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  flexWrap: "wrap",
-                }}
-              >
+              <View className="flex-row flex-wrap items-center justify-between gap-stack">
                 <Text
                   style={{
                     ...BrandType.heading,
@@ -504,15 +460,7 @@ export const StudioJobCard = memo(function StudioJobCard({
                   ₪{boost.totalPay}
                 </Text>
 
-                <View
-                  style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    justifyContent: "flex-end",
-                    gap: 8,
-                    flex: 1,
-                  }}
-                >
+                <View className="flex-1 flex-row flex-wrap justify-end gap-sm">
                   {boost.badgeKey ? (
                     <MetaPill
                       icon="sparkles"
@@ -536,24 +484,17 @@ export const StudioJobCard = memo(function StudioJobCard({
 
           {["filled", "completed"].includes(job.status) ? (
             <View
-              style={{
-                gap: 10,
-                borderRadius: BrandRadius.card - 2,
-                borderCurve: "continuous",
-                backgroundColor: palette.surface as string,
-                paddingHorizontal: 14,
-                paddingVertical: 13,
-              }}
+              className="gap-stack rounded-medium px-control-x py-control-y"
+              style={{ borderCurve: "continuous", backgroundColor: palette.surface as string }}
             >
               <View
+                className="flex-row justify-between gap-stack"
                 style={{
-                  flexDirection: isWideWeb ? "row" : "column",
                   alignItems: isWideWeb ? "center" : "flex-start",
-                  justifyContent: "space-between",
-                  gap: 10,
+                  flexDirection: isWideWeb ? "row" : "column",
                 }}
               >
-                <View style={{ gap: 6, flex: 1 }}>
+                <View className="flex-1 gap-stack-tight">
                   <Text
                     style={{
                       ...BrandType.caption,
@@ -562,7 +503,7 @@ export const StudioJobCard = memo(function StudioJobCard({
                   >
                     {t("jobsTab.card.settlement")}
                   </Text>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <View className="flex-row flex-wrap gap-sm">
                     <DotStatusPill
                       backgroundColor={palette.surfaceAlt as string}
                       color={payDot}
@@ -601,15 +542,8 @@ export const StudioJobCard = memo(function StudioJobCard({
           ) : null}
 
           {job.pendingApplicationsCount > 0 ? (
-            <View style={{ gap: 10 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
+            <View className="gap-stack">
+              <View className="flex-row items-center justify-between gap-stack">
                 <Text
                   style={{
                     ...BrandType.caption,
@@ -645,21 +579,15 @@ export const StudioJobCard = memo(function StudioJobCard({
             </View>
           ) : acceptedApplication ? (
             <Text
-              style={{
-                ...BrandType.caption,
-                color: palette.textMuted as string,
-                paddingHorizontal: 2,
-              }}
+              className="px-xs"
+              style={{ ...BrandType.caption, color: palette.textMuted as string }}
             >
               {t("jobsTab.card.assignedTo", { name: acceptedApplication.instructorName })}
             </Text>
           ) : job.applicationsCount > 0 ? (
             <Text
-              style={{
-                ...BrandType.caption,
-                color: palette.textMuted as string,
-                paddingHorizontal: 2,
-              }}
+              className="px-xs"
+              style={{ ...BrandType.caption, color: palette.textMuted as string }}
             >
               {t("jobsTab.card.applicantsProcessed", { count: job.applicationsCount })}
             </Text>

@@ -10,6 +10,7 @@ import {
 } from "./lib/auth";
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
+import { loadInstructorEligibility } from "./lib/instructorEligibility";
 import {
   normalizeCoordinates,
   normalizeOptionalString,
@@ -52,6 +53,16 @@ function normalizeEmail(email: string | undefined): string | undefined {
   if (!email) return undefined;
   const value = email.trim().toLowerCase();
   return value.length > 0 ? value : undefined;
+}
+
+function normalizeOptionalMapMarkerColor(value: string | undefined) {
+  if (!value) return undefined;
+  const normalized = value.trim().toUpperCase();
+  if (normalized.length === 0) return undefined;
+  if (!/^#[0-9A-F]{6}$/.test(normalized)) {
+    throw new ConvexError("Map marker color must be a 6-digit hex color");
+  }
+  return normalized;
 }
 
 function createUploadSessionToken(userId: Doc<"users">["_id"], now: number) {
@@ -432,6 +443,11 @@ export const getMyInstructorSettings = query({
       profileImageUrl: v.optional(v.string()),
       socialLinks: v.optional(socialLinksValidator),
       address: v.optional(v.string()),
+      addressCity: v.optional(v.string()),
+      addressStreet: v.optional(v.string()),
+      addressNumber: v.optional(v.string()),
+      addressFloor: v.optional(v.string()),
+      addressPostalCode: v.optional(v.string()),
       latitude: v.optional(v.number()),
       longitude: v.optional(v.number()),
       calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
@@ -471,6 +487,11 @@ export const getMyInstructorSettings = query({
         profileImageUrl,
         socialLinks: toOptionalSocialLinksPayload(profile.socialLinks),
         address: profile.address,
+        addressCity: profile.addressCity,
+        addressStreet: profile.addressStreet,
+        addressNumber: profile.addressNumber,
+        addressFloor: profile.addressFloor,
+        addressPostalCode: profile.addressPostalCode,
         latitude: profile.latitude,
         longitude: profile.longitude,
       }),
@@ -487,6 +508,11 @@ export const updateMyInstructorSettings = mutation({
     hourlyRateExpectation: v.optional(v.number()),
     sports: v.array(v.string()),
     address: v.optional(v.string()),
+    addressCity: v.optional(v.string()),
+    addressStreet: v.optional(v.string()),
+    addressNumber: v.optional(v.string()),
+    addressFloor: v.optional(v.string()),
+    addressPostalCode: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     includeDetectedZone: v.optional(v.boolean()),
@@ -523,6 +549,23 @@ export const updateMyInstructorSettings = mutation({
       throw new ConvexError("Too many sports selected");
     }
     const address = normalizeOptionalString(args.address, MAX_ADDRESS_LENGTH, "Address");
+    const addressCity = normalizeOptionalString(
+      args.addressCity,
+      MAX_ADDRESS_LENGTH,
+      "AddressCity",
+    );
+    const addressStreet = normalizeOptionalString(
+      args.addressStreet,
+      MAX_ADDRESS_LENGTH,
+      "AddressStreet",
+    );
+    const addressNumber = normalizeOptionalString(args.addressNumber, 20, "AddressNumber");
+    const addressFloor = normalizeOptionalString(args.addressFloor, 20, "AddressFloor");
+    const addressPostalCode = normalizeOptionalString(
+      args.addressPostalCode,
+      20,
+      "AddressPostalCode",
+    );
     const { latitude, longitude } = normalizeCoordinates(
       omitUndefined({
         latitude: args.latitude,
@@ -582,6 +625,11 @@ export const updateMyInstructorSettings = mutation({
       ...omitUndefined({
         hourlyRateExpectation: args.hourlyRateExpectation,
         address,
+        addressCity,
+        addressStreet,
+        addressNumber,
+        addressFloor,
+        addressPostalCode,
         latitude,
         longitude,
       }),
@@ -681,6 +729,11 @@ export const getMyStudioSettings = query({
       studioId: v.id("studioProfiles"),
       studioName: v.string(),
       address: v.string(),
+      addressCity: v.optional(v.string()),
+      addressStreet: v.optional(v.string()),
+      addressNumber: v.optional(v.string()),
+      addressFloor: v.optional(v.string()),
+      addressPostalCode: v.optional(v.string()),
       zone: v.string(),
       latitude: v.optional(v.number()),
       longitude: v.optional(v.number()),
@@ -692,6 +745,7 @@ export const getMyStudioSettings = query({
       socialLinks: v.optional(socialLinksValidator),
       autoExpireMinutesBefore: v.number(),
       autoAcceptDefault: v.optional(v.boolean()),
+      mapMarkerColor: v.optional(v.string()),
       sports: v.array(v.string()),
       calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
       calendarSyncEnabled: v.boolean(),
@@ -732,6 +786,12 @@ export const getMyStudioSettings = query({
         contactPhone: profile.contactPhone,
         profileImageUrl,
         socialLinks: toOptionalSocialLinksPayload(profile.socialLinks),
+        mapMarkerColor: profile.mapMarkerColor,
+        addressCity: profile.addressCity,
+        addressStreet: profile.addressStreet,
+        addressNumber: profile.addressNumber,
+        addressFloor: profile.addressFloor,
+        addressPostalCode: profile.addressPostalCode,
       }),
       notificationsEnabled,
       hasExpoPushToken,
@@ -747,49 +807,67 @@ export const getMyStudioSettings = query({
   },
 });
 
-export const getStudiosWithLocations = query({
+export const getInstructorMapStudios = query({
   args: {},
   returns: v.array(
     v.object({
       studioId: v.id("studioProfiles"),
       studioName: v.string(),
-      address: v.string(),
+      zone: v.string(),
       latitude: v.number(),
       longitude: v.number(),
-      profileImageUrl: v.optional(v.string()),
-      sport: v.optional(v.string()),
+      address: v.optional(v.string()),
+      logoImageUrl: v.optional(v.string()),
+      mapMarkerColor: v.optional(v.string()),
     }),
   ),
   handler: async (ctx) => {
-    const studios = await ctx.db.query("studioProfiles").collect();
+    const user = await getCurrentUserDoc(ctx);
+    if (!user || !user.isActive || user.role !== "instructor") {
+      return [];
+    }
 
-    const studiosWithLocation = await Promise.all(
-      studios
-        .filter((s) => typeof s.latitude === "number" && typeof s.longitude === "number")
-        .map(async (studio) => {
-          const [logoUrl, sportsRow] = await Promise.all([
-            studio.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
-            ctx.db
-              .query("studioSports")
-              .withIndex("by_studio_id", (q) => q.eq("studioId", studio._id))
-              .first(),
-          ]);
+    const instructor = await requireInstructorProfileByUserId(ctx, user._id);
+    if (!instructor) {
+      return [];
+    }
 
-          return {
-            studioId: studio._id,
-            studioName: studio.studioName,
-            address: studio.address,
-            latitude: studio.latitude as number,
-            longitude: studio.longitude as number,
-            ...omitUndefined({
-              profileImageUrl: logoUrl ?? undefined,
-              sport: sportsRow?.sport,
-            }),
-          };
-        }),
+    const eligibility = await loadInstructorEligibility(ctx, instructor._id);
+    if (eligibility.coverageCount === 0) {
+      return [];
+    }
+
+    const zoneIds = [...new Set(eligibility.coveragePairs.map((pair) => pair.zone))];
+    const studioGroups = await Promise.all(
+      zoneIds.map((zoneId) =>
+        ctx.db
+          .query("studioProfiles")
+          .withIndex("by_zone", (q) => q.eq("zone", zoneId))
+          .collect(),
+      ),
+    );
+    const studios = [
+      ...new Map(studioGroups.flat().map((studio) => [String(studio._id), studio])).values(),
+    ].filter((studio) => studio.latitude !== undefined && studio.longitude !== undefined);
+
+    const logoUrls = await Promise.all(
+      studios.map((studio) =>
+        studio.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
+      ),
     );
 
-    return studiosWithLocation;
+    return studios.map((studio, index) => ({
+      studioId: studio._id,
+      studioName: studio.studioName,
+      zone: studio.zone,
+      latitude: studio.latitude!,
+      longitude: studio.longitude!,
+      ...omitUndefined({
+        address: studio.address,
+        logoImageUrl: logoUrls[index] ?? undefined,
+        mapMarkerColor: studio.mapMarkerColor,
+      }),
+    }));
   },
 });
 
@@ -832,12 +910,18 @@ export const updateMyStudioSettings = mutation({
   args: {
     studioName: v.string(),
     address: v.string(),
+    addressCity: v.optional(v.string()),
+    addressStreet: v.optional(v.string()),
+    addressNumber: v.optional(v.string()),
+    addressFloor: v.optional(v.string()),
+    addressPostalCode: v.optional(v.string()),
     zone: v.string(),
     contactPhone: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     autoExpireMinutesBefore: v.optional(v.number()),
     autoAcceptDefault: v.optional(v.boolean()),
+    mapMarkerColor: v.optional(v.string()),
     sports: v.optional(v.array(v.string())),
   },
   returns: v.object({
@@ -854,6 +938,23 @@ export const updateMyStudioSettings = mutation({
       "Studio name",
     );
     const address = normalizeRequiredString(args.address, MAX_ADDRESS_LENGTH, "Address");
+    const addressCity = normalizeOptionalString(
+      args.addressCity,
+      MAX_ADDRESS_LENGTH,
+      "AddressCity",
+    );
+    const addressStreet = normalizeOptionalString(
+      args.addressStreet,
+      MAX_ADDRESS_LENGTH,
+      "AddressStreet",
+    );
+    const addressNumber = normalizeOptionalString(args.addressNumber, 20, "AddressNumber");
+    const addressFloor = normalizeOptionalString(args.addressFloor, 20, "AddressFloor");
+    const addressPostalCode = normalizeOptionalString(
+      args.addressPostalCode,
+      20,
+      "AddressPostalCode",
+    );
     const zone = normalizeZoneId(args.zone);
     const contactPhone = normalizeOptionalString(
       args.contactPhone,
@@ -866,6 +967,7 @@ export const updateMyStudioSettings = mutation({
         longitude: args.longitude,
       }),
     );
+    const mapMarkerColor = normalizeOptionalMapMarkerColor(args.mapMarkerColor);
 
     let autoExpireMinutesBefore: number | undefined;
     if (args.autoExpireMinutesBefore !== undefined) {
@@ -890,8 +992,14 @@ export const updateMyStudioSettings = mutation({
         contactPhone,
         latitude,
         longitude,
+        mapMarkerColor,
         autoExpireMinutesBefore,
         autoAcceptDefault: args.autoAcceptDefault,
+        addressCity,
+        addressStreet,
+        addressNumber,
+        addressFloor,
+        addressPostalCode,
       }),
       updatedAt: Date.now(),
     });

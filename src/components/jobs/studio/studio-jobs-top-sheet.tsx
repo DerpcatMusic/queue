@@ -40,7 +40,7 @@ export function StudioJobsTopSheetHeader({
   return (
     <View style={styles.headerRow}>
       <IconButton
-        size={42}
+        size={BrandSpacing.controlMd}
         tone="primarySubtle"
         accessibilityLabel={
           notificationsEnabled
@@ -53,7 +53,7 @@ export function StudioJobsTopSheetHeader({
           <IconSymbol
             name={notificationsEnabled ? "bell.fill" : "bell.slash.fill"}
             size={18}
-            color={String(palette.onPrimary)}
+            color={String(palette.text)}
           />
         }
       />
@@ -69,15 +69,15 @@ export function StudioJobsTopSheetHeader({
           <IconSymbol
             name="line.3.horizontal.decrease.circle"
             size={18}
-            color={String(palette.onPrimary)}
+            color={String(palette.text)}
           />
         }
         size="sm"
-        railColor="rgba(26, 16, 49, 0.72)"
-        selectedColor="rgba(255, 255, 255, 0.18)"
-        labelColor="rgba(255, 255, 255, 0.72)"
-        selectedLabelColor={String(palette.onPrimary)}
-        dividerColor="rgba(255, 255, 255, 0.12)"
+        railColor={String(palette.surface)}
+        selectedColor={String(palette.primarySubtle)}
+        labelColor={String(palette.text)}
+        selectedLabelColor={String(palette.primaryPressed)}
+        dividerColor={String(palette.border)}
       />
     </View>
   );
@@ -85,7 +85,7 @@ export function StudioJobsTopSheetHeader({
 
 const styles = StyleSheet.create({
   headerRow: {
-    minHeight: 44,
+    minHeight: BrandSpacing.controlMd,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

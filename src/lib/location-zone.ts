@@ -8,6 +8,10 @@ export type ResolvedLocation = {
   latitude: number;
   longitude: number;
   zoneId: string;
+  city?: string;
+  street?: string;
+  streetNumber?: string;
+  postalCode?: string;
 };
 
 export type LocationResolveErrorCode =
@@ -41,7 +45,16 @@ type FindZoneIdForCoordinate = (point: { latitude: number; longitude: number }) 
 let locationModulePromise: Promise<LocationModule> | null = null;
 let findZoneIdForCoordinatePromise: Promise<FindZoneIdForCoordinate> | null = null;
 const addressResolutionCache = new Map<string, ResolvedLocation>();
-const reverseAddressCache = new Map<string, string>();
+const reverseAddressCache = new Map<
+  string,
+  {
+    formattedAddress: string;
+    city?: string;
+    street?: string;
+    streetNumber?: string;
+    postalCode?: string;
+  }
+>();
 const WEB_GEOCODER_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
 const WEB_GEOCODER_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
 const WEB_GEOCODER_TIMEOUT_MS = 12000;
@@ -136,19 +149,31 @@ async function getLocationModule() {
 async function geocodeAddressOnWeb(address: string): Promise<{
   latitude: number;
   longitude: number;
+  city?: string;
+  street?: string;
+  streetNumber?: string;
+  postalCode?: string;
 }> {
   try {
-    const url = `${WEB_GEOCODER_SEARCH_URL}?format=jsonv2&limit=1&q=${encodeURIComponent(address)}`;
+    const url = `${WEB_GEOCODER_SEARCH_URL}?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(address)}`;
     const results = await fetchJsonWithPolicy<
       Array<{
         lat?: string;
         lon?: string;
+        address?: {
+          road?: string;
+          house_number?: string;
+          city?: string;
+          town?: string;
+          village?: string;
+          postcode?: string;
+        };
       }>
     >(
       url,
       {
         headers: {
-          "Accept-Language": "en",
+          "Accept-Language": "he,en",
         },
       },
       { timeoutMs: WEB_GEOCODER_TIMEOUT_MS, retries: 1 },
@@ -163,7 +188,21 @@ async function geocodeAddressOnWeb(address: string): Promise<{
         locationMessage("profile.settings.errors.locationAddressNotFound"),
       );
     }
-    return { latitude, longitude };
+
+    const addr = first?.address;
+    const city = addr?.city ?? addr?.town ?? addr?.village;
+    const street = addr?.road;
+    const streetNumber = addr?.house_number;
+    const postalCode = addr?.postcode;
+
+    return {
+      latitude,
+      longitude,
+      ...(city !== undefined ? { city } : {}),
+      ...(street !== undefined ? { street } : {}),
+      ...(streetNumber !== undefined ? { streetNumber } : {}),
+      ...(postalCode !== undefined ? { postalCode } : {}),
+    };
   } catch (error) {
     if (isFetchTimeout(error)) {
       throw createLocationError(
@@ -181,21 +220,53 @@ async function geocodeAddressOnWeb(address: string): Promise<{
   }
 }
 
-async function reverseGeocodeOnWeb(latitude: number, longitude: number): Promise<string> {
+async function reverseGeocodeOnWeb(
+  latitude: number,
+  longitude: number,
+): Promise<{
+  formattedAddress: string;
+  city?: string;
+  street?: string;
+  streetNumber?: string;
+  postalCode?: string;
+}> {
   try {
-    const url = `${WEB_GEOCODER_REVERSE_URL}?format=jsonv2&lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`;
-    const data = await fetchJsonWithPolicy<{ display_name?: string }>(
+    const url = `${WEB_GEOCODER_REVERSE_URL}?format=jsonv2&lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}&addressdetails=1`;
+    const data = await fetchJsonWithPolicy<{
+      display_name?: string;
+      address?: {
+        road?: string;
+        footway?: string;
+        house_number?: string;
+        city?: string;
+        town?: string;
+        village?: string;
+        postcode?: string;
+      };
+    }>(
       url,
       {
         headers: {
-          "Accept-Language": "en",
+          "Accept-Language": "he,en",
         },
       },
       { timeoutMs: WEB_GEOCODER_TIMEOUT_MS, retries: 1 },
     );
-    return data.display_name?.trim() || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+    const addr = data.address;
+    const city = addr?.city ?? addr?.town ?? addr?.village;
+    const street = addr?.road ?? addr?.footway;
+    const streetNumber = addr?.house_number;
+    const postalCode = addr?.postcode;
+    return {
+      formattedAddress:
+        data.display_name?.trim() || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
+      ...(city !== undefined ? { city } : {}),
+      ...(street !== undefined ? { street } : {}),
+      ...(streetNumber !== undefined ? { streetNumber } : {}),
+      ...(postalCode !== undefined ? { postalCode } : {}),
+    };
   } catch {
-    return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+    return { formattedAddress: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}` };
   }
 }
 
@@ -270,20 +341,14 @@ function toCoordinateCacheKey(latitude: number, longitude: number) {
 }
 
 function formatAddress(parts: {
-  name?: string | null;
   street?: string | null;
   streetNumber?: string | null;
   city?: string | null;
-  subregion?: string | null;
-  region?: string | null;
   postalCode?: string | null;
 }) {
-  const lineOne = [parts.name, parts.streetNumber, parts.street].filter(Boolean).join(" ").trim();
-  const lineTwo = [parts.city, parts.subregion, parts.region, parts.postalCode]
-    .filter(Boolean)
-    .join(", ")
-    .trim();
-  return [lineOne, lineTwo].filter(Boolean).join(" | ").trim();
+  const streetLine = [parts.streetNumber, parts.street].filter(Boolean).join(" ").trim();
+  const cityLine = [parts.city, parts.postalCode].filter(Boolean).join(", ").trim();
+  return [streetLine, cityLine].filter(Boolean).join(" | ");
 }
 
 async function ensureForegroundPermission(location: LocationModule) {
@@ -383,15 +448,32 @@ export async function resolveAddressToZone(addressInput: string): Promise<Resolv
                 locationMessage("profile.settings.errors.locationAddressNotFound"),
               );
             }
-            return first;
+            return { latitude: first.latitude, longitude: first.longitude };
           })();
 
     const zoneId = await resolveZoneOrThrow(geocoded.latitude, geocoded.longitude);
+    // Structured address fields are only available on web geocoder (native geocode returns coords only)
+    const geocodedWithAddress = geocoded as {
+      latitude: number;
+      longitude: number;
+      city?: string;
+      street?: string;
+      streetNumber?: string;
+      postalCode?: string;
+    };
     const resolved: ResolvedLocation = {
       address,
       latitude: geocoded.latitude,
       longitude: geocoded.longitude,
       zoneId,
+      ...(geocodedWithAddress.city !== undefined ? { city: geocodedWithAddress.city } : {}),
+      ...(geocodedWithAddress.street !== undefined ? { street: geocodedWithAddress.street } : {}),
+      ...(geocodedWithAddress.streetNumber !== undefined
+        ? { streetNumber: geocodedWithAddress.streetNumber }
+        : {}),
+      ...(geocodedWithAddress.postalCode !== undefined
+        ? { postalCode: geocodedWithAddress.postalCode }
+        : {}),
     };
     addressResolutionCache.set(normalizedAddress, resolved);
     return resolved;
@@ -409,15 +491,28 @@ export async function resolveCoordinatesToZone(input: {
     const zoneId = await resolveZoneOrThrow(input.latitude, input.longitude);
 
     let address = `${input.latitude.toFixed(5)}, ${input.longitude.toFixed(5)}`;
+    let city: string | undefined;
+    let street: string | undefined;
+    let streetNumber: string | undefined;
+    let postalCode: string | undefined;
     const cacheKey = toCoordinateCacheKey(input.latitude, input.longitude);
 
     if (input.includeAddress !== false) {
-      const cachedReverseAddress = reverseAddressCache.get(cacheKey);
-      if (cachedReverseAddress) {
-        address = cachedReverseAddress;
+      const cached = reverseAddressCache.get(cacheKey);
+      if (cached) {
+        address = cached.formattedAddress;
+        city = cached.city;
+        street = cached.street;
+        streetNumber = cached.streetNumber;
+        postalCode = cached.postalCode;
       } else {
         if (Platform.OS === "web") {
-          address = await reverseGeocodeOnWeb(input.latitude, input.longitude);
+          const result = await reverseGeocodeOnWeb(input.latitude, input.longitude);
+          address = result.formattedAddress;
+          city = result.city;
+          street = result.street;
+          streetNumber = result.streetNumber;
+          postalCode = result.postalCode;
         } else {
           const location = await getLocationModule();
           const reverse = await withTimeout(
@@ -427,11 +522,24 @@ export async function resolveCoordinatesToZone(input: {
             }),
             12000,
           );
-          address =
-            formatAddress(reverse[0] ?? {}) ||
-            `${input.latitude.toFixed(5)}, ${input.longitude.toFixed(5)}`;
+          const region = reverse[0];
+          if (region) {
+            address =
+              formatAddress(region) ||
+              `${input.latitude.toFixed(5)}, ${input.longitude.toFixed(5)}`;
+            city = region.city ?? undefined;
+            street = region.street ?? undefined;
+            streetNumber = region.streetNumber ? String(region.streetNumber) : undefined;
+            postalCode = region.postalCode ?? undefined;
+          }
         }
-        reverseAddressCache.set(cacheKey, address);
+        reverseAddressCache.set(cacheKey, {
+          formattedAddress: address,
+          ...(city !== undefined ? { city } : {}),
+          ...(street !== undefined ? { street } : {}),
+          ...(streetNumber !== undefined ? { streetNumber } : {}),
+          ...(postalCode !== undefined ? { postalCode } : {}),
+        });
       }
     }
 
@@ -440,6 +548,10 @@ export async function resolveCoordinatesToZone(input: {
       latitude: input.latitude,
       longitude: input.longitude,
       zoneId,
+      ...(city !== undefined ? { city } : {}),
+      ...(street !== undefined ? { street } : {}),
+      ...(streetNumber !== undefined ? { streetNumber } : {}),
+      ...(postalCode !== undefined ? { postalCode } : {}),
     };
   } catch (error) {
     throw normalizeLocationResolveError(error);

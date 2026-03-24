@@ -27,7 +27,7 @@ import { ChoicePill } from "@/components/ui/choice-pill";
 import { IconButton } from "@/components/ui/icon-button";
 import { KitChip, KitTextField } from "@/components/ui/kit";
 import { SheetHeaderBlock } from "@/components/ui/sheet-header-block";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { ZONE_OPTIONS } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import { SPORT_TYPES } from "@/convex/constants";
@@ -35,11 +35,11 @@ import { useBrand } from "@/hooks/use-brand";
 import { useLocationResolution } from "@/hooks/use-location-resolution";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import { omitUndefined } from "@/lib/omit-undefined";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import {
   isPushRegistrationError,
   registerForPushNotificationsAsync,
 } from "@/lib/push-notifications";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 type OnboardingRole = "instructor" | "studio";
 type OnboardingStep = 0 | 1 | 2;
@@ -97,7 +97,6 @@ function OnboardingStageLayer({
   children: React.ReactNode;
 }) {
   const translateX = useSharedValue(0);
-  const opacity = useSharedValue(1);
 
   useEffect(() => {
     const incomingOffset = 20 * direction;
@@ -105,24 +104,19 @@ function OnboardingStageLayer({
 
     if (phase === "enter") {
       translateX.value = incomingOffset;
-      opacity.value = 0;
       translateX.value = withTiming(0, { duration: STEP_ENTER_MS });
-      opacity.value = withTiming(1, { duration: STEP_ENTER_MS });
       return;
     }
 
     if (phase === "exit") {
       translateX.value = withTiming(outgoingOffset, { duration: STEP_EXIT_MS });
-      opacity.value = withTiming(0, { duration: STEP_EXIT_MS });
       return;
     }
 
     translateX.value = 0;
-    opacity.value = 1;
-  }, [direction, opacity, phase, translateX]);
+  }, [direction, phase, translateX]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
     transform: [{ translateX: translateX.value }],
   }));
 
@@ -211,8 +205,7 @@ function OnboardingScreenContent() {
   const requestedRole = isOnboardingRole(roleParam) ? roleParam : null;
 
   const ownedRoles = currentUser?.roles ?? [];
-  const isAdditionalProfileSetup =
-    requestedRole !== null && !ownedRoles.includes(requestedRole);
+  const isAdditionalProfileSetup = requestedRole !== null && !ownedRoles.includes(requestedRole);
   const isForcedWorkspaceSetup = isAdditionalProfileSetup && ownedRoles.length > 0;
 
   useEffect(() => {
@@ -1412,9 +1405,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    gap: 12,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.lg,
+    gap: BrandSpacing.sm,
   },
   stageViewport: {
     minHeight: 1,
@@ -1422,16 +1415,16 @@ const styles = StyleSheet.create({
   detailsLoadingStage: {
     minHeight: 260,
     justifyContent: "center",
-    gap: 12,
-    paddingVertical: 12,
+    gap: BrandSpacing.sm,
+    paddingVertical: BrandSpacing.sm,
   },
   detailsLoadingHeader: {
-    gap: 4,
+    gap: BrandSpacing.xs,
   },
   detailsLoadingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: BrandSpacing.sm,
   },
   contentGrow: {
     flexGrow: 1,
@@ -1444,12 +1437,12 @@ const styles = StyleSheet.create({
     paddingBottom: BrandSpacing.xl,
   },
   roleStageHeader: {
-    gap: 6,
+    gap: BrandSpacing.xs,
   },
   roleGrid: {
     flexDirection: "row",
     alignItems: "stretch",
-    gap: 12,
+    gap: BrandSpacing.sm,
     marginTop: BrandSpacing.md,
   },
   roleOption: {
@@ -1468,91 +1461,91 @@ const styles = StyleSheet.create({
   },
   navRowSplit: {
     flexDirection: "row",
-    gap: 12,
+    gap: BrandSpacing.sm,
   },
   navAction: {
     flex: 1,
   },
   stepTwoWrap: {
-    gap: 14,
+    gap: BrandSpacing.md,
   },
   stepTwoDesktop: {
     flexDirection: "row",
     alignItems: "stretch",
   },
   formPanel: {
-    gap: 12,
+    gap: BrandSpacing.sm,
     flex: 1,
     minWidth: 320,
-    borderRadius: 24,
+    borderRadius: BrandRadius.card,
     borderCurve: "continuous",
-    padding: 16,
+    padding: BrandSpacing.md,
   },
   mapPanel: {
     flex: 1,
     minWidth: 320,
     minHeight: 360,
-    gap: 10,
-    borderRadius: 24,
+    gap: BrandSpacing.sm,
+    borderRadius: BrandRadius.card,
     borderCurve: "continuous",
-    padding: 16,
+    padding: BrandSpacing.md,
   },
   mapHeader: {
-    gap: 4,
+    gap: BrandSpacing.xs,
   },
   mapHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   mapWrap: {
     flex: 1,
-    minHeight: 300,
+    minHeight: BrandSpacing.mapMinHeight,
   },
   mapLoadingState: {
     flex: 1,
-    minHeight: 300,
+    minHeight: BrandSpacing.mapMinHeight,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    borderRadius: 20,
+    gap: BrandSpacing.sm,
+    borderRadius: BrandRadius.button,
     borderCurve: "continuous",
   },
   chipGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   sectionBlock: {
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   inlineActions: {
     flexDirection: "row",
-    gap: 8,
+    gap: BrandSpacing.sm,
   },
   locationPreviewRow: {
     minHeight: 44,
     justifyContent: "center",
   },
   multilineInput: {
-    minHeight: 96,
+    minHeight: BrandSpacing.multilineInputMinHeight,
     textAlignVertical: "top",
   },
   verifyActions: {
-    gap: 10,
+    gap: BrandSpacing.sm,
   },
   verifyStage: {
-    gap: 12,
+    gap: BrandSpacing.sm,
     borderWidth: 1.5,
-    borderRadius: 24,
+    borderRadius: BrandRadius.card,
     borderCurve: "continuous",
-    padding: 16,
+    padding: BrandSpacing.md,
   },
   errorBanner: {
     borderWidth: 1.5,
-    borderRadius: 20,
+    borderRadius: BrandRadius.button,
     borderCurve: "continuous",
-    padding: 14,
+    padding: BrandSpacing.md,
   },
 });

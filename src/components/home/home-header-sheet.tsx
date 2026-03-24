@@ -6,8 +6,10 @@ import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 
-const SHEET_EXPANDED_CONTENT_HEIGHT = 84;
+const SHEET_EXPANDED_CONTENT_HEIGHT = BrandSpacing.avatarLg + BrandSpacing.lg;
 const SHEET_CONTENT_GAP = BrandSpacing.sm;
+const AVATAR_SIZE = BrandSpacing.avatarLg;
+const BADGE_SIZE = BrandSpacing.lg;
 
 export function getHomeHeaderExpandedHeight(safeTop: number) {
   return safeTop + SHEET_EXPANDED_CONTENT_HEIGHT;
@@ -16,7 +18,7 @@ export function getHomeHeaderExpandedHeight(safeTop: number) {
 export function getHomeHeaderScrollTopPadding(_safeTop: number) {
   // GlobalTopSheet owns the safe top inset now, so page content only needs
   // header content height plus a small gap, not the system inset again.
-  return SHEET_EXPANDED_CONTENT_HEIGHT + SHEET_CONTENT_GAP + BrandSpacing.xl;
+  return SHEET_EXPANDED_CONTENT_HEIGHT + SHEET_CONTENT_GAP + BrandSpacing.insetRoomy;
 }
 
 type HomeHeaderSheetProps = {
@@ -41,13 +43,9 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
   return (
     <View
       pointerEvents="box-none"
+      className="flex-1 flex-row items-center justify-between px-inset-roomy"
       style={{
-        flex: 1,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: BrandSpacing.xl,
-        paddingTop: 2,
+        paddingTop: BrandSpacing.xs,
         paddingBottom: BrandSpacing.md,
       }}
     >
@@ -72,7 +70,7 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
               ...BrandType.body,
               color: palette.onPrimary as string,
               opacity: 0.7,
-              marginTop: 2,
+              marginTop: BrandSpacing.xs,
             }}
           >
             {subtitle}
@@ -85,21 +83,21 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
         accessibilityLabel={onPressAvatar ? t("home.actions.profileTitle") : undefined}
         onPress={onPressAvatar}
         disabled={!onPressAvatar}
-        style={{ borderRadius: 24 }}
+        className="rounded-soft"
       >
         <View style={{ position: "relative" }}>
           <ProfileAvatar
             imageUrl={profileImageUrl}
             fallbackName={displayName}
             palette={palette}
-            size={68}
+            size={AVATAR_SIZE}
             roundedSquare
           />
           <KitFloatingBadge
             visible={isVerified}
-            size={22}
+            size={BADGE_SIZE}
             motion="none"
-            style={{ top: -12, left: 16 }}
+            style={{ top: -BrandSpacing.md, left: BrandSpacing.lg }}
           >
             <View style={{ transform: [{ rotate: "-18deg" }] }}>
               <Text

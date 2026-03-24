@@ -9,12 +9,13 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { KitFloatingBadgeProps } from "./types";
 
 export function KitFloatingBadge({
   children,
   visible = true,
-  size = 24,
+  size = BrandSpacing.xxl - 8,
   backgroundColor,
   borderColor,
   motion = "float",
@@ -29,7 +30,10 @@ export function KitFloatingBadge({
     }
 
     floatOffset.value = withRepeat(
-      withSequence(withTiming(-3, { duration: 900 }), withTiming(0, { duration: 900 })),
+      withSequence(
+        withTiming(-BrandSpacing.xs - 1, { duration: 900 }),
+        withTiming(0, { duration: 900 }),
+      ),
       -1,
       false,
     );
@@ -47,16 +51,14 @@ export function KitFloatingBadge({
     <Animated.View
       pointerEvents="none"
       entering={ZoomIn.springify().damping(15).stiffness(180)}
+      className="absolute items-center justify-center"
       style={[
         {
-          position: "absolute",
-          top: -8,
-          left: -8,
+          top: -BrandSpacing.sm,
+          left: -BrandSpacing.sm,
           width: size,
           height: size,
-          borderRadius: 999,
-          alignItems: "center",
-          justifyContent: "center",
+          borderRadius: BrandRadius.pill,
           backgroundColor,
           borderWidth: borderColor ? 1 : 0,
           borderColor,

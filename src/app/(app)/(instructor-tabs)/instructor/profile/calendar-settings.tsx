@@ -4,19 +4,19 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, StyleSheet, Text, View, Platform } from "react-native";
+import { Alert, Platform, Text, View } from "react-native";
 
 import appleCalendarIcon from "@/assets/images/calendar-apple-app-icon.jpg";
 import googleCalendarIcon from "@/assets/images/calendar-google-app-icon.jpg";
-import { CalendarConnectionRow } from "@/components/profile/calendar-connection-row";
 import { LoadingScreen } from "@/components/loading-screen";
+import { CalendarConnectionRow } from "@/components/profile/calendar-connection-row";
 import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitList, KitSwitchRow } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
@@ -47,6 +47,7 @@ const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).ca
 
 type GoogleCalendarStatus = {
   connected: boolean;
+  hasRefreshToken: boolean;
   accountEmail?: string | undefined;
   lastError?: string | undefined;
 };
@@ -143,7 +144,10 @@ export default function CalendarSettingsScreen() {
   }
 
   const hasGoogleConnection = Boolean(googleStatus?.connected);
-  const isGoogleConnected = provider === "google" && hasGoogleConnection;
+  const hasGoogleRefreshToken = Boolean(googleStatus?.hasRefreshToken);
+  const needsGoogleReconnect = hasGoogleConnection && !hasGoogleRefreshToken;
+  const canUseGoogleCalendar = hasGoogleConnection && hasGoogleRefreshToken;
+  const isGoogleConnected = provider === "google" && canUseGoogleCalendar;
   const isAppleConnected = provider === "apple";
   const isBusy = isSaving || isConnectingGoogle || isDisconnectingGoogle || isSyncingGoogle;
 
@@ -159,9 +163,7 @@ export default function CalendarSettingsScreen() {
       ...(instructorSettings.hourlyRateExpectation !== undefined
         ? { hourlyRateExpectation: instructorSettings.hourlyRateExpectation }
         : {}),
-      ...(instructorSettings.address !== undefined
-        ? { address: instructorSettings.address }
-        : {}),
+      ...(instructorSettings.address !== undefined ? { address: instructorSettings.address } : {}),
       ...(instructorSettings.latitude !== undefined
         ? { latitude: instructorSettings.latitude }
         : {}),
@@ -328,6 +330,13 @@ export default function CalendarSettingsScreen() {
   };
 
   const onSyncGoogleNow = async () => {
+    if (!canUseGoogleCalendar) {
+      Alert.alert(
+        t("profile.settings.errors.saveFailed"),
+        t("profile.settings.calendar.googleReconnectRequired"),
+      );
+      return;
+    }
     setIsSyncingGoogle(true);
     try {
       await syncGoogleCalendar({});
@@ -431,18 +440,20 @@ export default function CalendarSettingsScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
+    <View className="flex-1" style={{ backgroundColor: palette.appBg }}>
       <ProfileSubpageScrollView
         routeKey="instructor/profile/calendar-settings"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={{
+          paddingHorizontal: BrandSpacing.inset,
+          paddingBottom: BrandSpacing.xxl + BrandSpacing.xxl + BrandSpacing.xxl + BrandSpacing.md,
+          gap: BrandSpacing.stackRoomy,
+        }}
       >
         <View
-          style={[
-            styles.connectionList,
-            {
-              backgroundColor: palette.surface as string,
-            },
-          ]}
+          className="overflow-hidden rounded-soft"
+          style={{
+            backgroundColor: palette.surface as string,
+          }}
         >
           <CalendarConnectionRow
             iconSource={googleCalendarIcon}
@@ -450,7 +461,9 @@ export default function CalendarSettingsScreen() {
             detail={
               isGoogleConnected
                 ? (googleStatus?.accountEmail ?? t("profile.calendar.googleAccountFallback"))
-                : t("profile.settings.calendar.connectHint")
+                : needsGoogleReconnect
+                  ? t("profile.settings.calendar.googleReconnectRequired")
+                  : t("profile.settings.calendar.connectHint")
             }
             connected={isGoogleConnected}
             loading={isConnectingGoogle || isDisconnectingGoogle}
@@ -490,36 +503,52 @@ export default function CalendarSettingsScreen() {
 
         {googleStatus?.lastError ? (
           <View
-            style={[
-              styles.feedbackCard,
-              {
-                backgroundColor: palette.dangerSubtle as string,
-                borderColor: palette.danger as string,
-              },
-            ]}
+            className="rounded-medium px-control-x py-control-y"
+            style={{
+              borderWidth: 1,
+              borderCurve: "continuous",
+              backgroundColor: palette.dangerSubtle as string,
+              borderColor: palette.danger as string,
+            }}
           >
-            <Text style={[styles.feedbackText, { color: palette.danger as string }]}>
+            <Text style={{ ...BrandType.body, color: palette.danger as string }}>
               {googleStatus.lastError}
+            </Text>
+          </View>
+        ) : null}
+
+        {needsGoogleReconnect ? (
+          <View
+            className="rounded-medium px-control-x py-control-y"
+            style={{
+              borderWidth: 1,
+              borderCurve: "continuous",
+              backgroundColor: palette.warningSubtle,
+              borderColor: palette.warning,
+            }}
+          >
+            <Text style={{ ...BrandType.body, color: palette.warning }}>
+              {t("profile.settings.calendar.googleReconnectRequired")}
             </Text>
           </View>
         ) : null}
 
         {googleConfigError ? (
           <View
-            style={[
-              styles.feedbackCard,
-              {
-                backgroundColor: palette.warningSubtle,
-                borderColor: palette.warning,
-              },
-            ]}
+            className="rounded-medium px-control-x py-control-y"
+            style={{
+              borderWidth: 1,
+              borderCurve: "continuous",
+              backgroundColor: palette.warningSubtle,
+              borderColor: palette.warning,
+            }}
           >
-            <Text style={[styles.feedbackText, { color: palette.warning }]}>{googleConfigError}</Text>
+            <Text style={{ ...BrandType.body, color: palette.warning }}>{googleConfigError}</Text>
           </View>
         ) : null}
 
-        {isGoogleConnected ? (
-          <View style={styles.actionStack}>
+        {provider === "google" ? (
+          <View className="gap-stack-tight">
             <ActionButton
               label={
                 isSyncingGoogle
@@ -529,7 +558,7 @@ export default function CalendarSettingsScreen() {
               onPress={() => {
                 void onSyncGoogleNow();
               }}
-              disabled={isSyncingGoogle || isBusy}
+              disabled={!canUseGoogleCalendar || isSyncingGoogle || isBusy}
               palette={palette}
               fullWidth
             />
@@ -537,7 +566,7 @@ export default function CalendarSettingsScreen() {
         ) : null}
       </ProfileSubpageScrollView>
 
-      <View style={styles.footerAction}>
+      <View className="absolute left-inset right-inset" style={{ bottom: BrandSpacing.lg }}>
         <ActionButton
           label={t("common.done")}
           onPress={() => router.back()}
@@ -548,36 +577,3 @@ export default function CalendarSettingsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: BrandSpacing.lg,
-    paddingBottom: 112,
-    gap: BrandSpacing.lg,
-  },
-  connectionList: {
-    borderRadius: BrandRadius.card,
-    overflow: "hidden",
-  },
-  feedbackCard: {
-    borderWidth: 1,
-    borderRadius: BrandRadius.input,
-    paddingHorizontal: BrandSpacing.md,
-    paddingVertical: BrandSpacing.md,
-  },
-  feedbackText: {
-    ...BrandType.body,
-  },
-  actionStack: {
-    gap: 10,
-  },
-  footerAction: {
-    position: "absolute",
-    left: BrandSpacing.lg,
-    right: BrandSpacing.lg,
-    bottom: BrandSpacing.lg,
-  },
-});

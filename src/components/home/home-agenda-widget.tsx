@@ -1,12 +1,14 @@
 import type { TFunction } from "i18next";
 import { useMemo } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { HomeSectionHeading, HomeSurface } from "@/components/home/home-dashboard-layout";
 import { getRelativeTimeLabel } from "@/components/home/home-shared";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { toSportLabel } from "@/convex/constants";
+
+const TIME_WIDTH = BrandSpacing.avatarLg;
 
 type AgendaItem = {
   id: string;
@@ -88,8 +90,8 @@ export function HomeAgendaWidget({
       <HomeSurface
         palette={palette}
         style={{
-          padding: BrandSpacing.lg,
-          gap: 8,
+          padding: BrandSpacing.inset,
+          gap: BrandSpacing.stackTight,
         }}
       >
         <HomeSectionHeading title={heading} palette={palette} />
@@ -110,8 +112,7 @@ export function HomeAgendaWidget({
       <HomeSurface
         palette={palette}
         style={{
-          padding: BrandSpacing.lg,
-          gap: 0,
+          padding: BrandSpacing.inset,
         }}
       >
         <HomeSectionHeading title={heading} palette={palette} />
@@ -120,7 +121,6 @@ export function HomeAgendaWidget({
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
           style={maxHeight ? { maxHeight } : undefined}
-          contentContainerStyle={{ gap: 0 }}
         >
           {visibleItems.map((item, index) => {
             const isToday = item.startTime <= todayEnd;
@@ -138,23 +138,22 @@ export function HomeAgendaWidget({
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    paddingVertical: 10,
-                    gap: 12,
-                    borderBottomWidth: index < visibleItems.length - 1 ? 1 : 0,
-                    borderBottomColor: (palette.border as string) ?? "rgba(0,0,0,0.06)",
+                    paddingVertical: BrandSpacing.controlY,
+                    gap: BrandSpacing.stack,
+                    borderBottomWidth:
+                      index < visibleItems.length - 1 ? StyleSheet.hairlineWidth : 0,
+                    borderBottomColor: palette.border as string,
                   }}
                 >
                   <View
                     style={{
-                      width: 56,
+                      width: TIME_WIDTH,
                       alignItems: "flex-end",
                     }}
                   >
                     <Text
                       style={{
-                        ...BrandType.heading,
-                        fontSize: 15,
-                        lineHeight: 18,
+                        ...BrandType.bodyStrong,
                         color: palette.text as string,
                         fontVariant: ["tabular-nums"],
                       }}
@@ -164,19 +163,16 @@ export function HomeAgendaWidget({
                     <Text
                       style={{
                         ...BrandType.micro,
-                        fontSize: 10,
                         color: palette.textMuted as string,
-                        lineHeight: 14,
                       }}
                     >
                       {isToday ? relativeTime : formatGroupDate(item.startTime, locale)}
                     </Text>
                   </View>
-                  <View style={{ flex: 1, gap: 1 }}>
+                  <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                     <Text
                       style={{
                         ...BrandType.bodyStrong,
-                        fontSize: 15,
                         color: palette.text as string,
                       }}
                       numberOfLines={1}
@@ -195,19 +191,18 @@ export function HomeAgendaWidget({
                   </View>
                   <View
                     style={{
-                      width: 20,
+                      width: BrandSpacing.iconSm,
                       alignItems: "center",
                     }}
                   >
                     <View
                       style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: 3,
+                        width: BrandSpacing.statusDot,
+                        height: BrandSpacing.statusDot,
+                        borderRadius: BrandRadius.pill,
                         backgroundColor: isToday
                           ? (palette.primary as string)
-                          : (palette.textMuted as string),
-                        opacity: isToday ? 1 : 0.3,
+                          : (palette.textMicro as string),
                       }}
                     />
                   </View>
@@ -220,7 +215,7 @@ export function HomeAgendaWidget({
         {onPressAll ? (
           <View
             style={{
-              marginTop: 8,
+              marginTop: BrandSpacing.sm,
               alignItems: "flex-end",
             }}
           >
@@ -228,7 +223,6 @@ export function HomeAgendaWidget({
               style={{
                 ...BrandType.caption,
                 color: palette.primary as string,
-                fontSize: 13,
               }}
               onPress={onPressAll}
             >

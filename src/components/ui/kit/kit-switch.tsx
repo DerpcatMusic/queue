@@ -33,6 +33,12 @@ export function KitSwitch({
 }: KitSwitchProps) {
   const { interaction } = useKitTheme();
   const progress = useSharedValue(value ? 1 : 0);
+  const pressedTrackColor = value
+    ? (interaction.switchTrackOn as string)
+    : (interaction.switchTrackOff as string);
+  const disabledTrackColor = value
+    ? (interaction.switchTrackOn as string)
+    : (interaction.switchTrackOff as string);
 
   useEffect(() => {
     progress.value = withTiming(value ? 1 : 0, { duration: 180 });
@@ -59,8 +65,10 @@ export function KitSwitch({
       }}
       style={({ pressed }) => [
         styles.pressable,
-        disabled ? styles.disabled : null,
-        pressed ? styles.pressed : null,
+        {
+          borderRadius: BrandRadius.button,
+          backgroundColor: disabled ? disabledTrackColor : pressed ? pressedTrackColor : undefined,
+        },
       ]}
     >
       <Animated.View
@@ -93,12 +101,6 @@ const styles = StyleSheet.create({
     width: TRACK_WIDTH,
     height: TRACK_HEIGHT,
     justifyContent: "center",
-  },
-  disabled: {
-    opacity: 0.58,
-  },
-  pressed: {
-    opacity: 0.9,
   },
   track: {
     width: TRACK_WIDTH,

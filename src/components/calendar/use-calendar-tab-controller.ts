@@ -95,7 +95,10 @@ export function useCalendarTabController() {
   );
   const calendarSettings = role === "instructor" ? instructorSettings : studioSettings;
 
-  const canShowGoogleAgenda = Boolean(role && googleStatus?.connected === true);
+  const canUseGoogleCalendar = Boolean(
+    role && googleStatus?.connected === true && googleStatus?.hasRefreshToken === true,
+  );
+  const canShowGoogleAgenda = canUseGoogleCalendar;
   const shouldFetchGoogleAgenda =
     canShowGoogleAgenda &&
     (visibilityFilters.timedCalendarEvents || visibilityFilters.allDayCalendarEvents);
@@ -288,7 +291,7 @@ export function useCalendarTabController() {
     if (!role) {
       return;
     }
-    if (!googleStatus?.connected) {
+    if (!canUseGoogleCalendar) {
       return;
     }
     if (!calendarSettings || calendarSettings.calendarProvider !== "google") {
@@ -310,7 +313,7 @@ export function useCalendarTabController() {
   }, [
     calendarSettings,
     endTime,
-    googleStatus?.connected,
+    canUseGoogleCalendar,
     role,
     startTime,
     shouldFetchGoogleAgenda,

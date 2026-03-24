@@ -1,18 +1,24 @@
 import type { TFunction } from "i18next";
-import { View } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
+import { Text, useWindowDimensions, View } from "react-native";
+import Animated, {
+  FadeInUp,
+  useAnimatedScrollHandler,
+  useSharedValue,
+} from "react-native-reanimated";
 import { HomeAgendaWidget } from "@/components/home/home-agenda-widget";
-import { useHomeDashboardLayout } from "@/components/home/home-dashboard-layout";
+import { HomeSurface, useHomeDashboardLayout } from "@/components/home/home-dashboard-layout";
 import { getHomeHeaderScrollTopPadding } from "@/components/home/home-header-sheet";
 import { HomeSignalTile } from "@/components/home/home-shared";
+import { JobCarouselDots } from "@/components/home/job-carousel-dots";
 import {
   InstructorJobCard,
   type InstructorMarketplaceJob,
 } from "@/components/jobs/instructor/instructor-job-card";
 import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAppInsets } from "@/hooks/use-app-insets";
 
@@ -40,6 +46,28 @@ type InstructorHomeContentProps = {
   onOpenStudio: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
 };
 
+function InstructorJobsEmptyState({ palette, t }: { palette: BrandPalette; t: TFunction }) {
+  return (
+    <HomeSurface palette={palette} style={{ padding: BrandSpacing.inset }}>
+      <View style={{ alignItems: "center", gap: BrandSpacing.stackTight }}>
+        <IconSymbol name="briefcase.fill" size={28} color={palette.textMuted as string} />
+        <Text style={{ ...BrandType.title, color: palette.text as string }}>
+          {t("home.instructor.noJobsAvailable")}
+        </Text>
+        <Text
+          style={{
+            ...BrandType.caption,
+            color: palette.textMuted as string,
+            textAlign: "center",
+          }}
+        >
+          {t("home.instructor.noJobsHint")}
+        </Text>
+      </View>
+    </HomeSurface>
+  );
+}
+
 export function InstructorHomeContent({
   currencyFormatter,
   locale,
@@ -58,11 +86,22 @@ export function InstructorHomeContent({
   const { safeTop } = useAppInsets();
   const layout = useHomeDashboardLayout();
   const { scrollRef, onScroll } = useScrollSheetBindings();
+  const { width: screenWidth } = useWindowDimensions();
+
+  const cardWidth = screenWidth - BrandSpacing.insetRoomy * 2;
+  const scrollX = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollX.value = event.contentOffset.x;
+    },
+  });
 
   const availableJobsCount = availableJobs?.length ?? 0;
-  const visibleAvailableJobs = (availableJobs ?? []).slice(0, 3);
+  const visibleAvailableJobs = (availableJobs ?? []).slice(0, 4);
   const earningsLabel = currencyFormatter.format(totalEarningsAgorot / 100);
   const completionLabel = String(lessonsCompleted);
+
+  const hasJobs = visibleAvailableJobs.length > 0;
 
   return (
     <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
@@ -73,10 +112,10 @@ export function InstructorHomeContent({
         style={{ flex: 1 }}
         topInsetTone="sheet"
         contentContainerStyle={{
-          paddingHorizontal: BrandSpacing.xl,
+          paddingHorizontal: BrandSpacing.insetRoomy,
           paddingTop: getHomeHeaderScrollTopPadding(safeTop),
-          paddingBottom: BrandSpacing.xxl,
-          gap: layout.sectionGap,
+          paddingBottom: BrandSpacing.section,
+          gap: BrandSpacing.section,
         }}
       >
         <Animated.View
@@ -87,38 +126,59 @@ export function InstructorHomeContent({
             alignItems: "stretch",
           }}
         >
-          {visibleAvailableJobs.length > 0 ? (
-            <View
-              style={{
-                flex: layout.heroFlex,
-                gap: BrandSpacing.sm,
-              }}
-            >
-              {visibleAvailableJobs.map((job) => (
-                <View
-                  key={job.jobId}
-                  style={{
-                    borderRadius: 24,
-                    overflow: "hidden",
-                  }}
-                >
-                  <InstructorJobCard
-                    job={job}
-                    locale={locale}
-                    zoneLanguage={zoneLanguage}
-                    palette={palette}
-                    now={now}
-                    onApply={() => onOpenStudio(job.studioId, job.jobId)}
-                    onOpenStudio={onOpenStudio}
-                    t={t}
-                  />
-                </View>
-              ))}
-            </View>
-          ) : null}
+          {/* Jobs section — carousel or empty state */}
+          <View style={{ flex: layout.heroFlex }}>
+            {hasJobs ? (
+              <Animated.View style={{ gap: BrandSpacing.stackTight }}>
+                {/* Dot indicators */}
+                <JobCarouselDots
+                  count={visibleAvailableJobs.length}
+                  scrollX={scrollX}
+                  cardWidth={cardWidth}
+                  palette={palette}
+                />
 
-          <View style={{ flex: layout.chartFlex, gap: BrandSpacing.sm }}>
-            <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+                {/* Horizontal carousel */}
+                <Animated.ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  snapToInterval={cardWidth}
+                  decelerationRate="fast"
+                  onScroll={scrollHandler}
+                  scrollEventThrottle={16}
+                  scrollEnabled={visibleAvailableJobs.length > 1}
+                >
+                  {visibleAvailableJobs.map((job) => (
+                    <View
+                      key={job.jobId}
+                      style={{
+                        width: cardWidth,
+                        borderRadius: BrandRadius.soft,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <InstructorJobCard
+                        job={job}
+                        locale={locale}
+                        zoneLanguage={zoneLanguage}
+                        palette={palette}
+                        now={now}
+                        onApply={() => onOpenStudio(job.studioId, job.jobId)}
+                        onOpenStudio={onOpenStudio}
+                        t={t}
+                      />
+                    </View>
+                  ))}
+                </Animated.ScrollView>
+              </Animated.View>
+            ) : (
+              <InstructorJobsEmptyState palette={palette} t={t} />
+            )}
+          </View>
+
+          {/* Stats tiles */}
+          <View style={{ flex: layout.chartFlex, gap: BrandSpacing.stackTight }}>
+            <View style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
               <HomeSignalTile
                 label={t("home.actions.jobsTitle")}
                 value={String(availableJobsCount)}
@@ -134,7 +194,7 @@ export function InstructorHomeContent({
                 icon="clock.badge.checkmark"
               />
             </View>
-            <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+            <View style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
               <HomeSignalTile
                 label={t("home.performance.earnings")}
                 value={earningsLabel}

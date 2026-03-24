@@ -1,8 +1,8 @@
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ImageSourcePropType } from "react-native";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { BrandRadius, BrandSpacing, BrandType, type BrandPalette } from "@/constants/brand";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
 type CalendarConnectionRowProps = {
   iconSource: ImageSourcePropType;
@@ -58,7 +58,7 @@ export function CalendarConnectionRow({
           ) : (
             <AppSymbol
               name={connected ? "checkmark.circle.fill" : "chevron.right"}
-              size={22}
+              size={BrandSpacing.iconMd - BrandSpacing.xs / 2}
               tintColor={connected ? (palette.primary as string) : (palette.textMuted as string)}
             />
           )}
@@ -75,18 +75,18 @@ const styles = StyleSheet.create({
   rowInner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: BrandSpacing.md,
+    gap: BrandSpacing.sm,
     paddingHorizontal: BrandSpacing.lg,
     paddingVertical: BrandSpacing.md,
   },
   icon: {
-    width: 52,
-    height: 52,
+    width: BrandSpacing.controlLg,
+    height: BrandSpacing.controlLg,
     borderRadius: BrandRadius.input,
   },
   copy: {
     flex: 1,
-    gap: 2,
+    gap: BrandSpacing.xs,
   },
   title: {
     ...BrandType.bodyStrong,
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   trailing: {
-    width: 24,
+    width: BrandSpacing.xl,
     alignItems: "flex-end",
     justifyContent: "center",
   },

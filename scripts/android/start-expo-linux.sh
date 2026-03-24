@@ -105,10 +105,11 @@ done
 
 APP_ID="$(node -e "const fs=require('fs');const p='app.json';let id='com.derpcat.queue';try{const j=JSON.parse(fs.readFileSync(p,'utf8'));id=(j.expo&&j.expo.android&&j.expo.android.package)||id;}catch{};process.stdout.write(id)")"
 METRO_PORT="${EXPO_METRO_PORT:-8081}"
+ANDROID_BUILD_VARIANT="${EXPO_ANDROID_BUILD_VARIANT:-debugOptimized}"
 
 if ! adb -s "$SERIAL" shell pm list packages "$APP_ID" | tr -d '\r' | grep -q "package:$APP_ID"; then
-  echo "Dev client not installed ($APP_ID). Building/installing now..."
-  npx expo run:android
+  echo "Dev client not installed ($APP_ID). Building/installing variant '$ANDROID_BUILD_VARIANT'..."
+  npx expo run:android --variant "$ANDROID_BUILD_VARIANT"
 fi
 
 echo "Launching Expo dev client on $SERIAL"
@@ -117,11 +118,12 @@ open_dev_client_when_ready() {
     if curl -fsS "http://127.0.0.1:$METRO_PORT" >/dev/null 2>&1; then
       DEV_URL_LOCAL="queue://expo-development-client/?url=http://127.0.0.1:$METRO_PORT"
       DEV_URL_EXP="exp+queue://expo-development-client/?url=http://127.0.0.1:$METRO_PORT"
-      for _ in $(seq 1 30); do
+      # Relaunch exactly once when Metro becomes reachable.
+      for _ in $(seq 1 1); do
         adb -s "$SERIAL" shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
         adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$DEV_URL_LOCAL" >/dev/null 2>&1 || true
         adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$DEV_URL_EXP" >/dev/null 2>&1 || true
-        sleep 2
+        sleep 3
       done
       return 0
     fi
