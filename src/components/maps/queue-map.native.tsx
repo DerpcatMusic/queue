@@ -50,26 +50,19 @@ const MAP_LOADING_OVERLAY_DELAY_MS = 180;
 
 function buildStudioPinDataUri({
   accentColor,
-  imageUrl,
   label,
   textColor,
 }: {
   accentColor: string;
-  imageUrl?: string;
   label: string;
   textColor: string;
 }) {
-  const safeImageUrl = imageUrl ? imageUrl.replaceAll("&", "&amp;") : null;
   const safeLabel = label.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="64" height="76" viewBox="0 0 64 76">
       <path fill="${accentColor}" d="M32 76C20.7 63.7 8 50 8 31.4C8 18.5 18.5 8 31.4 8h1.2C45.5 8 56 18.5 56 31.4C56 50 43.3 63.7 32 76Z"/>
       <circle cx="32" cy="31" r="21" fill="${accentColor}"/>
-      ${
-        safeImageUrl
-          ? `<image href="${safeImageUrl}" x="11" y="10" width="42" height="42" preserveAspectRatio="xMidYMid slice" clip-path="circle(21px at 32px 31px)" />`
-          : `<text x="32" y="38" text-anchor="middle" font-size="20" font-family="Arial, sans-serif" font-weight="700" fill="${textColor}">${safeLabel}</text>`
-      }
+      <text x="32" y="38" text-anchor="middle" font-size="20" font-family="Arial, sans-serif" font-weight="700" fill="${textColor}">${safeLabel}</text>
     </svg>
   `.trim();
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -145,7 +138,6 @@ export const QueueMap = memo(function QueueMap({
           `${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}`,
           buildStudioPinDataUri({
             accentColor: mapPalette.markerAccent,
-            ...(studio.logoImageUrl ? { imageUrl: studio.logoImageUrl } : {}),
             label: studio.studioName.slice(0, 1).toUpperCase(),
             textColor: palette.onPrimary as string,
           }),
@@ -165,9 +157,23 @@ export const QueueMap = memo(function QueueMap({
         properties: {
           studioId: studio.studioId,
           iconKey: `${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}`,
+          ...(studio.logoImageUrl
+            ? { photoIconKey: `${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}:photo` }
+            : {}),
         },
       })),
     }),
+    [studios],
+  );
+  const studioPhotoImages = useMemo(
+    () =>
+      Object.fromEntries(
+        studios.flatMap((studio) =>
+          studio.logoImageUrl
+            ? [[`${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}:photo`, studio.logoImageUrl]]
+            : [],
+        ),
+      ),
     [studios],
   );
   const handleRetry = useCallback(() => {
@@ -395,7 +401,9 @@ export const QueueMap = memo(function QueueMap({
           onPressZone={onPressZone}
         />
 
-        {showStudioMarkers ? <Images images={studioMarkerImages} /> : null}
+        {showStudioMarkers ? (
+          <Images images={{ ...studioMarkerImages, ...studioPhotoImages }} />
+        ) : null}
         {showStudioMarkers ? (
           <GeoJSONSource
             id="queue-studio-marker-source"
@@ -425,6 +433,31 @@ export const QueueMap = memo(function QueueMap({
                   1,
                   16,
                   1.08,
+                ] as any,
+                "icon-allow-overlap": true,
+                "icon-ignore-placement": true,
+              }}
+              paint={{ "icon-opacity": 1 }}
+            />
+            <Layer
+              id="queue-studio-photo-layer"
+              type="symbol"
+              minzoom={STUDIO_MARKER_MIN_ZOOM as any}
+              filter={["has", "photoIconKey"] as any}
+              layout={{
+                "icon-image": ["get", "photoIconKey"] as any,
+                "icon-anchor": "center",
+                "icon-offset": [0, -1.05] as any,
+                "icon-size": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  STUDIO_MARKER_MIN_ZOOM,
+                  0.52,
+                  13.5,
+                  0.58,
+                  16,
+                  0.64,
                 ] as any,
                 "icon-allow-overlap": true,
                 "icon-ignore-placement": true,
