@@ -26,10 +26,12 @@ import {
   type AnyStyleSpec,
   createFallbackMapStyle,
   createPinShape,
+  createStudioMarkersGeoJSON,
   createZoneFilter,
   ensureVectorOfflinePack,
   fetchMapStyleSpec,
   getCachedMapStyleSpec,
+  getStudioImageEntries,
   resolveThemedMapStyle,
   sanitizeZoom,
   toBounds,
@@ -62,6 +64,8 @@ export const QueueMap = memo(function QueueMap({
   isEditing = mode === "zoneSelect",
   zoneGeoJson,
   zoneIdProperty = "id",
+  studios,
+  onPressStudio,
   onPressZone,
   onPressMap,
   onPressStudio,
@@ -515,6 +519,32 @@ export const QueueMap = memo(function QueueMap({
             }}
           />
         </GeoJSONSource>
+
+        {studioImageEntries.length > 0 ? (
+          <>
+            <Images
+              images={Object.fromEntries(
+                studioImageEntries.map(({ imageKey, imageUrl }) => [imageKey, imageUrl]),
+              )}
+            />
+            <GeoJSONSource id="studio-markers" data={studioMarkersGeoJSON}>
+              <Layer
+                id="studio-markers-symbol"
+                type="symbol"
+                layout={{
+                  "icon-image": ["case", ["get", "hasImage"], ["get", "imageKey"], ""],
+                  "icon-size": 0.3,
+                  "icon-anchor": "bottom",
+                  "icon-allow-overlap": true,
+                  "icon-offset": [0, -12],
+                }}
+                paint={{
+                  "icon-opacity": 1,
+                }}
+              />
+            </GeoJSONSource>
+          </>
+        ) : null}
       </MapLibreMap>
 
       {mapLoadState === "loading" && showLoadingOverlay ? (

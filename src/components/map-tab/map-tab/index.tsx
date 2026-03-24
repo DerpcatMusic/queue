@@ -34,6 +34,7 @@ export default function MapTabScreen() {
     selectedZoneIds,
     selectedZones,
     setFocusZoneId,
+    studios,
     t,
     toggleZone,
     zoneLanguage,
@@ -42,6 +43,12 @@ export default function MapTabScreen() {
   } = useMapTabController();
   const handlePressStudio = (studioId: string) => {
     router.push(`/instructor/jobs/studios/${encodeURIComponent(studioId)}` as Href);
+  };
+
+  const router = useRouter();
+
+  const handlePressStudio = (studioId: string) => {
+    router.push(`/instructor/jobs/studios/${studioId}` as never);
   };
 
   if (currentUser === undefined) {
@@ -122,6 +129,8 @@ export default function MapTabScreen() {
       zoneModeActive={zoneModeActive}
       isSaving={isSaving}
       cameraPadding={mapCameraPadding}
+      studios={studios}
+      onPressStudio={handlePressStudio}
       onPressZone={toggleZone}
       onPressMap={noopMapPress}
       onPressStudio={handlePressStudio}

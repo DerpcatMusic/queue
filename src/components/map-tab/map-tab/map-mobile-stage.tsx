@@ -25,6 +25,8 @@ type MapMobileStageProps = {
     bottom: number;
     left: number;
   };
+  studios: StudioMarker[];
+  onPressStudio: (studioId: string) => void;
   onPressZone: (zoneId: string) => void;
   onPressMap: () => void;
   onPressStudio: (studioId: string) => void;
@@ -43,6 +45,8 @@ export function MapMobileStage({
   zoneModeActive,
   isSaving,
   cameraPadding,
+  studios,
+  onPressStudio,
   onPressZone,
   onPressMap,
   onPressStudio,
@@ -62,6 +66,8 @@ export function MapMobileStage({
         focusZoneId={focusZoneId}
         isEditing={zoneModeActive}
         cameraPadding={cameraPadding}
+        studios={studios}
+        onPressStudio={onPressStudio}
         onPressZone={onPressZone}
         onPressMap={onPressMap}
         onPressStudio={onPressStudio}
@@ -79,7 +85,7 @@ export function MapMobileStage({
           size={58}
           floating
           disabled={isSaving}
-          backgroundColorOverride={
+          backgroundColorOvhttps://github.com/DerpcatMusic/queue/pull/30erride={
             zoneModeActive ? (palette.primary as string) : (palette.surface as string)
           }
           icon={

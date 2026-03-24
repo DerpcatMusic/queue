@@ -34,6 +34,8 @@ export type QueueMapProps = {
   isEditing?: boolean;
   zoneGeoJson?: FeatureCollection;
   zoneIdProperty?: string;
+  studios?: StudioMarker[];
+  onPressStudio?: (studioId: string) => void;
   onPressZone?: (zoneId: string) => void;
   onPressMap?: (pin: QueueMapPin) => void;
   onPressStudio?: (studioId: string) => void;

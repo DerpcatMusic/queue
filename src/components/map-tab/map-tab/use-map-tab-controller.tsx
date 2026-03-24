@@ -460,6 +460,7 @@ export function useMapTabController() {
     selectedZoneIds,
     selectedZones,
     setFocusZoneId,
+    studios: studiosWithLocations ?? [],
     t,
     toggleZone,
     zoneLanguage,
