@@ -49,7 +49,7 @@ export default function HomeScreen() {
     homeBodyReady && !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
 
   const myStudioJobs = useQuery(
-    api.jobs.getMyStudioJobs,
+    api.jobs.getMyStudioJobsWithApplications,
     canQueryStudio ? { limit: HOME_STUDIO_JOBS_LIMIT } : "skip",
   );
   const availableInstructorJobs = useQuery(
