@@ -1,17 +1,15 @@
 import {
   Camera,
   GeoJSONSource,
+  Images,
   Layer,
   Map as MapLibreMap,
   type MapRef,
-  ViewAnnotation,
-  type ViewAnnotationRef,
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons";
@@ -20,7 +18,6 @@ import { BrandRadius, BrandSpacing, getMapBrandPalette } from "@/constants/brand
 import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { Image } from "@/tw/image";
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
@@ -46,99 +43,36 @@ const ATTRIBUTION_ICON_SIZE = BrandSpacing.sm + BrandSpacing.xs;
 const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm;
 const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2;
 const STUDIO_MARKER_MIN_ZOOM = 10;
-const STUDIO_PIN_VIEWBOX = {
-  x: 1098.489,
-  y: 1430.882,
-  width: 2351.972,
-  height: 3656.301,
-} as const;
-const STUDIO_PIN_PATH =
-  "M1098.489,2606.868C1098.489,1957.824 1625.431,1430.882 2274.475,1430.882C2923.519,1430.882 3450.461,1957.824 3450.461,2606.868C3450.461,3456.164 3031.901,4240.917 2274.475,5087.183C1517.049,4240.917 1098.489,3456.164 1098.489,2606.868Z";
+const STUDIO_PIN_ICON_KEY_PREFIX = "studio-pin:";
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 180;
 
-function getStudioMarkerMetrics(zoom: number) {
-  void zoom;
-  return {
-    width: BrandSpacing.avatarMd,
-    height: BrandSpacing.avatarMd + BrandSpacing.lg,
-  };
-}
-
-function getStudioPinScale(zoom: number) {
-  void zoom;
-  return 1;
-}
-
-function StudioMapPin({
+function buildStudioPinDataUri({
   accentColor,
   imageUrl,
   label,
-  imageSize,
-  imageTop,
-  onImageLoad,
-  pinHeight,
-  pinWidth,
   textColor,
 }: {
   accentColor: string;
   imageUrl?: string;
   label: string;
-  imageSize: number;
-  imageTop: number;
-  onImageLoad?: () => void;
-  pinHeight: number;
-  pinWidth: number;
   textColor: string;
 }) {
-  const imageInset = (pinWidth - imageSize) / 2;
-
-  return (
-    <View style={{ width: pinWidth, height: pinHeight }}>
-      <Svg
-        width={pinWidth}
-        height={pinHeight}
-        viewBox={`${STUDIO_PIN_VIEWBOX.x} ${STUDIO_PIN_VIEWBOX.y} ${STUDIO_PIN_VIEWBOX.width} ${STUDIO_PIN_VIEWBOX.height}`}
-        style={{ position: "absolute", top: 0, left: 0 }}
-      >
-        <Path d={STUDIO_PIN_PATH} fill={accentColor} />
-      </Svg>
-      <View
-        style={{
-          position: "absolute",
-          top: imageTop,
-          left: imageInset,
-          width: imageSize,
-          height: imageSize,
-          borderRadius: imageSize / 2,
-          borderCurve: "continuous",
-          overflow: "hidden",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: accentColor,
-        }}
-      >
-        {imageUrl ? (
-          <Image
-            source={imageUrl}
-            onLoad={onImageLoad}
-            style={{
-              width: imageSize,
-              height: imageSize,
-              borderRadius: imageSize / 2,
-              borderCurve: "continuous",
-            }}
-            contentFit="cover"
-          />
-        ) : (
-          <ThemedText type="bodyStrong" style={{ color: textColor }}>
-            {label}
-          </ThemedText>
-        )}
-      </View>
-    </View>
-  );
+  const safeImageUrl = imageUrl ? imageUrl.replaceAll("&", "&amp;") : null;
+  const safeLabel = label.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="76" viewBox="0 0 64 76">
+      <path fill="${accentColor}" d="M32 76C20.7 63.7 8 50 8 31.4C8 18.5 18.5 8 31.4 8h1.2C45.5 8 56 18.5 56 31.4C56 50 43.3 63.7 32 76Z"/>
+      <circle cx="32" cy="31" r="21" fill="${accentColor}"/>
+      ${
+        safeImageUrl
+          ? `<image href="${safeImageUrl}" x="11" y="10" width="42" height="42" preserveAspectRatio="xMidYMid slice" clip-path="circle(21px at 32px 31px)" />`
+          : `<text x="32" y="38" text-anchor="middle" font-size="20" font-family="Arial, sans-serif" font-weight="700" fill="${textColor}">${safeLabel}</text>`
+      }
+    </svg>
+  `.trim();
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 export const QueueMap = memo(function QueueMap({
@@ -193,7 +127,6 @@ export const QueueMap = memo(function QueueMap({
   const mapKey = `${resolvedScheme}:${retryNonce}`;
 
   const mapRef = useRef<MapRef | null>(null);
-  const studioAnnotationRefs = useRef<Record<string, ViewAnnotationRef | null>>({});
   const mapLoadStateRef = useRef<MapLoadState>("loading");
   const cameraRef = useRef<{
     setStop: (config: unknown) => void;
@@ -204,9 +137,39 @@ export const QueueMap = memo(function QueueMap({
     [selectedZoneIds, zoneIdProperty],
   );
   const pinShape = useMemo(() => createPinShape(pin), [pin]);
-  const studioMarkerMetrics = useMemo(() => getStudioMarkerMetrics(currentZoom), [currentZoom]);
-  const studioPinScale = useMemo(() => getStudioPinScale(currentZoom), [currentZoom]);
   const showStudioMarkers = studios.length > 0 && currentZoom >= STUDIO_MARKER_MIN_ZOOM;
+  const studioMarkerImages = useMemo(
+    () =>
+      Object.fromEntries(
+        studios.map((studio) => [
+          `${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}`,
+          buildStudioPinDataUri({
+            accentColor: mapPalette.markerAccent,
+            ...(studio.logoImageUrl ? { imageUrl: studio.logoImageUrl } : {}),
+            label: studio.studioName.slice(0, 1).toUpperCase(),
+            textColor: palette.onPrimary as string,
+          }),
+        ]),
+      ),
+    [mapPalette.markerAccent, palette.onPrimary, studios],
+  );
+  const studioMarkerSource = useMemo(
+    () => ({
+      type: "FeatureCollection",
+      features: studios.map((studio) => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [studio.longitude, studio.latitude],
+        },
+        properties: {
+          studioId: studio.studioId,
+          iconKey: `${STUDIO_PIN_ICON_KEY_PREFIX}${studio.studioId}`,
+        },
+      })),
+    }),
+    [studios],
+  );
   const handleRetry = useCallback(() => {
     setBaseMapStyle(null);
     setMapErrorMessage(null);
@@ -432,70 +395,44 @@ export const QueueMap = memo(function QueueMap({
           onPressZone={onPressZone}
         />
 
-        {showStudioMarkers
-          ? studios.map((studio) => {
-              const markerWidth = studioMarkerMetrics.width;
-              const markerHeight = studioMarkerMetrics.height;
-              const markerAccent = mapPalette.markerAccent;
-              const hasLogo =
-                typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
-              const markerImageSize = markerWidth * 0.68;
-              const markerImageTop = markerHeight * 0.12;
-
-              return (
-                <ViewAnnotation
-                  key={`studio-marker:${studio.studioId}`}
-                  id={`studio-marker:${studio.studioId}`}
-                  anchor="bottom"
-                  lngLat={[studio.longitude, studio.latitude]}
-                  ref={(value) => {
-                    studioAnnotationRefs.current[studio.studioId] = value;
-                  }}
-                >
-                  <Pressable
-                    accessible
-                    accessibilityRole="button"
-                    accessibilityLabel={studio.studioName}
-                    onPress={() => {
-                      onPressStudio?.(studio.studioId);
-                    }}
-                    style={{ width: markerWidth, height: markerHeight, overflow: "visible" }}
-                  >
-                    <View
-                      style={{
-                        position: "absolute",
-                        bottom: 0,
-                        left: 0,
-                        width: markerWidth,
-                        height: markerHeight,
-                        alignItems: "center",
-                        justifyContent: "flex-end",
-                        transform: [{ scale: studioPinScale }],
-                      }}
-                    >
-                      <StudioMapPin
-                        accentColor={markerAccent}
-                        {...(hasLogo ? { imageUrl: studio.logoImageUrl as string } : {})}
-                        imageSize={markerImageSize}
-                        imageTop={markerImageTop}
-                        label={studio.studioName.slice(0, 1).toUpperCase()}
-                        {...(hasLogo
-                          ? {
-                              onImageLoad: () => {
-                                studioAnnotationRefs.current[studio.studioId]?.refresh();
-                              },
-                            }
-                          : {})}
-                        pinHeight={markerHeight}
-                        pinWidth={markerWidth}
-                        textColor={palette.onPrimary as string}
-                      />
-                    </View>
-                  </Pressable>
-                </ViewAnnotation>
-              );
-            })
-          : null}
+        {showStudioMarkers ? <Images images={studioMarkerImages} /> : null}
+        {showStudioMarkers ? (
+          <GeoJSONSource
+            id="queue-studio-marker-source"
+            data={studioMarkerSource as any}
+            onPress={(event: any) => {
+              const native = event?.nativeEvent ?? event;
+              const studioId = native?.features?.[0]?.properties?.studioId;
+              if (typeof studioId === "string") {
+                onPressStudio?.(studioId);
+              }
+            }}
+          >
+            <Layer
+              id="queue-studio-marker-layer"
+              type="symbol"
+              minzoom={STUDIO_MARKER_MIN_ZOOM as any}
+              layout={{
+                "icon-image": ["get", "iconKey"] as any,
+                "icon-anchor": "bottom",
+                "icon-size": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  STUDIO_MARKER_MIN_ZOOM,
+                  0.92,
+                  13.5,
+                  1,
+                  16,
+                  1.08,
+                ] as any,
+                "icon-allow-overlap": true,
+                "icon-ignore-placement": true,
+              }}
+              paint={{ "icon-opacity": 1 }}
+            />
+          </GeoJSONSource>
+        ) : null}
 
         <GeoJSONSource id="queue-pin-source" data={pinShape}>
           <Layer
