@@ -2,6 +2,7 @@ import { Pressable, View } from "react-native";
 
 import { BrandRadius } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
+import { getSurfaceElevationStyle } from "./surface-elevation";
 
 type IconButtonProps = {
   icon: React.ReactNode;
@@ -11,6 +12,7 @@ type IconButtonProps = {
   size?: number;
   disabled?: boolean;
   backgroundColorOverride?: string;
+  floating?: boolean;
 };
 
 export function IconButton({
@@ -21,19 +23,27 @@ export function IconButton({
   size = 54,
   disabled = false,
   backgroundColorOverride,
+  floating = false,
 }: IconButtonProps) {
   const palette = useBrand();
+  const raisedStyle = floating ? getSurfaceElevationStyle(palette, "floating") : undefined;
   const backgroundColor =
     backgroundColorOverride ??
     (disabled
-    ? tone === "primary" || tone === "primarySubtle"
-      ? (palette.primarySubtle as string)
-      : (palette.surface as string)
-    : tone === "primary"
-      ? (palette.primary as string)
-      : tone === "primarySubtle"
+      ? tone === "primary" || tone === "primarySubtle"
         ? (palette.primarySubtle as string)
-        : (palette.surfaceAlt as string));
+        : (palette.surface as string)
+      : tone === "primary"
+        ? (palette.primary as string)
+        : tone === "primarySubtle"
+          ? (palette.primarySubtle as string)
+          : (palette.surfaceAlt as string));
+  const pressedBackgroundColor =
+    tone === "primary"
+      ? (palette.primaryPressed as string)
+      : tone === "primarySubtle"
+        ? (palette.surfaceElevated as string)
+        : (palette.surfaceElevated as string);
 
   return (
     <Pressable
@@ -42,9 +52,18 @@ export function IconButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => ({
-        opacity: disabled ? 0.6 : pressed ? 0.9 : 1,
-      })}
+      style={({ pressed }) => [
+        {
+          borderRadius: BrandRadius.buttonSubtle,
+          borderCurve: "continuous",
+          backgroundColor: disabled
+            ? backgroundColor
+            : pressed
+              ? pressedBackgroundColor
+              : backgroundColor,
+          ...(raisedStyle ?? {}),
+        },
+      ]}
     >
       <View
         style={{
@@ -52,9 +71,9 @@ export function IconButton({
           height: size,
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: BrandRadius.button - 2,
+          borderRadius: BrandRadius.buttonSubtle,
           borderCurve: "continuous",
-          backgroundColor,
+          backgroundColor: disabled ? backgroundColor : undefined,
           overflow: "hidden",
         }}
       >
