@@ -16,6 +16,10 @@ import { KitTextField } from "@/components/ui/kit/kit-text-field";
 import { SheetHeaderBlock } from "@/components/ui/sheet-header-block";
 import { type BrandPalette, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
+import {
+  consumePendingPostSignOutAuthIntent,
+  type PostSignOutAuthIntent,
+} from "@/modules/session/post-signout-auth-intent";
 
 type Step = "email" | "code";
 
@@ -29,6 +33,14 @@ function getErrorMessage(error: unknown, fallback: string) {
 function readParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0];
   return value;
+}
+
+function readAuthIntent(value: string | string[] | undefined): PostSignOutAuthIntent | null {
+  const param = readParam(value);
+  if (param === "sign-in" || param === "sign-up") {
+    return param;
+  }
+  return null;
 }
 
 function MessageBanner({
@@ -65,6 +77,7 @@ export default function SignInScreen() {
   const searchParams = useLocalSearchParams<{
     authFlow?: string | string[];
     code?: string | string[];
+    intent?: string | string[];
   }>();
   const palette = useBrand();
   const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
@@ -75,6 +88,9 @@ export default function SignInScreen() {
   const { isAuthenticated } = useConvexAuth();
   const { signIn } = useAuthActions();
   const handledMagicCodeRef = useRef<string | null>(null);
+  const pendingIntentRef = useRef<PostSignOutAuthIntent | null>(
+    readAuthIntent(searchParams.intent) ?? consumePendingPostSignOutAuthIntent(),
+  );
 
   useEffect(() => {
     WebBrowser.maybeCompleteAuthSession();
@@ -107,8 +123,20 @@ export default function SignInScreen() {
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const sheetTitle = step === "code" ? t("auth.verifyCodeButton") : t("auth.navigation.signIn");
-  const sheetSubtitle = step === "code" ? t("auth.codeSheetSubtitle") : t("auth.sheetSubtitle");
+  const authIntent = readAuthIntent(searchParams.intent) ?? pendingIntentRef.current ?? "sign-in";
+  const isSignUpIntent = authIntent === "sign-up";
+  const sheetTitle =
+    step === "code"
+      ? t("auth.verifyCodeButton")
+      : isSignUpIntent
+        ? t("auth.signUpTitle")
+        : t("auth.navigation.signIn");
+  const sheetSubtitle =
+    step === "code"
+      ? t("auth.codeSheetSubtitle")
+      : isSignUpIntent
+        ? t("auth.signUpSubtitle")
+        : t("auth.sheetSubtitle");
 
   const signInSheetConfig = useMemo(
     () => ({
@@ -122,7 +150,7 @@ export default function SignInScreen() {
       steps: [step === "code" ? 0.22 : 0.2],
       initialStep: 0,
     }),
-    [palette, sheetSubtitle, sheetTitle, step],
+    [isSignUpIntent, palette, sheetSubtitle, sheetTitle, step],
   );
 
   useGlobalTopSheet("sign-in", signInSheetConfig);
@@ -326,7 +354,9 @@ export default function SignInScreen() {
 
                 <View className="flex-row items-stretch justify-center gap-stack">
                   <IconButton
-                    accessibilityLabel="Continue with Google"
+                    accessibilityLabel={
+                      isSignUpIntent ? t("auth.signUpWithGoogle") : t("auth.signInWithGoogle")
+                    }
                     icon={<FontAwesome5 name="google" size={26} color={palette.danger as string} />}
                     onPress={() => {
                       void handleOAuth("google");
@@ -334,7 +364,7 @@ export default function SignInScreen() {
                     disabled={isSubmitting}
                   />
                   <IconButton
-                    accessibilityLabel="Continue with Apple"
+                    accessibilityLabel={t("auth.signInWithApple")}
                     icon={<FontAwesome5 name="apple" size={30} color={palette.text as string} />}
                     onPress={() => {
                       void handleOAuth("apple");

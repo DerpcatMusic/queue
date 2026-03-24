@@ -47,7 +47,7 @@ const INSTRUCTOR_LOCATION_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/location` as cons
 const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
 const INSTRUCTOR_PAYMENTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
 const INSTRUCTOR_EDIT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/edit` as const;
-const SIGN_IN_ROUTE = "/sign-in" as const;
+const INSTRUCTOR_ADD_ACCOUNT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/add-account` as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
   if (sports.length === 0) {
@@ -149,10 +149,8 @@ export default function InstructorProfileScreen() {
   }, [signOut]);
   const handleUseAnotherAccount = useCallback(() => {
     accountSwitcherSheetRef.current?.close();
-    void signOut().finally(() => {
-      router.replace(SIGN_IN_ROUTE as Href);
-    });
-  }, [router, signOut]);
+    router.push(INSTRUCTOR_ADD_ACCOUNT_ROUTE as Href);
+  }, [router]);
   const nameValue =
     instructorSettings?.displayName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");

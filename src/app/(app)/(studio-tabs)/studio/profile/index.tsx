@@ -48,7 +48,7 @@ const STUDIO_BRANCHES_ROUTE = `${STUDIO_PROFILE_ROUTE}/branches` as const;
 const STUDIO_CALENDAR_SETTINGS_ROUTE = `${STUDIO_PROFILE_ROUTE}/calendar-settings` as const;
 const STUDIO_PAYMENTS_ROUTE = `${STUDIO_PROFILE_ROUTE}/payments` as const;
 const STUDIO_EDIT_ROUTE = `${STUDIO_PROFILE_ROUTE}/edit` as const;
-const SIGN_IN_ROUTE = "/sign-in" as const;
+const STUDIO_ADD_ACCOUNT_ROUTE = `${STUDIO_PROFILE_ROUTE}/add-account` as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
   if (sports.length === 0) {
@@ -184,10 +184,8 @@ export default function StudioProfileScreen() {
   }, [signOut]);
   const handleUseAnotherAccount = useCallback(() => {
     accountSwitcherSheetRef.current?.close();
-    void signOut().finally(() => {
-      router.replace(SIGN_IN_ROUTE as Href);
-    });
-  }, [router, signOut]);
+    router.push(STUDIO_ADD_ACCOUNT_ROUTE as Href);
+  }, [router]);
   const profileName =
     studioSettings?.studioName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");

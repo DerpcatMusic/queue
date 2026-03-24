@@ -160,7 +160,7 @@ export function ProfileAccountSwitcherSheet({
           <ProfileSettingRow
             title={t("profile.switcher.useAnotherAccountTitle")}
             subtitle={t("profile.switcher.useAnotherAccountHint")}
-            icon="arrow.right.circle.fill"
+            icon="person.crop.circle.badge.plus"
             onPress={onUseAnotherAccount}
             palette={palette}
             showDivider

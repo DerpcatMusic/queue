@@ -19,6 +19,10 @@ export default function ProfileLayout() {
         ownerId="profile-layout:studio"
         routes={[
           {
+            routeMatchPath: "/profile/add-account",
+            title: t("profile.navigation.addAccount"),
+          },
+          {
             routeMatchPath: "/profile/branches",
             title: t("profile.navigation.branches"),
           },
@@ -45,6 +49,10 @@ export default function ProfileLayout() {
         <Stack.Screen
           name="branches"
           options={{ title: t("profile.navigation.branches") }}
+        />
+        <Stack.Screen
+          name="add-account"
+          options={{ title: t("profile.navigation.addAccount") }}
         />
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
