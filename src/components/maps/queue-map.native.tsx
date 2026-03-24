@@ -43,9 +43,9 @@ const ATTRIBUTION_SIZE = BrandSpacing.iconContainer - BrandSpacing.xs;
 const ATTRIBUTION_ICON_SIZE = BrandSpacing.sm + BrandSpacing.xs;
 const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm;
 const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2;
-const STUDIO_MARKER_MIN_ZOOM = 12;
-const STUDIO_MARKER_NEAR_ZOOM = 14;
-const STUDIO_MARKER_CLOSE_ZOOM = 16;
+const STUDIO_MARKER_MIN_ZOOM = 11;
+const STUDIO_MARKER_NEAR_ZOOM = 13;
+const STUDIO_MARKER_CLOSE_ZOOM = 15;
 const STUDIO_MARKER_BORDER_WIDTH = BrandSpacing.xxs;
 
 type MapLoadState = "loading" | "ready" | "error";
@@ -55,7 +55,6 @@ function getStudioMarkerMetrics(zoom: number) {
   if (zoom >= STUDIO_MARKER_CLOSE_ZOOM) {
     return {
       outerSize: BrandSpacing.controlLg,
-      imageSize: BrandSpacing.controlMd,
       tailSize: BrandSpacing.md,
     };
   }
@@ -63,14 +62,12 @@ function getStudioMarkerMetrics(zoom: number) {
   if (zoom >= STUDIO_MARKER_NEAR_ZOOM) {
     return {
       outerSize: BrandSpacing.avatarMd,
-      imageSize: BrandSpacing.controlSm,
-      tailSize: BrandSpacing.sm + BrandSpacing.xxs,
+      tailSize: BrandSpacing.md,
     };
   }
 
   return {
-    outerSize: BrandSpacing.iconContainer + BrandSpacing.sm,
-    imageSize: BrandSpacing.iconContainer - BrandSpacing.xs,
+    outerSize: BrandSpacing.controlMd,
     tailSize: BrandSpacing.sm + BrandSpacing.xxs,
   };
 }
@@ -367,8 +364,8 @@ export const QueueMap = memo(function QueueMap({
         {showStudioMarkers
           ? studios.map((studio) => {
               const markerSize = studioMarkerMetrics.outerSize;
-              const imageSize = studioMarkerMetrics.imageSize;
               const tailSize = studioMarkerMetrics.tailSize;
+              const tailOverlap = BrandSpacing.xs + BrandSpacing.xxs;
               const hasLogo =
                 typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
 
@@ -379,18 +376,18 @@ export const QueueMap = memo(function QueueMap({
                   anchor="bottom"
                   lngLat={[studio.longitude, studio.latitude]}
                 >
-                  <View style={{ alignItems: "center", paddingBottom: tailSize / 2 }}>
+                  <View style={{ alignItems: "center", paddingBottom: tailSize - tailOverlap }}>
                     <View
                       style={{
                         position: "absolute",
-                        top: markerSize - tailSize / 2,
+                        top: markerSize - tailOverlap,
                         width: tailSize,
                         height: tailSize,
                         borderLeftWidth: STUDIO_MARKER_BORDER_WIDTH,
                         borderBottomWidth: STUDIO_MARKER_BORDER_WIDTH,
-                        borderLeftColor: palette.primary as string,
-                        borderBottomColor: palette.primary as string,
-                        backgroundColor: palette.surfaceElevated as string,
+                        borderLeftColor: palette.surfaceElevated as string,
+                        borderBottomColor: palette.surfaceElevated as string,
+                        backgroundColor: palette.secondary as string,
                         transform: [{ rotate: "45deg" }],
                       }}
                     />
@@ -404,28 +401,31 @@ export const QueueMap = memo(function QueueMap({
                         borderRadius: markerSize / 2,
                         borderCurve: "continuous",
                         borderWidth: STUDIO_MARKER_BORDER_WIDTH,
-                        borderColor: palette.primary as string,
+                        borderColor: palette.surfaceElevated as string,
                         alignItems: "center",
                         justifyContent: "center",
                         overflow: "hidden",
                         backgroundColor: pressed
                           ? (palette.primarySubtle as string)
-                          : (palette.surfaceElevated as string),
+                          : (palette.secondary as string),
                       })}
                     >
                       {hasLogo ? (
                         <Image
                           source={studio.logoImageUrl as string}
                           style={{
-                            width: imageSize,
-                            height: imageSize,
-                            borderRadius: imageSize / 2,
+                            width: markerSize,
+                            height: markerSize,
+                            borderRadius: markerSize / 2,
                             borderCurve: "continuous",
                           }}
                           contentFit="cover"
                         />
                       ) : (
-                        <ThemedText type="bodyStrong" style={{ color: palette.primary as string }}>
+                        <ThemedText
+                          type="bodyStrong"
+                          style={{ color: palette.onPrimary as string }}
+                        >
                           {studio.studioName.slice(0, 1).toUpperCase()}
                         </ThemedText>
                       )}
