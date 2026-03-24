@@ -57,7 +57,6 @@ const STUDIO_PIN_HOLE = {
   cy: 2606.868,
   radius: 1036.897,
 } as const;
-const STUDIO_PIN_OUTLINE_WIDTH = 168;
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 180;
@@ -65,15 +64,15 @@ const MAP_LOADING_OVERLAY_DELAY_MS = 180;
 function getStudioMarkerMetrics(zoom: number) {
   void zoom;
   return {
-    width: BrandSpacing.avatarLg,
-    height: BrandSpacing.avatarLg + BrandSpacing.xl,
+    width: BrandSpacing.avatarMd,
+    height: BrandSpacing.avatarMd + BrandSpacing.lg,
   };
 }
 
 function getStudioPinScale(zoom: number) {
-  if (zoom <= STUDIO_MARKER_MIN_ZOOM) return 1;
-  if (zoom >= 15.5) return 1.18;
-  return 1 + ((zoom - STUDIO_MARKER_MIN_ZOOM) / (15.5 - STUDIO_MARKER_MIN_ZOOM)) * 0.18;
+  if (zoom <= 13) return 1;
+  if (zoom >= 15.75) return 1.1;
+  return 1 + ((zoom - 13) / (15.75 - 13)) * 0.1;
 }
 
 function StudioMapPin({
@@ -82,7 +81,6 @@ function StudioMapPin({
   label,
   pinHeight,
   pinWidth,
-  strokeColor,
   textColor,
 }: {
   accentColor: string;
@@ -90,7 +88,6 @@ function StudioMapPin({
   label: string;
   pinHeight: number;
   pinWidth: number;
-  strokeColor: string;
   textColor: string;
 }) {
   const clipRadius = STUDIO_PIN_HOLE.radius * 0.92;
@@ -111,13 +108,7 @@ function StudioMapPin({
         viewBox={`${STUDIO_PIN_VIEWBOX.x} ${STUDIO_PIN_VIEWBOX.y} ${STUDIO_PIN_VIEWBOX.width} ${STUDIO_PIN_VIEWBOX.height}`}
         style={{ position: "absolute", top: 0, left: 0 }}
       >
-        <Path
-          d={STUDIO_PIN_PATH}
-          fill={accentColor}
-          stroke={strokeColor}
-          strokeWidth={STUDIO_PIN_OUTLINE_WIDTH}
-          strokeLinejoin="round"
-        />
+        <Path d={STUDIO_PIN_PATH} fill={accentColor} />
         {imageUrl ? (
           <>
             <Defs>
@@ -125,6 +116,7 @@ function StudioMapPin({
                 <Circle cx={STUDIO_PIN_HOLE.cx} cy={clipCenterY} r={clipRadius} />
               </ClipPath>
             </Defs>
+            <Circle cx={STUDIO_PIN_HOLE.cx} cy={clipCenterY} r={clipRadius} fill={accentColor} />
             <SvgImage
               href={{ uri: imageUrl }}
               x={STUDIO_PIN_HOLE.cx - clipRadius}
@@ -455,7 +447,6 @@ export const QueueMap = memo(function QueueMap({
               const markerWidth = studioMarkerMetrics.width;
               const markerHeight = studioMarkerMetrics.height;
               const markerAccent = palette.didit.accent as string;
-              const markerStroke = mapPalette.styleBackground;
               const hasLogo =
                 typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
 
@@ -465,6 +456,7 @@ export const QueueMap = memo(function QueueMap({
                   id={`studio-marker:${studio.studioId}`}
                   anchor="bottom"
                   lngLat={[studio.longitude, studio.latitude]}
+                  style={{ zIndex: 100, elevation: 100 }}
                   onSelected={() => {
                     onPressStudio?.(studio.studioId);
                   }}
@@ -494,7 +486,6 @@ export const QueueMap = memo(function QueueMap({
                         label={studio.studioName.slice(0, 1).toUpperCase()}
                         pinHeight={markerHeight}
                         pinWidth={markerWidth}
-                        strokeColor={markerStroke}
                         textColor={palette.onPrimary as string}
                       />
                     </View>
