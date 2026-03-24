@@ -5,18 +5,32 @@ import { Platform } from "react-native";
 import { warmMapStyleSpec } from "@/components/maps/queue-map.native.helpers";
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import { api } from "@/convex/_generated/api";
+import { useUser } from "@/contexts/user-context";
 import { RoleTabsLayout } from "@/modules/navigation/role-tabs-layout";
 import { ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 export default function InstructorTabsLayout() {
+  const { currentUser } = useUser();
   const now = Math.floor(Date.now() / (60 * 1000)) * 60 * 1000;
   const tabCountsArgs = useMemo(() => ({ now }), [now]);
   const emptyArgs = useMemo(() => ({}), []);
 
-  const instructorTabCounts = useQuery(api.jobs.getInstructorTabCounts, tabCountsArgs);
-  const unreadNotificationCount = useQuery(api.inbox.getMyUnreadNotificationCount, emptyArgs);
-  useQuery(api.instructorZones.getMyInstructorZones, emptyArgs);
-  useQuery(api.users.getInstructorMapStudios, emptyArgs);
+  const instructorTabCounts = useQuery(
+    api.jobs.getInstructorTabCounts,
+    currentUser?.role === "instructor" ? tabCountsArgs : "skip",
+  );
+  const unreadNotificationCount = useQuery(
+    api.inbox.getMyUnreadNotificationCount,
+    currentUser?.role === "instructor" ? emptyArgs : "skip",
+  );
+  useQuery(
+    api.instructorZones.getMyInstructorZones,
+    currentUser?.role === "instructor" ? emptyArgs : "skip",
+  );
+  useQuery(
+    api.users.getInstructorMapStudios,
+    currentUser?.role === "instructor" ? emptyArgs : "skip",
+  );
 
   const jobsBadgeCount = instructorTabCounts?.jobsBadgeCount ?? 0;
   const calendarBadgeCount = instructorTabCounts?.calendarBadgeCount ?? 0;
