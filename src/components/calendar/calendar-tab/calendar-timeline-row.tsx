@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useBrand } from "@/hooks/use-brand";
 import { formatTime } from "@/lib/jobs-utils";
 import type { TimelineListItem } from "../calendar-controller-helpers";
@@ -25,7 +25,7 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
     const isToday = item.dayKey === todayKey;
 
     return (
-      <Animated.View entering={FadeInUp.duration(180)} style={calendarTimelineStyles.timelineRow}>
+      <Animated.View style={calendarTimelineStyles.timelineRow}>
         <View style={calendarTimelineStyles.dayHeaderContent}>
           <Text
             style={[
@@ -47,7 +47,7 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
 
   if (item.kind === "empty") {
     return (
-      <Animated.View entering={FadeInUp.duration(160)} style={calendarTimelineStyles.timelineRow}>
+      <Animated.View style={calendarTimelineStyles.timelineRow}>
         <View
           style={[
             calendarTimelineStyles.emptyStateCard,
@@ -96,7 +96,7 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
           : { fg: palette.textMuted as string, bg: palette.surfaceAlt as string };
 
   return (
-    <Animated.View entering={FadeInUp.duration(200)} style={calendarTimelineStyles.timelineRow}>
+    <Animated.View  style={calendarTimelineStyles.timelineRow}>
       <View
         style={[
           calendarTimelineStyles.lessonCard,

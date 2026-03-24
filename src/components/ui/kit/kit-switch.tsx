@@ -18,6 +18,11 @@ type KitSwitchProps = {
  * These are intentional design constants, not arbitrary values.
  * Track: 52x32pt with 26pt thumb provides optimal thumb travel distance.
  * TRACK_PADDING = (TRACK_HEIGHT - THUMB_SIZE) / 2 = (32 - 26) / 2 = 3pt
+ *
+ * IMPORTANT: This component uses absolute positioning for the thumb, so RTL
+ * layout mirroring (doLeftAndRightSwapInRTL) does NOT affect it. The thumb
+ * always moves from left to right when toggling ON, regardless of text direction.
+ * This is intentional - switches are universal UI controls that don't flip in RTL.
  */
 const TRACK_WIDTH = 52;
 const TRACK_HEIGHT = 32;
@@ -44,14 +49,20 @@ export function KitSwitch({
     progress.value = withTiming(value ? 1 : 0, { duration: 180 });
   }, [progress, value]);
 
-  const trackStyle = useAnimatedStyle(() => ({
-    backgroundColor: value ? interaction.switchTrackOn : interaction.switchTrackOff,
-  }));
+  const trackStyle = useAnimatedStyle(() => {
+    "worklet";
+    return { backgroundColor: value ? interaction.switchTrackOn : interaction.switchTrackOff };
+  });
 
-  const thumbStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: progress.value * THUMB_DISTANCE }],
-    backgroundColor: value ? interaction.switchThumbOn : interaction.switchThumbOff,
-  }));
+  // Thumb always moves left→right for ON regardless of RTL
+  // (switches are universal controls, not locale-dependent)
+  const thumbStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ translateX: progress.value * THUMB_DISTANCE }],
+      backgroundColor: value ? interaction.switchThumbOn : interaction.switchThumbOff,
+    };
+  });
 
   return (
     <Pressable
@@ -111,6 +122,9 @@ const styles = StyleSheet.create({
   thumb: {
     position: "absolute",
     top: TRACK_PADDING,
-    left: TRACK_PADDING,
+    // Use 'start' instead of 'left' so RTL doesn't swap the initial position
+    // Since we use absolute positioning, the RTL swap wouldn't apply anyway,
+    // but being explicit prevents future issues
+    start: TRACK_PADDING,
   },
 });

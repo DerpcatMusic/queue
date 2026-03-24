@@ -51,7 +51,10 @@ const STUDIO_PIN_LABEL_MIN_ZOOM = 14;
 const STUDIO_PIN_SHELL_IMAGE = require("../../../assets/images/map/studio-pin-shell-sdf.png");
 
 type MapLoadState = "loading" | "ready" | "error";
-const MAP_LOADING_OVERLAY_DELAY_MS = 180;
+// Reduced from 180ms to 50ms for faster perceived loading
+const MAP_LOADING_OVERLAY_DELAY_MS = 50;
+// Reduced from 180ms to 50ms for faster label appearance
+const LABEL_LAYERS_DELAY_MS = 50;
 
 export const QueueMap = memo(function QueueMap({
   mode,
@@ -192,7 +195,7 @@ export const QueueMap = memo(function QueueMap({
 
     const timeout = setTimeout(() => {
       setShowLabelLayers(true);
-    }, 180);
+    }, LABEL_LAYERS_DELAY_MS);
 
     return () => {
       clearTimeout(timeout);
@@ -306,6 +309,20 @@ export const QueueMap = memo(function QueueMap({
           {t("mapTab.devBuildRequiredBody")}
         </ThemedText>
       </KitSurface>
+    );
+  }
+
+  // Don't mount MapLibre until style is ready to prevent double initialization
+  // (first with fallback, then with actual style causes lag)
+  if (!baseMapStyle) {
+    return (
+      <View style={[styles.wrap, { backgroundColor: mapPalette.styleBackground }]}>
+        {showLoadingOverlay ? (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color={palette.primary as string} />
+          </View>
+        ) : null}
+      </View>
     );
   }
 
@@ -664,5 +681,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: BrandSpacing.lg,
     paddingVertical: BrandSpacing.lg,
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

@@ -1,5 +1,5 @@
 import { usePathname } from "expo-router";
-import { isValidElement, useCallback, useEffect, useRef } from "react";
+import { isValidElement, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Platform,
   type StyleProp,
@@ -58,35 +58,43 @@ export function GlobalTopSheet() {
   const scrollY = useScrollSheetScrollValue();
   const measuredHeightRef = useRef<number | null>(null);
   const transitionKey = activeRouteKey ?? activeTabId ?? activeConfig?.tabId ?? "global-top-sheet";
-  const fallbackColors = activeConfig
-    ? getFallbackSheetColors(activeConfig.tabId, palette)
-    : {
-        backgroundColor: palette.primary as string,
-        topInsetColor: palette.primary as string,
-      };
+  const fallbackColors = useMemo(
+    () =>
+      activeConfig
+        ? getFallbackSheetColors(activeConfig.tabId, palette)
+        : {
+            backgroundColor: palette.primary as string,
+            topInsetColor: palette.primary as string,
+          },
+    [activeConfig, palette],
+  );
 
-  const baseSheetProps = activeConfig
-    ? {
-        ...(activeConfig.draggable !== undefined ? { draggable: activeConfig.draggable } : {}),
-        ...(activeConfig.expandable !== undefined ? { expandable: activeConfig.expandable } : {}),
-        ...(activeConfig.steps ? { steps: activeConfig.steps } : {}),
-        ...(activeConfig.initialStep !== undefined
-          ? { initialStep: activeConfig.initialStep }
-          : {}),
-        ...(activeConfig.activeStep !== undefined ? { activeStep: activeConfig.activeStep } : {}),
-        ...(activeConfig.expandMode ? { expandMode: activeConfig.expandMode } : {}),
-        ...(activeConfig.padding ? { padding: activeConfig.padding } : {}),
-        backgroundColor:
-          (activeConfig.backgroundColor as string | undefined) ?? fallbackColors.backgroundColor,
-        topInsetColor:
-          (activeConfig.topInsetColor as string | undefined) ?? fallbackColors.topInsetColor,
-        ...(activeConfig.style ? { style: activeConfig.style } : {}),
-        ...(activeConfig.onStepChange ? { onStepChange: activeConfig.onStepChange } : {}),
-        ...(activeConfig.stickyHeader ? { stickyHeader: activeConfig.stickyHeader } : {}),
-        ...(activeConfig.stickyFooter ? { stickyFooter: activeConfig.stickyFooter } : {}),
-        ...(activeConfig.revealOnExpand ? { revealOnExpand: activeConfig.revealOnExpand } : {}),
-      }
-    : null;
+  const baseSheetProps = useMemo(
+    () =>
+      activeConfig
+        ? {
+            ...(activeConfig.draggable !== undefined ? { draggable: activeConfig.draggable } : {}),
+            ...(activeConfig.expandable !== undefined ? { expandable: activeConfig.expandable } : {}),
+            ...(activeConfig.steps ? { steps: activeConfig.steps } : {}),
+            ...(activeConfig.initialStep !== undefined
+              ? { initialStep: activeConfig.initialStep }
+              : {}),
+            ...(activeConfig.activeStep !== undefined ? { activeStep: activeConfig.activeStep } : {}),
+            ...(activeConfig.expandMode ? { expandMode: activeConfig.expandMode } : {}),
+            ...(activeConfig.padding ? { padding: activeConfig.padding } : {}),
+            backgroundColor:
+              (activeConfig.backgroundColor as string | undefined) ?? fallbackColors.backgroundColor,
+            topInsetColor:
+              (activeConfig.topInsetColor as string | undefined) ?? fallbackColors.topInsetColor,
+            ...(activeConfig.style ? { style: activeConfig.style } : {}),
+            ...(activeConfig.onStepChange ? { onStepChange: activeConfig.onStepChange } : {}),
+            ...(activeConfig.stickyHeader ? { stickyHeader: activeConfig.stickyHeader } : {}),
+            ...(activeConfig.stickyFooter ? { stickyFooter: activeConfig.stickyFooter } : {}),
+            ...(activeConfig.revealOnExpand ? { revealOnExpand: activeConfig.revealOnExpand } : {}),
+          }
+        : null,
+    [activeConfig, fallbackColors],
+  );
   const hasRenderableContent = Boolean(
     activeConfig &&
       (activeConfig.render ||
@@ -145,7 +153,7 @@ export function GlobalTopSheet() {
     [setCollapsedSheetHeight],
   );
 
-  const contentTransitionProps = (() => {
+  const contentTransitionProps = useMemo(() => {
     if (reduceMotionEnabled) {
       return {};
     }
@@ -154,25 +162,29 @@ export function GlobalTopSheet() {
       entering: FadeIn.duration(140).reduceMotion(ReduceMotion.System),
       exiting: FadeOut.duration(90).reduceMotion(ReduceMotion.System),
     };
-  })();
-  const renderTransitionedNode = (
-    slotKey: string,
-    node: React.ReactNode,
-    style?: StyleProp<ViewStyle>,
-  ) => {
-    if (!node) return null;
-    return (
-      <View style={[styles.contentClip, style]}>
-        <Reanimated.View
-          key={`${transitionKey}:${slotKey}`}
-          style={style}
-          {...contentTransitionProps}
-        >
-          {node}
-        </Reanimated.View>
-      </View>
-    );
-  };
+  }, [reduceMotionEnabled]);
+
+  const renderTransitionedNode = useCallback(
+    (
+      slotKey: string,
+      node: React.ReactNode,
+      style?: StyleProp<ViewStyle>,
+    ) => {
+      if (!node) return null;
+      return (
+        <View style={[styles.contentClip, style]}>
+          <Reanimated.View
+            key={`${transitionKey}:${slotKey}`}
+            style={style}
+            {...contentTransitionProps}
+          >
+            {node}
+          </Reanimated.View>
+        </View>
+      );
+    },
+    [transitionKey, contentTransitionProps],
+  );
 
   // ── Render nothing if no config ─────────────────────────────────────
   if (!activeConfig) return null;
