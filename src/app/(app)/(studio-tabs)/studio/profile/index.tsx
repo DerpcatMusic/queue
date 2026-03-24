@@ -43,6 +43,7 @@ const ROLE_TRANSLATION_KEYS = {
   admin: "profile.roles.admin",
 } as const;
 const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
+const STUDIO_BRANCHES_ROUTE = `${STUDIO_PROFILE_ROUTE}/branches` as const;
 const STUDIO_CALENDAR_SETTINGS_ROUTE = `${STUDIO_PROFILE_ROUTE}/calendar-settings` as const;
 const STUDIO_PAYMENTS_ROUTE = `${STUDIO_PROFILE_ROUTE}/payments` as const;
 const STUDIO_EDIT_ROUTE = `${STUDIO_PROFILE_ROUTE}/edit` as const;
@@ -215,6 +216,18 @@ export default function StudioProfileScreen() {
     : null;
 
   const sportsSummary = getSportsSummary(studioSettings?.sports ?? [], t);
+  const branchSummary = studioSettings?.entitlement?.branchesFeatureEnabled
+    ? t("profile.settings.branches.summary", {
+        primary: studioSettings?.primaryBranch?.name ?? t("profile.settings.branches.none"),
+        active: studioSettings?.entitlement?.activeBranchCount ?? 0,
+        max: studioSettings?.entitlement?.maxBranches ?? 1,
+      })
+    : t("profile.settings.branches.singleBranchSummary", {
+        primary:
+          studioSettings?.primaryBranch?.name ??
+          studioSettings?.studioName ??
+          t("profile.settings.branches.none"),
+      });
   const provider = studioSettings?.calendarProvider;
   const calendarSummary =
     !provider || provider === "none"
@@ -410,6 +423,14 @@ export default function StudioProfileScreen() {
                   }
                   icon="building.2.fill"
                   onPress={handleRequestEdit}
+                  palette={palette}
+                  showDivider
+                />
+                <ProfileSettingRow
+                  title={t("profile.settings.branches.title")}
+                  subtitle={branchSummary}
+                  icon="square.stack.3d.up.fill"
+                  onPress={() => router.push(STUDIO_BRANCHES_ROUTE as Href)}
                   palette={palette}
                   showDivider
                 />
@@ -680,6 +701,14 @@ export default function StudioProfileScreen() {
                 }
                 icon="building.2.fill"
                 onPress={handleRequestEdit}
+                palette={palette}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.settings.branches.title")}
+                subtitle={branchSummary}
+                icon="square.stack.3d.up.fill"
+                onPress={() => router.push(STUDIO_BRANCHES_ROUTE as Href)}
                 palette={palette}
                 showDivider
               />

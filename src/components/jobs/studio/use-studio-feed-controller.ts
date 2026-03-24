@@ -223,7 +223,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
       return;
     }
     if (!draft.branchId) {
-      setErrorMessage("Select a branch before posting");
+      setErrorMessage(t("jobsTab.errors.branchRequired"));
       return;
     }
 

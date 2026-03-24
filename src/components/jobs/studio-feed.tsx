@@ -312,6 +312,8 @@ export function StudioFeed() {
             name: branch.name,
             address: branch.address,
             isPrimary: branch.isPrimary,
+            zone: branch.zone,
+            status: branch.status,
           }))}
           defaultBranchId={studioBranches?.find((branch) => branch.isPrimary)?.branchId ?? null}
           onDismissed={() => setIsCreateSheetVisible(false)}

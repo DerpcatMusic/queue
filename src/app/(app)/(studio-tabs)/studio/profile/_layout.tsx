@@ -19,6 +19,10 @@ export default function ProfileLayout() {
         ownerId="profile-layout:studio"
         routes={[
           {
+            routeMatchPath: "/profile/branches",
+            title: t("profile.navigation.branches"),
+          },
+          {
             routeMatchPath: "/profile/calendar-settings",
             title: t("profile.navigation.calendar"),
           },
@@ -38,6 +42,10 @@ export default function ProfileLayout() {
           animation: "slide_from_right",
         }}
       >
+        <Stack.Screen
+          name="branches"
+          options={{ title: t("profile.navigation.branches") }}
+        />
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
           name="calendar-settings"

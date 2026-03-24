@@ -7,8 +7,10 @@ import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provid
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { IconButton } from "@/components/ui/icon-button";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { getZoneLabel } from "@/constants/zones";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { StudioDraft } from "@/lib/jobs-utils";
@@ -34,6 +36,8 @@ type CreateJobSheetProps = {
     name: string;
     address: string;
     isPrimary: boolean;
+    zone: string;
+    status: "active" | "archived";
   }>;
   defaultBranchId?: Id<"studioBranches"> | null;
 };
@@ -54,6 +58,7 @@ export function CreateJobSheet({
   const [draft, setDraft] = useState<StudioDraft>(createDefaultStudioDraft());
   const [sportQuery, setSportQuery] = useState("");
   const [sportPickerOpen, setSportPickerOpen] = useState(false);
+  const [branchPickerOpen, setBranchPickerOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
@@ -169,6 +174,7 @@ export function CreateJobSheet({
     });
     setSportQuery("");
     setSportPickerOpen(false);
+    setBranchPickerOpen(false);
     setShowDatePicker(false);
     setShowStartTimePicker(false);
     setShowEndTimePicker(false);
@@ -210,44 +216,106 @@ export function CreateJobSheet({
 
         <View style={styles.form}>
           <View style={styles.section}>
-            <ThemedText type="defaultSemiBold">{t("profile.settings.location")}</ThemedText>
-            <View style={styles.branchList}>
-              {branches.map((branch) => {
-                const isSelected = draft.branchId === branch.branchId;
-                return (
-                  <Pressable
-                    key={String(branch.branchId)}
-                    accessibilityRole="button"
-                    onPress={() => setDraft((current) => ({ ...current, branchId: branch.branchId }))}
-                    style={({ pressed }) => [
-                      styles.branchChip,
-                      {
-                        backgroundColor: isSelected
-                          ? (palette.primarySubtle as string)
-                          : (palette.surfaceAlt as string),
-                        borderColor: isSelected
-                          ? (palette.primary as string)
-                          : (palette.border as string),
-                        opacity: pressed ? 0.88 : 1,
-                      },
-                    ]}
-                  >
-                    <ThemedText
-                      type="defaultSemiBold"
-                      style={{ color: isSelected ? (palette.primary as string) : (palette.text as string) }}
+            <ThemedText type="defaultSemiBold">{t("jobsTab.form.branch")}</ThemedText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: branchPickerOpen }}
+              onPress={() => setBranchPickerOpen((current) => !current)}
+              style={({ pressed }) => [
+                styles.branchTrigger,
+                {
+                  backgroundColor: palette.surfaceAlt as string,
+                  borderColor: branchPickerOpen
+                    ? (palette.primary as string)
+                    : (palette.border as string),
+                  opacity: pressed ? 0.92 : 1,
+                },
+              ]}
+            >
+              <View style={styles.branchTriggerCopy}>
+                <ThemedText type="defaultSemiBold" style={{ color: palette.text as string }}>
+                  {selectedBranch?.name ?? t("jobsTab.form.selectBranch")}
+                </ThemedText>
+                <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+                  {selectedBranch
+                    ? `${selectedBranch.address} · ${getZoneLabel(selectedBranch.zone, locale.startsWith("he") ? "he" : "en")}`
+                    : t("jobsTab.form.branchHint")}
+                </ThemedText>
+              </View>
+              <IconSymbol
+                name={branchPickerOpen ? "chevron.up" : "chevron.down"}
+                size={16}
+                color={palette.textMuted as string}
+              />
+            </Pressable>
+            {branchPickerOpen ? (
+              <View style={styles.branchList}>
+                {branches.map((branch) => {
+                  const isSelected = draft.branchId === branch.branchId;
+                  return (
+                    <Pressable
+                      key={String(branch.branchId)}
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setDraft((current) => ({ ...current, branchId: branch.branchId }));
+                        setBranchPickerOpen(false);
+                      }}
+                      style={({ pressed }) => [
+                        styles.branchOption,
+                        {
+                          backgroundColor: isSelected
+                            ? (palette.primarySubtle as string)
+                            : (palette.surfaceAlt as string),
+                          borderColor: isSelected
+                            ? (palette.primary as string)
+                            : (palette.border as string),
+                          opacity: pressed ? 0.9 : 1,
+                        },
+                      ]}
                     >
-                      {branch.name}
-                    </ThemedText>
-                    <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
-                      {branch.address}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </View>
+                      <View style={styles.branchOptionHeader}>
+                        <ThemedText
+                          type="defaultSemiBold"
+                          style={{
+                            color: isSelected
+                              ? (palette.primary as string)
+                              : (palette.text as string),
+                          }}
+                        >
+                          {branch.name}
+                        </ThemedText>
+                        {branch.isPrimary ? (
+                          <View
+                            style={[
+                              styles.branchBadge,
+                              { backgroundColor: palette.primarySubtle as string },
+                            ]}
+                          >
+                            <ThemedText
+                              type="micro"
+                              style={{ color: palette.primary as string }}
+                            >
+                              {t("jobsTab.form.branchPrimaryBadge")}
+                            </ThemedText>
+                          </View>
+                        ) : null}
+                      </View>
+                      <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+                        {branch.address}
+                      </ThemedText>
+                      <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+                        {getZoneLabel(branch.zone, locale.startsWith("he") ? "he" : "en")}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
             {selectedBranch ? (
               <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
-                {selectedBranch.isPrimary ? `${selectedBranch.name} · Primary branch` : selectedBranch.name}
+                {selectedBranch.isPrimary
+                  ? `${selectedBranch.name} · ${t("jobsTab.form.branchPrimaryBadge")}`
+                  : selectedBranch.name}
               </ThemedText>
             ) : null}
           </View>
@@ -342,11 +410,35 @@ const styles = StyleSheet.create({
   branchList: {
     gap: BrandSpacing.sm,
   },
-  branchChip: {
+  branchTrigger: {
+    minHeight: 56,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: BrandRadius.card,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.sm,
+  },
+  branchTriggerCopy: {
+    flex: 1,
+    gap: BrandSpacing.xs,
+  },
+  branchOption: {
+    borderWidth: 1,
+    borderRadius: BrandRadius.card,
     paddingHorizontal: BrandSpacing.md,
     paddingVertical: BrandSpacing.md,
-    gap: 4,
+    gap: BrandSpacing.xs,
+  },
+  branchOptionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.xs,
+  },
+  branchBadge: {
+    borderRadius: BrandRadius.pill,
+    paddingHorizontal: BrandSpacing.sm,
+    paddingVertical: BrandSpacing.xs,
   },
 });
