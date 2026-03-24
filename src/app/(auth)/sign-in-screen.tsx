@@ -17,6 +17,11 @@ import { SheetHeaderBlock } from "@/components/ui/sheet-header-block";
 import { type BrandPalette, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import {
+  canUseNativeGoogleAuth,
+  resolveGoogleNativeAuthConfig,
+  signInWithGoogleNative,
+} from "@/lib/google-auth-native";
+import {
   consumePendingPostSignOutAuthHandoff,
   type PostSignOutAuthIntent,
 } from "@/modules/session/post-signout-auth-intent";
@@ -88,6 +93,7 @@ export default function SignInScreen() {
   });
   const { isAuthenticated } = useConvexAuth();
   const { signIn } = useAuthActions();
+  const googleNativeAuthConfig = useMemo(resolveGoogleNativeAuthConfig, []);
   const handledMagicCodeRef = useRef<string | null>(null);
   const pendingAuthHandoffRef = useRef(consumePendingPostSignOutAuthHandoff());
 
@@ -242,6 +248,21 @@ export default function SignInScreen() {
     setErrorMessage(null);
     setInfoMessage(null);
     try {
+      if (provider === "google" && canUseNativeGoogleAuth(googleNativeAuthConfig)) {
+        const nativeGoogleConfig = googleNativeAuthConfig;
+        const nativeResult = await signInWithGoogleNative({
+          config: nativeGoogleConfig,
+          ...(normalizedEmail ? { loginHint: normalizedEmail } : {}),
+        });
+        if (nativeResult.type === "cancelled") {
+          setErrorMessage(t("auth.oauthCancelled"));
+          return;
+        }
+
+        await signIn("google-native", { idToken: nativeResult.idToken });
+        return;
+      }
+
       const started = await signIn(provider, { redirectTo: oauthRedirectTo });
       if (!started.redirect) return;
       const oauthResult = await WebBrowser.openAuthSessionAsync(

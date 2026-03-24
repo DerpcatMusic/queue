@@ -1,5 +1,6 @@
+import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth, useQuery } from "convex/react";
-import { createContext, type ReactNode, useContext, useMemo } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef } from "react";
 
 import { api } from "@/convex/_generated/api";
 
@@ -46,8 +47,28 @@ const DEFAULT_USER_CONTEXT: UserContextValue = {
 const UserContext = createContext<UserContextValue>(DEFAULT_USER_CONTEXT);
 
 export function UserProvider({ children }: { children: ReactNode }) {
+  const { signOut } = useAuthActions();
   const { isLoading: isConvexAuthLoading, isAuthenticated } = useConvexAuth();
   const currentUser = useQuery(api.users.getCurrentUser);
+  const forcedSignOutForMissingUserRef = useRef(false);
+
+  useEffect(() => {
+    if (isConvexAuthLoading || currentUser === undefined) {
+      return;
+    }
+
+    if (!isAuthenticated || currentUser) {
+      forcedSignOutForMissingUserRef.current = false;
+      return;
+    }
+
+    if (forcedSignOutForMissingUserRef.current) {
+      return;
+    }
+
+    forcedSignOutForMissingUserRef.current = true;
+    void signOut();
+  }, [currentUser, isAuthenticated, isConvexAuthLoading, signOut]);
 
   const value = useMemo<UserContextValue>(
     () => ({

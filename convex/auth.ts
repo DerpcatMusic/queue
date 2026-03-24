@@ -1,13 +1,29 @@
 import Apple from "@auth/core/providers/apple";
 import Google from "@auth/core/providers/google";
+import { ConvexCredentials } from "@convex-dev/auth/providers/ConvexCredentials";
 import { convexAuth } from "@convex-dev/auth/server";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { ConvexError } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { dedupeUsersByEmail, normalizeEmail, resolveCanonicalUserByEmail } from "./lib/authDedupe";
 import { ResendMagicLink } from "./resendMagicLink";
 import { ResendOTP } from "./resendOtp";
 
+function trimEnv(value: string | undefined) {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+}
+
 const providers: any[] = [ResendOTP, ResendMagicLink];
+const googleOauthWebClientId = trimEnv(process.env.AUTH_GOOGLE_ID);
+const googleNativeWebClientId =
+  trimEnv(process.env.GOOGLE_CALENDAR_SERVER_CLIENT_ID) ??
+  googleOauthWebClientId;
+const googleNativeTokenAudiences = [
+  googleNativeWebClientId,
+  googleOauthWebClientId,
+].filter((value): value is string => Boolean(value));
+const googleJwks = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 
 export function resolveLinkedUserId(args: {
   existingUserId: Id<"users"> | null | undefined;
@@ -113,8 +129,140 @@ function getFallbackRedirectTarget() {
   return process.env.SITE_URL ?? process.env.CONVEX_SITE_URL ?? "http://localhost:3000";
 }
 
-if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
+async function upsertAuthenticatedUser(ctx: any, args: {
+  existingUserId: Id<"users"> | null | undefined;
+  profile: Record<string, unknown>;
+  provider: {
+    type?: string | undefined;
+    allowDangerousEmailAccountLinking?: boolean | undefined;
+  };
+}) {
+  const now = Date.now();
+  const fullName = typeof args.profile.name === "string" ? args.profile.name : undefined;
+  const rawEmail = typeof args.profile.email === "string" ? args.profile.email : undefined;
+  const email = normalizeEmail(rawEmail);
+  const phone = typeof args.profile.phone === "string" ? args.profile.phone : undefined;
+  const image = typeof args.profile.image === "string" ? args.profile.image : undefined;
+  const isEmailVerified = resolveProfileEmailVerified({
+    profile: args.profile,
+    provider: args.provider,
+  });
+  const emailVerificationTime = isEmailVerified ? now : undefined;
+  const phoneVerificationTime = args.profile.phoneVerified === true ? now : undefined;
+  const isAnonymous =
+    typeof args.profile.isAnonymous === "boolean" ? args.profile.isAnonymous : undefined;
+
+  const emailMatches = canResolveLinkedUserByEmail(email, isEmailVerified)
+    ? await ((ctx.db.query("users") as any)
+        .withIndex("by_email", (q: any) => q.eq("email", email))
+        .collect() as Promise<Array<{ _id: Id<"users"> }>>)
+    : [];
+  const normalizedEmailMatches = emailMatches.map((row) => row._id);
+  let linkedUserId: Id<"users"> | null | undefined = null;
+  const dedupedUserId =
+    canResolveLinkedUserByEmail(email, isEmailVerified) && normalizedEmailMatches.length > 1
+      ? await dedupeUsersByEmail({
+          ctx,
+          normalizedEmail: email!,
+          ...(args.existingUserId !== undefined ? { preferredUserId: args.existingUserId } : {}),
+          now,
+          requireVerifiedUser: true,
+          emailOwnershipVerified: isEmailVerified,
+        })
+      : null;
+  if (dedupedUserId) {
+    linkedUserId = dedupedUserId;
+  } else if (
+    canResolveLinkedUserByEmail(email, isEmailVerified) &&
+    normalizedEmailMatches.length > 1
+  ) {
+    linkedUserId = await resolveCanonicalUserByEmail({
+      ctx,
+      normalizedEmail: email!,
+      ...(args.existingUserId !== undefined ? { preferredUserId: args.existingUserId } : {}),
+    });
+  }
+  if (!linkedUserId) {
+    linkedUserId = resolveLinkedUserId({
+      existingUserId: args.existingUserId,
+      matchedUserIdsByEmail: normalizedEmailMatches,
+      email,
+    });
+  }
+
+  if (linkedUserId) {
+    await ctx.db.patch("users", linkedUserId, {
+      isActive: true,
+      updatedAt: now,
+      ...(fullName ? { fullName } : {}),
+      ...(email ? { email } : {}),
+      ...(phone ? { phoneE164: phone } : {}),
+      ...(image ? { image } : {}),
+      ...(emailVerificationTime ? { emailVerificationTime } : {}),
+      ...(phoneVerificationTime ? { phoneVerificationTime } : {}),
+      ...(isAnonymous !== undefined ? { isAnonymous } : {}),
+    });
+    return linkedUserId;
+  }
+
+  return await ctx.db.insert("users", {
+    role: "pending",
+    roles: [],
+    onboardingComplete: false,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+    ...(fullName ? { fullName } : {}),
+    ...(email ? { email } : {}),
+    ...(phone ? { phoneE164: phone } : {}),
+    ...(image ? { image } : {}),
+    ...(emailVerificationTime ? { emailVerificationTime } : {}),
+    ...(phoneVerificationTime ? { phoneVerificationTime } : {}),
+    ...(isAnonymous !== undefined ? { isAnonymous } : {}),
+  });
+}
+
+if (googleOauthWebClientId && process.env.AUTH_GOOGLE_SECRET) {
   providers.push(Google);
+}
+
+if (googleNativeWebClientId && googleNativeTokenAudiences.length > 0) {
+  providers.push(
+    ConvexCredentials({
+      id: "google-native",
+      authorize: async (credentials, ctx) => {
+        const idToken = typeof credentials.idToken === "string" ? credentials.idToken : undefined;
+        if (!idToken) {
+          throw new ConvexError("Missing Google ID token.");
+        }
+
+        const verified = await jwtVerify(idToken, googleJwks, {
+          audience: googleNativeTokenAudiences,
+          issuer: ["https://accounts.google.com", "accounts.google.com"],
+        });
+        const payload = verified.payload;
+        if (!payload?.email) {
+          throw new ConvexError("Google sign-in succeeded but no email was returned.");
+        }
+
+        const userId = await upsertAuthenticatedUser(ctx, {
+          existingUserId: undefined,
+          profile: {
+            email: payload.email,
+            email_verified: payload.email_verified,
+            name: payload.name,
+            image: payload.picture,
+          },
+          provider: {
+            type: "oauth",
+            allowDangerousEmailAccountLinking: true,
+          },
+        });
+
+        return { userId };
+      },
+    }),
+  );
 }
 
 if (process.env.AUTH_APPLE_ID && process.env.AUTH_APPLE_SECRET) {
@@ -131,90 +279,11 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       return getFallbackRedirectTarget();
     },
     async createOrUpdateUser(ctx, args) {
-      const now = Date.now();
-      const fullName = typeof args.profile.name === "string" ? args.profile.name : undefined;
-      const rawEmail = typeof args.profile.email === "string" ? args.profile.email : undefined;
-      const email = normalizeEmail(rawEmail);
-      const phone = typeof args.profile.phone === "string" ? args.profile.phone : undefined;
-      const image = typeof args.profile.image === "string" ? args.profile.image : undefined;
-      const isEmailVerified = resolveProfileEmailVerified({
+      return await upsertAuthenticatedUser(ctx, {
+        existingUserId: args.existingUserId,
         profile: args.profile,
         provider: args.provider,
       });
-      const emailVerificationTime = isEmailVerified ? now : undefined;
-      const phoneVerificationTime = args.profile.phoneVerified === true ? now : undefined;
-      const isAnonymous =
-        typeof args.profile.isAnonymous === "boolean" ? args.profile.isAnonymous : undefined;
-
-      const emailMatches = canResolveLinkedUserByEmail(email, isEmailVerified)
-        ? await ((ctx.db.query("users") as any)
-            .withIndex("by_email", (q: any) => q.eq("email", email))
-            .collect() as Promise<Array<{ _id: Id<"users"> }>>)
-        : [];
-      const normalizedEmailMatches = emailMatches.map((row) => row._id);
-      let linkedUserId: Id<"users"> | null | undefined = null;
-      const dedupedUserId =
-        canResolveLinkedUserByEmail(email, isEmailVerified) && normalizedEmailMatches.length > 1
-          ? await dedupeUsersByEmail({
-              ctx,
-              normalizedEmail: email!,
-              preferredUserId: args.existingUserId,
-              now,
-              requireVerifiedUser: true,
-              emailOwnershipVerified: isEmailVerified,
-            })
-          : null;
-      if (dedupedUserId) {
-        linkedUserId = dedupedUserId;
-      } else if (
-        canResolveLinkedUserByEmail(email, isEmailVerified) &&
-        normalizedEmailMatches.length > 1
-      ) {
-        linkedUserId = await resolveCanonicalUserByEmail({
-          ctx,
-          normalizedEmail: email!,
-          preferredUserId: args.existingUserId,
-        });
-      }
-      if (!linkedUserId) {
-        linkedUserId = resolveLinkedUserId({
-          existingUserId: args.existingUserId,
-          matchedUserIdsByEmail: normalizedEmailMatches,
-          email,
-        });
-      }
-
-      if (linkedUserId) {
-        await ctx.db.patch("users", linkedUserId, {
-          isActive: true,
-          updatedAt: now,
-          ...(fullName ? { fullName } : {}),
-          ...(email ? { email } : {}),
-          ...(phone ? { phoneE164: phone } : {}),
-          ...(image ? { image } : {}),
-          ...(emailVerificationTime ? { emailVerificationTime } : {}),
-          ...(phoneVerificationTime ? { phoneVerificationTime } : {}),
-          ...(isAnonymous !== undefined ? { isAnonymous } : {}),
-        });
-        return linkedUserId;
-      }
-
-      const userId = await ctx.db.insert("users", {
-        role: "pending",
-        roles: [],
-        onboardingComplete: false,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-        ...(fullName ? { fullName } : {}),
-        ...(email ? { email } : {}),
-        ...(phone ? { phoneE164: phone } : {}),
-        ...(image ? { image } : {}),
-        ...(emailVerificationTime ? { emailVerificationTime } : {}),
-        ...(phoneVerificationTime ? { phoneVerificationTime } : {}),
-        ...(isAnonymous !== undefined ? { isAnonymous } : {}),
-      });
-      return userId;
     },
   },
 });
