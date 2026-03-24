@@ -10,7 +10,7 @@ import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Circle, ClipPath, Defs, Path, Image as SvgImage } from "react-native-svg";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons";
@@ -19,7 +19,6 @@ import { BrandRadius, BrandSpacing, getMapBrandPalette } from "@/constants/brand
 import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { Image } from "@/tw/image";
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
@@ -45,8 +44,19 @@ const ATTRIBUTION_ICON_SIZE = BrandSpacing.sm + BrandSpacing.xs;
 const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm;
 const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2;
 const STUDIO_MARKER_MIN_ZOOM = 10;
+const STUDIO_PIN_VIEWBOX = {
+  x: 1098.489,
+  y: 1430.882,
+  width: 2351.972,
+  height: 3656.301,
+} as const;
 const STUDIO_PIN_PATH =
-  "M12 27.2C14.4 25.3 20.5 19.5 20.5 11.4C20.5 6.61 16.69 2.8 12 2.8C7.31 2.8 3.5 6.61 3.5 11.4C3.5 19.5 9.6 25.3 12 27.2Z";
+  "M1098.489,2606.868C1098.489,1957.824 1625.431,1430.882 2274.475,1430.882C2923.519,1430.882 3450.461,1957.824 3450.461,2606.868C3450.461,3456.164 3031.901,4240.917 2274.475,5087.183C1517.049,4240.917 1098.489,3456.164 1098.489,2606.868Z";
+const STUDIO_PIN_HOLE = {
+  cx: 2274.475,
+  cy: 2606.868,
+  radius: 1036.897,
+} as const;
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 180;
@@ -56,15 +66,11 @@ function getStudioMarkerMetrics(zoom: number) {
   return {
     width: BrandSpacing.avatarMd,
     height: BrandSpacing.avatarMd + BrandSpacing.lg,
-    imageSize: BrandSpacing.iconContainer - BrandSpacing.xs,
-    imageTop: BrandSpacing.sm - BrandSpacing.xxs,
   };
 }
 
 function StudioMapPin({
   accentColor,
-  imageSize,
-  imageTop,
   imageUrl,
   label,
   pinHeight,
@@ -72,56 +78,69 @@ function StudioMapPin({
   textColor,
 }: {
   accentColor: string;
-  imageSize: number;
-  imageTop: number;
   imageUrl?: string;
   label: string;
   pinHeight: number;
   pinWidth: number;
   textColor: string;
 }) {
-  const imageInset = (pinWidth - imageSize) / 2;
+  const clipRadius = STUDIO_PIN_HOLE.radius * 0.92;
+  const clipCenterY = STUDIO_PIN_HOLE.cy + STUDIO_PIN_HOLE.radius * 0.07;
+  const fallbackSize = (clipRadius * 2 * pinWidth) / STUDIO_PIN_VIEWBOX.width;
+  const fallbackLeft =
+    ((STUDIO_PIN_HOLE.cx - clipRadius - STUDIO_PIN_VIEWBOX.x) * pinWidth) /
+    STUDIO_PIN_VIEWBOX.width;
+  const fallbackTop =
+    ((clipCenterY - clipRadius - STUDIO_PIN_VIEWBOX.y) * pinHeight) / STUDIO_PIN_VIEWBOX.height;
+  const clipId = `studio-pin-hole-${label}`;
 
   return (
     <View style={{ width: pinWidth, height: pinHeight }}>
       <Svg
         width={pinWidth}
         height={pinHeight}
-        viewBox="0 0 24 28"
+        viewBox={`${STUDIO_PIN_VIEWBOX.x} ${STUDIO_PIN_VIEWBOX.y} ${STUDIO_PIN_VIEWBOX.width} ${STUDIO_PIN_VIEWBOX.height}`}
         style={{ position: "absolute", top: 0, left: 0 }}
       >
         <Path d={STUDIO_PIN_PATH} fill={accentColor} />
-      </Svg>
-      <View
-        style={{
-          position: "absolute",
-          top: imageTop,
-          left: imageInset,
-          width: imageSize,
-          height: imageSize,
-          borderRadius: imageSize / 2,
-          borderCurve: "continuous",
-          overflow: "hidden",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: accentColor,
-        }}
-      >
         {imageUrl ? (
-          <Image
-            source={imageUrl}
-            style={{
-              width: imageSize,
-              height: imageSize,
-            }}
-            contentFit="cover"
-          />
-        ) : (
+          <>
+            <Defs>
+              <ClipPath id={clipId}>
+                <Circle cx={STUDIO_PIN_HOLE.cx} cy={clipCenterY} r={clipRadius} />
+              </ClipPath>
+            </Defs>
+            <SvgImage
+              href={{ uri: imageUrl }}
+              x={STUDIO_PIN_HOLE.cx - clipRadius}
+              y={clipCenterY - clipRadius}
+              width={clipRadius * 2}
+              height={clipRadius * 2}
+              preserveAspectRatio="xMidYMid slice"
+              clipPath={`url(#${clipId})`}
+            />
+          </>
+        ) : null}
+      </Svg>
+      {!imageUrl ? (
+        <View
+          style={{
+            position: "absolute",
+            top: fallbackTop,
+            left: fallbackLeft,
+            width: fallbackSize,
+            height: fallbackSize,
+            borderRadius: fallbackSize / 2,
+            borderCurve: "continuous",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <ThemedText type="bodyStrong" style={{ color: textColor }}>
             {label}
           </ThemedText>
-        )}
-      </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -419,8 +438,6 @@ export const QueueMap = memo(function QueueMap({
           ? studios.map((studio) => {
               const markerWidth = studioMarkerMetrics.width;
               const markerHeight = studioMarkerMetrics.height;
-              const imageSize = studioMarkerMetrics.imageSize;
-              const imageTop = studioMarkerMetrics.imageTop;
               const markerAccent = palette.didit.accent as string;
               const hasLogo =
                 typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
@@ -443,8 +460,6 @@ export const QueueMap = memo(function QueueMap({
                   >
                     <StudioMapPin
                       accentColor={markerAccent}
-                      imageSize={imageSize}
-                      imageTop={imageTop}
                       {...(hasLogo ? { imageUrl: studio.logoImageUrl as string } : {})}
                       label={studio.studioName.slice(0, 1).toUpperCase()}
                       pinHeight={markerHeight}

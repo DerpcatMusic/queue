@@ -46,9 +46,11 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
     ? Math.max(APPLE_MAP_THEME.overlay.touchFillOpacity, 0.1)
     : 0;
   const previewOutlineOpacity = showAllZones
-    ? Math.max(APPLE_MAP_THEME.overlay.baseOutlineOpacity, 0.88)
+    ? Math.max(APPLE_MAP_THEME.overlay.baseOutlineOpacity, 0.72)
     : 0;
   const allZonesLabelOpacity = showAllZones && showLabelLayers ? 0.78 : 0;
+  const selectedOutlineOpacity = Math.min(APPLE_MAP_THEME.overlay.selectionOutlineOpacity, 0.82);
+  const selectedOutlineWidth = Math.max(APPLE_MAP_THEME.overlay.selectionOutlineWidth - 0.35, 1.4);
 
   return (
     <GeoJSONSource
@@ -106,8 +108,8 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
         filter={selectedZoneFilter as any}
         paint={{
           "line-color": mapPalette.selectedOutline,
-          "line-width": APPLE_MAP_THEME.overlay.selectionOutlineWidth,
-          "line-opacity": APPLE_MAP_THEME.overlay.selectionOutlineOpacity,
+          "line-width": selectedOutlineWidth,
+          "line-opacity": selectedOutlineOpacity,
         }}
         layout={{ "line-join": "round" }}
       />
