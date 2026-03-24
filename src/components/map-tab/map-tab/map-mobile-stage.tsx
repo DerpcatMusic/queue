@@ -77,6 +77,7 @@ export function MapMobileStage({
           onPress={onEditToggle}
           tone={zoneModeActive ? "primary" : "primarySubtle"}
           size={58}
+          floating
           disabled={isSaving}
           backgroundColorOverride={
             zoneModeActive ? (palette.primary as string) : (palette.surface as string)

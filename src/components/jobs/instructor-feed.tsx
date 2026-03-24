@@ -402,13 +402,16 @@ export function InstructorFeed() {
           accessibilityLabel={t("jobsTab.instructorFeed.openArchive")}
           onPress={() => {
             if (isArchiveOpen) {
+              setIsArchiveOpen(false);
               archiveSheetRef.current?.close();
               return;
             }
+            setIsArchiveOpen(true);
             archiveSheetRef.current?.expand();
           }}
           tone={isArchiveOpen ? "primary" : "secondary"}
           size={58}
+          floating
           backgroundColorOverride={String(isArchiveOpen ? palette.primary : palette.surface)}
           icon={
             <IconSymbol
@@ -429,7 +432,6 @@ export function InstructorFeed() {
         palette={palette}
         locale={locale}
         zoneLanguage={zoneLanguage}
-        now={liveNow}
         onOpenStudio={onOpenStudio}
       />
     </View>
