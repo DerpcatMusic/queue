@@ -5,6 +5,7 @@ import { Redirect, useRouter } from "expo-router";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshControl, StyleSheet, View } from "react-native";
+import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
 import {
   type InstructorArchiveRow,
   InstructorJobsArchiveSheet,
@@ -166,29 +167,41 @@ export function InstructorFeed() {
       ] as const satisfies readonly KitDisclosureButtonGroupOption<"all" | "24h" | "72h">[],
     [t],
   );
+  const jobsHeaderLayoutTransition = useMemo(
+    () => LinearTransition.duration(220).reduceMotion(ReduceMotion.System),
+    [],
+  );
 
   const jobsSheetConfig = useMemo(
     () => ({
       stickyHeader: (
         <View style={{ gap: BrandSpacing.xs }}>
-          <View
+          <Animated.View
+            layout={jobsHeaderLayoutTransition}
             style={{
               flexDirection: "row",
               alignItems: "center",
               gap: BrandSpacing.sm,
             }}
           >
-            <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}>
+            <Animated.View
+              layout={jobsHeaderLayoutTransition}
+              style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}
+            >
               <NativeSearchField
                 value={jobsSearchQuery}
                 onChangeText={setJobsSearchQuery}
                 placeholder={t("jobsTab.searchPlaceholder")}
                 clearAccessibilityLabel={t("common.clear")}
                 size="sm"
+                animateLayout
                 containerStyle={{ backgroundColor: String(palette.surface) }}
               />
-            </View>
-            <View style={{ flexShrink: 0, minWidth: 0 }}>
+            </Animated.View>
+            <Animated.View
+              layout={jobsHeaderLayoutTransition}
+              style={{ flexShrink: 0, minWidth: 0 }}
+            >
               <KitDisclosureButtonGroup
                 accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
                 expanded={showJobsFilters}
@@ -212,8 +225,8 @@ export function InstructorFeed() {
                 selectedLabelColor={String(palette.primaryPressed)}
                 dividerColor={String(palette.border)}
               />
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
           {applyErrorMessage ? (
             <NoticeBanner
               tone="error"
@@ -238,6 +251,7 @@ export function InstructorFeed() {
       applyErrorMessage,
       jobsFilterOptions,
       jobsWindowFilter,
+      jobsHeaderLayoutTransition,
       jobsSearchQuery,
       palette,
       showJobsFilters,
