@@ -19,6 +19,10 @@ export default function ProfileLayout() {
         ownerId="profile-layout:instructor"
         routes={[
           {
+            routeMatchPath: "/profile/add-account",
+            title: t("profile.navigation.addAccount"),
+          },
+          {
             routeMatchPath: "/profile/edit",
             title: t("profile.navigation.edit"),
           },
@@ -51,6 +55,10 @@ export default function ProfileLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="add-account"
+          options={{ title: t("profile.navigation.addAccount") }}
+        />
         <Stack.Screen
           name="edit"
           options={{ title: t("profile.navigation.edit"), presentation: "modal" }}

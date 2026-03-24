@@ -172,6 +172,7 @@ const en = {
       sports: "Sports",
       location: "Location",
       branches: "Branches",
+      addAccount: "Add account",
       calendar: "Calendar",
       wallet: "Wallet",
       identityVerification: "Identity verification",
@@ -220,9 +221,11 @@ const en = {
       profilesTitle: "Profiles on this account",
       profilesBody: "Quick access to the roles currently attached to this login.",
       accountsTitle: "Account actions",
-      accountsBody: "Sign in with another account or end the current session on this device.",
+      accountsBody:
+        "Open a dedicated handoff screen before leaving the current account on this device.",
       useAnotherAccountTitle: "Use another account",
-      useAnotherAccountHint: "Sign out here, then continue with a different email or provider.",
+      useAnotherAccountHint:
+        "Choose whether to sign in or create another account before you leave this one.",
       instructorActiveHint: "You are using your instructor profile right now.",
       studioActiveHint: "You are using your studio profile right now.",
       instructorSwitchHint: "Jump into instructor tabs, jobs, and payouts.",
@@ -231,6 +234,20 @@ const en = {
       setupInstructorHint: "Create the instructor side on this same account.",
       setupStudioTitle: "Set up studio profile",
       setupStudioHint: "Create the studio side on this same account.",
+      addAccountTitle: "Add another account",
+      addAccountBody:
+        "Pick how to continue first. Your current account stays active until you confirm one of the actions below.",
+      addAccountCurrentTitle: "Current session stays active",
+      addAccountCurrentBody:
+        "If you back out here, nothing changes. You only leave this account after choosing sign in or create account.",
+      signInAnotherTitle: "Sign in to another account",
+      signInAnotherHint: "Leave this session, then continue with an existing email or provider.",
+      createAnotherTitle: "Create another account",
+      createAnotherHint: "Leave this session, then start a fresh account with a new email or provider.",
+      cancelAddAccountTitle: "Keep current account",
+      cancelAddAccountHint: "Close this flow and stay signed in where you are.",
+      signingInAnother: "Preparing sign in...",
+      creatingAnother: "Preparing account creation...",
     },
     setup: {
       verifyIdentity: "Verify identity",
