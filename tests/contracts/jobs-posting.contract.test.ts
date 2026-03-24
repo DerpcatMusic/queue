@@ -41,8 +41,37 @@ describe("RED-PHASE: per-job expiry override contracts", () => {
       createdAt: FIXED_NOW,
       updatedAt: FIXED_NOW,
     })) as Id<"studioProfiles">;
+    const branchId = (await db.insert("studioBranches", {
+      studioId,
+      name: "Main branch",
+      slug: "main-branch",
+      address: "Main st",
+      zone: "5001557",
+      isPrimary: true,
+      status: "active",
+      notificationsEnabled: true,
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    })) as Id<"studioBranches">;
+    await db.insert("studioMemberships", {
+      studioId,
+      userId: studioUserId,
+      role: "owner",
+      status: "active",
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    });
+    await db.insert("studioEntitlements", {
+      studioId,
+      planKey: "free",
+      maxBranches: 1,
+      branchesFeatureEnabled: false,
+      subscriptionStatus: "active",
+      effectiveAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    });
 
-    return { studioUserId, studioId };
+    return { studioUserId, studioId, branchId };
   }
 
   it("postJob persists expiryOverrideMinutes when provided", async () => {
@@ -60,6 +89,7 @@ describe("RED-PHASE: per-job expiry override contracts", () => {
 
       const result = await (postJob as any)._handler(ctx, {
         sport: "hiit",
+        branchId: seeded.branchId,
         startTime: JOB_START_TIME,
         endTime: JOB_END_TIME,
         pay: 250,
@@ -85,7 +115,7 @@ describe("RED-PHASE: per-job expiry override contracts", () => {
     const restoreNow = freezeNow(FIXED_NOW);
     try {
       const db = new InMemoryConvexDb();
-      const { studioUserId, studioId } = await seedStudioScenario(db);
+      const { studioUserId, studioId, branchId } = await seedStudioScenario(db);
 
       // Set studio default to 45 minutes before startTime
       await db.patch("studioProfiles", studioId, {
@@ -102,6 +132,7 @@ describe("RED-PHASE: per-job expiry override contracts", () => {
 
       const result = await (postJob as any)._handler(ctx, {
         sport: "hiit",
+        branchId,
         startTime: JOB_START_TIME,
         endTime: JOB_END_TIME,
         pay: 250,
@@ -138,6 +169,7 @@ describe("RED-PHASE: per-job expiry override contracts", () => {
 
       const result = await (postJob as any)._handler(ctx, {
         sport: "hiit",
+        branchId: seeded.branchId,
         startTime: JOB_START_TIME,
         endTime: JOB_END_TIME,
         pay: 250,
@@ -178,8 +210,37 @@ describe("RED-PHASE: boost preset validation contracts", () => {
       createdAt: FIXED_NOW,
       updatedAt: FIXED_NOW,
     })) as Id<"studioProfiles">;
+    const branchId = (await db.insert("studioBranches", {
+      studioId,
+      name: "Main branch",
+      slug: "main-branch",
+      address: "Main st",
+      zone: "5001557",
+      isPrimary: true,
+      status: "active",
+      notificationsEnabled: true,
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    })) as Id<"studioBranches">;
+    await db.insert("studioMemberships", {
+      studioId,
+      userId: studioUserId,
+      role: "owner",
+      status: "active",
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    });
+    await db.insert("studioEntitlements", {
+      studioId,
+      planKey: "free",
+      maxBranches: 1,
+      branchesFeatureEnabled: false,
+      subscriptionStatus: "active",
+      effectiveAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    });
 
-    return { studioUserId, studioId };
+    return { studioUserId, studioId, branchId };
   }
 
   it("postJob accepts 'small' boost preset and persists boostPreset with correct bonus amount", async () => {
@@ -195,6 +256,7 @@ describe("RED-PHASE: boost preset validation contracts", () => {
 
       const result = await (postJob as any)._handler(ctx, {
         sport: "hiit",
+        branchId: seeded.branchId,
         startTime: JOB_START_TIME,
         endTime: JOB_END_TIME,
         pay: 250,
@@ -225,6 +287,7 @@ describe("RED-PHASE: boost preset validation contracts", () => {
 
       const result = await (postJob as any)._handler(ctx, {
         sport: "hiit",
+        branchId: seeded.branchId,
         startTime: JOB_START_TIME,
         endTime: JOB_END_TIME,
         pay: 250,
@@ -255,6 +318,7 @@ describe("RED-PHASE: boost preset validation contracts", () => {
 
       const result = await (postJob as any)._handler(ctx, {
         sport: "hiit",
+        branchId: seeded.branchId,
         startTime: JOB_START_TIME,
         endTime: JOB_END_TIME,
         pay: 250,
@@ -287,8 +351,9 @@ describe("RED-PHASE: boost preset validation contracts", () => {
       // The test expects the mutation to reject an invalid preset
       await expect(
         (postJob as any)._handler(ctx, {
-          sport: "hiit",
-          startTime: JOB_START_TIME,
+        sport: "hiit",
+        branchId: seeded.branchId,
+        startTime: JOB_START_TIME,
           endTime: JOB_END_TIME,
           pay: 250,
           boostPreset: "huge", // invalid preset

@@ -6,6 +6,7 @@ import { mutation } from "./_generated/server";
 import { requireCurrentUser } from "./lib/auth";
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
+import { ensureStudioInfrastructure } from "./lib/studioBranches";
 import {
   normalizeCoordinates,
   normalizeOptionalString,
@@ -340,6 +341,23 @@ export const completeStudioOnboarding = mutation({
         calendarConnectedAt: profileResolution.profile.calendarConnectedAt,
         updatedAt: now,
       });
+      await ensureStudioInfrastructure(
+        ctx,
+        {
+          ...profileResolution.profile,
+          studioName,
+          address,
+          zone,
+          notificationsEnabled,
+          ...omitUndefined({
+            contactPhone,
+            latitude,
+            longitude,
+            expoPushToken,
+          }),
+        },
+        now,
+      );
 
       const existingSports = await ctx.db
         .query("studioSports")
@@ -375,6 +393,7 @@ export const completeStudioOnboarding = mutation({
         }),
       ),
     );
+    await ensureStudioInfrastructure(ctx, profileResolution.profile, now);
 
     await ctx.db.patch("users", user._id, {
       role: "studio",

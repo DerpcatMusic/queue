@@ -18,6 +18,15 @@ import {
   omitUndefined,
   trimOptionalString,
 } from "./lib/validation";
+import {
+  ensurePrimaryStudioBranch,
+  ensureStudioInfrastructure,
+  getPrimaryStudioBranch,
+  getStudioEntitlement,
+  listStudioBranches,
+  requireStudioOwnerContext,
+  syncStudioProfileFromBranch,
+} from "./lib/studioBranches";
 
 const MAX_SPORTS = 12;
 const MAX_ZONES = 25;
@@ -44,6 +53,36 @@ const socialLinksValidator = v.object({
   website: v.optional(v.string()),
 });
 const appRoleValidator = v.union(v.literal("instructor"), v.literal("studio"));
+const studioBranchSummaryValidator = v.object({
+  branchId: v.id("studioBranches"),
+  name: v.string(),
+  slug: v.string(),
+  address: v.string(),
+  zone: v.string(),
+  isPrimary: v.boolean(),
+  status: v.union(v.literal("active"), v.literal("archived")),
+  latitude: v.optional(v.number()),
+  longitude: v.optional(v.number()),
+  contactPhone: v.optional(v.string()),
+  notificationsEnabled: v.optional(v.boolean()),
+  autoExpireMinutesBefore: v.optional(v.number()),
+  autoAcceptDefault: v.optional(v.boolean()),
+  calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
+  calendarSyncEnabled: v.boolean(),
+  calendarConnectedAt: v.optional(v.number()),
+});
+const studioEntitlementSummaryValidator = v.object({
+  planKey: v.union(v.literal("free"), v.literal("growth"), v.literal("custom")),
+  maxBranches: v.number(),
+  branchesFeatureEnabled: v.boolean(),
+  subscriptionStatus: v.union(
+    v.literal("active"),
+    v.literal("trialing"),
+    v.literal("past_due"),
+    v.literal("canceled"),
+  ),
+  activeBranchCount: v.number(),
+});
 
 type SocialLinkKey = (typeof SOCIAL_LINK_KEYS)[number];
 type SocialLinksValue = Partial<Record<SocialLinkKey, string>>;
@@ -750,6 +789,16 @@ export const getMyStudioSettings = query({
       calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
       calendarSyncEnabled: v.boolean(),
       calendarConnectedAt: v.optional(v.number()),
+      primaryBranch: v.optional(studioBranchSummaryValidator),
+      branchesSummary: v.array(
+        v.object({
+          branchId: v.id("studioBranches"),
+          name: v.string(),
+          isPrimary: v.boolean(),
+          status: v.union(v.literal("active"), v.literal("archived")),
+        }),
+      ),
+      entitlement: studioEntitlementSummaryValidator,
     }),
     v.null(),
   ),
@@ -761,9 +810,18 @@ export const getMyStudioSettings = query({
 
     const profile = await getUniqueStudioProfileByUserId(ctx, user._id);
     if (!profile) return null;
+    const [primaryBranch, branches, entitlement] = await Promise.all([
+      getPrimaryStudioBranch(ctx, profile._id),
+      listStudioBranches(ctx, profile._id),
+      getStudioEntitlement(ctx, profile._id),
+    ]);
 
-    const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
-    const notificationsEnabled = Boolean(profile.notificationsEnabled) && hasExpoPushToken;
+    const hasExpoPushToken = Boolean(
+      trimOptionalString(primaryBranch?.expoPushToken ?? profile.expoPushToken),
+    );
+    const notificationsEnabled =
+      Boolean(primaryBranch?.notificationsEnabled ?? profile.notificationsEnabled) &&
+      hasExpoPushToken;
 
     const sportsRows = await ctx.db
       .query("studioSports")
@@ -777,13 +835,13 @@ export const getMyStudioSettings = query({
     return {
       studioId: profile._id,
       studioName: profile.studioName,
-      address: profile.address,
-      zone: profile.zone,
+      address: primaryBranch?.address ?? profile.address,
+      zone: primaryBranch?.zone ?? profile.zone,
       ...omitUndefined({
         bio: profile.bio,
-        latitude: profile.latitude,
-        longitude: profile.longitude,
-        contactPhone: profile.contactPhone,
+        latitude: primaryBranch?.latitude ?? profile.latitude,
+        longitude: primaryBranch?.longitude ?? profile.longitude,
+        contactPhone: primaryBranch?.contactPhone ?? profile.contactPhone,
         profileImageUrl,
         socialLinks: toOptionalSocialLinksPayload(profile.socialLinks),
         mapMarkerColor: profile.mapMarkerColor,
@@ -795,14 +853,56 @@ export const getMyStudioSettings = query({
       }),
       notificationsEnabled,
       hasExpoPushToken,
-      autoExpireMinutesBefore: profile.autoExpireMinutesBefore ?? 30,
-      autoAcceptDefault: profile.autoAcceptDefault ?? false,
+      autoExpireMinutesBefore:
+        primaryBranch?.autoExpireMinutesBefore ?? profile.autoExpireMinutesBefore ?? 30,
+      autoAcceptDefault:
+        primaryBranch?.autoAcceptDefault ?? profile.autoAcceptDefault ?? false,
       sports,
-      calendarProvider: profile.calendarProvider ?? "none",
-      calendarSyncEnabled: profile.calendarSyncEnabled ?? false,
-      ...(profile.calendarConnectedAt !== undefined
-        ? { calendarConnectedAt: profile.calendarConnectedAt }
+      calendarProvider: primaryBranch?.calendarProvider ?? profile.calendarProvider ?? "none",
+      calendarSyncEnabled:
+        primaryBranch?.calendarSyncEnabled ?? profile.calendarSyncEnabled ?? false,
+      ...(primaryBranch?.calendarConnectedAt !== undefined
+        ? { calendarConnectedAt: primaryBranch.calendarConnectedAt }
+        : profile.calendarConnectedAt !== undefined
+          ? { calendarConnectedAt: profile.calendarConnectedAt }
+          : {}),
+      ...(primaryBranch
+        ? {
+            primaryBranch: {
+              branchId: primaryBranch._id,
+              name: primaryBranch.name,
+              slug: primaryBranch.slug,
+              address: primaryBranch.address,
+              zone: primaryBranch.zone,
+              isPrimary: primaryBranch.isPrimary,
+              status: primaryBranch.status,
+              calendarProvider: primaryBranch.calendarProvider ?? "none",
+              calendarSyncEnabled: primaryBranch.calendarSyncEnabled ?? false,
+              ...omitUndefined({
+                latitude: primaryBranch.latitude,
+                longitude: primaryBranch.longitude,
+                contactPhone: primaryBranch.contactPhone,
+                notificationsEnabled: primaryBranch.notificationsEnabled,
+                autoExpireMinutesBefore: primaryBranch.autoExpireMinutesBefore,
+                autoAcceptDefault: primaryBranch.autoAcceptDefault,
+                calendarConnectedAt: primaryBranch.calendarConnectedAt,
+              }),
+            },
+          }
         : {}),
+      branchesSummary: branches.map((branch) => ({
+        branchId: branch._id,
+        name: branch.name,
+        isPrimary: branch.isPrimary,
+        status: branch.status,
+      })),
+      entitlement: {
+        planKey: entitlement?.planKey ?? "free",
+        maxBranches: entitlement?.maxBranches ?? 1,
+        branchesFeatureEnabled: entitlement?.branchesFeatureEnabled ?? false,
+        subscriptionStatus: entitlement?.subscriptionStatus ?? "active",
+        activeBranchCount: branches.filter((branch) => branch.status === "active").length,
+      },
     };
   },
 });
@@ -882,21 +982,25 @@ export const updateMyStudioCalendarSettings = mutation({
     calendarSyncEnabled: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    const user = await requireUserRole(ctx, ["studio"]);
-    const profile = await requireStudioProfileByUserId(ctx, user._id);
     const now = Date.now();
+    const { studio } = await requireStudioOwnerContext(ctx);
+    const branch = await ensurePrimaryStudioBranch(ctx, studio, now);
 
     const calendarProvider = args.calendarProvider;
     const calendarSyncEnabled = calendarProvider !== "none" && args.calendarSyncEnabled;
     const calendarConnectedAt =
-      calendarProvider === "none" ? undefined : (profile.calendarConnectedAt ?? now);
+      calendarProvider === "none" ? undefined : (branch.calendarConnectedAt ?? now);
 
-    await ctx.db.patch("studioProfiles", profile._id, {
+    await ctx.db.patch("studioBranches", branch._id, {
       calendarProvider,
       calendarSyncEnabled,
       ...(calendarConnectedAt !== undefined ? { calendarConnectedAt } : {}),
       updatedAt: now,
     });
+    const updatedBranch = await ctx.db.get(branch._id);
+    if (updatedBranch) {
+      await syncStudioProfileFromBranch(ctx, studio._id, updatedBranch, now);
+    }
 
     return {
       ok: true,
@@ -929,8 +1033,9 @@ export const updateMyStudioSettings = mutation({
     zone: v.string(),
   }),
   handler: async (ctx, args) => {
-    const user = await requireUserRole(ctx, ["studio"]);
-    const profile = await requireStudioProfileByUserId(ctx, user._id);
+    const now = Date.now();
+    const { studio } = await requireStudioOwnerContext(ctx);
+    const { branch: primaryBranch } = await ensureStudioInfrastructure(ctx, studio, now);
 
     const studioName = normalizeRequiredString(
       args.studioName,
@@ -984,7 +1089,7 @@ export const updateMyStudioSettings = mutation({
       autoExpireMinutesBefore = val;
     }
 
-    await ctx.db.patch("studioProfiles", profile._id, {
+    await ctx.db.patch("studioProfiles", studio._id, {
       studioName,
       address,
       zone,
@@ -1001,20 +1106,31 @@ export const updateMyStudioSettings = mutation({
         addressFloor,
         addressPostalCode,
       }),
-      updatedAt: Date.now(),
+      updatedAt: now,
+    });
+    await ctx.db.patch("studioBranches", primaryBranch._id, {
+      address,
+      zone,
+      ...omitUndefined({
+        contactPhone,
+        latitude,
+        longitude,
+        autoExpireMinutesBefore,
+        autoAcceptDefault: args.autoAcceptDefault,
+      }),
+      updatedAt: now,
     });
 
     if (args.sports) {
       const existingSports = await ctx.db
         .query("studioSports")
-        .withIndex("by_studio_id", (q) => q.eq("studioId", profile._id))
+        .withIndex("by_studio_id", (q) => q.eq("studioId", studio._id))
         .collect();
       await Promise.all(existingSports.map((s) => ctx.db.delete("studioSports", s._id)));
-      const now = Date.now();
       await Promise.all(
         args.sports.map((sport) =>
           ctx.db.insert("studioSports", {
-            studioId: profile._id,
+            studioId: studio._id,
             sport: normalizeSportType(sport),
             createdAt: now,
           }),
@@ -1045,8 +1161,8 @@ export const updateMyStudioProfileCard = mutation({
   }),
   handler: async (ctx, args) => {
     const now = Date.now();
-    const user = await requireUserRole(ctx, ["studio"]);
-    const profile = await requireStudioProfileByUserId(ctx, user._id);
+    const { studio } = await requireStudioOwnerContext(ctx);
+    const { branch: primaryBranch } = await ensureStudioInfrastructure(ctx, studio, now);
 
     const studioName = normalizeRequiredString(
       args.studioName,
@@ -1071,25 +1187,29 @@ export const updateMyStudioProfileCard = mutation({
 
     const existingSports = await ctx.db
       .query("studioSports")
-      .withIndex("by_studio_id", (q) => q.eq("studioId", profile._id))
+      .withIndex("by_studio_id", (q) => q.eq("studioId", studio._id))
       .collect();
 
     await Promise.all(existingSports.map((row) => ctx.db.delete("studioSports", row._id)));
     await Promise.all(
       sports.map((sport) =>
         ctx.db.insert("studioSports", {
-          studioId: profile._id,
+          studioId: studio._id,
           sport,
           createdAt: now,
         }),
       ),
     );
 
-    await ctx.db.patch("studioProfiles", profile._id, {
+    await ctx.db.patch("studioProfiles", studio._id, {
       studioName,
       bio,
       contactPhone,
       socialLinks,
+      updatedAt: now,
+    });
+    await ctx.db.patch("studioBranches", primaryBranch._id, {
+      contactPhone,
       updatedAt: now,
     });
 
@@ -1124,9 +1244,14 @@ export const getMyStudioNotificationSettings = query({
     if (!profile) {
       return null;
     }
+    const primaryBranch = await getPrimaryStudioBranch(ctx, profile._id);
 
-    const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
-    const notificationsEnabled = Boolean(profile.notificationsEnabled) && hasExpoPushToken;
+    const hasExpoPushToken = Boolean(
+      trimOptionalString(primaryBranch?.expoPushToken ?? profile.expoPushToken),
+    );
+    const notificationsEnabled =
+      Boolean(primaryBranch?.notificationsEnabled ?? profile.notificationsEnabled) &&
+      hasExpoPushToken;
 
     return {
       studioId: profile._id,
@@ -1147,17 +1272,23 @@ export const updateMyStudioNotificationSettings = mutation({
     hasExpoPushToken: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    const user = await requireUserRole(ctx, ["studio"]);
-    const profile = await requireStudioProfileByUserId(ctx, user._id);
+    const now = Date.now();
+    const { studio } = await requireStudioOwnerContext(ctx);
+    const { branch: primaryBranch } = await ensureStudioInfrastructure(ctx, studio, now);
 
-    const nextPushToken = trimOptionalString(args.expoPushToken) ?? profile.expoPushToken;
+    const nextPushToken = trimOptionalString(args.expoPushToken) ?? primaryBranch.expoPushToken;
     const hasExpoPushToken = Boolean(trimOptionalString(nextPushToken));
     const notificationsEnabled = args.notificationsEnabled && hasExpoPushToken;
 
-    await ctx.db.patch("studioProfiles", profile._id, {
+    await ctx.db.patch("studioProfiles", studio._id, {
       ...omitUndefined({ expoPushToken: nextPushToken }),
       notificationsEnabled,
-      updatedAt: Date.now(),
+      updatedAt: now,
+    });
+    await ctx.db.patch("studioBranches", primaryBranch._id, {
+      ...omitUndefined({ expoPushToken: nextPushToken }),
+      notificationsEnabled,
+      updatedAt: now,
     });
 
     return {

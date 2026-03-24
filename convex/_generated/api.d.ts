@@ -43,6 +43,7 @@ import type * as rapyd from "../rapyd.js";
 import type * as rapydReturnBridge from "../rapydReturnBridge.js";
 import type * as resendMagicLink from "../resendMagicLink.js";
 import type * as resendOtp from "../resendOtp.js";
+import type * as studioBranches from "../studioBranches.js";
 import type * as userPushNotifications from "../userPushNotifications.js";
 import type * as users from "../users.js";
 import type * as webhookSecurity from "../webhookSecurity.js";
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   rapydReturnBridge: typeof rapydReturnBridge;
   resendMagicLink: typeof resendMagicLink;
   resendOtp: typeof resendOtp;
+  studioBranches: typeof studioBranches;
   userPushNotifications: typeof userPushNotifications;
   users: typeof users;
   webhookSecurity: typeof webhookSecurity;
