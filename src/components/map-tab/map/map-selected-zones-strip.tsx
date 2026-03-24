@@ -27,7 +27,7 @@ export function MapSelectedZonesStrip({
   focusZoneId,
   zoneLanguage,
   palette,
-  mapPalette,
+  mapPalette: _mapPalette,
   onPressZone,
 }: MapSelectedZonesStripProps) {
   const { t } = useTranslation();
@@ -55,8 +55,8 @@ export function MapSelectedZonesStrip({
               compact
               fullWidth={false}
               onPress={() => onPressZone(zone.id)}
-              backgroundColor={mapPalette.surfaceAlt}
-              selectedBackgroundColor={palette.surfaceElevated}
+              backgroundColor={palette.surfaceAlt}
+              selectedBackgroundColor={palette.primarySubtle}
               labelColor={palette.text}
               selectedLabelColor={palette.primary}
               style={{
@@ -75,7 +75,7 @@ export function MapSelectedZonesStrip({
             borderCurve: "continuous",
             paddingHorizontal: BrandSpacing.md,
             paddingVertical: BrandSpacing.xs,
-            backgroundColor: mapPalette.surfaceAlt as string,
+            backgroundColor: palette.surfaceAlt as string,
             justifyContent: "center",
           }}
         >

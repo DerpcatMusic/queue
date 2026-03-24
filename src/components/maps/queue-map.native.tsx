@@ -1,9 +1,10 @@
 import {
   Camera,
   GeoJSONSource,
-  Images,
   Layer,
   Map as MapLibreMap,
+  type MapRef,
+  Marker,
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -17,18 +18,17 @@ import { BrandRadius, BrandSpacing, getMapBrandPalette } from "@/constants/brand
 import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { Image } from "@/tw/image";
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
 import {
   type AnyStyleSpec,
   createPinShape,
-  createStudioMarkersGeoJson,
   createZoneFilter,
   ensureVectorOfflinePack,
   fetchMapStyleSpec,
   getCachedMapStyleSpec,
-  getStudioMarkerImageEntries,
   resolveThemedMapStyle,
   sanitizeZoom,
   toBounds,
@@ -43,9 +43,37 @@ const ATTRIBUTION_SIZE = BrandSpacing.iconContainer - BrandSpacing.xs;
 const ATTRIBUTION_ICON_SIZE = BrandSpacing.sm + BrandSpacing.xs;
 const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm;
 const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2;
+const STUDIO_MARKER_MIN_ZOOM = 12;
+const STUDIO_MARKER_NEAR_ZOOM = 14;
+const STUDIO_MARKER_CLOSE_ZOOM = 16;
+const STUDIO_MARKER_BORDER_WIDTH = BrandSpacing.xxs;
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 180;
+
+function getStudioMarkerMetrics(zoom: number) {
+  if (zoom >= STUDIO_MARKER_CLOSE_ZOOM) {
+    return {
+      outerSize: BrandSpacing.controlLg,
+      imageSize: BrandSpacing.controlMd,
+      tailSize: BrandSpacing.md,
+    };
+  }
+
+  if (zoom >= STUDIO_MARKER_NEAR_ZOOM) {
+    return {
+      outerSize: BrandSpacing.avatarMd,
+      imageSize: BrandSpacing.controlSm,
+      tailSize: BrandSpacing.sm + BrandSpacing.xxs,
+    };
+  }
+
+  return {
+    outerSize: BrandSpacing.iconContainer + BrandSpacing.sm,
+    imageSize: BrandSpacing.iconContainer - BrandSpacing.xs,
+    tailSize: BrandSpacing.sm + BrandSpacing.xxs,
+  };
+}
 
 export const QueueMap = memo(function QueueMap({
   mode,
@@ -75,6 +103,9 @@ export const QueueMap = memo(function QueueMap({
   const [mapErrorMessage, setMapErrorMessage] = useState<string | null>(null);
   const [baseMapStyle, setBaseMapStyle] = useState<AnyStyleSpec | null>(null);
   const [showLabelLayers, setShowLabelLayers] = useState(false);
+  const [currentZoom, setCurrentZoom] = useState(
+    pin ? APPLE_MAP_THEME.defaultZoomWithPin : APPLE_MAP_THEME.defaultZoomWithoutPin,
+  );
   const preferredStyleUrl =
     resolvedScheme === "dark" ? APPLE_MAP_THEME.mapStyleDarkUrl : APPLE_MAP_THEME.mapStyleLightUrl;
   const styleFetchUrl =
@@ -95,9 +126,7 @@ export const QueueMap = memo(function QueueMap({
   const mapStyle = themedMapStyle ?? preferredStyleUrl;
   const mapKey = `${resolvedScheme}:${retryNonce}`;
 
-  const mapRef = useRef<{
-    showAttribution?: () => void;
-  } | null>(null);
+  const mapRef = useRef<MapRef | null>(null);
   const mapLoadStateRef = useRef<MapLoadState>("loading");
   const cameraRef = useRef<{
     setStop: (config: unknown) => void;
@@ -108,12 +137,8 @@ export const QueueMap = memo(function QueueMap({
     [selectedZoneIds, zoneIdProperty],
   );
   const pinShape = useMemo(() => createPinShape(pin), [pin]);
-  const studioMarkerImages = useMemo(() => getStudioMarkerImageEntries(studios), [studios]);
-  const studioLogoShape = useMemo(() => createStudioMarkersGeoJson(studios, "logo"), [studios]);
-  const studioFallbackShape = useMemo(
-    () => createStudioMarkersGeoJson(studios, "fallback"),
-    [studios],
-  );
+  const studioMarkerMetrics = useMemo(() => getStudioMarkerMetrics(currentZoom), [currentZoom]);
+  const showStudioMarkers = studios.length > 0 && currentZoom >= STUDIO_MARKER_MIN_ZOOM;
   const handleRetry = useCallback(() => {
     setBaseMapStyle(null);
     setMapErrorMessage(null);
@@ -304,6 +329,10 @@ export const QueueMap = memo(function QueueMap({
         onDidFailLoadingMap={() => {
           updateMapLoadState("error", t("mapTab.native.unavailableBody"));
         }}
+        onRegionDidChange={(event) => {
+          const nextZoom = sanitizeZoom(event.nativeEvent.zoom, currentZoom);
+          setCurrentZoom((current) => (Math.abs(current - nextZoom) < 0.05 ? current : nextZoom));
+        }}
         onPress={(event: any) => {
           if (mode !== "pinDrop") return;
           if (!onPressMap) return;
@@ -335,80 +364,77 @@ export const QueueMap = memo(function QueueMap({
           onPressZone={onPressZone}
         />
 
-        {Object.keys(studioMarkerImages).length > 0 ? <Images images={studioMarkerImages} /> : null}
+        {showStudioMarkers
+          ? studios.map((studio) => {
+              const markerSize = studioMarkerMetrics.outerSize;
+              const imageSize = studioMarkerMetrics.imageSize;
+              const tailSize = studioMarkerMetrics.tailSize;
+              const hasLogo =
+                typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
 
-        <GeoJSONSource
-          id="queue-studio-fallback-source"
-          data={studioFallbackShape}
-          onPress={(event: any) => {
-            if (!onPressStudio) return;
-            const native = event?.nativeEvent ?? event;
-            const studioId = native?.features?.[0]?.properties?.studioId;
-            if (typeof studioId === "string") {
-              onPressStudio(studioId);
-            }
-          }}
-        >
-          <Layer
-            id="queue-studio-fallback-circle"
-            type="circle"
-            paint={{
-              "circle-radius": 12,
-              "circle-color": mapPalette.surfaceAlt,
-              "circle-stroke-color": mapPalette.primary,
-              "circle-stroke-width": 2,
-            }}
-          />
-          <Layer
-            id="queue-studio-fallback-label"
-            type="symbol"
-            layout={{
-              "text-field": ["get", "label"] as any,
-              "text-size": 10,
-              "text-font": ["Noto Sans Bold"] as any,
-              "text-allow-overlap": true,
-            }}
-            paint={{
-              "text-color": mapPalette.primary,
-              "text-halo-color": mapPalette.surfaceAlt,
-              "text-halo-width": 0.2,
-            }}
-          />
-        </GeoJSONSource>
-
-        <GeoJSONSource
-          id="queue-studio-logo-source"
-          data={studioLogoShape}
-          onPress={(event: any) => {
-            if (!onPressStudio) return;
-            const native = event?.nativeEvent ?? event;
-            const studioId = native?.features?.[0]?.properties?.studioId;
-            if (typeof studioId === "string") {
-              onPressStudio(studioId);
-            }
-          }}
-        >
-          <Layer
-            id="queue-studio-logo-halo"
-            type="circle"
-            paint={{
-              "circle-radius": 14,
-              "circle-color": mapPalette.surfaceAlt,
-              "circle-stroke-color": mapPalette.primary,
-              "circle-stroke-width": 2,
-            }}
-          />
-          <Layer
-            id="queue-studio-logo-symbol"
-            type="symbol"
-            layout={{
-              "icon-image": ["get", "iconKey"] as any,
-              "icon-size": 0.35,
-              "icon-allow-overlap": true,
-              "icon-ignore-placement": true,
-            }}
-          />
-        </GeoJSONSource>
+              return (
+                <Marker
+                  key={`studio-marker:${studio.studioId}`}
+                  id={`studio-marker:${studio.studioId}`}
+                  anchor="bottom"
+                  lngLat={[studio.longitude, studio.latitude]}
+                >
+                  <View style={{ alignItems: "center", paddingBottom: tailSize / 2 }}>
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: markerSize - tailSize / 2,
+                        width: tailSize,
+                        height: tailSize,
+                        borderLeftWidth: STUDIO_MARKER_BORDER_WIDTH,
+                        borderBottomWidth: STUDIO_MARKER_BORDER_WIDTH,
+                        borderLeftColor: palette.primary as string,
+                        borderBottomColor: palette.primary as string,
+                        backgroundColor: palette.surfaceElevated as string,
+                        transform: [{ rotate: "45deg" }],
+                      }}
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={studio.studioName}
+                      onPress={() => onPressStudio?.(studio.studioId)}
+                      style={({ pressed }) => ({
+                        width: markerSize,
+                        height: markerSize,
+                        borderRadius: markerSize / 2,
+                        borderCurve: "continuous",
+                        borderWidth: STUDIO_MARKER_BORDER_WIDTH,
+                        borderColor: palette.primary as string,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                        backgroundColor: pressed
+                          ? (palette.primarySubtle as string)
+                          : (palette.surfaceElevated as string),
+                      })}
+                    >
+                      {hasLogo ? (
+                        <Image
+                          source={studio.logoImageUrl as string}
+                          style={{
+                            width: imageSize,
+                            height: imageSize,
+                            borderRadius: imageSize / 2,
+                            borderCurve: "continuous",
+                          }}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <ThemedText type="bodyStrong" style={{ color: palette.primary as string }}>
+                          {studio.studioName.slice(0, 1).toUpperCase()}
+                        </ThemedText>
+                      )}
+                    </Pressable>
+                  </View>
+                </Marker>
+              );
+            })
+          : null}
 
         <GeoJSONSource id="queue-pin-source" data={pinShape}>
           <Layer

@@ -24,7 +24,7 @@ export function MapSheetHeader({
   onChangeSearch,
   onFocusSearch,
   palette,
-  mapPalette,
+  mapPalette: _mapPalette,
   selectedZones,
   onPressZone,
   t,
@@ -40,14 +40,14 @@ export function MapSheetHeader({
         placeholder={t("mapTab.searchPlaceholder")}
         clearAccessibilityLabel={t("common.clear")}
         size="sm"
-        containerStyle={{ backgroundColor: mapPalette.surfaceAlt as string }}
+        containerStyle={{ backgroundColor: palette.surfaceAlt as string }}
       />
       <MapSelectedZonesStrip
         selectedZones={selectedZones}
         focusZoneId={focusZoneId}
         zoneLanguage={zoneLanguage}
         palette={palette}
-        mapPalette={mapPalette}
+        mapPalette={_mapPalette}
         onPressZone={onPressZone}
       />
     </View>

@@ -35,7 +35,7 @@ export function MapSheetResults({
   zoneLanguage,
   zoneModeActive,
   palette,
-  mapPalette,
+  mapPalette: _mapPalette,
   onPressZone,
   onPressCity,
   onToggleCityExpanded,
@@ -86,7 +86,7 @@ export function MapSheetResults({
               paddingHorizontal: BrandSpacing.lg,
               paddingVertical: BrandSpacing.lg,
               gap: BrandSpacing.xs,
-              backgroundColor: mapPalette.surfaceAlt as string,
+              backgroundColor: palette.surfaceAlt as string,
             }}
           >
             <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
@@ -108,8 +108,8 @@ export function MapSheetResults({
                   borderRadius: MAP_RESULT_RADIUS,
                   borderCurve: "continuous",
                   backgroundColor: item.selected
-                    ? (palette.surfaceElevated as string)
-                    : (mapPalette.surfaceAlt as string),
+                    ? (palette.primarySubtle as string)
+                    : (palette.surfaceAlt as string),
                 }}
               >
                 <Pressable
@@ -176,10 +176,10 @@ export function MapSheetResults({
                 gap: BrandSpacing.md,
                 backgroundColor:
                   zoneModeActive && isFullySelected
-                    ? (palette.surfaceElevated as string)
+                    ? (palette.primarySubtle as string)
                     : isPartiallySelected
-                      ? (palette.surfaceElevated as string)
-                      : (mapPalette.surfaceAlt as string),
+                      ? (palette.primarySubtle as string)
+                      : (palette.surfaceAlt as string),
                 borderRadius: MAP_RESULT_RADIUS,
                 borderCurve: "continuous",
               }}
