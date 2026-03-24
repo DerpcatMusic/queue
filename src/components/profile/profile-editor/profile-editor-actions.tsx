@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { ActionButton } from "@/components/ui/action-button";
 import type { BrandPalette } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 
 type ProfileEditorActionsProps = {
   palette: BrandPalette;
@@ -19,7 +20,7 @@ export function ProfileEditorActions({
   const { t } = useTranslation();
 
   return (
-    <View style={{ flexDirection: "row", gap: 12 }}>
+    <View style={{ flexDirection: "row", gap: BrandSpacing.md }}>
       <View style={{ flex: 1 }}>
         <ActionButton
           label={isSaving ? t("profile.editor.saving") : t("profile.editor.save")}

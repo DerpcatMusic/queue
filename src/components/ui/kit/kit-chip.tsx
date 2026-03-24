@@ -1,6 +1,6 @@
 import { Pressable, Text } from "react-native";
 
-import { BrandRadius, BrandType } from "@/constants/brand";
+import { BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { triggerSelectionHaptic } from "./native-interaction";
 import type { KitChipProps } from "./types";
@@ -13,6 +13,17 @@ export function KitChip({
   style,
 }: KitChipProps) {
   const palette = useBrand();
+  const idleBackgroundColor = selected
+    ? (palette.primary as string)
+    : (palette.surfaceAlt as string);
+  const pressedBackgroundColor = selected
+    ? (palette.primaryPressed as string)
+    : (palette.surfaceElevated as string);
+  const disabledBackgroundColor = selected
+    ? (palette.primarySubtle as string)
+    : (palette.surface as string);
+  const textColor = selected ? (palette.onPrimary as string) : (palette.text as string);
+  const disabledTextColor = selected ? (palette.primary as string) : (palette.textMuted as string);
 
   return (
     <Pressable
@@ -23,17 +34,14 @@ export function KitChip({
         triggerSelectionHaptic();
         onPress();
       }}
+      className="items-center justify-center min-h-icon-container px-component-padding py-sm rounded-button-subtle"
       style={({ pressed }) => [
         {
-          minHeight: 40,
-          borderRadius: BrandRadius.button - 4,
-          borderCurve: "continuous",
-          alignItems: "center",
-          justifyContent: "center",
-          paddingHorizontal: 14,
-          paddingVertical: 8,
-          backgroundColor: selected ? (palette.primary as string) : (palette.surfaceAlt as string),
-          opacity: disabled ? 0.72 : 1,
+          backgroundColor: disabled
+            ? disabledBackgroundColor
+            : pressed
+              ? pressedBackgroundColor
+              : idleBackgroundColor,
           transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
         },
         style,
@@ -42,8 +50,7 @@ export function KitChip({
       <Text
         style={{
           ...BrandType.micro,
-          color: selected ? (palette.onPrimary as string) : (palette.text as string),
-          letterSpacing: 0.15,
+          color: disabled ? disabledTextColor : textColor,
           includeFontPadding: false,
         }}
       >

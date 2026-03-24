@@ -3,11 +3,17 @@ import { FlatList, Pressable, Text, View } from "react-native";
 import type { ZoneCityListItem } from "@/components/map-tab/zone-city-tree";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import {
+  type BrandPalette,
+  BrandRadius,
+  BrandSpacing,
+  BrandType,
+  type getMapBrandPalette,
+} from "@/constants/brand";
 import { useIsRtl } from "@/hooks/use-is-rtl";
 
 const MAP_RESULT_INDENT = BrandSpacing.xl + BrandSpacing.lg;
-const MAP_RESULT_RADIUS = BrandRadius.card - BrandSpacing.md;
+const MAP_RESULT_RADIUS = BrandRadius.hard;
 
 type MapSheetResultsProps = {
   isVisible: boolean;
@@ -16,6 +22,7 @@ type MapSheetResultsProps = {
   zoneLanguage: "en" | "he";
   zoneModeActive: boolean;
   palette: BrandPalette;
+  mapPalette: ReturnType<typeof getMapBrandPalette>;
   onPressZone: (zoneId: string) => void;
   onPressCity: (cityKey: string) => void;
   onToggleCityExpanded: (cityKey: string) => void;
@@ -28,6 +35,7 @@ export function MapSheetResults({
   zoneLanguage,
   zoneModeActive,
   palette,
+  mapPalette: _mapPalette,
   onPressZone,
   onPressCity,
   onToggleCityExpanded,
@@ -44,7 +52,7 @@ export function MapSheetResults({
       {saveError ? (
         <View
           style={{
-            borderRadius: BrandRadius.card - BrandSpacing.sm,
+            borderRadius: BrandRadius.medium,
             borderCurve: "continuous",
             paddingHorizontal: BrandSpacing.lg,
             paddingVertical: BrandSpacing.md,
@@ -66,16 +74,16 @@ export function MapSheetResults({
           gap: BrandSpacing.xs,
         }}
         keyboardShouldPersistTaps="handled"
-        initialNumToRender={20}
-        maxToRenderPerBatch={28}
-        windowSize={9}
+        initialNumToRender={12}
+        maxToRenderPerBatch={18}
+        windowSize={5}
         ItemSeparatorComponent={() => <View style={{ height: BrandSpacing.sm }} />}
         ListEmptyComponent={
           <View
             style={{
-              borderRadius: 20,
+              borderRadius: BrandRadius.medium,
               borderCurve: "continuous",
-              paddingHorizontal: BrandSpacing.lg + BrandSpacing.xs / 2,
+              paddingHorizontal: BrandSpacing.lg,
               paddingVertical: BrandSpacing.lg,
               gap: BrandSpacing.xs,
               backgroundColor: palette.surfaceAlt as string,
@@ -114,7 +122,7 @@ export function MapSheetResults({
                     paddingLeft: MAP_RESULT_INDENT,
                     paddingRight: BrandSpacing.lg,
                     paddingVertical: BrandSpacing.sm,
-                    opacity: pressed ? 0.92 : 1,
+                    backgroundColor: pressed ? (palette.surface as string) : undefined,
                   })}
                 >
                   <View
@@ -185,7 +193,7 @@ export function MapSheetResults({
                   gap: BrandSpacing.md,
                   paddingHorizontal: BrandSpacing.lg,
                   paddingVertical: BrandSpacing.sm,
-                  opacity: pressed ? 0.92 : 1,
+                  backgroundColor: pressed ? (palette.surface as string) : undefined,
                 })}
               >
                 <View style={{ flex: 1, gap: BrandSpacing.xs }}>
@@ -210,7 +218,6 @@ export function MapSheetResults({
                           : zoneModeActive && isFullySelected
                             ? (palette.primary as string)
                             : (palette.textMuted as string),
-                        opacity: 0.92,
                       }}
                     >
                       {summary}
@@ -236,9 +243,9 @@ export function MapSheetResults({
                   hitSlop={8}
                   onPress={() => onToggleCityExpanded(item.group.cityKey)}
                   style={({ pressed }) => ({
-                    paddingHorizontal: BrandSpacing.md,
+                    paddingHorizontal: BrandSpacing.controlX,
                     paddingVertical: BrandSpacing.sm,
-                    opacity: pressed ? 0.82 : 1,
+                    backgroundColor: pressed ? (palette.surface as string) : undefined,
                   })}
                 >
                   <IconSymbol

@@ -1,14 +1,9 @@
 import type { ReactNode } from "react";
-import type { TextStyle, ViewStyle } from "react-native";
+import type { ViewStyle } from "react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, {
-  FadeInRight,
-  FadeOutRight,
-  LinearTransition,
-  ReduceMotion,
-} from "react-native-reanimated";
+import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
 
-import { BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { triggerSelectionHaptic } from "./native-interaction";
 
@@ -25,6 +20,7 @@ type KitDisclosureButtonGroupProps<T extends string> = {
   expanded: boolean;
   onChange: (value: T) => void;
   onToggleExpanded: () => void;
+  showTriggerWhenExpanded?: boolean;
   triggerLabel?: string;
   triggerIcon?: ReactNode;
   accessibilityLabel: string;
@@ -39,20 +35,20 @@ type KitDisclosureButtonGroupProps<T extends string> = {
 
 const SIZE_PRESETS = {
   sm: {
-    railPadding: 4,
-    railRadius: 16,
-    sectionRadius: 12,
-    minHeight: 40,
-    paddingHorizontal: 14,
-    separatorInset: 10,
+    railPadding: BrandSpacing.xs,
+    railRadius: BrandRadius.buttonSubtle,
+    sectionRadius: BrandRadius.buttonSubtle,
+    minHeight: BrandSpacing.iconContainer,
+    paddingHorizontal: BrandSpacing.componentPadding,
+    separatorInset: BrandSpacing.sm + 2,
   },
   md: {
-    railPadding: 5,
-    railRadius: 18,
-    sectionRadius: 14,
-    minHeight: 44,
-    paddingHorizontal: 16,
-    separatorInset: 11,
+    railPadding: BrandSpacing.xs + 1,
+    railRadius: BrandRadius.input,
+    sectionRadius: BrandRadius.buttonSubtle,
+    minHeight: BrandSpacing.iconContainer + 6,
+    paddingHorizontal: BrandSpacing.lg,
+    separatorInset: BrandSpacing.sm + 3,
   },
 } as const;
 
@@ -64,6 +60,7 @@ export function KitDisclosureButtonGroup<T extends string>({
   expanded,
   onChange,
   onToggleExpanded,
+  showTriggerWhenExpanded = true,
   triggerLabel,
   triggerIcon,
   accessibilityLabel,
@@ -77,17 +74,18 @@ export function KitDisclosureButtonGroup<T extends string>({
 }: KitDisclosureButtonGroupProps<T>) {
   const palette = useBrand();
   const metrics = SIZE_PRESETS[size];
-  const resolvedRailColor = railColor ?? "rgba(24, 14, 46, 0.66)";
-  const resolvedSelectedColor = selectedColor ?? "rgba(255, 255, 255, 0.18)";
-  const resolvedLabelColor = labelColor ?? "rgba(255, 255, 255, 0.72)";
-  const resolvedSelectedLabelColor = selectedLabelColor ?? (palette.onPrimary as string);
-  const resolvedDividerColor = dividerColor ?? "rgba(255, 255, 255, 0.12)";
+  const resolvedRailColor = railColor ?? String(palette.primaryPressed);
+  const resolvedSelectedColor = selectedColor ?? String(palette.primary);
+  const resolvedLabelColor = labelColor ?? String(palette.onPrimary);
+  const resolvedSelectedLabelColor = selectedLabelColor ?? String(palette.onPrimary);
+  const resolvedDividerColor = dividerColor ?? String(palette.onPrimary);
+  const isIconOnlyTrigger = !triggerLabel;
 
   return (
     <Animated.View
       layout={DISCLOSURE_LAYOUT}
+      className="flex-row items-stretch overflow-hidden rounded-button-subtle"
       style={[
-        styles.rail,
         {
           backgroundColor: resolvedRailColor,
           minHeight: metrics.minHeight,
@@ -98,23 +96,19 @@ export function KitDisclosureButtonGroup<T extends string>({
       ]}
     >
       {expanded ? (
-        <Animated.View
-          layout={DISCLOSURE_LAYOUT}
-          entering={FadeInRight.duration(180)}
-          exiting={FadeOutRight.duration(140)}
-          style={styles.optionsRow}
-        >
+        <Animated.View layout={DISCLOSURE_LAYOUT} className="flex-row items-stretch">
           {options.map((option, index) => {
             const selected = option.value === value;
             return (
-              <View key={option.value} style={styles.segmentWrap}>
+              <View key={option.value} className="relative">
                 {index > 0 ? (
                   <View
                     pointerEvents="none"
+                    className="absolute"
                     style={[
-                      styles.divider,
-                      { backgroundColor: "rgba(255, 255, 255, 0.12)" },
                       {
+                        left: 0,
+                        width: StyleSheet.hairlineWidth,
                         top: metrics.separatorInset,
                         bottom: metrics.separatorInset,
                         backgroundColor: resolvedDividerColor,
@@ -125,14 +119,9 @@ export function KitDisclosureButtonGroup<T extends string>({
                 {selected ? (
                   <View
                     pointerEvents="none"
+                    className="absolute inset-0 rounded-button-subtle"
                     style={[
-                      styles.selectionFill,
                       {
-                        top: 0,
-                        right: 0,
-                        bottom: 0,
-                        left: 0,
-                        borderRadius: metrics.sectionRadius,
                         backgroundColor: resolvedSelectedColor,
                       },
                     ]}
@@ -146,25 +135,36 @@ export function KitDisclosureButtonGroup<T extends string>({
                     triggerSelectionHaptic();
                     onChange(option.value);
                   }}
-                  style={({ pressed }) => [styles.segmentButton, { opacity: pressed ? 0.9 : 1 }]}
+                  className="relative z-10"
+                  style={({ pressed }) => [
+                    {
+                      borderRadius: metrics.sectionRadius,
+                      backgroundColor: pressed ? String(palette.primaryPressed) : undefined,
+                    },
+                  ]}
                 >
                   <View
+                    className="flex-row items-center justify-center rounded-button-subtle"
                     style={[
-                      styles.segmentContent,
                       {
                         minHeight: metrics.minHeight,
                         paddingHorizontal: metrics.paddingHorizontal,
                       } satisfies ViewStyle,
                     ]}
                   >
-                    {option.icon ? <View style={styles.iconWrap}>{option.icon}</View> : null}
+                    {option.icon ? (
+                      <View className="items-center justify-center">{option.icon}</View>
+                    ) : null}
                     <Text
                       numberOfLines={1}
+                      className="text-center font-bold"
                       style={[
-                        styles.segmentLabel,
                         {
                           color: selected ? resolvedSelectedLabelColor : resolvedLabelColor,
-                        } satisfies TextStyle,
+                          ...BrandType.bodyMedium,
+                          includeFontPadding: false,
+                          textAlignVertical: "center" as const,
+                        },
                       ]}
                     >
                       {option.label}
@@ -177,94 +177,62 @@ export function KitDisclosureButtonGroup<T extends string>({
         </Animated.View>
       ) : null}
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={{ expanded }}
-        onPress={() => {
-          triggerSelectionHaptic();
-          onToggleExpanded();
-        }}
-        style={({ pressed }) => [
-          styles.segmentWrap,
-          styles.triggerPressable,
-          { opacity: pressed ? 0.92 : 1 },
-        ]}
+      <Animated.View
+        layout={DISCLOSURE_LAYOUT}
+        pointerEvents={expanded && !showTriggerWhenExpanded ? "none" : "auto"}
+        style={
+          expanded && !showTriggerWhenExpanded
+            ? {
+                width: 0,
+                marginLeft: 0,
+                marginRight: 0,
+                overflow: "hidden",
+              }
+            : undefined
+        }
       >
-        <View
-          style={[
-            styles.triggerButton,
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+          accessibilityState={{ expanded }}
+          onPress={() => {
+            triggerSelectionHaptic();
+            onToggleExpanded();
+          }}
+          className="justify-center"
+          style={({ pressed }) => [
             {
-              minHeight: metrics.minHeight,
-              paddingHorizontal: triggerLabel ? metrics.paddingHorizontal : 12,
               borderRadius: metrics.sectionRadius,
-            } satisfies ViewStyle,
+              backgroundColor: pressed ? String(palette.primaryPressed) : undefined,
+            },
           ]}
         >
-          {triggerIcon ? <View style={styles.iconWrap}>{triggerIcon}</View> : null}
-          {triggerLabel ? (
-            <Text style={[styles.segmentLabel, { color: palette.onPrimary as string }]}>
-              {triggerLabel}
-            </Text>
-          ) : null}
-        </View>
-      </Pressable>
+          <View
+            className="flex-row items-center justify-center rounded-button-subtle"
+            style={[
+              {
+                minHeight: metrics.minHeight,
+                ...(isIconOnlyTrigger
+                  ? {
+                      width: metrics.minHeight,
+                    }
+                  : {
+                      paddingHorizontal: metrics.paddingHorizontal,
+                    }),
+              } satisfies ViewStyle,
+            ]}
+          >
+            {triggerIcon ? (
+              <View className="items-center justify-center">{triggerIcon}</View>
+            ) : null}
+            {triggerLabel ? (
+              <Text className="font-bold" style={{ color: String(palette.onPrimary) }}>
+                {triggerLabel}
+              </Text>
+            ) : null}
+          </View>
+        </Pressable>
+      </Animated.View>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  rail: {
-    borderCurve: "continuous",
-    flexDirection: "row",
-    alignItems: "stretch",
-    overflow: "hidden",
-  },
-  optionsRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-  },
-  segmentWrap: {
-    position: "relative",
-  },
-  divider: {
-    position: "absolute",
-    left: 0,
-    width: StyleSheet.hairlineWidth,
-    opacity: 0.5,
-  },
-  selectionFill: {
-    position: "absolute",
-  },
-  segmentButton: {
-    position: "relative",
-    zIndex: 1,
-  },
-  segmentContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  triggerPressable: {
-    justifyContent: "center",
-  },
-  triggerButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  iconWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  segmentLabel: {
-    ...BrandType.bodyMedium,
-    fontSize: 15,
-    fontWeight: "700",
-    includeFontPadding: false,
-    textAlign: "center",
-    textAlignVertical: "center",
-  },
-});

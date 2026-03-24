@@ -184,10 +184,6 @@ export function StudioFeed() {
               tone="error"
               message={errorMessage}
               onDismiss={() => setErrorMessage(null)}
-              borderColor="transparent"
-              backgroundColor={palette.dangerSubtle}
-              textColor={palette.danger}
-              iconColor={palette.danger}
             />
           ) : null}
           {statusMessage ? (
@@ -195,10 +191,6 @@ export function StudioFeed() {
               tone="success"
               message={statusMessage}
               onDismiss={() => setStatusMessage(null)}
-              borderColor="transparent"
-              backgroundColor={palette.successSubtle}
-              textColor={palette.text}
-              iconColor={palette.success as import("react-native").ColorValue}
             />
           ) : null}
           {studioJobs === undefined ? (
@@ -341,10 +333,10 @@ const styles = StyleSheet.create({
     gap: BrandSpacing.md,
   },
   emptyStateWrap: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingHorizontal: BrandSpacing.lg,
+    paddingVertical: BrandSpacing.inset,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: BrandSpacing.sm,
   },
 });

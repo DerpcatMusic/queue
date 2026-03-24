@@ -16,6 +16,8 @@ export type BrandPalette = {
   text: ColorValue;
   textMuted: ColorValue;
   textMicro: ColorValue;
+  onPrimaryShadowStrong: ColorValue;
+  onPrimaryShadowSoft: ColorValue;
   // Brand
   primary: ColorValue;
   primarySubtle: ColorValue;
@@ -67,6 +69,8 @@ const ExplicitBrandPalette: Record<ResolvedBrandScheme, BrandPalette> = {
     text: "#181522",
     textMuted: "#6D6580",
     textMicro: "#8E86A0",
+    onPrimaryShadowStrong: "#00000052",
+    onPrimaryShadowSoft: "#0000003D",
     primary: "#8B5CF6",
     primarySubtle: "#E8DDFF",
     primaryPressed: "#7443F0",
@@ -113,6 +117,8 @@ const ExplicitBrandPalette: Record<ResolvedBrandScheme, BrandPalette> = {
     text: "#F7F4FE",
     textMuted: "#B8B0CA",
     textMicro: "#8C849E",
+    onPrimaryShadowStrong: "#00000052",
+    onPrimaryShadowSoft: "#0000003D",
     primary: "#8F6AFB",
     primarySubtle: "#36285C",
     primaryPressed: "#7A55F3",
@@ -155,44 +161,52 @@ const ExplicitBrandPalette: Record<ResolvedBrandScheme, BrandPalette> = {
 
 const NativeMapBrandPalette = {
   light: {
-    styleBackground: "#E8F0E7",
-    waterFill: "#B9D7F2",
-    waterLine: "#88B9E8",
-    landcover: "#D5E8C8",
-    roadLine: "#FFFFFF",
-    buildingFill: "#E3DDD4",
-    zoneOutline: "#8F9987",
+    styleBackground: "#F4F6F8",
+    waterFill: "#B2D3ED",
+    waterLine: "#84B2D9",
+    landcover: "#E1E8DE",
+    roadLine: "#EEF1F4",
+    roadPrimary: "#E1E6EC",
+    roadSecondary: "#CCD3DB",
+    roadTertiary: "#B8C2CD",
+    buildingFill: "#D8DDE3",
+    zoneOutline: "#8E9C84",
     zoneOutlineOpacity: 0.28,
-    previewFill: "#A8C8A0",
+    previewFill: "#CFE5BC",
     previewFillOpacity: 0.14,
-    previewOutline: "#7A8D74",
+    previewOutline: "#95B85F",
     previewOutlineOpacity: 0.42,
-    selectedOutline: "#7C3AED",
+    selectedOutline: "#8FBF3C",
     selectedOutlineOpacity: 1.0,
-    surfaceAlt: "#F7FBF4",
-    primary: "#7C3AED", // Vibrant purple
-    text: "#182018",
-    textHalo: "#F7FBF4",
+    surfaceAlt: "#F8FAFB",
+    primary: "#8FBF3C",
+    markerAccent: "#2AA8E8",
+    text: "#252A31",
+    textHalo: "#F8FAFB",
   },
   dark: {
-    styleBackground: "#0E1412",
-    waterFill: "#14344D",
-    waterLine: "#22567D",
-    landcover: "#18241B",
-    roadLine: "#313942",
-    buildingFill: "#22272B",
-    zoneOutline: "#4C5A50",
+    styleBackground: "#14181D",
+    waterFill: "#1A3447",
+    waterLine: "#365B76",
+    landcover: "#1A2024",
+    roadLine: "#2A3138",
+    roadPrimary: "#4B5563",
+    roadSecondary: "#343B44",
+    roadTertiary: "#2B3138",
+    buildingFill: "#20262C",
+    zoneOutline: "#5A6870",
     zoneOutlineOpacity: 0.38,
-    previewFill: "#213126",
+    previewFill: "#253224",
     previewFillOpacity: 0.16,
-    previewOutline: "#657868",
+    previewOutline: "#8CAF5A",
     previewOutlineOpacity: 0.56,
-    selectedOutline: "#A78BFA",
+    selectedOutline: "#A5CF5A",
     selectedOutlineOpacity: 1.0,
-    surfaceAlt: "#141C17",
-    primary: "#A78BFA", // Vibrant light purple
-    text: "#EEF3EA",
-    textHalo: "#0E1412",
+    surfaceAlt: "#1B2026",
+    primary: "#A5CF5A",
+    markerAccent: "#59C6F6",
+    text: "#E8EDF2",
+    textHalo: "#1B2026",
   },
 } as const;
 
@@ -212,24 +226,57 @@ export const MapBrandPalette = NativeMapBrandPalette;
 // ─── Spacing & Radius ────────────────────────────────────────────────────────
 
 export const BrandRadius = {
-  card: 24,
-  cardSubtle: 18, // card - 6, for nested/inner elements
-  button: 20,
-  buttonSubtle: 14, // for smaller button-like elements
-  input: 20,
+  hard: 12,
+  medium: 18,
+  soft: 24,
   pill: 999,
-  icon: 999, // circular for icon containers
+  card: 24,
+  cardSubtle: 18,
+  button: 20,
+  buttonSubtle: 14,
+  input: 20,
+  icon: 999,
+  circle: 999,
 } as const;
 
 export const BrandSpacing = {
+  xxs: 2,
   xs: 4,
   sm: 8,
   md: 12,
   lg: 16,
   xl: 24,
   xxl: 32,
-  componentPadding: 14, // standard inner padding for cards/components
-  iconContainer: 38, // standard icon button/touch target size
+  componentPadding: 14,
+  iconContainer: 38,
+  iconContainerLarge: 78,
+  haloSize: 180,
+  mapMinHeight: 300,
+  mapCanvasMinHeight: 320,
+  multilineInputMinHeight: 96,
+  stackTight: 8,
+  stack: 12,
+  stackRoomy: 16,
+  stackLoose: 24,
+  insetTight: 12,
+  inset: 16,
+  insetRoomy: 24,
+  section: 32,
+  controlX: 14,
+  controlY: 12,
+  controlSm: 38,
+  controlMd: 44,
+  controlLg: 52,
+  iconSm: 18,
+  iconMd: 24,
+  iconLg: 32,
+  avatarSm: 38,
+  avatarMd: 48,
+  avatarLg: 78,
+  shellRail: 236,
+  shellPanel: 320,
+  shellCommandPanel: 360,
+  statusDot: 6,
 } as const;
 
 // ─── Typography ──────────────────────────────────────────────────────────────

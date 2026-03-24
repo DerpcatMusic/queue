@@ -43,6 +43,8 @@ export function TopSheetSearchBar({
     setIsFocused(false);
     onBlur?.();
   };
+  const pressedBackgroundColor = (palette.surface ?? palette.surfaceAlt) as string;
+  const clearButtonColor = palette.text as string;
 
   return (
     <Pressable
@@ -53,7 +55,6 @@ export function TopSheetSearchBar({
         alignItems: "center",
         gap: BrandSpacing.sm,
         minHeight: BrandSpacing.xxl + BrandSpacing.md,
-        backgroundColor: (palette.appBg ?? palette.surfaceAlt) as string,
         borderRadius: BrandRadius.input,
         borderCurve: "continuous" as const,
         paddingHorizontal: BrandSpacing.lg,
@@ -62,7 +63,15 @@ export function TopSheetSearchBar({
         borderColor: isFocused
           ? (palette.primary as string)
           : ((palette.borderStrong ?? palette.surfaceAlt) as string),
-        opacity: pressed ? 0.96 : 1,
+        backgroundColor: pressed
+          ? pressedBackgroundColor
+          : ((palette.appBg ?? palette.surfaceAlt) as string),
+        borderTopColor: isFocused
+          ? (palette.primary as string)
+          : ((palette.borderStrong ?? palette.surfaceAlt) as string),
+        borderLeftColor: isFocused
+          ? (palette.primary as string)
+          : ((palette.borderStrong ?? palette.surfaceAlt) as string),
       })}
     >
       <IconSymbol name="magnifyingglass" size={18} color={palette.textMuted as string} />
@@ -90,9 +99,12 @@ export function TopSheetSearchBar({
         <Pressable
           onPress={() => onChangeText("")}
           hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          style={({ pressed }) => ({
+            borderRadius: BrandRadius.pill,
+            backgroundColor: pressed ? pressedBackgroundColor : clearButtonColor,
+          })}
         >
-          <IconSymbol name="xmark.circle.fill" size={18} color={palette.textMuted as string} />
+          <IconSymbol name="xmark.circle.fill" size={18} color={palette.primary as string} />
         </Pressable>
       ) : null}
     </Pressable>

@@ -4,8 +4,6 @@ import type { ColorValue } from "react-native";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 
-const TRANSPARENT = "transparent";
-
 function resolveStringColor(...colors: unknown[]) {
   for (const color of colors) {
     if (typeof color === "string") return color;
@@ -117,7 +115,7 @@ export function useKitTheme() {
         primary: palette.primary,
         primarySubtle: palette.primarySubtle,
         dangerSubtle: palette.dangerSubtle,
-        transparent: TRANSPARENT,
+        transparent: palette.surface,
       },
       foreground: {
         primary: palette.onPrimary,
@@ -130,7 +128,7 @@ export function useKitTheme() {
         primary: resolveColorValue(palette.borderStrong, palette.border, palette.border),
         secondary: resolveColorValue(palette.border, palette.borderStrong, palette.border),
         highlight: highlightBorder,
-        transparent: TRANSPARENT,
+        transparent: palette.border,
       },
       shadow: {
         primaryLift: primaryLiftShadow,

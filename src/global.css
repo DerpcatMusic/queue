@@ -1,0 +1,128 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+@import "nativewind/theme";
+
+/* ─── Brand Spacing ──────────────────────────────────────────── */
+/* These map to Tailwind spacing utilities: gap-lg, px-lg, py-lg, mx-lg, my-lg, etc. */
+@theme {
+  --spacing-xxs: 2px;
+  --spacing-stack-tight: 8px;
+  --spacing-stack: 12px;
+  --spacing-stack-roomy: 16px;
+  --spacing-stack-loose: 24px;
+  --spacing-inset-tight: 12px;
+  --spacing-inset: 16px;
+  --spacing-inset-roomy: 24px;
+  --spacing-section: 32px;
+  --spacing-control-x: 14px;
+  --spacing-control-y: 12px;
+  --spacing-control-sm: 38px;
+  --spacing-control-md: 44px;
+  --spacing-control-lg: 52px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+  --spacing-component-padding: 14px;
+  --spacing-icon-container: 38px;
+  --spacing-icon-container-large: 78px;
+  --spacing-shell-rail: 236px;
+  --spacing-shell-panel: 320px;
+  --spacing-shell-command-panel: 360px;
+  --spacing-halo-size: 180px;
+  --spacing-map-min-height: 300px;
+  --spacing-map-canvas-min-height: 320px;
+  --spacing-multiline-input-min-height: 96px;
+}
+
+/* ─── Brand Radius ───────────────────────────────────────────── */
+/* These map to: rounded-card, rounded-button, rounded-pill, etc. */
+@theme {
+  --radius-hard: 12px;
+  --radius-medium: 18px;
+  --radius-soft: 24px;
+  --radius-pill: 999px;
+  --radius-card: 24px;
+  --radius-card-subtle: 18px;
+  --radius-button: 20px;
+  --radius-button-subtle: 14px;
+  --radius-input: 20px;
+  --radius-pill: 999px;
+  --radius-circle: 999px;
+}
+
+/* ─── Brand Colors (Light Mode) ─────────────────────────────── */
+/* These map to: text-primary, bg-primary, border-primary, ring-primary, etc. */
+/* Dynamic runtime colors are injected via CSS variables (set by vars() or VariableContextProvider) */
+@theme {
+  /* Brand */
+  --color-primary: #8b5cf6;
+  --color-primary-subtle: #e8ddff;
+  --color-primary-pressed: #7443f0;
+
+  /* Semantic */
+  --color-success: #169c52;
+  --color-success-subtle: #ddf7e6;
+  --color-danger: #d43b4e;
+  --color-danger-subtle: #ffe3e8;
+  --color-warning: #d68116;
+  --color-warning-subtle: #fff1d8;
+
+  /* Surfaces */
+  --color-surface: #ffffff;
+  --color-surface-alt: #f1ecf8;
+  --color-surface-elevated: #ffffff;
+  --color-app-bg: #f6f4fb;
+
+  /* Borders */
+  --color-border: #ddd6ea;
+  --color-border-strong: #b8afcb;
+
+  /* Text */
+  --color-text: #181522;
+  --color-text-muted: #6d6580;
+  --color-text-micro: #8e86a0;
+
+  /* Accent (overridable via vars() at runtime) */
+  --color-accent: #8b5cf6;
+  --color-accent-subtle: #e8ddff;
+}
+
+/* ─── Dark Mode ──────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #8f6afb;
+    --color-primary-subtle: #2d2066;
+    --color-primary-pressed: #a78bfa;
+
+    --color-surface: #121020;
+    --color-surface-alt: #1c1830;
+    --color-surface-elevated: #252238;
+    --color-app-bg: #0b0910;
+
+    --color-border: #2d2850;
+    --color-border-strong: #3d3870;
+
+    --color-text: #f5f3ff;
+    --color-text-muted: #a8a0c0;
+    --color-text-micro: #7870a0;
+  }
+}
+
+/* ─── Platform Fonts ─────────────────────────────────────────── */
+@media ios {
+  :root {
+    --font-sans: system-ui;
+    --font-rounded: ui-rounded;
+  }
+}
+
+@media android {
+  :root {
+    --font-sans: normal;
+    --font-rounded: normal;
+  }
+}

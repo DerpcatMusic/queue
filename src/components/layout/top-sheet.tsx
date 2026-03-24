@@ -3,7 +3,6 @@ import type { ColorValue, StyleProp, ViewStyle } from "react-native";
 import { useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -16,10 +15,10 @@ import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import {
   DEFAULT_STEPS,
+  getTopSheetStepHeights,
   HANDLE_HEIGHT,
   HANDLE_PILL_HEIGHT,
   HANDLE_PILL_WIDTH,
-  MIN_BOTTOM_CHROME_ESTIMATE,
   SHEET_SPRING,
 } from "./top-sheet.helpers";
 import { TopSheetSearchBar } from "./top-sheet-search-bar";
@@ -81,7 +80,6 @@ function DragHandle({ borderColor }: { borderColor: ColorValue }) {
           height: HANDLE_PILL_HEIGHT,
           borderRadius: BrandRadius.pill,
           backgroundColor: borderColor,
-          opacity: 0.5,
         }}
       />
     </View>
@@ -143,14 +141,10 @@ export function TopSheet({
     };
   }, [resolvedInsetColor, setTopInsetBackgroundColor, setTopInsetTone]);
 
-  // Available height for sheet steps (screen minus safe top minus bottom tabs)
-  const bottomChromeEstimate = Math.max(MIN_BOTTOM_CHROME_ESTIMATE, safeBottom + 64);
-  const availableHeight = screenHeight - safeTop - bottomChromeEstimate;
-
   // Compute step heights in pixels
   const stepHeights = useMemo(
-    () => steps.map((s) => Math.round(s * availableHeight)),
-    [steps, availableHeight],
+    () => getTopSheetStepHeights(steps, screenHeight, safeTop, safeBottom),
+    [safeBottom, safeTop, screenHeight, steps],
   );
 
   // Sheet height shared value
@@ -266,12 +260,12 @@ export function TopSheet({
     backgroundColor: animatedBackground.value,
   }));
   const revealStyle = useAnimatedStyle(() => ({
-    flex: 1,
+    flex: expandedProgress.value,
     minHeight: 0,
-    opacity: expandedProgress.value,
+    overflow: "hidden",
     transform: [
       {
-        translateY: interpolate(expandedProgress.value, [0, 1], [8, 0]),
+        translateY: (1 - expandedProgress.value) * 8,
       },
     ],
   }));

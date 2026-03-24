@@ -15,9 +15,7 @@
         "ExpoLocalization_supportsRTL": true,
         "CFBundleLocalizations": ["en", "he", "en", "he"],
         "NFCReaderUsageDescription": "NFC is used to read passport and identity document chips during verification.",
-        "com.apple.developer.nfc.readersession.iso7816.select-identifiers": [
-          "A0000002471001"
-        ]
+        "com.apple.developer.nfc.readersession.iso7816.select-identifiers": ["A0000002471001"]
       },
       "bundleIdentifier": "com.derpcat.queue",
       "privacyManifests": {

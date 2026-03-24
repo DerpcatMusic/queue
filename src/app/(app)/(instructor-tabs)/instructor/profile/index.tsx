@@ -8,8 +8,10 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
+import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
+import { useMeasuredContentHeight } from "@/components/layout/use-measured-content-height";
 import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
 import {
   ProfileSectionCard,
@@ -17,11 +19,7 @@ import {
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
-import {
-  getProfileHeaderExpandedHeight,
-  ProfileDesktopHeroPanel,
-  ProfileHeaderSheet,
-} from "@/components/profile/profile-tab";
+import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
 import { KitSwitch } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
@@ -247,29 +245,36 @@ export default function InstructorProfileScreen() {
     (socialCount > 0
       ? t("profile.settings.publicProfileActive", { count: socialCount })
       : t("profile.settings.publicProfilePrompt"));
-  const profileHeaderHeight = useMemo(() => getProfileHeaderExpandedHeight(safeTop), [safeTop]);
+  const { measuredHeight: profileMeasuredHeight, onLayout: onProfileHeaderLayout } =
+    useMeasuredContentHeight();
+  const profileHeaderHeight = useMemo(
+    () => safeTop + (profileMeasuredHeight > 0 ? profileMeasuredHeight : 128),
+    [profileMeasuredHeight, safeTop],
+  );
   const profileSheetStep = useMemo(() => {
-    const availableHeight = Math.max(1, screenHeight - safeTop - 80);
+    const availableHeight = Math.max(1, getTopSheetAvailableHeight(screenHeight, safeTop, 0));
     return Math.max(0.12, Math.min(0.34, profileHeaderHeight / availableHeight));
   }, [profileHeaderHeight, safeTop, screenHeight]);
   const profileSheetContent = useMemo(
     () => (
-      <ProfileHeaderSheet
-        profileName={nameValue}
-        roleLabel={
-          identityVerified
-            ? t("profile.hero.verifiedInstructor")
-            : t("profile.hero.instructorProfile")
-        }
-        profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
-        palette={palette}
-        onRequestEdit={handleRequestEdit}
-        primaryActionLabel={t("profile.actions.edit")}
-        status={profileStatus}
-        bio={instructorSettings?.bio}
-        socialLinks={instructorSettings?.socialLinks}
-        sports={instructorSettings?.sports ?? []}
-      />
+      <View onLayout={onProfileHeaderLayout}>
+        <ProfileHeaderSheet
+          profileName={nameValue}
+          roleLabel={
+            identityVerified
+              ? t("profile.hero.verifiedInstructor")
+              : t("profile.hero.instructorProfile")
+          }
+          profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+          palette={palette}
+          onRequestEdit={handleRequestEdit}
+          primaryActionLabel={t("profile.actions.edit")}
+          status={profileStatus}
+          bio={instructorSettings?.bio}
+          socialLinks={instructorSettings?.socialLinks}
+          sports={instructorSettings?.sports ?? []}
+        />
+      </View>
     ),
     [
       currentUser?.image,
@@ -280,6 +285,7 @@ export default function InstructorProfileScreen() {
       instructorSettings?.socialLinks,
       instructorSettings?.sports,
       nameValue,
+      onProfileHeaderLayout,
       palette,
       profileStatus,
       t,
@@ -288,7 +294,9 @@ export default function InstructorProfileScreen() {
 
   const profileSheetConfig = useMemo(
     () => ({
-      content: profileSheetContent,
+      render: () => ({
+        children: profileSheetContent,
+      }),
       steps: [profileSheetStep],
       initialStep: 0,
       padding: {
@@ -304,7 +312,11 @@ export default function InstructorProfileScreen() {
   const isProfileIndexRoute =
     pathname === INSTRUCTOR_PROFILE_ROUTE || pathname.endsWith("/profile");
 
-  useGlobalTopSheet("profile", !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null);
+  useGlobalTopSheet(
+    "profile",
+    !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null,
+    "profile:index:instructor",
+  );
 
   if (
     !hasActivated ||
@@ -559,7 +571,7 @@ export default function InstructorProfileScreen() {
           routeKey="instructor/profile"
           style={styles.screen}
           contentContainerStyle={{
-            gap: 18,
+            gap: BrandSpacing.xl,
           }}
           topSpacing={18}
           bottomSpacing={32}

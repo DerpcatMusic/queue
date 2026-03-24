@@ -1,7 +1,7 @@
 import { I18nManager, Pressable, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 
 type SheetHeaderBlockProps = {
@@ -29,7 +29,6 @@ export function SheetHeaderBlock({
 }: SheetHeaderBlockProps) {
   const palette = useBrand();
   const foregroundColor = tone === "primary" ? palette.onPrimary : palette.text;
-  const mutedColor = tone === "primary" ? palette.onPrimary : palette.textMuted;
   const inactiveProgress = tone === "primary" ? palette.primaryPressed : palette.surfaceAlt;
   const trailingBackgroundColor =
     trailingTone === "danger"
@@ -43,23 +42,27 @@ export function SheetHeaderBlock({
       : tone === "primary"
         ? (palette.onPrimary as string)
         : (palette.text as string);
+  const subtitleColor = tone === "primary" ? palette.onPrimary : palette.textMuted;
+  const pressedTrailingBackgroundColor =
+    trailingTone === "danger"
+      ? (palette.danger as string)
+      : tone === "primary"
+        ? (palette.primary as string)
+        : (palette.surfaceElevated as string);
 
   return (
-    <View style={{ gap: BrandSpacing.md }}>
+    <View className="gap-md">
       <View
+        className="items-center justify-between gap-md"
         style={{
           flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: BrandSpacing.md,
         }}
       >
         {progressCount && progressIndex ? (
           <View
+            className="items-center gap-sm"
             style={{
               flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
-              alignItems: "center",
-              gap: BrandSpacing.sm,
             }}
           >
             {Array.from({ length: progressCount }, (_, index) => {
@@ -68,12 +71,11 @@ export function SheetHeaderBlock({
               return (
                 <View
                   key={`progress-${index + 1}`}
+                  className="rounded-pill"
                   style={{
                     width: isCurrent ? 28 : 18,
                     height: 8,
-                    borderRadius: BrandRadius.pill,
                     backgroundColor: (isActive ? foregroundColor : inactiveProgress) as string,
-                    opacity: isCurrent ? 1 : isActive ? 0.82 : 0.48,
                   }}
                 />
               );
@@ -88,22 +90,23 @@ export function SheetHeaderBlock({
             accessibilityRole="button"
             accessibilityLabel={trailingLabel}
             onPress={onPressTrailing}
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.72 : 1,
-            })}
+            style={({ pressed }) => [
+              {
+                borderRadius: BrandSpacing.lg,
+                borderCurve: "continuous",
+                backgroundColor: pressed ? pressedTrailingBackgroundColor : trailingBackgroundColor,
+              },
+            ]}
           >
             <View
+              className="flex-row items-center justify-center gap-xs rounded-medium"
               style={{
-                minHeight: 42,
-                borderRadius: BrandRadius.button - 2,
+                minHeight: BrandSpacing.controlMd,
                 borderCurve: "continuous",
                 backgroundColor: trailingBackgroundColor,
-                paddingHorizontal: 14,
-                paddingVertical: 9,
+                paddingHorizontal: BrandSpacing.controlX,
+                paddingVertical: BrandSpacing.sm,
                 flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
               }}
             >
               {trailingIcon}
@@ -115,12 +118,12 @@ export function SheetHeaderBlock({
         ) : null}
       </View>
 
-      <View style={{ gap: 6 }}>
+      <View className="gap-xs">
         <ThemedText type="title" style={{ color: foregroundColor as string }}>
           {title}
         </ThemedText>
         {subtitle ? (
-          <ThemedText type="caption" style={{ color: mutedColor as string, opacity: 0.84 }}>
+          <ThemedText type="caption" style={{ color: subtitleColor as string }}>
             {subtitle}
           </ThemedText>
         ) : null}

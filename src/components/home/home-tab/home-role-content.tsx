@@ -1,3 +1,4 @@
+import { useMutation } from "convex/react";
 import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
@@ -6,12 +7,22 @@ import { StudioHomeContent } from "@/components/home/studio-home-content";
 import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
 import { LoadingScreen } from "@/components/loading-screen";
 import type { BrandPalette } from "@/constants/brand";
+import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
 const STUDIO_JOBS_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.jobs);
 const STUDIO_CALENDAR_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.calendar);
+
+export type Application = {
+  applicationId: Id<"jobApplications">;
+  instructorId: Id<"instructorProfiles">;
+  instructorName: string;
+  status: "pending" | "accepted" | "rejected" | "withdrawn";
+  appliedAt: number;
+  message?: string;
+};
 
 export type HomeRoleContentProps = {
   activeRole: "instructor" | "studio";
@@ -50,6 +61,7 @@ export type HomeRoleContentProps = {
         endTime: number;
         pay: number;
         pendingApplicationsCount: number;
+        applications?: Application[];
       }>
     | undefined;
 };
@@ -67,6 +79,8 @@ export function HomeRoleContent({
   myStudioJobs,
 }: HomeRoleContentProps) {
   const router = useRouter();
+  const reviewApplication = useMutation(api.jobs.reviewApplication);
+
   const openInstructorStudio = (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => {
     router.push(`/instructor/jobs/studios/${String(studioId)}?jobId=${String(jobId)}` as Href);
   };
@@ -122,6 +136,7 @@ export function HomeRoleContent({
       jobsFilled={jobsFilled}
       onOpenJobs={() => router.push(STUDIO_JOBS_ROUTE)}
       onOpenCalendar={() => router.push(STUDIO_CALENDAR_ROUTE)}
+      reviewApplication={reviewApplication}
     />
   );
 }

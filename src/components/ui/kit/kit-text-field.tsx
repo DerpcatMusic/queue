@@ -1,6 +1,6 @@
 import { Text, TextInput, View } from "react-native";
 
-import { BrandRadius } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import type { KitTextFieldProps } from "./types";
 
@@ -19,11 +19,11 @@ export function KitTextField({
   const isMultiline = Boolean(inputProps.multiline);
 
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: BrandSpacing.xs + 2 }}>
       {label ? (
         <Text
           style={{
-            fontSize: 14,
+            ...BrandType.caption,
             fontWeight: "500",
             color: palette.text as string,
             includeFontPadding: false,
@@ -34,16 +34,16 @@ export function KitTextField({
         </Text>
       ) : null}
       <View
+        className="flex-row items-center"
         style={{
-          minHeight: 50,
+          minHeight: BrandSpacing.xxl + 18,
+          paddingHorizontal: BrandSpacing.md,
+          paddingVertical: BrandSpacing.sm,
           borderWidth: 1,
           borderColor: hasError ? (palette.danger as string) : (palette.borderStrong as string),
           borderRadius: BrandRadius.input,
           borderCurve: "continuous",
-          paddingHorizontal: 12,
-          gap: 8,
-          flexDirection: "row",
-          alignItems: "center",
+          gap: BrandSpacing.sm,
           backgroundColor: hasError
             ? (palette.dangerSubtle as string)
             : (palette.surfaceElevated as string),
@@ -59,10 +59,10 @@ export function KitTextField({
           style={[
             {
               flex: 1,
-              minHeight: 48,
+              minHeight: BrandSpacing.iconContainer + 10,
               color: palette.text as string,
-              fontSize: 15,
-              paddingVertical: 10,
+              ...BrandType.bodyMedium,
+              paddingVertical: BrandSpacing.sm + 2,
               includeFontPadding: false,
             },
             style,
@@ -71,12 +71,23 @@ export function KitTextField({
         {trailing ? <View>{trailing}</View> : null}
       </View>
       {hasError ? (
-        <Text style={{ fontSize: 12, lineHeight: 16, color: palette.danger as string }} selectable>
+        <Text
+          style={{
+            ...BrandType.micro,
+            lineHeight: BrandSpacing.md + 4,
+            color: palette.danger as string,
+          }}
+          selectable
+        >
           {errorText}
         </Text>
       ) : helperText ? (
         <Text
-          style={{ fontSize: 12, lineHeight: 16, color: palette.textMuted as string }}
+          style={{
+            ...BrandType.micro,
+            lineHeight: BrandSpacing.md + 4,
+            color: palette.textMuted as string,
+          }}
           selectable
         >
           {helperText}

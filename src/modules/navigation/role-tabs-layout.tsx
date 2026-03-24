@@ -59,7 +59,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
               badgeBackgroundColor={palette.primary as string}
               badgeTextColor={palette.onPrimary as string}
               indicatorColor={palette.primarySubtle as string}
-              shadowColor="transparent"
+              shadowColor={palette.surface as string}
               labelVisibilityMode="unlabeled"
               disableTransparentOnScrollEdge
             >
@@ -70,6 +70,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                   contentStyle={{ backgroundColor: sceneBackgroundColor }}
                 >
                   <NativeTabs.Trigger.Icon
+                    md={tab.icon.md}
                     sf={{
                       default: tab.icon.sfDefault as never,
                       selected: tab.icon.sfSelected as never,
