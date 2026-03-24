@@ -119,7 +119,9 @@ export function InstructorFeed() {
           applicationId: application.applicationId,
           jobId: application.jobId,
           studioId: application.studioId,
+          branchId: application.branchId,
           studioName: application.studioName,
+          branchName: application.branchName,
           sport: application.sport,
           zone: application.zone,
           startTime: application.startTime,
@@ -128,6 +130,7 @@ export function InstructorFeed() {
           appliedAt: application.appliedAt,
           jobStatus: application.jobStatus,
           applicationStatus: application.status,
+          ...(application.branchAddress ? { branchAddress: application.branchAddress } : {}),
           ...(application.studioImageUrl ? { studioImageUrl: application.studioImageUrl } : {}),
           ...(application.closureReason ? { closureReason: application.closureReason } : {}),
         }))
