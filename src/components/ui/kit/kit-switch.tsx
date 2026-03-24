@@ -34,7 +34,7 @@ export function KitSwitch({
   const { interaction } = useKitTheme();
   const progress = useSharedValue(value ? 1 : 0);
   const pressedTrackColor = value
-    ? (interaction.switchThumbOn as string)
+    ? (interaction.switchTrackOn as string)
     : (interaction.switchTrackOff as string);
   const disabledTrackColor = value
     ? (interaction.switchTrackOn as string)

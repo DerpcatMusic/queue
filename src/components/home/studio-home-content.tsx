@@ -87,6 +87,7 @@ function ReviewApplicationCard({
   t,
   onReview,
   isReviewing,
+  hasError,
 }: {
   application: Application;
   job: RecentJob;
@@ -96,6 +97,7 @@ function ReviewApplicationCard({
   t: TFunction;
   onReview: (status: "accepted" | "rejected") => void;
   isReviewing: boolean;
+  hasError: boolean;
 }) {
   return (
     <HomeSurface palette={palette} style={{ padding: BrandSpacing.inset }}>
@@ -152,6 +154,13 @@ function ReviewApplicationCard({
             {t("home.studio.pendingApplicants")}
           </Text>
         </View>
+
+        {/* Error feedback */}
+        {hasError ? (
+          <Text style={{ ...BrandType.caption, color: palette.danger as string }}>
+            {t("common.error")}
+          </Text>
+        ) : null}
 
         {/* Accept / Reject buttons */}
         <View style={{ flexDirection: "row", gap: BrandSpacing.stack }}>
@@ -269,14 +278,16 @@ export function StudioHomeContent({
 
   // Reviewing state — which applicationId is currently being reviewed
   const [reviewingId, setReviewingId] = useState<Id<"jobApplications"> | null>(null);
+  const [errorId, setErrorId] = useState<Id<"jobApplications"> | null>(null);
 
   const handleReview = useCallback(
     async (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => {
       setReviewingId(applicationId);
+      setErrorId(null);
       try {
         await reviewApplication({ applicationId, status });
       } catch (_err) {
-        // Error handling could be enhanced with a toast/banner
+        setErrorId(applicationId);
       } finally {
         setReviewingId(null);
       }
@@ -453,6 +464,7 @@ export function StudioHomeContent({
                         t={t}
                         onReview={(status) => handleReview(application.applicationId, status)}
                         isReviewing={reviewingId === application.applicationId}
+                        hasError={errorId === application.applicationId}
                       />
                     </View>
                   ))}

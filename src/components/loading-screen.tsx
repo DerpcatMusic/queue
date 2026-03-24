@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import Animated, {
+  cancelAnimation,
   Easing,
   FadeIn,
   useAnimatedStyle,
@@ -44,6 +45,9 @@ export function LoadingScreen({
       -1,
       false,
     );
+    return () => {
+      cancelAnimation(pulse);
+    };
   }, [pulse]);
 
   const symbolStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
