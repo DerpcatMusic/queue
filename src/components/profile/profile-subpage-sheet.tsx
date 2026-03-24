@@ -20,8 +20,8 @@ import {
 } from "react-native";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
+import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useMeasuredContentHeight } from "@/components/layout/use-measured-content-height";
 import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
+import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
 import { useMeasuredContentHeight } from "@/components/layout/use-measured-content-height";
@@ -17,10 +18,7 @@ import {
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
-import {
-  ProfileDesktopHeroPanel,
-  ProfileHeaderSheet,
-} from "@/components/profile/profile-tab";
+import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
 import { ThemedText } from "@/components/themed-text";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -37,7 +35,6 @@ import { useThemePreference } from "@/hooks/use-theme-preference";
 import { EXPIRY_OVERRIDE_PRESETS } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
-import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
