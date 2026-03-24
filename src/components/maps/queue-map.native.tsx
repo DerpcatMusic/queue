@@ -43,32 +43,17 @@ const ATTRIBUTION_SIZE = BrandSpacing.iconContainer - BrandSpacing.xs;
 const ATTRIBUTION_ICON_SIZE = BrandSpacing.sm + BrandSpacing.xs;
 const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm;
 const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2;
-const STUDIO_MARKER_MIN_ZOOM = 11;
-const STUDIO_MARKER_NEAR_ZOOM = 13;
-const STUDIO_MARKER_CLOSE_ZOOM = 15;
+const STUDIO_MARKER_MIN_ZOOM = 10;
 const STUDIO_MARKER_BORDER_WIDTH = BrandSpacing.xxs;
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 180;
 
 function getStudioMarkerMetrics(zoom: number) {
-  if (zoom >= STUDIO_MARKER_CLOSE_ZOOM) {
-    return {
-      outerSize: BrandSpacing.controlLg,
-      tailSize: BrandSpacing.md,
-    };
-  }
-
-  if (zoom >= STUDIO_MARKER_NEAR_ZOOM) {
-    return {
-      outerSize: BrandSpacing.avatarMd,
-      tailSize: BrandSpacing.md,
-    };
-  }
-
+  void zoom;
   return {
-    outerSize: BrandSpacing.controlMd,
-    tailSize: BrandSpacing.sm + BrandSpacing.xxs,
+    outerSize: BrandSpacing.avatarMd,
+    tailSize: BrandSpacing.md,
   };
 }
 
@@ -366,6 +351,7 @@ export const QueueMap = memo(function QueueMap({
               const markerSize = studioMarkerMetrics.outerSize;
               const tailSize = studioMarkerMetrics.tailSize;
               const tailOverlap = BrandSpacing.xs + BrandSpacing.xxs;
+              const markerAccent = palette.didit.accent as string;
               const hasLogo =
                 typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
 
@@ -385,9 +371,9 @@ export const QueueMap = memo(function QueueMap({
                         height: tailSize,
                         borderLeftWidth: STUDIO_MARKER_BORDER_WIDTH,
                         borderBottomWidth: STUDIO_MARKER_BORDER_WIDTH,
-                        borderLeftColor: palette.surfaceElevated as string,
-                        borderBottomColor: palette.surfaceElevated as string,
-                        backgroundColor: palette.secondary as string,
+                        borderLeftColor: markerAccent,
+                        borderBottomColor: markerAccent,
+                        backgroundColor: markerAccent,
                         transform: [{ rotate: "45deg" }],
                       }}
                     />
@@ -401,13 +387,11 @@ export const QueueMap = memo(function QueueMap({
                         borderRadius: markerSize / 2,
                         borderCurve: "continuous",
                         borderWidth: STUDIO_MARKER_BORDER_WIDTH,
-                        borderColor: palette.surfaceElevated as string,
+                        borderColor: markerAccent,
                         alignItems: "center",
                         justifyContent: "center",
                         overflow: "hidden",
-                        backgroundColor: pressed
-                          ? (palette.primarySubtle as string)
-                          : (palette.secondary as string),
+                        backgroundColor: pressed ? (palette.primarySubtle as string) : markerAccent,
                       })}
                     >
                       {hasLogo ? (
