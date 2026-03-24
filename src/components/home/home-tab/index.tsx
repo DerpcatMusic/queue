@@ -145,7 +145,7 @@ export default function HomeScreen() {
     [activeRole, homeSheetContent, homeSheetStep, palette],
   );
 
-  useGlobalTopSheet("index", homeSheetConfig);
+  useGlobalTopSheet("index", homeSheetConfig, "home:sheet");
 
   if (isAuthLoading) {
     return <LoadingScreen label={t("home.loading")} />;

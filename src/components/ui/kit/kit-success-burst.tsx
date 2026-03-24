@@ -21,10 +21,30 @@ type BurstBubbleConfig = {
 };
 
 const BUBBLES: readonly BurstBubbleConfig[] = [
-  { id: "left-top", x: -BrandSpacing.xxl * 2 - 4, y: -BrandSpacing.md - 4, size: BrandSpacing.sm + 2 },
-  { id: "right-top", x: BrandSpacing.xxl * 2 - 2, y: -BrandSpacing.md - 6, size: BrandSpacing.sm + 4 },
-  { id: "left-bottom", x: -BrandSpacing.xxl - 2, y: BrandSpacing.lg + 12, size: BrandSpacing.xs + 4 },
-  { id: "right-bottom", x: BrandSpacing.xxl - 2, y: BrandSpacing.lg + 10, size: BrandSpacing.sm + 2 },
+  {
+    id: "left-top",
+    x: -BrandSpacing.xxl * 2 - 4,
+    y: -BrandSpacing.md - 4,
+    size: BrandSpacing.sm + 2,
+  },
+  {
+    id: "right-top",
+    x: BrandSpacing.xxl * 2 - 2,
+    y: -BrandSpacing.md - 6,
+    size: BrandSpacing.sm + 4,
+  },
+  {
+    id: "left-bottom",
+    x: -BrandSpacing.xxl - 2,
+    y: BrandSpacing.lg + 12,
+    size: BrandSpacing.xs + 4,
+  },
+  {
+    id: "right-bottom",
+    x: BrandSpacing.xxl - 2,
+    y: BrandSpacing.lg + 10,
+    size: BrandSpacing.sm + 2,
+  },
   { id: "top", x: 0, y: -BrandSpacing.xxl * 2 + 2, size: BrandSpacing.xs + 5 },
 ] as const;
 
@@ -47,11 +67,10 @@ function BurstBubble({
   color: string;
 }) {
   const bubbleStyle = useAnimatedStyle(() => ({
-    opacity: 1 - burst.value,
     transform: [
       { translateX: burst.value * x },
       { translateY: burst.value * y },
-      { scale: 0.5 + burst.value * 0.9 },
+      { scale: 0.75 + burst.value * 0.45 },
     ],
   }));
 
@@ -77,7 +96,6 @@ export function KitSuccessBurst({
   const { color, background } = useKitTheme();
   const badgeScale = useSharedValue(0.7);
   const ringScale = useSharedValue(0.75);
-  const ringOpacity = useSharedValue(0);
   const burst = useSharedValue(0);
 
   useEffect(() => {
@@ -85,23 +103,19 @@ export function KitSuccessBurst({
       withTiming(1.14, { duration: 220 }),
       withSpring(1, { damping: 11, stiffness: 220 }),
     );
-    ringOpacity.value = withSequence(
-      withTiming(0.55, { duration: 120 }),
-      withTiming(0, { duration: 540 }),
-    );
     ringScale.value = withSequence(
       withTiming(1.35, { duration: 620 }),
       withTiming(1.45, { duration: 60 }),
     );
     burst.value = withTiming(1, { duration: 760 });
-  }, [badgeScale, burst, ringOpacity, ringScale]);
+  }, [badgeScale, burst, ringScale]);
 
   const badgeStyle = useAnimatedStyle(() => ({
     transform: [{ scale: badgeScale.value }],
   }));
   const ringStyle = useAnimatedStyle(() => ({
-    opacity: ringOpacity.value,
     transform: [{ scale: ringScale.value }],
+    borderWidth: 2 + burst.value,
   }));
 
   return (

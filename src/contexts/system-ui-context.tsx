@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { ColorValue } from "react-native";
 
-export type InsetTone = "app" | "sheet" | "card" | "transparent";
+export type InsetTone = "app" | "sheet" | "card";
 
 type SystemUiContextValue = {
   topInsetTone: InsetTone;

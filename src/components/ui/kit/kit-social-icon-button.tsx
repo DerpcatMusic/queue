@@ -25,6 +25,12 @@ export function KitSocialIconButton({
   size = BrandSpacing.controlSm - BrandSpacing.xxs,
 }: KitSocialIconButtonProps) {
   const iconSize = Math.max(BrandSpacing.md + BrandSpacing.xxs, Math.round(size * 0.44));
+  const idleBackgroundColor = active
+    ? (palette.primarySubtle as string)
+    : (palette.surfaceAlt as string);
+  const pressedBackgroundColor = active
+    ? (palette.primaryPressed as string)
+    : (palette.surfaceElevated as string);
   const circle = (
     <View
       style={{
@@ -36,9 +42,7 @@ export function KitSocialIconButton({
         justifyContent: "center",
         borderWidth: 1,
         borderColor: palette.border as string,
-        backgroundColor: active
-          ? (palette.primarySubtle as string)
-          : (palette.surfaceAlt as string),
+        backgroundColor: idleBackgroundColor,
       }}
     >
       {icon === "website" ? (
@@ -71,7 +75,7 @@ export function KitSocialIconButton({
       }}
       style={({ pressed }) => ({
         borderRadius: BrandRadius.pill,
-        opacity: pressed ? 0.84 : 1,
+        backgroundColor: pressed ? pressedBackgroundColor : idleBackgroundColor,
       })}
     >
       {circle}

@@ -22,6 +22,10 @@ export type PlaceCoordinates = {
   latitude: number;
   longitude: number;
   formattedAddress: string;
+  city?: string;
+  street?: string;
+  streetNumber?: string;
+  postalCode?: string;
 };
 
 let sessionToken: string | null = null;
@@ -61,12 +65,22 @@ async function fetchOsmAutocomplete(input: string): Promise<PlacePrediction[]> {
       lon?: string;
       name?: string;
       display_name?: string;
+      address?: {
+        road?: string;
+        footway?: string;
+        path?: string;
+        house_number?: string;
+        city?: string;
+        town?: string;
+        village?: string;
+        postcode?: string;
+      };
     }>
   >(
-    `${OSM_AUTOCOMPLETE_URL}?format=jsonv2&limit=6&addressdetails=1&q=${encodeURIComponent(input)}`,
+    `${OSM_AUTOCOMPLETE_URL}?format=jsonv2&limit=6&addressdetails=1&countrycodes=il&q=${encodeURIComponent(input)}`,
     {
       headers: {
-        "Accept-Language": "en",
+        "Accept-Language": "he,en",
       },
     },
     { timeoutMs: OSM_AUTOCOMPLETE_TIMEOUT_MS, retries: 1 },
@@ -81,18 +95,42 @@ async function fetchOsmAutocomplete(input: string): Promise<PlacePrediction[]> {
         return null;
       }
 
+      // Extract structured address parts from OSM addressdetails
+      const addr = item.address;
+      const city = addr?.city ?? addr?.town ?? addr?.village ?? undefined;
+      const street = addr?.road ?? addr?.footway ?? addr?.path ?? undefined;
+      const streetNumber = addr?.house_number ?? undefined;
+      const postalCode = addr?.postcode ?? undefined;
+
       const placeId = `osm:${item.place_id ?? display}`;
-      fallbackPlaceCache.set(placeId, {
+
+      // Build a clean secondary text: city + postal code (not the full display_name)
+      const secondaryParts = [city, postalCode].filter(Boolean);
+      const secondaryText = secondaryParts.join(", ") || undefined;
+
+      // mainText = street + number, or name, or first part of display
+      const [firstPart] = display.split(", ");
+      const mainText =
+        street && streetNumber
+          ? `${streetNumber} ${street}`
+          : (item.name?.trim() ?? firstPart ?? display);
+
+      // Only include optional fields when they have values (exactOptionalPropertyTypes)
+      const cacheEntry: PlaceCoordinates = {
         latitude,
         longitude,
         formattedAddress: display,
-      });
+        ...(city !== undefined ? { city } : {}),
+        ...(street !== undefined ? { street } : {}),
+        ...(streetNumber !== undefined ? { streetNumber } : {}),
+        ...(postalCode !== undefined ? { postalCode } : {}),
+      };
+      fallbackPlaceCache.set(placeId, cacheEntry);
 
-      const [mainText, ...rest] = display.split(", ");
       return {
         placeId,
-        mainText: item.name?.trim() || mainText || display,
-        secondaryText: rest.join(", "),
+        mainText,
+        secondaryText: secondaryText ?? "",
         fullText: display,
       };
     })
@@ -217,5 +255,74 @@ export async function fetchPlaceCoordinates(placeId: string): Promise<PlaceCoord
     };
   } catch {
     return null;
+  }
+}
+
+export type ZipCodeResult = {
+  latitude: number;
+  longitude: number;
+  formattedAddress: string;
+  city?: string;
+  street?: string;
+  streetNumber?: string;
+  postalCode?: string;
+};
+
+/// Looks up Israeli addresses by postal code using OSM Nominatim.
+/// Returns multiple results when a postal code spans multiple streets/cities.
+export async function fetchPlaceByZipCode(zipCode: string): Promise<ZipCodeResult[]> {
+  const cleaned = zipCode.replace(/\s+/g, "").trim();
+  if (!cleaned || cleaned.length < 5) {
+    return [];
+  }
+
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&addressdetails=1&countrycodes=il&postcode=${encodeURIComponent(cleaned)}`;
+  try {
+    const data = await fetchJsonWithPolicy<
+      Array<{
+        lat?: string;
+        lon?: string;
+        display_name?: string;
+        address?: {
+          road?: string;
+          house_number?: string;
+          city?: string;
+          town?: string;
+          village?: string;
+          postcode?: string;
+        };
+      }>
+    >(
+      url,
+      { headers: { "Accept-Language": "he,en" } },
+      { timeoutMs: OSM_AUTOCOMPLETE_TIMEOUT_MS, retries: 1 },
+    );
+
+    return data
+      .map((item): ZipCodeResult | null => {
+        const latitude = Number.parseFloat(item.lat ?? "");
+        const longitude = Number.parseFloat(item.lon ?? "");
+        const display = item.display_name?.trim();
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !display) {
+          return null;
+        }
+        const addr = item.address;
+        const city = addr?.city ?? addr?.town ?? addr?.village;
+        const street = addr?.road;
+        const streetNumber = addr?.house_number;
+        const postalCode = addr?.postcode;
+        return {
+          latitude,
+          longitude,
+          formattedAddress: display,
+          ...(city !== undefined ? { city } : {}),
+          ...(street !== undefined ? { street } : {}),
+          ...(streetNumber !== undefined ? { streetNumber } : {}),
+          ...(postalCode !== undefined ? { postalCode } : {}),
+        };
+      })
+      .filter((item): item is ZipCodeResult => item !== null);
+  } catch {
+    return [];
   }
 }

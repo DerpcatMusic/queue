@@ -173,7 +173,7 @@ export default function InstructorStudioProfileRoute() {
       draggable: false,
       expandable: false,
       backgroundColor: palette.primary as string,
-      topInsetColor: "transparent",
+      topInsetColor: palette.primary as string,
     };
   }, [
     palette.onPrimary,
@@ -247,7 +247,7 @@ export default function InstructorStudioProfileRoute() {
           tone="error"
           message={applyErrorMessage}
           onDismiss={() => setApplyErrorMessage(null)}
-          borderColor="transparent"
+          borderColor={palette.danger}
           backgroundColor={palette.dangerSubtle}
           textColor={palette.danger}
           iconColor={palette.danger}

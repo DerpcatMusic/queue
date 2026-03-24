@@ -10,10 +10,19 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
+import {
+  I18nManager,
+  type StyleProp,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
+import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
+import { useMeasuredContentHeight } from "@/components/layout/use-measured-content-height";
 import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -176,7 +185,11 @@ export function ProfileSubpageSheetHost({
   const palette = useBrand();
   const router = useRouter();
   const pathname = usePathname();
+  const { safeBottom, safeTop } = useAppInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const accessoryContext = useContext(ProfileSubpageAccessoryContext);
+  const { measuredHeight: headerMeasuredHeight, onLayout: onHeaderLayout } =
+    useMeasuredContentHeight();
 
   const activeRoute = useMemo(
     () =>
@@ -201,18 +214,28 @@ export function ProfileSubpageSheetHost({
 
     return {
       stickyHeader: (
-        <ProfileSubpageSheetHeader
-          title={activeRoute.title}
-          rightAccessory={accessoryContext?.accessories[activeRoute.routeMatchPath] ?? null}
-          onBack={() => router.back()}
-          {...(isDiditRoute || isPaymentsRoute ? { accentColor } : {})}
-        />
+        <View onLayout={onHeaderLayout}>
+          <ProfileSubpageSheetHeader
+            title={activeRoute.title}
+            rightAccessory={accessoryContext?.accessories[activeRoute.routeMatchPath] ?? null}
+            onBack={() => router.back()}
+            {...(isDiditRoute || isPaymentsRoute ? { accentColor } : {})}
+          />
+        </View>
       ),
       padding: {
         vertical: BrandSpacing.stackTight,
         horizontal: BrandSpacing.inset,
       },
-      steps: [0.12],
+      steps: [
+        Math.max(
+          0.12,
+          (safeTop +
+            (headerMeasuredHeight > 0 ? headerMeasuredHeight : PROFILE_SUBPAGE_HEADER_HEIGHT) +
+            BrandSpacing.stackTight * 2) /
+            Math.max(1, getTopSheetAvailableHeight(screenHeight, safeTop, safeBottom)),
+        ),
+      ],
       initialStep: 0,
       draggable: false,
       expandable: false,
@@ -222,10 +245,15 @@ export function ProfileSubpageSheetHost({
   }, [
     activeRoute,
     accessoryContext?.accessories,
+    headerMeasuredHeight,
+    onHeaderLayout,
     palette.primary,
     palette.didit.accent,
     palette.payments.accent,
     router,
+    safeBottom,
+    safeTop,
+    screenHeight,
   ]);
 
   useGlobalTopSheet("profile", config, ownerId);

@@ -1,7 +1,7 @@
-import { ActivityIndicator } from "react-native";
 import { useTranslation } from "react-i18next";
+import { ActivityIndicator } from "react-native";
 
-import { type BrandPalette } from "@/constants/brand";
+import type { BrandPalette } from "@/constants/brand";
 import type { AppRole } from "@/navigation/types";
 
 import { ProfileSectionCard, ProfileSettingRow } from "./profile-settings-sections";

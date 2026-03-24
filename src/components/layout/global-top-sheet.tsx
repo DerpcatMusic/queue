@@ -1,20 +1,10 @@
 import { usePathname } from "expo-router";
-import { isValidElement, useCallback, useEffect, useRef, useState } from "react";
-import {
-  type LayoutChangeEvent,
-  Platform,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { isValidElement, useCallback, useEffect, useRef } from "react";
+import { Platform, StyleSheet, type StyleProp, useWindowDimensions, View, type ViewStyle } from "react-native";
 import Reanimated, {
-  FadeInDown,
-  FadeOutUp,
+  FadeIn,
+  FadeOut,
   ReduceMotion,
-  SlideInLeft,
-  SlideInRight,
-  SlideOutLeft,
-  SlideOutRight,
   useReducedMotion,
 } from "react-native-reanimated";
 
@@ -30,12 +20,10 @@ import {
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import {
-  areSheetConfigsEqual,
-  type ContentTransitionDirection,
   getFallbackSheetColors,
-  getRouteDepth,
   resolveTopSheetRouteTab,
 } from "./global-top-sheet.helpers";
+import { getTopSheetStepHeights } from "./top-sheet.helpers";
 
 /**
  * One global TopSheet mounted in RoleTabsLayout above NativeTabs.
@@ -49,7 +37,7 @@ import {
  */
 export function GlobalTopSheet() {
   const pathname = usePathname();
-  const { safeTop } = useAppInsets();
+  const { safeBottom, safeTop } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
   const palette = useBrand();
   const rootStyle = Platform.OS === "web" ? undefined : styles.overlayRoot;
@@ -64,108 +52,93 @@ export function GlobalTopSheet() {
   // ── ScrollY from provider (for custom animated sheets) ─────────────
   const { setCollapsedSheetHeight } = useScrollSheetLayout();
   const scrollY = useScrollSheetScrollValue();
-
-  const [transitionDirection, setTransitionDirection] =
-    useState<ContentTransitionDirection>("vertical");
-  const previousRouteKeyRef = useRef<string | null>(activeRouteKey);
-  const previousConfigRef = useRef(activeConfig);
-
-  useEffect(() => {
-    const previousRouteKey = previousRouteKeyRef.current;
-    const previousConfig = previousConfigRef.current;
-
-    if (!activeRouteKey || !activeConfig || reduceMotionEnabled) {
-      setTransitionDirection("vertical");
-      previousRouteKeyRef.current = activeRouteKey;
-      previousConfigRef.current = activeConfig;
-      return;
-    }
-
-    if (previousRouteKey === activeRouteKey) {
-      if (!areSheetConfigsEqual(previousConfig, activeConfig)) {
-        setTransitionDirection("vertical");
-      }
-      previousConfigRef.current = activeConfig;
-      return;
-    }
-
-    const displayedTabId = resolveTopSheetRouteTab(previousRouteKey);
-    const nextTabId = resolveTopSheetRouteTab(activeRouteKey);
-    const isSameTabRouteChange = displayedTabId !== null && displayedTabId === nextTabId;
-
-    if (isSameTabRouteChange) {
-      const currentDepth = getRouteDepth(previousRouteKey);
-      const nextDepth = getRouteDepth(activeRouteKey);
-      setTransitionDirection(nextDepth >= currentDepth ? "forward" : "backward");
-    } else {
-      setTransitionDirection("vertical");
-    }
-
-    previousRouteKeyRef.current = activeRouteKey;
-    previousConfigRef.current = activeConfig;
-  }, [activeConfig, activeRouteKey, reduceMotionEnabled]);
-
-  // ── Measure collapsed sheet height for tab content padding ─────────
-  const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
   const measuredHeightRef = useRef<number | null>(null);
+  const transitionKey = activeRouteKey ?? activeTabId ?? activeConfig?.tabId ?? "global-top-sheet";
+  const fallbackColors = activeConfig
+    ? getFallbackSheetColors(activeConfig.tabId, palette)
+    : {
+        backgroundColor: palette.primary as string,
+        topInsetColor: palette.primary as string,
+      };
 
-  const handleLayout = useCallback((e: LayoutChangeEvent) => {
-    const h = e.nativeEvent.layout.height;
-    if (h <= 0) {
-      return;
-    }
-    if (measuredHeightRef.current !== null && Math.abs(measuredHeightRef.current - h) < 1) {
-      return;
-    }
-    measuredHeightRef.current = h;
-    setMeasuredHeight(h);
-  }, []);
-
-  const fallbackHeight = (() => {
-    const fallbackConfig = activeConfig;
-    if (!fallbackConfig) return DEFAULT_SHEET_PADDING_TOP;
-    const steps = fallbackConfig.steps ?? [0.18, 0.4, 0.65, 0.95];
-    const collapsedStep = steps[0] ?? 0.18;
-    return collapsedStep * screenHeight + safeTop;
-  })();
-
-  const collapsedSheetHeight = measuredHeight ?? fallbackHeight;
+  const baseSheetProps = activeConfig
+    ? {
+        ...(activeConfig.draggable !== undefined ? { draggable: activeConfig.draggable } : {}),
+        ...(activeConfig.expandable !== undefined ? { expandable: activeConfig.expandable } : {}),
+        ...(activeConfig.steps ? { steps: activeConfig.steps } : {}),
+        ...(activeConfig.initialStep !== undefined
+          ? { initialStep: activeConfig.initialStep }
+          : {}),
+        ...(activeConfig.activeStep !== undefined ? { activeStep: activeConfig.activeStep } : {}),
+        ...(activeConfig.expandMode ? { expandMode: activeConfig.expandMode } : {}),
+        ...(activeConfig.padding ? { padding: activeConfig.padding } : {}),
+        backgroundColor:
+          (activeConfig.backgroundColor as string | undefined) ?? fallbackColors.backgroundColor,
+        topInsetColor:
+          (activeConfig.topInsetColor as string | undefined) ?? fallbackColors.topInsetColor,
+        ...(activeConfig.style ? { style: activeConfig.style } : {}),
+        ...(activeConfig.onStepChange ? { onStepChange: activeConfig.onStepChange } : {}),
+        ...(activeConfig.stickyHeader ? { stickyHeader: activeConfig.stickyHeader } : {}),
+        ...(activeConfig.stickyFooter ? { stickyFooter: activeConfig.stickyFooter } : {}),
+        ...(activeConfig.revealOnExpand ? { revealOnExpand: activeConfig.revealOnExpand } : {}),
+      }
+    : null;
+  const hasRenderableContent = Boolean(
+    activeConfig &&
+      (activeConfig.render ||
+        activeConfig.content ||
+        activeConfig.stickyHeader ||
+        activeConfig.stickyFooter ||
+        activeConfig.revealOnExpand ||
+        activeConfig.overlay),
+  );
+  const renderResult = activeConfig?.render ? activeConfig.render({ scrollY }) : null;
+  const isRichResult =
+    typeof renderResult === "object" &&
+    renderResult !== null &&
+    !isValidElement(renderResult) &&
+    !Array.isArray(renderResult);
+  const richResult = isRichResult
+    ? (renderResult as Omit<React.ComponentProps<typeof TopSheet>, "children"> & {
+        children?: React.ReactNode;
+      })
+    : null;
+  const staticCollapsedHeight =
+    activeConfig && (!activeConfig.render || richResult)
+      ? (getTopSheetStepHeights(
+          richResult?.steps ?? activeConfig.steps ?? [0.18, 0.4, 0.65, 0.95],
+          screenHeight,
+          safeTop,
+          safeBottom,
+        )[0] ?? DEFAULT_SHEET_PADDING_TOP) + safeTop
+      : null;
 
   useEffect(() => {
-    setCollapsedSheetHeight(collapsedSheetHeight);
-  }, [collapsedSheetHeight, setCollapsedSheetHeight]);
+    if (!activeConfig) {
+      setCollapsedSheetHeight(DEFAULT_SHEET_PADDING_TOP);
+      return;
+    }
 
-  // ── Render nothing if no config ─────────────────────────────────────
-  if (!activeConfig) return null;
+    if (staticCollapsedHeight !== null) {
+      setCollapsedSheetHeight(staticCollapsedHeight);
+      return;
+    }
 
-  const transitionKey = activeRouteKey ?? activeTabId ?? activeConfig.tabId;
-  const fallbackColors = getFallbackSheetColors(activeConfig.tabId, palette);
+    setCollapsedSheetHeight(measuredHeightRef.current ?? DEFAULT_SHEET_PADDING_TOP);
+  }, [activeConfig, setCollapsedSheetHeight, staticCollapsedHeight]);
 
-  const baseSheetProps = {
-    ...(activeConfig.draggable !== undefined ? { draggable: activeConfig.draggable } : {}),
-    ...(activeConfig.expandable !== undefined ? { expandable: activeConfig.expandable } : {}),
-    ...(activeConfig.steps ? { steps: activeConfig.steps } : {}),
-    ...(activeConfig.initialStep !== undefined ? { initialStep: activeConfig.initialStep } : {}),
-    ...(activeConfig.activeStep !== undefined ? { activeStep: activeConfig.activeStep } : {}),
-    ...(activeConfig.expandMode ? { expandMode: activeConfig.expandMode } : {}),
-    ...(activeConfig.padding ? { padding: activeConfig.padding } : {}),
-    backgroundColor:
-      (activeConfig.backgroundColor as string | undefined) ?? fallbackColors.backgroundColor,
-    topInsetColor:
-      (activeConfig.topInsetColor as string | undefined) ?? fallbackColors.topInsetColor,
-    ...(activeConfig.style ? { style: activeConfig.style } : {}),
-    ...(activeConfig.onStepChange ? { onStepChange: activeConfig.onStepChange } : {}),
-    ...(activeConfig.stickyHeader ? { stickyHeader: activeConfig.stickyHeader } : {}),
-    ...(activeConfig.stickyFooter ? { stickyFooter: activeConfig.stickyFooter } : {}),
-    ...(activeConfig.revealOnExpand ? { revealOnExpand: activeConfig.revealOnExpand } : {}),
-  };
-  const hasRenderableContent = Boolean(
-    activeConfig.render ||
-      activeConfig.content ||
-      activeConfig.stickyHeader ||
-      activeConfig.stickyFooter ||
-      activeConfig.revealOnExpand ||
-      activeConfig.overlay,
+  const handleMeasuredLayout = useCallback(
+    (height: number) => {
+      if (height <= 0) {
+        return;
+      }
+      if (measuredHeightRef.current !== null && Math.abs(measuredHeightRef.current - height) < 1) {
+        return;
+      }
+      measuredHeightRef.current = height;
+      setCollapsedSheetHeight(height);
+    },
+    [setCollapsedSheetHeight],
   );
 
   const contentTransitionProps = (() => {
@@ -173,56 +146,33 @@ export function GlobalTopSheet() {
       return {};
     }
 
-    if (transitionDirection === "forward") {
-      return {
-        entering: SlideInRight.duration(240).reduceMotion(ReduceMotion.System),
-        exiting: SlideOutLeft.duration(180).reduceMotion(ReduceMotion.System),
-      };
-    }
-
-    if (transitionDirection === "backward") {
-      return {
-        entering: SlideInLeft.duration(240).reduceMotion(ReduceMotion.System),
-        exiting: SlideOutRight.duration(180).reduceMotion(ReduceMotion.System),
-      };
-    }
-
     return {
-      entering: FadeInDown.duration(240).reduceMotion(ReduceMotion.System),
-      exiting: FadeOutUp.duration(180).reduceMotion(ReduceMotion.System),
+      entering: FadeIn.duration(140).reduceMotion(ReduceMotion.System),
+      exiting: FadeOut.duration(90).reduceMotion(ReduceMotion.System),
     };
   })();
   const renderTransitionedNode = (
     slotKey: string,
     node: React.ReactNode,
-    style?: React.ComponentProps<typeof Reanimated.View>["style"],
+    style?: StyleProp<ViewStyle>,
   ) => {
     if (!node) return null;
     return (
-      <Reanimated.View
-        key={`${transitionKey}:${slotKey}`}
-        style={style}
-        {...contentTransitionProps}
-      >
-        {node}
-      </Reanimated.View>
+      <View style={[styles.contentClip, style]}>
+        <Reanimated.View key={`${transitionKey}:${slotKey}`} style={style} {...contentTransitionProps}>
+          {node}
+        </Reanimated.View>
+      </View>
     );
   };
 
+  // ── Render nothing if no config ─────────────────────────────────────
+  if (!activeConfig) return null;
+
   // ── Render function mode ────────────────────────────────────────────
   if (activeConfig.render) {
-    const result = activeConfig.render({ scrollY });
-
-    const isRichResult =
-      typeof result === "object" &&
-      result !== null &&
-      !isValidElement(result) &&
-      !Array.isArray(result);
-
-    if (isRichResult) {
-      const rich = result as Omit<React.ComponentProps<typeof TopSheet>, "children"> & {
-        children?: React.ReactNode;
-      };
+    if (richResult && baseSheetProps) {
+      const rich = richResult;
       const {
         children: richChildren,
         stickyHeader: richStickyHeader,
@@ -233,30 +183,48 @@ export function GlobalTopSheet() {
 
       return (
         <View pointerEvents="box-none" style={rootStyle}>
-          <Reanimated.View onLayout={handleLayout}>
-            <TopSheet
-              {...baseSheetProps}
-              {...richSheetProps}
-              stickyHeader={renderTransitionedNode("sticky-header", richStickyHeader)}
-              stickyFooter={renderTransitionedNode("sticky-footer", richStickyFooter)}
-              revealOnExpand={renderTransitionedNode("reveal", richRevealOnExpand, { flex: 1 })}
+          <TopSheet
+            {...baseSheetProps}
+            {...richSheetProps}
+            stickyHeader={renderTransitionedNode("sticky-header", richStickyHeader)}
+            stickyFooter={renderTransitionedNode("sticky-footer", richStickyFooter)}
+            revealOnExpand={renderTransitionedNode("reveal", richRevealOnExpand, { flex: 1 })}
+          >
+            {renderTransitionedNode("children", richChildren, richChildren ? { flex: 1 } : undefined)}
+          </TopSheet>
+          {activeConfig.overlay ? (
+            <Reanimated.View
+              key={`${transitionKey}:overlay`}
+              style={styles.overlayLayer}
+              {...contentTransitionProps}
             >
-              {renderTransitionedNode(
-                "children",
-                richChildren,
-                richChildren ? { flex: 1 } : undefined,
-              )}
-            </TopSheet>
-          </Reanimated.View>
-          {renderTransitionedNode("overlay", activeConfig.overlay, styles.overlayLayer)}
+              {activeConfig.overlay}
+            </Reanimated.View>
+          ) : null}
         </View>
       );
     }
 
     return (
       <View pointerEvents="box-none" style={rootStyle}>
-        <Reanimated.View onLayout={handleLayout}>{result as React.ReactNode}</Reanimated.View>
-        {renderTransitionedNode("overlay", activeConfig.overlay, styles.overlayLayer)}
+        <Reanimated.View
+          key={`${transitionKey}:custom`}
+          {...contentTransitionProps}
+          onLayout={(event) => {
+            handleMeasuredLayout(event.nativeEvent.layout.height);
+          }}
+        >
+          {renderResult as React.ReactNode}
+        </Reanimated.View>
+        {activeConfig.overlay ? (
+          <Reanimated.View
+            key={`${transitionKey}:overlay`}
+            style={styles.overlayLayer}
+            {...contentTransitionProps}
+          >
+            {activeConfig.overlay}
+          </Reanimated.View>
+        ) : null}
       </View>
     );
   }
@@ -267,18 +235,18 @@ export function GlobalTopSheet() {
 
   return (
     <View pointerEvents="box-none" style={rootStyle}>
-      <Reanimated.View onLayout={handleLayout}>
-        <TopSheet {...baseSheetProps}>
-          <Reanimated.View
-            key={`${transitionKey}:content`}
-            style={{ flex: 1 }}
-            {...contentTransitionProps}
-          >
-            {activeConfig.content}
-          </Reanimated.View>
-        </TopSheet>
-      </Reanimated.View>
-      {renderTransitionedNode("overlay", activeConfig.overlay, styles.overlayLayer)}
+      <TopSheet {...baseSheetProps!}>
+        {renderTransitionedNode("content", activeConfig.content, activeConfig.content ? { flex: 1 } : undefined)}
+      </TopSheet>
+      {activeConfig.overlay ? (
+        <Reanimated.View
+          key={`${transitionKey}:overlay`}
+          style={styles.overlayLayer}
+          {...contentTransitionProps}
+        >
+          {activeConfig.overlay}
+        </Reanimated.View>
+      ) : null}
     </View>
   );
 }
@@ -290,6 +258,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 40,
+  },
+  contentClip: {
+    overflow: "hidden",
   },
   overlayLayer: {
     ...StyleSheet.absoluteFillObject,

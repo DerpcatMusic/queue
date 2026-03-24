@@ -71,12 +71,23 @@ export function KitTextField({
         {trailing ? <View>{trailing}</View> : null}
       </View>
       {hasError ? (
-        <Text style={{ ...BrandType.micro, lineHeight: BrandSpacing.md + 4, color: palette.danger as string }} selectable>
+        <Text
+          style={{
+            ...BrandType.micro,
+            lineHeight: BrandSpacing.md + 4,
+            color: palette.danger as string,
+          }}
+          selectable
+        >
           {errorText}
         </Text>
       ) : helperText ? (
         <Text
-          style={{ ...BrandType.micro, lineHeight: BrandSpacing.md + 4, color: palette.textMuted as string }}
+          style={{
+            ...BrandType.micro,
+            lineHeight: BrandSpacing.md + 4,
+            color: palette.textMuted as string,
+          }}
           selectable
         >
           {helperText}

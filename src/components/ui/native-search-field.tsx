@@ -4,9 +4,9 @@ import {
   type StyleProp,
   TextInput,
   type TextInputProps,
-  View,
   type ViewStyle,
 } from "react-native";
+import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
@@ -35,6 +35,7 @@ type NativeSearchFieldProps = Omit<TextInputProps, "value" | "onChangeText"> & {
   clearAccessibilityLabel?: string;
   size?: "md" | "sm";
   containerStyle?: StyleProp<ViewStyle>;
+  animateLayout?: boolean;
 };
 
 export function NativeSearchField({
@@ -44,6 +45,7 @@ export function NativeSearchField({
   clearAccessibilityLabel = "Clear search",
   size = "md",
   containerStyle,
+  animateLayout = false,
   style,
   ...rest
 }: NativeSearchFieldProps) {
@@ -54,11 +56,21 @@ export function NativeSearchField({
       ? (palette.surfaceElevated as string)
       : (palette.surfaceAlt as string);
   const metrics = size === "sm" ? SEARCH_SIZE_SM : SEARCH_SIZE_MD;
+  const pressedBackgroundColor =
+    resolvedScheme === "dark" ? (palette.surface as string) : (palette.surfaceElevated as string);
+  const clearButtonBackground = palette.textMuted as string;
 
   return (
-    <View
+    <Animated.View
+      {...(animateLayout
+        ? {
+            layout: LinearTransition.duration(220).reduceMotion(ReduceMotion.System),
+          }
+        : {})}
       style={[
         {
+          width: "100%",
+          minWidth: 0,
           minHeight: metrics.containerMinHeight,
           borderWidth: 0,
           borderRadius: metrics.radius,
@@ -88,6 +100,7 @@ export function NativeSearchField({
         style={[
           {
             flex: 1,
+            minWidth: 0,
             minHeight: metrics.inputMinHeight,
             ...BrandType.bodyMedium,
             color: palette.text,
@@ -103,15 +116,18 @@ export function NativeSearchField({
           accessibilityLabel={clearAccessibilityLabel}
           onPress={() => onChangeText("")}
           hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
+          style={({ pressed }) => ({
+            borderRadius: BrandRadius.pill,
+            backgroundColor: pressed ? pressedBackgroundColor : clearButtonBackground,
+          })}
         >
           <MaterialIcons
             name="close"
             size={metrics.clearIconSize}
-            color={palette.textMuted as string}
+            color={palette.onPrimary as string}
           />
         </Pressable>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

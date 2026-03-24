@@ -121,7 +121,7 @@ export function PaymentActivityList({
                 className="flex-row items-center justify-between px-md py-md"
                 style={({ pressed }) => ({
                   backgroundColor:
-                    pressed && onSelectPaymentId ? palette.surfaceAlt : "transparent",
+                    pressed && onSelectPaymentId ? palette.surfaceAlt : palette.surface,
                   borderBottomWidth: index < items.length - 1 ? 1 : 0,
                   borderBottomColor: palette.border,
                 })}

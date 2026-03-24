@@ -24,6 +24,8 @@ export function KitSegmentedToggle<T extends string>({
   style,
 }: KitSegmentedToggleProps<T>) {
   const palette = useBrand();
+  const disabledBackgroundColor = palette.surface as string;
+  const pressedBackgroundColor = palette.surfaceElevated as string;
 
   return (
     <View
@@ -55,12 +57,15 @@ export function KitSegmentedToggle<T extends string>({
               minHeight: BrandSpacing.iconContainer + 10,
               borderRadius: BrandRadius.buttonSubtle,
               borderCurve: "continuous",
-              backgroundColor: selected
-                ? (palette.primary as string)
-                : (palette.surfaceAlt as string),
+              backgroundColor: option.disabled
+                ? disabledBackgroundColor
+                : selected
+                  ? (palette.primary as string)
+                  : pressed
+                    ? pressedBackgroundColor
+                    : (palette.surfaceAlt as string),
               alignItems: "center",
               justifyContent: "center",
-              opacity: option.disabled ? 0.72 : pressed ? 0.86 : 1,
             })}
           >
             <Text

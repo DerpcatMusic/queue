@@ -13,6 +13,17 @@ export function KitChip({
   style,
 }: KitChipProps) {
   const palette = useBrand();
+  const idleBackgroundColor = selected
+    ? (palette.primary as string)
+    : (palette.surfaceAlt as string);
+  const pressedBackgroundColor = selected
+    ? (palette.primaryPressed as string)
+    : (palette.surfaceElevated as string);
+  const disabledBackgroundColor = selected
+    ? (palette.primarySubtle as string)
+    : (palette.surface as string);
+  const textColor = selected ? (palette.onPrimary as string) : (palette.text as string);
+  const disabledTextColor = selected ? (palette.primary as string) : (palette.textMuted as string);
 
   return (
     <Pressable
@@ -26,8 +37,11 @@ export function KitChip({
       className="items-center justify-center min-h-icon-container px-component-padding py-sm rounded-button-subtle"
       style={({ pressed }) => [
         {
-          backgroundColor: selected ? (palette.primary as string) : (palette.surfaceAlt as string),
-          opacity: disabled ? 0.72 : 1,
+          backgroundColor: disabled
+            ? disabledBackgroundColor
+            : pressed
+              ? pressedBackgroundColor
+              : idleBackgroundColor,
           transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
         },
         style,
@@ -36,7 +50,7 @@ export function KitChip({
       <Text
         style={{
           ...BrandType.micro,
-          color: selected ? (palette.onPrimary as string) : (palette.text as string),
+          color: disabled ? disabledTextColor : textColor,
           includeFontPadding: false,
         }}
       >

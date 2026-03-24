@@ -13,7 +13,7 @@ import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provide
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { ActionButton } from "@/components/ui/action-button";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -102,7 +102,6 @@ export function StudioHomeContent({
                   ...BrandType.micro,
                   color: palette.onPrimary as string,
                   letterSpacing: 0.8,
-                  opacity: 0.76,
                 }}
               >
                 {t("home.studio.title")}
@@ -121,7 +120,6 @@ export function StudioHomeContent({
                 style={{
                   ...BrandType.body,
                   color: palette.onPrimary as string,
-                  opacity: 0.84,
                 }}
               >
                 {jobsNeedingReview.length > 0
@@ -218,7 +216,8 @@ export function StudioHomeContent({
                       accessibilityLabel={t("home.actions.jobsTitle")}
                       onPress={onOpenJobs}
                       style={({ pressed }) => ({
-                        opacity: pressed ? 0.94 : 1,
+                        borderRadius: BrandRadius.soft,
+                        backgroundColor: pressed ? (palette.surfaceElevated as string) : undefined,
                       })}
                     >
                       <HomeSurface palette={palette} style={{ padding: BrandSpacing.inset }}>

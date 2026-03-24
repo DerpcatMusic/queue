@@ -11,7 +11,11 @@ export default function ModalScreen() {
   return (
     <ThemedView className="flex-1 items-center justify-center" style={{ padding: BrandSpacing.lg }}>
       <ThemedText type="title">{t("modal.title")}</ThemedText>
-      <Link href="/" dismissTo style={{ marginTop: BrandSpacing.lg - 2, paddingVertical: BrandSpacing.lg - 2 }}>
+      <Link
+        href="/"
+        dismissTo
+        style={{ marginTop: BrandSpacing.lg - 2, paddingVertical: BrandSpacing.lg - 2 }}
+      >
         <ThemedText type="link">{t("modal.goHome")}</ThemedText>
       </Link>
     </ThemedView>
