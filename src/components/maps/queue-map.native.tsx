@@ -11,6 +11,7 @@ import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons";
@@ -45,7 +46,8 @@ const ATTRIBUTION_ICON_SIZE = BrandSpacing.sm + BrandSpacing.xs;
 const LOADING_ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm;
 const LOADING_ICON_RADIUS = LOADING_ICON_SIZE / 2;
 const STUDIO_MARKER_MIN_ZOOM = 10;
-const STUDIO_MARKER_BORDER_WIDTH = BrandSpacing.xxs;
+const STUDIO_PIN_PATH =
+  "M12 27.2C14.4 25.3 20.5 19.5 20.5 11.4C20.5 6.61 16.69 2.8 12 2.8C7.31 2.8 3.5 6.61 3.5 11.4C3.5 19.5 9.6 25.3 12 27.2Z";
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 180;
@@ -53,9 +55,82 @@ const MAP_LOADING_OVERLAY_DELAY_MS = 180;
 function getStudioMarkerMetrics(zoom: number) {
   void zoom;
   return {
-    outerSize: BrandSpacing.avatarMd,
-    tailSize: BrandSpacing.md,
+    width: BrandSpacing.avatarMd,
+    height: BrandSpacing.avatarMd + BrandSpacing.lg,
+    imageSize: BrandSpacing.controlMd,
+    imageTop: BrandSpacing.xxs,
   };
+}
+
+function StudioMapPin({
+  accentColor,
+  imageSize,
+  imageTop,
+  imageUrl,
+  label,
+  onImageLoad,
+  pinHeight,
+  pinWidth,
+  textColor,
+}: {
+  accentColor: string;
+  imageSize: number;
+  imageTop: number;
+  imageUrl?: string;
+  label: string;
+  onImageLoad: () => void;
+  pinHeight: number;
+  pinWidth: number;
+  textColor: string;
+}) {
+  const imageInset = (pinWidth - imageSize) / 2;
+
+  return (
+    <View style={{ width: pinWidth, height: pinHeight }}>
+      <Svg
+        width={pinWidth}
+        height={pinHeight}
+        viewBox="0 0 24 28"
+        style={{ position: "absolute", top: 0, left: 0 }}
+      >
+        <Path d={STUDIO_PIN_PATH} fill={accentColor} />
+      </Svg>
+      {imageUrl ? (
+        <Image
+          source={imageUrl}
+          onLoad={onImageLoad}
+          style={{
+            position: "absolute",
+            top: imageTop,
+            left: imageInset,
+            width: imageSize,
+            height: imageSize,
+            borderRadius: imageSize / 2,
+            borderCurve: "continuous",
+          }}
+          contentFit="cover"
+        />
+      ) : (
+        <View
+          style={{
+            position: "absolute",
+            top: imageTop,
+            left: imageInset,
+            width: imageSize,
+            height: imageSize,
+            borderRadius: imageSize / 2,
+            borderCurve: "continuous",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <ThemedText type="bodyStrong" style={{ color: textColor }}>
+            {label}
+          </ThemedText>
+        </View>
+      )}
+    </View>
+  );
 }
 
 export const QueueMap = memo(function QueueMap({
@@ -350,11 +425,10 @@ export const QueueMap = memo(function QueueMap({
 
         {showStudioMarkers
           ? studios.map((studio) => {
-              const markerSize = studioMarkerMetrics.outerSize;
-              const tailSize = studioMarkerMetrics.tailSize;
-              const tailOverlap = BrandSpacing.sm;
-              const tailBridgeWidth = BrandSpacing.sm;
-              const tailBridgeHeight = BrandSpacing.sm;
+              const markerWidth = studioMarkerMetrics.width;
+              const markerHeight = studioMarkerMetrics.height;
+              const imageSize = studioMarkerMetrics.imageSize;
+              const imageTop = studioMarkerMetrics.imageTop;
               const markerAccent = palette.didit.accent as string;
               const hasLogo =
                 typeof studio.logoImageUrl === "string" && studio.logoImageUrl.length > 0;
@@ -372,67 +446,25 @@ export const QueueMap = memo(function QueueMap({
                     onPressStudio?.(studio.studioId);
                   }}
                 >
-                  <View style={{ alignItems: "center", paddingBottom: tailSize - tailOverlap }}>
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: markerSize - tailOverlap,
-                        width: tailBridgeWidth,
-                        height: tailBridgeHeight,
-                        borderRadius: BrandRadius.hard,
-                        backgroundColor: markerAccent,
+                  <View
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityLabel={studio.studioName}
+                    style={{ width: markerWidth, height: markerHeight }}
+                  >
+                    <StudioMapPin
+                      accentColor={markerAccent}
+                      imageSize={imageSize}
+                      imageTop={imageTop}
+                      {...(hasLogo ? { imageUrl: studio.logoImageUrl as string } : {})}
+                      label={studio.studioName.slice(0, 1).toUpperCase()}
+                      onImageLoad={() => {
+                        studioAnnotationRefs.current[studio.studioId]?.refresh();
                       }}
+                      pinHeight={markerHeight}
+                      pinWidth={markerWidth}
+                      textColor={palette.onPrimary as string}
                     />
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: markerSize - tailOverlap + BrandSpacing.xxs,
-                        width: tailSize,
-                        height: tailSize,
-                        backgroundColor: markerAccent,
-                        transform: [{ rotate: "45deg" }],
-                      }}
-                    />
-                    <View
-                      accessible
-                      accessibilityRole="button"
-                      accessibilityLabel={studio.studioName}
-                      style={{
-                        width: markerSize,
-                        height: markerSize,
-                        borderRadius: markerSize / 2,
-                        borderCurve: "continuous",
-                        borderWidth: STUDIO_MARKER_BORDER_WIDTH,
-                        borderColor: markerAccent,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        overflow: "hidden",
-                        backgroundColor: markerAccent,
-                      }}
-                    >
-                      {hasLogo ? (
-                        <Image
-                          source={studio.logoImageUrl as string}
-                          onLoad={() => {
-                            studioAnnotationRefs.current[studio.studioId]?.refresh();
-                          }}
-                          style={{
-                            width: markerSize,
-                            height: markerSize,
-                            borderRadius: markerSize / 2,
-                            borderCurve: "continuous",
-                          }}
-                          contentFit="cover"
-                        />
-                      ) : (
-                        <ThemedText
-                          type="bodyStrong"
-                          style={{ color: palette.onPrimary as string }}
-                        >
-                          {studio.studioName.slice(0, 1).toUpperCase()}
-                        </ThemedText>
-                      )}
-                    </View>
                   </View>
                 </ViewAnnotation>
               );
