@@ -1,7 +1,7 @@
 import Apple from "@auth/core/providers/apple";
 import Google from "@auth/core/providers/google";
 import { ConvexCredentials } from "@convex-dev/auth/providers/ConvexCredentials";
-import { convexAuth } from "@convex-dev/auth/server";
+import { createAccount, convexAuth } from "@convex-dev/auth/server";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { ConvexError } from "convex/values";
 import type { Id } from "./_generated/dataModel";
@@ -24,6 +24,7 @@ const googleNativeTokenAudiences = [
   googleOauthWebClientId,
 ].filter((value): value is string => Boolean(value));
 const googleJwks = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
+const EMAIL_ACCOUNT_PROVIDER_IDS = ["resend", "resend-otp"] as const;
 
 export function resolveLinkedUserId(args: {
   existingUserId: Id<"users"> | null | undefined;
@@ -129,6 +130,28 @@ function getFallbackRedirectTarget() {
   return process.env.SITE_URL ?? process.env.CONVEX_SITE_URL ?? "http://localhost:3000";
 }
 
+async function findMatchedUserIdsFromEmailAccounts(
+  ctx: any,
+  normalizedEmail: string,
+): Promise<Id<"users">[]> {
+  const matchedUserIds = new Set<string>();
+
+  for (const providerId of EMAIL_ACCOUNT_PROVIDER_IDS) {
+    const account = await ctx.db
+      .query("authAccounts")
+      .withIndex("providerAndAccountId", (q: any) =>
+        q.eq("provider", providerId).eq("providerAccountId", normalizedEmail),
+      )
+      .unique();
+
+    if (account?.userId) {
+      matchedUserIds.add(String(account.userId));
+    }
+  }
+
+  return Array.from(matchedUserIds) as Id<"users">[];
+}
+
 async function upsertAuthenticatedUser(ctx: any, args: {
   existingUserId: Id<"users"> | null | undefined;
   profile: Record<string, unknown>;
@@ -157,7 +180,15 @@ async function upsertAuthenticatedUser(ctx: any, args: {
         .withIndex("by_email", (q: any) => q.eq("email", email))
         .collect() as Promise<Array<{ _id: Id<"users"> }>>)
     : [];
-  const normalizedEmailMatches = emailMatches.map((row) => row._id);
+  const accountMatchedUserIds = canResolveLinkedUserByEmail(email, isEmailVerified)
+    ? await findMatchedUserIdsFromEmailAccounts(ctx, email!)
+    : [];
+  const normalizedEmailMatches = Array.from(
+    new Set([
+      ...emailMatches.map((row) => String(row._id)),
+      ...accountMatchedUserIds.map((userId) => String(userId)),
+    ]),
+  ) as Id<"users">[];
   let linkedUserId: Id<"users"> | null | undefined = null;
   const dedupedUserId =
     canResolveLinkedUserByEmail(email, isEmailVerified) && normalizedEmailMatches.length > 1
@@ -245,21 +276,27 @@ if (googleNativeWebClientId && googleNativeTokenAudiences.length > 0) {
           throw new ConvexError("Google sign-in succeeded but no email was returned.");
         }
 
-        const userId = await upsertAuthenticatedUser(ctx, {
-          existingUserId: undefined,
-          profile: {
-            email: payload.email,
-            email_verified: payload.email_verified,
-            name: payload.name,
-            image: payload.picture,
+        const accountId = payload.sub ?? payload.email;
+        const profile = {
+          role: "pending" as const,
+          roles: [] as Array<"instructor" | "studio">,
+          onboardingComplete: false,
+          isActive: true,
+          email: String(payload.email),
+          ...(payload.email_verified === true ? { emailVerified: true } : {}),
+          ...(typeof payload.name === "string" ? { name: payload.name } : {}),
+          ...(typeof payload.picture === "string" ? { image: payload.picture } : {}),
+        } as any;
+        const created = await createAccount(ctx, {
+          provider: "google-native",
+          account: {
+            id: String(accountId),
           },
-          provider: {
-            type: "oauth",
-            allowDangerousEmailAccountLinking: true,
-          },
+          profile,
+          shouldLinkViaEmail: true,
         });
 
-        return { userId };
+        return { userId: created.user._id };
       },
     }),
   );
