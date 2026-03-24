@@ -211,18 +211,11 @@ const he = {
       setupStudioHint: "צרו את צד הסטודיו על אותו חשבון.",
       addAccountTitle: "הוספת חשבון נוסף",
       addAccountBody:
-        "קודם בוחרים איך להמשיך. החשבון הנוכחי נשאר פעיל עד שתאשרו אחת מהפעולות למטה.",
-      addAccountCurrentTitle: "הסשן הנוכחי נשאר פעיל",
-      addAccountCurrentBody:
-        "אם תבטלו כאן, שום דבר לא ישתנה. תצאו מהחשבון רק אחרי שתבחרו התחברות או יצירת חשבון.",
-      signInAnotherTitle: "התחברות לחשבון אחר",
-      signInAnotherHint: "צאו מהסשן הזה ואז המשיכו עם אימייל קיים או ספק קיים.",
-      createAnotherTitle: "יצירת חשבון נוסף",
-      createAnotherHint: "צאו מהסשן הזה ואז התחילו חשבון חדש עם אימייל חדש או ספק אחר.",
-      cancelAddAccountTitle: "להישאר עם החשבון הנוכחי",
-      cancelAddAccountHint: "סגרו את הזרימה הזאת והישארו מחוברים בדיוק איפה שאתם.",
-      signingInAnother: "מכין התחברות...",
-      creatingAnother: "מכין יצירת חשבון...",
+        "הזינו את האימייל של החשבון הבא שתרצו להשתמש בו. תצאו מהחשבון הנוכחי רק אחרי שתמשיכו.",
+      addAccountFieldHint:
+        "המסך הבא ישתמש בזרימת ההתחברות הרגילה. אם עדיין אין חשבון לאימייל הזה, Queue תוכל ליצור אחד אחרי האימות.",
+      continueWithEmail: "המשך עם האימייל הזה",
+      continuingWithEmail: "פותח התחברות...",
     },
     setup: {
       verifyIdentity: "אימות זהות",

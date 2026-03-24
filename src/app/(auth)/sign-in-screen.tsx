@@ -17,7 +17,7 @@ import { SheetHeaderBlock } from "@/components/ui/sheet-header-block";
 import { type BrandPalette, BrandSpacing, BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import {
-  consumePendingPostSignOutAuthIntent,
+  consumePendingPostSignOutAuthHandoff,
   type PostSignOutAuthIntent,
 } from "@/modules/session/post-signout-auth-intent";
 
@@ -77,6 +77,7 @@ export default function SignInScreen() {
   const searchParams = useLocalSearchParams<{
     authFlow?: string | string[];
     code?: string | string[];
+    email?: string | string[];
     intent?: string | string[];
   }>();
   const palette = useBrand();
@@ -88,9 +89,7 @@ export default function SignInScreen() {
   const { isAuthenticated } = useConvexAuth();
   const { signIn } = useAuthActions();
   const handledMagicCodeRef = useRef<string | null>(null);
-  const pendingIntentRef = useRef<PostSignOutAuthIntent | null>(
-    readAuthIntent(searchParams.intent) ?? consumePendingPostSignOutAuthIntent(),
-  );
+  const pendingAuthHandoffRef = useRef(consumePendingPostSignOutAuthHandoff());
 
   useEffect(() => {
     WebBrowser.maybeCompleteAuthSession();
@@ -117,13 +116,16 @@ export default function SignInScreen() {
   );
 
   const [step, setStep] = useState<Step>("email");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(
+    readParam(searchParams.email) ?? pendingAuthHandoffRef.current?.email ?? "",
+  );
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const authIntent = readAuthIntent(searchParams.intent) ?? pendingIntentRef.current ?? "sign-in";
+  const authIntent =
+    readAuthIntent(searchParams.intent) ?? pendingAuthHandoffRef.current?.intent ?? "sign-in";
   const isSignUpIntent = authIntent === "sign-up";
   const sheetTitle =
     step === "code"
