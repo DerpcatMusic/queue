@@ -80,7 +80,7 @@ function MessageBanner({
   palette: BrandPalette;
 }) {
   const backgroundColor =
-    tone === "danger" ? (palette.dangerSubtle as string) : (palette.surfaceSecondary as string);
+    tone === "danger" ? (palette.dangerSubtle as string) : (palette.surfaceAlt as string);
   const textColor = tone === "danger" ? (palette.danger as string) : (palette.textMuted as string);
 
   return (

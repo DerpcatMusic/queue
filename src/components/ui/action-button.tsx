@@ -62,7 +62,7 @@ export function ActionButton({
       : (palette.surface as string)
     : tone === "primary"
       ? (palette.primary as string)
-      : (palette.surfaceSecondary as string);
+      : (palette.surfaceAlt as string);
   const pressedBackgroundColor = isDisabled
     ? backgroundColor
     : tone === "primary"

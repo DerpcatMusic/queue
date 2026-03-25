@@ -13,7 +13,6 @@ import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
 import { useMeasuredContentHeight } from "@/components/layout/use-measured-content-height";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
-import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
@@ -71,7 +70,7 @@ function getSportsSummary(sports: string[], t: TFunction) {
 
 export default function StudioProfileScreen() {
   const { signOut } = useAuthActions();
-  const { currentUser, availableRoles } = useUser();
+  const { currentUser } = useUser();
   const { reloadAuthSession } = useAuthSession();
   const { language, setLanguage } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
@@ -85,9 +84,6 @@ export default function StudioProfileScreen() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [hasActivated, setHasActivated] = useState(false);
-  const [pendingProfileRole, setPendingProfileRole] = useState<"instructor" | "studio" | null>(
-    null,
-  );
   const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
   const isBodyReady = useDeferredTabMount(pathname === STUDIO_PROFILE_ROUTE, { delayMs: 36 });
@@ -111,7 +107,6 @@ export default function StudioProfileScreen() {
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const updateMyStudioSettings = useMutation(api.users.updateMyStudioSettings);
-  const switchActiveRole = useMutation(api.users.switchActiveRole);
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
   const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
   const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<number | undefined>(
@@ -190,30 +185,6 @@ export default function StudioProfileScreen() {
   const handleRequestEdit = useCallback(() => {
     router.push(STUDIO_EDIT_ROUTE as Href);
   }, [router]);
-
-  const handleSwitchProfile = useCallback(
-    async (role: "instructor" | "studio") => {
-      if (pendingProfileRole || currentUser?.role === role) {
-        return;
-      }
-
-      setPendingProfileRole(role);
-      try {
-        await switchActiveRole({ role });
-        router.replace(buildRoleTabRoute(role, ROLE_TAB_ROUTE_NAMES.profile) as Href);
-      } finally {
-        setPendingProfileRole(null);
-      }
-    },
-    [currentUser?.role, pendingProfileRole, router, switchActiveRole],
-  );
-  const handleSetupRole = useCallback(
-    (role: "instructor" | "studio") => {
-      router.push(`/onboarding?role=${role}` as Href);
-    },
-    [router],
-  );
-  const missingRole = availableRoles.includes("instructor") ? null : "instructor";
 
   const handleOpenAccountSwitcher = useCallback(() => {
     void listRememberedDeviceAccounts().then((accounts) => {
@@ -352,7 +323,6 @@ export default function StudioProfileScreen() {
           profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
           palette={palette}
           onRequestEdit={handleRequestEdit}
-          onOpenSwitcher={handleOpenAccountSwitcher}
           primaryActionLabel={t("profile.actions.edit")}
           status={profileStatus}
           bio={studioSettings?.bio}
@@ -363,7 +333,6 @@ export default function StudioProfileScreen() {
     ),
     [
       currentUser?.image,
-      handleOpenAccountSwitcher,
       handleRequestEdit,
       onProfileHeaderLayout,
       palette,
@@ -498,33 +467,6 @@ export default function StudioProfileScreen() {
                   palette={palette}
                 />
               </ProfileSectionCard>
-
-              <ProfileSectionHeader
-                label={t("profile.sections.profiles")}
-                description={t("profile.sections.profilesDesc")}
-                icon="person.2.fill"
-                palette={palette}
-                flush
-              />
-              <ProfileRoleSwitcherCard
-                activeRole="studio"
-                availableRoles={availableRoles}
-                isSwitching={pendingProfileRole !== null}
-                pendingRole={pendingProfileRole}
-                onSwitchRole={handleSwitchProfile}
-                palette={palette}
-              />
-              {missingRole ? (
-                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
-                  <ProfileSettingRow
-                    title={t("profile.switcher.setupInstructorTitle")}
-                    subtitle={t("profile.switcher.setupInstructorHint")}
-                    icon="plus.circle.fill"
-                    onPress={() => handleSetupRole(missingRole)}
-                    palette={palette}
-                  />
-                </ProfileSectionCard>
-              ) : null}
             </View>
 
             <View style={styles.desktopSideColumn}>
@@ -631,7 +573,7 @@ export default function StudioProfileScreen() {
                       borderCurve: "continuous",
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: palette.surfaceSecondary as string,
+                      backgroundColor: palette.surfaceAlt as string,
                     }}
                   >
                     <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
@@ -661,7 +603,7 @@ export default function StudioProfileScreen() {
                         label={t("jobsTab.form.useStudioDefault")}
                         selected={autoExpireMinutesBefore === undefined}
                         compact
-                        backgroundColor={palette.surfaceSecondary as string}
+                        backgroundColor={palette.surfaceAlt as string}
                         selectedBackgroundColor={palette.primary as string}
                         labelColor={palette.text as string}
                         selectedLabelColor={palette.onPrimary as string}
@@ -673,7 +615,7 @@ export default function StudioProfileScreen() {
                           label={t("jobsTab.form.minutes", { value: minutes })}
                           selected={autoExpireMinutesBefore === minutes}
                           compact
-                          backgroundColor={palette.surfaceSecondary as string}
+                          backgroundColor={palette.surfaceAlt as string}
                           selectedBackgroundColor={palette.primary as string}
                           labelColor={palette.text as string}
                           selectedLabelColor={palette.onPrimary as string}
@@ -786,32 +728,6 @@ export default function StudioProfileScreen() {
             </ProfileSectionCard>
 
             <ProfileSectionHeader
-              label={t("profile.sections.profiles")}
-              description={t("profile.sections.profilesDesc")}
-              icon="person.2.fill"
-              palette={palette}
-            />
-            <ProfileRoleSwitcherCard
-              activeRole="studio"
-              availableRoles={availableRoles}
-              isSwitching={pendingProfileRole !== null}
-              pendingRole={pendingProfileRole}
-              onSwitchRole={handleSwitchProfile}
-              palette={palette}
-            />
-            {missingRole ? (
-              <ProfileSectionCard palette={palette}>
-                <ProfileSettingRow
-                  title={t("profile.switcher.setupInstructorTitle")}
-                  subtitle={t("profile.switcher.setupInstructorHint")}
-                  icon="plus.circle.fill"
-                  onPress={() => handleSetupRole(missingRole)}
-                  palette={palette}
-                />
-              </ProfileSectionCard>
-            ) : null}
-
-            <ProfileSectionHeader
               label={t("profile.account.title")}
               icon="person.crop.circle.fill"
               palette={palette}
@@ -912,7 +828,7 @@ export default function StudioProfileScreen() {
                     borderCurve: "continuous",
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: palette.surfaceSecondary as string,
+                    backgroundColor: palette.surfaceAlt as string,
                   }}
                 >
                   <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
@@ -942,7 +858,7 @@ export default function StudioProfileScreen() {
                       label={t("jobsTab.form.useStudioDefault")}
                       selected={autoExpireMinutesBefore === undefined}
                       compact
-                      backgroundColor={palette.surfaceSecondary as string}
+                      backgroundColor={palette.surfaceAlt as string}
                       selectedBackgroundColor={palette.primary as string}
                       labelColor={palette.text as string}
                       selectedLabelColor={palette.onPrimary as string}
@@ -954,7 +870,7 @@ export default function StudioProfileScreen() {
                         label={t("jobsTab.form.minutes", { value: minutes })}
                         selected={autoExpireMinutesBefore === minutes}
                         compact
-                        backgroundColor={palette.surfaceSecondary as string}
+                        backgroundColor={palette.surfaceAlt as string}
                         selectedBackgroundColor={palette.primary as string}
                         labelColor={palette.text as string}
                         selectedLabelColor={palette.onPrimary as string}

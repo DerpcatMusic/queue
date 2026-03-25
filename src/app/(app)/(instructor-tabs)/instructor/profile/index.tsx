@@ -290,7 +290,6 @@ export default function InstructorProfileScreen() {
           profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
           palette={palette}
           onRequestEdit={handleRequestEdit}
-          onOpenSwitcher={handleOpenAccountSwitcher}
           primaryActionLabel={t("profile.actions.edit")}
           status={profileStatus}
           bio={instructorSettings?.bio}
@@ -301,7 +300,6 @@ export default function InstructorProfileScreen() {
     ),
     [
       currentUser?.image,
-      handleOpenAccountSwitcher,
       handleRequestEdit,
       identityVerified,
       instructorSettings?.bio,
