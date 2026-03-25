@@ -47,9 +47,9 @@ export function ProfileSectionHeader({
           />
         ) : null}
         <Text
+          className="text-muted"
           style={{
             ...BrandType.micro,
-            color: palette.textMuted as string,
             letterSpacing: BrandType.micro.letterSpacing,
             textTransform: "uppercase",
           }}
@@ -59,9 +59,9 @@ export function ProfileSectionHeader({
       </View>
       {description ? (
         <Text
+          className="text-muted"
           style={{
             ...BrandType.caption,
-            color: palette.textMuted as string,
             maxWidth: 540,
           }}
         >
@@ -74,11 +74,10 @@ export function ProfileSectionHeader({
 
 export function ProfileSectionCard({
   children,
-  palette,
   style,
 }: {
   children: ReactNode;
-  palette: BrandPalette;
+  palette?: BrandPalette;
   style?: ComponentProps<typeof View>["style"];
 }) {
   return (
@@ -86,13 +85,13 @@ export function ProfileSectionCard({
       tone="base"
       padding={0}
       gap={0}
+      className="bg-surface"
       style={[
         {
           marginHorizontal: PROFILE_SECTION_CARD_MARGIN_HORIZONTAL,
           overflow: "hidden",
           borderRadius: BrandRadius.soft,
           borderCurve: "continuous",
-          backgroundColor: palette.surface as string,
         },
         style,
       ]}
@@ -154,13 +153,6 @@ export function ProfileSettingRow({
   const { resolvedScheme } = useThemePreference();
   const resolvedAccentColor = accentColor ?? palette.didit.accent;
 
-  const titleColor =
-    tone === "danger"
-      ? (palette.danger as string)
-      : tone === "accent"
-        ? resolvedAccentColor
-        : (palette.text as string);
-
   const secondaryColor =
     tone === "danger"
       ? (palette.danger as string)
@@ -188,23 +180,16 @@ export function ProfileSettingRow({
 
   const borderColor = tone === "danger" ? (palette.danger as string) : (palette.border as string);
 
-  const rowBackground =
-    tone === "accent"
-      ? resolvedScheme === "dark"
-        ? (palette.accentRowBgDark as string)
-        : (palette.accentRowBgLight as string)
-      : (palette.surface as string);
-
   const content = (
     <View>
       <View
+        className="bg-surface"
         style={{
           flexDirection: "row",
           alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
           gap: PROFILE_SETTING_ROW_GAP,
           paddingHorizontal: PROFILE_SETTING_ROW_PADDING_HORIZONTAL,
           paddingVertical: PROFILE_SETTING_ROW_PADDING_VERTICAL,
-          backgroundColor: rowBackground,
         }}
       >
         {icon ? (
@@ -227,15 +212,17 @@ export function ProfileSettingRow({
           style={{ flex: 1, gap: subtitle ? PROFILE_SETTING_ROW_SECONDARY_GAP : 0, minWidth: 0 }}
         >
           <Text
+            className="text-brand"
             style={{
               ...BrandType.bodyStrong,
-              color: titleColor,
             }}
           >
             {title}
           </Text>
           {subtitle ? (
-            <Text style={{ ...BrandType.caption, color: secondaryColor }}>{subtitle}</Text>
+            <Text style={{ ...BrandType.caption }} className="text-muted">
+              {subtitle}
+            </Text>
           ) : null}
         </View>
 
@@ -251,9 +238,9 @@ export function ProfileSettingRow({
           {value ? (
             <Text
               numberOfLines={1}
+              className="text-muted"
               style={{
                 ...BrandType.bodyMedium,
-                color: secondaryColor,
                 textAlign: "right",
               }}
             >

@@ -3,11 +3,9 @@ import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import MapTabScreen from "@/components/map-tab";
-import { useBrand } from "@/hooks/use-brand";
 import { isFeatureEnabled } from "@/navigation/tab-registry";
 
 export default function MapTabRoute() {
-  const palette = useBrand();
   const isFocused = useIsFocused();
   const [hasActivated, setHasActivated] = useState(false);
 
@@ -22,7 +20,7 @@ export default function MapTabRoute() {
   }
 
   if (!hasActivated) {
-    return <View style={{ flex: 1, backgroundColor: palette.appBg as string }} />;
+    return <View className="flex-1 bg-app-bg" />;
   }
 
   return <MapTabScreen />;

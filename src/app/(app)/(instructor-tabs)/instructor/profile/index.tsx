@@ -1,5 +1,5 @@
-import type BottomSheet from "@gorhom/bottom-sheet";
 import { useAuthActions } from "@convex-dev/auth/react";
+import type BottomSheet from "@gorhom/bottom-sheet";
 import { useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
@@ -311,22 +311,14 @@ export default function InstructorProfileScreen() {
     (currentUser?.role === "instructor" && instructorSettings === undefined)
   ) {
     return (
-      <TabScreenRoot
-        mode="static"
-        topInsetTone="sheet"
-        style={[styles.screen, { backgroundColor: palette.appBg }]}
-      >
-        <View style={{ flex: 1, backgroundColor: palette.appBg as string }} />
+      <TabScreenRoot mode="static" topInsetTone="sheet" style={styles.screen}>
+        <View className="flex-1 bg-app-bg" />
       </TabScreenRoot>
     );
   }
 
   return (
-    <TabScreenRoot
-      mode="static"
-      topInsetTone="sheet"
-      style={[styles.screen, { backgroundColor: palette.appBg }]}
-    >
+    <TabScreenRoot mode="static" topInsetTone="sheet" style={styles.screen}>
       {isDesktopWeb ? (
         <View style={styles.desktopShell}>
           <View style={styles.desktopRail}>
@@ -404,7 +396,6 @@ export default function InstructorProfileScreen() {
                   showDivider
                 />
               </ProfileSectionCard>
-
             </View>
 
             <View style={styles.desktopSideColumn}>

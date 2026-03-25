@@ -292,8 +292,7 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1"
-      style={{ backgroundColor: palette.appBg as string }}
+      className="flex-1 bg-app-bg"
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
@@ -303,7 +302,6 @@ export default function SignInScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           flexGrow: 1,
-          backgroundColor: palette.appBg as string,
           ...(sheetContentInsets as object),
         }}
       >

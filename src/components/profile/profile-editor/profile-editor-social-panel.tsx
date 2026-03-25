@@ -8,7 +8,7 @@ import {
 } from "@/components/profile/profile-social-links";
 import { KitSurface, KitTextField } from "@/components/ui/kit";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandType } from "@/constants/brand";
 
 type ProfileEditorSocialPanelProps = {
   palette: BrandPalette;
@@ -30,20 +30,16 @@ export function ProfileEditorSocialPanel({
   const [showSocialFields, setShowSocialFields] = useState(activeSocialCount > 0);
 
   return (
-    <KitSurface
-      tone="base"
-      padding={BrandSpacing.lg + BrandSpacing.xs}
-      gap={BrandSpacing.componentPadding}
-    >
+    <KitSurface tone="base" padding={20} gap={14}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: BrandSpacing.md,
+          gap: 12,
         }}
       >
-        <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+        <View style={{ flex: 1, gap: 2 }}>
           <Text
             style={{
               ...BrandType.title,
@@ -71,9 +67,12 @@ export function ProfileEditorSocialPanel({
           accessibilityLabel={showSocialFields ? t("profile.editor.hide") : t("common.edit")}
           onPress={() => setShowSocialFields((value) => !value)}
           style={({ pressed }) => ({
-            opacity: pressed ? 0.68 : 1,
-            paddingHorizontal: BrandSpacing.sm,
-            paddingVertical: BrandSpacing.xs,
+            backgroundColor: pressed
+              ? (palette.surfaceAlt as string)
+              : (palette.surfaceElevated as string),
+            paddingHorizontal: 6,
+            paddingVertical: 4,
+            borderRadius: 10,
           })}
         >
           <Text
@@ -89,7 +88,7 @@ export function ProfileEditorSocialPanel({
       </View>
 
       {showSocialFields ? (
-        <View style={{ gap: BrandSpacing.md }}>
+        <View style={{ gap: 12 }}>
           {PROFILE_SOCIAL_FIELDS.map((field) => (
             <KitTextField
               key={field.key}

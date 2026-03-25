@@ -78,11 +78,7 @@ export default function MapTabScreen() {
 
   if (Platform.OS === "web") {
     return (
-      <TabScreenRoot
-        mode="static"
-        style={{ backgroundColor: palette.surface as string }}
-        topInsetTone="card"
-      >
+      <TabScreenRoot mode="static" className="bg-surface" topInsetTone="card">
         <MapWebWorkbench
           t={t}
           palette={palette}

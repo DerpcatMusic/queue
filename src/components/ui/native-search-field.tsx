@@ -103,11 +103,11 @@ export function NativeSearchField({
             minWidth: 0,
             minHeight: metrics.inputMinHeight,
             ...BrandType.bodyMedium,
-            color: palette.text,
             includeFontPadding: false,
           },
           style,
         ]}
+        className="text-brand"
         {...rest}
       />
       {value.length > 0 ? (

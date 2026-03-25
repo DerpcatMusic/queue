@@ -38,7 +38,7 @@ export type KitThemeTokens = {
     primary: ColorValue;
     primarySubtle: ColorValue;
     dangerSubtle: ColorValue;
-    transparent: ColorValue;
+    contrast: ColorValue;
   };
   foreground: {
     primary: ColorValue;
@@ -51,7 +51,7 @@ export type KitThemeTokens = {
     primary: ColorValue;
     secondary: ColorValue;
     highlight: ColorValue;
-    transparent: ColorValue;
+    contrast: ColorValue;
   };
   shadow: {
     primaryLift: string;
@@ -115,7 +115,7 @@ export function useKitTheme() {
         primary: palette.primary,
         primarySubtle: palette.primarySubtle,
         dangerSubtle: palette.dangerSubtle,
-        transparent: palette.surface,
+        contrast: palette.surface,
       },
       foreground: {
         primary: palette.onPrimary,
@@ -128,7 +128,7 @@ export function useKitTheme() {
         primary: resolveColorValue(palette.borderStrong, palette.border, palette.border),
         secondary: resolveColorValue(palette.border, palette.borderStrong, palette.border),
         highlight: highlightBorder,
-        transparent: palette.border,
+        contrast: palette.border,
       },
       shadow: {
         primaryLift: primaryLiftShadow,

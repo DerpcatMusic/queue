@@ -2,10 +2,8 @@ import { useIsFocused } from "@react-navigation/native";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import CalendarTabScreen from "@/components/calendar";
-import { useBrand } from "@/hooks/use-brand";
 
 export default function CalendarTabRoute() {
-  const palette = useBrand();
   const isFocused = useIsFocused();
   const [hasActivated, setHasActivated] = useState(false);
 
@@ -16,7 +14,7 @@ export default function CalendarTabRoute() {
   }, [isFocused]);
 
   if (!hasActivated) {
-    return <View style={{ flex: 1, backgroundColor: palette.appBg as string }} />;
+    return <View className="flex-1 bg-app-bg" />;
   }
 
   return <CalendarTabScreen />;

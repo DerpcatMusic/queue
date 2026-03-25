@@ -84,7 +84,7 @@ export function SportsMultiSelect({
                   styles.resultRow,
                   {
                     backgroundColor: palette.primarySubtle as string,
-                    opacity: pressed ? 0.82 : 1,
+                    transform: [{ scale: pressed ? 0.992 : 1 }],
                   },
                 ]}
               >
@@ -128,7 +128,7 @@ export function SportsMultiSelect({
                   styles.resultRow,
                   {
                     backgroundColor: palette.surface as string,
-                    opacity: pressed ? 0.82 : 1,
+                    transform: [{ scale: pressed ? 0.992 : 1 }],
                   },
                 ]}
               >
@@ -177,7 +177,7 @@ export function SportsMultiSelect({
         accessibilityRole="button"
         accessibilityLabel={title}
         onPress={() => setIsOpen((value) => !value)}
-        style={({ pressed }) => [styles.header, { opacity: pressed ? 0.82 : 1 }]}
+        style={({ pressed }) => [styles.header, { transform: [{ scale: pressed ? 0.992 : 1 }] }]}
       >
         <View style={styles.headerTextBlock}>
           <ThemedText type="defaultSemiBold">{title}</ThemedText>

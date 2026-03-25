@@ -15,10 +15,10 @@ import { useAppInsets } from "@/hooks/use-app-insets";
 import { useBrand } from "@/hooks/use-brand";
 import {
   DEFAULT_STEPS,
-  getTopSheetStepHeights,
   HANDLE_HEIGHT,
   HANDLE_PILL_HEIGHT,
   HANDLE_PILL_WIDTH,
+  MIN_BOTTOM_CHROME_ESTIMATE,
   SHEET_SPRING,
 } from "./top-sheet.helpers";
 import { TopSheetSearchBar } from "./top-sheet-search-bar";
@@ -141,10 +141,14 @@ export function TopSheet({
     };
   }, [resolvedInsetColor, setTopInsetBackgroundColor, setTopInsetTone]);
 
+  // Available height for sheet steps (screen minus safe top minus bottom tabs)
+  const bottomChromeEstimate = Math.max(MIN_BOTTOM_CHROME_ESTIMATE, safeBottom + 64);
+  const availableHeight = screenHeight - safeTop - bottomChromeEstimate;
+
   // Compute step heights in pixels
   const stepHeights = useMemo(
-    () => getTopSheetStepHeights(steps, screenHeight, safeTop, safeBottom),
-    [safeBottom, safeTop, screenHeight, steps],
+    () => steps.map((s) => Math.round(s * availableHeight)),
+    [steps, availableHeight],
   );
 
   // Sheet height shared value
@@ -260,9 +264,8 @@ export function TopSheet({
     backgroundColor: animatedBackground.value,
   }));
   const revealStyle = useAnimatedStyle(() => ({
-    flex: expandedProgress.value,
+    flex: 1,
     minHeight: 0,
-    overflow: "hidden",
     transform: [
       {
         translateY: (1 - expandedProgress.value) * 8,

@@ -1,30 +1,30 @@
-import type BottomSheet from "@gorhom/bottom-sheet";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
-import { useMeasuredContentHeight } from "@/components/layout/use-measured-content-height";
-import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
+import { ProfileRoleSwitcherCard } from "@/components/profile/profile-role-switcher-card";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
-import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
+import {
+  getProfileHeaderExpandedHeight,
+  ProfileDesktopHeroPanel,
+  ProfileHeaderSheet,
+} from "@/components/profile/profile-tab";
 import { ThemedText } from "@/components/themed-text";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
@@ -44,11 +44,9 @@ const ROLE_TRANSLATION_KEYS = {
   admin: "profile.roles.admin",
 } as const;
 const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
-const STUDIO_BRANCHES_ROUTE = `${STUDIO_PROFILE_ROUTE}/branches` as const;
 const STUDIO_CALENDAR_SETTINGS_ROUTE = `${STUDIO_PROFILE_ROUTE}/calendar-settings` as const;
 const STUDIO_PAYMENTS_ROUTE = `${STUDIO_PROFILE_ROUTE}/payments` as const;
 const STUDIO_EDIT_ROUTE = `${STUDIO_PROFILE_ROUTE}/edit` as const;
-const STUDIO_ADD_ACCOUNT_ROUTE = `${STUDIO_PROFILE_ROUTE}/add-account` as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
   if (sports.length === 0) {
@@ -62,7 +60,7 @@ function getSportsSummary(sports: string[], t: TFunction) {
 
 export default function StudioProfileScreen() {
   const { signOut } = useAuthActions();
-  const { currentUser } = useUser();
+  const { currentUser, availableRoles } = useUser();
   const { language, setLanguage } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
   const { t, i18n } = useTranslation();
@@ -73,8 +71,10 @@ export default function StudioProfileScreen() {
   const { safeTop } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
-  const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [hasActivated, setHasActivated] = useState(false);
+  const [pendingProfileRole, setPendingProfileRole] = useState<"instructor" | "studio" | null>(
+    null,
+  );
   const isBodyReady = useDeferredTabMount(pathname === STUDIO_PROFILE_ROUTE, { delayMs: 36 });
 
   useEffect(() => {
@@ -96,11 +96,13 @@ export default function StudioProfileScreen() {
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const updateMyStudioSettings = useMutation(api.users.updateMyStudioSettings);
+  const switchActiveRole = useMutation(api.users.switchActiveRole);
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
   const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
   const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<number | undefined>(
     undefined,
   );
+  const [, setIsSavingAutoExpireMinutes] = useState(false);
 
   useEffect(() => {
     if (studioSettings) {
@@ -152,6 +154,7 @@ export default function StudioProfileScreen() {
       }
       const previousValue = autoExpireMinutesBefore;
       setAutoExpireMinutesBefore(minutes);
+      setIsSavingAutoExpireMinutes(true);
       void updateMyStudioSettings({
         studioName: studioSettings.studioName ?? "",
         address: studioSettings.address ?? "",
@@ -164,9 +167,13 @@ export default function StudioProfileScreen() {
           latitude: studioSettings.latitude,
           longitude: studioSettings.longitude,
         }),
-      }).catch(() => {
-        setAutoExpireMinutesBefore(previousValue);
-      });
+      })
+        .catch(() => {
+          setAutoExpireMinutesBefore(previousValue);
+        })
+        .finally(() => {
+          setIsSavingAutoExpireMinutes(false);
+        });
     },
     [autoExpireMinutesBefore, studioSettings, updateMyStudioSettings],
   );
@@ -175,17 +182,30 @@ export default function StudioProfileScreen() {
     router.push(STUDIO_EDIT_ROUTE as Href);
   }, [router]);
 
-  const handleOpenAccountSwitcher = useCallback(() => {
-    accountSwitcherSheetRef.current?.snapToIndex(0);
-  }, []);
-  const handleSignOut = useCallback(() => {
-    accountSwitcherSheetRef.current?.close();
-    void signOut();
-  }, [signOut]);
-  const handleUseAnotherAccount = useCallback(() => {
-    accountSwitcherSheetRef.current?.close();
-    router.push(STUDIO_ADD_ACCOUNT_ROUTE as Href);
-  }, [router]);
+  const handleSwitchProfile = useCallback(
+    async (role: "instructor" | "studio") => {
+      if (pendingProfileRole || currentUser?.role === role) {
+        return;
+      }
+
+      setPendingProfileRole(role);
+      try {
+        await switchActiveRole({ role });
+        router.replace(buildRoleTabRoute(role, ROLE_TAB_ROUTE_NAMES.profile) as Href);
+      } finally {
+        setPendingProfileRole(null);
+      }
+    },
+    [currentUser?.role, pendingProfileRole, router, switchActiveRole],
+  );
+  const handleSetupRole = useCallback(
+    (role: "instructor" | "studio") => {
+      router.push(`/onboarding?role=${role}` as Href);
+    },
+    [router],
+  );
+  const missingRole = availableRoles.includes("instructor") ? null : "instructor";
+
   const profileName =
     studioSettings?.studioName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
@@ -202,18 +222,6 @@ export default function StudioProfileScreen() {
     : null;
 
   const sportsSummary = getSportsSummary(studioSettings?.sports ?? [], t);
-  const branchSummary = studioSettings?.entitlement?.branchesFeatureEnabled
-    ? t("profile.settings.branches.summary", {
-        primary: studioSettings?.primaryBranch?.name ?? t("profile.settings.branches.none"),
-        active: studioSettings?.entitlement?.activeBranchCount ?? 0,
-        max: studioSettings?.entitlement?.maxBranches ?? 1,
-      })
-    : t("profile.settings.branches.singleBranchSummary", {
-        primary:
-          studioSettings?.primaryBranch?.name ??
-          studioSettings?.studioName ??
-          t("profile.settings.branches.none"),
-      });
   const provider = studioSettings?.calendarProvider;
   const calendarSummary =
     !provider || provider === "none"
@@ -267,39 +275,29 @@ export default function StudioProfileScreen() {
     (socialCount > 0
       ? t("profile.settings.publicProfileActive", { count: socialCount })
       : t("profile.settings.publicProfilePrompt"));
-  const { measuredHeight: profileMeasuredHeight, onLayout: onProfileHeaderLayout } =
-    useMeasuredContentHeight();
-  const profileHeaderHeight = useMemo(
-    () => safeTop + (profileMeasuredHeight > 0 ? profileMeasuredHeight : 128),
-    [profileMeasuredHeight, safeTop],
-  );
+  const profileHeaderHeight = useMemo(() => getProfileHeaderExpandedHeight(safeTop), [safeTop]);
   const profileSheetStep = useMemo(() => {
-    const availableHeight = Math.max(1, getTopSheetAvailableHeight(screenHeight, safeTop, 0));
+    const availableHeight = Math.max(1, screenHeight - safeTop - 80);
     return Math.max(0.12, Math.min(0.34, profileHeaderHeight / availableHeight));
   }, [profileHeaderHeight, safeTop, screenHeight]);
   const profileSheetContent = useMemo(
     () => (
-      <View onLayout={onProfileHeaderLayout}>
-        <ProfileHeaderSheet
-          profileName={profileName}
-          roleLabel={t("profile.hero.studioProfile")}
-          profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
-          palette={palette}
-          onRequestEdit={handleRequestEdit}
-          onOpenSwitcher={handleOpenAccountSwitcher}
-          primaryActionLabel={t("profile.actions.edit")}
-          status={profileStatus}
-          bio={studioSettings?.bio}
-          socialLinks={studioSettings?.socialLinks}
-          sports={studioSettings?.sports ?? []}
-        />
-      </View>
+      <ProfileHeaderSheet
+        profileName={profileName}
+        roleLabel={t("profile.hero.studioProfile")}
+        profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
+        palette={palette}
+        onRequestEdit={handleRequestEdit}
+        primaryActionLabel={t("profile.actions.edit")}
+        status={profileStatus}
+        bio={studioSettings?.bio}
+        socialLinks={studioSettings?.socialLinks}
+        sports={studioSettings?.sports ?? []}
+      />
     ),
     [
       currentUser?.image,
-      handleOpenAccountSwitcher,
       handleRequestEdit,
-      onProfileHeaderLayout,
       palette,
       profileName,
       profileStatus,
@@ -313,9 +311,7 @@ export default function StudioProfileScreen() {
 
   const profileSheetConfig = useMemo(
     () => ({
-      render: () => ({
-        children: profileSheetContent,
-      }),
+      content: profileSheetContent,
       steps: [profileSheetStep],
       initialStep: 0,
       padding: {
@@ -330,11 +326,7 @@ export default function StudioProfileScreen() {
 
   const isProfileIndexRoute = pathname === STUDIO_PROFILE_ROUTE || pathname.endsWith("/profile");
 
-  useGlobalTopSheet(
-    "profile",
-    !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null,
-    "profile:index:studio",
-  );
+  useGlobalTopSheet("profile", !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null);
 
   if (
     !hasActivated ||
@@ -384,8 +376,6 @@ export default function StudioProfileScreen() {
                 label: t("profile.actions.edit"),
                 onPress: handleRequestEdit,
               }}
-              onOpenSwitcher={handleOpenAccountSwitcher}
-              switcherActionLabel={t("profile.switcher.openAction")}
             />
           </View>
 
@@ -417,14 +407,6 @@ export default function StudioProfileScreen() {
                   showDivider
                 />
                 <ProfileSettingRow
-                  title={t("profile.settings.branches.title")}
-                  subtitle={branchSummary}
-                  icon="square.stack.3d.up.fill"
-                  onPress={() => router.push(STUDIO_BRANCHES_ROUTE as Href)}
-                  palette={palette}
-                  showDivider
-                />
-                <ProfileSettingRow
                   title={t("profile.settings.coverageZone")}
                   subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
                   icon="mappin.and.ellipse"
@@ -433,6 +415,32 @@ export default function StudioProfileScreen() {
                 />
               </ProfileSectionCard>
 
+              <ProfileSectionHeader
+                label={t("profile.sections.profiles")}
+                description={t("profile.sections.profilesDesc")}
+                icon="person.2.fill"
+                palette={palette}
+                flush
+              />
+              <ProfileRoleSwitcherCard
+                activeRole="studio"
+                availableRoles={availableRoles}
+                isSwitching={pendingProfileRole !== null}
+                pendingRole={pendingProfileRole}
+                onSwitchRole={handleSwitchProfile}
+                palette={palette}
+              />
+              {missingRole ? (
+                <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title={t("profile.switcher.setupInstructorTitle")}
+                    subtitle={t("profile.switcher.setupInstructorHint")}
+                    icon="plus.circle.fill"
+                    onPress={() => handleSetupRole(missingRole)}
+                    palette={palette}
+                  />
+                </ProfileSectionCard>
+              ) : null}
             </View>
 
             <View style={styles.desktopSideColumn}>
@@ -443,14 +451,6 @@ export default function StudioProfileScreen() {
                 flush
               />
               <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
-                <ProfileSettingRow
-                  title={t("profile.switcher.openAction")}
-                  subtitle={t("profile.switcher.accountRowHint")}
-                  icon="person.2.fill"
-                  onPress={handleOpenAccountSwitcher}
-                  palette={palette}
-                  showDivider
-                />
                 <ProfileSettingRow
                   title={t("profile.account.nameLabel")}
                   value={currentUser?.fullName ?? profileName}
@@ -526,16 +526,16 @@ export default function StudioProfileScreen() {
                   style={{
                     flexDirection: "row",
                     alignItems: "flex-start",
-                    gap: BrandSpacing.componentPadding,
-                    paddingHorizontal: BrandSpacing.lg,
-                    paddingVertical: BrandSpacing.componentPadding,
+                    gap: 14,
+                    paddingHorizontal: 18,
+                    paddingVertical: 15,
                   }}
                 >
                   <View
                     style={{
                       width: 38,
                       height: 38,
-                      borderRadius: BrandRadius.cardSubtle,
+                      borderRadius: 19,
                       borderCurve: "continuous",
                       alignItems: "center",
                       justifyContent: "center",
@@ -544,7 +544,7 @@ export default function StudioProfileScreen() {
                   >
                     <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
                   </View>
-                  <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                  <View style={{ flex: 1, gap: 4 }}>
                     <Text
                       style={{
                         fontSize: 16,
@@ -557,14 +557,7 @@ export default function StudioProfileScreen() {
                     <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
                       {t("profile.settings.autoExpire.description")}
                     </ThemedText>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: BrandSpacing.sm,
-                        marginTop: BrandSpacing.sm,
-                      }}
-                    >
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                       <ChoicePill
                         label={t("jobsTab.form.useStudioDefault")}
                         selected={autoExpireMinutesBefore === undefined}
@@ -633,7 +626,7 @@ export default function StudioProfileScreen() {
                   title={t("auth.signOutButton")}
                   subtitle={t("profile.settings.signOutDesc")}
                   icon="arrow.right.square"
-                  onPress={handleSignOut}
+                  onPress={() => void signOut()}
                   palette={palette}
                   tone="danger"
                 />
@@ -646,10 +639,10 @@ export default function StudioProfileScreen() {
           routeKey="studio/profile"
           style={styles.screen}
           contentContainerStyle={{
-            gap: BrandSpacing.lg + 2,
+            gap: 18,
           }}
-          topSpacing={BrandSpacing.lg + 2}
-          bottomSpacing={BrandSpacing.xxl}
+          topSpacing={18}
+          bottomSpacing={32}
         >
           <View style={styles.mobileContentPadding}>
             <ProfileSectionHeader
@@ -677,14 +670,6 @@ export default function StudioProfileScreen() {
                 showDivider
               />
               <ProfileSettingRow
-                title={t("profile.settings.branches.title")}
-                subtitle={branchSummary}
-                icon="square.stack.3d.up.fill"
-                onPress={() => router.push(STUDIO_BRANCHES_ROUTE as Href)}
-                palette={palette}
-                showDivider
-              />
-              <ProfileSettingRow
                 title={t("profile.settings.coverageZone")}
                 subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
                 icon="mappin.and.ellipse"
@@ -694,19 +679,37 @@ export default function StudioProfileScreen() {
             </ProfileSectionCard>
 
             <ProfileSectionHeader
+              label={t("profile.sections.profiles")}
+              description={t("profile.sections.profilesDesc")}
+              icon="person.2.fill"
+              palette={palette}
+            />
+            <ProfileRoleSwitcherCard
+              activeRole="studio"
+              availableRoles={availableRoles}
+              isSwitching={pendingProfileRole !== null}
+              pendingRole={pendingProfileRole}
+              onSwitchRole={handleSwitchProfile}
+              palette={palette}
+            />
+            {missingRole ? (
+              <ProfileSectionCard palette={palette}>
+                <ProfileSettingRow
+                  title={t("profile.switcher.setupInstructorTitle")}
+                  subtitle={t("profile.switcher.setupInstructorHint")}
+                  icon="plus.circle.fill"
+                  onPress={() => handleSetupRole(missingRole)}
+                  palette={palette}
+                />
+              </ProfileSectionCard>
+            ) : null}
+
+            <ProfileSectionHeader
               label={t("profile.account.title")}
               icon="person.crop.circle.fill"
               palette={palette}
             />
             <ProfileSectionCard palette={palette}>
-              <ProfileSettingRow
-                title={t("profile.switcher.openAction")}
-                subtitle={t("profile.switcher.accountRowHint")}
-                icon="person.2.fill"
-                onPress={handleOpenAccountSwitcher}
-                palette={palette}
-                showDivider
-              />
               <ProfileSettingRow
                 title={t("profile.account.nameLabel")}
                 value={currentUser?.fullName ?? profileName}
@@ -781,16 +784,16 @@ export default function StudioProfileScreen() {
                 style={{
                   flexDirection: "row",
                   alignItems: "flex-start",
-                  gap: BrandSpacing.componentPadding,
-                  paddingHorizontal: BrandSpacing.lg,
-                  paddingVertical: BrandSpacing.componentPadding,
+                  gap: 14,
+                  paddingHorizontal: 18,
+                  paddingVertical: 15,
                 }}
               >
                 <View
                   style={{
                     width: 38,
                     height: 38,
-                    borderRadius: BrandRadius.cardSubtle,
+                    borderRadius: 19,
                     borderCurve: "continuous",
                     alignItems: "center",
                     justifyContent: "center",
@@ -799,7 +802,7 @@ export default function StudioProfileScreen() {
                 >
                   <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
                 </View>
-                <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                <View style={{ flex: 1, gap: 4 }}>
                   <Text
                     style={{
                       fontSize: 16,
@@ -812,14 +815,7 @@ export default function StudioProfileScreen() {
                   <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
                     {t("profile.settings.autoExpire.description")}
                   </ThemedText>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      gap: BrandSpacing.sm,
-                      marginTop: BrandSpacing.sm,
-                    }}
-                  >
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                     <ChoicePill
                       label={t("jobsTab.form.useStudioDefault")}
                       selected={autoExpireMinutesBefore === undefined}
@@ -888,7 +884,7 @@ export default function StudioProfileScreen() {
                 title={t("auth.signOutButton")}
                 subtitle={t("profile.settings.signOutDesc")}
                 icon="arrow.right.square"
-                onPress={handleSignOut}
+                onPress={() => void signOut()}
                 palette={palette}
                 tone="danger"
               />
@@ -896,17 +892,6 @@ export default function StudioProfileScreen() {
           </View>
         </ProfileIndexScrollView>
       )}
-      <ProfileAccountSwitcherSheet
-        innerRef={accountSwitcherSheetRef}
-        onDismissed={() => undefined}
-        currentAccountName={profileName}
-        currentAccountEmail={currentUser?.email}
-        currentRoleLabel={roleValue}
-        onSignOut={handleSignOut}
-        onUseAnotherAccount={handleUseAnotherAccount}
-        palette={palette}
-        profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
-      />
     </TabScreenRoot>
   );
 }
@@ -918,7 +903,7 @@ const styles = StyleSheet.create({
   desktopShell: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: BrandSpacing.xl,
+    gap: 24,
   },
   desktopRail: {
     width: 360,
@@ -927,7 +912,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: BrandSpacing.xl,
+    gap: 24,
   },
   desktopMainColumn: {
     flex: 1,
@@ -940,6 +925,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
   },
   mobileContentPadding: {
-    paddingHorizontal: BrandSpacing.xl,
+    paddingHorizontal: 24,
   },
 });

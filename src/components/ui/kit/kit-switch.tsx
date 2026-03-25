@@ -52,7 +52,6 @@ export function KitSwitch({
     transform: [{ translateX: progress.value * THUMB_DISTANCE }],
     backgroundColor: value ? interaction.switchThumbOn : interaction.switchThumbOff,
   }));
-
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
@@ -66,8 +65,8 @@ export function KitSwitch({
       style={({ pressed }) => [
         styles.pressable,
         {
-          borderRadius: BrandRadius.button,
           backgroundColor: disabled ? disabledTrackColor : pressed ? pressedTrackColor : undefined,
+          borderRadius: BrandRadius.button,
         },
       ]}
     >

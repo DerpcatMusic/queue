@@ -3,16 +3,8 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { NativeSearchField } from "@/components/ui/native-search-field";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { type BrandPalette, BrandType } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
-
-// Map web command panel - desktop-focused with fixed width panel
-const PANEL_WIDTH = BrandSpacing.shellCommandPanel;
-const PANEL_RADIUS = BrandRadius.soft;
-const INNER_RADIUS = BrandRadius.medium;
-const METRIC_RADIUS = BrandRadius.hard;
-const TERRITORY_RADIUS = BrandRadius.hard;
-const ZONE_SELECT_RADIUS = BrandRadius.hard;
 
 type MapWebCommandPanelProps = {
   t: TFunction;
@@ -48,19 +40,20 @@ export function MapWebCommandPanel({
   return (
     <View
       style={{
-        width: PANEL_WIDTH,
-        borderRadius: PANEL_RADIUS,
+        width: 360,
+        borderRadius: 34,
         borderCurve: "continuous",
         backgroundColor: palette.surfaceAlt as string,
-        paddingHorizontal: BrandSpacing.lg,
-        paddingVertical: BrandSpacing.lg,
-        gap: BrandSpacing.lg,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        gap: 14,
       }}
     >
-      <View style={{ gap: BrandSpacing.xs }}>
+      <View style={{ gap: 6 }}>
         <Text
           style={{
             ...BrandType.heading,
+            fontSize: 26,
             color: palette.text as string,
           }}
         >
@@ -78,24 +71,24 @@ export function MapWebCommandPanel({
 
       <View
         style={{
-          borderRadius: INNER_RADIUS,
+          borderRadius: 24,
           borderCurve: "continuous",
           backgroundColor: palette.surface as string,
-          paddingHorizontal: BrandSpacing.controlX,
-          paddingVertical: BrandSpacing.controlY,
-          gap: BrandSpacing.sm,
+          paddingHorizontal: 14,
+          paddingVertical: 14,
+          gap: 10,
         }}
       >
-        <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+        <View style={{ flexDirection: "row", gap: 10 }}>
           <View
             style={{
               flex: 1,
-              borderRadius: METRIC_RADIUS,
+              borderRadius: 18,
               borderCurve: "continuous",
               backgroundColor: palette.surfaceAlt as string,
-              paddingHorizontal: BrandSpacing.controlX,
-              paddingVertical: BrandSpacing.sm,
-              gap: BrandSpacing.xs,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              gap: 2,
             }}
           >
             <Text
@@ -121,12 +114,12 @@ export function MapWebCommandPanel({
           <View
             style={{
               flex: 1,
-              borderRadius: METRIC_RADIUS,
+              borderRadius: 18,
               borderCurve: "continuous",
               backgroundColor: palette.surfaceAlt as string,
-              paddingHorizontal: BrandSpacing.controlX,
-              paddingVertical: BrandSpacing.sm,
-              gap: BrandSpacing.xs,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              gap: 2,
             }}
           >
             <Text
@@ -175,11 +168,11 @@ export function MapWebCommandPanel({
       {saveError ? (
         <View
           style={{
-            borderRadius: TERRITORY_RADIUS,
+            borderRadius: 20,
             borderCurve: "continuous",
             backgroundColor: palette.dangerSubtle as string,
-            paddingHorizontal: BrandSpacing.controlX,
-            paddingVertical: BrandSpacing.md,
+            paddingHorizontal: 14,
+            paddingVertical: 12,
           }}
         >
           <Text
@@ -193,7 +186,7 @@ export function MapWebCommandPanel({
         </View>
       ) : null}
 
-      <View style={{ gap: BrandSpacing.md }}>
+      <View style={{ gap: 10 }}>
         <Text
           style={{
             ...BrandType.micro,
@@ -206,17 +199,17 @@ export function MapWebCommandPanel({
         </Text>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ gap: BrandSpacing.sm, paddingBottom: BrandSpacing.xs }}
+          contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
         >
           {selectedZones.length === 0 ? (
             <View
               style={{
-                borderRadius: TERRITORY_RADIUS,
+                borderRadius: 22,
                 borderCurve: "continuous",
                 backgroundColor: palette.surface as string,
-                paddingHorizontal: BrandSpacing.controlX,
-                paddingVertical: BrandSpacing.lg,
-                gap: BrandSpacing.xs,
+                paddingHorizontal: 14,
+                paddingVertical: 16,
+                gap: 4,
               }}
             >
               <Text
@@ -243,8 +236,8 @@ export function MapWebCommandPanel({
                 style={{
                   flexDirection: "row",
                   alignItems: "stretch",
-                  gap: BrandSpacing.sm,
-                  borderRadius: TERRITORY_RADIUS,
+                  gap: 10,
+                  borderRadius: 22,
                   borderCurve: "continuous",
                   backgroundColor:
                     focusZoneId === zone.id
@@ -261,19 +254,19 @@ export function MapWebCommandPanel({
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    gap: BrandSpacing.md,
-                    paddingHorizontal: BrandSpacing.controlX,
-                    paddingVertical: BrandSpacing.controlY,
-                    opacity: pressed ? 0.92 : 1,
+                    gap: 12,
+                    paddingHorizontal: 14,
+                    paddingVertical: 14,
+                    transform: [{ scale: pressed ? 0.99 : 1 }],
                   })}
                 >
-                  <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                  <View style={{ flex: 1, gap: 2 }}>
                     <Text
                       style={{
                         ...BrandType.bodyStrong,
                         color:
                           focusZoneId === zone.id
-                            ? (palette.primary as string)
+                            ? (palette.onPrimary as string)
                             : (palette.text as string),
                       }}
                     >
@@ -284,9 +277,8 @@ export function MapWebCommandPanel({
                         ...BrandType.micro,
                         color:
                           focusZoneId === zone.id
-                            ? (palette.primary as string)
+                            ? (palette.surfaceAlt as string)
                             : (palette.textMuted as string),
-                        opacity: focusZoneId === zone.id ? 0.78 : 1,
                       }}
                     >
                       {focusZoneId === zone.id
@@ -305,18 +297,18 @@ export function MapWebCommandPanel({
                   style={({ pressed }) => ({
                     alignItems: "center",
                     justifyContent: "center",
-                    paddingHorizontal: BrandSpacing.controlX,
-                    paddingVertical: BrandSpacing.controlY,
+                    paddingHorizontal: 14,
+                    paddingVertical: 14,
                     backgroundColor:
                       focusZoneId === zone.id
                         ? (palette.primaryPressed as string)
                         : (palette.surfaceAlt as string),
-                    opacity: pressed ? 0.88 : 1,
+                    transform: [{ scale: pressed ? 0.99 : 1 }],
                   })}
                 >
                   <IconSymbol
                     name="minus"
-                    size={BrandSpacing.xs + BrandSpacing.sm}
+                    size={14}
                     color={
                       focusZoneId === zone.id
                         ? (palette.onPrimary as string)
@@ -330,7 +322,7 @@ export function MapWebCommandPanel({
         </ScrollView>
       </View>
 
-      <View style={{ gap: BrandSpacing.md, flex: 1, minHeight: 0 }}>
+      <View style={{ gap: 10, flex: 1, minHeight: 0 }}>
         <Text
           style={{
             ...BrandType.micro,
@@ -343,7 +335,7 @@ export function MapWebCommandPanel({
         </Text>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ gap: BrandSpacing.sm, paddingBottom: BrandSpacing.sm }}
+          contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
         >
           {filteredZones.map((zone) => {
             const selected = selectedZones.some((entry) => entry.id === zone.id);
@@ -353,14 +345,14 @@ export function MapWebCommandPanel({
                 accessibilityRole="button"
                 onPress={() => onToggleZone(zone.id)}
                 style={({ pressed }) => ({
-                  borderRadius: ZONE_SELECT_RADIUS,
+                  borderRadius: 20,
                   borderCurve: "continuous",
                   backgroundColor: selected
-                    ? (palette.primary as string)
+                    ? (palette.primaryPressed as string)
                     : (palette.surface as string),
-                  paddingHorizontal: BrandSpacing.controlX,
-                  paddingVertical: BrandSpacing.md,
-                  opacity: pressed ? 0.92 : 1,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  transform: [{ scale: pressed ? 0.99 : 1 }],
                 })}
               >
                 <View
@@ -368,7 +360,7 @@ export function MapWebCommandPanel({
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    gap: BrandSpacing.md,
+                    gap: 12,
                   }}
                 >
                   <Text
@@ -383,9 +375,8 @@ export function MapWebCommandPanel({
                     style={{
                       ...BrandType.micro,
                       color: selected
-                        ? (palette.onPrimary as string)
+                        ? (palette.surfaceAlt as string)
                         : (palette.textMuted as string),
-                      opacity: selected ? 0.72 : 1,
                     }}
                   >
                     {selected ? t("mapTab.web.live") : t("mapTab.web.add")}

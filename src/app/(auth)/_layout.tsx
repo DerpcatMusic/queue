@@ -21,13 +21,13 @@ export default function AuthLayout() {
   return (
     <ScrollSheetProvider>
       <GlobalTopSheetProvider>
-        <View style={{ flex: 1, backgroundColor: palette.appBg as string }}>
+        <View className="flex-1 bg-app-bg">
           <GlobalTopSheet />
           <Stack
             screenOptions={{
               headerShown: false,
               contentStyle: {
-                backgroundColor: palette.appBg as string,
+                backgroundColor: palette.appBg,
               },
             }}
           >

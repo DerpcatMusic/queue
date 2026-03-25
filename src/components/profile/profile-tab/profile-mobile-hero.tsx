@@ -1,12 +1,12 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import {
   getActiveSocialCount,
   getProfileSummary,
@@ -14,17 +14,12 @@ import {
   type ProfileHeroStatus,
 } from "./profile-hero-utils";
 
-const AVATAR_SIZE = BrandSpacing.iconContainerLarge; // 78px - consistent with home-header-sheet
-const ICON_SIZE = BrandSpacing.iconContainer + BrandSpacing.sm; // ~46px
-const ICON_SYMBOL_SIZE = BrandSpacing.md + BrandSpacing.xs; // ~16px
-
 type ProfileHeaderSheetProps = {
   profileName: string;
   roleLabel: string;
   profileImageUrl?: string | null | undefined;
   palette: BrandPalette;
   onRequestEdit: () => void;
-  onOpenSwitcher?: () => void;
   primaryActionLabel?: string;
   status?: ProfileHeroStatus;
   statusLabel?: string | undefined;
@@ -39,7 +34,6 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   profileImageUrl,
   palette,
   onRequestEdit,
-  onOpenSwitcher,
   primaryActionLabel,
   status,
   statusLabel,
@@ -78,50 +72,37 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           flexDirection: "row",
           alignItems: "flex-start",
           justifyContent: "space-between",
-          gap: BrandSpacing.componentPadding,
+          gap: 14,
         }}
       >
-        <Pressable
+        <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: BrandSpacing.componentPadding,
+            gap: 14,
             flex: 1,
             minWidth: 0,
           }}
-          accessibilityRole={onOpenSwitcher ? "button" : undefined}
-          accessibilityLabel={onOpenSwitcher ? t("profile.switcher.openAction") : undefined}
-          onPress={onOpenSwitcher}
         >
           <ProfileAvatar
             imageUrl={profileImageUrl}
             fallbackName={profileName}
             palette={palette}
-            size={AVATAR_SIZE}
+            size={72}
             roundedSquare
           />
 
-          <View style={{ flex: 1, gap: BrandSpacing.xs, minWidth: 0 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
-              <Text
-                style={{
-                  ...BrandType.micro,
-                  color: palette.onPrimary as string,
-                  opacity: 0.64,
-                  letterSpacing: 0.2,
-                  includeFontPadding: false,
-                }}
-              >
-                {roleLabel}
-              </Text>
-              {onOpenSwitcher ? (
-                <IconSymbol
-                  name="chevron.down"
-                  size={12}
-                  color={palette.onPrimary as string}
-                />
-              ) : null}
-            </View>
+          <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+            <Text
+              style={{
+                ...BrandType.micro,
+                color: palette.onPrimary as string,
+                letterSpacing: 0.2,
+                includeFontPadding: false,
+              }}
+            >
+              {roleLabel}
+            </Text>
             <Text
               numberOfLines={2}
               style={{
@@ -135,28 +116,20 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             >
               {profileName}
             </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: BrandSpacing.sm,
-                minHeight: BrandSpacing.lg + BrandSpacing.xs / 2,
-              }}
-            >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 18 }}>
               {resolvedStatusLabel ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <View
                     style={{
-                      width: BrandSpacing.statusDot,
-                      height: BrandSpacing.statusDot,
-                      borderRadius: BrandRadius.icon,
+                      width: 7,
+                      height: 7,
+                      borderRadius: 3.5,
                       backgroundColor:
                         statusTone === "success"
                           ? (palette.success as string)
                           : statusTone === "warning"
                             ? (palette.warning as string)
                             : (palette.onPrimary as string),
-                      opacity: statusTone === "neutral" ? 0.62 : 1,
                     }}
                   />
                   <Text
@@ -165,7 +138,6 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                       ...BrandType.bodyMedium,
                       fontSize: 13,
                       color: palette.onPrimary as string,
-                      opacity: 0.74,
                       includeFontPadding: false,
                     }}
                   >
@@ -180,7 +152,6 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                     ...BrandType.bodyMedium,
                     fontSize: 13,
                     color: palette.onPrimary as string,
-                    opacity: 0.74,
                     includeFontPadding: false,
                   }}
                 >
@@ -189,16 +160,14 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
               ) : null}
             </View>
           </View>
-        </Pressable>
+        </View>
 
         <IconButton
           accessibilityLabel={resolvedPrimaryActionLabel}
           onPress={onRequestEdit}
           tone="primarySubtle"
-          size={ICON_SIZE}
-          icon={
-            <IconSymbol name="pencil" size={ICON_SYMBOL_SIZE} color={palette.primary as string} />
-          }
+          size={48}
+          icon={<IconSymbol name="pencil" size={21} color={palette.primary as string} />}
         />
       </View>
 
@@ -208,7 +177,6 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           style={{
             ...BrandType.caption,
             color: palette.onPrimary as string,
-            opacity: 0.76,
           }}
         >
           {summaryLabel}

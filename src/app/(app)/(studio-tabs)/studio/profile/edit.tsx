@@ -12,10 +12,7 @@ import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useBrand } from "@/hooks/use-brand";
-import {
-  isProfileImageUploadError,
-  useProfileImageUpload,
-} from "@/hooks/use-profile-image-upload";
+import { isProfileImageUploadError, useProfileImageUpload } from "@/hooks/use-profile-image-upload";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 
 function toSocialLinksDraft(value: ProfileSocialLinks | undefined) {
@@ -159,7 +156,7 @@ export default function StudioProfileEditScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.appBg as string }}>
+    <View className="flex-1 bg-app-bg">
       <ProfileEditorForm
         palette={palette}
         profileName={nameDraft || studioSettings.studioName}

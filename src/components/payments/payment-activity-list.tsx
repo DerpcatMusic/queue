@@ -81,13 +81,13 @@ export function PaymentActivityList({
         <View className="gap-stack-tight">
           <ThemedText type="bodyStrong">{title}</ThemedText>
           {subtitle ? (
-            <ThemedText type="caption" style={{ color: palette.textMuted }}>
+            <ThemedText type="caption" className="text-muted">
               {subtitle}
             </ThemedText>
           ) : null}
         </View>
         {items.length > 0 && (
-          <ThemedText type="caption" style={{ color: palette.textMuted }}>
+          <ThemedText type="caption" className="text-muted">
             {items.length} {items.length === 1 ? "item" : "items"}
           </ThemedText>
         )}
@@ -95,7 +95,7 @@ export function PaymentActivityList({
 
       {items.length === 0 ? (
         <View className="px-md">
-          <ThemedText type="caption" style={{ color: palette.textMuted }}>
+          <ThemedText type="caption" className="text-muted">
             {emptyLabel}
           </ThemedText>
         </View>
@@ -130,7 +130,7 @@ export function PaymentActivityList({
                   <StatusDot tone={getPaymentStatusTone(item.payment.status)} palette={palette} />
                   <View style={{ flex: 1 }}>
                     <ThemedText type="bodyStrong">{sportLabel}</ThemedText>
-                    <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                    <ThemedText type="caption" className="text-muted">
                       {item.job
                         ? formatDateTime(item.job.startTime, locale)
                         : formatDateTime(item.payment.createdAt, locale)}
@@ -160,7 +160,7 @@ export function PaymentActivityList({
                           item.payment.currency,
                         )}
                   </ThemedText>
-                  <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                  <ThemedText type="caption" className="text-muted">
                     {paymentStatus}
                   </ThemedText>
                 </View>
