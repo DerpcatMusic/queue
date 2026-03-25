@@ -1,12 +1,26 @@
 import "@/global.css";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 
+import { BarlowCondensed_800ExtraBold } from "@expo-google-fonts/barlow-condensed";
+import {
+  Lexend_500Medium,
+  Lexend_600SemiBold,
+  Lexend_700Bold,
+  Lexend_800ExtraBold,
+} from "@expo-google-fonts/lexend";
+import {
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+} from "@expo-google-fonts/manrope";
+import { Rubik_400Regular, Rubik_500Medium } from "@expo-google-fonts/rubik";
 import {
   DarkTheme,
   DefaultTheme,
   type Theme as NavigationTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
@@ -69,6 +83,18 @@ function RootLayoutContent() {
   const { resolvedScheme } = useThemePreference();
   const convex = getConvexClient();
   const [authSessionVersion, setAuthSessionVersion] = useState(0);
+  const [fontsLoaded] = useFonts({
+    BarlowCondensed_800ExtraBold,
+    Lexend_500Medium,
+    Lexend_600SemiBold,
+    Lexend_700Bold,
+    Lexend_800ExtraBold,
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Rubik_400Regular,
+    Rubik_500Medium,
+  });
 
   const nativeStorage = useMemo(() => {
     const secureStorage = {
@@ -122,6 +148,10 @@ function RootLayoutContent() {
 
   useStartupPerfMetrics();
   useLocalizationBootstrapPrompt();
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   if (!isConvexUrlConfigured || !convex) {
     return (

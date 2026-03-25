@@ -135,6 +135,7 @@ export function StudioFeed() {
       expandable: false,
       steps: [0.12],
       initialStep: 0,
+      collapsedHeightMode: "content" as const,
       backgroundColor: theme.color.primary,
       topInsetColor: theme.color.primary,
     }),

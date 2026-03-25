@@ -6,12 +6,10 @@ import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
-import { useMeasuredContentHeight } from "@/components/layout/use-measured-content-height";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
 import {
   ProfileSectionCard,
@@ -29,7 +27,6 @@ import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
-import { useAppInsets } from "@/hooks/use-app-insets";
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
@@ -81,8 +78,6 @@ export default function StudioProfileScreen() {
 
   const pathname = usePathname();
   const { isDesktopWeb } = useLayoutBreakpoint();
-  const { safeTop } = useAppInsets();
-  const { height: screenHeight } = useWindowDimensions();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [hasActivated, setHasActivated] = useState(false);
@@ -306,23 +301,14 @@ export default function StudioProfileScreen() {
     (socialCount > 0
       ? t("profile.settings.publicProfileActive", { count: socialCount })
       : t("profile.settings.publicProfilePrompt"));
-  const { measuredHeight: profileMeasuredHeight, onLayout: onProfileHeaderLayout } =
-    useMeasuredContentHeight();
-  const profileHeaderHeight = useMemo(
-    () => safeTop + (profileMeasuredHeight > 0 ? profileMeasuredHeight : 128),
-    [profileMeasuredHeight, safeTop],
-  );
-  const profileSheetStep = useMemo(() => {
-    const availableHeight = Math.max(1, getTopSheetAvailableHeight(screenHeight, safeTop, 0));
-    return Math.max(0.12, Math.min(0.34, profileHeaderHeight / availableHeight));
-  }, [profileHeaderHeight, safeTop, screenHeight]);
   const profileSheetContent = useMemo(
     () => (
-      <View onLayout={onProfileHeaderLayout}>
+      <View>
         <ProfileHeaderSheet
           profileName={profileName}
           roleLabel={t("profile.hero.studioProfile")}
           profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
+          visualVariant="studioFeature"
           onRequestEdit={handleRequestEdit}
           primaryActionLabel={t("profile.actions.edit")}
           status={profileStatus}
@@ -335,7 +321,6 @@ export default function StudioProfileScreen() {
     [
       currentUser?.image,
       handleRequestEdit,
-      onProfileHeaderLayout,
       profileName,
       profileStatus,
       studioSettings?.bio,
@@ -351,8 +336,9 @@ export default function StudioProfileScreen() {
       render: () => ({
         children: profileSheetContent,
       }),
-      steps: [profileSheetStep],
+      steps: [0.12],
       initialStep: 0,
+      collapsedHeightMode: "content" as const,
       padding: {
         vertical: 0,
         horizontal: 0,
@@ -360,7 +346,7 @@ export default function StudioProfileScreen() {
       backgroundColor: color.primary,
       topInsetColor: color.primary,
     }),
-    [color.primary, profileSheetContent, profileSheetStep],
+    [color.primary, profileSheetContent],
   );
 
   const isProfileIndexRoute = pathname === STUDIO_PROFILE_ROUTE || pathname.endsWith("/profile");

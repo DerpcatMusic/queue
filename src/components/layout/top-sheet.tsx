@@ -1,9 +1,18 @@
-import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
+import {
+  type Dispatch,
+  type PropsWithChildren,
+  type SetStateAction,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { ColorValue, StyleProp, ViewStyle } from "react-native";
-import { useWindowDimensions, View } from "react-native";
+import { ScrollView, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -13,6 +22,7 @@ import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useSystemUi } from "@/contexts/system-ui-context";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
+import { Motion } from "@/lib/design-system";
 import {
   DEFAULT_STEPS,
   HANDLE_HEIGHT,
@@ -22,6 +32,11 @@ import {
   SHEET_SPRING,
 } from "./top-sheet.helpers";
 import { TopSheetSearchBar } from "./top-sheet-search-bar";
+import {
+  computeCollapsedHeight,
+  computeIntrinsicMinHeight,
+  computeStepHeights,
+} from "./top-sheet-sizing";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +46,7 @@ export type TopSheetPadding = {
 };
 
 export type TopSheetExpandMode = "resize" | "overlay";
+export type TopSheetCollapsedHeightMode = "step" | "content";
 
 export type TopSheetProps = PropsWithChildren<{
   /** Show drag handle and enable pan gestures. @default false */
@@ -43,6 +59,10 @@ export type TopSheetProps = PropsWithChildren<{
   initialStep?: number;
   /** Controlled active step index. When set, the sheet snaps to this step. */
   activeStep?: number;
+  /** Absolute minimum sheet height in pixels. */
+  minHeight?: number;
+  /** How the collapsed sheet height is resolved. @default 'step' */
+  collapsedHeightMode?: TopSheetCollapsedHeightMode;
   /** Padding inside the sheet below the safe area. */
   padding?: TopSheetPadding;
   /** Background color for the sheet content. */
@@ -53,6 +73,10 @@ export type TopSheetProps = PropsWithChildren<{
   style?: StyleProp<ViewStyle>;
   /** Called when the sheet settles on a new step. */
   onStepChange?: (stepIndex: number) => void;
+  /** Starting sheet height used on mount before animating to resolved height. */
+  initialHeight?: number;
+  /** Reports the animated outer sheet height. */
+  onHeightChange?: (height: number) => void;
   /** Content that always sticks to the top of the sheet (visible always). */
   stickyHeader?: React.ReactNode;
   /** Content that always sticks to the bottom of the sheet (visible always). */
@@ -61,6 +85,8 @@ export type TopSheetProps = PropsWithChildren<{
   revealOnExpand?: React.ReactNode;
   /** Expand mode: 'resize' pushes content down, 'overlay' overlaps without resizing. @default 'resize' */
   expandMode?: TopSheetExpandMode;
+  /** Internal callback for publishing the resolved collapsed height. */
+  onMinHeightChange?: (height: number) => void;
 }>;
 
 // ─── Drag Handle ──────────────────────────────────────────────────────────────
@@ -95,15 +121,20 @@ export function TopSheet({
   steps = DEFAULT_STEPS,
   initialStep = 0,
   activeStep,
+  initialHeight,
+  minHeight,
+  collapsedHeightMode = "step",
   padding,
   backgroundColor,
   topInsetColor,
   style,
   onStepChange,
+  onHeightChange,
   stickyHeader,
   stickyFooter,
   revealOnExpand,
   expandMode: _expandMode = "resize", // Reserved for future overlay mode implementation
+  onMinHeightChange,
 }: TopSheetProps) {
   const theme = useTheme();
   const { setTopInsetTone, setTopInsetBackgroundColor } = useSystemUi();
@@ -115,6 +146,9 @@ export function TopSheet({
     typeof resolvedBackground === "string" ? resolvedBackground : theme.color.surfaceElevated;
 
   const [internalStepIndex, setInternalStepIndex] = useState(initialStep);
+  const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState(0);
+  const [measuredBodyHeight, setMeasuredBodyHeight] = useState(0);
+  const [measuredFooterHeight, setMeasuredFooterHeight] = useState(0);
   const resolvedStepIndex = activeStep ?? internalStepIndex;
   const isExpanded = resolvedStepIndex > initialStep;
   const animatedBackground = useSharedValue(backgroundColorValue);
@@ -122,7 +156,7 @@ export function TopSheet({
 
   useEffect(() => {
     animatedBackground.value = withTiming(backgroundColorValue, {
-      duration: 220,
+      duration: Motion.normal,
     });
   }, [animatedBackground, backgroundColorValue]);
 
@@ -133,7 +167,7 @@ export function TopSheet({
   }, [expandedProgress, isExpanded]);
 
   // Inset coloring
-  useEffect(() => {
+  useLayoutEffect(() => {
     setTopInsetTone("sheet");
     setTopInsetBackgroundColor(resolvedInsetColor);
     return () => {
@@ -146,30 +180,77 @@ export function TopSheet({
   const bottomChromeEstimate = Math.max(MIN_BOTTOM_CHROME_ESTIMATE, safeBottom + 64);
   const availableHeight = screenHeight - safeTop - bottomChromeEstimate;
 
-  // Compute step heights in pixels
-  const stepHeights = useMemo(
-    () => steps.map((s) => Math.round(s * availableHeight)),
-    [steps, availableHeight],
+  const resolvedPadding = useMemo(
+    () => ({
+      vertical: padding?.vertical ?? BrandSpacing.lg,
+      horizontal: padding?.horizontal ?? BrandSpacing.lg,
+    }),
+    [padding?.horizontal, padding?.vertical],
   );
 
+  const intrinsicContentHeight = useMemo(
+    () => computeIntrinsicMinHeight(measuredHeaderHeight, measuredFooterHeight, measuredBodyHeight),
+    [measuredBodyHeight, measuredFooterHeight, measuredHeaderHeight],
+  );
+  const chromeHeight = safeTop + resolvedPadding.vertical * 2 + (draggable ? HANDLE_HEIGHT : 0);
+  const resolvedMinHeight = useMemo(() => {
+    if (collapsedHeightMode === "content") {
+      return computeCollapsedHeight(
+        chromeHeight + intrinsicContentHeight,
+        minHeight ?? 0,
+        availableHeight,
+      );
+    }
+
+    return Math.max(0, Math.ceil(minHeight ?? 0));
+  }, [availableHeight, chromeHeight, collapsedHeightMode, intrinsicContentHeight, minHeight]);
+
+  // Compute step heights in pixels
+  const stepHeights = useMemo(
+    () => computeStepHeights(steps, availableHeight, resolvedMinHeight),
+    [availableHeight, resolvedMinHeight, steps],
+  );
+
+  useEffect(() => {
+    if (!onMinHeightChange) return;
+    onMinHeightChange(resolvedMinHeight || stepHeights[0] || 0);
+  }, [onMinHeightChange, resolvedMinHeight, stepHeights]);
+
   // Sheet height shared value
-  const defaultHeight = stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? 100;
-  const sheetHeight = useSharedValue(defaultHeight);
+  const defaultHeight =
+    stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? (resolvedMinHeight || 100);
+  const sheetHeight = useSharedValue(initialHeight ?? defaultHeight);
   const currentStepIndex = useSharedValue(resolvedStepIndex);
 
   const dragStartHeight = useSharedValue<number | null>(null);
+
+  useAnimatedReaction(
+    () => Math.round(sheetHeight.value),
+    (next, prev) => {
+      if (!onHeightChange || next === prev) return;
+      runOnJS(onHeightChange)(next);
+    },
+    [onHeightChange, sheetHeight],
+  );
 
   useEffect(() => {
     const clampedStepIndex = Math.max(
       0,
       Math.min(resolvedStepIndex, Math.max(stepHeights.length - 1, 0)),
     );
-    const nextHeight = stepHeights[clampedStepIndex] ?? 100;
+    const nextHeight = stepHeights[clampedStepIndex] ?? resolvedMinHeight ?? 100;
 
     currentStepIndex.value = clampedStepIndex;
     dragStartHeight.value = nextHeight;
     sheetHeight.value = withSpring(nextHeight, SHEET_SPRING);
-  }, [currentStepIndex, dragStartHeight, resolvedStepIndex, sheetHeight, stepHeights]);
+  }, [
+    currentStepIndex,
+    dragStartHeight,
+    resolvedMinHeight,
+    resolvedStepIndex,
+    sheetHeight,
+    stepHeights,
+  ]);
 
   // Pan gesture (only active when draggable + expandable)
   const gestureEnabled = draggable && expandable;
@@ -185,7 +266,7 @@ export function TopSheet({
         .onUpdate((event) => {
           const h = stepHeights;
           if (h.length === 0) return;
-          const minH = h[0]!;
+          const minH = h[0] ?? resolvedMinHeight ?? 100;
           const maxH = h[h.length - 1]!;
           const startHeight = dragStartHeight.value ?? sheetHeight.value;
           sheetHeight.value = Math.max(minH, Math.min(maxH, startHeight + event.translationY));
@@ -221,7 +302,7 @@ export function TopSheet({
             direction === "down"
               ? Math.min(nearestStepIdx + 1, h.length - 1)
               : Math.max(nearestStepIdx - 1, 0);
-          const targetHeight = h[targetIdx] ?? h[0] ?? 100;
+          const targetHeight = h[targetIdx] ?? h[0] ?? resolvedMinHeight ?? 100;
 
           sheetHeight.value = withSpring(targetHeight, SHEET_SPRING);
           if (targetIdx !== currentStepIndex.value) {
@@ -234,15 +315,15 @@ export function TopSheet({
             }
           }
         }),
-    [activeStep, currentStepIndex, dragStartHeight, onStepChange, sheetHeight, stepHeights],
-  );
-
-  const resolvedPadding = useMemo(
-    () => ({
-      vertical: padding?.vertical ?? BrandSpacing.lg,
-      horizontal: padding?.horizontal ?? BrandSpacing.lg,
-    }),
-    [padding?.horizontal, padding?.vertical],
+    [
+      activeStep,
+      currentStepIndex,
+      dragStartHeight,
+      onStepChange,
+      resolvedMinHeight,
+      sheetHeight,
+      stepHeights,
+    ],
   );
 
   // Animated outer container (sets height)
@@ -275,6 +356,18 @@ export function TopSheet({
   }));
 
   const mainContentFlex = revealOnExpand ? 0 : 1;
+  const shouldUseContentScroll = collapsedHeightMode === "content";
+  const bodyScrollEnabled =
+    shouldUseContentScroll && chromeHeight + intrinsicContentHeight > availableHeight;
+
+  const updateMeasuredHeight = (setter: Dispatch<SetStateAction<number>>) => (height: number) => {
+    if (height <= 0) return;
+    setter((current) => (Math.abs(current - height) < 1 ? current : height));
+  };
+
+  const handleHeaderLayout = updateMeasuredHeight(setMeasuredHeaderHeight);
+  const handleBodyLayout = updateMeasuredHeight(setMeasuredBodyHeight);
+  const handleFooterLayout = updateMeasuredHeight(setMeasuredFooterHeight);
 
   const sheetContent = (
     <Animated.View
@@ -293,10 +386,31 @@ export function TopSheet({
     >
       <Animated.View style={innerStyle}>
         {/* Sticky Header - always visible at top */}
-        {stickyHeader ? <View style={{ flex: 0 }}>{stickyHeader}</View> : null}
+        {stickyHeader ? (
+          <View onLayout={(event) => handleHeaderLayout(event.nativeEvent.layout.height)}>
+            {stickyHeader}
+          </View>
+        ) : null}
 
         {/* Main children - always visible */}
-        <View style={{ flex: mainContentFlex }}>{children}</View>
+        {shouldUseContentScroll ? (
+          <ScrollView
+            bounces={bodyScrollEnabled}
+            onContentSizeChange={(_, height) => handleBodyLayout(height)}
+            scrollEnabled={bodyScrollEnabled}
+            showsVerticalScrollIndicator={bodyScrollEnabled}
+            style={styles.scrollBody}
+          >
+            <View>{children}</View>
+          </ScrollView>
+        ) : (
+          <View
+            style={{ flex: mainContentFlex }}
+            onLayout={(event) => handleBodyLayout(event.nativeEvent.layout.height)}
+          >
+            {children}
+          </View>
+        )}
 
         {/* Reveal on Expand - stays mounted to avoid React mount churn during snaps */}
         {revealOnExpand ? (
@@ -306,7 +420,11 @@ export function TopSheet({
         ) : null}
 
         {/* Sticky Footer - always visible at bottom */}
-        {stickyFooter ? <View style={{ flex: 0 }}>{stickyFooter}</View> : null}
+        {stickyFooter ? (
+          <View onLayout={(event) => handleFooterLayout(event.nativeEvent.layout.height)}>
+            {stickyFooter}
+          </View>
+        ) : null}
       </Animated.View>
       {draggable && gestureEnabled ? (
         <GestureDetector gesture={panGesture}>
@@ -351,6 +469,13 @@ export function TopSheet({
 
   return sheetContent;
 }
+
+const styles = {
+  scrollBody: {
+    flex: 1,
+    minHeight: 0,
+  },
+} as const;
 
 // ─── SearchBar Widget ─────────────────────────────────────────────────────────
 

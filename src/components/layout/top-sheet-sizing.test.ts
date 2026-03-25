@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import {
   computeAvailableHeight,
+  computeCollapsedHeight,
   computeIntrinsicMinHeight,
   computeStepHeights,
   resolveOverflowMode,
@@ -17,6 +18,16 @@ describe("top-sheet helpers", () => {
     it("maps single step fraction to correct pixel value", () => {
       const result = computeStepHeights([0.5], 800);
       expect(result).toEqual([400]);
+    });
+
+    it("clamps step heights up to a minimum height floor", () => {
+      const result = computeStepHeights([0.1, 0.5], 800, 120);
+      expect(result).toEqual([120, 400]);
+    });
+
+    it("clamps all steps below the minimum height floor", () => {
+      const result = computeStepHeights([0.05, 0.1, 0.2], 800, 100);
+      expect(result).toEqual([100, 100, 160]);
     });
 
     it("maps multiple fractional steps to pixel heights", () => {
@@ -111,6 +122,33 @@ describe("top-sheet helpers", () => {
     it("handles single step (no sticky elements)", () => {
       const result = computeIntrinsicMinHeight(0, 0, 300);
       expect(result).toBe(300);
+    });
+  });
+
+  describe("computeCollapsedHeight", () => {
+    it("returns intrinsic height when above the minimum floor", () => {
+      const result = computeCollapsedHeight(280, 150, 500);
+      expect(result).toBe(280);
+    });
+
+    it("returns the minimum floor when intrinsic height is smaller", () => {
+      const result = computeCollapsedHeight(80, 150, 500);
+      expect(result).toBe(150);
+    });
+
+    it("caps collapsed height to the maximum height", () => {
+      const result = computeCollapsedHeight(600, 150, 500);
+      expect(result).toBe(500);
+    });
+
+    it("treats negative values as zero before applying floors", () => {
+      const result = computeCollapsedHeight(-20, 100, 500);
+      expect(result).toBe(100);
+    });
+
+    it("rounds intrinsic values upward", () => {
+      const result = computeCollapsedHeight(99.2, 0, 500);
+      expect(result).toBe(100);
     });
   });
 

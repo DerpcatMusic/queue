@@ -6,13 +6,11 @@ import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, useWindowDimensions, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
-import { useMeasuredContentHeight } from "@/components/layout/use-measured-content-height";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
 import {
   ProfileSectionCard,
@@ -27,7 +25,6 @@ import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
-import { useAppInsets } from "@/hooks/use-app-insets";
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
@@ -112,8 +109,6 @@ export default function InstructorProfileScreen() {
 
   const pathname = usePathname();
   const { isDesktopWeb } = useLayoutBreakpoint();
-  const { safeTop } = useAppInsets();
-  const { height: screenHeight } = useWindowDimensions();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [hasActivated, setHasActivated] = useState(false);
@@ -268,19 +263,9 @@ export default function InstructorProfileScreen() {
     (socialCount > 0
       ? t("profile.settings.publicProfileActive", { count: socialCount })
       : t("profile.settings.publicProfilePrompt"));
-  const { measuredHeight: profileMeasuredHeight, onLayout: onProfileHeaderLayout } =
-    useMeasuredContentHeight();
-  const profileHeaderHeight = useMemo(
-    () => safeTop + (profileMeasuredHeight > 0 ? profileMeasuredHeight : 128),
-    [profileMeasuredHeight, safeTop],
-  );
-  const profileSheetStep = useMemo(() => {
-    const availableHeight = Math.max(1, getTopSheetAvailableHeight(screenHeight, safeTop, 0));
-    return Math.max(0.12, Math.min(0.34, profileHeaderHeight / availableHeight));
-  }, [profileHeaderHeight, safeTop, screenHeight]);
-  const profileSheetContent = auseMemo(
+  const profileSheetContent = useMemo(
     () => (
-      <View onLayout={onProfileHeaderLayout}>
+      <View>
         <ProfileHeaderSheet
           profileName={nameValue}
           roleLabel={
@@ -307,7 +292,6 @@ export default function InstructorProfileScreen() {
       instructorSettings?.socialLinks,
       instructorSettings?.sports,
       nameValue,
-      onProfileHeaderLayout,
       profileStatus,
       t,
     ],
@@ -318,8 +302,9 @@ export default function InstructorProfileScreen() {
       render: () => ({
         children: profileSheetContent,
       }),
-      steps: [profileSheetStep],
+      steps: [0.12],
       initialStep: 0,
+      collapsedHeightMode: "content" as const,
       padding: {
         vertical: 0,
         horizontal: 0,
@@ -327,7 +312,7 @@ export default function InstructorProfileScreen() {
       backgroundColor: theme.color.primary,
       topInsetColor: theme.color.primary,
     }),
-    [profileSheetContent, profileSheetStep, theme.color.primary],
+    [profileSheetContent, theme.color.primary],
   );
 
   const isProfileIndexRoute =

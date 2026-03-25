@@ -302,6 +302,7 @@ function OnboardingScreenContent() {
       },
       steps: [0.24],
       initialStep: 0,
+      collapsedHeightMode: "content" as const,
     }),
     [color, currentStep, onboardingSheetSubtitle, onboardingSheetTitle, signOut, t, totalSteps],
   );

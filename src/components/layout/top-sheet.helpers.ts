@@ -1,4 +1,5 @@
 import { BrandSpacing } from "@/constants/brand";
+import { computeAvailableHeight, computeStepHeights } from "./top-sheet-sizing";
 
 export const SHEET_SPRING = {
   damping: 24,
@@ -27,7 +28,8 @@ export function getTopSheetStepHeights(
   screenHeight: number,
   safeTop: number,
   safeBottom: number,
+  minHeight?: number,
 ) {
-  const availableHeight = getTopSheetAvailableHeight(screenHeight, safeTop, safeBottom);
-  return steps.map((step) => Math.round(step * availableHeight));
+  const availableHeight = computeAvailableHeight(screenHeight, safeTop, safeBottom);
+  return computeStepHeights(steps, availableHeight, minHeight ?? 0);
 }

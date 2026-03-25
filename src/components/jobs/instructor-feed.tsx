@@ -347,6 +347,7 @@ export function InstructorFeed() {
       expandable: false,
       steps: [0.16],
       initialStep: 0,
+      collapsedHeightMode: "content" as const,
       backgroundColor: theme.jobs.canvas,
       topInsetColor: theme.jobs.canvas,
     }),

@@ -202,6 +202,7 @@ export default function SignInScreen() {
       },
       steps: [step === "code" ? 0.22 : 0.2],
       initialStep: 0,
+      collapsedHeightMode: "content" as const,
     }),
     [sheetSubtitle, sheetTitle, step, theme.color.surface],
   );

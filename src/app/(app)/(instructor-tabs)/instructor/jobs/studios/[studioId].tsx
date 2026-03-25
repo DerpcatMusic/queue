@@ -2,7 +2,8 @@ import { useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, Image, Text, useWindowDimensions, View } from "react-native";
+import { I18nManager, Platform, Text, View } from "react-native";
+import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { DotStatusPill } from "@/components/home/home-shared";
 import { InstructorJobCard } from "@/components/jobs/instructor/instructor-job-card";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
@@ -12,21 +13,28 @@ import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-cont
 import { LoadingScreen } from "@/components/loading-screen";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
-import { useAppInsets } from "@/hooks/use-app-insets";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
+import { FontFamily, FontSize, LetterSpacing, LineHeight } from "@/lib/design-system";
+
+const STUDIO_HEADER_NATIVE_FILTERS: Filters = [
+  { name: "feColorMatrix", type: "saturate", values: 0 },
+  {
+    name: "feColorMatrix",
+    type: "matrix",
+    values: [1.15, 0, 0, 0, -0.07, 0, 1.15, 0, 0, -0.07, 0, 0, 1.15, 0, -0.07, 0, 0, 0, 1, 0],
+  },
+];
 
 export default function InstructorStudioProfileRoute() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const now = useMinuteNow();
-  const { height: screenHeight } = useWindowDimensions();
-  const { safeTop } = useAppInsets();
   const { color: palette } = useTheme();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
@@ -124,8 +132,6 @@ export default function InstructorStudioProfileRoute() {
       return null;
     }
     const headerHeight = 284;
-    const availableHeight = Math.max(1, screenHeight - safeTop - 80);
-    const collapsedStep = Math.max(0.24, Math.min(0.42, headerHeight / availableHeight));
 
     return {
       content: (
@@ -141,17 +147,37 @@ export default function InstructorStudioProfileRoute() {
           }}
         >
           {studioProfile.studioImageUrl ? (
-            <Image
-              source={{ uri: studioProfile.studioImageUrl }}
-              resizeMode="cover"
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                bottom: 0,
-                left: 0,
-              }}
-            />
+            <>
+              <FilterImage
+                source={{ uri: studioProfile.studioImageUrl }}
+                resizeMode="cover"
+                {...(Platform.OS === "web" ? {} : { filters: STUDIO_HEADER_NATIVE_FILTERS })}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
+                  ...(Platform.OS === "web"
+                    ? { filter: "grayscale(100%) contrast(118%) brightness(78%)" }
+                    : {}),
+                  opacity: 0.96,
+                }}
+              />
+              <View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  left: 0,
+                  backgroundColor: palette.surface,
+                  opacity: 0.08,
+                }}
+              />
+            </>
           ) : null}
           <View
             style={{
@@ -186,12 +212,12 @@ export default function InstructorStudioProfileRoute() {
           >
             <Text
               style={{
-                fontFamily: "Lexend_600SemiBold",
-                fontSize: 28,
-                fontWeight: "600",
-                letterSpacing: -0.45,
-                lineHeight: 34,
+                fontFamily: FontFamily.display,
+                fontSize: FontSize.heading,
+                lineHeight: LineHeight.heading,
+                letterSpacing: LetterSpacing.heading,
                 color: palette.onPrimary,
+                includeFontPadding: false,
                 textShadowOffset: { width: 0, height: 1 },
                 textShadowRadius: 4,
               }}
@@ -200,11 +226,9 @@ export default function InstructorStudioProfileRoute() {
             </Text>
             <Text
               style={{
-                fontFamily: "Manrope_400Regular",
-                fontSize: 16,
-                fontWeight: "400",
-                lineHeight: 22,
+                ...BrandType.body,
                 color: palette.onPrimary,
+                includeFontPadding: false,
                 textShadowOffset: { width: 0, height: 1 },
                 textShadowRadius: 3,
               }}
@@ -218,14 +242,15 @@ export default function InstructorStudioProfileRoute() {
         vertical: 0,
         horizontal: 0,
       },
-      steps: [collapsedStep],
+      steps: [0.24],
       initialStep: 0,
       draggable: false,
       expandable: false,
+      collapsedHeightMode: "content" as const,
       backgroundColor: palette.primary,
       topInsetColor: palette.primary,
     };
-  }, [router, safeTop, screenHeight, studioProfile, pathname, t]);
+  }, [router, studioProfile, pathname, t, palette]);
 
   useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:studio-profile");
 
@@ -271,6 +296,7 @@ export default function InstructorStudioProfileRoute() {
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {sportsLabels.map((label) => (
                   <DotStatusPill
+                    key={label}
                     backgroundColor={palette.primarySubtle}
                     color={palette.primary}
                     label={label}
@@ -281,11 +307,9 @@ export default function InstructorStudioProfileRoute() {
             {studioProfile.bio ? (
               <Text
                 style={{
-                  fontFamily: "Manrope_400Regular",
-                  fontSize: 16,
-                  fontWeight: "400",
-                  lineHeight: 22,
+                  ...BrandType.body,
                   color: palette.textMuted,
+                  includeFontPadding: false,
                 }}
               >
                 {studioProfile.bio}

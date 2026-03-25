@@ -1,6 +1,8 @@
 import type { TFunction } from "i18next";
-import { Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import type React from "react";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
+import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { DotStatusPill } from "@/components/home/home-shared";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -10,7 +12,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
-import { BorderWidth } from "@/lib/design-system";
+import { BorderWidth, FontFamily, FontSize, LetterSpacing, LineHeight } from "@/lib/design-system";
 import {
   type BoostPreset,
   formatTime,
@@ -65,18 +67,29 @@ type InstructorJobCardProps = {
   variant?: "default" | "studioDetail";
 };
 
+const STUDIO_PHOTO_NATIVE_FILTERS: Filters = [
+  { name: "feColorMatrix", type: "saturate", values: 0 },
+  {
+    name: "feColorMatrix",
+    type: "matrix",
+    values: [1.08, 0, 0, 0, -0.18, 0, 1.08, 0, 0, -0.18, 0, 0, 1.08, 0, -0.18, 0, 0, 0, 1, 0],
+  },
+];
+
 function StudioImageBackground({
   imageUrl,
   fallbackLabel,
   theme,
+  children,
 }: {
   imageUrl?: string | null | undefined;
   fallbackLabel: string;
   theme: ReturnType<typeof useTheme>;
+  children?: React.ReactNode;
 }) {
   const imageFilterStyle = Platform.select({
-    web: { filter: "grayscale(1) contrast(1.04) brightness(0.4)" },
-    default: { tintColor: theme.jobs.surfaceMuted, opacity: 0.44 },
+    web: { filter: "grayscale(100%) contrast(110%) brightness(62%)", opacity: 0.98 },
+    default: { opacity: 0.94 },
   }) as object;
 
   return (
@@ -91,10 +104,15 @@ function StudioImageBackground({
       }}
     >
       {imageUrl ? (
-        <Image
+        <FilterImage
           source={{ uri: imageUrl }}
           resizeMode="cover"
-          style={[StyleSheet.absoluteFillObject, imageFilterStyle]}
+          {...(Platform.OS === "web" ? {} : { filters: STUDIO_PHOTO_NATIVE_FILTERS })}
+          style={[
+            StyleSheet.absoluteFillObject,
+            { width: "100%", height: "100%" },
+            imageFilterStyle,
+          ]}
         />
       ) : (
         <View
@@ -119,16 +137,20 @@ function StudioImageBackground({
       <View
         style={{
           ...StyleSheet.absoluteFillObject,
-          backgroundColor: theme.jobs.canvas,
-          opacity: 0.36,
+          backgroundColor: theme.jobs.surfaceRaised,
+          opacity: 0.24,
         }}
       />
-      <View
-        style={{
-          ...StyleSheet.absoluteFillObject,
-          backgroundColor: theme.jobs.cardOverlay,
-        }}
-      />
+      {theme.color.appBg === "#000000" ? (
+        <View
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: theme.color.overlay,
+            opacity: 0.26,
+          }}
+        />
+      ) : null}
+      {children}
     </View>
   );
 }
@@ -234,20 +256,16 @@ export function InstructorJobCard({
     job.applicationStatus === "pending" ? theme.color.primarySubtle : theme.jobs.line;
 
   if (variant === "default") {
-    const payAccent = boost.bonusAmount ? theme.color.secondary : theme.color.tertiary;
+    const payAccent = boost.bonusAmount ? theme.color.secondary : theme.color.primary;
     const payAccentSubtle = boost.bonusAmount
       ? theme.color.secondarySubtle
-      : theme.color.tertiarySubtle;
-    const topBadgeLabel =
-      job.applicationStatus === "pending"
-        ? "Pending"
-        : job.applicationStatus === "accepted"
-          ? "Booked"
-          : boost.bonusAmount
-            ? "Bonus"
-            : "Open";
+      : theme.color.primarySubtle;
+    const metaAccent = boost.bonusAmount ? theme.color.secondary : theme.color.primaryPressed;
+    const topBadgeLabel = boost.bonusAmount ? "BONUS" : null;
     const studioMeta = job.branchName ? `${job.studioName} · ${job.branchName}` : job.studioName;
+    const combinedMeta = `${studioMeta} | ${zoneLabel}`;
     const gradientId = `job-card-tint-${String(job.jobId)}`;
+    const gradientBase = theme.color.appBg;
 
     return (
       <Pressable
@@ -263,11 +281,11 @@ export function InstructorJobCard({
       >
         <View
           style={{
-            borderRadius: BrandRadius.card,
+            borderRadius: BrandRadius.lg,
             borderCurve: "continuous",
             backgroundColor: theme.jobs.surface,
             borderWidth: BorderWidth.thin,
-            borderColor: cardBorderColor,
+            borderColor: theme.jobs.line,
             overflow: "hidden",
           }}
         >
@@ -275,90 +293,135 @@ export function InstructorJobCard({
             imageUrl={job.studioImageUrl}
             fallbackLabel={job.studioName}
             theme={theme}
-          />
+          >
+            {job.studioImageUrl ? (
+              <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+                <Defs>
+                  <SvgLinearGradient id={`${gradientId}-imgFade`} x1="0%" y1="0%" x2="0%" y2="100%">
+                    <Stop offset="0%" stopColor={gradientBase} stopOpacity="0" />
+                    <Stop offset="40%" stopColor={gradientBase} stopOpacity="0.6" />
+                    <Stop offset="100%" stopColor={gradientBase} stopOpacity="1" />
+                  </SvgLinearGradient>
+                </Defs>
+                <Rect width="100%" height="100%" fill={`url(#${gradientId}-imgFade)`} />
+              </Svg>
+            ) : null}
+          </StudioImageBackground>
           <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
             <Defs>
-              <SvgLinearGradient id={gradientId} x1="0%" y1="100%" x2="100%" y2="30%">
-                <Stop offset="0%" stopColor={payAccent} stopOpacity="0.2" />
-                <Stop offset="58%" stopColor={payAccent} stopOpacity="0.08" />
-                <Stop offset="100%" stopColor={payAccent} stopOpacity="0" />
+              <SvgLinearGradient id={`${gradientId}-scrim`} x1="0%" y1="0%" x2="100%" y2="0%">
+                <Stop offset="0%" stopColor={gradientBase} stopOpacity="0.42" />
+                <Stop offset="40%" stopColor={gradientBase} stopOpacity="0.15" />
+                <Stop offset="100%" stopColor={gradientBase} stopOpacity="0.04" />
               </SvgLinearGradient>
             </Defs>
-            <Rect width="100%" height="100%" fill={`url(#${gradientId})`} />
+            <Rect width="100%" height="100%" fill={`url(#${gradientId}-scrim)`} />
           </Svg>
-
-          {(job.applicationStatus === "pending" || boost.badgeKey) && (
-            <View
-              style={{
-                height: BorderWidth.strong,
-                backgroundColor:
-                  job.applicationStatus === "pending" ? theme.jobs.signal : theme.color.primary,
-              }}
-            />
-          )}
 
           <View
             style={{
-              minHeight: isWideWeb ? 198 : 182,
+              minHeight: isWideWeb ? 220 : 204,
               position: "relative",
               paddingHorizontal: BrandSpacing.lg,
-              paddingVertical: BrandSpacing.lg,
+              paddingVertical: BrandSpacing.md,
               justifyContent: "space-between",
-              gap: BrandSpacing.lg,
+              gap: BrandSpacing.md,
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: BrandSpacing.lg }}>
-              <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xs }}>
-                <Text numberOfLines={1} style={{ ...BrandType.title, color: theme.color.text }}>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: BrandSpacing.md }}>
+              <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xxs }}>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontFamily: "Lexend_800ExtraBold",
+                    fontSize: 30,
+                    lineHeight: 34,
+                    letterSpacing: LetterSpacing.heroCompact,
+                    color: theme.color.text,
+                    includeFontPadding: false,
+                    fontStyle: "italic",
+                    fontWeight: "900",
+                    textShadowColor: theme.color.overlay,
+                    textShadowOffset: { width: 0, height: 3 },
+                    textShadowRadius: 14,
+                    transform: [{ skewX: "-8deg" }],
+                  }}
+                >
                   {toSportLabel(job.sport as never)}
                 </Text>
-                <Text numberOfLines={1} style={{ ...BrandType.body, color: theme.color.textMuted }}>
-                  {studioMeta}
-                </Text>
-                <Text numberOfLines={1} style={{ ...BrandType.caption, color: theme.jobs.idle }}>
-                  {shortLocation}
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontFamily: FontFamily.bodyMedium,
+                    fontSize: FontSize.caption,
+                    lineHeight: LineHeight.caption,
+                    color: theme.color.text,
+                    opacity: 0.88,
+                    includeFontPadding: false,
+                  }}
+                >
+                  {combinedMeta}
                 </Text>
                 {expiry ? (
-                  <View style={{ paddingTop: BrandSpacing.xs }}>
-                    <JobExpiryPill
-                      label={t(expiry.key, expiry.interpolation)}
-                      isExpired={expiry.isExpired}
-                      theme={theme}
-                    />
-                  </View>
+                  <Text
+                    style={{
+                      paddingTop: BrandSpacing.xs,
+                      fontFamily: FontFamily.bodyMedium,
+                      fontSize: FontSize.micro,
+                      lineHeight: LineHeight.micro,
+                      color: expiry.isExpired ? theme.color.danger : metaAccent,
+                      includeFontPadding: false,
+                    }}
+                  >
+                    {expiry.isExpired ? t("jobsTab.form.expiryExpired") : expiry.relativeText}
+                  </Text>
                 ) : null}
               </View>
 
               <View style={{ alignItems: "flex-end", gap: BrandSpacing.xs, maxWidth: "42%" }}>
-                <View
-                  style={{
-                    backgroundColor: payAccentSubtle,
-                    borderRadius: BrandRadius.pill,
-                    paddingHorizontal: BrandSpacing.sm,
-                    paddingVertical: BrandSpacing.xs,
-                    borderWidth: BorderWidth.thin,
-                    borderColor: payAccent,
-                  }}
-                >
-                  <Text style={{ ...BrandType.micro, color: payAccent }}>{topBadgeLabel}</Text>
-                </View>
+                {topBadgeLabel ? (
+                  <View
+                    style={{
+                      backgroundColor: payAccentSubtle,
+                      borderRadius: BrandRadius.pill,
+                      paddingHorizontal: BrandSpacing.sm,
+                      paddingVertical: BrandSpacing.xs,
+                      borderWidth: BorderWidth.thin,
+                      borderColor: payAccent,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: FontFamily.bodyMedium,
+                        fontSize: 11,
+                        lineHeight: 14,
+                        color: payAccent,
+                        includeFontPadding: false,
+                      }}
+                    >
+                      {topBadgeLabel}
+                    </Text>
+                  </View>
+                ) : null}
                 <Text
                   style={{
-                    ...BrandType.heading,
+                    fontFamily: "Lexend_800ExtraBold",
+                    fontSize: 36,
+                    lineHeight: 38,
+                    letterSpacing: -0.8,
                     color: payAccent,
                     fontVariant: ["tabular-nums"],
                     textAlign: "right",
+                    includeFontPadding: false,
+                    fontWeight: "900",
                   }}
                 >
                   {formattedPay}
                 </Text>
-                <Text style={{ ...BrandType.caption, color: theme.color.textMuted }}>
-                  {boost.bonusAmount ? `${formatJobPay(job.pay, locale)} base` : "Standard rate"}
-                </Text>
               </View>
             </View>
 
-            <View style={{ gap: BrandSpacing.sm }}>
+            <View style={{ gap: BrandSpacing.xs }}>
               <View
                 style={{
                   height: BorderWidth.thin,
@@ -370,17 +433,33 @@ export function InstructorJobCard({
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  gap: BrandSpacing.md,
+                  gap: BrandSpacing.sm,
                 }}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
-                  <IconSymbol name="clock.fill" size={14} color={payAccent} />
-                  <Text style={{ ...BrandType.bodyStrong, color: theme.color.text }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: BrandSpacing.xs,
+                    flex: 1,
+                  }}
+                >
+                  <IconSymbol name="clock.fill" size={14} color={metaAccent} />
+                  <Text
+                    style={{
+                      fontFamily: FontFamily.bodyMedium,
+                      fontSize: FontSize.caption,
+                      lineHeight: LineHeight.caption,
+                      color: theme.color.textMuted,
+                      includeFontPadding: false,
+                    }}
+                    numberOfLines={1}
+                  >
                     {formatTime(job.startTime, locale)} — {formatTime(job.endTime, locale)}
                   </Text>
                 </View>
 
-                <View style={{ minWidth: 118, alignItems: "flex-end" }}>
+                <View style={{ minWidth: 124, alignItems: "flex-end", flexShrink: 0 }}>
                   {canWithdrawPendingApplication ? (
                     <ActionButton
                       label={isWithdrawing ? t("jobsTab.actions.cancelling") : pendingCancelLabel}
@@ -455,7 +534,7 @@ export function InstructorJobCard({
           borderRadius: BrandRadius.card,
           borderCurve: "continuous",
           backgroundColor: theme.jobs.surface,
-          borderWidth: 1,
+          borderWidth: BorderWidth.thin,
           borderColor: cardBorderColor,
           overflow: "hidden",
         }}
