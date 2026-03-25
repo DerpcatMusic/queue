@@ -208,6 +208,7 @@ export function ProfileSubpageSheetHost({
       initialStep: 0,
       draggable: false,
       expandable: false,
+      collapsedHeightMode: "content" as const,
       backgroundColor: accentColor,
       topInsetColor: accentColor,
     };

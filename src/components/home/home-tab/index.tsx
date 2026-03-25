@@ -2,8 +2,8 @@ import { useQuery } from "convex/react";
 import { Redirect } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useWindowDimensions, View } from "react-native";
-import { getHomeHeaderExpandedHeight, HomeHeaderSheet } from "@/components/home/home-header-sheet";
+import { View } from "react-native";
+import { HomeHeaderSheet } from "@/components/home/home-header-sheet";
 import {
   HomeRoleContent,
   type HomeRoleContentProps,
@@ -14,13 +14,10 @@ import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount"
 import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
-import { useAppInsets } from "@/hooks/use-app-insets";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
-const BOTTOM_TABS_ESTIMATE = 80;
-
 function HomeBodyPlaceholder({ backgroundColor }: { backgroundColor: string }) {
   return (
     <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor }}>
@@ -34,8 +31,6 @@ export default function HomeScreen() {
   const locale = i18n.resolvedLanguage ?? "en";
   const liveNow = useMinuteNow();
   const queryNow = Math.floor(liveNow / (60 * 1000)) * 60 * 1000;
-  const { safeTop } = useAppInsets();
-  const { height: screenHeight } = useWindowDimensions();
   const { color: palette } = useTheme();
 
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
@@ -99,11 +94,6 @@ export default function HomeScreen() {
       : activeRole === "studio"
         ? t("home.studio.role")
         : undefined;
-  const homeHeaderHeight = useMemo(() => getHomeHeaderExpandedHeight(safeTop), [safeTop]);
-  const homeSheetStep = useMemo(() => {
-    const availableHeight = Math.max(1, screenHeight - safeTop - BOTTOM_TABS_ESTIMATE);
-    return Math.max(0.1, Math.min(0.4, homeHeaderHeight / availableHeight));
-  }, [homeHeaderHeight, safeTop, screenHeight]);
   const homeSheetContent = useMemo(
     () =>
       activeRole === "instructor" || activeRole === "studio" ? (
@@ -130,8 +120,9 @@ export default function HomeScreen() {
       activeRole === "instructor" || activeRole === "studio"
         ? {
             content: homeSheetContent,
-            steps: [homeSheetStep],
+            steps: [0.1],
             initialStep: 0,
+            collapsedHeightMode: "content" as const,
             padding: {
               vertical: 0,
               horizontal: 0,
@@ -140,7 +131,7 @@ export default function HomeScreen() {
             topInsetColor: palette.primary,
           }
         : null,
-    [activeRole, homeSheetContent, homeSheetStep, palette.primary],
+    [activeRole, homeSheetContent, palette.primary],
   );
 
   useGlobalTopSheet("index", homeSheetConfig, "home:sheet");

@@ -12,7 +12,12 @@ import {
 import type { ColorValue, StyleProp, ViewStyle } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
-import type { TopSheetExpandMode, TopSheetPadding, TopSheetProps } from "./top-sheet";
+import type {
+  TopSheetCollapsedHeightMode,
+  TopSheetExpandMode,
+  TopSheetPadding,
+  TopSheetProps,
+} from "./top-sheet";
 
 export type TopSheetRenderProps = {
   scrollY: SharedValue<number>;
@@ -37,6 +42,8 @@ export type TopSheetTabConfig = {
   steps?: readonly number[];
   initialStep?: number;
   activeStep?: number;
+  minHeight?: number;
+  collapsedHeightMode?: TopSheetCollapsedHeightMode;
   expandMode?: TopSheetExpandMode;
   onStepChange?: (step: number) => void;
   padding?: TopSheetPadding;

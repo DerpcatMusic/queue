@@ -18,7 +18,7 @@ import CalendarTimelineRow from "./calendar-timeline-row";
 export default function CalendarTabScreen() {
   const { t } = useTranslation();
   const { isDesktopWeb } = useLayoutBreakpoint();
-  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
   const { color: palette } = useTheme();
   const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
     topSpacing: BrandSpacing.md,
@@ -50,12 +50,6 @@ export default function CalendarTabScreen() {
     setExternalCalendarVisibility(!showExternalCalendarItems);
   }, [listRef, setExternalCalendarVisibility, showExternalCalendarItems]);
 
-  const calendarSheetStep = useMemo(() => {
-    const availableHeight = Math.max(screenHeight, 1);
-    const desiredHeight = 152;
-    return Math.max(0.18, Math.min(0.48, desiredHeight / availableHeight));
-  }, [screenHeight]);
-
   const calendarHorizontalPadding = screenWidth < 390 ? BrandSpacing.lg : BrandSpacing.xl;
 
   const calendarSheetConfig = useMemo(
@@ -72,8 +66,9 @@ export default function CalendarTabScreen() {
         vertical: BrandSpacing.sm,
         horizontal: calendarHorizontalPadding,
       },
-      steps: [calendarSheetStep],
+      steps: [0.18],
       initialStep: 0,
+      collapsedHeightMode: "content" as const,
       backgroundColor: palette.primary,
       topInsetColor: palette.primary,
     }),
@@ -81,7 +76,6 @@ export default function CalendarTabScreen() {
       canShowGoogleAgenda,
       handleExternalCalendarToggle,
       calendarHorizontalPadding,
-      calendarSheetStep,
       palette.primary,
       selectedDay,
       showExternalCalendarItems,

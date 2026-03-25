@@ -39,7 +39,7 @@ const MAPPING = {
   "house.fill": "home",
   "map.fill": "map",
   clock: "schedule",
-  "clock.fill": "schedule",
+  "clock.fill": "access-time-filled",
   "exclamationmark.circle.fill": "error",
   "flame.fill": "local-fire-department",
   globe: "language",

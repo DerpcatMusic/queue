@@ -1,8 +1,9 @@
-import { type PropsWithChildren, useEffect } from "react";
+import { type PropsWithChildren, useLayoutEffect } from "react";
 import type { ColorValue } from "react-native";
 import { View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Motion } from "@/lib/design-system";
 
 export function AppSafeRoot({
   children,
@@ -11,9 +12,9 @@ export function AppSafeRoot({
   const insets = useSafeAreaInsets();
   const animatedInsetColor = useSharedValue(String(topInsetBackgroundColor));
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     animatedInsetColor.value = withTiming(String(topInsetBackgroundColor), {
-      duration: 220,
+      duration: Motion.normal,
     });
   }, [animatedInsetColor, topInsetBackgroundColor]);
 
