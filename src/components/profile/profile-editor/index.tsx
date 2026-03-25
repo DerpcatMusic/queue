@@ -3,6 +3,7 @@ import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { useTheme } from "@/hooks/use-theme";
 import { ProfileEditorActions } from "./profile-editor-actions";
 import { ProfileEditorBasicsPanel } from "./profile-editor-basics-panel";
 import { ProfileEditorIdentityPanel } from "./profile-editor-identity-panel";
@@ -10,7 +11,6 @@ import { ProfileEditorSocialPanel } from "./profile-editor-social-panel";
 import type { ProfileEditorFormProps } from "./types";
 
 export function ProfileEditorForm({
-  palette,
   profileName,
   roleLabel,
   profileImageUrl,
@@ -36,14 +36,10 @@ export function ProfileEditorForm({
 }: ProfileEditorFormProps) {
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { safeBottom } = useAppInsets();
+  const { color } = useTheme();
 
   const saveActions = (
-    <ProfileEditorActions
-      palette={palette}
-      onSave={onSave}
-      onCancel={onCancel}
-      isSaving={isSaving}
-    />
+    <ProfileEditorActions onSave={onSave} onCancel={onCancel} isSaving={isSaving} />
   );
 
   return (
@@ -68,7 +64,6 @@ export function ProfileEditorForm({
         >
           <View style={{ width: 380, gap: BrandSpacing.lg }}>
             <ProfileEditorIdentityPanel
-              palette={palette}
               profileName={profileName}
               roleLabel={roleLabel}
               profileImageUrl={profileImageUrl}
@@ -90,7 +85,6 @@ export function ProfileEditorForm({
 
           <View style={{ flex: 1, gap: BrandSpacing.lg }}>
             <SportsMultiSelect
-              palette={palette}
               selectedSports={sportsDraft}
               onToggleSport={onToggleSport}
               searchPlaceholder={searchPlaceholder}
@@ -98,7 +92,6 @@ export function ProfileEditorForm({
               emptyHint={sportsEmptyHint}
             />
             <ProfileEditorSocialPanel
-              palette={palette}
               socialLinksDraft={socialLinksDraft}
               onSocialLinkChange={onSocialLinkChange}
             />
@@ -107,7 +100,6 @@ export function ProfileEditorForm({
       ) : (
         <>
           <ProfileEditorIdentityPanel
-            palette={palette}
             profileName={profileName}
             roleLabel={roleLabel}
             profileImageUrl={profileImageUrl}
@@ -125,7 +117,6 @@ export function ProfileEditorForm({
             isDesktopWeb={isDesktopWeb}
           />
           <SportsMultiSelect
-            palette={palette}
             selectedSports={sportsDraft}
             onToggleSport={onToggleSport}
             searchPlaceholder={searchPlaceholder}
@@ -133,19 +124,13 @@ export function ProfileEditorForm({
             emptyHint={sportsEmptyHint}
           />
           <ProfileEditorSocialPanel
-            palette={palette}
             socialLinksDraft={socialLinksDraft}
             onSocialLinkChange={onSocialLinkChange}
           />
 
           {statusLabel ? (
             <Text
-              style={{
-                ...BrandType.caption,
-                lineHeight: 18,
-                color: palette.textMuted as string,
-                includeFontPadding: false,
-              }}
+              style={[BrandType.caption, { color: color.textMuted, includeFontPadding: false }]}
             >
               {statusLabel}
             </Text>

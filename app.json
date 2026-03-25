@@ -76,6 +76,20 @@
     "plugins": [
       "expo-router",
       [
+        "expo-font",
+        {
+          "fonts": [
+            "assets/fonts/Lexend_700Bold.ttf",
+            "assets/fonts/Lexend_600SemiBold.ttf",
+            "assets/fonts/Lexend_500Medium.ttf",
+            "assets/fonts/Lexend_800ExtraBold.ttf",
+            "assets/fonts/Manrope_400Regular.ttf",
+            "assets/fonts/Manrope_500Medium.ttf",
+            "assets/fonts/Manrope_600SemiBold.ttf"
+          ]
+        }
+      ],
+      [
         "expo-system-ui",
         {
           "userInterfaceStyle": "automatic"

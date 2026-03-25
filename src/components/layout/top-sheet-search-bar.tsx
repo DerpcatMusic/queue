@@ -3,7 +3,7 @@ import type { ColorValue } from "react-native";
 import { Pressable, TextInput } from "react-native";
 
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 
 export type SearchBarWidgetProps = {
   value: string;
@@ -90,7 +90,10 @@ export function TopSheetSearchBar({
         className="text-brand"
         style={{
           flex: 1,
-          ...BrandType.body,
+          fontFamily: "Manrope_400Regular",
+          fontSize: 16,
+          fontWeight: "400",
+          lineHeight: 22,
           padding: 0,
           margin: 0,
         }}

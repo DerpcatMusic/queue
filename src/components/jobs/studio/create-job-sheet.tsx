@@ -1,14 +1,14 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
+import { useTheme } from "@/hooks/use-theme";
 import type { StudioDraft } from "@/lib/jobs-utils";
 import { createDefaultStudioDraft } from "@/lib/jobs-utils";
 import {
@@ -26,7 +26,7 @@ type CreateJobSheetProps = {
   onDismissed: () => void;
   onPost: (draft: StudioDraft) => Promise<void>;
   isSubmitting: boolean;
-  palette: BrandPalette;
+  defaultBranchId?: StudioDraft["branchId"];
 };
 
 export function CreateJobSheet({
@@ -34,13 +34,14 @@ export function CreateJobSheet({
   onDismissed,
   onPost,
   isSubmitting,
-  palette,
+  defaultBranchId = null,
 }: CreateJobSheetProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? "en";
   const collapsedSheetHeight = useCollapsedSheetHeight();
+  const { color: palette } = useTheme();
 
-  const [draft, setDraft] = useState<StudioDraft>(createDefaultStudioDraft());
+  const [draft, setDraft] = useState<StudioDraft>(createDefaultStudioDraft(defaultBranchId));
   const [sportQuery, setSportQuery] = useState("");
   const [sportPickerOpen, setSportPickerOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -86,7 +87,7 @@ export function CreateJobSheet({
         {...props}
         disappearsAt={-1}
         appearsAt={0}
-        style={[props.style, { backgroundColor: palette.surface as string }]}
+        style={[props.style, { backgroundColor: palette.surface }]}
       />
     ),
     [palette.surface],
@@ -147,14 +148,19 @@ export function CreateJobSheet({
   };
 
   const handleDismissed = useCallback(() => {
-    setDraft(createDefaultStudioDraft());
+    setDraft(createDefaultStudioDraft(defaultBranchId));
     setSportQuery("");
     setSportPickerOpen(false);
     setShowDatePicker(false);
     setShowStartTimePicker(false);
     setShowEndTimePicker(false);
     onDismissed();
-  }, [onDismissed]);
+  }, [defaultBranchId, onDismissed]);
+
+  useEffect(() => {
+    if (!defaultBranchId) return;
+    setDraft((current) => (current.branchId ? current : { ...current, branchId: defaultBranchId }));
+  }, [defaultBranchId]);
 
   return (
     <BottomSheet
@@ -165,14 +171,12 @@ export function CreateJobSheet({
       enablePanDownToClose
       onClose={handleDismissed}
       backdropComponent={renderBackdrop}
-      handleIndicatorStyle={{ backgroundColor: palette.borderStrong as string }}
-      backgroundStyle={{ backgroundColor: palette.appBg as string }}
+      handleIndicatorStyle={{ backgroundColor: palette.borderStrong }}
+      backgroundStyle={{ backgroundColor: palette.appBg }}
     >
       <BottomSheetScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <ThemedText type="title" style={{ fontSize: 28 }}>
-            {t("jobsTab.studioCreateTitle")}
-          </ThemedText>
+          <ThemedText type="title">{t("jobsTab.studioCreateTitle")}</ThemedText>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t("common.close")}
@@ -180,13 +184,11 @@ export function CreateJobSheet({
             style={({ pressed }) => [
               styles.closeButton,
               {
-                backgroundColor: pressed
-                  ? (palette.surfaceElevated as string)
-                  : (palette.surfaceAlt as string),
+                backgroundColor: pressed ? palette.surfaceElevated : palette.surfaceAlt,
               },
             ]}
           >
-            <AppSymbol name="xmark" size={18} tintColor={palette.textMuted as string} />
+            <AppSymbol name="xmark" size={18} tintColor={palette.textMuted} />
           </Pressable>
         </View>
 
@@ -196,7 +198,6 @@ export function CreateJobSheet({
             sportQuery={sportQuery}
             sportPickerOpen={sportPickerOpen}
             locale={locale}
-            palette={palette}
             filteredSports={filteredSports}
             setSportQuery={setSportQuery}
             setSportPickerOpen={setSportPickerOpen}
@@ -208,20 +209,18 @@ export function CreateJobSheet({
           <ScheduleSection
             draft={draft}
             locale={locale}
-            palette={palette}
             onOpenDate={() => setShowDatePicker(true)}
             onOpenStartTime={() => setShowStartTimePicker(true)}
             onOpenEndTime={() => setShowEndTimePicker(true)}
           />
 
-          <PostingOptionsSection draft={draft} setDraft={setDraft} palette={palette} />
+          <PostingOptionsSection draft={draft} setDraft={setDraft} />
           <PayParticipantsSection draft={draft} setDraft={setDraft} />
           <NotesSection draft={draft} setDraft={setDraft} />
 
           <SubmitBar
             draft={draft}
             isSubmitting={isSubmitting}
-            palette={palette}
             onPost={() => {
               void onPost(draft);
             }}
@@ -236,7 +235,6 @@ export function CreateJobSheet({
         display={Platform.OS === "ios" ? "inline" : "default"}
         onChange={handleDateChange}
         minimumDate={new Date()}
-        palette={palette}
         onDone={() => setShowDatePicker(false)}
       />
       <PickerDock
@@ -245,7 +243,6 @@ export function CreateJobSheet({
         mode="time"
         display={Platform.OS === "ios" ? "spinner" : "default"}
         onChange={handleStartTimeChange}
-        palette={palette}
         onDone={() => setShowStartTimePicker(false)}
       />
       <PickerDock
@@ -255,7 +252,6 @@ export function CreateJobSheet({
         display={Platform.OS === "ios" ? "spinner" : "default"}
         onChange={handleEndTimeChange}
         minimumDate={new Date(draft.startTime)}
-        palette={palette}
         onDone={() => setShowEndTimePicker(false)}
       />
     </BottomSheet>
@@ -270,16 +266,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 24,
+    marginBottom: BrandSpacing.xl,
   },
   closeButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: BrandRadius.medium,
     alignItems: "center",
     justifyContent: "center",
   },
   form: {
-    gap: 20,
+    gap: BrandSpacing.lg,
   },
 });

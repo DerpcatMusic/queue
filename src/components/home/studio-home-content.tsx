@@ -19,12 +19,12 @@ import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provide
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
+import { useTheme } from "@/hooks/use-theme";
 import { formatDateTime } from "@/lib/jobs-utils";
 
 type RecentJob = {
@@ -44,7 +44,6 @@ type StudioHomeContentProps = {
   openJobs: number;
   pendingApplicants: number;
   jobsFilled: number;
-  palette: BrandPalette;
   currencyFormatter: Intl.NumberFormat;
   t: TFunction;
   recentJobs: RecentJob[];
@@ -56,19 +55,18 @@ type StudioHomeContentProps = {
   }) => Promise<{ ok: boolean }>;
 };
 
-function ReviewQueueEmptyState({ palette, t }: { palette: BrandPalette; t: TFunction }) {
+function ReviewQueueEmptyState({ t }: { t: TFunction }) {
+  const { color: palette } = useTheme();
   return (
-    <HomeSurface palette={palette} style={{ padding: BrandSpacing.inset }}>
+    <HomeSurface style={{ padding: BrandSpacing.inset }}>
       <View style={{ alignItems: "center", gap: BrandSpacing.stackTight }}>
-        <IconSymbol name="checkmark.circle.fill" size={28} color={palette.success as string} />
-        <Text className="text-brand" style={{ ...BrandType.title }}>
-          {t("home.studio.noReviewJobs")}
-        </Text>
+        <IconSymbol name="checkmark.circle.fill" size={28} color={palette.success} />
+        <Text style={BrandType.title}>{t("home.studio.noReviewJobs")}</Text>
         <Text
-          className="text-muted"
           style={{
             ...BrandType.caption,
             textAlign: "center",
+            color: palette.textMuted,
           }}
         >
           {t("home.studio.noReviewJobsHint")}
@@ -81,7 +79,6 @@ function ReviewQueueEmptyState({ palette, t }: { palette: BrandPalette; t: TFunc
 function ReviewApplicationCard({
   application,
   job,
-  palette,
   locale,
   zoneLanguage,
   t,
@@ -91,7 +88,6 @@ function ReviewApplicationCard({
 }: {
   application: Application;
   job: RecentJob;
-  palette: BrandPalette;
   locale: string;
   zoneLanguage: "en" | "he";
   t: TFunction;
@@ -99,36 +95,37 @@ function ReviewApplicationCard({
   isReviewing: boolean;
   hasError: boolean;
 }) {
+  const { color: palette } = useTheme();
   return (
-    <HomeSurface palette={palette} style={{ padding: BrandSpacing.inset }}>
+    <HomeSurface style={{ padding: BrandSpacing.inset }}>
       <View style={{ gap: BrandSpacing.stackRoomy }}>
         {/* Header: sport + instructor */}
         <View style={{ gap: BrandSpacing.xs }}>
           <Text
             className="text-primary uppercase"
             style={{
-              ...BrandType.micro,
+              fontFamily: "Manrope_500Medium",
+              fontSize: 12,
+              fontWeight: "500",
               letterSpacing: 0.6,
+              lineHeight: 16,
             }}
           >
             {toSportLabel(job.sport as never)}
           </Text>
-          <Text className="text-brand" style={{ ...BrandType.title }}>
-            {application.instructorName}
-          </Text>
-          <Text className="text-muted" style={{ ...BrandType.caption }}>
+          <Text style={BrandType.title}>{application.instructorName}</Text>
+          <Text
+            style={{
+              ...BrandType.caption,
+              color: palette.textMuted,
+            }}
+          >
             {[formatDateTime(job.startTime, locale), getZoneLabel(job.zone, zoneLanguage)].join(
               "  ·  ",
             )}
           </Text>
           {application.message ? (
-            <Text
-              className="text-muted italic"
-              style={{
-                ...BrandType.caption,
-              }}
-              numberOfLines={2}
-            >
+            <Text className="text-muted italic" style={BrandType.caption} numberOfLines={2}>
               "{application.message}"
             </Text>
           ) : null}
@@ -140,22 +137,29 @@ function ReviewApplicationCard({
             selectable
             className="text-warning"
             style={{
-              ...BrandType.heading,
+              fontFamily: "Lexend_600SemiBold",
               fontSize: 24,
+              fontWeight: "600",
+              letterSpacing: -0.45,
               lineHeight: 24,
               fontVariant: ["tabular-nums"],
             }}
           >
             {String(job.pendingApplicationsCount)}
           </Text>
-          <Text className="text-muted" style={{ ...BrandType.caption }}>
+          <Text
+            style={{
+              ...BrandType.caption,
+              color: palette.textMuted,
+            }}
+          >
             {t("home.studio.pendingApplicants")}
           </Text>
         </View>
 
         {/* Error feedback */}
         {hasError ? (
-          <Text className="text-danger" style={{ ...BrandType.caption }}>
+          <Text className="text-danger" style={BrandType.caption}>
             {t("common.error")}
           </Text>
         ) : null}
@@ -175,10 +179,10 @@ function ReviewApplicationCard({
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: isReviewing
-                ? (palette.successSubtle as string)
+                ? palette.successSubtle
                 : pressed
-                  ? (palette.success as string)
-                  : (palette.successSubtle as string),
+                  ? palette.success
+                  : palette.successSubtle,
               opacity: isReviewing ? 0.7 : 1,
             })}
           >
@@ -187,10 +191,10 @@ function ReviewApplicationCard({
                 style={{
                   ...BrandType.bodyStrong,
                   color: isReviewing
-                    ? (palette.success as string)
+                    ? palette.success
                     : pressed
-                      ? (palette.onPrimary as string)
-                      : (palette.success as string),
+                      ? palette.onPrimary
+                      : palette.success,
                 }}
               >
                 {isReviewing ? t("jobsTab.studioFeed.accepting") : t("jobsTab.studioFeed.accept")}
@@ -210,10 +214,10 @@ function ReviewApplicationCard({
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: isReviewing
-                ? (palette.dangerSubtle as string)
+                ? palette.dangerSubtle
                 : pressed
-                  ? (palette.danger as string)
-                  : (palette.dangerSubtle as string),
+                  ? palette.danger
+                  : palette.dangerSubtle,
               opacity: isReviewing ? 0.7 : 1,
             })}
           >
@@ -222,10 +226,10 @@ function ReviewApplicationCard({
                 style={{
                   ...BrandType.bodyStrong,
                   color: isReviewing
-                    ? (palette.danger as string)
+                    ? palette.danger
                     : pressed
-                      ? (palette.onPrimary as string)
-                      : (palette.danger as string),
+                      ? palette.onPrimary
+                      : palette.danger,
                 }}
               >
                 {isReviewing ? t("jobsTab.studioFeed.rejecting") : t("jobsTab.studioFeed.reject")}
@@ -243,7 +247,6 @@ export function StudioHomeContent({
   openJobs,
   pendingApplicants,
   jobsFilled,
-  palette,
   currencyFormatter,
   t,
   recentJobs,
@@ -322,7 +325,6 @@ export function StudioHomeContent({
       >
         <Animated.View entering={FadeInUp.delay(80).duration(280)}>
           <HomeSurface
-            palette={palette}
             tone="primary"
             style={{
               padding: BrandSpacing.insetRoomy,
@@ -333,8 +335,11 @@ export function StudioHomeContent({
               <Text
                 className="text-primary uppercase"
                 style={{
-                  ...BrandType.micro,
+                  fontFamily: "Manrope_500Medium",
+                  fontSize: 12,
+                  fontWeight: "500",
                   letterSpacing: 0.8,
+                  lineHeight: 16,
                 }}
               >
                 {t("home.studio.title")}
@@ -342,14 +347,13 @@ export function StudioHomeContent({
               <Text
                 className="text-primary"
                 style={{
-                  ...BrandType.heading,
-                  fontSize: layout.isWideWeb ? 34 : 28,
+                  ...BrandType.headingDisplay,
                   lineHeight: layout.isWideWeb ? 36 : 30,
                 }}
               >
                 {heroTitle}
               </Text>
-              <Text className="text-primary" style={{ ...BrandType.body }}>
+              <Text className="text-primary" style={BrandType.body}>
                 {pendingApplications.length > 0
                   ? t("home.studio.waitingCount", {
                       count: pendingApplicants,
@@ -364,21 +368,18 @@ export function StudioHomeContent({
               <HomeSignalTile
                 label={t("home.actions.jobsTitle")}
                 value={String(openJobs)}
-                palette={palette}
                 tone="accent"
                 icon="briefcase.fill"
               />
               <HomeSignalTile
                 label={t("home.studio.pendingApplicants")}
                 value={String(pendingApplicants)}
-                palette={palette}
                 tone="warning"
                 icon="clock.badge.checkmark"
               />
               <HomeSignalTile
                 label={t("home.studio.recentlyFilled")}
                 value={String(jobsFilled)}
-                palette={palette}
                 tone="success"
                 icon="checkmark.circle.fill"
               />
@@ -395,7 +396,6 @@ export function StudioHomeContent({
                   accessibilityLabel={t("home.actions.jobsTitle")}
                   label={t("home.actions.jobsTitle")}
                   onPress={onOpenJobs}
-                  palette={palette}
                   tone="secondary"
                   fullWidth
                 />
@@ -405,7 +405,6 @@ export function StudioHomeContent({
                   accessibilityLabel={t("home.actions.calendarTitle")}
                   label={t("home.actions.calendarTitle")}
                   onPress={onOpenCalendar}
-                  palette={palette}
                   fullWidth
                 />
               </View>
@@ -429,7 +428,6 @@ export function StudioHomeContent({
               <HomeSectionHeading
                 title={t("home.studio.needsReview")}
                 eyebrow={t("home.studio.queueEyebrow")}
-                palette={palette}
               />
 
               <Animated.View style={{ gap: BrandSpacing.stackTight }}>
@@ -438,7 +436,6 @@ export function StudioHomeContent({
                   count={pendingApplications.length}
                   scrollX={scrollX}
                   cardWidth={cardWidth}
-                  palette={palette}
                 />
 
                 {/* Horizontal carousel */}
@@ -463,7 +460,6 @@ export function StudioHomeContent({
                       <ReviewApplicationCard
                         application={application}
                         job={job}
-                        palette={palette}
                         locale={locale}
                         zoneLanguage={zoneLanguage}
                         t={t}
@@ -484,9 +480,8 @@ export function StudioHomeContent({
               <HomeSectionHeading
                 title={t("home.studio.needsReview")}
                 eyebrow={t("home.studio.queueEyebrow")}
-                palette={palette}
               />
-              <ReviewQueueEmptyState palette={palette} t={t} />
+              <ReviewQueueEmptyState t={t} />
             </Animated.View>
           )}
 
@@ -498,16 +493,13 @@ export function StudioHomeContent({
               gap: BrandSpacing.stack,
             }}
           >
-            <HomeSectionHeading title={t("home.studio.boardEyebrow")} palette={palette} />
+            <HomeSectionHeading title={t("home.studio.boardEyebrow")} />
             {recentJobs.length === 0 ? (
-              <HomeSurface
-                palette={palette}
-                style={{ padding: BrandSpacing.inset, gap: BrandSpacing.stackTight }}
-              >
-                <Text className="text-brand" style={{ ...BrandType.title }}>
+              <HomeSurface style={{ padding: BrandSpacing.inset, gap: BrandSpacing.stackTight }}>
+                <Text className="text-brand" style={BrandType.title}>
                   {t("home.studio.noRecent")}
                 </Text>
-                <Text className="text-muted" style={{ ...BrandType.caption }}>
+                <Text className="text-muted" style={BrandType.caption}>
                   {t("home.studio.emptyBoard")}
                 </Text>
               </HomeSurface>
@@ -521,10 +513,7 @@ export function StudioHomeContent({
                       .springify()
                       .damping(18)}
                   >
-                    <HomeSurface
-                      palette={palette}
-                      style={{ padding: BrandSpacing.inset, gap: BrandSpacing.xs }}
-                    >
+                    <HomeSurface style={{ padding: BrandSpacing.inset, gap: BrandSpacing.xs }}>
                       <View
                         style={{
                           flexDirection: "row",
@@ -534,10 +523,10 @@ export function StudioHomeContent({
                         }}
                       >
                         <View style={{ flex: 1, gap: BrandSpacing.xs }}>
-                          <Text className="text-brand" style={{ ...BrandType.title }}>
+                          <Text className="text-brand" style={BrandType.title}>
                             {toSportLabel(job.sport as never)}
                           </Text>
-                          <Text className="text-muted" style={{ ...BrandType.caption }}>
+                          <Text className="text-muted" style={BrandType.caption}>
                             {[
                               formatDateTime(job.startTime, locale),
                               getZoneLabel(job.zone, zoneLanguage),

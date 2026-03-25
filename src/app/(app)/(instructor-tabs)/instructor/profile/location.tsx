@@ -17,12 +17,13 @@ import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useBrand } from "@/hooks/use-brand";
 import { useLocationResolution } from "@/hooks/use-location-resolution";
+import { useTheme } from "@/hooks/use-theme";
+import { BorderWidth, FontSize } from "@/lib/design-system";
 import {
   fetchPlaceByZipCode,
   type PlaceCoordinates,
@@ -55,7 +56,7 @@ function FieldLabel({ children }: { children: string }) {
       className="mb-1"
       style={{
         fontFamily: "Rubik_500Medium",
-        fontSize: 12,
+        fontSize: FontSize.micro,
         letterSpacing: 0.6,
         textTransform: "uppercase",
       }}
@@ -69,36 +70,44 @@ function ManualField({
   value,
   onChangeText,
   placeholder,
-  palette,
   keyboardType = "default",
   autoCapitalize = "words",
+  textMuted,
+  primary,
+  border,
+  surfaceElevated,
+  text,
 }: {
   value: string;
   onChangeText: (text: string) => void;
   placeholder: string;
-  palette: ReturnType<typeof useBrand>;
   keyboardType?: "default" | "numeric" | "email-address";
   autoCapitalize?: "none" | "words" | "sentences";
+  textMuted: string;
+  primary: string;
+  border: string;
+  surfaceElevated: string;
+  text: string;
 }) {
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={palette.textMuted as string}
+      placeholderTextColor={textMuted}
       keyboardType={keyboardType}
       autoCapitalize={autoCapitalize}
-      selectionColor={palette.primary as string}
-      cursorColor={palette.primary as string}
+      selectionColor={primary}
+      cursorColor={primary}
       className="rounded-lg px-3"
       style={{
-        borderWidth: 1,
-        borderColor: palette.border as string,
-        backgroundColor: palette.surfaceElevated as string,
-        minHeight: BrandSpacing.iconContainer + BrandSpacing.xs,
-        color: palette.text as string,
+        borderWidth: BorderWidth.thin,
+        borderColor: border,
+        backgroundColor: surfaceElevated,
+        minHeight: BrandSpacing.controlMd,
+        color: text,
         fontFamily: "Rubik_400Regular",
-        fontSize: BrandType.body.fontSize,
+        fontSize: 16,
         lineHeight: 22,
       }}
     />
@@ -107,9 +116,11 @@ function ManualField({
 
 export default function LocationScreen() {
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
   const router = useRouter();
   const { overlayBottom } = useAppInsets();
+
+  const theme = useTheme();
+  const palette = theme.color;
   const { currentUser } = useUser();
   const languageCode = (i18n.resolvedLanguage ?? "en") as "en" | "he";
   useProfileSubpageSheet({
@@ -403,8 +414,28 @@ export default function LocationScreen() {
     if (!value) return null;
     return (
       <View className="flex-row items-center gap-2">
-        <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>{label}</Text>
-        <Text style={{ ...BrandType.body, color: palette.text as string }}>{value}</Text>
+        <Text
+          style={{
+            fontFamily: "Manrope_400Regular",
+            fontSize: 14,
+            fontWeight: "400",
+            lineHeight: 19,
+            color: palette.textMuted,
+          }}
+        >
+          {label}
+        </Text>
+        <Text
+          style={{
+            fontFamily: "Manrope_400Regular",
+            fontSize: 16,
+            fontWeight: "400",
+            lineHeight: 22,
+            color: palette.text,
+          }}
+        >
+          {value}
+        </Text>
       </View>
     );
   };
@@ -424,7 +455,6 @@ export default function LocationScreen() {
         <ProfileSectionHeader
           label={t("profile.location.addressTitle")}
           icon="mappin.and.ellipse"
-          palette={palette}
           flush
         />
 
@@ -454,7 +484,6 @@ export default function LocationScreen() {
               void resolveByGps();
             }}
             disabled={locationResolver.isResolving}
-            palette={palette}
             tone="secondary"
             fullWidth
           />
@@ -491,7 +520,11 @@ export default function LocationScreen() {
                   value={city}
                   onChangeText={setCity}
                   placeholder={t("profile.location.fieldCityPlaceholder")}
-                  palette={palette}
+                  textMuted={palette.textMuted}
+                  primary={palette.primary}
+                  border={palette.border}
+                  surfaceElevated={palette.surfaceElevated}
+                  text={palette.text}
                 />
               </View>
               <View className="flex-1 gap-1">
@@ -500,7 +533,11 @@ export default function LocationScreen() {
                   value={street}
                   onChangeText={setStreet}
                   placeholder={t("profile.location.fieldStreetPlaceholder")}
-                  palette={palette}
+                  textMuted={palette.textMuted}
+                  primary={palette.primary}
+                  border={palette.border}
+                  surfaceElevated={palette.surfaceElevated}
+                  text={palette.text}
                 />
               </View>
             </View>
@@ -513,7 +550,11 @@ export default function LocationScreen() {
                   value={streetNumber}
                   onChangeText={setStreetNumber}
                   placeholder="-"
-                  palette={palette}
+                  textMuted={palette.textMuted}
+                  primary={palette.primary}
+                  border={palette.border}
+                  surfaceElevated={palette.surfaceElevated}
+                  text={palette.text}
                 />
               </View>
               <View className="w-20 gap-1">
@@ -522,7 +563,11 @@ export default function LocationScreen() {
                   value={floor}
                   onChangeText={setFloor}
                   placeholder="-"
-                  palette={palette}
+                  textMuted={palette.textMuted}
+                  primary={palette.primary}
+                  border={palette.border}
+                  surfaceElevated={palette.surfaceElevated}
+                  text={palette.text}
                 />
               </View>
               <View className="flex-1 gap-1">
@@ -531,9 +576,13 @@ export default function LocationScreen() {
                   value={postalCode}
                   onChangeText={setPostalCode}
                   placeholder="-"
-                  palette={palette}
                   keyboardType="numeric"
                   autoCapitalize="none"
+                  textMuted={palette.textMuted}
+                  primary={palette.primary}
+                  border={palette.border}
+                  surfaceElevated={palette.surfaceElevated}
+                  text={palette.text}
                 />
               </View>
             </View>
@@ -544,23 +593,31 @@ export default function LocationScreen() {
         <View className="flex-row gap-3 items-center">
           {!manualMode ? (
             <Pressable onPress={() => setManualMode(true)} className="flex-row items-center gap-1">
-              <IconSymbol
-                name="pencil"
-                size={BrandType.caption.fontSize - 1}
-                color={palette.primary as string}
-              />
-              <Text style={{ ...BrandType.caption, color: palette.primary as string }}>
+              <IconSymbol name="pencil" size={13} color={palette.primary} />
+              <Text
+                style={{
+                  fontFamily: "Manrope_400Regular",
+                  fontSize: 14,
+                  fontWeight: "400",
+                  lineHeight: 19,
+                  color: palette.primary,
+                }}
+              >
                 {t("profile.location.enterManually")}
               </Text>
             </Pressable>
           ) : (
             <Pressable onPress={() => setManualMode(false)} className="flex-row items-center gap-1">
-              <IconSymbol
-                name="magnifyingglass"
-                size={BrandType.caption.fontSize - 1}
-                color={palette.primary as string}
-              />
-              <Text style={{ ...BrandType.caption, color: palette.primary as string }}>
+              <IconSymbol name="magnifyingglass" size={13} color={palette.primary} />
+              <Text
+                style={{
+                  fontFamily: "Manrope_400Regular",
+                  fontSize: 14,
+                  fontWeight: "400",
+                  lineHeight: 19,
+                  color: palette.primary,
+                }}
+              >
                 {t("profile.location.backToSearch")}
               </Text>
             </Pressable>
@@ -578,20 +635,16 @@ export default function LocationScreen() {
               >
                 <IconSymbol
                   name={isSearchingZip ? "arrow.2.squarepath" : "number"}
-                  size={BrandType.caption.fontSize - 1}
-                  color={
-                    postalCode.trim().length < 5
-                      ? (palette.textMuted as string)
-                      : (palette.primary as string)
-                  }
+                  size={13}
+                  color={postalCode.trim().length < 5 ? palette.textMuted : palette.primary}
                 />
                 <Text
                   style={{
-                    ...BrandType.caption,
-                    color:
-                      postalCode.trim().length < 5
-                        ? (palette.textMuted as string)
-                        : (palette.primary as string),
+                    fontFamily: "Manrope_400Regular",
+                    fontSize: 14,
+                    fontWeight: "400",
+                    lineHeight: 19,
+                    color: postalCode.trim().length < 5 ? palette.textMuted : palette.primary,
                   }}
                 >
                   {t("profile.location.findByZip")}
@@ -605,7 +658,7 @@ export default function LocationScreen() {
         {showZipResults && zipResults.length > 0 ? (
           <View
             className="overflow-hidden rounded-lg"
-            style={{ borderWidth: 1, borderColor: palette.border as string }}
+            style={{ borderWidth: BorderWidth.thin, borderColor: palette.border as string }}
           >
             {zipResults.slice(0, 5).map((result) => (
               <Pressable
@@ -619,13 +672,19 @@ export default function LocationScreen() {
                   backgroundColor: pressed
                     ? (palette.primarySubtle as string)
                     : (palette.surfaceElevated as string),
-                  borderBottomWidth: 1,
+                  borderBottomWidth: BorderWidth.thin,
                   borderBottomColor: palette.border as string,
                 })}
               >
                 <Text
                   numberOfLines={1}
-                  style={{ ...BrandType.bodyMedium, color: palette.text as string }}
+                  style={{
+                    fontFamily: "Manrope_500Medium",
+                    fontSize: 16,
+                    fontWeight: "500",
+                    lineHeight: 22,
+                    color: palette.text,
+                  }}
                 >
                   {result.street
                     ? `${result.streetNumber ?? ""} ${result.street}`.trim()
@@ -633,7 +692,13 @@ export default function LocationScreen() {
                 </Text>
                 <Text
                   numberOfLines={1}
-                  style={{ ...BrandType.caption, color: palette.textMuted as string }}
+                  style={{
+                    fontFamily: "Manrope_400Regular",
+                    fontSize: 14,
+                    fontWeight: "400",
+                    lineHeight: 19,
+                    color: palette.textMuted,
+                  }}
                 >
                   {[result.city, result.postalCode].filter(Boolean).join(" · ")}
                 </Text>
@@ -646,11 +711,10 @@ export default function LocationScreen() {
         <ProfileSectionHeader
           label={t("profile.location.zoneLabel")}
           icon="checkmark.circle.fill"
-          palette={palette}
           flush
         />
 
-        <ProfileSectionCard palette={palette} style={{ marginHorizontal: 0 }}>
+        <ProfileSectionCard style={{ marginHorizontal: 0 }}>
           <View className="px-4 py-3 gap-2">
             {/* Zone status row */}
             <View className="flex-row items-center justify-between">
@@ -658,12 +722,18 @@ export default function LocationScreen() {
                 <View
                   className="w-2 h-2 rounded-full"
                   style={{
-                    backgroundColor: hasDetectedZone
-                      ? (palette.primary as string)
-                      : (palette.textMuted as string),
+                    backgroundColor: hasDetectedZone ? palette.primary : palette.textMuted,
                   }}
                 />
-                <Text style={{ ...BrandType.body, color: palette.text as string }}>
+                <Text
+                  style={{
+                    fontFamily: "Manrope_400Regular",
+                    fontSize: 16,
+                    fontWeight: "400",
+                    lineHeight: 22,
+                    color: palette.text,
+                  }}
+                >
                   {zoneDisplayValue}
                 </Text>
               </View>
@@ -673,11 +743,27 @@ export default function LocationScreen() {
             </View>
 
             {!hasDetectedZone ? (
-              <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+              <Text
+                style={{
+                  fontFamily: "Manrope_400Regular",
+                  fontSize: 14,
+                  fontWeight: "400",
+                  lineHeight: 19,
+                  color: palette.textMuted,
+                }}
+              >
                 {t("profile.location.zonePendingBody")}
               </Text>
             ) : (
-              <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+              <Text
+                style={{
+                  fontFamily: "Manrope_400Regular",
+                  fontSize: 14,
+                  fontWeight: "400",
+                  lineHeight: 19,
+                  color: palette.textMuted,
+                }}
+              >
                 {t("profile.settings.location.includeDetectedZoneDescription")}
               </Text>
             )}
@@ -689,12 +775,20 @@ export default function LocationScreen() {
           <View
             className="rounded-lg px-4 py-3"
             style={{
-              borderWidth: 1,
-              borderColor: palette.danger as string,
-              backgroundColor: palette.dangerSubtle as string,
+              borderWidth: BorderWidth.thin,
+              borderColor: palette.danger,
+              backgroundColor: palette.dangerSubtle,
             }}
           >
-            <Text style={{ ...BrandType.body, color: palette.danger as string }}>
+            <Text
+              style={{
+                fontFamily: "Manrope_400Regular",
+                fontSize: 16,
+                fontWeight: "400",
+                lineHeight: 22,
+                color: palette.danger,
+              }}
+            >
               {errorMessage}
             </Text>
           </View>
@@ -704,7 +798,7 @@ export default function LocationScreen() {
       {/* Save rail */}
       <View
         className="absolute left-inset right-inset gap-2"
-        style={{ bottom: overlayBottom, backgroundColor: palette.appBg as string }}
+        style={{ bottom: overlayBottom, backgroundColor: palette.appBg }}
       >
         <ActionButton
           label={
@@ -714,13 +808,11 @@ export default function LocationScreen() {
             void onSave();
           }}
           disabled={!hasChanges || isSaving}
-          palette={palette}
           fullWidth
         />
         <ActionButton
           label={t("common.cancel")}
           onPress={() => router.back()}
-          palette={palette}
           tone="secondary"
           fullWidth
         />

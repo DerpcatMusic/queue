@@ -19,7 +19,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandSpacing } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 
 type ProfileSubpageSheetOptions = {
   title: string;
@@ -59,10 +59,10 @@ function ProfileSubpageSheetHeader({
   onBack: () => void;
   accentColor?: string;
 }) {
-  const palette = useBrand();
   const { t } = useTranslation();
+  const theme = useTheme();
   const isCustomAccent = Boolean(accentColor);
-  const foregroundColor = isCustomAccent ? "#FFFFFF" : String(palette.text);
+  const foregroundColor = isCustomAccent ? theme.color.onPrimary : theme.color.text;
 
   return (
     <View style={styles.headerRow}>
@@ -70,7 +70,7 @@ function ProfileSubpageSheetHeader({
         <IconButton
           size={40}
           tone={isCustomAccent ? "primarySubtle" : "secondary"}
-          {...(isCustomAccent ? { backgroundColorOverride: String(palette.surface) } : {})}
+          {...(isCustomAccent ? { backgroundColorOverride: theme.color.surface } : {})}
           accessibilityLabel={t("common.back")}
           onPress={onBack}
           icon={
@@ -165,10 +165,10 @@ export function ProfileSubpageSheetHost({
   routes: readonly ProfileSubpageRouteConfig[];
   ownerId: string;
 }) {
-  const palette = useBrand();
   const router = useRouter();
   const pathname = usePathname();
   const accessoryContext = useContext(ProfileSubpageAccessoryContext);
+  const theme = useTheme();
 
   const activeRoute = useMemo(
     () =>
@@ -186,10 +186,10 @@ export function ProfileSubpageSheetHost({
       activeRoute.routeMatchPath === "/profile/payments" ||
       activeRoute.routeMatchPath.endsWith("/profile/payments");
     const accentColor = isDiditRoute
-      ? palette.didit.accent
+      ? theme.color.tertiary
       : isPaymentsRoute
-        ? palette.payments.accent
-        : (palette.primary as string);
+        ? theme.color.success
+        : theme.color.primary;
 
     return {
       stickyHeader: (
@@ -214,10 +214,10 @@ export function ProfileSubpageSheetHost({
   }, [
     activeRoute,
     accessoryContext?.accessories,
-    palette.primary,
-    palette.didit.accent,
-    palette.payments.accent,
     router,
+    theme.color.primary,
+    theme.color.success,
+    theme.color.tertiary,
   ]);
 
   useGlobalTopSheet("profile", config, ownerId);

@@ -15,7 +15,7 @@ import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons"
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing, getMapBrandPalette } from "@/constants/brand";
 import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
@@ -58,8 +58,8 @@ export const QueueMap = memo(function QueueMap({
   cameraPadding,
 }: QueueMapProps) {
   const { t } = useTranslation();
-  const palette = useBrand();
   const { resolvedScheme } = useThemePreference();
+  const { color } = useTheme();
   const mapPalette = getMapBrandPalette(resolvedScheme);
   const [mapLoadState, setMapLoadState] = useState<MapLoadState>("loading");
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
@@ -260,15 +260,15 @@ export const QueueMap = memo(function QueueMap({
         style={[
           styles.fallback,
           {
-            backgroundColor: palette.surfaceAlt as string,
-            borderRadius: 28,
+            backgroundColor: color.surfaceAlt,
+            borderRadius: BrandRadius.soft,
             borderCurve: "continuous",
-            margin: 18,
+            margin: BrandSpacing.inset,
           },
         ]}
       >
         <ThemedText type="defaultSemiBold">{t("mapTab.devBuildRequiredTitle")}</ThemedText>
-        <ThemedText style={{ color: palette.textMuted }}>
+        <ThemedText style={{ color: color.textMuted }}>
           {t("mapTab.devBuildRequiredBody")}
         </ThemedText>
       </KitSurface>
@@ -364,7 +364,7 @@ export const QueueMap = memo(function QueueMap({
           style={[
             styles.stateOverlay,
             {
-              backgroundColor: palette.appBg as string,
+              backgroundColor: color.appBg,
             },
           ]}
         >
@@ -376,12 +376,12 @@ export const QueueMap = memo(function QueueMap({
               borderCurve: "continuous",
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: palette.surfaceElevated as string,
+              backgroundColor: color.surfaceElevated,
               borderWidth: StyleSheet.hairlineWidth,
-              borderColor: palette.borderStrong as string,
+              borderColor: color.borderStrong,
             }}
           >
-            <ActivityIndicator color={palette.primary as string} />
+            <ActivityIndicator color={color.primary} />
           </View>
         </View>
       ) : null}
@@ -391,7 +391,7 @@ export const QueueMap = memo(function QueueMap({
           style={[
             styles.stateOverlay,
             {
-              backgroundColor: palette.appBg as string,
+              backgroundColor: color.appBg,
             },
           ]}
         >
@@ -400,19 +400,18 @@ export const QueueMap = memo(function QueueMap({
             style={[
               styles.stateCard,
               {
-                backgroundColor: palette.surface as string,
-                borderColor: palette.border as string,
+                backgroundColor: color.surface,
+                borderColor: color.border,
               },
             ]}
           >
             <ThemedText type="cardTitle">{t("mapTab.native.unavailableTitle")}</ThemedText>
-            <ThemedText type="meta" style={{ color: palette.textMuted }}>
+            <ThemedText type="meta" style={{ color: color.textMuted }}>
               {mapErrorMessage ?? t("mapTab.native.unavailableBody")}
             </ThemedText>
             <ActionButton
               label={t("tabsLayout.actions.retry")}
               onPress={handleRetry}
-              palette={palette}
               tone="secondary"
             />
           </KitSurface>
@@ -434,16 +433,14 @@ export const QueueMap = memo(function QueueMap({
               borderWidth: 1.2,
               borderRadius: BrandRadius.button,
               borderCurve: "continuous",
-              backgroundColor: pressed
-                ? (palette.surfaceAlt as string)
-                : (palette.surface as string),
-              borderColor: palette.borderStrong as string,
+              backgroundColor: pressed ? color.surfaceAlt : color.surface,
+              borderColor: color.borderStrong,
               overflow: "hidden",
               transform: [{ scale: pressed ? 0.98 : 1 }],
             },
           ]}
         >
-          <IconSymbol name="location.fill" size={20} color={palette.text} />
+          <IconSymbol name="location.fill" size={20} color={color.text} />
         </Pressable>
       ) : null}
 
@@ -457,16 +454,14 @@ export const QueueMap = memo(function QueueMap({
           style={({ pressed }) => [
             styles.attributionButton,
             {
-              backgroundColor: pressed
-                ? (palette.surfaceAlt as string)
-                : (palette.surfaceElevated as string),
-              borderColor: palette.borderStrong as string,
+              backgroundColor: pressed ? color.surfaceAlt : color.surfaceElevated,
+              borderColor: color.borderStrong,
               borderWidth: 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             },
           ]}
         >
-          <IconSymbol name="info.circle.fill" size={15} color={palette.text} />
+          <IconSymbol name="info.circle.fill" size={15} color={color.text} />
         </Pressable>
       ) : null}
     </View>
@@ -494,23 +489,23 @@ const styles = StyleSheet.create({
   fallback: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    gap: BrandSpacing.stackDense,
+    paddingHorizontal: BrandSpacing.inset,
+    paddingVertical: BrandSpacing.lg,
   },
   stateOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    padding: 18,
+    padding: BrandSpacing.inset,
   },
   stateCard: {
     width: "100%",
-    maxWidth: 360,
+    maxWidth: BrandSpacing.shellPanel,
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    gap: BrandSpacing.stackDense,
+    paddingHorizontal: BrandSpacing.inset,
+    paddingVertical: BrandSpacing.lg,
     borderWidth: StyleSheet.hairlineWidth,
   },
 });

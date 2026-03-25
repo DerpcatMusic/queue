@@ -1,6 +1,6 @@
 import { View } from "react-native";
 import Animated, { type SharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
-import type { BrandPalette } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 
 const DOT_SIZE = 6;
 const DOT_GAP = 4;
@@ -9,20 +9,18 @@ type JobCarouselDotsProps = {
   count: number;
   scrollX: SharedValue<number>;
   cardWidth: number;
-  palette: BrandPalette;
 };
 
 function Dot({
   index,
   scrollX,
   cardWidth,
-  palette,
 }: {
   index: number;
   scrollX: SharedValue<number>;
   cardWidth: number;
-  palette: BrandPalette;
 }) {
+  const { color: palette } = useTheme();
   const isActiveStyle = useAnimatedStyle(() => {
     "worklet";
     const page = scrollX.value / cardWidth;
@@ -50,7 +48,7 @@ function Dot({
           width: DOT_SIZE,
           height: DOT_SIZE,
           borderRadius: DOT_SIZE / 2,
-          backgroundColor: palette.primary as string,
+          backgroundColor: palette.primary,
         },
         isActiveStyle,
       ]}
@@ -58,14 +56,14 @@ function Dot({
   );
 }
 
-export function JobCarouselDots({ count, scrollX, cardWidth, palette }: JobCarouselDotsProps) {
+export function JobCarouselDots({ count, scrollX, cardWidth }: JobCarouselDotsProps) {
   if (count <= 1) {
     return null;
   }
 
   const dots = [];
   for (let i = 0; i < count; i++) {
-    dots.push(<Dot key={i} index={i} scrollX={scrollX} cardWidth={cardWidth} palette={palette} />);
+    dots.push(<Dot key={i} index={i} scrollX={scrollX} cardWidth={cardWidth} />);
   }
 
   return (

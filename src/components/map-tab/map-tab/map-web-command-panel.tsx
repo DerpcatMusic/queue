@@ -3,12 +3,11 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { NativeSearchField } from "@/components/ui/native-search-field";
-import { type BrandPalette, BrandType } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
+import { useTheme } from "@/hooks/use-theme";
 
 type MapWebCommandPanelProps = {
   t: TFunction;
-  palette: BrandPalette;
   zoneLanguage: "en" | "he";
   zoneSearch: string;
   selectedZones: ZoneOption[];
@@ -24,7 +23,6 @@ type MapWebCommandPanelProps = {
 
 export function MapWebCommandPanel({
   t,
-  palette,
   zoneLanguage,
   zoneSearch,
   selectedZones,
@@ -37,13 +35,14 @@ export function MapWebCommandPanel({
   onSetFocusZone,
   onToggleZone,
 }: MapWebCommandPanelProps) {
+  const { color: palette } = useTheme();
   return (
     <View
       style={{
         width: 360,
         borderRadius: 34,
         borderCurve: "continuous",
-        backgroundColor: palette.surfaceAlt as string,
+        backgroundColor: palette.surfaceAlt,
         paddingHorizontal: 16,
         paddingVertical: 16,
         gap: 14,
@@ -52,17 +51,23 @@ export function MapWebCommandPanel({
       <View style={{ gap: 6 }}>
         <Text
           style={{
-            ...BrandType.heading,
+            fontFamily: "Lexend_500Medium",
             fontSize: 26,
-            color: palette.text as string,
+            fontWeight: "500",
+            letterSpacing: -0.24,
+            lineHeight: 32,
+            color: palette.text,
           }}
         >
           {t("mapTab.web.commandEyebrow")}
         </Text>
         <Text
           style={{
-            ...BrandType.caption,
-            color: palette.textMuted as string,
+            fontFamily: "Manrope_400Regular",
+            fontSize: 14,
+            fontWeight: "400",
+            lineHeight: 19,
+            color: palette.textMuted,
           }}
         >
           {t("mapTab.web.commandBody")}
@@ -73,7 +78,7 @@ export function MapWebCommandPanel({
         style={{
           borderRadius: 24,
           borderCurve: "continuous",
-          backgroundColor: palette.surface as string,
+          backgroundColor: palette.surface,
           paddingHorizontal: 14,
           paddingVertical: 14,
           gap: 10,
@@ -85,7 +90,7 @@ export function MapWebCommandPanel({
               flex: 1,
               borderRadius: 18,
               borderCurve: "continuous",
-              backgroundColor: palette.surfaceAlt as string,
+              backgroundColor: palette.surfaceAlt,
               paddingHorizontal: 12,
               paddingVertical: 10,
               gap: 2,
@@ -93,8 +98,11 @@ export function MapWebCommandPanel({
           >
             <Text
               style={{
-                ...BrandType.micro,
-                color: palette.textMuted as string,
+                fontFamily: "Manrope_500Medium",
+                fontSize: 12,
+                fontWeight: "500",
+                lineHeight: 16,
+                color: palette.textMuted,
                 letterSpacing: 1,
                 textTransform: "uppercase",
               }}
@@ -103,8 +111,11 @@ export function MapWebCommandPanel({
             </Text>
             <Text
               style={{
-                ...BrandType.bodyStrong,
-                color: palette.text as string,
+                fontFamily: "Manrope_600SemiBold",
+                fontSize: 16,
+                fontWeight: "600",
+                lineHeight: 22,
+                color: palette.text,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -116,7 +127,7 @@ export function MapWebCommandPanel({
               flex: 1,
               borderRadius: 18,
               borderCurve: "continuous",
-              backgroundColor: palette.surfaceAlt as string,
+              backgroundColor: palette.surfaceAlt,
               paddingHorizontal: 12,
               paddingVertical: 10,
               gap: 2,
@@ -124,8 +135,11 @@ export function MapWebCommandPanel({
           >
             <Text
               style={{
-                ...BrandType.micro,
-                color: palette.textMuted as string,
+                fontFamily: "Manrope_500Medium",
+                fontSize: 12,
+                fontWeight: "500",
+                lineHeight: 16,
+                color: palette.textMuted,
                 letterSpacing: 1,
                 textTransform: "uppercase",
               }}
@@ -134,8 +148,11 @@ export function MapWebCommandPanel({
             </Text>
             <Text
               style={{
-                ...BrandType.bodyStrong,
-                color: palette.text as string,
+                fontFamily: "Manrope_600SemiBold",
+                fontSize: 16,
+                fontWeight: "600",
+                lineHeight: 22,
+                color: palette.text,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -146,8 +163,11 @@ export function MapWebCommandPanel({
 
         <Text
           style={{
-            ...BrandType.caption,
-            color: palette.textMuted as string,
+            fontFamily: "Manrope_400Regular",
+            fontSize: 14,
+            fontWeight: "400",
+            lineHeight: 19,
+            color: palette.textMuted,
           }}
         >
           {focusedZoneLabel
@@ -170,15 +190,18 @@ export function MapWebCommandPanel({
           style={{
             borderRadius: 20,
             borderCurve: "continuous",
-            backgroundColor: palette.dangerSubtle as string,
+            backgroundColor: palette.dangerSubtle,
             paddingHorizontal: 14,
             paddingVertical: 12,
           }}
         >
           <Text
             style={{
-              ...BrandType.caption,
-              color: palette.danger as string,
+              fontFamily: "Manrope_400Regular",
+              fontSize: 14,
+              fontWeight: "400",
+              lineHeight: 19,
+              color: palette.danger,
             }}
           >
             {saveError}
@@ -189,8 +212,11 @@ export function MapWebCommandPanel({
       <View style={{ gap: 10 }}>
         <Text
           style={{
-            ...BrandType.micro,
-            color: palette.textMuted as string,
+            fontFamily: "Manrope_500Medium",
+            fontSize: 12,
+            fontWeight: "500",
+            lineHeight: 16,
+            color: palette.textMuted,
             letterSpacing: 1,
             textTransform: "uppercase",
           }}
@@ -206,7 +232,7 @@ export function MapWebCommandPanel({
               style={{
                 borderRadius: 22,
                 borderCurve: "continuous",
-                backgroundColor: palette.surface as string,
+                backgroundColor: palette.surface,
                 paddingHorizontal: 14,
                 paddingVertical: 16,
                 gap: 4,
@@ -214,16 +240,22 @@ export function MapWebCommandPanel({
             >
               <Text
                 style={{
-                  ...BrandType.bodyStrong,
-                  color: palette.text as string,
+                  fontFamily: "Manrope_600SemiBold",
+                  fontSize: 16,
+                  fontWeight: "600",
+                  lineHeight: 22,
+                  color: palette.text,
                 }}
               >
                 {t("mapTab.web.noTerritoryTitle")}
               </Text>
               <Text
                 style={{
-                  ...BrandType.caption,
-                  color: palette.textMuted as string,
+                  fontFamily: "Manrope_400Regular",
+                  fontSize: 14,
+                  fontWeight: "400",
+                  lineHeight: 19,
+                  color: palette.textMuted,
                 }}
               >
                 {t("mapTab.web.noTerritoryBody")}
@@ -240,9 +272,7 @@ export function MapWebCommandPanel({
                   borderRadius: 22,
                   borderCurve: "continuous",
                   backgroundColor:
-                    focusZoneId === zone.id
-                      ? (palette.primarySubtle as string)
-                      : (palette.surface as string),
+                    focusZoneId === zone.id ? palette.primarySubtle : palette.surface,
                   overflow: "hidden",
                 }}
               >
@@ -263,22 +293,23 @@ export function MapWebCommandPanel({
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text
                       style={{
-                        ...BrandType.bodyStrong,
-                        color:
-                          focusZoneId === zone.id
-                            ? (palette.onPrimary as string)
-                            : (palette.text as string),
+                        fontFamily: "Manrope_600SemiBold",
+                        fontSize: 16,
+                        fontWeight: "600",
+                        lineHeight: 22,
+                        color: focusZoneId === zone.id ? palette.onPrimary : palette.text,
                       }}
                     >
                       {zone.label[zoneLanguage]}
                     </Text>
                     <Text
                       style={{
-                        ...BrandType.micro,
-                        color:
-                          focusZoneId === zone.id
-                            ? (palette.surfaceAlt as string)
-                            : (palette.textMuted as string),
+                        fontFamily: "Manrope_500Medium",
+                        fontSize: 12,
+                        fontWeight: "500",
+                        letterSpacing: 0.2,
+                        lineHeight: 16,
+                        color: focusZoneId === zone.id ? palette.surfaceAlt : palette.textMuted,
                       }}
                     >
                       {focusZoneId === zone.id
@@ -300,20 +331,14 @@ export function MapWebCommandPanel({
                     paddingHorizontal: 14,
                     paddingVertical: 14,
                     backgroundColor:
-                      focusZoneId === zone.id
-                        ? (palette.primaryPressed as string)
-                        : (palette.surfaceAlt as string),
+                      focusZoneId === zone.id ? palette.primaryPressed : palette.surfaceAlt,
                     transform: [{ scale: pressed ? 0.99 : 1 }],
                   })}
                 >
                   <IconSymbol
                     name="minus"
                     size={14}
-                    color={
-                      focusZoneId === zone.id
-                        ? (palette.onPrimary as string)
-                        : (palette.text as string)
-                    }
+                    color={focusZoneId === zone.id ? palette.onPrimary : palette.text}
                   />
                 </Pressable>
               </View>
@@ -325,8 +350,11 @@ export function MapWebCommandPanel({
       <View style={{ gap: 10, flex: 1, minHeight: 0 }}>
         <Text
           style={{
-            ...BrandType.micro,
-            color: palette.textMuted as string,
+            fontFamily: "Manrope_500Medium",
+            fontSize: 12,
+            fontWeight: "500",
+            lineHeight: 16,
+            color: palette.textMuted,
             letterSpacing: 1,
             textTransform: "uppercase",
           }}
@@ -347,9 +375,7 @@ export function MapWebCommandPanel({
                 style={({ pressed }) => ({
                   borderRadius: 20,
                   borderCurve: "continuous",
-                  backgroundColor: selected
-                    ? (palette.primaryPressed as string)
-                    : (palette.surface as string),
+                  backgroundColor: selected ? palette.primaryPressed : palette.surface,
                   paddingHorizontal: 14,
                   paddingVertical: 12,
                   transform: [{ scale: pressed ? 0.99 : 1 }],
@@ -365,18 +391,23 @@ export function MapWebCommandPanel({
                 >
                   <Text
                     style={{
-                      ...BrandType.bodyStrong,
-                      color: selected ? (palette.onPrimary as string) : (palette.text as string),
+                      fontFamily: "Manrope_600SemiBold",
+                      fontSize: 16,
+                      fontWeight: "600",
+                      lineHeight: 22,
+                      color: selected ? palette.onPrimary : palette.text,
                     }}
                   >
                     {zone.label[zoneLanguage]}
                   </Text>
                   <Text
                     style={{
-                      ...BrandType.micro,
-                      color: selected
-                        ? (palette.surfaceAlt as string)
-                        : (palette.textMuted as string),
+                      fontFamily: "Manrope_500Medium",
+                      fontSize: 12,
+                      fontWeight: "500",
+                      letterSpacing: 0.2,
+                      lineHeight: 16,
+                      color: selected ? palette.surfaceAlt : palette.textMuted,
                     }}
                   >
                     {selected ? t("mapTab.web.live") : t("mapTab.web.add")}

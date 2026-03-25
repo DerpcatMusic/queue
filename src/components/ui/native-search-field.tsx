@@ -8,8 +8,7 @@ import {
 } from "react-native";
 import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
-import { useThemePreference } from "@/hooks/use-theme-preference";
+import { useTheme } from "@/hooks/use-theme";
 
 const SEARCH_SIZE_SM = {
   containerMinHeight: BrandSpacing.controlSm + BrandSpacing.sm,
@@ -49,16 +48,13 @@ export function NativeSearchField({
   style,
   ...rest
 }: NativeSearchFieldProps) {
-  const palette = useBrand();
-  const { resolvedScheme } = useThemePreference();
+  const theme = useTheme();
   const surfaceColor =
-    resolvedScheme === "dark"
-      ? (palette.surfaceElevated as string)
-      : (palette.surfaceAlt as string);
+    theme.scheme === "dark" ? theme.color.surfaceElevated : theme.color.surfaceAlt;
   const metrics = size === "sm" ? SEARCH_SIZE_SM : SEARCH_SIZE_MD;
   const pressedBackgroundColor =
-    resolvedScheme === "dark" ? (palette.surface as string) : (palette.surfaceElevated as string);
-  const clearButtonBackground = palette.textMuted as string;
+    theme.scheme === "dark" ? theme.color.surface : theme.color.surfaceElevated;
+  const clearButtonBackground = theme.color.textMuted;
 
   return (
     <Animated.View
@@ -84,18 +80,18 @@ export function NativeSearchField({
         containerStyle,
       ]}
     >
-      <MaterialIcons name="search" size={metrics.iconSize} color={palette.textMuted as string} />
+      <MaterialIcons name="search" size={metrics.iconSize} color={theme.color.textMuted} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={palette.textMuted}
+        placeholderTextColor={theme.color.textMuted}
         clearButtonMode="while-editing"
         returnKeyType="search"
         autoCapitalize="none"
         autoCorrect={false}
-        selectionColor={palette.primary as string}
-        cursorColor={palette.primary as string}
+        selectionColor={theme.color.primary}
+        cursorColor={theme.color.primary}
         underlineColorAndroid="transparent"
         style={[
           {
@@ -103,11 +99,11 @@ export function NativeSearchField({
             minWidth: 0,
             minHeight: metrics.inputMinHeight,
             ...BrandType.bodyMedium,
+            color: theme.color.text,
             includeFontPadding: false,
           },
           style,
         ]}
-        className="text-brand"
         {...rest}
       />
       {value.length > 0 ? (
@@ -121,11 +117,7 @@ export function NativeSearchField({
             backgroundColor: pressed ? pressedBackgroundColor : clearButtonBackground,
           })}
         >
-          <MaterialIcons
-            name="close"
-            size={metrics.clearIconSize}
-            color={palette.onPrimary as string}
-          />
+          <MaterialIcons name="close" size={metrics.clearIconSize} color={theme.color.onPrimary} />
         </Pressable>
       ) : null}
     </Animated.View>

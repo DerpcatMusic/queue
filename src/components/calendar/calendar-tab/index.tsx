@@ -5,9 +5,9 @@ import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
-import { BrandSpacing, BrandType } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { BrandSpacing } from "@/constants/brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { useTheme } from "@/hooks/use-theme";
 import type { TimelineListItem } from "../calendar-controller-helpers";
 import { useCalendarTabController } from "../use-calendar-tab-controller";
 import { toDayKey } from "./calendar-date-utils";
@@ -17,9 +17,9 @@ import CalendarTimelineRow from "./calendar-timeline-row";
 
 export default function CalendarTabScreen() {
   const { t } = useTranslation();
-  const palette = useBrand();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const { color: palette } = useTheme();
   const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
     topSpacing: BrandSpacing.md,
     bottomSpacing: BrandSpacing.xl,
@@ -74,15 +74,15 @@ export default function CalendarTabScreen() {
       },
       steps: [calendarSheetStep],
       initialStep: 0,
-      backgroundColor: palette.primary as string,
-      topInsetColor: palette.primary as string,
+      backgroundColor: palette.primary,
+      topInsetColor: palette.primary,
     }),
     [
       canShowGoogleAgenda,
       handleExternalCalendarToggle,
       calendarHorizontalPadding,
       calendarSheetStep,
-      palette,
+      palette.primary,
       selectedDay,
       showExternalCalendarItems,
     ],
@@ -103,9 +103,17 @@ export default function CalendarTabScreen() {
 
   if (isDesktopWeb) {
     return (
-      <TabScreenRoot mode="static" className="bg-surface">
+      <TabScreenRoot mode="static">
         <View style={styles.desktopEmptyState}>
-          <Text style={{ ...BrandType.bodyStrong, color: palette.textMuted as string }}>
+          <Text
+            style={{
+              fontFamily: "Manrope_600SemiBold",
+              fontSize: 16,
+              fontWeight: "600",
+              lineHeight: 22,
+              color: palette.textMuted,
+            }}
+          >
             {t("calendarTab.desktopSoon")}
           </Text>
         </View>
@@ -134,6 +142,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    padding: BrandSpacing.xl,
   },
 });

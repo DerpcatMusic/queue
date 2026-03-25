@@ -12,22 +12,22 @@ import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-cont
 import { LoadingScreen } from "@/components/loading-screen";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useBrand } from "@/hooks/use-brand";
 import { useMinuteNow } from "@/hooks/use-minute-now";
+import { useTheme } from "@/hooks/use-theme";
 
 export default function InstructorStudioProfileRoute() {
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
   const router = useRouter();
   const pathname = usePathname();
   const now = useMinuteNow();
   const { height: screenHeight } = useWindowDimensions();
   const { safeTop } = useAppInsets();
+  const { color: palette } = useTheme();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const { studioId, jobId } = useLocalSearchParams<{
@@ -137,7 +137,7 @@ export default function InstructorStudioProfileRoute() {
             borderBottomLeftRadius: 28,
             borderBottomRightRadius: 28,
             borderCurve: "continuous",
-            backgroundColor: palette.primary as string,
+            backgroundColor: palette.primary,
           }}
         >
           {studioProfile.studioImageUrl ? (
@@ -162,14 +162,14 @@ export default function InstructorStudioProfileRoute() {
             <IconButton
               size={42}
               tone="secondary"
-              backgroundColorOverride={palette.surface as string}
+              backgroundColorOverride={palette.surface}
               accessibilityLabel={t("common.back")}
               onPress={() => router.back()}
               icon={
                 <IconSymbol
                   name="chevron.right"
                   size={20}
-                  color={palette.text as string}
+                  color={palette.text}
                   style={{
                     transform: [{ rotate: I18nManager.isRTL ? "0deg" : "180deg" }],
                   }}
@@ -186,8 +186,12 @@ export default function InstructorStudioProfileRoute() {
           >
             <Text
               style={{
-                ...BrandType.heading,
-                color: palette.onPrimary as string,
+                fontFamily: "Lexend_600SemiBold",
+                fontSize: 28,
+                fontWeight: "600",
+                letterSpacing: -0.45,
+                lineHeight: 34,
+                color: palette.onPrimary,
                 textShadowOffset: { width: 0, height: 1 },
                 textShadowRadius: 4,
               }}
@@ -196,8 +200,11 @@ export default function InstructorStudioProfileRoute() {
             </Text>
             <Text
               style={{
-                ...BrandType.body,
-                color: palette.onPrimary as string,
+                fontFamily: "Manrope_400Regular",
+                fontSize: 16,
+                fontWeight: "400",
+                lineHeight: 22,
+                color: palette.onPrimary,
                 textShadowOffset: { width: 0, height: 1 },
                 textShadowRadius: 3,
               }}
@@ -215,21 +222,10 @@ export default function InstructorStudioProfileRoute() {
       initialStep: 0,
       draggable: false,
       expandable: false,
-      backgroundColor: palette.primary as string,
-      topInsetColor: palette.primary as string,
+      backgroundColor: palette.primary,
+      topInsetColor: palette.primary,
     };
-  }, [
-    palette.onPrimary,
-    palette.primary,
-    palette.surface,
-    palette.text,
-    router,
-    safeTop,
-    screenHeight,
-    studioProfile,
-    pathname,
-    t,
-  ]);
+  }, [router, safeTop, screenHeight, studioProfile, pathname, t]);
 
   useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:studio-profile");
 
@@ -261,7 +257,7 @@ export default function InstructorStudioProfileRoute() {
           style={{
             borderRadius: 32,
             borderCurve: "continuous",
-            backgroundColor: palette.surface as string,
+            backgroundColor: palette.surface,
           }}
         >
           <View
@@ -275,9 +271,8 @@ export default function InstructorStudioProfileRoute() {
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {sportsLabels.map((label) => (
                   <DotStatusPill
-                    key={label}
-                    backgroundColor={palette.primarySubtle as string}
-                    color={palette.primary as string}
+                    backgroundColor={palette.primarySubtle}
+                    color={palette.primary}
                     label={label}
                   />
                 ))}
@@ -286,8 +281,11 @@ export default function InstructorStudioProfileRoute() {
             {studioProfile.bio ? (
               <Text
                 style={{
-                  ...BrandType.body,
-                  color: palette.textMuted as string,
+                  fontFamily: "Manrope_400Regular",
+                  fontSize: 16,
+                  fontWeight: "400",
+                  lineHeight: 22,
+                  color: palette.textMuted,
                 }}
               >
                 {studioProfile.bio}
@@ -316,7 +314,6 @@ export default function InstructorStudioProfileRoute() {
             job={job}
             locale={locale}
             zoneLanguage={zoneLanguage}
-            palette={palette}
             applyingJobId={applyingJobId}
             withdrawingApplicationId={withdrawingApplicationId}
             now={now}

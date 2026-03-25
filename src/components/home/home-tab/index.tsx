@@ -15,8 +15,8 @@ import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useBrand } from "@/hooks/use-brand";
 import { useMinuteNow } from "@/hooks/use-minute-now";
+import { useTheme } from "@/hooks/use-theme";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
 const BOTTOM_TABS_ESTIMATE = 80;
@@ -31,12 +31,12 @@ function HomeBodyPlaceholder({ backgroundColor }: { backgroundColor: string }) {
 
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
   const locale = i18n.resolvedLanguage ?? "en";
   const liveNow = useMinuteNow();
   const queryNow = Math.floor(liveNow / (60 * 1000)) * 60 * 1000;
   const { safeTop } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
+  const { color: palette } = useTheme();
 
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
   const requestedRole = currentUser?.role;
@@ -110,7 +110,6 @@ export default function HomeScreen() {
         <HomeHeaderSheet
           displayName={homeDisplayName}
           profileImageUrl={homeProfileImageUrl}
-          palette={palette}
           isVerified={
             activeRole === "instructor" ? (instructorHomeStats?.isVerified ?? false) : false
           }
@@ -123,7 +122,6 @@ export default function HomeScreen() {
       homeProfileImageUrl,
       homeSubtitle,
       instructorHomeStats?.isVerified,
-      palette,
     ],
   );
 
@@ -138,11 +136,11 @@ export default function HomeScreen() {
               vertical: 0,
               horizontal: 0,
             },
-            backgroundColor: palette.primary as string,
-            topInsetColor: palette.primary as string,
+            backgroundColor: palette.primary,
+            topInsetColor: palette.primary,
           }
         : null,
-    [activeRole, homeSheetContent, homeSheetStep, palette],
+    [activeRole, homeSheetContent, homeSheetStep, palette.primary],
   );
 
   useGlobalTopSheet("index", homeSheetConfig, "home:sheet");
@@ -179,7 +177,7 @@ export default function HomeScreen() {
     (activeRole === "instructor" && !homeBodyReady) ||
     (activeRole === "studio" && !homeBodyReady)
   ) {
-    return <HomeBodyPlaceholder backgroundColor={palette.appBg as string} />;
+    return <HomeBodyPlaceholder backgroundColor={palette.appBg} />;
   }
 
   return (
@@ -187,7 +185,6 @@ export default function HomeScreen() {
       activeRole={activeRole}
       homeBodyReady={homeBodyReady}
       locale={locale}
-      palette={palette}
       currencyFormatter={currencyFormatter}
       t={t}
       now={liveNow}

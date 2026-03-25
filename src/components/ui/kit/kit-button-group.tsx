@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import type { ColorValue, DimensionValue, TextStyle, ViewStyle } from "react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { BrandType } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 import { triggerSelectionHaptic } from "./native-interaction";
 
 export type KitButtonGroupOption<T extends string> = {
@@ -42,10 +42,46 @@ const SIZE_PRESET: Record<
   KitButtonGroupSize,
   { minHeight: number; radius: number; paddingX: number; inset: number; separatorInset: number }
 > = {
-  sm: { minHeight: 40, radius: 10, paddingX: 12, inset: 2, separatorInset: 9 },
-  md: { minHeight: 48, radius: 12, paddingX: 16, inset: 3, separatorInset: 11 },
-  lg: { minHeight: 54, radius: 14, paddingX: 18, inset: 3, separatorInset: 12 },
+  sm: {
+    minHeight: BrandSpacing.controlSm,
+    radius: BrandRadius.md,
+    paddingX: BrandSpacing.sm,
+    inset: BrandSpacing.xs,
+    separatorInset: BrandSpacing.sm,
+  },
+  md: {
+    minHeight: BrandSpacing.controlMd,
+    radius: BrandRadius.lg,
+    paddingX: BrandSpacing.lg,
+    inset: BrandSpacing.xs,
+    separatorInset: BrandSpacing.md,
+  },
+  lg: {
+    minHeight: BrandSpacing.controlLg,
+    radius: BrandRadius.card,
+    paddingX: BrandSpacing.lg,
+    inset: BrandSpacing.xs,
+    separatorInset: BrandSpacing.md,
+  },
 };
+
+// Tone presets resolved from theme
+const TONE_PRESETS = {
+  surface: {
+    groupBgKey: "surfaceAlt",
+    selectedBgKey: "surfaceElevated",
+    labelKey: "textMuted",
+    selectedLabelKey: "text",
+    dividerKey: "borderStrong",
+  },
+  onPrimary: {
+    groupBgKey: "primaryPressed",
+    selectedBgKey: "primarySubtle",
+    labelKey: "onPrimary",
+    selectedLabelKey: "onPrimary",
+    dividerKey: "primary",
+  },
+} as const;
 
 export function KitButtonGroup<T extends string>({
   value,
@@ -66,28 +102,12 @@ export function KitButtonGroup<T extends string>({
   selectedLabelColor,
   dividerColor,
 }: KitButtonGroupProps<T>) {
-  const palette = useBrand();
+  const theme = useTheme();
   const metrics = SIZE_PRESET[size];
   const resolvedColumns = Math.max(1, Math.min(columns ?? options.length, options.length));
   const wraps = resolvedColumns < options.length;
   const slotBasis = `${100 / resolvedColumns}%` as DimensionValue;
-
-  const toneDefaults =
-    tone === "onPrimary"
-      ? {
-          groupBackgroundColor: palette.primaryPressed as string,
-          selectedBackgroundColor: palette.primarySubtle as string,
-          labelColor: palette.onPrimary as string,
-          selectedLabelColor: palette.onPrimary as string,
-          dividerColor: palette.primary as string,
-        }
-      : {
-          groupBackgroundColor: palette.surfaceAlt as string,
-          selectedBackgroundColor: palette.surfaceElevated as string,
-          labelColor: palette.textMuted as string,
-          selectedLabelColor: palette.text as string,
-          dividerColor: palette.borderStrong as string,
-        };
+  const tonePreset = TONE_PRESETS[tone];
 
   return (
     <View
@@ -98,7 +118,7 @@ export function KitButtonGroup<T extends string>({
           width: fullWidth ? "100%" : width,
           maxWidth,
           alignSelf: fullWidth ? "stretch" : alignSelfMap[align],
-          backgroundColor: (groupBackgroundColor ?? toneDefaults.groupBackgroundColor) as string,
+          backgroundColor: groupBackgroundColor ?? theme.color[tonePreset.groupBgKey],
           flexWrap: wraps ? "wrap" : "nowrap",
         },
         style,
@@ -128,7 +148,7 @@ export function KitButtonGroup<T extends string>({
                   {
                     top: metrics.separatorInset,
                     bottom: metrics.separatorInset,
-                    backgroundColor: (dividerColor ?? toneDefaults.dividerColor) as string,
+                    backgroundColor: dividerColor ?? theme.color[tonePreset.dividerKey],
                   },
                 ]}
               />
@@ -144,8 +164,8 @@ export function KitButtonGroup<T extends string>({
                     bottom: metrics.inset,
                     left: metrics.inset,
                     borderRadius: metrics.radius,
-                    backgroundColor: (selectedBackgroundColor ??
-                      toneDefaults.selectedBackgroundColor) as string,
+                    backgroundColor:
+                      selectedBackgroundColor ?? theme.color[tonePreset.selectedBgKey],
                   },
                 ]}
               />
@@ -164,10 +184,9 @@ export function KitButtonGroup<T extends string>({
                 styles.segmentPressable,
                 {
                   backgroundColor: option.disabled
-                    ? ((groupBackgroundColor ?? toneDefaults.groupBackgroundColor) as string)
+                    ? (groupBackgroundColor ?? theme.color[tonePreset.groupBgKey])
                     : pressed
-                      ? ((selectedBackgroundColor ??
-                          toneDefaults.selectedBackgroundColor) as string)
+                      ? (selectedBackgroundColor ?? theme.color[tonePreset.selectedBgKey])
                       : undefined,
                   borderRadius: metrics.radius,
                 } as ViewStyle,
@@ -189,8 +208,8 @@ export function KitButtonGroup<T extends string>({
                     styles.label as TextStyle,
                     {
                       color: selected
-                        ? (selectedLabelColor ?? toneDefaults.selectedLabelColor)
-                        : (labelColor ?? toneDefaults.labelColor),
+                        ? (selectedLabelColor ?? theme.color[tonePreset.selectedLabelKey])
+                        : (labelColor ?? theme.color[tonePreset.labelKey]),
                     },
                   ]}
                 >
@@ -215,9 +234,9 @@ const styles = StyleSheet.create({
   group: {
     flexDirection: "row",
     alignItems: "stretch",
-    borderRadius: 20,
+    borderRadius: BrandRadius.card,
     borderCurve: "continuous",
-    padding: 6,
+    padding: BrandSpacing.sm,
     overflow: "hidden",
   },
   slot: {
@@ -241,7 +260,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: BrandSpacing.sm,
     position: "relative",
     zIndex: 1,
   },
@@ -251,7 +270,6 @@ const styles = StyleSheet.create({
   },
   label: {
     ...BrandType.bodyMedium,
-    fontSize: 15,
     fontWeight: "700",
     includeFontPadding: false,
     textAlign: "center",

@@ -3,7 +3,6 @@ import type {
   ProfileSocialKey,
   ProfileSocialLinks,
 } from "@/components/profile/profile-social-links";
-import type { BrandPalette } from "@/constants/brand";
 
 export type EditableExtraField = {
   label: string;
@@ -14,7 +13,6 @@ export type EditableExtraField = {
 };
 
 export type ProfileEditorFormProps = {
-  palette: BrandPalette;
   profileName: string;
   roleLabel: string;
   profileImageUrl?: string | null | undefined;

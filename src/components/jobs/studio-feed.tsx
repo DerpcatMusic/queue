@@ -22,13 +22,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandSpacing } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 export function StudioFeed() {
+  const theme = useTheme();
   const { t, i18n } = useTranslation();
   const isFocused = useIsFocused();
-  const palette = useBrand();
   const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
     topSpacing: BrandSpacing.lg,
     bottomSpacing: BrandSpacing.xl,
@@ -59,10 +59,14 @@ export function StudioFeed() {
     setStatusMessage,
     startStudioCheckout,
     statusMessage,
+    studioBranches,
     studioJobs,
     studioNotificationSettings,
     toggleStudioPush,
   } = useStudioFeedController({ t });
+  const defaultBranchId =
+    studioBranches?.length === 1 ? (studioBranches[0]?.branchId ?? null) : null;
+  const areStudioBranchesReady = studioBranches !== undefined;
   const reviewQueueJobs = filteredStudioJobsWithPayments.filter(
     (job) => job.pendingApplicationsCount > 0,
   );
@@ -131,8 +135,8 @@ export function StudioFeed() {
       expandable: false,
       steps: [0.12],
       initialStep: 0,
-      backgroundColor: palette.primary as string,
-      topInsetColor: palette.primary as string,
+      backgroundColor: theme.color.primary,
+      topInsetColor: theme.color.primary,
     }),
     [
       handleChangeJobsFilter,
@@ -140,9 +144,9 @@ export function StudioFeed() {
       isEnablingStudioPush,
       isFilterExpanded,
       jobsTimeFilter,
-      palette,
       studioNotificationSettings?.notificationsEnabled,
       t,
+      theme.color.primary,
       toggleStudioPush,
     ],
   );
@@ -170,7 +174,7 @@ export function StudioFeed() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.appBg }]}>
+    <View style={[styles.screen, { backgroundColor: theme.jobs.canvas }]}>
       <TabScreenScrollView
         routeKey="studio/jobs/index"
         style={styles.screen}
@@ -184,10 +188,10 @@ export function StudioFeed() {
               tone="error"
               message={errorMessage}
               onDismiss={() => setErrorMessage(null)}
-              borderColor={palette.danger as string}
-              backgroundColor={palette.dangerSubtle}
-              textColor={palette.danger}
-              iconColor={palette.danger}
+              borderColor={theme.color.danger}
+              backgroundColor={theme.color.dangerSubtle}
+              textColor={theme.color.danger}
+              iconColor={theme.color.danger}
             />
           ) : null}
           {statusMessage ? (
@@ -195,21 +199,18 @@ export function StudioFeed() {
               tone="success"
               message={statusMessage}
               onDismiss={() => setStatusMessage(null)}
-              borderColor={palette.success as string}
-              backgroundColor={palette.successSubtle}
-              textColor={palette.text}
-              iconColor={palette.success as import("react-native").ColorValue}
+              borderColor={theme.color.success}
+              backgroundColor={theme.color.successSubtle}
+              textColor={theme.color.text}
+              iconColor={theme.color.success}
             />
           ) : null}
           {studioJobs === undefined ? (
             <View style={[styles.emptyStateWrap, { minHeight: 300 }]}>
-              <ActivityIndicator
-                size="small"
-                color={palette.primary as import("react-native").ColorValue}
-              />
+              <ActivityIndicator size="small" color={theme.color.primary} />
               <ThemedText
                 style={{
-                  color: palette.textMuted,
+                  color: theme.color.textMuted,
                   marginTop: BrandSpacing.xs,
                 }}
               >
@@ -241,7 +242,6 @@ export function StudioFeed() {
                   jobs={reviewQueueJobs}
                   locale={locale}
                   zoneLanguage={zoneLanguage}
-                  palette={palette}
                   reviewingApplicationId={isReviewingApplicationId}
                   payingJobId={isStartingCheckoutForJobId}
                   onReview={handleReviewApplication}
@@ -256,7 +256,6 @@ export function StudioFeed() {
                   jobs={boardJobs}
                   locale={locale}
                   zoneLanguage={zoneLanguage}
-                  palette={palette}
                   reviewingApplicationId={isReviewingApplicationId}
                   payingJobId={isStartingCheckoutForJobId}
                   onReview={handleReviewApplication}
@@ -273,7 +272,6 @@ export function StudioFeed() {
                   jobs={primaryJobs}
                   locale={locale}
                   zoneLanguage={zoneLanguage}
-                  palette={palette}
                   reviewingApplicationId={isReviewingApplicationId}
                   payingJobId={isStartingCheckoutForJobId}
                   onReview={handleReviewApplication}
@@ -298,24 +296,25 @@ export function StudioFeed() {
         <TabOverlayAnchor side="right" offset={BrandSpacing.lg}>
           <IconButton
             accessibilityLabel={t("jobsTab.actions.post")}
+            disabled={!areStudioBranchesReady}
             onPress={() => {
               setIsCreateSheetVisible(true);
               createJobSheetRef.current?.expand();
             }}
             tone="primary"
             size={58}
-            icon={<IconSymbol name="plus" size={22} color={palette.onPrimary as string} />}
+            icon={<IconSymbol name="plus" size={22} color={theme.color.onPrimary} />}
           />
         </TabOverlayAnchor>
       ) : null}
 
-      {isFocused ? (
+      {isFocused && areStudioBranchesReady ? (
         <CreateJobSheet
           innerRef={createJobSheetRef as never}
-          palette={palette}
           isSubmitting={isSubmittingStudio}
           onDismissed={() => setIsCreateSheetVisible(false)}
           onPost={postStudioJob}
+          defaultBranchId={defaultBranchId}
         />
       ) : null}
     </View>
@@ -341,10 +340,10 @@ const styles = StyleSheet.create({
     gap: BrandSpacing.md,
   },
   emptyStateWrap: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingHorizontal: BrandSpacing.lg,
+    paddingVertical: BrandSpacing.lg + BrandSpacing.xs,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: BrandSpacing.sm + BrandSpacing.xxs,
   },
 });

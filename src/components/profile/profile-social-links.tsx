@@ -2,7 +2,6 @@ import * as ExpoLinking from "expo-linking";
 import { View } from "react-native";
 
 import { KitSocialIconButton } from "@/components/ui/kit";
-import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing } from "@/constants/brand";
 
 export const PROFILE_SOCIAL_FIELDS = [
@@ -67,11 +66,9 @@ function toOpenableUrl(key: ProfileSocialKey, value: string) {
 
 export function ProfileSocialLinksRow({
   socialLinks,
-  palette,
   iconSize = BrandSpacing.iconContainer - BrandSpacing.xs / 2,
 }: {
   socialLinks: ProfileSocialLinks | undefined;
-  palette: BrandPalette;
   iconSize?: number;
 }) {
   const activeFields = PROFILE_SOCIAL_FIELDS.filter((field) => Boolean(socialLinks?.[field.key]));
@@ -89,7 +86,6 @@ export function ProfileSocialLinksRow({
           key={field.key}
           accessibilityLabel={field.label}
           icon={field.icon}
-          palette={palette}
           size={iconSize}
           onPress={() => {
             const nextUrl = socialLinks?.[field.key]

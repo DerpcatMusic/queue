@@ -1,14 +1,14 @@
 import type { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 
 type StatusSignalTone = "surface" | "accent";
 
 export type StatusSignalProps = {
   label: string;
   value: string;
-  palette: BrandPalette;
   tone?: StatusSignalTone;
   icon?: ReactNode;
 };
@@ -18,11 +18,11 @@ const STATUS_SIGNAL_HORIZONTAL_PADDING = BrandSpacing.controlX;
 const STATUS_SIGNAL_VERTICAL_PADDING = BrandSpacing.controlY;
 const STATUS_SIGNAL_CONTENT_GAP = 2;
 
-export function StatusSignal({ label, value, palette, tone = "surface", icon }: StatusSignalProps) {
-  const backgroundColor =
-    tone === "accent" ? (palette.primarySubtle as string) : (palette.surfaceElevated as string);
-  const labelColor =
-    tone === "accent" ? (palette.primary as string) : (palette.textMuted as string);
+export function StatusSignal({ label, value, tone = "surface", icon }: StatusSignalProps) {
+  const { color: palette } = useTheme();
+  const backgroundColor = tone === "accent" ? palette.primarySubtle : palette.surfaceElevated;
+  const labelColor = tone === "accent" ? palette.primary : palette.textMuted;
+  const valueColor = palette.text;
 
   return (
     <View style={styles.container}>
@@ -39,11 +39,14 @@ export function StatusSignal({ label, value, palette, tone = "surface", icon }: 
         <View style={styles.content}>
           <Text
             style={[
-              BrandType.micro,
               styles.label,
               {
+                fontFamily: "Manrope_500Medium",
+                fontSize: 12,
+                fontWeight: "500",
+                letterSpacing: 0.2,
+                lineHeight: 16,
                 color: labelColor,
-                letterSpacing: BrandType.micro.letterSpacing,
                 textTransform: "uppercase",
               },
             ]}
@@ -52,7 +55,16 @@ export function StatusSignal({ label, value, palette, tone = "surface", icon }: 
           </Text>
           <Text
             numberOfLines={1}
-            style={[BrandType.bodyStrong, styles.value, { color: palette.text as string }]}
+            style={[
+              styles.value,
+              {
+                fontFamily: "Manrope_600SemiBold",
+                fontSize: 16,
+                fontWeight: "600",
+                lineHeight: 22,
+                color: valueColor,
+              },
+            ]}
           >
             {value}
           </Text>

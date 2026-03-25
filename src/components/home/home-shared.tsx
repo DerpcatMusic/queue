@@ -2,8 +2,8 @@ import type { ComponentProps } from "react";
 import { Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 import type { JobStatus } from "@/lib/status-tokens";
 import { getJobStatusTokens } from "@/lib/status-tokens";
 
@@ -60,10 +60,10 @@ export function getRelativeTimeLabel(targetTime: number, now: number, locale: st
 type StatusPillProps = {
   label: string;
   status: JobStatus | "upcoming";
-  palette: BrandPalette;
 };
 
-export function StatusPill({ label, status, palette }: StatusPillProps) {
+export function StatusPill({ label, status }: StatusPillProps) {
+  const { color: palette } = useTheme();
   const tokens =
     status === "upcoming"
       ? {
@@ -114,7 +114,10 @@ export function DotStatusPill({ backgroundColor, color, label }: DotStatusPillPr
       />
       <Text
         style={{
-          ...BrandType.caption,
+          fontFamily: "Manrope_400Regular",
+          fontSize: 14,
+          fontWeight: "400",
+          lineHeight: 19,
           letterSpacing: 0.1,
           color,
         }}
@@ -130,20 +133,23 @@ type MetricCellProps = {
   icon?: ComponentProps<typeof IconSymbol>["name"];
   label: string;
   value: string;
-  palette: BrandPalette;
 };
 
 /** Label + value metric pair used in job cards. */
-export function MetricCell({ align = "flex-start", icon, label, value, palette }: MetricCellProps) {
+export function MetricCell({ align = "flex-start", icon, label, value }: MetricCellProps) {
+  const { color: palette } = useTheme();
   return (
     <View style={{ gap: BrandSpacing.xs, alignItems: align }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
-        {icon ? <IconSymbol name={icon} size={12} color={palette.textMuted as string} /> : null}
+        {icon ? <IconSymbol name={icon} size={12} color={palette.textMuted} /> : null}
         <Text
           style={{
-            ...BrandType.caption,
+            fontFamily: "Manrope_400Regular",
+            fontSize: 14,
+            fontWeight: "400",
+            lineHeight: 19,
             letterSpacing: 0.1,
-            color: palette.textMuted as string,
+            color: palette.textMuted,
           }}
         >
           {label}
@@ -152,10 +158,11 @@ export function MetricCell({ align = "flex-start", icon, label, value, palette }
       <Text
         selectable
         style={{
-          ...BrandType.bodyStrong,
-          fontSize: BrandType.body.fontSize,
+          fontFamily: "Manrope_600SemiBold",
+          fontSize: 16,
+          fontWeight: "600",
           lineHeight: 18,
-          color: palette.text as string,
+          color: palette.text,
           textAlign: align === "flex-end" ? "right" : "left",
           fontVariant: ["tabular-nums"],
         }}
@@ -170,7 +177,6 @@ type HomeSignalTileProps = {
   label: string;
   value: string;
   detail?: string;
-  palette: BrandPalette;
   tone?: "surface" | "accent" | "success" | "warning" | "danger";
   icon?: ComponentProps<typeof IconSymbol>["name"];
 };
@@ -179,31 +185,31 @@ export function HomeSignalTile({
   label,
   value,
   detail,
-  palette,
   tone = "surface",
   icon,
 }: HomeSignalTileProps) {
+  const { color: palette } = useTheme();
   const backgroundColor =
     tone === "accent"
-      ? (palette.primarySubtle as string)
+      ? palette.primarySubtle
       : tone === "success"
-        ? (palette.successSubtle as string)
+        ? palette.successSubtle
         : tone === "warning"
-          ? (palette.warningSubtle as string)
+          ? palette.warningSubtle
           : tone === "danger"
-            ? (palette.dangerSubtle as string)
-            : (palette.surfaceElevated as string);
+            ? palette.dangerSubtle
+            : palette.surfaceElevated;
   const labelColor =
     tone === "accent"
-      ? (palette.primary as string)
+      ? palette.primary
       : tone === "success"
-        ? (palette.success as string)
+        ? palette.success
         : tone === "warning"
-          ? (palette.warning as string)
+          ? palette.warning
           : tone === "danger"
-            ? (palette.danger as string)
-            : (palette.textMuted as string);
-  const valueColor = palette.text as string;
+            ? palette.danger
+            : palette.textMuted;
+  const valueColor = palette.text;
 
   return (
     <View
@@ -217,9 +223,12 @@ export function HomeSignalTile({
         {icon ? <IconSymbol name={icon} size={13} color={labelColor} /> : null}
         <Text
           style={{
-            ...BrandType.micro,
-            color: labelColor,
+            fontFamily: "Manrope_500Medium",
+            fontSize: 12,
+            fontWeight: "500",
             letterSpacing: 0.6,
+            lineHeight: 16,
+            color: labelColor,
             textTransform: "uppercase",
           }}
         >
@@ -229,8 +238,10 @@ export function HomeSignalTile({
       <Text
         numberOfLines={1}
         style={{
-          ...BrandType.title,
+          fontFamily: "Lexend_500Medium",
           fontSize: 21,
+          fontWeight: "500",
+          letterSpacing: -0.24,
           lineHeight: 23,
           color: valueColor,
           fontVariant: ["tabular-nums"],
@@ -242,7 +253,10 @@ export function HomeSignalTile({
         <Text
           numberOfLines={1}
           style={{
-            ...BrandType.caption,
+            fontFamily: "Manrope_400Regular",
+            fontSize: 14,
+            fontWeight: "400",
+            lineHeight: 19,
             color: labelColor,
           }}
         >

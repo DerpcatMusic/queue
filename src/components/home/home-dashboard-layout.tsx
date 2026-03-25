@@ -1,9 +1,9 @@
 import type { PropsWithChildren } from "react";
 import { type StyleProp, Text, View, type ViewStyle } from "react-native";
 
-import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { useTheme } from "@/hooks/use-theme";
 
 export function useHomeDashboardLayout() {
   const { isDesktopWeb: isWideWeb, isExpandedWeb } = useLayoutBreakpoint();
@@ -21,18 +21,18 @@ export function useHomeDashboardLayout() {
 }
 
 type HomeSurfaceProps = PropsWithChildren<{
-  palette: BrandPalette;
   tone?: "surface" | "alt" | "primary";
   style?: StyleProp<ViewStyle>;
 }>;
 
-export function HomeSurface({ children, palette, tone = "alt", style }: HomeSurfaceProps) {
+export function HomeSurface({ children, tone = "alt", style }: HomeSurfaceProps) {
+  const { color: palette } = useTheme();
   const backgroundColor =
     tone === "primary"
-      ? (palette.primary as string)
+      ? palette.primary
       : tone === "surface"
-        ? (palette.surface as string)
-        : (palette.surfaceAlt as string);
+        ? palette.surface
+        : palette.surfaceAlt;
 
   return (
     <View
@@ -50,28 +50,36 @@ export function HomeSurface({ children, palette, tone = "alt", style }: HomeSurf
   );
 }
 
-export function HomeSectionHeading({
-  title,
-  palette,
-  eyebrow,
-}: {
-  title: string;
-  palette: BrandPalette;
-  eyebrow?: string;
-}) {
+export function HomeSectionHeading({ title, eyebrow }: { title: string; eyebrow?: string }) {
+  const { color: palette } = useTheme();
   return (
     <View style={{ gap: BrandSpacing.xs }}>
       {eyebrow ? (
         <Text
           style={{
-            ...BrandType.micro,
-            color: palette.textMuted as string,
+            fontFamily: "Manrope_500Medium",
+            fontSize: 12,
+            fontWeight: "500",
+            letterSpacing: 0.2,
+            lineHeight: 16,
+            color: palette.textMuted,
           }}
         >
           {eyebrow}
         </Text>
       ) : null}
-      <Text style={{ ...BrandType.heading, color: palette.text as string }}>{title}</Text>
+      <Text
+        style={{
+          fontFamily: "Lexend_600SemiBold",
+          fontSize: 28,
+          fontWeight: "600",
+          letterSpacing: -0.45,
+          lineHeight: 34,
+          color: palette.text,
+        }}
+      >
+        {title}
+      </Text>
     </View>
   );
 }

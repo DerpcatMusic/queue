@@ -3,14 +3,14 @@ import { View } from "react-native";
 
 import { QueueMap } from "@/components/maps/queue-map";
 import type { QueueMapPin } from "@/components/maps/queue-map.types";
-import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
+import { useTheme } from "@/hooks/use-theme";
 import { MapWebCommandPanel } from "./map-web-command-panel";
 import { MapWebHeaderPanels } from "./map-web-header-panels";
 
 type MapWebWorkbenchProps = {
   t: TFunction;
-  palette: BrandPalette;
   zoneLanguage: "en" | "he";
   zoneSearch: string;
   selectedZones: ZoneOption[];
@@ -33,7 +33,6 @@ type MapWebWorkbenchProps = {
 
 export function MapWebWorkbench({
   t,
-  palette,
   zoneLanguage,
   zoneSearch,
   selectedZones,
@@ -53,6 +52,7 @@ export function MapWebWorkbench({
   onHandleDiscardChanges,
   onSearchChange,
 }: MapWebWorkbenchProps) {
+  const { color: palette } = useTheme();
   return (
     <View
       style={{
@@ -65,7 +65,6 @@ export function MapWebWorkbench({
     >
       <MapWebHeaderPanels
         t={t}
-        palette={palette}
         hasChanges={hasChanges}
         pendingChangeCount={pendingChangeCount}
         persistedZoneCount={persistedZoneCount}
@@ -83,7 +82,7 @@ export function MapWebWorkbench({
             borderRadius: BrandRadius.soft,
             borderCurve: "continuous",
             overflow: "hidden",
-            backgroundColor: palette.surfaceAlt as string,
+            backgroundColor: palette.surfaceAlt,
           }}
         >
           <QueueMap
@@ -100,7 +99,6 @@ export function MapWebWorkbench({
 
         <MapWebCommandPanel
           t={t}
-          palette={palette}
           zoneLanguage={zoneLanguage}
           zoneSearch={zoneSearch}
           selectedZones={selectedZones}

@@ -1,21 +1,6 @@
-import { useMemo } from "react";
 import type { ColorValue } from "react-native";
 
-import { useBrand } from "@/hooks/use-brand";
-import { useThemePreference } from "@/hooks/use-theme-preference";
-
-function resolveStringColor(...colors: unknown[]) {
-  for (const color of colors) {
-    if (typeof color === "string") return color;
-  }
-  return undefined;
-}
-
-function resolveColorValue(primary: unknown, fallback: unknown, final: ColorValue): ColorValue {
-  if (primary !== undefined && primary !== null) return primary as ColorValue;
-  if (fallback !== undefined && fallback !== null) return fallback as ColorValue;
-  return final;
-}
+import { useTheme } from "@/hooks/use-theme";
 
 export type KitThemeTokens = {
   scheme: "light" | "dark";
@@ -70,80 +55,57 @@ export type KitThemeTokens = {
 };
 
 export function useKitTheme() {
-  const { resolvedScheme: scheme } = useThemePreference();
-  const palette = useBrand();
+  const theme = useTheme();
 
-  return useMemo<KitThemeTokens>(() => {
-    const glassBackground = resolveColorValue(
-      palette.surfaceElevated,
-      palette.surface,
-      palette.surface,
-    );
-    const panelBackground = resolveColorValue(
-      palette.surfaceElevated,
-      palette.surfaceAlt,
-      palette.surface,
-    );
-    const highlightBorder = resolveColorValue(palette.borderStrong, palette.border, palette.border);
-    const primaryLiftShadow = "none";
-    const surfaceShadow = "none";
-    const switchTrackOff = resolveColorValue(palette.borderStrong, palette.border, palette.border);
-    const switchTrackOn = resolveColorValue(
-      palette.primarySubtle,
-      palette.primary,
-      palette.primary,
-    );
-
-    return {
-      scheme,
-      color: {
-        primary: palette.primary,
-        primaryPressed: palette.primaryPressed,
-        secondary: palette.text,
-        danger: palette.danger,
-        warning: resolveColorValue(palette.warning, palette.primary, palette.text),
-        success: resolveColorValue(palette.success, palette.primary, palette.text),
-      },
-      background: {
-        app: palette.appBg,
-        sheet: palette.surface,
-        surface: palette.surface,
-        surfaceSecondary: palette.surfaceAlt,
-        surfaceElevated: palette.surfaceElevated,
-        panel: panelBackground,
-        glass: glassBackground,
-        primary: palette.primary,
-        primarySubtle: palette.primarySubtle,
-        dangerSubtle: palette.dangerSubtle,
-        contrast: palette.surface,
-      },
-      foreground: {
-        primary: palette.onPrimary,
-        secondary: palette.text,
-        muted: palette.textMuted,
-        micro: palette.textMicro,
-        danger: palette.danger,
-      },
-      border: {
-        primary: resolveColorValue(palette.borderStrong, palette.border, palette.border),
-        secondary: resolveColorValue(palette.border, palette.borderStrong, palette.border),
-        highlight: highlightBorder,
-        contrast: palette.border,
-      },
-      shadow: {
-        primaryLift: primaryLiftShadow,
-        surface: surfaceShadow,
-      },
-      interaction: {
-        ripple: palette.primarySubtle,
-        switchTrackOn,
-        switchTrackOff,
-        switchThumbOn: palette.primary,
-        switchThumbOff: palette.surface,
-      },
-      symbol: {
-        defaultTint: resolveStringColor(palette.primary, palette.text, palette.onPrimary),
-      },
-    };
-  }, [palette, scheme]);
+  return {
+    scheme: theme.scheme,
+    color: {
+      primary: theme.color.primary,
+      primaryPressed: theme.color.primaryPressed,
+      secondary: theme.color.secondary,
+      danger: theme.color.danger,
+      warning: theme.color.warning,
+      success: theme.color.success,
+    },
+    background: {
+      app: theme.color.appBg,
+      sheet: theme.color.surface,
+      surface: theme.color.surface,
+      surfaceSecondary: theme.color.surfaceAlt,
+      surfaceElevated: theme.color.surfaceElevated,
+      panel: theme.color.surface,
+      glass: theme.color.surface,
+      primary: theme.color.primary,
+      primarySubtle: theme.color.primarySubtle,
+      dangerSubtle: theme.color.dangerSubtle,
+      contrast: theme.color.surface,
+    },
+    foreground: {
+      primary: theme.color.onPrimary,
+      secondary: theme.color.text,
+      muted: theme.color.textMuted,
+      micro: theme.color.textMicro,
+      danger: theme.color.danger,
+    },
+    border: {
+      primary: theme.color.borderStrong,
+      secondary: theme.color.border,
+      highlight: theme.color.borderStrong,
+      contrast: theme.color.border,
+    },
+    shadow: {
+      primaryLift: "none",
+      surface: "none",
+    },
+    interaction: {
+      ripple: theme.color.primarySubtle,
+      switchTrackOn: theme.color.primary,
+      switchTrackOff: theme.color.border,
+      switchThumbOn: theme.color.primary,
+      switchThumbOff: theme.color.surface,
+    },
+    symbol: {
+      defaultTint: theme.color.primary,
+    },
+  } satisfies KitThemeTokens;
 }

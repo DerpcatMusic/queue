@@ -14,7 +14,7 @@ export default function ModalScreen() {
       <Link
         href="/"
         dismissTo
-        style={{ marginTop: BrandSpacing.lg - 2, paddingVertical: BrandSpacing.lg - 2 }}
+        style={{ marginTop: BrandSpacing.component, paddingVertical: BrandSpacing.component }}
       >
         <ThemedText type="link">{t("modal.goHome")}</ThemedText>
       </Link>

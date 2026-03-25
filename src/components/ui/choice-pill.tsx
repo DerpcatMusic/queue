@@ -8,8 +8,8 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { BrandRadius, BrandType } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 
 type ChoicePillProps = {
   label: string;
@@ -40,7 +40,7 @@ export function ChoicePill({
   labelColor,
   selectedLabelColor,
 }: ChoicePillProps) {
-  const palette = useBrand();
+  const { color: palette } = useTheme();
   const resolvedBackgroundColor = selected
     ? (selectedBackgroundColor ?? palette.primary)
     : (backgroundColor ?? palette.surfaceAlt);
@@ -57,6 +57,9 @@ export function ChoicePill({
     ? (palette.primary as ColorValue)
     : (palette.textMuted as ColorValue);
 
+  const compactTextStyle = BrandType.micro;
+  const defaultTextStyle = BrandType.bodyMedium;
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -67,20 +70,20 @@ export function ChoicePill({
         {
           width: fullWidth ? "100%" : undefined,
           alignSelf: fullWidth ? "stretch" : "flex-start",
-          minHeight: compact ? 40 : 58,
-          borderRadius: compact ? BrandRadius.card - 14 : BrandRadius.card - 10,
+          minHeight: compact ? BrandSpacing.controlMd : BrandSpacing.controlLg,
+          borderRadius: compact ? BrandRadius.button : BrandRadius.card,
           borderCurve: "continuous",
           backgroundColor: disabled
             ? disabledBackgroundColor
             : pressed
               ? pressedBackgroundColor
               : resolvedBackgroundColor,
-          paddingHorizontal: compact ? 10 : 16,
-          paddingVertical: compact ? 8 : 12,
+          paddingHorizontal: compact ? BrandSpacing.sm : BrandSpacing.lg,
+          paddingVertical: compact ? BrandSpacing.sm : BrandSpacing.md,
           alignItems: "center",
           justifyContent: "flex-start",
           flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
-          gap: icon ? (compact ? 8 : 10) : 0,
+          gap: icon ? (compact ? BrandSpacing.sm : BrandSpacing.md) : 0,
           overflow: "hidden",
         },
         style,
@@ -89,7 +92,7 @@ export function ChoicePill({
       {icon ? <View>{icon}</View> : null}
       <Text
         style={{
-          ...(compact ? BrandType.micro : BrandType.bodyMedium),
+          ...(compact ? compactTextStyle : defaultTextStyle),
           color: (disabled ? disabledLabelColor : resolvedLabelColor) as string,
           includeFontPadding: false,
           flexShrink: 1,

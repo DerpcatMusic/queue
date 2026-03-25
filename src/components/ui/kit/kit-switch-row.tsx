@@ -26,7 +26,9 @@ export function KitSwitchRow({
       accessory={<KitSwitch value={value} disabled={disabled} onValueChange={onValueChange} />}
     >
       {description ? (
-        <ThemedText style={{ color: foreground.muted, fontSize: 13 }}>{description}</ThemedText>
+        <ThemedText type="caption" style={{ color: foreground.muted }}>
+          {description}
+        </ThemedText>
       ) : null}
     </KitListItem>
   );

@@ -1,7 +1,8 @@
 import { Text, TextInput, View } from "react-native";
 
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
+import { BorderWidth } from "@/lib/design-system";
 import type { KitTextFieldProps } from "./types";
 
 export function KitTextField({
@@ -14,18 +15,17 @@ export function KitTextField({
   placeholderTextColor,
   ...inputProps
 }: KitTextFieldProps) {
-  const palette = useBrand();
+  const theme = useTheme();
   const hasError = Boolean(errorText);
   const isMultiline = Boolean(inputProps.multiline);
 
   return (
-    <View style={{ gap: BrandSpacing.xs + 2 }}>
+    <View style={{ gap: BrandSpacing.sm }}>
       {label ? (
         <Text
           style={{
             ...BrandType.caption,
-            fontWeight: "500",
-            color: palette.text as string,
+            color: theme.color.text,
             includeFontPadding: false,
           }}
           selectable
@@ -34,35 +34,34 @@ export function KitTextField({
         </Text>
       ) : null}
       <View
-        className="flex-row items-center"
         style={{
-          minHeight: BrandSpacing.xxl + 18,
+          flexDirection: "row",
+          alignItems: "center",
+          minHeight: BrandSpacing.controlLg,
           paddingHorizontal: BrandSpacing.md,
           paddingVertical: BrandSpacing.sm,
-          borderWidth: 1,
-          borderColor: hasError ? (palette.danger as string) : (palette.borderStrong as string),
+          borderWidth: BorderWidth.thin,
+          borderColor: hasError ? theme.color.danger : theme.color.borderStrong,
           borderRadius: BrandRadius.input,
           borderCurve: "continuous",
           gap: BrandSpacing.sm,
-          backgroundColor: hasError
-            ? (palette.dangerSubtle as string)
-            : (palette.surfaceElevated as string),
+          backgroundColor: hasError ? theme.color.dangerSubtle : theme.color.surfaceElevated,
         }}
       >
         {leading ? <View>{leading}</View> : null}
         <TextInput
           {...inputProps}
-          placeholderTextColor={placeholderTextColor ?? (palette.textMuted as string)}
-          selectionColor={palette.primary as string}
-          cursorColor={palette.primary as string}
+          placeholderTextColor={placeholderTextColor ?? theme.color.textMuted}
+          selectionColor={theme.color.primary}
+          cursorColor={theme.color.primary}
           clearButtonMode={!isMultiline ? "while-editing" : "never"}
           style={[
             {
               flex: 1,
-              minHeight: BrandSpacing.iconContainer + 10,
-              color: palette.text as string,
+              minHeight: BrandSpacing.controlMd,
+              color: theme.color.text,
               ...BrandType.bodyMedium,
-              paddingVertical: BrandSpacing.sm + 2,
+              paddingVertical: BrandSpacing.sm,
               includeFontPadding: false,
             },
             style,
@@ -74,8 +73,7 @@ export function KitTextField({
         <Text
           style={{
             ...BrandType.micro,
-            lineHeight: BrandSpacing.md + 4,
-            color: palette.danger as string,
+            color: theme.color.danger,
           }}
           selectable
         >
@@ -85,8 +83,7 @@ export function KitTextField({
         <Text
           style={{
             ...BrandType.micro,
-            lineHeight: BrandSpacing.md + 4,
-            color: palette.textMuted as string,
+            color: theme.color.textMuted,
           }}
           selectable
         >

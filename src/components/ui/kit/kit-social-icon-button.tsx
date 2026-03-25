@@ -1,8 +1,9 @@
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { Pressable, View } from "react-native";
-
 import { AppSymbol } from "@/components/ui/app-symbol";
-import type { BrandPalette } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
+import { BorderWidth, IconSize } from "@/lib/design-system";
 import { triggerSelectionHaptic } from "./native-interaction";
 
 type BrandIconName = "instagram" | "tiktok" | "whatsapp" | "facebook" | "linkedin";
@@ -10,7 +11,6 @@ type BrandIconName = "instagram" | "tiktok" | "whatsapp" | "facebook" | "linkedi
 type KitSocialIconButtonProps = {
   accessibilityLabel: string;
   icon: BrandIconName | "website";
-  palette: BrandPalette;
   onPress?: () => void;
   active?: boolean;
   size?: number;
@@ -19,42 +19,34 @@ type KitSocialIconButtonProps = {
 export function KitSocialIconButton({
   accessibilityLabel,
   icon,
-  palette,
   onPress,
   active = true,
-  size = 36,
+  size = BrandSpacing.iconContainer,
 }: KitSocialIconButtonProps) {
-  const iconSize = Math.max(14, Math.round(size * 0.44));
-  const backgroundColor = active
-    ? (palette.primarySubtle as string)
-    : (palette.surfaceAlt as string);
-  const pressedBackgroundColor = active ? (palette.primary as string) : (palette.surface as string);
+  const { color: palette } = useTheme();
+  const iconSize = Math.max(IconSize.xs, Math.round(size * 0.44));
+  const backgroundColor = active ? palette.primarySubtle : palette.surfaceAlt;
+  const pressedBackgroundColor = active ? palette.primary : palette.surface;
+  const tintColor = active ? palette.primary : palette.textMuted;
+
   const circle = (
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: 999,
+        borderRadius: BrandRadius.full,
         borderCurve: "continuous",
         alignItems: "center",
         justifyContent: "center",
-        borderWidth: 1,
-        borderColor: palette.border as string,
+        borderWidth: BorderWidth.hairline,
+        borderColor: palette.border,
         backgroundColor,
       }}
     >
       {icon === "website" ? (
-        <AppSymbol
-          name="globe"
-          size={iconSize}
-          tintColor={(active ? palette.primary : palette.textMuted) as string}
-        />
+        <AppSymbol name="globe" size={iconSize} tintColor={tintColor} />
       ) : (
-        <FontAwesome5
-          name={icon}
-          size={iconSize}
-          color={(active ? palette.primary : palette.textMuted) as string}
-        />
+        <FontAwesome5 name={icon} size={iconSize} color={tintColor} />
       )}
     </View>
   );
@@ -72,7 +64,7 @@ export function KitSocialIconButton({
         onPress();
       }}
       style={({ pressed }) => ({
-        borderRadius: 999,
+        borderRadius: BrandRadius.full,
         backgroundColor: pressed ? pressedBackgroundColor : backgroundColor,
       })}
     >

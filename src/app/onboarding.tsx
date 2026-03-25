@@ -31,8 +31,9 @@ import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { ZONE_OPTIONS } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import { SPORT_TYPES } from "@/convex/constants";
-import { useBrand } from "@/hooks/use-brand";
 import { useLocationResolution } from "@/hooks/use-location-resolution";
+import { useTheme } from "@/hooks/use-theme";
+import { BorderWidth, IconSize } from "@/lib/design-system";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
@@ -144,17 +145,17 @@ function OnboardingSheetHeader({
   subtitle,
   currentStep,
   totalSteps,
-  palette,
   signOutLabel,
   onSignOut,
+  dangerColor,
 }: {
   title: string;
   subtitle: string;
   currentStep: number;
   totalSteps: number;
-  palette: ReturnType<typeof useBrand>;
   signOutLabel: string;
   onSignOut: () => void;
+  dangerColor: string;
 }) {
   return (
     <SheetHeaderBlock
@@ -163,7 +164,7 @@ function OnboardingSheetHeader({
       progressCount={totalSteps}
       progressIndex={currentStep}
       trailingLabel={signOutLabel}
-      trailingIcon={<MaterialIcons name="logout" size={18} color={palette.danger as string} />}
+      trailingIcon={<MaterialIcons name="logout" size={BrandSpacing.iconSm} color={dangerColor} />}
       onPressTrailing={onSignOut}
       tone="primary"
       trailingTone="danger"
@@ -185,12 +186,12 @@ function OnboardingScreenContent() {
   const router = useRouter();
   const { role: roleParam } = useLocalSearchParams<{ role?: string }>();
   const { t, i18n } = useTranslation();
+  const { color } = useTheme();
 
-  const palette = useBrand();
   const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
     topSpacing: BrandSpacing.lg,
-    bottomSpacing: 20,
-    horizontalPadding: 16,
+    bottomSpacing: BrandSpacing.insetComfort,
+    horizontalPadding: BrandSpacing.inset,
   });
   const { width } = useWindowDimensions();
   const isDesktop = width >= 980;
@@ -286,15 +287,15 @@ function OnboardingScreenContent() {
           subtitle={onboardingSheetSubtitle}
           currentStep={currentStep}
           totalSteps={totalSteps}
-          palette={palette}
           signOutLabel={t("auth.signOutButton")}
           onSignOut={() => {
             void signOut();
           }}
+          dangerColor={color.danger}
         />
       ),
-      backgroundColor: palette.primary as string,
-      topInsetColor: palette.primary as string,
+      backgroundColor: color.primary,
+      topInsetColor: color.primary,
       padding: {
         horizontal: BrandSpacing.lg,
         vertical: BrandSpacing.sm,
@@ -302,15 +303,15 @@ function OnboardingScreenContent() {
       steps: [0.24],
       initialStep: 0,
     }),
-    [currentStep, onboardingSheetSubtitle, onboardingSheetTitle, palette, signOut, t, totalSteps],
+    [color, currentStep, onboardingSheetSubtitle, onboardingSheetTitle, signOut, t, totalSteps],
   );
 
   useGlobalTopSheet("onboarding", onboardingSheetConfig);
   const nextArrowIcon = (
     <MaterialIcons
       name={I18nManager.isRTL ? "arrow-back" : "arrow-forward"}
-      size={24}
-      color={palette.onPrimary as string}
+      size={IconSize.lg}
+      color={color.onPrimary}
     />
   );
 
@@ -838,7 +839,7 @@ function OnboardingScreenContent() {
         style={[
           styles.mapPanel,
           {
-            backgroundColor: palette.surface as string,
+            backgroundColor: color.surface,
           },
         ]}
       >
@@ -898,11 +899,11 @@ function OnboardingScreenContent() {
               style={[
                 styles.mapLoadingState,
                 {
-                  backgroundColor: palette.surfaceAlt as string,
+                  backgroundColor: color.surfaceAlt,
                 },
               ]}
             >
-              <ActivityIndicator color={palette.primary as string} />
+              <ActivityIndicator color={color.primary} />
               <ThemedText className="text-muted">{t("onboarding.loading")}</ThemedText>
             </View>
           )}
@@ -915,7 +916,7 @@ function OnboardingScreenContent() {
       style={[
         styles.formPanel,
         {
-          backgroundColor: palette.surfaceAlt as string,
+          backgroundColor: color.surfaceAlt,
         },
       ]}
     >
@@ -980,12 +981,12 @@ function OnboardingScreenContent() {
               }}
               onPlaceSelected={handleInstructorPlaceSelected}
               placeholder={t("onboarding.location.instructorAddressOptional")}
-              placeholderTextColor={palette.textMuted}
-              borderColor={palette.border}
-              textColor={palette.text}
-              backgroundColor={palette.appBg}
-              surfaceColor={palette.surface}
-              mutedTextColor={palette.textMuted}
+              placeholderTextColor={color.textMuted}
+              borderColor={color.border}
+              textColor={color.text}
+              backgroundColor={color.appBg}
+              surfaceColor={color.surface}
+              mutedTextColor={color.textMuted}
             />
 
             <View style={styles.inlineActions}>
@@ -996,7 +997,6 @@ function OnboardingScreenContent() {
                     ? t("onboarding.location.resolvingAddress")
                     : t("onboarding.location.findByAddress")
                 }
-                palette={palette}
                 tone="secondary"
                 onPress={() => {
                   void resolveInstructorFromAddress();
@@ -1038,7 +1038,7 @@ function OnboardingScreenContent() {
       style={[
         styles.formPanel,
         {
-          backgroundColor: palette.surfaceAlt as string,
+          backgroundColor: color.surfaceAlt,
         },
       ]}
     >
@@ -1072,12 +1072,12 @@ function OnboardingScreenContent() {
             }}
             onPlaceSelected={handleStudioPlaceSelected}
             placeholder={t("onboarding.studioAddress")}
-            placeholderTextColor={palette.textMuted}
-            borderColor={palette.border}
-            textColor={palette.text}
-            backgroundColor={palette.appBg}
-            surfaceColor={palette.surface}
-            mutedTextColor={palette.textMuted}
+            placeholderTextColor={color.textMuted}
+            borderColor={color.border}
+            textColor={color.text}
+            backgroundColor={color.appBg}
+            surfaceColor={color.surface}
+            mutedTextColor={color.textMuted}
           />
 
           <ActionButton
@@ -1087,7 +1087,6 @@ function OnboardingScreenContent() {
                 ? t("onboarding.location.resolvingAddress")
                 : t("onboarding.location.findByAddress")
             }
-            palette={palette}
             tone="secondary"
             fullWidth
             onPress={() => {
@@ -1131,12 +1130,8 @@ function OnboardingScreenContent() {
                 icon={
                   <MaterialIcons
                     name="self-improvement"
-                    size={20}
-                    color={
-                      role === "instructor"
-                        ? (palette.onPrimary as string)
-                        : (palette.text as string)
-                    }
+                    size={IconSize.md}
+                    color={role === "instructor" ? color.onPrimary : color.text}
                   />
                 }
                 onPress={() => setSelectedRole("instructor")}
@@ -1150,10 +1145,8 @@ function OnboardingScreenContent() {
                 icon={
                   <MaterialIcons
                     name="storefront"
-                    size={20}
-                    color={
-                      role === "studio" ? (palette.onPrimary as string) : (palette.text as string)
-                    }
+                    size={IconSize.md}
+                    color={role === "studio" ? color.onPrimary : color.text}
                   />
                 }
                 onPress={() => setSelectedRole("studio")}
@@ -1186,7 +1179,7 @@ function OnboardingScreenContent() {
               </ThemedText>
             </View>
             <View style={styles.detailsLoadingRow}>
-              <ActivityIndicator color={palette.primary as string} />
+              <ActivityIndicator color={color.primary} />
               <ThemedText className="text-muted">{t("onboarding.loading")}</ThemedText>
             </View>
           </View>
@@ -1202,7 +1195,6 @@ function OnboardingScreenContent() {
               <View style={styles.navAction}>
                 <ActionButton
                   label={t("onboarding.back")}
-                  palette={palette}
                   tone="secondary"
                   fullWidth
                   onPress={() => {
@@ -1233,7 +1225,6 @@ function OnboardingScreenContent() {
                       : t("onboarding.continue")
                   }
                   disabled={isSubmitting}
-                  palette={palette}
                   fullWidth
                   onPress={() => {
                     if (!showLocationSection) {
@@ -1261,7 +1252,7 @@ function OnboardingScreenContent() {
               </ThemedText>
             </View>
             <View style={styles.detailsLoadingRow}>
-              <ActivityIndicator color={palette.primary as string} />
+              <ActivityIndicator color={color.primary} />
               <ThemedText className="text-muted">{t("onboarding.loading")}</ThemedText>
             </View>
           </View>
@@ -1277,7 +1268,6 @@ function OnboardingScreenContent() {
               <View style={styles.navAction}>
                 <ActionButton
                   label={t("onboarding.back")}
-                  palette={palette}
                   tone="secondary"
                   fullWidth
                   onPress={() => {
@@ -1308,7 +1298,6 @@ function OnboardingScreenContent() {
                       : t("onboarding.continue")
                   }
                   disabled={isSubmitting}
-                  palette={palette}
                   fullWidth
                   onPress={() => {
                     if (!showLocationSection) {
@@ -1331,8 +1320,8 @@ function OnboardingScreenContent() {
           style={[
             styles.verifyStage,
             {
-              backgroundColor: palette.surface as string,
-              borderColor: palette.borderStrong as string,
+              backgroundColor: color.surface,
+              borderColor: color.borderStrong,
             },
           ]}
         >
@@ -1347,7 +1336,6 @@ function OnboardingScreenContent() {
                   ? t("onboarding.push.requesting")
                   : t("onboarding.push.requestPermission")
               }
-              palette={palette}
               tone="secondary"
               fullWidth
               onPress={() => {
@@ -1359,7 +1347,6 @@ function OnboardingScreenContent() {
           <View style={styles.verifyActions}>
             <ActionButton
               label={t("onboarding.verification.verifyNow")}
-              palette={palette}
               fullWidth
               onPress={() => {
                 router.replace("/instructor/profile/identity-verification");
@@ -1367,7 +1354,6 @@ function OnboardingScreenContent() {
             />
             <ActionButton
               label={t("onboarding.verification.later")}
-              palette={palette}
               tone="secondary"
               fullWidth
               onPress={() => {
@@ -1383,7 +1369,7 @@ function OnboardingScreenContent() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.appBg as string }]}>
+    <View style={[styles.screen, { backgroundColor: color.appBg }]}>
       <GlobalTopSheet />
       <ScrollView
         ref={onboardingScrollRef}
@@ -1415,8 +1401,8 @@ function OnboardingScreenContent() {
             style={[
               styles.errorBanner,
               {
-                backgroundColor: palette.dangerSubtle as string,
-                borderColor: palette.danger as string,
+                backgroundColor: color.dangerSubtle,
+                borderColor: color.danger,
               },
             ]}
           >
@@ -1504,15 +1490,15 @@ const styles = StyleSheet.create({
   formPanel: {
     gap: BrandSpacing.sm,
     flex: 1,
-    minWidth: 320,
+    minWidth: BrandSpacing.shellPanel,
     borderRadius: BrandRadius.card,
     borderCurve: "continuous",
     padding: BrandSpacing.md,
   },
   mapPanel: {
     flex: 1,
-    minWidth: 320,
-    minHeight: 360,
+    minWidth: BrandSpacing.shellPanel,
+    minHeight: BrandSpacing.shellCommandPanel,
     gap: BrandSpacing.sm,
     borderRadius: BrandRadius.card,
     borderCurve: "continuous",
@@ -1553,7 +1539,7 @@ const styles = StyleSheet.create({
     gap: BrandSpacing.sm,
   },
   locationPreviewRow: {
-    minHeight: 44,
+    minHeight: BrandSpacing.controlMd,
     justifyContent: "center",
   },
   multilineInput: {
@@ -1565,13 +1551,13 @@ const styles = StyleSheet.create({
   },
   verifyStage: {
     gap: BrandSpacing.sm,
-    borderWidth: 1.5,
+    borderWidth: BorderWidth.medium,
     borderRadius: BrandRadius.card,
     borderCurve: "continuous",
     padding: BrandSpacing.md,
   },
   errorBanner: {
-    borderWidth: 1.5,
+    borderWidth: BorderWidth.medium,
     borderRadius: BrandRadius.button,
     borderCurve: "continuous",
     padding: BrandSpacing.md,

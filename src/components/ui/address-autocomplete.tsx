@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { type ColorValue, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
+import { BorderWidth } from "@/lib/design-system";
 import {
   fetchPlaceAutocomplete,
   fetchPlaceCoordinates,
@@ -43,6 +44,7 @@ export function AddressAutocomplete({
   mutedTextColor,
 }: AddressAutocompleteProps) {
   const { t } = useTranslation();
+  const { color: palette } = useTheme();
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -121,8 +123,6 @@ export function AddressAutocomplete({
     [onChangeText, onPlaceSelected],
   );
 
-  const palette = useBrand();
-
   return (
     <View style={styles.container}>
       <TextInput
@@ -144,12 +144,12 @@ export function AddressAutocomplete({
         textContentType="fullStreetAddress"
         returnKeyType="search"
         clearButtonMode="while-editing"
-        selectionColor={palette.primary as string}
-        cursorColor={palette.primary as string}
+        selectionColor={palette.primary}
+        cursorColor={palette.primary}
       />
       {isLoading ? (
         <View style={[styles.loadingBar, { backgroundColor: palette.primarySubtle }]}>
-          <ThemedText style={{ color: mutedTextColor ?? palette.textMuted, fontSize: 12 }}>
+          <ThemedText type="micro" style={{ color: mutedTextColor ?? palette.textMuted }}>
             {t("common.searching")}
           </ThemedText>
         </View>
@@ -182,10 +182,10 @@ export function AddressAutocomplete({
               </ThemedText>
               {prediction.secondaryText ? (
                 <ThemedText
+                  type="caption"
                   numberOfLines={1}
                   style={{
                     color: mutedTextColor ?? palette.textMuted,
-                    fontSize: 13,
                   }}
                 >
                   {prediction.secondaryText}
@@ -205,13 +205,12 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: BrandRadius.buttonSubtle,
+    borderWidth: BorderWidth.thin,
+    borderRadius: BrandRadius.input,
     borderCurve: "continuous",
     minHeight: BrandSpacing.iconContainer + BrandSpacing.xs,
     paddingHorizontal: BrandSpacing.md,
     paddingVertical: BrandSpacing.sm,
-    fontSize: 16,
   },
   loadingBar: {
     paddingHorizontal: BrandSpacing.md,
@@ -220,8 +219,8 @@ const styles = StyleSheet.create({
     marginTop: BrandSpacing.xs,
   },
   dropdown: {
-    borderWidth: 1,
-    borderRadius: BrandRadius.buttonSubtle,
+    borderWidth: BorderWidth.thin,
+    borderRadius: BrandRadius.input,
     borderCurve: "continuous",
     marginTop: BrandSpacing.xs,
     overflow: "hidden",

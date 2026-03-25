@@ -2,7 +2,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import { formatTime } from "@/lib/jobs-utils";
 import type { TimelineListItem } from "../calendar-controller-helpers";
 import {
@@ -19,7 +19,7 @@ type CalendarTimelineRowProps = {
 
 function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
+  const { color: palette } = useTheme();
 
   if (item.kind === "dayHeader") {
     const isToday = item.dayKey === todayKey;
@@ -30,14 +30,12 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
           <Text
             style={[
               calendarTimelineStyles.dayHeading,
-              { color: isToday ? (palette.primary as string) : (palette.text as string) },
+              { color: isToday ? palette.primary : palette.text },
             ]}
           >
             {formatDayHeading(item.dayKey, i18n.language)}
           </Text>
-          <Text
-            style={[calendarTimelineStyles.daySubtitle, { color: palette.textMuted as string }]}
-          >
+          <Text style={[calendarTimelineStyles.daySubtitle, { color: palette.textMuted }]}>
             {formatDaySubtitle(item.dayKey, i18n.language)}
           </Text>
         </View>
@@ -48,15 +46,8 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
   if (item.kind === "empty") {
     return (
       <Animated.View entering={FadeInUp.duration(160)} style={calendarTimelineStyles.timelineRow}>
-        <View
-          style={[
-            calendarTimelineStyles.emptyStateCard,
-            { backgroundColor: palette.surface as string },
-          ]}
-        >
-          <Text
-            style={[calendarTimelineStyles.emptyStateTitle, { color: palette.textMuted as string }]}
-          >
+        <View style={[calendarTimelineStyles.emptyStateCard, { backgroundColor: palette.surface }]}>
+          <Text style={[calendarTimelineStyles.emptyStateTitle, { color: palette.textMuted }]}>
             {t("calendarTab.timeline.noLessons")}
           </Text>
         </View>
@@ -65,9 +56,14 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
   }
 
   const row = item.lesson;
-  const swatches = palette.calendar.eventSwatches;
+  const swatches = [
+    { background: palette.primary },
+    { background: palette.secondary },
+    { background: palette.tertiary },
+    { background: palette.success },
+  ];
   const swatch = swatches[hashSport(row.sport) % Math.max(swatches.length, 1)] ?? undefined;
-  const accent = (swatch?.background as string) ?? (palette.primary as string);
+  const accent = (swatch?.background as string) ?? palette.primary;
   const counterpart =
     row.source === "google"
       ? (row.location ?? t("calendarTab.googleCalendar"))
@@ -88,34 +84,26 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
           : t("calendarTab.timeline.lifecycle.past");
   const lifecycleTone =
     row.lifecycle === "live"
-      ? { fg: palette.success as string, bg: palette.successSubtle as string }
+      ? { fg: palette.success, bg: palette.successSubtle }
       : row.lifecycle === "upcoming"
-        ? { fg: palette.primary as string, bg: palette.primarySubtle as string }
+        ? { fg: palette.primary, bg: palette.primarySubtle }
         : row.lifecycle === "cancelled"
-          ? { fg: palette.danger as string, bg: palette.dangerSubtle as string }
-          : { fg: palette.textMuted as string, bg: palette.surfaceAlt as string };
+          ? { fg: palette.danger, bg: palette.dangerSubtle }
+          : { fg: palette.textMuted, bg: palette.surfaceAlt };
 
   return (
     <Animated.View entering={FadeInUp.duration(200)} style={calendarTimelineStyles.timelineRow}>
       <View
-        style={[
-          calendarTimelineStyles.lessonCard,
-          { backgroundColor: palette.surfaceElevated as string },
-        ]}
+        style={[calendarTimelineStyles.lessonCard, { backgroundColor: palette.surfaceElevated }]}
       >
         <View style={calendarTimelineStyles.lessonRowCompact}>
           <View style={calendarTimelineStyles.lessonTimeColumn}>
-            <Text
-              style={[calendarTimelineStyles.lessonTimePrimary, { color: palette.text as string }]}
-            >
+            <Text style={[calendarTimelineStyles.lessonTimePrimary, { color: palette.text }]}>
               {timeStartLabel}
             </Text>
             {timeEndLabel ? (
               <Text
-                style={[
-                  calendarTimelineStyles.lessonTimeSecondary,
-                  { color: palette.textMuted as string },
-                ]}
+                style={[calendarTimelineStyles.lessonTimeSecondary, { color: palette.textMuted }]}
               >
                 {timeEndLabel}
               </Text>
@@ -125,7 +113,7 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
           <View style={calendarTimelineStyles.lessonContent}>
             <View style={calendarTimelineStyles.lessonTopRow}>
               <Text
-                style={[calendarTimelineStyles.lessonTitle, { color: palette.text as string }]}
+                style={[calendarTimelineStyles.lessonTitle, { color: palette.text }]}
                 numberOfLines={1}
               >
                 {row.sport}
@@ -146,18 +134,13 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
               ) : null}
             </View>
             <Text
-              style={[calendarTimelineStyles.lessonMeta, { color: palette.textMuted as string }]}
+              style={[calendarTimelineStyles.lessonMeta, { color: palette.textMuted }]}
               numberOfLines={1}
             >
               {counterpart}
             </Text>
             {row.source === "google" ? (
-              <Text
-                style={[
-                  calendarTimelineStyles.lessonSource,
-                  { color: palette.textMicro as string },
-                ]}
-              >
+              <Text style={[calendarTimelineStyles.lessonSource, { color: palette.textMicro }]}>
                 {t("calendarTab.timeline.googleBadge")}
               </Text>
             ) : null}

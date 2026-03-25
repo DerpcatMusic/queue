@@ -1,5 +1,4 @@
 import type { TFunction } from "i18next";
-import type { BrandPalette } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { BoostPreset, JobClosureReason } from "@/lib/jobs-utils";
 import type { PaymentStatus, PayoutStatus } from "@/lib/payments-utils";
@@ -39,7 +38,6 @@ export type StudioJobsListProps = {
   jobs: StudioJob[];
   locale: string;
   zoneLanguage: "en" | "he";
-  palette: BrandPalette;
   reviewingApplicationId: Id<"jobApplications"> | null;
   payingJobId: Id<"jobs"> | null;
   onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;

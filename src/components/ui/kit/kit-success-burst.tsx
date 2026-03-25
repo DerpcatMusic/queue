@@ -8,8 +8,9 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-
 import { AppSymbol } from "@/components/ui/app-symbol";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BorderWidth, IconSize } from "@/lib/design-system";
 import { useKitTheme } from "./use-kit-theme";
 
 type BurstBubbleConfig = {
@@ -26,6 +27,17 @@ const BUBBLES: readonly BurstBubbleConfig[] = [
   { id: "right-bottom", x: 38, y: 26, size: 10 },
   { id: "top", x: 0, y: -42, size: 9 },
 ] as const;
+
+const BurstMotion = {
+  badgePop: 220,
+  badgeSpringDamping: 11,
+  badgeSpringStiffness: 220,
+  ringExpand: 120,
+  ringFade: 540,
+  ringPulse: 620,
+  ringPulseOvershoot: 60,
+  burstTravel: 760,
+} as const;
 
 type KitSuccessBurstProps = {
   iconName?: string;
@@ -60,7 +72,7 @@ function BurstBubble({
           position: "absolute",
           width: size,
           height: size,
-          borderRadius: 999,
+          borderRadius: BrandRadius.pill,
           backgroundColor: color,
         },
         bubbleStyle,
@@ -71,7 +83,7 @@ function BurstBubble({
 
 export function KitSuccessBurst({
   iconName = "checkmark.circle.fill",
-  height = 112,
+  height = BrandSpacing.successBurstHeight,
 }: KitSuccessBurstProps) {
   const { color, background } = useKitTheme();
   const badgeScale = useSharedValue(0.7);
@@ -81,18 +93,21 @@ export function KitSuccessBurst({
 
   useEffect(() => {
     badgeScale.value = withSequence(
-      withTiming(1.14, { duration: 220 }),
-      withSpring(1, { damping: 11, stiffness: 220 }),
+      withTiming(1.14, { duration: BurstMotion.badgePop }),
+      withSpring(1, {
+        damping: BurstMotion.badgeSpringDamping,
+        stiffness: BurstMotion.badgeSpringStiffness,
+      }),
     );
     ringWidth.value = withSequence(
-      withTiming(4, { duration: 120 }),
-      withTiming(1, { duration: 540 }),
+      withTiming(4, { duration: BurstMotion.ringExpand }),
+      withTiming(1, { duration: BurstMotion.ringFade }),
     );
     ringScale.value = withSequence(
-      withTiming(1.35, { duration: 620 }),
-      withTiming(1.45, { duration: 60 }),
+      withTiming(1.35, { duration: BurstMotion.ringPulse }),
+      withTiming(1.45, { duration: BurstMotion.ringPulseOvershoot }),
     );
-    burst.value = withTiming(1, { duration: 760 });
+    burst.value = withTiming(1, { duration: BurstMotion.burstTravel });
   }, [badgeScale, burst, ringScale, ringWidth]);
 
   const badgeStyle = useAnimatedStyle(() => ({
@@ -109,10 +124,10 @@ export function KitSuccessBurst({
         style={[
           {
             position: "absolute",
-            width: 72,
-            height: 72,
-            borderRadius: 999,
-            borderWidth: 3,
+            width: BrandSpacing.successBurstRing,
+            height: BrandSpacing.successBurstRing,
+            borderRadius: BrandRadius.pill,
+            borderWidth: BorderWidth.heavy,
             borderColor: color.success as string,
           },
           ringStyle,
@@ -133,19 +148,23 @@ export function KitSuccessBurst({
       <Animated.View
         style={[
           {
-            width: 56,
-            height: 56,
-            borderRadius: 999,
+            width: BrandSpacing.successBurstBadge,
+            height: BrandSpacing.successBurstBadge,
+            borderRadius: BrandRadius.pill,
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: background.primarySubtle as string,
-            borderWidth: 1,
+            borderWidth: BorderWidth.thin,
             borderColor: color.success as string,
           },
           badgeStyle,
         ]}
       >
-        <AppSymbol name={iconName} size={34} tintColor={color.success as string} />
+        <AppSymbol
+          name={iconName}
+          size={IconSize.successBurst}
+          tintColor={color.success as string}
+        />
       </Animated.View>
     </View>
   );

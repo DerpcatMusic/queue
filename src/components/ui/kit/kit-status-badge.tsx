@@ -49,9 +49,9 @@ export function KitStatusBadge({
       className="flex-row items-center rounded-full"
       style={[
         {
-          gap: BrandSpacing.xs + 2,
-          paddingHorizontal: BrandSpacing.sm + 2,
-          paddingVertical: BrandSpacing.xs + 2,
+          gap: BrandSpacing.stackMicro,
+          paddingHorizontal: BrandSpacing.stackDense,
+          paddingVertical: BrandSpacing.stackMicro,
           backgroundColor: resolvedTone.backgroundColor,
           borderCurve: "continuous",
         },
@@ -61,8 +61,8 @@ export function KitStatusBadge({
       {showDot ? (
         <View
           style={{
-            width: BrandSpacing.xs + 3,
-            height: BrandSpacing.xs + 3,
+            width: BrandSpacing.statusDotBadge,
+            height: BrandSpacing.statusDotBadge,
             borderRadius: BrandRadius.pill,
             backgroundColor: resolvedTone.accent,
           }}

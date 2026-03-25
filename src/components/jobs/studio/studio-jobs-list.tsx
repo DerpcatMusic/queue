@@ -12,7 +12,6 @@ export const StudioJobsList = memo(function StudioJobsList({
   jobs,
   locale,
   zoneLanguage,
-  palette,
   reviewingApplicationId,
   payingJobId,
   onReview,
@@ -29,7 +28,6 @@ export const StudioJobsList = memo(function StudioJobsList({
         isWideWeb={isWideWeb}
         locale={locale}
         zoneLanguage={zoneLanguage}
-        palette={palette}
         reviewingApplicationId={reviewingApplicationId}
         payingJobId={payingJobId}
         onReview={onReview}
@@ -43,7 +41,6 @@ export const StudioJobsList = memo(function StudioJobsList({
       onReview,
       onStartPayment,
       payingJobId,
-      palette,
       reviewingApplicationId,
       t,
       zoneLanguage,
@@ -55,8 +52,8 @@ export const StudioJobsList = memo(function StudioJobsList({
   return (
     <View
       style={{
-        gap: isWideWeb ? 10 : BrandSpacing.sm,
-        paddingHorizontal: isWideWeb ? 18 : BrandSpacing.md,
+        gap: isWideWeb ? BrandSpacing.md : BrandSpacing.sm,
+        paddingHorizontal: isWideWeb ? BrandSpacing.lg : BrandSpacing.md,
       }}
     >
       <FlashList
@@ -66,7 +63,9 @@ export const StudioJobsList = memo(function StudioJobsList({
         drawDistance={ESTIMATED_STUDIO_JOB_CARD_HEIGHT * 2}
         scrollEnabled={false}
         showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={{ height: isWideWeb ? 10 : BrandSpacing.sm }} />}
+        ItemSeparatorComponent={() => (
+          <View style={{ height: isWideWeb ? BrandSpacing.md : BrandSpacing.sm }} />
+        )}
       />
     </View>
   );

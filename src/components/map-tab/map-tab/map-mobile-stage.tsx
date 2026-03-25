@@ -1,16 +1,15 @@
 import type { TFunction } from "i18next";
 import { View } from "react-native";
-
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { QueueMap } from "@/components/maps/queue-map";
-import type { QueueMapPin, StudioMarker } from "@/components/maps/queue-map.types";
+import type { QueueMapPin, StudioMapMarker } from "@/components/maps/queue-map.types";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { type BrandPalette, BrandSpacing } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 
 type MapMobileStageProps = {
   t: TFunction;
-  palette: BrandPalette;
   mapBackgroundColor: string;
   isFocused: boolean;
   mapPin: QueueMapPin | null;
@@ -25,7 +24,7 @@ type MapMobileStageProps = {
     bottom: number;
     left: number;
   };
-  studios: StudioMarker[];
+  studios: StudioMapMarker[];
   onPressStudio: (studioId: string) => void;
   onPressZone: (zoneId: string) => void;
   onPressMap: () => void;
@@ -34,7 +33,6 @@ type MapMobileStageProps = {
 
 export function MapMobileStage({
   t,
-  palette,
   mapBackgroundColor,
   isFocused,
   mapPin,
@@ -50,6 +48,8 @@ export function MapMobileStage({
   onPressMap,
   onEditToggle,
 }: MapMobileStageProps) {
+  const theme = useTheme();
+
   if (!isFocused) {
     return <View style={{ flex: 1, backgroundColor: mapBackgroundColor }} />;
   }
@@ -88,7 +88,7 @@ export function MapMobileStage({
             <IconSymbol
               name={zoneModeActive ? "checkmark.circle.fill" : "pencil"}
               size={22}
-              color={zoneModeActive ? (palette.onPrimary as string) : (palette.primary as string)}
+              color={zoneModeActive ? theme.color.onPrimary : theme.color.primary}
             />
           }
         />

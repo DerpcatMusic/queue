@@ -10,12 +10,13 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BorderWidth } from "@/lib/design-system";
 import type { KitFloatingBadgeProps } from "./types";
 
 export function KitFloatingBadge({
   children,
   visible = true,
-  size = BrandSpacing.xxl - 8,
+  size = BrandSpacing.xl,
   backgroundColor,
   borderColor,
   motion = "float",
@@ -31,7 +32,7 @@ export function KitFloatingBadge({
 
     floatOffset.value = withRepeat(
       withSequence(
-        withTiming(-BrandSpacing.xs - 1, { duration: 900 }),
+        withTiming(-BrandSpacing.stackHair, { duration: 900 }),
         withTiming(0, { duration: 900 }),
       ),
       -1,
@@ -60,7 +61,7 @@ export function KitFloatingBadge({
           height: size,
           borderRadius: BrandRadius.pill,
           backgroundColor,
-          borderWidth: borderColor ? 1 : 0,
+          borderWidth: borderColor ? BorderWidth.thin : 0,
           borderColor,
         } satisfies ViewStyle,
         animatedStyle,

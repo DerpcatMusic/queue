@@ -6,7 +6,6 @@ import { InstructorHomeContent } from "@/components/home/instructor-home-content
 import { StudioHomeContent } from "@/components/home/studio-home-content";
 import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
 import { LoadingScreen } from "@/components/loading-screen";
-import type { BrandPalette } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
@@ -29,7 +28,6 @@ export type HomeRoleContentProps = {
   homeBodyReady: boolean;
   locale: string;
   now: number;
-  palette: BrandPalette;
   currencyFormatter: Intl.NumberFormat;
   t: TFunction;
   instructorHomeStats:
@@ -71,7 +69,6 @@ export function HomeRoleContent({
   homeBodyReady,
   locale,
   now,
-  palette,
   currencyFormatter,
   t,
   instructorHomeStats,
@@ -97,7 +94,6 @@ export function HomeRoleContent({
         now={now}
         lessonsCompleted={instructorHomeStats.lessonEvents.length}
         pendingApplications={instructorHomeStats.pendingApplications}
-        palette={palette}
         t={t}
         totalEarningsAgorot={instructorHomeStats.totalEarningsAgorot}
         upcomingSessions={instructorHomeStats.upcomingSessions}
@@ -129,7 +125,6 @@ export function HomeRoleContent({
       locale={locale}
       openJobs={openJobs}
       pendingApplicants={pendingApplicants}
-      palette={palette}
       currencyFormatter={currencyFormatter}
       t={t}
       recentJobs={studioJobs}

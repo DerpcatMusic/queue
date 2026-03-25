@@ -14,10 +14,10 @@ import { ActionButton } from "@/components/ui/action-button";
 import { IconButton } from "@/components/ui/icon-button";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
 import { SheetHeaderBlock } from "@/components/ui/sheet-header-block";
-import { type BrandPalette, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import {
   canUseNativeGoogleAuth,
   resolveGoogleNativeAuthConfig,
@@ -71,23 +71,29 @@ function readBooleanParam(value: string | string[] | undefined) {
 }
 
 function MessageBanner({
-  tone,
+  tone: _tone,
   message,
-  palette,
+  surface,
+  textColor,
 }: {
   tone: "info" | "danger";
   message: string;
-  palette: BrandPalette;
+  surface: string;
+  textColor: string;
 }) {
-  const backgroundColor =
-    tone === "danger" ? (palette.dangerSubtle as string) : (palette.surfaceAlt as string);
-  const textColor = tone === "danger" ? (palette.danger as string) : (palette.textMuted as string);
+  const backgroundColor = surface;
 
   return (
-    <View className="rounded-medium px-md py-sm" style={{ backgroundColor }}>
+    <View
+      style={{
+        borderRadius: BrandRadius.md,
+        paddingHorizontal: BrandSpacing.md,
+        paddingVertical: BrandSpacing.sm,
+        backgroundColor,
+      }}
+    >
       <Text
         selectable
-        className="text-sm"
         style={{
           ...BrandType.caption,
           color: textColor,
@@ -100,6 +106,7 @@ function MessageBanner({
 }
 
 export default function SignInScreen() {
+  const theme = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useLocalSearchParams<{
@@ -111,7 +118,6 @@ export default function SignInScreen() {
     returnTo?: string | string[];
     switchAccount?: string | string[];
   }>();
-  const palette = useBrand();
   const { currentUser } = useUser();
   const { reloadAuthSession } = useAuthSession();
   const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
@@ -188,8 +194,8 @@ export default function SignInScreen() {
   const signInSheetConfig = useMemo(
     () => ({
       stickyHeader: <SheetHeaderBlock title={sheetTitle} subtitle={sheetSubtitle} tone="surface" />,
-      backgroundColor: palette.surface as string,
-      topInsetColor: palette.surface as string,
+      backgroundColor: theme.color.surface,
+      topInsetColor: theme.color.surface,
       padding: {
         horizontal: BrandSpacing.lg,
         vertical: BrandSpacing.sm,
@@ -197,7 +203,7 @@ export default function SignInScreen() {
       steps: [step === "code" ? 0.22 : 0.2],
       initialStep: 0,
     }),
-    [palette, sheetSubtitle, sheetTitle, step],
+    [sheetSubtitle, sheetTitle, step, theme.color.surface],
   );
 
   useGlobalTopSheet("sign-in", signInSheetConfig);
@@ -483,7 +489,7 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-app-bg"
+      style={{ flex: 1, backgroundColor: theme.color.appBg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
@@ -509,7 +515,7 @@ export default function SignInScreen() {
               textContentType="emailAddress"
               inputMode="email"
               placeholder={t("auth.emailPlaceholder")}
-              leading={<FontAwesome5 name="at" size={16} color={palette.textMuted as string} />}
+              leading={<FontAwesome5 name="at" size={16} color={theme.color.textMuted} />}
               style={styles.emailInput}
             />
 
@@ -523,7 +529,6 @@ export default function SignInScreen() {
                         void handleSendCode();
                       }}
                       disabled={isSubmitting || !isEmailReady}
-                      palette={palette}
                       fullWidth
                       size="lg"
                     />
@@ -535,7 +540,6 @@ export default function SignInScreen() {
                         void handleSendMagicLink();
                       }}
                       disabled={isSubmitting || !isEmailReady}
-                      palette={palette}
                       tone="secondary"
                       fullWidth
                       size="lg"
@@ -544,24 +548,18 @@ export default function SignInScreen() {
                 </View>
 
                 <View className="flex-row items-center gap-stack-tight py-xs">
-                  <View
-                    className="flex-1 h-px"
-                    style={{ backgroundColor: palette.border as string }}
-                  />
+                  <View className="flex-1 h-px" style={{ backgroundColor: theme.color.border }} />
                   <Text
                     className="uppercase"
                     style={{
                       ...BrandType.micro,
-                      color: palette.textMuted as string,
                       letterSpacing: 0.7,
+                      color: theme.color.textMuted,
                     }}
                   >
                     {t("auth.or")}
                   </Text>
-                  <View
-                    className="flex-1 h-px"
-                    style={{ backgroundColor: palette.border as string }}
-                  />
+                  <View className="flex-1 h-px" style={{ backgroundColor: theme.color.border }} />
                 </View>
 
                 <View className="flex-row items-stretch justify-center gap-stack">
@@ -569,7 +567,7 @@ export default function SignInScreen() {
                     accessibilityLabel={
                       isSignUpIntent ? t("auth.signUpWithGoogle") : t("auth.signInWithGoogle")
                     }
-                    icon={<FontAwesome5 name="google" size={26} color={palette.danger as string} />}
+                    icon={<FontAwesome5 name="google" size={26} color={theme.color.danger} />}
                     onPress={() => {
                       void handleOAuth("google");
                     }}
@@ -577,7 +575,7 @@ export default function SignInScreen() {
                   />
                   <IconButton
                     accessibilityLabel={t("auth.signInWithApple")}
-                    icon={<FontAwesome5 name="apple" size={30} color={palette.text as string} />}
+                    icon={<FontAwesome5 name="apple" size={30} color={theme.color.text} />}
                     onPress={() => {
                       void handleOAuth("apple");
                     }}
@@ -589,7 +587,6 @@ export default function SignInScreen() {
                     label={t("auth.keepCurrentAccount")}
                     onPress={handleCancelSwitch}
                     disabled={isSubmitting}
-                    palette={palette}
                     tone="secondary"
                     fullWidth
                     size="lg"
@@ -602,7 +599,7 @@ export default function SignInScreen() {
                   className="text-center"
                   style={{
                     ...BrandType.caption,
-                    color: palette.textMuted as string,
+                    color: theme.color.textMuted,
                   }}
                 >
                   {normalizedEmail}
@@ -627,7 +624,6 @@ export default function SignInScreen() {
                         void handleVerifyCode();
                       }}
                       disabled={isSubmitting || code.length !== OTP_LENGTH}
-                      palette={palette}
                       fullWidth
                       size="lg"
                     />
@@ -642,7 +638,6 @@ export default function SignInScreen() {
                         setInfoMessage(null);
                       }}
                       disabled={isSubmitting}
-                      palette={palette}
                       tone="secondary"
                       fullWidth
                       size="lg"
@@ -655,10 +650,20 @@ export default function SignInScreen() {
 
           <View className="gap-stack-tight">
             {infoMessage ? (
-              <MessageBanner tone="info" message={infoMessage} palette={palette} />
+              <MessageBanner
+                tone="info"
+                message={infoMessage}
+                surface={theme.color.surfaceAlt}
+                textColor={theme.color.textMuted}
+              />
             ) : null}
             {errorMessage ? (
-              <MessageBanner tone="danger" message={errorMessage} palette={palette} />
+              <MessageBanner
+                tone="danger"
+                message={errorMessage}
+                surface={theme.color.dangerSubtle}
+                textColor={theme.color.danger}
+              />
             ) : null}
           </View>
         </View>
@@ -669,14 +674,18 @@ export default function SignInScreen() {
 
 const styles = StyleSheet.create({
   emailInput: {
-    ...BrandType.bodyMedium,
+    fontFamily: "Manrope_500Medium",
+    fontSize: 16,
+    fontWeight: "500",
+    lineHeight: 22,
     includeFontPadding: false,
   },
   codeInput: {
-    ...BrandType.heading,
+    fontFamily: "Lexend_600SemiBold",
     fontSize: 28,
-    lineHeight: 32,
+    fontWeight: "600",
     letterSpacing: 10,
+    lineHeight: 32,
     textAlign: "center",
     includeFontPadding: false,
     fontVariant: ["tabular-nums"],
