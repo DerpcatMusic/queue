@@ -1,6 +1,6 @@
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
-export const RAIL_LEFT = 24;
+export const RAIL_LEFT = BrandSpacing.xl;
 export const RAIL_DOT_DAY = 10;
 export const RAIL_DOT_LESSON = 6;
 
@@ -104,7 +104,7 @@ export const calendarTimelineStyles = {
     marginBottom: BrandSpacing.sm,
     paddingHorizontal: BrandSpacing.md,
     paddingVertical: BrandSpacing.sm + BrandSpacing.xxs,
-    borderRadius: BrandRadius.cardSubtle - BrandSpacing.xxs,
+    borderRadius: BrandRadius.cardCompact,
     borderCurve: "continuous",
   },
   lessonRowCompact: {
@@ -116,7 +116,7 @@ export const calendarTimelineStyles = {
     width: 64,
     alignItems: "flex-start",
     justifyContent: "center",
-    gap: BrandSpacing.xxs / 2,
+    gap: 1,
   },
   lessonTimePrimary: {
     fontSize: 13,
@@ -151,8 +151,11 @@ export const calendarTimelineStyles = {
     borderCurve: "continuous",
   },
   lifecycleBadgeText: {
-    ...BrandType.micro,
+    fontFamily: "Manrope_500Medium",
+    fontSize: 12,
     fontWeight: "600",
+    letterSpacing: 0.2,
+    lineHeight: 16,
   },
   lessonTitle: {
     flex: 1,
@@ -174,9 +177,9 @@ export const calendarTimelineStyles = {
     flex: 1,
     marginRight: BrandSpacing.lg,
     marginBottom: BrandSpacing.sm,
-    paddingHorizontal: BrandSpacing.controlX,
+    paddingHorizontal: BrandSpacing.component,
     paddingVertical: BrandSpacing.md,
-    borderRadius: BrandRadius.card - BrandSpacing.sm,
+    borderRadius: BrandRadius.card,
     borderCurve: "continuous",
     justifyContent: "center",
   },
@@ -201,24 +204,25 @@ export const calendarSheetStyles = {
     gap: BrandSpacing.xs,
   },
   title: {
-    ...BrandType.heading,
+    fontFamily: "Lexend_500Medium",
     fontSize: 30,
+    fontWeight: "500",
+    letterSpacing: -0.24,
     lineHeight: 34,
   },
-  subtitle: {
-    ...BrandType.caption,
-  },
+  subtitle: BrandType.caption,
   actionsColumn: {
     flexDirection: "row",
     alignItems: "center",
     gap: BrandSpacing.xs,
   },
   googleBadge: {
-    ...BrandType.micro,
-    marginTop: -1,
+    fontFamily: "Manrope_500Medium",
     fontSize: 9,
-    lineHeight: 10,
+    fontWeight: "500",
     letterSpacing: 0.3,
+    lineHeight: 10,
+    marginTop: -1,
   },
   summaryCountPill: {
     borderRadius: BrandRadius.pill,

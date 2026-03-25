@@ -16,10 +16,10 @@ import {
 } from "@/components/profile/profile-subpage-sheet";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitList, KitSwitchRow } from "@/components/ui/kit";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import { prepareDeviceCalendarSync } from "@/lib/device-calendar-sync";
 import { resolveGoogleCalendarAuthConfig } from "@/lib/google-calendar-auth-config";
 import {
@@ -69,8 +69,9 @@ function showCalendarPermissionAlert(t: ReturnType<typeof useTranslation>["t"]) 
 
 export default function CalendarSettingsScreen() {
   const { t } = useTranslation();
-  const palette = useBrand();
   const router = useRouter();
+
+  const theme = useTheme();
   const { currentUser } = useUser();
   useEffect(() => {
     WebBrowser.maybeCompleteAuthSession();
@@ -456,19 +457,19 @@ export default function CalendarSettingsScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: palette.appBg }}>
+    <View className="flex-1" style={{ backgroundColor: theme.color.appBg }}>
       <ProfileSubpageScrollView
         routeKey="instructor/profile/calendar-settings"
         contentContainerStyle={{
-          paddingHorizontal: BrandSpacing.inset,
+          paddingHorizontal: 16,
           paddingBottom: BrandSpacing.xxl + BrandSpacing.xxl + BrandSpacing.xxl + BrandSpacing.md,
-          gap: BrandSpacing.stackRoomy,
+          gap: 24,
         }}
       >
         <View
           className="overflow-hidden rounded-soft"
           style={{
-            backgroundColor: palette.surface as string,
+            backgroundColor: theme.color.surface as string,
           }}
         >
           <CalendarConnectionRow
@@ -484,7 +485,6 @@ export default function CalendarSettingsScreen() {
             connected={isGoogleConnected}
             loading={isConnectingGoogle || isDisconnectingGoogle}
             onPress={handleGoogleRowPress}
-            palette={palette}
             showDivider
           />
 
@@ -499,7 +499,6 @@ export default function CalendarSettingsScreen() {
             connected={isAppleConnected}
             loading={isSaving && !isConnectingGoogle && !isDisconnectingGoogle}
             onPress={handleAppleRowPress}
-            palette={palette}
           />
         </View>
 
@@ -523,11 +522,19 @@ export default function CalendarSettingsScreen() {
             style={{
               borderWidth: 1,
               borderCurve: "continuous",
-              backgroundColor: palette.dangerSubtle as string,
-              borderColor: palette.danger as string,
+              backgroundColor: theme.color.dangerSubtle as string,
+              borderColor: theme.color.danger as string,
             }}
           >
-            <Text style={{ ...BrandType.body, color: palette.danger as string }}>
+            <Text
+              style={{
+                fontFamily: "Manrope_400Regular",
+                fontSize: 16,
+                fontWeight: "400",
+                lineHeight: 22,
+                color: theme.color.danger as string,
+              }}
+            >
               {googleStatus.lastError}
             </Text>
           </View>
@@ -539,11 +546,19 @@ export default function CalendarSettingsScreen() {
             style={{
               borderWidth: 1,
               borderCurve: "continuous",
-              backgroundColor: palette.warningSubtle,
-              borderColor: palette.warning,
+              backgroundColor: theme.color.warningSubtle,
+              borderColor: theme.color.warning,
             }}
           >
-            <Text style={{ ...BrandType.body, color: palette.warning }}>
+            <Text
+              style={{
+                fontFamily: "Manrope_400Regular",
+                fontSize: 16,
+                fontWeight: "400",
+                lineHeight: 22,
+                color: theme.color.warning,
+              }}
+            >
               {t("profile.settings.calendar.googleReconnectRequired")}
             </Text>
           </View>
@@ -555,11 +570,21 @@ export default function CalendarSettingsScreen() {
             style={{
               borderWidth: 1,
               borderCurve: "continuous",
-              backgroundColor: palette.warningSubtle,
-              borderColor: palette.warning,
+              backgroundColor: theme.color.warningSubtle,
+              borderColor: theme.color.warning,
             }}
           >
-            <Text style={{ ...BrandType.body, color: palette.warning }}>{googleConfigError}</Text>
+            <Text
+              style={{
+                fontFamily: "Manrope_400Regular",
+                fontSize: 16,
+                fontWeight: "400",
+                lineHeight: 22,
+                color: theme.color.warning,
+              }}
+            >
+              {googleConfigError}
+            </Text>
           </View>
         ) : null}
 
@@ -575,7 +600,6 @@ export default function CalendarSettingsScreen() {
                 void onSyncGoogleNow();
               }}
               disabled={!canUseGoogleCalendar || isSyncingGoogle || isBusy}
-              palette={palette}
               fullWidth
             />
           </View>
@@ -583,12 +607,7 @@ export default function CalendarSettingsScreen() {
       </ProfileSubpageScrollView>
 
       <View className="absolute left-inset right-inset" style={{ bottom: BrandSpacing.lg }}>
-        <ActionButton
-          label={t("common.done")}
-          onPress={() => router.back()}
-          palette={palette}
-          fullWidth
-        />
+        <ActionButton label={t("common.done")} onPress={() => router.back()} fullWidth />
       </View>
     </View>
   );

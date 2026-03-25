@@ -4,7 +4,8 @@ import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated"
 
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { useBrand } from "@/hooks/use-brand";
+import { BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 
 type LoadingScreenProps = {
   variant?: "inline" | "launch";
@@ -20,7 +21,7 @@ export function LoadingScreen({
   showBrandMark = true,
 }: LoadingScreenProps) {
   const { t } = useTranslation();
-  const palette = useBrand();
+  const theme = useTheme();
   const resolvedLabel = label ?? t("common.loading");
   const resolvedTitle = title ?? t("launch.title");
 
@@ -30,7 +31,7 @@ export function LoadingScreen({
         entering={FadeIn.duration(300)}
         style={{
           flex: 1,
-          backgroundColor: palette.primary as string,
+          backgroundColor: theme.color.primary,
         }}
         accessibilityRole="progressbar"
         accessibilityLabel={resolvedLabel}
@@ -40,8 +41,8 @@ export function LoadingScreen({
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: "center",
-            paddingHorizontal: 24,
-            paddingVertical: 40,
+            paddingHorizontal: BrandSpacing.insetRoomy,
+            paddingVertical: BrandSpacing.section + BrandSpacing.sm, // 32+8=40
           }}
           showsVerticalScrollIndicator={false}
         >
@@ -58,7 +59,7 @@ export function LoadingScreen({
                 width: 236,
                 height: 236,
                 borderRadius: 118,
-                backgroundColor: palette.primaryPressed as string,
+                backgroundColor: theme.color.primaryPressed,
                 position: "absolute",
               }}
             />
@@ -69,7 +70,7 @@ export function LoadingScreen({
                 height: 112,
                 borderRadius: 36,
                 borderCurve: "continuous",
-                backgroundColor: palette.primarySubtle as string,
+                backgroundColor: theme.color.primarySubtle,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -81,7 +82,7 @@ export function LoadingScreen({
                     height: 84,
                     borderRadius: 28,
                     borderCurve: "continuous",
-                    backgroundColor: palette.surface as string,
+                    backgroundColor: theme.color.surface,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -89,18 +90,18 @@ export function LoadingScreen({
                   <AppSymbol
                     name={{ ios: "bolt.fill", android: "bolt", web: "bolt.fill" }}
                     size={32}
-                    tintColor={palette.primary as string}
+                    tintColor={theme.color.primary}
                   />
                 </View>
               ) : null}
             </Animated.View>
             <Animated.View
               entering={FadeInUp.delay(60).duration(420)}
-              style={{ gap: 8, alignItems: "center" }}
+              style={{ gap: BrandSpacing.sm, alignItems: "center" }}
             >
               <ThemedText
                 type="title"
-                style={{ textAlign: "center", color: palette.onPrimary as string }}
+                style={{ textAlign: "center", color: theme.color.onPrimary }}
                 selectable
               >
                 {resolvedTitle}
@@ -108,7 +109,7 @@ export function LoadingScreen({
               <ThemedText
                 type="caption"
                 style={{
-                  color: palette.surfaceAlt as string,
+                  color: theme.color.onPrimary,
                   textAlign: "center",
                 }}
                 selectable
@@ -117,7 +118,7 @@ export function LoadingScreen({
               </ThemedText>
             </Animated.View>
             <Animated.View entering={FadeInUp.delay(120).duration(420)}>
-              <ActivityIndicator size="large" color={palette.onPrimary as string} />
+              <ActivityIndicator size="large" color={theme.color.onPrimary} />
             </Animated.View>
           </View>
         </ScrollView>
@@ -132,15 +133,15 @@ export function LoadingScreen({
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        gap: 16,
-        paddingHorizontal: 24,
-        backgroundColor: palette.appBg,
+        gap: BrandSpacing.lg,
+        paddingHorizontal: BrandSpacing.insetRoomy,
+        backgroundColor: theme.color.appBg,
       }}
       accessibilityRole="progressbar"
       accessibilityLabel={resolvedLabel}
     >
-      <ActivityIndicator size="large" color={palette.primary} />
-      <ThemedText type="caption" style={{ color: palette.textMuted }} selectable>
+      <ActivityIndicator size="large" color={theme.color.primary} />
+      <ThemedText type="caption" style={{ color: theme.color.textMuted }} selectable>
         {resolvedLabel}
       </ThemedText>
     </Animated.View>

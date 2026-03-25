@@ -2,7 +2,8 @@ import type { ImageSourcePropType } from "react-native";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 
 type CalendarConnectionRowProps = {
   iconSource: ImageSourcePropType;
@@ -11,7 +12,6 @@ type CalendarConnectionRowProps = {
   connected: boolean;
   loading?: boolean;
   onPress: () => void;
-  palette: BrandPalette;
   showDivider?: boolean;
 };
 
@@ -22,16 +22,17 @@ export function CalendarConnectionRow({
   connected,
   loading = false,
   onPress,
-  palette,
   showDivider = false,
 }: CalendarConnectionRowProps) {
+  const { color: palette } = useTheme();
+
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
         styles.row,
-        pressed ? { backgroundColor: palette.surfaceAlt as string } : null,
+        pressed ? { backgroundColor: palette.surfaceAlt } : null,
       ]}
     >
       <View
@@ -40,7 +41,7 @@ export function CalendarConnectionRow({
           showDivider
             ? {
                 borderBottomWidth: StyleSheet.hairlineWidth,
-                borderBottomColor: palette.border as string,
+                borderBottomColor: palette.border,
               }
             : null,
         ]}
@@ -58,12 +59,12 @@ export function CalendarConnectionRow({
 
         <View style={styles.trailing}>
           {loading ? (
-            <ActivityIndicator size="small" color={palette.primary as string} />
+            <ActivityIndicator size="small" color={palette.primary} />
           ) : (
             <AppSymbol
               name={connected ? "checkmark.circle.fill" : "chevron.right"}
               size={BrandSpacing.iconMd - BrandSpacing.xs / 2}
-              tintColor={connected ? (palette.primary as string) : (palette.textMuted as string)}
+              tintColor={connected ? palette.primary : palette.textMuted}
             />
           )}
         </View>
@@ -93,13 +94,15 @@ const styles = StyleSheet.create({
     gap: BrandSpacing.xs,
   },
   title: {
-    ...BrandType.bodyStrong,
+    fontFamily: "Manrope_600SemiBold",
     fontSize: 18,
+    fontWeight: "600",
     lineHeight: 22,
   },
   detail: {
-    ...BrandType.body,
+    fontFamily: "Manrope_400Regular",
     fontSize: 15,
+    fontWeight: "400",
     lineHeight: 20,
   },
   trailing: {

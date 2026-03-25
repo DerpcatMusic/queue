@@ -32,10 +32,10 @@ import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSuccessBurst } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
-import { useBrand } from "@/hooks/use-brand";
-import { useThemePreference } from "@/hooks/use-theme-preference";
+import { useTheme } from "@/hooks/use-theme";
+import { IconSize, LetterSpacing, Motion } from "@/lib/design-system";
 
 type DiditSdkResult = {
   type?: "completed" | "cancelled" | "failed";
@@ -62,6 +62,25 @@ const ISRAEL_SAFER_PAYMENTS_URL =
   "https://www.boi.org.il/en/communication-and-publications/press-releases/safer-payments-principles-for-implementing-stronger-customer-authentication-in-the-payment-cards-market/";
 const ISRAEL_AML_ORDER_URL =
   "https://www.gov.il/BlobFolder/dynamiccollectorresultitem/service-providers-prevention-ml-english/he/legal-docs_service_providers_prevention_ml_english.pdf";
+const LOADER_DOT_MIN_SCALE = 0.72;
+const LOADER_DOT_BASE_SCALE = 0.8;
+const LOADER_DOT_SCALE_RANGE = 0.35;
+const LOADER_PULSE_DURATION_MS = Motion.emphasis;
+const RESOLVING_ENTER_DURATION_MS = Motion.normal;
+const RESOLVING_SETTLE_DURATION_MS = Motion.slow;
+const RESOLVING_HALO_DURATION_MS = 850;
+const RESOLVING_CARD_FLOAT_DURATION_MS = 1200;
+const RESOLVING_BUBBLE_FLOAT_DURATION_MS = 1400;
+const RESOLVING_BUBBLE_LEFT_DELAY_MS = 90;
+const RESOLVING_BUBBLE_RIGHT_DELAY_MS = 150;
+const RESOLVING_BUBBLE_MID_DELAY_MS = 140;
+const APPROVAL_BURST_DURATION_MS = 2200;
+const STATUS_POLL_INTERVAL_MS = 1500;
+const ERROR_POLL_INTERVAL_MS = 1800;
+const RESOLVING_CARD_MAX_WIDTH = BrandSpacing.shellCommandPanel;
+const RESOLVING_HALO_SIZE = BrandSpacing.haloSize;
+const RESOLVING_AVATAR_SIZE = BrandSpacing.avatarLg;
+const REFRESH_BUTTON_SIZE = BrandSpacing.iconContainer;
 
 const resolveDiditSdkModule = async (): Promise<DiditSdkModule | null> => {
   if (cachedDiditSdkModule !== undefined) {
@@ -179,13 +198,16 @@ function LinkPill({
 }
 
 function LoaderDot({ delay, color }: { delay: number; color: string }) {
-  const pulse = useSharedValue(0.72);
+  const pulse = useSharedValue(LOADER_DOT_MIN_SCALE);
 
   useEffect(() => {
     pulse.value = withDelay(
       delay,
       withRepeat(
-        withSequence(withTiming(1, { duration: 420 }), withTiming(0.72, { duration: 420 })),
+        withSequence(
+          withTiming(1, { duration: LOADER_PULSE_DURATION_MS }),
+          withTiming(LOADER_DOT_MIN_SCALE, { duration: LOADER_PULSE_DURATION_MS }),
+        ),
         -1,
         false,
       ),
@@ -193,7 +215,7 @@ function LoaderDot({ delay, color }: { delay: number; color: string }) {
   }, [delay, pulse]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 0.8 + pulse.value * 0.35 }],
+    transform: [{ scale: LOADER_DOT_BASE_SCALE + pulse.value * LOADER_DOT_SCALE_RANGE }],
   }));
 
   return (
@@ -204,28 +226,42 @@ function LoaderDot({ delay, color }: { delay: number; color: string }) {
   );
 }
 
-function VerificationResolvingState({ label }: { label: string }) {
+function VerificationResolvingState({
+  label,
+  loaderColor,
+}: {
+  label: string;
+  loaderColor: string;
+}) {
   const { t } = useTranslation();
-  const palette = useBrand();
   const halo = useSharedValue(0.8);
   const settle = useSharedValue(0);
   const cardFloat = useSharedValue(0);
   const bubbleFloat = useSharedValue(0);
 
   useEffect(() => {
-    settle.value = withTiming(1, { duration: 320 });
+    settle.value = withTiming(1, { duration: RESOLVING_SETTLE_DURATION_MS });
     halo.value = withRepeat(
-      withSequence(withTiming(1.18, { duration: 850 }), withTiming(0.8, { duration: 850 })),
+      withSequence(
+        withTiming(1.18, { duration: RESOLVING_HALO_DURATION_MS }),
+        withTiming(0.8, { duration: RESOLVING_HALO_DURATION_MS }),
+      ),
       -1,
       false,
     );
     cardFloat.value = withRepeat(
-      withSequence(withTiming(-5, { duration: 1200 }), withTiming(0, { duration: 1200 })),
+      withSequence(
+        withTiming(-5, { duration: RESOLVING_CARD_FLOAT_DURATION_MS }),
+        withTiming(0, { duration: RESOLVING_CARD_FLOAT_DURATION_MS }),
+      ),
       -1,
       false,
     );
     bubbleFloat.value = withRepeat(
-      withSequence(withTiming(-10, { duration: 1400 }), withTiming(0, { duration: 1400 })),
+      withSequence(
+        withTiming(-10, { duration: RESOLVING_BUBBLE_FLOAT_DURATION_MS }),
+        withTiming(0, { duration: RESOLVING_BUBBLE_FLOAT_DURATION_MS }),
+      ),
       -1,
       false,
     );
@@ -249,13 +285,13 @@ function VerificationResolvingState({ label }: { label: string }) {
 
   return (
     <Animated.View
-      entering={FadeIn.duration(220)}
+      entering={FadeIn.duration(RESOLVING_ENTER_DURATION_MS)}
       className="flex-1 items-center justify-center px-xl bg-app-bg"
     >
       <Animated.View
         entering={FadeInDown.springify().damping(16).stiffness(170)}
         className="w-full"
-        style={{ maxWidth: 340 }}
+        style={{ maxWidth: RESOLVING_CARD_MAX_WIDTH }}
       >
         <Animated.View
           className="absolute rounded-pill bg-primary-subtle"
@@ -301,30 +337,32 @@ function VerificationResolvingState({ label }: { label: string }) {
             className="absolute rounded-full bg-primary-subtle"
             style={[
               {
-                width: BrandSpacing.haloSize,
-                height: BrandSpacing.haloSize,
+                width: RESOLVING_HALO_SIZE,
+                height: RESOLVING_HALO_SIZE,
               },
               haloStyle,
             ]}
           />
 
           <Animated.View
-            entering={FadeInDown.delay(90).duration(280)}
+            entering={FadeInDown.delay(RESOLVING_BUBBLE_LEFT_DELAY_MS).duration(Motion.fast * 2)}
             className="items-center justify-center rounded-full border border-border-strong bg-surface"
             style={{
-              width: BrandSpacing.iconContainerLarge,
-              height: BrandSpacing.iconContainerLarge,
+              width: RESOLVING_AVATAR_SIZE,
+              height: RESOLVING_AVATAR_SIZE,
             }}
           >
             <View className="flex-row items-center gap-sm">
-              <LoaderDot delay={0} color={palette.primary as string} />
-              <LoaderDot delay={140} color={palette.primary as string} />
-              <LoaderDot delay={280} color={palette.primary as string} />
+              <LoaderDot delay={0} color={loaderColor} />
+              <LoaderDot delay={RESOLVING_BUBBLE_MID_DELAY_MS} color={loaderColor} />
+              <LoaderDot delay={Motion.fast * 2} color={loaderColor} />
             </View>
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.delay(150).duration(320)}
+            entering={FadeInDown.delay(RESOLVING_BUBBLE_RIGHT_DELAY_MS).duration(
+              RESOLVING_SETTLE_DURATION_MS,
+            )}
             className="gap-sm items-center"
           >
             <ThemedText type="title" style={{ textAlign: "center" }}>
@@ -342,8 +380,7 @@ function VerificationResolvingState({ label }: { label: string }) {
 
 export default function IdentityVerificationScreen() {
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
-  const { resolvedScheme } = useThemePreference();
+  const { color, scheme } = useTheme();
   useEffect(() => {
     WebBrowser.maybeCompleteAuthSession();
   }, []);
@@ -382,11 +419,9 @@ export default function IdentityVerificationScreen() {
   const lastEventAtLabel = formatDateTime(diditVerification?.lastEventAt);
   const isInProgressState =
     status === "in_progress" || status === "pending" || status === "in_review";
-  const diditStatusBackground =
-    resolvedScheme === "dark" ? palette.accentDark : palette.accentLight;
-  const diditSectionBackground =
-    resolvedScheme === "dark" ? palette.accentRowBgDark : palette.accentRowBgLight;
-  const diditPressedBlue = palette.didit.accent;
+  const diditStatusBackground = scheme === "dark" ? color.primary : color.primarySubtle;
+  const diditSectionBackground = scheme === "dark" ? color.surfaceElevated : color.surfaceAlt;
+  const diditPressedAccent = color.tertiary;
   const openExternalUrl = useCallback(
     (url: string) => {
       void ExpoLinking.openURL(url).catch(() => {
@@ -417,18 +452,18 @@ export default function IdentityVerificationScreen() {
   const refreshAccessory = useMemo(
     () => (
       <IconButton
-        size={40}
+        size={REFRESH_BUTTON_SIZE}
         tone="primarySubtle"
-        backgroundColorOverride={`${String(palette.primarySubtle)}CC`}
+        backgroundColorOverride={`${color.primarySubtle}CC`}
         accessibilityLabel={t("profile.identityVerification.refreshStatus")}
         disabled={busy || isRefreshing}
         onPress={() => {
           void refreshVerificationStatus();
         }}
-        icon={<IconSymbol name="arrow.clockwise" size={18} color={palette.onPrimary as string} />}
+        icon={<IconSymbol name="arrow.clockwise" size={IconSize.md} color={color.onPrimary} />}
       />
     ),
-    [busy, isRefreshing, palette.onPrimary, palette.primarySubtle, refreshVerificationStatus, t],
+    [busy, isRefreshing, color.onPrimary, color.primarySubtle, refreshVerificationStatus, t],
   );
   useProfileSubpageSheet({
     title: t("profile.navigation.identityVerification"),
@@ -456,7 +491,7 @@ export default function IdentityVerificationScreen() {
     }
     const timeoutId = setTimeout(() => {
       setShowApprovalBurst(false);
-    }, 2200);
+    }, APPROVAL_BURST_DURATION_MS);
     return () => clearTimeout(timeoutId);
   }, [showApprovalBurst]);
 
@@ -491,7 +526,7 @@ export default function IdentityVerificationScreen() {
           }
           timeoutId = setTimeout(() => {
             void poll();
-          }, 1500);
+          }, STATUS_POLL_INTERVAL_MS);
           return;
         }
 
@@ -523,7 +558,7 @@ export default function IdentityVerificationScreen() {
         }
         timeoutId = setTimeout(() => {
           void poll();
-        }, 1800);
+        }, ERROR_POLL_INTERVAL_MS);
       }
     };
 
@@ -633,13 +668,18 @@ export default function IdentityVerificationScreen() {
       : t("profile.identityVerification.start");
 
   if (awaitingFinalResult) {
-    return <VerificationResolvingState label={t("profile.identityVerification.resolvingLabel")} />;
+    return (
+      <VerificationResolvingState
+        label={t("profile.identityVerification.resolvingLabel")}
+        loaderColor={color.primary}
+      />
+    );
   }
 
   return (
     <ProfileSubpageScrollView
       routeKey="instructor/profile/identity-verification"
-      style={{ flex: 1, backgroundColor: palette.appBg }}
+      style={{ flex: 1, backgroundColor: color.appBg }}
       contentContainerStyle={{
         gap: BrandSpacing.xl,
       }}
@@ -651,7 +691,7 @@ export default function IdentityVerificationScreen() {
           onRefresh={() => {
             void refreshVerificationStatus();
           }}
-          tintColor={palette.didit.accent}
+          tintColor={color.tertiary}
         />
       }
     >
@@ -662,32 +702,30 @@ export default function IdentityVerificationScreen() {
           className="gap-lg p-md rounded-card"
           style={{
             borderCurve: "continuous",
-            backgroundColor: isInProgressState
-              ? diditStatusBackground
-              : (palette.surface as string),
+            backgroundColor: isInProgressState ? diditStatusBackground : color.surface,
             paddingBottom: BrandSpacing.md,
           }}
         >
           <View className="gap-sm">
-            <ThemedText type="micro" style={{ color: palette.textMuted }}>
+            <ThemedText type="micro" style={{ color: color.textMuted }}>
               {t("profile.identityVerification.eyebrow")}
             </ThemedText>
             <View className="flex-row items-start justify-between gap-sm">
               <View className="flex-1 gap-xs">
-                <ThemedText type="title" style={{ letterSpacing: BrandType.title.letterSpacing }}>
+                <ThemedText type="title" style={{ letterSpacing: LetterSpacing.title }}>
                   {getStatusHeadline(status, t)}
                 </ThemedText>
-                <ThemedText type="caption" style={{ color: palette.textMuted, maxWidth: 520 }}>
+                <ThemedText type="caption" style={{ color: color.textMuted, maxWidth: 520 }}>
                   {getStatusBody(status, t)}
                 </ThemedText>
               </View>
-              <IdentityStatusBadge status={status} palette={palette} />
+              <IdentityStatusBadge status={status} />
             </View>
           </View>
 
           {legalName ? (
             <View className="gap-xs">
-              <ThemedText type="micro" style={{ color: palette.textMuted }}>
+              <ThemedText type="micro" style={{ color: color.textMuted }}>
                 {t("profile.identityVerification.verifiedLegalName")}
               </ThemedText>
               <ThemedText type="bodyStrong">{legalName}</ThemedText>
@@ -697,14 +735,14 @@ export default function IdentityVerificationScreen() {
           {verifiedAtLabel || lastEventAtLabel ? (
             <View className="gap-xs">
               {verifiedAtLabel ? (
-                <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                <ThemedText type="caption" style={{ color: color.textMuted }}>
                   {t("profile.identityVerification.verifiedAt", {
                     date: verifiedAtLabel,
                   })}
                 </ThemedText>
               ) : null}
               {lastEventAtLabel ? (
-                <ThemedText type="caption" style={{ color: palette.textMuted }}>
+                <ThemedText type="caption" style={{ color: color.textMuted }}>
                   {t("profile.identityVerification.lastUpdate", {
                     date: lastEventAtLabel,
                   })}
@@ -727,37 +765,36 @@ export default function IdentityVerificationScreen() {
               paddingVertical: BrandSpacing.md,
               paddingHorizontal: BrandSpacing.md,
               borderWidth: 1,
-              borderColor:
-                busy || isRefreshing ? (palette.borderStrong as string) : palette.didit.accent,
+              borderColor: busy || isRefreshing ? color.borderStrong : color.tertiary,
               backgroundColor:
                 busy || isRefreshing
-                  ? (palette.surfaceAlt as string)
+                  ? color.surfaceAlt
                   : pressed
-                    ? diditPressedBlue
-                    : palette.didit.accent,
+                    ? diditPressedAccent
+                    : color.tertiary,
               opacity: busy || isRefreshing ? 0.7 : 1,
             })}
           >
-            <ThemedText type="bodyStrong" style={{ color: palette.onPrimary as string }}>
+            <ThemedText type="bodyStrong" style={{ color: color.onPrimary }}>
               {primaryActionLabel}
             </ThemedText>
           </Pressable>
         ) : null}
 
         {!isVerified ? (
-          <ThemedText type="caption" style={{ color: palette.textMuted }}>
+          <ThemedText type="caption" style={{ color: color.textMuted }}>
             {t("profile.identityVerification.primaryHint")}
           </ThemedText>
         ) : null}
 
         {errorMessage ? (
-          <ThemedText type="caption" selectable style={{ color: palette.danger }}>
+          <ThemedText type="caption" selectable style={{ color: color.danger }}>
             {errorMessage}
           </ThemedText>
         ) : null}
 
         {infoMessage ? (
-          <ThemedText type="caption" selectable style={{ color: palette.textMuted }}>
+          <ThemedText type="caption" selectable style={{ color: color.textMuted }}>
             {infoMessage}
           </ThemedText>
         ) : null}
@@ -773,27 +810,27 @@ export default function IdentityVerificationScreen() {
           }}
         >
           <ThemedText type="bodyStrong">{t("profile.identityVerification.whyTitle")}</ThemedText>
-          <ThemedText type="caption" style={{ color: palette.textMuted, maxWidth: 580 }}>
+          <ThemedText type="caption" style={{ color: color.textMuted, maxWidth: 580 }}>
             {t("profile.identityVerification.whyIntro")}
           </ThemedText>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
             <LinkPill
               label={t("profile.identityVerification.systemDocs")}
-              color={palette.didit.accent as string}
+              color={color.tertiary}
               onPress={() => {
                 openExternalUrl(DIDIT_DOCS_URL);
               }}
             />
             <LinkPill
               label={t("profile.identityVerification.whySources.bankIsrael")}
-              color={palette.didit.accent as string}
+              color={color.tertiary}
               onPress={() => {
                 openExternalUrl(ISRAEL_SAFER_PAYMENTS_URL);
               }}
             />
             <LinkPill
               label={t("profile.identityVerification.whySources.amlOrder")}
-              color={palette.didit.accent as string}
+              color={color.tertiary}
               onPress={() => {
                 openExternalUrl(ISRAEL_AML_ORDER_URL);
               }}

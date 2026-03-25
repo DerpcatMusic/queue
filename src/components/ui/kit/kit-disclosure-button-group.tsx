@@ -3,8 +3,8 @@ import type { TextStyle, ViewStyle } from "react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
 
-import { BrandType } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 import { triggerSelectionHaptic } from "./native-interaction";
 
 export type KitDisclosureButtonGroupOption<T extends string> = {
@@ -35,20 +35,20 @@ type KitDisclosureButtonGroupProps<T extends string> = {
 
 const SIZE_PRESETS = {
   sm: {
-    railPadding: 4,
-    railRadius: 16,
-    sectionRadius: 12,
-    minHeight: 40,
-    paddingHorizontal: 14,
-    separatorInset: 10,
+    railPadding: BrandSpacing.xs,
+    railRadius: BrandRadius.xl,
+    sectionRadius: BrandRadius.card,
+    minHeight: BrandSpacing.controlSm,
+    paddingHorizontal: BrandSpacing.controlX,
+    separatorInset: BrandSpacing.sm,
   },
   md: {
-    railPadding: 5,
-    railRadius: 18,
-    sectionRadius: 14,
-    minHeight: 44,
-    paddingHorizontal: 16,
-    separatorInset: 11,
+    railPadding: BrandSpacing.sm,
+    railRadius: BrandRadius.medium,
+    sectionRadius: BrandRadius.buttonSubtle,
+    minHeight: BrandSpacing.controlMd,
+    paddingHorizontal: BrandSpacing.lg,
+    separatorInset: BrandSpacing.md,
   },
 } as const;
 
@@ -72,13 +72,13 @@ export function KitDisclosureButtonGroup<T extends string>({
   selectedLabelColor,
   dividerColor,
 }: KitDisclosureButtonGroupProps<T>) {
-  const palette = useBrand();
+  const theme = useTheme();
   const metrics = SIZE_PRESETS[size];
-  const resolvedRailColor = railColor ?? (palette.primaryPressed as string);
-  const resolvedSelectedColor = selectedColor ?? (palette.primarySubtle as string);
-  const resolvedLabelColor = labelColor ?? (palette.onPrimary as string);
-  const resolvedSelectedLabelColor = selectedLabelColor ?? (palette.onPrimary as string);
-  const resolvedDividerColor = dividerColor ?? (palette.primary as string);
+  const resolvedRailColor = railColor ?? theme.color.primaryPressed;
+  const resolvedSelectedColor = selectedColor ?? theme.color.primarySubtle;
+  const resolvedLabelColor = labelColor ?? theme.color.onPrimary;
+  const resolvedSelectedLabelColor = selectedLabelColor ?? theme.color.onPrimary;
+  const resolvedDividerColor = dividerColor ?? theme.color.primary;
 
   return (
     <Animated.View
@@ -210,14 +210,14 @@ export function KitDisclosureButtonGroup<T extends string>({
               styles.triggerButton,
               {
                 minHeight: metrics.minHeight,
-                paddingHorizontal: triggerLabel ? metrics.paddingHorizontal : 12,
+                paddingHorizontal: triggerLabel ? metrics.paddingHorizontal : BrandSpacing.sm,
                 borderRadius: metrics.sectionRadius,
               } satisfies ViewStyle,
             ]}
           >
             {triggerIcon ? <View style={styles.iconWrap}>{triggerIcon}</View> : null}
             {triggerLabel ? (
-              <Text style={[styles.segmentLabel, { color: palette.onPrimary as string }]}>
+              <Text style={[styles.segmentLabel, { color: resolvedLabelColor }]}>
                 {triggerLabel}
               </Text>
             ) : null}
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: BrandSpacing.sm,
   },
   triggerPressable: {
     justifyContent: "center",
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: 6,
+    gap: BrandSpacing.sm,
   },
   iconWrap: {
     alignItems: "center",
@@ -275,7 +275,6 @@ const styles = StyleSheet.create({
   },
   segmentLabel: {
     ...BrandType.bodyMedium,
-    fontSize: 15,
     fontWeight: "700",
     includeFontPadding: false,
     textAlign: "center",

@@ -7,8 +7,9 @@ import { AppSymbol } from "@/components/ui/app-symbol";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { KitSegmentedToggle } from "@/components/ui/kit";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
-import type { BrandPalette } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
+import { useTheme } from "@/hooks/use-theme";
 import type { StudioDraft } from "@/lib/jobs-utils";
 import {
   BOOST_PRESET_VALUES,
@@ -23,7 +24,6 @@ type SportPickerSectionProps = {
   sportQuery: string;
   sportPickerOpen: boolean;
   locale: string;
-  palette: BrandPalette;
   filteredSports: readonly string[];
   setSportQuery: (value: string) => void;
   setSportPickerOpen: (value: boolean | ((current: boolean) => boolean)) => void;
@@ -36,7 +36,6 @@ export function SportPickerSection({
   draft,
   sportQuery,
   sportPickerOpen,
-  palette,
   filteredSports,
   setSportQuery,
   setSportPickerOpen,
@@ -45,15 +44,13 @@ export function SportPickerSection({
   selectSport,
 }: SportPickerSectionProps) {
   const { t } = useTranslation();
+  const { color: palette } = useTheme();
   const selectedSportLabel = draft.sport
     ? toSportLabel(draft.sport as never)
     : t("jobsTab.form.pickSport");
 
   return (
-    <View style={{ gap: 12 }}>
-      <ThemedText type="defaultSemiBold" style={{ fontSize: 16, color: palette.text as string }}>
-        {t("jobsTab.form.sport")}
-      </ThemedText>
+    <View style={{ gap: BrandSpacing.md }}>
       <ChoicePill
         label={draft.sport ? selectedSportLabel : t("jobsTab.form.pickSport")}
         compact
@@ -62,13 +59,13 @@ export function SportPickerSection({
           <AppSymbol
             name={sportPickerOpen ? "chevron.up" : "chevron.down"}
             size={14}
-            tintColor={palette.textMuted as string}
+            tintColor={palette.textMuted}
           />
         }
-        backgroundColor={palette.surfaceAlt as string}
-        selectedBackgroundColor={palette.surfaceAlt as string}
-        labelColor={palette.text as string}
-        selectedLabelColor={palette.text as string}
+        backgroundColor={palette.surfaceAlt}
+        selectedBackgroundColor={palette.surfaceAlt}
+        labelColor={palette.text}
+        selectedLabelColor={palette.text}
         onPress={() => {
           setSportPickerOpen((curr) => {
             const next = !curr;
@@ -79,7 +76,7 @@ export function SportPickerSection({
       />
 
       {sportPickerOpen ? (
-        <View style={{ gap: 10, paddingTop: 10 }}>
+        <View style={{ gap: BrandSpacing.sm, paddingTop: BrandSpacing.sm }}>
           <KitTextField
             value={sportQuery}
             onChangeText={(value) => {
@@ -103,9 +100,7 @@ export function SportPickerSection({
               }
             }}
             placeholder={t("jobsTab.form.sportSearch")}
-            leading={
-              <AppSymbol name="magnifyingglass" size={16} tintColor={palette.textMuted as string} />
-            }
+            leading={<AppSymbol name="magnifyingglass" size={16} tintColor={palette.textMuted} />}
           />
 
           <View style={{ maxHeight: 208 }}>
@@ -116,9 +111,9 @@ export function SportPickerSection({
               contentContainerStyle={{
                 flexDirection: "row",
                 flexWrap: "wrap",
-                gap: 10,
-                paddingTop: 4,
-                paddingBottom: 4,
+                gap: BrandSpacing.sm,
+                paddingTop: BrandSpacing.xs,
+                paddingBottom: BrandSpacing.xs,
               }}
             >
               {filteredSports.length > 0 ? (
@@ -130,10 +125,10 @@ export function SportPickerSection({
                       label={toSportLabel(sport as never)}
                       selected={isSelected}
                       compact
-                      backgroundColor={palette.surfaceAlt as string}
-                      selectedBackgroundColor={palette.primary as string}
-                      labelColor={palette.text as string}
-                      selectedLabelColor={palette.onPrimary as string}
+                      backgroundColor={palette.surfaceAlt}
+                      selectedBackgroundColor={palette.primary}
+                      labelColor={palette.text}
+                      selectedLabelColor={palette.onPrimary}
                       onPress={() => selectSport(sport)}
                     />
                   );
@@ -141,7 +136,7 @@ export function SportPickerSection({
               ) : (
                 <ThemedText
                   type="micro"
-                  style={{ color: palette.textMuted as string, paddingHorizontal: 4 }}
+                  style={{ color: palette.textMuted, paddingHorizontal: BrandSpacing.xs }}
                 >
                   {t("jobsTab.form.noSportResults")}
                 </ThemedText>
@@ -157,7 +152,6 @@ export function SportPickerSection({
 type ScheduleSectionProps = {
   draft: StudioDraft;
   locale: string;
-  palette: BrandPalette;
   onOpenDate: () => void;
   onOpenStartTime: () => void;
   onOpenEndTime: () => void;
@@ -166,16 +160,16 @@ type ScheduleSectionProps = {
 export function ScheduleSection({
   draft,
   locale,
-  palette,
   onOpenDate,
   onOpenStartTime,
   onOpenEndTime,
 }: ScheduleSectionProps) {
   const { t } = useTranslation();
+  const { color: palette } = useTheme();
 
   return (
-    <View style={{ gap: 12 }}>
-      <ThemedText type="defaultSemiBold" style={{ fontSize: 16, color: palette.text as string }}>
+    <View style={{ gap: BrandSpacing.md }}>
+      <ThemedText type="defaultSemiBold" style={{ color: palette.text }}>
         {t("jobsTab.form.schedule")}
       </ThemedText>
 
@@ -183,23 +177,23 @@ export function ScheduleSection({
         label={formatDateWithWeekday(draft.startTime, locale)}
         compact
         fullWidth
-        icon={<AppSymbol name="calendar" size={15} tintColor={palette.primary as string} />}
-        backgroundColor={palette.surfaceAlt as string}
-        selectedBackgroundColor={palette.surfaceAlt as string}
-        labelColor={palette.text as string}
-        selectedLabelColor={palette.text as string}
+        icon={<AppSymbol name="calendar" size={15} tintColor={palette.primary} />}
+        backgroundColor={palette.surfaceAlt}
+        selectedBackgroundColor={palette.surfaceAlt}
+        labelColor={palette.text}
+        selectedLabelColor={palette.text}
         onPress={onOpenDate}
       />
 
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
         <ChoicePill
           label={formatTime(draft.startTime, locale)}
           compact
-          icon={<AppSymbol name="clock" size={15} tintColor={palette.primary as string} />}
-          backgroundColor={palette.surfaceAlt as string}
-          selectedBackgroundColor={palette.surfaceAlt as string}
-          labelColor={palette.text as string}
-          selectedLabelColor={palette.text as string}
+          icon={<AppSymbol name="clock" size={15} tintColor={palette.primary} />}
+          backgroundColor={palette.surfaceAlt}
+          selectedBackgroundColor={palette.surfaceAlt}
+          labelColor={palette.text}
+          selectedLabelColor={palette.text}
           onPress={onOpenStartTime}
           style={{ flex: 1 }}
         />
@@ -215,18 +209,18 @@ export function ScheduleSection({
           <AppSymbol
             name={I18nManager.isRTL ? "arrow.left" : "arrow.right"}
             size={12}
-            tintColor={palette.textMuted as string}
+            tintColor={palette.textMuted}
           />
         </View>
 
         <ChoicePill
           label={formatTime(draft.endTime, locale)}
           compact
-          icon={<AppSymbol name="clock" size={15} tintColor={palette.primary as string} />}
-          backgroundColor={palette.surfaceAlt as string}
-          selectedBackgroundColor={palette.surfaceAlt as string}
-          labelColor={palette.text as string}
-          selectedLabelColor={palette.text as string}
+          icon={<AppSymbol name="clock" size={15} tintColor={palette.primary} />}
+          backgroundColor={palette.surfaceAlt}
+          selectedBackgroundColor={palette.surfaceAlt}
+          labelColor={palette.text}
+          selectedLabelColor={palette.text}
           onPress={onOpenEndTime}
           style={{ flex: 1 }}
         />
@@ -244,7 +238,7 @@ export function PayParticipantsSection({ draft, setDraft }: PayParticipantsSecti
   const { t } = useTranslation();
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.lg }}>
       <View style={{ flex: 1 }}>
         <KitTextField
           label={t("jobsTab.form.pay")}
@@ -275,34 +269,34 @@ export function PayParticipantsSection({ draft, setDraft }: PayParticipantsSecti
 type PostingOptionsSectionProps = {
   draft: StudioDraft;
   setDraft: React.Dispatch<React.SetStateAction<StudioDraft>>;
-  palette: BrandPalette;
 };
 
 type BoostToggleValue = keyof typeof BOOST_PRESET_VALUES | "none";
 
 const BOOST_OPTIONS = ["small", "medium", "large"] as const;
 
-export function PostingOptionsSection({ draft, setDraft, palette }: PostingOptionsSectionProps) {
+export function PostingOptionsSection({ draft, setDraft }: PostingOptionsSectionProps) {
   const { t } = useTranslation();
+  const { color: palette } = useTheme();
 
   return (
-    <View style={{ gap: 16 }}>
-      <View style={{ gap: 12 }}>
-        <ThemedText type="defaultSemiBold" style={{ fontSize: 16, color: palette.text as string }}>
+    <View style={{ gap: BrandSpacing.lg }}>
+      <View style={{ gap: BrandSpacing.md }}>
+        <ThemedText type="defaultSemiBold" style={{ color: palette.text }}>
           {t("jobsTab.form.closeApplications")}
         </ThemedText>
-        <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+        <ThemedText type="micro" style={{ color: palette.textMuted }}>
           {t("jobsTab.form.closeApplicationsDescription")}
         </ThemedText>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
           <ChoicePill
             label={t("jobsTab.form.useStudioDefault")}
             selected={draft.expiryOverrideMinutes === undefined}
             compact
-            backgroundColor={palette.surfaceAlt as string}
-            selectedBackgroundColor={palette.primary as string}
-            labelColor={palette.text as string}
-            selectedLabelColor={palette.onPrimary as string}
+            backgroundColor={palette.surfaceAlt}
+            selectedBackgroundColor={palette.primary}
+            labelColor={palette.text}
+            selectedLabelColor={palette.onPrimary}
             onPress={() =>
               setDraft((current) => ({
                 ...current,
@@ -316,10 +310,10 @@ export function PostingOptionsSection({ draft, setDraft, palette }: PostingOptio
               label={t("jobsTab.form.minutes", { value: minutes })}
               selected={draft.expiryOverrideMinutes === minutes}
               compact
-              backgroundColor={palette.surfaceAlt as string}
-              selectedBackgroundColor={palette.primary as string}
-              labelColor={palette.text as string}
-              selectedLabelColor={palette.onPrimary as string}
+              backgroundColor={palette.surfaceAlt}
+              selectedBackgroundColor={palette.primary}
+              labelColor={palette.text}
+              selectedLabelColor={palette.onPrimary}
               onPress={() =>
                 setDraft((current) => ({
                   ...current,
@@ -331,11 +325,11 @@ export function PostingOptionsSection({ draft, setDraft, palette }: PostingOptio
         </View>
       </View>
 
-      <View style={{ gap: 12 }}>
-        <ThemedText type="defaultSemiBold" style={{ fontSize: 16, color: palette.text as string }}>
+      <View style={{ gap: BrandSpacing.md }}>
+        <ThemedText type="defaultSemiBold" style={{ color: palette.text }}>
           {t("jobsTab.form.boostOnBoard")}
         </ThemedText>
-        <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+        <ThemedText type="micro" style={{ color: palette.textMuted }}>
           {t("jobsTab.form.boostOnBoardDescription")}
         </ThemedText>
         <KitSegmentedToggle<BoostToggleValue>
@@ -374,7 +368,7 @@ export function NotesSection({ draft, setDraft }: NotesSectionProps) {
       multiline
       numberOfLines={4}
       placeholder={t("jobsTab.form.notesPlaceholder")}
-      style={{ minHeight: 100, textAlignVertical: "top" }}
+      style={{ minHeight: BrandSpacing.multilineInputMinHeight, textAlignVertical: "top" }}
     />
   );
 }
@@ -382,14 +376,14 @@ export function NotesSection({ draft, setDraft }: NotesSectionProps) {
 type SubmitBarProps = {
   draft: StudioDraft;
   isSubmitting: boolean;
-  palette: BrandPalette;
   onPost: () => void;
 };
 
-export function SubmitBar({ draft, isSubmitting, palette, onPost }: SubmitBarProps) {
+export function SubmitBar({ draft, isSubmitting, onPost }: SubmitBarProps) {
   const { t } = useTranslation();
+  const { color: palette } = useTheme();
   return (
-    <View style={{ marginTop: 24, paddingBottom: 40 }}>
+    <View style={{ marginTop: BrandSpacing.xl, paddingBottom: 40 }}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={isSubmitting ? t("jobsTab.actions.posting") : t("jobsTab.actions.post")}
@@ -397,28 +391,28 @@ export function SubmitBar({ draft, isSubmitting, palette, onPost }: SubmitBarPro
         disabled={isSubmitting || !draft.sport}
         onPress={onPost}
         style={({ pressed }) => ({
-          minHeight: 56,
+          minHeight: BrandSpacing.controlLg,
           width: "100%",
-          borderRadius: 18,
+          borderRadius: BrandRadius.medium,
           borderCurve: "continuous",
           backgroundColor:
             isSubmitting || !draft.sport
-              ? (palette.primaryPressed as string)
+              ? palette.primaryPressed
               : pressed
-                ? (palette.primaryPressed as string)
-                : (palette.primary as string),
+                ? palette.primaryPressed
+                : palette.primary,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
-          gap: 10,
+          gap: BrandSpacing.sm,
           transform: [{ scale: pressed ? 0.992 : 1 }],
         })}
       >
-        <AppSymbol name="plus" size={18} tintColor={palette.onPrimary as string} />
+        <AppSymbol name="plus" size={18} tintColor={palette.onPrimary} />
         <Text
           style={{
-            color: palette.onPrimary as string,
-            fontSize: 16,
+            color: palette.onPrimary,
+            fontSize: BrandType.body.fontSize,
             fontWeight: "700",
             includeFontPadding: false,
           }}
@@ -436,7 +430,6 @@ type PickerDockProps = {
   mode: "date" | "time";
   display: "default" | "inline" | "spinner";
   minimumDate?: Date;
-  palette: BrandPalette;
   onChange: (_event: unknown, selectedDate?: Date) => void;
   onDone: () => void;
 };
@@ -447,14 +440,19 @@ export function PickerDock({
   mode,
   display,
   minimumDate,
-  palette,
   onChange,
   onDone,
 }: PickerDockProps) {
   const { t } = useTranslation();
   if (!visible) return null;
   return (
-    <View style={{ gap: 12, paddingHorizontal: 24, paddingBottom: 24 }}>
+    <View
+      style={{
+        gap: BrandSpacing.md,
+        paddingHorizontal: BrandSpacing.xl,
+        paddingBottom: BrandSpacing.xl,
+      }}
+    >
       <DateTimePicker
         value={value}
         mode={mode}
@@ -463,12 +461,7 @@ export function PickerDock({
         {...(minimumDate ? { minimumDate } : {})}
       />
       {Platform.OS === "ios" ? (
-        <ActionButton
-          label={t("common.done")}
-          onPress={onDone}
-          palette={palette}
-          tone="secondary"
-        />
+        <ActionButton label={t("common.done")} onPress={onDone} tone="secondary" />
       ) : null}
     </View>
   );

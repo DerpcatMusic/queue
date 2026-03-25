@@ -11,7 +11,6 @@ import { useProfileSubpageSheet } from "@/components/profile/profile-subpage-she
 import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
-import { useBrand } from "@/hooks/use-brand";
 import { isProfileImageUploadError, useProfileImageUpload } from "@/hooks/use-profile-image-upload";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 
@@ -42,7 +41,6 @@ function areSocialLinksEqual(a: ProfileSocialLinks, b: ProfileSocialLinks) {
 
 export default function InstructorProfileEditScreen() {
   const { t } = useTranslation();
-  const palette = useBrand();
   const router = useRouter();
   const { currentUser } = useUser();
   const collapsedSheetHeight = useProfileSubpageSheet({
@@ -154,7 +152,6 @@ export default function InstructorProfileEditScreen() {
   return (
     <View className="flex-1 bg-app-bg">
       <ProfileEditorForm
-        palette={palette}
         profileName={nameDraft || instructorSettings.displayName}
         roleLabel={t("profile.hero.instructorProfile")}
         profileImageUrl={profilePhotoUrl}

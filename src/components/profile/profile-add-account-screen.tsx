@@ -8,7 +8,6 @@ import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
-
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
@@ -21,10 +20,10 @@ import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconButton } from "@/components/ui/icon-button";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import {
   canUseNativeGoogleAuth,
   resolveGoogleNativeAuthConfig,
@@ -67,7 +66,7 @@ export function ProfileAddAccountScreen({
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useTranslation();
-  const palette = useBrand();
+  const { color: palette } = useTheme();
   const googleNativeAuthConfig = useMemo(resolveGoogleNativeAuthConfig, []);
   const pendingAuthHandoff = peekPendingPostSignOutAuthHandoff();
   const [step, setStep] = useState<Step>("email");
@@ -349,10 +348,9 @@ export function ProfileAddAccountScreen({
         label={t("profile.switcher.addAccountTitle")}
         description={t("profile.switcher.addAccountBody")}
         icon="person.badge.plus"
-        palette={palette}
       />
 
-      <ProfileSectionCard palette={palette}>
+      <ProfileSectionCard>
         <View
           style={{
             gap: BrandSpacing.xs,
@@ -373,15 +371,18 @@ export function ProfileAddAccountScreen({
             inputMode="email"
             placeholder={t("auth.emailPlaceholder")}
             style={{
-              ...BrandType.bodyMedium,
+              fontFamily: "Manrope_500Medium",
+              fontSize: 16,
+              fontWeight: "500",
+              lineHeight: 22,
               includeFontPadding: false,
             }}
           />
-          <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+          <ThemedText type="caption" style={{ color: palette.textMuted }}>
             {step === "code" ? normalizedEmail : t("profile.switcher.addAccountFieldHint")}
           </ThemedText>
           {errorMessage ? (
-            <ThemedText type="caption" style={{ color: palette.danger as string }}>
+            <ThemedText type="caption" style={{ color: palette.danger }}>
               {errorMessage}
             </ThemedText>
           ) : null}
@@ -394,7 +395,6 @@ export function ProfileAddAccountScreen({
                     void handleSendCode();
                   }}
                   disabled={isSubmitting || normalizedEmail.length === 0}
-                  palette={palette}
                   fullWidth
                   size="lg"
                 />
@@ -406,18 +406,21 @@ export function ProfileAddAccountScreen({
                     paddingVertical: BrandSpacing.xs,
                   }}
                 >
-                  <View style={{ flex: 1, height: 1, backgroundColor: palette.border as string }} />
+                  <View style={{ flex: 1, height: 1, backgroundColor: palette.border }} />
                   <Text
                     style={{
-                      ...BrandType.micro,
-                      color: palette.textMuted as string,
+                      fontFamily: "Manrope_400Regular",
+                      fontSize: 13,
+                      fontWeight: "400",
+                      lineHeight: 18,
+                      color: palette.textMuted,
                       letterSpacing: 0.7,
                       textTransform: "uppercase",
                     }}
                   >
                     {t("auth.or")}
                   </Text>
-                  <View style={{ flex: 1, height: 1, backgroundColor: palette.border as string }} />
+                  <View style={{ flex: 1, height: 1, backgroundColor: palette.border }} />
                 </View>
                 <View
                   style={{
@@ -428,7 +431,7 @@ export function ProfileAddAccountScreen({
                 >
                   <IconButton
                     accessibilityLabel={t("auth.signInWithGoogle")}
-                    icon={<FontAwesome5 name="google" size={24} color={palette.danger as string} />}
+                    icon={<FontAwesome5 name="google" size={24} color={palette.danger} />}
                     onPress={() => {
                       void handleOAuth("google");
                     }}
@@ -438,7 +441,7 @@ export function ProfileAddAccountScreen({
                   />
                   <IconButton
                     accessibilityLabel={t("auth.signInWithApple")}
-                    icon={<FontAwesome5 name="apple" size={28} color={palette.text as string} />}
+                    icon={<FontAwesome5 name="apple" size={28} color={palette.text} />}
                     onPress={() => {
                       void handleOAuth("apple");
                     }}
@@ -461,7 +464,10 @@ export function ProfileAddAccountScreen({
                   textContentType="oneTimeCode"
                   placeholder={t("auth.codePlaceholder")}
                   style={{
-                    ...BrandType.bodyMedium,
+                    fontFamily: "Manrope_500Medium",
+                    fontSize: 16,
+                    fontWeight: "500",
+                    lineHeight: 22,
                     includeFontPadding: false,
                     textAlign: "center",
                     letterSpacing: 4,
@@ -473,7 +479,6 @@ export function ProfileAddAccountScreen({
                     void handleVerifyCode();
                   }}
                   disabled={isSubmitting || !isCodeReady}
-                  palette={palette}
                   fullWidth
                   size="lg"
                 />
@@ -481,7 +486,6 @@ export function ProfileAddAccountScreen({
                   label={t("auth.backToSignInMethods")}
                   onPress={handleBackToMethods}
                   disabled={isSubmitting}
-                  palette={palette}
                   tone="secondary"
                   fullWidth
                   size="lg"
@@ -492,7 +496,6 @@ export function ProfileAddAccountScreen({
               label={t("common.cancel")}
               onPress={handleCancel}
               disabled={isSubmitting}
-              palette={palette}
               tone="secondary"
               fullWidth
               size="lg"

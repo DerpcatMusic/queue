@@ -5,7 +5,7 @@ import { View } from "react-native";
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
 import { GlobalTopSheetProvider } from "@/components/layout/top-sheet-registry";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import type { RoleTabRouteName } from "@/navigation/role-routes";
 import { getTabsForRole } from "@/navigation/tab-registry";
 import type { AppRole } from "@/navigation/types";
@@ -24,17 +24,13 @@ type RoleTabsLayoutProps = {
 };
 
 export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutProps) {
-  const palette = useBrand();
   const tabs = getTabsForRole(appRole);
-  const sceneBackgroundColor = palette.appBg as string;
-  const tabBarBackgroundColor = palette.surfaceElevated as string;
-  const defaultIconColor = palette.textMicro as string;
-  const selectedIconColor = palette.primary as string;
+  const { color } = useTheme();
 
   return (
     <ScrollSheetProvider>
       <GlobalTopSheetProvider>
-        <View style={{ flex: 1, backgroundColor: sceneBackgroundColor }}>
+        <View style={{ flex: 1, backgroundColor: color.appBg }}>
           <View
             pointerEvents="none"
             style={{
@@ -43,23 +39,23 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
               right: 0,
               bottom: 0,
               height: 144,
-              backgroundColor: tabBarBackgroundColor,
+              backgroundColor: color.surfaceElevated,
               zIndex: 0,
             }}
           />
           <GlobalTopSheet />
           <View style={{ flex: 1, zIndex: 2 }}>
             <NativeTabs
-              tintColor={selectedIconColor}
+              tintColor={color.primary}
               iconColor={{
-                default: defaultIconColor,
-                selected: selectedIconColor,
+                default: color.textMicro,
+                selected: color.primary,
               }}
-              backgroundColor={tabBarBackgroundColor}
-              badgeBackgroundColor={palette.primary as string}
-              badgeTextColor={palette.onPrimary as string}
-              indicatorColor={palette.primarySubtle as string}
-              shadowColor={palette.surface as string}
+              backgroundColor={color.surfaceElevated}
+              badgeBackgroundColor={color.primary}
+              badgeTextColor={color.onPrimary}
+              indicatorColor={color.primarySubtle}
+              shadowColor={color.surface}
               labelVisibilityMode="unlabeled"
               disableTransparentOnScrollEdge
             >
@@ -67,7 +63,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                 <NativeTabs.Trigger
                   key={tab.id}
                   name={tab.routeName}
-                  contentStyle={{ backgroundColor: sceneBackgroundColor }}
+                  contentStyle={{ backgroundColor: color.surfaceElevated }}
                 >
                   <NativeTabs.Trigger.Icon
                     md={tab.icon.md}

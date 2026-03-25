@@ -9,8 +9,8 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DEVICE_TIME_ZONE, MINUTE_MS, type StudioDraft, trimOptional } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
-import { createPerfTimer, logPerfSummary, recordPerfMetric } from "@/lib/perf-telemetry";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
+import { createPerfTimer, logPerfSummary, recordPerfMetric } from "@/lib/perf-telemetry";
 import {
   isPushRegistrationError,
   registerForPushNotificationsAsync,
@@ -226,7 +226,11 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
       setErrorMessage(t("jobsTab.errors.payRequired"));
       return;
     }
-    if (!draft.branchId) {
+    const resolvedBranchId =
+      draft.branchId ??
+      (studioBranches?.length === 1 ? (studioBranches[0]?.branchId ?? null) : null);
+
+    if (!resolvedBranchId) {
       setErrorMessage(t("jobsTab.errors.branchRequired"));
       return;
     }
@@ -256,7 +260,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     try {
       const note = trimOptional(draft.note);
       await postJob({
-        branchId: draft.branchId,
+        branchId: resolvedBranchId,
         sport: draft.sport,
         startTime: draft.startTime,
         endTime: draft.endTime,

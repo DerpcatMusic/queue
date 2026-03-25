@@ -11,10 +11,11 @@ import {
 } from "@/components/profile/profile-subpage-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { KitList, KitListItem } from "@/components/ui/kit";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
+import { BorderWidth } from "@/lib/design-system";
 import { formatDateTime } from "@/lib/jobs-utils";
 import {
   formatAgorotCurrency,
@@ -24,7 +25,7 @@ import {
 
 export default function ProfilePaymentsScreen() {
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
+  const { color } = useTheme();
   const locale = i18n.resolvedLanguage ?? "en";
   useProfileSubpageSheet({
     title: t("profile.navigation.paymentsPayouts"),
@@ -105,7 +106,6 @@ export default function ProfilePaymentsScreen() {
         viewerRole={role}
         items={rows}
         locale={locale}
-        palette={palette}
         title={t("profile.payments.recentActivity")}
         subtitle={
           role === "studio"
@@ -125,13 +125,13 @@ export default function ProfilePaymentsScreen() {
               accessibilityLabel={t("profile.payments.clearDetail")}
               onPress={() => setSelectedPaymentId(null)}
               style={({ pressed }) => ({
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 999,
+                paddingHorizontal: BrandSpacing.md,
+                paddingVertical: BrandSpacing.stackMicro,
+                borderRadius: BrandRadius.pill,
                 borderCurve: "continuous",
-                borderWidth: 1,
-                borderColor: pressed ? palette.borderStrong : palette.border,
-                backgroundColor: pressed ? palette.surfaceElevated : palette.surfaceAlt,
+                borderWidth: BorderWidth.thin,
+                borderColor: pressed ? color.borderStrong : color.border,
+                backgroundColor: pressed ? color.surfaceElevated : color.surfaceAlt,
               })}
             >
               <ThemedText type="caption" className="text-muted">

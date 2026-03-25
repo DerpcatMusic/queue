@@ -3,15 +3,14 @@ import { Text, View } from "react-native";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitStatusBadge } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 import type { ProfileHeroAction } from "./profile-hero-utils";
 
 type ProfileDesktopHeroPanelProps = {
   profileName: string;
   roleLabel: string;
   profileImageUrl?: string | null | undefined;
-  palette: BrandPalette;
   summary: string;
   statusLabel: string;
   statusTone?: "neutral" | "success" | "warning";
@@ -26,7 +25,6 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
   profileName,
   roleLabel,
   profileImageUrl,
-  palette,
   summary,
   statusLabel,
   statusTone = "neutral",
@@ -36,12 +34,14 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
   onOpenSwitcher,
   switcherActionLabel,
 }: ProfileDesktopHeroPanelProps) {
+  const theme = useTheme();
+
   return (
     <View
       style={{
         borderRadius: BrandRadius.soft,
         borderCurve: "continuous",
-        backgroundColor: palette.surface as string,
+        backgroundColor: theme.color.surface,
         paddingHorizontal: BrandSpacing.xl,
         paddingVertical: BrandSpacing.xl,
         gap: BrandSpacing.lg,
@@ -53,16 +53,18 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
         <ProfileAvatar
           imageUrl={profileImageUrl}
           fallbackName={profileName}
-          palette={palette}
           size={BrandSpacing.iconContainerLarge + BrandSpacing.xs + BrandSpacing.xs / 2}
           roundedSquare
         />
         <View style={{ flex: 1, gap: BrandSpacing.xs }}>
           <Text
             style={{
-              ...BrandType.micro,
-              color: palette.textMicro as string,
+              fontFamily: "Manrope_500Medium",
+              fontSize: 12,
+              fontWeight: "500",
               letterSpacing: 0.2,
+              lineHeight: 16,
+              color: theme.color.textMicro,
             }}
           >
             {roleLabel}
@@ -70,11 +72,12 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
           <Text
             numberOfLines={2}
             style={{
-              ...BrandType.display,
+              fontFamily: "Lexend_700Bold",
               fontSize: 34,
+              fontWeight: "700",
               lineHeight: 38,
               letterSpacing: -0.6,
-              color: palette.text as string,
+              color: theme.color.text,
             }}
           >
             {profileName}
@@ -93,8 +96,11 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
         {summary ? (
           <Text
             style={{
-              ...BrandType.body,
-              color: palette.textMuted as string,
+              fontFamily: "Manrope_400Regular",
+              fontSize: 16,
+              fontWeight: "400",
+              lineHeight: 22,
+              color: theme.color.textMuted,
             }}
           >
             {summary}
@@ -103,8 +109,11 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
         {metaLabel ? (
           <Text
             style={{
-              ...BrandType.caption,
-              color: palette.textMicro as string,
+              fontFamily: "Manrope_400Regular",
+              fontSize: 14,
+              fontWeight: "400",
+              lineHeight: 19,
+              color: theme.color.textMicro,
             }}
           >
             {metaLabel}
@@ -114,19 +123,13 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
 
       <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
         <View style={{ flex: 1 }}>
-          <ActionButton
-            label={primaryAction.label}
-            onPress={primaryAction.onPress}
-            palette={palette}
-            fullWidth
-          />
+          <ActionButton label={primaryAction.label} onPress={primaryAction.onPress} fullWidth />
         </View>
         {onOpenSwitcher ? (
           <View style={{ flex: 1 }}>
             <ActionButton
               label={switcherActionLabel ?? "Switch account"}
               onPress={onOpenSwitcher}
-              palette={palette}
               tone="secondary"
               fullWidth
             />
@@ -137,7 +140,6 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
             <ActionButton
               label={secondaryAction.label}
               onPress={secondaryAction.onPress}
-              palette={palette}
               tone="secondary"
               fullWidth
             />

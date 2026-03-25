@@ -3,7 +3,8 @@ import { Pressable, Text, View } from "react-native";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
@@ -12,30 +13,30 @@ const PROFILE_SECTION_HEADER_ICON_SIZE = 14;
 
 const PROFILE_SECTION_CARD_MARGIN_HORIZONTAL = BrandSpacing.inset;
 
-const PROFILE_SETTING_ROW_GAP = 14;
-const PROFILE_SETTING_ROW_PADDING_HORIZONTAL = 18;
+const PROFILE_SETTING_ROW_GAP = BrandSpacing.component;
+const PROFILE_SETTING_ROW_PADDING_HORIZONTAL = BrandSpacing.insetSoft;
 const PROFILE_SETTING_ROW_PADDING_VERTICAL = 15;
 const PROFILE_SETTING_ROW_ICON_SIZE = BrandSpacing.iconContainer;
-const PROFILE_SETTING_ROW_SECONDARY_GAP = 5;
+const PROFILE_SETTING_ROW_SECONDARY_GAP = BrandSpacing.stackHair;
 const PROFILE_SETTING_ROW_VALUE_GAP = BrandSpacing.inset;
-const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = 56;
-const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = 18;
-const PROFILE_SETTING_ROW_DIVIDER_RIGHT = 18;
+const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = BrandSpacing.iconContainer + BrandSpacing.inset;
+const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.insetSoft;
+const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.insetSoft;
 const PROFILE_ICON_BUTTON_SIZE = 40;
 
 export function ProfileSectionHeader({
   label,
   description,
   icon,
-  palette,
   flush = false,
 }: {
   label: string;
   description?: string;
   icon?: ProfileSymbolName;
-  palette: BrandPalette;
   flush?: boolean;
 }) {
+  const theme = useTheme();
+
   return (
     <View className={`gap-xs pt-section pb-stack-tight ${flush ? "px-0" : "px-section"}`}>
       <View className="flex-row items-center gap-sm">
@@ -43,28 +44,15 @@ export function ProfileSectionHeader({
           <IconSymbol
             name={icon}
             size={PROFILE_SECTION_HEADER_ICON_SIZE}
-            color={palette.textMuted as string}
+            color={theme.color.textMuted}
           />
         ) : null}
-        <Text
-          className="text-muted"
-          style={{
-            ...BrandType.micro,
-            letterSpacing: BrandType.micro.letterSpacing,
-            textTransform: "uppercase",
-          }}
-        >
+        <Text className="text-muted" style={[BrandType.micro, { textTransform: "uppercase" }]}>
           {label}
         </Text>
       </View>
       {description ? (
-        <Text
-          className="text-muted"
-          style={{
-            ...BrandType.caption,
-            maxWidth: 540,
-          }}
-        >
+        <Text className="text-muted" style={[BrandType.caption, { maxWidth: 540 }]}>
           {description}
         </Text>
       ) : null}
@@ -77,7 +65,6 @@ export function ProfileSectionCard({
   style,
 }: {
   children: ReactNode;
-  palette?: BrandPalette;
   style?: ComponentProps<typeof View>["style"];
 }) {
   return (
@@ -105,16 +92,15 @@ export function ProfileIconButton({
   icon,
   label,
   onPress,
-  palette,
   tone = "neutral",
 }: {
   icon: ProfileSymbolName;
   label: string;
   onPress: () => void;
-  palette: BrandPalette;
   tone?: "neutral" | "accent";
 }) {
-  const iconColor = tone === "accent" ? (palette.primary as string) : (palette.text as string);
+  const theme = useTheme();
+  const iconColor = tone === "accent" ? theme.color.primary : theme.color.text;
 
   return (
     <IconButton
@@ -134,7 +120,6 @@ export function ProfileSettingRow({
   icon,
   accessory,
   onPress,
-  palette,
   tone = "default",
   accentColor,
   showDivider = false,
@@ -145,40 +130,40 @@ export function ProfileSettingRow({
   icon?: ProfileSymbolName;
   accessory?: ReactNode;
   onPress?: () => void;
-  palette: BrandPalette;
   tone?: "default" | "danger" | "accent";
   accentColor?: string;
   showDivider?: boolean;
 }) {
+  const theme = useTheme();
   const { resolvedScheme } = useThemePreference();
-  const resolvedAccentColor = accentColor ?? palette.didit.accent;
+  const resolvedAccentColor = accentColor ?? theme.color.tertiary;
 
   const secondaryColor =
     tone === "danger"
-      ? (palette.danger as string)
+      ? theme.color.danger
       : tone === "accent"
         ? resolvedScheme === "dark"
-          ? (palette.accentTextDark as string)
-          : (palette.accentTextLight as string)
-        : (palette.textMuted as string);
+          ? theme.color.text
+          : theme.color.text
+        : theme.color.textMuted;
 
   const iconBackground =
     tone === "danger"
-      ? (palette.dangerSubtle as string)
+      ? theme.color.dangerSubtle
       : tone === "accent"
         ? resolvedScheme === "dark"
-          ? (palette.accentDark as string)
-          : (palette.accentLight as string)
-        : (palette.surfaceAlt as string);
+          ? theme.color.primarySubtle
+          : theme.color.primarySubtle
+        : theme.color.surfaceAlt;
 
   const iconColor =
     tone === "danger"
-      ? (palette.danger as string)
+      ? theme.color.danger
       : tone === "accent"
         ? resolvedAccentColor
-        : (palette.primary as string);
+        : theme.color.primary;
 
-  const borderColor = tone === "danger" ? (palette.danger as string) : (palette.border as string);
+  const borderColor = tone === "danger" ? theme.color.danger : theme.color.border;
 
   const content = (
     <View>
@@ -214,13 +199,24 @@ export function ProfileSettingRow({
           <Text
             className="text-brand"
             style={{
-              ...BrandType.bodyStrong,
+              fontFamily: "Manrope_600SemiBold",
+              fontSize: 16,
+              fontWeight: "600",
+              lineHeight: 22,
             }}
           >
             {title}
           </Text>
           {subtitle ? (
-            <Text style={{ ...BrandType.caption }} className="text-muted">
+            <Text
+              style={{
+                fontFamily: "Manrope_400Regular",
+                fontSize: 14,
+                fontWeight: "400",
+                lineHeight: 19,
+              }}
+              className="text-muted"
+            >
               {subtitle}
             </Text>
           ) : null}
@@ -240,7 +236,10 @@ export function ProfileSettingRow({
               numberOfLines={1}
               className="text-muted"
               style={{
-                ...BrandType.bodyMedium,
+                fontFamily: "Manrope_500Medium",
+                fontSize: 16,
+                fontWeight: "500",
+                lineHeight: 22,
                 textAlign: "right",
               }}
             >

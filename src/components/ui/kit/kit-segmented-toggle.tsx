@@ -1,7 +1,7 @@
 import { Pressable, type StyleProp, Text, View, type ViewStyle } from "react-native";
 
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import { triggerSelectionHaptic } from "./native-interaction";
 
 type Option<T extends string> = {
@@ -23,17 +23,16 @@ export function KitSegmentedToggle<T extends string>({
   options,
   style,
 }: KitSegmentedToggleProps<T>) {
-  const palette = useBrand();
-
+  const theme = useTheme();
   return (
     <View
       className="flex-row overflow-hidden"
       style={[
         {
-          borderRadius: BrandRadius.button,
+          borderRadius: BrandRadius.md,
           padding: BrandSpacing.xs,
           gap: BrandSpacing.xs,
-          backgroundColor: palette.primarySubtle as string,
+          backgroundColor: theme.color.primarySubtle,
         },
         style,
       ]}
@@ -52,26 +51,27 @@ export function KitSegmentedToggle<T extends string>({
             }}
             style={({ pressed }) => ({
               flex: 1,
-              minHeight: BrandSpacing.iconContainer + 10,
-              borderRadius: BrandRadius.buttonSubtle,
+              minHeight: BrandSpacing.controlMd,
+              borderRadius: BrandRadius.md,
               borderCurve: "continuous",
               backgroundColor: option.disabled
-                ? (palette.surface as string)
+                ? theme.color.surface
                 : pressed
                   ? selected
-                    ? (palette.primaryPressed as string)
-                    : (palette.surfaceElevated as string)
+                    ? theme.color.primaryPressed
+                    : theme.color.surfaceElevated
                   : selected
-                    ? (palette.primary as string)
-                    : (palette.surfaceAlt as string),
+                    ? theme.color.primary
+                    : theme.color.surfaceAlt,
               alignItems: "center",
               justifyContent: "center",
             })}
           >
             <Text
+              className="font-label text-micro font-medium"
               style={{
-                ...BrandType.micro,
-                color: selected ? (palette.onPrimary as string) : (palette.primary as string),
+                fontFamily: BrandType.micro.fontFamily,
+                color: selected ? theme.color.onPrimary : theme.color.primary,
                 fontWeight: "700",
                 includeFontPadding: false,
               }}

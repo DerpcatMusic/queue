@@ -17,10 +17,10 @@ import {
 import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAppInsets } from "@/hooks/use-app-insets";
+import { useTheme } from "@/hooks/use-theme";
 
 type UpcomingSession = {
   applicationId: string;
@@ -38,7 +38,6 @@ type InstructorHomeContentProps = {
   lessonsCompleted: number;
   pendingApplications: number;
   availableJobs?: InstructorMarketplaceJob[] | undefined;
-  palette: BrandPalette;
   t: TFunction;
   totalEarningsAgorot: number;
   upcomingSessions: UpcomingSession[];
@@ -46,18 +45,31 @@ type InstructorHomeContentProps = {
   onOpenStudio: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
 };
 
-function InstructorJobsEmptyState({ palette, t }: { palette: BrandPalette; t: TFunction }) {
+function InstructorJobsEmptyState({ t }: { t: TFunction }) {
+  const { color: palette } = useTheme();
   return (
-    <HomeSurface palette={palette} style={{ padding: BrandSpacing.inset }}>
+    <HomeSurface style={{ padding: BrandSpacing.inset }}>
       <View style={{ alignItems: "center", gap: BrandSpacing.stackTight }}>
-        <IconSymbol name="briefcase.fill" size={28} color={palette.textMuted as string} />
-        <Text style={{ ...BrandType.title, color: palette.text as string }}>
+        <IconSymbol name="briefcase.fill" size={28} color={palette.textMuted} />
+        <Text
+          style={{
+            fontFamily: "Lexend_500Medium",
+            fontSize: 20,
+            fontWeight: "500",
+            letterSpacing: -0.24,
+            lineHeight: 26,
+            color: palette.text,
+          }}
+        >
           {t("home.instructor.noJobsAvailable")}
         </Text>
         <Text
           style={{
-            ...BrandType.caption,
-            color: palette.textMuted as string,
+            fontFamily: "Manrope_400Regular",
+            fontSize: 14,
+            fontWeight: "400",
+            lineHeight: 19,
+            color: palette.textMuted,
             textAlign: "center",
           }}
         >
@@ -75,13 +87,13 @@ export function InstructorHomeContent({
   lessonsCompleted,
   pendingApplications,
   availableJobs,
-  palette,
   t,
   totalEarningsAgorot,
   upcomingSessions,
   onOpenJobs,
   onOpenStudio,
 }: InstructorHomeContentProps) {
+  const { color: palette } = useTheme();
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const { safeTop } = useAppInsets();
   const layout = useHomeDashboardLayout();
@@ -135,7 +147,6 @@ export function InstructorHomeContent({
                   count={visibleAvailableJobs.length}
                   scrollX={scrollX}
                   cardWidth={cardWidth}
-                  palette={palette}
                 />
 
                 {/* Horizontal carousel */}
@@ -161,7 +172,6 @@ export function InstructorHomeContent({
                         job={job}
                         locale={locale}
                         zoneLanguage={zoneLanguage}
-                        palette={palette}
                         now={now}
                         onApply={() => onOpenStudio(job.studioId, job.jobId)}
                         onOpenStudio={onOpenStudio}
@@ -172,7 +182,7 @@ export function InstructorHomeContent({
                 </Animated.ScrollView>
               </Animated.View>
             ) : (
-              <InstructorJobsEmptyState palette={palette} t={t} />
+              <InstructorJobsEmptyState t={t} />
             )}
           </View>
 
@@ -182,14 +192,12 @@ export function InstructorHomeContent({
               <HomeSignalTile
                 label={t("home.actions.jobsTitle")}
                 value={String(availableJobsCount)}
-                palette={palette}
                 tone="accent"
                 icon="briefcase.fill"
               />
               <HomeSignalTile
                 label={t("home.instructor.pendingApps")}
                 value={String(pendingApplications)}
-                palette={palette}
                 tone="warning"
                 icon="clock.badge.checkmark"
               />
@@ -198,14 +206,12 @@ export function InstructorHomeContent({
               <HomeSignalTile
                 label={t("home.performance.earnings")}
                 value={earningsLabel}
-                palette={palette}
                 tone="success"
                 icon="banknote"
               />
               <HomeSignalTile
                 label={t("home.shared.jobsFilled")}
                 value={completionLabel}
-                palette={palette}
                 tone="accent"
                 icon="checkmark.circle.fill"
               />
@@ -229,7 +235,6 @@ export function InstructorHomeContent({
               startTime: session.startTime,
               zone: session.zone,
             }))}
-            palette={palette}
             t={t}
             locale={locale}
             maxItems={layout.isWideWeb ? 8 : 5}

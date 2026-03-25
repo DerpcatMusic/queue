@@ -25,7 +25,7 @@ import {
   useResolvedTabSheetConfig,
 } from "@/components/layout/top-sheet-registry";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import { getFallbackSheetColors, resolveTopSheetRouteTab } from "./global-top-sheet.helpers";
 import { getTopSheetStepHeights } from "./top-sheet.helpers";
 
@@ -40,10 +40,10 @@ import { getTopSheetStepHeights } from "./top-sheet.helpers";
  * - Reports its collapsed height to ScrollSheetProvider
  */
 export function GlobalTopSheet() {
+  const theme = useTheme();
   const pathname = usePathname();
   const { safeBottom, safeTop } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
-  const palette = useBrand();
   const rootStyle = Platform.OS === "web" ? undefined : styles.overlayRoot;
   const reduceMotionEnabled = useReducedMotion();
 
@@ -59,10 +59,10 @@ export function GlobalTopSheet() {
   const measuredHeightRef = useRef<number | null>(null);
   const transitionKey = activeRouteKey ?? activeTabId ?? activeConfig?.tabId ?? "global-top-sheet";
   const fallbackColors = activeConfig
-    ? getFallbackSheetColors(activeConfig.tabId, palette)
+    ? getFallbackSheetColors(activeConfig.tabId)
     : {
-        backgroundColor: palette.primary as string,
-        topInsetColor: palette.primary as string,
+        backgroundColor: theme.color.primary,
+        topInsetColor: theme.color.primary,
       };
 
   const baseSheetProps = activeConfig

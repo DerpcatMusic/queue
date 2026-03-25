@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { KitFloatingBadge } from "@/components/ui/kit/kit-floating-badge";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 
 const SHEET_EXPANDED_CONTENT_HEIGHT = 84;
 const SHEET_CONTENT_GAP = BrandSpacing.sm;
@@ -23,7 +23,6 @@ type HomeHeaderSheetProps = {
   displayName: string;
   subtitle?: string;
   profileImageUrl?: string | null | undefined;
-  palette: BrandPalette;
   isVerified?: boolean;
   onPressAvatar?: (() => void) | undefined;
 };
@@ -32,10 +31,10 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
   displayName,
   subtitle,
   profileImageUrl,
-  palette,
   isVerified = false,
   onPressAvatar,
 }: HomeHeaderSheetProps) {
+  const { color: palette } = useTheme();
   const { t } = useTranslation();
 
   return (
@@ -55,10 +54,11 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
         <Text
           numberOfLines={2}
           style={{
-            ...BrandType.heading,
+            fontFamily: "Lexend_600SemiBold",
             fontSize: 28,
+            fontWeight: "600",
             lineHeight: 32,
-            color: palette.onPrimary as string,
+            color: palette.onPrimary,
             letterSpacing: -0.3,
             paddingTop: 2,
           }}
@@ -69,8 +69,11 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
         {subtitle ? (
           <Text
             style={{
-              ...BrandType.body,
-              color: palette.onPrimary as string,
+              fontFamily: "Manrope_400Regular",
+              fontSize: 16,
+              fontWeight: "400",
+              lineHeight: 22,
+              color: palette.onPrimary,
               marginTop: 2,
             }}
           >
@@ -90,7 +93,6 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
           <ProfileAvatar
             imageUrl={profileImageUrl}
             fallbackName={displayName}
-            palette={palette}
             size={68}
             roundedSquare
           />

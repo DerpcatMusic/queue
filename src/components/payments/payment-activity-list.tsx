@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
-import type { BrandPalette } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { isSportType, toSportLabel } from "@/convex/constants";
+import { useTheme } from "@/hooks/use-theme";
 import { formatDateTime } from "@/lib/jobs-utils";
 import {
   formatAgorotCurrency,
@@ -41,40 +41,35 @@ type PaymentActivityListProps = {
   viewerRole: "studio" | "instructor";
   items: PaymentActivityItem[];
   locale: string;
-  palette: BrandPalette;
   title: string;
   subtitle?: string;
   emptyLabel: string;
   onSelectPaymentId?: (paymentId: Id<"payments">) => void;
 };
 
-function StatusDot({ tone, palette }: { tone: StatusTone; palette: BrandPalette }) {
-  const colors: Record<StatusTone, string> = {
-    success: palette.success as string,
-    warning: palette.warning as string,
-    danger: palette.danger as string,
-    primary: palette.primary as string,
-    muted: palette.textMuted as string,
-  };
-  return (
-    <View
-      className="size-2 rounded-full"
-      style={{ backgroundColor: colors[tone] ?? colors.muted }}
-    />
-  );
+function StatusDot({ color }: { color: string }) {
+  return <View className="size-2 rounded-full" style={{ backgroundColor: color }} />;
 }
 
 export function PaymentActivityList({
   viewerRole,
   items,
   locale,
-  palette,
   title,
   subtitle,
   emptyLabel,
   onSelectPaymentId,
 }: PaymentActivityListProps) {
   const { t } = useTranslation();
+  const { color: palette } = useTheme();
+
+  const statusColors: Record<StatusTone, string> = {
+    success: palette.success,
+    warning: palette.warning,
+    danger: palette.danger,
+    primary: palette.primary,
+    muted: palette.textMuted,
+  };
   return (
     <View className="gap-sm">
       <View className="flex-row items-center justify-between px-md">
@@ -127,7 +122,7 @@ export function PaymentActivityList({
                 })}
               >
                 <View className="flex-1 flex-row items-center gap-md">
-                  <StatusDot tone={getPaymentStatusTone(item.payment.status)} palette={palette} />
+                  <StatusDot color={statusColors[getPaymentStatusTone(item.payment.status)]} />
                   <View style={{ flex: 1 }}>
                     <ThemedText type="bodyStrong">{sportLabel}</ThemedText>
                     <ThemedText type="caption" className="text-muted">

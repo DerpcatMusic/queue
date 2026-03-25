@@ -22,12 +22,12 @@ import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 
 export default function SportsScreen() {
   const { t } = useTranslation();
-  const palette = useBrand();
   const router = useRouter();
+  const { color } = useTheme();
   const { overlayBottom } = useAppInsets();
   const { currentUser } = useUser();
   useProfileSubpageSheet({
@@ -139,29 +139,13 @@ export default function SportsScreen() {
         >
           <View className="flex-row items-start gap-stack">
             <View className="flex-1 gap-stack-tight min-w-0">
-              <Text
-                className="text-text-muted"
-                style={{
-                  ...BrandType.micro,
-                  letterSpacing: 0.8,
-                }}
-              >
-                {t("profile.settings.sports.title").toUpperCase()}
+              <Text className="text-text-muted" style={BrandType.radarLabel}>
+                {t("profile.settings.sports.title")}
               </Text>
-              <Text
-                className="text-text"
-                style={{
-                  ...BrandType.heading,
-                }}
-              >
+              <Text className="text-text" style={BrandType.heading}>
                 {heroTitle}
               </Text>
-              <Text
-                className="text-text-muted"
-                style={{
-                  ...BrandType.body,
-                }}
-              >
+              <Text className="text-text-muted" style={BrandType.body}>
                 {heroBody}
               </Text>
             </View>
@@ -173,7 +157,7 @@ export default function SportsScreen() {
                 borderCurve: "continuous",
               }}
             >
-              <IconSymbol name="sparkles" size={22} color="#8B5CF6" />
+              <IconSymbol name="sparkles" size={22} color={color.primary} />
             </View>
           </View>
 
@@ -183,13 +167,11 @@ export default function SportsScreen() {
               value={t("profile.settings.sports.selected", {
                 count: sports.length,
               })}
-              palette={palette}
               tone="accent"
             />
             <StatusSignal
               label={t("profile.sports.signalState")}
               value={hasChanges ? t("profile.sports.stateUnsaved") : t("profile.sports.stateLive")}
-              palette={palette}
             />
           </View>
         </View>
@@ -199,12 +181,10 @@ export default function SportsScreen() {
             label={t("profile.sports.boardLabel")}
             description={t("profile.sports.boardBody")}
             icon="sparkles"
-            palette={palette}
             flush
           />
-          <ProfileSectionCard palette={palette} style={{ marginHorizontal: 0 }}>
+          <ProfileSectionCard style={{ marginHorizontal: 0 }}>
             <SportsMultiSelect
-              palette={palette}
               selectedSports={sports}
               onToggleSport={toggleSport}
               searchPlaceholder={t("profile.settings.sports.searchPlaceholder")}
@@ -223,13 +203,7 @@ export default function SportsScreen() {
               borderCurve: "continuous",
             }}
           >
-            <Text
-              selectable
-              className="text-danger"
-              style={{
-                ...BrandType.bodyMedium,
-              }}
-            >
+            <Text selectable className="text-danger" style={BrandType.bodyMedium}>
               {errorMessage}
             </Text>
           </View>
@@ -250,13 +224,11 @@ export default function SportsScreen() {
             void onSave();
           }}
           disabled={isSaving || !hasChanges}
-          palette={palette}
           fullWidth
         />
         <ActionButton
           label={t("common.cancel")}
           onPress={() => router.back()}
-          palette={palette}
           tone="secondary"
           fullWidth
         />

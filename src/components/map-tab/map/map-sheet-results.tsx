@@ -3,11 +3,14 @@ import { FlatList, Pressable, Text, View } from "react-native";
 import type { ZoneCityListItem } from "@/components/map-tab/zone-city-tree";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useIsRtl } from "@/hooks/use-is-rtl";
+import { useTheme } from "@/hooks/use-theme";
 
 const MAP_RESULT_INDENT = BrandSpacing.xl + BrandSpacing.lg;
 const MAP_RESULT_RADIUS = BrandRadius.card - BrandSpacing.md;
+const MAP_RESULT_STATUS_DOT_SIZE = BrandSpacing.statusDot;
+const MAP_RESULT_ERROR_RADIUS = BrandRadius.md;
 
 type MapSheetResultsProps = {
   isVisible: boolean;
@@ -15,7 +18,6 @@ type MapSheetResultsProps = {
   zoneCityItems: ZoneCityListItem[];
   zoneLanguage: "en" | "he";
   zoneModeActive: boolean;
-  palette: BrandPalette;
   onPressZone: (zoneId: string) => void;
   onPressCity: (cityKey: string) => void;
   onToggleCityExpanded: (cityKey: string) => void;
@@ -27,13 +29,13 @@ export function MapSheetResults({
   zoneCityItems,
   zoneLanguage,
   zoneModeActive,
-  palette,
   onPressZone,
   onPressCity,
   onToggleCityExpanded,
 }: MapSheetResultsProps) {
   const { t } = useTranslation();
   const isRtl = useIsRtl();
+  const { color: palette } = useTheme();
 
   if (!isVisible) {
     return null;
@@ -44,11 +46,11 @@ export function MapSheetResults({
       {saveError ? (
         <View
           style={{
-            borderRadius: BrandRadius.card - BrandSpacing.sm,
+            borderRadius: MAP_RESULT_ERROR_RADIUS,
             borderCurve: "continuous",
             paddingHorizontal: BrandSpacing.lg,
             paddingVertical: BrandSpacing.md,
-            backgroundColor: palette.dangerSubtle as string,
+            backgroundColor: palette.dangerSubtle,
           }}
         >
           <ThemedText selectable style={{ color: palette.danger }}>
@@ -75,16 +77,26 @@ export function MapSheetResults({
             style={{
               borderRadius: 20,
               borderCurve: "continuous",
-              paddingHorizontal: BrandSpacing.lg + BrandSpacing.xs / 2,
+              paddingHorizontal: BrandSpacing.insetSoft,
               paddingVertical: BrandSpacing.lg,
               gap: BrandSpacing.xs,
-              backgroundColor: palette.surfaceAlt as string,
+              backgroundColor: palette.surfaceAlt,
             }}
           >
-            <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
+            <Text
+              style={{
+                ...BrandType.bodyStrong,
+                color: palette.text,
+              }}
+            >
               {t("mapTab.mobile.noMatchingCities")}
             </Text>
-            <Text style={{ ...BrandType.caption, color: palette.textMuted as string }}>
+            <Text
+              style={{
+                ...BrandType.caption,
+                color: palette.textMuted,
+              }}
+            >
               {t("mapTab.mobile.noMatchingCitiesHint")}
             </Text>
           </View>
@@ -99,9 +111,7 @@ export function MapSheetResults({
                   gap: BrandSpacing.md,
                   borderRadius: MAP_RESULT_RADIUS,
                   borderCurve: "continuous",
-                  backgroundColor: item.selected
-                    ? (palette.primarySubtle as string)
-                    : (palette.surfaceAlt as string),
+                  backgroundColor: item.selected ? palette.primarySubtle : palette.surfaceAlt,
                 }}
               >
                 <Pressable
@@ -119,24 +129,27 @@ export function MapSheetResults({
                 >
                   <View
                     style={{
-                      width: BrandSpacing.sm - 2,
-                      height: BrandSpacing.sm - 2,
-                      borderRadius: (BrandSpacing.sm - 2) / 2,
-                      backgroundColor: item.selected
-                        ? (palette.primary as string)
-                        : (palette.textMicro as string),
+                      width: MAP_RESULT_STATUS_DOT_SIZE,
+                      height: MAP_RESULT_STATUS_DOT_SIZE,
+                      borderRadius: BrandRadius.statusDot,
+                      backgroundColor: item.selected ? palette.primary : palette.textMicro,
                     }}
                   />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ ...BrandType.caption, color: palette.text as string }}>
+                    <Text
+                      style={{
+                        ...BrandType.caption,
+                        color: palette.text,
+                      }}
+                    >
                       {item.zone.variantLabel[zoneLanguage]}
                     </Text>
                   </View>
                   {item.selected ? (
                     <IconSymbol
                       name="checkmark.circle.fill"
-                      size={18}
-                      color={palette.primary as string}
+                      size={BrandSpacing.iconSm}
+                      color={palette.primary}
                     />
                   ) : null}
                 </Pressable>
@@ -168,10 +181,10 @@ export function MapSheetResults({
                 gap: BrandSpacing.md,
                 backgroundColor:
                   zoneModeActive && isFullySelected
-                    ? (palette.primarySubtle as string)
+                    ? palette.primarySubtle
                     : isPartiallySelected
-                      ? (palette.primarySubtle as string)
-                      : (palette.surfaceAlt as string),
+                      ? palette.primarySubtle
+                      : palette.surfaceAlt,
                 borderRadius: MAP_RESULT_RADIUS,
                 borderCurve: "continuous",
               }}
@@ -193,10 +206,7 @@ export function MapSheetResults({
                     numberOfLines={1}
                     style={{
                       ...BrandType.bodyMedium,
-                      color:
-                        zoneModeActive && isFullySelected
-                          ? (palette.primary as string)
-                          : (palette.text as string),
+                      color: zoneModeActive && isFullySelected ? palette.primary : palette.text,
                     }}
                   >
                     {item.group.cityLabel[zoneLanguage]}
@@ -206,10 +216,10 @@ export function MapSheetResults({
                       style={{
                         ...BrandType.caption,
                         color: isPartiallySelected
-                          ? (palette.primary as string)
+                          ? palette.primary
                           : zoneModeActive && isFullySelected
-                            ? (palette.primary as string)
-                            : (palette.textMuted as string),
+                            ? palette.primary
+                            : palette.textMuted,
                       }}
                     >
                       {summary}
@@ -219,14 +229,14 @@ export function MapSheetResults({
                 {zoneModeActive && isFullySelected ? (
                   <IconSymbol
                     name="checkmark.circle.fill"
-                    size={18}
-                    color={palette.primary as string}
+                    size={BrandSpacing.iconSm}
+                    color={palette.primary}
                   />
                 ) : isPartiallySelected ? (
                   <IconSymbol
                     name="minus.circle.fill"
-                    size={18}
-                    color={palette.primary as string}
+                    size={BrandSpacing.iconSm}
+                    color={palette.primary}
                   />
                 ) : null}
               </Pressable>
@@ -242,8 +252,8 @@ export function MapSheetResults({
                 >
                   <IconSymbol
                     name={item.expanded ? "chevron.down" : isRtl ? "chevron.left" : "chevron.right"}
-                    size={15}
-                    color={palette.textMuted as string}
+                    size={BrandSpacing.iconSm}
+                    color={palette.textMuted}
                   />
                 </Pressable>
               ) : null}

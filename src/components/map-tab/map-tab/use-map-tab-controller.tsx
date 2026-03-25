@@ -16,7 +16,7 @@ import { ZONE_OPTIONS } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { MapSheetHeader } from "./map-sheet-header";
 import {
@@ -43,7 +43,7 @@ for (const group of STATIC_ZONE_CITY_GROUPS) {
 
 export function useMapTabController() {
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
+  const theme = useTheme();
   const { resolvedScheme } = useThemePreference();
   const mapPalette = getMapBrandPalette(resolvedScheme);
   const { overlayBottom } = useAppInsets();
@@ -359,8 +359,6 @@ export function useMapTabController() {
         zoneCityItems={zoneCityItems}
         zoneLanguage={zoneLanguage}
         zoneModeActive={zoneModeActive}
-        palette={palette}
-        mapPalette={mapPalette}
         onPressZone={handleZoneResultPress}
         onPressCity={handleCityResultPress}
         onToggleCityExpanded={toggleCityExpanded}
@@ -370,8 +368,6 @@ export function useMapTabController() {
       isSheetExpanded,
       handleCityResultPress,
       handleZoneResultPress,
-      mapPalette,
-      palette,
       saveError,
       toggleCityExpanded,
       zoneCityItems,
@@ -388,7 +384,6 @@ export function useMapTabController() {
             focusZoneId={focusZoneId}
             onChangeSearch={handleMapSheetSearchChange}
             onFocusSearch={openSearchSheet}
-            palette={palette}
             mapPalette={mapPalette}
             selectedZones={selectedZones}
             onPressZone={setFocusZoneId}
@@ -400,8 +395,8 @@ export function useMapTabController() {
         revealOnExpand: mapExpandedResults,
         activeStep: sheetStep,
         onStepChange: handleSheetStepChange,
-        backgroundColor: palette.surface as string,
-        topInsetColor: palette.surface as string,
+        backgroundColor: theme.color.surface,
+        topInsetColor: theme.color.surface,
         padding: {
           vertical: 2,
           horizontal: BrandSpacing.lg,
@@ -413,8 +408,8 @@ export function useMapTabController() {
       initialStep: 0,
       activeStep: sheetStep,
       expandMode: "overlay" as const,
-      backgroundColor: palette.surface as string,
-      topInsetColor: palette.surface as string,
+      backgroundColor: theme.color.surface,
+      topInsetColor: theme.color.surface,
     }),
     [
       focusZoneId,
@@ -423,10 +418,10 @@ export function useMapTabController() {
       mapExpandedResults,
       mapPalette,
       openSearchSheet,
-      palette,
       selectedZones,
       sheetStep,
       t,
+      theme,
       zoneLanguage,
       zoneSearch,
     ],
@@ -454,7 +449,6 @@ export function useMapTabController() {
     studios: visibleStudioMarkers,
     noopMapPress,
     overlayBottom,
-    palette,
     pendingChangeCount,
     persistedZoneIds,
     remoteZones,

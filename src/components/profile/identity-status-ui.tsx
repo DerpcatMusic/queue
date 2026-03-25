@@ -1,5 +1,5 @@
 import { KitStatusBadge } from "@/components/ui/kit";
-import type { BrandPalette } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 import i18n from "@/i18n";
 
 export type IdentityStatus =
@@ -30,51 +30,49 @@ export function getIdentityStatusLabel(status: string) {
   return i18n.t(STATUS_LABEL_KEYS.not_started);
 }
 
-export function getIdentityStatusTone(status: string, palette: BrandPalette) {
+export function getIdentityStatusTone(
+  status: string,
+  palette: ReturnType<typeof useTheme>["color"],
+) {
   switch (status) {
     case "approved":
       return {
-        accent: palette.success as string,
-        background: palette.successSubtle as string,
-        text: palette.success as string,
+        accent: palette.success,
+        background: palette.successSubtle,
+        text: palette.success,
       };
     case "declined":
       return {
-        accent: palette.danger as string,
-        background: palette.dangerSubtle as string,
-        text: palette.danger as string,
+        accent: palette.danger,
+        background: palette.dangerSubtle,
+        text: palette.danger,
       };
     case "pending":
     case "in_progress":
     case "in_review":
       return {
-        accent: palette.primary as string,
-        background: palette.primarySubtle as string,
-        text: palette.text as string,
+        accent: palette.primary,
+        background: palette.primarySubtle,
+        text: palette.text,
       };
     case "abandoned":
     case "expired":
       return {
-        accent: palette.warning as string,
-        background: palette.warningSubtle as string,
-        text: palette.warning as string,
+        accent: palette.warning,
+        background: palette.warningSubtle,
+        text: palette.warning,
       };
     default:
       return {
-        accent: palette.borderStrong as string,
-        background: palette.surface as string,
-        text: palette.textMuted as string,
+        accent: palette.borderStrong,
+        background: palette.surface,
+        text: palette.textMuted,
       };
   }
 }
 
-export function IdentityStatusBadge({
-  status,
-  palette,
-}: {
-  status: string;
-  palette: BrandPalette;
-}) {
+export function IdentityStatusBadge({ status }: { status: string }) {
+  const { color: palette } = useTheme();
   const tone = getIdentityStatusTone(status, palette);
   const badgeTone =
     status === "approved"

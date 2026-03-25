@@ -4,9 +4,9 @@ import { ScrollView, Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { HomeSectionHeading, HomeSurface } from "@/components/home/home-dashboard-layout";
 import { getRelativeTimeLabel } from "@/components/home/home-shared";
-import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { toSportLabel } from "@/convex/constants";
+import { useTheme } from "@/hooks/use-theme";
 
 type AgendaItem = {
   id: string;
@@ -18,7 +18,6 @@ type AgendaItem = {
 
 type HomeAgendaWidgetProps = {
   items: AgendaItem[];
-  palette: BrandPalette;
   t: TFunction;
   locale: string;
   maxItems?: number;
@@ -49,7 +48,6 @@ function formatTime(epochMs: number, locale: string): string {
 
 export function HomeAgendaWidget({
   items,
-  palette,
   t,
   locale,
   maxItems = 3,
@@ -58,6 +56,7 @@ export function HomeAgendaWidget({
   emptyLabel,
   onPressAll,
 }: HomeAgendaWidgetProps) {
+  const { color: palette } = useTheme();
   const now = useMemo(() => Date.now(), []);
 
   const todayEnd = useMemo(() => {
@@ -86,17 +85,19 @@ export function HomeAgendaWidget({
   if (visibleItems.length === 0) {
     return (
       <HomeSurface
-        palette={palette}
         style={{
           padding: BrandSpacing.lg,
-          gap: 8,
+          gap: BrandSpacing.sm,
         }}
       >
-        <HomeSectionHeading title={heading} palette={palette} />
+        <HomeSectionHeading title={heading} />
         <Text
           style={{
-            ...BrandType.caption,
-            color: palette.textMuted as string,
+            fontFamily: "Manrope_400Regular",
+            fontSize: 14,
+            fontWeight: "400",
+            lineHeight: 19,
+            color: palette.textMuted,
           }}
         >
           {emptyLabel ?? t("home.agenda.empty")}
@@ -108,13 +109,12 @@ export function HomeAgendaWidget({
   return (
     <Animated.View entering={FadeInUp.delay(180).duration(320)}>
       <HomeSurface
-        palette={palette}
         style={{
           padding: BrandSpacing.lg,
           gap: 0,
         }}
       >
-        <HomeSectionHeading title={heading} palette={palette} />
+        <HomeSectionHeading title={heading} />
 
         <ScrollView
           nestedScrollEnabled
@@ -138,10 +138,10 @@ export function HomeAgendaWidget({
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    paddingVertical: 10,
-                    gap: 12,
+                    paddingVertical: BrandSpacing.sm,
+                    gap: BrandSpacing.md,
                     borderBottomWidth: index < visibleItems.length - 1 ? 1 : 0,
-                    borderBottomColor: palette.border as string,
+                    borderBottomColor: palette.border,
                   }}
                 >
                   <View
@@ -152,10 +152,11 @@ export function HomeAgendaWidget({
                   >
                     <Text
                       style={{
-                        ...BrandType.heading,
+                        fontFamily: "Lexend_600SemiBold",
                         fontSize: 15,
+                        fontWeight: "600",
                         lineHeight: 18,
-                        color: palette.text as string,
+                        color: palette.text,
                         fontVariant: ["tabular-nums"],
                       }}
                     >
@@ -163,10 +164,11 @@ export function HomeAgendaWidget({
                     </Text>
                     <Text
                       style={{
-                        ...BrandType.micro,
+                        fontFamily: "Manrope_400Regular",
                         fontSize: 10,
-                        color: palette.textMuted as string,
+                        fontWeight: "400",
                         lineHeight: 14,
+                        color: palette.textMuted,
                       }}
                     >
                       {isToday ? relativeTime : formatGroupDate(item.startTime, locale)}
@@ -175,9 +177,11 @@ export function HomeAgendaWidget({
                   <View style={{ flex: 1, gap: 1 }}>
                     <Text
                       style={{
-                        ...BrandType.bodyStrong,
+                        fontFamily: "Manrope_600SemiBold",
                         fontSize: 15,
-                        color: palette.text as string,
+                        fontWeight: "600",
+                        lineHeight: 22,
+                        color: palette.text,
                       }}
                       numberOfLines={1}
                     >
@@ -185,8 +189,11 @@ export function HomeAgendaWidget({
                     </Text>
                     <Text
                       style={{
-                        ...BrandType.caption,
-                        color: palette.textMuted as string,
+                        fontFamily: "Manrope_400Regular",
+                        fontSize: 14,
+                        fontWeight: "400",
+                        lineHeight: 19,
+                        color: palette.textMuted,
                       }}
                       numberOfLines={1}
                     >
@@ -204,9 +211,7 @@ export function HomeAgendaWidget({
                         width: 6,
                         height: 6,
                         borderRadius: 3,
-                        backgroundColor: isToday
-                          ? (palette.primary as string)
-                          : (palette.textMicro as string),
+                        backgroundColor: isToday ? palette.primary : palette.textMicro,
                       }}
                     />
                   </View>
@@ -219,15 +224,17 @@ export function HomeAgendaWidget({
         {onPressAll ? (
           <View
             style={{
-              marginTop: 8,
+              marginTop: BrandSpacing.sm,
               alignItems: "flex-end",
             }}
           >
             <Text
               style={{
-                ...BrandType.caption,
-                color: palette.primary as string,
+                fontFamily: "Manrope_400Regular",
                 fontSize: 13,
+                fontWeight: "400",
+                lineHeight: 18,
+                color: palette.primary,
               }}
               onPress={onPressAll}
             >

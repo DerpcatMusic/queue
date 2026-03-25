@@ -1,7 +1,7 @@
-import { Pressable, View } from "react-native";
-
-import { BrandRadius } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { View } from "react-native";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
+import { AppButton } from "./app-button";
 import { getSurfaceElevationStyle } from "./surface-elevation";
 
 type IconButtonProps = {
@@ -20,65 +20,49 @@ export function IconButton({
   onPress,
   accessibilityLabel,
   tone = "secondary",
-  size = 54,
+  size = BrandSpacing.iconButtonSize,
   disabled = false,
   backgroundColorOverride,
   floating = false,
 }: IconButtonProps) {
-  const palette = useBrand();
-  const raisedStyle = floating ? getSurfaceElevationStyle(palette, "floating") : undefined;
-  const backgroundColor =
+  const theme = useTheme();
+  const raisedStyle = floating
+    ? getSurfaceElevationStyle("floating", theme.color.shadow)
+    : undefined;
+
+  const baseBackgroundColor =
     backgroundColorOverride ??
-    (disabled
-      ? tone === "primary" || tone === "primarySubtle"
-        ? (palette.primarySubtle as string)
-        : (palette.surface as string)
-      : tone === "primary"
-        ? (palette.primary as string)
-        : tone === "primarySubtle"
-          ? (palette.primarySubtle as string)
-          : (palette.surfaceAlt as string));
-  const pressedBackgroundColor =
-    tone === "primary"
-      ? (palette.primaryPressed as string)
+    (tone === "primary"
+      ? theme.color.primary
       : tone === "primarySubtle"
-        ? (palette.surfaceElevated as string)
-        : (palette.surfaceElevated as string);
+        ? theme.color.primarySubtle
+        : theme.color.surfaceAlt);
+
+  const pressedBackgroundColor =
+    tone === "primary" ? theme.color.primaryPressed : theme.color.surfaceElevated;
+
+  const disabledBackgroundColor =
+    tone === "primary" || tone === "primarySubtle"
+      ? theme.color.primarySubtle
+      : theme.color.surface;
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        {
-          borderRadius: BrandRadius.buttonSubtle,
-          borderCurve: "continuous",
-          backgroundColor: disabled
-            ? backgroundColor
-            : pressed
-              ? pressedBackgroundColor
-              : backgroundColor,
-          ...(raisedStyle ?? {}),
-        },
-      ]}
-    >
-      <View
-        style={{
-          width: size,
-          height: size,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: BrandRadius.buttonSubtle,
-          borderCurve: "continuous",
-          backgroundColor: disabled ? backgroundColor : undefined,
-          overflow: "hidden",
+    <View style={raisedStyle}>
+      <AppButton
+        accessibilityLabel={accessibilityLabel}
+        colors={{
+          backgroundColor: baseBackgroundColor,
+          pressedBackgroundColor,
+          disabledBackgroundColor,
         }}
-      >
-        <View>{icon}</View>
-      </View>
-    </Pressable>
+        disabled={disabled}
+        dimension={size}
+        haptic={false}
+        icon={<View>{icon}</View>}
+        onPress={onPress}
+        radius={BrandRadius.buttonSubtle}
+        shape="square"
+      />
+    </View>
   );
 }

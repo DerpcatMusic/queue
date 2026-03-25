@@ -1,23 +1,37 @@
 import { useMemo } from "react";
 import { Pressable, StyleSheet, View, type ViewProps } from "react-native";
-import type { MeshGradientPreset } from "@/constants/brand";
-import { BrandMeshGradient } from "@/constants/brand";
-import { useThemePreference } from "@/hooks/use-theme-preference";
+import { useTheme } from "@/hooks/use-theme";
+import { getTheme } from "@/lib/design-system";
+
+type MeshGradientPreset = "primary" | "primaryDark" | "warm" | "teal";
 
 type MeshGradientViewProps = ViewProps & {
   preset?: MeshGradientPreset;
-  /** Border radius. Defaults to 0 (none). */
   borderRadius?: number;
-  /** If true, renders as Pressable with solid pressed feedback */
   pressable?: boolean;
   darkVariant?: boolean;
 };
 
-/**
- * MeshGradientView
- *
- * Renders a solid semantic surface that preserves the mesh API without alpha effects.
- */
+function shiftHexColor(color: string, amount: number) {
+  const value = color.startsWith("#") ? color.slice(1) : color;
+  if (![3, 6].includes(value.length)) return color;
+  const expanded =
+    value.length === 3
+      ? value
+          .split("")
+          .map((part) => `${part}${part}`)
+          .join("")
+      : value;
+  const next = [0, 2, 4]
+    .map((offset) =>
+      Math.max(0, Math.min(255, Number.parseInt(expanded.slice(offset, offset + 2), 16) + amount)),
+    )
+    .map((channel) => channel.toString(16).padStart(2, "0"))
+    .join("");
+
+  return `#${next}`;
+}
+
 export function MeshGradientView({
   preset = "primary",
   borderRadius = 0,
@@ -27,12 +41,23 @@ export function MeshGradientView({
   children,
   ...props
 }: MeshGradientViewProps) {
-  const { resolvedScheme } = useThemePreference();
+  const theme = useTheme();
 
-  const { fill, pressedFill } = useMemo(() => {
-    const scheme = darkVariant ? "dark" : resolvedScheme;
-    return BrandMeshGradient[scheme][preset];
-  }, [darkVariant, preset, resolvedScheme]);
+  const { fill, pressed } = useMemo(() => {
+    const palette = darkVariant ? getTheme("dark").color : theme.color;
+    switch (preset) {
+      case "primary":
+        return { fill: palette.primary, pressed: palette.primaryPressed };
+      case "primaryDark":
+        return { fill: palette.primaryPressed, pressed: palette.primary };
+      case "warm":
+        return { fill: palette.secondary, pressed: shiftHexColor(palette.secondary, -12) };
+      case "teal":
+        return { fill: palette.tertiary, pressed: shiftHexColor(palette.tertiary, -10) };
+      default:
+        return { fill: palette.primary, pressed: palette.primaryPressed };
+    }
+  }, [darkVariant, preset, theme.color]);
 
   const containerStyle = useMemo(
     () => [
@@ -48,13 +73,13 @@ export function MeshGradientView({
   if (pressable) {
     return (
       <Pressable {...props} style={containerStyle}>
-        {({ pressed }) => (
+        {({ pressed: isPressed }) => (
           <View
             style={[
               styles.container,
               {
                 borderRadius,
-                backgroundColor: pressed ? pressedFill : fill,
+                backgroundColor: isPressed ? pressed : fill,
               },
             ]}
           >

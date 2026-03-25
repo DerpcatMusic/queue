@@ -1,7 +1,9 @@
-import { Pressable, Text } from "react-native";
+import { Text } from "react-native";
 
-import { BrandType } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
+
+import { KitPressable } from "./kit-pressable";
 import { triggerSelectionHaptic } from "./native-interaction";
 import type { KitChipProps } from "./types";
 
@@ -12,50 +14,58 @@ export function KitChip({
   onPress,
   style,
 }: KitChipProps) {
-  const palette = useBrand();
-  const idleBackgroundColor = selected
-    ? (palette.primary as string)
-    : (palette.surfaceAlt as string);
-  const pressedBackgroundColor = selected
-    ? (palette.primaryPressed as string)
-    : (palette.surfaceElevated as string);
-  const disabledBackgroundColor = selected
-    ? (palette.primarySubtle as string)
-    : (palette.surface as string);
-  const textColor = selected ? (palette.onPrimary as string) : (palette.text as string);
-  const disabledTextColor = selected ? (palette.primary as string) : (palette.textMuted as string);
+  const theme = useTheme();
+
+  const backgroundColor = disabled
+    ? selected
+      ? theme.color.primarySubtle
+      : theme.color.surface
+    : selected
+      ? theme.color.primary
+      : theme.color.surfaceAlt;
+  const pressedBackgroundColor = disabled
+    ? backgroundColor
+    : selected
+      ? theme.color.primaryPressed
+      : theme.color.surfaceElevated;
+  const labelColor = disabled
+    ? selected
+      ? theme.color.primary
+      : theme.color.textMuted
+    : selected
+      ? theme.color.onPrimary
+      : theme.color.text;
 
   return (
-    <Pressable
+    <KitPressable
       accessibilityRole="button"
       accessibilityState={{ disabled, selected }}
+      containerStyle={style}
       disabled={disabled}
+      haptic={false}
       onPress={() => {
         triggerSelectionHaptic();
         onPress();
       }}
-      className="items-center justify-center min-h-icon-container px-component-padding py-sm rounded-button-subtle"
-      style={({ pressed }) => [
-        {
-          backgroundColor: disabled
-            ? disabledBackgroundColor
-            : pressed
-              ? pressedBackgroundColor
-              : idleBackgroundColor,
-          transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
+      style={{
+        tone: selected ? "primary" : "surface",
+        variant: "solid",
+        size: {
+          minHeight: BrandSpacing.controlSm,
+          borderRadius: BrandRadius.buttonSubtle,
         },
-        style,
-      ]}
+        padding: {
+          horizontal: BrandSpacing.controlX,
+          vertical: BrandSpacing.sm,
+        },
+        backgroundColor,
+        pressedBackgroundColor,
+        disabledBackgroundColor: backgroundColor,
+      }}
     >
-      <Text
-        style={{
-          ...BrandType.micro,
-          color: disabled ? disabledTextColor : textColor,
-          includeFontPadding: false,
-        }}
-      >
+      <Text style={[BrandType.micro, { color: labelColor, includeFontPadding: false }]}>
         {label}
       </Text>
-    </Pressable>
+    </KitPressable>
   );
 }

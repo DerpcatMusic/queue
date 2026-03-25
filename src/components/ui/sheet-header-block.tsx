@@ -1,8 +1,8 @@
 import { I18nManager, Pressable, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { BrandSpacing } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 
 type SheetHeaderBlockProps = {
   title: string;
@@ -27,28 +27,28 @@ export function SheetHeaderBlock({
   tone = "surface",
   trailingTone = "default",
 }: SheetHeaderBlockProps) {
-  const palette = useBrand();
-  const foregroundColor = tone === "primary" ? palette.onPrimary : palette.text;
-  const inactiveProgress = tone === "primary" ? palette.primaryPressed : palette.surfaceAlt;
+  const theme = useTheme();
+  const foregroundColor = tone === "primary" ? theme.color.onPrimary : theme.color.text;
+  const inactiveProgress = tone === "primary" ? theme.color.primaryPressed : theme.color.surfaceAlt;
   const trailingBackgroundColor =
     trailingTone === "danger"
-      ? (palette.dangerSubtle as string)
+      ? theme.color.dangerSubtle
       : tone === "primary"
-        ? (palette.primaryPressed as string)
-        : (palette.surfaceAlt as string);
+        ? theme.color.primaryPressed
+        : theme.color.surfaceAlt;
   const trailingForegroundColor =
     trailingTone === "danger"
-      ? (palette.danger as string)
+      ? theme.color.danger
       : tone === "primary"
-        ? (palette.onPrimary as string)
-        : (palette.text as string);
-  const subtitleColor = tone === "primary" ? palette.onPrimary : palette.textMuted;
+        ? theme.color.onPrimary
+        : theme.color.text;
+  const subtitleColor = tone === "primary" ? theme.color.onPrimary : theme.color.textMuted;
   const pressedTrailingBackgroundColor =
     trailingTone === "danger"
-      ? (palette.danger as string)
+      ? theme.color.danger
       : tone === "primary"
-        ? (palette.primary as string)
-        : (palette.surfaceElevated as string);
+        ? theme.color.primary
+        : theme.color.surfaceElevated;
 
   return (
     <View className="gap-md">
@@ -73,8 +73,10 @@ export function SheetHeaderBlock({
                   key={`progress-${index + 1}`}
                   className="rounded-pill"
                   style={{
-                    width: isCurrent ? 28 : 18,
-                    height: 8,
+                    width: isCurrent
+                      ? BrandSpacing.progressPillActive
+                      : BrandSpacing.progressPillInactive,
+                    height: BrandSpacing.sm,
                     backgroundColor: (isActive ? foregroundColor : inactiveProgress) as string,
                   }}
                 />
@@ -92,7 +94,7 @@ export function SheetHeaderBlock({
             onPress={onPressTrailing}
             style={({ pressed }) => [
               {
-                borderRadius: BrandSpacing.lg,
+                borderRadius: BrandRadius.buttonSubtle,
                 borderCurve: "continuous",
                 backgroundColor: pressed ? pressedTrailingBackgroundColor : trailingBackgroundColor,
               },

@@ -4,12 +4,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { NativeSearchField } from "@/components/ui/native-search-field";
-import type { BrandPalette } from "@/constants/brand";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { isSportType, SPORT_TYPES, toSportLabel } from "@/convex/constants";
+import { useTheme } from "@/hooks/use-theme";
 
 type SportsMultiSelectProps = {
-  palette: BrandPalette;
   selectedSports: string[];
   onToggleSport: (sport: string) => void;
   searchPlaceholder: string;
@@ -19,7 +18,7 @@ type SportsMultiSelectProps = {
   variant?: "card" | "content";
 };
 
-const SPORTS_HEADER_HORIZONTAL_PADDING = BrandSpacing.lg;
+const SPORTS_HEADER_HORIZONTAL_PADDING = BrandSpacing.lg; // 16
 const SPORTS_HEADER_VERTICAL_PADDING = BrandSpacing.componentPadding;
 const SPORTS_HEADER_BADGE_HORIZONTAL_PADDING = BrandSpacing.sm;
 const SPORTS_HEADER_BADGE_VERTICAL_PADDING = BrandSpacing.xs;
@@ -36,7 +35,6 @@ const SPORTS_SELECTED_SPORT_GAP = BrandSpacing.xs / 2;
 const SPORTS_RESULTS_MAX_HEIGHT = 260;
 
 export function SportsMultiSelect({
-  palette,
   selectedSports,
   onToggleSport,
   searchPlaceholder,
@@ -46,6 +44,7 @@ export function SportsMultiSelect({
   variant = "card",
 }: SportsMultiSelectProps) {
   const { t } = useTranslation();
+  const { color: palette } = useTheme();
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [query, setQuery] = useState("");
   const isCardVariant = variant === "card";
@@ -71,7 +70,7 @@ export function SportsMultiSelect({
       <NativeSearchField value={query} onChangeText={setQuery} placeholder={searchPlaceholder} />
       {selectedSportsList.length > 0 ? (
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: palette.textMuted as string }]}>
+          <Text style={[styles.sectionLabel, { color: palette.textMuted }]}>
             {t("profile.sports.selectedLabel")}
           </Text>
           <View style={styles.resultsList}>
@@ -83,31 +82,27 @@ export function SportsMultiSelect({
                 style={({ pressed }) => [
                   styles.resultRow,
                   {
-                    backgroundColor: palette.primarySubtle as string,
+                    backgroundColor: palette.primarySubtle,
                     transform: [{ scale: pressed ? 0.992 : 1 }],
                   },
                 ]}
               >
                 <View style={{ flex: 1, gap: SPORTS_SELECTED_SPORT_GAP }}>
-                  <Text style={[styles.resultTitle, { color: palette.text as string }]}>
+                  <Text style={[styles.resultTitle, { color: palette.text }]}>
                     {isSportType(sport) ? toSportLabel(sport) : sport}
                   </Text>
-                  <Text style={[styles.resultMeta, { color: palette.primary as string }]}>
+                  <Text style={[styles.resultMeta, { color: palette.primary }]}>
                     {t("profile.sports.selectedBody")}
                   </Text>
                 </View>
-                <IconSymbol
-                  name="checkmark.circle.fill"
-                  size={18}
-                  color={palette.primary as string}
-                />
+                <IconSymbol name="checkmark.circle.fill" size={18} color={palette.primary} />
               </Pressable>
             ))}
           </View>
         </View>
       ) : null}
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: palette.textMuted as string }]}>
+        <Text style={[styles.sectionLabel, { color: palette.textMuted }]}>
           {query.trim().length > 0
             ? t("profile.sports.matchingLabel")
             : t("profile.sports.allLabel")}
@@ -127,15 +122,15 @@ export function SportsMultiSelect({
                 style={({ pressed }) => [
                   styles.resultRow,
                   {
-                    backgroundColor: palette.surface as string,
+                    backgroundColor: palette.surface,
                     transform: [{ scale: pressed ? 0.992 : 1 }],
                   },
                 ]}
               >
-                <Text style={[styles.resultTitle, { color: palette.text as string }]}>
+                <Text style={[styles.resultTitle, { color: palette.text }]}>
                   {toSportLabel(sport)}
                 </Text>
-                <IconSymbol name="plus.circle.fill" size={18} color={palette.textMuted as string} />
+                <IconSymbol name="plus.circle.fill" size={18} color={palette.textMuted} />
               </Pressable>
             ))
           ) : (
@@ -143,14 +138,14 @@ export function SportsMultiSelect({
               style={[
                 styles.emptyState,
                 {
-                  backgroundColor: palette.surfaceElevated as string,
+                  backgroundColor: palette.surfaceElevated,
                 },
               ]}
             >
-              <Text style={[styles.resultTitle, { color: palette.text as string }]}>
+              <Text style={[styles.resultTitle, { color: palette.text }]}>
                 {t("profile.sports.emptyTitle")}
               </Text>
-              <Text style={[styles.resultMeta, { color: palette.textMuted as string }]}>
+              <Text style={[styles.resultMeta, { color: palette.textMuted }]}>
                 {t("profile.sports.emptyBody")}
               </Text>
             </View>
@@ -169,7 +164,7 @@ export function SportsMultiSelect({
       style={[
         styles.shell,
         {
-          backgroundColor: palette.surfaceElevated as string,
+          backgroundColor: palette.surfaceElevated,
         },
       ]}
     >
@@ -191,16 +186,17 @@ export function SportsMultiSelect({
           style={[
             styles.headerBadge,
             {
-              backgroundColor: isOpen
-                ? (palette.primary as string)
-                : (palette.surfaceElevated as string),
+              backgroundColor: isOpen ? palette.primary : palette.surfaceElevated,
             },
           ]}
         >
           <Text
             style={{
-              ...BrandType.bodyMedium,
-              color: isOpen ? (palette.onPrimary as string) : (palette.textMuted as string),
+              fontFamily: "Manrope_500Medium",
+              fontSize: 16,
+              fontWeight: "500",
+              lineHeight: 22,
+              color: isOpen ? palette.onPrimary : palette.textMuted,
               includeFontPadding: false,
             }}
           >
@@ -251,8 +247,11 @@ const styles = StyleSheet.create({
     gap: SPORTS_SECTION_GAP,
   },
   sectionLabel: {
-    ...BrandType.micro,
-    letterSpacing: BrandType.micro.letterSpacing,
+    fontFamily: "Manrope_500Medium",
+    fontSize: 12,
+    fontWeight: "500",
+    letterSpacing: 0.2,
+    lineHeight: 16,
     textTransform: "uppercase",
   },
   resultsViewport: {
@@ -272,10 +271,17 @@ const styles = StyleSheet.create({
     gap: SPORTS_RESULT_ROW_GAP,
   },
   resultTitle: {
-    ...BrandType.bodyStrong,
+    fontFamily: "Manrope_600SemiBold",
+    fontSize: 16,
+    fontWeight: "600",
+    lineHeight: 22,
   },
   resultMeta: {
-    ...BrandType.micro,
+    fontFamily: "Manrope_500Medium",
+    fontSize: 12,
+    fontWeight: "500",
+    letterSpacing: 0.2,
+    lineHeight: 16,
   },
   emptyState: {
     borderRadius: BrandRadius.medium,

@@ -6,7 +6,8 @@ import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandSpacing } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
+import { IconSize } from "@/lib/design-system";
 
 type EmptyStateAction = {
   label: string;
@@ -34,7 +35,7 @@ type EmptyStateProps = {
  * />
  */
 export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
-  const palette = useBrand();
+  const { color } = useTheme();
 
   return (
     <Animated.View
@@ -47,24 +48,22 @@ export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
         paddingVertical: BrandSpacing.xxl,
       }}
     >
-      <AppSymbol name={icon} size={52} tintColor={palette.textMicro as string} />
+      <AppSymbol name={icon} size={IconSize.emptyState} tintColor={color.textMicro} />
       <View style={{ gap: BrandSpacing.xs, alignItems: "center" }}>
-        <ThemedText type="title" style={{ textAlign: "center", color: palette.text }} selectable>
+        <ThemedText type="title" style={{ textAlign: "center", color: color.text }} selectable>
           {title}
         </ThemedText>
         {body ? (
           <ThemedText
             type="caption"
-            style={{ textAlign: "center", color: palette.textMuted }}
+            style={{ textAlign: "center", color: color.textMuted }}
             selectable
           >
             {body}
           </ThemedText>
         ) : null}
       </View>
-      {action ? (
-        <ActionButton label={action.label} onPress={action.onPress} palette={palette} />
-      ) : null}
+      {action ? <ActionButton label={action.label} onPress={action.onPress} /> : null}
     </Animated.View>
   );
 }

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import {
   calendarSheetStyles,
   formatSelectedDayDate,
@@ -24,7 +24,7 @@ function CalendarSheetHeader({
   onToggleExternalCalendarItems,
 }: CalendarSheetHeaderProps) {
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
+  const { color: palette } = useTheme();
 
   return (
     <View style={calendarSheetStyles.root}>
@@ -34,7 +34,7 @@ function CalendarSheetHeader({
             style={[
               calendarSheetStyles.title,
               {
-                color: palette.onPrimary as string,
+                color: palette.onPrimary,
               },
             ]}
           >
@@ -44,7 +44,7 @@ function CalendarSheetHeader({
             style={[
               calendarSheetStyles.subtitle,
               {
-                color: palette.onPrimary as string,
+                color: palette.onPrimary,
               },
             ]}
           >
@@ -56,7 +56,6 @@ function CalendarSheetHeader({
             <ActionButton
               accessibilityLabel={t("calendarTab.filters.button")}
               onPress={onToggleExternalCalendarItems}
-              palette={palette}
               tone="secondary"
               shape="square"
               size="lg"
@@ -65,18 +64,12 @@ function CalendarSheetHeader({
                   <IconSymbol
                     name={showExternalCalendarItems ? "xmark.circle.fill" : "plus.circle.fill"}
                     size={20}
-                    color={
-                      showExternalCalendarItems
-                        ? (palette.primary as string)
-                        : (palette.textMuted as string)
-                    }
+                    color={showExternalCalendarItems ? palette.primary : palette.textMuted}
                   />
                   <Text
                     style={{
                       ...calendarSheetStyles.googleBadge,
-                      color: showExternalCalendarItems
-                        ? (palette.primary as string)
-                        : (palette.textMuted as string),
+                      color: showExternalCalendarItems ? palette.primary : palette.textMuted,
                     }}
                   >
                     {t("calendarTab.timeline.googleBadge")}

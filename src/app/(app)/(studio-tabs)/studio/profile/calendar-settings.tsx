@@ -18,7 +18,7 @@ import { KitList, KitSwitchRow } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
-import { useBrand } from "@/hooks/use-brand";
+import { BorderWidth } from "@/lib/design-system";
 import { prepareDeviceCalendarSync } from "@/lib/device-calendar-sync";
 import { resolveGoogleCalendarAuthConfig } from "@/lib/google-calendar-auth-config";
 import {
@@ -73,7 +73,6 @@ function showCalendarPermissionAlert(t: ReturnType<typeof useTranslation>["t"]) 
 
 export default function StudioCalendarSettingsScreen() {
   const { t } = useTranslation();
-  const palette = useBrand();
   const router = useRouter();
   const { currentUser } = useUser();
   useEffect(() => {
@@ -472,7 +471,6 @@ export default function StudioCalendarSettingsScreen() {
             connected={isGoogleConnected}
             loading={isConnectingGoogle || isDisconnectingGoogle}
             onPress={handleGoogleRowPress}
-            palette={palette}
             showDivider
           />
 
@@ -487,7 +485,6 @@ export default function StudioCalendarSettingsScreen() {
             connected={isAppleConnected}
             loading={isSaving && !isConnectingGoogle && !isDisconnectingGoogle}
             onPress={handleAppleRowPress}
-            palette={palette}
           />
         </View>
 
@@ -508,7 +505,7 @@ export default function StudioCalendarSettingsScreen() {
         {googleStatus?.lastError ? (
           <View
             className="px-3 py-3 rounded-button-subtle bg-danger-subtle border-danger"
-            style={{ borderWidth: 1 }}
+            style={{ borderWidth: BorderWidth.thin }}
           >
             <Text className="text-base text-danger">{googleStatus.lastError}</Text>
           </View>
@@ -517,7 +514,7 @@ export default function StudioCalendarSettingsScreen() {
         {needsGoogleReconnect ? (
           <View
             className="px-3 py-3 rounded-button-subtle bg-warning-subtle border-warning"
-            style={{ borderWidth: 1 }}
+            style={{ borderWidth: BorderWidth.thin }}
           >
             <Text className="text-base text-warning">
               {t("profile.settings.calendar.googleReconnectRequired")}
@@ -528,14 +525,14 @@ export default function StudioCalendarSettingsScreen() {
         {googleConfigError ? (
           <View
             className="px-3 py-3 rounded-button-subtle bg-warning-subtle border-warning"
-            style={{ borderWidth: 1 }}
+            style={{ borderWidth: BorderWidth.thin }}
           >
             <Text className="text-base text-warning">{googleConfigError}</Text>
           </View>
         ) : null}
 
         {provider === "google" ? (
-          <View style={{ gap: BrandSpacing.sm + 2 }}>
+          <View style={{ gap: BrandSpacing.stackDense }}>
             <ActionButton
               label={
                 isSyncingGoogle
@@ -546,7 +543,6 @@ export default function StudioCalendarSettingsScreen() {
                 void onSyncGoogleNow();
               }}
               disabled={!canUseGoogleCalendar || isSyncingGoogle || isBusy}
-              palette={palette}
               fullWidth
             />
           </View>
@@ -554,12 +550,7 @@ export default function StudioCalendarSettingsScreen() {
       </ProfileSubpageScrollView>
 
       <View className="absolute left-4 right-4 bottom-4">
-        <ActionButton
-          label={t("common.done")}
-          onPress={() => router.back()}
-          palette={palette}
-          fullWidth
-        />
+        <ActionButton label={t("common.done")} onPress={() => router.back()} fullWidth />
       </View>
     </View>
   );

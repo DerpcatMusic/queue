@@ -4,7 +4,7 @@ import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshControl, StyleSheet, View } from "react-native";
+import { Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
 import {
   type InstructorArchiveRow,
@@ -22,26 +22,28 @@ import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitDisclosureButtonGroup, type KitDisclosureButtonGroupOption } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
-import { useBrand } from "@/hooks/use-brand";
 import { useMinuteNow } from "@/hooks/use-minute-now";
+import { useTheme } from "@/hooks/use-theme";
+import { getBoostPresentation } from "@/lib/jobs-utils";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 export function InstructorFeed() {
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
   const router = useRouter();
+  const theme = useTheme();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const liveNow = useMinuteNow();
 
   const [jobsSearchQuery, setJobsSearchQuery] = useState("");
-  const [jobsWindowFilter, setJobsWindowFilter] = useState<"all" | "24h" | "72h">("all");
+  const [sortMode, setSortMode] = useState<"none" | "bonus" | "pay" | "time">("bonus");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [showJobsFilters, setShowJobsFilters] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [emptyVariantIndex, setEmptyVariantIndex] = useState(0);
@@ -115,21 +117,42 @@ export function InstructorFeed() {
   const listViewportMinHeight = 240;
 
   const filteredAvailableJobs = useMemo(() => {
-    return jobs.filter((job) => {
-      if (jobsWindowFilter === "24h" && job.startTime > queryNow + 24 * 60 * 60 * 1000)
-        return false;
-      if (jobsWindowFilter === "72h" && job.startTime > queryNow + 72 * 60 * 60 * 1000)
-        return false;
+    const search = deferredJobsSearchQuery.trim().toLowerCase();
+    const baseFiltered = search
+      ? jobs.filter((job) => {
+          const zoneLabel = getZoneLabel(job.zone, zoneLanguage).toLowerCase();
+          const sportLabel = toSportLabel(job.sport as never).toLowerCase();
+          const haystack =
+            `${job.studioName} ${job.studioAddress ?? ""} ${job.zone} ${zoneLabel} ${sportLabel}`.toLowerCase();
+          return haystack.includes(search);
+        })
+      : jobs;
 
-      const search = deferredJobsSearchQuery.trim().toLowerCase();
-      if (!search) return true;
-      const zoneLabel = getZoneLabel(job.zone, zoneLanguage).toLowerCase();
-      const sportLabel = toSportLabel(job.sport as never).toLowerCase();
-      const haystack =
-        `${job.studioName} ${job.studioAddress ?? ""} ${job.zone} ${zoneLabel} ${sportLabel}`.toLowerCase();
-      return haystack.includes(search);
+    if (sortMode === "none") return baseFiltered;
+
+    const sorted = [...baseFiltered].sort((a, b) => {
+      const aBoost = getBoostPresentation(a.pay, a.boostPreset, a.boostBonusAmount, a.boostActive);
+      const bBoost = getBoostPresentation(b.pay, b.boostPreset, b.boostBonusAmount, b.boostActive);
+
+      if (sortMode === "bonus") {
+        const boostDelta =
+          Number(Boolean(bBoost.bonusAmount)) - Number(Boolean(aBoost.bonusAmount));
+        if (boostDelta !== 0) return boostDelta;
+        if (bBoost.totalPay !== aBoost.totalPay) return bBoost.totalPay - aBoost.totalPay;
+        return a.startTime - b.startTime;
+      }
+      if (sortMode === "pay") {
+        const payA = aBoost.totalPay;
+        const payB = bBoost.totalPay;
+        return sortDirection === "asc" ? payA - payB : payB - payA;
+      }
+      if (sortMode === "time") {
+        return sortDirection === "asc" ? a.startTime - b.startTime : b.startTime - a.startTime;
+      }
+      return 0;
     });
-  }, [deferredJobsSearchQuery, jobs, jobsWindowFilter, queryNow, zoneLanguage]);
+    return sorted;
+  }, [deferredJobsSearchQuery, jobs, sortMode, sortDirection, zoneLanguage]);
   const archiveRows = useMemo<InstructorArchiveRow[]>(
     () =>
       ((myApplications ?? []) as MyApplication[])
@@ -194,12 +217,21 @@ export function InstructorFeed() {
   const jobsFilterOptions = useMemo(
     () =>
       [
-        { value: "all", label: t("jobsTab.instructorFeed.filterAnyTime") },
-        { value: "24h", label: t("jobsTab.instructorFeed.filterNow") },
-        { value: "72h", label: t("jobsTab.instructorFeed.filterThisWeek") },
-      ] as const satisfies readonly KitDisclosureButtonGroupOption<"all" | "24h" | "72h">[],
-    [t],
+        { value: "none", label: "None" },
+        { value: "bonus", label: "Bonus" },
+        { value: "pay", label: "Pay" },
+        { value: "time", label: "Time" },
+      ] as const satisfies readonly KitDisclosureButtonGroupOption<
+        "none" | "bonus" | "pay" | "time"
+      >[],
+    [],
   );
+  const jobsSortSummaryLabel = useMemo(() => {
+    if (sortMode === "none") return "Sorted by: None";
+    if (sortMode === "bonus") return "Sorted by: Bonus";
+    if (sortMode === "pay") return `Sorted by: Pay ${sortDirection === "asc" ? "↑" : "↓"}`;
+    return `Sorted by: Time ${sortDirection === "asc" ? "↑" : "↓"}`;
+  }, [sortDirection, sortMode]);
   const jobsHeaderLayoutTransition = useMemo(
     () => LinearTransition.duration(220).reduceMotion(ReduceMotion.System),
     [],
@@ -208,7 +240,18 @@ export function InstructorFeed() {
   const jobsSheetConfig = useMemo(
     () => ({
       stickyHeader: (
-        <View style={{ gap: BrandSpacing.xs }}>
+        <View style={{ gap: BrandSpacing.sm }}>
+          <Animated.View
+            layout={jobsHeaderLayoutTransition}
+            style={[styles.feedIntro, { borderBottomColor: theme.jobs.line }]}
+          >
+            <Animated.View layout={jobsHeaderLayoutTransition} style={styles.feedIntroText}>
+              <ThemedText style={[BrandType.title, { color: theme.color.text }]}>
+                {t("jobsTab.availableJobsTitle")}
+              </ThemedText>
+            </Animated.View>
+          </Animated.View>
+
           <Animated.View
             layout={jobsHeaderLayoutTransition}
             style={{
@@ -228,7 +271,7 @@ export function InstructorFeed() {
                 clearAccessibilityLabel={t("common.clear")}
                 size="sm"
                 animateLayout
-                containerStyle={{ backgroundColor: String(palette.surface) }}
+                containerStyle={{ backgroundColor: theme.jobs.surface }}
               />
             </Animated.View>
             <Animated.View
@@ -240,26 +283,53 @@ export function InstructorFeed() {
                 expanded={showJobsFilters}
                 onToggleExpanded={() => setShowJobsFilters((current) => !current)}
                 options={jobsFilterOptions}
-                value={jobsWindowFilter}
+                value={sortMode}
                 onChange={(value) => {
-                  setJobsWindowFilter(value);
+                  setSortMode(value);
+                  if (value === "pay") setSortDirection("desc");
+                  if (value === "time") setSortDirection("asc");
+                  if (value === "bonus" || value === "none") setSortDirection("desc");
                 }}
                 triggerIcon={
                   <IconSymbol
                     name="line.3.horizontal.decrease.circle"
                     size={18}
-                    color={String(palette.text)}
+                    color={theme.color.text}
                   />
                 }
                 size="sm"
-                railColor={String(palette.surface)}
-                selectedColor={String(palette.primarySubtle)}
-                labelColor={String(palette.text)}
-                selectedLabelColor={String(palette.primaryPressed)}
-                dividerColor={String(palette.border)}
+                railColor={theme.jobs.surface}
+                selectedColor={theme.jobs.surfaceRaised}
+                labelColor={theme.color.text}
+                selectedLabelColor={theme.color.tertiary}
+                dividerColor={theme.jobs.line}
               />
             </Animated.View>
           </Animated.View>
+
+          <Animated.View layout={jobsHeaderLayoutTransition}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Toggle sort direction"
+              disabled={sortMode !== "pay" && sortMode !== "time"}
+              onPress={() => {
+                if (sortMode === "pay" || sortMode === "time") {
+                  setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+                }
+              }}
+              style={({ pressed }) => ({
+                alignSelf: "flex-start",
+                paddingHorizontal: BrandSpacing.xs,
+                paddingVertical: BrandSpacing.xxs,
+                opacity: pressed ? 0.72 : 1,
+              })}
+            >
+              <ThemedText style={[BrandType.caption, { color: theme.jobs.idle }]}>
+                {jobsSortSummaryLabel}
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
+
           {actionErrorMessage ? (
             <NoticeBanner
               tone="error"
@@ -270,25 +340,26 @@ export function InstructorFeed() {
         </View>
       ),
       padding: {
-        vertical: BrandSpacing.sm,
-        horizontal: BrandSpacing.xl,
+        vertical: BrandSpacing.md,
+        horizontal: BrandSpacing.lg,
       },
       draggable: false,
       expandable: false,
       steps: [0.16],
       initialStep: 0,
-      backgroundColor: palette.primary as string,
-      topInsetColor: palette.primary as string,
+      backgroundColor: theme.jobs.canvas,
+      topInsetColor: theme.jobs.canvas,
     }),
     [
       actionErrorMessage,
       jobsFilterOptions,
-      jobsWindowFilter,
       jobsHeaderLayoutTransition,
       jobsSearchQuery,
-      palette,
+      jobsSortSummaryLabel,
       showJobsFilters,
+      sortMode,
       t,
+      theme,
     ],
   );
 
@@ -359,7 +430,7 @@ export function InstructorFeed() {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.jobs.canvas }]}>
       <TabScreenScrollView
         routeKey="instructor/jobs/index"
         style={styles.screen}
@@ -368,8 +439,8 @@ export function InstructorFeed() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={palette.primary as string}
-            colors={[palette.primary as string]}
+            tintColor={theme.jobs.signal}
+            colors={[theme.jobs.signal]}
             progressViewOffset={progressViewOffset}
           />
         }
@@ -385,27 +456,19 @@ export function InstructorFeed() {
                 paddingHorizontal: BrandSpacing.lg,
               }}
             >
-              <View style={{ alignItems: "center", gap: BrandSpacing.md }}>
-                <IconSymbol name="briefcase.fill" size={30} color={palette.textMuted as string} />
-                <View style={{ alignItems: "center", gap: BrandSpacing.xs }}>
-                  <ThemedText type="meta" style={{ color: palette.textMuted as string }}>
+              <View style={{ alignItems: "center", gap: BrandSpacing.lg }}>
+                <IconSymbol name="briefcase.fill" size={32} color={theme.jobs.idle} />
+                <View style={{ alignItems: "center", gap: BrandSpacing.sm }}>
+                  <ThemedText style={[BrandType.title, { color: theme.color.text }]}>
                     {t("jobsTab.instructorFeed.emptyInstructorShort")}
                   </ThemedText>
                   <ThemedText
-                    type="caption"
-                    style={{
-                      color: palette.textMuted as string,
-                      textAlign: "center",
-                    }}
+                    style={[BrandType.body, { color: theme.jobs.idle, textAlign: "center" }]}
                   >
                     {emptyJobsCopy}
                   </ThemedText>
                   <ThemedText
-                    type="caption"
-                    style={{
-                      color: palette.textMuted as string,
-                      textAlign: "center",
-                    }}
+                    style={[BrandType.caption, { color: theme.jobs.idle, textAlign: "center" }]}
                   >
                     {t("jobsTab.instructorFeed.emptyRefreshHint")}
                   </ThemedText>
@@ -421,16 +484,15 @@ export function InstructorFeed() {
                 paddingHorizontal: BrandSpacing.lg,
               }}
             >
-              <View style={{ alignItems: "center", gap: BrandSpacing.sm }}>
-                <IconSymbol name="magnifyingglass" size={24} color={palette.textMuted as string} />
-                <ThemedText type="meta" style={{ color: palette.textMuted as string }}>
+              <View style={{ alignItems: "center", gap: BrandSpacing.md }}>
+                <IconSymbol name="magnifyingglass" size={28} color={theme.jobs.idle} />
+                <ThemedText style={[BrandType.bodyMedium, { color: theme.color.text }]}>
                   {t("jobsTab.noJobsFound")}
                 </ThemedText>
                 <ThemedText
-                  type="caption"
-                  style={{ color: palette.textMuted as string, textAlign: "center" }}
+                  style={[BrandType.caption, { color: theme.jobs.idle, textAlign: "center" }]}
                 >
-                  {t("jobsTab.tryDifferentSearchOrTimeFilter")}
+                  Try a different search or sorting mode.
                 </ThemedText>
               </View>
             </View>
@@ -439,7 +501,6 @@ export function InstructorFeed() {
               jobs={filteredAvailableJobs}
               locale={locale}
               zoneLanguage={zoneLanguage}
-              palette={palette}
               applyingJobId={applyingJobId}
               withdrawingApplicationId={withdrawingApplicationId}
               now={liveNow}
@@ -466,12 +527,12 @@ export function InstructorFeed() {
           tone={isArchiveOpen ? "primary" : "secondary"}
           size={58}
           floating
-          backgroundColorOverride={String(isArchiveOpen ? palette.primary : palette.surface)}
+          backgroundColorOverride={isArchiveOpen ? theme.jobs.signal : theme.jobs.surface}
           icon={
             <IconSymbol
               name="archivebox.fill"
               size={22}
-              color={String(isArchiveOpen ? palette.onPrimary : palette.primary)}
+              color={isArchiveOpen ? theme.color.onPrimary : theme.jobs.signal}
             />
           }
         />
@@ -483,10 +544,8 @@ export function InstructorFeed() {
         }}
         onOpenStateChange={setIsArchiveOpen}
         rows={archiveRows}
-        palette={palette}
         locale={locale}
         zoneLanguage={zoneLanguage}
-        onOpenStudio={onOpenStudio}
       />
     </View>
   );
@@ -501,5 +560,14 @@ const styles = StyleSheet.create({
     paddingTop: BrandSpacing.lg,
     paddingBottom: BrandSpacing.xl,
     gap: BrandSpacing.lg,
+  },
+  feedIntro: {
+    paddingVertical: BrandSpacing.md,
+    paddingHorizontal: BrandSpacing.xs,
+    borderBottomWidth: 1,
+    marginBottom: BrandSpacing.xs,
+  },
+  feedIntroText: {
+    gap: BrandSpacing.xxs,
   },
 });

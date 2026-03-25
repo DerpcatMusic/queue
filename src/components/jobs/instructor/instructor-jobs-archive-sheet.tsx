@@ -6,15 +6,15 @@ import { Pressable, View } from "react-native";
 import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { ThemedText } from "@/components/themed-text";
-import { ActionButton } from "@/components/ui/action-button";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { getSurfaceElevationStyle } from "@/components/ui/surface-elevation";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
+import { useTheme } from "@/hooks/use-theme";
 import {
   formatDateWithWeekday,
   formatTime,
@@ -23,6 +23,24 @@ import {
   getJobStatusTranslationKey,
   type JobClosureReason,
 } from "@/lib/jobs-utils";
+
+// Real color values for native/BottomSheet (CSS vars don't resolve in RN native views)
+const COLORS = {
+  primary: "#CCFF00",
+  primarySubtle: "#CCFF001A",
+  onPrimary: "#000000",
+  success: "#22C55E",
+  successSubtle: "#22C55E1A",
+  warning: "#F59E0B",
+  warningSubtle: "#F59E0B1A",
+  surface: "#FFFFFF",
+  surfaceAlt: "#F5F5F5",
+  surfaceElevated: "#FFFFFF",
+  appBg: "#FAFAFA",
+  text: "#000000",
+  textMuted: "#737373",
+  borderStrong: "#D4D4D4",
+} as const;
 
 export type InstructorArchiveRow = InstructorMarketplaceJob & {
   applicationId: Id<"jobApplications">;
@@ -36,10 +54,8 @@ type InstructorJobsArchiveSheetProps = {
   onDismissed: () => void;
   onOpenStateChange?: (open: boolean) => void;
   rows: InstructorArchiveRow[];
-  palette: BrandPalette;
   locale: string;
   zoneLanguage: "en" | "he";
-  onOpenStudio: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
 };
 
 function formatArchiveDate(locale: string, timestamp: number) {
@@ -94,46 +110,41 @@ function buildArchiveOutcome(
   };
 }
 
-function getStatusTokens(
-  tone: "primary" | "success" | "gray" | "amber" | "muted",
-  palette: BrandPalette,
-) {
+function getStatusTokens(tone: "primary" | "success" | "gray" | "amber" | "muted") {
   if (tone === "success") {
     return {
-      backgroundColor: palette.successSubtle as string,
-      color: palette.success as string,
+      backgroundColor: COLORS.successSubtle,
+      color: COLORS.success,
     };
   }
   if (tone === "amber") {
     return {
-      backgroundColor: palette.warningSubtle as string,
-      color: palette.warning as string,
+      backgroundColor: COLORS.warningSubtle,
+      color: COLORS.warning,
     };
   }
   if (tone === "gray" || tone === "muted") {
     return {
-      backgroundColor: palette.surfaceAlt as string,
-      color: palette.textMuted as string,
+      backgroundColor: COLORS.surfaceAlt,
+      color: COLORS.textMuted,
     };
   }
   return {
-    backgroundColor: palette.primarySubtle as string,
-    color: palette.primary as string,
+    backgroundColor: COLORS.primarySubtle,
+    color: COLORS.primary,
   };
 }
 
 function ArchiveStatusChip({
   label,
   icon,
-  palette,
   tone,
 }: {
   label: string;
   icon: React.ComponentProps<typeof IconSymbol>["name"];
-  palette: BrandPalette;
   tone: "primary" | "success" | "gray" | "amber" | "muted";
 }) {
-  const tokens = getStatusTokens(tone, palette);
+  const tokens = getStatusTokens(tone);
 
   return (
     <View
@@ -144,7 +155,7 @@ function ArchiveStatusChip({
         borderRadius: BrandRadius.pill,
         borderCurve: "continuous",
         backgroundColor: tokens.backgroundColor,
-        paddingHorizontal: BrandSpacing.controlX,
+        paddingHorizontal: BrandSpacing.control,
         paddingVertical: BrandSpacing.xs,
       }}
     >
@@ -160,27 +171,25 @@ function ArchiveDetailRow({
   icon,
   label,
   value,
-  palette,
 }: {
   icon: React.ComponentProps<typeof IconSymbol>["name"];
   label: string;
   value: string;
-  palette: BrandPalette;
 }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: BrandSpacing.md }}>
       <View
         style={{
-          width: BrandSpacing.controlSm,
-          height: BrandSpacing.controlSm,
-          borderRadius: BrandRadius.medium,
+          width: BrandSpacing.control,
+          height: BrandSpacing.control,
+          borderRadius: BrandRadius.card,
           borderCurve: "continuous",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: palette.surfaceAlt as string,
+          backgroundColor: COLORS.surfaceAlt,
         }}
       >
-        <IconSymbol name={icon} size={16} color={palette.primary as string} />
+        <IconSymbol name={icon} size={16} color={COLORS.primary} />
       </View>
       <View style={{ flex: 1, gap: BrandSpacing.xxs }}>
         <ThemedText type="caption" className="text-muted">
@@ -197,18 +206,14 @@ function ArchiveDetailRow({
 function ArchiveCompactRow({
   expanded,
   locale,
-  onOpenStudio,
   onToggle,
-  palette,
   row,
   t,
   zoneLanguage,
 }: {
   expanded: boolean;
   locale: string;
-  onOpenStudio: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
   onToggle: () => void;
-  palette: BrandPalette;
   row: InstructorArchiveRow;
   t: ReturnType<typeof useTranslation>["t"];
   zoneLanguage: "en" | "he";
@@ -226,9 +231,9 @@ function ArchiveCompactRow({
   return (
     <View
       style={{
-        borderRadius: BrandRadius.soft,
+        borderRadius: BrandRadius.card,
         borderCurve: "continuous",
-        backgroundColor: palette.surfaceAlt as string,
+        backgroundColor: COLORS.surfaceAlt,
         overflow: "hidden",
       }}
     >
@@ -237,9 +242,7 @@ function ArchiveCompactRow({
         accessibilityLabel={`${row.studioName} ${sportLabel}`}
         onPress={onToggle}
         style={({ pressed }) => ({
-          backgroundColor: pressed
-            ? (palette.surfaceElevated as string)
-            : (palette.surfaceAlt as string),
+          backgroundColor: pressed ? COLORS.surfaceElevated : COLORS.surfaceAlt,
         })}
       >
         <View
@@ -255,13 +258,21 @@ function ArchiveCompactRow({
             <ThemedText numberOfLines={1} type="bodyStrong" className="text-brand">
               {sportLabel}
             </ThemedText>
-            <ThemedText numberOfLines={1} className="text-muted" style={BrandType.caption}>
+            <ThemedText
+              numberOfLines={1}
+              className="text-muted"
+              style={{
+                fontFamily: "Manrope_400Regular",
+                fontSize: 14,
+                fontWeight: "400",
+                lineHeight: 19,
+              }}
+            >
               {`${row.studioName} · ${scheduleLabel}`}
             </ThemedText>
             <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
               <ArchiveStatusChip
                 label={archiveOutcome.label}
-                palette={palette}
                 tone={archiveOutcome.tone}
                 icon={archiveOutcome.icon}
               />
@@ -269,7 +280,7 @@ function ArchiveCompactRow({
           </View>
           <View style={{ alignItems: "flex-end", gap: BrandSpacing.sm }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
-              <IconSymbol name="banknote" size={14} color={palette.success as string} />
+              <IconSymbol name="banknote" size={14} color={COLORS.success} />
               <ThemedText type="bodyStrong" className="text-success">
                 {payLabel}
               </ThemedText>
@@ -277,7 +288,7 @@ function ArchiveCompactRow({
             <IconSymbol
               name={expanded ? "chevron.down" : "chevron.right"}
               size={16}
-              color={palette.textMuted as string}
+              color={COLORS.textMuted}
             />
           </View>
         </View>
@@ -286,7 +297,7 @@ function ArchiveCompactRow({
         <View
           style={{
             gap: BrandSpacing.sm,
-            backgroundColor: palette.surface as string,
+            backgroundColor: COLORS.surface,
             paddingHorizontal: BrandSpacing.lg,
             paddingBottom: BrandSpacing.lg,
             paddingTop: BrandSpacing.sm,
@@ -295,9 +306,9 @@ function ArchiveCompactRow({
           <View
             style={{
               gap: BrandSpacing.md,
-              borderRadius: BrandRadius.medium,
+              borderRadius: BrandRadius.card,
               borderCurve: "continuous",
-              backgroundColor: palette.surfaceElevated as string,
+              backgroundColor: COLORS.surfaceElevated,
               padding: BrandSpacing.md,
             }}
           >
@@ -309,31 +320,17 @@ function ArchiveCompactRow({
                   ? t("jobsTab.instructorFeed.archiveAppliedOn", { date: appliedLabel })
                   : formatDateWithWeekday(row.startTime, locale)
               }
-              palette={palette}
             />
             <ArchiveDetailRow
               icon="clock.fill"
               label={t("jobsTab.form.schedule")}
               value={`${formatTime(row.startTime, locale)}–${formatTime(row.endTime, locale)}`}
-              palette={palette}
             />
-            <ArchiveDetailRow
-              icon="mappin.and.ellipse"
-              label={t("tabs.map")}
-              value={zoneLabel}
-              palette={palette}
-            />
+            <ArchiveDetailRow icon="mappin.and.ellipse" label={t("tabs.map")} value={zoneLabel} />
             <ArchiveDetailRow
               icon="banknote"
               label={t("jobsTab.checkout.payment")}
               value={payLabel}
-              palette={palette}
-            />
-            <ActionButton
-              label={row.studioName}
-              onPress={() => onOpenStudio(row.studioId, row.jobId)}
-              palette={palette}
-              tone="secondary"
             />
           </View>
         </View>
@@ -347,12 +344,11 @@ export function InstructorJobsArchiveSheet({
   onDismissed,
   onOpenStateChange,
   rows,
-  palette,
   locale,
   zoneLanguage,
-  onOpenStudio,
 }: InstructorJobsArchiveSheetProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
   const collapsedSheetHeight = useCollapsedSheetHeight();
   const [expandedApplicationId, setExpandedApplicationId] = useState<string | null>(null);
   const snapPoints = ["88%"];
@@ -363,10 +359,10 @@ export function InstructorJobsArchiveSheet({
         {...props}
         disappearsAt={-1}
         appearsAt={0}
-        style={[props.style, { backgroundColor: palette.appBg as string }]}
+        style={[props.style, { backgroundColor: theme.color.appBg }]}
       />
     ),
-    [palette.appBg],
+    [theme.color.appBg],
   );
 
   const toggleExpanded = useCallback((applicationId: string) => {
@@ -389,10 +385,10 @@ export function InstructorJobsArchiveSheet({
         onDismissed();
       }}
       backdropComponent={renderBackdrop}
-      handleIndicatorStyle={{ backgroundColor: palette.borderStrong as string }}
+      handleIndicatorStyle={{ backgroundColor: theme.color.borderStrong }}
       backgroundStyle={{
-        backgroundColor: palette.surfaceElevated as string,
-        ...getSurfaceElevationStyle(palette, "sheet"),
+        backgroundColor: theme.color.surfaceElevated,
+        ...getSurfaceElevationStyle("sheet", theme.color.shadow),
       }}
     >
       <BottomSheetScrollView
@@ -420,17 +416,17 @@ export function InstructorJobsArchiveSheet({
           <IconButton
             accessibilityLabel={t("common.close")}
             onPress={() => innerRef.current?.close()}
-            size={BrandSpacing.controlSm}
+            size={BrandSpacing.control}
             tone="secondary"
-            backgroundColorOverride={String(palette.primarySubtle)}
-            icon={<AppSymbol name="xmark" size={18} tintColor={palette.primary as string} />}
+            backgroundColorOverride={COLORS.primarySubtle}
+            icon={<AppSymbol name="xmark" size={18} tintColor={COLORS.primary} />}
           />
         </View>
 
         {rows.length === 0 ? (
           <View
             style={{
-              minHeight: BrandSpacing.iconContainer * 5,
+              minHeight: BrandSpacing.xxl * 5,
               alignItems: "center",
               justifyContent: "center",
               gap: BrandSpacing.sm,
@@ -446,9 +442,7 @@ export function InstructorJobsArchiveSheet({
               key={String(row.applicationId)}
               expanded={expandedApplicationId === String(row.applicationId)}
               locale={locale}
-              onOpenStudio={onOpenStudio}
               onToggle={() => toggleExpanded(String(row.applicationId))}
-              palette={palette}
               row={row}
               t={t}
               zoneLanguage={zoneLanguage}

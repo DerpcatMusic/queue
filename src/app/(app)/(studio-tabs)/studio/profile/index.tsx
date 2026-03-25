@@ -31,9 +31,10 @@ import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useAppLanguage } from "@/hooks/use-app-language";
-import { useBrand } from "@/hooks/use-brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { BorderWidth } from "@/lib/design-system";
 import { EXPIRY_OVERRIDE_PRESETS } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
 import {
@@ -74,9 +75,10 @@ export default function StudioProfileScreen() {
   const { reloadAuthSession } = useAuthSession();
   const { language, setLanguage } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
+  const { color } = useTheme();
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
   const router = useRouter();
+
   const pathname = usePathname();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { safeTop } = useAppInsets();
@@ -321,7 +323,6 @@ export default function StudioProfileScreen() {
           profileName={profileName}
           roleLabel={t("profile.hero.studioProfile")}
           profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
-          palette={palette}
           onRequestEdit={handleRequestEdit}
           primaryActionLabel={t("profile.actions.edit")}
           status={profileStatus}
@@ -335,7 +336,6 @@ export default function StudioProfileScreen() {
       currentUser?.image,
       handleRequestEdit,
       onProfileHeaderLayout,
-      palette,
       profileName,
       profileStatus,
       studioSettings?.bio,
@@ -357,10 +357,10 @@ export default function StudioProfileScreen() {
         vertical: 0,
         horizontal: 0,
       },
-      backgroundColor: palette.primary as string,
-      topInsetColor: palette.primary as string,
+      backgroundColor: color.primary,
+      topInsetColor: color.primary,
     }),
-    [palette, profileSheetContent, profileSheetStep],
+    [color.primary, profileSheetContent, profileSheetStep],
   );
 
   const isProfileIndexRoute = pathname === STUDIO_PROFILE_ROUTE || pathname.endsWith("/profile");
@@ -380,9 +380,9 @@ export default function StudioProfileScreen() {
       <TabScreenRoot
         mode="static"
         topInsetTone="sheet"
-        style={[styles.screen, { backgroundColor: palette.appBg }]}
+        style={[styles.screen, { backgroundColor: color.appBg }]}
       >
-        <View style={{ flex: 1, backgroundColor: palette.appBg as string }} />
+        <View style={{ flex: 1, backgroundColor: color.appBg }} />
       </TabScreenRoot>
     );
   }
@@ -391,7 +391,7 @@ export default function StudioProfileScreen() {
     <TabScreenRoot
       mode="static"
       topInsetTone="sheet"
-      style={[styles.screen, { backgroundColor: palette.appBg }]}
+      style={[styles.screen, { backgroundColor: color.appBg }]}
     >
       {isDesktopWeb ? (
         <View style={styles.desktopShell}>
@@ -400,7 +400,6 @@ export default function StudioProfileScreen() {
               profileName={profileName}
               roleLabel={t("profile.hero.studioProfile")}
               profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
-              palette={palette}
               summary={publicProfileSummary}
               statusLabel={
                 profileStatus === "ready"
@@ -429,16 +428,14 @@ export default function StudioProfileScreen() {
               <ProfileSectionHeader
                 label={t("profile.sections.studio")}
                 icon="building.2.fill"
-                palette={palette}
                 flush
               />
-              <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+              <ProfileSectionCard style={styles.desktopCardGroup}>
                 <ProfileSettingRow
                   title={t("profile.settings.publicProfile")}
                   subtitle={publicProfileSummary}
                   icon="person.crop.circle.fill"
                   onPress={handleRequestEdit}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
@@ -448,7 +445,6 @@ export default function StudioProfileScreen() {
                   }
                   icon="building.2.fill"
                   onPress={handleRequestEdit}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
@@ -456,7 +452,6 @@ export default function StudioProfileScreen() {
                   subtitle={branchSummary}
                   icon="square.stack.3d.up.fill"
                   onPress={() => router.push(STUDIO_BRANCHES_ROUTE as Href)}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
@@ -464,7 +459,6 @@ export default function StudioProfileScreen() {
                   subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
                   icon="mappin.and.ellipse"
                   onPress={handleRequestEdit}
-                  palette={palette}
                 />
               </ProfileSectionCard>
             </View>
@@ -473,37 +467,32 @@ export default function StudioProfileScreen() {
               <ProfileSectionHeader
                 label={t("profile.account.title")}
                 icon="person.crop.circle.fill"
-                palette={palette}
                 flush
               />
-              <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+              <ProfileSectionCard style={styles.desktopCardGroup}>
                 <ProfileSettingRow
                   title={t("profile.switcher.openAction")}
                   subtitle={t("profile.switcher.accountRowHint")}
                   icon="person.2.fill"
                   onPress={handleOpenAccountSwitcher}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
                   title={t("profile.account.nameLabel")}
                   value={currentUser?.fullName ?? profileName}
                   icon="person.crop.circle.fill"
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
                   title={t("profile.account.emailLabel")}
                   value={emailValue}
                   icon="paperplane.fill"
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
                   title={t("profile.account.roleLabel")}
                   value={roleValue}
                   icon="checkmark.circle.fill"
-                  palette={palette}
                   showDivider
                 />
                 {memberSince ? (
@@ -511,7 +500,6 @@ export default function StudioProfileScreen() {
                     title={t("profile.account.memberSince")}
                     value={memberSince}
                     icon="calendar.circle.fill"
-                    palette={palette}
                     showDivider
                   />
                 ) : null}
@@ -520,13 +508,11 @@ export default function StudioProfileScreen() {
                   value={language === "en" ? t("language.english") : t("language.hebrew")}
                   icon="globe"
                   onPress={() => void setLanguage(language === "en" ? "he" : "en")}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
                   title={t("profile.appearance.systemTheme.title")}
                   icon="slider.horizontal.3"
-                  palette={palette}
                   showDivider
                   accessory={
                     <KitSwitch
@@ -538,7 +524,6 @@ export default function StudioProfileScreen() {
                 <ProfileSettingRow
                   title={t("profile.appearance.darkMode.title")}
                   icon="moon.fill"
-                  palette={palette}
                   accessory={
                     <KitSwitch
                       disabled={preference === "system"}
@@ -552,10 +537,9 @@ export default function StudioProfileScreen() {
               <ProfileSectionHeader
                 label={t("profile.sections.operations")}
                 icon="slider.horizontal.3"
-                palette={palette}
                 flush
               />
-              <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+              <ProfileSectionCard style={styles.desktopCardGroup}>
                 <View
                   style={{
                     flexDirection: "row",
@@ -573,22 +557,22 @@ export default function StudioProfileScreen() {
                       borderCurve: "continuous",
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: palette.surfaceAlt as string,
+                      backgroundColor: color.surfaceAlt,
                     }}
                   >
-                    <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
+                    <IconSymbol name="clock.fill" size={18} color={color.primary} />
                   </View>
                   <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                     <Text
                       style={{
                         fontSize: 16,
                         fontWeight: "600",
-                        color: palette.text as string,
+                        color: color.text,
                       }}
                     >
                       {t("profile.settings.autoExpireJobs")}
                     </Text>
-                    <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+                    <ThemedText type="micro" style={{ color: color.textMuted }}>
                       {t("profile.settings.autoExpire.description")}
                     </ThemedText>
                     <View
@@ -603,10 +587,10 @@ export default function StudioProfileScreen() {
                         label={t("jobsTab.form.useStudioDefault")}
                         selected={autoExpireMinutesBefore === undefined}
                         compact
-                        backgroundColor={palette.surfaceAlt as string}
-                        selectedBackgroundColor={palette.primary as string}
-                        labelColor={palette.text as string}
-                        selectedLabelColor={palette.onPrimary as string}
+                        backgroundColor={color.surfaceAlt}
+                        selectedBackgroundColor={color.primary}
+                        labelColor={color.text}
+                        selectedLabelColor={color.onPrimary}
                         onPress={() => handleAutoExpireMinutesBeforeChange(undefined)}
                       />
                       {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
@@ -615,10 +599,10 @@ export default function StudioProfileScreen() {
                           label={t("jobsTab.form.minutes", { value: minutes })}
                           selected={autoExpireMinutesBefore === minutes}
                           compact
-                          backgroundColor={palette.surfaceAlt as string}
-                          selectedBackgroundColor={palette.primary as string}
-                          labelColor={palette.text as string}
-                          selectedLabelColor={palette.onPrimary as string}
+                          backgroundColor={color.surfaceAlt}
+                          selectedBackgroundColor={color.primary}
+                          labelColor={color.text}
+                          selectedLabelColor={color.onPrimary}
                           onPress={() => handleAutoExpireMinutesBeforeChange(minutes)}
                         />
                       ))}
@@ -627,17 +611,16 @@ export default function StudioProfileScreen() {
                 </View>
                 <View
                   style={{
-                    height: 1,
+                    height: BorderWidth.thin,
                     marginLeft: 56,
                     marginRight: 18,
-                    backgroundColor: palette.border as string,
+                    backgroundColor: color.border,
                   }}
                 />
                 <ProfileSettingRow
                   title={t("profile.settings.autoAcceptJobs")}
                   subtitle={t("profile.settings.autoAcceptJobsDescription")}
                   icon="checkmark.seal.fill"
-                  palette={palette}
                   showDivider
                   accessory={
                     <KitSwitch
@@ -652,7 +635,6 @@ export default function StudioProfileScreen() {
                   subtitle={calendarSummary}
                   icon="calendar.circle.fill"
                   onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
@@ -660,7 +642,6 @@ export default function StudioProfileScreen() {
                   subtitle={t("profile.sections.paymentsDesc")}
                   icon="creditcard.fill"
                   onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
@@ -668,7 +649,6 @@ export default function StudioProfileScreen() {
                   subtitle={t("profile.settings.signOutDesc")}
                   icon="arrow.right.square"
                   onPress={handleSignOut}
-                  palette={palette}
                   tone="danger"
                 />
               </ProfileSectionCard>
@@ -680,24 +660,19 @@ export default function StudioProfileScreen() {
           routeKey="studio/profile"
           style={styles.screen}
           contentContainerStyle={{
-            gap: BrandSpacing.lg + 2,
+            gap: BrandSpacing.insetSoft,
           }}
-          topSpacing={BrandSpacing.lg + 2}
+          topSpacing={BrandSpacing.insetSoft}
           bottomSpacing={BrandSpacing.xxl}
         >
           <View style={styles.mobileContentPadding}>
-            <ProfileSectionHeader
-              label={t("profile.sections.studio")}
-              icon="building.2.fill"
-              palette={palette}
-            />
-            <ProfileSectionCard palette={palette}>
+            <ProfileSectionHeader label={t("profile.sections.studio")} icon="building.2.fill" />
+            <ProfileSectionCard>
               <ProfileSettingRow
                 title={t("profile.settings.publicProfile")}
                 subtitle={publicProfileSummary}
                 icon="person.crop.circle.fill"
                 onPress={handleRequestEdit}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
@@ -707,7 +682,6 @@ export default function StudioProfileScreen() {
                 }
                 icon="building.2.fill"
                 onPress={handleRequestEdit}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
@@ -715,7 +689,6 @@ export default function StudioProfileScreen() {
                 subtitle={branchSummary}
                 icon="square.stack.3d.up.fill"
                 onPress={() => router.push(STUDIO_BRANCHES_ROUTE as Href)}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
@@ -723,43 +696,37 @@ export default function StudioProfileScreen() {
                 subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
                 icon="mappin.and.ellipse"
                 onPress={handleRequestEdit}
-                palette={palette}
               />
             </ProfileSectionCard>
 
             <ProfileSectionHeader
               label={t("profile.account.title")}
               icon="person.crop.circle.fill"
-              palette={palette}
             />
-            <ProfileSectionCard palette={palette}>
+            <ProfileSectionCard>
               <ProfileSettingRow
                 title={t("profile.switcher.openAction")}
                 subtitle={t("profile.switcher.accountRowHint")}
                 icon="person.2.fill"
                 onPress={handleOpenAccountSwitcher}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.account.nameLabel")}
                 value={currentUser?.fullName ?? profileName}
                 icon="person.crop.circle.fill"
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.account.emailLabel")}
                 value={emailValue}
                 icon="paperplane.fill"
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.account.roleLabel")}
                 value={roleValue}
                 icon="checkmark.circle.fill"
-                palette={palette}
                 showDivider
               />
               {memberSince ? (
@@ -767,7 +734,6 @@ export default function StudioProfileScreen() {
                   title={t("profile.account.memberSince")}
                   value={memberSince}
                   icon="calendar.circle.fill"
-                  palette={palette}
                   showDivider
                 />
               ) : null}
@@ -776,13 +742,11 @@ export default function StudioProfileScreen() {
                 value={language === "en" ? t("language.english") : t("language.hebrew")}
                 icon="globe"
                 onPress={() => void setLanguage(language === "en" ? "he" : "en")}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.appearance.systemTheme.title")}
                 icon="slider.horizontal.3"
-                palette={palette}
                 showDivider
                 accessory={
                   <KitSwitch
@@ -794,7 +758,6 @@ export default function StudioProfileScreen() {
               <ProfileSettingRow
                 title={t("profile.appearance.darkMode.title")}
                 icon="moon.fill"
-                palette={palette}
                 accessory={
                   <KitSwitch
                     disabled={preference === "system"}
@@ -808,9 +771,8 @@ export default function StudioProfileScreen() {
             <ProfileSectionHeader
               label={t("profile.sections.operations")}
               icon="slider.horizontal.3"
-              palette={palette}
             />
-            <ProfileSectionCard palette={palette}>
+            <ProfileSectionCard>
               <View
                 style={{
                   flexDirection: "row",
@@ -828,22 +790,22 @@ export default function StudioProfileScreen() {
                     borderCurve: "continuous",
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: palette.surfaceAlt as string,
+                    backgroundColor: color.surfaceAlt,
                   }}
                 >
-                  <IconSymbol name="clock.fill" size={18} color={palette.primary as string} />
+                  <IconSymbol name="clock.fill" size={18} color={color.primary} />
                 </View>
                 <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                   <Text
                     style={{
                       fontSize: 16,
                       fontWeight: "600",
-                      color: palette.text as string,
+                      color: color.text,
                     }}
                   >
                     {t("profile.settings.autoExpireJobs")}
                   </Text>
-                  <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
+                  <ThemedText type="micro" style={{ color: color.textMuted }}>
                     {t("profile.settings.autoExpire.description")}
                   </ThemedText>
                   <View
@@ -858,10 +820,10 @@ export default function StudioProfileScreen() {
                       label={t("jobsTab.form.useStudioDefault")}
                       selected={autoExpireMinutesBefore === undefined}
                       compact
-                      backgroundColor={palette.surfaceAlt as string}
-                      selectedBackgroundColor={palette.primary as string}
-                      labelColor={palette.text as string}
-                      selectedLabelColor={palette.onPrimary as string}
+                      backgroundColor={color.surfaceAlt}
+                      selectedBackgroundColor={color.primary}
+                      labelColor={color.text}
+                      selectedLabelColor={color.onPrimary}
                       onPress={() => handleAutoExpireMinutesBeforeChange(undefined)}
                     />
                     {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
@@ -870,10 +832,10 @@ export default function StudioProfileScreen() {
                         label={t("jobsTab.form.minutes", { value: minutes })}
                         selected={autoExpireMinutesBefore === minutes}
                         compact
-                        backgroundColor={palette.surfaceAlt as string}
-                        selectedBackgroundColor={palette.primary as string}
-                        labelColor={palette.text as string}
-                        selectedLabelColor={palette.onPrimary as string}
+                        backgroundColor={color.surfaceAlt}
+                        selectedBackgroundColor={color.primary}
+                        labelColor={color.text}
+                        selectedLabelColor={color.onPrimary}
                         onPress={() => handleAutoExpireMinutesBeforeChange(minutes)}
                       />
                     ))}
@@ -885,14 +847,13 @@ export default function StudioProfileScreen() {
                   height: 1,
                   marginLeft: 56,
                   marginRight: 18,
-                  backgroundColor: palette.border as string,
+                  backgroundColor: color.border,
                 }}
               />
               <ProfileSettingRow
                 title={t("profile.settings.autoAcceptJobs")}
                 subtitle={t("profile.settings.autoAcceptJobsDescription")}
                 icon="checkmark.seal.fill"
-                palette={palette}
                 showDivider
                 accessory={
                   <KitSwitch
@@ -907,7 +868,6 @@ export default function StudioProfileScreen() {
                 subtitle={calendarSummary}
                 icon="calendar.circle.fill"
                 onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
@@ -915,7 +875,6 @@ export default function StudioProfileScreen() {
                 subtitle={t("profile.sections.paymentsDesc")}
                 icon="creditcard.fill"
                 onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
@@ -923,7 +882,6 @@ export default function StudioProfileScreen() {
                 subtitle={t("profile.settings.signOutDesc")}
                 icon="arrow.right.square"
                 onPress={handleSignOut}
-                palette={palette}
                 tone="danger"
               />
             </ProfileSectionCard>
@@ -942,7 +900,6 @@ export default function StudioProfileScreen() {
         onSelectRememberedAccount={handleSelectRememberedAccount}
         onSignOut={handleSignOut}
         onUseAnotherAccount={handleUseAnotherAccount}
-        palette={palette}
         profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
       />
     </TabScreenRoot>

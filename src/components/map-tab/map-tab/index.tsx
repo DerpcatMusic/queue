@@ -27,7 +27,7 @@ export default function MapTabScreen() {
     mapPin,
     studios,
     noopMapPress,
-    palette,
+    overlayBottom,
     pendingChangeCount,
     persistedZoneIds,
     saveError,
@@ -78,10 +78,9 @@ export default function MapTabScreen() {
 
   if (Platform.OS === "web") {
     return (
-      <TabScreenRoot mode="static" className="bg-surface" topInsetTone="card">
+      <TabScreenRoot mode="static" topInsetTone="card">
         <MapWebWorkbench
           t={t}
-          palette={palette}
           zoneLanguage={zoneLanguage}
           zoneSearch={zoneSearch}
           selectedZones={selectedZones}
@@ -108,7 +107,6 @@ export default function MapTabScreen() {
   return (
     <MapMobileStage
       t={t}
-      palette={palette}
       mapBackgroundColor={mapPalette.styleBackground}
       isFocused={isFocused}
       mapPin={mapPin}
@@ -117,6 +115,7 @@ export default function MapTabScreen() {
       focusZoneId={focusZoneId}
       zoneModeActive={zoneModeActive}
       isSaving={isSaving}
+      overlayBottom={overlayBottom}
       cameraPadding={mapCameraPadding}
       onPressZone={toggleZone}
       onPressMap={noopMapPress}

@@ -1,7 +1,6 @@
 import { I18nManager, View, type ViewProps } from "react-native";
 
-import { useBrand } from "@/hooks/use-brand";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useTheme } from "@/hooks/use-theme";
 
 export type ThemedViewProps = ViewProps & {
   lightColor?: string;
@@ -9,11 +8,8 @@ export type ThemedViewProps = ViewProps & {
 };
 
 export function ThemedView({ style, lightColor, darkColor, ...otherProps }: ThemedViewProps) {
-  const palette = useBrand();
-  const backgroundColor = useThemeColor({
-    light: lightColor ?? (palette.surface as string),
-    dark: darkColor ?? (palette.surface as string),
-  });
+  const { color } = useTheme();
+  const backgroundColor = lightColor ?? darkColor ?? color.surface;
 
   return (
     <View

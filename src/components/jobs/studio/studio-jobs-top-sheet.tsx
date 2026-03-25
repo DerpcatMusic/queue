@@ -5,7 +5,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitDisclosureButtonGroup, type KitDisclosureButtonGroupOption } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import type { StudioJobsTimeFilter } from "./use-studio-feed-controller";
 
 type StudioJobsTopSheetHeaderProps = {
@@ -29,8 +29,7 @@ export function StudioJobsTopSheetHeader({
   onToggleNotifications,
   t,
 }: StudioJobsTopSheetHeaderProps) {
-  const palette = useBrand();
-
+  const theme = useTheme();
   const filterOptions: readonly KitDisclosureButtonGroupOption<StudioJobsTimeFilter>[] = [
     { value: "all", label: t("jobsTab.studioFeed.filterAllShort") },
     { value: "active", label: t("jobsTab.studioFeed.filterActive") },
@@ -53,7 +52,7 @@ export function StudioJobsTopSheetHeader({
           <IconSymbol
             name={notificationsEnabled ? "bell.fill" : "bell.slash.fill"}
             size={18}
-            color={String(palette.onPrimary)}
+            color={theme.color.onPrimary}
           />
         }
       />
@@ -71,15 +70,15 @@ export function StudioJobsTopSheetHeader({
           <IconSymbol
             name="line.3.horizontal.decrease.circle"
             size={18}
-            color={String(palette.onPrimary)}
+            color={theme.color.onPrimary}
           />
         }
         size="sm"
-        railColor={String(palette.primaryPressed)}
-        selectedColor={String(palette.primarySubtle)}
-        labelColor={String(palette.onPrimary)}
-        selectedLabelColor={String(palette.onPrimary)}
-        dividerColor={String(palette.primary)}
+        railColor={theme.color.primaryPressed}
+        selectedColor={theme.color.primarySubtle}
+        labelColor={theme.color.onPrimary}
+        selectedLabelColor={theme.color.onPrimary}
+        dividerColor={theme.color.primary}
       />
     </View>
   );
@@ -87,7 +86,7 @@ export function StudioJobsTopSheetHeader({
 
 const styles = StyleSheet.create({
   headerRow: {
-    minHeight: 44,
+    minHeight: BrandSpacing.controlMd,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

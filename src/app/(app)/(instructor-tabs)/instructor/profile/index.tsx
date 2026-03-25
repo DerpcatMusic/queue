@@ -29,8 +29,8 @@ import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useAppLanguage } from "@/hooks/use-app-language";
-import { useBrand } from "@/hooks/use-brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import {
   forgetRememberedDeviceAccount,
@@ -106,9 +106,10 @@ export default function InstructorProfileScreen() {
   const { reloadAuthSession } = useAuthSession();
   const { language, setLanguage } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
+  const theme = useTheme();
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
   const router = useRouter();
+
   const pathname = usePathname();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { safeTop } = useAppInsets();
@@ -277,7 +278,7 @@ export default function InstructorProfileScreen() {
     const availableHeight = Math.max(1, getTopSheetAvailableHeight(screenHeight, safeTop, 0));
     return Math.max(0.12, Math.min(0.34, profileHeaderHeight / availableHeight));
   }, [profileHeaderHeight, safeTop, screenHeight]);
-  const profileSheetContent = useMemo(
+  const profileSheetContent = auseMemo(
     () => (
       <View onLayout={onProfileHeaderLayout}>
         <ProfileHeaderSheet
@@ -288,7 +289,6 @@ export default function InstructorProfileScreen() {
               : t("profile.hero.instructorProfile")
           }
           profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
-          palette={palette}
           onRequestEdit={handleRequestEdit}
           primaryActionLabel={t("profile.actions.edit")}
           status={profileStatus}
@@ -308,7 +308,6 @@ export default function InstructorProfileScreen() {
       instructorSettings?.sports,
       nameValue,
       onProfileHeaderLayout,
-      palette,
       profileStatus,
       t,
     ],
@@ -325,10 +324,10 @@ export default function InstructorProfileScreen() {
         vertical: 0,
         horizontal: 0,
       },
-      backgroundColor: palette.primary as string,
-      topInsetColor: palette.primary as string,
+      backgroundColor: theme.color.primary,
+      topInsetColor: theme.color.primary,
     }),
-    [palette, profileSheetContent, profileSheetStep],
+    [profileSheetContent, profileSheetStep, theme.color.primary],
   );
 
   const isProfileIndexRoute =
@@ -365,7 +364,6 @@ export default function InstructorProfileScreen() {
                   : t("profile.hero.instructorProfile")
               }
               profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
-              palette={palette}
               summary={publicProfileSummary}
               statusLabel={
                 profileStatus === "ready"
@@ -402,16 +400,14 @@ export default function InstructorProfileScreen() {
               <ProfileSectionHeader
                 label={t("profile.sections.professional")}
                 icon="person.crop.circle.fill"
-                palette={palette}
                 flush
               />
-              <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+              <ProfileSectionCard style={styles.desktopCardGroup}>
                 <ProfileSettingRow
                   title={t("profile.settings.publicProfile")}
                   subtitle={publicProfileSummary}
                   icon="person.crop.circle.fill"
                   onPress={handleRequestEdit}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
@@ -419,7 +415,6 @@ export default function InstructorProfileScreen() {
                   subtitle={sportsSummary}
                   icon="gym.bag.fill"
                   onPress={() => router.push(INSTRUCTOR_SPORTS_ROUTE as Href)}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
@@ -427,7 +422,6 @@ export default function InstructorProfileScreen() {
                   subtitle={locationSummary}
                   icon="mappin.and.ellipse"
                   onPress={() => router.push(INSTRUCTOR_LOCATION_ROUTE as Href)}
-                  palette={palette}
                   showDivider
                 />
               </ProfileSectionCard>
@@ -437,37 +431,32 @@ export default function InstructorProfileScreen() {
               <ProfileSectionHeader
                 label={t("profile.account.title")}
                 icon="person.crop.circle.fill"
-                palette={palette}
                 flush
               />
-              <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+              <ProfileSectionCard style={styles.desktopCardGroup}>
                 <ProfileSettingRow
                   title={t("profile.switcher.openAction")}
                   subtitle={t("profile.switcher.accountRowHint")}
                   icon="person.2.fill"
                   onPress={handleOpenAccountSwitcher}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
                   title={t("profile.account.nameLabel")}
                   value={currentUser?.fullName ?? nameValue}
                   icon="person.crop.circle.fill"
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
                   title={t("profile.account.emailLabel")}
                   value={emailValue}
                   icon="paperplane.fill"
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
                   title={t("profile.account.roleLabel")}
                   value={roleValue}
                   icon="checkmark.circle.fill"
-                  palette={palette}
                   showDivider
                 />
                 {memberSince ? (
@@ -475,7 +464,6 @@ export default function InstructorProfileScreen() {
                     title={t("profile.account.memberSince")}
                     value={memberSince}
                     icon="calendar.circle.fill"
-                    palette={palette}
                     showDivider
                   />
                 ) : null}
@@ -484,13 +472,11 @@ export default function InstructorProfileScreen() {
                   value={language === "en" ? t("language.english") : t("language.hebrew")}
                   icon="globe"
                   onPress={() => void setLanguage(language === "en" ? "he" : "en")}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
                   title={t("profile.appearance.systemTheme.title")}
                   icon="slider.horizontal.3"
-                  palette={palette}
                   showDivider
                   accessory={
                     <KitSwitch
@@ -502,7 +488,6 @@ export default function InstructorProfileScreen() {
                 <ProfileSettingRow
                   title={t("profile.appearance.darkMode.title")}
                   icon="moon.fill"
-                  palette={palette}
                   accessory={
                     <KitSwitch
                       disabled={preference === "system"}
@@ -516,16 +501,14 @@ export default function InstructorProfileScreen() {
               <ProfileSectionHeader
                 label={t("profile.sections.operations")}
                 icon="slider.horizontal.3"
-                palette={palette}
                 flush
               />
-              <ProfileSectionCard palette={palette} style={styles.desktopCardGroup}>
+              <ProfileSectionCard style={styles.desktopCardGroup}>
                 <ProfileSettingRow
                   title={t("profile.navigation.identityVerification")}
                   subtitle={identityVerificationSummary}
                   icon="checkmark.circle.fill"
                   onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
-                  palette={palette}
                   tone="accent"
                   showDivider
                 />
@@ -534,7 +517,6 @@ export default function InstructorProfileScreen() {
                   subtitle={calendarSummary}
                   icon="calendar.badge.clock"
                   onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
-                  palette={palette}
                   showDivider
                 />
                 <ProfileSettingRow
@@ -546,9 +528,8 @@ export default function InstructorProfileScreen() {
                   }
                   icon="creditcard.fill"
                   onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
-                  palette={palette}
                   tone="accent"
-                  accentColor={palette.payments.accent}
+                  accentColor={theme.color.success}
                   showDivider
                 />
                 <ProfileSettingRow
@@ -556,7 +537,6 @@ export default function InstructorProfileScreen() {
                   subtitle={t("profile.settings.signOutDesc")}
                   icon="arrow.right.square"
                   onPress={handleSignOut}
-                  palette={palette}
                   tone="danger"
                 />
               </ProfileSectionCard>
@@ -577,15 +557,13 @@ export default function InstructorProfileScreen() {
             <ProfileSectionHeader
               label={t("profile.sections.professional")}
               icon="person.crop.circle.fill"
-              palette={palette}
             />
-            <ProfileSectionCard palette={palette}>
+            <ProfileSectionCard>
               <ProfileSettingRow
                 title={t("profile.settings.publicProfile")}
                 subtitle={publicProfileSummary}
                 icon="person.crop.circle.fill"
                 onPress={handleRequestEdit}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
@@ -593,7 +571,6 @@ export default function InstructorProfileScreen() {
                 subtitle={sportsSummary}
                 icon="gym.bag.fill"
                 onPress={() => router.push(INSTRUCTOR_SPORTS_ROUTE as Href)}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
@@ -601,7 +578,6 @@ export default function InstructorProfileScreen() {
                 subtitle={locationSummary}
                 icon="mappin.and.ellipse"
                 onPress={() => router.push(INSTRUCTOR_LOCATION_ROUTE as Href)}
-                palette={palette}
                 showDivider
               />
             </ProfileSectionCard>
@@ -609,36 +585,31 @@ export default function InstructorProfileScreen() {
             <ProfileSectionHeader
               label={t("profile.account.title")}
               icon="person.crop.circle.fill"
-              palette={palette}
             />
-            <ProfileSectionCard palette={palette}>
+            <ProfileSectionCard>
               <ProfileSettingRow
                 title={t("profile.switcher.openAction")}
                 subtitle={t("profile.switcher.accountRowHint")}
                 icon="person.2.fill"
                 onPress={handleOpenAccountSwitcher}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.account.nameLabel")}
                 value={currentUser?.fullName ?? nameValue}
                 icon="person.crop.circle.fill"
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.account.emailLabel")}
                 value={emailValue}
                 icon="paperplane.fill"
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.account.roleLabel")}
                 value={roleValue}
                 icon="checkmark.circle.fill"
-                palette={palette}
                 showDivider
               />
               {memberSince ? (
@@ -646,7 +617,6 @@ export default function InstructorProfileScreen() {
                   title={t("profile.account.memberSince")}
                   value={memberSince}
                   icon="calendar.circle.fill"
-                  palette={palette}
                   showDivider
                 />
               ) : null}
@@ -655,13 +625,11 @@ export default function InstructorProfileScreen() {
                 value={language === "en" ? t("language.english") : t("language.hebrew")}
                 icon="globe"
                 onPress={() => void setLanguage(language === "en" ? "he" : "en")}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.appearance.systemTheme.title")}
                 icon="slider.horizontal.3"
-                palette={palette}
                 showDivider
                 accessory={
                   <KitSwitch
@@ -673,7 +641,6 @@ export default function InstructorProfileScreen() {
               <ProfileSettingRow
                 title={t("profile.appearance.darkMode.title")}
                 icon="moon.fill"
-                palette={palette}
                 accessory={
                   <KitSwitch
                     disabled={preference === "system"}
@@ -687,15 +654,13 @@ export default function InstructorProfileScreen() {
             <ProfileSectionHeader
               label={t("profile.sections.operations")}
               icon="slider.horizontal.3"
-              palette={palette}
             />
-            <ProfileSectionCard palette={palette}>
+            <ProfileSectionCard>
               <ProfileSettingRow
                 title={t("profile.navigation.identityVerification")}
                 subtitle={identityVerificationSummary}
                 icon="checkmark.circle.fill"
                 onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
-                palette={palette}
                 tone="accent"
                 showDivider
               />
@@ -704,7 +669,6 @@ export default function InstructorProfileScreen() {
                 subtitle={calendarSummary}
                 icon="calendar.badge.clock"
                 onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
-                palette={palette}
                 showDivider
               />
               <ProfileSettingRow
@@ -716,9 +680,8 @@ export default function InstructorProfileScreen() {
                 }
                 icon="creditcard.fill"
                 onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
-                palette={palette}
                 tone="accent"
-                accentColor={palette.payments.accent}
+                accentColor={theme.color.success}
                 showDivider
               />
               <ProfileSettingRow
@@ -726,7 +689,6 @@ export default function InstructorProfileScreen() {
                 subtitle={t("profile.settings.signOutDesc")}
                 icon="arrow.right.square"
                 onPress={handleSignOut}
-                palette={palette}
                 tone="danger"
               />
             </ProfileSectionCard>
@@ -745,7 +707,6 @@ export default function InstructorProfileScreen() {
         onSelectRememberedAccount={handleSelectRememberedAccount}
         onSignOut={handleSignOut}
         onUseAnotherAccount={handleUseAnotherAccount}
-        palette={palette}
         profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
       />
     </TabScreenRoot>

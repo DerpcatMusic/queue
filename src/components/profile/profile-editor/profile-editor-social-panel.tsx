@@ -7,21 +7,20 @@ import {
   type ProfileSocialLinks,
 } from "@/components/profile/profile-social-links";
 import { KitSurface, KitTextField } from "@/components/ui/kit";
-import type { BrandPalette } from "@/constants/brand";
-import { BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 
 type ProfileEditorSocialPanelProps = {
-  palette: BrandPalette;
   socialLinksDraft: ProfileSocialLinks;
   onSocialLinkChange: (key: ProfileSocialKey, value: string) => void;
 };
 
 export function ProfileEditorSocialPanel({
-  palette,
   socialLinksDraft,
   onSocialLinkChange,
 }: ProfileEditorSocialPanelProps) {
   const { t } = useTranslation();
+  const { color } = useTheme();
   const activeSocialCount = useMemo(
     () =>
       PROFILE_SOCIAL_FIELDS.filter((field) => Boolean(socialLinksDraft[field.key]?.trim())).length,
@@ -30,33 +29,20 @@ export function ProfileEditorSocialPanel({
   const [showSocialFields, setShowSocialFields] = useState(activeSocialCount > 0);
 
   return (
-    <KitSurface tone="base" padding={20} gap={14}>
+    <KitSurface tone="base" padding={BrandSpacing.insetRoomy} gap={BrandSpacing.component}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 12,
+          gap: BrandSpacing.md,
         }}
       >
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text
-            style={{
-              ...BrandType.title,
-              fontSize: 16,
-              color: palette.text as string,
-              includeFontPadding: false,
-            }}
-          >
+        <View style={{ flex: 1, gap: BrandSpacing.xxs }}>
+          <Text style={[BrandType.title, { color: color.text, includeFontPadding: false }]}>
             {t("profile.editor.socialLinks")}
           </Text>
-          <Text
-            style={{
-              ...BrandType.caption,
-              color: palette.textMuted as string,
-              includeFontPadding: false,
-            }}
-          >
+          <Text style={[BrandType.caption, { color: color.textMuted, includeFontPadding: false }]}>
             {activeSocialCount > 0
               ? t("profile.editor.linked", { count: activeSocialCount })
               : t("profile.editor.addLinks")}
@@ -67,28 +53,20 @@ export function ProfileEditorSocialPanel({
           accessibilityLabel={showSocialFields ? t("profile.editor.hide") : t("common.edit")}
           onPress={() => setShowSocialFields((value) => !value)}
           style={({ pressed }) => ({
-            backgroundColor: pressed
-              ? (palette.surfaceAlt as string)
-              : (palette.surfaceElevated as string),
+            backgroundColor: pressed ? color.surfaceAlt : color.surfaceElevated,
             paddingHorizontal: 6,
             paddingVertical: 4,
             borderRadius: 10,
           })}
         >
-          <Text
-            style={{
-              ...BrandType.bodyMedium,
-              color: palette.primary as string,
-              includeFontPadding: false,
-            }}
-          >
+          <Text style={[BrandType.title, { color: color.primary, includeFontPadding: false }]}>
             {showSocialFields ? t("profile.editor.hide") : t("common.edit")}
           </Text>
         </Pressable>
       </View>
 
       {showSocialFields ? (
-        <View style={{ gap: 12 }}>
+        <View style={{ gap: BrandSpacing.md }}>
           {PROFILE_SOCIAL_FIELDS.map((field) => (
             <KitTextField
               key={field.key}

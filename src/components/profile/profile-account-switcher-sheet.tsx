@@ -14,7 +14,8 @@ import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 import type { RememberedDeviceAccount } from "@/modules/session/device-account-store";
 
 const ROLE_TRANSLATION_KEYS = {
@@ -34,7 +35,6 @@ type ProfileAccountSwitcherSheetProps = {
   onSelectRememberedAccount: (accountId: string) => void;
   onSignOut: () => void;
   onUseAnotherAccount: () => void;
-  palette: BrandPalette;
   profileImageUrl?: string | null | undefined;
   rememberedAccounts: RememberedDeviceAccount[];
   switchingAccountId?: string | null | undefined;
@@ -51,12 +51,12 @@ export function ProfileAccountSwitcherSheet({
   onSelectRememberedAccount,
   onSignOut,
   onUseAnotherAccount,
-  palette,
   profileImageUrl,
   rememberedAccounts,
   switchingAccountId,
 }: ProfileAccountSwitcherSheetProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
   const collapsedSheetHeight = useCollapsedSheetHeight();
   const snapPoints = ["72%"];
   const compactAccountAvatarSize = BrandSpacing.iconContainer + BrandSpacing.xxs;
@@ -73,10 +73,10 @@ export function ProfileAccountSwitcherSheet({
         {...props}
         disappearsAt={-1}
         appearsAt={0}
-        style={[props.style, { backgroundColor: palette.appBg as string }]}
+        style={[props.style, { backgroundColor: theme.color.appBg }]}
       />
     ),
-    [palette.appBg],
+    [theme.color.appBg],
   );
 
   return (
@@ -94,8 +94,8 @@ export function ProfileAccountSwitcherSheet({
         onDismissed();
       }}
       backdropComponent={renderBackdrop}
-      handleIndicatorStyle={{ backgroundColor: palette.borderStrong as string }}
-      backgroundStyle={{ backgroundColor: palette.surfaceElevated as string }}
+      handleIndicatorStyle={{ backgroundColor: theme.color.borderStrong }}
+      backgroundStyle={{ backgroundColor: theme.color.surfaceElevated }}
     >
       <BottomSheetScrollView
         contentContainerStyle={{
@@ -114,10 +114,10 @@ export function ProfileAccountSwitcherSheet({
           }}
         >
           <View style={{ flex: 1, gap: BrandSpacing.xxs }}>
-            <ThemedText type="title" style={{ color: palette.text as string }}>
+            <ThemedText type="title" style={{ color: theme.color.text }}>
               {t("profile.switcher.sheetTitle")}
             </ThemedText>
-            <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+            <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
               {t("profile.switcher.sheetBody")}
             </ThemedText>
           </View>
@@ -125,7 +125,7 @@ export function ProfileAccountSwitcherSheet({
             accessibilityLabel={t("common.close")}
             onPress={() => innerRef.current?.close()}
             tone="secondary"
-            icon={<IconSymbol name="xmark" size={16} color={palette.text as string} />}
+            icon={<IconSymbol name="xmark" size={16} color={theme.color.text} />}
           />
         </View>
 
@@ -133,7 +133,7 @@ export function ProfileAccountSwitcherSheet({
           style={{
             borderRadius: BrandRadius.soft,
             borderCurve: "continuous",
-            backgroundColor: palette.surface as string,
+            backgroundColor: theme.color.surface,
             padding: BrandSpacing.lg,
             gap: BrandSpacing.sm,
           }}
@@ -142,23 +142,18 @@ export function ProfileAccountSwitcherSheet({
             <ProfileAvatar
               imageUrl={profileImageUrl}
               fallbackName={currentAccountName}
-              palette={palette}
               size={BrandSpacing.iconContainerLarge}
               roundedSquare
             />
             <View style={{ flex: 1, gap: BrandSpacing.xxs }}>
-              <ThemedText type="bodyStrong" style={{ color: palette.text as string }}>
+              <ThemedText type="bodyStrong" style={{ color: theme.color.text }}>
                 {currentAccountName}
               </ThemedText>
-              <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+              <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
                 {currentRoleLabel}
               </ThemedText>
               {currentAccountEmail ? (
-                <ThemedText
-                  selectable
-                  type="caption"
-                  style={{ color: palette.textMuted as string }}
-                >
+                <ThemedText selectable type="caption" style={{ color: theme.color.textMuted }}>
                   {currentAccountEmail}
                 </ThemedText>
               ) : null}
@@ -167,12 +162,12 @@ export function ProfileAccountSwitcherSheet({
                   alignSelf: "flex-start",
                   borderRadius: BrandRadius.pill,
                   borderCurve: "continuous",
-                  backgroundColor: palette.primarySubtle as string,
+                  backgroundColor: theme.color.primarySubtle,
                   paddingHorizontal: BrandSpacing.controlX,
                   paddingVertical: BrandSpacing.xs,
                 }}
               >
-                <ThemedText type="micro" style={{ color: palette.primary as string }}>
+                <ThemedText type="micro" style={{ color: theme.color.primary }}>
                   {t("profile.switcher.currentAccountBadge")}
                 </ThemedText>
               </View>
@@ -184,7 +179,7 @@ export function ProfileAccountSwitcherSheet({
               style={{
                 marginTop: BrandSpacing.xs,
                 borderTopWidth: 1,
-                borderTopColor: palette.border as string,
+                borderTopColor: theme.color.border,
                 paddingTop: BrandSpacing.sm,
                 gap: BrandSpacing.xs,
               }}
@@ -218,14 +213,13 @@ export function ProfileAccountSwitcherSheet({
                       <ProfileAvatar
                         imageUrl={account.image}
                         fallbackName={accountName}
-                        palette={palette}
                         size={compactAccountAvatarSize}
                       />
                       <View style={{ flex: 1, gap: BrandSpacing.xxs }}>
-                        <ThemedText type="bodyStrong" style={{ color: palette.text as string }}>
+                        <ThemedText type="bodyStrong" style={{ color: theme.color.text }}>
                           {accountName}
                         </ThemedText>
-                        <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+                        <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
                           {account.email ?? t(accountRoleKey)}
                         </ThemedText>
                       </View>
@@ -234,21 +228,17 @@ export function ProfileAccountSwitcherSheet({
                           style={{
                             borderRadius: BrandRadius.pill,
                             borderCurve: "continuous",
-                            backgroundColor: palette.primarySubtle as string,
+                            backgroundColor: theme.color.primarySubtle,
                             paddingHorizontal: BrandSpacing.controlX,
                             paddingVertical: BrandSpacing.xs,
                           }}
                         >
-                          <ThemedText type="micro" style={{ color: palette.primary as string }}>
+                          <ThemedText type="micro" style={{ color: theme.color.primary }}>
                             {t("profile.switcher.loadingLabel")}
                           </ThemedText>
                         </View>
                       ) : (
-                        <IconSymbol
-                          name="chevron.right"
-                          size={14}
-                          color={palette.textMuted as string}
-                        />
+                        <IconSymbol name="chevron.right" size={14} color={theme.color.textMuted} />
                       )}
                     </Pressable>
                     {index < otherAccounts.length - 1 ? (
@@ -257,7 +247,7 @@ export function ProfileAccountSwitcherSheet({
                           height: 1,
                           marginLeft: compactAccountAvatarSize + BrandSpacing.md + BrandSpacing.xs,
                           marginRight: BrandSpacing.xs,
-                          backgroundColor: palette.border as string,
+                          backgroundColor: theme.color.border,
                         }}
                       />
                     ) : null}
@@ -271,16 +261,14 @@ export function ProfileAccountSwitcherSheet({
         <ProfileSectionHeader
           label={t("profile.switcher.accountsTitle")}
           icon="person.2.fill"
-          palette={palette}
           flush
         />
-        <ProfileSectionCard palette={palette}>
+        <ProfileSectionCard>
           <ProfileSettingRow
             title={t("profile.switcher.useAnotherAccountTitle")}
             subtitle={t("profile.switcher.useAnotherAccountHint")}
             icon="person.crop.circle.badge.plus"
             onPress={onUseAnotherAccount}
-            palette={palette}
             showDivider
           />
           <ProfileSettingRow
@@ -288,7 +276,6 @@ export function ProfileAccountSwitcherSheet({
             subtitle={t("profile.settings.signOutDesc")}
             icon="rectangle.portrait.and.arrow.right"
             onPress={onSignOut}
-            palette={palette}
             tone="danger"
           />
         </ProfileSectionCard>

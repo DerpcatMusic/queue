@@ -5,8 +5,8 @@ import type { ProfileSocialLinks } from "@/components/profile/profile-social-lin
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import type { BrandPalette } from "@/constants/brand";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 import {
   getActiveSocialCount,
   getProfileSummary,
@@ -18,7 +18,6 @@ type ProfileHeaderSheetProps = {
   profileName: string;
   roleLabel: string;
   profileImageUrl?: string | null | undefined;
-  palette: BrandPalette;
   onRequestEdit: () => void;
   primaryActionLabel?: string;
   status?: ProfileHeroStatus;
@@ -32,7 +31,6 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   profileName,
   roleLabel,
   profileImageUrl,
-  palette,
   onRequestEdit,
   primaryActionLabel,
   status,
@@ -42,6 +40,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   sports,
 }: ProfileHeaderSheetProps) {
   const { t } = useTranslation();
+  const { color: palette } = useTheme();
   const resolvedPrimaryActionLabel = primaryActionLabel ?? t("profile.actions.edit");
   const activeSocialCount = getActiveSocialCount(socialLinks);
   const sportsLabel = getSportsLabel(sports, t);
@@ -62,7 +61,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
       pointerEvents="box-none"
       style={{
         paddingHorizontal: BrandSpacing.xl,
-        paddingTop: 2,
+        paddingTop: BrandSpacing.xs,
         paddingBottom: BrandSpacing.sm,
         gap: BrandSpacing.sm,
       }}
@@ -72,14 +71,14 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           flexDirection: "row",
           alignItems: "flex-start",
           justifyContent: "space-between",
-          gap: 14,
+          gap: BrandSpacing.component,
         }}
       >
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 14,
+            gap: BrandSpacing.component,
             flex: 1,
             minWidth: 0,
           }}
@@ -87,7 +86,6 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           <ProfileAvatar
             imageUrl={profileImageUrl}
             fallbackName={profileName}
-            palette={palette}
             size={72}
             roundedSquare
           />
@@ -95,9 +93,12 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
             <Text
               style={{
-                ...BrandType.micro,
-                color: palette.onPrimary as string,
+                fontFamily: "Manrope_500Medium",
+                fontSize: 12,
+                fontWeight: "500",
                 letterSpacing: 0.2,
+                lineHeight: 16,
+                color: palette.onPrimary,
                 includeFontPadding: false,
               }}
             >
@@ -106,19 +107,33 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             <Text
               numberOfLines={2}
               style={{
-                ...BrandType.heading,
+                fontFamily: "Lexend_600SemiBold",
                 fontSize: 26,
+                fontWeight: "600",
                 lineHeight: 28,
-                color: palette.onPrimary as string,
                 letterSpacing: -0.3,
+                color: palette.onPrimary,
                 includeFontPadding: false,
               }}
             >
               {profileName}
             </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 18 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: BrandSpacing.sm,
+                minHeight: 18,
+              }}
+            >
               {resolvedStatusLabel ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: BrandSpacing.statusDot,
+                  }}
+                >
                   <View
                     style={{
                       width: 7,
@@ -126,18 +141,20 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                       borderRadius: 3.5,
                       backgroundColor:
                         statusTone === "success"
-                          ? (palette.success as string)
+                          ? palette.success
                           : statusTone === "warning"
-                            ? (palette.warning as string)
-                            : (palette.onPrimary as string),
+                            ? palette.warning
+                            : palette.onPrimary,
                     }}
                   />
                   <Text
                     numberOfLines={1}
                     style={{
-                      ...BrandType.bodyMedium,
+                      fontFamily: "Manrope_500Medium",
                       fontSize: 13,
-                      color: palette.onPrimary as string,
+                      fontWeight: "500",
+                      lineHeight: 22,
+                      color: palette.onPrimary,
                       includeFontPadding: false,
                     }}
                   >
@@ -149,9 +166,11 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                 <Text
                   numberOfLines={1}
                   style={{
-                    ...BrandType.bodyMedium,
+                    fontFamily: "Manrope_500Medium",
                     fontSize: 13,
-                    color: palette.onPrimary as string,
+                    fontWeight: "500",
+                    lineHeight: 22,
+                    color: palette.onPrimary,
                     includeFontPadding: false,
                   }}
                 >
@@ -167,7 +186,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           onPress={onRequestEdit}
           tone="primarySubtle"
           size={48}
-          icon={<IconSymbol name="pencil" size={21} color={palette.primary as string} />}
+          icon={<IconSymbol name="pencil" size={21} color={palette.primary} />}
         />
       </View>
 
@@ -175,8 +194,11 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
         <Text
           numberOfLines={2}
           style={{
-            ...BrandType.caption,
-            color: palette.onPrimary as string,
+            fontFamily: "Manrope_400Regular",
+            fontSize: 14,
+            fontWeight: "400",
+            lineHeight: 19,
+            color: palette.onPrimary,
           }}
         >
           {summaryLabel}

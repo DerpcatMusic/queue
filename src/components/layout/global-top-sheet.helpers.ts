@@ -1,4 +1,4 @@
-import type { useBrand } from "@/hooks/use-brand";
+import { getTheme } from "@/lib/design-system";
 import type { TopSheetTabConfig } from "./top-sheet-registry";
 
 export type ContentTransitionDirection = "vertical" | "forward" | "backward";
@@ -27,17 +27,20 @@ export function areSheetConfigsEqual(
   );
 }
 
-export function getFallbackSheetColors(tabId: string, palette: ReturnType<typeof useBrand>) {
+// Real color values for native TopSheet (CSS vars don't resolve in RN native views)
+const FALLBACK_THEME = getTheme("light");
+
+export function getFallbackSheetColors(tabId: string) {
   if (tabId === "map") {
     return {
-      backgroundColor: palette.surfaceElevated as string,
-      topInsetColor: palette.surfaceElevated as string,
+      backgroundColor: FALLBACK_THEME.color.surfaceElevated,
+      topInsetColor: FALLBACK_THEME.color.surfaceElevated,
     };
   }
 
   return {
-    backgroundColor: palette.primary as string,
-    topInsetColor: palette.primary as string,
+    backgroundColor: FALLBACK_THEME.color.primary,
+    topInsetColor: FALLBACK_THEME.color.primary,
   };
 }
 

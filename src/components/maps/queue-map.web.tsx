@@ -3,14 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { BrandRadius, BrandType } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { BrandRadius } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 import type { QueueMapProps } from "./queue-map.types";
 import { buildCoverageNodes, getResponseLabel, getZone } from "./queue-map.web.helpers";
 
 export function QueueMap(props: QueueMapProps) {
   const { t, i18n } = useTranslation();
-  const palette = useBrand();
+  const { color: palette } = useTheme();
   const zoneLanguage = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he") ? "he" : "en";
   const responseLabels = useMemo(
     () => ({
@@ -36,7 +36,7 @@ export function QueueMap(props: QueueMapProps) {
     <View
       style={{
         flex: 1,
-        backgroundColor: palette.surfaceAlt as string,
+        backgroundColor: palette.surfaceAlt,
         padding: 20,
       }}
     >
@@ -45,7 +45,7 @@ export function QueueMap(props: QueueMapProps) {
           flex: 1,
           borderRadius: 28,
           borderCurve: "continuous",
-          backgroundColor: palette.surface as string,
+          backgroundColor: palette.surface,
           overflow: "hidden",
         }}
       >
@@ -54,7 +54,7 @@ export function QueueMap(props: QueueMapProps) {
             flex: 1,
             justifyContent: "space-between",
             padding: 22,
-            backgroundColor: palette.surfaceAlt as string,
+            backgroundColor: palette.surfaceAlt,
           }}
         >
           <View style={{ gap: 18 }}>
@@ -69,8 +69,14 @@ export function QueueMap(props: QueueMapProps) {
               <View style={{ gap: 4, flex: 1 }}>
                 <Text
                   style={{
-                    ...BrandType.micro,
-                    color: palette.primary as string,
+                    ...{
+                      fontFamily: "Manrope_500Medium",
+                      fontSize: 12,
+                      fontWeight: "500",
+                      letterSpacing: 0.2,
+                      lineHeight: 16,
+                    },
+                    color: palette.primary,
                     letterSpacing: 1.1,
                     textTransform: "uppercase",
                   }}
@@ -83,7 +89,7 @@ export function QueueMap(props: QueueMapProps) {
                     fontSize: 38,
                     lineHeight: 36,
                     letterSpacing: -1,
-                    color: palette.text as string,
+                    color: palette.text,
                   }}
                 >
                   {t("mapTab.web.workspaceTitle")}
@@ -97,17 +103,22 @@ export function QueueMap(props: QueueMapProps) {
                   borderRadius: 22,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: palette.primary as string,
+                  backgroundColor: palette.primary,
                 }}
               >
-                <AppSymbol name="map.fill" size={24} tintColor={palette.onPrimary as string} />
+                <AppSymbol name="map.fill" size={24} tintColor={palette.onPrimary} />
               </View>
             </View>
 
             <Text
               style={{
-                ...BrandType.body,
-                color: palette.textMuted as string,
+                ...{
+                  fontFamily: "Manrope_400Regular",
+                  fontSize: 16,
+                  fontWeight: "400",
+                  lineHeight: 22,
+                },
+                color: palette.textMuted,
                 maxWidth: 560,
               }}
             >
@@ -121,7 +132,7 @@ export function QueueMap(props: QueueMapProps) {
               minHeight: 320,
               borderRadius: 28,
               borderCurve: "continuous",
-              backgroundColor: palette.appBg as string,
+              backgroundColor: palette.appBg,
               marginVertical: 18,
               overflow: "hidden",
             }}
@@ -141,7 +152,7 @@ export function QueueMap(props: QueueMapProps) {
                     right: 0,
                     top: `${14 + row * 18}%` as `${number}%`,
                     height: 1,
-                    backgroundColor: palette.surface as string,
+                    backgroundColor: palette.surface,
                   }}
                 />
               ))}
@@ -154,7 +165,7 @@ export function QueueMap(props: QueueMapProps) {
                     bottom: 0,
                     left: `${8 + column * 15}%` as `${number}%`,
                     width: 1,
-                    backgroundColor: palette.surface as string,
+                    backgroundColor: palette.surface,
                   }}
                 />
               ))}
@@ -166,7 +177,7 @@ export function QueueMap(props: QueueMapProps) {
                   width: "52%" as never,
                   height: "72%" as never,
                   borderRadius: 36,
-                  backgroundColor: palette.primarySubtle as string,
+                  backgroundColor: palette.primarySubtle,
                   transform: [{ rotate: "-10deg" }],
                 }}
               />
@@ -178,7 +189,7 @@ export function QueueMap(props: QueueMapProps) {
                   width: "32%" as never,
                   height: "48%" as never,
                   borderRadius: 28,
-                  backgroundColor: palette.successSubtle as string,
+                  backgroundColor: palette.successSubtle,
                   transform: [{ rotate: "11deg" }],
                 }}
               />
@@ -201,7 +212,7 @@ export function QueueMap(props: QueueMapProps) {
                   maxWidth: 320,
                   borderRadius: 22,
                   borderCurve: "continuous",
-                  backgroundColor: palette.surface as string,
+                  backgroundColor: palette.surface,
                   paddingHorizontal: 14,
                   paddingVertical: 12,
                   gap: 4,
@@ -209,8 +220,14 @@ export function QueueMap(props: QueueMapProps) {
               >
                 <Text
                   style={{
-                    ...BrandType.micro,
-                    color: palette.primary as string,
+                    ...{
+                      fontFamily: "Manrope_500Medium",
+                      fontSize: 12,
+                      fontWeight: "500",
+                      letterSpacing: 0.2,
+                      lineHeight: 16,
+                    },
+                    color: palette.primary,
                     letterSpacing: 1,
                     textTransform: "uppercase",
                   }}
@@ -220,16 +237,26 @@ export function QueueMap(props: QueueMapProps) {
                 <Text
                   numberOfLines={1}
                   style={{
-                    ...BrandType.bodyStrong,
-                    color: palette.text as string,
+                    ...{
+                      fontFamily: "Manrope_500Medium",
+                      fontSize: 16,
+                      fontWeight: "500",
+                      lineHeight: 22,
+                    },
+                    color: palette.text,
                   }}
                 >
                   {focusedZone ? focusedZone.label[zoneLanguage] : t("mapTab.web.noFocusLocked")}
                 </Text>
                 <Text
                   style={{
-                    ...BrandType.caption,
-                    color: palette.textMuted as string,
+                    ...{
+                      fontFamily: "Manrope_400Regular",
+                      fontSize: 14,
+                      fontWeight: "400",
+                      lineHeight: 19,
+                    },
+                    color: palette.textMuted,
                   }}
                 >
                   {focusedZone ? t("mapTab.web.focusHelp") : t("mapTab.web.focusEmpty")}
@@ -240,7 +267,7 @@ export function QueueMap(props: QueueMapProps) {
                 style={{
                   borderRadius: 22,
                   borderCurve: "continuous",
-                  backgroundColor: palette.primary as string,
+                  backgroundColor: palette.primary,
                   paddingHorizontal: 14,
                   paddingVertical: 12,
                   gap: 2,
@@ -248,8 +275,14 @@ export function QueueMap(props: QueueMapProps) {
               >
                 <Text
                   style={{
-                    ...BrandType.micro,
-                    color: palette.onPrimary as string,
+                    ...{
+                      fontFamily: "Manrope_500Medium",
+                      fontSize: 12,
+                      fontWeight: "500",
+                      letterSpacing: 0.2,
+                      lineHeight: 16,
+                    },
+                    color: palette.onPrimary,
                     letterSpacing: 1,
                     textTransform: "uppercase",
                   }}
@@ -261,7 +294,7 @@ export function QueueMap(props: QueueMapProps) {
                     fontFamily: "BarlowCondensed_800ExtraBold",
                     fontSize: 30,
                     lineHeight: 28,
-                    color: palette.onPrimary as string,
+                    color: palette.onPrimary,
                     fontVariant: ["tabular-nums"],
                   }}
                 >
@@ -273,18 +306,13 @@ export function QueueMap(props: QueueMapProps) {
             {coverageNodes.map((node) => {
               const isEditable = typeof props.onPressZone === "function";
               const blockBackground = node.focused
-                ? (palette.primary as string)
+                ? palette.primary
                 : node.selected
-                  ? (palette.success as string)
-                  : (palette.surface as string);
-              const titleColor =
-                node.focused || node.selected
-                  ? (palette.onPrimary as string)
-                  : (palette.text as string);
+                  ? palette.success
+                  : palette.surface;
+              const titleColor = node.focused || node.selected ? palette.onPrimary : palette.text;
               const metaColor =
-                node.focused || node.selected
-                  ? (palette.surfaceAlt as string)
-                  : (palette.textMuted as string);
+                node.focused || node.selected ? palette.surfaceAlt : palette.textMuted;
 
               return (
                 <Pressable
@@ -307,16 +335,21 @@ export function QueueMap(props: QueueMapProps) {
                     transform: [{ rotate: `${String(node.rotate)}deg` }],
                     borderWidth: pressed ? 1.5 : 1,
                     borderColor: node.focused
-                      ? (palette.primaryPressed as string)
+                      ? palette.primaryPressed
                       : node.selected
-                        ? (palette.successSubtle as string)
-                        : (palette.surfaceAlt as string),
+                        ? palette.successSubtle
+                        : palette.surfaceAlt,
                   })}
                 >
                   <Text
                     numberOfLines={2}
                     style={{
-                      ...BrandType.bodyStrong,
+                      ...{
+                        fontFamily: "Manrope_500Medium",
+                        fontSize: 16,
+                        fontWeight: "500",
+                        lineHeight: 22,
+                      },
                       color: titleColor,
                     }}
                   >
@@ -325,7 +358,13 @@ export function QueueMap(props: QueueMapProps) {
                   <View style={{ gap: 2 }}>
                     <Text
                       style={{
-                        ...BrandType.micro,
+                        ...{
+                          fontFamily: "Manrope_500Medium",
+                          fontSize: 12,
+                          fontWeight: "500",
+                          letterSpacing: 0.2,
+                          lineHeight: 16,
+                        },
                         color: metaColor,
                         letterSpacing: 0.8,
                         textTransform: "uppercase",
@@ -337,7 +376,17 @@ export function QueueMap(props: QueueMapProps) {
                           ? t("mapTab.web.liveTerritory")
                           : t("mapTab.web.referenceZone")}
                     </Text>
-                    <Text style={{ ...BrandType.caption, color: metaColor }}>
+                    <Text
+                      style={{
+                        ...{
+                          fontFamily: "Manrope_400Regular",
+                          fontSize: 14,
+                          fontWeight: "400",
+                          lineHeight: 19,
+                        },
+                        color: metaColor,
+                      }}
+                    >
                       {isEditable
                         ? node.selected
                           ? t("mapTab.web.tapToRemove")
@@ -362,7 +411,7 @@ export function QueueMap(props: QueueMapProps) {
                 flex: 1,
                 borderRadius: 24,
                 borderCurve: "continuous",
-                backgroundColor: palette.primary as string,
+                backgroundColor: palette.primary,
                 paddingHorizontal: 16,
                 paddingVertical: 14,
                 gap: 2,
@@ -370,8 +419,14 @@ export function QueueMap(props: QueueMapProps) {
             >
               <Text
                 style={{
-                  ...BrandType.micro,
-                  color: palette.onPrimary as string,
+                  ...{
+                    fontFamily: "Manrope_500Medium",
+                    fontSize: 12,
+                    fontWeight: "500",
+                    letterSpacing: 0.2,
+                    lineHeight: 16,
+                  },
+                  color: palette.onPrimary,
                   letterSpacing: 1,
                   textTransform: "uppercase",
                 }}
@@ -383,7 +438,7 @@ export function QueueMap(props: QueueMapProps) {
                   fontFamily: "BarlowCondensed_800ExtraBold",
                   fontSize: 30,
                   lineHeight: 28,
-                  color: palette.onPrimary as string,
+                  color: palette.onPrimary,
                 }}
               >
                 {props.onPressZone ? t("mapTab.web.interactive") : t("mapTab.web.preview")}
@@ -395,7 +450,7 @@ export function QueueMap(props: QueueMapProps) {
                 flex: 1.5,
                 borderRadius: 24,
                 borderCurve: "continuous",
-                backgroundColor: palette.surface as string,
+                backgroundColor: palette.surface,
                 paddingHorizontal: 16,
                 paddingVertical: 14,
                 gap: 10,
@@ -403,8 +458,14 @@ export function QueueMap(props: QueueMapProps) {
             >
               <Text
                 style={{
-                  ...BrandType.micro,
-                  color: palette.textMuted as string,
+                  ...{
+                    fontFamily: "Manrope_500Medium",
+                    fontSize: 12,
+                    fontWeight: "500",
+                    letterSpacing: 0.2,
+                    lineHeight: 16,
+                  },
+                  color: palette.textMuted,
                   letterSpacing: 1,
                   textTransform: "uppercase",
                 }}
@@ -420,19 +481,21 @@ export function QueueMap(props: QueueMapProps) {
                       style={{
                         borderRadius: BrandRadius.pill,
                         borderCurve: "continuous",
-                        backgroundColor: node.focused
-                          ? (palette.primaryPressed as string)
-                          : (palette.surfaceAlt as string),
+                        backgroundColor: node.focused ? palette.primaryPressed : palette.surfaceAlt,
                         paddingHorizontal: 10,
                         paddingVertical: 7,
                       }}
                     >
                       <Text
                         style={{
-                          ...BrandType.micro,
-                          color: node.focused
-                            ? (palette.onPrimary as string)
-                            : (palette.text as string),
+                          ...{
+                            fontFamily: "Manrope_500Medium",
+                            fontSize: 12,
+                            fontWeight: "500",
+                            letterSpacing: 0.2,
+                            lineHeight: 16,
+                          },
+                          color: node.focused ? palette.onPrimary : palette.text,
                         }}
                       >
                         {node.label}
@@ -443,8 +506,13 @@ export function QueueMap(props: QueueMapProps) {
               ) : (
                 <Text
                   style={{
-                    ...BrandType.caption,
-                    color: palette.textMuted as string,
+                    ...{
+                      fontFamily: "Manrope_400Regular",
+                      fontSize: 14,
+                      fontWeight: "400",
+                      lineHeight: 19,
+                    },
+                    color: palette.textMuted,
                   }}
                 >
                   {t("mapTab.web.emptySnapshot")}

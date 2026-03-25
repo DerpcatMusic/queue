@@ -5,7 +5,6 @@ import {
   InstructorJobCard,
   type InstructorMarketplaceJob,
 } from "@/components/jobs/instructor/instructor-job-card";
-import type { BrandPalette } from "@/constants/brand";
 import { BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
@@ -14,7 +13,6 @@ type InstructorOpenJobsListProps = {
   jobs: InstructorMarketplaceJob[];
   locale: string;
   zoneLanguage: "en" | "he";
-  palette: BrandPalette;
   applyingJobId: Id<"jobs"> | null;
   withdrawingApplicationId: Id<"jobApplications"> | null;
   now: number;
@@ -28,7 +26,6 @@ export function InstructorOpenJobsList({
   jobs,
   locale,
   zoneLanguage,
-  palette,
   applyingJobId,
   withdrawingApplicationId,
   now,
@@ -60,7 +57,6 @@ export function InstructorOpenJobsList({
             job={job}
             locale={locale}
             zoneLanguage={zoneLanguage}
-            palette={palette}
             applyingJobId={applyingJobId}
             withdrawingApplicationId={withdrawingApplicationId}
             now={now}

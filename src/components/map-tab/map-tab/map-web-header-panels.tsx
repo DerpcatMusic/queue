@@ -2,11 +2,10 @@ import type { TFunction } from "i18next";
 import { Text, View } from "react-native";
 
 import { ActionButton } from "@/components/ui/action-button";
-import { type BrandPalette, BrandType } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 
 type MapWebHeaderPanelsProps = {
   t: TFunction;
-  palette: BrandPalette;
   hasChanges: boolean;
   pendingChangeCount: number;
   persistedZoneCount: number;
@@ -18,7 +17,6 @@ type MapWebHeaderPanelsProps = {
 
 export function MapWebHeaderPanels({
   t,
-  palette,
   hasChanges,
   pendingChangeCount,
   persistedZoneCount,
@@ -27,6 +25,7 @@ export function MapWebHeaderPanels({
   onSave,
   onReset,
 }: MapWebHeaderPanelsProps) {
+  const { color: palette } = useTheme();
   return (
     <View style={{ flexDirection: "row", gap: 16 }}>
       <View
@@ -34,7 +33,7 @@ export function MapWebHeaderPanels({
           flex: 1,
           borderRadius: 30,
           borderCurve: "continuous",
-          backgroundColor: palette.surfaceAlt as string,
+          backgroundColor: palette.surfaceAlt,
           paddingHorizontal: 18,
           paddingVertical: 18,
           gap: 6,
@@ -42,8 +41,11 @@ export function MapWebHeaderPanels({
       >
         <Text
           style={{
-            ...BrandType.micro,
-            color: palette.primary as string,
+            fontFamily: "Manrope_500Medium",
+            fontSize: 12,
+            fontWeight: "500",
+            lineHeight: 16,
+            color: palette.primary,
             letterSpacing: 1.1,
             textTransform: "uppercase",
           }}
@@ -56,15 +58,18 @@ export function MapWebHeaderPanels({
             fontSize: 42,
             lineHeight: 38,
             letterSpacing: -1,
-            color: palette.text as string,
+            color: palette.text,
           }}
         >
           {t("mapTab.web.workspaceTitle")}
         </Text>
         <Text
           style={{
-            ...BrandType.body,
-            color: palette.textMuted as string,
+            fontFamily: "Manrope_400Regular",
+            fontSize: 16,
+            fontWeight: "400",
+            lineHeight: 22,
+            color: palette.textMuted,
           }}
         >
           {t("mapTab.web.workspaceBody")}
@@ -76,7 +81,7 @@ export function MapWebHeaderPanels({
           width: 320,
           borderRadius: 30,
           borderCurve: "continuous",
-          backgroundColor: palette.primaryPressed as string,
+          backgroundColor: palette.primaryPressed,
           paddingHorizontal: 18,
           paddingVertical: 18,
           gap: 8,
@@ -84,8 +89,11 @@ export function MapWebHeaderPanels({
       >
         <Text
           style={{
-            ...BrandType.micro,
-            color: palette.onPrimary as string,
+            fontFamily: "Manrope_500Medium",
+            fontSize: 12,
+            fontWeight: "500",
+            lineHeight: 16,
+            color: palette.onPrimary,
             letterSpacing: 1.1,
             textTransform: "uppercase",
           }}
@@ -98,7 +106,7 @@ export function MapWebHeaderPanels({
             fontSize: 34,
             lineHeight: 32,
             letterSpacing: -0.8,
-            color: palette.onPrimary as string,
+            color: palette.onPrimary,
           }}
         >
           {hasChanges
@@ -107,8 +115,11 @@ export function MapWebHeaderPanels({
         </Text>
         <Text
           style={{
-            ...BrandType.caption,
-            color: palette.onPrimary as string,
+            fontFamily: "Manrope_400Regular",
+            fontSize: 14,
+            fontWeight: "400",
+            lineHeight: 19,
+            color: palette.onPrimary,
           }}
         >
           {hasChanges ? t("mapTab.web.statePending") : t("mapTab.web.stateReady")}
@@ -119,7 +130,7 @@ export function MapWebHeaderPanels({
               flex: 1,
               borderRadius: 18,
               borderCurve: "continuous",
-              backgroundColor: palette.surface as string,
+              backgroundColor: palette.surface,
               paddingHorizontal: 12,
               paddingVertical: 10,
               gap: 2,
@@ -127,8 +138,11 @@ export function MapWebHeaderPanels({
           >
             <Text
               style={{
-                ...BrandType.micro,
-                color: palette.textMuted as string,
+                fontFamily: "Manrope_500Medium",
+                fontSize: 12,
+                fontWeight: "500",
+                lineHeight: 16,
+                color: palette.textMuted,
                 letterSpacing: 1,
                 textTransform: "uppercase",
               }}
@@ -137,8 +151,11 @@ export function MapWebHeaderPanels({
             </Text>
             <Text
               style={{
-                ...BrandType.bodyStrong,
-                color: palette.onPrimary as string,
+                fontFamily: "Manrope_600SemiBold",
+                fontSize: 16,
+                fontWeight: "600",
+                lineHeight: 22,
+                color: palette.onPrimary,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -150,7 +167,7 @@ export function MapWebHeaderPanels({
               flex: 1.25,
               borderRadius: 18,
               borderCurve: "continuous",
-              backgroundColor: palette.surface as string,
+              backgroundColor: palette.surface,
               paddingHorizontal: 12,
               paddingVertical: 10,
               gap: 2,
@@ -158,8 +175,11 @@ export function MapWebHeaderPanels({
           >
             <Text
               style={{
-                ...BrandType.micro,
-                color: palette.textMuted as string,
+                fontFamily: "Manrope_500Medium",
+                fontSize: 12,
+                fontWeight: "500",
+                lineHeight: 16,
+                color: palette.textMuted,
                 letterSpacing: 1,
                 textTransform: "uppercase",
               }}
@@ -169,8 +189,11 @@ export function MapWebHeaderPanels({
             <Text
               numberOfLines={1}
               style={{
-                ...BrandType.bodyStrong,
-                color: palette.onPrimary as string,
+                fontFamily: "Manrope_600SemiBold",
+                fontSize: 16,
+                fontWeight: "600",
+                lineHeight: 22,
+                color: palette.onPrimary,
               }}
             >
               {focusedZoneLabel
@@ -185,14 +208,12 @@ export function MapWebHeaderPanels({
             onPress={onSave}
             disabled={!hasChanges || isSaving}
             loading={isSaving}
-            palette={palette}
             tone="secondary"
           />
           <ActionButton
             label={t("mapTab.web.resetToLive")}
             onPress={onReset}
             disabled={!hasChanges || isSaving}
-            palette={palette}
             tone="secondary"
           />
         </View>

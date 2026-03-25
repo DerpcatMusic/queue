@@ -6,10 +6,11 @@ import { DotStatusPill } from "@/components/home/home-shared";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
-import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
+import { useTheme } from "@/hooks/use-theme";
 import {
   formatDateWithWeekday,
   formatTime,
@@ -18,14 +19,13 @@ import {
   getExpiryPresentation,
   getJobStatusToneWithReason,
   getJobStatusTranslationKey,
-  type JobStatusTone,
 } from "@/lib/jobs-utils";
 import type { PaymentStatus, PayoutStatus } from "@/lib/payments-utils";
-import { appStatusDot, paymentDotColor } from "./studio-jobs-list.helpers";
+import { appStatusDot, getJobStatusToneColors, paymentDotColor } from "./studio-jobs-list.helpers";
 import type { StudioJob, StudioJobApplication } from "./studio-jobs-list.types";
 
-const AVATAR_SIZE = BrandSpacing.xxl + BrandSpacing.xxl + 2;
-const AVATAR_RADIUS = BrandRadius.soft;
+const AVATAR_SIZE = BrandSpacing.avatarCard;
+const AVATAR_RADIUS = BrandRadius.card;
 
 const PAYMENT_STATUS_KEY: Record<PaymentStatus, string> = {
   created: "jobsTab.checkout.paymentStatus.created",
@@ -47,84 +47,37 @@ const PAYOUT_STATUS_KEY: Record<PayoutStatus, string> = {
   needs_attention: "jobsTab.checkout.payoutStatus.needsAttention",
 };
 
-function getToneColors(tone: JobStatusTone, palette: BrandPalette) {
-  if (tone === "primary") {
-    return {
-      color: palette.primary as string,
-      backgroundColor: palette.primarySubtle as string,
-    };
-  }
-
-  if (tone === "success") {
-    return {
-      color: palette.success as string,
-      backgroundColor: palette.successSubtle as string,
-    };
-  }
-
-  if (tone === "amber") {
-    return {
-      color: palette.warning as string,
-      backgroundColor: palette.warningSubtle as string,
-    };
-  }
-
-  if (tone === "gray") {
-    return {
-      color: palette.textMuted as string,
-      backgroundColor: palette.surfaceAlt as string,
-    };
-  }
-
-  return {
-    color: palette.textMuted as string,
-    backgroundColor: palette.surface as string,
-  };
-}
-
 function MetaPill({
   icon,
   label,
-  palette,
   tone = "default",
 }: {
   icon: ComponentProps<typeof IconSymbol>["name"];
   label: string;
-  palette: BrandPalette;
   tone?: "default" | "warning" | "danger" | "success";
 }) {
+  const theme = useTheme();
   const backgroundColor =
     tone === "warning"
-      ? (palette.warningSubtle as string)
+      ? theme.jobs.accentHeatSubtle
       : tone === "danger"
-        ? (palette.dangerSubtle as string)
+        ? theme.color.dangerSubtle
         : tone === "success"
-          ? (palette.successSubtle as string)
-          : (palette.surfaceAlt as string);
+          ? theme.color.primarySubtle
+          : theme.color.surfaceAlt;
   const color =
     tone === "warning"
-      ? (palette.warning as string)
+      ? theme.jobs.accentHeat
       : tone === "danger"
-        ? (palette.danger as string)
+        ? theme.color.danger
         : tone === "success"
-          ? (palette.success as string)
-          : (palette.textMuted as string);
+          ? theme.jobs.signal
+          : theme.color.textMuted;
 
   return (
-    <View
-      className="flex-row items-center gap-stack-tight rounded-pill px-sm py-xs"
-      style={{
-        backgroundColor,
-      }}
-    >
+    <View className="flex-row items-center rounded-pill px-sm py-xs" style={{ backgroundColor }}>
       <IconSymbol name={icon} size={12} color={color} />
-      <Text
-        numberOfLines={1}
-        style={{
-          ...BrandType.caption,
-          color,
-        }}
-      >
+      <Text numberOfLines={1} style={{ ...BrandType.caption, color }}>
         {label}
       </Text>
     </View>
@@ -134,23 +87,22 @@ function MetaPill({
 function InlineMeta({
   icon,
   text,
-  palette,
   strong = false,
 }: {
   icon: ComponentProps<typeof IconSymbol>["name"];
   text: string;
-  palette: BrandPalette;
   strong?: boolean;
 }) {
+  const theme = useTheme();
   return (
     <View className="flex-row items-center gap-stack-tight">
-      <IconSymbol name={icon} size={16} color={palette.textMuted as string} />
+      <IconSymbol name={icon} size={16} color={theme.color.textMuted} />
       <Text
         numberOfLines={1}
         style={[
           strong ? BrandType.bodyStrong : BrandType.body,
           {
-            color: strong ? (palette.text as string) : (palette.textMuted as string),
+            color: strong ? theme.color.text : theme.color.textMuted,
             flexShrink: 1,
           },
         ]}
@@ -165,7 +117,6 @@ type ApplicationRowProps = {
   application: StudioJobApplication;
   isWideWeb: boolean;
   locale: string;
-  palette: BrandPalette;
   reviewingApplicationId: Id<"jobApplications"> | null;
   canReview: boolean;
   onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
@@ -176,13 +127,13 @@ export const ApplicationRow = memo(function ApplicationRow({
   application,
   isWideWeb,
   locale,
-  palette,
   reviewingApplicationId,
   canReview,
   onReview,
   t,
 }: ApplicationRowProps) {
-  const appDot = appStatusDot(application.status, palette);
+  const theme = useTheme();
+  const appDot = appStatusDot(application.status, theme);
   const isReviewing = reviewingApplicationId === application.applicationId;
   const initials = application.instructorName
     .split(" ")
@@ -193,19 +144,19 @@ export const ApplicationRow = memo(function ApplicationRow({
     .toUpperCase();
   const statusBackground =
     application.status === "accepted"
-      ? (palette.successSubtle as string)
+      ? theme.color.primarySubtle
       : application.status === "rejected"
-        ? (palette.dangerSubtle as string)
+        ? theme.color.dangerSubtle
         : application.status === "pending"
-          ? (palette.warningSubtle as string)
-          : (palette.surfaceAlt as string);
+          ? theme.jobs.accentHeatSubtle
+          : theme.color.surfaceAlt;
   const metaText = `${t("jobsTab.card.applied")} · ${formatDateWithWeekday(application.appliedAt, locale)} · ${formatTime(application.appliedAt, locale)}`;
 
   return (
     <Animated.View entering={FadeInUp.duration(220).springify().damping(18)}>
       <View
         className="gap-stack rounded-medium px-control-x py-control-y"
-        style={{ borderCurve: "continuous", backgroundColor: palette.surface as string }}
+        style={{ borderCurve: "continuous", backgroundColor: theme.jobs.surfaceRaised }}
       >
         <View
           className="gap-stack"
@@ -235,8 +186,6 @@ export const ApplicationRow = memo(function ApplicationRow({
               <Text
                 style={{
                   ...BrandType.bodyStrong,
-                  fontSize: 14,
-                  lineHeight: 16,
                   color: appDot,
                 }}
               >
@@ -249,9 +198,7 @@ export const ApplicationRow = memo(function ApplicationRow({
                 numberOfLines={1}
                 style={{
                   ...BrandType.bodyStrong,
-                  fontSize: 15,
-                  lineHeight: 19,
-                  color: palette.text as string,
+                  color: theme.color.text,
                 }}
               >
                 {application.instructorName}
@@ -261,7 +208,7 @@ export const ApplicationRow = memo(function ApplicationRow({
                   numberOfLines={isWideWeb ? 1 : 2}
                   style={{
                     ...BrandType.caption,
-                    color: palette.textMuted as string,
+                    color: theme.color.textMuted,
                   }}
                 >
                   {application.message}
@@ -271,7 +218,7 @@ export const ApplicationRow = memo(function ApplicationRow({
                   numberOfLines={1}
                   style={{
                     ...BrandType.caption,
-                    color: palette.textMicro as string,
+                    color: theme.color.textMicro,
                   }}
                 >
                   {metaText}
@@ -285,30 +232,26 @@ export const ApplicationRow = memo(function ApplicationRow({
             style={{ alignSelf: isWideWeb ? "center" : "flex-start" }}
           >
             <DotStatusPill
-              backgroundColor={palette.surfaceAlt as string}
+              backgroundColor={theme.color.surfaceAlt}
               color={appDot}
               label={t(getApplicationStatusTranslationKey(application.status))}
             />
           </View>
         </View>
 
-        {application.message ? (
-          <InlineMeta icon="calendar.badge.clock" text={metaText} palette={palette} />
-        ) : null}
+        {application.message ? <InlineMeta icon="calendar.badge.clock" text={metaText} /> : null}
 
         {canReview ? (
           <View className="flex-row flex-wrap gap-sm pt-xs">
             <ActionButton
               label={isReviewing ? t("jobsTab.actions.rejecting") : t("jobsTab.actions.reject")}
               onPress={() => onReview(application.applicationId, "rejected")}
-              palette={palette}
               tone="secondary"
               disabled={isReviewing}
             />
             <ActionButton
               label={isReviewing ? t("jobsTab.actions.accepting") : t("jobsTab.actions.accept")}
               onPress={() => onReview(application.applicationId, "accepted")}
-              palette={palette}
               loading={isReviewing}
             />
           </View>
@@ -324,7 +267,6 @@ type StudioJobCardProps = {
   isWideWeb: boolean;
   locale: string;
   zoneLanguage: "en" | "he";
-  palette: BrandPalette;
   reviewingApplicationId: Id<"jobApplications"> | null;
   payingJobId: Id<"jobs"> | null;
   onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
@@ -338,16 +280,16 @@ export const StudioJobCard = memo(function StudioJobCard({
   isWideWeb,
   locale,
   zoneLanguage,
-  palette,
   reviewingApplicationId,
   payingJobId,
   onReview,
   onStartPayment,
   t,
 }: StudioJobCardProps) {
+  const theme = useTheme();
   const statusTone = getJobStatusToneWithReason(job.status, job.closureReason);
-  const statusPill = getToneColors(statusTone, palette);
-  const payDot = paymentDotColor(job.payment?.status, palette);
+  const statusPill = getJobStatusToneColors(statusTone, theme);
+  const payDot = paymentDotColor(job.payment?.status, theme);
   const boost = getBoostPresentation(
     job.pay,
     job.boostPreset,
@@ -372,7 +314,7 @@ export const StudioJobCard = memo(function StudioJobCard({
   const zoneLabel = getZoneLabel(job.zone, zoneLanguage);
   const expiryTone = expiry?.isExpired ? "danger" : "warning";
   const cardBackground =
-    job.pendingApplicationsCount > 0 ? (palette.surfaceAlt as string) : (palette.surface as string);
+    job.pendingApplicationsCount > 0 ? theme.jobs.surfaceRaised : theme.jobs.surface;
 
   return (
     <Animated.View
@@ -386,23 +328,22 @@ export const StudioJobCard = memo(function StudioJobCard({
         padding={0}
         gap={0}
         style={{
-          borderRadius: BrandRadius.soft,
+          borderRadius: BrandRadius.cardSubtle,
           borderCurve: "continuous",
           backgroundColor: cardBackground,
           overflow: "hidden",
         }}
       >
         <View className="gap-lg px-lg py-lg">
+          {/* Header: sport + status */}
           <View className="gap-md">
             <View className="flex-row items-start justify-between gap-stack">
               <View className="flex-1 min-w-0 gap-stack-tight">
                 <Text
                   numberOfLines={1}
                   style={{
-                    ...BrandType.title,
-                    fontSize: isWideWeb ? 22 : 20,
-                    lineHeight: isWideWeb ? 26 : 24,
-                    color: palette.text as string,
+                    ...(isWideWeb ? BrandType.titleLarge : BrandType.title),
+                    color: theme.color.text,
                   }}
                 >
                   {toSportLabel(job.sport as never)}
@@ -411,7 +352,7 @@ export const StudioJobCard = memo(function StudioJobCard({
                   numberOfLines={1}
                   style={{
                     ...BrandType.caption,
-                    color: palette.textMuted as string,
+                    color: theme.color.textMuted,
                   }}
                 >
                   {acceptedApplication
@@ -432,29 +373,28 @@ export const StudioJobCard = memo(function StudioJobCard({
                 />
                 {job.pendingApplicationsCount > 0 ? (
                   <DotStatusPill
-                    backgroundColor={palette.primarySubtle as string}
-                    color={palette.primary as string}
+                    backgroundColor={theme.color.primarySubtle}
+                    color={theme.jobs.signal}
                     label={t("jobsTab.card.toReview", { count: job.pendingApplicationsCount })}
                   />
                 ) : null}
               </View>
             </View>
 
+            {/* Mission details: date, time, zone, pay */}
             <View
               className="gap-stack rounded-medium px-control-x py-control-y"
-              style={{ borderCurve: "continuous", backgroundColor: palette.surface as string }}
+              style={{ borderCurve: "continuous", backgroundColor: theme.jobs.surfaceMuted }}
             >
-              <InlineMeta icon="calendar" text={dateLabel} palette={palette} />
-              <InlineMeta icon="clock" text={timeLabel} palette={palette} strong />
-              <InlineMeta icon="mappin.and.ellipse" text={zoneLabel} palette={palette} />
+              <InlineMeta icon="calendar" text={dateLabel} />
+              <InlineMeta icon="clock" text={timeLabel} strong />
+              <InlineMeta icon="mappin.and.ellipse" text={zoneLabel} />
 
               <View className="flex-row flex-wrap items-center justify-between gap-stack">
                 <Text
                   style={{
-                    ...BrandType.heading,
-                    fontSize: isWideWeb ? 30 : 28,
-                    lineHeight: isWideWeb ? 32 : 30,
-                    color: palette.success as string,
+                    ...(isWideWeb ? BrandType.headingDisplay : BrandType.heading),
+                    color: theme.jobs.signal,
                   }}
                 >
                   ₪{boost.totalPay}
@@ -465,7 +405,6 @@ export const StudioJobCard = memo(function StudioJobCard({
                     <MetaPill
                       icon="sparkles"
                       label={t(boost.badgeKey, boost.badgeInterpolation)}
-                      palette={palette}
                       tone="success"
                     />
                   ) : null}
@@ -473,7 +412,6 @@ export const StudioJobCard = memo(function StudioJobCard({
                     <MetaPill
                       icon="clock.fill"
                       label={t(expiry.key, expiry.interpolation)}
-                      palette={palette}
                       tone={expiryTone}
                     />
                   ) : null}
@@ -482,10 +420,11 @@ export const StudioJobCard = memo(function StudioJobCard({
             </View>
           </View>
 
+          {/* Payment section */}
           {["filled", "completed"].includes(job.status) ? (
             <View
               className="gap-stack rounded-medium px-control-x py-control-y"
-              style={{ borderCurve: "continuous", backgroundColor: palette.surface as string }}
+              style={{ borderCurve: "continuous", backgroundColor: theme.jobs.surfaceMuted }}
             >
               <View
                 className="flex-row justify-between gap-stack"
@@ -498,14 +437,14 @@ export const StudioJobCard = memo(function StudioJobCard({
                   <Text
                     style={{
                       ...BrandType.caption,
-                      color: palette.textMuted as string,
+                      color: theme.color.textMuted,
                     }}
                   >
                     {t("jobsTab.card.settlement")}
                   </Text>
                   <View className="flex-row flex-wrap gap-sm">
                     <DotStatusPill
-                      backgroundColor={palette.surfaceAlt as string}
+                      backgroundColor={theme.color.surfaceAlt}
                       color={payDot}
                       label={
                         job.payment
@@ -515,8 +454,8 @@ export const StudioJobCard = memo(function StudioJobCard({
                     />
                     {job.payment?.payoutStatus ? (
                       <DotStatusPill
-                        backgroundColor={palette.surfaceAlt as string}
-                        color={palette.text as string}
+                        backgroundColor={theme.color.surfaceAlt}
+                        color={theme.color.text}
                         label={t(PAYOUT_STATUS_KEY[job.payment.payoutStatus])}
                       />
                     ) : null}
@@ -533,7 +472,6 @@ export const StudioJobCard = memo(function StudioJobCard({
                           : t("jobsTab.checkout.payNow")
                     }
                     onPress={() => onStartPayment(job.jobId)}
-                    palette={palette}
                     loading={payingJobId === job.jobId}
                   />
                 ) : null}
@@ -541,13 +479,14 @@ export const StudioJobCard = memo(function StudioJobCard({
             </View>
           ) : null}
 
+          {/* Applications section */}
           {job.pendingApplicationsCount > 0 ? (
             <View className="gap-stack">
               <View className="flex-row items-center justify-between gap-stack">
                 <Text
                   style={{
                     ...BrandType.caption,
-                    color: palette.textMuted as string,
+                    color: theme.color.textMuted,
                   }}
                 >
                   {t("jobsTab.card.reviewQueue")}
@@ -555,7 +494,7 @@ export const StudioJobCard = memo(function StudioJobCard({
                 <Text
                   style={{
                     ...BrandType.micro,
-                    color: palette.textMuted as string,
+                    color: theme.color.textMuted,
                     fontVariant: ["tabular-nums"],
                   }}
                 >
@@ -569,7 +508,6 @@ export const StudioJobCard = memo(function StudioJobCard({
                   application={application}
                   isWideWeb={isWideWeb}
                   locale={locale}
-                  palette={palette}
                   reviewingApplicationId={reviewingApplicationId}
                   canReview={application.status === "pending" && job.status === "open"}
                   onReview={onReview}
@@ -578,17 +516,11 @@ export const StudioJobCard = memo(function StudioJobCard({
               ))}
             </View>
           ) : acceptedApplication ? (
-            <Text
-              className="px-xs"
-              style={{ ...BrandType.caption, color: palette.textMuted as string }}
-            >
+            <Text className="px-xs" style={{ ...BrandType.caption, color: theme.color.textMuted }}>
               {t("jobsTab.card.assignedTo", { name: acceptedApplication.instructorName })}
             </Text>
           ) : job.applicationsCount > 0 ? (
-            <Text
-              className="px-xs"
-              style={{ ...BrandType.caption, color: palette.textMuted as string }}
-            >
+            <Text className="px-xs" style={{ ...BrandType.caption, color: theme.color.textMuted }}>
               {t("jobsTab.card.applicantsProcessed", { count: job.applicationsCount })}
             </Text>
           ) : null}

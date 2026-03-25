@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { Image, Text, View } from "react-native";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import type { BrandPalette } from "@/constants/brand";
+import { BrandType } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
+import { FontSize, IconSize, LetterSpacing } from "@/lib/design-system";
 
 type ProfileAvatarProps = {
   imageUrl?: string | null | undefined;
   fallbackName?: string | null;
-  palette: BrandPalette;
   size?: number;
   roundedSquare?: boolean;
   fallbackIcon?: string;
@@ -28,12 +29,12 @@ function toInitials(name: string | null | undefined) {
 export function ProfileAvatar({
   imageUrl,
   fallbackName,
-  palette,
   size = 56,
   roundedSquare = true,
   fallbackIcon = "person.fill",
 }: ProfileAvatarProps) {
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+  const { color } = useTheme();
 
   const initials = useMemo(() => toInitials(fallbackName), [fallbackName]);
   const borderRadius = roundedSquare ? Math.round(size * 0.3) : Math.round(size / 2);
@@ -48,8 +49,10 @@ export function ProfileAvatar({
         borderRadius,
         borderCurve: "continuous",
         overflow: "hidden",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: color.surfaceAlt,
       }}
-      className="bg-surface-alt items-center justify-center"
     >
       {canRenderImage ? (
         <Image
@@ -64,11 +67,12 @@ export function ProfileAvatar({
         />
       ) : initials ? (
         <Text
-          className="text-brand"
           style={{
-            fontFamily: "Rubik_600SemiBold",
-            fontSize: Math.max(14, Math.round(size * 0.34)),
-            letterSpacing: -0.3,
+            ...BrandType.title,
+            color: color.text,
+            fontSize: Math.max(FontSize.caption, Math.round(size * 0.34)),
+            letterSpacing: LetterSpacing.initials,
+            lineHeight: Math.max(FontSize.body, Math.round(size * 0.38)),
           }}
         >
           {initials}
@@ -76,8 +80,8 @@ export function ProfileAvatar({
       ) : (
         <AppSymbol
           name={fallbackIcon}
-          size={Math.max(16, Math.round(size * 0.42))}
-          tintColor={palette.textMuted as string}
+          size={Math.max(IconSize.sm, Math.round(size * 0.42))}
+          tintColor={color.textMuted}
         />
       )}
     </View>

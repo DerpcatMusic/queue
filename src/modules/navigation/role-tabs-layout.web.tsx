@@ -6,7 +6,7 @@ import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
 import { GlobalTopSheetProvider } from "@/components/layout/top-sheet-registry";
 import { TabBarScrollProvider } from "@/contexts/tab-bar-scroll-context";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import { buildRoleTabRoute, type RoleTabRouteName } from "@/navigation/role-routes";
 import { getTabsForRole } from "@/navigation/tab-registry";
 import type { AppRole } from "@/navigation/types";
@@ -25,9 +25,9 @@ function formatDashboardDate(locale: string) {
 }
 
 export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutProps) {
-  const palette = useBrand();
   const pathname = usePathname();
   const { t, i18n } = useTranslation();
+  const { color: palette } = useTheme();
   const tabs = useMemo(() => getTabsForRole(appRole), [appRole]);
   const locale = i18n.resolvedLanguage ?? "en";
 
@@ -44,7 +44,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
     <ScrollSheetProvider>
       <GlobalTopSheetProvider>
         <TabBarScrollProvider>
-          <View style={{ flex: 1, backgroundColor: palette.appBg as string }}>
+          <View style={{ flex: 1, backgroundColor: palette.appBg }}>
             <GlobalTopSheet />
             <View
               style={{
@@ -60,7 +60,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                   width: 236,
                   borderRadius: 30,
                   borderCurve: "continuous",
-                  backgroundColor: palette.surface as string,
+                  backgroundColor: palette.surface,
                   paddingHorizontal: 16,
                   paddingVertical: 18,
                   gap: 18,
@@ -73,7 +73,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                       fontWeight: "700",
                       letterSpacing: 1.4,
                       textTransform: "uppercase",
-                      color: palette.primary as string,
+                      color: palette.primary,
                     }}
                   >
                     Queue
@@ -84,7 +84,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                       fontSize: 32,
                       lineHeight: 30,
                       letterSpacing: -0.8,
-                      color: palette.text as string,
+                      color: palette.text,
                     }}
                   >
                     {appRole === "studio" ? "Studio" : "Instructor"}
@@ -93,7 +93,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                     style={{
                       fontSize: 12,
                       lineHeight: 17,
-                      color: palette.textMuted as string,
+                      color: palette.textMuted,
                     }}
                   >
                     Fast lanes. Less shell.
@@ -113,9 +113,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                           style={({ pressed }) => ({
                             borderRadius: 22,
                             borderCurve: "continuous",
-                            backgroundColor: selected
-                              ? (palette.primaryPressed as string)
-                              : (palette.surfaceAlt as string),
+                            backgroundColor: selected ? palette.primaryPressed : palette.surfaceAlt,
                             paddingHorizontal: 14,
                             paddingVertical: 12,
                             transform: [{ scale: pressed ? 0.99 : 1 }],
@@ -135,9 +133,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                                   fontSize: 14,
                                   fontWeight: "700",
                                   letterSpacing: 0.2,
-                                  color: selected
-                                    ? (palette.surface as string)
-                                    : (palette.text as string),
+                                  color: selected ? palette.surface : palette.text,
                                 }}
                               >
                                 {t(tab.titleKey)}
@@ -145,9 +141,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                               <Text
                                 style={{
                                   fontSize: 12,
-                                  color: selected
-                                    ? (palette.surfaceAlt as string)
-                                    : (palette.textMuted as string),
+                                  color: selected ? palette.surfaceAlt : palette.textMuted,
                                 }}
                               >
                                 {selected ? "Current workspace" : "Open workspace"}
@@ -158,9 +152,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                                 style={{
                                   minWidth: 28,
                                   borderRadius: 999,
-                                  backgroundColor: selected
-                                    ? (palette.surfaceAlt as string)
-                                    : (palette.primary as string),
+                                  backgroundColor: selected ? palette.surfaceAlt : palette.primary,
                                   paddingHorizontal: 8,
                                   paddingVertical: 4,
                                   alignItems: "center",
@@ -170,9 +162,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                                   style={{
                                     fontSize: 12,
                                     fontWeight: "700",
-                                    color: selected
-                                      ? (palette.primaryPressed as string)
-                                      : (palette.onPrimary as string),
+                                    color: selected ? palette.primaryPressed : palette.onPrimary,
                                   }}
                                 >
                                   {badgeCount > 99 ? "99+" : String(badgeCount)}
@@ -196,7 +186,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                     gap: 12,
                     borderRadius: 28,
                     borderCurve: "continuous",
-                    backgroundColor: palette.surface as string,
+                    backgroundColor: palette.surface,
                     paddingHorizontal: 18,
                     paddingVertical: 16,
                   }}
@@ -208,7 +198,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                         fontWeight: "700",
                         letterSpacing: 1.2,
                         textTransform: "uppercase",
-                        color: palette.textMuted as string,
+                        color: palette.textMuted,
                       }}
                     >
                       Workspace
@@ -219,7 +209,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                         fontSize: 34,
                         lineHeight: 32,
                         letterSpacing: -0.8,
-                        color: palette.text as string,
+                        color: palette.text,
                       }}
                     >
                       {t(activeTab?.titleKey ?? "tabs.home")}
@@ -232,7 +222,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                         fontWeight: "700",
                         letterSpacing: 1.2,
                         textTransform: "uppercase",
-                        color: palette.textMuted as string,
+                        color: palette.textMuted,
                       }}
                     >
                       Today
@@ -242,7 +232,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                         fontSize: 14,
                         fontWeight: "600",
                         lineHeight: 18,
-                        color: palette.text as string,
+                        color: palette.text,
                       }}
                     >
                       {formatDashboardDate(locale)}
@@ -256,7 +246,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                     minHeight: 0,
                     borderRadius: 30,
                     borderCurve: "continuous",
-                    backgroundColor: palette.surface as string,
+                    backgroundColor: palette.surface,
                     overflow: "hidden",
                   }}
                 >

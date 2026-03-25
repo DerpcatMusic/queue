@@ -3,7 +3,8 @@ import { type ColorValue, Pressable, StyleSheet, View, type ViewStyle } from "re
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
+import { IconSize } from "@/lib/design-system";
 
 type NoticeBannerProps = {
   tone: "success" | "error";
@@ -26,7 +27,7 @@ export function NoticeBanner({
   iconColor,
   style,
 }: NoticeBannerProps) {
-  const palette = useBrand();
+  const { color: palette } = useTheme();
   const toneColors =
     tone === "success"
       ? {
@@ -58,7 +59,7 @@ export function NoticeBanner({
     >
       <MaterialIcons
         name={tone === "success" ? "check-circle" : "error-outline"}
-        size={18}
+        size={IconSize.md}
         color={resolvedIconColor}
       />
       <ThemedText selectable style={[styles.copy, { color: resolvedTextColor }]}>
@@ -70,7 +71,7 @@ export function NoticeBanner({
         accessibilityRole="button"
         style={({ pressed }) => [styles.dismiss, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
       >
-        <MaterialIcons name="close" size={16} color={String(resolvedTextColor)} />
+        <MaterialIcons name="close" size={IconSize.sm} color={String(resolvedTextColor)} />
       </Pressable>
     </View>
   );
@@ -91,8 +92,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dismiss: {
-    minHeight: 20,
-    minWidth: 20,
+    minHeight: IconSize.md,
+    minWidth: IconSize.md,
     alignItems: "center",
     justifyContent: "center",
   },

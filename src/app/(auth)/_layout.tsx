@@ -5,7 +5,7 @@ import { View } from "react-native";
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
 import { GlobalTopSheetProvider } from "@/components/layout/top-sheet-registry";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import { useSessionGate } from "@/modules/session/session-gate";
 
 function readParam(value: string | string[] | undefined) {
@@ -14,9 +14,9 @@ function readParam(value: string | string[] | undefined) {
 }
 
 export default function AuthLayout() {
+  const theme = useTheme();
   const { isAuthenticated } = useConvexAuth();
   const { t } = useTranslation();
-  const palette = useBrand();
   const gate = useSessionGate("index");
   const searchParams = useGlobalSearchParams<{ switchAccount?: string | string[] }>();
   const isSwitchAccountFlow = readParam(searchParams.switchAccount) === "1";
@@ -33,13 +33,13 @@ export default function AuthLayout() {
   return (
     <ScrollSheetProvider>
       <GlobalTopSheetProvider>
-        <View className="flex-1 bg-app-bg">
+        <View style={{ flex: 1, backgroundColor: theme.color.appBg }}>
           <GlobalTopSheet />
           <Stack
             screenOptions={{
               headerShown: false,
               contentStyle: {
-                backgroundColor: palette.appBg,
+                backgroundColor: theme.color.appBg,
               },
             }}
           >

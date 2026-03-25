@@ -94,10 +94,10 @@ export function sanitizeDecimalInput(value: string): string {
   return `${parts[0]}.${parts.slice(1).join("")}`;
 }
 
-export function createDefaultStudioDraft(): StudioDraft {
+export function createDefaultStudioDraft(branchId: StudioDraft["branchId"] = null): StudioDraft {
   const startTime = Date.now() + 90 * MINUTE_MS;
   return {
-    branchId: null,
+    branchId,
     sport: "",
     startTime,
     endTime: startTime + 60 * MINUTE_MS,

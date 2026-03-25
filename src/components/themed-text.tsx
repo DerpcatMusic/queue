@@ -1,9 +1,5 @@
 import { I18nManager, Text, type TextProps } from "react-native";
 
-import { BrandType } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
-import { useThemeColor } from "@/hooks/use-theme-color";
-
 export type ThemedTextType =
   | "display"
   | "heading"
@@ -12,6 +8,7 @@ export type ThemedTextType =
   | "bodyStrong"
   | "bodyMedium"
   | "caption"
+  | "labelStrong"
   | "micro"
   | "screenTitle"
   | "sheetTitle"
@@ -22,64 +19,57 @@ export type ThemedTextType =
   | "pillLabel"
   | "buttonLabel"
   | "statValue"
-  // Legacy aliases — kept for backwards compatibility
+  // Legacy aliases
   | "default"
   | "defaultSemiBold"
   | "subtitle"
   | "link";
 
 export type ThemedTextProps = TextProps & {
-  lightColor?: string;
-  darkColor?: string;
   type?: ThemedTextType;
 };
 
-const LEGACY_TYPE_MAP: Partial<Record<string, ThemedTextType>> = {
+// Map semantic types to Tailwind class strings
+const TYPE_CLASSES: Record<string, string> = {
+  display: "font-display text-display font-bold",
+  heading: "font-heading text-heading font-semibold",
+  title: "font-title text-title font-medium",
+  body: "font-body text-body",
+  bodyMedium: "font-body-medium text-body font-medium",
+  bodyStrong: "font-body-strong text-body font-semibold",
+  caption: "font-body text-caption",
+  labelStrong: "font-body-strong text-caption font-semibold",
+  micro: "font-label text-micro font-medium",
+  screenTitle: "font-heading text-heading font-semibold",
+  sheetTitle: "font-title text-title font-medium",
+  sectionLabel: "font-label text-micro font-medium uppercase tracking-wide",
+  sectionTitle: "font-title text-title font-medium",
+  cardTitle: "font-body-strong text-body font-semibold",
+  meta: "font-body text-caption",
+  pillLabel: "font-label text-micro font-medium",
+  buttonLabel: "font-body-medium text-body font-medium",
+  statValue: "font-heading text-heading font-semibold",
+  // Legacy
+  default: "font-body text-body",
+  defaultSemiBold: "font-body-strong text-body font-semibold",
+  subtitle: "font-title text-title font-medium",
+  link: "font-body-strong text-body font-semibold",
+};
+
+const LEGACY_MAP: Record<string, ThemedTextType> = {
   default: "body",
   defaultSemiBold: "bodyStrong",
   subtitle: "title",
 };
 
-const SEMANTIC_TYPE_MAP: Partial<Record<ThemedTextType, keyof typeof BrandType>> = {
-  screenTitle: "heading",
-  sheetTitle: "title",
-  sectionLabel: "micro",
-  sectionTitle: "title",
-  cardTitle: "bodyStrong",
-  meta: "caption",
-  pillLabel: "micro",
-  buttonLabel: "bodyMedium",
-  statValue: "heading",
-};
-
-export function ThemedText({
-  style,
-  lightColor,
-  darkColor,
-  type = "body",
-  ...rest
-}: ThemedTextProps) {
-  const resolved = (LEGACY_TYPE_MAP[type as string] ?? type) as ThemedTextType;
-  const palette = useBrand();
-
-  const color = useThemeColor({
-    light: lightColor ?? (palette.text as string),
-    dark: darkColor ?? (palette.text as string),
-  });
-
-  const linkColor = palette.primary;
-  const mappedType = SEMANTIC_TYPE_MAP[resolved];
-
-  const typeStyle =
-    resolved === "link"
-      ? { ...BrandType.body, fontWeight: "600" as const, color: linkColor }
-      : mappedType
-        ? BrandType[mappedType]
-        : (BrandType[resolved as keyof typeof BrandType] ?? BrandType.body);
+export function ThemedText({ style, type = "body", ...rest }: ThemedTextProps) {
+  const resolved = LEGACY_MAP[type] ?? type;
+  const classes = TYPE_CLASSES[resolved] ?? TYPE_CLASSES.body ?? "font-body text-body";
 
   return (
     <Text
-      style={[{ color }, { writingDirection: I18nManager.isRTL ? "rtl" : "ltr" }, typeStyle, style]}
+      className={classes}
+      style={[{ writingDirection: I18nManager.isRTL ? "rtl" : "ltr" }, style]}
       {...rest}
     />
   );

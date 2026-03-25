@@ -3,6 +3,7 @@ import { Pressable, type StyleProp, View, type ViewStyle } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BorderWidth } from "@/lib/design-system";
 import { useKitTheme } from "./use-kit-theme";
 
 type KitListProps = {
@@ -29,7 +30,7 @@ export function KitList({ children, style, inset = true }: KitListProps) {
       className="overflow-hidden"
       style={[
         {
-          borderWidth: 1,
+          borderWidth: BorderWidth.thin,
           borderColor: border.primary,
           backgroundColor: background.surfaceElevated,
           borderRadius: inset ? BrandRadius.card : 0,
@@ -101,7 +102,7 @@ export function KitListItem({
             alignItems: "center",
             paddingHorizontal: BrandSpacing.lg,
             paddingVertical: BrandSpacing.md,
-            minHeight: BrandSpacing.xxl + 24,
+            minHeight: BrandSpacing.listItemMinHeight,
             backgroundColor: pressed ? background.surfaceSecondary : background.surfaceElevated,
           },
           style,
@@ -119,7 +120,7 @@ export function KitListItem({
         {
           paddingHorizontal: BrandSpacing.lg,
           paddingVertical: BrandSpacing.md,
-          minHeight: BrandSpacing.xxl + 24,
+          minHeight: BrandSpacing.listItemMinHeight,
         },
         style,
       ]}

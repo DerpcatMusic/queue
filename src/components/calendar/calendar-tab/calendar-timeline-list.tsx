@@ -4,7 +4,7 @@ import { type StyleProp, View, type ViewStyle } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { BrandSpacing } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import type { TimelineListItem } from "../calendar-controller-helpers";
 import { calendarTimelineStyles } from "./calendar-date-utils";
 
@@ -35,17 +35,12 @@ function CalendarTimelineList({
   contentContainerStyle,
   renderItem,
 }: CalendarTimelineListProps) {
-  const palette = useBrand();
   const { safeBottom } = useAppInsets();
+  const { color: palette } = useTheme();
 
   return (
     <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
-      <View
-        style={[
-          calendarTimelineStyles.timelineViewport,
-          { backgroundColor: palette.appBg as string },
-        ]}
-      >
+      <View style={[calendarTimelineStyles.timelineViewport, { backgroundColor: palette.appBg }]}>
         <FlashList
           ref={listRef}
           data={listItems}

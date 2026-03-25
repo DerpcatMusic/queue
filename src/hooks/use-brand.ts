@@ -1,18 +1,6 @@
-import { useMemo } from "react";
-import { getBrandPalette } from "@/constants/brand";
-import { useThemePreference } from "@/hooks/use-theme-preference";
-
-/**
- * Hook to access the Brand palette.
- *
- * NOTE: We previously tried to inject a `__theme` property into PlatformColor objects
- * on Android to break React Native's `deepDiffer` cache. However, this destroys
- * the "OpaqueColorValue" branding, which crashes native components like NativeTabs.
- *
- * We keep PlatformColor values intact and only switch between pre-defined palette
- * sets at the hook level.
- */
+// DEPRECATED — use CSS variables via global.css instead.
+// This file is kept as a no-op to avoid breaking imports during migration.
+// Delete once all imports are removed.
 export function useBrand() {
-  const { resolvedScheme } = useThemePreference();
-  return useMemo(() => getBrandPalette(resolvedScheme), [resolvedScheme]);
+  throw new Error("useBrand() is removed. Use CSS variables from global.css instead.");
 }

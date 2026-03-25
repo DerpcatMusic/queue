@@ -12,7 +12,7 @@ import Animated, {
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useSystemUi } from "@/contexts/system-ui-context";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useBrand } from "@/hooks/use-brand";
+import { useTheme } from "@/hooks/use-theme";
 import {
   DEFAULT_STEPS,
   HANDLE_HEIGHT,
@@ -105,13 +105,14 @@ export function TopSheet({
   revealOnExpand,
   expandMode: _expandMode = "resize", // Reserved for future overlay mode implementation
 }: TopSheetProps) {
-  const palette = useBrand();
+  const theme = useTheme();
   const { setTopInsetTone, setTopInsetBackgroundColor } = useSystemUi();
   const { safeTop, safeBottom } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
-  const resolvedBackground = (backgroundColor ?? palette.surfaceElevated) as ColorValue;
-  const resolvedInsetColor = (topInsetColor ?? resolvedBackground) as ColorValue;
-  const backgroundColorValue = String(resolvedBackground);
+  const resolvedBackground = backgroundColor ?? theme.color.surfaceElevated;
+  const resolvedInsetColor = topInsetColor ?? resolvedBackground;
+  const backgroundColorValue =
+    typeof resolvedBackground === "string" ? resolvedBackground : theme.color.surfaceElevated;
 
   const [internalStepIndex, setInternalStepIndex] = useState(initialStep);
   const resolvedStepIndex = activeStep ?? internalStepIndex;
@@ -318,12 +319,12 @@ export function TopSheet({
                 right: 0,
                 height: HANDLE_HEIGHT,
                 borderTopWidth: 1,
-                borderTopColor: palette.border as string,
+                borderTopColor: theme.color.border,
               },
               shellBackgroundStyle,
             ]}
           >
-            <DragHandle borderColor={palette.borderStrong} />
+            <DragHandle borderColor={theme.color.borderStrong} />
           </Animated.View>
         </GestureDetector>
       ) : draggable ? (
@@ -337,12 +338,12 @@ export function TopSheet({
               right: 0,
               height: HANDLE_HEIGHT,
               borderTopWidth: 1,
-              borderTopColor: palette.border as string,
+              borderTopColor: theme.color.border,
             },
             shellBackgroundStyle,
           ]}
         >
-          <DragHandle borderColor={palette.borderStrong} />
+          <DragHandle borderColor={theme.color.borderStrong} />
         </Animated.View>
       ) : null}
     </Animated.View>

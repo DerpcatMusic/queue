@@ -1,5 +1,3 @@
-import type { BrandPalette } from "@/constants/brand";
-
 export type JobStatus = "open" | "filled" | "completed" | "cancelled";
 export type ApplicationStatus = "pending" | "accepted" | "rejected";
 
@@ -9,7 +7,27 @@ export type StatusTokens = {
   border: string | import("react-native").ColorValue;
 };
 
-type Palette = BrandPalette;
+type Palette = {
+  primary: string;
+  primarySubtle: string;
+  primaryPressed: string;
+  secondary: string;
+  onPrimary: string;
+  text: string;
+  textMuted: string;
+  textMicro: string;
+  surface: string;
+  surfaceAlt: string;
+  surfaceElevated: string;
+  appBg: string;
+  border: string;
+  borderStrong: string;
+  success: string;
+  successSubtle: string;
+  danger: string;
+  dangerSubtle: string;
+  warning: string;
+};
 
 /** Single source of truth for job status → display colors. */
 export function getJobStatusTokens(status: JobStatus, palette: Palette): StatusTokens {
