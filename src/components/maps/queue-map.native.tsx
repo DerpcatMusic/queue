@@ -23,12 +23,12 @@ import { KitSurface } from "../ui/kit";
 import {
   type AnyStyleSpec,
   createPinShape,
-  createStudioMarkersGeoJSON,
+  createStudioMarkersGeoJson,
   createZoneFilter,
   ensureVectorOfflinePack,
   fetchMapStyleSpec,
   getCachedMapStyleSpec,
-  getStudioImageEntries,
+  getStudioMarkerImageEntries,
   resolveThemedMapStyle,
   sanitizeZoom,
   toBounds,
@@ -99,8 +99,11 @@ export const QueueMap = memo(function QueueMap({
     [selectedZoneIds, zoneIdProperty],
   );
   const pinShape = useMemo(() => createPinShape(pin), [pin]);
-  const studioMarkersGeoJSON = useMemo(() => createStudioMarkersGeoJSON(studios ?? []), [studios]);
-  const studioImageEntries = useMemo(() => getStudioImageEntries(studios ?? []), [studios]);
+  const studioMarkersGeoJSON = useMemo(
+    () => createStudioMarkersGeoJson(studios ?? [], "logo"),
+    [studios],
+  );
+  const studioImageEntries = useMemo(() => getStudioMarkerImageEntries(studios ?? []), [studios]);
   const handleMapPress = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (event: any) => {
@@ -312,6 +315,7 @@ export const QueueMap = memo(function QueueMap({
         <QueueMapZonePolygons
           mode={mode}
           isEditing={isEditing}
+          showLabelLayers={mode !== "zoneSelect"}
           selectedZoneFilter={selectedZoneFilter}
           zoneGeoJson={zoneGeoJson}
           zoneIdProperty={zoneIdProperty}
@@ -332,13 +336,9 @@ export const QueueMap = memo(function QueueMap({
           />
         </GeoJSONSource>
 
-        {studioImageEntries.length > 0 ? (
+        {Object.keys(studioImageEntries).length > 0 ? (
           <>
-            <Images
-              images={Object.fromEntries(
-                studioImageEntries.map(({ imageKey, imageUrl }) => [imageKey, imageUrl]),
-              )}
-            />
+            <Images images={studioImageEntries} />
             <GeoJSONSource id="studio-markers" data={studioMarkersGeoJSON}>
               <Layer
                 id="studio-markers-symbol"
