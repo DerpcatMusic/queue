@@ -12,9 +12,7 @@ export type GoogleNativeAuthConfig = {
   iosClientId?: string | null | undefined;
 };
 
-type SignInWithGoogleNativeResult =
-  | { type: "success"; idToken: string }
-  | { type: "cancelled" };
+type SignInWithGoogleNativeResult = { type: "success"; idToken: string } | { type: "cancelled" };
 
 function trimEnv(value: string | undefined) {
   const trimmed = value?.trim();
@@ -78,7 +76,6 @@ async function clearPreviousGoogleSession() {
 
 export async function signInWithGoogleNative(args: {
   config: GoogleNativeAuthConfig | null | undefined;
-  loginHint?: string;
 }): Promise<SignInWithGoogleNativeResult> {
   if (!canUseNativeGoogleAuth(args.config)) {
     throw new Error("Native Google Sign-In is not configured for this platform.");
@@ -89,9 +86,7 @@ export async function signInWithGoogleNative(args: {
   try {
     GoogleSignin.configure({
       webClientId: config.webClientId!,
-      ...(Platform.OS === "ios" && config.iosClientId
-        ? { iosClientId: config.iosClientId }
-        : {}),
+      ...(Platform.OS === "ios" && config.iosClientId ? { iosClientId: config.iosClientId } : {}),
       offlineAccess: false,
     });
 
@@ -106,9 +101,7 @@ export async function signInWithGoogleNative(args: {
 
     await clearPreviousGoogleSession();
 
-    const signInResponse = await GoogleSignin.signIn(
-      args.loginHint ? { loginHint: args.loginHint } : undefined,
-    );
+    const signInResponse = await GoogleSignin.signIn();
     if (isCancelledResponse(signInResponse)) {
       return { type: "cancelled" };
     }

@@ -645,6 +645,7 @@ export const getAvailableJobsForInstructor = query({
       boostPreset: v.optional(v.union(v.literal("small"), v.literal("medium"), v.literal("large"))),
       boostBonusAmount: v.optional(v.number()),
       boostActive: v.optional(v.boolean()),
+      applicationId: v.optional(v.id("jobApplications")),
       applicationStatus: v.optional(
         v.union(
           v.literal("pending"),
@@ -745,7 +746,9 @@ export const getAvailableJobsForInstructor = query({
     const studios = await Promise.all(
       studioIds.map((studioId) => ctx.db.get("studioProfiles", studioId)),
     );
-    const branches = await Promise.all(branchIds.map((branchId) => ctx.db.get("studioBranches", branchId)));
+    const branches = await Promise.all(
+      branchIds.map((branchId) => ctx.db.get("studioBranches", branchId)),
+    );
     const studioImageUrls = await Promise.all(
       studios.map((studio) =>
         studio?.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
@@ -805,6 +808,7 @@ export const getAvailableJobsForInstructor = query({
           boostPreset: job.boostPreset,
           boostBonusAmount: job.boostBonusAmount,
           boostActive: job.boostActive,
+          applicationId: application?._id,
           applicationStatus: application?.status,
         }),
       };
@@ -880,6 +884,7 @@ export const getStudioProfileForInstructor = query({
           ),
           boostBonusAmount: v.optional(v.number()),
           boostActive: v.optional(v.boolean()),
+          applicationId: v.optional(v.id("jobApplications")),
           applicationStatus: v.optional(
             v.union(
               v.literal("pending"),
@@ -1006,6 +1011,7 @@ export const getStudioProfileForInstructor = query({
             boostPreset: job.boostPreset,
             boostBonusAmount: job.boostBonusAmount,
             boostActive: job.boostActive,
+            applicationId: application?._id,
             applicationStatus: application?.status,
           }),
         };
@@ -1522,7 +1528,8 @@ export const getMyStudioJobs = query({
       rows.push({
         jobId: job._id,
         branchId: job.branchId,
-        branchName: job.branchNameSnapshot ?? branchById.get(String(job.branchId))?.name ?? "Main branch",
+        branchName:
+          job.branchNameSnapshot ?? branchById.get(String(job.branchId))?.name ?? "Main branch",
         sport: job.sport,
         zone: job.zone,
         startTime: job.startTime,
@@ -1718,7 +1725,8 @@ export const getMyStudioJobsWithApplications = query({
       rows.push({
         jobId: job._id,
         branchId: job.branchId,
-        branchName: job.branchNameSnapshot ?? branchById.get(String(job.branchId))?.name ?? "Main branch",
+        branchName:
+          job.branchNameSnapshot ?? branchById.get(String(job.branchId))?.name ?? "Main branch",
         sport: job.sport,
         zone: job.zone,
         startTime: job.startTime,

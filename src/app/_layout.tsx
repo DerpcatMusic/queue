@@ -1,5 +1,6 @@
 import "@/global.css";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
+
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { BarlowCondensed_800ExtraBold } from "@expo-google-fonts/barlow-condensed";
 import {
@@ -18,7 +19,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { LogBox, Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
@@ -26,6 +27,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppSafeRoot } from "@/components/layout/app-safe-root";
 import { ThemedText } from "@/components/themed-text";
 import { BrandSpacing } from "@/constants/brand";
+import { AuthSessionControllerProvider } from "@/contexts/auth-session-context";
 import { RapydReturnProvider } from "@/contexts/rapyd-return-context";
 import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
 import { UserProvider } from "@/contexts/user-context";
@@ -80,6 +82,7 @@ function RootLayoutContent() {
   const { resolvedScheme } = useThemePreference();
   const palette = useBrand();
   const convex = getConvexClient();
+  const [authSessionVersion, setAuthSessionVersion] = useState(0);
   useFonts({
     ...MaterialIcons.font,
     BarlowCondensed_800ExtraBold,
@@ -101,6 +104,15 @@ function RootLayoutContent() {
   useStartupNotificationsSetup();
 
   useAndroidNavigationBarTheme(resolvedScheme);
+
+  const authSessionController = useMemo(
+    () => ({
+      reloadAuthSession: () => {
+        setAuthSessionVersion((currentVersion) => currentVersion + 1);
+      },
+    }),
+    [],
+  );
 
   const navigationTheme = useMemo<NavigationTheme>(() => {
     const base = resolvedScheme === "dark" ? DarkTheme : DefaultTheme;
@@ -153,43 +165,49 @@ function RootLayoutContent() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ConvexAuthProvider client={convex} {...(nativeStorage ? { storage: nativeStorage } : {})}>
-        <UserProvider>
-          <RapydReturnProvider>
-            <ThemeProvider value={navigationTheme}>
-              <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
-                <View className="flex-1">
-                  <Stack
-                    screenOptions={{
-                      headerTintColor: palette.text as string,
-                      headerTitleStyle: { color: palette.text as string },
-                    }}
-                  >
-                    <Stack.Screen
-                      name="index"
-                      options={{
-                        headerShown: false,
-                        animation: "none",
+      <AuthSessionControllerProvider value={authSessionController}>
+        <ConvexAuthProvider
+          key={`convex-auth:${authSessionVersion}`}
+          client={convex}
+          {...(nativeStorage ? { storage: nativeStorage } : {})}
+        >
+          <UserProvider>
+            <RapydReturnProvider>
+              <ThemeProvider value={navigationTheme}>
+                <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
+                  <View className="flex-1">
+                    <Stack
+                      screenOptions={{
+                        headerTintColor: palette.text as string,
+                        headerTitleStyle: { color: palette.text as string },
                       }}
-                    />
-                    <Stack.Screen name="(app)" options={{ headerShown: false }} />
-                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                    <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                    <Stack.Screen
-                      name="modal"
-                      options={{
-                        presentation: "modal",
-                        title: i18n.t("modal.headerTitle"),
-                      }}
-                    />
-                  </Stack>
-                </View>
-              </AppSafeRoot>
-              <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
-            </ThemeProvider>
-          </RapydReturnProvider>
-        </UserProvider>
-      </ConvexAuthProvider>
+                    >
+                      <Stack.Screen
+                        name="index"
+                        options={{
+                          headerShown: false,
+                          animation: "none",
+                        }}
+                      />
+                      <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                      <Stack.Screen
+                        name="modal"
+                        options={{
+                          presentation: "modal",
+                          title: i18n.t("modal.headerTitle"),
+                        }}
+                      />
+                    </Stack>
+                  </View>
+                </AppSafeRoot>
+                <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
+              </ThemeProvider>
+            </RapydReturnProvider>
+          </UserProvider>
+        </ConvexAuthProvider>
+      </AuthSessionControllerProvider>
     </GestureHandlerRootView>
   );
 }

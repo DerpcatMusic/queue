@@ -16,8 +16,10 @@ type InstructorOpenJobsListProps = {
   zoneLanguage: "en" | "he";
   palette: BrandPalette;
   applyingJobId: Id<"jobs"> | null;
+  withdrawingApplicationId: Id<"jobApplications"> | null;
   now: number;
   onApply: (jobId: Id<"jobs">) => void;
+  onWithdrawApplication: (applicationId: Id<"jobApplications">) => void;
   onOpenStudio: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
   t: TFunction;
 };
@@ -28,8 +30,10 @@ export function InstructorOpenJobsList({
   zoneLanguage,
   palette,
   applyingJobId,
+  withdrawingApplicationId,
   now,
   onApply,
+  onWithdrawApplication,
   onOpenStudio,
   t,
 }: InstructorOpenJobsListProps) {
@@ -58,8 +62,10 @@ export function InstructorOpenJobsList({
             zoneLanguage={zoneLanguage}
             palette={palette}
             applyingJobId={applyingJobId}
+            withdrawingApplicationId={withdrawingApplicationId}
             now={now}
             onApply={onApply}
+            onWithdrawApplication={onWithdrawApplication}
             onOpenStudio={onOpenStudio}
             t={t}
           />

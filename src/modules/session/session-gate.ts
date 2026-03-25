@@ -1,4 +1,5 @@
 import { useUser } from "@/contexts/user-context";
+import { peekPendingPostSignOutAuthHandoff } from "@/modules/session/post-signout-auth-intent";
 import type { getRoleTabBasePath } from "@/navigation/role-routes";
 import { buildRoleTabRoute, isRolePath, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import type { AppRole } from "@/navigation/types";
@@ -61,6 +62,7 @@ export function resolveSessionState(input: {
 export function resolveSessionGateDecision<T extends SessionGateEntryPoint>(input: {
   entryPoint: T;
   pathname?: string;
+  pendingSignedOutPath?: string;
   session: SessionState;
 }): SessionGateDecisionMap[T] {
   const { session } = input;
@@ -69,6 +71,14 @@ export function resolveSessionGateDecision<T extends SessionGateEntryPoint>(inpu
   }
 
   if (session.status === "signed_out") {
+    if (
+      input.entryPoint === "app_layout" &&
+      input.pendingSignedOutPath &&
+      input.pathname === input.pendingSignedOutPath
+    ) {
+      return { status: "allow" } as SessionGateDecisionMap[T];
+    }
+
     return {
       status: "redirect",
       href: "/sign-in",
@@ -97,6 +107,7 @@ export function useSessionGate<T extends SessionGateEntryPoint>(
   pathname?: string,
 ): SessionGateDecisionMap[T] {
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
+  const pendingAuthHandoff = peekPendingPostSignOutAuthHandoff();
 
   // Only auth initialization itself should block routing.
   // A null/undefined user doc after auth settles must flow through the
@@ -113,6 +124,9 @@ export function useSessionGate<T extends SessionGateEntryPoint>(
 
   return resolveSessionGateDecision({
     entryPoint,
+    ...(pendingAuthHandoff?.allowPath
+      ? { pendingSignedOutPath: pendingAuthHandoff.allowPath }
+      : {}),
     session,
     ...(pathname === undefined ? {} : { pathname }),
   });

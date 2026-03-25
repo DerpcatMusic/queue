@@ -3,6 +3,10 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef } from "react";
 
 import { api } from "@/convex/_generated/api";
+import {
+  rememberCurrentDeviceAccount,
+  toDeviceAccountIdentity,
+} from "@/modules/session/device-account-store";
 
 type KnownRole = "pending" | "instructor" | "studio" | "admin";
 type AppRole = "instructor" | "studio";
@@ -69,6 +73,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
     forcedSignOutForMissingUserRef.current = true;
     void signOut();
   }, [currentUser, isAuthenticated, isConvexAuthLoading, signOut]);
+
+  useEffect(() => {
+    if (isConvexAuthLoading || !isAuthenticated || !currentUser) {
+      return;
+    }
+
+    void rememberCurrentDeviceAccount(toDeviceAccountIdentity(currentUser));
+  }, [currentUser, isAuthenticated, isConvexAuthLoading]);
 
   const value = useMemo<UserContextValue>(
     () => ({
