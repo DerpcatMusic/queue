@@ -24,6 +24,7 @@ const IMAGE_PANEL_WIDTH_PERCENT = "44%";
 
 export type InstructorMarketplaceJob = {
   jobId: Id<"jobs">;
+  applicationId?: Id<"jobApplications">;
   studioId: Id<"studioProfiles">;
   branchId: Id<"studioBranches">;
   sport: string;
@@ -50,8 +51,10 @@ type InstructorJobCardProps = {
   zoneLanguage: "en" | "he";
   palette: BrandPalette;
   applyingJobId?: Id<"jobs"> | null;
+  withdrawingApplicationId?: Id<"jobApplications"> | null;
   now: number;
   onApply?: (jobId: Id<"jobs">) => void;
+  onWithdrawApplication?: (applicationId: Id<"jobApplications">) => void;
   onOpenStudio?: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
   t: TFunction;
   variant?: "default" | "studioDetail";
@@ -156,8 +159,10 @@ export function InstructorJobCard({
   zoneLanguage,
   palette,
   applyingJobId = null,
+  withdrawingApplicationId = null,
   now,
   onApply,
+  onWithdrawApplication,
   onOpenStudio,
   t,
   variant = "default",
@@ -187,6 +192,15 @@ export function InstructorJobCard({
   const metaLine = variant === "studioDetail" ? studioLabel : shortLocation;
   const contentWidth = showStudioImage ? (isWideWeb ? "52%" : "53%") : "100%";
   const isPressable = Boolean(onOpenStudio);
+  const canWithdrawPendingApplication =
+    job.applicationStatus === "pending" &&
+    Boolean(job.applicationId) &&
+    Boolean(onWithdrawApplication);
+  const canApplyFromCard = !job.applicationStatus || job.applicationStatus === "withdrawn";
+  const isWithdrawing = Boolean(
+    job.applicationId && withdrawingApplicationId === job.applicationId,
+  );
+  const pendingCancelLabel = `${t(getApplicationStatusTranslationKey("pending"))} · ${t("jobsTab.actions.cancel")}`;
 
   return (
     <Pressable
@@ -285,13 +299,20 @@ export function InstructorJobCard({
           </View>
 
           <View className="pt-sm" style={{ width: contentWidth }}>
-            {job.applicationStatus ? (
-              <DotStatusPill
-                backgroundColor={pillBackground ?? (palette.surface as string)}
-                color={dotColor ?? (palette.textMuted as string)}
-                label={t(getApplicationStatusTranslationKey(job.applicationStatus))}
+            {canWithdrawPendingApplication ? (
+              <ActionButton
+                label={isWithdrawing ? t("jobsTab.actions.cancelling") : pendingCancelLabel}
+                onPress={(event) => {
+                  event?.stopPropagation();
+                  if (job.applicationId) {
+                    onWithdrawApplication?.(job.applicationId);
+                  }
+                }}
+                palette={palette}
+                tone="secondary"
+                loading={isWithdrawing}
               />
-            ) : onApply ? (
+            ) : canApplyFromCard && onApply ? (
               <ActionButton
                 label={
                   isExpired
@@ -300,10 +321,19 @@ export function InstructorJobCard({
                       ? t("jobsTab.actions.applying")
                       : t("jobsTab.actions.apply")
                 }
-                onPress={() => onApply(job.jobId)}
+                onPress={(event) => {
+                  event?.stopPropagation();
+                  onApply(job.jobId);
+                }}
                 palette={palette}
                 loading={applyingJobId === job.jobId}
                 disabled={isExpired}
+              />
+            ) : job.applicationStatus ? (
+              <DotStatusPill
+                backgroundColor={pillBackground ?? (palette.surface as string)}
+                color={dotColor ?? (palette.textMuted as string)}
+                label={t(getApplicationStatusTranslationKey(job.applicationStatus))}
               />
             ) : null}
           </View>

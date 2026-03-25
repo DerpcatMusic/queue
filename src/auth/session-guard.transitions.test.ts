@@ -287,4 +287,15 @@ describe("resolveSessionGateDecision", () => {
       }),
     ).toEqual({ status: "redirect", href: "/onboarding" });
   });
+
+  it("allows the signed-out add-account handoff route to stay mounted", () => {
+    expect(
+      resolveSessionGateDecision({
+        entryPoint: "app_layout",
+        pathname: "/instructor/profile/add-account",
+        pendingSignedOutPath: "/instructor/profile/add-account",
+        session: { status: "signed_out" },
+      }),
+    ).toEqual({ status: "allow" });
+  });
 });

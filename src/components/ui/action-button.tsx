@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
-import { ActivityIndicator, I18nManager, Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  type GestureResponderEvent,
+  I18nManager,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import type { BrandPalette } from "@/constants/brand";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
@@ -14,7 +21,7 @@ const BUTTON_MIN_WIDTH = BrandSpacing.iconContainer * 2 + BrandSpacing.sm; // 38
 
 type ActionButtonProps = {
   label?: string;
-  onPress: () => void;
+  onPress: (event?: GestureResponderEvent) => void;
   palette: BrandPalette;
   tone?: ActionButtonTone;
   disabled?: boolean;
@@ -55,7 +62,7 @@ export function ActionButton({
       : (palette.surface as string)
     : tone === "primary"
       ? (palette.primary as string)
-      : (palette.surfaceAlt as string);
+      : (palette.surfaceSecondary as string);
   const pressedBackgroundColor = isDisabled
     ? backgroundColor
     : tone === "primary"

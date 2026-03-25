@@ -23,6 +23,7 @@ import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-she
 import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
 import { KitSwitch } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
+import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
@@ -31,6 +32,13 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 import { useBrand } from "@/hooks/use-brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import {
+  forgetRememberedDeviceAccount,
+  listRememberedDeviceAccounts,
+  type RememberedDeviceAccount,
+  switchToRememberedDeviceAccount,
+  toDeviceAccountIdentity,
+} from "@/modules/session/device-account-store";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 const ROLE_TRANSLATION_KEYS = {
@@ -46,8 +54,8 @@ const INSTRUCTOR_SPORTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/sports` as const;
 const INSTRUCTOR_LOCATION_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/location` as const;
 const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
 const INSTRUCTOR_PAYMENTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
-const INSTRUCTOR_EDIT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/edit` as const;
 const INSTRUCTOR_ADD_ACCOUNT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/add-account` as const;
+const INSTRUCTOR_EDIT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/edit` as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
   if (sports.length === 0) {
@@ -95,6 +103,7 @@ function getIdentityVerificationSummary(
 export default function InstructorProfileScreen() {
   const { signOut } = useAuthActions();
   const { currentUser } = useUser();
+  const { reloadAuthSession } = useAuthSession();
   const { language, setLanguage } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
   const { t, i18n } = useTranslation();
@@ -107,6 +116,8 @@ export default function InstructorProfileScreen() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [hasActivated, setHasActivated] = useState(false);
+  const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
+  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
   const isBodyReady = useDeferredTabMount(pathname === INSTRUCTOR_PROFILE_ROUTE, { delayMs: 36 });
 
   useEffect(() => {
@@ -141,16 +152,42 @@ export default function InstructorProfileScreen() {
   }, [router]);
 
   const handleOpenAccountSwitcher = useCallback(() => {
-    accountSwitcherSheetRef.current?.snapToIndex(0);
+    void listRememberedDeviceAccounts().then((accounts) => {
+      setRememberedAccounts(accounts);
+      accountSwitcherSheetRef.current?.snapToIndex(0);
+    });
   }, []);
   const handleSignOut = useCallback(() => {
     accountSwitcherSheetRef.current?.close();
-    void signOut();
-  }, [signOut]);
+    void (async () => {
+      if (currentUser?._id) {
+        await forgetRememberedDeviceAccount(String(currentUser._id));
+      }
+      await signOut();
+    })();
+  }, [currentUser?._id, signOut]);
   const handleUseAnotherAccount = useCallback(() => {
     accountSwitcherSheetRef.current?.close();
     router.push(INSTRUCTOR_ADD_ACCOUNT_ROUTE as Href);
   }, [router]);
+  const handleSelectRememberedAccount = useCallback(
+    (accountId: string) => {
+      accountSwitcherSheetRef.current?.close();
+      setSwitchingAccountId(accountId);
+      void (async () => {
+        try {
+          await switchToRememberedDeviceAccount({
+            accountId,
+            ...(currentUser ? { currentAccount: toDeviceAccountIdentity(currentUser) } : {}),
+          });
+          reloadAuthSession();
+        } catch {
+          setSwitchingAccountId(null);
+        }
+      })();
+    },
+    [currentUser, reloadAuthSession],
+  );
   const nameValue =
     instructorSettings?.displayName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
@@ -701,9 +738,13 @@ export default function InstructorProfileScreen() {
       <ProfileAccountSwitcherSheet
         innerRef={accountSwitcherSheetRef}
         onDismissed={() => undefined}
+        currentAccountId={currentUser?._id ? String(currentUser._id) : null}
         currentAccountName={nameValue}
         currentAccountEmail={currentUser?.email}
         currentRoleLabel={roleValue}
+        rememberedAccounts={rememberedAccounts}
+        switchingAccountId={switchingAccountId}
+        onSelectRememberedAccount={handleSelectRememberedAccount}
         onSignOut={handleSignOut}
         onUseAnotherAccount={handleUseAnotherAccount}
         palette={palette}

@@ -1,9 +1,9 @@
 import Apple from "@auth/core/providers/apple";
 import Google from "@auth/core/providers/google";
 import { ConvexCredentials } from "@convex-dev/auth/providers/ConvexCredentials";
-import { createAccount, convexAuth } from "@convex-dev/auth/server";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { convexAuth, createAccount } from "@convex-dev/auth/server";
 import { ConvexError } from "convex/values";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Id } from "./_generated/dataModel";
 import { dedupeUsersByEmail, normalizeEmail, resolveCanonicalUserByEmail } from "./lib/authDedupe";
 import { ResendMagicLink } from "./resendMagicLink";
@@ -15,14 +15,13 @@ function trimEnv(value: string | undefined) {
 }
 
 const providers: any[] = [ResendOTP, ResendMagicLink];
-const googleOauthWebClientId = trimEnv(process.env.AUTH_GOOGLE_ID);
-const googleNativeWebClientId =
-  trimEnv(process.env.GOOGLE_CALENDAR_SERVER_CLIENT_ID) ??
-  googleOauthWebClientId;
-const googleNativeTokenAudiences = [
-  googleNativeWebClientId,
-  googleOauthWebClientId,
-].filter((value): value is string => Boolean(value));
+const googleSharedServerClientId =
+  trimEnv(process.env.GOOGLE_CALENDAR_SERVER_CLIENT_ID) ?? trimEnv(process.env.AUTH_GOOGLE_ID);
+const googleOauthWebClientId = googleSharedServerClientId;
+const googleNativeWebClientId = googleSharedServerClientId;
+const googleNativeTokenAudiences = [googleNativeWebClientId, googleOauthWebClientId].filter(
+  (value): value is string => Boolean(value),
+);
 const googleJwks = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 const EMAIL_ACCOUNT_PROVIDER_IDS = ["resend", "resend-otp"] as const;
 
@@ -160,7 +159,8 @@ async function findMatchedUserIdsFromProviderAccountHint(
     typeof profile.providerAccountIdHint === "string" ? profile.providerAccountIdHint : undefined;
   const providerAccountProviders = Array.isArray(profile.providerAccountProviders)
     ? profile.providerAccountProviders.filter(
-        (providerId): providerId is string => typeof providerId === "string" && providerId.length > 0,
+        (providerId): providerId is string =>
+          typeof providerId === "string" && providerId.length > 0,
       )
     : [];
 
@@ -185,14 +185,17 @@ async function findMatchedUserIdsFromProviderAccountHint(
   return Array.from(matchedUserIds) as Id<"users">[];
 }
 
-async function upsertAuthenticatedUser(ctx: any, args: {
-  existingUserId: Id<"users"> | null | undefined;
-  profile: Record<string, unknown>;
-  provider: {
-    type?: string | undefined;
-    allowDangerousEmailAccountLinking?: boolean | undefined;
-  };
-}) {
+async function upsertAuthenticatedUser(
+  ctx: any,
+  args: {
+    existingUserId: Id<"users"> | null | undefined;
+    profile: Record<string, unknown>;
+    provider: {
+      type?: string | undefined;
+      allowDangerousEmailAccountLinking?: boolean | undefined;
+    };
+  },
+) {
   const now = Date.now();
   const fullName = typeof args.profile.name === "string" ? args.profile.name : undefined;
   const rawEmail = typeof args.profile.email === "string" ? args.profile.email : undefined;

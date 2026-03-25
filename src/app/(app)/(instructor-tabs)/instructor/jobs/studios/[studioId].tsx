@@ -35,7 +35,9 @@ export default function InstructorStudioProfileRoute() {
     jobId?: string;
   }>();
   const [applyingJobId, setApplyingJobId] = useState<Id<"jobs"> | null>(null);
-  const [applyErrorMessage, setApplyErrorMessage] = useState<string | null>(null);
+  const [withdrawingApplicationId, setWithdrawingApplicationId] =
+    useState<Id<"jobApplications"> | null>(null);
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
   const { contentContainerStyle } = useTopSheetContentInsets({
     topSpacing: BrandSpacing.xs,
     bottomSpacing: BrandSpacing.xxl,
@@ -44,20 +46,22 @@ export default function InstructorStudioProfileRoute() {
 
   const queryNow = Math.floor(now / (60 * 1000)) * 60 * 1000;
   const applyToJob = useMutation(api.jobs.applyToJob);
+  const withdrawApplication = useMutation(api.jobs.withdrawApplication);
   const studioProfile = useQuery(
     api.jobs.getStudioProfileForInstructor,
     studioId ? { studioId: studioId as Id<"studioProfiles">, now: queryNow } : "skip",
   );
+  const myApplications = useQuery(api.jobs.getMyApplications, { limit: 120 });
 
   const onApply = useCallback(
     async (nextJobId: Id<"jobs">) => {
-      setApplyErrorMessage(null);
+      setActionErrorMessage(null);
       setApplyingJobId(nextJobId);
       try {
         await applyToJob({ jobId: nextJobId });
       } catch (error) {
         console.error("[studio-profile] apply failed", error);
-        setApplyErrorMessage(t("jobsTab.errors.applyError"));
+        setActionErrorMessage(t("jobsTab.errors.applyError"));
       } finally {
         setApplyingJobId(null);
       }
@@ -65,19 +69,50 @@ export default function InstructorStudioProfileRoute() {
     [applyToJob, t],
   );
 
+  const onWithdrawApplication = useCallback(
+    async (applicationId: Id<"jobApplications">) => {
+      setActionErrorMessage(null);
+      setWithdrawingApplicationId(applicationId);
+      try {
+        await withdrawApplication({ applicationId });
+      } catch (error) {
+        console.error("[studio-profile] withdraw failed", error);
+        setActionErrorMessage(t("jobsTab.errors.withdrawError"));
+      } finally {
+        setWithdrawingApplicationId(null);
+      }
+    },
+    [t, withdrawApplication],
+  );
+
   const sortedJobs = useMemo(() => {
     if (!studioProfile?.jobs) return [];
+    const applicationByJobId = new Map(
+      (myApplications ?? []).map((application) => [String(application.jobId), application]),
+    );
     const selectedJobId = jobId ? String(jobId) : null;
-    return [...studioProfile.jobs].sort((left, right) => {
-      if (selectedJobId) {
-        const leftSelected = String(left.jobId) === selectedJobId;
-        const rightSelected = String(right.jobId) === selectedJobId;
-        if (leftSelected && !rightSelected) return -1;
-        if (!leftSelected && rightSelected) return 1;
-      }
-      return left.startTime - right.startTime;
-    });
-  }, [jobId, studioProfile?.jobs]);
+    return [...studioProfile.jobs]
+      .map((job) => {
+        const application = applicationByJobId.get(String(job.jobId));
+        if (!application) {
+          return job;
+        }
+        return {
+          ...job,
+          applicationId: application.applicationId,
+          applicationStatus: application.status,
+        };
+      })
+      .sort((left, right) => {
+        if (selectedJobId) {
+          const leftSelected = String(left.jobId) === selectedJobId;
+          const rightSelected = String(right.jobId) === selectedJobId;
+          if (leftSelected && !rightSelected) return -1;
+          if (!leftSelected && rightSelected) return 1;
+        }
+        return left.startTime - right.startTime;
+      });
+  }, [jobId, myApplications, studioProfile?.jobs]);
 
   const sportsLabels = useMemo(
     () => (studioProfile?.sports ?? []).map((sport) => toSportLabel(sport as never)),
@@ -262,11 +297,11 @@ export default function InstructorStudioProfileRoute() {
         </View>
       ) : null}
 
-      {applyErrorMessage ? (
+      {actionErrorMessage ? (
         <NoticeBanner
           tone="error"
-          message={applyErrorMessage}
-          onDismiss={() => setApplyErrorMessage(null)}
+          message={actionErrorMessage}
+          onDismiss={() => setActionErrorMessage(null)}
           borderColor={palette.danger}
           backgroundColor={palette.dangerSubtle}
           textColor={palette.danger}
@@ -283,8 +318,10 @@ export default function InstructorStudioProfileRoute() {
             zoneLanguage={zoneLanguage}
             palette={palette}
             applyingJobId={applyingJobId}
+            withdrawingApplicationId={withdrawingApplicationId}
             now={now}
             onApply={onApply}
+            onWithdrawApplication={onWithdrawApplication}
             t={t}
             variant="studioDetail"
           />

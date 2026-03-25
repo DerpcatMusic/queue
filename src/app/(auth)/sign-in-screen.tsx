@@ -2,9 +2,9 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { useConvexAuth } from "convex/react";
 import * as AuthSession from "expo-auth-session";
-import { Redirect, useLocalSearchParams } from "expo-router";
+import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -15,6 +15,8 @@ import { IconButton } from "@/components/ui/icon-button";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
 import { SheetHeaderBlock } from "@/components/ui/sheet-header-block";
 import { type BrandPalette, BrandSpacing, BrandType } from "@/constants/brand";
+import { useAuthSession } from "@/contexts/auth-session-context";
+import { useUser } from "@/contexts/user-context";
 import { useBrand } from "@/hooks/use-brand";
 import {
   canUseNativeGoogleAuth,
@@ -22,8 +24,15 @@ import {
   signInWithGoogleNative,
 } from "@/lib/google-auth-native";
 import {
+  snapshotAndClearCurrentDeviceAccount,
+  switchToRememberedDeviceAccount,
+  toDeviceAccountIdentity,
+} from "@/modules/session/device-account-store";
+import {
   consumePendingPostSignOutAuthHandoff,
   type PostSignOutAuthIntent,
+  type PostSignOutAuthMethod,
+  setPendingPostSignOutAuthHandoff,
 } from "@/modules/session/post-signout-auth-intent";
 
 type Step = "email" | "code";
@@ -48,6 +57,19 @@ function readAuthIntent(value: string | string[] | undefined): PostSignOutAuthIn
   return null;
 }
 
+function readAuthMethod(value: string | string[] | undefined): PostSignOutAuthMethod | null {
+  const param = readParam(value);
+  if (param === "apple" || param === "code" || param === "magic-link" || param === "google") {
+    return param;
+  }
+  return null;
+}
+
+function readBooleanParam(value: string | string[] | undefined) {
+  const param = readParam(value);
+  return param === "1" || param === "true";
+}
+
 function MessageBanner({
   tone,
   message,
@@ -58,7 +80,7 @@ function MessageBanner({
   palette: BrandPalette;
 }) {
   const backgroundColor =
-    tone === "danger" ? (palette.dangerSubtle as string) : (palette.surfaceAlt as string);
+    tone === "danger" ? (palette.dangerSubtle as string) : (palette.surfaceSecondary as string);
   const textColor = tone === "danger" ? (palette.danger as string) : (palette.textMuted as string);
 
   return (
@@ -79,13 +101,19 @@ function MessageBanner({
 
 export default function SignInScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const searchParams = useLocalSearchParams<{
     authFlow?: string | string[];
     code?: string | string[];
     email?: string | string[];
     intent?: string | string[];
+    method?: string | string[];
+    returnTo?: string | string[];
+    switchAccount?: string | string[];
   }>();
   const palette = useBrand();
+  const { currentUser } = useUser();
+  const { reloadAuthSession } = useAuthSession();
   const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
     topSpacing: BrandSpacing.lg,
     bottomSpacing: BrandSpacing.xxl,
@@ -94,8 +122,12 @@ export default function SignInScreen() {
   const { isAuthenticated } = useConvexAuth();
   const { signIn } = useAuthActions();
   const googleNativeAuthConfig = useMemo(resolveGoogleNativeAuthConfig, []);
+  const autoStartedMethodRef = useRef<string | null>(null);
   const handledMagicCodeRef = useRef<string | null>(null);
   const pendingAuthHandoffRef = useRef(consumePendingPostSignOutAuthHandoff());
+  const [hasStartedSwitchFlow, setHasStartedSwitchFlow] = useState(false);
+  const isSwitchAccountFlow = readBooleanParam(searchParams.switchAccount);
+  const switchFlowReturnTo = readParam(searchParams.returnTo);
 
   useEffect(() => {
     WebBrowser.maybeCompleteAuthSession();
@@ -132,15 +164,22 @@ export default function SignInScreen() {
 
   const authIntent =
     readAuthIntent(searchParams.intent) ?? pendingAuthHandoffRef.current?.intent ?? "sign-in";
+  const pendingAuthMethod =
+    readAuthMethod(searchParams.method) ?? pendingAuthHandoffRef.current?.method ?? null;
+  const restoreAccountId = pendingAuthHandoffRef.current?.restoreAccountId ?? null;
   const isSignUpIntent = authIntent === "sign-up";
-  const sheetTitle =
-    step === "code"
+  const sheetTitle = isSwitchAccountFlow
+    ? t("auth.switchAccountTitle")
+    : step === "code"
       ? t("auth.verifyCodeButton")
       : isSignUpIntent
         ? t("auth.signUpTitle")
         : t("auth.navigation.signIn");
-  const sheetSubtitle =
-    step === "code"
+  const sheetSubtitle = isSwitchAccountFlow
+    ? step === "code"
+      ? t("auth.switchAccountCodeSubtitle")
+      : t("auth.switchAccountSubtitle")
+    : step === "code"
       ? t("auth.codeSheetSubtitle")
       : isSignUpIntent
         ? t("auth.signUpSubtitle")
@@ -158,7 +197,7 @@ export default function SignInScreen() {
       steps: [step === "code" ? 0.22 : 0.2],
       initialStep: 0,
     }),
-    [isSignUpIntent, palette, sheetSubtitle, sheetTitle, step],
+    [palette, sheetSubtitle, sheetTitle, step],
   );
 
   useGlobalTopSheet("sign-in", signInSheetConfig);
@@ -188,19 +227,92 @@ export default function SignInScreen() {
       });
   }, [searchParams.authFlow, searchParams.code, signIn, t]);
 
-  if (isAuthenticated) {
-    return <Redirect href="/" />;
-  }
-
   const normalizedEmail = email.trim();
   const isEmailReady = normalizedEmail.length > 0;
 
-  const handleSendCode = async () => {
+  const prepareSwitchAccountFlow = useCallback(
+    async (method: PostSignOutAuthMethod) => {
+      if (!isSwitchAccountFlow || hasStartedSwitchFlow || !isAuthenticated) {
+        return true;
+      }
+
+      setPendingPostSignOutAuthHandoff({
+        ...(normalizedEmail ? { email: normalizedEmail } : {}),
+        intent: authIntent,
+        method,
+        ...(currentUser?._id ? { restoreAccountId: String(currentUser._id) } : {}),
+      });
+      setHasStartedSwitchFlow(true);
+      setInfoMessage(t("auth.switchingAccounts"));
+      try {
+        await snapshotAndClearCurrentDeviceAccount(
+          currentUser ? toDeviceAccountIdentity(currentUser) : null,
+        );
+        reloadAuthSession();
+        return false;
+      } catch (error) {
+        setHasStartedSwitchFlow(false);
+        setInfoMessage(null);
+        setErrorMessage(getErrorMessage(error, t("auth.unexpectedError")));
+        return false;
+      }
+    },
+    [
+      authIntent,
+      currentUser,
+      hasStartedSwitchFlow,
+      isAuthenticated,
+      isSwitchAccountFlow,
+      normalizedEmail,
+      reloadAuthSession,
+      t,
+    ],
+  );
+
+  const handleCancelSwitch = useCallback(() => {
+    if (isSubmitting) {
+      return;
+    }
+    if (!isAuthenticated && restoreAccountId) {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      void switchToRememberedDeviceAccount({ accountId: restoreAccountId })
+        .then(() => {
+          reloadAuthSession();
+          router.replace((switchFlowReturnTo ?? "/") as Href);
+        })
+        .catch((error) => {
+          setErrorMessage(getErrorMessage(error, t("auth.unexpectedError")));
+        })
+        .finally(() => {
+          setIsSubmitting(false);
+        });
+      return;
+    }
+    if (switchFlowReturnTo) {
+      router.replace(switchFlowReturnTo as Href);
+      return;
+    }
+    router.replace("/" as Href);
+  }, [
+    isAuthenticated,
+    isSubmitting,
+    reloadAuthSession,
+    restoreAccountId,
+    router,
+    switchFlowReturnTo,
+    t,
+  ]);
+
+  const handleSendCode = useCallback(async () => {
     if (isSubmitting || !isEmailReady) return;
     setIsSubmitting(true);
     setErrorMessage(null);
     setInfoMessage(null);
     try {
+      if (!(await prepareSwitchAccountFlow("code"))) {
+        return;
+      }
       await signIn("resend-otp", { email: normalizedEmail });
       setStep("code");
     } catch (error) {
@@ -208,28 +320,34 @@ export default function SignInScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [isEmailReady, isSubmitting, normalizedEmail, prepareSwitchAccountFlow, signIn, t]);
 
-  const handleVerifyCode = async () => {
+  const handleVerifyCode = useCallback(async () => {
     if (isSubmitting || !isEmailReady) return;
     setIsSubmitting(true);
     setErrorMessage(null);
     setInfoMessage(null);
     try {
+      if (!(await prepareSwitchAccountFlow("code"))) {
+        return;
+      }
       await signIn("resend-otp", { email: normalizedEmail, code: code.trim() });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, t("auth.unexpectedError")));
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [code, isEmailReady, isSubmitting, normalizedEmail, prepareSwitchAccountFlow, signIn, t]);
 
-  const handleSendMagicLink = async () => {
+  const handleSendMagicLink = useCallback(async () => {
     if (isSubmitting || !isEmailReady) return;
     setIsSubmitting(true);
     setErrorMessage(null);
     setInfoMessage(null);
     try {
+      if (!(await prepareSwitchAccountFlow("magic-link"))) {
+        return;
+      }
       await signIn("resend", {
         email: normalizedEmail,
         redirectTo: magicLinkRedirectTo,
@@ -240,55 +358,128 @@ export default function SignInScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [
+    isEmailReady,
+    isSubmitting,
+    magicLinkRedirectTo,
+    normalizedEmail,
+    prepareSwitchAccountFlow,
+    signIn,
+    t,
+  ]);
 
-  const handleOAuth = async (provider: "google" | "apple") => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    setInfoMessage(null);
-    try {
-      if (provider === "google" && canUseNativeGoogleAuth(googleNativeAuthConfig)) {
-        const nativeGoogleConfig = googleNativeAuthConfig;
-        const nativeResult = await signInWithGoogleNative({
-          config: nativeGoogleConfig,
-          ...(normalizedEmail ? { loginHint: normalizedEmail } : {}),
-        });
-        if (nativeResult.type === "cancelled") {
-          setErrorMessage(t("auth.oauthCancelled"));
+  const handleOAuth = useCallback(
+    async (provider: "google" | "apple") => {
+      if (isSubmitting) return;
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      setInfoMessage(null);
+      try {
+        if (!(await prepareSwitchAccountFlow(provider))) {
           return;
         }
 
-        await signIn("google-native", { idToken: nativeResult.idToken });
-        return;
-      }
+        if (provider === "google" && canUseNativeGoogleAuth(googleNativeAuthConfig)) {
+          const nativeGoogleConfig = googleNativeAuthConfig;
+          const nativeResult = await signInWithGoogleNative({
+            config: nativeGoogleConfig,
+          });
+          if (nativeResult.type === "cancelled") {
+            setErrorMessage(t("auth.oauthCancelled"));
+            return;
+          }
 
-      const started = await signIn(provider, { redirectTo: oauthRedirectTo });
-      if (!started.redirect) return;
-      const oauthResult = await WebBrowser.openAuthSessionAsync(
-        started.redirect.toString(),
-        oauthRedirectTo,
-      );
-      if (oauthResult.type === "cancel") {
-        setErrorMessage(t("auth.oauthCancelled"));
-        return;
+          await signIn("google-native", { idToken: nativeResult.idToken });
+          return;
+        }
+
+        const started = await signIn(provider, {
+          redirectTo: oauthRedirectTo,
+          ...(provider === "google" && (isSwitchAccountFlow || normalizedEmail.length > 0)
+            ? {
+                prompt: "select_account",
+                ...(normalizedEmail ? { login_hint: normalizedEmail } : {}),
+              }
+            : {}),
+        });
+        if (!started.redirect) return;
+        const oauthResult = await WebBrowser.openAuthSessionAsync(
+          started.redirect.toString(),
+          oauthRedirectTo,
+        );
+        if (oauthResult.type === "cancel") {
+          setErrorMessage(t("auth.oauthCancelled"));
+          return;
+        }
+        if (oauthResult.type !== "success" || !oauthResult.url) {
+          return;
+        }
+        const url = new URL(oauthResult.url);
+        const oauthCode = url.searchParams.get("code");
+        if (!oauthCode) {
+          setErrorMessage(t("auth.oauthFailed"));
+          return;
+        }
+        await signIn(provider, { code: oauthCode });
+      } catch (error) {
+        setErrorMessage(getErrorMessage(error, t("auth.unexpectedError")));
+      } finally {
+        setIsSubmitting(false);
       }
-      if (oauthResult.type !== "success" || !oauthResult.url) {
-        return;
-      }
-      const url = new URL(oauthResult.url);
-      const oauthCode = url.searchParams.get("code");
-      if (!oauthCode) {
-        setErrorMessage(t("auth.oauthFailed"));
-        return;
-      }
-      await signIn(provider, { code: oauthCode });
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error, t("auth.unexpectedError")));
-    } finally {
-      setIsSubmitting(false);
+    },
+    [
+      googleNativeAuthConfig,
+      isSubmitting,
+      isSwitchAccountFlow,
+      normalizedEmail,
+      oauthRedirectTo,
+      prepareSwitchAccountFlow,
+      signIn,
+      t,
+    ],
+  );
+
+  useEffect(() => {
+    const canAutoStart =
+      pendingAuthMethod === "apple" ||
+      pendingAuthMethod === "google" ||
+      pendingAuthMethod === "magic-link" ||
+      isEmailReady;
+    if (!pendingAuthMethod || !canAutoStart || isSubmitting) {
+      return;
     }
-  };
+
+    const autoStartKey = `${pendingAuthMethod}:${normalizedEmail.toLowerCase()}`;
+    if (autoStartedMethodRef.current === autoStartKey) {
+      return;
+    }
+
+    autoStartedMethodRef.current = autoStartKey;
+    if (pendingAuthMethod === "code") {
+      void handleSendCode();
+      return;
+    }
+    if (pendingAuthMethod === "magic-link") {
+      void handleSendMagicLink();
+      return;
+    }
+    void handleOAuth(pendingAuthMethod === "apple" ? "apple" : "google");
+  }, [
+    handleOAuth,
+    handleSendCode,
+    handleSendMagicLink,
+    isEmailReady,
+    isSubmitting,
+    normalizedEmail,
+    pendingAuthMethod,
+  ]);
+
+  if (
+    isAuthenticated &&
+    (!isSwitchAccountFlow || hasStartedSwitchFlow || pendingAuthHandoffRef.current !== null)
+  ) {
+    return <Redirect href="/" />;
+  }
 
   return (
     <KeyboardAvoidingView
@@ -393,6 +584,17 @@ export default function SignInScreen() {
                     disabled={isSubmitting}
                   />
                 </View>
+                {isSwitchAccountFlow && isAuthenticated && !hasStartedSwitchFlow ? (
+                  <ActionButton
+                    label={t("auth.keepCurrentAccount")}
+                    onPress={handleCancelSwitch}
+                    disabled={isSubmitting}
+                    palette={palette}
+                    tone="secondary"
+                    fullWidth
+                    size="lg"
+                  />
+                ) : null}
               </>
             ) : (
               <View className="gap-stack-tight">
