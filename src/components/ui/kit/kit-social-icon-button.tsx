@@ -2,7 +2,7 @@ import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { Pressable, View } from "react-native";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
+import type { BrandPalette } from "@/constants/brand";
 import { triggerSelectionHaptic } from "./native-interaction";
 
 type BrandIconName = "instagram" | "tiktok" | "whatsapp" | "facebook" | "linkedin";
@@ -22,27 +22,25 @@ export function KitSocialIconButton({
   palette,
   onPress,
   active = true,
-  size = BrandSpacing.controlSm - BrandSpacing.xxs,
+  size = 36,
 }: KitSocialIconButtonProps) {
-  const iconSize = Math.max(BrandSpacing.md + BrandSpacing.xxs, Math.round(size * 0.44));
-  const idleBackgroundColor = active
+  const iconSize = Math.max(14, Math.round(size * 0.44));
+  const backgroundColor = active
     ? (palette.primarySubtle as string)
     : (palette.surfaceAlt as string);
-  const pressedBackgroundColor = active
-    ? (palette.primaryPressed as string)
-    : (palette.surfaceElevated as string);
+  const pressedBackgroundColor = active ? (palette.primary as string) : (palette.surface as string);
   const circle = (
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: BrandRadius.pill,
+        borderRadius: 999,
         borderCurve: "continuous",
         alignItems: "center",
         justifyContent: "center",
         borderWidth: 1,
         borderColor: palette.border as string,
-        backgroundColor: idleBackgroundColor,
+        backgroundColor,
       }}
     >
       {icon === "website" ? (
@@ -74,8 +72,8 @@ export function KitSocialIconButton({
         onPress();
       }}
       style={({ pressed }) => ({
-        borderRadius: BrandRadius.pill,
-        backgroundColor: pressed ? pressedBackgroundColor : idleBackgroundColor,
+        borderRadius: 999,
+        backgroundColor: pressed ? pressedBackgroundColor : backgroundColor,
       })}
     >
       {circle}

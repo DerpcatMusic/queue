@@ -48,8 +48,12 @@ export function CalendarConnectionRow({
         <Image source={iconSource} style={styles.icon} resizeMode="cover" />
 
         <View style={styles.copy}>
-          <Text style={[styles.title, { color: palette.text as string }]}>{title}</Text>
-          <Text style={[styles.detail, { color: palette.textMuted as string }]}>{detail}</Text>
+          <Text style={[styles.title]} className="text-brand">
+            {title}
+          </Text>
+          <Text style={[styles.detail]} className="text-muted">
+            {detail}
+          </Text>
         </View>
 
         <View style={styles.trailing}>

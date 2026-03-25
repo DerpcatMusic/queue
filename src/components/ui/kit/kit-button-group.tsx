@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import type { DimensionValue, TextStyle, ViewStyle } from "react-native";
+import type { ColorValue, DimensionValue, TextStyle, ViewStyle } from "react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandType } from "@/constants/brand";
 import { useBrand } from "@/hooks/use-brand";
 import { triggerSelectionHaptic } from "./native-interaction";
 
@@ -31,38 +31,20 @@ export type KitButtonGroupProps<T extends string> = {
   maxWidth?: number;
   showSeparators?: boolean;
   style?: ViewStyle;
-  groupBackgroundColor?: string;
-  selectedBackgroundColor?: string;
-  labelColor?: string;
-  selectedLabelColor?: string;
-  dividerColor?: string;
+  groupBackgroundColor?: ColorValue;
+  selectedBackgroundColor?: ColorValue;
+  labelColor?: ColorValue;
+  selectedLabelColor?: ColorValue;
+  dividerColor?: ColorValue;
 };
 
 const SIZE_PRESET: Record<
   KitButtonGroupSize,
   { minHeight: number; radius: number; paddingX: number; inset: number; separatorInset: number }
 > = {
-  sm: {
-    minHeight: BrandSpacing.iconContainer,
-    radius: BrandRadius.buttonSubtle,
-    paddingX: BrandSpacing.componentPadding,
-    inset: 2,
-    separatorInset: BrandSpacing.sm + 1,
-  },
-  md: {
-    minHeight: BrandSpacing.iconContainer,
-    radius: BrandRadius.button,
-    paddingX: BrandSpacing.lg,
-    inset: 3,
-    separatorInset: BrandSpacing.sm + 3,
-  },
-  lg: {
-    minHeight: BrandSpacing.xxl + 6,
-    radius: BrandRadius.button,
-    paddingX: BrandSpacing.xl - 2,
-    inset: 3,
-    separatorInset: BrandSpacing.sm + 4,
-  },
+  sm: { minHeight: 40, radius: 10, paddingX: 12, inset: 2, separatorInset: 9 },
+  md: { minHeight: 48, radius: 12, paddingX: 16, inset: 3, separatorInset: 11 },
+  lg: { minHeight: 54, radius: 14, paddingX: 18, inset: 3, separatorInset: 12 },
 };
 
 export function KitButtonGroup<T extends string>({
@@ -90,31 +72,34 @@ export function KitButtonGroup<T extends string>({
   const wraps = resolvedColumns < options.length;
   const slotBasis = `${100 / resolvedColumns}%` as DimensionValue;
 
-  const resolvedGroupBg =
-    groupBackgroundColor ??
-    (tone === "onPrimary" ? String(palette.primaryPressed) : String(palette.surfaceAlt));
-  const resolvedSelectedBg =
-    selectedBackgroundColor ??
-    (tone === "onPrimary" ? String(palette.primary) : String(palette.surfaceElevated));
-  const resolvedLabelColorFinal =
-    labelColor ?? (tone === "onPrimary" ? String(palette.onPrimary) : String(palette.textMuted));
-  const resolvedSelectedLabelColorFinal = selectedLabelColor ?? String(palette.onPrimary);
-  const resolvedDividerColorFinal =
-    dividerColor ??
-    (tone === "onPrimary" ? String(palette.onPrimary) : String(palette.borderStrong));
+  const toneDefaults =
+    tone === "onPrimary"
+      ? {
+          groupBackgroundColor: palette.primaryPressed as string,
+          selectedBackgroundColor: palette.primarySubtle as string,
+          labelColor: palette.onPrimary as string,
+          selectedLabelColor: palette.onPrimary as string,
+          dividerColor: palette.primary as string,
+        }
+      : {
+          groupBackgroundColor: palette.surfaceAlt as string,
+          selectedBackgroundColor: palette.surfaceElevated as string,
+          labelColor: palette.textMuted as string,
+          selectedLabelColor: palette.text as string,
+          dividerColor: palette.borderStrong as string,
+        };
 
   return (
     <View
       accessible
-      className="overflow-hidden rounded-button"
       style={[
+        styles.group,
         {
           width: fullWidth ? "100%" : width,
           maxWidth,
           alignSelf: fullWidth ? "stretch" : alignSelfMap[align],
-          backgroundColor: resolvedGroupBg,
+          backgroundColor: (groupBackgroundColor ?? toneDefaults.groupBackgroundColor) as string,
           flexWrap: wraps ? "wrap" : "nowrap",
-          padding: BrandSpacing.sm - 2,
         },
         style,
       ]}
@@ -126,8 +111,8 @@ export function KitButtonGroup<T extends string>({
         return (
           <View
             key={option.value}
-            className="relative flex-1"
             style={[
+              styles.slot,
               {
                 width: slotBasis,
                 maxWidth: wraps ? slotBasis : undefined,
@@ -138,14 +123,12 @@ export function KitButtonGroup<T extends string>({
             {showDivider ? (
               <View
                 pointerEvents="none"
-                className="absolute"
                 style={[
+                  styles.divider,
                   {
-                    left: 0,
-                    width: StyleSheet.hairlineWidth,
                     top: metrics.separatorInset,
                     bottom: metrics.separatorInset,
-                    backgroundColor: resolvedDividerColorFinal,
+                    backgroundColor: (dividerColor ?? toneDefaults.dividerColor) as string,
                   },
                 ]}
               />
@@ -153,15 +136,16 @@ export function KitButtonGroup<T extends string>({
             {selected ? (
               <View
                 pointerEvents="none"
-                className="absolute"
                 style={[
+                  styles.selectionFill,
                   {
                     top: metrics.inset,
                     right: metrics.inset,
                     bottom: metrics.inset,
                     left: metrics.inset,
                     borderRadius: metrics.radius,
-                    backgroundColor: resolvedSelectedBg,
+                    backgroundColor: (selectedBackgroundColor ??
+                      toneDefaults.selectedBackgroundColor) as string,
                   },
                 ]}
               />
@@ -176,42 +160,39 @@ export function KitButtonGroup<T extends string>({
                 triggerSelectionHaptic();
                 onChange(option.value);
               }}
-              className="w-full"
               style={({ pressed }) => [
+                styles.segmentPressable,
                 {
-                  borderRadius: metrics.radius,
                   backgroundColor: option.disabled
-                    ? String(palette.surface)
+                    ? ((groupBackgroundColor ?? toneDefaults.groupBackgroundColor) as string)
                     : pressed
-                      ? tone === "onPrimary"
-                        ? String(palette.primaryPressed)
-                        : String(palette.surface)
+                      ? ((selectedBackgroundColor ??
+                          toneDefaults.selectedBackgroundColor) as string)
                       : undefined,
-                },
+                  borderRadius: metrics.radius,
+                } as ViewStyle,
               ]}
             >
               <View
-                className="flex-row items-center justify-center"
                 style={[
+                  styles.segmentContent,
                   {
                     minHeight: metrics.minHeight,
                     paddingHorizontal: metrics.paddingX,
-                  },
+                  } as ViewStyle,
                 ]}
               >
-                {option.icon ? (
-                  <View className="items-center justify-center">{option.icon}</View>
-                ) : null}
+                {option.icon ? <View style={styles.iconWrap}>{option.icon}</View> : null}
                 <Text
                   numberOfLines={1}
-                  className="text-center font-bold"
-                  style={
+                  style={[
+                    styles.label as TextStyle,
                     {
-                      color: selected ? resolvedSelectedLabelColorFinal : resolvedLabelColorFinal,
-                      ...BrandType.bodyMedium,
-                      includeFontPadding: false,
-                    } as TextStyle
-                  }
+                      color: selected
+                        ? (selectedLabelColor ?? toneDefaults.selectedLabelColor)
+                        : (labelColor ?? toneDefaults.labelColor),
+                    },
+                  ]}
                 >
                   {option.label}
                 </Text>
@@ -229,3 +210,50 @@ const alignSelfMap: Record<KitButtonGroupAlign, "flex-start" | "center" | "stret
   center: "center",
   stretch: "stretch",
 };
+
+const styles = StyleSheet.create({
+  group: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    borderRadius: 20,
+    borderCurve: "continuous",
+    padding: 6,
+    overflow: "hidden",
+  },
+  slot: {
+    position: "relative",
+    alignSelf: "stretch",
+    flex: 1,
+  },
+  divider: {
+    position: "absolute",
+    left: 0,
+    width: StyleSheet.hairlineWidth,
+  },
+  selectionFill: {
+    position: "absolute",
+  },
+  segmentPressable: {
+    width: "100%",
+  },
+  segmentContent: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    position: "relative",
+    zIndex: 1,
+  },
+  iconWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  label: {
+    ...BrandType.bodyMedium,
+    fontSize: 15,
+    fontWeight: "700",
+    includeFontPadding: false,
+    textAlign: "center",
+  },
+});

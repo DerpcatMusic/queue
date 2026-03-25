@@ -10,19 +10,10 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  I18nManager,
-  type StyleProp,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-  type ViewStyle,
-} from "react-native";
+import { I18nManager, type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
-import { useMeasuredContentHeight } from "@/components/layout/use-measured-content-height";
 import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -50,11 +41,6 @@ const ProfileSubpageAccessoryContext = createContext<ProfileSubpageAccessoryCont
   null,
 );
 
-const PROFILE_SUBPAGE_HEADER_HEIGHT = BrandSpacing.controlMd;
-const PROFILE_SUBPAGE_EDGE_SLOT_MIN_WIDTH = BrandSpacing.controlMd - BrandSpacing.xs;
-const PROFILE_SUBPAGE_SCROLL_TOP_SPACING = BrandSpacing.inset;
-const PROFILE_SUBPAGE_SCROLL_BOTTOM_SPACING = BrandSpacing.insetRoomy;
-
 function isProfileSubpageRouteActive(pathname: string | null, routeMatchPath: string) {
   if (!pathname) {
     return false;
@@ -76,25 +62,22 @@ function ProfileSubpageSheetHeader({
   const palette = useBrand();
   const { t } = useTranslation();
   const isCustomAccent = Boolean(accentColor);
-  const foregroundColor = isCustomAccent ? String(palette.onPrimary) : String(palette.text);
+  const foregroundColor = isCustomAccent ? "#FFFFFF" : String(palette.text);
 
   return (
-    <View
-      className="flex-row items-center justify-between gap-sm"
-      style={{ minHeight: PROFILE_SUBPAGE_HEADER_HEIGHT }}
-    >
+    <View style={styles.headerRow}>
       <View style={styles.edgeSlot}>
         <IconButton
-          size={PROFILE_SUBPAGE_EDGE_SLOT_MIN_WIDTH}
+          size={40}
           tone={isCustomAccent ? "primarySubtle" : "secondary"}
-          {...(isCustomAccent ? { backgroundColorOverride: String(palette.onPrimary) } : {})}
+          {...(isCustomAccent ? { backgroundColorOverride: String(palette.surface) } : {})}
           accessibilityLabel={t("common.back")}
           onPress={onBack}
           icon={
             <IconSymbol
               name="chevron.right"
               size={20}
-              color={isCustomAccent ? String(accentColor) : foregroundColor}
+              color={foregroundColor}
               style={{
                 transform: [{ rotate: I18nManager.isRTL ? "0deg" : "180deg" }],
               }}
@@ -185,11 +168,7 @@ export function ProfileSubpageSheetHost({
   const palette = useBrand();
   const router = useRouter();
   const pathname = usePathname();
-  const { safeBottom, safeTop } = useAppInsets();
-  const { height: screenHeight } = useWindowDimensions();
   const accessoryContext = useContext(ProfileSubpageAccessoryContext);
-  const { measuredHeight: headerMeasuredHeight, onLayout: onHeaderLayout } =
-    useMeasuredContentHeight();
 
   const activeRoute = useMemo(
     () =>
@@ -214,28 +193,18 @@ export function ProfileSubpageSheetHost({
 
     return {
       stickyHeader: (
-        <View onLayout={onHeaderLayout}>
-          <ProfileSubpageSheetHeader
-            title={activeRoute.title}
-            rightAccessory={accessoryContext?.accessories[activeRoute.routeMatchPath] ?? null}
-            onBack={() => router.back()}
-            {...(isDiditRoute || isPaymentsRoute ? { accentColor } : {})}
-          />
-        </View>
+        <ProfileSubpageSheetHeader
+          title={activeRoute.title}
+          rightAccessory={accessoryContext?.accessories[activeRoute.routeMatchPath] ?? null}
+          onBack={() => router.back()}
+          {...(isDiditRoute || isPaymentsRoute ? { accentColor } : {})}
+        />
       ),
       padding: {
-        vertical: BrandSpacing.stackTight,
-        horizontal: BrandSpacing.inset,
+        vertical: BrandSpacing.sm,
+        horizontal: BrandSpacing.lg,
       },
-      steps: [
-        Math.max(
-          0.12,
-          (safeTop +
-            (headerMeasuredHeight > 0 ? headerMeasuredHeight : PROFILE_SUBPAGE_HEADER_HEIGHT) +
-            BrandSpacing.stackTight * 2) /
-            Math.max(1, getTopSheetAvailableHeight(screenHeight, safeTop, safeBottom)),
-        ),
-      ],
+      steps: [0.12],
       initialStep: 0,
       draggable: false,
       expandable: false,
@@ -245,15 +214,10 @@ export function ProfileSubpageSheetHost({
   }, [
     activeRoute,
     accessoryContext?.accessories,
-    headerMeasuredHeight,
-    onHeaderLayout,
     palette.primary,
     palette.didit.accent,
     palette.payments.accent,
     router,
-    safeBottom,
-    safeTop,
-    screenHeight,
   ]);
 
   useGlobalTopSheet("profile", config, ownerId);
@@ -272,8 +236,8 @@ type ProfileSubpageScrollViewProps = Omit<
 
 export function ProfileSubpageScrollView({
   contentContainerStyle,
-  topSpacing = PROFILE_SUBPAGE_SCROLL_TOP_SPACING,
-  bottomSpacing = PROFILE_SUBPAGE_SCROLL_BOTTOM_SPACING,
+  topSpacing = BrandSpacing.lg,
+  bottomSpacing = BrandSpacing.xl,
   ...props
 }: ProfileSubpageScrollViewProps) {
   const collapsedSheetHeight = useCollapsedSheetHeight();
@@ -295,8 +259,8 @@ export function ProfileSubpageScrollView({
 
 export function ProfileIndexScrollView({
   contentContainerStyle,
-  topSpacing = PROFILE_SUBPAGE_SCROLL_TOP_SPACING,
-  bottomSpacing = PROFILE_SUBPAGE_SCROLL_BOTTOM_SPACING,
+  topSpacing = BrandSpacing.lg,
+  bottomSpacing = BrandSpacing.xl,
   ...props
 }: ProfileSubpageScrollViewProps) {
   const collapsedSheetHeight = useCollapsedSheetHeight();
@@ -309,6 +273,7 @@ export function ProfileIndexScrollView({
         {
           paddingTop: collapsedSheetHeight + topSpacing,
           paddingBottom: bottomSpacing + safeBottom,
+          paddingHorizontal: 0,
         },
         contentContainerStyle,
       ]}
@@ -317,8 +282,15 @@ export function ProfileIndexScrollView({
 }
 
 const styles = StyleSheet.create({
+  headerRow: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: BrandSpacing.sm,
+  },
   edgeSlot: {
-    minWidth: PROFILE_SUBPAGE_EDGE_SLOT_MIN_WIDTH,
+    minWidth: 40,
     alignItems: "flex-start",
     justifyContent: "center",
   },

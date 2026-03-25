@@ -103,7 +103,7 @@ export default function CalendarTabScreen() {
 
   if (isDesktopWeb) {
     return (
-      <TabScreenRoot mode="static" style={{ backgroundColor: palette.surface as string }}>
+      <TabScreenRoot mode="static" className="bg-surface">
         <View style={styles.desktopEmptyState}>
           <Text style={{ ...BrandType.bodyStrong, color: palette.textMuted as string }}>
             {t("calendarTab.desktopSoon")}

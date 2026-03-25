@@ -79,7 +79,7 @@ export function MapSelectedZonesStrip({
             justifyContent: "center",
           }}
         >
-          <Text style={{ ...BrandType.micro, color: palette.textMuted as string }}>
+          <Text style={BrandType.micro} className="text-muted">
             {t("mapTab.mobile.emptySelection")}
           </Text>
         </View>

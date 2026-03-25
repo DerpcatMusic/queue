@@ -165,7 +165,7 @@ function LinkPill({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        opacity: pressed ? 0.72 : 1,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
       <View className="flex-row items-center gap-xs">
@@ -250,8 +250,7 @@ function VerificationResolvingState({ label }: { label: string }) {
   return (
     <Animated.View
       entering={FadeIn.duration(220)}
-      className="flex-1 items-center justify-center px-xl"
-      style={{ backgroundColor: palette.appBg }}
+      className="flex-1 items-center justify-center px-xl bg-app-bg"
     >
       <Animated.View
         entering={FadeInDown.springify().damping(16).stiffness(170)}
@@ -259,35 +258,32 @@ function VerificationResolvingState({ label }: { label: string }) {
         style={{ maxWidth: 340 }}
       >
         <Animated.View
+          className="absolute rounded-pill bg-primary-subtle"
           style={[
             {
-              position: "absolute",
               top: BrandSpacing.xl,
               left: BrandSpacing.lg,
               width: BrandSpacing.sm,
               height: BrandSpacing.sm,
-              borderRadius: BrandRadius.pill,
-              backgroundColor: palette.primarySubtle as string,
             },
             bubbleLeftStyle,
           ]}
         />
         <Animated.View
+          className="absolute rounded-pill bg-primary-subtle"
           style={[
             {
-              position: "absolute",
               right: BrandSpacing.xl,
               bottom: BrandSpacing.lg,
               width: BrandSpacing.sm,
               height: BrandSpacing.sm,
-              borderRadius: BrandRadius.pill,
-              backgroundColor: palette.primarySubtle as string,
             },
             bubbleRightStyle,
           ]}
         />
 
         <Animated.View
+          className="gap-md border border-border bg-surface-alt"
           style={[
             {
               alignItems: "center",
@@ -296,23 +292,17 @@ function VerificationResolvingState({ label }: { label: string }) {
               paddingHorizontal: BrandSpacing.lg,
               borderRadius: BrandRadius.card,
               borderCurve: "continuous",
-              borderWidth: 1,
-              borderColor: palette.border as string,
-              backgroundColor: palette.surfaceAlt as string,
               overflow: "hidden",
             },
             cardStyle,
           ]}
-          className="gap-md"
         >
           <Animated.View
+            className="absolute rounded-full bg-primary-subtle"
             style={[
               {
-                position: "absolute",
                 width: BrandSpacing.haloSize,
                 height: BrandSpacing.haloSize,
-                borderRadius: BrandRadius.circle,
-                backgroundColor: palette.primarySubtle as string,
               },
               haloStyle,
             ]}
@@ -320,13 +310,10 @@ function VerificationResolvingState({ label }: { label: string }) {
 
           <Animated.View
             entering={FadeInDown.delay(90).duration(280)}
-            className="items-center justify-center rounded-full"
+            className="items-center justify-center rounded-full border border-border-strong bg-surface"
             style={{
               width: BrandSpacing.iconContainerLarge,
               height: BrandSpacing.iconContainerLarge,
-              borderWidth: 1,
-              borderColor: palette.borderStrong as string,
-              backgroundColor: palette.surface as string,
             }}
           >
             <View className="flex-row items-center gap-sm">
@@ -343,7 +330,7 @@ function VerificationResolvingState({ label }: { label: string }) {
             <ThemedText type="title" style={{ textAlign: "center" }}>
               {t("profile.identityVerification.resolvingTitle")}
             </ThemedText>
-            <ThemedText type="caption" style={{ color: palette.textMuted, textAlign: "center" }}>
+            <ThemedText type="caption" className="text-text-muted" style={{ textAlign: "center" }}>
               {label}
             </ThemedText>
           </Animated.View>

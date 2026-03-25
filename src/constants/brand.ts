@@ -389,46 +389,48 @@ export const BrandFonts = Platform.select({
 
 // ─── Mesh Gradient Presets ────────────────────────────────────────────────────
 
-export type MeshGradientPreset = "primary" | "primaryDark";
+export type MeshGradientPreset = "primary" | "primaryDark" | "warm" | "teal";
 
+// Warm (amber) — for instructor earnings, money, pending states
+// Teal (cool) — for studio branding, professional vibes
 export const BrandMeshGradient = {
   light: {
     primary: {
-      // Uses exact brand purple #8B5CF6 with lighter tints
-      gradient: `radial-gradient(ellipse at 25% 25%, #E8DDFF 0%, transparent 55%),
-                  radial-gradient(ellipse at 80% 20%, #A78BFA 0%, transparent 50%),
-                  radial-gradient(ellipse at 70% 80%, #C4B5FD 0%, transparent 45%),
-                  #8B5CF6`,
-      grainOpacity: 0.05,
+      fill: "#8B5CF6",
+      pressedFill: "#7C3AED",
     },
     primaryDark: {
-      // Slightly darker variant
-      gradient: `radial-gradient(ellipse at 25% 25%, #DDD6FE 0%, transparent 55%),
-                 radial-gradient(ellipse at 80% 20%, #C4B5FD 0%, transparent 50%),
-                 radial-gradient(ellipse at 70% 80%, #A78BFA 0%, transparent 45%),
-                 #8B5CF6`,
-      grainOpacity: 0.06,
+      fill: "#7C3AED",
+      pressedFill: "#6D28D9",
+    },
+    warm: {
+      fill: "#D68116",
+      pressedFill: "#B5690F",
+    },
+    teal: {
+      fill: "#14B8A6",
+      pressedFill: "#0F9488",
     },
   },
   dark: {
     primary: {
-      // Uses exact brand purple #8F6AFB with lighter tints
-      gradient: `radial-gradient(ellipse at 25% 25%, #E8DDFF 0%, transparent 55%),
-                 radial-gradient(ellipse at 80% 20%, #C4B5FD 0%, transparent 50%),
-                 radial-gradient(ellipse at 70% 80%, #DDD6FE 0%, transparent 45%),
-                 #8F6AFB`,
-      grainOpacity: 0.06,
+      fill: "#8F6AFB",
+      pressedFill: "#7C3AED",
     },
     primaryDark: {
-      // Lighter variant for dark surfaces
-      gradient: `radial-gradient(ellipse at 25% 25%, #F0EDFF 0%, transparent 55%),
-                 radial-gradient(ellipse at 80% 20%, #E8DDFF 0%, transparent 50%),
-                 radial-gradient(ellipse at 70% 80%, #DDD6FE 0%, transparent 45%),
-                 #A78BFA`,
-      grainOpacity: 0.08,
+      fill: "#A78BFA",
+      pressedFill: "#8F6AFB",
+    },
+    warm: {
+      fill: "#F59E0B",
+      pressedFill: "#D97706",
+    },
+    teal: {
+      fill: "#2DD4BF",
+      pressedFill: "#14B8A6",
     },
   },
 } as const satisfies Record<
   ResolvedBrandScheme,
-  Record<MeshGradientPreset, { gradient: string; grainOpacity: number }>
+  Record<MeshGradientPreset, { fill: string; pressedFill: string }>
 >;

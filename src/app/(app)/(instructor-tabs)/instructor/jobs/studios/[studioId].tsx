@@ -12,7 +12,7 @@ import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-cont
 import { LoadingScreen } from "@/components/loading-screen";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -79,8 +79,8 @@ export default function InstructorStudioProfileRoute() {
     });
   }, [jobId, studioProfile?.jobs]);
 
-  const sportsLabels = useMemo<string[]>(
-    () => (studioProfile?.sports ?? []).map((sport: string) => toSportLabel(sport as never)),
+  const sportsLabels = useMemo(
+    () => (studioProfile?.sports ?? []).map((sport) => toSportLabel(sport as never)),
     [studioProfile?.sports],
   );
 
@@ -88,8 +88,7 @@ export default function InstructorStudioProfileRoute() {
     if (!studioProfile || !pathname?.startsWith("/instructor/jobs/studios/")) {
       return null;
     }
-    const headerHeight =
-      BrandSpacing.iconContainer * 7 + BrandSpacing.componentPadding + BrandSpacing.xs;
+    const headerHeight = 284;
     const availableHeight = Math.max(1, screenHeight - safeTop - 80);
     const collapsedStep = Math.max(0.24, Math.min(0.42, headerHeight / availableHeight));
 
@@ -100,8 +99,8 @@ export default function InstructorStudioProfileRoute() {
             height: headerHeight,
             justifyContent: "space-between",
             overflow: "hidden",
-            borderBottomLeftRadius: BrandRadius.soft,
-            borderBottomRightRadius: BrandRadius.soft,
+            borderBottomLeftRadius: 28,
+            borderBottomRightRadius: 28,
             borderCurve: "continuous",
             backgroundColor: palette.primary as string,
           }}
@@ -119,9 +118,14 @@ export default function InstructorStudioProfileRoute() {
               }}
             />
           ) : null}
-          <View className="px-lg pt-md">
+          <View
+            style={{
+              paddingHorizontal: BrandSpacing.lg,
+              paddingTop: BrandSpacing.md,
+            }}
+          >
             <IconButton
-              size={BrandSpacing.controlMd}
+              size={42}
               tone="secondary"
               backgroundColorOverride={palette.surface as string}
               accessibilityLabel={t("common.back")}
@@ -138,12 +142,17 @@ export default function InstructorStudioProfileRoute() {
               }
             />
           </View>
-          <View className="gap-sm px-xl pb-section">
+          <View
+            style={{
+              paddingHorizontal: BrandSpacing.xl,
+              paddingBottom: BrandSpacing.xxl,
+              gap: 8,
+            }}
+          >
             <Text
               style={{
                 ...BrandType.heading,
                 color: palette.onPrimary as string,
-                textShadowColor: palette.onPrimaryShadowStrong as string,
                 textShadowOffset: { width: 0, height: 1 },
                 textShadowRadius: 4,
               }}
@@ -154,7 +163,6 @@ export default function InstructorStudioProfileRoute() {
               style={{
                 ...BrandType.body,
                 color: palette.onPrimary as string,
-                textShadowColor: palette.onPrimaryShadowSoft as string,
                 textShadowOffset: { width: 0, height: 1 },
                 textShadowRadius: 3,
               }}
@@ -177,8 +185,6 @@ export default function InstructorStudioProfileRoute() {
     };
   }, [
     palette.onPrimary,
-    palette.onPrimaryShadowSoft,
-    palette.onPrimaryShadowStrong,
     palette.primary,
     palette.surface,
     palette.text,
@@ -208,16 +214,30 @@ export default function InstructorStudioProfileRoute() {
     <TabScreenScrollView
       style={{ flex: 1, backgroundColor: palette.appBg }}
       topInsetTone="sheet"
-      contentContainerStyle={[contentContainerStyle, { gap: BrandSpacing.lg }]}
+      contentContainerStyle={[
+        contentContainerStyle,
+        {
+          gap: BrandSpacing.lg,
+        },
+      ]}
     >
       {sportsLabels.length > 0 || studioProfile.bio ? (
         <View
-          className="rounded-soft"
-          style={{ borderCurve: "continuous", backgroundColor: palette.surface as string }}
+          style={{
+            borderRadius: 32,
+            borderCurve: "continuous",
+            backgroundColor: palette.surface as string,
+          }}
         >
-          <View className="gap-md px-xl py-lg">
+          <View
+            style={{
+              paddingHorizontal: BrandSpacing.xl,
+              paddingVertical: BrandSpacing.lg,
+              gap: BrandSpacing.md,
+            }}
+          >
             {sportsLabels.length > 0 ? (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {sportsLabels.map((label) => (
                   <DotStatusPill
                     key={label}
@@ -254,7 +274,7 @@ export default function InstructorStudioProfileRoute() {
         />
       ) : null}
 
-      <View className="gap-sm">
+      <View style={{ gap: BrandSpacing.sm }}>
         {sortedJobs.map((job) => (
           <InstructorJobCard
             key={job.jobId}

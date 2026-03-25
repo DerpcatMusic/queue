@@ -2,7 +2,6 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { vars } from "nativewind";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Platform, Text, View } from "react-native";
@@ -449,21 +448,17 @@ export default function StudioCalendarSettingsScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: palette.appBg }}>
+    <View className="flex-1 bg-app-bg">
       <ProfileSubpageScrollView
         routeKey="studio/profile/calendar-settings"
-        className="flex-1"
-        style={{ backgroundColor: palette.appBg }}
+        className="flex-1 bg-app-bg"
         contentContainerStyle={{
           paddingHorizontal: BrandSpacing.lg,
           paddingBottom: 128,
           gap: BrandSpacing.md,
         }}
       >
-        <View
-          className="overflow-hidden rounded-card"
-          style={vars({ backgroundColor: String(palette.surface) })}
-        >
+        <View className="overflow-hidden rounded-card bg-surface">
           <CalendarConnectionRow
             iconSource={googleCalendarIcon}
             title={t("profile.settings.calendar.provider.google")}
@@ -512,29 +507,19 @@ export default function StudioCalendarSettingsScreen() {
 
         {googleStatus?.lastError ? (
           <View
-            className="px-3 py-3 rounded-button-subtle"
-            style={vars({
-              backgroundColor: String(palette.dangerSubtle),
-              borderColor: String(palette.danger),
-              borderWidth: 1,
-            })}
+            className="px-3 py-3 rounded-button-subtle bg-danger-subtle border-danger"
+            style={{ borderWidth: 1 }}
           >
-            <Text className="text-base" style={{ color: palette.danger as string }}>
-              {googleStatus.lastError}
-            </Text>
+            <Text className="text-base text-danger">{googleStatus.lastError}</Text>
           </View>
         ) : null}
 
         {needsGoogleReconnect ? (
           <View
-            className="px-3 py-3 rounded-button-subtle"
-            style={vars({
-              backgroundColor: String(palette.warningSubtle),
-              borderColor: String(palette.warning),
-              borderWidth: 1,
-            })}
+            className="px-3 py-3 rounded-button-subtle bg-warning-subtle border-warning"
+            style={{ borderWidth: 1 }}
           >
-            <Text className="text-base" style={{ color: palette.warning }}>
+            <Text className="text-base text-warning">
               {t("profile.settings.calendar.googleReconnectRequired")}
             </Text>
           </View>
@@ -542,21 +527,15 @@ export default function StudioCalendarSettingsScreen() {
 
         {googleConfigError ? (
           <View
-            className="px-3 py-3 rounded-button-subtle"
-            style={vars({
-              backgroundColor: String(palette.warningSubtle),
-              borderColor: String(palette.warning),
-              borderWidth: 1,
-            })}
+            className="px-3 py-3 rounded-button-subtle bg-warning-subtle border-warning"
+            style={{ borderWidth: 1 }}
           >
-            <Text className="text-base" style={{ color: palette.warning }}>
-              {googleConfigError}
-            </Text>
+            <Text className="text-base text-warning">{googleConfigError}</Text>
           </View>
         ) : null}
 
         {provider === "google" ? (
-          <View style={vars({ gap: BrandSpacing.sm + 2 })}>
+          <View style={{ gap: BrandSpacing.sm + 2 }}>
             <ActionButton
               label={
                 isSyncingGoogle

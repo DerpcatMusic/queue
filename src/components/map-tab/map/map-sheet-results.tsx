@@ -3,17 +3,11 @@ import { FlatList, Pressable, Text, View } from "react-native";
 import type { ZoneCityListItem } from "@/components/map-tab/zone-city-tree";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import {
-  type BrandPalette,
-  BrandRadius,
-  BrandSpacing,
-  BrandType,
-  type getMapBrandPalette,
-} from "@/constants/brand";
+import { type BrandPalette, BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useIsRtl } from "@/hooks/use-is-rtl";
 
 const MAP_RESULT_INDENT = BrandSpacing.xl + BrandSpacing.lg;
-const MAP_RESULT_RADIUS = BrandRadius.hard;
+const MAP_RESULT_RADIUS = BrandRadius.card - BrandSpacing.md;
 
 type MapSheetResultsProps = {
   isVisible: boolean;
@@ -22,7 +16,6 @@ type MapSheetResultsProps = {
   zoneLanguage: "en" | "he";
   zoneModeActive: boolean;
   palette: BrandPalette;
-  mapPalette: ReturnType<typeof getMapBrandPalette>;
   onPressZone: (zoneId: string) => void;
   onPressCity: (cityKey: string) => void;
   onToggleCityExpanded: (cityKey: string) => void;
@@ -35,7 +28,6 @@ export function MapSheetResults({
   zoneLanguage,
   zoneModeActive,
   palette,
-  mapPalette: _mapPalette,
   onPressZone,
   onPressCity,
   onToggleCityExpanded,
@@ -52,7 +44,7 @@ export function MapSheetResults({
       {saveError ? (
         <View
           style={{
-            borderRadius: BrandRadius.medium,
+            borderRadius: BrandRadius.card - BrandSpacing.sm,
             borderCurve: "continuous",
             paddingHorizontal: BrandSpacing.lg,
             paddingVertical: BrandSpacing.md,
@@ -74,16 +66,16 @@ export function MapSheetResults({
           gap: BrandSpacing.xs,
         }}
         keyboardShouldPersistTaps="handled"
-        initialNumToRender={12}
-        maxToRenderPerBatch={18}
-        windowSize={5}
+        initialNumToRender={20}
+        maxToRenderPerBatch={28}
+        windowSize={9}
         ItemSeparatorComponent={() => <View style={{ height: BrandSpacing.sm }} />}
         ListEmptyComponent={
           <View
             style={{
-              borderRadius: BrandRadius.medium,
+              borderRadius: 20,
               borderCurve: "continuous",
-              paddingHorizontal: BrandSpacing.lg,
+              paddingHorizontal: BrandSpacing.lg + BrandSpacing.xs / 2,
               paddingVertical: BrandSpacing.lg,
               gap: BrandSpacing.xs,
               backgroundColor: palette.surfaceAlt as string,
@@ -122,7 +114,7 @@ export function MapSheetResults({
                     paddingLeft: MAP_RESULT_INDENT,
                     paddingRight: BrandSpacing.lg,
                     paddingVertical: BrandSpacing.sm,
-                    backgroundColor: pressed ? (palette.surface as string) : undefined,
+                    transform: [{ scale: pressed ? 0.99 : 1 }],
                   })}
                 >
                   <View
@@ -193,7 +185,7 @@ export function MapSheetResults({
                   gap: BrandSpacing.md,
                   paddingHorizontal: BrandSpacing.lg,
                   paddingVertical: BrandSpacing.sm,
-                  backgroundColor: pressed ? (palette.surface as string) : undefined,
+                  transform: [{ scale: pressed ? 0.99 : 1 }],
                 })}
               >
                 <View style={{ flex: 1, gap: BrandSpacing.xs }}>
@@ -243,9 +235,9 @@ export function MapSheetResults({
                   hitSlop={8}
                   onPress={() => onToggleCityExpanded(item.group.cityKey)}
                   style={({ pressed }) => ({
-                    paddingHorizontal: BrandSpacing.controlX,
+                    paddingHorizontal: BrandSpacing.md,
                     paddingVertical: BrandSpacing.sm,
-                    backgroundColor: pressed ? (palette.surface as string) : undefined,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
                   })}
                 >
                   <IconSymbol

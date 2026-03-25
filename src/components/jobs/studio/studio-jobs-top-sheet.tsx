@@ -40,7 +40,7 @@ export function StudioJobsTopSheetHeader({
   return (
     <View style={styles.headerRow}>
       <IconButton
-        size={BrandSpacing.controlMd}
+        size={42}
         tone="primarySubtle"
         accessibilityLabel={
           notificationsEnabled
@@ -53,7 +53,7 @@ export function StudioJobsTopSheetHeader({
           <IconSymbol
             name={notificationsEnabled ? "bell.fill" : "bell.slash.fill"}
             size={18}
-            color={String(palette.text)}
+            color={String(palette.onPrimary)}
           />
         }
       />
@@ -62,6 +62,8 @@ export function StudioJobsTopSheetHeader({
         accessibilityLabel={t("jobsTab.studioFeed.filterAccessibilityLabel")}
         expanded={isFilterExpanded}
         onToggleExpanded={onToggleFilter}
+        showTriggerWhenExpanded={false}
+        style={{ flexShrink: 0, minWidth: 0 }}
         options={filterOptions}
         value={currentFilter}
         onChange={onChangeFilter}
@@ -69,15 +71,15 @@ export function StudioJobsTopSheetHeader({
           <IconSymbol
             name="line.3.horizontal.decrease.circle"
             size={18}
-            color={String(palette.text)}
+            color={String(palette.onPrimary)}
           />
         }
         size="sm"
-        railColor={String(palette.surface)}
+        railColor={String(palette.primaryPressed)}
         selectedColor={String(palette.primarySubtle)}
-        labelColor={String(palette.text)}
-        selectedLabelColor={String(palette.primaryPressed)}
-        dividerColor={String(palette.border)}
+        labelColor={String(palette.onPrimary)}
+        selectedLabelColor={String(palette.onPrimary)}
+        dividerColor={String(palette.primary)}
       />
     </View>
   );
@@ -85,7 +87,7 @@ export function StudioJobsTopSheetHeader({
 
 const styles = StyleSheet.create({
   headerRow: {
-    minHeight: BrandSpacing.controlMd,
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

@@ -1,16 +1,6 @@
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
-import Animated, {
-  cancelAnimation,
-  Easing,
-  FadeIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
+import { ActivityIndicator, ScrollView, View } from "react-native";
+import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
@@ -34,60 +24,103 @@ export function LoadingScreen({
   const resolvedLabel = label ?? t("common.loading");
   const resolvedTitle = title ?? t("launch.title");
 
-  // Gentle breathing pulse for the symbol
-  const pulse = useSharedValue(1);
-  useEffect(() => {
-    pulse.value = withRepeat(
-      withSequence(
-        withTiming(1.04, { duration: 1200, easing: Easing.out(Easing.exp) }),
-        withTiming(1, { duration: 1200, easing: Easing.in(Easing.exp) }),
-      ),
-      -1,
-      false,
-    );
-    return () => {
-      cancelAnimation(pulse);
-    };
-  }, [pulse]);
-
-  const symbolStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
-
   if (variant === "launch") {
     return (
       <Animated.View
-        entering={FadeIn.duration(400)}
-        className="flex-1 items-center justify-center"
-        style={{ backgroundColor: palette.surfaceElevated as string }}
+        entering={FadeIn.duration(300)}
+        style={{
+          flex: 1,
+          backgroundColor: palette.primary as string,
+        }}
         accessibilityRole="progressbar"
         accessibilityLabel={resolvedLabel}
       >
-        <Animated.View className="items-center gap-lg" style={symbolStyle}>
-          {showBrandMark ? (
-            <AppSymbol
-              name={{ ios: "bolt.fill", android: "bolt", web: "bolt.fill" }}
-              size={32}
-              tintColor={palette.primary as string}
+        <ScrollView
+          bounces={false}
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
+            paddingHorizontal: 24,
+            paddingVertical: 40,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 26,
+            }}
+          >
+            <Animated.View
+              entering={FadeInUp.duration(420)}
+              style={{
+                width: 236,
+                height: 236,
+                borderRadius: 118,
+                backgroundColor: palette.primaryPressed as string,
+                position: "absolute",
+              }}
             />
-          ) : null}
-          <View className="items-center gap-1">
-            {resolvedTitle ? (
+            <Animated.View
+              entering={FadeInDown.duration(380)}
+              style={{
+                width: 112,
+                height: 112,
+                borderRadius: 36,
+                borderCurve: "continuous",
+                backgroundColor: palette.primarySubtle as string,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {showBrandMark ? (
+                <View
+                  style={{
+                    width: 84,
+                    height: 84,
+                    borderRadius: 28,
+                    borderCurve: "continuous",
+                    backgroundColor: palette.surface as string,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <AppSymbol
+                    name={{ ios: "bolt.fill", android: "bolt", web: "bolt.fill" }}
+                    size={32}
+                    tintColor={palette.primary as string}
+                  />
+                </View>
+              ) : null}
+            </Animated.View>
+            <Animated.View
+              entering={FadeInUp.delay(60).duration(420)}
+              style={{ gap: 8, alignItems: "center" }}
+            >
               <ThemedText
                 type="title"
-                style={{ textAlign: "center", color: palette.text as string }}
+                style={{ textAlign: "center", color: palette.onPrimary as string }}
                 selectable
               >
                 {resolvedTitle}
               </ThemedText>
-            ) : null}
-            <ThemedText
-              type="caption"
-              style={{ color: palette.textMuted as string, textAlign: "center" }}
-              selectable
-            >
-              {resolvedLabel}
-            </ThemedText>
+              <ThemedText
+                type="caption"
+                style={{
+                  color: palette.surfaceAlt as string,
+                  textAlign: "center",
+                }}
+                selectable
+              >
+                {resolvedLabel}
+              </ThemedText>
+            </Animated.View>
+            <Animated.View entering={FadeInUp.delay(120).duration(420)}>
+              <ActivityIndicator size="large" color={palette.onPrimary as string} />
+            </Animated.View>
           </View>
-        </Animated.View>
+        </ScrollView>
       </Animated.View>
     );
   }
@@ -95,25 +128,21 @@ export function LoadingScreen({
   return (
     <Animated.View
       entering={FadeIn.duration(240)}
-      className="flex-1 items-center justify-center gap-lg px-xl"
-      style={{ backgroundColor: palette.appBg as string }}
+      style={{
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 16,
+        paddingHorizontal: 24,
+        backgroundColor: palette.appBg,
+      }}
       accessibilityRole="progressbar"
       accessibilityLabel={resolvedLabel}
     >
-      <Animated.View className="items-center gap-3">
-        {showBrandMark ? (
-          <Animated.View style={symbolStyle}>
-            <AppSymbol
-              name={{ ios: "bolt.fill", android: "bolt", web: "bolt.fill" }}
-              size={24}
-              tintColor={palette.primary as string}
-            />
-          </Animated.View>
-        ) : null}
-        <ThemedText type="caption" style={{ color: palette.textMuted as string }} selectable>
-          {resolvedLabel}
-        </ThemedText>
-      </Animated.View>
+      <ActivityIndicator size="large" color={palette.primary} />
+      <ThemedText type="caption" style={{ color: palette.textMuted }} selectable>
+        {resolvedLabel}
+      </ThemedText>
     </Animated.View>
   );
 }

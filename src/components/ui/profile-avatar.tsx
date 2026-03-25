@@ -48,10 +48,8 @@ export function ProfileAvatar({
         borderRadius,
         borderCurve: "continuous",
         overflow: "hidden",
-        backgroundColor: palette.surfaceAlt as string,
-        alignItems: "center",
-        justifyContent: "center",
       }}
+      className="bg-surface-alt items-center justify-center"
     >
       {canRenderImage ? (
         <Image
@@ -66,9 +64,9 @@ export function ProfileAvatar({
         />
       ) : initials ? (
         <Text
+          className="text-brand"
           style={{
             fontFamily: "Rubik_600SemiBold",
-            color: palette.text as string,
             fontSize: Math.max(14, Math.round(size * 0.34)),
             letterSpacing: -0.3,
           }}

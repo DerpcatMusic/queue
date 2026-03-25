@@ -183,10 +183,10 @@ function ArchiveDetailRow({
         <IconSymbol name={icon} size={16} color={palette.primary as string} />
       </View>
       <View style={{ flex: 1, gap: BrandSpacing.xxs }}>
-        <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+        <ThemedText type="caption" className="text-muted">
           {label}
         </ThemedText>
-        <ThemedText type="bodyMedium" style={{ color: palette.text as string }}>
+        <ThemedText type="bodyMedium" className="text-brand">
           {value}
         </ThemedText>
       </View>
@@ -252,20 +252,10 @@ function ArchiveCompactRow({
           }}
         >
           <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xs }}>
-            <ThemedText
-              numberOfLines={1}
-              type="bodyStrong"
-              style={{ color: palette.text as string }}
-            >
+            <ThemedText numberOfLines={1} type="bodyStrong" className="text-brand">
               {sportLabel}
             </ThemedText>
-            <ThemedText
-              numberOfLines={1}
-              style={{
-                ...BrandType.caption,
-                color: palette.textMuted as string,
-              }}
-            >
+            <ThemedText numberOfLines={1} className="text-muted" style={BrandType.caption}>
               {`${row.studioName} · ${scheduleLabel}`}
             </ThemedText>
             <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
@@ -280,7 +270,7 @@ function ArchiveCompactRow({
           <View style={{ alignItems: "flex-end", gap: BrandSpacing.sm }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
               <IconSymbol name="banknote" size={14} color={palette.success as string} />
-              <ThemedText type="bodyStrong" style={{ color: palette.success as string }}>
+              <ThemedText type="bodyStrong" className="text-success">
                 {payLabel}
               </ThemedText>
             </View>
@@ -423,7 +413,7 @@ export function InstructorJobsArchiveSheet({
         >
           <View style={{ flex: 1, gap: BrandSpacing.xs }}>
             <ThemedText type="heading">{t("jobsTab.archiveTitle")}</ThemedText>
-            <ThemedText type="caption" style={{ color: palette.textMuted as string }}>
+            <ThemedText type="caption" className="text-muted">
               {t("jobsTab.instructorFeed.archiveSubtitle")}
             </ThemedText>
           </View>
@@ -446,7 +436,7 @@ export function InstructorJobsArchiveSheet({
               gap: BrandSpacing.sm,
             }}
           >
-            <ThemedText type="bodyMedium" style={{ color: palette.textMuted as string }}>
+            <ThemedText type="bodyMedium" className="text-muted">
               {t("jobsTab.instructorFeed.archiveEmpty")}
             </ThemedText>
           </View>

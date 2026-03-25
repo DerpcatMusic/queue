@@ -1,19 +1,15 @@
 import { useMemo } from "react";
-import { Pressable, View, type ViewProps } from "react-native";
+import { Pressable, StyleSheet, View, type ViewProps } from "react-native";
 import type { MeshGradientPreset } from "@/constants/brand";
-import { useBrand } from "@/hooks/use-brand";
+import { BrandMeshGradient } from "@/constants/brand";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 
 type MeshGradientViewProps = ViewProps & {
-  /** Which mesh gradient preset to use */
   preset?: MeshGradientPreset;
-  /** Retained for API compatibility; no visual grain is rendered. */
-  grainOpacity?: number;
   /** Border radius. Defaults to 0 (none). */
   borderRadius?: number;
   /** If true, renders as Pressable with solid pressed feedback */
   pressable?: boolean;
-  /** If true, uses dark variant (for light/dark independent control) */
   darkVariant?: boolean;
 };
 
@@ -31,30 +27,22 @@ export function MeshGradientView({
   children,
   ...props
 }: MeshGradientViewProps) {
-  const palette = useBrand();
   const { resolvedScheme } = useThemePreference();
 
-  const surfaceColor = useMemo(() => {
+  const { fill, pressedFill } = useMemo(() => {
     const scheme = darkVariant ? "dark" : resolvedScheme;
-    return preset === "primaryDark"
-      ? scheme === "dark"
-        ? (palette.primaryPressed as string)
-        : (palette.primaryPressed as string)
-      : (palette.primary as string);
-  }, [darkVariant, palette.primary, palette.primaryPressed, preset, resolvedScheme]);
-  const pressedSurfaceColor =
-    preset === "primaryDark" ? (palette.primary as string) : (palette.primaryPressed as string);
+    return BrandMeshGradient[scheme][preset];
+  }, [darkVariant, preset, resolvedScheme]);
 
   const containerStyle = useMemo(
     () => [
       {
         borderRadius,
-        overflow: "hidden" as const,
-        backgroundColor: surfaceColor,
+        backgroundColor: fill,
       },
       style,
     ],
-    [borderRadius, style, surfaceColor],
+    [borderRadius, fill, style],
   );
 
   if (pressable) {
@@ -62,10 +50,13 @@ export function MeshGradientView({
       <Pressable {...props} style={containerStyle}>
         {({ pressed }) => (
           <View
-            style={{
-              borderRadius,
-              backgroundColor: pressed ? pressedSurfaceColor : surfaceColor,
-            }}
+            style={[
+              styles.container,
+              {
+                borderRadius,
+                backgroundColor: pressed ? pressedFill : fill,
+              },
+            ]}
           >
             {children}
           </View>
@@ -76,7 +67,16 @@ export function MeshGradientView({
 
   return (
     <View {...props} style={containerStyle}>
-      {children}
+      <View style={[styles.container, { borderRadius, backgroundColor: fill }]}>{children}</View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  base: {
+    overflow: "hidden",
+  },
+  container: {
+    flex: 1,
+  },
+});

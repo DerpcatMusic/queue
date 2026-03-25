@@ -5,7 +5,6 @@ import { Pressable, Text, View } from "react-native";
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
 import { GlobalTopSheetProvider } from "@/components/layout/top-sheet-registry";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { TabBarScrollProvider } from "@/contexts/tab-bar-scroll-context";
 import { useBrand } from "@/hooks/use-brand";
 import { buildRoleTabRoute, type RoleTabRouteName } from "@/navigation/role-routes";
@@ -51,36 +50,40 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
               style={{
                 flex: 1,
                 flexDirection: "row",
-                gap: BrandSpacing.lg,
-                paddingHorizontal: BrandSpacing.lg,
-                paddingVertical: BrandSpacing.lg,
+                gap: 16,
+                paddingHorizontal: 16,
+                paddingVertical: 16,
               }}
             >
               <View
                 style={{
-                  width: BrandSpacing.shellRail,
-                  borderRadius: BrandRadius.soft,
+                  width: 236,
+                  borderRadius: 30,
                   borderCurve: "continuous",
                   backgroundColor: palette.surface as string,
-                  paddingHorizontal: BrandSpacing.lg,
-                  paddingVertical: BrandSpacing.lg,
-                  gap: BrandSpacing.lg,
+                  paddingHorizontal: 16,
+                  paddingVertical: 18,
+                  gap: 18,
                 }}
               >
-                <View style={{ gap: BrandSpacing.xs }}>
+                <View style={{ gap: 4 }}>
                   <Text
                     style={{
-                      ...BrandType.micro,
-                      color: palette.primary as string,
+                      fontSize: 12,
+                      fontWeight: "700",
                       letterSpacing: 1.4,
                       textTransform: "uppercase",
+                      color: palette.primary as string,
                     }}
                   >
                     Queue
                   </Text>
                   <Text
                     style={{
-                      ...BrandType.heroSmall,
+                      fontFamily: "BarlowCondensed_800ExtraBold",
+                      fontSize: 32,
+                      lineHeight: 30,
+                      letterSpacing: -0.8,
                       color: palette.text as string,
                     }}
                   >
@@ -88,7 +91,8 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                   </Text>
                   <Text
                     style={{
-                      ...BrandType.caption,
+                      fontSize: 12,
+                      lineHeight: 17,
                       color: palette.textMuted as string,
                     }}
                   >
@@ -96,7 +100,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                   </Text>
                 </View>
 
-                <View style={{ gap: BrandSpacing.stackTight }}>
+                <View style={{ gap: 10 }}>
                   {tabs.map((tab) => {
                     const route = buildRoleTabRoute(appRole, tab.routeName) as Href;
                     const selected = activeTab?.id === tab.id;
@@ -107,13 +111,13 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                         <Pressable
                           accessibilityRole="link"
                           style={({ pressed }) => ({
-                            borderRadius: BrandRadius.medium,
+                            borderRadius: 22,
                             borderCurve: "continuous",
                             backgroundColor: selected
-                              ? (palette.text as string)
+                              ? (palette.primaryPressed as string)
                               : (palette.surfaceAlt as string),
-                            paddingHorizontal: BrandSpacing.componentPadding,
-                            paddingVertical: BrandSpacing.md,
+                            paddingHorizontal: 14,
+                            paddingVertical: 12,
                             transform: [{ scale: pressed ? 0.99 : 1 }],
                           })}
                         >
@@ -122,13 +126,15 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                               flexDirection: "row",
                               alignItems: "center",
                               justifyContent: "space-between",
-                              gap: BrandSpacing.md,
+                              gap: 12,
                             }}
                           >
-                            <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                            <View style={{ flex: 1, gap: 2 }}>
                               <Text
                                 style={{
-                                  ...BrandType.bodyStrong,
+                                  fontSize: 14,
+                                  fontWeight: "700",
+                                  letterSpacing: 0.2,
                                   color: selected
                                     ? (palette.surface as string)
                                     : (palette.text as string),
@@ -138,11 +144,10 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                               </Text>
                               <Text
                                 style={{
-                                  ...BrandType.micro,
+                                  fontSize: 12,
                                   color: selected
-                                    ? (palette.surface as string)
+                                    ? (palette.surfaceAlt as string)
                                     : (palette.textMuted as string),
-                                  opacity: selected ? 0.72 : 1,
                                 }}
                               >
                                 {selected ? "Current workspace" : "Open workspace"}
@@ -151,21 +156,22 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                             {badgeCount > 0 ? (
                               <View
                                 style={{
-                                  minWidth: BrandSpacing.controlSm - BrandSpacing.sm,
-                                  borderRadius: BrandRadius.pill,
+                                  minWidth: 28,
+                                  borderRadius: 999,
                                   backgroundColor: selected
-                                    ? (palette.primaryPressed as string)
+                                    ? (palette.surfaceAlt as string)
                                     : (palette.primary as string),
-                                  paddingHorizontal: BrandSpacing.sm,
-                                  paddingVertical: BrandSpacing.xs,
+                                  paddingHorizontal: 8,
+                                  paddingVertical: 4,
                                   alignItems: "center",
                                 }}
                               >
                                 <Text
                                   style={{
-                                    ...BrandType.micro,
+                                    fontSize: 12,
+                                    fontWeight: "700",
                                     color: selected
-                                      ? (palette.surface as string)
+                                      ? (palette.primaryPressed as string)
                                       : (palette.onPrimary as string),
                                   }}
                                 >
@@ -181,54 +187,61 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                 </View>
               </View>
 
-              <View style={{ flex: 1, gap: BrandSpacing.lg }}>
+              <View style={{ flex: 1, gap: 18 }}>
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    gap: BrandSpacing.md,
-                    borderRadius: BrandRadius.soft,
+                    gap: 12,
+                    borderRadius: 28,
                     borderCurve: "continuous",
                     backgroundColor: palette.surface as string,
-                    paddingHorizontal: BrandSpacing.lg,
-                    paddingVertical: BrandSpacing.lg,
+                    paddingHorizontal: 18,
+                    paddingVertical: 16,
                   }}
                 >
-                  <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                  <View style={{ flex: 1, gap: 2 }}>
                     <Text
                       style={{
-                        ...BrandType.micro,
-                        color: palette.textMuted as string,
+                        fontSize: 11,
+                        fontWeight: "700",
                         letterSpacing: 1.2,
                         textTransform: "uppercase",
+                        color: palette.textMuted as string,
                       }}
                     >
                       Workspace
                     </Text>
                     <Text
                       style={{
-                        ...BrandType.heroSmall,
+                        fontFamily: "BarlowCondensed_800ExtraBold",
+                        fontSize: 34,
+                        lineHeight: 32,
+                        letterSpacing: -0.8,
                         color: palette.text as string,
                       }}
                     >
                       {t(activeTab?.titleKey ?? "tabs.home")}
                     </Text>
                   </View>
-                  <View style={{ alignItems: "flex-end", gap: BrandSpacing.xs }}>
+                  <View style={{ alignItems: "flex-end", gap: 2 }}>
                     <Text
                       style={{
-                        ...BrandType.micro,
-                        color: palette.textMuted as string,
+                        fontSize: 11,
+                        fontWeight: "700",
                         letterSpacing: 1.2,
                         textTransform: "uppercase",
+                        color: palette.textMuted as string,
                       }}
                     >
                       Today
                     </Text>
                     <Text
                       style={{
-                        ...BrandType.bodyMedium,
+                        fontSize: 14,
+                        fontWeight: "600",
+                        lineHeight: 18,
                         color: palette.text as string,
                       }}
                     >
@@ -241,7 +254,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                   style={{
                     flex: 1,
                     minHeight: 0,
-                    borderRadius: BrandRadius.soft,
+                    borderRadius: 30,
                     borderCurve: "continuous",
                     backgroundColor: palette.surface as string,
                     overflow: "hidden",

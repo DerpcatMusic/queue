@@ -59,7 +59,6 @@ export function ProfileEditorIdentityPanel({
               fontSize: 13,
               color: isDesktopWeb ? (palette.onPrimary as string) : (palette.textMuted as string),
               includeFontPadding: false,
-              opacity: isDesktopWeb ? 0.76 : 1,
             }}
           >
             {roleLabel}
@@ -83,7 +82,6 @@ export function ProfileEditorIdentityPanel({
                 fontSize: 13,
                 color: isDesktopWeb ? (palette.onPrimary as string) : (palette.textMuted as string),
                 includeFontPadding: false,
-                opacity: isDesktopWeb ? 0.76 : 1,
               }}
             >
               {statusLabel}

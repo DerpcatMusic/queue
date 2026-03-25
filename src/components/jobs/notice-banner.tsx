@@ -68,7 +68,7 @@ export function NoticeBanner({
         hitSlop={8}
         onPress={onDismiss}
         accessibilityRole="button"
-        style={({ pressed }) => [styles.dismiss, { opacity: pressed ? 0.7 : 1 }]}
+        style={({ pressed }) => [styles.dismiss, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
       >
         <MaterialIcons name="close" size={16} color={String(resolvedTextColor)} />
       </Pressable>

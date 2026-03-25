@@ -1,13 +1,13 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTranslation } from "react-i18next";
-import { I18nManager, Platform, Pressable, ScrollView, View } from "react-native";
+import { I18nManager, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { KitSegmentedToggle } from "@/components/ui/kit";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
-import { type BrandPalette, BrandRadius, BrandSpacing } from "@/constants/brand";
+import type { BrandPalette } from "@/constants/brand";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import type { StudioDraft } from "@/lib/jobs-utils";
 import {
@@ -50,8 +50,10 @@ export function SportPickerSection({
     : t("jobsTab.form.pickSport");
 
   return (
-    <View style={{ gap: BrandSpacing.stack }}>
-      <ThemedText type="bodyStrong">{t("jobsTab.form.sport")}</ThemedText>
+    <View style={{ gap: 12 }}>
+      <ThemedText type="defaultSemiBold" style={{ fontSize: 16, color: palette.text as string }}>
+        {t("jobsTab.form.sport")}
+      </ThemedText>
       <ChoicePill
         label={draft.sport ? selectedSportLabel : t("jobsTab.form.pickSport")}
         compact
@@ -77,7 +79,7 @@ export function SportPickerSection({
       />
 
       {sportPickerOpen ? (
-        <View style={{ gap: BrandSpacing.stackTight, paddingTop: BrandSpacing.stackTight }}>
+        <View style={{ gap: 10, paddingTop: 10 }}>
           <KitTextField
             value={sportQuery}
             onChangeText={(value) => {
@@ -114,9 +116,9 @@ export function SportPickerSection({
               contentContainerStyle={{
                 flexDirection: "row",
                 flexWrap: "wrap",
-                gap: BrandSpacing.stackTight,
-                paddingTop: BrandSpacing.xs,
-                paddingBottom: BrandSpacing.xs,
+                gap: 10,
+                paddingTop: 4,
+                paddingBottom: 4,
               }}
             >
               {filteredSports.length > 0 ? (
@@ -139,7 +141,7 @@ export function SportPickerSection({
               ) : (
                 <ThemedText
                   type="micro"
-                  style={{ color: palette.textMuted as string, paddingHorizontal: BrandSpacing.xs }}
+                  style={{ color: palette.textMuted as string, paddingHorizontal: 4 }}
                 >
                   {t("jobsTab.form.noSportResults")}
                 </ThemedText>
@@ -172,8 +174,10 @@ export function ScheduleSection({
   const { t } = useTranslation();
 
   return (
-    <View style={{ gap: BrandSpacing.stack }}>
-      <ThemedText type="bodyStrong">{t("jobsTab.form.schedule")}</ThemedText>
+    <View style={{ gap: 12 }}>
+      <ThemedText type="defaultSemiBold" style={{ fontSize: 16, color: palette.text as string }}>
+        {t("jobsTab.form.schedule")}
+      </ThemedText>
 
       <ChoicePill
         label={formatDateWithWeekday(draft.startTime, locale)}
@@ -187,7 +191,7 @@ export function ScheduleSection({
         onPress={onOpenDate}
       />
 
-      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.stackTight }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
         <ChoicePill
           label={formatTime(draft.startTime, locale)}
           compact
@@ -204,7 +208,7 @@ export function ScheduleSection({
           style={{
             alignItems: "center",
             justifyContent: "center",
-            width: BrandSpacing.componentPadding,
+            width: 14,
             marginHorizontal: -2,
           }}
         >
@@ -240,7 +244,7 @@ export function PayParticipantsSection({ draft, setDraft }: PayParticipantsSecti
   const { t } = useTranslation();
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.stackRoomy }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
       <View style={{ flex: 1 }}>
         <KitTextField
           label={t("jobsTab.form.pay")}
@@ -282,13 +286,15 @@ export function PostingOptionsSection({ draft, setDraft, palette }: PostingOptio
   const { t } = useTranslation();
 
   return (
-    <View style={{ gap: BrandSpacing.stackRoomy }}>
-      <View style={{ gap: BrandSpacing.stack }}>
-        <ThemedText type="bodyStrong">{t("jobsTab.form.closeApplications")}</ThemedText>
+    <View style={{ gap: 16 }}>
+      <View style={{ gap: 12 }}>
+        <ThemedText type="defaultSemiBold" style={{ fontSize: 16, color: palette.text as string }}>
+          {t("jobsTab.form.closeApplications")}
+        </ThemedText>
         <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
           {t("jobsTab.form.closeApplicationsDescription")}
         </ThemedText>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.stackTight }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
           <ChoicePill
             label={t("jobsTab.form.useStudioDefault")}
             selected={draft.expiryOverrideMinutes === undefined}
@@ -325,8 +331,10 @@ export function PostingOptionsSection({ draft, setDraft, palette }: PostingOptio
         </View>
       </View>
 
-      <View style={{ gap: BrandSpacing.stack }}>
-        <ThemedText type="bodyStrong">{t("jobsTab.form.boostOnBoard")}</ThemedText>
+      <View style={{ gap: 12 }}>
+        <ThemedText type="defaultSemiBold" style={{ fontSize: 16, color: palette.text as string }}>
+          {t("jobsTab.form.boostOnBoard")}
+        </ThemedText>
         <ThemedText type="micro" style={{ color: palette.textMuted as string }}>
           {t("jobsTab.form.boostOnBoardDescription")}
         </ThemedText>
@@ -366,7 +374,7 @@ export function NotesSection({ draft, setDraft }: NotesSectionProps) {
       multiline
       numberOfLines={4}
       placeholder={t("jobsTab.form.notesPlaceholder")}
-      style={{ minHeight: BrandSpacing.multilineInputMinHeight, textAlignVertical: "top" }}
+      style={{ minHeight: 100, textAlignVertical: "top" }}
     />
   );
 }
@@ -381,9 +389,7 @@ type SubmitBarProps = {
 export function SubmitBar({ draft, isSubmitting, palette, onPost }: SubmitBarProps) {
   const { t } = useTranslation();
   return (
-    <View
-      style={{ marginTop: BrandSpacing.xl, paddingBottom: BrandSpacing.section + BrandSpacing.sm }}
-    >
+    <View style={{ marginTop: 24, paddingBottom: 40 }}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={isSubmitting ? t("jobsTab.actions.posting") : t("jobsTab.actions.post")}
@@ -391,25 +397,34 @@ export function SubmitBar({ draft, isSubmitting, palette, onPost }: SubmitBarPro
         disabled={isSubmitting || !draft.sport}
         onPress={onPost}
         style={({ pressed }) => ({
-          minHeight: BrandSpacing.controlLg + BrandSpacing.xs,
+          minHeight: 56,
           width: "100%",
-          borderRadius: BrandRadius.medium,
+          borderRadius: 18,
           borderCurve: "continuous",
           backgroundColor:
             isSubmitting || !draft.sport
               ? (palette.primaryPressed as string)
-              : (palette.primary as string),
+              : pressed
+                ? (palette.primaryPressed as string)
+                : (palette.primary as string),
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
-          gap: BrandSpacing.stackTight,
-          opacity: pressed ? 0.92 : 1,
+          gap: 10,
+          transform: [{ scale: pressed ? 0.992 : 1 }],
         })}
       >
         <AppSymbol name="plus" size={18} tintColor={palette.onPrimary as string} />
-        <ThemedText type="bodyStrong" style={{ color: palette.onPrimary as string }}>
+        <Text
+          style={{
+            color: palette.onPrimary as string,
+            fontSize: 16,
+            fontWeight: "700",
+            includeFontPadding: false,
+          }}
+        >
           {isSubmitting ? t("jobsTab.actions.posting") : t("jobsTab.actions.post")}
-        </ThemedText>
+        </Text>
       </Pressable>
     </View>
   );
@@ -439,13 +454,7 @@ export function PickerDock({
   const { t } = useTranslation();
   if (!visible) return null;
   return (
-    <View
-      style={{
-        gap: BrandSpacing.stack,
-        paddingHorizontal: BrandSpacing.xl,
-        paddingBottom: BrandSpacing.xl,
-      }}
-    >
+    <View style={{ gap: 12, paddingHorizontal: 24, paddingBottom: 24 }}>
       <DateTimePicker
         value={value}
         mode={mode}

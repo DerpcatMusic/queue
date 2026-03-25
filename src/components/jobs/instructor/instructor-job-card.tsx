@@ -108,12 +108,7 @@ function StudioImagePanel({
             justifyContent: "center",
           }}
         >
-          <Text
-            style={{
-              ...BrandType.title,
-              color: palette.text as string,
-            }}
-          >
+          <Text className="text-brand" style={BrandType.title}>
             {fallbackLabel.slice(0, 1).toUpperCase()}
           </Text>
         </View>
@@ -187,7 +182,8 @@ export function InstructorJobCard({
   const shortLocation = locationStreet ? `${locationStreet} · ${zoneLabel}` : zoneLabel;
   const studioLabel = `${job.studioName} · ${job.branchName}`;
   const primaryTitle = variant === "studioDetail" ? toSportLabel(job.sport as never) : studioLabel;
-  const secondaryTitle = variant === "studioDetail" ? shortLocation : toSportLabel(job.sport as never);
+  const secondaryTitle =
+    variant === "studioDetail" ? shortLocation : toSportLabel(job.sport as never);
   const metaLine = variant === "studioDetail" ? studioLabel : shortLocation;
   const contentWidth = showStudioImage ? (isWideWeb ? "52%" : "53%") : "100%";
   const isPressable = Boolean(onOpenStudio);
@@ -201,7 +197,7 @@ export function InstructorJobCard({
       disabled={!isPressable}
       onPress={() => onOpenStudio?.(job.studioId, job.jobId)}
       style={({ pressed }) => ({
-        opacity: isPressable && pressed ? 0.97 : 1,
+        transform: [{ scale: isPressable && pressed ? 0.992 : 1 }],
       })}
     >
       <KitSurface
@@ -236,40 +232,28 @@ export function InstructorJobCard({
           <View className="gap-stack-tight" style={{ width: contentWidth }}>
             <Text
               numberOfLines={1}
+              className="text-brand"
               style={{
                 ...BrandType.title,
                 fontSize: isWideWeb ? 22 : 20,
                 lineHeight: isWideWeb ? 24 : 22,
-                color: palette.text as string,
               }}
             >
               {primaryTitle}
             </Text>
-            <Text
-              numberOfLines={1}
-              style={{
-                ...BrandType.bodyMedium,
-                color: palette.primary as string,
-              }}
-            >
+            <Text numberOfLines={1} className="text-primary" style={BrandType.bodyMedium}>
               {secondaryTitle}
             </Text>
-            <Text
-              numberOfLines={1}
-              style={{
-                ...BrandType.caption,
-                color: palette.textMuted as string,
-              }}
-            >
+            <Text numberOfLines={1} className="text-muted" style={BrandType.caption}>
               {metaLine}
             </Text>
             <View className="flex-row items-center gap-stack-tight">
               <IconSymbol name="clock.fill" size={14} color={palette.textMuted as string} />
-              <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
+              <Text className="text-brand" style={BrandType.bodyStrong}>
                 {formatTime(job.startTime, locale)}
               </Text>
               <IconSymbol name="arrow.right" size={14} color={palette.textMuted as string} />
-              <Text style={{ ...BrandType.bodyStrong, color: palette.text as string }}>
+              <Text className="text-brand" style={BrandType.bodyStrong}>
                 {formatTime(job.endTime, locale)}
               </Text>
             </View>
@@ -289,9 +273,9 @@ export function InstructorJobCard({
                 />
               ) : null}
               <Text
+                className="text-success"
                 style={{
                   ...BrandType.bodyStrong,
-                  color: palette.success as string,
                   fontVariant: ["tabular-nums"],
                 }}
               >

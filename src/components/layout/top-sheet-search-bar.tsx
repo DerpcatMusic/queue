@@ -87,10 +87,10 @@ export function TopSheetSearchBar({
         returnKeyType="search"
         autoCapitalize="none"
         autoCorrect={false}
+        className="text-brand"
         style={{
           flex: 1,
           ...BrandType.body,
-          color: palette.text as string,
           padding: 0,
           margin: 0,
         }}

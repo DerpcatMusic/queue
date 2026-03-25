@@ -59,12 +59,10 @@ export function StudioFeed() {
     setStatusMessage,
     startStudioCheckout,
     statusMessage,
-    studioBranches,
     studioJobs,
     studioNotificationSettings,
     toggleStudioPush,
   } = useStudioFeedController({ t });
-  type StudioBranchOption = NonNullable<typeof studioBranches>[number];
   const reviewQueueJobs = filteredStudioJobsWithPayments.filter(
     (job) => job.pendingApplicationsCount > 0,
   );
@@ -186,6 +184,10 @@ export function StudioFeed() {
               tone="error"
               message={errorMessage}
               onDismiss={() => setErrorMessage(null)}
+              borderColor={palette.danger as string}
+              backgroundColor={palette.dangerSubtle}
+              textColor={palette.danger}
+              iconColor={palette.danger}
             />
           ) : null}
           {statusMessage ? (
@@ -193,6 +195,10 @@ export function StudioFeed() {
               tone="success"
               message={statusMessage}
               onDismiss={() => setStatusMessage(null)}
+              borderColor={palette.success as string}
+              backgroundColor={palette.successSubtle}
+              textColor={palette.text}
+              iconColor={palette.success as import("react-native").ColorValue}
             />
           ) : null}
           {studioJobs === undefined ? (
@@ -308,18 +314,6 @@ export function StudioFeed() {
           innerRef={createJobSheetRef as never}
           palette={palette}
           isSubmitting={isSubmittingStudio}
-          branches={(studioBranches ?? []).map((branch: StudioBranchOption) => ({
-            branchId: branch.branchId,
-            name: branch.name,
-            address: branch.address,
-            isPrimary: branch.isPrimary,
-            zone: branch.zone,
-            status: branch.status,
-          }))}
-          defaultBranchId={
-            studioBranches?.find((branch: StudioBranchOption) => branch.isPrimary)?.branchId ??
-            null
-          }
           onDismissed={() => setIsCreateSheetVisible(false)}
           onPost={postStudioJob}
         />
@@ -347,10 +341,10 @@ const styles = StyleSheet.create({
     gap: BrandSpacing.md,
   },
   emptyStateWrap: {
-    paddingHorizontal: BrandSpacing.lg,
-    paddingVertical: BrandSpacing.inset,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
     alignItems: "center",
     justifyContent: "center",
-    gap: BrandSpacing.sm,
+    gap: 10,
   },
 });

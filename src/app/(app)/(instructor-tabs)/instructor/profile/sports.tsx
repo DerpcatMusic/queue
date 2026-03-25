@@ -122,7 +122,7 @@ export default function SportsScreen() {
   };
 
   return (
-    <View className="flex-1 relative" style={{ backgroundColor: palette.appBg }}>
+    <View className="flex-1 relative bg-app-bg">
       <ProfileSubpageScrollView
         routeKey="instructor/profile/sports"
         contentContainerStyle={{
@@ -132,54 +132,48 @@ export default function SportsScreen() {
         }}
       >
         <View
-          className="gap-stack-roomy rounded-soft p-inset-roomy"
+          className="gap-stack-roomy rounded-soft p-inset-roomy border border-border bg-surface-alt"
           style={{
-            borderWidth: 1,
             borderCurve: "continuous",
-            backgroundColor: palette.surfaceAlt as string,
-            borderColor: palette.border as string,
           }}
         >
           <View className="flex-row items-start gap-stack">
             <View className="flex-1 gap-stack-tight min-w-0">
               <Text
+                className="text-text-muted"
                 style={{
                   ...BrandType.micro,
-                  color: palette.textMuted as string,
                   letterSpacing: 0.8,
                 }}
               >
                 {t("profile.settings.sports.title").toUpperCase()}
               </Text>
               <Text
+                className="text-text"
                 style={{
                   ...BrandType.heading,
-                  color: palette.text as string,
                 }}
               >
                 {heroTitle}
               </Text>
               <Text
+                className="text-text-muted"
                 style={{
                   ...BrandType.body,
-                  color: palette.textMuted as string,
                 }}
               >
                 {heroBody}
               </Text>
             </View>
             <View
-              className="items-center justify-center rounded-pill"
+              className="items-center justify-center rounded-pill bg-primary-subtle border border-primary-subtle"
               style={{
                 width: BrandSpacing.avatarMd,
                 height: BrandSpacing.avatarMd,
-                borderWidth: 1,
                 borderCurve: "continuous",
-                backgroundColor: palette.primarySubtle as string,
-                borderColor: palette.primarySubtle as string,
               }}
             >
-              <IconSymbol name="sparkles" size={22} color={palette.primary as string} />
+              <IconSymbol name="sparkles" size={22} color="#8B5CF6" />
             </View>
           </View>
 
@@ -224,19 +218,16 @@ export default function SportsScreen() {
 
         {errorMessage ? (
           <View
-            className="rounded-medium px-control-x py-control-y"
+            className="rounded-medium px-control-x py-control-y border border-danger bg-danger-subtle"
             style={{
-              borderWidth: 1,
               borderCurve: "continuous",
-              borderColor: palette.danger as string,
-              backgroundColor: palette.dangerSubtle as string,
             }}
           >
             <Text
               selectable
+              className="text-danger"
               style={{
                 ...BrandType.bodyMedium,
-                color: palette.danger as string,
               }}
             >
               {errorMessage}
@@ -246,10 +237,9 @@ export default function SportsScreen() {
       </ProfileSubpageScrollView>
 
       <View
-        className="absolute left-inset right-inset gap-stack-tight"
+        className="absolute left-inset right-inset gap-stack-tight bg-app-bg"
         style={{
           bottom: overlayBottom,
-          backgroundColor: palette.appBg as string,
         }}
       >
         <ActionButton

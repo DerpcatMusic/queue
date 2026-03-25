@@ -63,9 +63,7 @@ function CalendarSheetHeader({
               icon={
                 <View style={{ alignItems: "center", justifyContent: "center" }}>
                   <IconSymbol
-                    name={
-                      showExternalCalendarItems ? "calendar.badge.minus" : "calendar.badge.plus"
-                    }
+                    name={showExternalCalendarItems ? "xmark.circle.fill" : "plus.circle.fill"}
                     size={20}
                     color={
                       showExternalCalendarItems
