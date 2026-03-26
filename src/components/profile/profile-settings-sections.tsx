@@ -1,17 +1,27 @@
 import type { ComponentProps, ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { FontFamily } from "@/lib/design-system";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
 const PROFILE_SECTION_HEADER_ICON_SIZE = 14;
+
 const PROFILE_SECTION_CARD_MARGIN_HORIZONTAL = BrandSpacing.inset;
+
+const PROFILE_SETTING_ROW_GAP = BrandSpacing.component;
+const PROFILE_SETTING_ROW_PADDING_HORIZONTAL = BrandSpacing.insetSoft;
+const PROFILE_SETTING_ROW_PADDING_VERTICAL = 15;
+const PROFILE_SETTING_ROW_ICON_SIZE = BrandSpacing.iconContainer;
+const PROFILE_SETTING_ROW_SECONDARY_GAP = BrandSpacing.stackHair;
+const PROFILE_SETTING_ROW_VALUE_GAP = BrandSpacing.inset;
+const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = BrandSpacing.iconContainer + BrandSpacing.inset;
+const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.insetSoft;
+const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.insetSoft;
 const PROFILE_ICON_BUTTON_SIZE = 40;
 
 export function ProfileSectionHeader({
@@ -29,13 +39,20 @@ export function ProfileSectionHeader({
 
   return (
     <View
-      style={[
-        styles.headerContainer,
-        { gap: BrandSpacing.xs },
-        flush ? { paddingHorizontal: 0 } : { paddingHorizontal: BrandSpacing.section },
-      ]}
+      style={{
+        gap: BrandSpacing.xs,
+        paddingTop: BrandSpacing.section,
+        paddingBottom: BrandSpacing.stackTight,
+        paddingHorizontal: flush ? 0 : BrandSpacing.section,
+      }}
     >
-      <View style={[styles.headerRow, { gap: BrandSpacing.sm }]}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: BrandSpacing.sm,
+        }}
+      >
         {icon ? (
           <IconSymbol
             name={icon}
@@ -43,22 +60,12 @@ export function ProfileSectionHeader({
             color={theme.color.textMuted}
           />
         ) : null}
-        <Text
-          style={[
-            BrandType.micro,
-            {
-              color: theme.color.textMuted,
-              textTransform: "uppercase",
-              letterSpacing: 1.2,
-              fontFamily: FontFamily.display,
-            },
-          ]}
-        >
+        <Text style={[BrandType.micro, { textTransform: "uppercase", color: theme.color.textMuted }]}>
           {label}
         </Text>
       </View>
       {description ? (
-        <Text style={[BrandType.caption, { color: theme.color.textMuted, maxWidth: 540 }]}>
+        <Text style={[BrandType.caption, { maxWidth: 540, color: theme.color.textMuted }]}>
           {description}
         </Text>
       ) : null}
@@ -73,8 +80,6 @@ export function ProfileSectionCard({
   children: ReactNode;
   style?: ComponentProps<typeof View>["style"];
 }) {
-  const theme = useTheme();
-
   return (
     <KitSurface
       tone="base"
@@ -84,15 +89,8 @@ export function ProfileSectionCard({
         {
           marginHorizontal: PROFILE_SECTION_CARD_MARGIN_HORIZONTAL,
           overflow: "hidden",
-          borderRadius: BrandRadius.xl,
+          borderRadius: BrandRadius.soft,
           borderCurve: "continuous",
-          borderWidth: 1,
-          borderColor: theme.color.border,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 8,
-          elevation: 4,
         },
         style,
       ]}
@@ -161,6 +159,15 @@ export function ProfileSettingRow({
           : theme.color.text
         : theme.color.textMuted;
 
+  const iconBackground =
+    tone === "danger"
+      ? theme.color.dangerSubtle
+      : tone === "accent"
+        ? resolvedScheme === "dark"
+          ? theme.color.primarySubtle
+          : theme.color.primarySubtle
+        : theme.color.surfaceAlt;
+
   const iconColor =
     tone === "danger"
       ? theme.color.danger
@@ -174,23 +181,39 @@ export function ProfileSettingRow({
     <View>
       <View
         style={{
-          backgroundColor: theme.color.surface,
           flexDirection: "row",
           alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
-          gap: BrandSpacing.sm,
-          paddingHorizontal: BrandSpacing.md,
-          paddingVertical: BrandSpacing.md,
+          gap: PROFILE_SETTING_ROW_GAP,
+          paddingHorizontal: PROFILE_SETTING_ROW_PADDING_HORIZONTAL,
+          paddingVertical: PROFILE_SETTING_ROW_PADDING_VERTICAL,
+          backgroundColor: theme.color.surface,
         }}
       >
-        {icon ? <IconSymbol name={icon} size={20} color={iconColor} /> : null}
+        {icon ? (
+          <View
+            style={{
+              width: PROFILE_SETTING_ROW_ICON_SIZE,
+              height: PROFILE_SETTING_ROW_ICON_SIZE,
+              borderRadius: BrandRadius.pill,
+              borderCurve: "continuous",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: iconBackground,
+            }}
+          >
+            <IconSymbol name={icon} size={18} color={iconColor} />
+          </View>
+        ) : null}
 
-        <View style={{ flex: 1, gap: subtitle ? BrandSpacing.xs : 0, minWidth: 0 }}>
+        <View
+          style={{ flex: 1, gap: subtitle ? PROFILE_SETTING_ROW_SECONDARY_GAP : 0, minWidth: 0 }}
+        >
           <Text
             style={{
-              fontFamily: FontFamily.bodyStrong,
-              fontSize: 14,
+              fontFamily: "Manrope_600SemiBold",
+              fontSize: 16,
               fontWeight: "600",
-              lineHeight: 20,
+              lineHeight: 22,
               color: theme.color.text,
             }}
           >
@@ -199,10 +222,10 @@ export function ProfileSettingRow({
           {subtitle ? (
             <Text
               style={{
-                fontFamily: FontFamily.body,
-                fontSize: 12,
+                fontFamily: "Manrope_400Regular",
+                fontSize: 14,
                 fontWeight: "400",
-                lineHeight: 16,
+                lineHeight: 19,
                 color: theme.color.textMuted,
               }}
             >
@@ -216,7 +239,7 @@ export function ProfileSettingRow({
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "flex-end",
-            gap: BrandSpacing.sm,
+            gap: PROFILE_SETTING_ROW_VALUE_GAP,
             maxWidth: "48%",
           }}
         >
@@ -224,10 +247,10 @@ export function ProfileSettingRow({
             <Text
               numberOfLines={1}
               style={{
-                fontFamily: FontFamily.bodyMedium,
-                fontSize: 14,
+                fontFamily: "Manrope_500Medium",
+                fontSize: 16,
                 fontWeight: "500",
-                lineHeight: 20,
+                lineHeight: 22,
                 textAlign: "right",
                 color: theme.color.textMuted,
               }}
@@ -243,8 +266,10 @@ export function ProfileSettingRow({
         <View
           style={{
             height: 1,
-            marginLeft: icon ? BrandSpacing.iconContainer + BrandSpacing.sm : BrandSpacing.md,
-            marginRight: BrandSpacing.md,
+            marginLeft: icon
+              ? PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON
+              : PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON,
+            marginRight: PROFILE_SETTING_ROW_DIVIDER_RIGHT,
             backgroundColor: borderColor,
           }}
         />
@@ -261,22 +286,9 @@ export function ProfileSettingRow({
       accessibilityRole="button"
       accessibilityLabel={[title, subtitle, value].filter(Boolean).join(". ")}
       onPress={onPress}
-      style={({ pressed }) => [
-        { backgroundColor: pressed ? "rgba(255,255,255,0.05)" : "transparent" },
-      ]}
+      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
     >
       {content}
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  headerContainer: {
-    paddingTop: BrandSpacing.section,
-    paddingBottom: BrandSpacing.stackTight,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-});

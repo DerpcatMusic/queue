@@ -27,7 +27,6 @@ export function KitList({ children, style, inset = true }: KitListProps) {
 
   return (
     <View
-      className="overflow-hidden"
       style={[
         {
           borderWidth: BorderWidth.thin,
@@ -35,6 +34,7 @@ export function KitList({ children, style, inset = true }: KitListProps) {
           backgroundColor: background.surfaceElevated,
           borderRadius: inset ? BrandRadius.card : 0,
           marginHorizontal: inset ? BrandSpacing.lg : 0,
+          overflow: "hidden",
         },
         style,
       ]}
@@ -115,9 +115,10 @@ export function KitListItem({
 
   return (
     <View
-      className="flex-row items-center"
       style={[
         {
+          flexDirection: "row",
+          alignItems: "center",
           paddingHorizontal: BrandSpacing.lg,
           paddingVertical: BrandSpacing.md,
           minHeight: BrandSpacing.listItemMinHeight,

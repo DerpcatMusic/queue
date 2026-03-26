@@ -28,13 +28,6 @@ export function StudioFeed() {
   const theme = useTheme();
   const { t, i18n } = useTranslation();
   const isFocused = useIsFocused();
-  // Additional spacing on top of the base insets applied by ScreenScaffold
-  // ScreenScaffold automatically applies collapsedSheetHeight and safeBottom
-  const additionalSpacing = {
-    paddingTop: BrandSpacing.lg,
-    paddingBottom: BrandSpacing.xl,
-    paddingHorizontal: BrandSpacing.lg,
-  };
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const [isCreateSheetVisible, setIsCreateSheetVisible] = useState(false);
@@ -180,7 +173,12 @@ export function StudioFeed() {
       <TabScreenScrollView
         routeKey="studio/jobs/index"
         style={styles.screen}
-        contentContainerStyle={[styles.content, additionalSpacing]}
+        contentContainerStyle={styles.content}
+        sheetInsets={{
+          topSpacing: BrandSpacing.lg,
+          bottomSpacing: BrandSpacing.xl,
+          horizontalPadding: BrandSpacing.lg,
+        }}
         topInsetTone="sheet"
         keyboardShouldPersistTaps="handled"
       >

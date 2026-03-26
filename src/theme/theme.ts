@@ -444,17 +444,21 @@ export function ensureThemeConfigured() {
     return;
   }
 
-  StyleSheet.configure({
-    settings: {
-      initialTheme: getInitialThemeName(),
-      CSSVars: true,
-      nativeBreakpointsMode: "pixels",
-    },
-    breakpoints: Breakpoints,
-    themes: AppThemes,
-  });
+  try {
+    StyleSheet.configure({
+      settings: {
+        initialTheme: getInitialThemeName(),
+        CSSVars: false,
+        nativeBreakpointsMode: "pixels",
+      },
+      breakpoints: Breakpoints,
+      themes: AppThemes,
+    });
 
-  isThemeConfigured = true;
+    isThemeConfigured = true;
+  } catch (error) {
+    console.warn("[theme] Failed to configure Unistyles", error);
+  }
 }
 
 ensureThemeConfigured();

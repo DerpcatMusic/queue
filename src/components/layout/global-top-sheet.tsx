@@ -25,7 +25,15 @@ import {
   useResolvedTabSheetConfig,
 } from "@/components/layout/top-sheet-registry";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { resolveTopSheetRouteTab } from "./global-top-sheet.helpers";
+import {
+  ANIMATION_DURATION_ENTER,
+  ANIMATION_DURATION_EXIT,
+  DEFAULT_STEPS,
+} from "./top-sheet-constants";
+import {
+  buildBaseSheetProps,
+  resolveTopSheetRouteTab,
+} from "./global-top-sheet.helpers";
 import { getTopSheetStepHeights } from "./top-sheet.helpers";
 
 /**
@@ -47,8 +55,10 @@ export function GlobalTopSheet() {
 
   // ── Determine active tab config from route ──────────────────────────
   const activeTabId = resolveTopSheetRouteTab(pathname);
-  const activeConfig = useResolvedTabSheetConfig(activeTabId);
+  const routeConfig = useResolvedTabSheetConfig(activeTabId);
+  const activeConfig = routeConfig;
   const activeRouteKey = pathname ?? activeTabId;
+  const sheetInstanceKey = activeTabId ?? activeConfig?.tabId ?? "global-top-sheet";
 
   // ── ScrollY from provider (for custom animated sheets) ─────────────
   const { setCollapsedSheetHeight } = useScrollSheetLayout();
@@ -56,32 +66,7 @@ export function GlobalTopSheet() {
   const measuredHeightRef = useRef<number | null>(null);
   const lastRenderedSheetHeightRef = useRef<number | null>(null);
   const transitionKey = activeRouteKey ?? activeTabId ?? activeConfig?.tabId ?? "global-top-sheet";
-
-  // Build TopSheet props from resolved config (colors are already theme-aware)
-  const baseSheetProps = activeConfig
-    ? {
-        ...(activeConfig.draggable !== undefined ? { draggable: activeConfig.draggable } : {}),
-        ...(activeConfig.expandable !== undefined ? { expandable: activeConfig.expandable } : {}),
-        ...(activeConfig.steps ? { steps: activeConfig.steps } : {}),
-        ...(activeConfig.initialStep !== undefined
-          ? { initialStep: activeConfig.initialStep }
-          : {}),
-        ...(activeConfig.activeStep !== undefined ? { activeStep: activeConfig.activeStep } : {}),
-        ...(activeConfig.minHeight !== undefined ? { minHeight: activeConfig.minHeight } : {}),
-        ...(activeConfig.collapsedHeightMode
-          ? { collapsedHeightMode: activeConfig.collapsedHeightMode }
-          : {}),
-        ...(activeConfig.expandMode ? { expandMode: activeConfig.expandMode } : {}),
-        ...(activeConfig.padding ? { padding: activeConfig.padding } : {}),
-        backgroundColor: activeConfig.backgroundColor as string,
-        topInsetColor: activeConfig.topInsetColor as string,
-        ...(activeConfig.style ? { style: activeConfig.style } : {}),
-        ...(activeConfig.onStepChange ? { onStepChange: activeConfig.onStepChange } : {}),
-        ...(activeConfig.stickyHeader ? { stickyHeader: activeConfig.stickyHeader } : {}),
-        ...(activeConfig.stickyFooter ? { stickyFooter: activeConfig.stickyFooter } : {}),
-        ...(activeConfig.revealOnExpand ? { revealOnExpand: activeConfig.revealOnExpand } : {}),
-      }
-    : null;
+  const baseSheetProps = buildBaseSheetProps(activeConfig);
   const hasRenderableContent = Boolean(
     activeConfig &&
       (activeConfig.render ||
@@ -110,7 +95,7 @@ export function GlobalTopSheet() {
     resolvedCollapsedHeightMode !== "content" &&
     (!activeConfig.render || richResult)
       ? (getTopSheetStepHeights(
-          richResult?.steps ?? activeConfig.steps ?? [0.18, 0.4, 0.65, 0.95],
+          richResult?.steps ?? activeConfig.steps ?? DEFAULT_STEPS,
           screenHeight,
           safeTop,
           safeBottom,
@@ -163,8 +148,8 @@ export function GlobalTopSheet() {
     }
 
     return {
-      entering: FadeIn.duration(140).reduceMotion(ReduceMotion.System),
-      exiting: FadeOut.duration(90).reduceMotion(ReduceMotion.System),
+      entering: FadeIn.duration(ANIMATION_DURATION_ENTER).reduceMotion(ReduceMotion.System),
+      exiting: FadeOut.duration(ANIMATION_DURATION_EXIT).reduceMotion(ReduceMotion.System),
     };
   })();
   const renderTransitionedNode = (
@@ -174,7 +159,7 @@ export function GlobalTopSheet() {
   ) => {
     if (!node) return null;
     return (
-      <View style={styles.contentClip}>
+      <View style={[styles.contentClip, style]}>
         <Reanimated.View
           key={`${transitionKey}:${slotKey}`}
           style={style}
@@ -204,7 +189,7 @@ export function GlobalTopSheet() {
       return (
         <View pointerEvents="box-none" style={rootStyle}>
           <TopSheet
-            key={`${transitionKey}:sheet`}
+            key={`${sheetInstanceKey}:sheet`}
             {...baseSheetProps}
             {...continuitySheetProps}
             {...richSheetProps}
@@ -265,7 +250,7 @@ export function GlobalTopSheet() {
   return (
     <View pointerEvents="box-none" style={rootStyle}>
       <TopSheet
-        key={`${transitionKey}:sheet`}
+        key={`${sheetInstanceKey}:sheet`}
         {...baseSheetProps!}
         {...continuitySheetProps}
         {...(resolvedCollapsedHeightMode === "content"

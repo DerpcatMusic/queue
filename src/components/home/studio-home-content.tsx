@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import { useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import Animated, {
   FadeInUp,
@@ -55,7 +55,7 @@ type StudioHomeContentProps = {
   }) => Promise<{ ok: boolean }>;
 };
 
-function ReviewQueueEmptyState({ t }: { t: TFunction }) {
+const ReviewQueueEmptyState = memo(function ReviewQueueEmptyState({ t }: { t: TFunction }) {
   const { color: palette } = useTheme();
   return (
     <HomeSurface style={{ padding: BrandSpacing.inset }}>
@@ -74,9 +74,9 @@ function ReviewQueueEmptyState({ t }: { t: TFunction }) {
       </View>
     </HomeSurface>
   );
-}
+});
 
-function ReviewApplicationCard({
+const ReviewApplicationCard = memo(function ReviewApplicationCard({
   application,
   job,
   locale,
@@ -102,13 +102,10 @@ function ReviewApplicationCard({
         {/* Header: sport + instructor */}
         <View style={{ gap: BrandSpacing.xs }}>
           <Text
-            className="text-primary uppercase"
             style={{
-              fontFamily: "Manrope_500Medium",
-              fontSize: 12,
-              fontWeight: "500",
-              letterSpacing: 0.6,
-              lineHeight: 16,
+              ...BrandType.micro,
+              color: palette.primary,
+              textTransform: "uppercase",
             }}
           >
             {toSportLabel(job.sport as never)}
@@ -125,7 +122,7 @@ function ReviewApplicationCard({
             )}
           </Text>
           {application.message ? (
-            <Text className="text-muted italic" style={BrandType.caption} numberOfLines={2}>
+            <Text style={{ ...BrandType.caption, fontStyle: "italic", color: palette.textMuted }} numberOfLines={2}>
               "{application.message}"
             </Text>
           ) : null}
@@ -135,7 +132,6 @@ function ReviewApplicationCard({
         <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
           <Text
             selectable
-            className="text-warning"
             style={{
               fontFamily: "Lexend_600SemiBold",
               fontSize: 24,
@@ -143,6 +139,7 @@ function ReviewApplicationCard({
               letterSpacing: -0.45,
               lineHeight: 24,
               fontVariant: ["tabular-nums"],
+              color: palette.warning,
             }}
           >
             {String(job.pendingApplicationsCount)}
@@ -159,7 +156,7 @@ function ReviewApplicationCard({
 
         {/* Error feedback */}
         {hasError ? (
-          <Text className="text-danger" style={BrandType.caption}>
+          <Text style={{ ...BrandType.caption, color: palette.danger }}>
             {t("common.error")}
           </Text>
         ) : null}
@@ -240,7 +237,7 @@ function ReviewApplicationCard({
       </View>
     </HomeSurface>
   );
-}
+});
 
 export function StudioHomeContent({
   locale,
@@ -255,6 +252,7 @@ export function StudioHomeContent({
   reviewApplication,
 }: StudioHomeContentProps) {
   const { safeTop } = useAppInsets();
+  const { color: palette } = useTheme();
   const layout = useHomeDashboardLayout();
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const { scrollRef, onScroll } = useScrollSheetBindings();
@@ -269,16 +267,19 @@ export function StudioHomeContent({
   });
 
   // Flatten all pending applications across all jobs into one list
-  const pendingApplications: Array<{ application: Application; job: RecentJob }> = [];
-  for (const job of recentJobs) {
-    if (job.applications) {
-      for (const application of job.applications) {
-        if (application.status === "pending") {
-          pendingApplications.push({ application, job });
+  const pendingApplications = useMemo(() => {
+    const result: Array<{ application: Application; job: RecentJob }> = [];
+    for (const job of recentJobs) {
+      if (job.applications) {
+        for (const application of job.applications) {
+          if (application.status === "pending") {
+            result.push({ application, job });
+          }
         }
       }
     }
-  }
+    return result;
+  }, [recentJobs]);
 
   const heroTitle =
     pendingApplications.length > 0
@@ -287,7 +288,10 @@ export function StudioHomeContent({
           count: openJobs,
         });
 
-  const visibleRecentJobs = recentJobs.slice(0, layout.isWideWeb ? 6 : 4);
+  const visibleRecentJobs = useMemo(
+    () => recentJobs.slice(0, layout.isWideWeb ? 6 : 4),
+    [recentJobs, layout.isWideWeb],
+  );
 
   // Reviewing state — which applicationId is currently being reviewed
   const [reviewingId, setReviewingId] = useState<Id<"jobApplications"> | null>(null);
@@ -308,8 +312,15 @@ export function StudioHomeContent({
     [reviewApplication],
   );
 
+  // Stable per-applicationId review handler factory — prevents new callback per card per render
+  const makeReviewHandler = useCallback(
+    (applicationId: Id<"jobApplications">) =>
+      (status: "accepted" | "rejected") => handleReview(applicationId, status),
+    [handleReview],
+  );
+
   return (
-    <View collapsable={false} className="bg-app-bg" style={{ flex: 1 }}>
+    <View collapsable={false} style={{ flex: 1 }}>
       <TabScreenScrollView
         animatedRef={scrollRef}
         onScroll={onScroll}
@@ -333,19 +344,14 @@ export function StudioHomeContent({
           >
             <View style={{ gap: BrandSpacing.stackTight }}>
               <Text
-                className="text-primary uppercase"
                 style={{
-                  fontFamily: "Manrope_500Medium",
-                  fontSize: 12,
-                  fontWeight: "500",
-                  letterSpacing: 0.8,
-                  lineHeight: 16,
+                  ...BrandType.micro,
+                  textTransform: "uppercase",
                 }}
               >
                 {t("home.studio.title")}
               </Text>
               <Text
-                className="text-primary"
                 style={{
                   ...BrandType.headingDisplay,
                   lineHeight: layout.isWideWeb ? 36 : 30,
@@ -353,7 +359,7 @@ export function StudioHomeContent({
               >
                 {heroTitle}
               </Text>
-              <Text className="text-primary" style={BrandType.body}>
+              <Text style={BrandType.body}>
                 {pendingApplications.length > 0
                   ? t("home.studio.waitingCount", {
                       count: pendingApplicants,
@@ -463,7 +469,7 @@ export function StudioHomeContent({
                         locale={locale}
                         zoneLanguage={zoneLanguage}
                         t={t}
-                        onReview={(status) => handleReview(application.applicationId, status)}
+                        onReview={makeReviewHandler(application.applicationId)}
                         isReviewing={reviewingId === application.applicationId}
                         hasError={errorId === application.applicationId}
                       />
@@ -496,10 +502,10 @@ export function StudioHomeContent({
             <HomeSectionHeading title={t("home.studio.boardEyebrow")} />
             {recentJobs.length === 0 ? (
               <HomeSurface style={{ padding: BrandSpacing.inset, gap: BrandSpacing.stackTight }}>
-                <Text className="text-brand" style={BrandType.title}>
+                <Text style={{ ...BrandType.title, color: palette.text }}>
                   {t("home.studio.noRecent")}
                 </Text>
-                <Text className="text-muted" style={BrandType.caption}>
+                <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
                   {t("home.studio.emptyBoard")}
                 </Text>
               </HomeSurface>
@@ -523,10 +529,10 @@ export function StudioHomeContent({
                         }}
                       >
                         <View style={{ flex: 1, gap: BrandSpacing.xs }}>
-                          <Text className="text-brand" style={BrandType.title}>
+                          <Text style={{ ...BrandType.title, color: palette.text }}>
                             {toSportLabel(job.sport as never)}
                           </Text>
-                          <Text className="text-muted" style={BrandType.caption}>
+                          <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
                             {[
                               formatDateTime(job.startTime, locale),
                               getZoneLabel(job.zone, zoneLanguage),
@@ -535,10 +541,10 @@ export function StudioHomeContent({
                         </View>
                         <Text
                           selectable
-                          className="text-brand"
                           style={{
                             ...BrandType.title,
                             fontVariant: ["tabular-nums"],
+                            color: palette.text,
                           }}
                         >
                           {currencyFormatter.format(job.pay)}

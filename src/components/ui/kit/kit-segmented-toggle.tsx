@@ -26,9 +26,10 @@ export function KitSegmentedToggle<T extends string>({
   const theme = useTheme();
   return (
     <View
-      className="flex-row overflow-hidden"
       style={[
         {
+          flexDirection: "row",
+          overflow: "hidden",
           borderRadius: BrandRadius.md,
           padding: BrandSpacing.xs,
           gap: BrandSpacing.xs,
@@ -68,9 +69,9 @@ export function KitSegmentedToggle<T extends string>({
             })}
           >
             <Text
-              className="font-label text-micro font-medium"
               style={{
                 fontFamily: BrandType.micro.fontFamily,
+                fontSize: BrandType.micro.fontSize,
                 color: selected ? theme.color.onPrimary : theme.color.primary,
                 fontWeight: "700",
                 includeFontPadding: false,

@@ -37,6 +37,8 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
   mapPalette,
   onPressZone,
 }: QueueMapZonePolygonsProps) {
+  // Stable press handler — extracted to avoid inline arrow recreation on every render
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlePress = useCallback(
     (event: any) => {
       if (mode !== "zoneSelect" || !isEditing) return;
@@ -96,12 +98,14 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
           ] as any,
           "line-opacity": previewOutlineOpacity,
         }}
-        layout={{ "line-join": "round" }}
+        layout={{
+          "line-join": "round",
+        }}
       />
       <Layer
         id="queue-zone-selected-fill"
-        type="fill"
         filter={selectedZoneFilter as any}
+        type="fill"
         paint={{
           "fill-color": mapPalette.primary,
           "fill-opacity": APPLE_MAP_THEME.overlay.selectionFillOpacity,
@@ -109,14 +113,16 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
       />
       <Layer
         id="queue-zone-selected-outline"
-        type="line"
         filter={selectedZoneFilter as any}
+        type="line"
         paint={{
           "line-color": mapPalette.selectedOutline,
           "line-width": selectedOutlineWidth,
           "line-opacity": selectedOutlineOpacity,
         }}
-        layout={{ "line-join": "round" }}
+        layout={{
+          "line-join": "round",
+        }}
       />
       <Layer
         id="queue-zone-selected-labels"

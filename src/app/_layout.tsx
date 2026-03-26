@@ -1,4 +1,3 @@
-import "@/global.css";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 
 import { BarlowCondensed_800ExtraBold } from "@expo-google-fonts/barlow-condensed";
@@ -7,7 +6,6 @@ import {
   Lexend_600SemiBold,
   Lexend_700Bold,
   Lexend_800ExtraBold,
-  Lexend_900Black,
 } from "@expo-google-fonts/lexend";
 import {
   Manrope_400Regular,
@@ -38,11 +36,12 @@ import { UserProvider } from "@/contexts/user-context";
 import { ThemePreferenceProvider, useThemePreference } from "@/hooks/use-theme-preference";
 import i18n from "@/i18n";
 import { getConvexClient, isConvexUrlConfigured } from "@/lib/convex";
+import { getTheme } from "@/theme/theme";
 import { useAndroidNavigationBarTheme } from "@/modules/app-shell/use-android-navigation-bar-theme";
 import { useLocalizationBootstrapPrompt } from "@/modules/app-shell/use-localization-bootstrap-prompt";
 import { useStartupNotificationsSetup } from "@/modules/app-shell/use-startup-notifications-setup";
 import { useStartupPerfMetrics } from "@/modules/app-shell/use-startup-perf-metrics";
-import { getTheme } from "@/theme/theme";
+import { BrandSpacing, BrandType } from "@/theme/theme";
 
 const IGNORED_LOG_MESSAGES = [
   "ProgressBarAndroid has been extracted from react-native core",
@@ -90,7 +89,6 @@ function RootLayoutContent() {
     Lexend_600SemiBold,
     Lexend_700Bold,
     Lexend_800ExtraBold,
-    Lexend_900Black,
     Manrope_400Regular,
     Manrope_500Medium,
     Manrope_600SemiBold,
@@ -157,11 +155,19 @@ function RootLayoutContent() {
 
   if (!isConvexUrlConfigured || !convex) {
     return (
-      <View className="flex-1 items-center justify-center gap-lg px-xl">
-        <Text className="text-title" style={{ color: navColors.text }}>
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: BrandSpacing.lg,
+          paddingHorizontal: BrandSpacing.xl,
+        }}
+      >
+        <Text style={[BrandType.title, { color: navColors.text, textAlign: "center" }]}>
           {i18n.t("errors.configuration.title")}
         </Text>
-        <Text className="font-body text-body" style={{ color: navColors.text }}>
+        <Text style={[BrandType.body, { color: navColors.text, textAlign: "center" }]}>
           {i18n.t("errors.configuration.body")}
         </Text>
       </View>
@@ -188,15 +194,15 @@ function RootLayoutContent() {
         >
           <UserProvider>
             <RapydReturnProvider>
-              <ThemeProvider value={navigationTheme}>
+                <ThemeProvider value={navigationTheme}>
                 <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
-                  <View className="flex-1">
+                  <View style={{ flex: 1 }}>
                     <Stack
-                      screenOptions={{
-                        headerTintColor: navColors.text,
-                        headerTitleStyle: { color: navColors.text },
-                      }}
-                    >
+                        screenOptions={{
+                          headerTintColor: navColors.text,
+                          headerTitleStyle: { color: navColors.text },
+                        }}
+                      >
                       <Stack.Screen
                         name="index"
                         options={{
@@ -216,8 +222,8 @@ function RootLayoutContent() {
                       />
                     </Stack>
                   </View>
+                  <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
                 </AppSafeRoot>
-                <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
               </ThemeProvider>
             </RapydReturnProvider>
           </UserProvider>

@@ -144,6 +144,10 @@ function Install-DebugApk {
     return
   }
 
+  if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Direct adb install failed. If the output mentions INSTALL_FAILED_INSUFFICIENT_STORAGE, wipe emulator data or create a fresh AVD."
+  }
+
   Write-Warning "Direct adb install failed, retrying with push + pm install fallback."
   $remoteApk = "/data/local/tmp/app-debug.apk"
   & $AdbExe -s $TargetSerial push $ApkPath $remoteApk | Out-Null

@@ -18,7 +18,6 @@ import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandSpacing } from "@/constants/brand";
-import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
 
 type ProfileSubpageSheetOptions = {
@@ -36,6 +35,11 @@ type ProfileSubpageAccessoryContextValue = {
   accessories: Record<string, React.ReactNode | null | undefined>;
   setAccessory: (routeMatchPath: string, accessory: React.ReactNode | null) => void;
 };
+
+type ProfileSubpageSheetProviderProps = PropsWithChildren<{
+  routes: readonly ProfileSubpageRouteConfig[];
+  ownerId: string;
+}>;
 
 const ProfileSubpageAccessoryContext = createContext<ProfileSubpageAccessoryContextValue | null>(
   null,
@@ -131,16 +135,13 @@ export function ProfileSubpageSheetProvider({
   children,
   routes,
   ownerId,
-}: PropsWithChildren<{
-  routes: readonly ProfileSubpageRouteConfig[];
-  ownerId: string;
-}>) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const theme = useTheme();
+}: ProfileSubpageSheetProviderProps) {
   const [accessories, setAccessories] = useState<
     Record<string, React.ReactNode | null | undefined>
   >({});
+  const router = useRouter();
+  const pathname = usePathname();
+  const theme = useTheme();
   const setAccessory = useCallback((routeMatchPath: string, accessory: React.ReactNode | null) => {
     setAccessories((current) => {
       if (current[routeMatchPath] === accessory) {
@@ -162,8 +163,7 @@ export function ProfileSubpageSheetProvider({
   );
 
   const activeRoute = useMemo(
-    () =>
-      routes.find((route) => isProfileSubpageRouteActive(pathname, route.routeMatchPath)) ?? null,
+    () => routes.find((route) => isProfileSubpageRouteActive(pathname, route.routeMatchPath)) ?? null,
     [pathname, routes],
   );
 
@@ -203,14 +203,7 @@ export function ProfileSubpageSheetProvider({
       backgroundColor: accentColor,
       topInsetColor: accentColor,
     };
-  }, [
-    activeRoute,
-    accessories,
-    router,
-    theme.color.primary,
-    theme.color.success,
-    theme.color.tertiary,
-  ]);
+  }, [activeRoute, accessories, router, theme.color.primary, theme.color.success, theme.color.tertiary]);
 
   useGlobalTopSheet("profile", config, ownerId);
 
@@ -236,19 +229,11 @@ export function ProfileSubpageScrollView({
   bottomSpacing = BrandSpacing.xl,
   ...props
 }: ProfileSubpageScrollViewProps) {
-  const collapsedSheetHeight = useCollapsedSheetHeight();
-  const { safeBottom } = useAppInsets();
-
   return (
     <TabScreenScrollView
       {...props}
-      contentContainerStyle={[
-        {
-          paddingTop: collapsedSheetHeight + topSpacing,
-          paddingBottom: bottomSpacing + safeBottom,
-        },
-        contentContainerStyle,
-      ]}
+      contentContainerStyle={contentContainerStyle}
+      sheetInsets={{ topSpacing, bottomSpacing }}
     />
   );
 }
@@ -259,20 +244,11 @@ export function ProfileIndexScrollView({
   bottomSpacing = BrandSpacing.xl,
   ...props
 }: ProfileSubpageScrollViewProps) {
-  const collapsedSheetHeight = useCollapsedSheetHeight();
-  const { safeBottom } = useAppInsets();
-
   return (
     <TabScreenScrollView
       {...props}
-      contentContainerStyle={[
-        {
-          paddingTop: collapsedSheetHeight + topSpacing,
-          paddingBottom: bottomSpacing + safeBottom,
-          paddingHorizontal: 0,
-        },
-        contentContainerStyle,
-      ]}
+      contentContainerStyle={contentContainerStyle}
+      sheetInsets={{ topSpacing, bottomSpacing, horizontalPadding: 0 }}
     />
   );
 }
