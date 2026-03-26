@@ -238,28 +238,18 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   return (
     <View pointerEvents="box-none" style={styles.mobileShell}>
       <View style={styles.mobileTopRail}>
-        <View
-          style={[
-            styles.mobileEyebrow,
-            { backgroundColor: palette.surfaceAlt, borderColor: palette.border },
-          ]}
+        <Text
+          style={[styles.mobileEyebrowText, { color: palette.textMicro, fontFamily: eyebrowFont }]}
         >
-          <Text
-            style={[
-              styles.mobileEyebrowText,
-              { color: palette.textMuted, fontFamily: eyebrowFont },
-            ]}
-          >
-            {roleLabel}
-          </Text>
-        </View>
+          {roleLabel}
+        </Text>
       </View>
 
       <View style={styles.mobileIdentityRow}>
         <View
           style={[
             styles.mobileAvatarWrap,
-            { borderColor: palette.border, backgroundColor: palette.surfaceAlt },
+            { borderColor: palette.outline, backgroundColor: palette.surfaceAlt },
           ]}
         >
           <ProfileAvatar
@@ -278,7 +268,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                 ...BrandType.heroSmall,
                 fontFamily: profileNameFont,
                 fontStyle: isHebrew ? "normal" : "italic",
-                letterSpacing: -0.4,
+                letterSpacing: -0.3,
                 color: palette.text,
                 includeFontPadding: false,
                 flex: 1,
@@ -289,9 +279,9 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             <IconButton
               accessibilityLabel={resolvedPrimaryActionLabel}
               onPress={onRequestEdit}
-              size={32}
+              size={28}
               tone="secondary"
-              icon={<IconSymbol name="pencil" size={IconSize.sm} color={palette.textMuted} />}
+              icon={<IconSymbol name="pencil" size={IconSize.xs} color={palette.textMuted} />}
             />
           </View>
           <View style={styles.mobileMetaRow}>
@@ -380,15 +370,16 @@ const styles = StyleSheet.create({
     opacity: Opacity.subtle,
   },
   mobileShell: {
-    paddingHorizontal: BrandSpacing.md,
-    paddingTop: BrandSpacing.sm,
-    paddingBottom: BrandSpacing.md,
-    gap: BrandSpacing.sm,
+    paddingHorizontal: BrandSpacing.inset,
+    paddingTop: BrandSpacing.xs,
+    paddingBottom: BrandSpacing.sm,
+    gap: BrandSpacing.xs,
   },
   mobileTopRail: {
     flexDirection: "row",
     alignItems: "center",
-    gap: BrandSpacing.sm,
+    gap: BrandSpacing.xs,
+    marginBottom: BrandSpacing.xxs,
   },
   mobileEyebrow: {
     borderRadius: BrandRadius.sm,
@@ -413,8 +404,8 @@ const styles = StyleSheet.create({
     position: "relative",
     width: 56,
     height: 56,
-    borderRadius: BrandRadius.cardSubtle,
-    borderWidth: 1,
+    borderRadius: BrandRadius.md,
+    borderWidth: BorderWidth.thin,
     overflow: "visible",
   },
   mobileIdentityTextWrap: {

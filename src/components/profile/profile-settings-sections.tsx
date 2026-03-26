@@ -11,7 +11,7 @@ import { BorderWidth, FontFamily } from "@/lib/design-system";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
-const PROFILE_SECTION_HEADER_ICON_SIZE = 14;
+const PROFILE_SECTION_HEADER_ICON_SIZE = 12;
 
 const PROFILE_SECTION_CARD_MARGIN_HORIZONTAL = BrandSpacing.inset;
 
@@ -24,6 +24,7 @@ const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = BrandSpacing.md + 24;
 const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.md;
 const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.md;
 const PROFILE_ICON_BUTTON_SIZE = 40;
+const PROFILE_ROW_VERTICAL_PADDING = BrandSpacing.sm;
 
 export function ProfileSectionHeader({
   label,
@@ -44,24 +45,24 @@ export function ProfileSectionHeader({
   return (
     <View
       style={{
-        gap: BrandSpacing.xs,
-        paddingTop: BrandSpacing.section,
-        paddingBottom: BrandSpacing.stackTight,
-        paddingHorizontal: flush ? 0 : BrandSpacing.section,
+        gap: BrandSpacing.xxs,
+        paddingTop: BrandSpacing.lg,
+        paddingBottom: BrandSpacing.xs,
+        paddingHorizontal: flush ? 0 : BrandSpacing.inset,
       }}
     >
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: BrandSpacing.sm,
+          gap: BrandSpacing.xs,
         }}
       >
         {icon ? (
           <IconSymbol
             name={icon}
             size={PROFILE_SECTION_HEADER_ICON_SIZE}
-            color={theme.color.textMuted}
+            color={theme.color.textMicro}
           />
         ) : null}
         <Text
@@ -71,7 +72,7 @@ export function ProfileSectionHeader({
               fontFamily: headerFontFamily,
               fontStyle: isHebrew ? "normal" : "italic",
               textTransform: "uppercase",
-              letterSpacing: 2,
+              letterSpacing: 1.5,
               color: theme.color.textMicro,
             },
           ]}
@@ -105,10 +106,10 @@ export function ProfileSectionCard({
         {
           marginHorizontal: PROFILE_SECTION_CARD_MARGIN_HORIZONTAL,
           overflow: "hidden",
-          borderRadius: BrandRadius.card,
+          borderRadius: BrandRadius.sm,
           borderCurve: "continuous",
           borderWidth: BorderWidth.thin,
-          borderColor: theme.color.border,
+          borderColor: theme.color.outline,
         },
         style,
       ]}
@@ -185,7 +186,7 @@ export function ProfileSettingRow({
         ? resolvedAccentColor
         : theme.color.textMuted;
 
-  const dividerColor = theme.color.divider;
+  const dividerColor = theme.color.outline;
 
   const content = (
     <View>
@@ -195,9 +196,9 @@ export function ProfileSettingRow({
           alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
           gap: PROFILE_SETTING_ROW_GAP,
           paddingHorizontal: PROFILE_SETTING_ROW_PADDING_HORIZONTAL,
-          paddingVertical: BrandSpacing.componentPadding,
+          paddingVertical: PROFILE_ROW_VERTICAL_PADDING,
           backgroundColor: rowBackgroundColor,
-          minHeight: BrandSpacing.listItemMinHeight,
+          minHeight: BrandSpacing.controlMd,
         }}
       >
         {icon ? (
@@ -269,7 +270,7 @@ export function ProfileSettingRow({
       {showDivider ? (
         <View
           style={{
-            height: 1,
+            height: BorderWidth.thin,
             marginLeft: icon
               ? PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON
               : PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON,
