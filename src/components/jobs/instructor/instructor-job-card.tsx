@@ -78,10 +78,22 @@ function StudioImageBackground({
   fadeId: string;
   children?: React.ReactNode;
 }) {
+  // Grayscale: CSS filter on web; SVG grayscale overlay on native for modern look
   const imageFilterStyle = Platform.select({
     web: { filter: "grayscale(100%) contrast(112%) brightness(54%)" },
     default: undefined,
   }) as object;
+
+  // On native: semi-transparent dark overlay to simulate grayscale + enhance readability
+  const nativeGrayscaleOverlay = Platform.select({
+    web: null,
+    default: (
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.18)" }]}
+      />
+    ),
+  });
 
   return (
     <View
@@ -124,17 +136,20 @@ function StudioImageBackground({
           </Text>
         </View>
       )}
+      {/* Black gradient mask for readability */}
       <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
         <Defs>
           <SvgLinearGradient id={fadeId} x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor={theme.jobs.surfaceRaised} stopOpacity="0" />
-            <Stop offset="46%" stopColor={theme.jobs.surfaceRaised} stopOpacity="0.16" />
-            <Stop offset="76%" stopColor={theme.jobs.surfaceRaised} stopOpacity="0.68" />
-            <Stop offset="100%" stopColor={theme.jobs.surfaceRaised} stopOpacity="0.98" />
+            <Stop offset="0%" stopColor="#000000" stopOpacity="0" />
+            <Stop offset="44%" stopColor="#000000" stopOpacity="0.12" />
+            <Stop offset="74%" stopColor="#000000" stopOpacity="0.52" />
+            <Stop offset="100%" stopColor="#000000" stopOpacity="0.88" />
           </SvgLinearGradient>
         </Defs>
         <Rect width="100%" height="100%" fill={`url(#${fadeId})`} />
       </Svg>
+      {/* Native grayscale simulation */}
+      {nativeGrayscaleOverlay}
       {children}
     </View>
   );

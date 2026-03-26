@@ -1,7 +1,7 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { type ColorValue, Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { IconSize } from "@/lib/design-system";
@@ -57,8 +57,8 @@ export function NoticeBanner({
         style,
       ]}
     >
-      <MaterialIcons
-        name={tone === "success" ? "check-circle" : "error-outline"}
+      <IconSymbol
+        name={tone === "success" ? "checkmark.circle.fill" : "exclamationmark.circle"}
         size={IconSize.md}
         color={resolvedIconColor}
       />
@@ -71,7 +71,7 @@ export function NoticeBanner({
         accessibilityRole="button"
         style={({ pressed }) => [styles.dismiss, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
       >
-        <MaterialIcons name="close" size={IconSize.sm} color={String(resolvedTextColor)} />
+        <IconSymbol name="xmark" size={IconSize.sm} color={String(resolvedTextColor)} />
       </Pressable>
     </View>
   );

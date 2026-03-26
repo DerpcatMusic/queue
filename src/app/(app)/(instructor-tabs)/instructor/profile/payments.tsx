@@ -1,4 +1,4 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateTimePicker from "@expo/ui/datetimepicker";
 import { useAction, useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import type { Href } from "expo-router";
@@ -267,13 +267,16 @@ export default function ProfilePaymentsScreen() {
   const effectivePreferenceMode = pendingPreferenceMode ?? savedPreferenceMode;
   const scheduledAtLabel = formatDateTime(scheduleDraft.getTime(), locale);
   const appReturnUrl = resolveRapydAppReturnUrl("beneficiary");
-  const buildBridgeUrl = useCallback((result: "complete" | "cancel"): string => {
-    return buildRapydBridgeUrl({
-      bridgePath: "/rapyd/beneficiary-return-bridge",
-      result,
-      appReturnUrl,
-    });
-  }, [appReturnUrl]);
+  const buildBridgeUrl = useCallback(
+    (result: "complete" | "cancel"): string => {
+      return buildRapydBridgeUrl({
+        bridgePath: "/rapyd/beneficiary-return-bridge",
+        result,
+        appReturnUrl,
+      });
+    },
+    [appReturnUrl],
+  );
   const beneficiaryCompleteUrl = useMemo(() => buildBridgeUrl("complete"), [buildBridgeUrl]);
   const beneficiaryCancelUrl = useMemo(() => buildBridgeUrl("cancel"), [buildBridgeUrl]);
 
@@ -358,60 +361,69 @@ export default function ProfilePaymentsScreen() {
     } finally {
       setOnboardingBusy(false);
     }
-  }, [createBeneficiaryOnboardingForInstructor, beneficiaryCompleteUrl, beneficiaryCancelUrl, appReturnUrl, t]);
+  }, [
+    createBeneficiaryOnboardingForInstructor,
+    beneficiaryCompleteUrl,
+    beneficiaryCancelUrl,
+    appReturnUrl,
+    t,
+  ]);
 
-  const savePayoutPreference = useCallback(async (
-    preferenceMode: PayoutPreferenceMode,
-    scheduledDate?: number,
-  ) => {
-    setPreferenceBusy(true);
-    setPreferenceError(null);
-    setPreferenceInfo(null);
-    try {
-      if (preferenceMode === "scheduled_date") {
-        if (!scheduledDate || scheduledDate <= Date.now()) {
-          throw new Error(t("profile.payments.preferenceScheduleInvalid"));
+  const savePayoutPreference = useCallback(
+    async (preferenceMode: PayoutPreferenceMode, scheduledDate?: number) => {
+      setPreferenceBusy(true);
+      setPreferenceError(null);
+      setPreferenceInfo(null);
+      try {
+        if (preferenceMode === "scheduled_date") {
+          if (!scheduledDate || scheduledDate <= Date.now()) {
+            throw new Error(t("profile.payments.preferenceScheduleInvalid"));
+          }
         }
+
+        await upsertMyPayoutPreference({
+          preferenceMode,
+          ...(preferenceMode === "scheduled_date" && scheduledDate ? { scheduledDate } : {}),
+        });
+        setPendingPreferenceMode(null);
+        setPreferenceInfo(
+          preferenceMode === "scheduled_date"
+            ? t("profile.payments.preferenceSavedScheduled")
+            : preferenceMode === "manual_hold"
+              ? t("profile.payments.preferenceSavedHold")
+              : t("profile.payments.preferenceSavedImmediate"),
+        );
+        if (Platform.OS === "ios") {
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      } catch (error) {
+        setPreferenceError(
+          error instanceof Error ? error.message : t("profile.payments.preferenceSaveFailed"),
+        );
+      } finally {
+        setPreferenceBusy(false);
+      }
+    },
+    [upsertMyPayoutPreference, t],
+  );
+
+  const handlePreferenceModeChange = useCallback(
+    (mode: PayoutPreferenceMode) => {
+      setPreferenceError(null);
+      setPreferenceInfo(null);
+      if (mode === "scheduled_date") {
+        setPendingPreferenceMode(mode);
+        setScheduleDraft(buildDefaultScheduledDate(payoutSummary?.payoutPreferenceScheduledDate));
+        setShowSchedulePicker(true);
+        return;
       }
 
-      await upsertMyPayoutPreference({
-        preferenceMode,
-        ...(preferenceMode === "scheduled_date" && scheduledDate ? { scheduledDate } : {}),
-      });
       setPendingPreferenceMode(null);
-      setPreferenceInfo(
-        preferenceMode === "scheduled_date"
-          ? t("profile.payments.preferenceSavedScheduled")
-          : preferenceMode === "manual_hold"
-            ? t("profile.payments.preferenceSavedHold")
-            : t("profile.payments.preferenceSavedImmediate"),
-      );
-      if (Platform.OS === "ios") {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-    } catch (error) {
-      setPreferenceError(
-        error instanceof Error ? error.message : t("profile.payments.preferenceSaveFailed"),
-      );
-    } finally {
-      setPreferenceBusy(false);
-    }
-  }, [upsertMyPayoutPreference, t]);
-
-  const handlePreferenceModeChange = useCallback((mode: PayoutPreferenceMode) => {
-    setPreferenceError(null);
-    setPreferenceInfo(null);
-    if (mode === "scheduled_date") {
-      setPendingPreferenceMode(mode);
-      setScheduleDraft(buildDefaultScheduledDate(payoutSummary?.payoutPreferenceScheduledDate));
-      setShowSchedulePicker(true);
-      return;
-    }
-
-    setPendingPreferenceMode(null);
-    setShowSchedulePicker(false);
-    void savePayoutPreference(mode);
-  }, [payoutSummary?.payoutPreferenceScheduledDate, savePayoutPreference]);
+      setShowSchedulePicker(false);
+      void savePayoutPreference(mode);
+    },
+    [payoutSummary?.payoutPreferenceScheduledDate, savePayoutPreference],
+  );
 
   if (isFinalizingOnboarding) {
     return (
@@ -957,16 +969,16 @@ export default function ProfilePaymentsScreen() {
                 <DateTimePicker
                   value={scheduleDraft}
                   mode="datetime"
-                  display={Platform.OS === "ios" ? "inline" : "default"}
+                  presentation="inline"
                   minimumDate={new Date(Date.now() + 60_000)}
-                  onChange={(event, value) => {
-                    if (Platform.OS !== "ios") {
-                      setShowSchedulePicker(false);
-                    }
-                    if (event.type === "dismissed" || !value) {
+                  onValueChange={(_event, value) => {
+                    if (!value) {
                       return;
                     }
                     setScheduleDraft(value);
+                  }}
+                  onDismiss={() => {
+                    setShowSchedulePicker(false);
                   }}
                 />
                 {Platform.OS === "ios" ? (

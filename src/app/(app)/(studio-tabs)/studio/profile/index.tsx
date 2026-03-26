@@ -22,7 +22,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -541,29 +541,19 @@ export default function StudioProfileScreen() {
                   style={{
                     flexDirection: "row",
                     alignItems: "flex-start",
-                    gap: BrandSpacing.componentPadding,
-                    paddingHorizontal: BrandSpacing.lg,
+                    gap: BrandSpacing.sm,
+                    paddingHorizontal: BrandSpacing.md,
                     paddingVertical: BrandSpacing.componentPadding,
                   }}
                 >
-                  <View
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: BrandRadius.cardSubtle,
-                      borderCurve: "continuous",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: color.surfaceAlt,
-                    }}
-                  >
-                    <IconSymbol name="clock.fill" size={18} color={color.primary} />
+                  <View style={{ width: 20, alignItems: "center", paddingTop: 2 }}>
+                    <IconSymbol name="clock.fill" size={16} color={color.textMuted} />
                   </View>
                   <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                     <Text
                       style={{
-                        fontSize: 16,
-                        fontWeight: "600",
+                        fontSize: 14,
+                        fontWeight: "500",
                         color: color.text,
                       }}
                     >
@@ -576,8 +566,8 @@ export default function StudioProfileScreen() {
                       style={{
                         flexDirection: "row",
                         flexWrap: "wrap",
-                        gap: BrandSpacing.sm,
-                        marginTop: BrandSpacing.sm,
+                        gap: BrandSpacing.xs,
+                        marginTop: BrandSpacing.xs,
                       }}
                     >
                       <ChoicePill
@@ -609,9 +599,9 @@ export default function StudioProfileScreen() {
                 <View
                   style={{
                     height: BorderWidth.thin,
-                    marginLeft: 56,
-                    marginRight: 18,
-                    backgroundColor: color.border,
+                    marginLeft: BrandSpacing.md + 20,
+                    marginRight: BrandSpacing.md,
+                    backgroundColor: color.divider,
                   }}
                 />
                 <ProfileSettingRow
@@ -657,10 +647,10 @@ export default function StudioProfileScreen() {
           routeKey="studio/profile"
           style={styles.screen}
           contentContainerStyle={{
-            gap: BrandSpacing.insetSoft,
+            gap: BrandSpacing.sm,
           }}
-          topSpacing={BrandSpacing.insetSoft}
-          bottomSpacing={BrandSpacing.xxl}
+          topSpacing={BrandSpacing.sm}
+          bottomSpacing={BrandSpacing.xl}
         >
           <View style={styles.mobileContentPadding}>
             <ProfileSectionHeader label={t("profile.sections.studio")} icon="building.2.fill" />
