@@ -91,8 +91,9 @@ export const QueueMap = memo(function QueueMap({
   } | null>(null);
   const mapLoadStateRef = useRef<MapLoadState>("loading");
   const cameraRef = useRef<{
-    setStop: (config: unknown) => void;
-    flyTo: (options: { center: [number, number]; zoom?: number; duration?: number }) => void;
+    setCamera: (config: unknown) => void;
+    flyTo: (coordinates: [number, number], animationDuration?: number) => void;
+    zoomTo: (zoomLevel: number, animationDuration?: number) => void;
   } | null>(null);
   const selectedZoneFilter = useMemo(
     () => createZoneFilter(selectedZoneIds, zoneIdProperty),
@@ -149,6 +150,17 @@ export const QueueMap = memo(function QueueMap({
     },
     [],
   );
+  const handleWillStartLoadingMap = useCallback(() => {
+    updateMapLoadState("loading");
+  }, [updateMapLoadState]);
+
+  const handleDidFinishLoadingMap = useCallback(() => {
+    updateMapLoadState("ready");
+  }, [updateMapLoadState]);
+
+  const handleDidFailLoadingMap = useCallback(() => {
+    updateMapLoadState("error", t("mapTab.native.unavailableBody"));
+  }, [updateMapLoadState, t]);
 
   useEffect(() => {
     if (mapLoadState !== "loading") {
@@ -231,26 +243,26 @@ export const QueueMap = memo(function QueueMap({
     const zone = getZoneIndexEntry(focusZoneId);
     if (!zone) return;
 
-    cameraRef.current?.setStop({
-      bounds: [zone.bbox[0], zone.bbox[1], zone.bbox[2], zone.bbox[3]],
-      padding: cameraPadding ?? {
-        top: APPLE_MAP_THEME.focusPadding.top,
-        right: APPLE_MAP_THEME.focusPadding.right,
-        bottom: APPLE_MAP_THEME.focusPadding.bottom,
-        left: APPLE_MAP_THEME.focusPadding.left,
+    cameraRef.current?.setCamera({
+      bounds: {
+        ne: [zone.bbox[2], zone.bbox[3]],
+        sw: [zone.bbox[0], zone.bbox[1]],
       },
-      duration: 350,
-      easing: "ease",
+      padding: cameraPadding ?? {
+        paddingTop: APPLE_MAP_THEME.focusPadding.top,
+        paddingRight: APPLE_MAP_THEME.focusPadding.right,
+        paddingBottom: APPLE_MAP_THEME.focusPadding.bottom,
+        paddingLeft: APPLE_MAP_THEME.focusPadding.left,
+      },
+      animationDuration: 350,
+      animationMode: "easeTo",
     });
   }, [cameraPadding, focusZoneId]);
 
   useEffect(() => {
     if (!pin) return;
-    cameraRef.current?.flyTo({
-      center: [pin.longitude, pin.latitude],
-      zoom: APPLE_MAP_THEME.defaultZoomWithPin,
-      duration: 800,
-    });
+    cameraRef.current?.flyTo([pin.longitude, pin.latitude], 800);
+    cameraRef.current?.zoomTo(APPLE_MAP_THEME.defaultZoomWithPin, 800);
   }, [pin]);
 
   if (Constants.appOwnership === "expo") {
@@ -290,15 +302,9 @@ export const QueueMap = memo(function QueueMap({
         compass={false}
         logo={false}
         attribution={false}
-        onWillStartLoadingMap={() => {
-          updateMapLoadState("loading");
-        }}
-        onDidFinishLoadingMap={() => {
-          updateMapLoadState("ready");
-        }}
-        onDidFailLoadingMap={() => {
-          updateMapLoadState("error", t("mapTab.native.unavailableBody"));
-        }}
+        onWillStartLoadingMap={handleWillStartLoadingMap}
+        onDidFinishLoadingMap={handleDidFinishLoadingMap}
+        onDidFailLoadingMap={handleDidFailLoadingMap}
         onPress={handleMapPress as any}
       >
         <Camera

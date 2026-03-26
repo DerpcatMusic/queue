@@ -1,5 +1,5 @@
 import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
-import { memo } from "react";
+import { memo, useCallback } from "react";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import type { getMapBrandPalette } from "@/constants/brand";
@@ -37,6 +37,18 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
   mapPalette,
   onPressZone,
 }: QueueMapZonePolygonsProps) {
+  const handlePress = useCallback(
+    (event: any) => {
+      if (mode !== "zoneSelect" || !isEditing) return;
+      if (!onPressZone) return;
+      const native = event?.nativeEvent ?? event;
+      const zoneId = getPressedZoneId(native, zoneIdProperty);
+      if (!zoneId) return;
+      onPressZone(zoneId);
+    },
+    [mode, isEditing, onPressZone, zoneIdProperty],
+  );
+
   const showAllZones = mode === "zoneSelect" && isEditing;
   const zoneOutlineWidth = showAllZones
     ? Math.max(APPLE_MAP_THEME.overlay.baseOutlineWidth, 1.35)
@@ -56,14 +68,7 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
     <GeoJSONSource
       id="queue-zone-source"
       data={zoneGeoJson ?? PIKUD_ZONE_GEOJSON}
-      onPress={(event: any) => {
-        if (mode !== "zoneSelect" || !isEditing) return;
-        if (!onPressZone) return;
-        const native = event?.nativeEvent ?? event;
-        const zoneId = getPressedZoneId(native, zoneIdProperty);
-        if (!zoneId) return;
-        onPressZone(zoneId);
-      }}
+      onPress={handlePress}
     >
       <Layer
         id="queue-zone-touch"
@@ -120,11 +125,15 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
         minzoom={6 as any}
         layout={{
           "symbol-placement": "point",
-          "text-field": ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]] as any,
+          "text-field": [
+            "format",
+            ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]],
+            {},
+          ] as any,
           "text-size": ["interpolate", ["linear"], ["zoom"], 6, 10, 9.5, 11, 12, 13, 14, 14] as any,
           "text-allow-overlap": true,
           "text-ignore-placement": true,
-          "text-font": ["Noto Sans Regular"] as any,
+          "text-font": ["literal", ["Noto Sans Regular"]] as any,
         }}
         paint={{
           "text-color": mapPalette.text,
@@ -139,10 +148,14 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
         minzoom={9.5 as any}
         layout={{
           "symbol-placement": "point",
-          "text-field": ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]] as any,
+          "text-field": [
+            "format",
+            ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]],
+            {},
+          ] as any,
           "text-size": ["interpolate", ["linear"], ["zoom"], 9.5, 10, 11, 12, 14, 14] as any,
           "text-allow-overlap": false,
-          "text-font": ["Noto Sans Regular"] as any,
+          "text-font": ["literal", ["Noto Sans Regular"]] as any,
         }}
         paint={{
           "text-color": mapPalette.text,
