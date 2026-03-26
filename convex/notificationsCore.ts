@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { isKnownZoneId } from "./lib/domainValidation";
 import { omitUndefined } from "./lib/validation";
+import { getCurrentUser as getCurrentUserDoc } from "./lib/auth";
 
 export const getJobAndEligibleInstructors = internalQuery({
   args: { jobId: v.id("jobs") },
@@ -97,15 +98,16 @@ export const logDeliveryBatch = internalMutation({
 });
 
 export const getPushRecipientForUser = internalQuery({
-  args: { userId: v.id("users") },
+  args: {},
   returns: v.union(
     v.null(),
     v.object({
       expoPushToken: v.string(),
     }),
   ),
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get("users", args.userId);
+  handler: async (ctx) => {
+    // SECURITY: Get user from auth context, not from args
+    const user = await getCurrentUserDoc(ctx);
     if (!user || !user.isActive) {
       return null;
     }

@@ -105,7 +105,9 @@ function normalizeOptionalMapMarkerColor(value: string | undefined) {
 }
 
 function createUploadSessionToken(userId: Doc<"users">["_id"], now: number) {
-  const entropy = Math.random().toString(36).slice(2, 12);
+  // SECURITY: Use crypto.randomUUID() instead of Math.random()
+  // Math.random() is a PRNG, not cryptographically secure
+  const entropy = crypto.randomUUID().replace(/-/g, "");
   return `${String(userId)}:${now}:${entropy}`;
 }
 

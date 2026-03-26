@@ -200,7 +200,6 @@ export const disconnectGoogleCalendar = action({
 
 export const syncGoogleCalendarForUser = internalAction({
   args: {
-    userId: v.id("users"),
     startTime: v.optional(v.number()),
     endTime: v.optional(v.number()),
     limit: v.optional(v.number()),
@@ -213,12 +212,19 @@ export const syncGoogleCalendarForUser = internalAction({
     importedRemovedCount: v.number(),
   }),
   handler: async (ctx, args) => {
-    return await ctx.runAction(calendarNodeInternal.syncGoogleCalendarForUserInternal, args);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+    return await ctx.runAction(calendarNodeInternal.syncGoogleCalendarForUserInternal, {
+      ...args,
+      userId: identity.subject,
+    });
   },
 });
 
 export const getCalendarProfileForUser = internalQuery({
-  args: { userId: v.id("users") },
+  args: {},
   returns: v.union(
     v.object({
       role: v.literal("instructor"),
@@ -236,10 +242,14 @@ export const getCalendarProfileForUser = internalQuery({
     }),
     v.null(),
   ),
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
+    const user = await getCurrentUserDoc(ctx);
+    if (!user) {
+      return null;
+    }
     const instructorProfile = (await ctx.db
       .query("instructorProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .unique()) as {
       _id: Id<"instructorProfiles">;
       calendarProvider?: "none" | "google" | "apple";
@@ -260,7 +270,7 @@ export const getCalendarProfileForUser = internalQuery({
 
     const studioProfile = (await ctx.db
       .query("studioProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .unique()) as {
       _id: Id<"studioProfiles">;
       calendarProvider?: "none" | "google" | "apple";
@@ -285,7 +295,6 @@ export const getCalendarProfileForUser = internalQuery({
 
 export const getCalendarTimelineForUser = internalQuery({
   args: {
-    userId: v.id("users"),
     startTime: v.number(),
     endTime: v.number(),
     limit: v.optional(v.number()),
@@ -309,6 +318,11 @@ export const getCalendarTimelineForUser = internalQuery({
     }),
   ),
   handler: async (ctx, args) => {
+    const user = await getCurrentUserDoc(ctx);
+    if (!user) {
+      return [];
+    }
+
     if (!Number.isFinite(args.startTime) || !Number.isFinite(args.endTime)) {
       throw new ConvexError("startTime and endTime must be finite numbers");
     }
@@ -321,7 +335,7 @@ export const getCalendarTimelineForUser = internalQuery({
 
     const instructorProfile = (await ctx.db
       .query("instructorProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .unique()) as { _id: Id<"instructorProfiles">; displayName: string } | null;
     if (instructorProfile) {
       const jobs = await ctx.db
@@ -361,7 +375,7 @@ export const getCalendarTimelineForUser = internalQuery({
 
     const studioProfile = (await ctx.db
       .query("studioProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .unique()) as { _id: Id<"studioProfiles">; studioName: string } | null;
     if (!studioProfile) {
       return [];
@@ -416,7 +430,7 @@ export const getCalendarTimelineForUser = internalQuery({
 });
 
 export const getGoogleIntegrationForUser = internalQuery({
-  args: { userId: v.id("users") },
+  args: {},
   returns: v.union(
     v.object({
       _id: v.id("calendarIntegrations"),
@@ -424,19 +438,22 @@ export const getGoogleIntegrationForUser = internalQuery({
       status: v.union(v.literal("connected"), v.literal("error"), v.literal("revoked")),
       instructorId: v.optional(v.id("instructorProfiles")),
       studioId: v.optional(v.id("studioProfiles")),
-      accessToken: v.optional(v.string()),
-      refreshToken: v.optional(v.string()),
-      oauthClientId: v.optional(v.string()),
+      // NOTE: accessToken, refreshToken, oauthClientId intentionally omitted
+      // These should NEVER be returned to clients — use server-side only
       accessTokenExpiresAt: v.optional(v.number()),
       agendaSyncToken: v.optional(v.string()),
     }),
     v.null(),
   ),
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
+    const user = await getCurrentUserDoc(ctx);
+    if (!user) {
+      return null;
+    }
     const integration = await ctx.db
       .query("calendarIntegrations")
       .withIndex("by_user_provider", (q) =>
-        q.eq("userId", args.userId).eq("provider", GOOGLE_PROVIDER),
+        q.eq("userId", user._id).eq("provider", GOOGLE_PROVIDER),
       )
       .unique();
     if (!integration) {
@@ -444,6 +461,8 @@ export const getGoogleIntegrationForUser = internalQuery({
     }
     const inferredRole =
       integration.role ?? (integration.studioId ? ("studio" as const) : ("instructor" as const));
+    // SECURITY: Do NOT return accessToken, refreshToken, oauthClientId
+    // These OAuth tokens should only be used server-side, never exposed to clients
     return {
       _id: integration._id,
       role: inferredRole,
@@ -451,9 +470,7 @@ export const getGoogleIntegrationForUser = internalQuery({
       ...omitUndefined({
         instructorId: integration.instructorId,
         studioId: integration.studioId,
-        accessToken: integration.accessToken,
-        refreshToken: integration.refreshToken,
-        oauthClientId: integration.oauthClientId,
+        // accessToken, refreshToken, oauthClientId intentionally NOT included
         accessTokenExpiresAt: integration.accessTokenExpiresAt,
         agendaSyncToken: integration.agendaSyncToken,
       }),
@@ -470,6 +487,16 @@ export const getEventMappingsForIntegration = internalQuery({
     }),
   ),
   handler: async (ctx, args) => {
+    const user = await getCurrentUserDoc(ctx);
+    if (!user) {
+      return [];
+    }
+    // SECURITY: Validate that this integration belongs to the authenticated user
+    const integration = await ctx.db.get(args.integrationId);
+    if (!integration || integration.userId !== user._id) {
+      // Integration doesn't exist or doesn't belong to user — reject
+      throw new ConvexError("Not authorized to access this integration");
+    }
     const rows = await ctx.db
       .query("calendarEventMappings")
       .withIndex("by_integration", (q) => q.eq("integrationId", args.integrationId))
@@ -764,12 +791,14 @@ export const applyGoogleAgendaSyncResult = internalMutation({
 });
 
 export const disconnectGoogleIntegrationLocally = internalMutation({
-  args: { userId: v.id("users") },
+  args: {},
   returns: v.object({ ok: v.boolean() }),
-  handler: async (ctx, args) => {
-    const profile = (await ctx.runQuery(internal.calendar.getCalendarProfileForUser, {
-      userId: args.userId,
-    })) as CalendarOwnerProfile | null;
+  handler: async (ctx) => {
+    const user = await getCurrentUserDoc(ctx);
+    if (!user) {
+      throw new ConvexError("Not authenticated");
+    }
+    const profile = (await ctx.runQuery(internal.calendar.getCalendarProfileForUser, {})) as CalendarOwnerProfile | null;
     if (!profile) {
       throw new ConvexError("Calendar profile not found");
     }
@@ -777,7 +806,7 @@ export const disconnectGoogleIntegrationLocally = internalMutation({
     const integration = await ctx.db
       .query("calendarIntegrations")
       .withIndex("by_user_provider", (q) =>
-        q.eq("userId", args.userId).eq("provider", GOOGLE_PROVIDER),
+        q.eq("userId", user._id).eq("provider", GOOGLE_PROVIDER),
       )
       .unique();
 

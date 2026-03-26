@@ -384,8 +384,8 @@ async function syncQueueEventsToGoogle(args: {
   const startTime = args.startTime ?? args.now - 7 * 24 * 60 * 60 * 1000;
   const endTime = args.endTime ?? args.now + 90 * 24 * 60 * 60 * 1000;
   const limit = Math.max(50, Math.min(1000, args.limit ?? 400));
+  // getCalendarTimelineForUser now gets user from auth context
   const timeline = (await args.ctx.runQuery(calendarInternal.getCalendarTimelineForUser, {
-    userId: args.userId,
     startTime,
     endTime,
     limit,
@@ -397,7 +397,7 @@ async function syncQueueEventsToGoogle(args: {
     )
     .sort((a, b) => a.startTime - b.startTime);
 
-  const existingMappings = (await args.ctx.runQuery(
+const existingMappings = (await args.ctx.runQuery(
     calendarInternal.getEventMappingsForIntegration,
     {
       integrationId: args.integrationId,
@@ -517,9 +517,8 @@ async function runGoogleCalendarSync(
     requireConnected: boolean;
   },
 ) {
-  const integration = (await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {
-    userId: args.userId,
-  })) as GoogleIntegrationRecord | null;
+  // The internal queries now get user from auth context — no need to pass userId
+  const integration = (await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {})) as GoogleIntegrationRecord | null;
   if (!integration || integration.status !== "connected") {
     if (args.requireConnected) {
       throw new ConvexError("Google Calendar is not connected");
@@ -533,9 +532,7 @@ async function runGoogleCalendarSync(
     };
   }
 
-  const profile = (await ctx.runQuery(calendarInternal.getCalendarProfileForUser, {
-    userId: args.userId,
-  })) as CalendarOwnerProfile | null;
+  const profile = (await ctx.runQuery(calendarInternal.getCalendarProfileForUser, {})) as CalendarOwnerProfile | null;
   if (!profile) {
     if (args.requireConnected) {
       throw new ConvexError("Calendar profile not found");
@@ -552,9 +549,8 @@ async function runGoogleCalendarSync(
   const now = Date.now();
   try {
     const accessToken = await getGoogleAccessToken(ctx, integration, now);
-    const existingMappings = (await ctx.runQuery(calendarInternal.getEventMappingsForIntegration, {
-      integrationId: integration._id,
-    })) as Array<{ externalEventId: string; providerEventId: string }>;
+    // getEventMappingsForIntegration now looks up user's integration internally
+    const existingMappings = (await ctx.runQuery(calendarInternal.getEventMappingsForIntegration, {})) as Array<{ externalEventId: string; providerEventId: string }>;
     let pushResult = {
       syncedCount: 0,
       removedCount: 0,
@@ -635,16 +631,14 @@ export const connectGoogleCalendarWithCodeInternal = internalAction({
 
     assertGoogleClientIdAllowed(args.clientId);
 
-    const profile = (await ctx.runQuery(calendarInternal.getCalendarProfileForUser, {
-      userId: currentUser._id,
-    })) as CalendarOwnerProfile | null;
+    // getCalendarProfileForUser now gets user from auth context
+    const profile = (await ctx.runQuery(calendarInternal.getCalendarProfileForUser, {})) as CalendarOwnerProfile | null;
     if (!profile) {
       throw new ConvexError("Calendar profile not found");
     }
 
-    const existingIntegration = (await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {
-      userId: currentUser._id,
-    })) as GoogleIntegrationRecord | null;
+    // getGoogleIntegrationForUser now gets user from auth context
+    const existingIntegration = (await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {})) as GoogleIntegrationRecord | null;
 
     const token = await exchangeGoogleAuthorizationCode({
       code: args.code,
@@ -705,16 +699,14 @@ export const connectGoogleCalendarWithServerAuthCodeInternal = internalAction({
       throw new ConvexError("Only instructors and studios can connect Google Calendar");
     }
 
-    const profile = (await ctx.runQuery(calendarInternal.getCalendarProfileForUser, {
-      userId: currentUser._id,
-    })) as CalendarOwnerProfile | null;
+    // getCalendarProfileForUser now gets user from auth context
+    const profile = (await ctx.runQuery(calendarInternal.getCalendarProfileForUser, {})) as CalendarOwnerProfile | null;
     if (!profile) {
       throw new ConvexError("Calendar profile not found");
     }
 
-    const existingIntegration = (await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {
-      userId: currentUser._id,
-    })) as GoogleIntegrationRecord | null;
+    // getGoogleIntegrationForUser now gets user from auth context
+    const existingIntegration = (await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {})) as GoogleIntegrationRecord | null;
 
     const clientId = getGoogleServerClientId();
     assertGoogleClientIdAllowed(clientId);
@@ -818,19 +810,18 @@ export const disconnectGoogleCalendarInternal = internalAction({
       throw new ConvexError("Only instructors and studios can disconnect Google Calendar");
     }
 
-    const integration = (await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {
-      userId: currentUser._id,
-    })) as GoogleIntegrationRecord | null;
+    // getGoogleIntegrationForUser now gets user from auth context
+    const integration = (await ctx.runQuery(calendarInternal.getGoogleIntegrationForUser, {})) as GoogleIntegrationRecord | null;
     if (!integration) {
-      await ctx.runMutation(calendarInternal.disconnectGoogleIntegrationLocally, {
-        userId: currentUser._id,
-      });
+      // disconnectGoogleIntegrationLocally now gets user from auth context
+      await ctx.runMutation(calendarInternal.disconnectGoogleIntegrationLocally, {});
       return { ok: true, deletedRemoteEvents: true };
     }
 
     let deletedRemoteEvents = true;
     try {
       const accessToken = await getGoogleAccessToken(ctx, integration, Date.now());
+      // getEventMappingsForIntegration validates ownership of integrationId
       const mappings = (await ctx.runQuery(calendarInternal.getEventMappingsForIntegration, {
         integrationId: integration._id,
       })) as Array<{ providerEventId: string }>;
@@ -846,9 +837,8 @@ export const disconnectGoogleCalendarInternal = internalAction({
       deletedRemoteEvents = false;
     }
 
-    await ctx.runMutation(calendarInternal.disconnectGoogleIntegrationLocally, {
-      userId: currentUser._id,
-    });
+    // disconnectGoogleIntegrationLocally now gets user from auth context
+    await ctx.runMutation(calendarInternal.disconnectGoogleIntegrationLocally, {});
 
     return {
       ok: true,
@@ -859,7 +849,6 @@ export const disconnectGoogleCalendarInternal = internalAction({
 
 export const syncGoogleCalendarForUserInternal = internalAction({
   args: {
-    userId: v.id("users"),
     startTime: v.optional(v.number()),
     endTime: v.optional(v.number()),
     limit: v.optional(v.number()),
@@ -872,8 +861,13 @@ export const syncGoogleCalendarForUserInternal = internalAction({
     importedRemovedCount: v.number(),
   }),
   handler: async (ctx, args) => {
+    // Get userId from auth context — the action runs with the user's identity
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
     return await runGoogleCalendarSync(ctx, {
-      userId: args.userId,
+      userId: identity.subject,
       ...omitUndefined({
         startTime: args.startTime,
         endTime: args.endTime,
