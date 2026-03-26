@@ -37,10 +37,10 @@ export function AppButton(props: AppButtonProps) {
     return <AppButtonFallback {...props} />;
   }
 
-  const { Button, FilledTonalButton, Host, Shape } = compose;
+  const { Button, FilledTonalButton, Host, Shape, Text } = compose;
   const { fillMaxWidth } = modifiers;
 
-  if (!Button || !FilledTonalButton || !Host || !Shape || !fillMaxWidth) {
+  if (!Button || !FilledTonalButton || !Host || !Shape || !Text || !fillMaxWidth) {
     return <AppButtonFallback {...props} />;
   }
 
@@ -101,7 +101,18 @@ export function AppButton(props: AppButtonProps) {
         })}
         modifiers={fullWidth ? [fillMaxWidth()] : []}
       >
-        {label}
+        <Text
+          color={contentColor}
+          maxLines={1}
+          overflow="ellipsis"
+          style={{
+            fontSize: theme.typography.bodyMedium.fontSize,
+            fontWeight: "500",
+            lineHeight: theme.typography.bodyMedium.lineHeight,
+          }}
+        >
+          {label}
+        </Text>
       </ButtonComponent>
     </Host>
   );
