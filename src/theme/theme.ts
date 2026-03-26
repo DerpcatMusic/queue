@@ -319,6 +319,8 @@ const lightColors = {
   jobsAccentHeatSubtle: "#FF5E001A",
   jobsSignal: "#8FBF3C",
   jobsIdle: "#A3A3A3",
+  outline: "#DCDCDC",
+  outlineStrong: "#B0B0B0",
 } as const;
 
 const darkColors = {
@@ -362,6 +364,8 @@ const darkColors = {
   jobsAccentHeatSubtle: "#FF5E0020",
   jobsSignal: "#CCFF00",
   jobsIdle: "#787878",
+  outline: "#2A2A2A",
+  outlineStrong: "#3A3A3A",
 } as const;
 
 export type ThemeColors = typeof lightColors | typeof darkColors;

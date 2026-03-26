@@ -29,6 +29,7 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { BorderWidth } from "@/lib/design-system";
 import {
   forgetRememberedDeviceAccount,
   listRememberedDeviceAccounts,
@@ -620,18 +621,20 @@ export default function InstructorProfileScreen() {
                 accessory={
                   <View
                     style={{
-                      backgroundColor: theme.color.primary,
+                      backgroundColor: theme.color.primarySubtle,
                       paddingHorizontal: BrandSpacing.xs,
-                      paddingVertical: 2,
+                      paddingVertical: BrandSpacing.xxs,
                       borderRadius: BrandRadius.sm,
+                      borderWidth: BorderWidth.thin,
+                      borderColor: theme.color.primary,
                     }}
                   >
                     <Text
                       style={{
-                        color: theme.color.onPrimary,
+                        color: theme.color.primary,
                         fontSize: 10,
                         fontWeight: "700",
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.8,
                       }}
                     >
                       ON
