@@ -385,9 +385,9 @@ const styles = StyleSheet.create({
   mobileShell: {
     paddingHorizontal: BrandSpacing.inset,
     paddingTop: BrandSpacing.sm,
-    paddingBottom: BrandSpacing.md,
-    gap: BrandSpacing.sm,
-    borderBottomWidth: BorderWidth.thin,
+    paddingBottom: BrandSpacing.lg,
+    gap: BrandSpacing.md,
+    borderBottomWidth: BorderWidth.strong,
   },
   mobileTopRail: {
     flexDirection: "row",
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   mobileEyebrow: {
     borderRadius: BrandRadius.buttonSubtle,
     borderCurve: "continuous",
-    borderWidth: BorderWidth.thin,
+    borderWidth: BorderWidth.strong,
     paddingHorizontal: BrandSpacing.sm,
     paddingVertical: BrandSpacing.xxs,
     maxWidth: "86%",
@@ -418,8 +418,8 @@ const styles = StyleSheet.create({
     position: "relative",
     width: 56,
     height: 56,
-    borderRadius: BrandRadius.cardSubtle,
-    borderWidth: BorderWidth.thin,
+    borderRadius: BrandRadius.card,
+    borderWidth: BorderWidth.strong,
     overflow: "visible",
   },
   mobileIdentityTextWrap: {

@@ -23,6 +23,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import { Box } from "@/primitives";
 
 export function StudioFeed() {
   const theme = useTheme();
@@ -169,7 +170,7 @@ export function StudioFeed() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.jobs.canvas }]}>
+    <Box flex={1} style={{ backgroundColor: theme.jobs.canvas }}>
       <TabScreenScrollView
         routeKey="studio/jobs/index"
         style={styles.screen}
@@ -182,7 +183,7 @@ export function StudioFeed() {
         topInsetTone="sheet"
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.page}>
+        <Box flex={1} gap="lg">
           {errorMessage ? (
             <NoticeBanner
               tone="error"
@@ -289,7 +290,7 @@ export function StudioFeed() {
               )}
             </View>
           )}
-        </View>
+        </Box>
       </TabScreenScrollView>
 
       {!isCreateSheetVisible ? (
@@ -317,7 +318,7 @@ export function StudioFeed() {
           defaultBranchId={defaultBranchId}
         />
       ) : null}
-    </View>
+    </Box>
   );
 }
 
