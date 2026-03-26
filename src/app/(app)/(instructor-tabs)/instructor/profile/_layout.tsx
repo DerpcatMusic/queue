@@ -1,9 +1,6 @@
 import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
-import {
-  ProfileSubpageSheetHost,
-  ProfileSubpageSheetProvider,
-} from "@/components/profile/profile-subpage-sheet";
+import { ProfileSubpageSheetProvider } from "@/components/profile/profile-subpage-sheet";
 
 /**
  * Profile section uses a nested Stack navigator so sub-screens
@@ -14,40 +11,39 @@ export default function ProfileLayout() {
   const { t } = useTranslation();
 
   return (
-    <ProfileSubpageSheetProvider>
-      <ProfileSubpageSheetHost
-        ownerId="profile-layout:instructor"
-        routes={[
-          {
-            routeMatchPath: "/profile/add-account",
-            title: t("profile.navigation.addAccount"),
-          },
-          {
-            routeMatchPath: "/profile/edit",
-            title: t("profile.navigation.edit"),
-          },
-          {
-            routeMatchPath: "/profile/sports",
-            title: t("profile.navigation.sports"),
-          },
-          {
-            routeMatchPath: "/profile/location",
-            title: t("profile.navigation.location"),
-          },
-          {
-            routeMatchPath: "/profile/calendar-settings",
-            title: t("profile.navigation.calendar"),
-          },
-          {
-            routeMatchPath: "/profile/payments",
-            title: t("profile.navigation.wallet"),
-          },
-          {
-            routeMatchPath: "/profile/identity-verification",
-            title: t("profile.navigation.identityVerification"),
-          },
-        ]}
-      />
+    <ProfileSubpageSheetProvider
+      ownerId="profile-layout:instructor"
+      routes={[
+        {
+          routeMatchPath: "/profile/add-account",
+          title: t("profile.navigation.addAccount"),
+        },
+        {
+          routeMatchPath: "/profile/edit",
+          title: t("profile.navigation.edit"),
+        },
+        {
+          routeMatchPath: "/profile/sports",
+          title: t("profile.navigation.sports"),
+        },
+        {
+          routeMatchPath: "/profile/location",
+          title: t("profile.navigation.location"),
+        },
+        {
+          routeMatchPath: "/profile/calendar-settings",
+          title: t("profile.navigation.calendar"),
+        },
+        {
+          routeMatchPath: "/profile/payments",
+          title: t("profile.navigation.wallet"),
+        },
+        {
+          routeMatchPath: "/profile/identity-verification",
+          title: t("profile.navigation.identityVerification"),
+        },
+      ]}
+    >
       <Stack
         screenOptions={{
           headerShown: false,
@@ -55,10 +51,7 @@ export default function ProfileLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="add-account"
-          options={{ title: t("profile.navigation.addAccount") }}
-        />
+        <Stack.Screen name="add-account" options={{ title: t("profile.navigation.addAccount") }} />
         <Stack.Screen
           name="edit"
           options={{ title: t("profile.navigation.edit"), presentation: "modal" }}

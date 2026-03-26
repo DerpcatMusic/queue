@@ -4,15 +4,10 @@
 @import "nativewind/theme";
 
 /* ═══════════════════════════════════════════════════════════════════════════════
-   DESIGN SYSTEM — Single source of truth
+   LAYOUT SYSTEM — Tailwind for flexbox/grid/spacing only
 
-   Primary:    #CCFF00  chartreuse
-   Secondary:  #FF5E00  orange
-   Tertiary:   #049CC4  blue
-   Neutral:    #000000  black
-
-   Headlines:  Lexend
-   Body/Label: Manrope
+   Colors come from design-system.ts via useTheme() + StyleSheet
+   DO NOT use Tailwind color utilities (bg-*, text-*) — use inline styles instead
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 @theme {
@@ -63,133 +58,12 @@
   --radius-card: 12px;
   --radius-button: 8px;
   --radius-input: 8px;
-
-  /* ═══════════════════════════════════════════════════════════════════════════
-     COLORS — Light Mode (default)
-     ═══════════════════════════════════════════════════════════════════════════ */
-
-  /* Brand */
-  --color-primary: #ccff00;
-  --color-primary-subtle: #ccff001a;
-  --color-primary-pressed: #b8e600;
-  --color-on-primary: #000000;
-
-  /* Secondary & Tertiary */
-  --color-secondary: #ff5e00;
-  --color-secondary-subtle: #ff5e001a;
-  --color-tertiary: #049cc4;
-  --color-tertiary-subtle: #049cc41a;
-
-  /* Semantic */
-  --color-success: #22c55e;
-  --color-success-subtle: #22c55e1a;
-  --color-danger: #ef4444;
-  --color-danger-subtle: #ef44441a;
-  --color-warning: #f59e0b;
-  --color-warning-subtle: #f59e0b1a;
-
-  /* Surfaces */
-  --color-app-bg: #fafafa;
-  --color-surface: #ffffff;
-  --color-surface-alt: #f5f5f5;
-  --color-surface-elevated: #ffffff;
-
-  /* Borders */
-  --color-border: #e5e5e5;
-  --color-border-strong: #d4d4d4;
-
-  /* Text */
-  --color-text: #000000;
-  --color-text-muted: #737373;
-  --color-text-micro: #a3a3a3;
-  --color-on-surface: #000000;
-
-  /* Utility */
-  --color-divider: #e5e5e5;
-  --color-shadow: #0000001a;
-  --color-overlay: #00000080;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
-   DARK MODE — System preference
-   ═══════════════════════════════════════════════════════════════════════════════ */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Brand — chartreuse pops on dark, no change needed */
-    --color-primary-subtle: #ccff0014;
-    --color-primary-pressed: #a8cc00;
-    --color-on-primary: #000000;
-
-    /* Secondary & Tertiary */
-    --color-secondary-subtle: #ff5e0014;
-    --color-tertiary-subtle: #049cc414;
-
-    /* Semantic — slightly brighter for dark bg contrast */
-    --color-success: #4ade80;
-    --color-success-subtle: #4ade8014;
-    --color-danger: #f87171;
-    --color-danger-subtle: #f8717114;
-    --color-warning: #fbbf24;
-    --color-warning-subtle: #fbbf2414;
-
-    /* Surfaces */
-    --color-app-bg: #000000;
-    --color-surface: #171717;
-    --color-surface-alt: #0a0a0a;
-    --color-surface-elevated: #262626;
-
-    /* Borders */
-    --color-border: #262626;
-    --color-border-strong: #404040;
-
-    /* Text */
-    --color-text: #ffffff;
-    --color-text-muted: #a3a3a3;
-    --color-text-micro: #737373;
-    --color-on-surface: #ffffff;
-
-    /* Utility */
-    --color-divider: #262626;
-    --color-shadow: #00000040;
-    --color-overlay: #000000b3;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════════
-   DARK MODE — Manual override (class-based, for ThemePreferenceProvider)
-   ═══════════════════════════════════════════════════════════════════════════════ */
-:root.dark {
-  --color-primary-subtle: #ccff0014;
-  --color-primary-pressed: #a8cc00;
-  --color-on-primary: #000000;
-  --color-secondary-subtle: #ff5e0014;
-  --color-tertiary-subtle: #049cc414;
-  --color-success: #4ade80;
-  --color-success-subtle: #4ade8014;
-  --color-danger: #f87171;
-  --color-danger-subtle: #f8717114;
-  --color-warning: #fbbf24;
-  --color-warning-subtle: #fbbf2414;
-  --color-app-bg: #000000;
-  --color-surface: #171717;
-  --color-surface-alt: #0a0a0a;
-  --color-surface-elevated: #262626;
-  --color-border: #262626;
-  --color-border-strong: #404040;
-  --color-text: #ffffff;
-  --color-text-muted: #a3a3a3;
-  --color-text-micro: #737373;
-  --color-on-surface: #ffffff;
-  --color-divider: #262626;
-  --color-shadow: #00000040;
-  --color-overlay: #000000b3;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════════
-   CUSTOM UTILITIES
+   TYPOGRAPHY UTILITIES — Font family + size + weight presets
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-/* Semantic text presets — combine font family + size + weight */
 @utility text-display {
   font-family: var(--font-display);
   font-size: var(--text-display);

@@ -1,3 +1,20 @@
+/**
+ * @deprecated Use LayoutInsetsContext from scroll-sheet-provider or rely on
+ * TabScreenRoot/TabScreenScrollView which provide sheet-aware content insets.
+ *
+ * INSET OWNERSHIP RULE (Expo 55 best practice):
+ *   - Insets are owned by layouts and passed down through LayoutInsetsContext
+ *   - For sheet-aware scroll content, prefer TabScreenRoot mode="scroll" which
+ *     handles insets automatically
+ *   - This hook is kept for backwards compatibility with existing consumers
+ *
+ * This hook is a convenience that combines:
+ *   - collapsedSheetHeight from ScrollSheetProvider
+ *   - safeBottom from LayoutInsetsContext (via useAppInsets)
+ *
+ * Consumers should migrate to using TabScreenRoot/TabScreenScrollView for
+ * scroll modes, which handle the inset contract automatically.
+ */
 import { useMemo } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 

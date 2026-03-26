@@ -15,7 +15,6 @@ import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
-import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
@@ -55,12 +54,13 @@ export function InstructorFeed() {
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveSheetRef = useRef<BottomSheet>(null);
   const deferredJobsSearchQuery = useDeferredValue(jobsSearchQuery);
-  const { contentContainerStyle: sheetContentInsets, progressViewOffset } =
-    useTopSheetContentInsets({
-      topSpacing: BrandSpacing.xl,
-      bottomSpacing: BrandSpacing.xl,
-      horizontalPadding: BrandSpacing.lg,
-    });
+  // Additional spacing on top of the base insets applied by ScreenScaffold
+  // ScreenScaffold automatically applies collapsedSheetHeight, safeBottom, and progressViewOffset
+  const additionalSpacing = {
+    paddingTop: BrandSpacing.xl,
+    paddingBottom: BrandSpacing.xl,
+    paddingHorizontal: BrandSpacing.lg,
+  };
 
   const { currentUser } = useUser();
   const applyToJob = useMutation(api.jobs.applyToJob);
@@ -435,14 +435,13 @@ export function InstructorFeed() {
       <TabScreenScrollView
         routeKey="instructor/jobs/index"
         style={styles.screen}
-        contentContainerStyle={[styles.content, sheetContentInsets]}
+        contentContainerStyle={[styles.content, additionalSpacing]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
             tintColor={theme.jobs.signal}
             colors={[theme.jobs.signal]}
-            progressViewOffset={progressViewOffset}
           />
         }
         keyboardShouldPersistTaps="handled"

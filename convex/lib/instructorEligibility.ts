@@ -10,6 +10,7 @@ export type InstructorEligibility = {
   coverageBySport: CoverageBySport;
   coverageCount: number;
   coveragePairs: ReadonlyArray<{ sport: string; zone: string }>;
+  sports: ReadonlySet<string>;
 };
 
 function toEligibilityKey(sport: string, zone: string) {
@@ -20,14 +21,25 @@ export async function loadInstructorEligibility(
   ctx: Ctx,
   instructorId: Id<"instructorProfiles">,
 ): Promise<InstructorEligibility> {
-  const coverageRows = await ctx.db
-    .query("instructorCoverage")
-    .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructorId))
-    .collect();
+  const [coverageRows, sportRows] = await Promise.all([
+    ctx.db
+      .query("instructorCoverage")
+      .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructorId))
+      .collect(),
+    ctx.db
+      .query("instructorSports")
+      .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructorId))
+      .collect(),
+  ]);
 
   const keySet = new Set<string>();
   const coverageBySport: CoverageBySport = new Map();
   const coveragePairs: { sport: string; zone: string }[] = [];
+  const sports = new Set<string>();
+
+  for (const row of sportRows) {
+    sports.add(row.sport);
+  }
 
   for (const row of coverageRows) {
     const key = toEligibilityKey(row.sport, row.zone);
@@ -49,6 +61,7 @@ export async function loadInstructorEligibility(
     coverageBySport,
     coverageCount: coveragePairs.length,
     coveragePairs,
+    sports,
   };
 }
 
@@ -58,4 +71,16 @@ export function hasCoverageKey(
   zone: string,
 ): boolean {
   return eligibility.keySet.has(toEligibilityKey(sport, zone));
+}
+
+export function isEligibleForJob(
+  eligibility: InstructorEligibility,
+  sport: string,
+  zone: string,
+): boolean {
+  if (eligibility.coverageCount > 0) {
+    return hasCoverageKey(eligibility, sport, zone);
+  }
+
+  return eligibility.sports.has(sport);
 }

@@ -101,7 +101,7 @@ export function useKitTheme() {
       ripple: theme.color.primarySubtle,
       switchTrackOn: theme.color.primary,
       switchTrackOff: theme.color.border,
-      switchThumbOn: theme.color.primary,
+      switchThumbOn: theme.color.onPrimary,
       switchThumbOff: theme.color.surface,
     },
     symbol: {

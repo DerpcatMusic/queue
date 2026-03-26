@@ -65,6 +65,7 @@ export function AppButtonFallback({
   dimension,
   colors,
   haptic = true,
+  labelStyle,
 }: AppButtonProps) {
   const theme = useTheme();
 
@@ -143,6 +144,7 @@ export function AppButtonFallback({
                 includeFontPadding: false,
                 textAlign: isIconOnly ? "center" : "left",
                 flexShrink: 1,
+                ...labelStyle,
               }}
             >
               {label}

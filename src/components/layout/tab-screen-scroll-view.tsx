@@ -1,5 +1,11 @@
-import type { PropsWithChildren } from "react";
-import { type ScrollViewProps, type StyleProp, View, type ViewStyle } from "react-native";
+import type { PropsWithChildren, ReactElement } from "react";
+import {
+  type RefreshControlProps,
+  type ScrollViewProps,
+  type StyleProp,
+  View,
+  type ViewStyle,
+} from "react-native";
 import type Animated from "react-native-reanimated";
 import type { AnimatedRef } from "react-native-reanimated";
 import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
@@ -11,12 +17,16 @@ type TabScreenContainerProps = PropsWithChildren<{
 }>;
 
 type TabScreenScrollViewProps = PropsWithChildren<
-  Omit<ScrollViewProps, "contentContainerStyle" | "contentInsetAdjustmentBehavior" | "ref"> & {
+  Omit<
+    ScrollViewProps,
+    "contentContainerStyle" | "contentInsetAdjustmentBehavior" | "ref" | "refreshControl"
+  > & {
     contentContainerStyle?: StyleProp<ViewStyle>;
     routeKey?: string;
     animatedRef?: AnimatedRef<Animated.ScrollView>;
     topInsetTone?: InsetTone;
     useDesktopFrame?: boolean;
+    refreshControl?: ReactElement<RefreshControlProps>;
   }
 >;
 
@@ -39,6 +49,7 @@ export function TabScreenScrollView({
   scrollIndicatorInsets,
   topInsetTone,
   useDesktopFrame,
+  refreshControl,
   ...props
 }: TabScreenScrollViewProps) {
   return (
@@ -54,6 +65,7 @@ export function TabScreenScrollView({
         onScroll,
         scrollEventThrottle: 32,
         scrollIndicatorInsets,
+        ...(refreshControl ? { refreshControl } : {}),
       }}
     >
       {children}
