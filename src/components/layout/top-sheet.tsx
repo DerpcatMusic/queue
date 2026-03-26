@@ -22,15 +22,20 @@ import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useSystemUi } from "@/contexts/system-ui-context";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
-import { Motion } from "@/lib/design-system";
 import {
+  ANIMATION_DURATION_EXPANDED_PROGRESS,
   DEFAULT_STEPS,
+  GESTURE_ACTIVE_OFFSET_Y,
+  GESTURE_FAIL_OFFSET_X,
   HANDLE_HEIGHT,
   HANDLE_PILL_HEIGHT,
   HANDLE_PILL_WIDTH,
   MIN_BOTTOM_CHROME_ESTIMATE,
+  REVEAL_TRANSLATE_OFFSET,
   SHEET_SPRING,
-} from "./top-sheet.helpers";
+  TAB_BAR_ESTIMATE,
+  VELOCITY_THRESHOLD,
+} from "./top-sheet-constants";
 import { TopSheetSearchBar } from "./top-sheet-search-bar";
 import {
   computeCollapsedHeight,
@@ -89,25 +94,48 @@ export type TopSheetProps = PropsWithChildren<{
   onMinHeightChange?: (height: number) => void;
 }>;
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = {
+  dragHandle: {
+    alignItems: "center" as const,
+    paddingTop: BrandSpacing.sm,
+    paddingBottom: BrandSpacing.xs,
+  },
+  dragHandlePill: {
+    width: HANDLE_PILL_WIDTH,
+    height: HANDLE_PILL_HEIGHT,
+    borderRadius: BrandRadius.pill,
+  },
+  scrollBody: {
+    flex: 1,
+    minHeight: 0,
+  },
+  sheetShell: {
+    borderBottomLeftRadius: BrandRadius.card + BrandSpacing.xs,
+    borderBottomRightRadius: BrandRadius.card + BrandSpacing.xs,
+    borderCurve: "continuous" as const,
+    overflow: "hidden" as const,
+    zIndex: 100,
+  },
+  dragHandleZone: {
+    position: "absolute" as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: HANDLE_HEIGHT,
+  },
+  dragHandleBorder: {
+    borderTopWidth: 1,
+  },
+} as const;
+
 // ─── Drag Handle ──────────────────────────────────────────────────────────────
 
 function DragHandle({ borderColor }: { borderColor: ColorValue }) {
   return (
-    <View
-      style={{
-        alignItems: "center",
-        paddingTop: BrandSpacing.sm,
-        paddingBottom: BrandSpacing.xs,
-      }}
-    >
-      <View
-        style={{
-          width: HANDLE_PILL_WIDTH,
-          height: HANDLE_PILL_HEIGHT,
-          borderRadius: BrandRadius.pill,
-          backgroundColor: borderColor,
-        }}
-      />
+    <View style={styles.dragHandle}>
+      <View style={[styles.dragHandlePill, { backgroundColor: borderColor }]} />
     </View>
   );
 }
@@ -156,13 +184,13 @@ export function TopSheet({
 
   useEffect(() => {
     animatedBackground.value = withTiming(backgroundColorValue, {
-      duration: Motion.normal,
+      duration: ANIMATION_DURATION_EXPANDED_PROGRESS,
     });
   }, [animatedBackground, backgroundColorValue]);
 
   useEffect(() => {
     expandedProgress.value = withTiming(isExpanded ? 1 : 0, {
-      duration: 180,
+      duration: ANIMATION_DURATION_EXPANDED_PROGRESS,
     });
   }, [expandedProgress, isExpanded]);
 
@@ -177,7 +205,7 @@ export function TopSheet({
   }, [resolvedInsetColor, setTopInsetBackgroundColor, setTopInsetTone]);
 
   // Available height for sheet steps (screen minus safe top minus bottom tabs)
-  const bottomChromeEstimate = Math.max(MIN_BOTTOM_CHROME_ESTIMATE, safeBottom + 64);
+  const bottomChromeEstimate = Math.max(MIN_BOTTOM_CHROME_ESTIMATE, safeBottom + TAB_BAR_ESTIMATE);
   const availableHeight = screenHeight - safeTop - bottomChromeEstimate;
 
   const resolvedPadding = useMemo(
@@ -257,8 +285,8 @@ export function TopSheet({
   const panGesture = useMemo(
     () =>
       Gesture.Pan()
-        .activeOffsetY([-4, 4])
-        .failOffsetX([-18, 18])
+        .activeOffsetY(GESTURE_ACTIVE_OFFSET_Y)
+        .failOffsetX(GESTURE_FAIL_OFFSET_X)
         .onStart(() => {
           // Record the height when drag starts
           dragStartHeight.value = sheetHeight.value;
@@ -288,7 +316,6 @@ export function TopSheet({
             }
           }
 
-          const VELOCITY_THRESHOLD = 500;
           const direction =
             Math.abs(event.velocityY) > VELOCITY_THRESHOLD
               ? event.velocityY < 0
@@ -350,7 +377,7 @@ export function TopSheet({
     minHeight: 0,
     transform: [
       {
-        translateY: (1 - expandedProgress.value) * 8,
+        translateY: (1 - expandedProgress.value) * REVEAL_TRANSLATE_OFFSET,
       },
     ],
   }));
@@ -370,20 +397,7 @@ export function TopSheet({
   const handleFooterLayout = updateMeasuredHeight(setMeasuredFooterHeight);
 
   const sheetContent = (
-    <Animated.View
-      style={[
-        {
-          borderBottomLeftRadius: BrandRadius.card + 4,
-          borderBottomRightRadius: BrandRadius.card + 4,
-          borderCurve: "continuous" as const,
-          overflow: "hidden" as const,
-          zIndex: 100,
-        },
-        shellBackgroundStyle,
-        outerStyle,
-        style,
-      ]}
-    >
+    <Animated.View style={[styles.sheetShell, shellBackgroundStyle, outerStyle, style]}>
       <Animated.View style={innerStyle}>
         {/* Sticky Header - always visible at top */}
         {stickyHeader ? (
@@ -394,15 +408,21 @@ export function TopSheet({
 
         {/* Main children - always visible */}
         {shouldUseContentScroll ? (
-          <ScrollView
-            bounces={bodyScrollEnabled}
-            onContentSizeChange={(_, height) => handleBodyLayout(height)}
-            scrollEnabled={bodyScrollEnabled}
-            showsVerticalScrollIndicator={bodyScrollEnabled}
-            style={styles.scrollBody}
-          >
-            <View>{children}</View>
-          </ScrollView>
+          bodyScrollEnabled ? (
+            <ScrollView
+              bounces
+              onContentSizeChange={(_, height) => handleBodyLayout(height)}
+              scrollEnabled
+              showsVerticalScrollIndicator
+              style={styles.scrollBody}
+            >
+              <View>{children}</View>
+            </ScrollView>
+          ) : (
+            <View onLayout={(event) => handleBodyLayout(event.nativeEvent.layout.height)}>
+              {children}
+            </View>
+          )
         ) : (
           <View
             style={{ flex: mainContentFlex }}
@@ -430,15 +450,9 @@ export function TopSheet({
         <GestureDetector gesture={panGesture}>
           <Animated.View
             style={[
-              {
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: HANDLE_HEIGHT,
-                borderTopWidth: 1,
-                borderTopColor: theme.color.border,
-              },
+              styles.dragHandleZone,
+              styles.dragHandleBorder,
+              { borderTopColor: theme.color.border },
               shellBackgroundStyle,
             ]}
           >
@@ -449,15 +463,9 @@ export function TopSheet({
         // Draggable but not expandable - show handle but no gesture
         <Animated.View
           style={[
-            {
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: HANDLE_HEIGHT,
-              borderTopWidth: 1,
-              borderTopColor: theme.color.border,
-            },
+            styles.dragHandleZone,
+            styles.dragHandleBorder,
+            { borderTopColor: theme.color.border },
             shellBackgroundStyle,
           ]}
         >
@@ -469,13 +477,6 @@ export function TopSheet({
 
   return sheetContent;
 }
-
-const styles = {
-  scrollBody: {
-    flex: 1,
-    minHeight: 0,
-  },
-} as const;
 
 // ─── SearchBar Widget ─────────────────────────────────────────────────────────
 

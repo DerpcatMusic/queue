@@ -7,6 +7,7 @@ import { isKnownZoneId } from "./lib/domainValidation";
 import {
   hasCoverageKey,
   type InstructorEligibility,
+  isEligibleForJob,
   loadInstructorEligibility,
 } from "./lib/instructorEligibility";
 import { trimOptionalString } from "./lib/validation";
@@ -50,6 +51,41 @@ export function countEligibleOpenJobMatches(args: {
         continue;
       }
       if (!hasCoverageKey(args.eligibility, job.sport, normalizedJobZone)) {
+        continue;
+      }
+      if (job.startTime <= args.now) {
+        continue;
+      }
+      if (job.applicationDeadline !== undefined && job.applicationDeadline < args.now) {
+        continue;
+      }
+
+      matchingJobIds.add(String(job._id));
+      if (matchingJobIds.size >= cap) {
+        return matchingJobIds.size;
+      }
+    }
+  }
+
+  return matchingJobIds.size;
+}
+
+export function countEligibleOpenJobMatchesBySport(args: {
+  eligibility: InstructorEligibility;
+  jobsBySport: ReadonlyArray<ReadonlyArray<OpenMatchCandidate>>;
+  now: number;
+  cap?: number;
+}) {
+  const matchingJobIds = new Set<string>();
+  const cap = args.cap ?? HOME_MATCH_COUNT_CAP;
+
+  for (const jobsForSport of args.jobsBySport) {
+    for (const job of jobsForSport) {
+      const normalizedJobZone = trimOptionalString(job.zone);
+      if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
+        continue;
+      }
+      if (!isEligibleForJob(args.eligibility, job.sport, normalizedJobZone)) {
         continue;
       }
       if (job.startTime <= args.now) {
@@ -119,6 +155,28 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
     openMatches = countEligibleOpenJobMatches({
       eligibility,
       jobsByCoveragePair: openJobsByCoveragePair,
+      now,
+    });
+  } else if (eligibility.sports.size > 0) {
+    const sports = [...eligibility.sports];
+    const fetchPerSport = Math.min(
+      Math.max(Math.ceil((HOME_MATCH_COUNT_CAP * 2) / sports.length), 8),
+      80,
+    );
+
+    const openJobsBySport = await Promise.all(
+      sports.map((sport) =>
+        ctx.db
+          .query("jobs")
+          .withIndex("by_sport_and_status", (q) => q.eq("sport", sport).eq("status", "open"))
+          .order("desc")
+          .take(fetchPerSport),
+      ),
+    );
+
+    openMatches = countEligibleOpenJobMatchesBySport({
+      eligibility,
+      jobsBySport: openJobsBySport,
       now,
     });
   }

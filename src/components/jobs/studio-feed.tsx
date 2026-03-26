@@ -15,7 +15,6 @@ import {
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
-import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -29,11 +28,13 @@ export function StudioFeed() {
   const theme = useTheme();
   const { t, i18n } = useTranslation();
   const isFocused = useIsFocused();
-  const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
-    topSpacing: BrandSpacing.lg,
-    bottomSpacing: BrandSpacing.xl,
-    horizontalPadding: BrandSpacing.lg,
-  });
+  // Additional spacing on top of the base insets applied by ScreenScaffold
+  // ScreenScaffold automatically applies collapsedSheetHeight and safeBottom
+  const additionalSpacing = {
+    paddingTop: BrandSpacing.lg,
+    paddingBottom: BrandSpacing.xl,
+    paddingHorizontal: BrandSpacing.lg,
+  };
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const [isCreateSheetVisible, setIsCreateSheetVisible] = useState(false);
@@ -179,7 +180,7 @@ export function StudioFeed() {
       <TabScreenScrollView
         routeKey="studio/jobs/index"
         style={styles.screen}
-        contentContainerStyle={[styles.content, sheetContentInsets]}
+        contentContainerStyle={[styles.content, additionalSpacing]}
         topInsetTone="sheet"
         keyboardShouldPersistTaps="handled"
       >

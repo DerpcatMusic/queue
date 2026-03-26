@@ -1,7 +1,6 @@
 import type { TFunction } from "i18next";
 import type React from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
 import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { DotStatusPill } from "@/components/home/home-shared";
 import { ActionButton } from "@/components/ui/action-button";
@@ -24,8 +23,6 @@ import {
 
 function formatJobPay(amount: number, locale: string) {
   return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "ILS",
     maximumFractionDigits: 0,
   }).format(amount);
 }
@@ -88,8 +85,8 @@ function StudioImageBackground({
   children?: React.ReactNode;
 }) {
   const imageFilterStyle = Platform.select({
-    web: { filter: "grayscale(100%) contrast(110%) brightness(62%)", opacity: 0.98 },
-    default: { opacity: 0.94 },
+    web: { filter: "grayscale(100%) contrast(112%) brightness(54%)" },
+    default: undefined,
   }) as object;
 
   return (
@@ -134,22 +131,6 @@ function StudioImageBackground({
           </Text>
         </View>
       )}
-      <View
-        style={{
-          ...StyleSheet.absoluteFillObject,
-          backgroundColor: theme.jobs.surfaceRaised,
-          opacity: 0.24,
-        }}
-      />
-      {theme.color.appBg === "#000000" ? (
-        <View
-          style={{
-            ...StyleSheet.absoluteFillObject,
-            backgroundColor: theme.color.overlay,
-            opacity: 0.26,
-          }}
-        />
-      ) : null}
       {children}
     </View>
   );
@@ -244,28 +225,23 @@ export function InstructorJobCard({
     job.applicationStatus === "pending" &&
     Boolean(job.applicationId) &&
     Boolean(onWithdrawApplication);
-  const canApplyFromCard = !job.applicationStatus || job.applicationStatus === "withdrawn";
+  const canApplyFromCard =
+    !job.applicationStatus ||
+    job.applicationStatus === "withdrawn" ||
+    job.applicationStatus === "rejected";
   const isWithdrawing = Boolean(
     job.applicationId && withdrawingApplicationId === job.applicationId,
   );
   const pendingCancelLabel = `${t(getApplicationStatusTranslationKey("pending"))} · ${t("jobsTab.actions.cancel")}`;
   const formattedPay = formatJobPay(boost.totalPay, locale);
+  const payAccent = boost.bonusAmount ? theme.color.secondary : theme.color.primary;
 
-  // Radar glow border: subtle chartreuse border on the card
-  const cardBorderColor =
-    job.applicationStatus === "pending" ? theme.color.primarySubtle : theme.jobs.line;
+  const cardBorderColor = payAccent;
 
   if (variant === "default") {
-    const payAccent = boost.bonusAmount ? theme.color.secondary : theme.color.primary;
-    const payAccentSubtle = boost.bonusAmount
-      ? theme.color.secondarySubtle
-      : theme.color.primarySubtle;
     const metaAccent = boost.bonusAmount ? theme.color.secondary : theme.color.primaryPressed;
-    const topBadgeLabel = boost.bonusAmount ? "BONUS" : null;
     const studioMeta = job.branchName ? `${job.studioName} · ${job.branchName}` : job.studioName;
     const combinedMeta = `${studioMeta} | ${zoneLabel}`;
-    const gradientId = `job-card-tint-${String(job.jobId)}`;
-    const gradientBase = theme.color.appBg;
 
     return (
       <Pressable
@@ -285,7 +261,7 @@ export function InstructorJobCard({
             borderCurve: "continuous",
             backgroundColor: theme.jobs.surface,
             borderWidth: BorderWidth.thin,
-            borderColor: theme.jobs.line,
+            borderColor: cardBorderColor,
             overflow: "hidden",
           }}
         >
@@ -293,30 +269,7 @@ export function InstructorJobCard({
             imageUrl={job.studioImageUrl}
             fallbackLabel={job.studioName}
             theme={theme}
-          >
-            {job.studioImageUrl ? (
-              <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-                <Defs>
-                  <SvgLinearGradient id={`${gradientId}-imgFade`} x1="0%" y1="0%" x2="0%" y2="100%">
-                    <Stop offset="0%" stopColor={gradientBase} stopOpacity="0" />
-                    <Stop offset="40%" stopColor={gradientBase} stopOpacity="0.6" />
-                    <Stop offset="100%" stopColor={gradientBase} stopOpacity="1" />
-                  </SvgLinearGradient>
-                </Defs>
-                <Rect width="100%" height="100%" fill={`url(#${gradientId}-imgFade)`} />
-              </Svg>
-            ) : null}
-          </StudioImageBackground>
-          <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-            <Defs>
-              <SvgLinearGradient id={`${gradientId}-scrim`} x1="0%" y1="0%" x2="100%" y2="0%">
-                <Stop offset="0%" stopColor={gradientBase} stopOpacity="0.42" />
-                <Stop offset="40%" stopColor={gradientBase} stopOpacity="0.15" />
-                <Stop offset="100%" stopColor={gradientBase} stopOpacity="0.04" />
-              </SvgLinearGradient>
-            </Defs>
-            <Rect width="100%" height="100%" fill={`url(#${gradientId}-scrim)`} />
-          </Svg>
+          />
 
           <View
             style={{
@@ -355,8 +308,7 @@ export function InstructorJobCard({
                     fontFamily: FontFamily.bodyMedium,
                     fontSize: FontSize.caption,
                     lineHeight: LineHeight.caption,
-                    color: theme.color.text,
-                    opacity: 0.88,
+                    color: theme.color.textMuted,
                     includeFontPadding: false,
                   }}
                 >
@@ -379,55 +331,44 @@ export function InstructorJobCard({
               </View>
 
               <View style={{ alignItems: "flex-end", gap: BrandSpacing.xs, maxWidth: "42%" }}>
-                {topBadgeLabel ? (
-                  <View
-                    style={{
-                      backgroundColor: payAccentSubtle,
-                      borderRadius: BrandRadius.pill,
-                      paddingHorizontal: BrandSpacing.sm,
-                      paddingVertical: BrandSpacing.xs,
-                      borderWidth: BorderWidth.thin,
-                      borderColor: payAccent,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontFamily: FontFamily.bodyMedium,
-                        fontSize: 11,
-                        lineHeight: 14,
-                        color: payAccent,
-                        includeFontPadding: false,
-                      }}
-                    >
-                      {topBadgeLabel}
-                    </Text>
-                  </View>
-                ) : null}
-                <Text
+                <View
                   style={{
-                    fontFamily: "Lexend_800ExtraBold",
-                    fontSize: 36,
-                    lineHeight: 38,
-                    letterSpacing: -0.8,
-                    color: payAccent,
-                    fontVariant: ["tabular-nums"],
-                    textAlign: "right",
-                    includeFontPadding: false,
-                    fontWeight: "900",
+                    flexDirection: "row",
+                    alignItems: "baseline",
+                    justifyContent: "flex-end",
+                    gap: 2,
                   }}
                 >
-                  {formattedPay}
-                </Text>
+                  <Text
+                    style={{
+                      color: payAccent,
+                      fontSize: FontSize.body,
+                      fontWeight: "900",
+                      fontFamily: FontFamily.displayBlack,
+                      includeFontPadding: false,
+                    }}
+                  >
+                    ₪
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: FontFamily.displayBlack,
+                      fontSize: FontSize.heroSmall,
+                      lineHeight: LineHeight.heroSmall,
+                      letterSpacing: LetterSpacing.heroSmall,
+                      color: payAccent,
+                      textAlign: "right",
+                      fontWeight: "900",
+                      includeFontPadding: false,
+                    }}
+                  >
+                    {formattedPay}
+                  </Text>
+                </View>
               </View>
             </View>
 
-            <View style={{ gap: BrandSpacing.xs }}>
-              <View
-                style={{
-                  height: BorderWidth.thin,
-                  backgroundColor: theme.jobs.line,
-                }}
-              />
+            <View style={{ gap: BrandSpacing.sm }}>
               <View
                 style={{
                   flexDirection: "row",
@@ -447,9 +388,9 @@ export function InstructorJobCard({
                   <IconSymbol name="clock.fill" size={14} color={metaAccent} />
                   <Text
                     style={{
-                      fontFamily: FontFamily.bodyMedium,
-                      fontSize: FontSize.caption,
-                      lineHeight: LineHeight.caption,
+                      fontFamily: FontFamily.bodyStrong,
+                      fontSize: FontSize.body,
+                      lineHeight: LineHeight.body,
                       color: theme.color.textMuted,
                       includeFontPadding: false,
                     }}
@@ -500,6 +441,7 @@ export function InstructorJobCard({
                         disabledLabelColor: theme.color.textMuted,
                         nativeTintColor: isExpired ? theme.color.textMuted : theme.color.onPrimary,
                       }}
+                      labelStyle={{ fontWeight: "800" }}
                     />
                   ) : job.applicationStatus ? (
                     <DotStatusPill
@@ -646,7 +588,6 @@ export function InstructorJobCard({
                 style={{
                   ...BrandType.bodyStrong,
                   color: theme.jobs.signal,
-                  fontVariant: ["tabular-nums"],
                 }}
               >
                 {boost.totalPay}

@@ -127,7 +127,17 @@ export function useProfileSubpageSheet({
   return collapsedSheetHeight;
 }
 
-export function ProfileSubpageSheetProvider({ children }: PropsWithChildren) {
+export function ProfileSubpageSheetProvider({
+  children,
+  routes,
+  ownerId,
+}: PropsWithChildren<{
+  routes: readonly ProfileSubpageRouteConfig[];
+  ownerId: string;
+}>) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const theme = useTheme();
   const [accessories, setAccessories] = useState<
     Record<string, React.ReactNode | null | undefined>
   >({});
@@ -150,25 +160,6 @@ export function ProfileSubpageSheetProvider({ children }: PropsWithChildren) {
     }),
     [accessories, setAccessory],
   );
-
-  return (
-    <ProfileSubpageAccessoryContext.Provider value={value}>
-      {children}
-    </ProfileSubpageAccessoryContext.Provider>
-  );
-}
-
-export function ProfileSubpageSheetHost({
-  routes,
-  ownerId,
-}: {
-  routes: readonly ProfileSubpageRouteConfig[];
-  ownerId: string;
-}) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const accessoryContext = useContext(ProfileSubpageAccessoryContext);
-  const theme = useTheme();
 
   const activeRoute = useMemo(
     () =>
@@ -195,7 +186,7 @@ export function ProfileSubpageSheetHost({
       stickyHeader: (
         <ProfileSubpageSheetHeader
           title={activeRoute.title}
-          rightAccessory={accessoryContext?.accessories[activeRoute.routeMatchPath] ?? null}
+          rightAccessory={accessories[activeRoute.routeMatchPath] ?? null}
           onBack={() => router.back()}
           {...(isDiditRoute || isPaymentsRoute ? { accentColor } : {})}
         />
@@ -214,7 +205,7 @@ export function ProfileSubpageSheetHost({
     };
   }, [
     activeRoute,
-    accessoryContext?.accessories,
+    accessories,
     router,
     theme.color.primary,
     theme.color.success,
@@ -223,7 +214,11 @@ export function ProfileSubpageSheetHost({
 
   useGlobalTopSheet("profile", config, ownerId);
 
-  return null;
+  return (
+    <ProfileSubpageAccessoryContext.Provider value={value}>
+      {children}
+    </ProfileSubpageAccessoryContext.Provider>
+  );
 }
 
 type ProfileSubpageScrollViewProps = Omit<

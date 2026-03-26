@@ -103,6 +103,15 @@ export default function StudioProfileScreen() {
     api.users.getMyStudioSettings,
     shouldLoadSettings ? emptyArgs : "skip",
   );
+  const [lastResolvedStudioSettings, setLastResolvedStudioSettings] =
+    useState<typeof studioSettings>();
+  useEffect(() => {
+    if (studioSettings !== undefined) {
+      setLastResolvedStudioSettings(studioSettings);
+    }
+  }, [studioSettings]);
+  const resolvedStudioSettings =
+    studioSettings === undefined ? lastResolvedStudioSettings : studioSettings;
   const updateMyStudioSettings = useMutation(api.users.updateMyStudioSettings);
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
   const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
@@ -111,36 +120,36 @@ export default function StudioProfileScreen() {
   );
 
   useEffect(() => {
-    if (studioSettings) {
-      setAutoAcceptDefault(studioSettings.autoAcceptDefault ?? false);
+    if (resolvedStudioSettings) {
+      setAutoAcceptDefault(resolvedStudioSettings.autoAcceptDefault ?? false);
     }
-  }, [studioSettings]);
+  }, [resolvedStudioSettings]);
 
   useEffect(() => {
-    if (studioSettings) {
-      setAutoExpireMinutesBefore(studioSettings.autoExpireMinutesBefore);
+    if (resolvedStudioSettings) {
+      setAutoExpireMinutesBefore(resolvedStudioSettings.autoExpireMinutesBefore);
     }
-  }, [studioSettings]);
+  }, [resolvedStudioSettings]);
 
   const handleAutoAcceptDefaultChange = useCallback(
     (value: boolean) => {
-      if (!studioSettings) {
+      if (!resolvedStudioSettings) {
         return;
       }
       const previousValue = autoAcceptDefault;
       setAutoAcceptDefault(value);
       setIsSavingAutoAcceptDefault(true);
       void updateMyStudioSettings({
-        studioName: studioSettings.studioName ?? "",
-        address: studioSettings.address ?? "",
-        zone: studioSettings.zone ?? "",
+        studioName: resolvedStudioSettings.studioName ?? "",
+        address: resolvedStudioSettings.address ?? "",
+        zone: resolvedStudioSettings.zone ?? "",
         ...omitUndefined({
           autoAcceptDefault: value,
           autoExpireMinutesBefore: autoExpireMinutesBefore,
-          sports: studioSettings.sports,
-          contactPhone: studioSettings.contactPhone,
-          latitude: studioSettings.latitude,
-          longitude: studioSettings.longitude,
+          sports: resolvedStudioSettings.sports,
+          contactPhone: resolvedStudioSettings.contactPhone,
+          latitude: resolvedStudioSettings.latitude,
+          longitude: resolvedStudioSettings.longitude,
         }),
       })
         .catch(() => {
@@ -150,33 +159,33 @@ export default function StudioProfileScreen() {
           setIsSavingAutoAcceptDefault(false);
         });
     },
-    [autoAcceptDefault, autoExpireMinutesBefore, studioSettings, updateMyStudioSettings],
+    [autoAcceptDefault, autoExpireMinutesBefore, resolvedStudioSettings, updateMyStudioSettings],
   );
 
   const handleAutoExpireMinutesBeforeChange = useCallback(
     (minutes: number | undefined) => {
-      if (!studioSettings) {
+      if (!resolvedStudioSettings) {
         return;
       }
       const previousValue = autoExpireMinutesBefore;
       setAutoExpireMinutesBefore(minutes);
       void updateMyStudioSettings({
-        studioName: studioSettings.studioName ?? "",
-        address: studioSettings.address ?? "",
-        zone: studioSettings.zone ?? "",
+        studioName: resolvedStudioSettings.studioName ?? "",
+        address: resolvedStudioSettings.address ?? "",
+        zone: resolvedStudioSettings.zone ?? "",
         ...omitUndefined({
-          autoAcceptDefault: studioSettings.autoAcceptDefault,
+          autoAcceptDefault: resolvedStudioSettings.autoAcceptDefault,
           autoExpireMinutesBefore: minutes,
-          sports: studioSettings.sports,
-          contactPhone: studioSettings.contactPhone,
-          latitude: studioSettings.latitude,
-          longitude: studioSettings.longitude,
+          sports: resolvedStudioSettings.sports,
+          contactPhone: resolvedStudioSettings.contactPhone,
+          latitude: resolvedStudioSettings.latitude,
+          longitude: resolvedStudioSettings.longitude,
         }),
       }).catch(() => {
         setAutoExpireMinutesBefore(previousValue);
       });
     },
-    [autoExpireMinutesBefore, studioSettings, updateMyStudioSettings],
+    [autoExpireMinutesBefore, resolvedStudioSettings, updateMyStudioSettings],
   );
 
   const handleRequestEdit = useCallback(() => {
@@ -221,7 +230,9 @@ export default function StudioProfileScreen() {
     [currentUser, reloadAuthSession],
   );
   const profileName =
-    studioSettings?.studioName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
+    resolvedStudioSettings?.studioName ??
+    currentUser?.fullName ??
+    t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
   const roleValue = t(
     ROLE_TRANSLATION_KEYS[currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS] ??
@@ -235,37 +246,37 @@ export default function StudioProfileScreen() {
       })
     : null;
 
-  const sportsSummary = getSportsSummary(studioSettings?.sports ?? [], t);
-  const branchSummary = studioSettings?.entitlement?.branchesFeatureEnabled
+  const sportsSummary = getSportsSummary(resolvedStudioSettings?.sports ?? [], t);
+  const branchSummary = resolvedStudioSettings?.entitlement?.branchesFeatureEnabled
     ? t("profile.settings.branches.summary", {
-        primary: studioSettings?.primaryBranch?.name ?? t("profile.settings.branches.none"),
-        active: studioSettings?.entitlement?.activeBranchCount ?? 0,
-        max: studioSettings?.entitlement?.maxBranches ?? 1,
+        primary: resolvedStudioSettings?.primaryBranch?.name ?? t("profile.settings.branches.none"),
+        active: resolvedStudioSettings?.entitlement?.activeBranchCount ?? 0,
+        max: resolvedStudioSettings?.entitlement?.maxBranches ?? 1,
       })
     : t("profile.settings.branches.singleBranchSummary", {
         primary:
-          studioSettings?.primaryBranch?.name ??
-          studioSettings?.studioName ??
+          resolvedStudioSettings?.primaryBranch?.name ??
+          resolvedStudioSettings?.studioName ??
           t("profile.settings.branches.none"),
       });
-  const provider = studioSettings?.calendarProvider;
+  const provider = resolvedStudioSettings?.calendarProvider;
   const calendarSummary =
     !provider || provider === "none"
       ? t("profile.settings.calendar.provider.none")
       : provider === "google"
         ? t("profile.settings.calendar.provider.google")
         : t("profile.settings.calendar.provider.apple");
-  const socialCount = Object.keys(studioSettings?.socialLinks ?? {}).length;
-  const sportsCount = studioSettings?.sports?.length ?? 0;
+  const socialCount = Object.keys(resolvedStudioSettings?.socialLinks ?? {}).length;
+  const sportsCount = resolvedStudioSettings?.sports?.length ?? 0;
   const setupActions = [
-    !studioSettings?.address
+    !resolvedStudioSettings?.address
       ? {
           label: t("profile.setup.addStudioDetails"),
           onPress: handleRequestEdit,
           icon: "sparkles" as const,
         }
       : null,
-    !studioSettings?.zone
+    !resolvedStudioSettings?.zone
       ? {
           label: t("profile.setup.setCoverageZone"),
           onPress: handleRequestEdit,
@@ -297,7 +308,7 @@ export default function StudioProfileScreen() {
   );
   const profileStatus = setupActions.length === 0 ? "ready" : "pending";
   const publicProfileSummary =
-    studioSettings?.bio?.trim() ||
+    resolvedStudioSettings?.bio?.trim() ||
     (socialCount > 0
       ? t("profile.settings.publicProfileActive", { count: socialCount })
       : t("profile.settings.publicProfilePrompt"));
@@ -307,14 +318,14 @@ export default function StudioProfileScreen() {
         <ProfileHeaderSheet
           profileName={profileName}
           roleLabel={t("profile.hero.studioProfile")}
-          profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
+          profileImageUrl={resolvedStudioSettings?.profileImageUrl ?? currentUser?.image}
           visualVariant="studioFeature"
           onRequestEdit={handleRequestEdit}
           primaryActionLabel={t("profile.actions.edit")}
           status={profileStatus}
-          bio={studioSettings?.bio}
-          socialLinks={studioSettings?.socialLinks}
-          sports={studioSettings?.sports ?? []}
+          bio={resolvedStudioSettings?.bio}
+          socialLinks={resolvedStudioSettings?.socialLinks}
+          sports={resolvedStudioSettings?.sports ?? []}
         />
       </View>
     ),
@@ -323,10 +334,10 @@ export default function StudioProfileScreen() {
       handleRequestEdit,
       profileName,
       profileStatus,
-      studioSettings?.bio,
-      studioSettings?.profileImageUrl,
-      studioSettings?.socialLinks,
-      studioSettings?.sports,
+      resolvedStudioSettings?.bio,
+      resolvedStudioSettings?.profileImageUrl,
+      resolvedStudioSettings?.socialLinks,
+      resolvedStudioSettings?.sports,
       t,
     ],
   );
@@ -360,7 +371,7 @@ export default function StudioProfileScreen() {
   if (
     !hasActivated ||
     !isBodyReady ||
-    (currentUser?.role === "studio" && studioSettings === undefined)
+    (currentUser?.role === "studio" && resolvedStudioSettings === undefined)
   ) {
     return (
       <TabScreenRoot

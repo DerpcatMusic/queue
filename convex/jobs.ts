@@ -6,7 +6,11 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { APPLICATION_STATUSES, REQUIRED_LEVELS, SESSION_LANGUAGES } from "./constants";
 import { requireUserRole } from "./lib/auth";
 import { isKnownZoneId, normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
-import { hasCoverageKey, loadInstructorEligibility } from "./lib/instructorEligibility";
+import {
+  hasCoverageKey,
+  isEligibleForJob,
+  loadInstructorEligibility,
+} from "./lib/instructorEligibility";
 import {
   ensureStudioInfrastructure,
   getPrimaryStudioBranch,
@@ -230,6 +234,44 @@ export const getInstructorTabCounts = query({
             continue;
           }
           if (!hasCoverageKey(eligibility, job.sport, normalizedJobZone)) {
+            continue;
+          }
+          if (job.startTime <= now) continue;
+          if (job.applicationDeadline !== undefined && job.applicationDeadline < now) {
+            continue;
+          }
+
+          matchingById.add(String(job._id));
+          if (matchingById.size >= BADGE_COUNT_CAP) break;
+        }
+        if (matchingById.size >= BADGE_COUNT_CAP) break;
+      }
+
+      jobsBadgeCount = matchingById.size;
+    } else if (eligibility.sports.size > 0) {
+      const sports = [...eligibility.sports];
+      const fetchPerSport = Math.min(
+        Math.max(Math.ceil((BADGE_COUNT_CAP * 2) / sports.length), 8),
+        60,
+      );
+      const openJobsBySport = await Promise.all(
+        sports.map((sport) =>
+          ctx.db
+            .query("jobs")
+            .withIndex("by_sport_and_status", (q) => q.eq("sport", sport).eq("status", "open"))
+            .order("desc")
+            .take(fetchPerSport),
+        ),
+      );
+
+      const matchingById = new Set<string>();
+      for (const jobsForSport of openJobsBySport) {
+        for (const job of jobsForSport) {
+          const normalizedJobZone = trimOptionalString(job.zone);
+          if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
+            continue;
+          }
+          if (!isEligibleForJob(eligibility, job.sport, normalizedJobZone)) {
             continue;
           }
           if (job.startTime <= now) continue;
@@ -661,7 +703,7 @@ export const getAvailableJobsForInstructor = query({
     const now = args.now ?? Date.now();
 
     const eligibility = await loadInstructorEligibility(ctx, instructor._id);
-    if (eligibility.coverageCount === 0) {
+    if (eligibility.coverageCount === 0 && eligibility.sports.size === 0) {
       return [];
     }
 
@@ -669,43 +711,78 @@ export const getAvailableJobsForInstructor = query({
     assertPositiveInteger(rawLimit, "limit");
     const limit = Math.min(rawLimit, 200);
 
-    const fetchPerPair = Math.min(
-      Math.max(Math.ceil((limit * 2) / eligibility.coveragePairs.length), 8),
-      80,
-    );
-
-    const openJobsByCoveragePair = await Promise.all(
-      eligibility.coveragePairs.map(({ sport, zone }) =>
-        ctx.db
-          .query("jobs")
-          .withIndex("by_sport_zone_status_postedAt", (q) =>
-            q.eq("sport", sport).eq("zone", zone).eq("status", "open"),
-          )
-          .order("desc")
-          .take(fetchPerPair),
-      ),
-    );
-
     const matchingById = new Map<Id<"jobs">, Doc<"jobs">>();
-    for (const jobsForPair of openJobsByCoveragePair) {
-      for (const job of jobsForPair) {
-        const normalizedJobZone = trimOptionalString(job.zone);
-        if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
-          continue;
+    if (eligibility.coverageCount > 0) {
+      const fetchPerPair = Math.min(
+        Math.max(Math.ceil((limit * 2) / eligibility.coveragePairs.length), 8),
+        80,
+      );
+
+      const openJobsByCoveragePair = await Promise.all(
+        eligibility.coveragePairs.map(({ sport, zone }) =>
+          ctx.db
+            .query("jobs")
+            .withIndex("by_sport_zone_status_postedAt", (q) =>
+              q.eq("sport", sport).eq("zone", zone).eq("status", "open"),
+            )
+            .order("desc")
+            .take(fetchPerPair),
+        ),
+      );
+
+      for (const jobsForPair of openJobsByCoveragePair) {
+        for (const job of jobsForPair) {
+          const normalizedJobZone = trimOptionalString(job.zone);
+          if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
+            continue;
+          }
+          const zoneSetForSport = eligibility.coverageBySport.get(job.sport);
+          if (!zoneSetForSport?.has(normalizedJobZone)) {
+            continue;
+          }
+          if (job.startTime <= now) continue;
+          if (
+            typeof job.applicationDeadline === "number" &&
+            Number.isFinite(job.applicationDeadline) &&
+            job.applicationDeadline <= now
+          ) {
+            continue;
+          }
+          matchingById.set(job._id, job);
         }
-        const zoneSetForSport = eligibility.coverageBySport.get(job.sport);
-        if (!zoneSetForSport?.has(normalizedJobZone)) {
-          continue;
+      }
+    } else {
+      const sports = [...eligibility.sports];
+      const fetchPerSport = Math.min(Math.max(Math.ceil((limit * 2) / sports.length), 8), 80);
+      const openJobsBySport = await Promise.all(
+        sports.map((sport) =>
+          ctx.db
+            .query("jobs")
+            .withIndex("by_sport_and_status", (q) => q.eq("sport", sport).eq("status", "open"))
+            .order("desc")
+            .take(fetchPerSport),
+        ),
+      );
+
+      for (const jobsForSport of openJobsBySport) {
+        for (const job of jobsForSport) {
+          const normalizedJobZone = trimOptionalString(job.zone);
+          if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
+            continue;
+          }
+          if (!isEligibleForJob(eligibility, job.sport, normalizedJobZone)) {
+            continue;
+          }
+          if (job.startTime <= now) continue;
+          if (
+            typeof job.applicationDeadline === "number" &&
+            Number.isFinite(job.applicationDeadline) &&
+            job.applicationDeadline <= now
+          ) {
+            continue;
+          }
+          matchingById.set(job._id, job);
         }
-        if (job.startTime <= now) continue;
-        if (
-          typeof job.applicationDeadline === "number" &&
-          Number.isFinite(job.applicationDeadline) &&
-          job.applicationDeadline <= now
-        ) {
-          continue;
-        }
-        matchingById.set(job._id, job);
       }
     }
 
@@ -1219,7 +1296,7 @@ export const applyToJob = mutation({
       if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
         throw new ConvexError("Job has invalid zone configuration");
       }
-      if (!hasCoverageKey(eligibility, job.sport, normalizedJobZone)) {
+      if (!isEligibleForJob(eligibility, job.sport, normalizedJobZone)) {
         throw new ConvexError("You are not eligible for this job");
       }
 
@@ -1312,7 +1389,7 @@ export const applyToJob = mutation({
     if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
       throw new ConvexError("Job has invalid zone configuration");
     }
-    if (!hasCoverageKey(eligibility, job.sport, normalizedJobZone)) {
+    if (!isEligibleForJob(eligibility, job.sport, normalizedJobZone)) {
       throw new ConvexError("You are not eligible for this job");
     }
     if (job.applicationDeadline !== undefined && now > job.applicationDeadline) {

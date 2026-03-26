@@ -2,14 +2,14 @@ import { useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, Platform, Text, View } from "react-native";
+import { I18nManager, Platform, Text, useWindowDimensions, View } from "react-native";
 import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { DotStatusPill } from "@/components/home/home-shared";
 import { InstructorJobCard } from "@/components/jobs/instructor/instructor-job-card";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
+import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
-import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -17,6 +17,7 @@ import { BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
+import { useAppInsets } from "@/hooks/use-app-insets";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { FontFamily, FontSize, LetterSpacing, LineHeight } from "@/lib/design-system";
@@ -35,6 +36,8 @@ export default function InstructorStudioProfileRoute() {
   const router = useRouter();
   const pathname = usePathname();
   const now = useMinuteNow();
+  const { height: screenHeight } = useWindowDimensions();
+  const { safeBottom, safeTop } = useAppInsets();
   const { color: palette } = useTheme();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
@@ -46,11 +49,13 @@ export default function InstructorStudioProfileRoute() {
   const [withdrawingApplicationId, setWithdrawingApplicationId] =
     useState<Id<"jobApplications"> | null>(null);
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
-  const { contentContainerStyle } = useTopSheetContentInsets({
-    topSpacing: BrandSpacing.xs,
-    bottomSpacing: BrandSpacing.xxl,
-    horizontalPadding: BrandSpacing.xl,
-  });
+  // Additional spacing on top of the base insets applied by ScreenScaffold
+  // ScreenScaffold automatically applies collapsedSheetHeight and safeBottom
+  const additionalSpacing = {
+    paddingTop: BrandSpacing.xs,
+    paddingBottom: BrandSpacing.xxl,
+    paddingHorizontal: BrandSpacing.xl,
+  };
 
   const queryNow = Math.floor(now / (60 * 1000)) * 60 * 1000;
   const applyToJob = useMutation(api.jobs.applyToJob);
@@ -132,6 +137,11 @@ export default function InstructorStudioProfileRoute() {
       return null;
     }
     const headerHeight = 284;
+    const availableHeight = Math.max(
+      1,
+      getTopSheetAvailableHeight(screenHeight, safeTop, safeBottom),
+    );
+    const collapsedStep = Math.max(0.24, Math.min(0.42, headerHeight / availableHeight));
 
     return {
       content: (
@@ -242,15 +252,14 @@ export default function InstructorStudioProfileRoute() {
         vertical: 0,
         horizontal: 0,
       },
-      steps: [0.24],
+      steps: [collapsedStep],
       initialStep: 0,
       draggable: false,
       expandable: false,
-      collapsedHeightMode: "content" as const,
       backgroundColor: palette.primary,
       topInsetColor: palette.primary,
     };
-  }, [router, studioProfile, pathname, t, palette]);
+  }, [router, safeBottom, safeTop, screenHeight, studioProfile, pathname, t, palette]);
 
   useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:studio-profile");
 
@@ -271,7 +280,7 @@ export default function InstructorStudioProfileRoute() {
       style={{ flex: 1, backgroundColor: palette.appBg }}
       topInsetTone="sheet"
       contentContainerStyle={[
-        contentContainerStyle,
+        additionalSpacing,
         {
           gap: BrandSpacing.lg,
         },

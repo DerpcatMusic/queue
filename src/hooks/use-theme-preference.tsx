@@ -7,7 +7,7 @@ import {
   loadThemePreference,
   persistThemePreference,
   type ThemePreference,
-} from "@/lib/theme-preference";
+} from "@/theme/theme";
 
 type ResolvedScheme = "light" | "dark";
 
