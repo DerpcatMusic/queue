@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Platform, Pressable, View } from "react-native";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -250,7 +250,7 @@ export default function ProfilePaymentsScreen() {
     return <Redirect href="/" />;
   }
 
-  const rows = paymentRows ?? [];
+  const rows = useMemo(() => paymentRows ?? [], [paymentRows]);
   const role = currentUser.role as "studio" | "instructor";
   const isDetailLoading = selectedPaymentId !== null && selectedPaymentDetail === undefined;
   const isManualPayoutMode = payoutSummary?.payoutReleaseMode !== "automatic";
@@ -267,17 +267,17 @@ export default function ProfilePaymentsScreen() {
   const effectivePreferenceMode = pendingPreferenceMode ?? savedPreferenceMode;
   const scheduledAtLabel = formatDateTime(scheduleDraft.getTime(), locale);
   const appReturnUrl = resolveRapydAppReturnUrl("beneficiary");
-  const buildBridgeUrl = (result: "complete" | "cancel"): string => {
+  const buildBridgeUrl = useCallback((result: "complete" | "cancel"): string => {
     return buildRapydBridgeUrl({
       bridgePath: "/rapyd/beneficiary-return-bridge",
       result,
       appReturnUrl,
     });
-  };
-  const beneficiaryCompleteUrl = buildBridgeUrl("complete");
-  const beneficiaryCancelUrl = buildBridgeUrl("cancel");
+  }, [appReturnUrl]);
+  const beneficiaryCompleteUrl = useMemo(() => buildBridgeUrl("complete"), [buildBridgeUrl]);
+  const beneficiaryCancelUrl = useMemo(() => buildBridgeUrl("cancel"), [buildBridgeUrl]);
 
-  const withdrawToBank = async () => {
+  const withdrawToBank = useCallback(async () => {
     setWithdrawBusy(true);
     setWithdrawError(null);
     setWithdrawInfo(null);
@@ -301,9 +301,9 @@ export default function ProfilePaymentsScreen() {
     } finally {
       setWithdrawBusy(false);
     }
-  };
+  }, [requestPayoutWithdrawal, t]);
 
-  const confirmWithdrawToBank = () => {
+  const confirmWithdrawToBank = useCallback(() => {
     Alert.alert(
       t("profile.payments.withdrawConfirmTitle"),
       t("profile.payments.withdrawConfirmBody"),
@@ -318,9 +318,9 @@ export default function ProfilePaymentsScreen() {
         },
       ],
     );
-  };
+  }, [t, withdrawToBank]);
 
-  const startHostedBankOnboarding = async () => {
+  const startHostedBankOnboarding = useCallback(async () => {
     setOnboardingBusy(true);
     setIsFinalizingOnboarding(false);
     setShowOnboardingSuccess(false);
@@ -358,9 +358,9 @@ export default function ProfilePaymentsScreen() {
     } finally {
       setOnboardingBusy(false);
     }
-  };
+  }, [createBeneficiaryOnboardingForInstructor, beneficiaryCompleteUrl, beneficiaryCancelUrl, appReturnUrl, t]);
 
-  const savePayoutPreference = async (
+  const savePayoutPreference = useCallback(async (
     preferenceMode: PayoutPreferenceMode,
     scheduledDate?: number,
   ) => {
@@ -396,9 +396,9 @@ export default function ProfilePaymentsScreen() {
     } finally {
       setPreferenceBusy(false);
     }
-  };
+  }, [upsertMyPayoutPreference, t]);
 
-  const handlePreferenceModeChange = (mode: PayoutPreferenceMode) => {
+  const handlePreferenceModeChange = useCallback((mode: PayoutPreferenceMode) => {
     setPreferenceError(null);
     setPreferenceInfo(null);
     if (mode === "scheduled_date") {
@@ -411,7 +411,7 @@ export default function ProfilePaymentsScreen() {
     setPendingPreferenceMode(null);
     setShowSchedulePicker(false);
     void savePayoutPreference(mode);
-  };
+  }, [payoutSummary?.payoutPreferenceScheduledDate, savePayoutPreference]);
 
   if (isFinalizingOnboarding) {
     return (

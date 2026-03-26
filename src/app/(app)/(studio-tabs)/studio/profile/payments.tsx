@@ -74,30 +74,30 @@ export default function ProfilePaymentsScreen() {
   return (
     <ProfileSubpageScrollView
       routeKey="studio/profile/payments"
-      className="flex-1 bg-app-bg"
-      contentContainerClassName="gap-lg"
+      style={{ flex: 1, backgroundColor: color.appBg }}
+      contentContainerStyle={{ gap: BrandSpacing.lg }}
       topSpacing={BrandSpacing.md}
       bottomSpacing={BrandSpacing.xxl}
     >
-      <View className="px-lg gap-xs">
-        <ThemedText type="caption" className="text-muted">
+      <View style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.xs }}>
+        <ThemedText type="caption" style={{ color: color.textMuted }}>
           {t("profile.payments.summarySubtitle")}
         </ThemedText>
       </View>
 
-      <View className="px-sm">
+      <View style={{ paddingHorizontal: BrandSpacing.sm }}>
         <KitList inset>
           <KitListItem
             title={t("profile.payments.processedPayments")}
-            accessory={<ThemedText className="text-muted">{processedCount}</ThemedText>}
+            accessory={<ThemedText style={{ color: color.textMuted }}>{processedCount}</ThemedText>}
           />
           <KitListItem
             title={t("profile.payments.paidOut")}
-            accessory={<ThemedText className="text-muted">{paidOutCount}</ThemedText>}
+            accessory={<ThemedText style={{ color: color.textMuted }}>{paidOutCount}</ThemedText>}
           />
           <KitListItem
             title={t("profile.payments.failed")}
-            accessory={<ThemedText className="text-danger">{failedCount}</ThemedText>}
+            accessory={<ThemedText style={{ color: color.danger }}>{failedCount}</ThemedText>}
           />
         </KitList>
       </View>
@@ -117,8 +117,8 @@ export default function ProfilePaymentsScreen() {
       />
 
       {selectedPaymentId ? (
-        <View className="gap-sm px-sm">
-          <View className="flex-row items-center justify-between px-xs">
+        <View style={{ gap: BrandSpacing.sm, paddingHorizontal: BrandSpacing.sm }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: BrandSpacing.xs }}>
             <ThemedText type="title">{t("profile.payments.detailTitle")}</ThemedText>
             <Pressable
               accessibilityRole="button"
@@ -134,7 +134,7 @@ export default function ProfilePaymentsScreen() {
                 backgroundColor: pressed ? color.surfaceElevated : color.surfaceAlt,
               })}
             >
-              <ThemedText type="caption" className="text-muted">
+              <ThemedText type="caption" style={{ color: color.textMuted }}>
                 {t("common.clear")}
               </ThemedText>
             </Pressable>
@@ -142,7 +142,7 @@ export default function ProfilePaymentsScreen() {
           {isDetailLoading ? (
             <KitList inset>
               <KitListItem>
-                <ThemedText className="text-muted">
+                <ThemedText style={{ color: color.textMuted }}>
                   {t("profile.payments.loadingDetail")}
                 </ThemedText>
               </KitListItem>
@@ -150,18 +150,18 @@ export default function ProfilePaymentsScreen() {
           ) : !selectedPaymentDetail ? (
             <KitList inset>
               <KitListItem>
-                <ThemedText className="text-muted">
+                <ThemedText style={{ color: color.textMuted }}>
                   {t("profile.payments.detailUnavailable")}
                 </ThemedText>
               </KitListItem>
             </KitList>
           ) : (
-            <View className="gap-sm">
+            <View style={{ gap: BrandSpacing.sm }}>
               <KitList inset>
                 <KitListItem
                   title={t("profile.payments.paymentStatus")}
                   accessory={
-                    <ThemedText className="text-muted">
+                    <ThemedText style={{ color: color.textMuted }}>
                       {getPaymentStatusLabel(selectedPaymentDetail.payment.status)}
                     </ThemedText>
                   }
@@ -169,7 +169,7 @@ export default function ProfilePaymentsScreen() {
                 <KitListItem
                   title={t("profile.payments.payoutStatus")}
                   accessory={
-                    <ThemedText className="text-muted">
+                    <ThemedText style={{ color: color.textMuted }}>
                       {selectedPaymentDetail.payout
                         ? getPayoutStatusLabel(selectedPaymentDetail.payout.status)
                         : t("profile.payments.notCreated")}
@@ -180,10 +180,10 @@ export default function ProfilePaymentsScreen() {
                   title={t("profile.payments.invoiceStatus")}
                   accessory={
                     <ThemedText
-                      className={
+                      style={
                         selectedPaymentDetail.invoice?.status === "failed"
-                          ? "text-danger"
-                          : "text-muted"
+                          ? { color: color.danger }
+                          : { color: color.textMuted }
                       }
                     >
                       {selectedPaymentDetail.invoice
@@ -196,7 +196,7 @@ export default function ProfilePaymentsScreen() {
                   <KitListItem
                     title={t("profile.payments.invoiceId")}
                     accessory={
-                      <ThemedText className="text-muted">
+                      <ThemedText style={{ color: color.textMuted }}>
                         {selectedPaymentDetail.invoice.externalInvoiceId}
                       </ThemedText>
                     }
@@ -209,7 +209,7 @@ export default function ProfilePaymentsScreen() {
                       : t("profile.payments.instructorAmount")
                   }
                   accessory={
-                    <ThemedText className="text-muted">
+                    <ThemedText style={{ color: color.textMuted }}>
                       {formatAgorotCurrency(
                         role === "studio"
                           ? selectedPaymentDetail.payment.studioChargeAmountAgorot
@@ -223,7 +223,7 @@ export default function ProfilePaymentsScreen() {
                 <KitListItem
                   title={t("profile.payments.platformMarkup")}
                   accessory={
-                    <ThemedText className="text-muted">
+                    <ThemedText style={{ color: color.textMuted }}>
                       {formatAgorotCurrency(
                         selectedPaymentDetail.payment.platformMarkupAmountAgorot,
                         locale,
@@ -235,7 +235,7 @@ export default function ProfilePaymentsScreen() {
                 <KitListItem
                   title={t("profile.payments.created")}
                   accessory={
-                    <ThemedText className="text-muted">
+                    <ThemedText style={{ color: color.textMuted }}>
                       {formatDateTime(selectedPaymentDetail.payment.createdAt, locale)}
                     </ThemedText>
                   }
@@ -244,7 +244,7 @@ export default function ProfilePaymentsScreen() {
               <KitList inset>
                 {selectedPaymentDetail.timeline.length === 0 ? (
                   <KitListItem>
-                    <ThemedText className="text-muted">
+                    <ThemedText style={{ color: color.textMuted }}>
                       {t("profile.payments.noProviderEvents")}
                     </ThemedText>
                   </KitListItem>
@@ -254,12 +254,12 @@ export default function ProfilePaymentsScreen() {
                       key={event._id}
                       title={event.title}
                       accessory={
-                        <ThemedText className="text-muted">
+                        <ThemedText style={{ color: color.textMuted }}>
                           {formatDateTime(event.createdAt, locale)}
                         </ThemedText>
                       }
                     >
-                      <ThemedText type="caption" className="text-muted">
+                      <ThemedText type="caption" style={{ color: color.textMuted }}>
                         {event.description}
                         {event.signatureValid ? "" : " | signature_invalid"}
                         {event.processed ? "" : " | not_processed"}
@@ -273,10 +273,10 @@ export default function ProfilePaymentsScreen() {
         </View>
       ) : null}
 
-      <View className="px-sm">
+      <View style={{ paddingHorizontal: BrandSpacing.sm }}>
         <KitList inset>
           <KitListItem>
-            <ThemedText type="caption" className="text-muted">
+            <ThemedText type="caption" style={{ color: color.textMuted }}>
               Instructor payout onboarding and bank connection are managed from the instructor app
               profile.
             </ThemedText>

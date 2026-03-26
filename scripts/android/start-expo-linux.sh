@@ -107,10 +107,86 @@ APP_ID="$(node -e "const fs=require('fs');const p='app.json';let id='com.derpcat
 METRO_PORT="${EXPO_METRO_PORT:-8081}"
 ANDROID_BUILD_VARIANT="${EXPO_ANDROID_BUILD_VARIANT:-debugOptimized}"
 
+run_expo_android_install() {
+  local log_file
+  log_file="$(mktemp /tmp/queue-android-install-XXXX.log)"
+
+  set +e
+  npx expo run:android --variant "$ANDROID_BUILD_VARIANT" 2>&1 | tee "$log_file"
+  local status=${PIPESTATUS[0]}
+  set -e
+
+  if [[ $status -ne 0 ]] && grep -q "INSTALL_FAILED_INSUFFICIENT_STORAGE" "$log_file"; then
+    echo "Install failed due to insufficient emulator storage. Uninstalling existing app and retrying once..."
+    adb -s "$SERIAL" uninstall "$APP_ID" >/dev/null 2>&1 || true
+    adb -s "$SERIAL" shell pm uninstall --user 0 "$APP_ID" >/dev/null 2>&1 || true
+
+    set +e
+    npx expo run:android --variant "$ANDROID_BUILD_VARIANT" 2>&1 | tee "$log_file"
+    status=${PIPESTATUS[0]}
+    set -e
+
+    if [[ $status -ne 0 ]] && grep -q "INSTALL_FAILED_INSUFFICIENT_STORAGE" "$log_file"; then
+      cat <<EOF
+Emulator storage is still insufficient after uninstalling $APP_ID.
+Next steps:
+  1. adb -s "$SERIAL" uninstall "$APP_ID"
+  2. Open Android Studio Device Manager and wipe data for the emulator
+     or create a fresh AVD.
+EOF
+    fi
+  fi
+
+  rm -f "$log_file"
+  return $status
+}
+
+# Fingerprint of native-affecting files: package.json + expo config + gradle files.
+# Forces a rebuild when native dependencies (unistyles, nitro-modules, reanimated, etc.) change.
+compute_native_fingerprint() {
+  local fp_file="$PROJECT_ROOT/android/.native-fingerprint"
+  local fp_new
+  fp_new="$(cat "$PROJECT_ROOT/package.json" 2>/dev/null | cksum | awk '{print $1}')"
+  fp_new="$fp_new $(cat "$PROJECT_ROOT/app.json" 2>/dev/null | cksum | awk '{print $1}')"
+  if [[ -f "$PROJECT_ROOT/android/app/build.gradle" ]]; then
+    fp_new="$fp_new $(cat "$PROJECT_ROOT/android/app/build.gradle" 2>/dev/null | cksum | awk '{print $1}')"
+  fi
+  if [[ -f "$PROJECT_ROOT/android/build.gradle" ]]; then
+    fp_new="$fp_new $(cat "$PROJECT_ROOT/android/build.gradle" 2>/dev/null | cksum | awk '{print $1}')"
+  fi
+  if [[ -f "$PROJECT_ROOT/android/settings.gradle" ]]; then
+    fp_new="$fp_new $(cat "$PROJECT_ROOT/android/settings.gradle" 2>/dev/null | cksum | awk '{print $1}')"
+  fi
+  echo "$fp_new" | tr -d ' '
+}
+
+FORCE_REBUILD="${ANDROID_FORCE_REBUILD:-}"
+if [[ -z "$FORCE_REBUILD" ]]; then
+  FINGERPRINT_FILE="$PROJECT_ROOT/android/.native-fingerprint"
+  CURRENT_FP="$(compute_native_fingerprint)"
+  PREVIOUS_FP=""
+  if [[ -f "$FINGERPRINT_FILE" ]]; then
+    PREVIOUS_FP="$(cat "$FINGERPRINT_FILE")"
+  fi
+  if [[ "$CURRENT_FP" != "$PREVIOUS_FP" ]]; then
+    FORCE_REBUILD=1
+    echo "Native fingerprint changed — forcing rebuild..."
+  fi
+fi
+
 if ! adb -s "$SERIAL" shell pm list packages "$APP_ID" | tr -d '\r' | grep -q "package:$APP_ID"; then
   echo "Dev client not installed ($APP_ID). Building/installing variant '$ANDROID_BUILD_VARIANT'..."
-  npx expo run:android --variant "$ANDROID_BUILD_VARIANT"
+  run_expo_android_install
+elif [[ "$FORCE_REBUILD" == "1" ]]; then
+  echo "Native deps changed — rebuilding/installing variant '$ANDROID_BUILD_VARIANT'..."
+  adb -s "$SERIAL" uninstall "$APP_ID" >/dev/null 2>&1 || true
+  run_expo_android_install
+else
+  echo "Dev client already installed ($APP_ID) and native deps unchanged — skipping build."
 fi
+
+# Persist fingerprint on successful run so subsequent runs are stable.
+compute_native_fingerprint > "$PROJECT_ROOT/android/.native-fingerprint" 2>/dev/null || true
 
 echo "Launching Expo dev client on $SERIAL"
 open_dev_client_when_ready() {

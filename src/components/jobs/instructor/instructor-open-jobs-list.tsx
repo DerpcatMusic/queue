@@ -1,4 +1,5 @@
 import type { TFunction } from "i18next";
+import { useCallback, memo } from "react";
 import { View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import {
@@ -22,7 +23,7 @@ type InstructorOpenJobsListProps = {
   t: TFunction;
 };
 
-export function InstructorOpenJobsList({
+export const InstructorOpenJobsList = memo(function InstructorOpenJobsList({
   jobs,
   locale,
   zoneLanguage,
@@ -35,6 +36,21 @@ export function InstructorOpenJobsList({
   t,
 }: InstructorOpenJobsListProps) {
   const { isDesktopWeb: isWideWeb } = useLayoutBreakpoint();
+
+  const handleApply = useCallback(
+    (jobId: Id<"jobs">) => onApply(jobId),
+    [onApply],
+  );
+
+  const handleWithdraw = useCallback(
+    (applicationId: Id<"jobApplications">) => onWithdrawApplication(applicationId),
+    [onWithdrawApplication],
+  );
+
+  const handleOpenStudio = useCallback(
+    (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => onOpenStudio(studioId, jobId),
+    [onOpenStudio],
+  );
 
   if (jobs.length === 0) return null;
 
@@ -60,13 +76,13 @@ export function InstructorOpenJobsList({
             applyingJobId={applyingJobId}
             withdrawingApplicationId={withdrawingApplicationId}
             now={now}
-            onApply={onApply}
-            onWithdrawApplication={onWithdrawApplication}
-            onOpenStudio={onOpenStudio}
+            onApply={handleApply}
+            onWithdrawApplication={handleWithdraw}
+            onOpenStudio={handleOpenStudio}
             t={t}
           />
         </Animated.View>
       ))}
     </View>
   );
-}
+});

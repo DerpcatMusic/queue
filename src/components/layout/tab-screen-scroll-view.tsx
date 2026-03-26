@@ -5,6 +5,7 @@ import type { AnimatedRef } from "react-native-reanimated";
 import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import type { InsetTone } from "@/contexts/system-ui-context";
+import type { ScreenScaffoldSheetInsets } from "./screen-scaffold";
 
 type TabScreenContainerProps = PropsWithChildren<{
   style?: StyleProp<ViewStyle>;
@@ -17,6 +18,7 @@ type TabScreenScrollViewProps = PropsWithChildren<
     animatedRef?: AnimatedRef<Animated.ScrollView>;
     topInsetTone?: InsetTone;
     useDesktopFrame?: boolean;
+    sheetInsets?: ScreenScaffoldSheetInsets;
   }
 >;
 
@@ -39,6 +41,7 @@ export function TabScreenScrollView({
   scrollIndicatorInsets,
   topInsetTone,
   useDesktopFrame,
+  sheetInsets,
   ...props
 }: TabScreenScrollViewProps) {
   return (
@@ -48,6 +51,7 @@ export function TabScreenScrollView({
       contentContainerStyle={contentContainerStyle}
       {...(topInsetTone ? { topInsetTone } : {})}
       {...(useDesktopFrame !== undefined ? { useDesktopFrame } : {})}
+      {...(sheetInsets ? { sheetInsets } : {})}
       scrollProps={{
         ...props,
         ...(animatedRef ? { ref: animatedRef as never } : {}),

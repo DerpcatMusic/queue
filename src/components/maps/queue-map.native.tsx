@@ -1,9 +1,10 @@
 import {
   Camera,
-  GeoJSONSource,
+  CircleLayer,
   Images,
-  Layer,
-  Map as MapLibreMap,
+  MapView,
+  ShapeSource,
+  SymbolLayer,
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -31,7 +32,7 @@ import {
   getStudioMarkerImageEntries,
   resolveThemedMapStyle,
   sanitizeZoom,
-  toBounds,
+  toCameraBounds,
   warmMapStyleSpec,
 } from "./queue-map.native.helpers";
 import type { QueueMapProps } from "./queue-map.types";
@@ -91,8 +92,9 @@ export const QueueMap = memo(function QueueMap({
   } | null>(null);
   const mapLoadStateRef = useRef<MapLoadState>("loading");
   const cameraRef = useRef<{
-    setStop: (config: unknown) => void;
-    flyTo: (options: { center: [number, number]; zoom?: number; duration?: number }) => void;
+    setCamera: (config: unknown) => void;
+    flyTo: (coordinates: [number, number], animationDuration?: number) => void;
+    zoomTo: (zoomLevel: number, animationDuration?: number) => void;
   } | null>(null);
   const selectedZoneFilter = useMemo(
     () => createZoneFilter(selectedZoneIds, zoneIdProperty),
@@ -104,6 +106,18 @@ export const QueueMap = memo(function QueueMap({
     [studios],
   );
   const studioImageEntries = useMemo(() => getStudioMarkerImageEntries(studios ?? []), [studios]);
+  const contentInsetValue = useMemo(
+    () =>
+      contentInset
+        ? [
+            contentInset.top ?? 0,
+            contentInset.right ?? 0,
+            contentInset.bottom ?? 0,
+            contentInset.left ?? 0,
+          ]
+        : undefined,
+    [contentInset],
+  );
   const handleMapPress = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (event: any) => {
@@ -149,6 +163,19 @@ export const QueueMap = memo(function QueueMap({
     },
     [],
   );
+
+  // Stable event handlers — extracted to avoid inline arrow recreation on every render
+  const handleWillStartLoadingMap = useCallback(() => {
+    updateMapLoadState("loading");
+  }, [updateMapLoadState]);
+
+  const handleDidFinishLoadingMap = useCallback(() => {
+    updateMapLoadState("ready");
+  }, [updateMapLoadState]);
+
+  const handleDidFailLoadingMap = useCallback(() => {
+    updateMapLoadState("error", t("mapTab.native.unavailableBody"));
+  }, [updateMapLoadState]);
 
   useEffect(() => {
     if (mapLoadState !== "loading") {
@@ -231,26 +258,26 @@ export const QueueMap = memo(function QueueMap({
     const zone = getZoneIndexEntry(focusZoneId);
     if (!zone) return;
 
-    cameraRef.current?.setStop({
-      bounds: [zone.bbox[0], zone.bbox[1], zone.bbox[2], zone.bbox[3]],
-      padding: cameraPadding ?? {
-        top: APPLE_MAP_THEME.focusPadding.top,
-        right: APPLE_MAP_THEME.focusPadding.right,
-        bottom: APPLE_MAP_THEME.focusPadding.bottom,
-        left: APPLE_MAP_THEME.focusPadding.left,
+    cameraRef.current?.setCamera({
+      bounds: {
+        ne: [zone.bbox[2], zone.bbox[3]],
+        sw: [zone.bbox[0], zone.bbox[1]],
       },
-      duration: 350,
-      easing: "ease",
+      padding: cameraPadding ?? {
+        paddingTop: APPLE_MAP_THEME.focusPadding.top,
+        paddingRight: APPLE_MAP_THEME.focusPadding.right,
+        paddingBottom: APPLE_MAP_THEME.focusPadding.bottom,
+        paddingLeft: APPLE_MAP_THEME.focusPadding.left,
+      },
+      animationDuration: 350,
+      animationMode: "easeTo",
     });
   }, [cameraPadding, focusZoneId]);
 
   useEffect(() => {
     if (!pin) return;
-    cameraRef.current?.flyTo({
-      center: [pin.longitude, pin.latitude],
-      zoom: APPLE_MAP_THEME.defaultZoomWithPin,
-      duration: 800,
-    });
+    cameraRef.current?.flyTo([pin.longitude, pin.latitude], 800);
+    cameraRef.current?.zoomTo(APPLE_MAP_THEME.defaultZoomWithPin, 800);
   }, [pin]);
 
   if (Constants.appOwnership === "expo") {
@@ -277,45 +304,41 @@ export const QueueMap = memo(function QueueMap({
 
   return (
     <View style={[styles.wrap, { backgroundColor: mapPalette.styleBackground }]}>
-      <MapLibreMap
+      <MapView
         ref={mapRef as any}
         key={mapKey}
         style={styles.map}
         mapStyle={mapStyle as any}
-        {...(contentInset ? { contentInset } : {})}
-        dragPan
-        touchAndDoubleTapZoom
-        touchRotate={false}
-        touchPitch={false}
-        compass={false}
-        logo={false}
-        attribution={false}
-        onWillStartLoadingMap={() => {
-          updateMapLoadState("loading");
-        }}
-        onDidFinishLoadingMap={() => {
-          updateMapLoadState("ready");
-        }}
-        onDidFailLoadingMap={() => {
-          updateMapLoadState("error", t("mapTab.native.unavailableBody"));
-        }}
+        {...(contentInsetValue ? { contentInset: contentInsetValue } : {})}
+        scrollEnabled
+        zoomEnabled
+        rotateEnabled={false}
+        pitchEnabled={false}
+        compassEnabled={false}
+        logoEnabled={false}
+        attributionEnabled={false}
+        onWillStartLoadingMap={handleWillStartLoadingMap}
+        onDidFinishLoadingMap={handleDidFinishLoadingMap}
+        onDidFailLoadingMap={handleDidFailLoadingMap}
         onPress={handleMapPress as any}
       >
         <Camera
           ref={cameraRef as any}
-          maxBounds={toBounds(ISRAEL_MAP_INTERACTION_BOUNDS.sw, ISRAEL_MAP_INTERACTION_BOUNDS.ne)}
-          minZoom={sanitizeZoom(APPLE_MAP_THEME.minZoom, 7.5)}
-          maxZoom={sanitizeZoom(APPLE_MAP_THEME.maxZoom, 16)}
-          initialViewState={{
-            center: pin ? [pin.longitude, pin.latitude] : APPLE_MAP_THEME.defaultCenter,
-            zoom: pin ? APPLE_MAP_THEME.defaultZoomWithPin : APPLE_MAP_THEME.defaultZoomWithoutPin,
+          maxBounds={toCameraBounds(ISRAEL_MAP_INTERACTION_BOUNDS.sw, ISRAEL_MAP_INTERACTION_BOUNDS.ne)}
+          minZoomLevel={sanitizeZoom(APPLE_MAP_THEME.minZoom, 7.5)}
+          maxZoomLevel={sanitizeZoom(APPLE_MAP_THEME.maxZoom, 16)}
+          defaultSettings={{
+            centerCoordinate: pin ? [pin.longitude, pin.latitude] : APPLE_MAP_THEME.defaultCenter,
+            zoomLevel: pin
+              ? APPLE_MAP_THEME.defaultZoomWithPin
+              : APPLE_MAP_THEME.defaultZoomWithoutPin,
           }}
         />
 
         <QueueMapZonePolygons
           mode={mode}
           isEditing={isEditing}
-          showLabelLayers={mode !== "zoneSelect"}
+          showLabelLayers={mode !== "zoneSelect" || isEditing}
           selectedZoneFilter={selectedZoneFilter}
           zoneGeoJson={zoneGeoJson}
           zoneIdProperty={zoneIdProperty}
@@ -323,41 +346,37 @@ export const QueueMap = memo(function QueueMap({
           onPressZone={onPressZone}
         />
 
-        <GeoJSONSource id="queue-pin-source" data={pinShape}>
-          <Layer
+        <ShapeSource id="queue-pin-source" shape={pinShape}>
+          <CircleLayer
             id="queue-pin-dot"
-            type="circle"
-            paint={{
-              "circle-radius": APPLE_MAP_THEME.overlay.pinRadius,
-              "circle-color": mapPalette.primary,
-              "circle-stroke-color": mapPalette.text,
-              "circle-stroke-width": APPLE_MAP_THEME.overlay.pinStrokeWidth,
+            style={{
+              circleRadius: APPLE_MAP_THEME.overlay.pinRadius,
+              circleColor: mapPalette.primary,
+              circleStrokeColor: mapPalette.text,
+              circleStrokeWidth: APPLE_MAP_THEME.overlay.pinStrokeWidth,
             }}
           />
-        </GeoJSONSource>
+        </ShapeSource>
 
         {Object.keys(studioImageEntries).length > 0 ? (
           <>
             <Images images={studioImageEntries} />
-            <GeoJSONSource id="studio-markers" data={studioMarkersGeoJSON}>
-              <Layer
+            <ShapeSource id="studio-markers" shape={studioMarkersGeoJSON}>
+              <SymbolLayer
                 id="studio-markers-symbol"
-                type="symbol"
-                layout={{
-                  "icon-image": ["case", ["get", "hasImage"], ["get", "imageKey"], ""],
-                  "icon-size": 0.3,
-                  "icon-anchor": "bottom",
-                  "icon-allow-overlap": true,
-                  "icon-offset": [0, -12],
-                }}
-                paint={{
-                  "icon-opacity": 1,
+                style={{
+                  iconImage: ["case", ["get", "hasImage"], ["get", "imageKey"], ""],
+                  iconSize: 0.3,
+                  iconAnchor: "bottom",
+                  iconAllowOverlap: true,
+                  iconOffset: [0, -12],
+                  iconOpacity: 1,
                 }}
               />
-            </GeoJSONSource>
+            </ShapeSource>
           </>
         ) : null}
-      </MapLibreMap>
+      </MapView>
 
       {mapLoadState === "loading" && showLoadingOverlay ? (
         <View

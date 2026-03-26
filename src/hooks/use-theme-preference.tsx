@@ -6,8 +6,9 @@ import {
   applyThemePreference,
   loadThemePreference,
   persistThemePreference,
+  resolveThemeScheme,
   type ThemePreference,
-} from "@/lib/theme-preference";
+} from "@/theme/theme";
 
 type ResolvedScheme = "light" | "dark";
 
@@ -56,8 +57,7 @@ export function ThemePreferenceProvider({ children }: PropsWithChildren) {
     await persistThemePreference(nextPreference);
   }, []);
 
-  const resolvedScheme: ResolvedScheme =
-    preference === "system" ? (systemScheme ?? "light") : preference;
+  const resolvedScheme: ResolvedScheme = resolveThemeScheme(preference, systemScheme);
 
   const value = useMemo<ThemePreferenceContextValue>(
     () => ({

@@ -52,9 +52,11 @@ export function KitFloatingBadge({
     <Animated.View
       pointerEvents="none"
       entering={ZoomIn.springify().damping(15).stiffness(180)}
-      className="absolute items-center justify-center"
       style={[
         {
+          position: "absolute",
+          alignItems: "center",
+          justifyContent: "center",
           top: -BrandSpacing.sm,
           left: -BrandSpacing.sm,
           width: size,

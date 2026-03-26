@@ -25,7 +25,10 @@ if (!existsSync(targetFile)) {
 
 const original = readFileSync(targetFile, "utf8");
 
-if (original.includes("no active Activity available when SDK became ready")) {
+if (
+  original.includes("no active Activity available when SDK became ready") &&
+  !original.includes("awaitReadyAndLaunchUI(promise, activity)")
+) {
   console.log("[postinstall] Didit Android activity patch already applied.");
   process.exit(0);
 }
@@ -41,6 +44,8 @@ patched = patched.replace(
   "                awaitReadyAndLaunchUI(promise, activity)",
   "                awaitReadyAndLaunchUI(promise)",
 );
+
+patched = patched.replaceAll("awaitReadyAndLaunchUI(promise, activity)", "awaitReadyAndLaunchUI(promise)");
 
 patched = patched.replace(
   '        Log.d(TAG, "startVerificationWithWorkflow: workflowId=$workflowId, vendorData=$vendorData, metadata=$metadata")\n        Log.d(TAG, "startVerificationWithWorkflow: contactDetails=$contactDetails, expectedDetails=$expectedDetails, config=$config")\n        val activity = currentActivity\n        scope.launch {',

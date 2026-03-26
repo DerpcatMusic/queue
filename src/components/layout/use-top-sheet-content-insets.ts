@@ -10,6 +10,9 @@ type TopSheetContentInsetOptions = {
   horizontalPadding?: number;
 };
 
+/**
+ * @deprecated Prefer layout-owned sheet inset props on TabScreenScrollView / TabScreenRoot.
+ */
 export function useTopSheetContentInsets({
   topSpacing = 0,
   bottomSpacing = 0,

@@ -1,11 +1,18 @@
 import type { PropsWithChildren } from "react";
-import { useEffect } from "react";
+import { cloneElement, isValidElement, useEffect } from "react";
 import type { ScrollViewProps, StyleProp, ViewStyle } from "react-native";
 import { View } from "react-native";
 import Animated from "react-native-reanimated";
 
 import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
+import { useScrollSheetLayout } from "@/components/layout/scroll-sheet-provider";
 import { type InsetTone, useSystemUi } from "@/contexts/system-ui-context";
+
+export type ScreenScaffoldSheetInsets = {
+  topSpacing?: number;
+  bottomSpacing?: number;
+  horizontalPadding?: number;
+};
 
 type BaseScreenScaffoldProps = {
   style?: StyleProp<ViewStyle>;
@@ -17,6 +24,7 @@ type ScrollScreenScaffoldProps = BaseScreenScaffoldProps & {
   scrollProps?: Omit<ScrollViewProps, "contentContainerStyle">;
   contentContainerStyle?: StyleProp<ViewStyle>;
   useDesktopFrame?: boolean;
+  sheetInsets?: ScreenScaffoldSheetInsets;
 };
 
 type StaticScreenScaffoldProps = BaseScreenScaffoldProps & {
@@ -53,10 +61,39 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
     );
   }
 
-  const { contentContainerStyle, scrollProps, style, children, useDesktopFrame = true } = props;
+  const { collapsedSheetHeight, safeBottom } = useScrollSheetLayout();
+  const {
+    contentContainerStyle,
+    scrollProps,
+    style,
+    children,
+    useDesktopFrame = true,
+    sheetInsets,
+  } = props;
+
+  const resolvedContentContainerStyle = [
+    sheetInsets
+      ? {
+          paddingTop: collapsedSheetHeight + (sheetInsets.topSpacing ?? 0),
+          paddingBottom: safeBottom + (sheetInsets.bottomSpacing ?? 0),
+          ...(sheetInsets.horizontalPadding !== undefined
+            ? { paddingHorizontal: sheetInsets.horizontalPadding }
+            : {}),
+        }
+      : null,
+    contentContainerStyle,
+  ];
+
+  const refreshControl = scrollProps?.refreshControl;
+  const resolvedRefreshControl =
+    sheetInsets && isValidElement(refreshControl)
+      ? cloneElement(refreshControl, {
+          progressViewOffset: collapsedSheetHeight,
+        })
+      : refreshControl;
 
   const content = useDesktopFrame ? (
-    <DesktopDashboardFrame contentStyle={contentContainerStyle}>{children}</DesktopDashboardFrame>
+    <DesktopDashboardFrame contentStyle={resolvedContentContainerStyle}>{children}</DesktopDashboardFrame>
   ) : (
     children
   );
@@ -68,7 +105,8 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
       showsVerticalScrollIndicator={false}
       {...scrollProps}
       style={[{ flex: 1 }, style]}
-      contentContainerStyle={!useDesktopFrame ? contentContainerStyle : undefined}
+      refreshControl={resolvedRefreshControl}
+      contentContainerStyle={!useDesktopFrame ? resolvedContentContainerStyle : undefined}
     >
       {content}
     </Animated.ScrollView>

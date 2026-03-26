@@ -78,8 +78,8 @@ export function MapSelectedZonesStrip({
               fontWeight: "500",
               letterSpacing: 0.2,
               lineHeight: 16,
+              color: palette.textMuted,
             }}
-            className="text-muted"
           >
             {t("mapTab.mobile.emptySelection")}
           </Text>

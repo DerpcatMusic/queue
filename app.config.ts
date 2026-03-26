@@ -1,7 +1,5 @@
 import type { ExpoConfig } from "expo/config";
 
-const staticConfig = require("./app.json") as { expo: ExpoConfig };
-
 const GOOGLE_CLIENT_ID_SUFFIX = ".apps.googleusercontent.com";
 
 function trimEnv(value: string | undefined) {
@@ -23,24 +21,26 @@ function buildGoogleIosUrlScheme(clientId: string | undefined) {
 }
 
 const googleIosUrlScheme = buildGoogleIosUrlScheme(resolveGoogleIosClientId());
-const config = staticConfig.expo;
-const plugins = [...(config.plugins ?? [])];
-const hasGoogleSigninPlugin = plugins.some(
-  (plugin) =>
-    plugin === "@react-native-google-signin/google-signin" ||
-    (Array.isArray(plugin) && plugin[0] === "@react-native-google-signin/google-signin"),
-);
 
-if (googleIosUrlScheme && !hasGoogleSigninPlugin) {
-  plugins.push([
-    "@react-native-google-signin/google-signin",
-    {
-      iosUrlScheme: googleIosUrlScheme,
-    },
-  ]);
-}
+export default ({ config }: { config: ExpoConfig }) => {
+  const plugins = [...(config.plugins ?? [])];
+  const hasGoogleSigninPlugin = plugins.some(
+    (plugin) =>
+      plugin === "@react-native-google-signin/google-signin" ||
+      (Array.isArray(plugin) && plugin[0] === "@react-native-google-signin/google-signin"),
+  );
 
-export default {
-  ...config,
-  plugins,
-} satisfies ExpoConfig;
+  if (googleIosUrlScheme && !hasGoogleSigninPlugin) {
+    plugins.push([
+      "@react-native-google-signin/google-signin",
+      {
+        iosUrlScheme: googleIosUrlScheme,
+      },
+    ]);
+  }
+
+  return {
+    ...config,
+    plugins,
+  } satisfies ExpoConfig;
+};

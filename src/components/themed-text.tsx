@@ -1,4 +1,7 @@
-import { I18nManager, Text, type TextProps } from "react-native";
+// Deprecated during primitive-first migration.
+// Prefer src/primitives/text.tsx for new code.
+import { I18nManager, Text, type TextProps, type TextStyle } from "react-native";
+import { BrandType } from "@/theme/theme";
 
 export type ThemedTextType =
   | "display"
@@ -29,31 +32,30 @@ export type ThemedTextProps = TextProps & {
   type?: ThemedTextType;
 };
 
-// Map semantic types to Tailwind class strings
-const TYPE_CLASSES: Record<string, string> = {
-  display: "font-display text-display font-bold",
-  heading: "font-heading text-heading font-semibold",
-  title: "font-title text-title font-medium",
-  body: "font-body text-body",
-  bodyMedium: "font-body-medium text-body font-medium",
-  bodyStrong: "font-body-strong text-body font-semibold",
-  caption: "font-body text-caption",
-  labelStrong: "font-body-strong text-caption font-semibold",
-  micro: "font-label text-micro font-medium",
-  screenTitle: "font-heading text-heading font-semibold",
-  sheetTitle: "font-title text-title font-medium",
-  sectionLabel: "font-label text-micro font-medium uppercase tracking-wide",
-  sectionTitle: "font-title text-title font-medium",
-  cardTitle: "font-body-strong text-body font-semibold",
-  meta: "font-body text-caption",
-  pillLabel: "font-label text-micro font-medium",
-  buttonLabel: "font-body-medium text-body font-medium",
-  statValue: "font-heading text-heading font-semibold",
+const TYPE_STYLES: Record<ThemedTextType, TextStyle> = {
+  display: BrandType.display,
+  heading: BrandType.heading,
+  title: BrandType.title,
+  body: BrandType.body,
+  bodyMedium: BrandType.bodyMedium,
+  bodyStrong: BrandType.bodyStrong,
+  caption: BrandType.caption,
+  labelStrong: BrandType.labelStrong,
+  micro: BrandType.micro,
+  screenTitle: BrandType.heading,
+  sheetTitle: BrandType.title,
+  sectionLabel: BrandType.radarLabel,
+  sectionTitle: BrandType.title,
+  cardTitle: BrandType.bodyStrong,
+  meta: BrandType.caption,
+  pillLabel: BrandType.micro,
+  buttonLabel: BrandType.bodyMedium,
+  statValue: BrandType.heading,
   // Legacy
-  default: "font-body text-body",
-  defaultSemiBold: "font-body-strong text-body font-semibold",
-  subtitle: "font-title text-title font-medium",
-  link: "font-body-strong text-body font-semibold",
+  default: BrandType.body,
+  defaultSemiBold: BrandType.bodyStrong,
+  subtitle: BrandType.title,
+  link: BrandType.bodyStrong,
 };
 
 const LEGACY_MAP: Record<string, ThemedTextType> = {
@@ -64,13 +66,9 @@ const LEGACY_MAP: Record<string, ThemedTextType> = {
 
 export function ThemedText({ style, type = "body", ...rest }: ThemedTextProps) {
   const resolved = LEGACY_MAP[type] ?? type;
-  const classes = TYPE_CLASSES[resolved] ?? TYPE_CLASSES.body ?? "font-body text-body";
+  const textStyle = TYPE_STYLES[resolved] ?? TYPE_STYLES.body;
 
   return (
-    <Text
-      className={classes}
-      style={[{ writingDirection: I18nManager.isRTL ? "rtl" : "ltr" }, style]}
-      {...rest}
-    />
+    <Text style={[textStyle, { writingDirection: I18nManager.isRTL ? "rtl" : "ltr" }, style]} {...rest} />
   );
 }

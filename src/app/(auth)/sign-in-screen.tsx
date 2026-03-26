@@ -6,10 +6,10 @@ import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-route
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
 
+import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
-import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconButton } from "@/components/ui/icon-button";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
@@ -120,11 +120,6 @@ export default function SignInScreen() {
   }>();
   const { currentUser } = useUser();
   const { reloadAuthSession } = useAuthSession();
-  const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
-    topSpacing: BrandSpacing.lg,
-    bottomSpacing: BrandSpacing.xxl,
-    horizontalPadding: BrandSpacing.lg,
-  });
   const { isAuthenticated } = useConvexAuth();
   const { signIn } = useAuthActions();
   const googleNativeAuthConfig = useMemo(resolveGoogleNativeAuthConfig, []);
@@ -493,18 +488,21 @@ export default function SignInScreen() {
       style={{ flex: 1, backgroundColor: theme.color.appBg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <ScrollView
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustKeyboardInsets
+      <TabScreenScrollView
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
+        useDesktopFrame={false}
+        sheetInsets={{
+          topSpacing: BrandSpacing.lg,
+          bottomSpacing: BrandSpacing.xxl,
+          horizontalPadding: BrandSpacing.lg,
+        }}
         contentContainerStyle={{
           flexGrow: 1,
-          ...(sheetContentInsets as object),
         }}
       >
-        <View className="flex-1 justify-between gap-6">
-          <View className="gap-4">
+        <View style={{ flex: 1, justifyContent: 'space-between', gap: BrandSpacing.xl }}>
+          <View style={{ gap: BrandSpacing.lg }}>
             <KitTextField
               value={email}
               onChangeText={setEmail}
@@ -522,8 +520,8 @@ export default function SignInScreen() {
 
             {step === "email" ? (
               <>
-                <View className="flex-row gap-stack-tight">
-                  <View className="flex-1">
+                <View style={{ flexDirection: 'row', gap: BrandSpacing.sm }}>
+                  <View style={{ flex: 1 }}>
                     <ActionButton
                       label={isSubmitting ? t("auth.signingIn") : t("auth.sendCodeButton")}
                       onPress={() => {
@@ -534,7 +532,7 @@ export default function SignInScreen() {
                       size="lg"
                     />
                   </View>
-                  <View className="flex-1">
+                  <View style={{ flex: 1 }}>
                     <ActionButton
                       label={t("auth.sendMagicLinkButton")}
                       onPress={() => {
@@ -548,22 +546,22 @@ export default function SignInScreen() {
                   </View>
                 </View>
 
-                <View className="flex-row items-center gap-stack-tight py-xs">
-                  <View className="flex-1 h-px" style={{ backgroundColor: theme.color.border }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: BrandSpacing.sm, paddingVertical: BrandSpacing.xs }}>
+                  <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: theme.color.border }} />
                   <Text
-                    className="uppercase"
                     style={{
                       ...BrandType.micro,
                       letterSpacing: 0.7,
+                      textTransform: 'uppercase',
                       color: theme.color.textMuted,
                     }}
                   >
                     {t("auth.or")}
                   </Text>
-                  <View className="flex-1 h-px" style={{ backgroundColor: theme.color.border }} />
+                  <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: theme.color.border }} />
                 </View>
 
-                <View className="flex-row items-stretch justify-center gap-stack">
+                <View style={{ flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', gap: BrandSpacing.sm }}>
                   <IconButton
                     accessibilityLabel={
                       isSignUpIntent ? t("auth.signUpWithGoogle") : t("auth.signInWithGoogle")
@@ -595,10 +593,10 @@ export default function SignInScreen() {
                 ) : null}
               </>
             ) : (
-              <View className="gap-stack-tight">
+              <View style={{ gap: BrandSpacing.sm }}>
                 <Text
-                  className="text-center"
                   style={{
+                    textAlign: 'center',
                     ...BrandType.caption,
                     color: theme.color.textMuted,
                   }}
@@ -617,8 +615,8 @@ export default function SignInScreen() {
                   placeholder="123456"
                   style={styles.codeInput}
                 />
-                <View className="flex-row gap-stack-tight">
-                  <View className="flex-1">
+                <View style={{ flexDirection: 'row', gap: BrandSpacing.sm }}>
+                  <View style={{ flex: 1 }}>
                     <ActionButton
                       label={isSubmitting ? t("auth.verifyingCode") : t("auth.verifyCodeButton")}
                       onPress={() => {
@@ -629,7 +627,7 @@ export default function SignInScreen() {
                       size="lg"
                     />
                   </View>
-                  <View className="flex-1">
+                  <View style={{ flex: 1 }}>
                     <ActionButton
                       label={t("auth.backToSignInMethods")}
                       onPress={() => {
@@ -649,7 +647,7 @@ export default function SignInScreen() {
             )}
           </View>
 
-          <View className="gap-stack-tight">
+          <View style={{ gap: BrandSpacing.sm }}>
             {infoMessage ? (
               <MessageBanner
                 tone="info"
@@ -668,7 +666,7 @@ export default function SignInScreen() {
             ) : null}
           </View>
         </View>
-      </ScrollView>
+      </TabScreenScrollView>
     </KeyboardAvoidingView>
   );
 }

@@ -7,7 +7,6 @@ const srcRoot = path.join(projectRoot, "src");
 
 const allowlist = new Set([
   path.join(srcRoot, "constants", "brand.ts"),
-  path.join(srcRoot, "global.css"),
 ]);
 
 const fileExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".css"]);

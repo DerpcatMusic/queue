@@ -2,7 +2,16 @@ import type BottomSheet from "@gorhom/bottom-sheet";
 import { useMutation, useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ComponentType,
+  memo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
@@ -32,6 +41,137 @@ import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { getBoostPresentation } from "@/lib/jobs-utils";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+
+type SortMode = "none" | "bonus" | "pay" | "time";
+
+// Layout transition builder type from LinearTransition.duration().reduceMotion()
+type JobsLayoutTransition = ReturnType<typeof LinearTransition.duration>;
+
+interface InstructorJobsSheetStickyHeaderProps {
+  actionErrorMessage: string | null;
+  jobsFilterOptions: readonly KitDisclosureButtonGroupOption<SortMode>[];
+  jobsHeaderLayoutTransition: JobsLayoutTransition;
+  jobsSearchQuery: string;
+  jobsSortSummaryLabel: string;
+  showJobsFilters: boolean;
+  sortMode: SortMode;
+  theme: ReturnType<typeof useTheme>;
+  t: ReturnType<typeof useTranslation>["t"];
+  onClearError: () => void;
+  onSearchChange: (text: string) => void;
+  onToggleFilters: () => void;
+  onSortChange: (value: SortMode) => void;
+  onToggleDirection: () => void;
+}
+
+const InstructorJobsSheetStickyHeader = memo(function InstructorJobsSheetStickyHeader({
+  actionErrorMessage,
+  jobsFilterOptions,
+  jobsHeaderLayoutTransition,
+  jobsSearchQuery,
+  jobsSortSummaryLabel,
+  showJobsFilters,
+  sortMode,
+  theme,
+  t,
+  onClearError,
+  onSearchChange,
+  onToggleFilters,
+  onSortChange,
+  onToggleDirection,
+}: InstructorJobsSheetStickyHeaderProps) {
+  return (
+    <View style={{ gap: BrandSpacing.sm }}>
+      <Animated.View
+        layout={jobsHeaderLayoutTransition}
+        style={[styles.feedIntro, { borderBottomColor: theme.jobs.line }]}
+      >
+        <Animated.View layout={jobsHeaderLayoutTransition} style={styles.feedIntroText}>
+          <ThemedText style={[BrandType.title, { color: theme.color.text }]}>
+            {t("jobsTab.availableJobsTitle")}
+          </ThemedText>
+        </Animated.View>
+      </Animated.View>
+
+      <Animated.View
+        layout={jobsHeaderLayoutTransition}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: BrandSpacing.sm,
+        }}
+      >
+        <Animated.View
+          layout={jobsHeaderLayoutTransition}
+          style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}
+        >
+          <NativeSearchField
+            value={jobsSearchQuery}
+            onChangeText={onSearchChange}
+            placeholder={t("jobsTab.searchPlaceholder")}
+            clearAccessibilityLabel={t("common.clear")}
+            size="sm"
+            animateLayout
+            containerStyle={{ backgroundColor: theme.jobs.surface }}
+          />
+        </Animated.View>
+        <Animated.View
+          layout={jobsHeaderLayoutTransition}
+          style={{ flexShrink: 0, minWidth: 0 }}
+        >
+          <KitDisclosureButtonGroup
+            accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
+            expanded={showJobsFilters}
+            onToggleExpanded={onToggleFilters}
+            options={jobsFilterOptions}
+            value={sortMode}
+            onChange={onSortChange}
+            triggerIcon={
+              <IconSymbol
+                name="line.3.horizontal.decrease.circle"
+                size={18}
+                color={theme.color.text}
+              />
+            }
+            size="sm"
+            railColor={theme.jobs.surface}
+            selectedColor={theme.jobs.surfaceRaised}
+            labelColor={theme.color.text}
+            selectedLabelColor={theme.color.tertiary}
+            dividerColor={theme.jobs.line}
+          />
+        </Animated.View>
+      </Animated.View>
+
+      <Animated.View layout={jobsHeaderLayoutTransition}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Toggle sort direction"
+          disabled={sortMode !== "pay" && sortMode !== "time"}
+          onPress={onToggleDirection}
+          style={({ pressed }) => ({
+            alignSelf: "flex-start",
+            paddingHorizontal: BrandSpacing.xs,
+            paddingVertical: BrandSpacing.xxs,
+            opacity: pressed ? 0.72 : 1,
+          })}
+        >
+          <ThemedText style={[BrandType.caption, { color: theme.jobs.idle }]}>
+            {jobsSortSummaryLabel}
+          </ThemedText>
+        </Pressable>
+      </Animated.View>
+
+      {actionErrorMessage ? (
+        <NoticeBanner
+          tone="error"
+          message={actionErrorMessage}
+          onDismiss={onClearError}
+        />
+      ) : null}
+    </View>
+  );
+} as ComponentType<InstructorJobsSheetStickyHeaderProps>);
 
 export function InstructorFeed() {
   const { t, i18n } = useTranslation();
@@ -237,107 +377,44 @@ export function InstructorFeed() {
     [],
   );
 
+  // Stable callbacks passed to memoized header - prevents header re-render on parent state changes
+  const onClearError = useCallback(() => setActionErrorMessage(null), []);
+  const onSearchChange = useCallback((text: string) => setJobsSearchQuery(text), []);
+  const onToggleFilters = useCallback(
+    () => setShowJobsFilters((current) => !current),
+    [],
+  );
+  const onSortChange = useCallback((value: SortMode) => {
+    setSortMode(value);
+    if (value === "pay") setSortDirection("desc");
+    if (value === "time") setSortDirection("asc");
+    if (value === "bonus" || value === "none") setSortDirection("desc");
+  }, []);
+  const onToggleDirection = useCallback(() => {
+    if (sortMode === "pay" || sortMode === "time") {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+    }
+  }, [sortMode]);
+
   const jobsSheetConfig = useMemo(
     () => ({
       stickyHeader: (
-        <View style={{ gap: BrandSpacing.sm }}>
-          <Animated.View
-            layout={jobsHeaderLayoutTransition}
-            style={[styles.feedIntro, { borderBottomColor: theme.jobs.line }]}
-          >
-            <Animated.View layout={jobsHeaderLayoutTransition} style={styles.feedIntroText}>
-              <ThemedText style={[BrandType.title, { color: theme.color.text }]}>
-                {t("jobsTab.availableJobsTitle")}
-              </ThemedText>
-            </Animated.View>
-          </Animated.View>
-
-          <Animated.View
-            layout={jobsHeaderLayoutTransition}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: BrandSpacing.sm,
-            }}
-          >
-            <Animated.View
-              layout={jobsHeaderLayoutTransition}
-              style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}
-            >
-              <NativeSearchField
-                value={jobsSearchQuery}
-                onChangeText={setJobsSearchQuery}
-                placeholder={t("jobsTab.searchPlaceholder")}
-                clearAccessibilityLabel={t("common.clear")}
-                size="sm"
-                animateLayout
-                containerStyle={{ backgroundColor: theme.jobs.surface }}
-              />
-            </Animated.View>
-            <Animated.View
-              layout={jobsHeaderLayoutTransition}
-              style={{ flexShrink: 0, minWidth: 0 }}
-            >
-              <KitDisclosureButtonGroup
-                accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
-                expanded={showJobsFilters}
-                onToggleExpanded={() => setShowJobsFilters((current) => !current)}
-                options={jobsFilterOptions}
-                value={sortMode}
-                onChange={(value) => {
-                  setSortMode(value);
-                  if (value === "pay") setSortDirection("desc");
-                  if (value === "time") setSortDirection("asc");
-                  if (value === "bonus" || value === "none") setSortDirection("desc");
-                }}
-                triggerIcon={
-                  <IconSymbol
-                    name="line.3.horizontal.decrease.circle"
-                    size={18}
-                    color={theme.color.text}
-                  />
-                }
-                size="sm"
-                railColor={theme.jobs.surface}
-                selectedColor={theme.jobs.surfaceRaised}
-                labelColor={theme.color.text}
-                selectedLabelColor={theme.color.tertiary}
-                dividerColor={theme.jobs.line}
-              />
-            </Animated.View>
-          </Animated.View>
-
-          <Animated.View layout={jobsHeaderLayoutTransition}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Toggle sort direction"
-              disabled={sortMode !== "pay" && sortMode !== "time"}
-              onPress={() => {
-                if (sortMode === "pay" || sortMode === "time") {
-                  setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-                }
-              }}
-              style={({ pressed }) => ({
-                alignSelf: "flex-start",
-                paddingHorizontal: BrandSpacing.xs,
-                paddingVertical: BrandSpacing.xxs,
-                opacity: pressed ? 0.72 : 1,
-              })}
-            >
-              <ThemedText style={[BrandType.caption, { color: theme.jobs.idle }]}>
-                {jobsSortSummaryLabel}
-              </ThemedText>
-            </Pressable>
-          </Animated.View>
-
-          {actionErrorMessage ? (
-            <NoticeBanner
-              tone="error"
-              message={actionErrorMessage}
-              onDismiss={() => setActionErrorMessage(null)}
-            />
-          ) : null}
-        </View>
+        <InstructorJobsSheetStickyHeader
+          actionErrorMessage={actionErrorMessage}
+          jobsFilterOptions={jobsFilterOptions}
+          jobsHeaderLayoutTransition={jobsHeaderLayoutTransition}
+          jobsSearchQuery={jobsSearchQuery}
+          jobsSortSummaryLabel={jobsSortSummaryLabel}
+          showJobsFilters={showJobsFilters}
+          sortMode={sortMode}
+          theme={theme}
+          t={t}
+          onClearError={onClearError}
+          onSearchChange={onSearchChange}
+          onToggleFilters={onToggleFilters}
+          onSortChange={onSortChange}
+          onToggleDirection={onToggleDirection}
+        />
       ),
       padding: {
         vertical: BrandSpacing.md,
@@ -361,6 +438,11 @@ export function InstructorFeed() {
       sortMode,
       t,
       theme,
+      onClearError,
+      onSearchChange,
+      onToggleFilters,
+      onSortChange,
+      onToggleDirection,
     ],
   );
 
@@ -558,7 +640,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingTop: BrandSpacing.lg,
     paddingBottom: BrandSpacing.xl,
     gap: BrandSpacing.lg,
   },

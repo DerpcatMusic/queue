@@ -1,5 +1,10 @@
-import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
-import { memo } from "react";
+import {
+  FillLayer,
+  LineLayer,
+  ShapeSource,
+  SymbolLayer,
+} from "@maplibre/maplibre-react-native";
+import { memo, useCallback } from "react";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import type { getMapBrandPalette } from "@/constants/brand";
@@ -37,6 +42,20 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
   mapPalette,
   onPressZone,
 }: QueueMapZonePolygonsProps) {
+  // Stable press handler — extracted to avoid inline arrow recreation on every render
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handlePress = useCallback(
+    (event: any) => {
+      if (mode !== "zoneSelect" || !isEditing) return;
+      if (!onPressZone) return;
+      const native = event?.nativeEvent ?? event;
+      const zoneId = getPressedZoneId(native, zoneIdProperty);
+      if (!zoneId) return;
+      onPressZone(zoneId);
+    },
+    [mode, isEditing, onPressZone, zoneIdProperty],
+  );
+
   const showAllZones = mode === "zoneSelect" && isEditing;
   const zoneOutlineWidth = showAllZones
     ? Math.max(APPLE_MAP_THEME.overlay.baseOutlineWidth, 1.35)
@@ -53,32 +72,23 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
   const selectedOutlineWidth = Math.max(APPLE_MAP_THEME.overlay.selectionOutlineWidth - 0.35, 1.4);
 
   return (
-    <GeoJSONSource
+    <ShapeSource
       id="queue-zone-source"
-      data={zoneGeoJson ?? PIKUD_ZONE_GEOJSON}
-      onPress={(event: any) => {
-        if (mode !== "zoneSelect" || !isEditing) return;
-        if (!onPressZone) return;
-        const native = event?.nativeEvent ?? event;
-        const zoneId = getPressedZoneId(native, zoneIdProperty);
-        if (!zoneId) return;
-        onPressZone(zoneId);
-      }}
+      shape={zoneGeoJson ?? PIKUD_ZONE_GEOJSON}
+      onPress={handlePress}
     >
-      <Layer
+      <FillLayer
         id="queue-zone-touch"
-        type="fill"
-        paint={{
-          "fill-color": mapPalette.previewFill,
-          "fill-opacity": previewFillOpacity,
+        style={{
+          fillColor: mapPalette.previewFill,
+          fillOpacity: previewFillOpacity,
         }}
       />
-      <Layer
+      <LineLayer
         id="queue-zone-outline"
-        type="line"
-        paint={{
-          "line-color": mapPalette.zoneOutline,
-          "line-width": [
+        style={{
+          lineColor: mapPalette.zoneOutline,
+          lineWidth: [
             "interpolate",
             ["linear"],
             ["zoom"],
@@ -89,68 +99,68 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
             14,
             zoneOutlineWidth * 1.2,
           ] as any,
-          "line-opacity": previewOutlineOpacity,
+          lineOpacity: previewOutlineOpacity,
+          lineJoin: "round",
         }}
-        layout={{ "line-join": "round" }}
       />
-      <Layer
+      <FillLayer
         id="queue-zone-selected-fill"
-        type="fill"
         filter={selectedZoneFilter as any}
-        paint={{
-          "fill-color": mapPalette.primary,
-          "fill-opacity": APPLE_MAP_THEME.overlay.selectionFillOpacity,
+        style={{
+          fillColor: mapPalette.primary,
+          fillOpacity: APPLE_MAP_THEME.overlay.selectionFillOpacity,
         }}
       />
-      <Layer
+      <LineLayer
         id="queue-zone-selected-outline"
-        type="line"
         filter={selectedZoneFilter as any}
-        paint={{
-          "line-color": mapPalette.selectedOutline,
-          "line-width": selectedOutlineWidth,
-          "line-opacity": selectedOutlineOpacity,
+        style={{
+          lineColor: mapPalette.selectedOutline,
+          lineWidth: selectedOutlineWidth,
+          lineOpacity: selectedOutlineOpacity,
+          lineJoin: "round",
         }}
-        layout={{ "line-join": "round" }}
       />
-      <Layer
+      <SymbolLayer
         id="queue-zone-selected-labels"
-        type="symbol"
         filter={selectedZoneFilter as any}
-        minzoom={6 as any}
-        layout={{
-          "symbol-placement": "point",
-          "text-field": ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]] as any,
-          "text-size": ["interpolate", ["linear"], ["zoom"], 6, 10, 9.5, 11, 12, 13, 14, 14] as any,
-          "text-allow-overlap": true,
-          "text-ignore-placement": true,
-          "text-font": ["Noto Sans Regular"] as any,
-        }}
-        paint={{
-          "text-color": mapPalette.text,
-          "text-halo-color": mapPalette.surfaceAlt,
-          "text-halo-width": 1.2,
-          "text-opacity": selectedLabelOpacity,
+        minZoomLevel={6}
+        style={{
+          symbolPlacement: "point",
+          textField: [
+            "format",
+            ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]],
+            {},
+          ] as any,
+          textSize: ["interpolate", ["linear"], ["zoom"], 6, 10, 9.5, 11, 12, 13, 14, 14] as any,
+          textAllowOverlap: true,
+          textIgnorePlacement: true,
+          textFont: ["literal", ["Noto Sans Regular"]] as any,
+          textColor: mapPalette.text,
+          textHaloColor: mapPalette.surfaceAlt,
+          textHaloWidth: 1.2,
+          textOpacity: selectedLabelOpacity,
         }}
       />
-      <Layer
+      <SymbolLayer
         id="queue-zone-all-labels"
-        type="symbol"
-        minzoom={9.5 as any}
-        layout={{
-          "symbol-placement": "point",
-          "text-field": ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]] as any,
-          "text-size": ["interpolate", ["linear"], ["zoom"], 9.5, 10, 11, 12, 14, 14] as any,
-          "text-allow-overlap": false,
-          "text-font": ["Noto Sans Regular"] as any,
-        }}
-        paint={{
-          "text-color": mapPalette.text,
-          "text-halo-color": mapPalette.surfaceAlt,
-          "text-halo-width": 1.1,
-          "text-opacity": allZonesLabelOpacity,
+        minZoomLevel={9.5}
+        style={{
+          symbolPlacement: "point",
+          textField: [
+            "format",
+            ["coalesce", ["get", "engName"], ["get", "hebName"], ["get", "id"]],
+            {},
+          ] as any,
+          textSize: ["interpolate", ["linear"], ["zoom"], 9.5, 10, 11, 12, 14, 14] as any,
+          textAllowOverlap: false,
+          textFont: ["literal", ["Noto Sans Regular"]] as any,
+          textColor: mapPalette.text,
+          textHaloColor: mapPalette.surfaceAlt,
+          textHaloWidth: 1.1,
+          textOpacity: allZonesLabelOpacity,
         }}
       />
-    </GeoJSONSource>
+    </ShapeSource>
   );
 });

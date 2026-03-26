@@ -1,3 +1,5 @@
+// Deprecated during primitive-first migration.
+// Prefer src/primitives/box.tsx for new code.
 import { I18nManager, View, type ViewProps } from "react-native";
 
 import { useTheme } from "@/hooks/use-theme";

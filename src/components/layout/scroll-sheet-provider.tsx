@@ -6,8 +6,11 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type Animated from "react-native-reanimated";
 import { useAnimatedRef, useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
+
+import { BrandSpacing } from "@/theme/theme";
 
 type ScrollSheetScrollContextValue = {
   scrollY: ReturnType<typeof useSharedValue<number>>;
@@ -16,17 +19,22 @@ type ScrollSheetScrollContextValue = {
 type ScrollSheetLayoutContextValue = {
   collapsedSheetHeight: number;
   setCollapsedSheetHeight: (height: number) => void;
+  safeTop: number;
+  safeBottom: number;
+  overlayBottom: number;
 };
 
 export const ScrollSheetScrollContext = createContext<ScrollSheetScrollContextValue | null>(null);
 export const ScrollSheetLayoutContext = createContext<ScrollSheetLayoutContextValue | null>(null);
 
 export function ScrollSheetProvider({ children }: PropsWithChildren) {
+  const insets = useSafeAreaInsets();
   const scrollY = useSharedValue(0);
   const [collapsedSheetHeight, setCollapsedSheetHeight] = useState(140);
   const updateCollapsedSheetHeight = useCallback((height: number) => {
     setCollapsedSheetHeight((current) => (Math.abs(current - height) < 1 ? current : height));
   }, []);
+  const overlayBottom = BrandSpacing.lg;
 
   const scrollValue = useMemo<ScrollSheetScrollContextValue>(
     () => ({
@@ -38,8 +46,11 @@ export function ScrollSheetProvider({ children }: PropsWithChildren) {
     () => ({
       collapsedSheetHeight,
       setCollapsedSheetHeight: updateCollapsedSheetHeight,
+      safeTop: insets.top,
+      safeBottom: insets.bottom,
+      overlayBottom,
     }),
-    [collapsedSheetHeight, updateCollapsedSheetHeight],
+    [collapsedSheetHeight, insets.bottom, insets.top, overlayBottom, updateCollapsedSheetHeight],
   );
 
   return (

@@ -16,10 +16,11 @@ import {
 } from "@/components/profile/profile-subpage-sheet";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitList, KitSwitchRow } from "@/components/ui/kit";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useTheme } from "@/hooks/use-theme";
+import { BorderWidth } from "@/lib/design-system";
 import { prepareDeviceCalendarSync } from "@/lib/device-calendar-sync";
 import { resolveGoogleCalendarAuthConfig } from "@/lib/google-calendar-auth-config";
 import {
@@ -457,18 +458,19 @@ export default function CalendarSettingsScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: theme.color.appBg }}>
+    <View style={{ flex: 1, backgroundColor: theme.color.appBg }}>
       <ProfileSubpageScrollView
         routeKey="instructor/profile/calendar-settings"
         contentContainerStyle={{
-          paddingHorizontal: 16,
+          paddingHorizontal: BrandSpacing.lg,
           paddingBottom: BrandSpacing.xxl + BrandSpacing.xxl + BrandSpacing.xxl + BrandSpacing.md,
-          gap: 24,
+          gap: BrandSpacing.xl,
         }}
       >
         <View
-          className="overflow-hidden rounded-soft"
           style={{
+            overflow: "hidden",
+            borderRadius: BrandRadius.soft,
             backgroundColor: theme.color.surface as string,
           }}
         >
@@ -518,9 +520,11 @@ export default function CalendarSettingsScreen() {
 
         {googleStatus?.lastError ? (
           <View
-            className="rounded-medium px-control-x py-control-y"
             style={{
-              borderWidth: 1,
+              borderRadius: BrandRadius.md,
+              paddingHorizontal: BrandSpacing.controlX,
+              paddingVertical: BrandSpacing.controlY,
+              borderWidth: BorderWidth.thin,
               borderCurve: "continuous",
               backgroundColor: theme.color.dangerSubtle as string,
               borderColor: theme.color.danger as string,
@@ -542,9 +546,11 @@ export default function CalendarSettingsScreen() {
 
         {needsGoogleReconnect ? (
           <View
-            className="rounded-medium px-control-x py-control-y"
             style={{
-              borderWidth: 1,
+              borderRadius: BrandRadius.md,
+              paddingHorizontal: BrandSpacing.controlX,
+              paddingVertical: BrandSpacing.controlY,
+              borderWidth: BorderWidth.thin,
               borderCurve: "continuous",
               backgroundColor: theme.color.warningSubtle,
               borderColor: theme.color.warning,
@@ -566,9 +572,11 @@ export default function CalendarSettingsScreen() {
 
         {googleConfigError ? (
           <View
-            className="rounded-medium px-control-x py-control-y"
             style={{
-              borderWidth: 1,
+              borderRadius: BrandRadius.md,
+              paddingHorizontal: BrandSpacing.controlX,
+              paddingVertical: BrandSpacing.controlY,
+              borderWidth: BorderWidth.thin,
               borderCurve: "continuous",
               backgroundColor: theme.color.warningSubtle,
               borderColor: theme.color.warning,
@@ -589,7 +597,7 @@ export default function CalendarSettingsScreen() {
         ) : null}
 
         {provider === "google" ? (
-          <View className="gap-stack-tight">
+          <View style={{ gap: BrandSpacing.stackTight }}>
             <ActionButton
               label={
                 isSyncingGoogle
@@ -606,7 +614,14 @@ export default function CalendarSettingsScreen() {
         ) : null}
       </ProfileSubpageScrollView>
 
-      <View className="absolute left-inset right-inset" style={{ bottom: BrandSpacing.lg }}>
+      <View
+        style={{
+          position: "absolute",
+          left: BrandSpacing.inset,
+          right: BrandSpacing.inset,
+          bottom: BrandSpacing.lg,
+        }}
+      >
         <ActionButton label={t("common.done")} onPress={() => router.back()} fullWidth />
       </View>
     </View>
