@@ -6,7 +6,7 @@ import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
@@ -20,7 +20,7 @@ import {
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
 import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
 import { KitSwitch } from "@/components/ui/kit";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -280,6 +280,8 @@ export default function InstructorProfileScreen() {
           bio={instructorSettings?.bio}
           socialLinks={instructorSettings?.socialLinks}
           sports={instructorSettings?.sports ?? []}
+          memberSince={memberSince ?? undefined}
+          isPro={identityVerified}
         />
       </View>
     ),
@@ -292,6 +294,7 @@ export default function InstructorProfileScreen() {
       instructorSettings?.socialLinks,
       instructorSettings?.sports,
       nameValue,
+      memberSince,
       profileStatus,
       t,
     ],
@@ -519,7 +522,6 @@ export default function InstructorProfileScreen() {
                 />
                 <ProfileSettingRow
                   title={t("auth.signOutButton")}
-                  subtitle={t("profile.settings.signOutDesc")}
                   icon="arrow.right.square"
                   onPress={handleSignOut}
                   tone="danger"
@@ -613,6 +615,32 @@ export default function InstructorProfileScreen() {
                 showDivider
               />
               <ProfileSettingRow
+                title={t("profile.appearance.notifications")}
+                icon="bell.fill"
+                showDivider
+                accessory={
+                  <View
+                    style={{
+                      backgroundColor: theme.color.primary,
+                      paddingHorizontal: BrandSpacing.xs,
+                      paddingVertical: 2,
+                      borderRadius: BrandRadius.sm,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: theme.color.onPrimary,
+                        fontSize: 10,
+                        fontWeight: "700",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      ON
+                    </Text>
+                  </View>
+                }
+              />
+              <ProfileSettingRow
                 title={t("profile.appearance.systemTheme.title")}
                 icon="slider.horizontal.3"
                 showDivider
@@ -671,7 +699,6 @@ export default function InstructorProfileScreen() {
               />
               <ProfileSettingRow
                 title={t("auth.signOutButton")}
-                subtitle={t("profile.settings.signOutDesc")}
                 icon="arrow.right.square"
                 onPress={handleSignOut}
                 tone="danger"

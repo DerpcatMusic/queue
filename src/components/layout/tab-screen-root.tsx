@@ -1,5 +1,5 @@
-import type { PropsWithChildren } from "react";
-import type { ScrollViewProps, StyleProp, ViewStyle } from "react-native";
+import type { PropsWithChildren, ReactElement } from "react";
+import type { RefreshControlProps, ScrollViewProps, StyleProp, ViewStyle } from "react-native";
 
 import type { InsetTone } from "@/contexts/system-ui-context";
 import { ScreenScaffold } from "./screen-scaffold";
@@ -11,7 +11,9 @@ type BaseProps = {
 
 type TabScreenRootScrollProps = BaseProps & {
   mode: "scroll";
-  scrollProps?: Omit<ScrollViewProps, "contentContainerStyle">;
+  scrollProps?: Omit<ScrollViewProps, "contentContainerStyle" | "refreshControl"> & {
+    refreshControl?: ReactElement<RefreshControlProps>;
+  };
   contentContainerStyle?: StyleProp<ViewStyle>;
   useDesktopFrame?: boolean;
 };

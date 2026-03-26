@@ -28,9 +28,12 @@ type ProfileHeaderSheetProps = {
   socialLinks?: ProfileSocialLinks | undefined;
   sports: string[];
   visualVariant?: "default" | "studioFeature";
+  memberSince?: string | undefined;
+  isPro?: boolean;
 };
 
 const STUDIO_HERO_HEIGHT = 236;
+const STUDIO_HERO_TEXT = "#F7FAF7";
 
 function hexToRgba(hex: string, alpha: number) {
   const normalized = hex.startsWith("#") ? hex : "#000000";
@@ -52,6 +55,8 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   socialLinks,
   sports,
   visualVariant = "default",
+  memberSince,
+  isPro = false,
 }: ProfileHeaderSheetProps) {
   const { t } = useTranslation();
   const { color: palette } = useTheme();
@@ -71,7 +76,8 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   const statusTone = status === "ready" ? "success" : status === "pending" ? "warning" : "neutral";
 
   if (visualVariant === "studioFeature") {
-    const bottomScrimColor = typeof palette.primary === "string" ? palette.primary : "#000000";
+    const topMaskColor = typeof palette.primary === "string" ? palette.primary : "#9BD300";
+    const bottomMaskColor = typeof palette.appBg === "string" ? palette.appBg : "#060708";
 
     return (
       <View style={styles.featureShell}>
@@ -80,8 +86,8 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             styles.featureHero,
             {
               backgroundColor: palette.primary,
-              borderBottomLeftRadius: BrandRadius.card + BrandSpacing.xs,
-              borderBottomRightRadius: BrandRadius.card + BrandSpacing.xs,
+              borderBottomLeftRadius: BrandRadius.soft + BrandSpacing.xs,
+              borderBottomRightRadius: BrandRadius.soft + BrandSpacing.xs,
             },
           ]}
         >
@@ -106,20 +112,32 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             pointerEvents="none"
             style={[
               StyleSheet.absoluteFillObject,
-              { backgroundColor: hexToRgba(bottomScrimColor, profileImageUrl ? 0.08 : 0) },
+              { backgroundColor: hexToRgba(bottomMaskColor, profileImageUrl ? 0.06 : 0) },
             ]}
           />
 
           <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
             <Defs>
-              <SvgLinearGradient id="studioProfileHeroScrim" x1="0%" y1="0%" x2="0%" y2="100%">
-                <Stop offset="0%" stopColor={hexToRgba(bottomScrimColor, 0.02)} />
-                <Stop offset="54%" stopColor={hexToRgba(bottomScrimColor, 0.08)} />
-                <Stop offset="78%" stopColor={hexToRgba(bottomScrimColor, 0.78)} />
-                <Stop offset="100%" stopColor={bottomScrimColor} />
+              <SvgLinearGradient id="studioProfileHeroTopScrim" x1="0%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor={hexToRgba(topMaskColor, 0.54)} />
+                <Stop offset="36%" stopColor={hexToRgba(topMaskColor, 0.16)} />
+                <Stop offset="100%" stopColor={hexToRgba(topMaskColor, 0)} />
+              </SvgLinearGradient>
+              <SvgLinearGradient
+                id="studioProfileHeroBottomScrim"
+                x1="0%"
+                y1="0%"
+                x2="0%"
+                y2="100%"
+              >
+                <Stop offset="0%" stopColor={hexToRgba(bottomMaskColor, 0)} />
+                <Stop offset="56%" stopColor={hexToRgba(bottomMaskColor, 0.08)} />
+                <Stop offset="78%" stopColor={hexToRgba(bottomMaskColor, 0.82)} />
+                <Stop offset="100%" stopColor={bottomMaskColor} />
               </SvgLinearGradient>
             </Defs>
-            <Rect width="100%" height="100%" fill="url(#studioProfileHeroScrim)" />
+            <Rect width="100%" height="100%" fill="url(#studioProfileHeroTopScrim)" />
+            <Rect width="100%" height="100%" fill="url(#studioProfileHeroBottomScrim)" />
           </Svg>
 
           <View style={styles.featureTopRail}>
@@ -127,12 +145,12 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
               style={[
                 styles.featureRolePill,
                 {
-                  backgroundColor: hexToRgba(bottomScrimColor, 0.22),
-                  borderColor: hexToRgba(palette.onPrimary as string, 0.18),
+                  backgroundColor: hexToRgba(bottomMaskColor, 0.28),
+                  borderColor: hexToRgba(STUDIO_HERO_TEXT, 0.18),
                 },
               ]}
             >
-              <Text numberOfLines={1} style={[BrandType.micro, { color: palette.onPrimary }]}>
+              <Text numberOfLines={1} style={[BrandType.micro, { color: STUDIO_HERO_TEXT }]}>
                 {roleLabel}
               </Text>
             </View>
@@ -142,14 +160,16 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
               onPress={onRequestEdit}
               tone="primarySubtle"
               size={BrandSpacing.controlLg}
-              icon={<IconSymbol name="pencil" size={IconSize.md + 1} color={palette.primary} />}
+              icon={<IconSymbol name="pencil" size={IconSize.md + 1} color={topMaskColor} />}
             />
           </View>
 
           <View style={styles.featureBottomRail}>
-            <Text numberOfLines={2} style={[styles.featureTitle, { color: palette.onPrimary }]}>
-              {profileName}
-            </Text>
+            <View style={styles.featureTitleSkewWrap}>
+              <Text numberOfLines={2} style={[styles.featureTitle, { color: STUDIO_HERO_TEXT }]}>
+                {profileName}
+              </Text>
+            </View>
 
             <View style={styles.featureMetaRow}>
               {resolvedStatusLabel ? (
@@ -172,7 +192,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                     style={[
                       BrandType.bodyMedium,
                       styles.featureMetaText,
-                      { color: palette.onPrimary },
+                      { color: STUDIO_HERO_TEXT },
                     ]}
                   >
                     {resolvedStatusLabel}
@@ -186,7 +206,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                   style={[
                     BrandType.bodyMedium,
                     styles.featureMetaText,
-                    { color: hexToRgba(palette.onPrimary as string, 0.9) },
+                    { color: hexToRgba(STUDIO_HERO_TEXT, 0.9) },
                   ]}
                 >
                   {sportsLabel}
@@ -200,7 +220,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                 style={[
                   BrandType.caption,
                   styles.featureSummary,
-                  { color: hexToRgba(palette.onPrimary as string, 0.84) },
+                  { color: hexToRgba(STUDIO_HERO_TEXT, 0.82) },
                 ]}
               >
                 {summaryLabel}
@@ -216,142 +236,111 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
     <View
       pointerEvents="box-none"
       style={{
-        paddingHorizontal: BrandSpacing.xl,
-        paddingTop: BrandSpacing.xs,
-        paddingBottom: BrandSpacing.sm,
+        paddingHorizontal: BrandSpacing.lg,
+        paddingTop: BrandSpacing.sm,
+        paddingBottom: BrandSpacing.lg,
         gap: BrandSpacing.sm,
       }}
     >
+      {/* Avatar + Name Row */}
       <View
         style={{
           flexDirection: "row",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: BrandSpacing.component,
+          alignItems: "center",
+          gap: BrandSpacing.md,
         }}
       >
+        {/* Avatar with PRO badge */}
         <View
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: BrandSpacing.component,
-            flex: 1,
-            minWidth: 0,
+            position: "relative",
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            borderWidth: 2,
+            borderColor: palette.primary,
+            overflow: "visible",
           }}
         >
           <ProfileAvatar
             imageUrl={profileImageUrl}
             fallbackName={profileName}
-            size={72}
-            roundedSquare
+            size={64}
+            roundedSquare={false}
           />
-
-          <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
-            <Text
+          {isPro ? (
+            <View
               style={{
-                ...BrandType.micro,
-                color: palette.onPrimary,
-                includeFontPadding: false,
+                position: "absolute",
+                bottom: -2,
+                right: -2,
+                backgroundColor: palette.primary,
+                paddingHorizontal: 4,
+                paddingVertical: 1,
+                borderRadius: BrandRadius.sm,
               }}
             >
-              {roleLabel}
-            </Text>
+              <Text
+                style={{
+                  fontSize: 8,
+                  fontWeight: "900",
+                  color: palette.onPrimary,
+                  letterSpacing: 0.5,
+                }}
+              >
+                PRO
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Name + Edit Button + Member Since */}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: BrandSpacing.xs,
+            }}
+          >
             <Text
-              numberOfLines={2}
+              numberOfLines={1}
               style={{
-                ...BrandType.heading,
-                color: palette.onPrimary,
+                ...BrandType.title,
+                color: palette.text,
                 includeFontPadding: false,
+                flex: 1,
               }}
             >
               {profileName}
             </Text>
-            <View
+            <IconButton
+              accessibilityLabel={resolvedPrimaryActionLabel}
+              onPress={onRequestEdit}
+              size={32}
+              icon={<IconSymbol name="pencil" size={IconSize.sm} color={palette.primary} />}
+            />
+          </View>
+          {memberSince ? (
+            <Text
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: BrandSpacing.sm,
-                minHeight: 18,
+                ...BrandType.caption,
+                color: palette.textMuted,
+                includeFontPadding: false,
               }}
             >
-              {resolvedStatusLabel ? (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: BrandSpacing.statusDot,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: 3.5,
-                      backgroundColor:
-                        statusTone === "success"
-                          ? palette.success
-                          : statusTone === "warning"
-                            ? palette.warning
-                            : palette.onPrimary,
-                    }}
-                  />
-                  <Text
-                    numberOfLines={1}
-                    style={{
-                      ...BrandType.caption,
-                      color: palette.onPrimary,
-                      includeFontPadding: false,
-                    }}
-                  >
-                    {resolvedStatusLabel}
-                  </Text>
-                </View>
-              ) : null}
-              {sports.length > 0 ? (
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    ...BrandType.caption,
-                    color: palette.onPrimary,
-                    includeFontPadding: false,
-                  }}
-                >
-                  {sportsLabel}
-                </Text>
-              ) : null}
-            </View>
-          </View>
+              {memberSince}
+            </Text>
+          ) : null}
         </View>
-
-        <IconButton
-          accessibilityLabel={resolvedPrimaryActionLabel}
-          onPress={onRequestEdit}
-          tone="primarySubtle"
-          size={48}
-          icon={<IconSymbol name="pencil" size={21} color={palette.primary} />}
-        />
       </View>
-
-      {summaryLabel ? (
-        <Text
-          numberOfLines={2}
-          style={{
-            ...BrandType.caption,
-            color: palette.onPrimary,
-          }}
-        >
-          {summaryLabel}
-        </Text>
-      ) : null}
     </View>
   );
 });
 
 const styles = StyleSheet.create({
   featureShell: {
-    paddingHorizontal: BrandSpacing.xl,
-    paddingTop: BrandSpacing.xs,
-    paddingBottom: BrandSpacing.sm,
+    width: "100%",
   },
   featureHero: {
     minHeight: STUDIO_HERO_HEIGHT,
@@ -380,15 +369,18 @@ const styles = StyleSheet.create({
   },
   featureBottomRail: {
     paddingHorizontal: BrandSpacing.lg,
-    paddingTop: BrandSpacing.xl,
+    paddingTop: BrandSpacing.xxl,
     paddingBottom: BrandSpacing.xl,
     gap: BrandSpacing.xs,
+  },
+  featureTitleSkewWrap: {
+    alignSelf: "flex-start",
+    transform: [{ skewX: "-10deg" }],
   },
   featureTitle: {
     ...BrandType.heroSmall,
     fontFamily: FontFamily.display,
     includeFontPadding: false,
-    transform: [{ skewX: "-8deg" }],
   },
   featureMetaRow: {
     flexDirection: "row",

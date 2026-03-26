@@ -25,8 +25,7 @@ import {
   useResolvedTabSheetConfig,
 } from "@/components/layout/top-sheet-registry";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useTheme } from "@/hooks/use-theme";
-import { getFallbackSheetColors, resolveTopSheetRouteTab } from "./global-top-sheet.helpers";
+import { resolveTopSheetRouteTab } from "./global-top-sheet.helpers";
 import { getTopSheetStepHeights } from "./top-sheet.helpers";
 
 /**
@@ -40,7 +39,6 @@ import { getTopSheetStepHeights } from "./top-sheet.helpers";
  * - Reports its collapsed height to ScrollSheetProvider
  */
 export function GlobalTopSheet() {
-  const theme = useTheme();
   const pathname = usePathname();
   const { safeBottom, safeTop } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
@@ -49,10 +47,8 @@ export function GlobalTopSheet() {
 
   // ── Determine active tab config from route ──────────────────────────
   const activeTabId = resolveTopSheetRouteTab(pathname);
-  const routeConfig = useResolvedTabSheetConfig(activeTabId);
-  const activeConfig = routeConfig;
+  const activeConfig = useResolvedTabSheetConfig(activeTabId);
   const activeRouteKey = pathname ?? activeTabId;
-  const sheetInstanceKey = activeTabId ?? activeConfig?.tabId ?? "global-top-sheet";
 
   // ── ScrollY from provider (for custom animated sheets) ─────────────
   const { setCollapsedSheetHeight } = useScrollSheetLayout();
@@ -60,13 +56,8 @@ export function GlobalTopSheet() {
   const measuredHeightRef = useRef<number | null>(null);
   const lastRenderedSheetHeightRef = useRef<number | null>(null);
   const transitionKey = activeRouteKey ?? activeTabId ?? activeConfig?.tabId ?? "global-top-sheet";
-  const fallbackColors = activeConfig
-    ? getFallbackSheetColors(activeConfig.tabId)
-    : {
-        backgroundColor: theme.color.primary,
-        topInsetColor: theme.color.primary,
-      };
 
+  // Build TopSheet props from resolved config (colors are already theme-aware)
   const baseSheetProps = activeConfig
     ? {
         ...(activeConfig.draggable !== undefined ? { draggable: activeConfig.draggable } : {}),
@@ -82,10 +73,8 @@ export function GlobalTopSheet() {
           : {}),
         ...(activeConfig.expandMode ? { expandMode: activeConfig.expandMode } : {}),
         ...(activeConfig.padding ? { padding: activeConfig.padding } : {}),
-        backgroundColor:
-          (activeConfig.backgroundColor as string | undefined) ?? fallbackColors.backgroundColor,
-        topInsetColor:
-          (activeConfig.topInsetColor as string | undefined) ?? fallbackColors.topInsetColor,
+        backgroundColor: activeConfig.backgroundColor as string,
+        topInsetColor: activeConfig.topInsetColor as string,
         ...(activeConfig.style ? { style: activeConfig.style } : {}),
         ...(activeConfig.onStepChange ? { onStepChange: activeConfig.onStepChange } : {}),
         ...(activeConfig.stickyHeader ? { stickyHeader: activeConfig.stickyHeader } : {}),
@@ -185,7 +174,7 @@ export function GlobalTopSheet() {
   ) => {
     if (!node) return null;
     return (
-      <View style={[styles.contentClip, style]}>
+      <View style={styles.contentClip}>
         <Reanimated.View
           key={`${transitionKey}:${slotKey}`}
           style={style}
@@ -215,7 +204,7 @@ export function GlobalTopSheet() {
       return (
         <View pointerEvents="box-none" style={rootStyle}>
           <TopSheet
-            key={`${sheetInstanceKey}:sheet`}
+            key={`${transitionKey}:sheet`}
             {...baseSheetProps}
             {...continuitySheetProps}
             {...richSheetProps}
@@ -276,7 +265,7 @@ export function GlobalTopSheet() {
   return (
     <View pointerEvents="box-none" style={rootStyle}>
       <TopSheet
-        key={`${sheetInstanceKey}:sheet`}
+        key={`${transitionKey}:sheet`}
         {...baseSheetProps!}
         {...continuitySheetProps}
         {...(resolvedCollapsedHeightMode === "content"
