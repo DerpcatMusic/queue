@@ -1768,7 +1768,6 @@ export const getMyStudioJobsWithApplications = query({
 
 export const checkInstructorConflicts = query({
   args: {
-    instructorId: v.id("instructorProfiles"),
     startTime: v.number(),
     endTime: v.number(),
     excludeJobId: v.optional(v.id("jobs")),
@@ -1786,10 +1785,13 @@ export const checkInstructorConflicts = query({
     ),
   }),
   handler: async (ctx, args) => {
+    // SECURITY: Get instructor from auth context, not from args
+    const instructor = await requireInstructorProfile(ctx);
+    
     const jobs = await ctx.db
       .query("jobs")
       .withIndex("by_filledByInstructor_startTime", (q) =>
-        q.eq("filledByInstructorId", args.instructorId),
+        q.eq("filledByInstructorId", instructor._id),
       )
       .collect();
 

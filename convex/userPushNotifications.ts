@@ -25,11 +25,31 @@ export const sendUserPushNotification = internalAction({
     reason: v.optional(v.string()),
   }),
   handler: async (ctx, args): Promise<{ sent: boolean; reason?: string }> => {
-    const recipient = await ctx.runQuery(internal.notificationsCore.getPushRecipientForUser, {
-      userId: args.userId,
-    });
+    // SECURITY: Directly look up the target user's push token
+    // This internal action is called by authorized functions (like enqueueUserNotifications)
+    // which are responsible for ensuring the target userId is valid
+    const user = await ctx.db.get("users", args.userId);
+    if (!user || !user.isActive) {
+      return { sent: false, reason: "user_not_found" };
+    }
 
-    if (!recipient) {
+    let expoPushToken: string | null = null;
+
+    if (user.role === "instructor") {
+      const profile = await ctx.db
+        .query("instructorProfiles")
+        .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+        .unique();
+      expoPushToken = profile?.expoPushToken ?? null;
+    } else if (user.role === "studio") {
+      const profile = await ctx.db
+        .query("studioProfiles")
+        .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+        .unique();
+      expoPushToken = profile?.expoPushToken ?? null;
+    }
+
+    if (!expoPushToken) {
       return { sent: false, reason: "push_not_configured" };
     }
 
@@ -43,7 +63,7 @@ export const sendUserPushNotification = internalAction({
         },
         body: JSON.stringify([
           {
-            to: recipient.expoPushToken,
+            to: expoPushToken,
             sound: "default",
             title: args.title,
             body: args.body,

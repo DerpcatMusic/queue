@@ -638,8 +638,18 @@ export async function getPaymentForInvoicingRead(
   ctx: QueryCtx,
   { paymentId }: { paymentId: Id<"payments"> },
 ) {
+  // SECURITY: Verify caller owns or is involved in this payment
+  const user = await requireCurrentUser(ctx);
+  
   const payment = await ctx.db.get(paymentId);
   if (!payment) return null;
+
+  // Authorization: caller must be the studio or instructor on this payment
+  const isStudio = payment.studioUserId === user._id;
+  const isInstructor = payment.instructorUserId === user._id;
+  if (!isStudio && !isInstructor) {
+    throw new ConvexError("Not authorized to view this payment");
+  }
 
   const [studioUser, job] = await Promise.all([
     ctx.db.get(payment.studioUserId),
