@@ -122,7 +122,10 @@ const ReviewApplicationCard = memo(function ReviewApplicationCard({
             )}
           </Text>
           {application.message ? (
-            <Text style={{ ...BrandType.caption, fontStyle: "italic", color: palette.textMuted }} numberOfLines={2}>
+            <Text
+              style={{ ...BrandType.caption, fontStyle: "italic", color: palette.textMuted }}
+              numberOfLines={2}
+            >
               "{application.message}"
             </Text>
           ) : null}
@@ -156,9 +159,7 @@ const ReviewApplicationCard = memo(function ReviewApplicationCard({
 
         {/* Error feedback */}
         {hasError ? (
-          <Text style={{ ...BrandType.caption, color: palette.danger }}>
-            {t("common.error")}
-          </Text>
+          <Text style={{ ...BrandType.caption, color: palette.danger }}>{t("common.error")}</Text>
         ) : null}
 
         {/* Accept / Reject buttons */}
@@ -314,8 +315,8 @@ export function StudioHomeContent({
 
   // Stable per-applicationId review handler factory — prevents new callback per card per render
   const makeReviewHandler = useCallback(
-    (applicationId: Id<"jobApplications">) =>
-      (status: "accepted" | "rejected") => handleReview(applicationId, status),
+    (applicationId: Id<"jobApplications">) => (status: "accepted" | "rejected") =>
+      handleReview(applicationId, status),
     [handleReview],
   );
 
@@ -459,8 +460,6 @@ export function StudioHomeContent({
                       key={application.applicationId}
                       style={{
                         width: cardWidth,
-                        borderRadius: BrandRadius.soft,
-                        overflow: "hidden",
                       }}
                     >
                       <ReviewApplicationCard
