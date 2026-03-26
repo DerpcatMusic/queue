@@ -1,4 +1,3 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import {
   Pressable,
   type StyleProp,
@@ -7,6 +6,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -80,7 +80,7 @@ export function NativeSearchField({
         containerStyle,
       ]}
     >
-      <MaterialIcons name="search" size={metrics.iconSize} color={theme.color.textMuted} />
+      <IconSymbol name="magnifyingglass" size={metrics.iconSize} color={theme.color.textMuted} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -117,7 +117,7 @@ export function NativeSearchField({
             backgroundColor: pressed ? pressedBackgroundColor : clearButtonBackground,
           })}
         >
-          <MaterialIcons name="close" size={metrics.clearIconSize} color={theme.color.onPrimary} />
+          <IconSymbol name="xmark" size={metrics.clearIconSize} color={theme.color.onPrimary} />
         </Pressable>
       ) : null}
     </Animated.View>

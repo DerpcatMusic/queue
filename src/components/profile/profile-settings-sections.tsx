@@ -15,14 +15,14 @@ const PROFILE_SECTION_HEADER_ICON_SIZE = 14;
 
 const PROFILE_SECTION_CARD_MARGIN_HORIZONTAL = BrandSpacing.inset;
 
-const PROFILE_SETTING_ROW_GAP = BrandSpacing.component;
-const PROFILE_SETTING_ROW_PADDING_HORIZONTAL = BrandSpacing.insetSoft;
+const PROFILE_SETTING_ROW_GAP = BrandSpacing.sm;
+const PROFILE_SETTING_ROW_PADDING_HORIZONTAL = BrandSpacing.md;
 const PROFILE_SETTING_ROW_ICON_SIZE = 20;
-const PROFILE_SETTING_ROW_SECONDARY_GAP = BrandSpacing.stackHair;
-const PROFILE_SETTING_ROW_VALUE_GAP = BrandSpacing.inset;
-const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = BrandSpacing.insetSoft + 32;
-const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.insetSoft;
-const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.insetSoft;
+const PROFILE_SETTING_ROW_SECONDARY_GAP = BrandSpacing.xxs;
+const PROFILE_SETTING_ROW_VALUE_GAP = BrandSpacing.sm;
+const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = BrandSpacing.md + 24;
+const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.md;
+const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.md;
 const PROFILE_ICON_BUTTON_SIZE = 40;
 
 export function ProfileSectionHeader({
@@ -95,6 +95,7 @@ export function ProfileSectionCard({
   children: ReactNode;
   style?: ComponentProps<typeof View>["style"];
 }) {
+  const theme = useTheme();
   return (
     <KitSurface
       tone="base"
@@ -104,9 +105,10 @@ export function ProfileSectionCard({
         {
           marginHorizontal: PROFILE_SECTION_CARD_MARGIN_HORIZONTAL,
           overflow: "hidden",
-          borderRadius: BrandRadius.lg,
+          borderRadius: BrandRadius.card,
           borderCurve: "continuous",
           borderWidth: BorderWidth.thin,
+          borderColor: theme.color.border,
         },
         style,
       ]}
@@ -181,9 +183,9 @@ export function ProfileSettingRow({
       ? theme.color.danger
       : tone === "accent"
         ? resolvedAccentColor
-        : theme.color.primary;
+        : theme.color.textMuted;
 
-  const borderColor = tone === "danger" ? theme.color.danger : theme.color.border;
+  const dividerColor = theme.color.divider;
 
   const content = (
     <View>
@@ -193,13 +195,14 @@ export function ProfileSettingRow({
           alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
           gap: PROFILE_SETTING_ROW_GAP,
           paddingHorizontal: PROFILE_SETTING_ROW_PADDING_HORIZONTAL,
-          paddingVertical: 16,
+          paddingVertical: BrandSpacing.componentPadding,
           backgroundColor: rowBackgroundColor,
+          minHeight: BrandSpacing.listItemMinHeight,
         }}
       >
         {icon ? (
           <View style={{ width: PROFILE_SETTING_ROW_ICON_SIZE, alignItems: "center" }}>
-            <IconSymbol name={icon} size={18} color={iconColor} />
+            <IconSymbol name={icon} size={16} color={iconColor} />
           </View>
         ) : null}
 
@@ -208,10 +211,10 @@ export function ProfileSettingRow({
         >
           <Text
             style={{
-              fontFamily: "Manrope_600SemiBold",
-              fontSize: 15,
-              fontWeight: "600",
-              lineHeight: 20,
+              fontFamily: "Manrope_500Medium",
+              fontSize: 14,
+              fontWeight: "500",
+              lineHeight: 18,
               color: theme.color.text,
               includeFontPadding: false,
             }}
@@ -222,9 +225,9 @@ export function ProfileSettingRow({
             <Text
               style={{
                 fontFamily: "Manrope_400Regular",
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: "400",
-                lineHeight: 18,
+                lineHeight: 16,
                 color: theme.color.textMuted,
                 includeFontPadding: false,
               }}
@@ -248,9 +251,9 @@ export function ProfileSettingRow({
               numberOfLines={1}
               style={{
                 fontFamily: "Manrope_500Medium",
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: "500",
-                lineHeight: 20,
+                lineHeight: 18,
                 textAlign: "right",
                 color: theme.color.textMuted,
                 includeFontPadding: false,
@@ -260,7 +263,7 @@ export function ProfileSettingRow({
             </Text>
           ) : null}
           {accessory ??
-            (onPress ? <IconSymbol name="chevron.right" size={18} color={secondaryColor} /> : null)}
+            (onPress ? <IconSymbol name="chevron.right" size={14} color={secondaryColor} /> : null)}
         </View>
       </View>
       {showDivider ? (
@@ -271,7 +274,7 @@ export function ProfileSettingRow({
               ? PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON
               : PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON,
             marginRight: PROFILE_SETTING_ROW_DIVIDER_RIGHT,
-            backgroundColor: borderColor,
+            backgroundColor: dividerColor,
           }}
         />
       ) : null}

@@ -114,10 +114,7 @@ const InstructorJobsSheetStickyHeader = memo(function InstructorJobsSheetStickyH
             containerStyle={{ backgroundColor: theme.jobs.surface }}
           />
         </Animated.View>
-        <Animated.View
-          layout={jobsHeaderLayoutTransition}
-          style={{ flexShrink: 0, minWidth: 0 }}
-        >
+        <Animated.View layout={jobsHeaderLayoutTransition} style={{ flexShrink: 0, minWidth: 0 }}>
           <KitDisclosureButtonGroup
             accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
             expanded={showJobsFilters}
@@ -162,11 +159,7 @@ const InstructorJobsSheetStickyHeader = memo(function InstructorJobsSheetStickyH
       </Animated.View>
 
       {actionErrorMessage ? (
-        <NoticeBanner
-          tone="error"
-          message={actionErrorMessage}
-          onDismiss={onClearError}
-        />
+        <NoticeBanner tone="error" message={actionErrorMessage} onDismiss={onClearError} />
       ) : null}
     </View>
   );
@@ -380,10 +373,7 @@ export function InstructorFeed() {
   // Stable callbacks passed to memoized header - prevents header re-render on parent state changes
   const onClearError = useCallback(() => setActionErrorMessage(null), []);
   const onSearchChange = useCallback((text: string) => setJobsSearchQuery(text), []);
-  const onToggleFilters = useCallback(
-    () => setShowJobsFilters((current) => !current),
-    [],
-  );
+  const onToggleFilters = useCallback(() => setShowJobsFilters((current) => !current), []);
   const onSortChange = useCallback((value: SortMode) => {
     setSortMode(value);
     if (value === "pay") setSortDirection("desc");
@@ -518,6 +508,12 @@ export function InstructorFeed() {
         routeKey="instructor/jobs/index"
         style={styles.screen}
         contentContainerStyle={[styles.content, additionalSpacing]}
+        sheetInsets={{
+          topSpacing: BrandSpacing.lg,
+          bottomSpacing: BrandSpacing.xl,
+          horizontalPadding: BrandSpacing.lg,
+        }}
+        topInsetTone="sheet"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

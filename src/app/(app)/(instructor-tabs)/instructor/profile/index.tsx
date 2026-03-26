@@ -281,7 +281,6 @@ export default function InstructorProfileScreen() {
           socialLinks={instructorSettings?.socialLinks}
           sports={instructorSettings?.sports ?? []}
           memberSince={memberSince ?? undefined}
-          isPro={identityVerified}
         />
       </View>
     ),
@@ -535,10 +534,10 @@ export default function InstructorProfileScreen() {
           routeKey="instructor/profile"
           style={styles.screen}
           contentContainerStyle={{
-            gap: BrandSpacing.lg,
+            gap: BrandSpacing.sm,
           }}
-          topSpacing={12}
-          bottomSpacing={32}
+          topSpacing={BrandSpacing.sm}
+          bottomSpacing={BrandSpacing.xl}
         >
           <View style={styles.mobileContentPadding}>
             <ProfileSectionHeader

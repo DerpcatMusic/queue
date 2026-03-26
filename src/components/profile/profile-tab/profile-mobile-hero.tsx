@@ -56,7 +56,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   sports,
   visualVariant = "default",
   memberSince,
-  isPro = false,
+  isPro: _isPro = false,
 }: ProfileHeaderSheetProps) {
   const { t, i18n } = useTranslation();
   const { color: palette } = useTheme();
@@ -241,11 +241,14 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
         <View
           style={[
             styles.mobileEyebrow,
-            { backgroundColor: palette.surface, borderColor: palette.borderStrong },
+            { backgroundColor: palette.surfaceAlt, borderColor: palette.border },
           ]}
         >
           <Text
-            style={[styles.mobileEyebrowText, { color: palette.primary, fontFamily: eyebrowFont }]}
+            style={[
+              styles.mobileEyebrowText,
+              { color: palette.textMuted, fontFamily: eyebrowFont },
+            ]}
           >
             {roleLabel}
           </Text>
@@ -256,39 +259,15 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
         <View
           style={[
             styles.mobileAvatarWrap,
-            { borderColor: palette.primary, backgroundColor: palette.surfaceAlt },
+            { borderColor: palette.border, backgroundColor: palette.surfaceAlt },
           ]}
         >
           <ProfileAvatar
             imageUrl={profileImageUrl}
             fallbackName={profileName}
-            size={64}
+            size={56}
             roundedSquare={false}
           />
-          {isPro ? (
-            <View
-              style={{
-                position: "absolute",
-                bottom: -2,
-                right: -2,
-                backgroundColor: palette.primary,
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                borderRadius: BrandRadius.sm,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 8,
-                  fontWeight: "900",
-                  color: palette.onPrimary,
-                  letterSpacing: 0.5,
-                }}
-              >
-                PRO
-              </Text>
-            </View>
-          ) : null}
         </View>
 
         <View style={styles.mobileIdentityTextWrap}>
@@ -299,7 +278,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                 ...BrandType.heroSmall,
                 fontFamily: profileNameFont,
                 fontStyle: isHebrew ? "normal" : "italic",
-                letterSpacing: -0.6,
+                letterSpacing: -0.4,
                 color: palette.text,
                 includeFontPadding: false,
                 flex: 1,
@@ -312,7 +291,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
               onPress={onRequestEdit}
               size={32}
               tone="secondary"
-              icon={<IconSymbol name="pencil" size={IconSize.sm} color={palette.primary} />}
+              icon={<IconSymbol name="pencil" size={IconSize.sm} color={palette.textMuted} />}
             />
           </View>
           <View style={styles.mobileMetaRow}>
@@ -401,41 +380,41 @@ const styles = StyleSheet.create({
     opacity: Opacity.subtle,
   },
   mobileShell: {
-    paddingHorizontal: BrandSpacing.lg,
-    paddingTop: BrandSpacing.md,
-    paddingBottom: BrandSpacing.lg,
-    gap: BrandSpacing.md,
+    paddingHorizontal: BrandSpacing.md,
+    paddingTop: BrandSpacing.sm,
+    paddingBottom: BrandSpacing.md,
+    gap: BrandSpacing.sm,
   },
   mobileTopRail: {
     flexDirection: "row",
     alignItems: "center",
-    gap: BrandSpacing.md,
+    gap: BrandSpacing.sm,
   },
   mobileEyebrow: {
-    borderRadius: BrandRadius.md,
+    borderRadius: BrandRadius.sm,
     borderCurve: "continuous",
     borderWidth: BorderWidth.thin,
-    paddingHorizontal: BrandSpacing.md,
-    paddingVertical: 6,
+    paddingHorizontal: BrandSpacing.sm,
+    paddingVertical: BrandSpacing.xxs,
     maxWidth: "86%",
   },
   mobileEyebrowText: {
     ...BrandType.micro,
-    letterSpacing: 1.6,
+    letterSpacing: 1.2,
     textTransform: "uppercase",
     includeFontPadding: false,
   },
   mobileIdentityRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: BrandSpacing.lg,
+    gap: BrandSpacing.md,
   },
   mobileAvatarWrap: {
     position: "relative",
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 2,
+    width: 56,
+    height: 56,
+    borderRadius: BrandRadius.cardSubtle,
+    borderWidth: 1,
     overflow: "visible",
   },
   mobileIdentityTextWrap: {

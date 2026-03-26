@@ -1,4 +1,4 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateTimePicker from "@expo/ui/datetimepicker";
 import { useTranslation } from "react-i18next";
 import { I18nManager, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
@@ -438,13 +438,17 @@ export function PickerDock({
   visible,
   value,
   mode,
-  display,
+  display: _display,
   minimumDate,
   onChange,
   onDone,
 }: PickerDockProps) {
   const { t } = useTranslation();
   if (!visible) return null;
+
+  const presentation: "inline" | "dialog" =
+    Platform.OS === "ios" || _display === "inline" ? "inline" : "dialog";
+
   return (
     <View
       style={{
@@ -456,8 +460,8 @@ export function PickerDock({
       <DateTimePicker
         value={value}
         mode={mode}
-        display={display}
-        onChange={onChange}
+        presentation={presentation}
+        onValueChange={onChange}
         {...(minimumDate ? { minimumDate } : {})}
       />
       {Platform.OS === "ios" ? (
