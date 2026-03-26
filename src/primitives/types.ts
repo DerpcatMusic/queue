@@ -1,18 +1,13 @@
 import type {
   ColorValue,
   DimensionValue,
-  StyleProp,
   TextProps as RNTextProps,
+  StyleProp,
   TextStyle,
   ViewProps,
   ViewStyle,
 } from "react-native";
-import type {
-  ColorToken,
-  IconSizeToken,
-  SpaceToken,
-  TypographyToken,
-} from "@/theme/theme";
+import type { ColorToken, IconSizeToken, SpaceToken, TypographyToken } from "@/theme/theme";
 
 // Re-export theme tokens for primitive consumers
 export type { ColorToken, IconSizeToken, SpaceToken, TypographyToken };
@@ -63,6 +58,7 @@ export type SafeLayoutProps = Pick<
   | "opacity"
   | "width"
   | "height"
+  | "minWidth"
   | "minHeight"
   | "maxWidth"
 >;

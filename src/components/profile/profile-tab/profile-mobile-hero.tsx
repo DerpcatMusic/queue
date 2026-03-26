@@ -9,6 +9,7 @@ import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth, FontFamily, IconSize, Opacity } from "@/lib/design-system";
+import { Box } from "@/primitives";
 import {
   getActiveSocialCount,
   getProfileSummary,
@@ -236,12 +237,12 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   }
 
   return (
-    <View
+    <Box
       pointerEvents="box-none"
       style={[styles.mobileShell, { borderBottomColor: palette.outlineStrong }]}
     >
-      <View style={styles.mobileTopRail}>
-        <View
+      <Box style={styles.mobileTopRail}>
+        <Box
           style={[
             styles.mobileEyebrow,
             { backgroundColor: palette.surfaceElevated, borderColor: palette.outlineStrong },
@@ -255,11 +256,11 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           >
             {roleLabel}
           </Text>
-        </View>
-      </View>
+        </Box>
+      </Box>
 
-      <View style={styles.mobileIdentityRow}>
-        <View
+      <Box style={styles.mobileIdentityRow}>
+        <Box
           style={[
             styles.mobileAvatarWrap,
             { borderColor: palette.primary, backgroundColor: palette.surfaceAlt },
@@ -269,12 +270,12 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             imageUrl={profileImageUrl}
             fallbackName={profileName}
             size={56}
-            roundedSquare={false}
+            roundedSquare
           />
-        </View>
+        </Box>
 
-        <View style={styles.mobileIdentityTextWrap}>
-          <View style={styles.mobileNameRow}>
+        <Box style={styles.mobileIdentityTextWrap}>
+          <Box style={styles.mobileNameRow}>
             <Text
               numberOfLines={1}
               style={{
@@ -285,6 +286,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                 color: palette.text,
                 includeFontPadding: false,
                 flex: 1,
+                fontWeight: "700",
               }}
             >
               {profileName}
@@ -296,8 +298,8 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
               tone="secondary"
               icon={<IconSymbol name="pencil" size={IconSize.sm} color={palette.primary} />}
             />
-          </View>
-          <View style={styles.mobileMetaRow}>
+          </Box>
+          <Box style={styles.mobileMetaRow}>
             <Text
               style={{
                 ...BrandType.caption,
@@ -307,10 +309,10 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             >
               {memberSince ?? summaryLabel ?? resolvedStatusLabel}
             </Text>
-          </View>
-        </View>
-      </View>
-    </View>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 });
 
@@ -418,8 +420,8 @@ const styles = StyleSheet.create({
     position: "relative",
     width: 56,
     height: 56,
-    borderRadius: BrandRadius.card,
-    borderWidth: BorderWidth.strong,
+    borderRadius: BrandRadius.full,
+    borderWidth: 2,
     overflow: "visible",
   },
   mobileIdentityTextWrap: {
