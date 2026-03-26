@@ -4,10 +4,9 @@ import type { Id } from "./_generated/dataModel";
 import {
   httpAction,
   internalMutation,
+  internalQuery,
   type MutationCtx,
-  mutation,
   type QueryCtx,
-  query,
 } from "./_generated/server";
 import { buildRapydWebhookSignature } from "./integrations/rapyd/client";
 import { buildCanonicalRapydPayload } from "./integrations/rapyd/payloads";
@@ -513,7 +512,7 @@ export const processIntegrationEvent = internalMutation({
   },
 });
 
-export const listFailedIntegrationEvents = query({
+export const listFailedIntegrationEvents = internalQuery({
   args: {
     accessToken: v.optional(v.string()),
     provider: v.optional(integrationProviderValidator),
@@ -551,7 +550,7 @@ export const listFailedIntegrationEvents = query({
   },
 });
 
-export const replayIntegrationEvent = mutation({
+export const replayIntegrationEvent = internalMutation({
   args: {
     integrationEventId: v.id("integrationEvents"),
     accessToken: v.optional(v.string()),
@@ -584,7 +583,7 @@ export const replayIntegrationEvent = mutation({
   },
 });
 
-export const replayFailedIntegrationEvents = mutation({
+export const replayFailedIntegrationEvents = internalMutation({
   args: {
     accessToken: v.optional(v.string()),
     provider: v.optional(integrationProviderValidator),
