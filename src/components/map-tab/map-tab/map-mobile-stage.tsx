@@ -81,7 +81,7 @@ export function MapMobileStage({
             zoneModeActive ? t("mapTab.mobile.confirmCoverage") : t("mapTab.mobile.editCoverage")
           }
           onPress={onEditToggle}
-          tone={zoneModeActive ? "primary" : "primarySubtle"}
+          tone={zoneModeActive ? "primary" : "secondary"}
           size={58}
           disabled={isSaving}
           icon={
