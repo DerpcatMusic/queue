@@ -775,28 +775,19 @@ export default function StudioProfileScreen() {
                   flexDirection: "row",
                   alignItems: "flex-start",
                   gap: BrandSpacing.componentPadding,
-                  paddingHorizontal: BrandSpacing.lg,
+                  paddingHorizontal: BrandSpacing.insetSoft,
                   paddingVertical: BrandSpacing.componentPadding,
                 }}
               >
-                <View
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: BrandRadius.cardSubtle,
-                    borderCurve: "continuous",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: color.surfaceAlt,
-                  }}
-                >
-                  <IconSymbol name="clock.fill" size={18} color={color.primary} />
+                <View style={{ width: 20, alignItems: "center", paddingTop: 1 }}>
+                  <IconSymbol name="clock.fill" size={18} color={color.secondary} />
                 </View>
                 <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                   <Text
                     style={{
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: "600",
+                      lineHeight: 20,
                       color: color.text,
                     }}
                   >
@@ -842,8 +833,8 @@ export default function StudioProfileScreen() {
               <View
                 style={{
                   height: 1,
-                  marginLeft: 56,
-                  marginRight: 18,
+                  marginLeft: BrandSpacing.insetSoft + 32,
+                  marginRight: BrandSpacing.insetSoft,
                   backgroundColor: color.border,
                 }}
               />
@@ -932,6 +923,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
   },
   mobileContentPadding: {
-    paddingHorizontal: BrandSpacing.xl,
+    paddingHorizontal: BrandSpacing.md,
   },
 });

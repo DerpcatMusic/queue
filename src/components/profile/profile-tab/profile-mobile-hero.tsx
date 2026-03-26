@@ -241,7 +241,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
         <View
           style={[
             styles.mobileEyebrow,
-            { backgroundColor: palette.surfaceAlt, borderColor: palette.border },
+            { backgroundColor: palette.surface, borderColor: palette.borderStrong },
           ]}
         >
           <Text
@@ -249,9 +249,6 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           >
             {roleLabel}
           </Text>
-        </View>
-        <View style={styles.mobileBrandBadge}>
-          <Text style={[styles.mobileBrandBadgeText, { color: palette.primary }]}>Q</Text>
         </View>
       </View>
 
@@ -406,36 +403,26 @@ const styles = StyleSheet.create({
   mobileShell: {
     paddingHorizontal: BrandSpacing.lg,
     paddingTop: BrandSpacing.md,
-    paddingBottom: BrandSpacing.xl,
+    paddingBottom: BrandSpacing.lg,
     gap: BrandSpacing.md,
   },
   mobileTopRail: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: BrandSpacing.md,
   },
   mobileEyebrow: {
-    borderRadius: BrandRadius.pill,
+    borderRadius: BrandRadius.md,
     borderCurve: "continuous",
     borderWidth: BorderWidth.thin,
     paddingHorizontal: BrandSpacing.md,
-    paddingVertical: BrandSpacing.xs,
-    maxWidth: "78%",
+    paddingVertical: 6,
+    maxWidth: "86%",
   },
   mobileEyebrowText: {
     ...BrandType.micro,
     letterSpacing: 1.6,
     textTransform: "uppercase",
-    includeFontPadding: false,
-  },
-  mobileBrandBadge: {
-    minWidth: BrandSpacing.controlMd,
-    alignItems: "center",
-  },
-  mobileBrandBadgeText: {
-    ...BrandType.titleLarge,
-    fontFamily: FontFamily.displayBlack,
     includeFontPadding: false,
   },
   mobileIdentityRow: {
@@ -448,7 +435,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    borderWidth: BorderWidth.strong,
+    borderWidth: 2,
     overflow: "visible",
   },
   mobileIdentityTextWrap: {

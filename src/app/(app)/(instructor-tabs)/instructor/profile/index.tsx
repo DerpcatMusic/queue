@@ -535,9 +535,9 @@ export default function InstructorProfileScreen() {
           routeKey="instructor/profile"
           style={styles.screen}
           contentContainerStyle={{
-            gap: BrandSpacing.xl,
+            gap: BrandSpacing.lg,
           }}
-          topSpacing={18}
+          topSpacing={12}
           bottomSpacing={32}
         >
           <View style={styles.mobileContentPadding}>
@@ -756,6 +756,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
   },
   mobileContentPadding: {
-    paddingHorizontal: BrandSpacing.lg, // 16px
+    paddingHorizontal: BrandSpacing.md,
   },
 });
