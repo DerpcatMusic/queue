@@ -40,6 +40,7 @@ import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { getBoostPresentation } from "@/lib/jobs-utils";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import { Box } from "@/primitives";
 
 type SortMode = "none" | "bonus" | "pay" | "time";
 
@@ -503,7 +504,7 @@ export function InstructorFeed() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.jobs.canvas }]}>
+    <Box flex={1} style={{ backgroundColor: theme.jobs.canvas }}>
       <TabScreenScrollView
         routeKey="instructor/jobs/index"
         style={styles.screen}
@@ -524,7 +525,7 @@ export function InstructorFeed() {
         }
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ flex: 1, gap: BrandSpacing.lg }}>
+        <Box flex={1} gap="lg">
           {jobs.length === 0 ? (
             <View
               style={{
@@ -588,7 +589,7 @@ export function InstructorFeed() {
               t={t}
             />
           )}
-        </View>
+        </Box>
       </TabScreenScrollView>
       <TabOverlayAnchor side="right" offset={BrandSpacing.lg} style={{ zIndex: 60 }}>
         <IconButton
@@ -625,7 +626,7 @@ export function InstructorFeed() {
         locale={locale}
         zoneLanguage={zoneLanguage}
       />
-    </View>
+    </Box>
   );
 }
 

@@ -105,9 +105,9 @@ export function ProfileSectionCard({
         {
           marginHorizontal: PROFILE_SECTION_CARD_MARGIN_HORIZONTAL,
           overflow: "hidden",
-          borderRadius: BrandRadius.cardSubtle,
+          borderRadius: BrandRadius.card,
           borderCurve: "continuous",
-          borderWidth: BorderWidth.thin,
+          borderWidth: BorderWidth.strong,
           borderColor: theme.color.outlineStrong,
         },
         style,
