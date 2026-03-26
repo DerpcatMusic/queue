@@ -1,6 +1,7 @@
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { memo, type RefObject } from "react";
 import { type StyleProp, View, type ViewStyle } from "react-native";
+import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { BrandSpacing } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -37,10 +38,16 @@ function CalendarTimelineList({
 }: CalendarTimelineListProps) {
   const { safeBottom } = useAppInsets();
   const { color: palette } = useTheme();
+  const collapsedSheetHeight = useCollapsedSheetHeight();
 
   return (
     <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
-      <View style={[calendarTimelineStyles.timelineViewport, { backgroundColor: palette.appBg }]}>
+      <View
+        style={[
+          calendarTimelineStyles.timelineViewport,
+          { backgroundColor: palette.appBg, paddingTop: collapsedSheetHeight + BrandSpacing.xl },
+        ]}
+      >
         <FlashList
           ref={listRef}
           data={listItems}
