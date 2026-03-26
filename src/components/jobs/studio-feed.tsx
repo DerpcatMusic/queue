@@ -175,7 +175,7 @@ export function StudioFeed() {
         style={styles.screen}
         contentContainerStyle={styles.content}
         sheetInsets={{
-          topSpacing: BrandSpacing.xl,
+          topSpacing: BrandSpacing.lg,
           bottomSpacing: BrandSpacing.xl,
           horizontalPadding: BrandSpacing.lg,
         }}
@@ -327,7 +327,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingBottom: BrandSpacing.xl,
   },
   page: {
     flex: 1,

@@ -187,12 +187,11 @@ export function InstructorFeed() {
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveSheetRef = useRef<BottomSheet>(null);
   const deferredJobsSearchQuery = useDeferredValue(jobsSearchQuery);
-  // Additional spacing on top of the base insets applied by ScreenScaffold
-  // ScreenScaffold automatically applies collapsedSheetHeight, safeBottom, and progressViewOffset
+  // IMPORTANT: top/bottom/horizontal sheet padding is owned by ScreenScaffold via sheetInsets.
+  // This screen must only contribute content rhythm (gap), otherwise it overrides the
+  // collapsed-sheet inset contract and content renders under the top sheet.
   const additionalSpacing = {
-    paddingTop: BrandSpacing.xl,
-    paddingBottom: BrandSpacing.xl,
-    paddingHorizontal: BrandSpacing.lg,
+    gap: BrandSpacing.lg,
   };
 
   const { currentUser } = useUser();
@@ -510,7 +509,7 @@ export function InstructorFeed() {
         style={styles.screen}
         contentContainerStyle={[styles.content, additionalSpacing]}
         sheetInsets={{
-          topSpacing: BrandSpacing.xl,
+          topSpacing: BrandSpacing.lg,
           bottomSpacing: BrandSpacing.xl,
           horizontalPadding: BrandSpacing.lg,
         }}
@@ -636,7 +635,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingBottom: BrandSpacing.xl,
     gap: BrandSpacing.lg,
   },
   feedIntro: {

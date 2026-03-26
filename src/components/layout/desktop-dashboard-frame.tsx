@@ -1,8 +1,9 @@
 import type { PropsWithChildren } from "react";
-import { type StyleProp, View, type ViewStyle } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 
 import { BrandSpacing } from "@/constants/brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { Box } from "@/primitives";
 
 const DESKTOP_FRAME_MAX_WIDTH = 1480;
 
@@ -25,17 +26,17 @@ export function DesktopDashboardFrame({ children, contentStyle }: DesktopDashboa
   const frame = useDesktopDashboardFrame();
 
   if (!frame.isWideWeb) {
-    return <View style={contentStyle}>{children}</View>;
+    return <Box style={contentStyle}>{children}</Box>;
   }
 
   return (
-    <View
+    <Box
       style={{
         width: "100%",
         paddingHorizontal: frame.outerPadding,
       }}
     >
-      <View
+      <Box
         style={[
           {
             width: "100%",
@@ -47,7 +48,7 @@ export function DesktopDashboardFrame({ children, contentStyle }: DesktopDashboa
         ]}
       >
         {children}
-      </View>
-    </View>
+      </Box>
+    </Box>
   );
 }
