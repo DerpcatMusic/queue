@@ -17,7 +17,7 @@ import {
 import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
@@ -164,8 +164,6 @@ export function InstructorHomeContent({
                       key={job.jobId}
                       style={{
                         width: cardWidth,
-                        borderRadius: BrandRadius.soft,
-                        overflow: "hidden",
                       }}
                     >
                       <InstructorJobCard

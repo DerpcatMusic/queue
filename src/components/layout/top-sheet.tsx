@@ -18,11 +18,11 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { StyleSheet } from "react-native-unistyles";
 import { useSystemUi } from "@/contexts/system-ui-context";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
 import { BrandRadius, BrandSpacing, Motion } from "@/theme/theme";
-import { StyleSheet } from "react-native-unistyles";
 import {
   ANIMATION_DURATION_EXPANDED_PROGRESS,
   DEFAULT_STEPS,
@@ -33,8 +33,8 @@ import {
   HANDLE_PILL_WIDTH,
   MIN_BOTTOM_CHROME_ESTIMATE,
   REVEAL_TRANSLATE_OFFSET,
-  SHEET_SPRING,
   SHEET_CORNER_RADIUS,
+  SHEET_SPRING,
   TAB_BAR_ESTIMATE,
   VELOCITY_THRESHOLD,
 } from "./top-sheet-constants";
@@ -138,6 +138,10 @@ export function TopSheet({
   const resolvedInsetColor = topInsetColor ?? resolvedBackground;
   const backgroundColorValue =
     typeof resolvedBackground === "string" ? resolvedBackground : theme.color.surfaceElevated;
+  const sheetGlowColor =
+    backgroundColorValue === theme.jobs.canvas || backgroundColorValue === theme.jobs.surface
+      ? theme.jobs.glowStrong
+      : theme.color.sheetGlowStrong;
 
   const [internalStepIndex, setInternalStepIndex] = useState(initialStep);
   const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState(0);
@@ -366,6 +370,13 @@ export function TopSheet({
     <Animated.View
       style={[
         styles.sheetShell,
+        {
+          shadowColor: sheetGlowColor,
+          shadowOffset: { width: 0, height: 14 },
+          shadowOpacity: 1,
+          shadowRadius: 28,
+          elevation: 18,
+        },
         shellBackgroundStyle,
         outerStyle,
         style,

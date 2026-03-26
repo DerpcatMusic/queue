@@ -72,6 +72,13 @@ export default function HomeScreen() {
   );
 
   const activeRole = currentUser?.role ?? null;
+  const studioHomeCounts = useMemo(() => {
+    const jobs = myStudioJobs ?? [];
+    const openJobs = jobs.filter((job) => job.status === "open").length;
+    const pendingApplicants = jobs.reduce((total, job) => total + job.pendingApplicationsCount, 0);
+    const jobsFilled = jobs.filter((job) => job.status === "filled").length;
+    return { openJobs, pendingApplicants, jobsFilled };
+  }, [myStudioJobs]);
   const fallbackDisplayName =
     currentUser?.fullName?.trim().split(/\s+/)[0] || t("home.shared.unknownName");
   const homeDisplayName =
@@ -103,6 +110,21 @@ export default function HomeScreen() {
           isVerified={
             activeRole === "instructor" ? (instructorHomeStats?.isVerified ?? false) : false
           }
+          lessonsCompleted={instructorHomeStats?.lessonEvents.length ?? 0}
+          totalEarningsLabel={currencyFormatter.format(
+            (instructorHomeStats?.totalEarningsAgorot ?? 0) / 100,
+          )}
+          pendingApplications={
+            activeRole === "instructor"
+              ? (instructorHomeStats?.pendingApplications ?? 0)
+              : studioHomeCounts.pendingApplicants
+          }
+          openJobs={
+            activeRole === "instructor"
+              ? (availableInstructorJobs?.length ?? 0)
+              : studioHomeCounts.openJobs
+          }
+          role={activeRole}
           {...(homeSubtitle ? { subtitle: homeSubtitle } : {})}
         />
       ) : null,
@@ -127,11 +149,11 @@ export default function HomeScreen() {
               vertical: 0,
               horizontal: 0,
             },
-            backgroundColor: palette.primary,
-            topInsetColor: palette.primary,
+            backgroundColor: palette.surface,
+            topInsetColor: palette.surface,
           }
         : null,
-    [activeRole, homeSheetContent, palette.primary],
+    [activeRole, homeSheetContent, palette.surface],
   );
 
   useGlobalTopSheet("index", homeSheetConfig, "home:sheet");
