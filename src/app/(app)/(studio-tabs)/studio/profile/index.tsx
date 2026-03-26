@@ -354,10 +354,10 @@ export default function StudioProfileScreen() {
         vertical: 0,
         horizontal: 0,
       },
-      backgroundColor: color.primary,
-      topInsetColor: color.primary,
+      backgroundColor: color.surface,
+      topInsetColor: color.surface,
     }),
-    [color.primary, profileSheetContent],
+    [color.surface, profileSheetContent],
   );
 
   const isProfileIndexRoute = pathname === STUDIO_PROFILE_ROUTE || pathname.endsWith("/profile");

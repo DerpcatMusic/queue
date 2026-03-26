@@ -312,10 +312,10 @@ export default function InstructorProfileScreen() {
         vertical: 0,
         horizontal: 0,
       },
-      backgroundColor: theme.color.primary,
-      topInsetColor: theme.color.primary,
+      backgroundColor: theme.color.surface,
+      topInsetColor: theme.color.surface,
     }),
-    [profileSheetContent, theme.color.primary],
+    [profileSheetContent, theme.color.surface],
   );
 
   const isProfileIndexRoute =

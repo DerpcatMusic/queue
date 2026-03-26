@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -6,6 +7,7 @@ import { KitSurface } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { BorderWidth, FontFamily } from "@/lib/design-system";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
@@ -36,6 +38,9 @@ export function ProfileSectionHeader({
   flush?: boolean;
 }) {
   const theme = useTheme();
+  const { i18n } = useTranslation();
+  const isHebrew = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he");
+  const headerFontFamily = isHebrew ? "Kanit_700Bold" : FontFamily.displayBold;
 
   return (
     <View
@@ -60,7 +65,18 @@ export function ProfileSectionHeader({
             color={theme.color.textMuted}
           />
         ) : null}
-        <Text style={[BrandType.micro, { textTransform: "uppercase", color: theme.color.textMuted }]}>
+        <Text
+          style={[
+            BrandType.micro,
+            {
+              fontFamily: headerFontFamily,
+              fontStyle: isHebrew ? "normal" : "italic",
+              textTransform: "uppercase",
+              letterSpacing: 2,
+              color: theme.color.textMicro,
+            },
+          ]}
+        >
           {label}
         </Text>
       </View>
@@ -89,8 +105,9 @@ export function ProfileSectionCard({
         {
           marginHorizontal: PROFILE_SECTION_CARD_MARGIN_HORIZONTAL,
           overflow: "hidden",
-          borderRadius: BrandRadius.soft,
+          borderRadius: BrandRadius.soft + BrandSpacing.xs,
           borderCurve: "continuous",
+          borderWidth: BorderWidth.thin,
         },
         style,
       ]}
@@ -149,6 +166,7 @@ export function ProfileSettingRow({
   const theme = useTheme();
   const { resolvedScheme } = useThemePreference();
   const resolvedAccentColor = accentColor ?? theme.color.tertiary;
+  const rowBackgroundColor = theme.color.surface;
 
   const secondaryColor =
     tone === "danger"
@@ -186,7 +204,7 @@ export function ProfileSettingRow({
           gap: PROFILE_SETTING_ROW_GAP,
           paddingHorizontal: PROFILE_SETTING_ROW_PADDING_HORIZONTAL,
           paddingVertical: PROFILE_SETTING_ROW_PADDING_VERTICAL,
-          backgroundColor: theme.color.surface,
+          backgroundColor: rowBackgroundColor,
         }}
       >
         {icon ? (
@@ -199,6 +217,8 @@ export function ProfileSettingRow({
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: iconBackground,
+              borderWidth: BorderWidth.hairline,
+              borderColor: tone === "accent" ? resolvedAccentColor : theme.color.border,
             }}
           >
             <IconSymbol name={icon} size={18} color={iconColor} />
@@ -215,6 +235,7 @@ export function ProfileSettingRow({
               fontWeight: "600",
               lineHeight: 22,
               color: theme.color.text,
+              includeFontPadding: false,
             }}
           >
             {title}
@@ -227,6 +248,7 @@ export function ProfileSettingRow({
                 fontWeight: "400",
                 lineHeight: 19,
                 color: theme.color.textMuted,
+                includeFontPadding: false,
               }}
             >
               {subtitle}
@@ -253,6 +275,7 @@ export function ProfileSettingRow({
                 lineHeight: 22,
                 textAlign: "right",
                 color: theme.color.textMuted,
+                includeFontPadding: false,
               }}
             >
               {value}

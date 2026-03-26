@@ -1,6 +1,7 @@
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 
 import { BarlowCondensed_800ExtraBold } from "@expo-google-fonts/barlow-condensed";
+import { Kanit_600SemiBold, Kanit_700Bold, Kanit_800ExtraBold } from "@expo-google-fonts/kanit";
 import {
   Lexend_500Medium,
   Lexend_600SemiBold,
@@ -36,12 +37,11 @@ import { UserProvider } from "@/contexts/user-context";
 import { ThemePreferenceProvider, useThemePreference } from "@/hooks/use-theme-preference";
 import i18n from "@/i18n";
 import { getConvexClient, isConvexUrlConfigured } from "@/lib/convex";
-import { getTheme } from "@/theme/theme";
 import { useAndroidNavigationBarTheme } from "@/modules/app-shell/use-android-navigation-bar-theme";
 import { useLocalizationBootstrapPrompt } from "@/modules/app-shell/use-localization-bootstrap-prompt";
 import { useStartupNotificationsSetup } from "@/modules/app-shell/use-startup-notifications-setup";
 import { useStartupPerfMetrics } from "@/modules/app-shell/use-startup-perf-metrics";
-import { BrandSpacing, BrandType } from "@/theme/theme";
+import { BrandSpacing, BrandType, getTheme } from "@/theme/theme";
 
 const IGNORED_LOG_MESSAGES = [
   "ProgressBarAndroid has been extracted from react-native core",
@@ -85,6 +85,9 @@ function RootLayoutContent() {
   const [authSessionVersion, setAuthSessionVersion] = useState(0);
   const [fontsLoaded] = useFonts({
     BarlowCondensed_800ExtraBold,
+    Kanit_600SemiBold,
+    Kanit_700Bold,
+    Kanit_800ExtraBold,
     Lexend_500Medium,
     Lexend_600SemiBold,
     Lexend_700Bold,
@@ -194,15 +197,15 @@ function RootLayoutContent() {
         >
           <UserProvider>
             <RapydReturnProvider>
-                <ThemeProvider value={navigationTheme}>
+              <ThemeProvider value={navigationTheme}>
                 <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
                   <View style={{ flex: 1 }}>
                     <Stack
-                        screenOptions={{
-                          headerTintColor: navColors.text,
-                          headerTitleStyle: { color: navColors.text },
-                        }}
-                      >
+                      screenOptions={{
+                        headerTintColor: navColors.text,
+                        headerTitleStyle: { color: navColors.text },
+                      }}
+                    >
                       <Stack.Screen
                         name="index"
                         options={{

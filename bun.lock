@@ -9,6 +9,7 @@
         "@convex-dev/auth": "^0.0.91",
         "@didit-protocol/sdk-react-native": "^3.2.7",
         "@expo-google-fonts/barlow-condensed": "^0.4.1",
+        "@expo-google-fonts/kanit": "^0.4.0",
         "@expo-google-fonts/lexend": "^0.4.1",
         "@expo-google-fonts/manrope": "^0.4.2",
         "@expo-google-fonts/rubik": "^0.4.2",
@@ -376,6 +377,8 @@
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.6.1", "", { "dependencies": { "@eslint/core": "^1.1.1", "levn": "^0.4.1" } }, "sha512-iH1B076HoAshH1mLpHMgwdGeTs0CYwL0SPMkGuSebZrwBp16v415e9NZXg2jtrqPVQjf6IANe2Vtlr5KswtcZQ=="],
 
     "@expo-google-fonts/barlow-condensed": ["@expo-google-fonts/barlow-condensed@0.4.1", "", {}, "sha512-9yuXU1MpI4Dw/8rR4pj2EXcT4/31H5+DrrT47auF8IzD9r7SZPRoNVq8clRq7zxOTh7v1gJk3pBhydDVf2x/dA=="],
+
+    "@expo-google-fonts/kanit": ["@expo-google-fonts/kanit@0.4.1", "", {}, "sha512-bm5lhr3iUjMtAzsr9wStxd307T2kK2e5LUVH1ALbp4/HKcluNw5MYLFYzcN93dnbo02x4ulRdzSeKi1nnT46Zg=="],
 
     "@expo-google-fonts/lexend": ["@expo-google-fonts/lexend@0.4.1", "", {}, "sha512-uddqvCw9zFeYVUqUmPkCxFqEd+YbmCKqpNpdzj+LhJwYM2AwjR8i+Zq5Qx7KhbP/vzIZUfSwC5bnZ3cx2ltqGw=="],
 
