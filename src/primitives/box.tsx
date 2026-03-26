@@ -10,7 +10,9 @@ function resolveSpace(token: keyof typeof Spacing | undefined) {
 }
 
 function omitUndefined(style: Record<string, unknown>) {
-  return Object.fromEntries(Object.entries(style).filter(([, value]) => value !== undefined)) as ViewStyle;
+  return Object.fromEntries(
+    Object.entries(style).filter(([, value]) => value !== undefined),
+  ) as ViewStyle;
 }
 
 export function Box({
@@ -73,6 +75,7 @@ export function Box({
     opacity: viewProps.opacity,
     width: viewProps.width,
     height: viewProps.height,
+    minWidth: viewProps.minWidth,
     minHeight: viewProps.minHeight,
     maxWidth: viewProps.maxWidth,
     backgroundColor: _backgroundColor ? color[_backgroundColor] : undefined,

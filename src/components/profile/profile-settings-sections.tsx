@@ -8,6 +8,7 @@ import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { BorderWidth, FontFamily } from "@/lib/design-system";
+import { Box } from "@/primitives";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
@@ -18,7 +19,6 @@ const PROFILE_SECTION_CARD_MARGIN_HORIZONTAL = BrandSpacing.inset;
 const PROFILE_SETTING_ROW_PADDING_HORIZONTAL = BrandSpacing.md;
 const PROFILE_SETTING_ROW_ICON_SIZE = 20;
 const PROFILE_SETTING_ROW_SECONDARY_GAP = BrandSpacing.xxs;
-const PROFILE_SETTING_ROW_VALUE_GAP = BrandSpacing.sm;
 const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = BrandSpacing.md + 24;
 const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.md;
 const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.md;
@@ -42,21 +42,8 @@ export function ProfileSectionHeader({
   const headerFontFamily = isHebrew ? "Kanit_700Bold" : FontFamily.displayBold;
 
   return (
-    <View
-      style={{
-        gap: BrandSpacing.xs,
-        paddingTop: BrandSpacing.xl,
-        paddingBottom: BrandSpacing.sm,
-        paddingHorizontal: flush ? 0 : BrandSpacing.inset,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: BrandSpacing.sm,
-        }}
-      >
+    <Box gap="xs" pt="xl" pb="sm" {...(!flush ? { px: "inset" } : {})}>
+      <Box flexDirection="row" alignItems="center" gap="sm">
         {icon ? (
           <IconSymbol
             name={icon}
@@ -78,13 +65,13 @@ export function ProfileSectionHeader({
         >
           {label}
         </Text>
-      </View>
+      </Box>
       {description ? (
         <Text style={[BrandType.caption, { maxWidth: 540, color: theme.color.textMuted }]}>
           {description}
         </Text>
       ) : null}
-    </View>
+    </Box>
   );
 }
 
@@ -107,8 +94,8 @@ export function ProfileSectionCard({
           overflow: "hidden",
           borderRadius: BrandRadius.card,
           borderCurve: "continuous",
-          borderWidth: BorderWidth.strong,
-          borderColor: theme.color.outlineStrong,
+          borderWidth: BorderWidth.thin,
+          borderColor: theme.color.outline,
         },
         style,
       ]}
@@ -167,7 +154,7 @@ export function ProfileSettingRow({
   const theme = useTheme();
   const { resolvedScheme } = useThemePreference();
   const resolvedAccentColor = accentColor ?? theme.color.tertiary;
-  const rowBackgroundColor = theme.color.surfaceElevated;
+  const rowBackgroundColor = theme.color.surface;
 
   const secondaryColor =
     tone === "danger"
@@ -185,15 +172,15 @@ export function ProfileSettingRow({
         ? resolvedAccentColor
         : theme.color.primary;
 
-  const dividerColor = theme.color.border;
+  const dividerColor = theme.color.outlineStrong;
 
   const content = (
-    <View>
-      <View
+    <Box>
+      <Box
+        flexDirection="row"
+        alignItems={subtitle && subtitle.length > 36 ? "flex-start" : "center"}
+        gap="md"
         style={{
-          flexDirection: "row",
-          alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
-          gap: BrandSpacing.md,
           paddingHorizontal: PROFILE_SETTING_ROW_PADDING_HORIZONTAL,
           paddingVertical: PROFILE_ROW_VERTICAL_PADDING,
           backgroundColor: rowBackgroundColor,
@@ -201,20 +188,22 @@ export function ProfileSettingRow({
         }}
       >
         {icon ? (
-          <View style={{ width: PROFILE_SETTING_ROW_ICON_SIZE + 4, alignItems: "center" }}>
+          <Box style={{ width: PROFILE_SETTING_ROW_ICON_SIZE + 4 }} alignItems="center">
             <IconSymbol name={icon} size={18} color={iconColor} />
-          </View>
+          </Box>
         ) : null}
 
-        <View
-          style={{ flex: 1, gap: subtitle ? PROFILE_SETTING_ROW_SECONDARY_GAP : 0, minWidth: 0 }}
+        <Box
+          flex={1}
+          minWidth={0}
+          style={{ gap: subtitle ? PROFILE_SETTING_ROW_SECONDARY_GAP : 0 }}
         >
           <Text
             style={{
-              fontFamily: "Manrope_500Medium",
-              fontSize: 14,
-              fontWeight: "500",
-              lineHeight: 18,
+              fontFamily: "Manrope_600SemiBold",
+              fontSize: 15,
+              fontWeight: "600",
+              lineHeight: 20,
               color: theme.color.text,
               includeFontPadding: false,
             }}
@@ -225,9 +214,9 @@ export function ProfileSettingRow({
             <Text
               style={{
                 fontFamily: "Manrope_400Regular",
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: "400",
-                lineHeight: 16,
+                lineHeight: 17,
                 color: theme.color.textMuted,
                 includeFontPadding: false,
               }}
@@ -235,16 +224,14 @@ export function ProfileSettingRow({
               {subtitle}
             </Text>
           ) : null}
-        </View>
+        </Box>
 
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            gap: PROFILE_SETTING_ROW_VALUE_GAP,
-            maxWidth: "48%",
-          }}
+        <Box
+          flexDirection="row"
+          alignItems="center"
+          justifyContent="flex-end"
+          gap="sm"
+          style={{ maxWidth: "48%" }}
         >
           {value ? (
             <Text
@@ -264,8 +251,8 @@ export function ProfileSettingRow({
           ) : null}
           {accessory ??
             (onPress ? <IconSymbol name="chevron.right" size={14} color={secondaryColor} /> : null)}
-        </View>
-      </View>
+        </Box>
+      </Box>
       {showDivider ? (
         <View
           style={{
@@ -278,7 +265,7 @@ export function ProfileSettingRow({
           }}
         />
       ) : null}
-    </View>
+    </Box>
   );
 
   if (!onPress) {
