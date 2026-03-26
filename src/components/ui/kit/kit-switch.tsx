@@ -65,6 +65,7 @@ export function KitSwitch({
       style={({ pressed }) => [
         styles.pressable,
         {
+          direction: "ltr",
           backgroundColor: disabled ? disabledTrackColor : pressed ? pressedTrackColor : undefined,
           borderRadius: BrandRadius.button,
         },
@@ -75,6 +76,7 @@ export function KitSwitch({
           styles.track,
           {
             borderRadius: BrandRadius.button,
+            direction: "ltr",
           },
           trackStyle,
         ]}

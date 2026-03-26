@@ -49,6 +49,7 @@
     "@convex-dev/auth": "^0.0.91",
     "@didit-protocol/sdk-react-native": "^3.2.7",
     "@expo-google-fonts/barlow-condensed": "^0.4.1",
+    "@expo-google-fonts/kanit": "^0.4.0",
     "@expo-google-fonts/lexend": "^0.4.1",
     "@expo-google-fonts/manrope": "^0.4.2",
     "@expo-google-fonts/rubik": "^0.4.2",

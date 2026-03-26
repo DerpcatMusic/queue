@@ -58,9 +58,12 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   memberSince,
   isPro = false,
 }: ProfileHeaderSheetProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { color: palette } = useTheme();
   const resolvedPrimaryActionLabel = primaryActionLabel ?? t("profile.actions.edit");
+  const isHebrew = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he");
+  const profileNameFont = isHebrew ? "Kanit_800ExtraBold" : FontFamily.displayBold;
+  const eyebrowFont = isHebrew ? "Kanit_600SemiBold" : FontFamily.label;
   const activeSocialCount = getActiveSocialCount(socialLinks);
   const sportsLabel = getSportsLabel(sports, t);
   const summaryLabel = getProfileSummary(bio, activeSocialCount, t);
@@ -233,34 +236,31 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   }
 
   return (
-    <View
-      pointerEvents="box-none"
-      style={{
-        paddingHorizontal: BrandSpacing.lg,
-        paddingTop: BrandSpacing.sm,
-        paddingBottom: BrandSpacing.lg,
-        gap: BrandSpacing.sm,
-      }}
-    >
-      {/* Avatar + Name Row */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: BrandSpacing.md,
-        }}
-      >
-        {/* Avatar with PRO badge */}
+    <View pointerEvents="box-none" style={styles.mobileShell}>
+      <View style={styles.mobileTopRail}>
         <View
-          style={{
-            position: "relative",
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            borderWidth: 2,
-            borderColor: palette.primary,
-            overflow: "visible",
-          }}
+          style={[
+            styles.mobileEyebrow,
+            { backgroundColor: palette.surfaceAlt, borderColor: palette.border },
+          ]}
+        >
+          <Text
+            style={[styles.mobileEyebrowText, { color: palette.primary, fontFamily: eyebrowFont }]}
+          >
+            {roleLabel}
+          </Text>
+        </View>
+        <View style={styles.mobileBrandBadge}>
+          <Text style={[styles.mobileBrandBadgeText, { color: palette.primary }]}>Q</Text>
+        </View>
+      </View>
+
+      <View style={styles.mobileIdentityRow}>
+        <View
+          style={[
+            styles.mobileAvatarWrap,
+            { borderColor: palette.primary, backgroundColor: palette.surfaceAlt },
+          ]}
         >
           <ProfileAvatar
             imageUrl={profileImageUrl}
@@ -275,8 +275,8 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                 bottom: -2,
                 right: -2,
                 backgroundColor: palette.primary,
-                paddingHorizontal: 4,
-                paddingVertical: 1,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
                 borderRadius: BrandRadius.sm,
               }}
             >
@@ -294,19 +294,15 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           ) : null}
         </View>
 
-        {/* Name + Edit Button + Member Since */}
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: BrandSpacing.xs,
-            }}
-          >
+        <View style={styles.mobileIdentityTextWrap}>
+          <View style={styles.mobileNameRow}>
             <Text
               numberOfLines={1}
               style={{
-                ...BrandType.title,
+                ...BrandType.heroSmall,
+                fontFamily: profileNameFont,
+                fontStyle: isHebrew ? "normal" : "italic",
+                letterSpacing: -0.6,
                 color: palette.text,
                 includeFontPadding: false,
                 flex: 1,
@@ -318,10 +314,11 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
               accessibilityLabel={resolvedPrimaryActionLabel}
               onPress={onRequestEdit}
               size={32}
+              tone="secondary"
               icon={<IconSymbol name="pencil" size={IconSize.sm} color={palette.primary} />}
             />
           </View>
-          {memberSince ? (
+          <View style={styles.mobileMetaRow}>
             <Text
               style={{
                 ...BrandType.caption,
@@ -329,9 +326,9 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                 includeFontPadding: false,
               }}
             >
-              {memberSince}
+              {memberSince ?? summaryLabel ?? resolvedStatusLabel}
             </Text>
-          ) : null}
+          </View>
         </View>
       </View>
     </View>
@@ -405,5 +402,68 @@ const styles = StyleSheet.create({
   featureSummary: {
     maxWidth: "88%",
     opacity: Opacity.subtle,
+  },
+  mobileShell: {
+    paddingHorizontal: BrandSpacing.lg,
+    paddingTop: BrandSpacing.md,
+    paddingBottom: BrandSpacing.xl,
+    gap: BrandSpacing.md,
+  },
+  mobileTopRail: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: BrandSpacing.md,
+  },
+  mobileEyebrow: {
+    borderRadius: BrandRadius.pill,
+    borderCurve: "continuous",
+    borderWidth: BorderWidth.thin,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.xs,
+    maxWidth: "78%",
+  },
+  mobileEyebrowText: {
+    ...BrandType.micro,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    includeFontPadding: false,
+  },
+  mobileBrandBadge: {
+    minWidth: BrandSpacing.controlMd,
+    alignItems: "center",
+  },
+  mobileBrandBadgeText: {
+    ...BrandType.titleLarge,
+    fontFamily: FontFamily.displayBlack,
+    includeFontPadding: false,
+  },
+  mobileIdentityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.lg,
+  },
+  mobileAvatarWrap: {
+    position: "relative",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: BorderWidth.strong,
+    overflow: "visible",
+  },
+  mobileIdentityTextWrap: {
+    flex: 1,
+    minWidth: 0,
+    gap: BrandSpacing.xxs,
+  },
+  mobileNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.xs,
+  },
+  mobileMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.xs,
   },
 });
