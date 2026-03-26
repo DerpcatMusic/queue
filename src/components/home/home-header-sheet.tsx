@@ -41,7 +41,7 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
     <View
       pointerEvents="box-none"
       style={{
-        flex: 1,
+        minHeight: SHEET_EXPANDED_CONTENT_HEIGHT,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",

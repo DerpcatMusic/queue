@@ -1,4 +1,3 @@
-import { getTheme } from "@/lib/design-system";
 import type { TopSheetTabConfig } from "./top-sheet-registry";
 
 export type ContentTransitionDirection = "vertical" | "forward" | "backward";
@@ -25,23 +24,6 @@ export function areSheetConfigsEqual(
   return nextKeys.every((key) =>
     Object.is(previous[key as keyof TopSheetTabConfig], next[key as keyof TopSheetTabConfig]),
   );
-}
-
-// Real color values for native TopSheet (CSS vars don't resolve in RN native views)
-const FALLBACK_THEME = getTheme("light");
-
-export function getFallbackSheetColors(tabId: string) {
-  if (tabId === "map") {
-    return {
-      backgroundColor: FALLBACK_THEME.color.surfaceElevated,
-      topInsetColor: FALLBACK_THEME.color.surfaceElevated,
-    };
-  }
-
-  return {
-    backgroundColor: FALLBACK_THEME.color.primary,
-    topInsetColor: FALLBACK_THEME.color.primary,
-  };
 }
 
 export function resolveTopSheetRouteTab(pathname: string | null): string | null {

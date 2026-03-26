@@ -30,4 +30,5 @@ export type AppButtonProps = {
   dimension?: number;
   colors?: AppButtonColors;
   haptic?: boolean;
+  labelStyle?: object;
 };

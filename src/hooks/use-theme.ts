@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { getTheme } from "@/lib/design-system";
+import { getTheme } from "@/theme/theme";
 
 export function useTheme() {
   const { resolvedScheme } = useThemePreference();

@@ -8,6 +8,32 @@ import {
 } from "react";
 import type Animated from "react-native-reanimated";
 import { useAnimatedRef, useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BrandSpacing } from "@/constants/brand";
+
+// ─── Layout Inset Contract ───────────────────────────────────────────────────
+//
+// INSET OWNERSHIP RULE (Expo 55 best practice):
+//   - Insets are sourced ONCE at the layout root level via ScrollSheetProvider
+//   - All layout infrastructure reads from LayoutInsetsContext
+//   - Feature screens receive insets via layout infrastructure (TabScreenRoot,
+//     TabScreenScrollView, ScreenScaffold) or useAppInsets() which reads context
+//   - Direct useSafeAreaInsets() is ONLY acceptable in app-safe-root.tsx (the
+//     true root that paints the status bar overlay)
+//
+// This contract eliminates ad-hoc inset fetching throughout feature files and
+// ensures consistent inset propagation across all screens.
+
+export type LayoutInsets = {
+  safeTop: number;
+  safeBottom: number;
+  overlayBottom: number;
+};
+
+export const LayoutInsetsContext = createContext<LayoutInsets | null>(null);
+
+export const ScrollSheetScrollContext = createContext<ScrollSheetScrollContextValue | null>(null);
+export const ScrollSheetLayoutContext = createContext<ScrollSheetLayoutContextValue | null>(null);
 
 type ScrollSheetScrollContextValue = {
   scrollY: ReturnType<typeof useSharedValue<number>>;
@@ -18,15 +44,27 @@ type ScrollSheetLayoutContextValue = {
   setCollapsedSheetHeight: (height: number) => void;
 };
 
-export const ScrollSheetScrollContext = createContext<ScrollSheetScrollContextValue | null>(null);
-export const ScrollSheetLayoutContext = createContext<ScrollSheetLayoutContextValue | null>(null);
-
 export function ScrollSheetProvider({ children }: PropsWithChildren) {
+  // Source insets once at layout level — this is the ONLY place useSafeAreaInsets()
+  // should be called outside of app-safe-root.tsx
+  const insets = useSafeAreaInsets();
+
   const scrollY = useSharedValue(0);
   const [collapsedSheetHeight, setCollapsedSheetHeight] = useState(140);
   const updateCollapsedSheetHeight = useCallback((height: number) => {
     setCollapsedSheetHeight((current) => (Math.abs(current - height) < 1 ? current : height));
   }, []);
+
+  const layoutInsets = useMemo<LayoutInsets>(
+    () => ({
+      safeTop: insets.top,
+      safeBottom: insets.bottom,
+      // Native tabs already account for bottom safe area. Floating controls should use
+      // the same semantic gutter on both axes instead of double-counting the bottom inset.
+      overlayBottom: BrandSpacing.lg,
+    }),
+    [insets.bottom, insets.top],
+  );
 
   const scrollValue = useMemo<ScrollSheetScrollContextValue>(
     () => ({
@@ -45,7 +83,7 @@ export function ScrollSheetProvider({ children }: PropsWithChildren) {
   return (
     <ScrollSheetScrollContext.Provider value={scrollValue}>
       <ScrollSheetLayoutContext.Provider value={layoutValue}>
-        {children}
+        <LayoutInsetsContext.Provider value={layoutInsets}>{children}</LayoutInsetsContext.Provider>
       </ScrollSheetLayoutContext.Provider>
     </ScrollSheetScrollContext.Provider>
   );

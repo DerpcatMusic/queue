@@ -12,12 +12,51 @@ import {
 import type { ColorValue, StyleProp, ViewStyle } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
+import { useTheme } from "@/hooks/use-theme";
+import type { AppTheme } from "@/theme/theme";
 import type {
   TopSheetCollapsedHeightMode,
   TopSheetExpandMode,
   TopSheetPadding,
   TopSheetProps,
 } from "./top-sheet";
+
+/**
+ * Returns the default backgroundColor and topInsetColor for a given tab.
+ * These colors are used when the config does not explicitly specify them.
+ *
+ * Real color values are required for native TopSheet (CSS vars don't resolve in RN native views).
+ */
+export function getDefaultSheetColors(tabId: string, theme: AppTheme) {
+  if (tabId === "map") {
+    return {
+      backgroundColor: theme.color.surfaceElevated,
+      topInsetColor: theme.color.surfaceElevated,
+    };
+  }
+
+  return {
+    backgroundColor: theme.color.primary,
+    topInsetColor: theme.color.primary,
+  };
+}
+
+/**
+ * Returns the resolved sheet colors for a tab config, applying theme-aware defaults
+ * when the config does not explicitly specify backgroundColor or topInsetColor.
+ */
+export function resolveSheetColors(
+  tabId: string,
+  configBackgroundColor: ColorValue | undefined,
+  configTopInsetColor: ColorValue | undefined,
+  theme: AppTheme,
+) {
+  const defaults = getDefaultSheetColors(tabId, theme);
+  return {
+    backgroundColor: (configBackgroundColor as string | undefined) ?? defaults.backgroundColor,
+    topInsetColor: (configTopInsetColor as string | undefined) ?? defaults.topInsetColor,
+  };
+}
 
 export type TopSheetRenderProps = {
   scrollY: SharedValue<number>;
@@ -253,15 +292,33 @@ export function useGlobalTopSheet(
 export function useResolvedTabSheetConfig(tabId: string | null) {
   const { overrides } = useTopSheetRegistry();
   const activeEntry = tabId ? overrides[tabId]?.[overrides[tabId]!.length - 1] : undefined;
-  return useMemo(
-    () =>
-      tabId
-        ? {
-            ...(DEFAULT_TOP_SHEET_CONFIGS[tabId] ?? { tabId }),
-            ...(activeEntry?.config ?? {}),
-            tabId,
-          }
-        : null,
-    [activeEntry, tabId],
-  );
+  const theme = useTheme();
+
+  return useMemo(() => {
+    if (!tabId) return null;
+
+    const baseConfig = DEFAULT_TOP_SHEET_CONFIGS[tabId] ?? { tabId };
+    const overrideConfig = activeEntry?.config;
+
+    // Merge base and override config
+    const merged: TopSheetTabConfig = {
+      ...baseConfig,
+      ...(overrideConfig ?? {}),
+      tabId,
+    };
+
+    // Resolve colors with theme-aware defaults (native TopSheet needs real color values)
+    const resolvedColors = resolveSheetColors(
+      tabId,
+      merged.backgroundColor,
+      merged.topInsetColor,
+      theme,
+    );
+
+    return {
+      ...merged,
+      backgroundColor: resolvedColors.backgroundColor,
+      topInsetColor: resolvedColors.topInsetColor,
+    } as TopSheetTabConfig;
+  }, [activeEntry, tabId, theme]);
 }

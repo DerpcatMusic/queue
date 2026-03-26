@@ -22,6 +22,7 @@ function buildEligibility(): InstructorEligibility {
       { sport: SPORT, zone: ZONE },
       { sport: ALT_SPORT, zone: ALT_ZONE },
     ],
+    sports: new Set([SPORT, ALT_SPORT]),
   };
 }
 
