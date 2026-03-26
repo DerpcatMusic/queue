@@ -35,7 +35,7 @@ import { KitSuccessBurst } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import { useTheme } from "@/hooks/use-theme";
-import { IconSize, LetterSpacing, Motion } from "@/lib/design-system";
+import { BorderWidth, IconSize, LetterSpacing, Motion } from "@/lib/design-system";
 
 type DiditSdkResult = {
   type?: "completed" | "cancelled" | "failed";
@@ -187,7 +187,7 @@ function LinkPill({
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
-      <View className="flex-row items-center gap-xs">
+      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
         <ThemedText type="caption" style={{ color }}>
           {label}
         </ThemedText>
@@ -220,8 +220,15 @@ function LoaderDot({ delay, color }: { delay: number; color: string }) {
 
   return (
     <Animated.View
-      className="w-2 h-2 rounded-full"
-      style={[{ backgroundColor: color }, animatedStyle]}
+      style={[
+        {
+          width: BrandSpacing.statusDot,
+          height: BrandSpacing.statusDot,
+          borderRadius: BrandRadius.pill,
+          backgroundColor: color,
+        },
+        animatedStyle,
+      ]}
     />
   );
 }
@@ -234,6 +241,7 @@ function VerificationResolvingState({
   loaderColor: string;
 }) {
   const { t } = useTranslation();
+  const { color } = useTheme();
   const halo = useSharedValue(0.8);
   const settle = useSharedValue(0);
   const cardFloat = useSharedValue(0);
@@ -286,42 +294,51 @@ function VerificationResolvingState({
   return (
     <Animated.View
       entering={FadeIn.duration(RESOLVING_ENTER_DURATION_MS)}
-      className="flex-1 items-center justify-center px-xl bg-app-bg"
+      style={{
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: BrandSpacing.xl,
+        backgroundColor: color.appBg,
+      }}
     >
       <Animated.View
         entering={FadeInDown.springify().damping(16).stiffness(170)}
-        className="w-full"
-        style={{ maxWidth: RESOLVING_CARD_MAX_WIDTH }}
+        style={{ width: "100%", maxWidth: RESOLVING_CARD_MAX_WIDTH }}
       >
         <Animated.View
-          className="absolute rounded-pill bg-primary-subtle"
           style={[
             {
+              position: "absolute",
               top: BrandSpacing.xl,
               left: BrandSpacing.lg,
               width: BrandSpacing.sm,
               height: BrandSpacing.sm,
+              borderRadius: BrandRadius.pill,
+              backgroundColor: color.primarySubtle,
             },
             bubbleLeftStyle,
           ]}
         />
         <Animated.View
-          className="absolute rounded-pill bg-primary-subtle"
           style={[
             {
+              position: "absolute",
               right: BrandSpacing.xl,
               bottom: BrandSpacing.lg,
               width: BrandSpacing.sm,
               height: BrandSpacing.sm,
+              borderRadius: BrandRadius.pill,
+              backgroundColor: color.primarySubtle,
             },
             bubbleRightStyle,
           ]}
         />
 
         <Animated.View
-          className="gap-md border border-border bg-surface-alt"
           style={[
             {
+              gap: BrandSpacing.md,
               alignItems: "center",
               justifyContent: "center",
               paddingVertical: BrandSpacing.lg,
@@ -329,16 +346,21 @@ function VerificationResolvingState({
               borderRadius: BrandRadius.card,
               borderCurve: "continuous",
               overflow: "hidden",
+              borderWidth: BorderWidth.thin,
+              borderColor: color.border,
+              backgroundColor: color.surfaceAlt,
             },
             cardStyle,
           ]}
         >
           <Animated.View
-            className="absolute rounded-full bg-primary-subtle"
             style={[
               {
+                position: "absolute",
                 width: RESOLVING_HALO_SIZE,
                 height: RESOLVING_HALO_SIZE,
+                borderRadius: BrandRadius.pill,
+                backgroundColor: color.primarySubtle,
               },
               haloStyle,
             ]}
@@ -346,13 +368,18 @@ function VerificationResolvingState({
 
           <Animated.View
             entering={FadeInDown.delay(RESOLVING_BUBBLE_LEFT_DELAY_MS).duration(Motion.fast * 2)}
-            className="items-center justify-center rounded-full border border-border-strong bg-surface"
             style={{
+              alignItems: "center",
+              justifyContent: "center",
               width: RESOLVING_AVATAR_SIZE,
               height: RESOLVING_AVATAR_SIZE,
+              borderRadius: BrandRadius.pill,
+              borderWidth: BorderWidth.thin,
+              borderColor: color.borderStrong,
+              backgroundColor: color.surface,
             }}
           >
-            <View className="flex-row items-center gap-sm">
+            <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
               <LoaderDot delay={0} color={loaderColor} />
               <LoaderDot delay={RESOLVING_BUBBLE_MID_DELAY_MS} color={loaderColor} />
               <LoaderDot delay={Motion.fast * 2} color={loaderColor} />
@@ -363,12 +390,12 @@ function VerificationResolvingState({
             entering={FadeInDown.delay(RESOLVING_BUBBLE_RIGHT_DELAY_MS).duration(
               RESOLVING_SETTLE_DURATION_MS,
             )}
-            className="gap-sm items-center"
+            style={{ gap: BrandSpacing.sm, alignItems: "center" }}
           >
             <ThemedText type="title" style={{ textAlign: "center" }}>
               {t("profile.identityVerification.resolvingTitle")}
             </ThemedText>
-            <ThemedText type="caption" className="text-text-muted" style={{ textAlign: "center" }}>
+            <ThemedText type="caption" style={{ textAlign: "center", color: color.textMuted }}>
               {label}
             </ThemedText>
           </Animated.View>
@@ -695,23 +722,32 @@ export default function IdentityVerificationScreen() {
         />
       }
     >
-      <View className="px-md gap-md">
+      <View style={{ paddingHorizontal: BrandSpacing.md, gap: BrandSpacing.md }}>
         {showApprovalBurst ? <KitSuccessBurst /> : null}
 
         <View
-          className="gap-lg p-md rounded-card"
           style={{
+            gap: BrandSpacing.lg,
             borderCurve: "continuous",
             backgroundColor: isInProgressState ? diditStatusBackground : color.surface,
+            borderRadius: BrandRadius.card,
+            padding: BrandSpacing.md,
             paddingBottom: BrandSpacing.md,
           }}
         >
-          <View className="gap-sm">
+          <View style={{ gap: BrandSpacing.sm }}>
             <ThemedText type="micro" style={{ color: color.textMuted }}>
               {t("profile.identityVerification.eyebrow")}
             </ThemedText>
-            <View className="flex-row items-start justify-between gap-sm">
-              <View className="flex-1 gap-xs">
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: BrandSpacing.sm,
+              }}
+            >
+              <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                 <ThemedText type="title" style={{ letterSpacing: LetterSpacing.title }}>
                   {getStatusHeadline(status, t)}
                 </ThemedText>
@@ -724,7 +760,7 @@ export default function IdentityVerificationScreen() {
           </View>
 
           {legalName ? (
-            <View className="gap-xs">
+            <View style={{ gap: BrandSpacing.xs }}>
               <ThemedText type="micro" style={{ color: color.textMuted }}>
                 {t("profile.identityVerification.verifiedLegalName")}
               </ThemedText>
@@ -733,7 +769,7 @@ export default function IdentityVerificationScreen() {
           ) : null}
 
           {verifiedAtLabel || lastEventAtLabel ? (
-            <View className="gap-xs">
+            <View style={{ gap: BrandSpacing.xs }}>
               {verifiedAtLabel ? (
                 <ThemedText type="caption" style={{ color: color.textMuted }}>
                   {t("profile.identityVerification.verifiedAt", {

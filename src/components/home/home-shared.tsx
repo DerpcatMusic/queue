@@ -74,9 +74,11 @@ export function StatusPill({ label, status }: StatusPillProps) {
 
   return (
     <View
-      className="rounded-pill px-sm py-xs"
       style={{
         borderCurve: "continuous",
+        borderRadius: BrandRadius.pill,
+        paddingHorizontal: BrandSpacing.sm,
+        paddingVertical: BrandSpacing.xs,
         backgroundColor: tokens.bg,
       }}
     >
@@ -99,8 +101,13 @@ type DotStatusPillProps = {
 export function DotStatusPill({ backgroundColor, color, label }: DotStatusPillProps) {
   return (
     <View
-      className="flex-row items-center rounded-pill px-sm py-xs gap-xs"
       style={{
+        flexDirection: "row",
+        alignItems: "center",
+        borderRadius: BrandRadius.pill,
+        paddingHorizontal: BrandSpacing.sm,
+        paddingVertical: BrandSpacing.xs,
+        gap: BrandSpacing.xs,
         backgroundColor,
       }}
     >
@@ -213,9 +220,14 @@ export function HomeSignalTile({
 
   return (
     <View
-      className="min-w-0 flex-1 gap-xs rounded-medium px-control-x py-control-y"
       style={{
+        minWidth: 0,
+        flex: 1,
+        gap: BrandSpacing.xs,
+        borderRadius: BrandRadius.medium,
         borderCurve: "continuous",
+        paddingHorizontal: BrandSpacing.controlX,
+        paddingVertical: BrandSpacing.controlY,
         backgroundColor,
       }}
     >

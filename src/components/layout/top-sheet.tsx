@@ -18,10 +18,11 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useSystemUi } from "@/contexts/system-ui-context";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
+import { BrandRadius, BrandSpacing, Motion } from "@/theme/theme";
+import { StyleSheet } from "react-native-unistyles";
 import {
   ANIMATION_DURATION_EXPANDED_PROGRESS,
   DEFAULT_STEPS,
@@ -33,6 +34,7 @@ import {
   MIN_BOTTOM_CHROME_ESTIMATE,
   REVEAL_TRANSLATE_OFFSET,
   SHEET_SPRING,
+  SHEET_CORNER_RADIUS,
   TAB_BAR_ESTIMATE,
   VELOCITY_THRESHOLD,
 } from "./top-sheet-constants";
@@ -94,48 +96,12 @@ export type TopSheetProps = PropsWithChildren<{
   onMinHeightChange?: (height: number) => void;
 }>;
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = {
-  dragHandle: {
-    alignItems: "center" as const,
-    paddingTop: BrandSpacing.sm,
-    paddingBottom: BrandSpacing.xs,
-  },
-  dragHandlePill: {
-    width: HANDLE_PILL_WIDTH,
-    height: HANDLE_PILL_HEIGHT,
-    borderRadius: BrandRadius.pill,
-  },
-  scrollBody: {
-    flex: 1,
-    minHeight: 0,
-  },
-  sheetShell: {
-    borderBottomLeftRadius: BrandRadius.card + BrandSpacing.xs,
-    borderBottomRightRadius: BrandRadius.card + BrandSpacing.xs,
-    borderCurve: "continuous" as const,
-    overflow: "hidden" as const,
-    zIndex: 100,
-  },
-  dragHandleZone: {
-    position: "absolute" as const,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: HANDLE_HEIGHT,
-  },
-  dragHandleBorder: {
-    borderTopWidth: 1,
-  },
-} as const;
-
 // ─── Drag Handle ──────────────────────────────────────────────────────────────
 
 function DragHandle({ borderColor }: { borderColor: ColorValue }) {
   return (
-    <View style={styles.dragHandle}>
-      <View style={[styles.dragHandlePill, { backgroundColor: borderColor }]} />
+    <View style={styles.dragHandleContainer}>
+      <View style={styles.dragHandlePill(borderColor)} />
     </View>
   );
 }
@@ -184,7 +150,7 @@ export function TopSheet({
 
   useEffect(() => {
     animatedBackground.value = withTiming(backgroundColorValue, {
-      duration: ANIMATION_DURATION_EXPANDED_PROGRESS,
+      duration: Motion.normal,
     });
   }, [animatedBackground, backgroundColorValue]);
 
@@ -397,7 +363,14 @@ export function TopSheet({
   const handleFooterLayout = updateMeasuredHeight(setMeasuredFooterHeight);
 
   const sheetContent = (
-    <Animated.View style={[styles.sheetShell, shellBackgroundStyle, outerStyle, style]}>
+    <Animated.View
+      style={[
+        styles.sheetShell,
+        shellBackgroundStyle,
+        outerStyle,
+        style,
+      ]}
+    >
       <Animated.View style={innerStyle}>
         {/* Sticky Header - always visible at top */}
         {stickyHeader ? (
@@ -408,21 +381,15 @@ export function TopSheet({
 
         {/* Main children - always visible */}
         {shouldUseContentScroll ? (
-          bodyScrollEnabled ? (
-            <ScrollView
-              bounces
-              onContentSizeChange={(_, height) => handleBodyLayout(height)}
-              scrollEnabled
-              showsVerticalScrollIndicator
-              style={styles.scrollBody}
-            >
-              <View>{children}</View>
-            </ScrollView>
-          ) : (
-            <View onLayout={(event) => handleBodyLayout(event.nativeEvent.layout.height)}>
-              {children}
-            </View>
-          )
+          <ScrollView
+            bounces={bodyScrollEnabled}
+            onContentSizeChange={(_, height) => handleBodyLayout(height)}
+            scrollEnabled={bodyScrollEnabled}
+            showsVerticalScrollIndicator={bodyScrollEnabled}
+            style={styles.scrollBody}
+          >
+            <View>{children}</View>
+          </ScrollView>
         ) : (
           <View
             style={{ flex: mainContentFlex }}
@@ -451,8 +418,7 @@ export function TopSheet({
           <Animated.View
             style={[
               styles.dragHandleZone,
-              styles.dragHandleBorder,
-              { borderTopColor: theme.color.border },
+              styles.dragHandleBorder(theme.color.border),
               shellBackgroundStyle,
             ]}
           >
@@ -464,8 +430,7 @@ export function TopSheet({
         <Animated.View
           style={[
             styles.dragHandleZone,
-            styles.dragHandleBorder,
-            { borderTopColor: theme.color.border },
+            styles.dragHandleBorder(theme.color.border),
             shellBackgroundStyle,
           ]}
         >
@@ -477,6 +442,42 @@ export function TopSheet({
 
   return sheetContent;
 }
+
+const styles = StyleSheet.create(() => ({
+  dragHandleContainer: {
+    alignItems: "center",
+    paddingTop: BrandSpacing.sm,
+    paddingBottom: BrandSpacing.xs,
+  },
+  dragHandlePill: (borderColor: ColorValue) => ({
+    width: HANDLE_PILL_WIDTH,
+    height: HANDLE_PILL_HEIGHT,
+    borderRadius: BrandRadius.pill,
+    backgroundColor: borderColor,
+  }),
+  scrollBody: {
+    flex: 1,
+    minHeight: 0,
+  },
+  sheetShell: {
+    borderBottomLeftRadius: SHEET_CORNER_RADIUS,
+    borderBottomRightRadius: SHEET_CORNER_RADIUS,
+    borderCurve: "continuous" as const,
+    overflow: "hidden" as const,
+    zIndex: 100,
+  },
+  dragHandleZone: {
+    position: "absolute" as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: HANDLE_HEIGHT,
+  },
+  dragHandleBorder: (borderColor: ColorValue) => ({
+    borderTopWidth: 1,
+    borderTopColor: borderColor,
+  }),
+}));
 
 // ─── SearchBar Widget ─────────────────────────────────────────────────────────
 

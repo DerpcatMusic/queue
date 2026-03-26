@@ -1,13 +1,22 @@
-import { MIN_BOTTOM_CHROME_ESTIMATE, TAB_BAR_ESTIMATE } from "./top-sheet-constants";
 import { computeAvailableHeight, computeStepHeights } from "./top-sheet-sizing";
+import {
+  DEFAULT_STEPS,
+  HANDLE_HEIGHT,
+  HANDLE_PILL_HEIGHT,
+  HANDLE_PILL_WIDTH,
+  MIN_BOTTOM_CHROME_ESTIMATE,
+  SHEET_SPRING,
+  TAB_BAR_ESTIMATE,
+} from "./top-sheet-constants";
 
 export {
   DEFAULT_STEPS,
   HANDLE_HEIGHT,
   HANDLE_PILL_HEIGHT,
   HANDLE_PILL_WIDTH,
+  MIN_BOTTOM_CHROME_ESTIMATE,
   SHEET_SPRING,
-} from "./top-sheet-constants";
+};
 
 export function getTopSheetAvailableHeight(
   screenHeight: number,

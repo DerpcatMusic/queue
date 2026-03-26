@@ -18,7 +18,8 @@ import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
 import { StatusSignal } from "@/components/profile/status-signal";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BorderWidth } from "@/lib/design-system";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -27,7 +28,7 @@ import { useTheme } from "@/hooks/use-theme";
 export default function SportsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { color } = useTheme();
+  const theme = useTheme();
   const { overlayBottom } = useAppInsets();
   const { currentUser } = useUser();
   useProfileSubpageSheet({
@@ -122,7 +123,7 @@ export default function SportsScreen() {
   };
 
   return (
-    <View className="flex-1 relative bg-app-bg">
+    <View style={{ flex: 1, position: "relative", backgroundColor: theme.color.appBg }}>
       <ProfileSubpageScrollView
         routeKey="instructor/profile/sports"
         contentContainerStyle={{
@@ -132,36 +133,46 @@ export default function SportsScreen() {
         }}
       >
         <View
-          className="gap-stack-roomy rounded-soft p-inset-roomy border border-border bg-surface-alt"
           style={{
+            gap: BrandSpacing.stackRoomy,
+            borderRadius: BrandRadius.soft,
+            padding: BrandSpacing.insetRoomy,
+            borderWidth: BorderWidth.thin,
+            borderColor: theme.color.border,
+            backgroundColor: theme.color.surfaceAlt,
             borderCurve: "continuous",
           }}
         >
-          <View className="flex-row items-start gap-stack">
-            <View className="flex-1 gap-stack-tight min-w-0">
-              <Text className="text-text-muted" style={BrandType.radarLabel}>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: BrandSpacing.stack }}>
+            <View style={{ flex: 1, gap: BrandSpacing.stackTight, minWidth: 0 }}>
+              <Text style={[BrandType.radarLabel, { color: theme.color.textMuted }]}>
                 {t("profile.settings.sports.title")}
               </Text>
-              <Text className="text-text" style={BrandType.heading}>
+              <Text style={[BrandType.heading, { color: theme.color.text }]}>
                 {heroTitle}
               </Text>
-              <Text className="text-text-muted" style={BrandType.body}>
+              <Text style={[BrandType.body, { color: theme.color.textMuted }]}>
                 {heroBody}
               </Text>
             </View>
             <View
-              className="items-center justify-center rounded-pill bg-primary-subtle border border-primary-subtle"
               style={{
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: BrandRadius.pill,
+                backgroundColor: theme.color.primarySubtle,
+                borderWidth: BorderWidth.thin,
+                borderColor: theme.color.primarySubtle,
                 width: BrandSpacing.avatarMd,
                 height: BrandSpacing.avatarMd,
                 borderCurve: "continuous",
               }}
             >
-              <IconSymbol name="sparkles" size={22} color={color.primary} />
+              <IconSymbol name="sparkles" size={22} color={theme.color.primary} />
             </View>
           </View>
 
-          <View className="flex-row gap-stack-tight">
+          <View style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
             <StatusSignal
               label={t("profile.sports.signalSelected")}
               value={t("profile.settings.sports.selected", {
@@ -176,7 +187,7 @@ export default function SportsScreen() {
           </View>
         </View>
 
-        <View className="gap-stack-tight">
+        <View style={{ gap: BrandSpacing.stackTight }}>
           <ProfileSectionHeader
             label={t("profile.sports.boardLabel")}
             description={t("profile.sports.boardBody")}
@@ -198,12 +209,17 @@ export default function SportsScreen() {
 
         {errorMessage ? (
           <View
-            className="rounded-medium px-control-x py-control-y border border-danger bg-danger-subtle"
             style={{
+              borderRadius: BrandRadius.md,
+              paddingHorizontal: BrandSpacing.controlX,
+              paddingVertical: BrandSpacing.controlY,
+              borderWidth: BorderWidth.thin,
+              borderColor: theme.color.danger,
+              backgroundColor: theme.color.dangerSubtle,
               borderCurve: "continuous",
             }}
           >
-            <Text selectable className="text-danger" style={BrandType.bodyMedium}>
+            <Text selectable style={[BrandType.bodyMedium, { color: theme.color.danger }]}>
               {errorMessage}
             </Text>
           </View>
@@ -211,8 +227,12 @@ export default function SportsScreen() {
       </ProfileSubpageScrollView>
 
       <View
-        className="absolute left-inset right-inset gap-stack-tight bg-app-bg"
         style={{
+          position: "absolute",
+          left: BrandSpacing.inset,
+          right: BrandSpacing.inset,
+          gap: BrandSpacing.stackTight,
+          backgroundColor: theme.color.appBg,
           bottom: overlayBottom,
         }}
       >

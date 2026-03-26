@@ -9,6 +9,7 @@ import { ProfileEditorForm } from "@/components/profile/profile-editor";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { useProfileSubpageSheet } from "@/components/profile/profile-subpage-sheet";
 import { BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isProfileImageUploadError, useProfileImageUpload } from "@/hooks/use-profile-image-upload";
@@ -153,8 +154,10 @@ export default function StudioProfileEditScreen() {
     ]);
   };
 
+  const theme = useTheme();
+
   return (
-    <View className="flex-1 bg-app-bg">
+    <View style={{ flex: 1, backgroundColor: theme.color.appBg }}>
       <ProfileEditorForm
         profileName={nameDraft || studioSettings.studioName}
         roleLabel={t("profile.hero.studioProfile")}

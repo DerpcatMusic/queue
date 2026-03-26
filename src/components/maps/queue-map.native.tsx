@@ -150,6 +150,8 @@ export const QueueMap = memo(function QueueMap({
     },
     [],
   );
+
+  // Stable event handlers — extracted to avoid inline arrow recreation on every render
   const handleWillStartLoadingMap = useCallback(() => {
     updateMapLoadState("loading");
   }, [updateMapLoadState]);
@@ -321,7 +323,7 @@ export const QueueMap = memo(function QueueMap({
         <QueueMapZonePolygons
           mode={mode}
           isEditing={isEditing}
-          showLabelLayers={mode !== "zoneSelect"}
+          showLabelLayers={mode !== "zoneSelect" || isEditing}
           selectedZoneFilter={selectedZoneFilter}
           zoneGeoJson={zoneGeoJson}
           zoneIdProperty={zoneIdProperty}

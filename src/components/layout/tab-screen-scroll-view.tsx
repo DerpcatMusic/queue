@@ -1,32 +1,24 @@
-import type { PropsWithChildren, ReactElement } from "react";
-import {
-  type RefreshControlProps,
-  type ScrollViewProps,
-  type StyleProp,
-  View,
-  type ViewStyle,
-} from "react-native";
+import type { PropsWithChildren } from "react";
+import { type ScrollViewProps, type StyleProp, View, type ViewStyle } from "react-native";
 import type Animated from "react-native-reanimated";
 import type { AnimatedRef } from "react-native-reanimated";
 import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
-import { TabScreenRoot } from "@/components/layout/tab-screen-root";
+import { TabScreenRoot, type TabScreenRootProps } from "@/components/layout/tab-screen-root";
 import type { InsetTone } from "@/contexts/system-ui-context";
+import type { ScreenScaffoldSheetInsets } from "./screen-scaffold";
 
 type TabScreenContainerProps = PropsWithChildren<{
   style?: StyleProp<ViewStyle>;
 }>;
 
 type TabScreenScrollViewProps = PropsWithChildren<
-  Omit<
-    ScrollViewProps,
-    "contentContainerStyle" | "contentInsetAdjustmentBehavior" | "ref" | "refreshControl"
-  > & {
+  Omit<ScrollViewProps, "contentContainerStyle" | "contentInsetAdjustmentBehavior" | "ref"> & {
     contentContainerStyle?: StyleProp<ViewStyle>;
     routeKey?: string;
     animatedRef?: AnimatedRef<Animated.ScrollView>;
     topInsetTone?: InsetTone;
     useDesktopFrame?: boolean;
-    refreshControl?: ReactElement<RefreshControlProps>;
+    sheetInsets?: ScreenScaffoldSheetInsets;
   }
 >;
 
@@ -49,9 +41,19 @@ export function TabScreenScrollView({
   scrollIndicatorInsets,
   topInsetTone,
   useDesktopFrame,
+  sheetInsets,
   refreshControl,
   ...props
 }: TabScreenScrollViewProps) {
+  const scrollProps: NonNullable<Extract<TabScreenRootProps, { mode: "scroll" }>["scrollProps"]> = {
+    ...props,
+    scrollEventThrottle: 32,
+    ...(animatedRef ? { ref: animatedRef as never } : {}),
+    ...(onScroll ? { onScroll } : {}),
+    ...(scrollIndicatorInsets ? { scrollIndicatorInsets } : {}),
+    ...(refreshControl ? { refreshControl } : {}),
+  };
+
   return (
     <TabScreenRoot
       mode="scroll"
@@ -59,14 +61,8 @@ export function TabScreenScrollView({
       contentContainerStyle={contentContainerStyle}
       {...(topInsetTone ? { topInsetTone } : {})}
       {...(useDesktopFrame !== undefined ? { useDesktopFrame } : {})}
-      scrollProps={{
-        ...props,
-        ...(animatedRef ? { ref: animatedRef as never } : {}),
-        onScroll,
-        scrollEventThrottle: 32,
-        scrollIndicatorInsets,
-        ...(refreshControl ? { refreshControl } : {}),
-      }}
+      {...(sheetInsets ? { sheetInsets } : {})}
+      scrollProps={scrollProps}
     >
       {children}
     </TabScreenRoot>

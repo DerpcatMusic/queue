@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import MapTabScreen from "@/components/map-tab";
 import { isFeatureEnabled } from "@/navigation/tab-registry";
+import { useTheme } from "@/hooks/use-theme";
 
 export default function MapTabRoute() {
   const isFocused = useIsFocused();
   const [hasActivated, setHasActivated] = useState(false);
+  const theme = useTheme();
 
   useEffect(() => {
     if (isFocused) {
@@ -20,7 +22,7 @@ export default function MapTabRoute() {
   }
 
   if (!hasActivated) {
-    return <View className="flex-1 bg-app-bg" />;
+    return <View style={{ flex: 1, backgroundColor: theme.color.appBg }} />;
   }
 
   return <MapTabScreen />;

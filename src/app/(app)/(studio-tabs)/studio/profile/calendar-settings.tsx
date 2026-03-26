@@ -15,7 +15,7 @@ import {
 } from "@/components/profile/profile-subpage-sheet";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitList, KitSwitchRow } from "@/components/ui/kit";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { BorderWidth } from "@/lib/design-system";
@@ -25,6 +25,7 @@ import {
   connectGoogleCalendarNative,
   disconnectGoogleCalendarNative,
 } from "@/lib/google-calendar-native-auth";
+import { useTheme } from "@/hooks/use-theme";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 
 type CalendarProvider = "none" | "google" | "apple";
@@ -446,18 +447,20 @@ export default function StudioCalendarSettingsScreen() {
     void onSelectApple();
   };
 
+  const theme = useTheme();
+
   return (
-    <View className="flex-1 bg-app-bg">
+    <View style={{ flex: 1, backgroundColor: theme.color.appBg }}>
       <ProfileSubpageScrollView
         routeKey="studio/profile/calendar-settings"
-        className="flex-1 bg-app-bg"
         contentContainerStyle={{
           paddingHorizontal: BrandSpacing.lg,
           paddingBottom: 128,
           gap: BrandSpacing.md,
         }}
+        style={{ flex: 1, backgroundColor: theme.color.appBg }}
       >
-        <View className="overflow-hidden rounded-card bg-surface">
+        <View style={{ overflow: "hidden", borderRadius: BrandRadius.card, backgroundColor: theme.color.surface }}>
           <CalendarConnectionRow
             iconSource={googleCalendarIcon}
             title={t("profile.settings.calendar.provider.google")}
@@ -504,19 +507,31 @@ export default function StudioCalendarSettingsScreen() {
 
         {googleStatus?.lastError ? (
           <View
-            className="px-3 py-3 rounded-button-subtle bg-danger-subtle border-danger"
-            style={{ borderWidth: BorderWidth.thin }}
+            style={{
+              paddingHorizontal: BrandSpacing.sm,
+              paddingVertical: BrandSpacing.sm,
+              borderRadius: BrandRadius.buttonSubtle,
+              backgroundColor: theme.color.dangerSubtle,
+              borderWidth: BorderWidth.thin,
+              borderColor: theme.color.danger,
+            }}
           >
-            <Text className="text-base text-danger">{googleStatus.lastError}</Text>
+            <Text style={{ fontSize: 16, color: theme.color.danger }}>{googleStatus.lastError}</Text>
           </View>
         ) : null}
 
         {needsGoogleReconnect ? (
           <View
-            className="px-3 py-3 rounded-button-subtle bg-warning-subtle border-warning"
-            style={{ borderWidth: BorderWidth.thin }}
+            style={{
+              paddingHorizontal: BrandSpacing.sm,
+              paddingVertical: BrandSpacing.sm,
+              borderRadius: BrandRadius.buttonSubtle,
+              backgroundColor: theme.color.warningSubtle,
+              borderWidth: BorderWidth.thin,
+              borderColor: theme.color.warning,
+            }}
           >
-            <Text className="text-base text-warning">
+            <Text style={{ fontSize: 16, color: theme.color.warning }}>
               {t("profile.settings.calendar.googleReconnectRequired")}
             </Text>
           </View>
@@ -524,10 +539,16 @@ export default function StudioCalendarSettingsScreen() {
 
         {googleConfigError ? (
           <View
-            className="px-3 py-3 rounded-button-subtle bg-warning-subtle border-warning"
-            style={{ borderWidth: BorderWidth.thin }}
+            style={{
+              paddingHorizontal: BrandSpacing.sm,
+              paddingVertical: BrandSpacing.sm,
+              borderRadius: BrandRadius.buttonSubtle,
+              backgroundColor: theme.color.warningSubtle,
+              borderWidth: BorderWidth.thin,
+              borderColor: theme.color.warning,
+            }}
           >
-            <Text className="text-base text-warning">{googleConfigError}</Text>
+            <Text style={{ fontSize: 16, color: theme.color.warning }}>{googleConfigError}</Text>
           </View>
         ) : null}
 
@@ -549,7 +570,14 @@ export default function StudioCalendarSettingsScreen() {
         ) : null}
       </ProfileSubpageScrollView>
 
-      <View className="absolute left-4 right-4 bottom-4">
+      <View
+        style={{
+          position: "absolute",
+          left: BrandSpacing.md,
+          right: BrandSpacing.md,
+          bottom: BrandSpacing.md,
+        }}
+      >
         <ActionButton label={t("common.done")} onPress={() => router.back()} fullWidth />
       </View>
     </View>

@@ -851,7 +851,7 @@ function OnboardingScreenContent() {
                 ? t("onboarding.map.instructorTitle")
                 : t("onboarding.map.studioTitle")}
             </ThemedText>
-            <ThemedText type="micro" className="text-muted">
+            <ThemedText type="micro" style={{ color: color.textMuted }}>
               {role === "instructor"
                 ? t("mapTab.selectedZones", { count: selectedZones.length })
                 : studioDetectedZone
@@ -859,7 +859,7 @@ function OnboardingScreenContent() {
                   : t("profile.roles.pending")}
             </ThemedText>
           </View>
-          <ThemedText className="text-muted">
+          <ThemedText style={{ color: color.textMuted }}>
             {role === "instructor"
               ? t("onboarding.map.instructorHint")
               : t("onboarding.map.studioHint")}
@@ -905,7 +905,7 @@ function OnboardingScreenContent() {
               ]}
             >
               <ActivityIndicator color={color.primary} />
-              <ThemedText className="text-muted">{t("onboarding.loading")}</ThemedText>
+              <ThemedText style={{ color: color.textMuted }}>{t("onboarding.loading")}</ThemedText>
             </View>
           )}
         </View>
@@ -923,7 +923,7 @@ function OnboardingScreenContent() {
     >
       <ThemedText type="subtitle">{t("onboarding.instructorDetailsTitle")}</ThemedText>
       {isForcedWorkspaceSetup ? (
-        <ThemedText className="text-muted">
+        <ThemedText style={{ color: color.textMuted }}>
           {t("onboarding.workspaceSetupInstructorHint")}
         </ThemedText>
       ) : null}
@@ -1005,7 +1005,7 @@ function OnboardingScreenContent() {
               />
             </View>
 
-            <ThemedText className="text-muted">
+            <ThemedText style={{ color: color.textMuted }}>
               {instructorDetectedZone
                 ? t("onboarding.location.detectedZone", {
                     zone: instructorDetectedZone,
@@ -1025,7 +1025,7 @@ function OnboardingScreenContent() {
           </>
         ) : (
           <View style={styles.locationPreviewRow}>
-            <ThemedText className="text-muted">
+            <ThemedText style={{ color: color.textMuted }}>
               {t("onboarding.location.zoneOptionalHint")}
             </ThemedText>
           </View>
@@ -1045,7 +1045,7 @@ function OnboardingScreenContent() {
     >
       <ThemedText type="subtitle">{t("onboarding.studioDetailsTitle")}</ThemedText>
       {isForcedWorkspaceSetup ? (
-        <ThemedText className="text-muted">{t("onboarding.workspaceSetupStudioHint")}</ThemedText>
+        <ThemedText style={{ color: color.textMuted }}>{t("onboarding.workspaceSetupStudioHint")}</ThemedText>
       ) : null}
       <KitTextField
         label={t("onboarding.studioName")}
@@ -1095,7 +1095,7 @@ function OnboardingScreenContent() {
             }}
           />
 
-          <ThemedText className="text-muted">
+          <ThemedText style={{ color: color.textMuted }}>
             {studioDetectedZone
               ? t("onboarding.location.detectedZone", { zone: studioDetectedZone })
               : t("onboarding.location.zonePending")}
@@ -1103,7 +1103,7 @@ function OnboardingScreenContent() {
         </>
       ) : (
         <View style={styles.locationPreviewRow}>
-          <ThemedText className="text-muted">{t("onboarding.location.zonePending")}</ThemedText>
+          <ThemedText style={{ color: color.textMuted }}>{t("onboarding.location.zonePending")}</ThemedText>
         </View>
       )}
     </View>
@@ -1115,7 +1115,7 @@ function OnboardingScreenContent() {
         <View style={styles.roleStage}>
           <View style={styles.roleStageHeader}>
             <ThemedText type="title">{t("onboarding.rolePrompt")}</ThemedText>
-            <ThemedText type="caption" className="text-muted">
+            <ThemedText type="caption" style={{ color: color.textMuted }}>
               {role === "studio"
                 ? t("onboarding.roleStudioDescription")
                 : role === "instructor"
@@ -1175,13 +1175,13 @@ function OnboardingScreenContent() {
           <View style={styles.detailsLoadingStage}>
             <View style={styles.detailsLoadingHeader}>
               <ThemedText type="title">{t("onboarding.loading")}</ThemedText>
-              <ThemedText type="caption" className="text-muted">
+              <ThemedText type="caption" style={{ color: color.textMuted }}>
                 {t("onboarding.sheetInstructorSubtitle")}
               </ThemedText>
             </View>
             <View style={styles.detailsLoadingRow}>
               <ActivityIndicator color={color.primary} />
-              <ThemedText className="text-muted">{t("onboarding.loading")}</ThemedText>
+              <ThemedText style={{ color: color.textMuted }}>{t("onboarding.loading")}</ThemedText>
             </View>
           </View>
         );
@@ -1248,13 +1248,13 @@ function OnboardingScreenContent() {
           <View style={styles.detailsLoadingStage}>
             <View style={styles.detailsLoadingHeader}>
               <ThemedText type="title">{t("onboarding.loading")}</ThemedText>
-              <ThemedText type="caption" className="text-muted">
+              <ThemedText type="caption" style={{ color: color.textMuted }}>
                 {t("onboarding.sheetStudioSubtitle")}
               </ThemedText>
             </View>
             <View style={styles.detailsLoadingRow}>
               <ActivityIndicator color={color.primary} />
-              <ThemedText className="text-muted">{t("onboarding.loading")}</ThemedText>
+              <ThemedText style={{ color: color.textMuted }}>{t("onboarding.loading")}</ThemedText>
             </View>
           </View>
         );
@@ -1327,7 +1327,7 @@ function OnboardingScreenContent() {
           ]}
         >
           <ThemedText type="subtitle">{t("onboarding.verification.subtitle")}</ThemedText>
-          <ThemedText className="text-muted">{t("onboarding.verification.body")}</ThemedText>
+          <ThemedText style={{ color: color.textMuted }}>{t("onboarding.verification.body")}</ThemedText>
 
           {!pushToken ? (
             <ActionButton
@@ -1407,7 +1407,7 @@ function OnboardingScreenContent() {
               },
             ]}
           >
-            <ThemedText className="text-danger">{errorMessage}</ThemedText>
+            <ThemedText style={{ color: color.danger }}>{errorMessage}</ThemedText>
           </View>
         ) : null}
       </ScrollView>

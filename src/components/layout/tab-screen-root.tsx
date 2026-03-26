@@ -2,7 +2,7 @@ import type { PropsWithChildren, ReactElement } from "react";
 import type { RefreshControlProps, ScrollViewProps, StyleProp, ViewStyle } from "react-native";
 
 import type { InsetTone } from "@/contexts/system-ui-context";
-import { ScreenScaffold } from "./screen-scaffold";
+import { ScreenScaffold, type ScreenScaffoldSheetInsets } from "./screen-scaffold";
 
 type BaseProps = {
   style?: StyleProp<ViewStyle>;
@@ -16,6 +16,7 @@ type TabScreenRootScrollProps = BaseProps & {
   };
   contentContainerStyle?: StyleProp<ViewStyle>;
   useDesktopFrame?: boolean;
+  sheetInsets?: ScreenScaffoldSheetInsets;
 };
 
 type TabScreenRootStaticProps = BaseProps & {
@@ -39,8 +40,15 @@ export function TabScreenRoot(props: TabScreenRootProps) {
     );
   }
 
-  const { contentContainerStyle, scrollProps, style, children, topInsetTone, useDesktopFrame } =
-    props;
+  const {
+    contentContainerStyle,
+    scrollProps,
+    style,
+    children,
+    topInsetTone,
+    useDesktopFrame,
+    sheetInsets,
+  } = props;
 
   return (
     <ScreenScaffold
@@ -50,6 +58,7 @@ export function TabScreenRoot(props: TabScreenRootProps) {
       {...(contentContainerStyle ? { contentContainerStyle } : {})}
       {...(scrollProps ? { scrollProps } : {})}
       {...(useDesktopFrame !== undefined ? { useDesktopFrame } : {})}
+      {...(sheetInsets ? { sheetInsets } : {})}
     >
       {children}
     </ScreenScaffold>

@@ -46,9 +46,11 @@ export function KitStatusBadge({
 
   return (
     <View
-      className="flex-row items-center rounded-full"
       style={[
         {
+          flexDirection: "row",
+          alignItems: "center",
+          borderRadius: BrandRadius.pill,
           gap: BrandSpacing.stackMicro,
           paddingHorizontal: BrandSpacing.stackDense,
           paddingVertical: BrandSpacing.stackMicro,

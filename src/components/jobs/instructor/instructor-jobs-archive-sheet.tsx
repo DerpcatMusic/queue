@@ -192,10 +192,10 @@ function ArchiveDetailRow({
         <IconSymbol name={icon} size={16} color={COLORS.primary} />
       </View>
       <View style={{ flex: 1, gap: BrandSpacing.xxs }}>
-        <ThemedText type="caption" className="text-muted">
+        <ThemedText type="caption" style={{ color: COLORS.textMuted }}>
           {label}
         </ThemedText>
-        <ThemedText type="bodyMedium" className="text-brand">
+        <ThemedText type="bodyMedium" style={{ color: COLORS.text }}>
           {value}
         </ThemedText>
       </View>
@@ -255,17 +255,17 @@ function ArchiveCompactRow({
           }}
         >
           <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xs }}>
-            <ThemedText numberOfLines={1} type="bodyStrong" className="text-brand">
+            <ThemedText numberOfLines={1} type="bodyStrong" style={{ color: COLORS.text }}>
               {sportLabel}
             </ThemedText>
             <ThemedText
               numberOfLines={1}
-              className="text-muted"
               style={{
                 fontFamily: "Manrope_400Regular",
                 fontSize: 14,
                 fontWeight: "400",
                 lineHeight: 19,
+                color: COLORS.textMuted,
               }}
             >
               {`${row.studioName} · ${scheduleLabel}`}
@@ -281,7 +281,7 @@ function ArchiveCompactRow({
           <View style={{ alignItems: "flex-end", gap: BrandSpacing.sm }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
               <IconSymbol name="banknote" size={14} color={COLORS.success} />
-              <ThemedText type="bodyStrong" className="text-success">
+              <ThemedText type="bodyStrong" style={{ color: COLORS.success }}>
                 {payLabel}
               </ThemedText>
             </View>
@@ -409,7 +409,7 @@ export function InstructorJobsArchiveSheet({
         >
           <View style={{ flex: 1, gap: BrandSpacing.xs }}>
             <ThemedText type="heading">{t("jobsTab.archiveTitle")}</ThemedText>
-            <ThemedText type="caption" className="text-muted">
+            <ThemedText type="caption" style={{ color: COLORS.textMuted }}>
               {t("jobsTab.instructorFeed.archiveSubtitle")}
             </ThemedText>
           </View>
@@ -432,7 +432,7 @@ export function InstructorJobsArchiveSheet({
               gap: BrandSpacing.sm,
             }}
           >
-            <ThemedText type="bodyMedium" className="text-muted">
+            <ThemedText type="bodyMedium" style={{ color: COLORS.textMuted }}>
               {t("jobsTab.instructorFeed.archiveEmpty")}
             </ThemedText>
           </View>
