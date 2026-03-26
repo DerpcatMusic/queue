@@ -1,12 +1,13 @@
 import type { PropsWithChildren } from "react";
 import { cloneElement, isValidElement, useEffect } from "react";
 import type { ScrollViewProps, StyleProp, ViewStyle } from "react-native";
-import { View } from "react-native";
 import Animated from "react-native-reanimated";
 
 import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
 import { useScrollSheetLayout } from "@/components/layout/scroll-sheet-provider";
 import { type InsetTone, useSystemUi } from "@/contexts/system-ui-context";
+import { Box } from "@/primitives";
+import { createSheetInsetStyle, getSheetProgressViewOffset } from "./sheet-inset-contract";
 
 export type ScreenScaffoldSheetInsets = {
   topSpacing?: number;
@@ -48,7 +49,7 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
 
   if (props.mode === "static") {
     return (
-      <View
+      <Box
         style={[
           {
             flex: 1,
@@ -57,7 +58,7 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
         ]}
       >
         {props.children}
-      </View>
+      </Box>
     );
   }
 
@@ -71,29 +72,33 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
     sheetInsets,
   } = props;
 
-  const resolvedContentContainerStyle = [
-    sheetInsets
-      ? {
-          paddingTop: collapsedSheetHeight + (sheetInsets.topSpacing ?? 0),
-          paddingBottom: safeBottom + (sheetInsets.bottomSpacing ?? 0),
-          ...(sheetInsets.horizontalPadding !== undefined
-            ? { paddingHorizontal: sheetInsets.horizontalPadding }
-            : {}),
-        }
-      : null,
-    contentContainerStyle,
-  ];
+  const resolvedSheetInsetStyle = sheetInsets
+    ? createSheetInsetStyle({
+        collapsedSheetHeight,
+        safeBottom,
+        topSpacing: sheetInsets.topSpacing,
+        bottomSpacing: sheetInsets.bottomSpacing,
+        horizontalPadding: sheetInsets.horizontalPadding,
+      })
+    : null;
+
+  const resolvedContentContainerStyle = [contentContainerStyle, resolvedSheetInsetStyle];
 
   const refreshControl = scrollProps?.refreshControl;
   const resolvedRefreshControl =
     sheetInsets && isValidElement(refreshControl)
       ? cloneElement(refreshControl, {
-          progressViewOffset: collapsedSheetHeight,
+          progressViewOffset: getSheetProgressViewOffset({
+            collapsedSheetHeight,
+            topSpacing: sheetInsets.topSpacing,
+          }),
         })
       : refreshControl;
 
   const content = useDesktopFrame ? (
-    <DesktopDashboardFrame contentStyle={resolvedContentContainerStyle}>{children}</DesktopDashboardFrame>
+    <DesktopDashboardFrame contentStyle={resolvedContentContainerStyle}>
+      {children}
+    </DesktopDashboardFrame>
   ) : (
     children
   );

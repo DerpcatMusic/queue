@@ -1,11 +1,11 @@
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { memo, type RefObject } from "react";
-import { type StyleProp, View, type ViewStyle } from "react-native";
-import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
+import type { StyleProp, ViewStyle } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { BrandSpacing } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
+import { Box } from "@/primitives";
 import type { TimelineListItem } from "../calendar-controller-helpers";
 import { calendarTimelineStyles } from "./calendar-date-utils";
 
@@ -38,16 +38,10 @@ function CalendarTimelineList({
 }: CalendarTimelineListProps) {
   const { safeBottom } = useAppInsets();
   const { color: palette } = useTheme();
-  const collapsedSheetHeight = useCollapsedSheetHeight();
 
   return (
     <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
-      <View
-        style={[
-          calendarTimelineStyles.timelineViewport,
-          { backgroundColor: palette.appBg, paddingTop: collapsedSheetHeight + BrandSpacing.xl },
-        ]}
-      >
+      <Box style={[calendarTimelineStyles.timelineViewport, { backgroundColor: palette.appBg }]}>
         <FlashList
           ref={listRef}
           data={listItems}
@@ -66,7 +60,7 @@ function CalendarTimelineList({
           scrollIndicatorInsets={{ bottom: safeBottom + BrandSpacing.md }}
           contentContainerStyle={[calendarTimelineStyles.timelineContent, contentContainerStyle]}
         />
-      </View>
+      </Box>
     </TabScreenRoot>
   );
 }
