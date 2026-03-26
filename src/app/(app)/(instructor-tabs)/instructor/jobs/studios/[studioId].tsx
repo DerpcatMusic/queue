@@ -2,13 +2,12 @@ import { useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, Platform, Text, useWindowDimensions, View } from "react-native";
+import { I18nManager, Platform, Text, View } from "react-native";
 import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { DotStatusPill } from "@/components/home/home-shared";
 import { InstructorJobCard } from "@/components/jobs/instructor/instructor-job-card";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { getTopSheetAvailableHeight } from "@/components/layout/top-sheet.helpers";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
 import { IconButton } from "@/components/ui/icon-button";
@@ -17,7 +16,6 @@ import { BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
-import { useAppInsets } from "@/hooks/use-app-insets";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { FontFamily, FontSize, LetterSpacing, LineHeight } from "@/lib/design-system";
@@ -36,8 +34,6 @@ export default function InstructorStudioProfileRoute() {
   const router = useRouter();
   const pathname = usePathname();
   const now = useMinuteNow();
-  const { height: screenHeight } = useWindowDimensions();
-  const { safeBottom, safeTop } = useAppInsets();
   const { color: palette } = useTheme();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
@@ -136,24 +132,19 @@ export default function InstructorStudioProfileRoute() {
     if (!studioProfile || !pathname?.startsWith("/instructor/jobs/studios/")) {
       return null;
     }
-    const headerHeight = 284;
-    const availableHeight = Math.max(
-      1,
-      getTopSheetAvailableHeight(screenHeight, safeTop, safeBottom),
-    );
-    const collapsedStep = Math.max(0.24, Math.min(0.42, headerHeight / availableHeight));
 
     return {
       content: (
         <View
           style={{
-            height: headerHeight,
             justifyContent: "space-between",
             overflow: "hidden",
             borderBottomLeftRadius: 28,
             borderBottomRightRadius: 28,
             borderCurve: "continuous",
             backgroundColor: palette.primary,
+            paddingBottom: BrandSpacing.xl,
+            minHeight: 0,
           }}
         >
           {studioProfile.studioImageUrl ? (
@@ -173,18 +164,6 @@ export default function InstructorStudioProfileRoute() {
                   ...(Platform.OS === "web"
                     ? { filter: "grayscale(100%) contrast(118%) brightness(78%)" }
                     : {}),
-                  opacity: 0.96,
-                }}
-              />
-              <View
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  left: 0,
-                  backgroundColor: palette.surface,
-                  opacity: 0.08,
                 }}
               />
             </>
@@ -252,14 +231,15 @@ export default function InstructorStudioProfileRoute() {
         vertical: 0,
         horizontal: 0,
       },
-      steps: [collapsedStep],
+      steps: [0],
       initialStep: 0,
       draggable: false,
       expandable: false,
+      collapsedHeightMode: "content" as const,
       backgroundColor: palette.primary,
       topInsetColor: palette.primary,
     };
-  }, [router, safeBottom, safeTop, screenHeight, studioProfile, pathname, t, palette]);
+  }, [router, studioProfile, pathname, t, palette]);
 
   useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:studio-profile");
 
