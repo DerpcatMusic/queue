@@ -17,11 +17,10 @@ const PROFILE_SECTION_CARD_MARGIN_HORIZONTAL = BrandSpacing.inset;
 
 const PROFILE_SETTING_ROW_GAP = BrandSpacing.component;
 const PROFILE_SETTING_ROW_PADDING_HORIZONTAL = BrandSpacing.insetSoft;
-const PROFILE_SETTING_ROW_PADDING_VERTICAL = 15;
-const PROFILE_SETTING_ROW_ICON_SIZE = BrandSpacing.iconContainer;
+const PROFILE_SETTING_ROW_ICON_SIZE = 20;
 const PROFILE_SETTING_ROW_SECONDARY_GAP = BrandSpacing.stackHair;
 const PROFILE_SETTING_ROW_VALUE_GAP = BrandSpacing.inset;
-const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = BrandSpacing.iconContainer + BrandSpacing.inset;
+const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = BrandSpacing.insetSoft + 32;
 const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.insetSoft;
 const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.insetSoft;
 const PROFILE_ICON_BUTTON_SIZE = 40;
@@ -105,7 +104,7 @@ export function ProfileSectionCard({
         {
           marginHorizontal: PROFILE_SECTION_CARD_MARGIN_HORIZONTAL,
           overflow: "hidden",
-          borderRadius: BrandRadius.soft + BrandSpacing.xs,
+          borderRadius: BrandRadius.lg,
           borderCurve: "continuous",
           borderWidth: BorderWidth.thin,
         },
@@ -177,15 +176,6 @@ export function ProfileSettingRow({
           : theme.color.text
         : theme.color.textMuted;
 
-  const iconBackground =
-    tone === "danger"
-      ? theme.color.dangerSubtle
-      : tone === "accent"
-        ? resolvedScheme === "dark"
-          ? theme.color.primarySubtle
-          : theme.color.primarySubtle
-        : theme.color.surfaceAlt;
-
   const iconColor =
     tone === "danger"
       ? theme.color.danger
@@ -203,24 +193,12 @@ export function ProfileSettingRow({
           alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
           gap: PROFILE_SETTING_ROW_GAP,
           paddingHorizontal: PROFILE_SETTING_ROW_PADDING_HORIZONTAL,
-          paddingVertical: PROFILE_SETTING_ROW_PADDING_VERTICAL,
+          paddingVertical: 16,
           backgroundColor: rowBackgroundColor,
         }}
       >
         {icon ? (
-          <View
-            style={{
-              width: PROFILE_SETTING_ROW_ICON_SIZE,
-              height: PROFILE_SETTING_ROW_ICON_SIZE,
-              borderRadius: BrandRadius.pill,
-              borderCurve: "continuous",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: iconBackground,
-              borderWidth: BorderWidth.hairline,
-              borderColor: tone === "accent" ? resolvedAccentColor : theme.color.border,
-            }}
-          >
+          <View style={{ width: PROFILE_SETTING_ROW_ICON_SIZE, alignItems: "center" }}>
             <IconSymbol name={icon} size={18} color={iconColor} />
           </View>
         ) : null}
@@ -231,9 +209,9 @@ export function ProfileSettingRow({
           <Text
             style={{
               fontFamily: "Manrope_600SemiBold",
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: "600",
-              lineHeight: 22,
+              lineHeight: 20,
               color: theme.color.text,
               includeFontPadding: false,
             }}
@@ -244,9 +222,9 @@ export function ProfileSettingRow({
             <Text
               style={{
                 fontFamily: "Manrope_400Regular",
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: "400",
-                lineHeight: 19,
+                lineHeight: 18,
                 color: theme.color.textMuted,
                 includeFontPadding: false,
               }}
@@ -270,9 +248,9 @@ export function ProfileSettingRow({
               numberOfLines={1}
               style={{
                 fontFamily: "Manrope_500Medium",
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: "500",
-                lineHeight: 22,
+                lineHeight: 20,
                 textAlign: "right",
                 color: theme.color.textMuted,
                 includeFontPadding: false,
@@ -309,7 +287,7 @@ export function ProfileSettingRow({
       accessibilityRole="button"
       accessibilityLabel={[title, subtitle, value].filter(Boolean).join(". ")}
       onPress={onPress}
-      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
+      style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
     >
       {content}
     </Pressable>
