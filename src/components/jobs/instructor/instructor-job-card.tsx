@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import type React from "react";
+import React, { memo } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
 import { FilterImage, type Filters } from "react-native-svg/filter-image";
@@ -76,7 +76,7 @@ const STUDIO_PHOTO_NATIVE_FILTERS: Filters = [
   },
 ];
 
-function StudioImageBackground({
+const StudioImageBackground = memo(function StudioImageBackground({
   imageUrl,
   fallbackLabel,
   theme,
@@ -95,12 +95,12 @@ function StudioImageBackground({
   return (
     <View
       pointerEvents="none"
-      className="overflow-hidden"
       style={{
         ...StyleSheet.absoluteFillObject,
         borderCurve: "continuous",
         backgroundColor: theme.jobs.surfaceRaised,
         borderRadius: BrandRadius.card,
+        overflow: "hidden",
       }}
     >
       {imageUrl ? (
@@ -153,9 +153,9 @@ function StudioImageBackground({
       {children}
     </View>
   );
-}
+});
 
-function JobExpiryPill({
+const JobExpiryPill = memo(function JobExpiryPill({
   label,
   isExpired,
   theme,
@@ -169,8 +169,10 @@ function JobExpiryPill({
 
   return (
     <View
-      className="flex-row items-center rounded-pill"
       style={{
+        flexDirection: "row",
+        alignItems: "center",
+        borderRadius: BrandRadius.pill,
         backgroundColor,
         paddingHorizontal: BrandSpacing.sm,
         paddingVertical: BrandSpacing.xs,
@@ -190,9 +192,9 @@ function JobExpiryPill({
       </Text>
     </View>
   );
-}
+});
 
-export function InstructorJobCard({
+export const InstructorJobCard = memo(function InstructorJobCard({
   job,
   locale,
   zoneLanguage,
@@ -551,8 +553,8 @@ export function InstructorJobCard({
         )}
 
         <View
-          className="justify-between"
           style={{
+            justifyContent: "space-between",
             minHeight: variant === "studioDetail" ? (isWideWeb ? 174 : 164) : isWideWeb ? 190 : 172,
             position: "relative",
             paddingLeft: BrandSpacing.lg,
@@ -604,7 +606,7 @@ export function InstructorJobCard({
             </Text>
 
             {/* Time range */}
-            <View className="flex-row items-center" style={{ gap: BrandSpacing.xs }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
               <IconSymbol name="clock.fill" size={14} color={theme.jobs.idle} />
               <Text
                 style={{
@@ -626,7 +628,7 @@ export function InstructorJobCard({
             </View>
 
             {/* Tags row: expiry, boost, pay */}
-            <View className="flex-row flex-wrap items-center" style={{ gap: BrandSpacing.sm }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: BrandSpacing.sm }}>
               {expiry ? (
                 <JobExpiryPill
                   label={t(expiry.key, expiry.interpolation)}
@@ -655,7 +657,7 @@ export function InstructorJobCard({
           </View>
 
           {/* CTA — bottom action row */}
-          <View className="pt-sm" style={{ width: contentWidth }}>
+          <View style={{ width: contentWidth, paddingTop: BrandSpacing.sm }}>
             {canWithdrawPendingApplication ? (
               <ActionButton
                 label={isWithdrawing ? t("jobsTab.actions.cancelling") : pendingCancelLabel}
@@ -697,4 +699,4 @@ export function InstructorJobCard({
       </View>
     </Pressable>
   );
-}
+});

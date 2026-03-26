@@ -32,11 +32,18 @@ export function createZoneFilter(zoneIds: readonly string[], propertyName: strin
   return ["in", ["get", propertyName], ["literal", zoneIds as string[]]] as Expression;
 }
 
-export function toBounds(
+export function toCameraBounds(
   sw: [number, number],
   ne: [number, number],
-): [number, number, number, number] {
-  return [sw[0], sw[1], ne[0], ne[1]];
+): { sw: [number, number]; ne: [number, number] } {
+  return { sw, ne };
+}
+
+export function toOfflineBounds(
+  sw: [number, number],
+  ne: [number, number],
+): [GeoJSON.Position, GeoJSON.Position] {
+  return [sw, ne];
 }
 
 function isRoadNumberLayer(layer: AnyStyleLayer) {
@@ -315,8 +322,9 @@ export async function ensureVectorOfflinePack() {
       OfflineManager.setProgressEventThrottle(APPLE_MAP_THEME.offlinePack.progressThrottleMs);
       await OfflineManager.createPack(
         {
-          mapStyle: APPLE_MAP_THEME.mapStyleLightUrl,
-          bounds: toBounds(ISRAEL_MAP_INTERACTION_BOUNDS.sw, ISRAEL_MAP_INTERACTION_BOUNDS.ne),
+          name: APPLE_MAP_THEME.offlinePack.name,
+          styleURL: APPLE_MAP_THEME.mapStyleLightUrl,
+          bounds: toOfflineBounds(ISRAEL_MAP_INTERACTION_BOUNDS.sw, ISRAEL_MAP_INTERACTION_BOUNDS.ne),
           minZoom: zoomStart,
           maxZoom: zoomEnd,
           metadata: {

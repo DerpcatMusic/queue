@@ -331,7 +331,7 @@ export default function InstructorProfileScreen() {
   ) {
     return (
       <TabScreenRoot mode="static" topInsetTone="sheet" style={styles.screen}>
-        <View className="flex-1 bg-app-bg" />
+        <View style={{ flex: 1, backgroundColor: theme.color.appBg }} />
       </TabScreenRoot>
     );
   }

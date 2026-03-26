@@ -1,11 +1,19 @@
-import { getTheme } from "@/lib/design-system";
-import type { TopSheetTabConfig } from "./top-sheet-registry";
+import type { ColorValue, StyleProp, ViewStyle } from "react-native";
+
+import type { TopSheetProps } from "./top-sheet";
+import type { ResolvedTopSheetTabConfig } from "./top-sheet-registry";
 
 export type ContentTransitionDirection = "vertical" | "forward" | "backward";
 
+export type ResolvedBaseSheetProps = Omit<TopSheetProps, "children"> & {
+  backgroundColor: ColorValue;
+  topInsetColor: ColorValue;
+  style?: StyleProp<ViewStyle>;
+};
+
 export function areSheetConfigsEqual(
-  previous: TopSheetTabConfig | null | undefined,
-  next: TopSheetTabConfig | null | undefined,
+  previous: ResolvedTopSheetTabConfig | null | undefined,
+  next: ResolvedTopSheetTabConfig | null | undefined,
 ) {
   if (previous === next) {
     return true;
@@ -23,24 +31,37 @@ export function areSheetConfigsEqual(
   }
 
   return nextKeys.every((key) =>
-    Object.is(previous[key as keyof TopSheetTabConfig], next[key as keyof TopSheetTabConfig]),
+    Object.is(
+      previous[key as keyof ResolvedTopSheetTabConfig],
+      next[key as keyof ResolvedTopSheetTabConfig],
+    ),
   );
 }
 
-// Real color values for native TopSheet (CSS vars don't resolve in RN native views)
-const FALLBACK_THEME = getTheme("light");
-
-export function getFallbackSheetColors(tabId: string) {
-  if (tabId === "map") {
-    return {
-      backgroundColor: FALLBACK_THEME.color.surfaceElevated,
-      topInsetColor: FALLBACK_THEME.color.surfaceElevated,
-    };
+export function buildBaseSheetProps(
+  config: ResolvedTopSheetTabConfig | null,
+): ResolvedBaseSheetProps | null {
+  if (!config) {
+    return null;
   }
 
   return {
-    backgroundColor: FALLBACK_THEME.color.primary,
-    topInsetColor: FALLBACK_THEME.color.primary,
+    ...(config.draggable !== undefined ? { draggable: config.draggable } : {}),
+    ...(config.expandable !== undefined ? { expandable: config.expandable } : {}),
+    ...(config.steps ? { steps: config.steps } : {}),
+    ...(config.initialStep !== undefined ? { initialStep: config.initialStep } : {}),
+    ...(config.activeStep !== undefined ? { activeStep: config.activeStep } : {}),
+    ...(config.minHeight !== undefined ? { minHeight: config.minHeight } : {}),
+    ...(config.collapsedHeightMode ? { collapsedHeightMode: config.collapsedHeightMode } : {}),
+    ...(config.expandMode ? { expandMode: config.expandMode } : {}),
+    ...(config.padding ? { padding: config.padding } : {}),
+    ...(config.style ? { style: config.style } : {}),
+    ...(config.onStepChange ? { onStepChange: config.onStepChange } : {}),
+    ...(config.stickyHeader ? { stickyHeader: config.stickyHeader } : {}),
+    ...(config.stickyFooter ? { stickyFooter: config.stickyFooter } : {}),
+    ...(config.revealOnExpand ? { revealOnExpand: config.revealOnExpand } : {}),
+    backgroundColor: config.backgroundColor,
+    topInsetColor: config.topInsetColor,
   };
 }
 

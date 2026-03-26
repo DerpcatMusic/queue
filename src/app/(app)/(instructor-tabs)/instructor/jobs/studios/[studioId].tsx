@@ -9,7 +9,6 @@ import { InstructorJobCard } from "@/components/jobs/instructor/instructor-job-c
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
-import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -46,12 +45,6 @@ export default function InstructorStudioProfileRoute() {
   const [withdrawingApplicationId, setWithdrawingApplicationId] =
     useState<Id<"jobApplications"> | null>(null);
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
-  const { contentContainerStyle } = useTopSheetContentInsets({
-    topSpacing: BrandSpacing.xs,
-    bottomSpacing: BrandSpacing.xxl,
-    horizontalPadding: BrandSpacing.xl,
-  });
-
   const queryNow = Math.floor(now / (60 * 1000)) * 60 * 1000;
   const applyToJob = useMutation(api.jobs.applyToJob);
   const withdrawApplication = useMutation(api.jobs.withdrawApplication);
@@ -131,19 +124,19 @@ export default function InstructorStudioProfileRoute() {
     if (!studioProfile || !pathname?.startsWith("/instructor/jobs/studios/")) {
       return null;
     }
-    const headerHeight = 284;
 
     return {
       content: (
         <View
           style={{
-            height: headerHeight,
             justifyContent: "space-between",
             overflow: "hidden",
             borderBottomLeftRadius: 28,
             borderBottomRightRadius: 28,
             borderCurve: "continuous",
             backgroundColor: palette.primary,
+            paddingBottom: BrandSpacing.xl,
+            minHeight: 0,
           }}
         >
           {studioProfile.studioImageUrl ? (
@@ -163,18 +156,6 @@ export default function InstructorStudioProfileRoute() {
                   ...(Platform.OS === "web"
                     ? { filter: "grayscale(100%) contrast(118%) brightness(78%)" }
                     : {}),
-                  opacity: 0.96,
-                }}
-              />
-              <View
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  left: 0,
-                  backgroundColor: palette.surface,
-                  opacity: 0.08,
                 }}
               />
             </>
@@ -242,10 +223,10 @@ export default function InstructorStudioProfileRoute() {
         vertical: 0,
         horizontal: 0,
       },
-      steps: [0.24],
-      initialStep: 0,
-      draggable: false,
-      expandable: false,
+       steps: [0],
+       initialStep: 0,
+       draggable: false,
+       expandable: false,
       collapsedHeightMode: "content" as const,
       backgroundColor: palette.primary,
       topInsetColor: palette.primary,
@@ -270,8 +251,12 @@ export default function InstructorStudioProfileRoute() {
     <TabScreenScrollView
       style={{ flex: 1, backgroundColor: palette.appBg }}
       topInsetTone="sheet"
+      sheetInsets={{
+        topSpacing: BrandSpacing.xs,
+        bottomSpacing: BrandSpacing.xxl,
+        horizontalPadding: BrandSpacing.xl,
+      }}
       contentContainerStyle={[
-        contentContainerStyle,
         {
           gap: BrandSpacing.lg,
         },

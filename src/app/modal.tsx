@@ -9,7 +9,7 @@ export default function ModalScreen() {
   const { t } = useTranslation();
 
   return (
-    <ThemedView className="flex-1 items-center justify-center" style={{ padding: BrandSpacing.lg }}>
+    <ThemedView style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: BrandSpacing.lg }}>
       <ThemedText type="title">{t("modal.title")}</ThemedText>
       <Link
         href="/"

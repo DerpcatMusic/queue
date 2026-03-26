@@ -25,8 +25,15 @@ import {
   useResolvedTabSheetConfig,
 } from "@/components/layout/top-sheet-registry";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useTheme } from "@/hooks/use-theme";
-import { getFallbackSheetColors, resolveTopSheetRouteTab } from "./global-top-sheet.helpers";
+import {
+  ANIMATION_DURATION_ENTER,
+  ANIMATION_DURATION_EXIT,
+  DEFAULT_STEPS,
+} from "./top-sheet-constants";
+import {
+  buildBaseSheetProps,
+  resolveTopSheetRouteTab,
+} from "./global-top-sheet.helpers";
 import { getTopSheetStepHeights } from "./top-sheet.helpers";
 
 /**
@@ -40,7 +47,6 @@ import { getTopSheetStepHeights } from "./top-sheet.helpers";
  * - Reports its collapsed height to ScrollSheetProvider
  */
 export function GlobalTopSheet() {
-  const theme = useTheme();
   const pathname = usePathname();
   const { safeBottom, safeTop } = useAppInsets();
   const { height: screenHeight } = useWindowDimensions();
@@ -60,39 +66,7 @@ export function GlobalTopSheet() {
   const measuredHeightRef = useRef<number | null>(null);
   const lastRenderedSheetHeightRef = useRef<number | null>(null);
   const transitionKey = activeRouteKey ?? activeTabId ?? activeConfig?.tabId ?? "global-top-sheet";
-  const fallbackColors = activeConfig
-    ? getFallbackSheetColors(activeConfig.tabId)
-    : {
-        backgroundColor: theme.color.primary,
-        topInsetColor: theme.color.primary,
-      };
-
-  const baseSheetProps = activeConfig
-    ? {
-        ...(activeConfig.draggable !== undefined ? { draggable: activeConfig.draggable } : {}),
-        ...(activeConfig.expandable !== undefined ? { expandable: activeConfig.expandable } : {}),
-        ...(activeConfig.steps ? { steps: activeConfig.steps } : {}),
-        ...(activeConfig.initialStep !== undefined
-          ? { initialStep: activeConfig.initialStep }
-          : {}),
-        ...(activeConfig.activeStep !== undefined ? { activeStep: activeConfig.activeStep } : {}),
-        ...(activeConfig.minHeight !== undefined ? { minHeight: activeConfig.minHeight } : {}),
-        ...(activeConfig.collapsedHeightMode
-          ? { collapsedHeightMode: activeConfig.collapsedHeightMode }
-          : {}),
-        ...(activeConfig.expandMode ? { expandMode: activeConfig.expandMode } : {}),
-        ...(activeConfig.padding ? { padding: activeConfig.padding } : {}),
-        backgroundColor:
-          (activeConfig.backgroundColor as string | undefined) ?? fallbackColors.backgroundColor,
-        topInsetColor:
-          (activeConfig.topInsetColor as string | undefined) ?? fallbackColors.topInsetColor,
-        ...(activeConfig.style ? { style: activeConfig.style } : {}),
-        ...(activeConfig.onStepChange ? { onStepChange: activeConfig.onStepChange } : {}),
-        ...(activeConfig.stickyHeader ? { stickyHeader: activeConfig.stickyHeader } : {}),
-        ...(activeConfig.stickyFooter ? { stickyFooter: activeConfig.stickyFooter } : {}),
-        ...(activeConfig.revealOnExpand ? { revealOnExpand: activeConfig.revealOnExpand } : {}),
-      }
-    : null;
+  const baseSheetProps = buildBaseSheetProps(activeConfig);
   const hasRenderableContent = Boolean(
     activeConfig &&
       (activeConfig.render ||
@@ -121,7 +95,7 @@ export function GlobalTopSheet() {
     resolvedCollapsedHeightMode !== "content" &&
     (!activeConfig.render || richResult)
       ? (getTopSheetStepHeights(
-          richResult?.steps ?? activeConfig.steps ?? [0.18, 0.4, 0.65, 0.95],
+          richResult?.steps ?? activeConfig.steps ?? DEFAULT_STEPS,
           screenHeight,
           safeTop,
           safeBottom,
@@ -174,8 +148,8 @@ export function GlobalTopSheet() {
     }
 
     return {
-      entering: FadeIn.duration(140).reduceMotion(ReduceMotion.System),
-      exiting: FadeOut.duration(90).reduceMotion(ReduceMotion.System),
+      entering: FadeIn.duration(ANIMATION_DURATION_ENTER).reduceMotion(ReduceMotion.System),
+      exiting: FadeOut.duration(ANIMATION_DURATION_EXIT).reduceMotion(ReduceMotion.System),
     };
   })();
   const renderTransitionedNode = (

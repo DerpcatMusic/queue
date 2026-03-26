@@ -38,8 +38,21 @@ export function ProfileSectionHeader({
   const theme = useTheme();
 
   return (
-    <View className={`gap-xs pt-section pb-stack-tight ${flush ? "px-0" : "px-section"}`}>
-      <View className="flex-row items-center gap-sm">
+    <View
+      style={{
+        gap: BrandSpacing.xs,
+        paddingTop: BrandSpacing.section,
+        paddingBottom: BrandSpacing.stackTight,
+        paddingHorizontal: flush ? 0 : BrandSpacing.section,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: BrandSpacing.sm,
+        }}
+      >
         {icon ? (
           <IconSymbol
             name={icon}
@@ -47,12 +60,12 @@ export function ProfileSectionHeader({
             color={theme.color.textMuted}
           />
         ) : null}
-        <Text className="text-muted" style={[BrandType.micro, { textTransform: "uppercase" }]}>
+        <Text style={[BrandType.micro, { textTransform: "uppercase", color: theme.color.textMuted }]}>
           {label}
         </Text>
       </View>
       {description ? (
-        <Text className="text-muted" style={[BrandType.caption, { maxWidth: 540 }]}>
+        <Text style={[BrandType.caption, { maxWidth: 540, color: theme.color.textMuted }]}>
           {description}
         </Text>
       ) : null}
@@ -72,7 +85,6 @@ export function ProfileSectionCard({
       tone="base"
       padding={0}
       gap={0}
-      className="bg-surface"
       style={[
         {
           marginHorizontal: PROFILE_SECTION_CARD_MARGIN_HORIZONTAL,
@@ -168,13 +180,13 @@ export function ProfileSettingRow({
   const content = (
     <View>
       <View
-        className="bg-surface"
         style={{
           flexDirection: "row",
           alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
           gap: PROFILE_SETTING_ROW_GAP,
           paddingHorizontal: PROFILE_SETTING_ROW_PADDING_HORIZONTAL,
           paddingVertical: PROFILE_SETTING_ROW_PADDING_VERTICAL,
+          backgroundColor: theme.color.surface,
         }}
       >
         {icon ? (
@@ -197,12 +209,12 @@ export function ProfileSettingRow({
           style={{ flex: 1, gap: subtitle ? PROFILE_SETTING_ROW_SECONDARY_GAP : 0, minWidth: 0 }}
         >
           <Text
-            className="text-brand"
             style={{
               fontFamily: "Manrope_600SemiBold",
               fontSize: 16,
               fontWeight: "600",
               lineHeight: 22,
+              color: theme.color.text,
             }}
           >
             {title}
@@ -214,8 +226,8 @@ export function ProfileSettingRow({
                 fontSize: 14,
                 fontWeight: "400",
                 lineHeight: 19,
+                color: theme.color.textMuted,
               }}
-              className="text-muted"
             >
               {subtitle}
             </Text>
@@ -234,13 +246,13 @@ export function ProfileSettingRow({
           {value ? (
             <Text
               numberOfLines={1}
-              className="text-muted"
               style={{
                 fontFamily: "Manrope_500Medium",
                 fontSize: 16,
                 fontWeight: "500",
                 lineHeight: 22,
                 textAlign: "right",
+                color: theme.color.textMuted,
               }}
             >
               {value}

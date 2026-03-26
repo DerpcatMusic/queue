@@ -17,7 +17,7 @@ import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -53,8 +53,8 @@ function hasContent(str: string | undefined | null) {
 function FieldLabel({ children }: { children: string }) {
   return (
     <Text
-      className="mb-1"
       style={{
+        marginBottom: BrandSpacing.xs,
         fontFamily: "Rubik_500Medium",
         fontSize: FontSize.micro,
         letterSpacing: 0.6,
@@ -99,12 +99,13 @@ function ManualField({
       autoCapitalize={autoCapitalize}
       selectionColor={primary}
       cursorColor={primary}
-      className="rounded-lg px-3"
       style={{
         borderWidth: BorderWidth.thin,
         borderColor: border,
         backgroundColor: surfaceElevated,
         minHeight: BrandSpacing.controlMd,
+        borderRadius: BrandRadius.lg,
+        paddingHorizontal: BrandSpacing.md,
         color: text,
         fontFamily: "Rubik_400Regular",
         fontSize: 16,
@@ -413,7 +414,7 @@ export default function LocationScreen() {
   const renderStructuredRow = (label: string, value: string) => {
     if (!value) return null;
     return (
-      <View className="flex-row items-center gap-2">
+      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
         <Text
           style={{
             fontFamily: "Manrope_400Regular",
@@ -441,7 +442,7 @@ export default function LocationScreen() {
   };
 
   return (
-    <View className="flex-1 relative" style={{ backgroundColor: palette.appBg }}>
+    <View style={{ flex: 1, position: "relative", backgroundColor: palette.appBg }}>
       <ProfileSubpageScrollView
         routeKey="instructor/profile/location"
         keyboardShouldPersistTaps="handled"
@@ -459,7 +460,7 @@ export default function LocationScreen() {
         />
 
         {/* Search bar */}
-        <View className="gap-2">
+        <View style={{ gap: BrandSpacing.sm }}>
           <AddressAutocomplete
             value={addressInput}
             onChangeText={handleAddressChange}
@@ -491,10 +492,15 @@ export default function LocationScreen() {
 
         {/* Structured address summary — auto-filled from search/GPS */}
         {showStructuredSummary ? (
-          <View
-            className="gap-1 px-3 py-3 rounded-lg"
-            style={{ backgroundColor: palette.surfaceElevated as string }}
-          >
+            <View
+              style={{
+                gap: BrandSpacing.xs,
+                paddingHorizontal: BrandSpacing.md,
+                paddingVertical: BrandSpacing.md,
+                borderRadius: BrandRadius.lg,
+                backgroundColor: palette.surfaceElevated as string,
+              }}
+            >
             {renderStructuredRow(`${t("profile.location.fieldCity")}:`, city)}
             {renderStructuredRow(
               `${t("profile.location.fieldStreet")}:`,
@@ -511,10 +517,10 @@ export default function LocationScreen() {
 
         {/* Structured fields — editable in manual mode */}
         {manualMode ? (
-          <View className="gap-2">
+          <View style={{ gap: BrandSpacing.sm }}>
             {/* Row: city + street */}
-            <View className="flex-row gap-2">
-              <View className="flex-1 gap-1">
+            <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+              <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                 <FieldLabel>{t("profile.location.fieldCity")}</FieldLabel>
                 <ManualField
                   value={city}
@@ -527,7 +533,7 @@ export default function LocationScreen() {
                   text={palette.text}
                 />
               </View>
-              <View className="flex-1 gap-1">
+              <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                 <FieldLabel>{t("profile.location.fieldStreet")}</FieldLabel>
                 <ManualField
                   value={street}
@@ -543,8 +549,8 @@ export default function LocationScreen() {
             </View>
 
             {/* Row: number + floor + zip */}
-            <View className="flex-row gap-2">
-              <View className="w-20 gap-1">
+            <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+              <View style={{ width: 80, gap: BrandSpacing.xs }}>
                 <FieldLabel>{t("profile.location.fieldNumber")}</FieldLabel>
                 <ManualField
                   value={streetNumber}
@@ -557,7 +563,7 @@ export default function LocationScreen() {
                   text={palette.text}
                 />
               </View>
-              <View className="w-20 gap-1">
+              <View style={{ width: 80, gap: BrandSpacing.xs }}>
                 <FieldLabel>{t("profile.location.fieldFloor")}</FieldLabel>
                 <ManualField
                   value={floor}
@@ -570,7 +576,7 @@ export default function LocationScreen() {
                   text={palette.text}
                 />
               </View>
-              <View className="flex-1 gap-1">
+              <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                 <FieldLabel>{t("profile.location.fieldZipCode")}</FieldLabel>
                 <ManualField
                   value={postalCode}
@@ -590,9 +596,12 @@ export default function LocationScreen() {
         ) : null}
 
         {/* Secondary actions row */}
-        <View className="flex-row gap-3 items-center">
+        <View style={{ flexDirection: "row", gap: BrandSpacing.md, alignItems: "center" }}>
           {!manualMode ? (
-            <Pressable onPress={() => setManualMode(true)} className="flex-row items-center gap-1">
+            <Pressable
+              onPress={() => setManualMode(true)}
+              style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}
+            >
               <IconSymbol name="pencil" size={13} color={palette.primary} />
               <Text
                 style={{
@@ -607,7 +616,10 @@ export default function LocationScreen() {
               </Text>
             </Pressable>
           ) : (
-            <Pressable onPress={() => setManualMode(false)} className="flex-row items-center gap-1">
+            <Pressable
+              onPress={() => setManualMode(false)}
+              style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}
+            >
               <IconSymbol name="magnifyingglass" size={13} color={palette.primary} />
               <Text
                 style={{
@@ -625,13 +637,15 @@ export default function LocationScreen() {
 
           {manualMode && (
             <>
-              <View className="h-3 w-px" style={{ backgroundColor: palette.border as string }} />
+              <View
+                style={{ height: 12, width: BorderWidth.thin, backgroundColor: palette.border as string }}
+              />
               <Pressable
                 onPress={() => {
                   void handleZipCodeLookup();
                 }}
                 disabled={postalCode.trim().length < 5 || isSearchingZip}
-                className="flex-row items-center gap-1"
+                style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}
               >
                 <IconSymbol
                   name={isSearchingZip ? "arrow.2.squarepath" : "number"}
@@ -657,8 +671,12 @@ export default function LocationScreen() {
         {/* Zip lookup results */}
         {showZipResults && zipResults.length > 0 ? (
           <View
-            className="overflow-hidden rounded-lg"
-            style={{ borderWidth: BorderWidth.thin, borderColor: palette.border as string }}
+            style={{
+              overflow: "hidden",
+              borderRadius: BrandRadius.lg,
+              borderWidth: BorderWidth.thin,
+              borderColor: palette.border as string,
+            }}
           >
             {zipResults.slice(0, 5).map((result) => (
               <Pressable
@@ -667,8 +685,9 @@ export default function LocationScreen() {
                   applyZipResult(result);
                   setManualMode(false);
                 }}
-                className="px-3 py-2"
                 style={({ pressed }) => ({
+                  paddingHorizontal: BrandSpacing.md,
+                  paddingVertical: BrandSpacing.sm,
                   backgroundColor: pressed
                     ? (palette.primarySubtle as string)
                     : (palette.surfaceElevated as string),
@@ -715,13 +734,21 @@ export default function LocationScreen() {
         />
 
         <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-          <View className="px-4 py-3 gap-2">
+          <View
+            style={{
+              paddingHorizontal: BrandSpacing.lg,
+              paddingVertical: BrandSpacing.md,
+              gap: BrandSpacing.sm,
+            }}
+          >
             {/* Zone status row */}
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
                 <View
-                  className="w-2 h-2 rounded-full"
                   style={{
+                    width: BrandSpacing.statusDot,
+                    height: BrandSpacing.statusDot,
+                    borderRadius: BrandRadius.pill,
                     backgroundColor: hasDetectedZone ? palette.primary : palette.textMuted,
                   }}
                 />
@@ -773,8 +800,10 @@ export default function LocationScreen() {
         {/* Error */}
         {errorMessage ? (
           <View
-            className="rounded-lg px-4 py-3"
             style={{
+              borderRadius: BrandRadius.lg,
+              paddingHorizontal: BrandSpacing.lg,
+              paddingVertical: BrandSpacing.md,
               borderWidth: BorderWidth.thin,
               borderColor: palette.danger,
               backgroundColor: palette.dangerSubtle,
@@ -797,8 +826,14 @@ export default function LocationScreen() {
 
       {/* Save rail */}
       <View
-        className="absolute left-inset right-inset gap-2"
-        style={{ bottom: overlayBottom, backgroundColor: palette.appBg }}
+        style={{
+          position: "absolute",
+          left: BrandSpacing.inset,
+          right: BrandSpacing.inset,
+          bottom: overlayBottom,
+          gap: BrandSpacing.sm,
+          backgroundColor: palette.appBg,
+        }}
       >
         <ActionButton
           label={

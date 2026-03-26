@@ -12,12 +12,14 @@ import {
 import type { ColorValue, StyleProp, ViewStyle } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
+import { useTheme } from "@/hooks/use-theme";
 import type {
   TopSheetCollapsedHeightMode,
   TopSheetExpandMode,
   TopSheetPadding,
   TopSheetProps,
 } from "./top-sheet";
+import type { AppTheme } from "@/theme/theme";
 
 export type TopSheetRenderProps = {
   scrollY: SharedValue<number>;
@@ -53,6 +55,11 @@ export type TopSheetTabConfig = {
   stickyHeader?: React.ReactNode;
   stickyFooter?: React.ReactNode;
   revealOnExpand?: React.ReactNode;
+};
+
+export type ResolvedTopSheetTabConfig = TopSheetTabConfig & {
+  backgroundColor: ColorValue;
+  topInsetColor: ColorValue;
 };
 
 type TopSheetTabOverride = Omit<Partial<TopSheetTabConfig>, "tabId">;
@@ -230,6 +237,30 @@ export function resolveTabSheetConfig(
   };
 }
 
+export function getDefaultSheetColors(tabId: string, theme: AppTheme) {
+  if (tabId === "map") {
+    return {
+      backgroundColor: theme.color.surfaceElevated,
+      topInsetColor: theme.color.surfaceElevated,
+    } as const;
+  }
+
+  return {
+    backgroundColor: theme.color.primary,
+    topInsetColor: theme.color.primary,
+  } as const;
+}
+
+export function resolveSheetColors(tabId: string, config: TopSheetTabConfig, theme: AppTheme) {
+  const defaults = getDefaultSheetColors(tabId, theme);
+
+  return {
+    ...config,
+    backgroundColor: config.backgroundColor ?? defaults.backgroundColor,
+    topInsetColor: config.topInsetColor ?? defaults.topInsetColor,
+  } satisfies ResolvedTopSheetTabConfig;
+}
+
 export function useGlobalTopSheet(
   tabId: string,
   config: TopSheetTabOverride | null,
@@ -252,16 +283,25 @@ export function useGlobalTopSheet(
 
 export function useResolvedTabSheetConfig(tabId: string | null) {
   const { overrides } = useTopSheetRegistry();
+  const theme = useTheme();
   const activeEntry = tabId ? overrides[tabId]?.[overrides[tabId]!.length - 1] : undefined;
+
   return useMemo(
-    () =>
-      tabId
-        ? {
-            ...(DEFAULT_TOP_SHEET_CONFIGS[tabId] ?? { tabId }),
-            ...(activeEntry?.config ?? {}),
-            tabId,
-          }
-        : null,
-    [activeEntry, tabId],
+    () => {
+      if (!tabId) {
+        return null;
+      }
+
+      return resolveSheetColors(
+        tabId,
+        {
+          ...(DEFAULT_TOP_SHEET_CONFIGS[tabId] ?? { tabId }),
+          ...(activeEntry?.config ?? {}),
+          tabId,
+        },
+        theme,
+      );
+    },
+    [activeEntry, tabId, theme],
   );
 }
