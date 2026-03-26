@@ -175,7 +175,7 @@ export function StudioFeed() {
         style={styles.screen}
         contentContainerStyle={styles.content}
         sheetInsets={{
-          topSpacing: BrandSpacing.lg,
+          topSpacing: BrandSpacing.xl,
           bottomSpacing: BrandSpacing.xl,
           horizontalPadding: BrandSpacing.lg,
         }}

@@ -412,7 +412,8 @@ export function InstructorFeed() {
       },
       draggable: false,
       expandable: false,
-      steps: [0.16],
+      minHeight: 188,
+      steps: [0],
       initialStep: 0,
       collapsedHeightMode: "content" as const,
       backgroundColor: theme.jobs.canvas,
@@ -509,7 +510,7 @@ export function InstructorFeed() {
         style={styles.screen}
         contentContainerStyle={[styles.content, additionalSpacing]}
         sheetInsets={{
-          topSpacing: BrandSpacing.lg,
+          topSpacing: BrandSpacing.xl,
           bottomSpacing: BrandSpacing.xl,
           horizontalPadding: BrandSpacing.lg,
         }}

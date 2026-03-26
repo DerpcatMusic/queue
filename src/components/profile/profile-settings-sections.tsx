@@ -11,11 +11,10 @@ import { BorderWidth, FontFamily } from "@/lib/design-system";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
-const PROFILE_SECTION_HEADER_ICON_SIZE = 12;
+const PROFILE_SECTION_HEADER_ICON_SIZE = 14;
 
 const PROFILE_SECTION_CARD_MARGIN_HORIZONTAL = BrandSpacing.inset;
 
-const PROFILE_SETTING_ROW_GAP = BrandSpacing.sm;
 const PROFILE_SETTING_ROW_PADDING_HORIZONTAL = BrandSpacing.md;
 const PROFILE_SETTING_ROW_ICON_SIZE = 20;
 const PROFILE_SETTING_ROW_SECONDARY_GAP = BrandSpacing.xxs;
@@ -24,7 +23,7 @@ const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = BrandSpacing.md + 24;
 const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.md;
 const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.md;
 const PROFILE_ICON_BUTTON_SIZE = 40;
-const PROFILE_ROW_VERTICAL_PADDING = BrandSpacing.sm;
+const PROFILE_ROW_VERTICAL_PADDING = BrandSpacing.md;
 
 export function ProfileSectionHeader({
   label,
@@ -45,9 +44,9 @@ export function ProfileSectionHeader({
   return (
     <View
       style={{
-        gap: BrandSpacing.xxs,
-        paddingTop: BrandSpacing.lg,
-        paddingBottom: BrandSpacing.xs,
+        gap: BrandSpacing.xs,
+        paddingTop: BrandSpacing.xl,
+        paddingBottom: BrandSpacing.sm,
         paddingHorizontal: flush ? 0 : BrandSpacing.inset,
       }}
     >
@@ -55,7 +54,7 @@ export function ProfileSectionHeader({
         style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: BrandSpacing.xs,
+          gap: BrandSpacing.sm,
         }}
       >
         {icon ? (
@@ -72,7 +71,7 @@ export function ProfileSectionHeader({
               fontFamily: headerFontFamily,
               fontStyle: isHebrew ? "normal" : "italic",
               textTransform: "uppercase",
-              letterSpacing: 1.5,
+              letterSpacing: 1.8,
               color: theme.color.textMicro,
             },
           ]}
@@ -106,10 +105,10 @@ export function ProfileSectionCard({
         {
           marginHorizontal: PROFILE_SECTION_CARD_MARGIN_HORIZONTAL,
           overflow: "hidden",
-          borderRadius: BrandRadius.sm,
+          borderRadius: BrandRadius.cardSubtle,
           borderCurve: "continuous",
           borderWidth: BorderWidth.thin,
-          borderColor: theme.color.outline,
+          borderColor: theme.color.outlineStrong,
         },
         style,
       ]}
@@ -168,25 +167,25 @@ export function ProfileSettingRow({
   const theme = useTheme();
   const { resolvedScheme } = useThemePreference();
   const resolvedAccentColor = accentColor ?? theme.color.tertiary;
-  const rowBackgroundColor = theme.color.surface;
+  const rowBackgroundColor = theme.color.surfaceElevated;
 
   const secondaryColor =
     tone === "danger"
       ? theme.color.danger
       : tone === "accent"
         ? resolvedScheme === "dark"
-          ? theme.color.text
-          : theme.color.text
-        : theme.color.textMuted;
+          ? theme.color.primary
+          : theme.color.primary
+        : theme.color.textMicro;
 
   const iconColor =
     tone === "danger"
       ? theme.color.danger
       : tone === "accent"
         ? resolvedAccentColor
-        : theme.color.textMuted;
+        : theme.color.primary;
 
-  const dividerColor = theme.color.outline;
+  const dividerColor = theme.color.border;
 
   const content = (
     <View>
@@ -194,16 +193,16 @@ export function ProfileSettingRow({
         style={{
           flexDirection: "row",
           alignItems: subtitle && subtitle.length > 36 ? "flex-start" : "center",
-          gap: PROFILE_SETTING_ROW_GAP,
+          gap: BrandSpacing.md,
           paddingHorizontal: PROFILE_SETTING_ROW_PADDING_HORIZONTAL,
           paddingVertical: PROFILE_ROW_VERTICAL_PADDING,
           backgroundColor: rowBackgroundColor,
-          minHeight: BrandSpacing.controlMd,
+          minHeight: BrandSpacing.listItemMinHeight,
         }}
       >
         {icon ? (
-          <View style={{ width: PROFILE_SETTING_ROW_ICON_SIZE, alignItems: "center" }}>
-            <IconSymbol name={icon} size={16} color={iconColor} />
+          <View style={{ width: PROFILE_SETTING_ROW_ICON_SIZE + 4, alignItems: "center" }}>
+            <IconSymbol name={icon} size={18} color={iconColor} />
           </View>
         ) : null}
 

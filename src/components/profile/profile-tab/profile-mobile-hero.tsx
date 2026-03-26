@@ -236,20 +236,33 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   }
 
   return (
-    <View pointerEvents="box-none" style={styles.mobileShell}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.mobileShell, { borderBottomColor: palette.outlineStrong }]}
+    >
       <View style={styles.mobileTopRail}>
-        <Text
-          style={[styles.mobileEyebrowText, { color: palette.textMicro, fontFamily: eyebrowFont }]}
+        <View
+          style={[
+            styles.mobileEyebrow,
+            { backgroundColor: palette.surfaceElevated, borderColor: palette.outlineStrong },
+          ]}
         >
-          {roleLabel}
-        </Text>
+          <Text
+            style={[
+              styles.mobileEyebrowText,
+              { color: palette.textMuted, fontFamily: eyebrowFont },
+            ]}
+          >
+            {roleLabel}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.mobileIdentityRow}>
         <View
           style={[
             styles.mobileAvatarWrap,
-            { borderColor: palette.outline, backgroundColor: palette.surfaceAlt },
+            { borderColor: palette.primary, backgroundColor: palette.surfaceAlt },
           ]}
         >
           <ProfileAvatar
@@ -279,9 +292,9 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             <IconButton
               accessibilityLabel={resolvedPrimaryActionLabel}
               onPress={onRequestEdit}
-              size={28}
+              size={32}
               tone="secondary"
-              icon={<IconSymbol name="pencil" size={IconSize.xs} color={palette.textMuted} />}
+              icon={<IconSymbol name="pencil" size={IconSize.sm} color={palette.primary} />}
             />
           </View>
           <View style={styles.mobileMetaRow}>
@@ -371,18 +384,19 @@ const styles = StyleSheet.create({
   },
   mobileShell: {
     paddingHorizontal: BrandSpacing.inset,
-    paddingTop: BrandSpacing.xs,
-    paddingBottom: BrandSpacing.sm,
-    gap: BrandSpacing.xs,
+    paddingTop: BrandSpacing.sm,
+    paddingBottom: BrandSpacing.md,
+    gap: BrandSpacing.sm,
+    borderBottomWidth: BorderWidth.thin,
   },
   mobileTopRail: {
     flexDirection: "row",
     alignItems: "center",
     gap: BrandSpacing.xs,
-    marginBottom: BrandSpacing.xxs,
+    marginBottom: BrandSpacing.xs,
   },
   mobileEyebrow: {
-    borderRadius: BrandRadius.sm,
+    borderRadius: BrandRadius.buttonSubtle,
     borderCurve: "continuous",
     borderWidth: BorderWidth.thin,
     paddingHorizontal: BrandSpacing.sm,
@@ -404,7 +418,7 @@ const styles = StyleSheet.create({
     position: "relative",
     width: 56,
     height: 56,
-    borderRadius: BrandRadius.md,
+    borderRadius: BrandRadius.cardSubtle,
     borderWidth: BorderWidth.thin,
     overflow: "visible",
   },
