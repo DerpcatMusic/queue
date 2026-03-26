@@ -1,7 +1,8 @@
+import { Image as ExpoImage } from "expo-image";
 import type { TFunction } from "i18next";
 import type React from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { FilterImage, type Filters } from "react-native-svg/filter-image";
+import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
 import { DotStatusPill } from "@/components/home/home-shared";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -64,24 +65,17 @@ type InstructorJobCardProps = {
   variant?: "default" | "studioDetail";
 };
 
-const STUDIO_PHOTO_NATIVE_FILTERS: Filters = [
-  { name: "feColorMatrix", type: "saturate", values: 0 },
-  {
-    name: "feColorMatrix",
-    type: "matrix",
-    values: [1.08, 0, 0, 0, -0.18, 0, 1.08, 0, 0, -0.18, 0, 0, 1.08, 0, -0.18, 0, 0, 0, 1, 0],
-  },
-];
-
 function StudioImageBackground({
   imageUrl,
   fallbackLabel,
   theme,
+  fadeId,
   children,
 }: {
   imageUrl?: string | null | undefined;
   fallbackLabel: string;
   theme: ReturnType<typeof useTheme>;
+  fadeId: string;
   children?: React.ReactNode;
 }) {
   const imageFilterStyle = Platform.select({
@@ -101,10 +95,9 @@ function StudioImageBackground({
       }}
     >
       {imageUrl ? (
-        <FilterImage
+        <ExpoImage
           source={{ uri: imageUrl }}
-          resizeMode="cover"
-          {...(Platform.OS === "web" ? {} : { filters: STUDIO_PHOTO_NATIVE_FILTERS })}
+          contentFit="cover"
           style={[
             StyleSheet.absoluteFillObject,
             { width: "100%", height: "100%" },
@@ -131,6 +124,17 @@ function StudioImageBackground({
           </Text>
         </View>
       )}
+      <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+        <Defs>
+          <SvgLinearGradient id={fadeId} x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor={theme.jobs.surfaceRaised} stopOpacity="0" />
+            <Stop offset="46%" stopColor={theme.jobs.surfaceRaised} stopOpacity="0.16" />
+            <Stop offset="76%" stopColor={theme.jobs.surfaceRaised} stopOpacity="0.68" />
+            <Stop offset="100%" stopColor={theme.jobs.surfaceRaised} stopOpacity="0.98" />
+          </SvgLinearGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill={`url(#${fadeId})`} />
+      </Svg>
       {children}
     </View>
   );
@@ -235,6 +239,7 @@ export function InstructorJobCard({
   const pendingCancelLabel = `${t(getApplicationStatusTranslationKey("pending"))} · ${t("jobsTab.actions.cancel")}`;
   const formattedPay = formatJobPay(boost.totalPay, locale);
   const payAccent = boost.bonusAmount ? theme.color.secondary : theme.color.primary;
+  const imageFadeId = `job-card-fade-${String(job.jobId)}`;
 
   const cardBorderColor = payAccent;
 
@@ -269,6 +274,7 @@ export function InstructorJobCard({
             imageUrl={job.studioImageUrl}
             fallbackLabel={job.studioName}
             theme={theme}
+            fadeId={imageFadeId}
           />
 
           <View
@@ -413,6 +419,7 @@ export function InstructorJobCard({
                       tone="secondary"
                       loading={isWithdrawing}
                       fullWidth
+                      native={false}
                     />
                   ) : canApplyFromCard && onApply ? (
                     <ActionButton
@@ -442,6 +449,7 @@ export function InstructorJobCard({
                         nativeTintColor: isExpired ? theme.color.textMuted : theme.color.onPrimary,
                       }}
                       labelStyle={{ fontWeight: "800" }}
+                      native={false}
                     />
                   ) : job.applicationStatus ? (
                     <DotStatusPill
@@ -507,6 +515,7 @@ export function InstructorJobCard({
               imageUrl={job.studioImageUrl}
               fallbackLabel={job.studioName}
               theme={theme}
+              fadeId={imageFadeId}
             />
           ) : null}
 
@@ -608,6 +617,7 @@ export function InstructorJobCard({
                 }}
                 tone="secondary"
                 loading={isWithdrawing}
+                native={false}
               />
             ) : canApplyFromCard && onApply ? (
               <ActionButton
@@ -625,6 +635,7 @@ export function InstructorJobCard({
                 loading={applyingJobId === job.jobId}
                 disabled={isExpired}
                 tone={isExpired ? "secondary" : "primary"}
+                native={false}
               />
             ) : job.applicationStatus ? (
               <DotStatusPill
