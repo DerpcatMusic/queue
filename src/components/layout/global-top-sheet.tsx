@@ -25,16 +25,13 @@ import {
   useResolvedTabSheetConfig,
 } from "@/components/layout/top-sheet-registry";
 import { useAppInsets } from "@/hooks/use-app-insets";
+import { buildBaseSheetProps, resolveTopSheetRouteTab } from "./global-top-sheet.helpers";
+import { getTopSheetStepHeights } from "./top-sheet.helpers";
 import {
   ANIMATION_DURATION_ENTER,
   ANIMATION_DURATION_EXIT,
   DEFAULT_STEPS,
 } from "./top-sheet-constants";
-import {
-  buildBaseSheetProps,
-  resolveTopSheetRouteTab,
-} from "./global-top-sheet.helpers";
-import { getTopSheetStepHeights } from "./top-sheet.helpers";
 
 /**
  * One global TopSheet mounted in RoleTabsLayout above NativeTabs.
@@ -65,6 +62,8 @@ export function GlobalTopSheet() {
   const scrollY = useScrollSheetScrollValue();
   const measuredHeightRef = useRef<number | null>(null);
   const lastRenderedSheetHeightRef = useRef<number | null>(null);
+  // Track which tabId the height belongs to - only preserve height within the SAME tab
+  const lastHeightTabIdRef = useRef<string | null>(null);
   const transitionKey = activeRouteKey ?? activeTabId ?? activeConfig?.tabId ?? "global-top-sheet";
   const baseSheetProps = buildBaseSheetProps(activeConfig);
   const hasRenderableContent = Boolean(
@@ -130,13 +129,19 @@ export function GlobalTopSheet() {
     },
     [setCollapsedSheetHeight],
   );
-  const handleSheetHeightChange = useCallback((height: number) => {
-    if (height <= 0) return;
-    lastRenderedSheetHeightRef.current = height;
-  }, []);
+  const handleSheetHeightChange = useCallback(
+    (height: number) => {
+      if (height <= 0) return;
+      lastRenderedSheetHeightRef.current = height;
+      lastHeightTabIdRef.current = activeTabId;
+    },
+    [activeTabId],
+  );
 
+  // Only preserve height within the SAME tab - allows cross-tab morphing to work
+  // When switching tabs, initialHeight is not set, so the new tab springs to its correct height
   const continuitySheetProps = {
-    ...(lastRenderedSheetHeightRef.current !== null
+    ...(lastRenderedSheetHeightRef.current !== null && lastHeightTabIdRef.current === activeTabId
       ? { initialHeight: lastRenderedSheetHeightRef.current }
       : {}),
     onHeightChange: handleSheetHeightChange,
