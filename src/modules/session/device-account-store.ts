@@ -321,6 +321,80 @@ export async function rememberAndClearActiveDeviceAccount(args: ActiveDeviceAcco
   await snapshotAndClearCurrentDeviceAccount(toActiveDeviceAccountIdentity(args));
 }
 
+/**
+ * Validates that a stored account session can be verified with Convex.
+ * This performs an actual backend check, not just JWT structure validation.
+ *
+ * Returns true if session is valid (backend confirms it).
+ * Returns false if session is invalid, expired, or backend cannot verify it.
+ */
+export async function validateStoredSessionWithConvex(
+  accountId: string,
+  timeoutMs: number = 2000,
+): Promise<boolean> {
+  const { getConvexClient } = await import("@/lib/convex");
+  const { api } = await import("@/convex/_generated/api");
+  const convex = getConvexClient();
+
+  if (!convex) {
+    return false;
+  }
+
+  const session = await readRememberedAccountSession(accountId);
+  if (!session) {
+    return false;
+  }
+
+  try {
+    // Attempt a query with timeout - if it returns null or throws, session is invalid
+    await Promise.race([
+      convex.query(api.users.getCurrentUser, {}),
+      new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error("validate-timeout")), timeoutMs),
+      ),
+    ]);
+    return true;
+  } catch {
+    // Query failed or timed out - session is invalid
+    return false;
+  }
+}
+
+/**
+ * Maximum time to wait for currentUser to load after session switch.
+ * If exceeded, the session is considered invalid.
+ */
+const SESSION_SWITCH_VALIDATION_TIMEOUT_MS = 3000;
+
+/**
+ * Validates that a session switch was successful by checking if currentUser loads.
+ * This prevents the race condition where isAuthenticated=true but currentUser=null,
+ * which would cause sessionGate to redirect to sign-in.
+ *
+ * Returns true if session is valid (currentUser loaded).
+ * Returns false if session is invalid (currentUser didn't load in time).
+ */
+export async function validateSessionAfterSwitch(
+  getCurrentUser: () => unknown,
+  timeoutMs: number = SESSION_SWITCH_VALIDATION_TIMEOUT_MS,
+): Promise<boolean> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeoutMs) {
+    const user = getCurrentUser();
+    // User is valid if it's not undefined (loading) and not null (no user)
+    if (user !== undefined && user !== null) {
+      return true;
+    }
+    // Small delay to avoid busy-waiting
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+
+  // Timeout reached - check one more time
+  const finalUser = getCurrentUser();
+  return finalUser !== undefined && finalUser !== null;
+}
+
 export async function switchToRememberedDeviceAccount(
   args:
     | string

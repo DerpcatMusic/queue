@@ -372,6 +372,8 @@ export default defineSchema({
     // NEW: boost pay metadata (additive, optional)
     boostBonusAmount: v.optional(v.number()),
     boostActive: v.optional(v.boolean()),
+    // NEW: boost trigger time in minutes before session start (additive, optional)
+    boostTriggerMinutes: v.optional(v.number()),
     branchNameSnapshot: v.optional(v.string()),
     branchAddressSnapshot: v.optional(v.string()),
     // NEW: closure reason for cancellation/expiry (additive, optional)
@@ -732,6 +734,31 @@ export default defineSchema({
   })
     .index("by_provider_fingerprint", ["provider", "fingerprint"])
     .index("by_provider_blocked_until", ["provider", "blockedUntil"]),
+
+  // Generic API rate limiting to prevent abuse
+  apiRateLimitThrottle: defineTable({
+    // Identifier: userId, sessionId, or IP address hash
+    identifier: v.string(),
+    // Type of operation being rate limited
+    operationType: v.union(
+      v.literal("query"),
+      v.literal("mutation"),
+      v.literal("auth"),
+      v.literal("payment"),
+      v.literal("webhook"),
+    ),
+    // Sliding window start time
+    windowStartedAt: v.number(),
+    // Current request count in window
+    requestCount: v.number(),
+    // If blocked, when the block expires
+    blockedUntil: v.optional(v.number()),
+    // For payment operations, stricter limits
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_identifier_type", ["identifier", "operationType"])
+    .index("by_identifier_blocked_until", ["identifier", "blockedUntil"]),
 
   diditEvents: defineTable({
     providerEventId: v.string(),

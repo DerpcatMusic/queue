@@ -3,13 +3,13 @@ import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { getSurfaceElevationStyle } from "@/components/ui/surface-elevation";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -19,34 +19,20 @@ import {
   formatDateWithWeekday,
   formatTime,
   getApplicationStatusTranslationKey,
+  getBoostPresentation,
   getJobStatusToneWithReason,
   getJobStatusTranslationKey,
   type JobClosureReason,
 } from "@/lib/jobs-utils";
-
-// Real color values for native/BottomSheet (CSS vars don't resolve in RN native views)
-const COLORS = {
-  primary: "#CCFF00",
-  primarySubtle: "#CCFF001A",
-  onPrimary: "#000000",
-  success: "#22C55E",
-  successSubtle: "#22C55E1A",
-  warning: "#F59E0B",
-  warningSubtle: "#F59E0B1A",
-  surface: "#FFFFFF",
-  surfaceAlt: "#F5F5F5",
-  surfaceElevated: "#FFFFFF",
-  appBg: "#FAFAFA",
-  text: "#000000",
-  textMuted: "#737373",
-  borderStrong: "#D4D4D4",
-} as const;
 
 export type InstructorArchiveRow = InstructorMarketplaceJob & {
   applicationId: Id<"jobApplications">;
   appliedAt: number;
   jobStatus: "open" | "filled" | "cancelled" | "completed";
   closureReason?: JobClosureReason;
+  // Payment fields — ground work for receipt support
+  paidAt?: number;
+  paymentStatus?: "pending" | "paid" | "failed";
 };
 
 type InstructorJobsArchiveSheetProps = {
@@ -77,18 +63,20 @@ function buildArchiveOutcome(
   row: InstructorArchiveRow,
   t: ReturnType<typeof useTranslation>["t"],
 ): {
-  tone: "primary" | "success" | "gray" | "amber" | "muted";
-  icon: "checkmark.circle.fill" | "xmark.circle.fill" | "clock.fill";
+  tone: "success" | "amber" | "muted";
+  icon: "checkmark.circle.fill" | "clock.fill" | "xmark.circle.fill";
   label: string;
 } {
+  // Rejected by studio
   if (row.applicationStatus === "rejected") {
     return {
-      tone: "gray",
+      tone: "muted",
       icon: "xmark.circle.fill",
       label: t(getApplicationStatusTranslationKey(row.applicationStatus)),
     };
   }
 
+  // Withdrawn by instructor
   if (row.applicationStatus === "withdrawn") {
     return {
       tone: "muted",
@@ -97,41 +85,17 @@ function buildArchiveOutcome(
     };
   }
 
+  // Job-level status determines outcome
   const tone = getJobStatusToneWithReason(row.jobStatus, row.closureReason);
   return {
-    tone,
+    tone: tone === "success" ? "success" : tone === "amber" ? "amber" : "muted",
     icon:
       tone === "success"
         ? "checkmark.circle.fill"
-        : tone === "primary"
+        : tone === "amber"
           ? "clock.fill"
           : "xmark.circle.fill",
     label: t(getJobStatusTranslationKey(row.jobStatus, row.closureReason)),
-  };
-}
-
-function getStatusTokens(tone: "primary" | "success" | "gray" | "amber" | "muted") {
-  if (tone === "success") {
-    return {
-      backgroundColor: COLORS.successSubtle,
-      color: COLORS.success,
-    };
-  }
-  if (tone === "amber") {
-    return {
-      backgroundColor: COLORS.warningSubtle,
-      color: COLORS.warning,
-    };
-  }
-  if (tone === "gray" || tone === "muted") {
-    return {
-      backgroundColor: COLORS.surfaceAlt,
-      color: COLORS.textMuted,
-    };
-  }
-  return {
-    backgroundColor: COLORS.primarySubtle,
-    color: COLORS.primary,
   };
 }
 
@@ -142,39 +106,300 @@ function ArchiveStatusChip({
 }: {
   label: string;
   icon: React.ComponentProps<typeof IconSymbol>["name"];
-  tone: "primary" | "success" | "gray" | "amber" | "muted";
+  tone: "success" | "amber" | "muted";
 }) {
-  const tokens = getStatusTokens(tone);
+  const theme = useTheme();
+  const backgroundColor =
+    tone === "success"
+      ? theme.archive.paidSubtle
+      : tone === "amber"
+        ? theme.archive.pendingSubtle
+        : theme.color.surfaceAlt;
+  const color =
+    tone === "success"
+      ? theme.archive.paid
+      : tone === "amber"
+        ? theme.archive.pending
+        : theme.color.textMuted;
 
   return (
     <View
       style={{
         flexDirection: "row",
         alignItems: "center",
-        gap: BrandSpacing.xs,
+        gap: BrandSpacing.xxs,
         borderRadius: BrandRadius.pill,
         borderCurve: "continuous",
-        backgroundColor: tokens.backgroundColor,
+        backgroundColor,
         paddingHorizontal: BrandSpacing.control,
-        paddingVertical: BrandSpacing.xs,
+        paddingVertical: BrandSpacing.xxs,
       }}
     >
-      <IconSymbol name={icon} size={12} color={tokens.color} />
-      <ThemedText type="caption" style={{ color: tokens.color }}>
+      <IconSymbol name={icon} size={11} color={color} />
+      <ThemedText type="micro" style={{ color }}>
         {label}
       </ThemedText>
     </View>
   );
 }
 
-function ArchiveDetailRow({
+function ArchiveRow({
+  row,
+  expanded,
+  onToggle,
+  locale,
+  zoneLanguage,
+  t,
+  index,
+}: {
+  row: InstructorArchiveRow;
+  expanded: boolean;
+  onToggle: () => void;
+  locale: string;
+  zoneLanguage: "en" | "he";
+  t: ReturnType<typeof useTranslation>["t"];
+  index: number;
+}) {
+  const theme = useTheme();
+  const archiveOutcome = useMemo(() => buildArchiveOutcome(row, t), [row, t]);
+  const sportLabel = useMemo(() => toSportLabel(row.sport as never), [row.sport]);
+  const zoneLabel = getZoneLabel(row.zone, zoneLanguage);
+  const scheduleLabel = `${formatArchiveDate(locale, row.startTime)} · ${formatTime(
+    row.startTime,
+    locale,
+  )}–${formatTime(row.endTime, locale)}`;
+  const payLabel = formatArchivePay(locale, row.pay);
+  const appliedLabel = formatArchiveDate(locale, row.appliedAt);
+  const boost = getBoostPresentation(
+    row.pay,
+    row.boostPreset,
+    row.boostBonusAmount,
+    row.boostActive,
+  );
+  const hasBonus = Boolean(boost.bonusAmount && boost.bonusAmount > 0);
+
+  // Payment display
+  const isPaid = row.paymentStatus === "paid" || row.jobStatus === "completed";
+  const paymentLabel = isPaid
+    ? t("jobsTab.checkout.paymentStatus.captured")
+    : t("jobsTab.checkout.paymentStatus.pending");
+
+  // Detail section background uses archive surface
+  const detailBg = theme.archive.surfaceElevated;
+
+  // Left accent color based on outcome
+  const accentColor =
+    archiveOutcome.tone === "success"
+      ? theme.archive.paid
+      : archiveOutcome.tone === "amber"
+        ? theme.archive.pending
+        : theme.color.textMuted;
+
+  return (
+    <Animated.View
+      entering={FadeInUp.delay(Math.min(index, 5) * 34)
+        .duration(240)
+        .springify()
+        .damping(18)}
+    >
+      <View
+        style={{
+          borderRadius: BrandRadius.lg,
+          borderCurve: "continuous",
+          backgroundColor: theme.archive.surface,
+          overflow: "hidden",
+        }}
+      >
+        {/* Left accent stripe — color based on outcome */}
+        <View
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 3,
+            backgroundColor: accentColor,
+            borderRadius: BrandRadius.pill,
+          }}
+        />
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${row.studioName} ${sportLabel}`}
+          accessibilityState={{ expanded }}
+          onPress={onToggle}
+          style={({ pressed }) => ({
+            backgroundColor: pressed ? theme.color.surfaceAlt : theme.archive.surface,
+          })}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: BrandSpacing.md,
+              paddingHorizontal: BrandSpacing.lg,
+              paddingVertical: BrandSpacing.md,
+              paddingLeft: BrandSpacing.lg + 3, // account for accent stripe
+            }}
+          >
+            {/* Left: sport + meta */}
+            <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xs }}>
+              {/* Sport — prominent with archive accent color */}
+              <ThemedText type="title" style={{ color: theme.archive.accent }} numberOfLines={1}>
+                {sportLabel}
+              </ThemedText>
+
+              {/* Studio · schedule */}
+              <ThemedText type="caption" style={{ color: theme.color.textMuted }} numberOfLines={1}>
+                {row.studioName} · {scheduleLabel}
+              </ThemedText>
+
+              {/* Status chip */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: BrandSpacing.sm,
+                  paddingTop: BrandSpacing.xxs,
+                }}
+              >
+                <ArchiveStatusChip
+                  label={archiveOutcome.label}
+                  tone={archiveOutcome.tone}
+                  icon={archiveOutcome.icon}
+                />
+              </View>
+            </View>
+
+            {/* Right: pay + chevron */}
+            <View style={{ alignItems: "flex-end", gap: BrandSpacing.sm }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xxs }}>
+                <IconSymbol name="banknote" size={14} color={theme.archive.pay} />
+                <ThemedText type="bodyStrong" style={{ color: theme.archive.pay }}>
+                  {payLabel}
+                </ThemedText>
+              </View>
+              <IconSymbol
+                name={expanded ? "chevron.down" : "chevron.right"}
+                size={16}
+                color={theme.color.textMuted}
+              />
+            </View>
+          </View>
+        </Pressable>
+
+        {/* Expanded details */}
+        {expanded ? (
+          <View
+            style={{
+              gap: BrandSpacing.sm,
+              backgroundColor: detailBg,
+              paddingHorizontal: BrandSpacing.lg,
+              paddingLeft: BrandSpacing.lg + 3,
+              paddingBottom: BrandSpacing.lg,
+              paddingTop: BrandSpacing.sm,
+              borderTopWidth: 1,
+              borderTopColor: theme.color.border,
+            }}
+          >
+            {/* Payment status */}
+            <DetailRow
+              icon={isPaid ? "checkmark.circle.fill" : "clock.fill"}
+              label={t("jobsTab.checkout.payment")}
+              value={paymentLabel}
+              valueColor={isPaid ? theme.archive.paid : theme.archive.pending}
+              theme={theme}
+            />
+
+            {/* Bonus earned */}
+            <DetailRow
+              icon="sparkles"
+              label={t("jobsTab.archive.bonusEarned")}
+              value={hasBonus ? `+₪${boost.bonusAmount}` : t("jobsTab.archive.noBonus")}
+              valueColor={hasBonus ? theme.archive.accent : theme.color.textMuted}
+              theme={theme}
+            />
+
+            {/* Schedule */}
+            <DetailRow
+              icon="calendar"
+              label={t("jobsTab.form.schedule")}
+              value={`${formatDateWithWeekday(row.startTime, locale)} · ${formatTime(
+                row.startTime,
+                locale,
+              )}–${formatTime(row.endTime, locale)}`}
+              valueColor={theme.color.text}
+              theme={theme}
+            />
+
+            {/* Zone */}
+            <DetailRow
+              icon="mappin.and.ellipse"
+              label={t("tabs.map")}
+              value={zoneLabel}
+              valueColor={theme.color.text}
+              theme={theme}
+            />
+
+            {/* Applied date */}
+            <DetailRow
+              icon="envelope"
+              label={t("jobsTab.instructorFeed.archiveAppliedOn", "Applied")}
+              value={appliedLabel}
+              valueColor={theme.color.text}
+              theme={theme}
+            />
+
+            {/* Receipt — placeholder chip */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: BrandSpacing.md,
+                paddingTop: BrandSpacing.sm,
+              }}
+            >
+              <View
+                style={{
+                  width: BrandSpacing.control,
+                  height: BrandSpacing.control,
+                  borderRadius: BrandRadius.card,
+                  borderCurve: "continuous",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: theme.color.surfaceAlt,
+                }}
+              >
+                <IconSymbol name="doc.text" size={16} color={theme.color.textMuted} />
+              </View>
+              <View style={{ flex: 1, gap: BrandSpacing.xxs }}>
+                <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
+                  {t("jobsTab.archive.receipt")}
+                </ThemedText>
+                <ThemedText type="bodyMedium" style={{ color: theme.color.textMuted }}>
+                  {t("jobsTab.archive.receiptComingSoon")}
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+        ) : null}
+      </View>
+    </Animated.View>
+  );
+}
+
+function DetailRow({
   icon,
   label,
   value,
+  valueColor,
+  theme,
 }: {
   icon: React.ComponentProps<typeof IconSymbol>["name"];
   label: string;
   value: string;
+  valueColor: string;
+  theme: ReturnType<typeof useTheme>;
 }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: BrandSpacing.md }}>
@@ -186,155 +411,19 @@ function ArchiveDetailRow({
           borderCurve: "continuous",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: COLORS.surfaceAlt,
+          backgroundColor: theme.color.surfaceAlt,
         }}
       >
-        <IconSymbol name={icon} size={16} color={COLORS.primary} />
+        <IconSymbol name={icon} size={16} color={theme.archive.accent} />
       </View>
       <View style={{ flex: 1, gap: BrandSpacing.xxs }}>
-        <ThemedText type="caption" style={{ color: COLORS.textMuted }}>
+        <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
           {label}
         </ThemedText>
-        <ThemedText type="bodyMedium" style={{ color: COLORS.text }}>
+        <ThemedText type="bodyMedium" style={{ color: valueColor }}>
           {value}
         </ThemedText>
       </View>
-    </View>
-  );
-}
-
-function ArchiveCompactRow({
-  expanded,
-  locale,
-  onToggle,
-  row,
-  t,
-  zoneLanguage,
-}: {
-  expanded: boolean;
-  locale: string;
-  onToggle: () => void;
-  row: InstructorArchiveRow;
-  t: ReturnType<typeof useTranslation>["t"];
-  zoneLanguage: "en" | "he";
-}) {
-  const sportLabel = useMemo(() => toSportLabel(row.sport as never), [row.sport]);
-  const archiveOutcome = useMemo(() => buildArchiveOutcome(row, t), [row, t]);
-  const zoneLabel = getZoneLabel(row.zone, zoneLanguage);
-  const scheduleLabel = `${formatArchiveDate(locale, row.startTime)} · ${formatTime(
-    row.startTime,
-    locale,
-  )}–${formatTime(row.endTime, locale)}`;
-  const payLabel = formatArchivePay(locale, row.pay);
-  const appliedLabel = formatArchiveDate(locale, row.appliedAt);
-
-  return (
-    <View
-      style={{
-        borderRadius: BrandRadius.card,
-        borderCurve: "continuous",
-        backgroundColor: COLORS.surfaceAlt,
-        overflow: "hidden",
-      }}
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${row.studioName} ${sportLabel}`}
-        onPress={onToggle}
-        style={({ pressed }) => ({
-          backgroundColor: pressed ? COLORS.surfaceElevated : COLORS.surfaceAlt,
-        })}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "flex-start",
-            gap: BrandSpacing.md,
-            paddingHorizontal: BrandSpacing.lg,
-            paddingVertical: BrandSpacing.md,
-          }}
-        >
-          <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xs }}>
-            <ThemedText numberOfLines={1} type="bodyStrong" style={{ color: COLORS.text }}>
-              {sportLabel}
-            </ThemedText>
-            <ThemedText
-              numberOfLines={1}
-              style={{
-                fontFamily: "Manrope_400Regular",
-                fontSize: 14,
-                fontWeight: "400",
-                lineHeight: 19,
-                color: COLORS.textMuted,
-              }}
-            >
-              {`${row.studioName} · ${scheduleLabel}`}
-            </ThemedText>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
-              <ArchiveStatusChip
-                label={archiveOutcome.label}
-                tone={archiveOutcome.tone}
-                icon={archiveOutcome.icon}
-              />
-            </View>
-          </View>
-          <View style={{ alignItems: "flex-end", gap: BrandSpacing.sm }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
-              <IconSymbol name="banknote" size={14} color={COLORS.success} />
-              <ThemedText type="bodyStrong" style={{ color: COLORS.success }}>
-                {payLabel}
-              </ThemedText>
-            </View>
-            <IconSymbol
-              name={expanded ? "chevron.down" : "chevron.right"}
-              size={16}
-              color={COLORS.textMuted}
-            />
-          </View>
-        </View>
-      </Pressable>
-      {expanded ? (
-        <View
-          style={{
-            gap: BrandSpacing.sm,
-            backgroundColor: COLORS.surface,
-            paddingHorizontal: BrandSpacing.lg,
-            paddingBottom: BrandSpacing.lg,
-            paddingTop: BrandSpacing.sm,
-          }}
-        >
-          <View
-            style={{
-              gap: BrandSpacing.md,
-              borderRadius: BrandRadius.card,
-              borderCurve: "continuous",
-              backgroundColor: COLORS.surfaceElevated,
-              padding: BrandSpacing.md,
-            }}
-          >
-            <ArchiveDetailRow
-              icon={archiveOutcome.icon}
-              label={archiveOutcome.label}
-              value={
-                row.applicationStatus === "rejected" || row.applicationStatus === "withdrawn"
-                  ? t("jobsTab.instructorFeed.archiveAppliedOn", { date: appliedLabel })
-                  : formatDateWithWeekday(row.startTime, locale)
-              }
-            />
-            <ArchiveDetailRow
-              icon="clock.fill"
-              label={t("jobsTab.form.schedule")}
-              value={`${formatTime(row.startTime, locale)}–${formatTime(row.endTime, locale)}`}
-            />
-            <ArchiveDetailRow icon="mappin.and.ellipse" label={t("tabs.map")} value={zoneLabel} />
-            <ArchiveDetailRow
-              icon="banknote"
-              label={t("jobsTab.checkout.payment")}
-              value={payLabel}
-            />
-          </View>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -388,7 +477,6 @@ export function InstructorJobsArchiveSheet({
       handleIndicatorStyle={{ backgroundColor: theme.color.borderStrong }}
       backgroundStyle={{
         backgroundColor: theme.color.surfaceElevated,
-        ...getSurfaceElevationStyle("sheet", theme.color.shadow),
       }}
     >
       <BottomSheetScrollView
@@ -399,6 +487,7 @@ export function InstructorJobsArchiveSheet({
           gap: BrandSpacing.md,
         }}
       >
+        {/* Header */}
         <View
           style={{
             flexDirection: "row",
@@ -409,7 +498,7 @@ export function InstructorJobsArchiveSheet({
         >
           <View style={{ flex: 1, gap: BrandSpacing.xs }}>
             <ThemedText type="heading">{t("jobsTab.archiveTitle")}</ThemedText>
-            <ThemedText type="caption" style={{ color: COLORS.textMuted }}>
+            <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
               {t("jobsTab.instructorFeed.archiveSubtitle")}
             </ThemedText>
           </View>
@@ -418,38 +507,70 @@ export function InstructorJobsArchiveSheet({
             onPress={() => innerRef.current?.close()}
             size={BrandSpacing.control}
             tone="secondary"
-            backgroundColorOverride={COLORS.primarySubtle}
-            icon={<AppSymbol name="xmark" size={18} tintColor={COLORS.primary} />}
+            backgroundColorOverride={theme.color.primarySubtle}
+            icon={<AppSymbol name="xmark" size={18} tintColor={theme.color.primary} />}
           />
         </View>
 
+        {/* Rows */}
         {rows.length === 0 ? (
-          <View
-            style={{
-              minHeight: BrandSpacing.xxl * 5,
-              alignItems: "center",
-              justifyContent: "center",
-              gap: BrandSpacing.sm,
-            }}
-          >
-            <ThemedText type="bodyMedium" style={{ color: COLORS.textMuted }}>
-              {t("jobsTab.instructorFeed.archiveEmpty")}
-            </ThemedText>
-          </View>
+          <EmptyArchiveState t={t} theme={theme} />
         ) : (
-          rows.map((row) => (
-            <ArchiveCompactRow
+          rows.map((row, index) => (
+            <ArchiveRow
               key={String(row.applicationId)}
+              row={row}
               expanded={expandedApplicationId === String(row.applicationId)}
               locale={locale}
               onToggle={() => toggleExpanded(String(row.applicationId))}
-              row={row}
               t={t}
               zoneLanguage={zoneLanguage}
+              index={index}
             />
           ))
         )}
       </BottomSheetScrollView>
     </BottomSheet>
+  );
+}
+
+function EmptyArchiveState({
+  t,
+  theme,
+}: {
+  t: ReturnType<typeof useTranslation>["t"];
+  theme: ReturnType<typeof useTheme>;
+}) {
+  return (
+    <View
+      style={{
+        minHeight: BrandSpacing.xxl * 5,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: BrandSpacing.md,
+        paddingHorizontal: BrandSpacing.xl,
+      }}
+    >
+      {/* Warm amber accent strip */}
+      <View
+        style={{
+          width: 48,
+          height: 3,
+          borderRadius: BrandRadius.pill,
+          backgroundColor: theme.archive.accent,
+          marginBottom: BrandSpacing.sm,
+        }}
+      />
+      <IconSymbol name="archivebox" size={48} color={theme.archive.accent} />
+      <ThemedText type="bodyMedium" style={{ color: theme.color.textMuted, textAlign: "center" }}>
+        {t("jobsTab.instructorFeed.archiveEmpty")}
+      </ThemedText>
+      <ThemedText
+        type="caption"
+        style={{ color: theme.color.textMuted, textAlign: "center", opacity: 0.7 }}
+      >
+        {t("jobsTab.archive.emptyHint")}
+      </ThemedText>
+    </View>
   );
 }

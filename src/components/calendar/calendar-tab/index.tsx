@@ -1,6 +1,6 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutAnimation, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
@@ -36,32 +36,14 @@ export default function CalendarTabScreen() {
     handleTimelineScrollBegin,
     overrideItemLayout,
     isLoading,
-    canShowGoogleAgenda,
-    visibilityFilters,
-    setExternalCalendarVisibility,
   } = useCalendarTabController();
-  const showExternalCalendarItems =
-    visibilityFilters.timedCalendarEvents || visibilityFilters.allDayCalendarEvents;
-  const listAnimationKey = `${showExternalCalendarItems}:${selectedDay}:${listItems.length}`;
-
-  const handleExternalCalendarToggle = useCallback(() => {
-    listRef.current?.prepareForLayoutAnimationRender?.();
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExternalCalendarVisibility(!showExternalCalendarItems);
-  }, [listRef, setExternalCalendarVisibility, showExternalCalendarItems]);
+  const listAnimationKey = `${selectedDay}:${listItems.length}`;
 
   const calendarHorizontalPadding = screenWidth < 390 ? BrandSpacing.lg : BrandSpacing.xl;
 
   const calendarSheetConfig = useMemo(
     () => ({
-      content: (
-        <CalendarSheetHeader
-          canShowGoogleAgenda={canShowGoogleAgenda}
-          selectedDay={selectedDay}
-          showExternalCalendarItems={showExternalCalendarItems}
-          onToggleExternalCalendarItems={handleExternalCalendarToggle}
-        />
-      ),
+      content: <CalendarSheetHeader selectedDay={selectedDay} todayKey={todayKey} />,
       padding: {
         vertical: BrandSpacing.sm,
         horizontal: calendarHorizontalPadding,
@@ -72,22 +54,16 @@ export default function CalendarTabScreen() {
       backgroundColor: palette.primary,
       topInsetColor: palette.primary,
     }),
-    [
-      canShowGoogleAgenda,
-      handleExternalCalendarToggle,
-      calendarHorizontalPadding,
-      palette.primary,
-      selectedDay,
-      showExternalCalendarItems,
-    ],
+    [calendarHorizontalPadding, palette.primary, selectedDay, todayKey],
   );
 
   useGlobalTopSheet("calendar", calendarSheetConfig);
 
-  const renderItem = useCallback(
-    ({ item }: { item: TimelineListItem }) => (
-      <CalendarTimelineRow item={item} todayKey={todayKey} />
-    ),
+  const renderItem = useMemo(
+    () =>
+      ({ item }: { item: TimelineListItem }) => (
+        <CalendarTimelineRow item={item} todayKey={todayKey} />
+      ),
     [todayKey],
   );
 

@@ -737,16 +737,38 @@ export const rapydWebhook = httpAction(async (ctx, req) => {
   const expectedAccessKey = (process.env.RAPYD_ACCESS_KEY ?? "").trim();
   const webhookSecret = (process.env.RAPYD_WEBHOOK_SECRET ?? "").trim();
 
+  // SECURITY: If webhook secret is not configured, reject ALL webhook requests
+  // This prevents silent bypass where unsigned requests are accepted when secret is missing
+  if (!webhookSecret) {
+    return new Response(
+      JSON.stringify({
+        received: true,
+        signatureValid: false,
+        error: "RAPYD_WEBHOOK_SECRET is not configured - webhook security disabled",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  if (!expectedAccessKey) {
+    return new Response(
+      JSON.stringify({
+        received: true,
+        signatureValid: false,
+        error: "RAPYD_ACCESS_KEY is not configured",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
   let signatureValid = false;
-  if (
-    webhookSecret &&
-    expectedAccessKey &&
-    accessKeyHeader &&
-    salt &&
-    timestamp &&
-    signature &&
-    timestampValid
-  ) {
+  if (expectedAccessKey && accessKeyHeader && salt && timestamp && signature && timestampValid) {
     const pathCandidates = normalizeConfiguredWebhookCandidates(req);
     for (const pathCandidate of pathCandidates) {
       const expectedHex = await buildRapydWebhookSignature({
@@ -885,6 +907,23 @@ export const diditWebhook = httpAction(async (ctx, req) => {
   const signatureRawHeader = normalizeDiditSignature(getHeader(req, "x-signature"));
   const timestampHeader = getHeader(req, "x-timestamp");
   const expectedSecret = (process.env.DIDIT_WEBHOOK_SECRET ?? "").trim();
+
+  // SECURITY: If webhook secret is not configured, reject ALL webhook requests
+  // This prevents silent bypass where unsigned requests are accepted when secret is missing
+  if (!expectedSecret) {
+    return new Response(
+      JSON.stringify({
+        received: true,
+        signatureValid: false,
+        error: "DIDIT_WEBHOOK_SECRET is not configured - webhook security disabled",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
   const allowedSkewSeconds = Number.parseInt(
     (process.env.DIDIT_WEBHOOK_MAX_SKEW_SECONDS ?? "300").trim(),
     10,
@@ -928,7 +967,7 @@ export const diditWebhook = httpAction(async (ctx, req) => {
     Number.isFinite(timestampSeconds) && Math.abs(nowSeconds - timestampSeconds) <= maxSkewSeconds;
 
   let signatureValid = false;
-  if (expectedSecret && timestampValid) {
+  if (timestampValid) {
     if (signatureV2Header && timestampHeader) {
       const canonicalJson = JSON.stringify(
         sortKeysRecursively(shortenFloatsRecursively(parsedPayload ?? {})),

@@ -6,7 +6,7 @@ import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
@@ -15,6 +15,8 @@ import {
   ProfileSectionCard,
   ProfileSectionHeader,
   ProfileSettingRow,
+  ProfileSignOutButton,
+  ProfileSupportCard,
 } from "@/components/profile/profile-settings-sections";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
 import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
@@ -40,6 +42,7 @@ import {
   type RememberedDeviceAccount,
   switchToRememberedDeviceAccount,
   toDeviceAccountIdentity,
+  validateSessionAfterSwitch,
 } from "@/modules/session/device-account-store";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
@@ -222,8 +225,20 @@ export default function StudioProfileScreen() {
             ...(currentUser ? { currentAccount: toDeviceAccountIdentity(currentUser) } : {}),
           });
           reloadAuthSession();
-        } catch {
+
+          // Validate that the new session actually works by checking if currentUser loads.
+          // This prevents the race where isAuthenticated=true but currentUser=null,
+          // which would cause sessionGate to redirect to sign-in unnecessarily.
+          const sessionValid = await validateSessionAfterSwitch(() => currentUser);
+
+          if (!sessionValid) {
+            // Stored session is invalid - backend rejected it
+            // Throw to trigger error handling, user stays on this profile
+            throw new Error("Stored session is no longer valid. Please sign in again.");
+          }
+        } catch (error) {
           setSwitchingAccountId(null);
+          // Error is already logged by the catch - user stays on profile screen
         }
       })();
     },
@@ -855,14 +870,27 @@ export default function StudioProfileScreen() {
                 onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
                 showDivider
               />
-              <ProfileSettingRow
-                title={t("auth.signOutButton")}
-                subtitle={t("profile.settings.signOutDesc")}
-                icon="arrow.right.square"
-                onPress={handleSignOut}
-                tone="danger"
-              />
+              <View style={{ padding: BrandSpacing.md }}>
+                <ProfileSignOutButton title={t("auth.signOutButton")} onPress={handleSignOut} />
+              </View>
             </ProfileSectionCard>
+
+            {/* Support Section */}
+            <ProfileSectionHeader label={t("profile.sections.support")} icon="help" />
+            <View style={{ paddingHorizontal: BrandSpacing.inset }}>
+              <View style={{ flexDirection: "row", gap: BrandSpacing.md }}>
+                <ProfileSupportCard
+                  icon="help_center"
+                  title="Help Center"
+                  onPress={() => Linking.openURL("https://www.join-queue.com/he/help/")}
+                />
+                <ProfileSupportCard
+                  icon="gavel"
+                  title="Terms"
+                  onPress={() => Linking.openURL("https://www.join-queue.com/he/tos/")}
+                />
+              </View>
+            </View>
           </View>
         </ProfileIndexScrollView>
       )}

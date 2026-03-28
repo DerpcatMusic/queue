@@ -1,5 +1,8 @@
-const DEFAULT_MAP_STYLE_LIGHT_URL = "https://tiles.openfreemap.org/styles/liberty";
-const DEFAULT_MAP_STYLE_DARK_URL = "https://tiles.openfreemap.org/styles/dark";
+// Positron is a clean, modern, warm-toned style with excellent road hierarchy
+// Dark Matter is its dark counterpart — deep charcoal with warm highlights
+// Both share the same OpenFreeMap vector tile source, so Israeli data coverage is identical
+const DEFAULT_MAP_STYLE_LIGHT_URL = "https://tiles.openfreemap.org/styles/positron";
+const DEFAULT_MAP_STYLE_DARK_URL = "https://tiles.openfreemap.org/styles/dark-matter";
 
 function parseNumber(value: string | undefined, fallback: number) {
   const parsed = Number.parseFloat(value ?? "");
@@ -72,12 +75,12 @@ export const APPLE_MAP_THEME: QueueMapAppleTheme = {
     progressThrottleMs: 1200,
   },
   overlay: {
-    baseOutlineWidth: 0.8,
-    baseOutlineOpacity: 0.24,
-    selectionFillOpacity: 0.14,
-    selectionOutlineWidth: 1.9,
+    baseOutlineWidth: 1.0,
+    baseOutlineOpacity: 0.28,
+    selectionFillOpacity: 0.16,
+    selectionOutlineWidth: 2.2,
     selectionOutlineOpacity: 0.95,
-    touchFillOpacity: 0.04,
+    touchFillOpacity: 0.05,
     pinRadius: 6,
     pinStrokeWidth: 2,
   },

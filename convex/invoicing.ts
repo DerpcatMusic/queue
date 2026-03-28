@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalAction } from "./_generated/server";
@@ -32,6 +32,40 @@ type InvoiceIssueResult =
       provider: InvoiceProvider;
       externalInvoiceId: string;
     };
+
+/**
+ * Default timeout for external API calls in milliseconds.
+ * Prevents hangs from unresponsive external services.
+ */
+const DEFAULT_FETCH_TIMEOUT_MS = 15000; // 15 seconds
+
+/**
+ * Fetch with timeout protection.
+ * Throws ConvexError if request times out.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {},
+): Promise<Response> {
+  const { timeoutMs = DEFAULT_FETCH_TIMEOUT_MS, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new ConvexError(`Invoice API request timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 const toAmount = (amountAgorot: number): number => Number((amountAgorot / 100).toFixed(2));
 
@@ -82,7 +116,7 @@ const issueMorningInvoice = async ({
   }
   const apiBase = normalizeBaseUrl(apiBaseRaw, "morning");
 
-  const response = await fetch(`${apiBase}/documents`, {
+  const response = await fetchWithTimeout(`${apiBase}/documents`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -147,7 +181,7 @@ const issueIcountInvoice = async ({
   }
   const apiBase = normalizeBaseUrl(apiBaseRaw, "icount");
 
-  const response = await fetch(`${apiBase}/documents`, {
+  const response = await fetchWithTimeout(`${apiBase}/documents`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

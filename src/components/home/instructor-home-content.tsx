@@ -7,7 +7,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { HomeAgendaWidget } from "@/components/home/home-agenda-widget";
 import { HomeSurface, useHomeDashboardLayout } from "@/components/home/home-dashboard-layout";
-import { getHomeHeaderScrollTopPadding } from "@/components/home/home-header-sheet";
 import { HomeSignalTile } from "@/components/home/home-shared";
 import { JobCarouselDots } from "@/components/home/job-carousel-dots";
 import {
@@ -19,7 +18,6 @@ import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view"
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
 
 type UpcomingSession = {
@@ -43,6 +41,8 @@ type InstructorHomeContentProps = {
   upcomingSessions: UpcomingSession[];
   onOpenJobs: () => void;
   onOpenStudio: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
+  withdrawingApplicationId?: Id<"jobApplications"> | null;
+  onWithdrawApplication?: (applicationId: Id<"jobApplications">) => void;
 };
 
 function InstructorJobsEmptyState({ t }: { t: TFunction }) {
@@ -92,10 +92,11 @@ export function InstructorHomeContent({
   upcomingSessions,
   onOpenJobs,
   onOpenStudio,
+  withdrawingApplicationId,
+  onWithdrawApplication,
 }: InstructorHomeContentProps) {
   const { color: palette } = useTheme();
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
-  const { safeTop } = useAppInsets();
   const layout = useHomeDashboardLayout();
   const { scrollRef, onScroll } = useScrollSheetBindings();
   const { width: screenWidth } = useWindowDimensions();
@@ -123,11 +124,10 @@ export function InstructorHomeContent({
         routeKey="instructor/index"
         style={{ flex: 1 }}
         topInsetTone="sheet"
-        contentContainerStyle={{
-          paddingHorizontal: BrandSpacing.insetRoomy,
-          paddingTop: getHomeHeaderScrollTopPadding(safeTop),
-          paddingBottom: BrandSpacing.section,
-          gap: BrandSpacing.section,
+        sheetInsets={{
+          topSpacing: BrandSpacing.xl,
+          bottomSpacing: BrandSpacing.section,
+          horizontalPadding: BrandSpacing.insetRoomy,
         }}
       >
         <Animated.View
@@ -171,6 +171,10 @@ export function InstructorHomeContent({
                         locale={locale}
                         zoneLanguage={zoneLanguage}
                         now={now}
+                        {...(withdrawingApplicationId !== undefined
+                          ? { withdrawingApplicationId }
+                          : {})}
+                        {...(onWithdrawApplication ? { onWithdrawApplication } : {})}
                         onApply={() => onOpenStudio(job.studioId, job.jobId)}
                         onOpenStudio={onOpenStudio}
                         t={t}

@@ -3,7 +3,7 @@ import type { TFunction } from "i18next";
 import type React from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
-import { DotStatusPill } from "@/components/home/home-shared";
+import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
@@ -16,17 +16,29 @@ import { BorderWidth, FontFamily, FontSize, LetterSpacing, LineHeight } from "@/
 import {
   type BoostPreset,
   formatTime,
-  getApplicationStatusTranslationKey,
   getBoostPresentation,
   getExpiryPresentation,
   type JobClosureReason,
 } from "@/lib/jobs-utils";
+import { Box } from "@/primitives";
 
 function formatJobPay(amount: number, locale: string) {
   return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 0,
   }).format(amount);
 }
+
+// SVG feColorMatrix filter for true grayscale on native.
+// First pass: desaturate to 0 (full grayscale).
+// Second pass: boost contrast (1.15x) + lift blacks slightly (-0.07) for readability.
+const STUDIO_IMAGE_NATIVE_FILTERS: Filters = [
+  { name: "feColorMatrix", type: "saturate", values: 0 },
+  {
+    name: "feColorMatrix",
+    type: "matrix",
+    values: [1.15, 0, 0, 0, -0.07, 0, 1.15, 0, 0, -0.07, 0, 0, 1.15, 0, -0.07, 0, 0, 0, 1, 0],
+  },
+];
 
 export type InstructorMarketplaceJob = {
   jobId: Id<"jobs">;
@@ -78,22 +90,8 @@ function StudioImageBackground({
   fadeId: string;
   children?: React.ReactNode;
 }) {
-  // Grayscale: CSS filter on web; SVG grayscale overlay on native for modern look
-  const imageFilterStyle = Platform.select({
-    web: { filter: "grayscale(100%) contrast(112%) brightness(54%)" },
-    default: undefined,
-  }) as object;
-
-  // On native: semi-transparent dark overlay to simulate grayscale + enhance readability
-  const nativeGrayscaleOverlay = Platform.select({
-    web: null,
-    default: (
-      <View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.18)" }]}
-      />
-    ),
-  });
+  // Grayscale: CSS filter on web; true SVG feColorMatrix desaturation on native
+  const webFilterStyle = { filter: "grayscale(100%) contrast(112%) brightness(54%)" };
 
   return (
     <View
@@ -107,15 +105,26 @@ function StudioImageBackground({
       }}
     >
       {imageUrl ? (
-        <ExpoImage
-          source={{ uri: imageUrl }}
-          contentFit="cover"
-          style={[
-            StyleSheet.absoluteFillObject,
-            { width: "100%", height: "100%" },
-            imageFilterStyle,
-          ]}
-        />
+        Platform.select({
+          // Web: CSS grayscale on ExpoImage
+          web: (
+            <View style={[StyleSheet.absoluteFillObject, webFilterStyle]}>
+              <ExpoImage
+                source={{ uri: imageUrl }}
+                contentFit="cover"
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+          ),
+          // Native: FilterImage with SVG feColorMatrix grayscale
+          default: (
+            <FilterImage
+              source={{ uri: imageUrl }}
+              filters={STUDIO_IMAGE_NATIVE_FILTERS}
+              style={StyleSheet.absoluteFill}
+            />
+          ),
+        })
       ) : (
         <View
           style={{
@@ -136,20 +145,18 @@ function StudioImageBackground({
           </Text>
         </View>
       )}
-      {/* Black gradient mask for readability */}
+      {/* Black gradient fade — transparent at top, fully opaque at bottom for text readability */}
       <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
         <Defs>
           <SvgLinearGradient id={fadeId} x1="0%" y1="0%" x2="0%" y2="100%">
             <Stop offset="0%" stopColor="#000000" stopOpacity="0" />
-            <Stop offset="44%" stopColor="#000000" stopOpacity="0.12" />
-            <Stop offset="74%" stopColor="#000000" stopOpacity="0.52" />
-            <Stop offset="100%" stopColor="#000000" stopOpacity="0.88" />
+            <Stop offset="35%" stopColor="#000000" stopOpacity="0.10" />
+            <Stop offset="60%" stopColor="#000000" stopOpacity="0.55" />
+            <Stop offset="100%" stopColor="#000000" stopOpacity="1" />
           </SvgLinearGradient>
         </Defs>
         <Rect width="100%" height="100%" fill={`url(#${fadeId})`} />
       </Svg>
-      {/* Native grayscale simulation */}
-      {nativeGrayscaleOverlay}
       {children}
     </View>
   );
@@ -208,18 +215,6 @@ export function InstructorJobCard({
   const theme = useTheme();
   const { isDesktopWeb: isWideWeb } = useLayoutBreakpoint();
   const showStudioImage = variant === "default";
-  const tone =
-    job.applicationStatus === "pending"
-      ? { color: theme.color.primary, background: theme.color.primarySubtle }
-      : job.applicationStatus === "accepted"
-        ? { color: theme.color.success, background: theme.color.successSubtle }
-        : job.applicationStatus === "rejected"
-          ? { color: theme.color.danger, background: theme.color.dangerSubtle }
-          : job.applicationStatus === "withdrawn"
-            ? { color: theme.color.textMuted, background: theme.color.surfaceAlt }
-            : null;
-  const dotColor = tone ? tone.color : undefined;
-  const pillBackground = tone ? tone.background : undefined;
   const boost = getBoostPresentation(
     job.pay,
     job.boostPreset,
@@ -240,7 +235,17 @@ export function InstructorJobCard({
   const metaLine = variant === "studioDetail" ? studioLabel : shortLocation;
   const contentWidth = showStudioImage ? (isWideWeb ? "52%" : "53%") : "100%";
   const isPressable = Boolean(onOpenStudio);
-  const canWithdrawPendingApplication =
+  const formattedPay = formatJobPay(boost.totalPay, locale);
+  const imageFadeId = `job-card-fade-${String(job.jobId)}`;
+  const isWithdrawing = Boolean(
+    job.applicationId && withdrawingApplicationId === job.applicationId,
+  );
+
+  // Has an active application (pending or accepted)
+  const hasApplied = job.applicationStatus === "pending" || job.applicationStatus === "accepted";
+  // Can cancel — only pending can be withdrawn; accepted can't
+  const canCancelApplication =
+    hasApplied &&
     job.applicationStatus === "pending" &&
     Boolean(job.applicationId) &&
     Boolean(onWithdrawApplication);
@@ -248,15 +253,9 @@ export function InstructorJobCard({
     !job.applicationStatus ||
     job.applicationStatus === "withdrawn" ||
     job.applicationStatus === "rejected";
-  const isWithdrawing = Boolean(
-    job.applicationId && withdrawingApplicationId === job.applicationId,
-  );
-  const pendingCancelLabel = `${t(getApplicationStatusTranslationKey("pending"))} · ${t("jobsTab.actions.cancel")}`;
-  const formattedPay = formatJobPay(boost.totalPay, locale);
-  const payAccent = boost.bonusAmount ? theme.color.secondary : theme.color.primary;
-  const imageFadeId = `job-card-fade-${String(job.jobId)}`;
 
-  const cardBorderColor = payAccent;
+  // Border: red when applied, subtle outline otherwise
+  const cardBorderColor = hasApplied ? theme.color.danger : theme.color.outline;
 
   if (variant === "default") {
     const metaAccent = boost.bonusAmount ? theme.color.secondary : theme.color.primaryPressed;
@@ -272,9 +271,11 @@ export function InstructorJobCard({
         disabled={!isPressable}
         onPress={() => onOpenStudio?.(job.studioId, job.jobId)}
         style={({ pressed }) => ({
+          position: "relative",
           transform: [{ scale: isPressable && pressed ? 0.992 : 1 }],
         })}
       >
+        {/* Card — overflow hidden clips content to rounded corners */}
         <View
           style={{
             borderRadius: BrandRadius.lg,
@@ -362,7 +363,7 @@ export function InstructorJobCard({
                 >
                   <Text
                     style={{
-                      color: payAccent,
+                      color: metaAccent,
                       fontSize: FontSize.body,
                       fontWeight: "900",
                       fontFamily: FontFamily.displayBlack,
@@ -377,7 +378,7 @@ export function InstructorJobCard({
                       fontSize: FontSize.heroSmall,
                       lineHeight: LineHeight.heroSmall,
                       letterSpacing: LetterSpacing.heroSmall,
-                      color: payAccent,
+                      color: metaAccent,
                       textAlign: "right",
                       fontWeight: "900",
                       includeFontPadding: false,
@@ -422,9 +423,13 @@ export function InstructorJobCard({
                 </View>
 
                 <View style={{ minWidth: 124, alignItems: "flex-end", flexShrink: 0 }}>
-                  {canWithdrawPendingApplication ? (
+                  {canCancelApplication ? (
                     <ActionButton
-                      label={isWithdrawing ? t("jobsTab.actions.cancelling") : pendingCancelLabel}
+                      label={
+                        isWithdrawing
+                          ? t("jobsTab.actions.cancelling")
+                          : t("jobsTab.actions.cancel")
+                      }
                       onPress={(event) => {
                         event?.stopPropagation();
                         if (job.applicationId) {
@@ -434,6 +439,15 @@ export function InstructorJobCard({
                       tone="secondary"
                       loading={isWithdrawing}
                       fullWidth
+                      colors={{
+                        backgroundColor: theme.color.danger,
+                        pressedBackgroundColor: theme.color.dangerSubtle,
+                        disabledBackgroundColor: theme.color.danger,
+                        labelColor: "#FFFFFF",
+                        disabledLabelColor: "#FFFFFF99",
+                        nativeTintColor: "#FFFFFF",
+                      }}
+                      labelStyle={{ fontWeight: "700" }}
                       native={false}
                     />
                   ) : canApplyFromCard && onApply ? (
@@ -466,22 +480,44 @@ export function InstructorJobCard({
                       labelStyle={{ fontWeight: "800" }}
                       native={false}
                     />
-                  ) : job.applicationStatus ? (
-                    <DotStatusPill
-                      backgroundColor={pillBackground ?? theme.jobs.surfaceMuted}
-                      color={dotColor ?? theme.color.textMuted}
-                      label={t(getApplicationStatusTranslationKey(job.applicationStatus))}
-                    />
                   ) : null}
                 </View>
               </View>
             </View>
           </View>
+          {/* Applied plaster — diagonal tape at bottom-left, inside the card */}
+          {hasApplied ? (
+            <View
+              style={{
+                position: "absolute",
+                bottom: BrandSpacing.xs,
+                left: BrandSpacing.xs,
+                backgroundColor: theme.color.danger,
+                paddingHorizontal: BrandSpacing.md,
+                paddingVertical: BrandSpacing.xxs,
+                transform: [{ rotate: "-12deg" }],
+                zIndex: 10,
+              }}
+            >
+              <Text
+                style={{
+                  ...BrandType.labelStrong,
+                  fontSize: 8,
+                  letterSpacing: 1,
+                  color: "#FFFFFF",
+                  textTransform: "uppercase",
+                }}
+              >
+                {t("jobsTab.actions.applied")}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </Pressable>
     );
   }
 
+  // studioDetail variant — simplified for studio profile context
   return (
     <Pressable
       accessibilityRole={isPressable ? "button" : undefined}
@@ -491,6 +527,7 @@ export function InstructorJobCard({
       disabled={!isPressable}
       onPress={() => onOpenStudio?.(job.studioId, job.jobId)}
       style={({ pressed }) => ({
+        position: "relative",
         transform: [{ scale: isPressable && pressed ? 0.992 : 1 }],
       })}
     >
@@ -515,27 +552,20 @@ export function InstructorJobCard({
           />
         )}
 
-        <View
-          className="justify-between"
+        <Box
+          flexDirection="row"
+          justifyContent="space-between"
+          alignItems="flex-start"
+          gap="lg"
           style={{
-            minHeight: variant === "studioDetail" ? (isWideWeb ? 174 : 164) : isWideWeb ? 190 : 172,
-            position: "relative",
-            paddingLeft: BrandSpacing.lg,
-            paddingRight: showStudioImage ? 0 : isWideWeb ? BrandSpacing.lg : BrandSpacing.md,
-            paddingVertical: BrandSpacing.lg,
+            paddingVertical: BrandSpacing.md,
+            paddingHorizontal: BrandSpacing.lg,
+            minHeight: isWideWeb ? 130 : 120,
           }}
         >
-          {showStudioImage ? (
-            <StudioImageBackground
-              imageUrl={job.studioImageUrl}
-              fallbackLabel={job.studioName}
-              theme={theme}
-              fadeId={imageFadeId}
-            />
-          ) : null}
-
-          <View style={{ gap: BrandSpacing.stackTight, width: contentWidth }}>
-            {/* Studio name — Lexend editorial headline */}
+          {/* Left: Sport + Time */}
+          <Box flex={1} gap="xs">
+            {/* Sport — prominent but not overwhelming */}
             <Text
               numberOfLines={1}
               style={{
@@ -547,18 +577,24 @@ export function InstructorJobCard({
               {primaryTitle}
             </Text>
 
-            {/* Sport label — secondary */}
-            <Text
-              numberOfLines={1}
-              style={{
-                ...BrandType.bodyMedium,
-                color: theme.jobs.signal,
-              }}
-            >
-              {secondaryTitle}
-            </Text>
+            {/* Time range — compact inline */}
+            <Box flexDirection="row" alignItems="center" gap="xxs">
+              <IconSymbol name="clock.fill" size={14} color={theme.jobs.signal} />
+              <Text
+                style={{
+                  fontFamily: FontFamily.bodyMedium,
+                  fontSize: FontSize.caption,
+                  fontWeight: "500",
+                  color: theme.color.textMuted,
+                  includeFontPadding: false,
+                }}
+                numberOfLines={1}
+              >
+                {formatTime(job.startTime, locale)} — {formatTime(job.endTime, locale)}
+              </Text>
+            </Box>
 
-            {/* Location meta */}
+            {/* Location — subtle hint */}
             <Text
               numberOfLines={1}
               style={{
@@ -568,62 +604,32 @@ export function InstructorJobCard({
             >
               {metaLine}
             </Text>
+          </Box>
 
-            {/* Time range */}
-            <View className="flex-row items-center" style={{ gap: BrandSpacing.xs }}>
-              <IconSymbol name="clock.fill" size={14} color={theme.jobs.idle} />
+          {/* Right: Pay + CTA stacked */}
+          <Box alignItems="flex-end" gap="sm">
+            {/* Pay — BOLD Lexend_800ExtraBold like home-header-sheet */}
+            <Box flexDirection="row" alignItems="baseline" gap="xxs">
               <Text
                 style={{
-                  ...BrandType.bodyStrong,
-                  color: theme.color.text,
-                }}
-              >
-                {formatTime(job.startTime, locale)}
-              </Text>
-              <IconSymbol name="arrow.right" size={14} color={theme.jobs.idle} />
-              <Text
-                style={{
-                  ...BrandType.bodyStrong,
-                  color: theme.color.text,
-                }}
-              >
-                {formatTime(job.endTime, locale)}
-              </Text>
-            </View>
-
-            {/* Tags row: expiry, boost, pay */}
-            <View className="flex-row flex-wrap items-center" style={{ gap: BrandSpacing.sm }}>
-              {expiry ? (
-                <JobExpiryPill
-                  label={t(expiry.key, expiry.interpolation)}
-                  isExpired={expiry.isExpired}
-                  theme={theme}
-                />
-              ) : null}
-              {boost.badgeKey ? (
-                <DotStatusPill
-                  backgroundColor={theme.color.primarySubtle}
-                  color={theme.color.primary}
-                  label={t(boost.badgeKey, boost.badgeInterpolation)}
-                />
-              ) : null}
-              {/* Pay — chartreuse signal accent */}
-              <Text
-                style={{
-                  ...BrandType.bodyStrong,
+                  fontFamily: FontFamily.displayBold,
+                  fontSize: FontSize.heroCompact,
+                  lineHeight: LineHeight.heroCompact,
                   color: theme.jobs.signal,
+                  includeFontPadding: false,
+                  fontWeight: "800",
                 }}
               >
-                {boost.totalPay}
+                ₪{formattedPay}
               </Text>
-            </View>
-          </View>
+            </Box>
 
-          {/* CTA — bottom action row */}
-          <View className="pt-sm" style={{ width: contentWidth }}>
-            {canWithdrawPendingApplication ? (
+            {/* CTA */}
+            {canCancelApplication ? (
               <ActionButton
-                label={isWithdrawing ? t("jobsTab.actions.cancelling") : pendingCancelLabel}
+                label={
+                  isWithdrawing ? t("jobsTab.actions.cancelling") : t("jobsTab.actions.cancel")
+                }
                 onPress={(event) => {
                   event?.stopPropagation();
                   if (job.applicationId) {
@@ -632,6 +638,15 @@ export function InstructorJobCard({
                 }}
                 tone="secondary"
                 loading={isWithdrawing}
+                colors={{
+                  backgroundColor: theme.color.danger,
+                  pressedBackgroundColor: theme.color.dangerSubtle,
+                  disabledBackgroundColor: theme.color.danger,
+                  labelColor: "#FFFFFF",
+                  disabledLabelColor: "#FFFFFF99",
+                  nativeTintColor: "#FFFFFF",
+                }}
+                labelStyle={{ fontWeight: "700" }}
                 native={false}
               />
             ) : canApplyFromCard && onApply ? (
@@ -652,15 +667,37 @@ export function InstructorJobCard({
                 tone={isExpired ? "secondary" : "primary"}
                 native={false}
               />
-            ) : job.applicationStatus ? (
-              <DotStatusPill
-                backgroundColor={pillBackground ?? theme.jobs.surfaceMuted}
-                color={dotColor ?? theme.color.textMuted}
-                label={t(getApplicationStatusTranslationKey(job.applicationStatus))}
-              />
             ) : null}
+          </Box>
+        </Box>
+
+        {/* Applied plaster — diagonal tape at bottom-left */}
+        {hasApplied ? (
+          <View
+            style={{
+              position: "absolute",
+              bottom: BrandSpacing.xs,
+              left: BrandSpacing.xs,
+              backgroundColor: theme.color.danger,
+              paddingHorizontal: BrandSpacing.md,
+              paddingVertical: BrandSpacing.xxs,
+              transform: [{ rotate: "-12deg" }],
+              zIndex: 10,
+            }}
+          >
+            <Text
+              style={{
+                ...BrandType.labelStrong,
+                fontSize: 8,
+                letterSpacing: 1,
+                color: "#FFFFFF",
+                textTransform: "uppercase",
+              }}
+            >
+              {t("jobsTab.actions.applied")}
+            </Text>
           </View>
-        </View>
+        ) : null}
       </View>
     </Pressable>
   );

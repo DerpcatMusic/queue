@@ -1,85 +1,30 @@
 import { memo } from "react";
-import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
-import { ActionButton } from "@/components/ui/action-button";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useTheme } from "@/hooks/use-theme";
-import {
-  calendarSheetStyles,
-  formatSelectedDayDate,
-  formatSelectedDayLabel,
-} from "./calendar-date-utils";
+import { View } from "react-native";
+import { addDays } from "../calendar-controller-helpers";
+import { calendarSheetStyles } from "./calendar-date-utils";
+import CalendarWeekPicker from "./calendar-week-picker";
 
 type CalendarSheetHeaderProps = {
-  canShowGoogleAgenda: boolean;
   selectedDay: string;
-  showExternalCalendarItems: boolean;
-  onToggleExternalCalendarItems: () => void;
+  todayKey: string;
 };
 
-function CalendarSheetHeader({
-  canShowGoogleAgenda,
-  selectedDay,
-  showExternalCalendarItems,
-  onToggleExternalCalendarItems,
-}: CalendarSheetHeaderProps) {
-  const { t, i18n } = useTranslation();
-  const { color: palette } = useTheme();
+function CalendarSheetHeader({ selectedDay, todayKey }: CalendarSheetHeaderProps) {
+  // Calculate the week start (Monday) for the selected day
+  // This is a simple implementation - we find the Monday of the week
+  const selectedDate = new Date(selectedDay + "T00:00:00");
+  const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  // Convert to Monday-based index (0 = Monday)
+  const mondayBasedIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const weekStartDay = addDays(selectedDay, -mondayBasedIndex);
 
   return (
     <View style={calendarSheetStyles.root}>
-      <View style={calendarSheetStyles.titleRow}>
-        <View style={calendarSheetStyles.titleColumn}>
-          <Text
-            style={[
-              calendarSheetStyles.title,
-              {
-                color: palette.onPrimary,
-              },
-            ]}
-          >
-            {formatSelectedDayLabel(selectedDay, i18n.language)}
-          </Text>
-          <Text
-            style={[
-              calendarSheetStyles.subtitle,
-              {
-                color: palette.onPrimary,
-              },
-            ]}
-          >
-            {formatSelectedDayDate(selectedDay, i18n.language)}
-          </Text>
-        </View>
-        <View style={calendarSheetStyles.actionsColumn}>
-          {canShowGoogleAgenda ? (
-            <ActionButton
-              accessibilityLabel={t("calendarTab.filters.button")}
-              onPress={onToggleExternalCalendarItems}
-              tone="secondary"
-              shape="square"
-              size="lg"
-              icon={
-                <View style={{ alignItems: "center", justifyContent: "center" }}>
-                  <IconSymbol
-                    name={showExternalCalendarItems ? "xmark.circle.fill" : "plus.circle.fill"}
-                    size={20}
-                    color={showExternalCalendarItems ? palette.primary : palette.textMuted}
-                  />
-                  <Text
-                    style={{
-                      ...calendarSheetStyles.googleBadge,
-                      color: showExternalCalendarItems ? palette.primary : palette.textMuted,
-                    }}
-                  >
-                    {t("calendarTab.timeline.googleBadge")}
-                  </Text>
-                </View>
-              }
-            />
-          ) : null}
-        </View>
-      </View>
+      <CalendarWeekPicker
+        selectedDay={selectedDay}
+        todayKey={todayKey}
+        weekStartDay={weekStartDay}
+      />
     </View>
   );
 }

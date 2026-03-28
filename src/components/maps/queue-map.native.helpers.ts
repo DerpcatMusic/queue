@@ -199,17 +199,17 @@ export function withMapPersonality(
         const roadColor = mainRoad
           ? palette.roadPrimary
           : secondaryRoad
-            ? palette.roadSecondary
-            : palette.roadTertiary;
+            ? palette.roadPrimary
+            : palette.roadSecondary;
         paint["line-color"] = roadColor;
         paint["line-width"] = mainRoad
-          ? ["interpolate", ["linear"], ["zoom"], 6, 0.4, 10, 0.82, 14, 1.7]
+          ? ["interpolate", ["linear"], ["zoom"], 5, 0.3, 9, 0.7, 12, 1.4, 15, 2.4]
           : secondaryRoad
-            ? ["interpolate", ["linear"], ["zoom"], 6, 0.28, 10, 0.58, 14, 1.12]
+            ? ["interpolate", ["linear"], ["zoom"], 5, 0.2, 9, 0.5, 12, 1.0, 15, 1.8]
             : localRoad
-              ? ["interpolate", ["linear"], ["zoom"], 6, 0.18, 10, 0.38, 14, 0.78]
-              : ["interpolate", ["linear"], ["zoom"], 6, 0.2, 10, 0.42, 14, 0.84];
-        paint["line-opacity"] = 1;
+              ? ["interpolate", ["linear"], ["zoom"], 5, 0.15, 9, 0.35, 12, 0.65, 15, 1.2]
+              : ["interpolate", ["linear"], ["zoom"], 5, 0.18, 9, 0.4, 12, 0.75, 15, 1.3];
+        paint["line-opacity"] = 0.75;
         layout["line-cap"] = "round";
         layout["line-join"] = "round";
       }
@@ -217,19 +217,20 @@ export function withMapPersonality(
         paint["fill-color"] = isMainRoadLayer(id, sourceLayer)
           ? palette.roadPrimary
           : isSecondaryRoadLayer(id, sourceLayer)
-            ? palette.roadSecondary
-            : palette.roadTertiary;
-        paint["fill-opacity"] = 1;
+            ? palette.roadPrimary
+            : palette.roadSecondary;
+        paint["fill-opacity"] = 0.75;
       }
+      // Buildings — dominant urban feature
       if ((sourceLayer.includes("building") || id.includes("building")) && layerType === "fill") {
         paint["fill-color"] = palette.buildingFill;
-        paint["fill-opacity"] = 1;
+        paint["fill-opacity"] = palette.buildingOpacity ?? 0.85;
       }
       if (layerType === "symbol") {
         layout["text-font"] = ["Noto Sans Regular"];
         paint["text-color"] = palette.text;
         paint["text-halo-color"] = palette.textHalo;
-        paint["text-halo-width"] = 0.55;
+        paint["text-halo-width"] = 1.0;
         paint["text-opacity"] = 1;
       }
 

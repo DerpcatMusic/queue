@@ -85,7 +85,14 @@
             "assets/fonts/Lexend_800ExtraBold.ttf",
             "assets/fonts/Manrope_400Regular.ttf",
             "assets/fonts/Manrope_500Medium.ttf",
-            "assets/fonts/Manrope_600SemiBold.ttf"
+            "assets/fonts/Manrope_600SemiBold.ttf",
+            "assets/fonts/MaterialSymbols_100Thin.ttf",
+            "assets/fonts/MaterialSymbols_200ExtraLight.ttf",
+            "assets/fonts/MaterialSymbols_300Light.ttf",
+            "assets/fonts/MaterialSymbols_400Regular.ttf",
+            "assets/fonts/MaterialSymbols_500Medium.ttf",
+            "assets/fonts/MaterialSymbols_600SemiBold.ttf",
+            "assets/fonts/MaterialSymbols_700Bold.ttf"
           ]
         }
       ],

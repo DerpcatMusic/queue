@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, Platform, Text, View } from "react-native";
+import { I18nManager, Platform, StyleSheet, Text, View } from "react-native";
 import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { DotStatusPill } from "@/components/home/home-shared";
 import { InstructorJobCard } from "@/components/jobs/instructor/instructor-job-card";
@@ -12,13 +12,14 @@ import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { FontFamily, FontSize, LetterSpacing, LineHeight } from "@/lib/design-system";
+import { Box } from "@/primitives";
 
 const STUDIO_HEADER_NATIVE_FILTERS: Filters = [
   { name: "feColorMatrix", type: "saturate", values: 0 },
@@ -135,107 +136,112 @@ export default function InstructorStudioProfileRoute() {
 
     return {
       content: (
-        <View
+        <Box
+          flex={1}
           style={{
-            justifyContent: "space-between",
             overflow: "hidden",
-            borderBottomLeftRadius: 28,
-            borderBottomRightRadius: 28,
+            borderBottomLeftRadius: BrandRadius.xl,
+            borderBottomRightRadius: BrandRadius.xl,
             borderCurve: "continuous",
             backgroundColor: palette.primary,
-            paddingBottom: BrandSpacing.xl,
-            minHeight: 0,
           }}
         >
+          {/* Banner image - fills entire sheet with cover fit */}
           {studioProfile.studioImageUrl ? (
-            <>
+            <Box
+              style={{
+                ...StyleSheet.absoluteFillObject,
+                zIndex: 0,
+              }}
+            >
               <FilterImage
                 source={{ uri: studioProfile.studioImageUrl }}
                 resizeMode="cover"
                 {...(Platform.OS === "web" ? {} : { filters: STUDIO_HEADER_NATIVE_FILTERS })}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  ...(Platform.OS === "web"
-                    ? { filter: "grayscale(100%) contrast(118%) brightness(78%)" }
-                    : {}),
-                }}
+                style={StyleSheet.absoluteFillObject}
               />
-            </>
-          ) : null}
-          <View
-            style={{
-              paddingHorizontal: BrandSpacing.lg,
-              paddingTop: BrandSpacing.md,
-            }}
-          >
-            <IconButton
-              size={42}
-              tone="secondary"
-              backgroundColorOverride={palette.surface}
-              accessibilityLabel={t("common.back")}
-              onPress={() => router.back()}
-              icon={
-                <IconSymbol
-                  name="chevron.right"
-                  size={20}
-                  color={palette.text}
-                  style={{
-                    transform: [{ rotate: I18nManager.isRTL ? "0deg" : "180deg" }],
-                  }}
-                />
-              }
+            </Box>
+          ) : (
+            <Box
+              style={{
+                ...StyleSheet.absoluteFillObject,
+                backgroundColor: palette.primary,
+              }}
             />
-          </View>
-          <View
+          )}
+
+          {/* Dark gradient overlay for text readability */}
+          <Box
             style={{
-              paddingHorizontal: BrandSpacing.xl,
-              paddingBottom: BrandSpacing.xxl,
-              gap: 8,
+              ...StyleSheet.absoluteFillObject,
+              backgroundColor: "rgba(0,0,0,0.35)",
+              zIndex: 1,
             }}
-          >
-            <Text
-              style={{
-                fontFamily: FontFamily.display,
-                fontSize: FontSize.heading,
-                lineHeight: LineHeight.heading,
-                letterSpacing: LetterSpacing.heading,
-                color: palette.onPrimary,
-                includeFontPadding: false,
-                textShadowOffset: { width: 0, height: 1 },
-                textShadowRadius: 4,
-              }}
-            >
-              {studioProfile.studioName}
-            </Text>
-            <Text
-              style={{
-                ...BrandType.body,
-                color: palette.onPrimary,
-                includeFontPadding: false,
-                textShadowOffset: { width: 0, height: 1 },
-                textShadowRadius: 3,
-              }}
-            >
-              {studioProfile.studioAddress}
-            </Text>
-          </View>
-        </View>
+          />
+
+          {/* Content overlay - flexbox column */}
+          <Box flex={1} justifyContent="space-between" zIndex={2}>
+            {/* Top row - back button */}
+            <Box px="lg" pt="md">
+              <IconButton
+                size={42}
+                tone="secondary"
+                backgroundColorOverride={palette.surface}
+                accessibilityLabel={t("common.back")}
+                onPress={() => router.back()}
+                icon={
+                  <IconSymbol
+                    name="chevron.right"
+                    size={20}
+                    color={palette.text}
+                    style={{
+                      transform: [{ rotate: I18nManager.isRTL ? "0deg" : "180deg" }],
+                    }}
+                  />
+                }
+              />
+            </Box>
+
+            {/* Bottom row - studio info */}
+            <Box px="xl" pb="xxl" gap="xs">
+              <Text
+                style={{
+                  fontFamily: FontFamily.display,
+                  fontSize: FontSize.heading,
+                  lineHeight: LineHeight.heading,
+                  letterSpacing: LetterSpacing.heading,
+                  color: "#FFFFFF",
+                  includeFontPadding: false,
+                }}
+              >
+                {studioProfile.studioName}
+              </Text>
+              {studioProfile.studioAddress ? (
+                <Text
+                  style={{
+                    ...BrandType.body,
+                    color: "rgba(255,255,255,0.85)",
+                    includeFontPadding: false,
+                  }}
+                >
+                  {studioProfile.studioAddress}
+                </Text>
+              ) : null}
+            </Box>
+          </Box>
+        </Box>
       ),
       padding: {
         vertical: 0,
         horizontal: 0,
       },
-      steps: [0],
+      // Fixed step height like calendar tab (~18%) - NOT content-based
+      // This ensures consistent banner size regardless of content
+      steps: [0.18],
       initialStep: 0,
       draggable: false,
       expandable: false,
-      collapsedHeightMode: "content" as const,
+      collapsedHeightMode: "step" as const,
       backgroundColor: palette.primary,
       topInsetColor: palette.primary,
     };

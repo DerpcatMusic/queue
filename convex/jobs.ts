@@ -34,6 +34,11 @@ const BOOST_PRESETS = {
   large: 100,
 } as const;
 
+const BOOST_CUSTOM_MIN = 10;
+const BOOST_CUSTOM_MAX = 100;
+const BOOST_CUSTOM_STEP = 10;
+const BOOST_TRIGGER_MINUTES_OPTIONS = [15, 30, 45, 60, 90] as const;
+
 function assertPositiveNumber(value: number, fieldName: string) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new ConvexError(`${fieldName} must be greater than 0`);
@@ -522,6 +527,8 @@ export const postJob = mutation({
     applicationDeadline: v.optional(v.number()),
     expiryOverrideMinutes: v.optional(v.number()),
     boostPreset: v.optional(v.union(v.literal("small"), v.literal("medium"), v.literal("large"))),
+    boostCustomAmount: v.optional(v.number()),
+    boostTriggerMinutes: v.optional(v.number()),
   },
   returns: v.object({
     jobId: v.id("jobs"),
@@ -573,9 +580,38 @@ export const postJob = mutation({
       );
     }
 
+    // Determine boost bonus amount: custom amount takes precedence over preset
+    const hasBoost = args.boostPreset !== undefined || args.boostCustomAmount !== undefined;
     const boostBonusAmount =
-      args.boostPreset !== undefined ? BOOST_PRESETS[args.boostPreset] : undefined;
-    const boostActive = args.boostPreset !== undefined;
+      args.boostCustomAmount ?? (args.boostPreset ? BOOST_PRESETS[args.boostPreset] : undefined);
+    const boostActive = hasBoost;
+
+    // Validate boostCustomAmount if provided
+    if (boostBonusAmount !== undefined) {
+      if (boostBonusAmount < BOOST_CUSTOM_MIN || boostBonusAmount > BOOST_CUSTOM_MAX) {
+        throw new ConvexError(
+          `Invalid boostCustomAmount "${boostBonusAmount}". Must be between ${BOOST_CUSTOM_MIN} and ${BOOST_CUSTOM_MAX}.`,
+        );
+      }
+      if (boostBonusAmount % BOOST_CUSTOM_STEP !== 0) {
+        throw new ConvexError(
+          `Invalid boostCustomAmount "${boostBonusAmount}". Must be a multiple of ${BOOST_CUSTOM_STEP}.`,
+        );
+      }
+    }
+
+    // Validate boostTriggerMinutes if provided
+    if (args.boostTriggerMinutes !== undefined) {
+      if (
+        !BOOST_TRIGGER_MINUTES_OPTIONS.includes(
+          args.boostTriggerMinutes as (typeof BOOST_TRIGGER_MINUTES_OPTIONS)[number],
+        )
+      ) {
+        throw new ConvexError(
+          `Invalid boostTriggerMinutes "${args.boostTriggerMinutes}". Must be one of: ${BOOST_TRIGGER_MINUTES_OPTIONS.join(", ")}.`,
+        );
+      }
+    }
 
     const jobId = await ctx.db.insert("jobs", {
       studioId: studio._id,
@@ -603,6 +639,7 @@ export const postJob = mutation({
         boostPreset: args.boostPreset,
         boostBonusAmount,
         boostActive,
+        boostTriggerMinutes: args.boostTriggerMinutes,
         autoAcceptEnabled: branch.autoAcceptDefault ?? studio.autoAcceptDefault,
       }),
     });
@@ -1665,11 +1702,13 @@ export const getMyStudioJobsWithApplications = query({
       boostPreset: v.optional(v.union(v.literal("small"), v.literal("medium"), v.literal("large"))),
       boostBonusAmount: v.optional(v.number()),
       boostActive: v.optional(v.boolean()),
+      boostTriggerMinutes: v.optional(v.number()),
       applications: v.array(
         v.object({
           applicationId: v.id("jobApplications"),
           instructorId: v.id("instructorProfiles"),
           instructorName: v.string(),
+          profileImageUrl: v.optional(v.string()),
           status: v.union(
             v.literal("pending"),
             v.literal("accepted"),
@@ -1778,6 +1817,17 @@ export const getMyStudioJobsWithApplications = query({
       }
     }
 
+    // Fetch profile image URLs for each instructor
+    const profileImageUrlById = new Map<string, string | undefined>();
+    for (const profile of profiles) {
+      if (profile) {
+        const imageUrl = profile.profileImageStorageId
+          ? ((await ctx.storage.getUrl(profile.profileImageStorageId)) ?? undefined)
+          : undefined;
+        profileImageUrlById.set(String(profile._id), imageUrl);
+      }
+    }
+
     const rows = [];
     for (let i = 0; i < jobs.length; i += 1) {
       const job = jobs[i];
@@ -1824,16 +1874,21 @@ export const getMyStudioJobsWithApplications = query({
           boostPreset: job.boostPreset,
           boostBonusAmount: job.boostBonusAmount,
           boostActive: job.boostActive,
+          boostTriggerMinutes: job.boostTriggerMinutes,
         }),
         applications: sortedApplications.map((application) => {
           const profile = profileById.get(String(application.instructorId));
+          const profileImageUrl = profileImageUrlById.get(String(application.instructorId));
           return {
             applicationId: application._id,
             instructorId: application.instructorId,
             instructorName: profile?.displayName ?? "Unknown instructor",
             status: application.status,
             appliedAt: application.appliedAt,
-            ...omitUndefined({ message: application.message }),
+            ...omitUndefined({
+              profileImageUrl,
+              message: application.message,
+            }),
           };
         }),
       });
@@ -1965,7 +2020,7 @@ export const getMyCalendarTimeline = query({
 
     if (actor.role === "instructor") {
       const instructor = await requireInstructorProfile(ctx);
-      const jobs = await ctx.db
+      const allJobs = await ctx.db
         .query("jobs")
         .withIndex("by_filledByInstructor_startTime", (q) =>
           q
@@ -1975,6 +2030,9 @@ export const getMyCalendarTimeline = query({
         )
         .order("asc")
         .take(limit);
+
+      // Filter out cancelled jobs - they should not appear in calendar
+      const jobs = allJobs.filter((job) => job.status !== "cancelled");
 
       const studioIds = [...new Set(jobs.map((job) => job.studioId))];
       const studios = await Promise.all(
@@ -2015,7 +2073,7 @@ export const getMyCalendarTimeline = query({
     }
 
     const studio = await requireStudioProfile(ctx);
-    const jobs = await ctx.db
+    const allJobs = await ctx.db
       .query("jobs")
       .withIndex("by_studio_startTime", (q) =>
         q
@@ -2025,6 +2083,9 @@ export const getMyCalendarTimeline = query({
       )
       .order("asc")
       .take(limit);
+
+    // Filter out cancelled jobs - they should not appear in calendar
+    const jobs = allJobs.filter((job) => job.status !== "cancelled");
 
     const instructorIds = [
       ...new Set(
@@ -2676,5 +2737,63 @@ export const cancelFilledJob = mutation({
     // without this cancelled job (buildSyncEvents filters status === "cancelled")
 
     return { ok: true };
+  },
+});
+
+/**
+ * Auto-cleanup of old cancelled jobs to prevent database bloat.
+ * Deletes cancelled jobs older than the retention period and their associated applications.
+ * Runs as a cron job - not exposed as a public API.
+ */
+export const cleanupCancelledJobs = internalMutation({
+  args: {
+    /** Minimum age in milliseconds before a cancelled job is deleted (default: 7 days) */
+    minAgeMs: v.optional(v.number()),
+    /** Maximum number of jobs to delete in one run to avoid timeouts (default: 100) */
+    batchSize: v.optional(v.number()),
+  },
+  returns: v.object({
+    deletedJobs: v.number(),
+    deletedApplications: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const minAgeMs = args.minAgeMs ?? 7 * 24 * 60 * 60 * 1000; // 7 days default
+    const batchSize = args.batchSize ?? 100;
+    const cutoffTime = Date.now() - minAgeMs;
+
+    // Find cancelled jobs older than cutoff
+    const cancelledJobs = await ctx.db
+      .query("jobs")
+      .withIndex("by_status", (q) => q.eq("status", "cancelled"))
+      .filter((q) => q.lt(q.field("startTime"), cutoffTime))
+      .take(batchSize);
+
+    if (cancelledJobs.length === 0) {
+      return { deletedJobs: 0, deletedApplications: 0 };
+    }
+
+    const jobIds = cancelledJobs.map((job) => job._id);
+    let deletedApplications = 0;
+
+    // Delete associated job applications first (foreign key constraint)
+    for (const jobId of jobIds) {
+      const applications = await ctx.db
+        .query("jobApplications")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect();
+
+      for (const application of applications) {
+        await ctx.db.delete(application._id);
+        deletedApplications++;
+      }
+
+      // Delete the job itself
+      await ctx.db.delete(jobId);
+    }
+
+    return {
+      deletedJobs: cancelledJobs.length,
+      deletedApplications,
+    };
   },
 });

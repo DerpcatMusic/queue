@@ -1,27 +1,25 @@
 import type { TFunction } from "i18next";
 import { type ComponentProps, memo } from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { DotStatusPill } from "@/components/home/home-shared";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitSurface } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
+import { BorderWidth } from "@/lib/design-system";
 import {
   formatDateWithWeekday,
   formatTime,
   getApplicationStatusTranslationKey,
   getBoostPresentation,
-  getExpiryPresentation,
   getJobStatusToneWithReason,
-  getJobStatusTranslationKey,
 } from "@/lib/jobs-utils";
 import type { PaymentStatus, PayoutStatus } from "@/lib/payments-utils";
-import { appStatusDot, getJobStatusToneColors, paymentDotColor } from "./studio-jobs-list.helpers";
+import { appStatusDot, paymentDotColor } from "./studio-jobs-list.helpers";
 import type { StudioJob, StudioJobApplication } from "./studio-jobs-list.types";
 
 const AVATAR_SIZE = BrandSpacing.avatarCard;
@@ -306,24 +304,22 @@ type StudioJobCardProps = {
   payingJobId: Id<"jobs"> | null;
   onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
   onStartPayment: (jobId: Id<"jobs">) => void;
+  onJobPress: (jobId: Id<"jobs">) => void;
   t: TFunction;
 };
 
 export const StudioJobCard = memo(function StudioJobCard({
   job,
   index,
-  isWideWeb,
   locale,
   zoneLanguage,
-  reviewingApplicationId,
   payingJobId,
-  onReview,
   onStartPayment,
+  onJobPress,
   t,
 }: StudioJobCardProps) {
   const theme = useTheme();
   const statusTone = getJobStatusToneWithReason(job.status, job.closureReason);
-  const statusPill = getJobStatusToneColors(statusTone, theme);
   const payDot = paymentDotColor(job.payment?.status, theme);
   const boost = getBoostPresentation(
     job.pay,
@@ -331,25 +327,24 @@ export const StudioJobCard = memo(function StudioJobCard({
     job.boostBonusAmount,
     job.boostActive,
   );
-  const expiry = getExpiryPresentation(job.applicationDeadline, locale);
-  const shouldShowExpiry =
-    Boolean(expiry) &&
-    (job.status === "open" || (job.status === "cancelled" && job.closureReason === "expired"));
   const canPay =
     ["filled", "completed"].includes(job.status) &&
     !(
       job.payment &&
       ["created", "pending", "authorized", "captured", "refunded"].includes(job.payment.status)
     );
-  const acceptedApplication = job.applications.find(
-    (application) => application.status === "accepted",
-  );
-  const dateLabel = formatDateWithWeekday(job.startTime, locale);
-  const timeLabel = `${formatTime(job.startTime, locale)}  \u2192  ${formatTime(job.endTime, locale)}`;
   const zoneLabel = getZoneLabel(job.zone, zoneLanguage);
-  const expiryTone = expiry?.isExpired ? "danger" : "warning";
-  const cardBackground =
-    job.pendingApplicationsCount > 0 ? theme.jobs.surfaceRaised : theme.jobs.surface;
+  const hasPending = job.pendingApplicationsCount > 0;
+
+  // Status dot colors - tone is "primary" | "success" | "muted" | "amber" | "gray"
+  const statusDotColor =
+    statusTone === "success"
+      ? theme.color.primary
+      : statusTone === "amber"
+        ? theme.jobs.accentHeat
+        : statusTone === "gray"
+          ? theme.color.textMuted
+          : theme.color.textMuted;
 
   return (
     <Animated.View
@@ -358,258 +353,178 @@ export const StudioJobCard = memo(function StudioJobCard({
         .springify()
         .damping(18)}
     >
-      <KitSurface
-        tone="base"
-        padding={0}
-        gap={0}
-        style={{
-          borderRadius: BrandRadius.cardSubtle,
-          borderCurve: "continuous",
-          backgroundColor: cardBackground,
-          overflow: "hidden",
+      <Pressable
+        onPress={() => {
+          console.log("StudioJobCard pressed, jobId:", job.jobId, "sport:", job.sport);
+          onJobPress(job.jobId);
         }}
+        style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.992 : 1 }] })}
       >
-        <View style={{ gap: BrandSpacing.lg, paddingHorizontal: BrandSpacing.lg, paddingVertical: BrandSpacing.lg }}>
-          {/* Header: sport + status */}
-          <View style={{ gap: BrandSpacing.md }}>
+        <View
+          style={{
+            borderRadius: BrandRadius.card,
+            borderCurve: "continuous",
+            backgroundColor: theme.jobs.surface,
+            borderWidth: BorderWidth.thin,
+            borderColor: theme.color.border,
+            overflow: "hidden",
+          }}
+        >
+          {/* Accent line at top - orange if has boost, primary if pending review */}
+          {(boost.badgeKey || hasPending) && (
+            <View
+              style={{
+                height: BorderWidth.strong,
+                backgroundColor: boost.badgeKey ? theme.jobs.accentHeat : theme.color.primary,
+              }}
+            />
+          )}
+
+          <View style={{ padding: BrandSpacing.lg, gap: BrandSpacing.lg }}>
+            {/* Header row: Sport + status dots */}
             <View
               style={{
                 flexDirection: "row",
-                alignItems: "flex-start",
+                alignItems: "center",
                 justifyContent: "space-between",
-                gap: BrandSpacing.stack,
               }}
             >
-              <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.stackTight }}>
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    ...(isWideWeb ? BrandType.titleLarge : BrandType.title),
-                    color: theme.color.text,
-                  }}
-                >
+              <View style={{ flex: 1 }}>
+                <Text numberOfLines={1} style={{ ...BrandType.title, color: theme.color.text }}>
                   {toSportLabel(job.sport as never)}
                 </Text>
                 <Text
                   numberOfLines={1}
-                  style={{
-                    ...BrandType.caption,
-                    color: theme.color.textMuted,
-                  }}
+                  style={{ ...BrandType.caption, color: theme.color.textMuted }}
                 >
-                  {acceptedApplication
-                    ? acceptedApplication.instructorName
-                    : job.pendingApplicationsCount > 0
-                      ? t("jobsTab.card.toReview", { count: job.pendingApplicationsCount })
-                      : job.applicationsCount > 0
-                        ? t("jobsTab.card.reviewedCount", { count: job.applicationsCount })
-                        : t("jobsTab.card.liveOnBoard")}
+                  {zoneLabel}
                 </Text>
               </View>
 
-              <View style={{ alignItems: "flex-end", gap: BrandSpacing.stackTight }}>
-                <DotStatusPill
-                  backgroundColor={statusPill.backgroundColor}
-                  color={statusPill.color}
-                  label={t(getJobStatusTranslationKey(job.status, job.closureReason))}
-                />
-                {job.pendingApplicationsCount > 0 ? (
-                  <DotStatusPill
-                    backgroundColor={theme.color.primarySubtle}
-                    color={theme.jobs.signal}
-                    label={t("jobsTab.card.toReview", { count: job.pendingApplicationsCount })}
-                  />
-                ) : null}
-              </View>
-            </View>
-
-            {/* Mission details: date, time, zone, pay */}
-            <View
-              style={{
-                gap: BrandSpacing.stack,
-                borderRadius: BrandRadius.medium,
-                borderCurve: "continuous",
-                paddingHorizontal: BrandSpacing.controlX,
-                paddingVertical: BrandSpacing.controlY,
-                backgroundColor: theme.jobs.surfaceMuted,
-              }}
-            >
-              <InlineMeta icon="calendar" text={dateLabel} />
-              <InlineMeta icon="clock" text={timeLabel} strong />
-              <InlineMeta icon="mappin.and.ellipse" text={zoneLabel} />
-
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: BrandSpacing.stack,
-                }}
-              >
-                <Text
-                  style={{
-                    ...(isWideWeb ? BrandType.headingDisplay : BrandType.heading),
-                    color: theme.jobs.signal,
-                  }}
-                >
-                  ₪{boost.totalPay}
-                </Text>
-
+              {/* Status indicators */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+                {/* Status dot */}
                 <View
-                  style={{
-                    flex: 1,
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    justifyContent: "flex-end",
-                    gap: BrandSpacing.sm,
-                  }}
-                >
-                  {boost.badgeKey ? (
-                    <MetaPill
-                      icon="sparkles"
-                      label={t(boost.badgeKey, boost.badgeInterpolation)}
-                      tone="success"
-                    />
-                  ) : null}
-                  {shouldShowExpiry && expiry ? (
-                    <MetaPill
-                      icon="clock.fill"
-                      label={t(expiry.key, expiry.interpolation)}
-                      tone={expiryTone}
-                    />
-                  ) : null}
-                </View>
+                  style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: statusDotColor }}
+                />
+
+                {/* Payment status dot (for filled/completed) */}
+                {job.payment && (
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: payDot }} />
+                )}
+
+                {/* Boost indicator */}
+                {boost.badgeKey && (
+                  <Text style={{ ...BrandType.micro, color: theme.color.primary }}>
+                    +₪{job.boostBonusAmount ?? 20}
+                  </Text>
+                )}
               </View>
             </View>
-          </View>
 
-          {/* Payment section */}
-          {["filled", "completed"].includes(job.status) ? (
+            {/* Time row */}
             <View
               style={{
-                gap: BrandSpacing.stack,
-                borderRadius: BrandRadius.medium,
-                borderCurve: "continuous",
-                paddingHorizontal: BrandSpacing.controlX,
-                paddingVertical: BrandSpacing.controlY,
-                backgroundColor: theme.jobs.surfaceMuted,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
             >
-              <View
-                style={{
-                  flexDirection: isWideWeb ? "row" : "column",
-                  justifyContent: "space-between",
-                  gap: BrandSpacing.stack,
-                  alignItems: isWideWeb ? "center" : "flex-start",
-                }}
-              >
-                <View style={{ flex: 1, gap: BrandSpacing.stackTight }}>
-                  <Text
-                    style={{
-                      ...BrandType.caption,
-                      color: theme.color.textMuted,
-                    }}
-                  >
-                    {t("jobsTab.card.settlement")}
-                  </Text>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      gap: BrandSpacing.sm,
-                    }}
-                  >
-                    <DotStatusPill
-                      backgroundColor={theme.color.surfaceAlt}
-                      color={payDot}
-                      label={
-                        job.payment
-                          ? t(PAYMENT_STATUS_KEY[job.payment.status])
-                          : t("jobsTab.checkout.notStarted")
-                      }
-                    />
-                    {job.payment?.payoutStatus ? (
-                      <DotStatusPill
-                        backgroundColor={theme.color.surfaceAlt}
-                        color={theme.color.text}
-                        label={t(PAYOUT_STATUS_KEY[job.payment.payoutStatus])}
-                      />
-                    ) : null}
-                  </View>
-                </View>
-
-                {canPay ? (
-                  <ActionButton
-                    label={
-                      payingJobId === job.jobId
-                        ? t("jobsTab.checkout.starting")
-                        : job.payment && ["failed", "cancelled"].includes(job.payment.status)
-                          ? t("jobsTab.checkout.retryPayment")
-                          : t("jobsTab.checkout.payNow")
-                    }
-                    onPress={() => onStartPayment(job.jobId)}
-                    loading={payingJobId === job.jobId}
-                  />
-                ) : null}
-              </View>
-            </View>
-          ) : null}
-
-          {/* Applications section */}
-          {job.pendingApplicationsCount > 0 ? (
-            <View style={{ gap: BrandSpacing.stack }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: BrandSpacing.stack,
-                }}
-              >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+                <IconSymbol name="clock" size={16} color={theme.color.textMuted} />
                 <Text
                   style={{
-                    ...BrandType.caption,
-                    color: theme.color.textMuted,
-                  }}
-                >
-                  {t("jobsTab.card.reviewQueue")}
-                </Text>
-                <Text
-                  style={{
-                    ...BrandType.micro,
-                    color: theme.color.textMuted,
+                    ...BrandType.bodyMedium,
+                    color: theme.color.text,
                     fontVariant: ["tabular-nums"],
                   }}
                 >
-                  {t("jobsTab.card.waitingCount", { count: job.pendingApplicationsCount })}
+                  {formatTime(job.startTime, locale)}
+                </Text>
+                <Text style={{ ...BrandType.caption, color: theme.color.textMuted }}>—</Text>
+                <Text
+                  style={{
+                    ...BrandType.bodyMedium,
+                    color: theme.color.text,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {formatTime(job.endTime, locale)}
                 </Text>
               </View>
 
-              {job.applications.map((application) => (
-                <ApplicationRow
-                  key={application.applicationId}
-                  application={application}
-                  isWideWeb={isWideWeb}
-                  locale={locale}
-                  reviewingApplicationId={reviewingApplicationId}
-                  canReview={application.status === "pending" && job.status === "open"}
-                  onReview={onReview}
-                  t={t}
-                />
-              ))}
+              <Text style={{ ...BrandType.title, color: theme.color.primary }}>
+                ₪{boost.totalPay}
+              </Text>
             </View>
-          ) : acceptedApplication ? (
-            <Text style={{ ...BrandType.caption, color: theme.color.textMuted, paddingHorizontal: BrandSpacing.xs }}>
-              {t("jobsTab.card.assignedTo", { name: acceptedApplication.instructorName })}
-            </Text>
-          ) : job.applicationsCount > 0 ? (
-            <Text style={{ ...BrandType.caption, color: theme.color.textMuted, paddingHorizontal: BrandSpacing.xs }}>
-              {t("jobsTab.card.applicantsProcessed", { count: job.applicationsCount })}
-            </Text>
-          ) : null}
+
+            {/* Footer row: Applicants + CTA */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text style={{ ...BrandType.caption, color: theme.color.textMuted }}>
+                {job.applicationsCount > 0
+                  ? `${job.applicationsCount} ${job.applicationsCount === 1 ? "applicant" : "applicants"}`
+                  : "No applicants yet"}
+              </Text>
+
+              {hasPending ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
+                  <Text style={{ ...BrandType.labelStrong, color: theme.color.primary }}>
+                    Review
+                  </Text>
+                  <IconSymbol name="chevron.right" size={16} color={theme.color.primary} />
+                </View>
+              ) : job.status === "open" ? (
+                <Text style={{ ...BrandType.micro, color: theme.color.textMuted }}>Live</Text>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Payment section (only for filled/completed) */}
+          {["filled", "completed"].includes(job.status) && (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingHorizontal: BrandSpacing.lg,
+                paddingVertical: BrandSpacing.md,
+                backgroundColor: theme.jobs.surfaceMuted,
+                borderTopWidth: BorderWidth.thin,
+                borderTopColor: theme.color.border,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+                <IconSymbol name="creditcard" size={16} color={theme.color.textMuted} />
+                <Text style={{ ...BrandType.caption, color: theme.color.textMuted }}>
+                  {job.payment
+                    ? t(PAYMENT_STATUS_KEY[job.payment.status])
+                    : t("jobsTab.checkout.notStarted")}
+                </Text>
+              </View>
+
+              {canPay ? (
+                <ActionButton
+                  label={
+                    payingJobId === job.jobId
+                      ? t("jobsTab.checkout.starting")
+                      : job.payment && ["failed", "cancelled"].includes(job.payment.status)
+                        ? t("jobsTab.checkout.retryPayment")
+                        : t("jobsTab.checkout.payNow")
+                  }
+                  onPress={() => onStartPayment(job.jobId)}
+                  loading={payingJobId === job.jobId}
+                />
+              ) : null}
+            </View>
+          )}
         </View>
-      </KitSurface>
+      </Pressable>
     </Animated.View>
   );
 });

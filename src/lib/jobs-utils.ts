@@ -12,6 +12,11 @@ export const BOOST_PRESET_VALUES = {
   medium: 50,
   large: 100,
 } as const;
+export const BOOST_CUSTOM_MIN = 10;
+export const BOOST_CUSTOM_MAX = 100;
+export const BOOST_CUSTOM_STEP = 10;
+export const BOOST_CUSTOM_DEFAULT = 20;
+export const BOOST_TRIGGER_MINUTES_OPTIONS = [15, 30, 45, 60, 90] as const;
 export const MAX_PARTICIPANTS_MIN = 1;
 export const MAX_PARTICIPANTS_MAX = 40;
 
@@ -71,6 +76,9 @@ export type StudioDraft = {
   applicationLeadMinutes: number;
   expiryOverrideMinutes: number | undefined;
   boostPreset: BoostPreset | undefined;
+  // New: custom boost fields (supersede boostPreset when set)
+  boostCustomAmount: number | undefined;
+  boostTriggerMinutes: number | undefined;
 };
 
 export type ReminderMap = Record<
@@ -108,6 +116,8 @@ export function createDefaultStudioDraft(branchId: StudioDraft["branchId"] = nul
     applicationLeadMinutes: 60,
     expiryOverrideMinutes: undefined,
     boostPreset: undefined,
+    boostCustomAmount: undefined,
+    boostTriggerMinutes: undefined,
   };
 }
 
