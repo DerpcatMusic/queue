@@ -54,7 +54,7 @@ export function MapWebHeaderPanels({
         </Text>
         <Text
           style={{
-            fontFamily: "BarlowCondensed_800ExtraBold",
+            fontFamily: "Lexend_800ExtraBold",
             fontSize: 42,
             lineHeight: 38,
             letterSpacing: -1,

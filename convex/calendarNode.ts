@@ -28,6 +28,40 @@ const GOOGLE_EVENTS_LIST_PAGE_SIZE = 250;
 const calendarInternal = (internal as unknown as { calendar: Record<string, unknown> })
   .calendar as any;
 
+/**
+ * Default timeout for external API calls in milliseconds.
+ * Prevents hangs from unresponsive external services.
+ */
+const DEFAULT_FETCH_TIMEOUT_MS = 15000; // 15 seconds
+
+/**
+ * Fetch with timeout protection.
+ * Throws ConvexError if request times out.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {},
+): Promise<Response> {
+  const { timeoutMs = DEFAULT_FETCH_TIMEOUT_MS, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new ConvexError(`Google API request timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 type GoogleTokenResponse = {
   access_token?: string;
   expires_in?: number;
@@ -124,7 +158,7 @@ async function exchangeGoogleAuthorizationCode(args: {
     client_id: args.clientId,
   });
 
-  const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
+  const response = await fetchWithTimeout(GOOGLE_TOKEN_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
@@ -153,7 +187,7 @@ async function exchangeGoogleServerAuthCode(args: {
     redirect_uri: "",
   });
 
-  const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
+  const response = await fetchWithTimeout(GOOGLE_TOKEN_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
@@ -183,7 +217,7 @@ async function refreshGoogleAccessToken(args: {
     body.set("client_secret", args.clientSecret);
   }
 
-  const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
+  const response = await fetchWithTimeout(GOOGLE_TOKEN_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
@@ -200,7 +234,7 @@ async function refreshGoogleAccessToken(args: {
 }
 
 async function fetchGoogleAccountEmail(accessToken: string): Promise<string | undefined> {
-  const response = await fetch(GOOGLE_USERINFO_ENDPOINT, {
+  const response = await fetchWithTimeout(GOOGLE_USERINFO_ENDPOINT, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!response.ok) {
@@ -218,7 +252,7 @@ async function upsertGoogleEvent(args: {
   const body = JSON.stringify(buildGoogleEventBody(args.row));
 
   if (args.providerEventId) {
-    const updateResponse = await fetch(
+    const updateResponse = await fetchWithTimeout(
       `${GOOGLE_EVENTS_BASE}/${encodeURIComponent(args.providerEventId)}`,
       {
         method: "PUT",
@@ -244,7 +278,7 @@ async function upsertGoogleEvent(args: {
     }
   }
 
-  const createResponse = await fetch(GOOGLE_EVENTS_BASE, {
+  const createResponse = await fetchWithTimeout(GOOGLE_EVENTS_BASE, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${args.accessToken}`,
@@ -268,7 +302,7 @@ async function upsertGoogleEvent(args: {
 }
 
 async function deleteGoogleEvent(args: { accessToken: string; providerEventId: string }) {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${GOOGLE_EVENTS_BASE}/${encodeURIComponent(args.providerEventId)}`,
     {
       method: "DELETE",
@@ -310,7 +344,7 @@ async function listGoogleAgendaChanges(args: { accessToken: string; syncToken?: 
         pageParams.set("pageToken", pageToken);
       }
 
-      const response = await fetch(`${GOOGLE_EVENTS_BASE}?${pageParams.toString()}`, {
+      const response = await fetchWithTimeout(`${GOOGLE_EVENTS_BASE}?${pageParams.toString()}`, {
         headers: { Authorization: `Bearer ${args.accessToken}` },
       });
       if (response.status === 410 && syncToken) {

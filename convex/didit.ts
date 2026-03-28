@@ -7,6 +7,40 @@ import { omitUndefined } from "./lib/validation";
 
 const DIDIT_BASE_URL = "https://verification.didit.me";
 
+/**
+ * Default timeout for external API calls in milliseconds.
+ * Prevents hangs from unresponsive external services.
+ */
+const DEFAULT_FETCH_TIMEOUT_MS = 15000; // 15 seconds
+
+/**
+ * Fetch with timeout protection.
+ * Throws ConvexError if request times out.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {},
+): Promise<Response> {
+  const { timeoutMs = DEFAULT_FETCH_TIMEOUT_MS, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new ConvexError(`Didit API request timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 type DiditStatus =
   | "not_started"
   | "in_progress"
@@ -246,7 +280,7 @@ export const createSessionForCurrentInstructor = action({
       }),
     };
 
-    const response = await fetch(endpoint, {
+    const response = await fetchWithTimeout(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -597,7 +631,7 @@ export const refreshMyDiditVerification = action({
     ).toString();
 
     const fetchJson = async (url: string): Promise<Record<string, unknown> | null> => {
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

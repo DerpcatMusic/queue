@@ -9,7 +9,7 @@ import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
-
+import { buildCustomMapStyle } from "@/components/maps/queue-custom-map-style";
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons";
 import { ThemedText } from "@/components/themed-text";
@@ -26,13 +26,9 @@ import {
   createStudioMarkersGeoJson,
   createZoneFilter,
   ensureVectorOfflinePack,
-  fetchMapStyleSpec,
-  getCachedMapStyleSpec,
   getStudioMarkerImageEntries,
-  resolveThemedMapStyle,
   sanitizeZoom,
   toBounds,
-  warmMapStyleSpec,
 } from "./queue-map.native.helpers";
 import type { QueueMapProps } from "./queue-map.types";
 
@@ -63,35 +59,27 @@ export const QueueMap = memo(function QueueMap({
   const mapPalette = getMapBrandPalette(resolvedScheme);
   const [mapLoadState, setMapLoadState] = useState<MapLoadState>("loading");
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
-  const [retryNonce, setRetryNonce] = useState(0);
   const [mapErrorMessage, setMapErrorMessage] = useState<string | null>(null);
-  const [baseMapStyle, setBaseMapStyle] = useState<AnyStyleSpec | null>(null);
-  const preferredStyleUrl =
-    resolvedScheme === "dark" ? APPLE_MAP_THEME.mapStyleDarkUrl : APPLE_MAP_THEME.mapStyleLightUrl;
-  const styleFetchUrl =
-    retryNonce === 0
-      ? preferredStyleUrl
-      : `${preferredStyleUrl}${preferredStyleUrl.includes("?") ? "&" : "?"}queueRetry=${String(retryNonce)}`;
-  const alternateStyleUrl =
-    resolvedScheme === "dark" ? APPLE_MAP_THEME.mapStyleLightUrl : APPLE_MAP_THEME.mapStyleDarkUrl;
-  const themedStyleCacheKey = `${styleFetchUrl}:${resolvedScheme}:${mode === "zoneSelect" ? "edit" : "browse"}`;
-  const themedMapStyle = useMemo(() => {
-    return resolveThemedMapStyle(
-      themedStyleCacheKey,
-      baseMapStyle,
-      mapPalette,
-      mode !== "zoneSelect",
-    );
-  }, [baseMapStyle, mapPalette, mode, themedStyleCacheKey]);
-  const mapStyle = themedMapStyle ?? preferredStyleUrl;
-  const mapKey = `${resolvedScheme}:${retryNonce}`;
+
+  // Self-contained custom map style — no network fetch required.
+  // Regenerates whenever the scheme changes (light/dark).
+  const customMapStyle = useMemo<AnyStyleSpec>(() => buildCustomMapStyle(mapPalette), [mapPalette]);
+  const mapStyle = customMapStyle;
+  const mapKey = resolvedScheme;
 
   const mapRef = useRef<{
     showAttribution?: () => void;
   } | null>(null);
   const mapLoadStateRef = useRef<MapLoadState>("loading");
   const cameraRef = useRef<{
-    setCamera: (config: unknown) => void;
+    fitBounds: (
+      bounds: [number, number, number, number],
+      options?: {
+        padding?: { top: number; right: number; bottom: number; left: number };
+        duration?: number;
+        easing?: string;
+      },
+    ) => void;
     flyTo: (coordinates: [number, number], animationDuration?: number) => void;
     zoomTo: (zoomLevel: number, animationDuration?: number) => void;
   } | null>(null);
@@ -125,14 +113,7 @@ export const QueueMap = memo(function QueueMap({
     },
     [mode, onPressMap, onPressStudio],
   );
-  const handleRetry = useCallback(() => {
-    setBaseMapStyle(null);
-    setMapErrorMessage(null);
-    setMapLoadState("loading");
-    mapLoadStateRef.current = "loading";
-    setShowLoadingOverlay(false);
-    setRetryNonce((current) => current + 1);
-  }, []);
+
   const updateMapLoadState = useCallback(
     (nextState: MapLoadState, errorMessage?: string | null) => {
       const nextError = errorMessage ?? null;
@@ -215,49 +196,22 @@ export const QueueMap = memo(function QueueMap({
   }, [mapLoadState]);
 
   useEffect(() => {
-    warmMapStyleSpec(styleFetchUrl);
-    warmMapStyleSpec(alternateStyleUrl);
-  }, [alternateStyleUrl, styleFetchUrl]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      const cachedStyle = getCachedMapStyleSpec(styleFetchUrl);
-      if (!cancelled && cachedStyle !== undefined) {
-        setBaseMapStyle((current) => (current === cachedStyle ? current : cachedStyle));
-        return;
-      }
-
-      const baseStyle = await fetchMapStyleSpec(styleFetchUrl);
-      if (!cancelled) {
-        setBaseMapStyle((current) => (current === baseStyle ? current : baseStyle));
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [styleFetchUrl]);
-
-  useEffect(() => {
     if (!focusZoneId) return;
     const zone = getZoneIndexEntry(focusZoneId);
     if (!zone) return;
 
-    cameraRef.current?.setCamera({
-      bounds: {
-        ne: [zone.bbox[2], zone.bbox[3]],
-        sw: [zone.bbox[0], zone.bbox[1]],
-      },
-      padding: cameraPadding ?? {
-        paddingTop: APPLE_MAP_THEME.focusPadding.top,
-        paddingRight: APPLE_MAP_THEME.focusPadding.right,
-        paddingBottom: APPLE_MAP_THEME.focusPadding.bottom,
-        paddingLeft: APPLE_MAP_THEME.focusPadding.left,
-      },
-      animationDuration: 350,
-      animationMode: "easeTo",
+    const padding = cameraPadding ?? {
+      top: APPLE_MAP_THEME.focusPadding.top,
+      right: APPLE_MAP_THEME.focusPadding.right,
+      bottom: APPLE_MAP_THEME.focusPadding.bottom,
+      left: APPLE_MAP_THEME.focusPadding.left,
+    };
+
+    // MapLibre uses fitBounds([west, south, east, north]) — zone.bbox is [west, south, east, north]
+    cameraRef.current?.fitBounds([zone.bbox[0], zone.bbox[1], zone.bbox[2], zone.bbox[3]], {
+      padding,
+      duration: 350,
+      easing: "ease",
     });
   }, [cameraPadding, focusZoneId]);
 
@@ -419,7 +373,7 @@ export const QueueMap = memo(function QueueMap({
             </ThemedText>
             <ActionButton
               label={t("tabsLayout.actions.retry")}
-              onPress={handleRetry}
+              onPress={() => updateMapLoadState("loading")}
               tone="secondary"
             />
           </KitSurface>

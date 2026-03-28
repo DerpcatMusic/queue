@@ -1,18 +1,33 @@
 import DateTimePicker from "@expo/ui/datetimepicker";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { I18nManager, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  FadeIn,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { ChoicePill } from "@/components/ui/choice-pill";
-import { KitSegmentedToggle } from "@/components/ui/kit";
+import { KitSwitch } from "@/components/ui/kit/kit-switch";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
+import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
 import type { StudioDraft } from "@/lib/jobs-utils";
 import {
+  BOOST_CUSTOM_DEFAULT,
+  BOOST_CUSTOM_MAX,
+  BOOST_CUSTOM_MIN,
+  BOOST_CUSTOM_STEP,
   BOOST_PRESET_VALUES,
+  BOOST_TRIGGER_MINUTES_OPTIONS,
   EXPIRY_OVERRIDE_PRESETS,
   formatDateWithWeekday,
   formatTime,
@@ -271,10 +286,6 @@ type PostingOptionsSectionProps = {
   setDraft: React.Dispatch<React.SetStateAction<StudioDraft>>;
 };
 
-type BoostToggleValue = keyof typeof BOOST_PRESET_VALUES | "none";
-
-const BOOST_OPTIONS = ["small", "medium", "large"] as const;
-
 export function PostingOptionsSection({ draft, setDraft }: PostingOptionsSectionProps) {
   const { t } = useTranslation();
   const { color: palette } = useTheme();
@@ -324,31 +335,256 @@ export function PostingOptionsSection({ draft, setDraft }: PostingOptionsSection
           ))}
         </View>
       </View>
+    </View>
+  );
+}
 
-      <View style={{ gap: BrandSpacing.md }}>
-        <ThemedText type="defaultSemiBold" style={{ color: palette.text }}>
-          {t("jobsTab.form.boostOnBoard")}
-        </ThemedText>
-        <ThemedText type="micro" style={{ color: palette.textMuted }}>
-          {t("jobsTab.form.boostOnBoardDescription")}
-        </ThemedText>
-        <KitSegmentedToggle<BoostToggleValue>
-          value={draft.boostPreset ?? "none"}
-          onChange={(value) =>
-            setDraft((current) => ({
-              ...current,
-              boostPreset: value === "none" ? undefined : value,
-            }))
-          }
-          options={[
-            { label: t("jobsTab.form.none"), value: "none" },
-            ...BOOST_OPTIONS.map((preset) => ({
-              label: `${preset[0]!.toUpperCase()}${preset.slice(1)} +\u20aa${BOOST_PRESET_VALUES[preset]}`,
-              value: preset,
-            })),
-          ]}
-        />
+// ─── Boost Bonus Section ───────────────────────────────────────────────────────
+
+type BoostBonusSectionProps = {
+  draft: StudioDraft;
+  setDraft: React.Dispatch<React.SetStateAction<StudioDraft>>;
+};
+
+function BoostSliderRow({
+  value,
+  onValueChange,
+  accentColor,
+}: {
+  value: number;
+  onValueChange: (value: number) => void;
+  accentColor: string;
+}) {
+  const { color: palette } = useTheme();
+
+  const SLIDER_WIDTH = 280;
+  const THUMB_SIZE = 32;
+  const TRACK_HEIGHT = 8;
+  const CONTAINER_HEIGHT = 48;
+
+  const minVal = BOOST_CUSTOM_MIN;
+  const maxVal = BOOST_CUSTOM_MAX;
+  const step = BOOST_CUSTOM_STEP;
+  const totalSteps = (maxVal - minVal) / step;
+
+  // Shared values
+  const progress = useSharedValue((value - minVal) / (maxVal - minVal));
+  const lastValue = useSharedValue(value);
+
+  // Sync progress when value changes externally
+  useEffect(() => {
+    progress.value = withSpring((value - minVal) / (maxVal - minVal), {
+      damping: 20,
+      stiffness: 200,
+    });
+    lastValue.value = value;
+  }, [value, progress, lastValue]);
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      "worklet";
+      const rawProg = Math.max(0, Math.min(1, e.x / SLIDER_WIDTH));
+      progress.value = rawProg;
+      // Calculate stepped value inline for worklet
+      const stepped = Math.round(rawProg * totalSteps);
+      const newValue = minVal + stepped * step;
+      if (newValue !== lastValue.value) {
+        lastValue.value = newValue;
+        runOnJS(onValueChange)(newValue);
+      }
+    })
+    .hitSlop({ top: 24, bottom: 24, left: 12, right: 12 });
+
+  const tapGesture = Gesture.Tap().onEnd((e) => {
+    "worklet";
+    const rawProg = Math.max(0, Math.min(1, e.x / SLIDER_WIDTH));
+    progress.value = withSpring(rawProg, { damping: 15 });
+    const stepped = Math.round(rawProg * totalSteps);
+    const newValue = minVal + stepped * step;
+    runOnJS(triggerSelectionHaptic)();
+    runOnJS(onValueChange)(newValue);
+  });
+
+  const composed = Gesture.Simultaneous(tapGesture, panGesture);
+
+  const fillStyle = useAnimatedStyle(() => ({
+    width: `${progress.value * 100}%`,
+  }));
+
+  const thumbStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: progress.value * (SLIDER_WIDTH - THUMB_SIZE) }],
+  }));
+
+  return (
+    <View style={{ alignItems: "center", gap: BrandSpacing.md }}>
+      {/* Value display */}
+      <Text
+        style={{
+          fontFamily: BrandType.display.fontFamily,
+          fontSize: 48,
+          fontWeight: "800",
+          color: accentColor,
+        }}
+      >
+        +₪{value}
+      </Text>
+
+      {/* Slider row */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+        <Text style={{ ...BrandType.caption, color: palette.textMuted }}>₪{minVal}</Text>
+
+        <GestureDetector gesture={composed}>
+          <View
+            style={{
+              width: SLIDER_WIDTH,
+              height: CONTAINER_HEIGHT,
+              justifyContent: "center",
+            }}
+          >
+            {/* Track - vertically centered in container */}
+            <View
+              style={{
+                height: TRACK_HEIGHT,
+                borderRadius: TRACK_HEIGHT / 2,
+                backgroundColor: palette.surfaceAlt,
+              }}
+            >
+              <Animated.View
+                style={[
+                  {
+                    height: "100%",
+                    backgroundColor: accentColor,
+                    borderRadius: TRACK_HEIGHT / 2,
+                  },
+                  fillStyle,
+                ]}
+              />
+            </View>
+
+            {/* Thumb - vertically centered on track */}
+            <Animated.View
+              style={[
+                {
+                  position: "absolute",
+                  width: THUMB_SIZE,
+                  height: THUMB_SIZE,
+                  borderRadius: THUMB_SIZE / 2,
+                  backgroundColor: palette.surface,
+                  borderWidth: 4,
+                  borderColor: accentColor,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 4,
+                  // Center thumb vertically: (container - thumb) / 2
+                  top: (CONTAINER_HEIGHT - THUMB_SIZE) / 2,
+                },
+                thumbStyle,
+              ]}
+            />
+          </View>
+        </GestureDetector>
+
+        <Text style={{ ...BrandType.caption, color: palette.textMuted }}>₪{maxVal}</Text>
       </View>
+    </View>
+  );
+}
+
+export function BoostBonusSection({ draft, setDraft }: BoostBonusSectionProps) {
+  const { t } = useTranslation();
+  const { color: palette } = useTheme();
+
+  const isBoostEnabled = draft.boostPreset !== undefined || draft.boostCustomAmount !== undefined;
+  const currentBonus =
+    draft.boostCustomAmount ??
+    (draft.boostPreset ? BOOST_PRESET_VALUES[draft.boostPreset] : BOOST_CUSTOM_DEFAULT);
+  const accentColor = isBoostEnabled ? palette.secondary : palette.primary;
+
+  const handleToggle = (enabled: boolean) => {
+    setDraft((current) => ({
+      ...current,
+      boostPreset: enabled ? "small" : undefined,
+      boostCustomAmount: enabled ? (current.boostCustomAmount ?? BOOST_CUSTOM_DEFAULT) : undefined,
+    }));
+  };
+
+  const handleAmountChange = (amount: number) => {
+    setDraft((current) => ({
+      ...current,
+      boostPreset: undefined,
+      boostCustomAmount: amount,
+    }));
+  };
+
+  const handleTriggerChange = (minutes: number | undefined) => {
+    setDraft((current) => ({
+      ...current,
+      boostTriggerMinutes: minutes,
+    }));
+  };
+
+  return (
+    <View style={{ gap: BrandSpacing.md }}>
+      {/* Header row */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+          <AppSymbol name="sparkles" size={18} tintColor={accentColor} />
+          <ThemedText type="defaultSemiBold" style={{ color: palette.text }}>
+            {t("jobsTab.form.boostOnBoard")}
+          </ThemedText>
+        </View>
+        <KitSwitch value={isBoostEnabled} onValueChange={handleToggle} />
+      </View>
+
+      {/* Slider (shown when enabled) */}
+      {isBoostEnabled && (
+        <Animated.View entering={FadeIn.duration(150)}>
+          <BoostSliderRow
+            value={currentBonus}
+            onValueChange={handleAmountChange}
+            accentColor={accentColor}
+          />
+
+          {/* Time trigger pills */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: BrandSpacing.sm,
+              marginTop: BrandSpacing.md,
+            }}
+          >
+            <AppSymbol name="clock" size={14} tintColor={palette.textMuted} />
+            <View style={{ flexDirection: "row", gap: BrandSpacing.xs }}>
+              <ChoicePill
+                label="Auto"
+                selected={draft.boostTriggerMinutes === undefined}
+                compact
+                backgroundColor={palette.surfaceAlt}
+                selectedBackgroundColor={accentColor}
+                labelColor={palette.text}
+                selectedLabelColor={palette.onPrimary}
+                onPress={() => handleTriggerChange(undefined)}
+              />
+              {BOOST_TRIGGER_MINUTES_OPTIONS.slice(0, 3).map((minutes) => (
+                <ChoicePill
+                  key={minutes}
+                  label={`${minutes}m`}
+                  selected={draft.boostTriggerMinutes === minutes}
+                  compact
+                  backgroundColor={palette.surfaceAlt}
+                  selectedBackgroundColor={accentColor}
+                  labelColor={palette.text}
+                  selectedLabelColor={palette.onPrimary}
+                  onPress={() => handleTriggerChange(minutes)}
+                />
+              ))}
+            </View>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -376,12 +612,19 @@ export function NotesSection({ draft, setDraft }: NotesSectionProps) {
 type SubmitBarProps = {
   draft: StudioDraft;
   isSubmitting: boolean;
+  isBoostEnabled?: boolean;
   onPost: () => void;
 };
 
-export function SubmitBar({ draft, isSubmitting, onPost }: SubmitBarProps) {
+export function SubmitBar({ draft, isSubmitting, isBoostEnabled, onPost }: SubmitBarProps) {
   const { t } = useTranslation();
   const { color: palette } = useTheme();
+
+  // Orange accent when boost is enabled
+  const boostAccentColor = palette.secondary;
+  const accentColor = isBoostEnabled ? boostAccentColor : palette.primary;
+  const accentPressedColor = isBoostEnabled ? palette.secondary : palette.primaryPressed;
+
   return (
     <View style={{ marginTop: BrandSpacing.xl, paddingBottom: 40 }}>
       <Pressable
@@ -397,15 +640,25 @@ export function SubmitBar({ draft, isSubmitting, onPost }: SubmitBarProps) {
           borderCurve: "continuous",
           backgroundColor:
             isSubmitting || !draft.sport
-              ? palette.primaryPressed
+              ? accentPressedColor
               : pressed
-                ? palette.primaryPressed
-                : palette.primary,
+                ? accentPressedColor
+                : accentColor,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
           gap: BrandSpacing.sm,
           transform: [{ scale: pressed ? 0.992 : 1 }],
+          // Add glow shadow when boost is enabled
+          ...(isBoostEnabled
+            ? {
+                shadowColor: boostAccentColor,
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.3,
+                shadowRadius: 30,
+                elevation: 8,
+              }
+            : {}),
         })}
       >
         <AppSymbol name="plus" size={18} tintColor={palette.onPrimary} />

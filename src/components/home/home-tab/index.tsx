@@ -1,6 +1,6 @@
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { HomeHeaderSheet } from "@/components/home/home-header-sheet";
@@ -14,6 +14,7 @@ import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount"
 import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -60,6 +61,17 @@ export default function HomeScreen() {
     canQueryInstructor ? {} : "skip",
   );
   const studioSettings = useQuery(api.users.getMyStudioSettings, canQueryStudio ? {} : "skip");
+
+  const [withdrawingApplicationId, setWithdrawingApplicationId] =
+    useState<Id<"jobApplications"> | null>(null);
+  const withdrawApplication = useMutation(api.jobs.withdrawApplication);
+
+  const handleWithdrawApplication = (applicationId: Id<"jobApplications">) => {
+    setWithdrawingApplicationId(applicationId);
+    withdrawApplication({ applicationId })
+      .then(() => setWithdrawingApplicationId(null))
+      .catch(() => setWithdrawingApplicationId(null));
+  };
 
   const currencyFormatter = useMemo(
     () =>
@@ -204,6 +216,8 @@ export default function HomeScreen() {
       instructorHomeStats={instructorHomeStats}
       availableInstructorJobs={availableInstructorJobs}
       myStudioJobs={myStudioJobs as HomeRoleContentProps["myStudioJobs"]}
+      withdrawingApplicationId={withdrawingApplicationId}
+      onWithdrawApplication={handleWithdrawApplication}
     />
   );
 }

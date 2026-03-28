@@ -62,6 +62,8 @@ export type HomeRoleContentProps = {
         applications?: Application[];
       }>
     | undefined;
+  withdrawingApplicationId?: Id<"jobApplications"> | null;
+  onWithdrawApplication?: (applicationId: Id<"jobApplications">) => void;
 };
 
 export function HomeRoleContent({
@@ -74,6 +76,8 @@ export function HomeRoleContent({
   instructorHomeStats,
   availableInstructorJobs,
   myStudioJobs,
+  withdrawingApplicationId,
+  onWithdrawApplication,
 }: HomeRoleContentProps) {
   const router = useRouter();
   const reviewApplication = useMutation(api.jobs.reviewApplication);
@@ -98,6 +102,8 @@ export function HomeRoleContent({
         totalEarningsAgorot={instructorHomeStats.totalEarningsAgorot}
         upcomingSessions={instructorHomeStats.upcomingSessions}
         availableJobs={availableInstructorJobs}
+        {...(withdrawingApplicationId !== undefined ? { withdrawingApplicationId } : {})}
+        {...(onWithdrawApplication ? { onWithdrawApplication } : {})}
         onOpenJobs={() => router.push(INSTRUCTOR_JOBS_ROUTE)}
         onOpenStudio={openInstructorStudio}
       />

@@ -1,29 +1,32 @@
 import type { ComponentProps, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { BorderWidth, FontFamily } from "@/lib/design-system";
-import { Box } from "@/primitives";
+import { BorderWidth, FontFamily, LetterSpacing } from "@/lib/design-system";
+import { Box, Text } from "@/primitives";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
 const PROFILE_SECTION_HEADER_ICON_SIZE = 14;
-
 const PROFILE_SECTION_CARD_MARGIN_HORIZONTAL = BrandSpacing.inset;
-
-const PROFILE_SETTING_ROW_PADDING_HORIZONTAL = BrandSpacing.md;
-const PROFILE_SETTING_ROW_ICON_SIZE = 20;
 const PROFILE_SETTING_ROW_SECONDARY_GAP = BrandSpacing.xxs;
-const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON = BrandSpacing.md + 24;
 const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.md;
 const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.md;
 const PROFILE_ICON_BUTTON_SIZE = 40;
-const PROFILE_ROW_VERTICAL_PADDING = BrandSpacing.md;
+
+// Mock uses urgent-orange (#FF5E00) for danger/destructive actions
+const URGENT_ORANGE = "#FF5E00";
+
+// Mock's surface container highest color (#262626) for icon backgrounds
+const ICON_CONTAINER_BG_DARK = "#262626";
+
+// Support card background - matches surface-container in mock (#191919)
+const SUPPORT_CARD_BG = "#191919";
 
 export function ProfileSectionHeader({
   label,
@@ -48,18 +51,17 @@ export function ProfileSectionHeader({
           <IconSymbol
             name={icon}
             size={PROFILE_SECTION_HEADER_ICON_SIZE}
-            color={theme.color.textMicro}
+            color={theme.color.textMuted}
           />
         ) : null}
         <Text
+          variant="radarLabel"
           style={[
-            BrandType.micro,
             {
               fontFamily: headerFontFamily,
               fontStyle: isHebrew ? "normal" : "italic",
-              textTransform: "uppercase",
-              letterSpacing: 1.8,
-              color: theme.color.textMicro,
+              letterSpacing: LetterSpacing.trackingWide,
+              color: theme.color.textMuted,
             },
           ]}
         >
@@ -67,7 +69,7 @@ export function ProfileSectionHeader({
         </Text>
       </Box>
       {description ? (
-        <Text style={[BrandType.caption, { maxWidth: 540, color: theme.color.textMuted }]}>
+        <Text variant="caption" style={{ maxWidth: 540, color: theme.color.textMuted }}>
           {description}
         </Text>
       ) : null}
@@ -95,7 +97,8 @@ export function ProfileSectionCard({
           borderRadius: BrandRadius.card,
           borderCurve: "continuous",
           borderWidth: BorderWidth.thin,
-          borderColor: theme.color.outline,
+          borderColor: "rgba(255, 255, 255, 0.05)", // white/5 from mock
+          backgroundColor: theme.color.surfaceAlt,
         },
         style,
       ]}
@@ -122,7 +125,7 @@ export function ProfileIconButton({
   return (
     <IconButton
       accessibilityLabel={label}
-      icon={<IconSymbol name={icon} size={18} color={iconColor} />}
+      icon={<IconSymbol name={icon} size={20} color={iconColor} />}
       onPress={onPress}
       tone={tone === "accent" ? "primarySubtle" : "secondary"}
       size={PROFILE_ICON_BUTTON_SIZE}
@@ -154,25 +157,25 @@ export function ProfileSettingRow({
   const theme = useTheme();
   const { resolvedScheme } = useThemePreference();
   const resolvedAccentColor = accentColor ?? theme.color.tertiary;
-  const rowBackgroundColor = theme.color.surface;
 
   const secondaryColor =
     tone === "danger"
-      ? theme.color.danger
+      ? URGENT_ORANGE
       : tone === "accent"
         ? resolvedScheme === "dark"
           ? theme.color.primary
           : theme.color.primary
-        : theme.color.textMicro;
+        : theme.color.textMuted;
 
   const iconColor =
     tone === "danger"
-      ? theme.color.danger
+      ? URGENT_ORANGE
       : tone === "accent"
         ? resolvedAccentColor
         : theme.color.primary;
 
-  const dividerColor = theme.color.outlineStrong;
+  // Mock uses white/5% for dividers
+  const dividerColor = "rgba(255, 255, 255, 0.05)";
 
   const content = (
     <Box>
@@ -180,17 +183,23 @@ export function ProfileSettingRow({
         flexDirection="row"
         alignItems={subtitle && subtitle.length > 36 ? "flex-start" : "center"}
         gap="md"
-        style={{
-          paddingHorizontal: PROFILE_SETTING_ROW_PADDING_HORIZONTAL,
-          paddingVertical: PROFILE_ROW_VERTICAL_PADDING,
-          backgroundColor: rowBackgroundColor,
-          minHeight: BrandSpacing.listItemMinHeight,
-        }}
+        px="md"
+        py="md"
+        minHeight={BrandSpacing.listItemMinHeight}
       >
         {icon ? (
-          <Box style={{ width: PROFILE_SETTING_ROW_ICON_SIZE + 4 }} alignItems="center">
-            <IconSymbol name={icon} size={18} color={iconColor} />
-          </Box>
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: BrandRadius.lg,
+              backgroundColor: ICON_CONTAINER_BG_DARK,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <IconSymbol name={icon} size={20} color={iconColor} />
+          </View>
         ) : null}
 
         <Box
@@ -198,29 +207,11 @@ export function ProfileSettingRow({
           minWidth={0}
           style={{ gap: subtitle ? PROFILE_SETTING_ROW_SECONDARY_GAP : 0 }}
         >
-          <Text
-            style={{
-              fontFamily: "Manrope_600SemiBold",
-              fontSize: 15,
-              fontWeight: "600",
-              lineHeight: 20,
-              color: theme.color.text,
-              includeFontPadding: false,
-            }}
-          >
+          <Text variant="bodyMedium" color="text">
             {title}
           </Text>
           {subtitle ? (
-            <Text
-              style={{
-                fontFamily: "Manrope_400Regular",
-                fontSize: 13,
-                fontWeight: "400",
-                lineHeight: 17,
-                color: theme.color.textMuted,
-                includeFontPadding: false,
-              }}
-            >
+            <Text variant="caption" color="textMuted">
               {subtitle}
             </Text>
           ) : null}
@@ -235,16 +226,9 @@ export function ProfileSettingRow({
         >
           {value ? (
             <Text
+              variant="caption"
               numberOfLines={1}
-              style={{
-                fontFamily: "Manrope_500Medium",
-                fontSize: 13,
-                fontWeight: "500",
-                lineHeight: 18,
-                textAlign: "right",
-                color: theme.color.textMuted,
-                includeFontPadding: false,
-              }}
+              style={{ textAlign: "right", color: theme.color.textMuted }}
             >
               {value}
             </Text>
@@ -258,7 +242,7 @@ export function ProfileSettingRow({
           style={{
             height: BorderWidth.thin,
             marginLeft: icon
-              ? PROFILE_SETTING_ROW_DIVIDER_LEFT_WITH_ICON
+              ? BrandSpacing.md + 40 + BrandSpacing.md
               : PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON,
             marginRight: PROFILE_SETTING_ROW_DIVIDER_RIGHT,
             backgroundColor: dividerColor,
@@ -280,6 +264,104 @@ export function ProfileSettingRow({
       style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
     >
       {content}
+    </Pressable>
+  );
+}
+
+// Support grid card (Help Center, Terms) - matches mock's card style
+export function ProfileSupportCard({
+  icon,
+  title,
+  onPress,
+  fullWidth = false,
+}: {
+  icon: ProfileSymbolName;
+  title: string;
+  onPress?: () => void;
+  fullWidth?: boolean;
+}) {
+  const theme = useTheme();
+
+  const cardContent = (
+    <View
+      style={{
+        backgroundColor: SUPPORT_CARD_BG,
+        borderRadius: BrandRadius.card,
+        borderWidth: BorderWidth.thin,
+        borderColor: "rgba(255, 255, 255, 0.05)",
+        padding: BrandSpacing.md,
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: BrandSpacing.xs,
+        minHeight: 80,
+      }}
+    >
+      <IconSymbol name={icon} size={24} color={theme.color.textMuted} />
+      <Text variant="bodyMedium" color="text" style={{ fontSize: 14, fontWeight: "600" }}>
+        {title}
+      </Text>
+    </View>
+  );
+
+  if (!onPress) {
+    return cardContent;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      onPress={onPress}
+      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1, flex: fullWidth ? 1 : undefined }]}
+    >
+      {cardContent}
+    </Pressable>
+  );
+}
+
+// Sign Out button - matches mock's urgent-orange style
+export function ProfileSignOutButton({ title, onPress }: { title: string; onPress?: () => void }) {
+  const cardContent = (
+    <View
+      style={{
+        backgroundColor: "rgba(255, 94, 0, 0.1)", // urgent-orange/10 from mock
+        borderRadius: BrandRadius.card,
+        borderWidth: 1,
+        borderColor: "rgba(255, 94, 0, 0.2)", // urgent-orange/20 from mock
+        padding: BrandSpacing.md,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: BrandSpacing.sm,
+        minHeight: 52,
+      }}
+    >
+      <IconSymbol name="logout" size={20} color={URGENT_ORANGE} />
+      <Text
+        variant="bodyMedium"
+        style={{
+          color: URGENT_ORANGE,
+          fontWeight: "700",
+        }}
+      >
+        {title}
+      </Text>
+    </View>
+  );
+
+  if (!onPress) {
+    return cardContent;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      onPress={onPress}
+      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
+    >
+      {cardContent}
     </Pressable>
   );
 }

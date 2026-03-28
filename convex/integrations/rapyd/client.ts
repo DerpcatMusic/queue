@@ -122,6 +122,12 @@ export const extractRapydErrorCode = (responseText: string): string | undefined 
   }
 };
 
+/**
+ * Default timeout for external API calls in milliseconds.
+ * Prevents hangs from unresponsive external services.
+ */
+const DEFAULT_FETCH_TIMEOUT_MS = 15000; // 15 seconds
+
 export const executeRapydSignedRequest = async ({
   method,
   url,
@@ -130,6 +136,7 @@ export const executeRapydSignedRequest = async ({
   secretKey,
   idempotency,
   body,
+  timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
 }: {
   method: RapydRestMethod;
   url: string;
@@ -138,6 +145,7 @@ export const executeRapydSignedRequest = async ({
   secretKey: string;
   idempotency?: string;
   body: string;
+  timeoutMs?: number;
 }): Promise<{
   response: Response;
   responseText: string;
@@ -165,19 +173,36 @@ export const executeRapydSignedRequest = async ({
       encoding,
     });
 
-    const response = await fetch(url, {
-      method,
-      headers: {
-        access_key: accessKey,
-        salt,
-        timestamp,
-        signature,
-        ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
-        ...(idempotency ? { idempotency } : {}),
-      },
-      ...(method === "POST" ? { body } : {}),
-    });
-    const responseText = await response.text();
+    // Create abort controller with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    let response: Response;
+    let responseText: string;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: {
+          access_key: accessKey,
+          salt,
+          timestamp,
+          signature,
+          ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
+          ...(idempotency ? { idempotency } : {}),
+        },
+        ...(method === "POST" ? { body } : {}),
+        signal: controller.signal,
+      });
+      responseText = await response.text();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new ConvexError(`Rapyd API request timed out after ${timeoutMs}ms`);
+      }
+      throw error;
+    }
+
+    clearTimeout(timeoutId);
     lastResponse = response;
     lastText = responseText;
     lastEncoding = encoding;

@@ -11,7 +11,6 @@ import {
   HomeSurface,
   useHomeDashboardLayout,
 } from "@/components/home/home-dashboard-layout";
-import { getHomeHeaderScrollTopPadding } from "@/components/home/home-header-sheet";
 import { HomeSignalTile } from "@/components/home/home-shared";
 import type { Application } from "@/components/home/home-tab/home-role-content";
 import { JobCarouselDots } from "@/components/home/job-carousel-dots";
@@ -23,7 +22,6 @@ import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
-import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
 import { formatDateTime } from "@/lib/jobs-utils";
 
@@ -252,7 +250,6 @@ export function StudioHomeContent({
   onOpenCalendar,
   reviewApplication,
 }: StudioHomeContentProps) {
-  const { safeTop } = useAppInsets();
   const { color: palette } = useTheme();
   const layout = useHomeDashboardLayout();
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
@@ -328,11 +325,10 @@ export function StudioHomeContent({
         routeKey="studio/index"
         style={{ flex: 1 }}
         topInsetTone="sheet"
-        contentContainerStyle={{
-          paddingHorizontal: BrandSpacing.insetRoomy,
-          paddingTop: getHomeHeaderScrollTopPadding(safeTop),
-          paddingBottom: BrandSpacing.section,
-          gap: BrandSpacing.section,
+        sheetInsets={{
+          topSpacing: BrandSpacing.xl,
+          bottomSpacing: BrandSpacing.section,
+          horizontalPadding: BrandSpacing.insetRoomy,
         }}
       >
         <Animated.View entering={FadeInUp.delay(80).duration(280)}>

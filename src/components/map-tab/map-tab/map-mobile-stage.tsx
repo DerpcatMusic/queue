@@ -74,7 +74,7 @@ export function MapMobileStage({
       <TabOverlayAnchor
         side="right"
         offset={BrandSpacing.lg}
-        style={{ bottom: overlayBottom + BrandSpacing.xs, zIndex: 60 }}
+        style={{ bottom: (overlayBottom ?? BrandSpacing.lg) + BrandSpacing.xs, zIndex: 60 }}
       >
         <IconButton
           accessibilityLabel={

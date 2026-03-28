@@ -8,19 +8,6 @@ import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { Box } from "@/primitives";
 
-const SHEET_EXPANDED_CONTENT_HEIGHT = 196;
-const SHEET_CONTENT_GAP = BrandSpacing.sm;
-
-export function getHomeHeaderExpandedHeight(safeTop: number) {
-  return safeTop + SHEET_EXPANDED_CONTENT_HEIGHT;
-}
-
-export function getHomeHeaderScrollTopPadding(_safeTop: number) {
-  // GlobalTopSheet owns the safe top inset now, so page content only needs
-  // header content height plus a small gap, not the system inset again.
-  return SHEET_EXPANDED_CONTENT_HEIGHT + SHEET_CONTENT_GAP + BrandSpacing.xl;
-}
-
 type HomeHeaderSheetProps = {
   displayName: string;
   subtitle?: string;
@@ -69,7 +56,6 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
     <Box
       pointerEvents="box-none"
       style={{
-        minHeight: SHEET_EXPANDED_CONTENT_HEIGHT,
         paddingHorizontal: BrandSpacing.xl,
         paddingTop: BrandSpacing.md,
         paddingBottom: BrandSpacing.xl,
@@ -91,11 +77,8 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
           <Text
             numberOfLines={1}
             style={{
-              fontFamily: "Lexend_900Black",
+              fontFamily: "Lexend_800ExtraBold",
               fontSize: 46,
-              fontStyle: "italic",
-              fontWeight: "900",
-              lineHeight: 46,
               color: palette.text,
               letterSpacing: -1.1,
               includeFontPadding: false,
@@ -174,7 +157,6 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
               style={{
                 fontFamily: "Lexend_800ExtraBold",
                 fontSize: 34,
-                fontStyle: "italic",
                 lineHeight: 34,
                 color: palette.primary,
                 letterSpacing: -0.8,
@@ -204,7 +186,6 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
               style={{
                 fontFamily: "Lexend_800ExtraBold",
                 fontSize: 34,
-                fontStyle: "italic",
                 lineHeight: 34,
                 color: palette.secondary,
                 letterSpacing: -0.8,

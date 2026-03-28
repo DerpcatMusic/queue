@@ -16,6 +16,7 @@ export const StudioJobsList = memo(function StudioJobsList({
   payingJobId,
   onReview,
   onStartPayment,
+  onJobPress,
   t,
 }: StudioJobsListProps) {
   const { isDesktopWeb: isWideWeb } = useLayoutBreakpoint();
@@ -32,6 +33,7 @@ export const StudioJobsList = memo(function StudioJobsList({
         payingJobId={payingJobId}
         onReview={onReview}
         onStartPayment={onStartPayment}
+        onJobPress={onJobPress}
         t={t}
       />
     ),
@@ -40,6 +42,7 @@ export const StudioJobsList = memo(function StudioJobsList({
       locale,
       onReview,
       onStartPayment,
+      onJobPress,
       payingJobId,
       reviewingApplicationId,
       t,

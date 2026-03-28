@@ -20,6 +20,7 @@ export type StudioControllerJob = {
   boostActive?: boolean;
   boostBonusAmount?: number;
   boostPreset?: BoostPreset;
+  boostTriggerMinutes?: number;
   closureReason?: JobClosureReason;
   endTime: number;
   jobId: Id<"jobs">;

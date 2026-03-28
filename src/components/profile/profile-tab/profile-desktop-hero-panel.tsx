@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitStatusBadge } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import type { ProfileHeroAction } from "./profile-hero-utils";
 
@@ -59,11 +59,7 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
         <View style={{ flex: 1, gap: BrandSpacing.xs }}>
           <Text
             style={{
-              fontFamily: "Manrope_500Medium",
-              fontSize: 12,
-              fontWeight: "500",
-              letterSpacing: 0.2,
-              lineHeight: 16,
+              ...BrandType.micro,
               color: theme.color.textMicro,
             }}
           >
@@ -72,11 +68,7 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
           <Text
             numberOfLines={2}
             style={{
-              fontFamily: "Lexend_700Bold",
-              fontSize: 34,
-              fontWeight: "700",
-              lineHeight: 38,
-              letterSpacing: -0.6,
+              ...BrandType.headingDisplay,
               color: theme.color.text,
             }}
           >
@@ -96,10 +88,7 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
         {summary ? (
           <Text
             style={{
-              fontFamily: "Manrope_400Regular",
-              fontSize: 16,
-              fontWeight: "400",
-              lineHeight: 22,
+              ...BrandType.body,
               color: theme.color.textMuted,
             }}
           >
@@ -109,10 +98,7 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
         {metaLabel ? (
           <Text
             style={{
-              fontFamily: "Manrope_400Regular",
-              fontSize: 14,
-              fontWeight: "400",
-              lineHeight: 19,
+              ...BrandType.caption,
               color: theme.color.textMicro,
             }}
           >

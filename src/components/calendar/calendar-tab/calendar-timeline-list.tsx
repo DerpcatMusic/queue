@@ -1,13 +1,13 @@
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { memo, type RefObject } from "react";
-import type { StyleProp, ViewStyle } from "react-native";
+import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { BrandSpacing } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
 import { Box } from "@/primitives";
 import type { TimelineListItem } from "../calendar-controller-helpers";
-import { calendarTimelineStyles } from "./calendar-date-utils";
+import { calendarTimelineStyles, RAIL_LEFT } from "./calendar-date-utils";
 
 type CalendarTimelineListProps = {
   listRef: RefObject<FlashListRef<TimelineListItem> | null>;
@@ -42,6 +42,16 @@ function CalendarTimelineList({
   return (
     <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
       <Box style={[calendarTimelineStyles.timelineViewport, { backgroundColor: palette.appBg }]}>
+        {/* Central Timeline Line */}
+        <View
+          style={[
+            styles.timelineLine,
+            {
+              left: RAIL_LEFT + 11, // Center of the 24px timeline rail
+              backgroundColor: palette.border,
+            },
+          ]}
+        />
         <FlashList
           ref={listRef}
           data={listItems}
@@ -64,5 +74,15 @@ function CalendarTimelineList({
     </TabScreenRoot>
   );
 }
+
+const styles = StyleSheet.create({
+  timelineLine: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 1,
+    zIndex: 0,
+  },
+});
 
 export default memo(CalendarTimelineList);

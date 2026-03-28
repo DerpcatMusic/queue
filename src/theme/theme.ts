@@ -121,7 +121,7 @@ export const Motion = {
 export const FontFamily = {
   display: "Lexend_700Bold",
   displayBold: "Lexend_800ExtraBold",
-  displayBlack: "Lexend_900Black",
+  displayBlack: "Lexend_800ExtraBold",
   heading: "Lexend_600SemiBold",
   title: "Lexend_500Medium",
   body: "Manrope_400Regular",
@@ -306,6 +306,8 @@ const lightColors = {
   onSurface: "#0A0A0A",
   overlay: "#00000080",
   shadow: "#0000001A",
+  sheetGlow: "#FF5E0014",
+  sheetGlowStrong: "#FF5E0028",
   jobsCanvas: "#F5F5F5",
   jobsSurface: "#FFFFFF",
   jobsSurfaceRaised: "#FFFFFF",
@@ -338,11 +340,14 @@ const darkColors = {
   dangerSubtle: "#F8717114",
   warning: "#FBBF24",
   warningSubtle: "#FBBF2414",
-  appBg: "#0A0A0A",
-  surface: "#111111",
-  surfaceAlt: "#1A1A1A",
+  appBg: "#0e0e0e",
+  surface: "#0e0e0e",
+  surfaceAlt: "#131313",
   surfaceElevated: "#181818",
-  border: "#252525",
+  surfaceContainer: "#131313",
+  surfaceContainerHigh: "#1A1A1A",
+  surfaceContainerHighest: "#262626",
+  border: "#2A2A2A",
   borderStrong: "#3A3A3A",
   divider: "#1E1E1E",
   text: "#FFFFFF",
@@ -351,6 +356,8 @@ const darkColors = {
   onSurface: "#FFFFFF",
   overlay: "#000000B3",
   shadow: "#00000040",
+  sheetGlow: "#FF5E0020",
+  sheetGlowStrong: "#FF5E0038",
   jobsCanvas: "#0A0A0A",
   jobsSurface: "#111111",
   jobsSurfaceRaised: "#181818",
@@ -409,10 +416,45 @@ export function createTheme(scheme: ThemeScheme) {
       signal: color.jobsSignal,
       idle: color.jobsIdle,
     },
+    archive: {
+      // Warm amber accent for archive-specific highlights and status
+      accent: color.warning,
+      accentSubtle: color.warningSubtle,
+      // Golden-green for money/payment values — warm take on "success"
+      pay: "#D4A012",
+      paySubtle: "#D4A0121A",
+      // Semantic statuses
+      paid: color.success,
+      paidSubtle: color.successSubtle,
+      pending: color.warning,
+      pendingSubtle: color.warningSubtle,
+      cancelled: color.danger,
+      cancelledSubtle: color.dangerSubtle,
+      // Surfaces — slightly warmer than main surfaces
+      surface: color.surfaceAlt,
+      surfaceElevated: color.surface,
+      canvas: color.appBg,
+    },
   } as const;
 }
 
 export type AppTheme = ReturnType<typeof createTheme>;
+
+export type ArchiveTokens = {
+  accent: string;
+  accentSubtle: string;
+  pay: string;
+  paySubtle: string;
+  paid: string;
+  paidSubtle: string;
+  pending: string;
+  pendingSubtle: string;
+  cancelled: string;
+  cancelledSubtle: string;
+  surface: string;
+  surfaceElevated: string;
+  canvas: string;
+};
 
 const themeCache: Record<ThemeScheme, AppTheme> = {
   light: createTheme("light"),
@@ -583,52 +625,64 @@ export const BrandType = Typography;
 
 const NativeMapBrandPalette = {
   light: {
-    styleBackground: "#F4F6F8",
-    waterFill: "#B2D3ED",
-    waterLine: "#84B2D9",
-    landcover: "#E1E8DE",
-    roadLine: "#EEF1F4",
-    roadPrimary: "#E1E6EC",
-    roadSecondary: "#CCD3DB",
-    roadTertiary: "#B8C2CD",
-    buildingFill: "#D8DDE3",
-    zoneOutline: "#8E9C84",
-    zoneOutlineOpacity: 0.28,
-    previewFill: "#CFE5BC",
-    previewFillOpacity: 0.14,
-    previewOutline: "#95B85F",
-    previewOutlineOpacity: 0.42,
-    selectedOutline: "#8FBF3C",
+    // Base canvas — warm off-white, feels like quality paper
+    styleBackground: "#F6F4F1",
+    // Water — subtle Mediterranean blue
+    waterFill: "#8BBFD4",
+    waterLine: "#6FA8C2",
+    // Landcover — muted sage, urban parks
+    landcover: "#C8D9C4",
+    // Roads — subtle warm gray, don't compete with buildings
+    roadPrimary: "#CAC6C0",
+    roadSecondary: "#BEB9B3",
+    roadTertiary: "#ADA9A3",
+    // Buildings — medium warm gray, the DOMINANT urban feature
+    // This is what makes the map feel like a real city map
+    buildingFill: "#9A9590",
+    buildingOpacity: 0.88,
+    // Zone overlay — muted olive
+    zoneOutline: "#7A8C70",
+    zoneOutlineOpacity: 0.3,
+    // Touch/hover preview
+    previewFill: "#D4E5CF",
+    previewFillOpacity: 0.2,
+    previewOutline: "#8AAF7A",
+    previewOutlineOpacity: 0.55,
+    // Selected zone — brand green
+    selectedOutline: "#6DB82A",
     selectedOutlineOpacity: 1,
-    surfaceAlt: "#F8FAFB",
+    surfaceAlt: "#F2F1EF",
     primary: "#8FBF3C",
-    markerAccent: "#2AA8E8",
-    text: "#252A31",
-    textHalo: "#F8FAFB",
+    markerAccent: "#2A8FD8",
+    text: "#2C2825",
+    textHalo: "#F8F7F5",
   },
   dark: {
-    styleBackground: "#14181D",
-    waterFill: "#1A3447",
-    waterLine: "#365B76",
-    landcover: "#1A2024",
-    roadLine: "#2A3138",
-    roadPrimary: "#4B5563",
-    roadSecondary: "#343B44",
-    roadTertiary: "#2B3138",
-    buildingFill: "#20262C",
-    zoneOutline: "#5A6870",
-    zoneOutlineOpacity: 0.38,
-    previewFill: "#253224",
-    previewFillOpacity: 0.16,
-    previewOutline: "#8CAF5A",
-    previewOutlineOpacity: 0.56,
-    selectedOutline: "#A5CF5A",
+    // Base canvas — warm charcoal
+    styleBackground: "#18181C",
+    waterFill: "#1A3548",
+    waterLine: "#244A65",
+    landcover: "#232B22",
+    // Roads — subtle warm gray
+    roadPrimary: "#3A3835",
+    roadSecondary: "#2E2B28",
+    roadTertiary: "#262322",
+    // Buildings — medium dark warm gray, dominant in dark mode
+    buildingFill: "#2E2B28",
+    buildingOpacity: 0.82,
+    zoneOutline: "#5A6858",
+    zoneOutlineOpacity: 0.42,
+    previewFill: "#253025",
+    previewFillOpacity: 0.22,
+    previewOutline: "#7A9A6A",
+    previewOutlineOpacity: 0.6,
+    selectedOutline: "#9DD640",
     selectedOutlineOpacity: 1,
-    surfaceAlt: "#1B2026",
+    surfaceAlt: "#242220",
     primary: "#A5CF5A",
-    markerAccent: "#59C6F6",
-    text: "#E8EDF2",
-    textHalo: "#1B2026",
+    markerAccent: "#4AAAE8",
+    text: "#EDE9E4",
+    textHalo: "#18181C",
   },
 } as const;
 

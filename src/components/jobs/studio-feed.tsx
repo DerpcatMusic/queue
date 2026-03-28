@@ -1,11 +1,15 @@
+import type BottomSheet from "@gorhom/bottom-sheet";
 import { useIsFocused } from "@react-navigation/native";
 import { Redirect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { JobsSectionHeader } from "@/components/jobs/jobs-tab/jobs-section-header";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { CreateJobSheet } from "@/components/jobs/studio/create-job-sheet";
+import { StudioJobDetailSheet } from "@/components/jobs/studio/studio-job-detail-sheet";
+import { StudioJobsArchiveSheet } from "@/components/jobs/studio/studio-jobs-archive-sheet";
 import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
 import { StudioJobsTopSheetHeader } from "@/components/jobs/studio/studio-jobs-top-sheet";
 import {
@@ -20,10 +24,10 @@ import { ThemedText } from "@/components/themed-text";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
-import { Box } from "@/primitives";
+import { Box, HStack, Text, VStack } from "@/primitives";
 
 export function StudioFeed() {
   const theme = useTheme();
@@ -31,8 +35,30 @@ export function StudioFeed() {
   const isFocused = useIsFocused();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
-  const [isCreateSheetVisible, setIsCreateSheetVisible] = useState(false);
+  const [
+    ,
+    /* isCreateSheetVisible, unused but needed for sheet tracking */ setIsCreateSheetVisible,
+  ] = useState(false);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [isFabMenuOpen, setIsFabMenuOpen] = useState(false);
+  const detailSheetRef = useRef<BottomSheet>(null);
+  const archiveSheetRef = useRef<BottomSheet>(null);
+
+  // Expand sheet when job is selected (handle render timing)
+  useEffect(() => {
+    if (selectedJobId) {
+      console.log("useEffect firing, selectedJobId:", selectedJobId);
+      console.log("detailSheetRef.current:", detailSheetRef.current);
+      // Use setTimeout to ensure sheet has mounted before expand
+      const timer = setTimeout(() => {
+        console.log("setTimeout callback, ref:", detailSheetRef.current);
+        detailSheetRef.current?.expand();
+      }, 10);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedJobId]);
+
   const signInRoute = "/sign-in" as const;
   const onboardingRoute = "/onboarding" as const;
   const instructorJobsRoute = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
@@ -62,14 +88,18 @@ export function StudioFeed() {
   const defaultBranchId =
     studioBranches?.length === 1 ? (studioBranches[0]?.branchId ?? null) : null;
   const areStudioBranchesReady = studioBranches !== undefined;
-  const reviewQueueJobs = filteredStudioJobsWithPayments.filter(
-    (job) => job.pendingApplicationsCount > 0,
-  );
-  const boardJobs = filteredStudioJobsWithPayments.filter(
-    (job) => job.pendingApplicationsCount === 0,
-  );
+  const now = Date.now();
+
+  // Separate past jobs from active jobs
+  const pastJobs = filteredStudioJobsWithPayments.filter((job) => job.startTime < now);
+  const activeJobs = filteredStudioJobsWithPayments.filter((job) => job.startTime >= now);
+
+  // Active jobs split into review queue and board
+  const reviewQueueJobs = activeJobs.filter((job) => job.pendingApplicationsCount > 0);
+  const boardJobs = activeJobs.filter((job) => job.pendingApplicationsCount === 0);
+
   const shouldSplitBoard = reviewQueueJobs.length > 0 && boardJobs.length > 0;
-  const primaryJobs = filteredStudioJobsWithPayments;
+  const primaryJobs = activeJobs;
   const primarySectionShowsReviewQueue = reviewQueueJobs.length > 0 && boardJobs.length === 0;
   const primarySectionTitle = primarySectionShowsReviewQueue
     ? t("jobsTab.studioFeed.needsReviewTitle")
@@ -106,6 +136,20 @@ export function StudioFeed() {
       void startStudioCheckout(jobId);
     },
     [startStudioCheckout],
+  );
+  const handleJobPress = useCallback(
+    (jobId: string) => {
+      console.log("handleJobPress called with:", jobId, "type:", typeof jobId);
+      console.log("filteredStudioJobsWithPayments count:", filteredStudioJobsWithPayments.length);
+      const firstJob = filteredStudioJobsWithPayments[0];
+      if (firstJob) {
+        console.log("First job jobId:", firstJob.jobId, "type:", typeof firstJob.jobId);
+      }
+      const found = filteredStudioJobsWithPayments.find((j) => String(j.jobId) === jobId);
+      console.log("Found job:", found ? "yes" : "no", found?.sport);
+      setSelectedJobId(jobId);
+    },
+    [filteredStudioJobsWithPayments],
   );
 
   const jobsSheetConfig = useMemo(
@@ -247,6 +291,7 @@ export function StudioFeed() {
                   payingJobId={isStartingCheckoutForJobId}
                   onReview={handleReviewApplication}
                   onStartPayment={handleStartPayment}
+                  onJobPress={handleJobPress}
                   t={t}
                 />
               </View>
@@ -261,6 +306,7 @@ export function StudioFeed() {
                   payingJobId={isStartingCheckoutForJobId}
                   onReview={handleReviewApplication}
                   onStartPayment={handleStartPayment}
+                  onJobPress={handleJobPress}
                   t={t}
                 />
               </View>
@@ -277,6 +323,7 @@ export function StudioFeed() {
                   payingJobId={isStartingCheckoutForJobId}
                   onReview={handleReviewApplication}
                   onStartPayment={handleStartPayment}
+                  onJobPress={handleJobPress}
                   t={t}
                 />
               ) : (
@@ -293,21 +340,89 @@ export function StudioFeed() {
         </Box>
       </TabScreenScrollView>
 
-      {!isCreateSheetVisible ? (
-        <TabOverlayAnchor side="right" offset={BrandSpacing.lg}>
+      {/* Multi-FAB */}
+      <TabOverlayAnchor side="right" offset={BrandSpacing.lg}>
+        <VStack align="end" gap="sm">
+          {/* Menu items - appear above main FAB with animation */}
+          {isFabMenuOpen && (
+            <Animated.View entering={FadeInUp.springify().damping(15)}>
+              <VStack gap="sm" align="end">
+                {/* Archive button with label */}
+                <HStack gap="sm" align="center">
+                  <Box
+                    backgroundColor="surfaceElevated"
+                    px="md"
+                    py="xs"
+                    style={{ borderRadius: BrandRadius.button }}
+                  >
+                    <Text variant="labelStrong" color="text">
+                      Archive
+                    </Text>
+                  </Box>
+                  <IconButton
+                    accessibilityLabel={t("jobsTab.archiveTitle")}
+                    onPress={() => {
+                      setIsFabMenuOpen(false);
+                      archiveSheetRef.current?.expand();
+                    }}
+                    tone="primary"
+                    size={48}
+                    icon={
+                      <IconSymbol name="archivebox.fill" size={18} color={theme.color.onPrimary} />
+                    }
+                  />
+                </HStack>
+
+                {/* Post Job button with label */}
+                <HStack gap="sm" align="center">
+                  <Box
+                    backgroundColor="surfaceElevated"
+                    px="md"
+                    py="xs"
+                    style={{ borderRadius: BrandRadius.button }}
+                  >
+                    <Text variant="labelStrong" color="text">
+                      Post Job
+                    </Text>
+                  </Box>
+                  <IconButton
+                    accessibilityLabel={t("jobsTab.actions.post")}
+                    disabled={!areStudioBranchesReady}
+                    onPress={() => {
+                      setIsFabMenuOpen(false);
+                      setIsCreateSheetVisible(true);
+                      createJobSheetRef.current?.expand();
+                    }}
+                    tone="primary"
+                    size={48}
+                    icon={<IconSymbol name="plus" size={18} color={theme.color.onPrimary} />}
+                  />
+                </HStack>
+              </VStack>
+            </Animated.View>
+          )}
+
+          {/* Main FAB */}
           <IconButton
-            accessibilityLabel={t("jobsTab.actions.post")}
-            disabled={!areStudioBranchesReady}
+            accessibilityLabel={isFabMenuOpen ? t("common.close") : t("jobsTab.actions.post")}
+            disabled={!areStudioBranchesReady && !isFabMenuOpen}
             onPress={() => {
-              setIsCreateSheetVisible(true);
-              createJobSheetRef.current?.expand();
+              if (areStudioBranchesReady) {
+                setIsFabMenuOpen((current) => !current);
+              }
             }}
             tone="primary"
             size={58}
-            icon={<IconSymbol name="plus" size={22} color={theme.color.onPrimary} />}
+            icon={
+              <IconSymbol
+                name={isFabMenuOpen ? "xmark" : "plus"}
+                size={22}
+                color={theme.color.onPrimary}
+              />
+            }
           />
-        </TabOverlayAnchor>
-      ) : null}
+        </VStack>
+      </TabOverlayAnchor>
 
       {isFocused && areStudioBranchesReady ? (
         <CreateJobSheet
@@ -316,6 +431,38 @@ export function StudioFeed() {
           onDismissed={() => setIsCreateSheetVisible(false)}
           onPost={postStudioJob}
           defaultBranchId={defaultBranchId}
+        />
+      ) : null}
+
+      {isFocused ? (
+        <StudioJobDetailSheet
+          innerRef={detailSheetRef as never}
+          job={
+            selectedJobId
+              ? (filteredStudioJobsWithPayments.find((j) => String(j.jobId) === selectedJobId) ??
+                null)
+              : null
+          }
+          locale={locale}
+          zoneLanguage={zoneLanguage}
+          onDismiss={() => {
+            setSelectedJobId(null);
+            detailSheetRef.current?.close();
+          }}
+          onReview={(applicationId, status) => {
+            void handleReviewApplication(applicationId as any, status);
+          }}
+          reviewingApplicationId={isReviewingApplicationId}
+        />
+      ) : null}
+
+      {isFocused ? (
+        <StudioJobsArchiveSheet
+          innerRef={archiveSheetRef as never}
+          onDismissed={() => {}}
+          jobs={pastJobs}
+          locale={locale}
+          zoneLanguage={zoneLanguage}
         />
       ) : null}
     </Box>

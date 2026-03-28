@@ -269,8 +269,8 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           <ProfileAvatar
             imageUrl={profileImageUrl}
             fallbackName={profileName}
-            size={56}
-            roundedSquare
+            size={52}
+            roundedSquare={false}
           />
         </Box>
 
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
   mobileEyebrow: {
     borderRadius: BrandRadius.buttonSubtle,
     borderCurve: "continuous",
-    borderWidth: BorderWidth.strong,
+    borderWidth: BorderWidth.thin,
     paddingHorizontal: BrandSpacing.sm,
     paddingVertical: BrandSpacing.xxs,
     maxWidth: "86%",
@@ -421,8 +421,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: BrandRadius.full,
-    borderWidth: 2,
-    overflow: "visible",
+    borderWidth: BorderWidth.thin,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
   },
   mobileIdentityTextWrap: {
     flex: 1,

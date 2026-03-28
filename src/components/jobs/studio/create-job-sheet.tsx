@@ -12,6 +12,7 @@ import { useTheme } from "@/hooks/use-theme";
 import type { StudioDraft } from "@/lib/jobs-utils";
 import { createDefaultStudioDraft } from "@/lib/jobs-utils";
 import {
+  BoostBonusSection,
   NotesSection,
   PayParticipantsSection,
   PickerDock,
@@ -215,12 +216,16 @@ export function CreateJobSheet({
           />
 
           <PostingOptionsSection draft={draft} setDraft={setDraft} />
+          <BoostBonusSection draft={draft} setDraft={setDraft} />
           <PayParticipantsSection draft={draft} setDraft={setDraft} />
           <NotesSection draft={draft} setDraft={setDraft} />
 
           <SubmitBar
             draft={draft}
             isSubmitting={isSubmitting}
+            isBoostEnabled={
+              draft.boostPreset !== undefined || draft.boostCustomAmount !== undefined
+            }
             onPost={() => {
               void onPost(draft);
             }}
