@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -18,7 +19,7 @@ const STATUS_SIGNAL_HORIZONTAL_PADDING = BrandSpacing.controlX;
 const STATUS_SIGNAL_VERTICAL_PADDING = BrandSpacing.controlY;
 const STATUS_SIGNAL_CONTENT_GAP = 2;
 
-export function StatusSignal({ label, value, tone = "surface", icon }: StatusSignalProps) {
+export const StatusSignal = memo(function StatusSignal({ label, value, tone = "surface", icon }: StatusSignalProps) {
   const { color: palette } = useTheme();
   const backgroundColor = tone === "accent" ? palette.primarySubtle : palette.surfaceElevated;
   const labelColor = tone === "accent" ? palette.primary : palette.textMuted;
@@ -73,7 +74,7 @@ export function StatusSignal({ label, value, tone = "surface", icon }: StatusSig
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

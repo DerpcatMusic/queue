@@ -2,13 +2,12 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import type BottomSheet from "@gorhom/bottom-sheet";
 import { useMutation, useQuery } from "convex/react";
 import type { Href } from "expo-router";
-import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Linking, StyleSheet, Text, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
 import {
   ProfileSectionCard,
@@ -35,7 +34,7 @@ import { useThemePreference } from "@/hooks/use-theme-preference";
 import { BorderWidth } from "@/lib/design-system";
 import { EXPIRY_OVERRIDE_PRESETS } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
-import { useTabSceneLifecycle } from "@/modules/navigation/tab-scene-lifecycle";
+import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
 import {
   forgetRememberedDeviceAccount,
   listRememberedDeviceAccounts,
@@ -115,13 +114,11 @@ export default function StudioProfileScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
 
-  const pathname = usePathname();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
-  const { hasActivated: hasActivatedProfile } = useTabSceneLifecycle("profile");
 
   useEffect(() => {
     if (edit === "1") {
@@ -129,7 +126,7 @@ export default function StudioProfileScreen() {
     }
   }, [edit, router]);
   const emptyArgs = useMemo(() => ({}), []);
-  const shouldLoadSettings = currentUser?.role === "studio" && hasActivatedProfile;
+  const shouldLoadSettings = currentUser?.role === "studio";
 
   const studioSettings = useQuery(
     api.users.getMyStudioSettings,
@@ -143,15 +140,6 @@ export default function StudioProfileScreen() {
     api.didit.getMyStudioDiditVerification,
     shouldLoadSettings ? emptyArgs : "skip",
   );
-  const [lastResolvedStudioSettings, setLastResolvedStudioSettings] =
-    useState<typeof studioSettings>();
-  useEffect(() => {
-    if (studioSettings !== undefined) {
-      setLastResolvedStudioSettings(studioSettings);
-    }
-  }, [studioSettings]);
-  const resolvedStudioSettings =
-    studioSettings === undefined ? lastResolvedStudioSettings : studioSettings;
   const updateMyStudioSettings = useMutation(api.users.updateMyStudioSettings);
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
   const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
@@ -160,36 +148,36 @@ export default function StudioProfileScreen() {
   );
 
   useEffect(() => {
-    if (resolvedStudioSettings) {
-      setAutoAcceptDefault(resolvedStudioSettings.autoAcceptDefault ?? false);
+    if (studioSettings) {
+      setAutoAcceptDefault(studioSettings.autoAcceptDefault ?? false);
     }
-  }, [resolvedStudioSettings]);
+  }, [studioSettings]);
 
   useEffect(() => {
-    if (resolvedStudioSettings) {
-      setAutoExpireMinutesBefore(resolvedStudioSettings.autoExpireMinutesBefore);
+    if (studioSettings) {
+      setAutoExpireMinutesBefore(studioSettings.autoExpireMinutesBefore);
     }
-  }, [resolvedStudioSettings]);
+  }, [studioSettings]);
 
   const handleAutoAcceptDefaultChange = useCallback(
     (value: boolean) => {
-      if (!resolvedStudioSettings) {
+      if (!studioSettings) {
         return;
       }
       const previousValue = autoAcceptDefault;
       setAutoAcceptDefault(value);
       setIsSavingAutoAcceptDefault(true);
       void updateMyStudioSettings({
-        studioName: resolvedStudioSettings.studioName ?? "",
-        address: resolvedStudioSettings.address ?? "",
-        zone: resolvedStudioSettings.zone ?? "",
+        studioName: studioSettings.studioName ?? "",
+        address: studioSettings.address ?? "",
+        zone: studioSettings.zone ?? "",
         ...omitUndefined({
           autoAcceptDefault: value,
           autoExpireMinutesBefore: autoExpireMinutesBefore,
-          sports: resolvedStudioSettings.sports,
-          contactPhone: resolvedStudioSettings.contactPhone,
-          latitude: resolvedStudioSettings.latitude,
-          longitude: resolvedStudioSettings.longitude,
+          sports: studioSettings.sports,
+          contactPhone: studioSettings.contactPhone,
+          latitude: studioSettings.latitude,
+          longitude: studioSettings.longitude,
         }),
       })
         .catch(() => {
@@ -199,33 +187,33 @@ export default function StudioProfileScreen() {
           setIsSavingAutoAcceptDefault(false);
         });
     },
-    [autoAcceptDefault, autoExpireMinutesBefore, resolvedStudioSettings, updateMyStudioSettings],
+    [autoAcceptDefault, autoExpireMinutesBefore, studioSettings, updateMyStudioSettings],
   );
 
   const handleAutoExpireMinutesBeforeChange = useCallback(
     (minutes: number | undefined) => {
-      if (!resolvedStudioSettings) {
+      if (!studioSettings) {
         return;
       }
       const previousValue = autoExpireMinutesBefore;
       setAutoExpireMinutesBefore(minutes);
       void updateMyStudioSettings({
-        studioName: resolvedStudioSettings.studioName ?? "",
-        address: resolvedStudioSettings.address ?? "",
-        zone: resolvedStudioSettings.zone ?? "",
+        studioName: studioSettings.studioName ?? "",
+        address: studioSettings.address ?? "",
+        zone: studioSettings.zone ?? "",
         ...omitUndefined({
-          autoAcceptDefault: resolvedStudioSettings.autoAcceptDefault,
+          autoAcceptDefault: studioSettings.autoAcceptDefault,
           autoExpireMinutesBefore: minutes,
-          sports: resolvedStudioSettings.sports,
-          contactPhone: resolvedStudioSettings.contactPhone,
-          latitude: resolvedStudioSettings.latitude,
-          longitude: resolvedStudioSettings.longitude,
+          sports: studioSettings.sports,
+          contactPhone: studioSettings.contactPhone,
+          latitude: studioSettings.latitude,
+          longitude: studioSettings.longitude,
         }),
       }).catch(() => {
         setAutoExpireMinutesBefore(previousValue);
       });
     },
-    [autoExpireMinutesBefore, resolvedStudioSettings, updateMyStudioSettings],
+    [autoExpireMinutesBefore, studioSettings, updateMyStudioSettings],
   );
 
   const handleRequestEdit = useCallback(() => {
@@ -282,7 +270,7 @@ export default function StudioProfileScreen() {
     [currentUser, reloadAuthSession],
   );
   const profileName =
-    resolvedStudioSettings?.studioName ??
+    studioSettings?.studioName ??
     currentUser?.fullName ??
     t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
@@ -298,37 +286,37 @@ export default function StudioProfileScreen() {
       })
     : null;
 
-  const sportsSummary = getSportsSummary(resolvedStudioSettings?.sports ?? [], t);
-  const branchSummary = resolvedStudioSettings?.entitlement?.branchesFeatureEnabled
+  const sportsSummary = getSportsSummary(studioSettings?.sports ?? [], t);
+  const branchSummary = studioSettings?.entitlement?.branchesFeatureEnabled
     ? t("profile.settings.branches.summary", {
-        primary: resolvedStudioSettings?.primaryBranch?.name ?? t("profile.settings.branches.none"),
-        active: resolvedStudioSettings?.entitlement?.activeBranchCount ?? 0,
-        max: resolvedStudioSettings?.entitlement?.maxBranches ?? 1,
+        primary: studioSettings?.primaryBranch?.name ?? t("profile.settings.branches.none"),
+        active: studioSettings?.entitlement?.activeBranchCount ?? 0,
+        max: studioSettings?.entitlement?.maxBranches ?? 1,
       })
     : t("profile.settings.branches.singleBranchSummary", {
         primary:
-          resolvedStudioSettings?.primaryBranch?.name ??
-          resolvedStudioSettings?.studioName ??
+          studioSettings?.primaryBranch?.name ??
+          studioSettings?.studioName ??
           t("profile.settings.branches.none"),
       });
-  const provider = resolvedStudioSettings?.calendarProvider;
+  const provider = studioSettings?.calendarProvider;
   const calendarSummary =
     !provider || provider === "none"
       ? t("profile.settings.calendar.provider.none")
       : provider === "google"
         ? t("profile.settings.calendar.provider.google")
         : t("profile.settings.calendar.provider.apple");
-  const socialCount = Object.keys(resolvedStudioSettings?.socialLinks ?? {}).length;
-  const sportsCount = resolvedStudioSettings?.sports?.length ?? 0;
+  const socialCount = Object.keys(studioSettings?.socialLinks ?? {}).length;
+  const sportsCount = studioSettings?.sports?.length ?? 0;
   const setupActions = [
-    !resolvedStudioSettings?.address
+    !studioSettings?.address
       ? {
           label: t("profile.setup.addStudioDetails"),
           onPress: handleRequestEdit,
           icon: "sparkles" as const,
         }
       : null,
-    !resolvedStudioSettings?.zone
+    !studioSettings?.zone
       ? {
           label: t("profile.setup.setCoverageZone"),
           onPress: handleRequestEdit,
@@ -360,7 +348,7 @@ export default function StudioProfileScreen() {
   );
   const profileStatus = setupActions.length === 0 ? "ready" : "pending";
   const publicProfileSummary =
-    resolvedStudioSettings?.bio?.trim() ||
+    studioSettings?.bio?.trim() ||
     (socialCount > 0
       ? t("profile.settings.publicProfileActive", { count: socialCount })
       : t("profile.settings.publicProfilePrompt"));
@@ -372,14 +360,14 @@ export default function StudioProfileScreen() {
         <ProfileHeaderSheet
           profileName={profileName}
           roleLabel={t("profile.hero.studioProfile")}
-          profileImageUrl={resolvedStudioSettings?.profileImageUrl ?? currentUser?.image}
+          profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
           visualVariant="studioFeature"
           onRequestEdit={handleRequestEdit}
           primaryActionLabel={t("profile.actions.edit")}
           status={profileStatus}
-          bio={resolvedStudioSettings?.bio}
-          socialLinks={resolvedStudioSettings?.socialLinks}
-          sports={resolvedStudioSettings?.sports ?? []}
+          bio={studioSettings?.bio}
+          socialLinks={studioSettings?.socialLinks}
+          sports={studioSettings?.sports ?? []}
           isVerified={isStudioVerified}
         />
       </View>
@@ -389,10 +377,10 @@ export default function StudioProfileScreen() {
       handleRequestEdit,
       profileName,
       profileStatus,
-      resolvedStudioSettings?.bio,
-      resolvedStudioSettings?.profileImageUrl,
-      resolvedStudioSettings?.socialLinks,
-      resolvedStudioSettings?.sports,
+      studioSettings?.bio,
+      studioSettings?.profileImageUrl,
+      studioSettings?.socialLinks,
+      studioSettings?.sports,
       isStudioVerified,
       t,
     ],
@@ -416,15 +404,7 @@ export default function StudioProfileScreen() {
     [color.surface, profileSheetContent],
   );
 
-  const isProfileIndexRoute = pathname === STUDIO_PROFILE_ROUTE || pathname.endsWith("/profile");
-
-  useGlobalTopSheet(
-    "profile",
-    !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null,
-    "profile:index:studio",
-  );
-
-  return (
+  const descriptorBody = (
     <TabScreenRoot
       mode="static"
       topInsetTone="sheet"
@@ -436,7 +416,7 @@ export default function StudioProfileScreen() {
             <ProfileDesktopHeroPanel
               profileName={profileName}
               roleLabel={t("profile.hero.studioProfile")}
-              profileImageUrl={resolvedStudioSettings?.profileImageUrl ?? currentUser?.image}
+              profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
               summary={publicProfileSummary}
               statusLabel={
                 profileStatus === "ready"
@@ -479,7 +459,7 @@ export default function StudioProfileScreen() {
                 <ProfileSettingRow
                   title={t("profile.settings.studioDetails")}
                   subtitle={
-                    resolvedStudioSettings?.address ??
+                    studioSettings?.address ??
                     t("profile.settings.completeOnboardingAddress")
                   }
                   icon="building.2.fill"
@@ -495,7 +475,7 @@ export default function StudioProfileScreen() {
                 />
                 <ProfileSettingRow
                   title={t("profile.settings.coverageZone")}
-                  subtitle={resolvedStudioSettings?.zone ?? t("profile.settings.noZone")}
+                  subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
                   icon="mappin.and.ellipse"
                   onPress={handleRequestEdit}
                 />
@@ -653,7 +633,7 @@ export default function StudioProfileScreen() {
                   showDivider
                   accessory={
                     <KitSwitch
-                      disabled={isSavingAutoAcceptDefault || resolvedStudioSettings === undefined}
+                      disabled={isSavingAutoAcceptDefault || studioSettings === undefined}
                       value={autoAcceptDefault}
                       onValueChange={handleAutoAcceptDefaultChange}
                     />
@@ -714,7 +694,7 @@ export default function StudioProfileScreen() {
               <ProfileSettingRow
                 title={t("profile.settings.studioDetails")}
                 subtitle={
-                  resolvedStudioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
+                  studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
                 }
                 icon="building.2.fill"
                 onPress={handleRequestEdit}
@@ -729,7 +709,7 @@ export default function StudioProfileScreen() {
               />
               <ProfileSettingRow
                 title={t("profile.settings.coverageZone")}
-                subtitle={resolvedStudioSettings?.zone ?? t("profile.settings.noZone")}
+                subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
                 icon="mappin.and.ellipse"
                 onPress={handleRequestEdit}
               />
@@ -884,7 +864,7 @@ export default function StudioProfileScreen() {
                 showDivider
                 accessory={
                   <KitSwitch
-                    disabled={isSavingAutoAcceptDefault || resolvedStudioSettings === undefined}
+                    disabled={isSavingAutoAcceptDefault || studioSettings === undefined}
                     value={autoAcceptDefault}
                     onValueChange={handleAutoAcceptDefaultChange}
                   />
@@ -947,10 +927,25 @@ export default function StudioProfileScreen() {
         onSelectRememberedAccount={handleSelectRememberedAccount}
         onSignOut={handleSignOut}
         onUseAnotherAccount={handleUseAnotherAccount}
-        profileImageUrl={resolvedStudioSettings?.profileImageUrl ?? currentUser?.image}
+        profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
       />
     </TabScreenRoot>
   );
+
+  const descriptor = useMemo(
+    () => ({
+      tabId: "profile" as const,
+      body: descriptorBody,
+      sheetConfig: profileSheetConfig,
+      insetTone: "sheet" as const,
+      isLoading: currentUser?.role === "studio" && studioSettings === undefined,
+    }),
+    [descriptorBody, profileSheetConfig, currentUser?.role, studioSettings],
+  );
+
+  useTabSceneDescriptor(descriptor);
+
+  return descriptorBody;
 }
 
 const styles = StyleSheet.create({

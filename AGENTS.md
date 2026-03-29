@@ -291,7 +291,9 @@ See `sports.tsx` for cleaner structure:
 7. **Accessible contrast**: WCAG AA minimum
 
 ### Tech Stack
-- Expo, React Native, Convex (backend), expo-router, NativeWind
+- Expo SDK 55, React Native 0.83.2, Convex (backend), expo-router
+- **Unistyles 3.1.1 + Nitro Modules** — the CSS-in-JS styling engine (NOT NativeWind)
+- **Reanimated 4.2.1** — animations (requires babel plugin order: unistyles BEFORE reanimated)
 - Custom UI Kit at `@/components/ui/kit` (KitChip, KitSurface, KitTextField, KitList, etc.)
 - Custom TopSheet component for expandable sheets
 - Tab-based navigation with role-specific routes
@@ -299,3 +301,45 @@ See `sports.tsx` for cleaner structure:
 ### Known UX Debt
 - Instructor payments tab — cognitive overload (see Payments Tab Analysis above)
 - Hardcoded design values throughout codebase (see Hardcoded Design Values Audit above)
+
+---
+
+## Architecture Rules (2026-03-29)
+
+### Tab Scene Architecture
+
+**Layout owns scene state. Screens expose descriptors.**
+
+- `role-tabs-layout.tsx` owns: `activeTabId`, `activatedTabs`, `firstActivation`, `sceneDescriptors`, `focusProgress`
+- Screens use `useTabSceneDescriptor({ tabId, sheetConfig })` from `role-tabs-layout` to register their sheet config
+- `GlobalTopSheet` reads from BOTH `GlobalTopSheetProvider` (legacy overrides) AND `TabSceneDescriptorContext` (descriptor-based sheet configs)
+- `useGlobalTopSheet` (in `top-sheet-registry.ts`) must NOT be deleted — it IS the soul of the app's sheet system
+- `useDeferredTabMount` and `tab-scene-lifecycle` are DEPRECATED — do not use them
+
+### Babel Plugin Order (CRITICAL)
+```
+plugins: [
+  'react-native-worklets/plugin',        // FIRST
+  'unistyles/plugin',                    // SECOND
+  'react-native-reanimated/plugin',     // THIRD (must come after unistyles)
+]
+```
+Wrong order causes runtime crashes.
+
+### Performance Rules
+
+| Priority | Rule | Location |
+|---|---|---|
+| CRITICAL | Fix babel plugin order (unistyles before reanimated) | `babel.config.js:5` |
+| CRITICAL | Replace 890 inline style objects with Unistyles | 30+ files |
+| CRITICAL | Animate `translateY`, NOT `height` in TopSheet | `top-sheet.tsx:353-354` |
+| CRITICAL | Remove `console.log` in production | `studio-jobs-list-parts.tsx:294`, `studio-feed.tsx:52-150` |
+| HIGH | Replace AsyncStorage with MMKV for startup perf | `theme.ts:532`, `i18n/index.ts:71` |
+| HIGH | Tab badge refetch every minute — add deduplication | `instructor/_layout.tsx:19-22` |
+| HIGH | Unbounded `.collect()` in Convex queries | `convex/jobs.ts:329,379,950` |
+| HIGH | Code-split 85KB onboarding screen | `app/onboarding.tsx` (2802 lines) |
+| HIGH | Don't mix native `StyleSheet` with unistyles | 15+ files |
+| MEDIUM | Add `React.memo` to 12+ un-memoized components | Various |
+| MEDIUM | Use `expo-image` instead of RN `Image` | 5+ files |
+| MEDIUM | Add TTL to unbounded Map caches | `location-zone.ts:47`, `queue-map.helpers.ts:20` |
+| MEDIUM | Code-split Google Fonts (13 variants sync) | `_layout.tsx:7-20` |

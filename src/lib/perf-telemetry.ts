@@ -6,7 +6,6 @@ type PerfMetric = {
 };
 
 const MAX_METRICS = 500;
-const LOG_PREFIX = "[perf]";
 const metricsByKey = new Map<string, PerfMetric[]>();
 
 function toRounded(value: number): number {
@@ -44,10 +43,6 @@ export function recordPerfMetric(
     ...(metadata ? { metadata } : {}),
   };
   addMetric(metric);
-  console.log(`${LOG_PREFIX} ${key}`, {
-    durationMs: toRounded(durationMs),
-    ...(metadata ? { metadata } : {}),
-  });
 }
 
 export function createPerfTimer(key: string, metadata?: Record<string, string | number | boolean>) {
@@ -86,8 +81,6 @@ export function getPerfSummary() {
 export function logPerfSummary() {
   const summary = getPerfSummary();
   if (summary.length === 0) {
-    console.log(`${LOG_PREFIX} summary`, "no_metrics");
     return;
   }
-  console.log(`${LOG_PREFIX} summary`, summary);
 }

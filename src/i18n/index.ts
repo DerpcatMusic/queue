@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MMKV } from "react-native-mmkv";
 import { getLocales } from "expo-localization";
 import { createInstance } from "i18next";
 import { initReactI18next } from "react-i18next";
@@ -12,6 +12,7 @@ export type AppLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 const RTL_LANGUAGES = new Set<AppLanguage>(["he"]);
 const STORAGE_KEY = "queue.language";
+const storage = new MMKV({ id: "app-storage" });
 const i18n = createInstance();
 
 function isSupportedLanguage(value: string): value is AppLanguage {
@@ -63,33 +64,33 @@ void i18n.use(initReactI18next).init({
   },
 });
 
-export async function bootstrapLocalization(): Promise<{
+export function bootstrapLocalization(): {
   directionChanged: boolean;
-}> {
+} {
   let savedLanguage: string | null = null;
   try {
-    savedLanguage = await AsyncStorage.getItem(STORAGE_KEY);
+    savedLanguage = storage.getString(STORAGE_KEY) ?? null;
   } catch {
     savedLanguage = null;
   }
 
   const language = savedLanguage ? normalizeLanguage(savedLanguage) : getDeviceLanguage();
   const directionChanged = syncRtlPreference(language);
-  await i18n.changeLanguage(language);
+  i18n.changeLanguage(language);
   return { directionChanged };
 }
 
-export async function setAppLanguage(
+export function setAppLanguage(
   language: AppLanguage,
-): Promise<{ directionChanged: boolean }> {
+): { directionChanged: boolean } {
   const normalized = normalizeLanguage(language);
   const directionChanged = syncRtlPreference(normalized);
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, normalized);
+    storage.set(STORAGE_KEY, normalized);
   } catch {
     // Keep language change in-memory even if persistence fails.
   }
-  await i18n.changeLanguage(normalized);
+  i18n.changeLanguage(normalized);
   return { directionChanged };
 }
 

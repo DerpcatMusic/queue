@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Image, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { Text, View } from "react-native";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
@@ -54,13 +55,11 @@ export function ProfileAvatar({
         backgroundColor: color.surfaceAlt,
       }}
     >
-      {canRenderImage ? (
+      {canRenderImage && normalizedImageUrl ? (
         <Image
           source={{ uri: normalizedImageUrl }}
           onError={() => {
-            if (normalizedImageUrl) {
-              setFailedImageUrl(normalizedImageUrl);
-            }
+            setFailedImageUrl(normalizedImageUrl);
           }}
           style={{ width: "100%", height: "100%" }}
           resizeMode="cover"

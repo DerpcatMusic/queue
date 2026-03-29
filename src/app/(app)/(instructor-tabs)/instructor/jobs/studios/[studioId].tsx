@@ -1,9 +1,8 @@
 import { useMutation, useQuery } from "convex/react";
-import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, Platform, StyleSheet, Text, View } from "react-native";
-import { FilterImage, type Filters } from "react-native-svg/filter-image";
+import { Text, View } from "react-native";
 import { DotStatusPill } from "@/components/home/home-shared";
 import {
   InstructorJobCard,
@@ -11,33 +10,18 @@ import {
 } from "@/components/jobs/instructor/instructor-job-card";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
-import { IconButton } from "@/components/ui/icon-button";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
-import { FontFamily, FontSize, LetterSpacing, LineHeight } from "@/lib/design-system";
 import { openInstructorVerificationGate } from "@/lib/open-instructor-verification-gate";
-import { Box } from "@/primitives";
-
-const STUDIO_HEADER_NATIVE_FILTERS: Filters = [
-  { name: "feColorMatrix", type: "saturate", values: 0 },
-  {
-    name: "feColorMatrix",
-    type: "matrix",
-    values: [1.15, 0, 0, 0, -0.07, 0, 1.15, 0, 0, -0.07, 0, 0, 1.15, 0, -0.07, 0, 0, 0, 1, 0],
-  },
-];
 
 export default function InstructorStudioProfileRoute() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const pathname = usePathname();
   const now = useMinuteNow();
   const { color: palette } = useTheme();
   const locale = i18n.resolvedLanguage ?? "en";
@@ -148,126 +132,6 @@ export default function InstructorStudioProfileRoute() {
       (studioProfile?.sports ?? []).map((sport: string) => toSportLabel(sport as never)),
     [studioProfile?.sports],
   );
-
-  const jobsSheetConfig = useMemo(() => {
-    if (!studioProfile || !pathname?.startsWith("/instructor/jobs/studios/")) {
-      return null;
-    }
-
-    return {
-      content: (
-        <Box
-          flex={1}
-          style={{
-            overflow: "hidden",
-            borderBottomLeftRadius: BrandRadius.xl,
-            borderBottomRightRadius: BrandRadius.xl,
-            borderCurve: "continuous",
-            backgroundColor: palette.primary,
-          }}
-        >
-          {/* Banner image - fills entire sheet with cover fit */}
-          {studioProfile.studioImageUrl ? (
-            <Box
-              style={{
-                ...StyleSheet.absoluteFillObject,
-                zIndex: 0,
-              }}
-            >
-              <FilterImage
-                source={{ uri: studioProfile.studioImageUrl }}
-                resizeMode="cover"
-                {...(Platform.OS === "web" ? {} : { filters: STUDIO_HEADER_NATIVE_FILTERS })}
-                style={StyleSheet.absoluteFillObject}
-              />
-            </Box>
-          ) : (
-            <Box
-              style={{
-                ...StyleSheet.absoluteFillObject,
-                backgroundColor: palette.primary,
-              }}
-            />
-          )}
-
-          {/* Dark gradient overlay for text readability */}
-          <Box
-            style={{
-              ...StyleSheet.absoluteFillObject,
-              backgroundColor: "rgba(0,0,0,0.35)",
-              zIndex: 1,
-            }}
-          />
-
-          {/* Content overlay - flexbox column */}
-          <Box flex={1} justifyContent="space-between" zIndex={2}>
-            {/* Top row - back button */}
-            <Box px="lg" pt="md">
-              <IconButton
-                size={42}
-                tone="secondary"
-                backgroundColorOverride={palette.surface}
-                accessibilityLabel={t("common.back")}
-                onPress={() => router.back()}
-                icon={
-                  <IconSymbol
-                    name="chevron.right"
-                    size={20}
-                    color={palette.text}
-                    style={{
-                      transform: [{ rotate: I18nManager.isRTL ? "0deg" : "180deg" }],
-                    }}
-                  />
-                }
-              />
-            </Box>
-
-            {/* Bottom row - studio info */}
-            <Box px="xl" pb="xxl" gap="xs">
-              <Text
-                style={{
-                  fontFamily: FontFamily.display,
-                  fontSize: FontSize.heading,
-                  lineHeight: LineHeight.heading,
-                  letterSpacing: LetterSpacing.heading,
-                  color: "#FFFFFF",
-                  includeFontPadding: false,
-                }}
-              >
-                {studioProfile.studioName}
-              </Text>
-              {studioProfile.studioAddress ? (
-                <Text
-                  style={{
-                    ...BrandType.body,
-                    color: "rgba(255,255,255,0.85)",
-                    includeFontPadding: false,
-                  }}
-                >
-                  {studioProfile.studioAddress}
-                </Text>
-              ) : null}
-            </Box>
-          </Box>
-        </Box>
-      ),
-      padding: {
-        vertical: 0,
-        horizontal: 0,
-      },
-      // Fixed step height like calendar tab (~18%) - NOT content-based
-      // This ensures consistent banner size regardless of content
-      steps: [0.18],
-      initialStep: 0,
-      draggable: false,
-      expandable: false,
-      collapsedHeightMode: "step" as const,
-      backgroundColor: palette.primary,
-      topInsetColor: palette.primary,
-    };
-  }, [router, studioProfile, pathname, t, palette]);
-
-  useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:studio-profile");
 
   if (!studioId) {
     return <LoadingScreen label={t("jobsTab.loading")} />;

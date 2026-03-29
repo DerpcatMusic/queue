@@ -44,15 +44,19 @@ type FindZoneIdForCoordinate = (point: { latitude: number; longitude: number }) 
 
 let locationModulePromise: Promise<LocationModule> | null = null;
 let findZoneIdForCoordinatePromise: Promise<FindZoneIdForCoordinate> | null = null;
-const addressResolutionCache = new Map<string, ResolvedLocation>();
+const ADDRESS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const addressResolutionCache = new Map<string, { data: ResolvedLocation; timestamp: number }>();
 const reverseAddressCache = new Map<
   string,
   {
-    formattedAddress: string;
-    city?: string;
-    street?: string;
-    streetNumber?: string;
-    postalCode?: string;
+    data: {
+      formattedAddress: string;
+      city?: string;
+      street?: string;
+      streetNumber?: string;
+      postalCode?: string;
+    };
+    timestamp: number;
   }
 >();
 const WEB_GEOCODER_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
@@ -430,9 +434,9 @@ export async function resolveAddressToZone(addressInput: string): Promise<Resolv
       );
     }
     const normalizedAddress = address.toLowerCase();
-    const cached = addressResolutionCache.get(normalizedAddress);
-    if (cached) {
-      return cached;
+    const cachedEntry = addressResolutionCache.get(normalizedAddress);
+    if (cachedEntry && Date.now() - cachedEntry.timestamp <= ADDRESS_CACHE_TTL_MS) {
+      return cachedEntry.data;
     }
 
     const geocoded =
@@ -475,7 +479,7 @@ export async function resolveAddressToZone(addressInput: string): Promise<Resolv
         ? { postalCode: geocodedWithAddress.postalCode }
         : {}),
     };
-    addressResolutionCache.set(normalizedAddress, resolved);
+    addressResolutionCache.set(normalizedAddress, { data: resolved, timestamp: Date.now() });
     return resolved;
   } catch (error) {
     throw normalizeLocationResolveError(error);
@@ -498,13 +502,13 @@ export async function resolveCoordinatesToZone(input: {
     const cacheKey = toCoordinateCacheKey(input.latitude, input.longitude);
 
     if (input.includeAddress !== false) {
-      const cached = reverseAddressCache.get(cacheKey);
-      if (cached) {
-        address = cached.formattedAddress;
-        city = cached.city;
-        street = cached.street;
-        streetNumber = cached.streetNumber;
-        postalCode = cached.postalCode;
+      const cachedEntry = reverseAddressCache.get(cacheKey);
+      if (cachedEntry && Date.now() - cachedEntry.timestamp <= ADDRESS_CACHE_TTL_MS) {
+        address = cachedEntry.data.formattedAddress;
+        city = cachedEntry.data.city;
+        street = cachedEntry.data.street;
+        streetNumber = cachedEntry.data.streetNumber;
+        postalCode = cachedEntry.data.postalCode;
       } else {
         if (Platform.OS === "web") {
           const result = await reverseGeocodeOnWeb(input.latitude, input.longitude);
@@ -534,11 +538,14 @@ export async function resolveCoordinatesToZone(input: {
           }
         }
         reverseAddressCache.set(cacheKey, {
-          formattedAddress: address,
-          ...(city !== undefined ? { city } : {}),
-          ...(street !== undefined ? { street } : {}),
-          ...(streetNumber !== undefined ? { streetNumber } : {}),
-          ...(postalCode !== undefined ? { postalCode } : {}),
+          data: {
+            formattedAddress: address,
+            ...(city !== undefined ? { city } : {}),
+            ...(street !== undefined ? { street } : {}),
+            ...(streetNumber !== undefined ? { streetNumber } : {}),
+            ...(postalCode !== undefined ? { postalCode } : {}),
+          },
+          timestamp: Date.now(),
         });
       }
     }

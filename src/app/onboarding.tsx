@@ -1,9 +1,8 @@
-import { useAuthActions } from "@convex-dev/auth/react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -19,27 +18,20 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
 import {
   GlobalTopSheetProvider,
-  useGlobalTopSheet,
 } from "@/components/layout/top-sheet-registry";
 import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
-import {
-  getIdentityStatusLabel,
-  IdentityStatusBadge,
-} from "@/components/profile/identity-status-ui";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { IconButton } from "@/components/ui/icon-button";
 import { KitChip, KitTextField } from "@/components/ui/kit";
-import { SheetHeaderBlock } from "@/components/ui/sheet-header-block";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { ZONE_OPTIONS } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
@@ -63,49 +55,38 @@ import {
   ROLE_TAB_ROUTE_NAMES,
 } from "@/navigation/role-routes";
 import { startDiditNativeVerification } from "@/lib/didit-native";
+import { Suspense, lazy } from "react";
 
 type OnboardingRole = "instructor" | "studio";
 type OnboardingStep = 0 | 1 | 2;
+
+// Lazy-loaded step body components
+const StepInstructorProfileBody = lazy(() =>
+  import("./(auth)/onboarding/step-instructor-profile-body").then((m) => ({
+    default: m.StepInstructorProfileBody,
+  }))
+);
+const StepStudioProfileBody = lazy(() =>
+  import("./(auth)/onboarding/step-studio-profile-body").then((m) => ({
+    default: m.StepStudioProfileBody,
+  }))
+);
+const StepInstructorComplianceBody = lazy(() =>
+  import("./(auth)/onboarding/step-instructor-compliance-body").then((m) => ({
+    default: m.StepInstructorComplianceBody,
+  }))
+);
+const StepStudioComplianceBody = lazy(() =>
+  import("./(auth)/onboarding/step-studio-compliance-body").then((m) => ({
+    default: m.StepStudioComplianceBody,
+  }))
+);
 
 const MAX_INSTRUCTOR_ZONES = 25;
 const STEP_EXIT_MS = 170;
 const STEP_ENTER_MS = 220;
 const DETAILS_READY_DELAY_MS = 110;
 const LOCATION_MAP_READY_DELAY_MS = 60;
-
-type OnboardingComplianceCertificateRow = {
-  sport?: string;
-  coveredSports?: string[];
-  machineTags?: string[];
-  reviewStatus:
-    | "uploaded"
-    | "ai_pending"
-    | "ai_reviewing"
-    | "approved"
-    | "rejected"
-    | "needs_resubmission";
-  issuerName?: string;
-  certificateTitle?: string;
-  uploadedAt: number;
-  reviewedAt?: number;
-};
-
-type OnboardingComplianceInsuranceRow = {
-  reviewStatus:
-    | "uploaded"
-    | "ai_pending"
-    | "ai_reviewing"
-    | "approved"
-    | "rejected"
-    | "expired"
-    | "needs_resubmission";
-  issuerName?: string;
-  policyNumber?: string;
-  expiresOn?: string;
-  expiresAt?: number;
-  uploadedAt: number;
-  reviewedAt?: number;
-};
 
 function toDisplayLabel(value: string) {
   if (isSportType(value)) {
@@ -124,228 +105,6 @@ function trimOptional(value: string) {
 
 function isOnboardingRole(value: string | undefined): value is OnboardingRole {
   return value === "instructor" || value === "studio";
-}
-
-function formatComplianceDate(value: number | undefined, locale: string) {
-  if (!value) return null;
-  return new Date(value).toLocaleDateString(locale, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function getLatestCertificateForSport(
-  rows: OnboardingComplianceCertificateRow[],
-  sport: string,
-) {
-  const matchingRows = rows.filter((row) => {
-    const coveredSports =
-      row.coveredSports && row.coveredSports.length > 0
-        ? row.coveredSports
-        : row.sport
-          ? [row.sport]
-          : [];
-    return coveredSports.includes(sport);
-  });
-  if (matchingRows.length === 0) {
-    return null;
-  }
-
-  return [...matchingRows].sort((left, right) => {
-    const leftPriority = left.reviewStatus === "approved" ? 1 : 0;
-    const rightPriority = right.reviewStatus === "approved" ? 1 : 0;
-    if (leftPriority !== rightPriority) {
-      return rightPriority - leftPriority;
-    }
-    return (
-      (right.reviewedAt ?? right.uploadedAt) -
-      (left.reviewedAt ?? left.uploadedAt)
-    );
-  })[0];
-}
-
-function getLatestCertificate(rows: OnboardingComplianceCertificateRow[]) {
-  if (rows.length === 0) {
-    return null;
-  }
-
-  return [...rows].sort(
-    (left, right) =>
-      (right.reviewedAt ?? right.uploadedAt) -
-      (left.reviewedAt ?? left.uploadedAt),
-  )[0];
-}
-
-function getPreferredInsurancePolicy(
-  rows: OnboardingComplianceInsuranceRow[],
-  now: number,
-) {
-  if (rows.length === 0) {
-    return null;
-  }
-
-  return [...rows].sort((left, right) => {
-    const leftActiveApproved =
-      left.reviewStatus === "approved" &&
-      (!left.expiresAt || left.expiresAt > now)
-        ? 1
-        : 0;
-    const rightActiveApproved =
-      right.reviewStatus === "approved" &&
-      (!right.expiresAt || right.expiresAt > now)
-        ? 1
-        : 0;
-    if (leftActiveApproved !== rightActiveApproved) {
-      return rightActiveApproved - leftActiveApproved;
-    }
-    return (
-      (right.reviewedAt ?? right.uploadedAt) -
-      (left.reviewedAt ?? left.uploadedAt)
-    );
-  })[0];
-}
-
-function getCertificateSubtitle(
-  row: OnboardingComplianceCertificateRow | null,
-  locale: string,
-  t: ReturnType<typeof useTranslation>["t"],
-) {
-  if (!row) {
-    return t("profile.compliance.certificate.missingBody");
-  }
-
-  const reviewedAt = formatComplianceDate(row.reviewedAt, locale);
-  const coverage = (row.coveredSports ?? (row.sport ? [row.sport] : []))
-    .map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport))
-    .join(", ");
-  switch (row.reviewStatus) {
-    case "approved": {
-      const source = [row.certificateTitle, row.issuerName]
-        .filter(Boolean)
-        .join(" · ");
-      const summary = [coverage, source].filter(Boolean).join(" · ");
-      if (summary) {
-        return reviewedAt
-          ? t("profile.compliance.certificate.approvedWithSourceAndDate", {
-              source: summary,
-              date: reviewedAt,
-            })
-          : t("profile.compliance.certificate.approvedWithSource", {
-              source: summary,
-            });
-      }
-      return reviewedAt
-        ? t("profile.compliance.certificate.approvedWithDate", {
-            date: reviewedAt,
-          })
-        : t("profile.compliance.certificate.approvedBody");
-    }
-    case "uploaded":
-    case "ai_pending":
-    case "ai_reviewing":
-      return t("profile.compliance.certificate.pendingBody");
-    case "rejected":
-    case "needs_resubmission":
-      return t("profile.compliance.certificate.reuploadBody");
-    default:
-      return t("profile.compliance.certificate.missingBody");
-  }
-}
-
-function getInsuranceSubtitle(
-  row: OnboardingComplianceInsuranceRow | null,
-  locale: string,
-  t: ReturnType<typeof useTranslation>["t"],
-) {
-  if (!row) {
-    return t("profile.compliance.insurance.missingBody");
-  }
-
-  const expiresLabel = formatComplianceDate(row.expiresAt, locale);
-  switch (row.reviewStatus) {
-    case "approved":
-      return expiresLabel
-        ? t("profile.compliance.insurance.approvedWithDate", {
-            date: expiresLabel,
-          })
-        : t("profile.compliance.insurance.approvedBody");
-    case "expired":
-      return expiresLabel
-        ? t("profile.compliance.insurance.expiredWithDate", {
-            date: expiresLabel,
-          })
-        : t("profile.compliance.insurance.expiredBody");
-    case "uploaded":
-    case "ai_pending":
-    case "ai_reviewing":
-      return t("profile.compliance.insurance.pendingBody");
-    case "rejected":
-    case "needs_resubmission":
-      return t("profile.compliance.insurance.reuploadBody");
-    default:
-      return t("profile.compliance.insurance.missingBody");
-  }
-}
-
-function getBlockingSummary(
-  reasons: string[],
-  t: ReturnType<typeof useTranslation>["t"],
-) {
-  return reasons
-    .map((reason) => {
-      switch (reason) {
-        case "identity_verification_required":
-          return t("profile.compliance.blockers.identity");
-        case "insurance_verification_required":
-          return t("profile.compliance.blockers.insurance");
-        case "sport_certificate_required":
-          return t("profile.compliance.blockers.certificate");
-        default:
-          return reason;
-      }
-    })
-    .join(" · ");
-}
-
-function getStudioBlockingSummary(
-  reasons: string[],
-  t: ReturnType<typeof useTranslation>["t"],
-) {
-  return reasons
-    .map((reason) => {
-      switch (reason) {
-        case "owner_identity_required":
-          return t("profile.studioCompliance.blockers.identity");
-        case "business_profile_required":
-          return t("profile.studioCompliance.blockers.billing");
-        case "payment_method_required":
-          return t("profile.studioCompliance.blockers.payment");
-        default:
-          return reason;
-      }
-    })
-    .join(" · ");
-}
-
-function getDocumentValue(
-  reviewStatus:
-    | OnboardingComplianceCertificateRow["reviewStatus"]
-    | OnboardingComplianceInsuranceRow["reviewStatus"]
-    | undefined,
-  t: ReturnType<typeof useTranslation>["t"],
-) {
-  if (reviewStatus === "approved") {
-    return t("profile.compliance.values.approved");
-  }
-  if (
-    reviewStatus === "uploaded" ||
-    reviewStatus === "ai_pending" ||
-    reviewStatus === "ai_reviewing"
-  ) {
-    return t("profile.compliance.values.pending");
-  }
-  return t("profile.compliance.values.actionRequired");
 }
 
 function getOnboardingPushErrorMessage(error: unknown, t: TFunction): string {
@@ -422,44 +181,6 @@ function OnboardingStageLayer({
   );
 }
 
-function OnboardingSheetHeader({
-  title,
-  subtitle,
-  currentStep,
-  totalSteps,
-  signOutLabel,
-  onSignOut,
-  dangerColor,
-}: {
-  title: string;
-  subtitle: string;
-  currentStep: number;
-  totalSteps: number;
-  signOutLabel: string;
-  onSignOut: () => void;
-  dangerColor: string;
-}) {
-  return (
-    <SheetHeaderBlock
-      title={title}
-      subtitle={subtitle}
-      progressCount={totalSteps}
-      progressIndex={currentStep}
-      trailingLabel={signOutLabel}
-      trailingIcon={
-        <MaterialIcons
-          name="logout"
-          size={BrandSpacing.iconSm}
-          color={dangerColor}
-        />
-      }
-      onPressTrailing={onSignOut}
-      tone="primary"
-      trailingTone="danger"
-    />
-  );
-}
-
 export default function OnboardingScreen() {
   return (
     <ScrollSheetProvider>
@@ -485,7 +206,6 @@ function OnboardingScreenContent() {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 980;
   const language = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
-  const { signOut } = useAuthActions();
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const completeInstructorOnboarding = useMutation(
@@ -555,68 +275,7 @@ function OnboardingScreenContent() {
       : null);
   const role = effectiveRole;
   const isInstructorFlow = effectiveRole === "instructor";
-  const totalSteps = isForcedWorkspaceSetup ? 1 : 3;
-  const displayedStep = stepTransition.phase === "idle" ? step : visibleStep;
-  const currentStep = isForcedWorkspaceSetup
-    ? Math.max(1, displayedStep)
-    : displayedStep + 1;
 
-  const onboardingSheetTitle =
-    displayedStep === 0 && !isForcedWorkspaceSetup
-      ? t("onboarding.title")
-      : displayedStep === 2
-        ? t("onboarding.verification.title")
-        : role === "studio"
-          ? t("onboarding.studioDetailsTitle")
-          : t("onboarding.instructorDetailsTitle");
-  const onboardingSheetSubtitle =
-    displayedStep === 0 && !isForcedWorkspaceSetup
-      ? t("onboarding.subtitle")
-      : displayedStep === 2
-        ? role === "studio"
-          ? t("onboarding.verification.studioBody")
-          : t("onboarding.verification.body")
-        : role === "studio"
-          ? t("onboarding.sheetStudioSubtitle")
-          : t("onboarding.sheetInstructorSubtitle");
-
-  const onboardingSheetConfig = useMemo(
-    () => ({
-      stickyHeader: (
-        <OnboardingSheetHeader
-          title={onboardingSheetTitle}
-          subtitle={onboardingSheetSubtitle}
-          currentStep={currentStep}
-          totalSteps={totalSteps}
-          signOutLabel={t("auth.signOutButton")}
-          onSignOut={() => {
-            void signOut();
-          }}
-          dangerColor={color.danger}
-        />
-      ),
-      backgroundColor: color.primary,
-      topInsetColor: color.primary,
-      padding: {
-        horizontal: BrandSpacing.lg,
-        vertical: BrandSpacing.sm,
-      },
-      steps: [0],
-      initialStep: 0,
-      collapsedHeightMode: "content" as const,
-    }),
-    [
-      color,
-      currentStep,
-      onboardingSheetSubtitle,
-      onboardingSheetTitle,
-      signOut,
-      t,
-      totalSteps,
-    ],
-  );
-
-  useGlobalTopSheet("onboarding", onboardingSheetConfig);
   const nextArrowIcon = (
     <MaterialIcons
       name={I18nManager.isRTL ? "arrow-back" : "arrow-forward"}
@@ -1840,8 +1499,23 @@ function OnboardingScreenContent() {
     }
 
     if (bodyStep === 1 && role === "instructor") {
-      if (!detailsReady) {
-        return (
+      const handleInstructorBack = () => {
+        if (isForcedWorkspaceSetup) {
+          handleBackFromWorkspaceSetup();
+          return;
+        }
+        setStep(0);
+        setVisibleStep(0);
+        setDetailsReady(false);
+        setShowLocationSection(false);
+        setStepTransition({
+          direction: -1,
+          phase: "idle",
+          targetStep: null,
+        });
+      };
+      return (
+        <Suspense fallback={
           <View style={styles.detailsLoadingStage}>
             <View style={styles.detailsLoadingHeader}>
               <ThemedText type="title">{t("onboarding.loading")}</ThemedText>
@@ -1856,69 +1530,41 @@ function OnboardingScreenContent() {
               </ThemedText>
             </View>
           </View>
-        );
-      }
-
-      return (
-        <View
-          style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}
-        >
-          {instructorForm}
-          {mapPane}
-          <View style={styles.navBar}>
-            <View style={styles.navRowSplit}>
-              <View style={styles.navAction}>
-                <ActionButton
-                  label={t("onboarding.back")}
-                  tone="secondary"
-                  fullWidth
-                  onPress={() => {
-                    if (isForcedWorkspaceSetup) {
-                      handleBackFromWorkspaceSetup();
-                      return;
-                    }
-                    setStep(0);
-                    setVisibleStep(0);
-                    setDetailsReady(false);
-                    setShowLocationSection(false);
-                    setStepTransition({
-                      direction: -1,
-                      phase: "idle",
-                      targetStep: null,
-                    });
-                  }}
-                />
-              </View>
-
-              <View style={styles.navAction}>
-                <ActionButton
-                  label={
-                    showLocationSection
-                      ? isSubmitting
-                        ? t("onboarding.save")
-                        : t("onboarding.save")
-                      : t("onboarding.continue")
-                  }
-                  disabled={isSubmitting}
-                  fullWidth
-                  onPress={() => {
-                    if (!showLocationSection) {
-                      revealLocationSection();
-                      return;
-                    }
-                    void submitInstructor();
-                  }}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
+        }>
+          <StepInstructorProfileBody
+            detailsReady={detailsReady}
+            isDesktop={isDesktop}
+            showLocationSection={showLocationSection}
+            isSubmitting={isSubmitting}
+            instructorForm={instructorForm}
+            mapPane={mapPane}
+            onBack={handleInstructorBack}
+            onRevealLocation={revealLocationSection}
+            onSubmit={submitInstructor}
+            styles={styles}
+          />
+        </Suspense>
       );
     }
 
     if (bodyStep === 1 && role === "studio") {
-      if (!detailsReady) {
-        return (
+      const handleStudioBack = () => {
+        if (isForcedWorkspaceSetup) {
+          handleBackFromWorkspaceSetup();
+          return;
+        }
+        setStep(0);
+        setVisibleStep(0);
+        setDetailsReady(false);
+        setShowLocationSection(false);
+        setStepTransition({
+          direction: -1,
+          phase: "idle",
+          targetStep: null,
+        });
+      };
+      return (
+        <Suspense fallback={
           <View style={styles.detailsLoadingStage}>
             <View style={styles.detailsLoadingHeader}>
               <ThemedText type="title">{t("onboarding.loading")}</ThemedText>
@@ -1933,75 +1579,26 @@ function OnboardingScreenContent() {
               </ThemedText>
             </View>
           </View>
-        );
-      }
-
-      return (
-        <View
-          style={[styles.stepTwoWrap, isDesktop ? styles.stepTwoDesktop : null]}
-        >
-          {studioForm}
-          {mapPane}
-          <View style={styles.navBar}>
-            <View style={styles.navRowSplit}>
-              <View style={styles.navAction}>
-                <ActionButton
-                  label={t("onboarding.back")}
-                  tone="secondary"
-                  fullWidth
-                  onPress={() => {
-                    if (isForcedWorkspaceSetup) {
-                      handleBackFromWorkspaceSetup();
-                      return;
-                    }
-                    setStep(0);
-                    setVisibleStep(0);
-                    setDetailsReady(false);
-                    setShowLocationSection(false);
-                    setStepTransition({
-                      direction: -1,
-                      phase: "idle",
-                      targetStep: null,
-                    });
-                  }}
-                />
-              </View>
-
-              <View style={styles.navAction}>
-                <ActionButton
-                  label={
-                    showLocationSection
-                      ? isSubmitting
-                        ? t("onboarding.save")
-                        : t("onboarding.continue")
-                      : t("onboarding.continue")
-                  }
-                  disabled={isSubmitting}
-                  fullWidth
-                  onPress={() => {
-                    if (!showLocationSection) {
-                      revealLocationSection();
-                      return;
-                    }
-                    void submitStudio();
-                  }}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
+        }>
+          <StepStudioProfileBody
+            detailsReady={detailsReady}
+            isDesktop={isDesktop}
+            showLocationSection={showLocationSection}
+            isSubmitting={isSubmitting}
+            studioForm={studioForm}
+            mapPane={mapPane}
+            onBack={handleStudioBack}
+            onRevealLocation={revealLocationSection}
+            onSubmit={submitStudio}
+            styles={styles}
+          />
+        </Suspense>
       );
     }
 
     if (bodyStep === 2 && role === "instructor") {
-      if (
-        currentUser.role !== "instructor" ||
-        diditVerification === undefined ||
-        diditVerification === null ||
-        onboardingCompliance === undefined ||
-        onboardingCompliance === null
-      ) {
-        return (
+      return (
+        <Suspense fallback={
           <View style={styles.detailsLoadingStage}>
             <View style={styles.detailsLoadingHeader}>
               <ThemedText type="title">
@@ -2018,310 +1615,32 @@ function OnboardingScreenContent() {
               </ThemedText>
             </View>
           </View>
-        );
-      }
-
-      const complianceDetails = onboardingCompliance;
-      const diditState = diditVerification;
-      const blockersSummary = getBlockingSummary(
-        complianceDetails.summary.blockingReasons,
-        t,
-      );
-      const preferredInsurance = getPreferredInsurancePolicy(
-        complianceDetails.insurancePolicies,
-        Date.now(),
-      );
-      const latestCertificate = getLatestCertificate(
-        complianceDetails.certificates,
-      );
-      const diditButtonColors = diditState.isVerified
-        ? undefined
-        : {
-            backgroundColor: color.tertiary,
-            pressedBackgroundColor: color.tertiary,
-            disabledBackgroundColor: color.tertiarySubtle,
-            labelColor: color.onPrimary,
-            disabledLabelColor: color.onPrimary,
-            nativeTintColor: color.tertiary,
-          };
-
-      return (
-        <View
-          style={[
-            styles.verifyStage,
-            {
-              backgroundColor: color.surface,
-              borderColor: color.borderStrong,
-            },
-          ]}
-        >
-          {verificationFeedback ? (
-            <NoticeBanner
-              tone={verificationFeedback.tone}
-              message={verificationFeedback.message}
-              onDismiss={() => setVerificationFeedback(null)}
-            />
-          ) : null}
-
-          <View style={styles.sectionBlock}>
-            <ThemedText type="subtitle">
-              {complianceDetails.summary.canApplyToJobs
-                ? t("profile.compliance.hero.readyTitle")
-                : t("onboarding.verification.subtitle")}
-            </ThemedText>
-            <ThemedText style={{ color: color.textMuted }}>
-              {complianceDetails.summary.canApplyToJobs
-                ? t("profile.compliance.hero.readyBody")
-                : t("profile.compliance.hero.blockedBody", {
-                    blockers: blockersSummary,
-                  })}
-            </ThemedText>
-          </View>
-
-          {!diditState.isVerified ? (
-            <ActionButton
-              label={t("profile.compliance.actions.startIdentity")}
-              fullWidth
-              {...(diditButtonColors ? { colors: diditButtonColors } : {})}
-              onPress={() => {
-                router.replace("/instructor/profile/compliance");
-              }}
-            />
-          ) : null}
-
-          <View
-            style={[
-              styles.verificationCard,
-              {
-                backgroundColor: color.surfaceAlt,
-                borderColor: color.borderStrong,
-              },
-            ]}
-          >
-            <View style={styles.verificationCardHeader}>
-              <ThemedText type="defaultSemiBold">
-                {t("profile.compliance.sections.identity")}
-              </ThemedText>
-              <IdentityStatusBadge status={diditState.status} />
-            </View>
-            <ThemedText style={{ color: color.textMuted }}>
-              {diditState.isVerified
-                ? t("profile.compliance.identity.approved")
-                : t("profile.compliance.identity.required")}
-            </ThemedText>
-            <ActionButton
-              label={
-                diditState.isVerified
-                  ? t("profile.navigation.identityVerification")
-                  : t("profile.compliance.actions.startIdentity")
-              }
-              fullWidth
-              {...(diditButtonColors ? { colors: diditButtonColors } : {})}
-              {...(diditState.isVerified ? { tone: "secondary" as const } : {})}
-              onPress={() => {
-                router.replace("/instructor/profile/compliance");
-              }}
-            />
-          </View>
-
-          <View
-            style={[
-              styles.verificationCard,
-              {
-                backgroundColor: color.surfaceAlt,
-                borderColor: color.borderStrong,
-              },
-            ]}
-          >
-            <View style={styles.verificationCardHeader}>
-              <ThemedText type="defaultSemiBold">
-                {t("profile.compliance.sections.insurance")}
-              </ThemedText>
-              <ThemedText type="caption" style={{ color: color.textMuted }}>
-                {getDocumentValue(preferredInsurance?.reviewStatus, t)}
-              </ThemedText>
-            </View>
-            <ThemedText style={{ color: color.textMuted }}>
-              {getInsuranceSubtitle(
-                preferredInsurance ?? null,
-                i18n.resolvedLanguage ?? "en",
-                t,
-              )}
-            </ThemedText>
-            <ActionButton
-              label={
-                complianceDetails.summary.hasApprovedInsurance
-                  ? t("profile.compliance.actions.replaceInsurance")
-                  : t("profile.compliance.actions.uploadInsurance")
-              }
-              fullWidth
-              loading={isUploading}
-              disabled={isUploading}
-              onPress={() => {
-                openInsuranceUploadPicker();
-              }}
-            />
-          </View>
-
-          <View style={styles.sectionBlock}>
-            <ThemedText type="defaultSemiBold">
-              {t("profile.compliance.sections.certificates")}
-            </ThemedText>
-          </View>
-
-          <View style={styles.verificationCardList}>
-            <View
-              style={[
-                styles.verificationCard,
-                {
-                  backgroundColor: color.surfaceAlt,
-                  borderColor: color.borderStrong,
-                },
-              ]}
-            >
-              <View style={styles.verificationCardHeader}>
-                <ThemedText type="defaultSemiBold">
-                  {t("profile.compliance.certificate.title")}
-                </ThemedText>
-                <ThemedText type="caption" style={{ color: color.textMuted }}>
-                  {getDocumentValue(latestCertificate?.reviewStatus, t)}
-                </ThemedText>
-              </View>
-              <ThemedText style={{ color: color.textMuted }}>
-                {getCertificateSubtitle(
-                  latestCertificate ?? null,
-                  i18n.resolvedLanguage ?? "en",
-                  t,
-                )}
-              </ThemedText>
-              <ActionButton
-                label={t("profile.compliance.actions.uploadCertificate")}
-                fullWidth
-                loading={isUploading}
-                disabled={isUploading}
-                onPress={() => {
-                  openCertificateUploadPicker();
-                }}
-              />
-            </View>
-            {verificationSports.map((sport) => {
-              const certificateRow = getLatestCertificateForSport(
-                complianceDetails.certificates,
-                sport,
-              );
-
-              return (
-                <View
-                  key={sport}
-                  style={[
-                    styles.verificationCard,
-                    {
-                      backgroundColor: color.surfaceAlt,
-                      borderColor: color.borderStrong,
-                    },
-                  ]}
-                >
-                  <View style={styles.verificationCardHeader}>
-                    <ThemedText type="defaultSemiBold">
-                      {toDisplayLabel(sport)}
-                    </ThemedText>
-                    <ThemedText
-                      type="caption"
-                      style={{ color: color.textMuted }}
-                    >
-                      {getDocumentValue(certificateRow?.reviewStatus, t)}
-                    </ThemedText>
-                  </View>
-                  <ThemedText style={{ color: color.textMuted }}>
-                    {getCertificateSubtitle(
-                      certificateRow ?? null,
-                      i18n.resolvedLanguage ?? "en",
-                      t,
-                    )}
-                  </ThemedText>
-                </View>
-              );
-            })}
-          </View>
-
-          <View
-            style={[
-              styles.verificationCard,
-              {
-                backgroundColor: color.surfaceAlt,
-                borderColor: color.borderStrong,
-              },
-            ]}
-          >
-            <View style={styles.verificationCardHeader}>
-              <ThemedText type="defaultSemiBold">
-                {t("onboarding.push.title")}
-              </ThemedText>
-              <ThemedText type="caption" style={{ color: color.textMuted }}>
-                {pushToken
-                  ? t("onboarding.push.enabled")
-                  : t("profile.compliance.values.pending")}
-              </ThemedText>
-            </View>
-            <ThemedText style={{ color: color.textMuted }}>
-              {pushToken
-                ? t("onboarding.verification.reviewUpdatesEnabled")
-                : t("onboarding.verification.reviewUpdatesDisabled")}
-            </ThemedText>
-            {!pushToken ? (
-              <ActionButton
-                disabled={isRequestingPush}
-                loading={isRequestingPush}
-                label={
-                  isRequestingPush
-                    ? t("onboarding.push.requesting")
-                    : t("onboarding.push.requestPermission")
-                }
-                tone="secondary"
-                fullWidth
-                onPress={() => {
-                  void requestPushPermission();
-                }}
-              />
-            ) : null}
-          </View>
-
-          <View style={styles.verifyActions}>
-            <ActionButton
-              label={
-                complianceDetails.summary.canApplyToJobs
-                  ? t("onboarding.verification.openJobsReady")
-                  : t("onboarding.verification.openJobsWhileReviewing")
-              }
-              fullWidth
-              onPress={() => {
-                router.replace(
-                  buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs),
-                );
-              }}
-            />
-            <ActionButton
-              label={t("onboarding.verification.openCompliance")}
-              tone="secondary"
-              fullWidth
-              onPress={() => {
-                router.replace("/instructor/profile/compliance");
-              }}
-            />
-          </View>
-        </View>
+        }>
+          <StepInstructorComplianceBody
+            currentUser={currentUser}
+            diditVerification={diditVerification}
+            onboardingCompliance={onboardingCompliance}
+            verificationFeedback={verificationFeedback}
+            setVerificationFeedback={setVerificationFeedback}
+            isUploading={isUploading}
+            openInsuranceUploadPicker={openInsuranceUploadPicker}
+            openCertificateUploadPicker={openCertificateUploadPicker}
+            verificationSports={verificationSports}
+            pushToken={pushToken}
+            isRequestingPush={isRequestingPush}
+            requestPushPermission={requestPushPermission}
+            router={router}
+            buildRoleTabRoute={buildRoleTabRoute}
+            ROLE_TAB_ROUTE_NAMES={ROLE_TAB_ROUTE_NAMES}
+            styles={styles}
+          />
+        </Suspense>
       );
     }
 
     if (bodyStep === 2 && role === "studio") {
-      if (
-        currentUser.role !== "studio" ||
-        studioDiditVerification === undefined ||
-        studioDiditVerification === null ||
-        onboardingStudioCompliance === undefined ||
-        onboardingStudioCompliance === null
-      ) {
-        return (
+      return (
+        <Suspense fallback={
           <View style={styles.detailsLoadingStage}>
             <View style={styles.detailsLoadingHeader}>
               <ThemedText type="title">
@@ -2338,243 +1657,36 @@ function OnboardingScreenContent() {
               </ThemedText>
             </View>
           </View>
-        );
-      }
-
-      const studioComplianceDetails = onboardingStudioCompliance;
-      const studioDiditState = studioDiditVerification;
-      const blockersSummary = getStudioBlockingSummary(
-        studioComplianceDetails.summary.blockingReasons,
-        t,
-      );
-
-      return (
-        <View
-          style={[
-            styles.verifyStage,
-            {
-              backgroundColor: color.surface,
-              borderColor: color.borderStrong,
-            },
-          ]}
-        >
-          {verificationFeedback ? (
-            <NoticeBanner
-              tone={verificationFeedback.tone}
-              message={verificationFeedback.message}
-              onDismiss={() => setVerificationFeedback(null)}
-            />
-          ) : null}
-
-          <View style={styles.sectionBlock}>
-            <ThemedText type="subtitle">
-              {studioComplianceDetails.summary.canPublishJobs
-                ? t("profile.studioCompliance.hero.readyTitle")
-                : t("profile.studioCompliance.hero.blockedTitle")}
-            </ThemedText>
-            <ThemedText style={{ color: color.textMuted }}>
-              {studioComplianceDetails.summary.canPublishJobs
-                ? t("profile.studioCompliance.hero.readyBody")
-                : t("profile.studioCompliance.hero.blockedBody", {
-                    blockers: blockersSummary,
-                  })}
-            </ThemedText>
-          </View>
-
-          <View
-            style={[
-              styles.verificationCard,
-              {
-                backgroundColor: color.surfaceAlt,
-                borderColor: color.borderStrong,
-              },
-            ]}
-          >
-            <View style={styles.verificationCardHeader}>
-              <ThemedText type="defaultSemiBold">
-                {t("profile.studioCompliance.sections.identity")}
-              </ThemedText>
-              <IdentityStatusBadge status={studioDiditState.status} />
-            </View>
-            <ThemedText style={{ color: color.textMuted }}>
-              {studioDiditState.isVerified
-                ? t("profile.studioCompliance.identity.approvedBody", {
-                    legalName:
-                      studioDiditState.legalName ??
-                      currentUser.fullName ??
-                      t("profile.account.fallbackName"),
-                  })
-                : t("profile.studioCompliance.identity.requiredBody", {
-                    status: getIdentityStatusLabel(studioDiditState.status),
-                  })}
-            </ThemedText>
-            <ActionButton
-              label={
-                studioDiditState.isVerified
-                  ? t("profile.studioCompliance.actions.refreshIdentity")
-                  : t("profile.studioCompliance.actions.startIdentity")
-              }
-              fullWidth
-              loading={isStartingStudioDidit}
-              disabled={isStartingStudioDidit}
-              onPress={() => {
-                if (studioDiditState.isVerified) {
-                  void refreshStudioDiditFromOnboarding();
-                  return;
-                }
-                void startStudioDiditFromOnboarding();
-              }}
-            />
-          </View>
-
-          <View
-            style={[
-              styles.verificationCard,
-              {
-                backgroundColor: color.surfaceAlt,
-                borderColor: color.borderStrong,
-              },
-            ]}
-          >
-            <View style={styles.sectionBlock}>
-              <View style={styles.verificationCardHeader}>
-                <ThemedText type="defaultSemiBold">
-                  {t("profile.studioCompliance.sections.billing")}
-                </ThemedText>
-                <ThemedText type="caption" style={{ color: color.textMuted }}>
-                  {studioComplianceDetails.summary.businessProfileStatus ===
-                  "complete"
-                    ? t("profile.compliance.values.approved")
-                    : t("profile.compliance.values.actionRequired")}
-                </ThemedText>
-              </View>
-
-              <View style={styles.chipGrid}>
-                <ChoicePill
-                  label={t("profile.studioCompliance.billing.entityIndividual")}
-                  selected={studioLegalEntityType === "individual"}
-                  onPress={() => setStudioLegalEntityType("individual")}
-                />
-                <ChoicePill
-                  label={t("profile.studioCompliance.billing.entityCompany")}
-                  selected={studioLegalEntityType === "company"}
-                  onPress={() => setStudioLegalEntityType("company")}
-                />
-              </View>
-
-              <KitTextField
-                label={t("profile.studioCompliance.billing.legalBusinessName")}
-                value={studioLegalBusinessName}
-                onChangeText={setStudioLegalBusinessName}
-              />
-              <KitTextField
-                label={t("profile.studioCompliance.billing.taxId")}
-                value={studioTaxId}
-                onChangeText={setStudioTaxId}
-              />
-              <KitTextField
-                label={t("profile.studioCompliance.billing.billingEmail")}
-                value={studioBillingEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                onChangeText={setStudioBillingEmail}
-              />
-              <KitTextField
-                label={t("profile.studioCompliance.billing.billingAddress")}
-                value={studioBillingAddress}
-                onChangeText={setStudioBillingAddress}
-              />
-
-              <View style={styles.chipGrid}>
-                {(
-                  ["osek_patur", "osek_murshe", "company", "other"] as const
-                ).map((value) => (
-                  <ChoicePill
-                    key={value}
-                    label={t(
-                      `profile.studioCompliance.billing.vatOptions.${value}` as const,
-                    )}
-                    selected={studioVatReportingType === value}
-                    onPress={() => setStudioVatReportingType(value)}
-                  />
-                ))}
-              </View>
-
-              <ActionButton
-                label={t("profile.studioCompliance.actions.saveBilling")}
-                fullWidth
-                loading={isSavingStudioBilling}
-                disabled={isSavingStudioBilling}
-                onPress={() => {
-                  void saveStudioBillingFromOnboarding();
-                }}
-              />
-            </View>
-          </View>
-
-          <View
-            style={[
-              styles.verificationCard,
-              {
-                backgroundColor: color.surfaceAlt,
-                borderColor: color.borderStrong,
-              },
-            ]}
-          >
-            <View style={styles.verificationCardHeader}>
-              <ThemedText type="defaultSemiBold">
-                {t("profile.studioCompliance.sections.payment")}
-              </ThemedText>
-              <ThemedText type="caption" style={{ color: color.textMuted }}>
-                {studioComplianceDetails.summary.paymentStatus === "ready"
-                  ? t("profile.compliance.values.approved")
-                  : t("profile.compliance.values.pending")}
-              </ThemedText>
-            </View>
-            <ThemedText style={{ color: color.textMuted }}>
-              {t(
-                studioComplianceDetails.summary.paymentStatus === "ready"
-                  ? "profile.studioCompliance.payment.readyBody"
-                  : studioComplianceDetails.summary.paymentReadinessSource ===
-                      "legacy_env"
-                    ? "onboarding.verification.studioPaymentGroundwork"
-                    : "profile.studioCompliance.payment.pendingBody",
-              )}
-            </ThemedText>
-            <ActionButton
-              label={t("onboarding.verification.openCompliance")}
-              tone="secondary"
-              fullWidth
-              onPress={() => {
-                router.replace("/studio/profile/compliance");
-              }}
-            />
-          </View>
-
-          <View style={styles.verifyActions}>
-            <ActionButton
-              label={
-                studioComplianceDetails.summary.canPublishJobs
-                  ? t("onboarding.verification.openJobsReady")
-                  : t("onboarding.verification.openJobsWhileReviewing")
-              }
-              fullWidth
-              onPress={() => {
-                router.replace(
-                  buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.jobs),
-                );
-              }}
-            />
-            <ActionButton
-              label={t("onboarding.verification.openCompliance")}
-              tone="secondary"
-              fullWidth
-              onPress={() => {
-                router.replace("/studio/profile/compliance");
-              }}
-            />
-          </View>
-        </View>
+        }>
+          <StepStudioComplianceBody
+            currentUser={currentUser}
+            studioDiditVerification={studioDiditVerification}
+            onboardingStudioCompliance={onboardingStudioCompliance}
+            verificationFeedback={verificationFeedback}
+            setVerificationFeedback={setVerificationFeedback}
+            isStartingStudioDidit={isStartingStudioDidit}
+            isSavingStudioBilling={isSavingStudioBilling}
+            studioLegalEntityType={studioLegalEntityType}
+            setStudioLegalEntityType={setStudioLegalEntityType}
+            studioVatReportingType={studioVatReportingType}
+            setStudioVatReportingType={setStudioVatReportingType}
+            studioLegalBusinessName={studioLegalBusinessName}
+            setStudioLegalBusinessName={setStudioLegalBusinessName}
+            studioTaxId={studioTaxId}
+            setStudioTaxId={setStudioTaxId}
+            studioBillingEmail={studioBillingEmail}
+            setStudioBillingEmail={setStudioBillingEmail}
+            studioBillingAddress={studioBillingAddress}
+            setStudioBillingAddress={setStudioBillingAddress}
+            router={router}
+            buildRoleTabRoute={buildRoleTabRoute}
+            ROLE_TAB_ROUTE_NAMES={ROLE_TAB_ROUTE_NAMES}
+            saveStudioBillingFromOnboarding={saveStudioBillingFromOnboarding}
+            startStudioDiditFromOnboarding={startStudioDiditFromOnboarding}
+            refreshStudioDiditFromOnboarding={refreshStudioDiditFromOnboarding}
+            styles={styles}
+          />
+        </Suspense>
       );
     }
 

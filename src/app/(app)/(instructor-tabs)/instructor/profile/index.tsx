@@ -2,14 +2,13 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import type BottomSheet from "@gorhom/bottom-sheet";
 import { useQuery } from "convex/react";
 import type { Href } from "expo-router";
-import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Linking, StyleSheet, Text, View } from "react-native";
 
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
 import {
   ProfileSectionCard,
@@ -30,7 +29,7 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
-import { useTabSceneLifecycle } from "@/modules/navigation/tab-scene-lifecycle";
+import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
 import {
   forgetRememberedDeviceAccount,
   listRememberedDeviceAccounts,
@@ -76,13 +75,11 @@ export default function InstructorProfileScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
 
-  const pathname = usePathname();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
-  const { hasActivated: hasActivatedProfile } = useTabSceneLifecycle("profile");
 
   useEffect(() => {
     if (edit === "1") {
@@ -90,7 +87,7 @@ export default function InstructorProfileScreen() {
     }
   }, [edit, router]);
   const emptyArgs = useMemo(() => ({}), []);
-  const shouldLoadSettings = currentUser?.role === "instructor" && hasActivatedProfile;
+  const shouldLoadSettings = currentUser?.role === "instructor";
 
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
@@ -300,16 +297,7 @@ export default function InstructorProfileScreen() {
     [profileSheetContent, theme.color.surfaceAlt],
   );
 
-  const isProfileIndexRoute =
-    pathname === INSTRUCTOR_PROFILE_ROUTE || pathname.endsWith("/profile");
-
-  useGlobalTopSheet(
-    "profile",
-    !isDesktopWeb && isProfileIndexRoute ? profileSheetConfig : null,
-    "profile:index:instructor",
-  );
-
-  return (
+  const descriptorBody = (
     <TabScreenRoot mode="static" topInsetTone="sheet" style={styles.screen}>
       {isDesktopWeb ? (
         <View style={styles.desktopShell}>
@@ -670,6 +658,26 @@ export default function InstructorProfileScreen() {
       />
     </TabScreenRoot>
   );
+
+  const descriptor = useMemo(
+    () => ({
+      tabId: "profile" as const,
+      body: descriptorBody,
+      sheetConfig: profileSheetConfig,
+      insetTone: "sheet" as const,
+      isLoading: currentUser?.role === "instructor" && instructorSettings === undefined,
+    }),
+    [
+      descriptorBody,
+      profileSheetConfig,
+      currentUser?.role,
+      instructorSettings,
+    ],
+  );
+
+  useTabSceneDescriptor(descriptor);
+
+  return descriptorBody;
 }
 
 const styles = StyleSheet.create({

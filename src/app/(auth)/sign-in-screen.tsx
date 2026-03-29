@@ -9,11 +9,9 @@ import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
 
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconButton } from "@/components/ui/icon-button";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
-import { SheetHeaderBlock } from "@/components/ui/sheet-header-block";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
@@ -169,40 +167,6 @@ export default function SignInScreen() {
     readAuthMethod(searchParams.method) ?? pendingAuthHandoffRef.current?.method ?? null;
   const restoreAccountId = pendingAuthHandoffRef.current?.restoreAccountId ?? null;
   const isSignUpIntent = authIntent === "sign-up";
-  const sheetTitle = isSwitchAccountFlow
-    ? t("auth.switchAccountTitle")
-    : step === "code"
-      ? t("auth.verifyCodeButton")
-      : isSignUpIntent
-        ? t("auth.signUpTitle")
-        : t("auth.navigation.signIn");
-  const sheetSubtitle = isSwitchAccountFlow
-    ? step === "code"
-      ? t("auth.switchAccountCodeSubtitle")
-      : t("auth.switchAccountSubtitle")
-    : step === "code"
-      ? t("auth.codeSheetSubtitle")
-      : isSignUpIntent
-        ? t("auth.signUpSubtitle")
-        : t("auth.sheetSubtitle");
-
-  const signInSheetConfig = useMemo(
-    () => ({
-      stickyHeader: <SheetHeaderBlock title={sheetTitle} subtitle={sheetSubtitle} tone="surface" />,
-      backgroundColor: theme.color.surface,
-      topInsetColor: theme.color.surface,
-      padding: {
-        horizontal: BrandSpacing.lg,
-        vertical: BrandSpacing.sm,
-      },
-      steps: [step === "code" ? 0.22 : 0.2],
-      initialStep: 0,
-      collapsedHeightMode: "content" as const,
-    }),
-    [sheetSubtitle, sheetTitle, step, theme.color.surface],
-  );
-
-  useGlobalTopSheet("sign-in", signInSheetConfig);
 
   useEffect(() => {
     const authFlow = readParam(searchParams.authFlow);

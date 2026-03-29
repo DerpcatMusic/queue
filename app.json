@@ -8,6 +8,7 @@
     "scheme": "queue",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "newArchEnabled": true,
       "userInterfaceStyle": "automatic",
       "supportsTablet": true,
       "associatedDomains": ["applinks:join-queue.com"],
@@ -31,6 +32,7 @@
       }
     },
     "android": {
+      "newArchEnabled": true,
       "package": "com.derpcat.queue",
       "softwareKeyboardLayoutMode": "resize",
       "userInterfaceStyle": "automatic",

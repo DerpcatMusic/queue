@@ -1,5 +1,7 @@
+import { memo } from "react";
 import type { ImageSourcePropType } from "react-native";
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -15,7 +17,7 @@ type CalendarConnectionRowProps = {
   showDivider?: boolean;
 };
 
-export function CalendarConnectionRow({
+export const CalendarConnectionRow = memo(function CalendarConnectionRow({
   iconSource,
   title,
   detail,
@@ -46,7 +48,7 @@ export function CalendarConnectionRow({
             : null,
         ]}
       >
-        <Image source={iconSource} style={styles.icon} resizeMode="cover" />
+        <Image source={iconSource as number} style={styles.icon} contentFit="cover" />
 
         <View style={styles.copy}>
           <Text style={[styles.title, { color: palette.primary }]}>
@@ -71,7 +73,7 @@ export function CalendarConnectionRow({
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row: {

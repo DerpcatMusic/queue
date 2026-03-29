@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { ComponentProps } from "react";
 import { Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
@@ -62,7 +63,7 @@ type StatusPillProps = {
   status: JobStatus | "upcoming";
 };
 
-export function StatusPill({ label, status }: StatusPillProps) {
+export const StatusPill = memo(function StatusPill({ label, status }: StatusPillProps) {
   const { color: palette } = useTheme();
   const tokens =
     status === "upcoming"
@@ -87,7 +88,7 @@ export function StatusPill({ label, status }: StatusPillProps) {
       </ThemedText>
     </View>
   );
-}
+});
 
 // ─── Jobs-list shared components ──────────────────────────────────────────────
 
@@ -98,7 +99,7 @@ type DotStatusPillProps = {
 };
 
 /** Colored-dot status pill used in job cards. */
-export function DotStatusPill({ backgroundColor, color, label }: DotStatusPillProps) {
+export const DotStatusPill = memo(function DotStatusPill({ backgroundColor, color, label }: DotStatusPillProps) {
   return (
     <View
       style={{
@@ -133,7 +134,7 @@ export function DotStatusPill({ backgroundColor, color, label }: DotStatusPillPr
       </Text>
     </View>
   );
-}
+});
 
 type MetricCellProps = {
   align?: "flex-start" | "flex-end";
@@ -143,7 +144,7 @@ type MetricCellProps = {
 };
 
 /** Label + value metric pair used in job cards. */
-export function MetricCell({ align = "flex-start", icon, label, value }: MetricCellProps) {
+export const MetricCell = memo(function MetricCell({ align = "flex-start", icon, label, value }: MetricCellProps) {
   const { color: palette } = useTheme();
   return (
     <View style={{ gap: BrandSpacing.xs, alignItems: align }}>
@@ -178,7 +179,7 @@ export function MetricCell({ align = "flex-start", icon, label, value }: MetricC
       </Text>
     </View>
   );
-}
+});
 
 type HomeSignalTileProps = {
   label: string;
@@ -188,7 +189,7 @@ type HomeSignalTileProps = {
   icon?: ComponentProps<typeof IconSymbol>["name"];
 };
 
-export function HomeSignalTile({
+export const HomeSignalTile = memo(function HomeSignalTile({
   label,
   value,
   detail,
@@ -277,4 +278,4 @@ export function HomeSignalTile({
       ) : null}
     </View>
   );
-}
+});

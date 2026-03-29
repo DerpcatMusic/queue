@@ -1,20 +1,19 @@
 import { useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
-import { useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { HomeHeaderSheet } from "@/components/home/home-header-sheet";
 import {
   HomeRoleContent,
   type HomeRoleContentProps,
 } from "@/components/home/home-tab/home-role-content";
-import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
-import { useTabSceneLifecycle } from "@/modules/navigation/tab-scene-lifecycle";
+import { TabSceneDescriptorContext } from "@/modules/navigation/role-tabs-layout";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
 
@@ -24,13 +23,12 @@ export default function HomeScreen() {
   const liveNow = useMinuteNow();
   const queryNow = Math.floor(liveNow / (60 * 1000)) * 60 * 1000;
   const { color: palette } = useTheme();
-  const { hasActivated: hasActivatedHome } = useTabSceneLifecycle("index");
 
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
   const canQueryInstructor =
-    hasActivatedHome && !isAuthLoading && isAuthenticated && currentUser?.role === "instructor";
+    !isAuthLoading && isAuthenticated && currentUser?.role === "instructor";
   const canQueryStudio =
-    hasActivatedHome && !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
+    !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
 
   const myStudioJobs = useQuery(
     api.jobs.getMyStudioJobsWithApplications,
@@ -54,12 +52,15 @@ export default function HomeScreen() {
     useState<Id<"jobApplications"> | null>(null);
   const withdrawApplication = useMutation(api.jobs.withdrawApplication);
 
-  const handleWithdrawApplication = (applicationId: Id<"jobApplications">) => {
-    setWithdrawingApplicationId(applicationId);
-    withdrawApplication({ applicationId })
-      .then(() => setWithdrawingApplicationId(null))
-      .catch(() => setWithdrawingApplicationId(null));
-  };
+  const handleWithdrawApplication = useCallback(
+    (applicationId: Id<"jobApplications">) => {
+      setWithdrawingApplicationId(applicationId);
+      withdrawApplication({ applicationId })
+        .then(() => setWithdrawingApplicationId(null))
+        .catch(() => setWithdrawingApplicationId(null));
+    },
+    [withdrawApplication],
+  );
 
   const currencyFormatter = useMemo(
     () =>
@@ -161,7 +162,49 @@ export default function HomeScreen() {
     [activeRole, homeSheetContent, palette.surface],
   );
 
-  useGlobalTopSheet("index", homeSheetConfig, "home:sheet");
+  // Register scene descriptor with parent layout
+  const descriptorContext = useContext(TabSceneDescriptorContext);
+  const descriptor = useMemo(
+    () => ({
+      tabId: "index" as const,
+      body: (
+        <HomeRoleContent
+          activeRole={activeRole as "instructor" | "studio"}
+          locale={locale}
+          currencyFormatter={currencyFormatter}
+          t={t}
+          now={liveNow}
+          instructorHomeStats={instructorHomeStats}
+          availableInstructorJobs={availableInstructorJobs}
+          myStudioJobs={myStudioJobs as HomeRoleContentProps["myStudioJobs"]}
+          withdrawingApplicationId={withdrawingApplicationId}
+          onWithdrawApplication={handleWithdrawApplication}
+        />
+      ),
+      sheetConfig: homeSheetConfig,
+      insetTone: "sheet" as const,
+      isLoading: isAuthLoading || currentUser === undefined,
+    }),
+    // NOTE: intentionally omitting handleWithdrawApplication — function refs change every render
+    [
+      activeRole,
+      locale,
+      currencyFormatter,
+      t,
+      liveNow,
+      instructorHomeStats,
+      availableInstructorJobs,
+      myStudioJobs,
+      withdrawingApplicationId,
+      handleWithdrawApplication,
+      homeSheetConfig,
+      isAuthLoading,
+      currentUser,
+    ],
+  );
+  useEffect(() => {
+    descriptorContext?.registerDescriptor("index", descriptor);
+  }, [descriptorContext, descriptor]);
 
   if (isAuthLoading) {
     return <LoadingScreen label={t("home.loading")} />;

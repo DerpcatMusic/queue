@@ -291,7 +291,6 @@ export const StudioJobCard = memo(function StudioJobCard({
     <View>
       <Pressable
         onPress={() => {
-          console.log("StudioJobCard pressed, jobId:", job.jobId, "sport:", job.sport);
           onJobPress(job.jobId);
         }}
         style={({ pressed }) => ({

@@ -17,9 +17,10 @@ export type AnyStyleSpec = {
 const NO_MATCH_ZONE_FILTER: Expression = ["==", ["get", "id"], "__none__"];
 
 let offlinePackBootstrapPromise: Promise<void> | null = null;
-const mapStyleResponseCache = new Map<string, AnyStyleSpec | null>();
+const MAP_STYLE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const mapStyleResponseCache = new Map<string, { data: AnyStyleSpec | null; timestamp: number }>();
 const mapStyleResponsePromiseCache = new Map<string, Promise<AnyStyleSpec | null>>();
-const themedMapStyleCache = new Map<string, AnyStyleSpec>();
+const themedMapStyleCache = new Map<string, { data: AnyStyleSpec; timestamp: number }>();
 const MAPLIBRE_GLYPHS_URL = "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf";
 
 export function sanitizeZoom(value: number, fallback: number) {
@@ -262,8 +263,9 @@ export function createFallbackMapStyle(
 }
 
 export async function fetchMapStyleSpec(styleUrl: string): Promise<AnyStyleSpec | null> {
-  if (mapStyleResponseCache.has(styleUrl)) {
-    return mapStyleResponseCache.get(styleUrl) ?? null;
+  const cachedEntry = mapStyleResponseCache.get(styleUrl);
+  if (cachedEntry && Date.now() - cachedEntry.timestamp <= MAP_STYLE_CACHE_TTL_MS) {
+    return cachedEntry.data;
   }
 
   const existingPromise = mapStyleResponsePromiseCache.get(styleUrl);
@@ -275,15 +277,15 @@ export async function fetchMapStyleSpec(styleUrl: string): Promise<AnyStyleSpec 
     try {
       const response = await fetch(styleUrl);
       if (!response.ok) {
-        mapStyleResponseCache.set(styleUrl, null);
+        mapStyleResponseCache.set(styleUrl, { data: null, timestamp: Date.now() });
         return null;
       }
 
       const baseStyle = (await response.json()) as AnyStyleSpec;
-      mapStyleResponseCache.set(styleUrl, baseStyle);
+      mapStyleResponseCache.set(styleUrl, { data: baseStyle, timestamp: Date.now() });
       return baseStyle;
     } catch {
-      mapStyleResponseCache.set(styleUrl, null);
+      mapStyleResponseCache.set(styleUrl, { data: null, timestamp: Date.now() });
       return null;
     } finally {
       mapStyleResponsePromiseCache.delete(styleUrl);
@@ -295,11 +297,19 @@ export async function fetchMapStyleSpec(styleUrl: string): Promise<AnyStyleSpec 
 }
 
 export function getCachedMapStyleSpec(styleUrl: string) {
-  return mapStyleResponseCache.get(styleUrl);
+  const cachedEntry = mapStyleResponseCache.get(styleUrl);
+  if (cachedEntry && Date.now() - cachedEntry.timestamp <= MAP_STYLE_CACHE_TTL_MS) {
+    return cachedEntry.data;
+  }
+  return undefined;
 }
 
 export function warmMapStyleSpec(styleUrl: string) {
-  if (mapStyleResponseCache.has(styleUrl) || mapStyleResponsePromiseCache.has(styleUrl)) {
+  const cachedEntry = mapStyleResponseCache.get(styleUrl);
+  if (
+    (cachedEntry && Date.now() - cachedEntry.timestamp <= MAP_STYLE_CACHE_TTL_MS) ||
+    mapStyleResponsePromiseCache.has(styleUrl)
+  ) {
     return;
   }
   void fetchMapStyleSpec(styleUrl);
@@ -420,11 +430,11 @@ export function resolveThemedMapStyle(
   showBaseLabels: boolean,
 ) {
   if (!baseMapStyle) return null;
-  const cachedStyle = themedMapStyleCache.get(cacheKey);
-  if (cachedStyle) {
-    return cachedStyle;
+  const cachedEntry = themedMapStyleCache.get(cacheKey);
+  if (cachedEntry && Date.now() - cachedEntry.timestamp <= MAP_STYLE_CACHE_TTL_MS) {
+    return cachedEntry.data;
   }
   const nextStyle = withMapPersonality(baseMapStyle, palette, showBaseLabels);
-  themedMapStyleCache.set(cacheKey, nextStyle);
+  themedMapStyleCache.set(cacheKey, { data: nextStyle, timestamp: Date.now() });
   return nextStyle;
 }
