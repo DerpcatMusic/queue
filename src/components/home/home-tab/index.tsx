@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { HomeHeaderSheet } from "@/components/home/home-header-sheet";
 import {
@@ -13,7 +13,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
-import { TabSceneDescriptorContext } from "@/modules/navigation/role-tabs-layout";
+import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
 
@@ -162,8 +162,6 @@ export default function HomeScreen() {
     [activeRole, homeSheetContent, palette.surface],
   );
 
-  // Register scene descriptor with parent layout
-  const descriptorContext = useContext(TabSceneDescriptorContext);
   const descriptor = useMemo(
     () => ({
       tabId: "index" as const,
@@ -202,9 +200,7 @@ export default function HomeScreen() {
       currentUser,
     ],
   );
-  useEffect(() => {
-    descriptorContext?.registerDescriptor("index", descriptor);
-  }, [descriptorContext, descriptor]);
+  useTabSceneDescriptor(descriptor);
 
   if (isAuthLoading) {
     return <LoadingScreen label={t("home.loading")} />;

@@ -201,10 +201,6 @@ export function TopSheet({
   // Available height for sheet steps (screen minus safe top minus bottom tabs)
   const bottomChromeEstimate = Math.max(MIN_BOTTOM_CHROME_ESTIMATE, safeBottom + TAB_BAR_ESTIMATE);
   const availableHeight = screenHeight - safeTop - bottomChromeEstimate;
-  // Fixed max height for the sheet shell — used as the basis for scaleY transforms
-  // instead of animating height directly (which triggers layout). Must be computed
-  // before stepHeights so it's stable across renders.
-  const maxSheetHeight = availableHeight;
 
   const resolvedPadding = useMemo(
     () => ({
@@ -351,26 +347,9 @@ export function TopSheet({
     ],
   );
 
-  // Animated outer container — uses translateY instead of height to avoid
-  // layout recalculations on every frame (height animation triggers re-layout,
-  // translateY is pure GPU composition).
-  // The sheet is positioned at the bottom with maxSheetHeight as its fixed extent.
-  // We track sheetHeight internally for step snapping but drive visuals via translateY.
-  const outerStyle = useAnimatedStyle(() => {
-    // Scale from bottom: scaleY anchored at bottom so sheet expands/collapses upward
-    // translateY adjustment accounts for the anchor point
-    const effectiveHeight = sheetHeight.value;
-    const scale = maxSheetHeight > 0 ? effectiveHeight / maxSheetHeight : 1;
-    return {
-      // Fixed max height — the sheet shell never changes size via layout
-      height: maxSheetHeight,
-      // Scale from bottom edge (transformOrigin equivalent for RN)
-      transform: [
-        { translateY: maxSheetHeight * (1 - scale) },
-        { scaleY: scale },
-      ],
-    };
-  });
+  const outerStyle = useAnimatedStyle(() => ({
+    height: sheetHeight.value,
+  }));
 
   // Animated inner content (padding + background)
   const innerStyle = useAnimatedStyle(() => ({

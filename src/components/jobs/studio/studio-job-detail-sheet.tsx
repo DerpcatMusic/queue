@@ -183,11 +183,11 @@ export function StudioJobDetailSheet({
                             ]}
                           >
                             {application.profileImageUrl ? (
-                              <Image
-                                source={{ uri: application.profileImageUrl }}
-                                style={styles.avatarImage}
-                                resizeMode="cover"
-                              />
+                                <Image
+                                  source={{ uri: application.profileImageUrl }}
+                                  style={styles.avatarImage}
+                                  contentFit="cover"
+                                />
                             ) : (
                               <Text variant="title" color="primary">
                                 {initials}
