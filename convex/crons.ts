@@ -39,4 +39,11 @@ crons.cron(
   { olderThanMs: 30 * 24 * 60 * 60 * 1000 }, // 30 days retention
 );
 
+crons.cron(
+  "process instructor insurance renewals",
+  "0 7 * * *", // Every day at 7 AM UTC
+  internal.complianceReview.processInsuranceRenewalChecks,
+  {},
+);
+
 export default crons;

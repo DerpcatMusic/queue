@@ -19,7 +19,10 @@ import {
   ProfileSupportCard,
 } from "@/components/profile/profile-settings-sections";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
-import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
+import {
+  ProfileDesktopHeroPanel,
+  ProfileHeaderSheet,
+} from "@/components/profile/profile-tab";
 import { ThemedText } from "@/components/themed-text";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -44,7 +47,10 @@ import {
   toDeviceAccountIdentity,
   validateSessionAfterSwitch,
 } from "@/modules/session/device-account-store";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import {
+  buildRoleTabRoute,
+  ROLE_TAB_ROUTE_NAMES,
+} from "@/navigation/role-routes";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -52,10 +58,15 @@ const ROLE_TRANSLATION_KEYS = {
   studio: "profile.roles.studio",
   admin: "profile.roles.admin",
 } as const;
-const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
+const STUDIO_PROFILE_ROUTE = buildRoleTabRoute(
+  "studio",
+  ROLE_TAB_ROUTE_NAMES.profile,
+);
 const STUDIO_BRANCHES_ROUTE = `${STUDIO_PROFILE_ROUTE}/branches` as const;
 const STUDIO_ADD_ACCOUNT_ROUTE = `${STUDIO_PROFILE_ROUTE}/add-account` as const;
-const STUDIO_CALENDAR_SETTINGS_ROUTE = `${STUDIO_PROFILE_ROUTE}/calendar-settings` as const;
+const STUDIO_CALENDAR_SETTINGS_ROUTE =
+  `${STUDIO_PROFILE_ROUTE}/calendar-settings` as const;
+const STUDIO_COMPLIANCE_ROUTE = `${STUDIO_PROFILE_ROUTE}/compliance` as const;
 const STUDIO_PAYMENTS_ROUTE = `${STUDIO_PROFILE_ROUTE}/payments` as const;
 const STUDIO_EDIT_ROUTE = `${STUDIO_PROFILE_ROUTE}/edit` as const;
 
@@ -64,9 +75,46 @@ function getSportsSummary(sports: string[], t: TFunction) {
     return t("profile.settings.sports.none");
   }
   if (sports.length <= 2) {
-    return sports.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(", ");
+    return sports
+      .map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport))
+      .join(", ");
   }
   return t("profile.settings.sports.selected", { count: sports.length });
+}
+
+function getStudioComplianceSummaryLabel(
+  summary:
+    | {
+        canPublishJobs: boolean;
+        blockingReasons: string[];
+      }
+    | null
+    | undefined,
+  t: TFunction,
+) {
+  if (!summary) {
+    return t("profile.studioCompliance.status.loading");
+  }
+  if (summary.canPublishJobs) {
+    return t("profile.studioCompliance.status.ready");
+  }
+
+  const blockers = summary.blockingReasons
+    .map((reason) => {
+      switch (reason) {
+        case "owner_identity_required":
+          return t("profile.studioCompliance.blockers.identity");
+        case "business_profile_required":
+          return t("profile.studioCompliance.blockers.billing");
+        case "payment_method_required":
+          return t("profile.studioCompliance.blockers.payment");
+        default:
+          return reason;
+      }
+    })
+    .join(" · ");
+
+  return t("profile.studioCompliance.status.blocked", { blockers });
 }
 
 export default function StudioProfileScreen() {
@@ -84,9 +132,15 @@ export default function StudioProfileScreen() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [hasActivated, setHasActivated] = useState(false);
-  const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
-  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
-  const isBodyReady = useDeferredTabMount(pathname === STUDIO_PROFILE_ROUTE, { delayMs: 36 });
+  const [rememberedAccounts, setRememberedAccounts] = useState<
+    RememberedDeviceAccount[]
+  >([]);
+  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(
+    null,
+  );
+  const isBodyReady = useDeferredTabMount(pathname === STUDIO_PROFILE_ROUTE, {
+    delayMs: 36,
+  });
 
   useEffect(() => {
     if (pathname === STUDIO_PROFILE_ROUTE) {
@@ -100,10 +154,19 @@ export default function StudioProfileScreen() {
     }
   }, [edit, router]);
   const emptyArgs = useMemo(() => ({}), []);
-  const shouldLoadSettings = currentUser?.role === "studio" && hasActivated && isBodyReady;
+  const shouldLoadSettings =
+    currentUser?.role === "studio" && hasActivated && isBodyReady;
 
   const studioSettings = useQuery(
     api.users.getMyStudioSettings,
+    shouldLoadSettings ? emptyArgs : "skip",
+  );
+  const studioComplianceSummary = useQuery(
+    api.complianceStudio.getMyStudioComplianceSummary,
+    shouldLoadSettings ? emptyArgs : "skip",
+  );
+  const studioDiditVerification = useQuery(
+    api.didit.getMyStudioDiditVerification,
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const [lastResolvedStudioSettings, setLastResolvedStudioSettings] =
@@ -117,10 +180,11 @@ export default function StudioProfileScreen() {
     studioSettings === undefined ? lastResolvedStudioSettings : studioSettings;
   const updateMyStudioSettings = useMutation(api.users.updateMyStudioSettings);
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
-  const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
-  const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<number | undefined>(
-    undefined,
-  );
+  const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] =
+    useState(false);
+  const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<
+    number | undefined
+  >(undefined);
 
   useEffect(() => {
     if (resolvedStudioSettings) {
@@ -130,7 +194,9 @@ export default function StudioProfileScreen() {
 
   useEffect(() => {
     if (resolvedStudioSettings) {
-      setAutoExpireMinutesBefore(resolvedStudioSettings.autoExpireMinutesBefore);
+      setAutoExpireMinutesBefore(
+        resolvedStudioSettings.autoExpireMinutesBefore,
+      );
     }
   }, [resolvedStudioSettings]);
 
@@ -162,7 +228,12 @@ export default function StudioProfileScreen() {
           setIsSavingAutoAcceptDefault(false);
         });
     },
-    [autoAcceptDefault, autoExpireMinutesBefore, resolvedStudioSettings, updateMyStudioSettings],
+    [
+      autoAcceptDefault,
+      autoExpireMinutesBefore,
+      resolvedStudioSettings,
+      updateMyStudioSettings,
+    ],
   );
 
   const handleAutoExpireMinutesBeforeChange = useCallback(
@@ -222,19 +293,25 @@ export default function StudioProfileScreen() {
         try {
           await switchToRememberedDeviceAccount({
             accountId,
-            ...(currentUser ? { currentAccount: toDeviceAccountIdentity(currentUser) } : {}),
+            ...(currentUser
+              ? { currentAccount: toDeviceAccountIdentity(currentUser) }
+              : {}),
           });
           reloadAuthSession();
 
           // Validate that the new session actually works by checking if currentUser loads.
           // This prevents the race where isAuthenticated=true but currentUser=null,
           // which would cause sessionGate to redirect to sign-in unnecessarily.
-          const sessionValid = await validateSessionAfterSwitch(() => currentUser);
+          const sessionValid = await validateSessionAfterSwitch(
+            () => currentUser,
+          );
 
           if (!sessionValid) {
             // Stored session is invalid - backend rejected it
             // Throw to trigger error handling, user stays on this profile
-            throw new Error("Stored session is no longer valid. Please sign in again.");
+            throw new Error(
+              "Stored session is no longer valid. Please sign in again.",
+            );
           }
         } catch (error) {
           setSwitchingAccountId(null);
@@ -250,21 +327,31 @@ export default function StudioProfileScreen() {
     t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
   const roleValue = t(
-    ROLE_TRANSLATION_KEYS[currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS] ??
-      "profile.roles.pending",
+    ROLE_TRANSLATION_KEYS[
+      currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS
+    ] ?? "profile.roles.pending",
   );
   const memberSince = currentUser?.createdAt
-    ? new Date(currentUser.createdAt).toLocaleDateString(i18n.resolvedLanguage ?? "en", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
+    ? new Date(currentUser.createdAt).toLocaleDateString(
+        i18n.resolvedLanguage ?? "en",
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        },
+      )
     : null;
 
-  const sportsSummary = getSportsSummary(resolvedStudioSettings?.sports ?? [], t);
-  const branchSummary = resolvedStudioSettings?.entitlement?.branchesFeatureEnabled
+  const sportsSummary = getSportsSummary(
+    resolvedStudioSettings?.sports ?? [],
+    t,
+  );
+  const branchSummary = resolvedStudioSettings?.entitlement
+    ?.branchesFeatureEnabled
     ? t("profile.settings.branches.summary", {
-        primary: resolvedStudioSettings?.primaryBranch?.name ?? t("profile.settings.branches.none"),
+        primary:
+          resolvedStudioSettings?.primaryBranch?.name ??
+          t("profile.settings.branches.none"),
         active: resolvedStudioSettings?.entitlement?.activeBranchCount ?? 0,
         max: resolvedStudioSettings?.entitlement?.maxBranches ?? 1,
       })
@@ -281,7 +368,9 @@ export default function StudioProfileScreen() {
       : provider === "google"
         ? t("profile.settings.calendar.provider.google")
         : t("profile.settings.calendar.provider.apple");
-  const socialCount = Object.keys(resolvedStudioSettings?.socialLinks ?? {}).length;
+  const socialCount = Object.keys(
+    resolvedStudioSettings?.socialLinks ?? {},
+  ).length;
   const sportsCount = resolvedStudioSettings?.sports?.length ?? 0;
   const setupActions = [
     !resolvedStudioSettings?.address
@@ -327,13 +416,20 @@ export default function StudioProfileScreen() {
     (socialCount > 0
       ? t("profile.settings.publicProfileActive", { count: socialCount })
       : t("profile.settings.publicProfilePrompt"));
+  const complianceSummaryLabel = getStudioComplianceSummaryLabel(
+    studioComplianceSummary,
+    t,
+  );
+  const isStudioVerified = studioDiditVerification?.isVerified ?? false;
   const profileSheetContent = useMemo(
     () => (
       <View>
         <ProfileHeaderSheet
           profileName={profileName}
           roleLabel={t("profile.hero.studioProfile")}
-          profileImageUrl={resolvedStudioSettings?.profileImageUrl ?? currentUser?.image}
+          profileImageUrl={
+            resolvedStudioSettings?.profileImageUrl ?? currentUser?.image
+          }
           visualVariant="studioFeature"
           onRequestEdit={handleRequestEdit}
           primaryActionLabel={t("profile.actions.edit")}
@@ -341,6 +437,7 @@ export default function StudioProfileScreen() {
           bio={resolvedStudioSettings?.bio}
           socialLinks={resolvedStudioSettings?.socialLinks}
           sports={resolvedStudioSettings?.sports ?? []}
+          isVerified={isStudioVerified}
         />
       </View>
     ),
@@ -353,6 +450,7 @@ export default function StudioProfileScreen() {
       resolvedStudioSettings?.profileImageUrl,
       resolvedStudioSettings?.socialLinks,
       resolvedStudioSettings?.sports,
+      isStudioVerified,
       t,
     ],
   );
@@ -362,7 +460,7 @@ export default function StudioProfileScreen() {
       render: () => ({
         children: profileSheetContent,
       }),
-      steps: [0.12],
+      steps: [0],
       initialStep: 0,
       collapsedHeightMode: "content" as const,
       padding: {
@@ -375,7 +473,8 @@ export default function StudioProfileScreen() {
     [color.surface, profileSheetContent],
   );
 
-  const isProfileIndexRoute = pathname === STUDIO_PROFILE_ROUTE || pathname.endsWith("/profile");
+  const isProfileIndexRoute =
+    pathname === STUDIO_PROFILE_ROUTE || pathname.endsWith("/profile");
 
   useGlobalTopSheet(
     "profile",
@@ -411,7 +510,9 @@ export default function StudioProfileScreen() {
             <ProfileDesktopHeroPanel
               profileName={profileName}
               roleLabel={t("profile.hero.studioProfile")}
-              profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
+              profileImageUrl={
+                studioSettings?.profileImageUrl ?? currentUser?.image
+              }
               summary={publicProfileSummary}
               statusLabel={
                 profileStatus === "ready"
@@ -430,6 +531,7 @@ export default function StudioProfileScreen() {
                 label: t("profile.actions.edit"),
                 onPress: handleRequestEdit,
               }}
+              isVerified={isStudioVerified}
               onOpenSwitcher={handleOpenAccountSwitcher}
               switcherActionLabel={t("profile.switcher.openAction")}
             />
@@ -453,7 +555,8 @@ export default function StudioProfileScreen() {
                 <ProfileSettingRow
                   title={t("profile.settings.studioDetails")}
                   subtitle={
-                    studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
+                    studioSettings?.address ??
+                    t("profile.settings.completeOnboardingAddress")
                   }
                   icon="building.2.fill"
                   onPress={handleRequestEdit}
@@ -468,7 +571,9 @@ export default function StudioProfileScreen() {
                 />
                 <ProfileSettingRow
                   title={t("profile.settings.coverageZone")}
-                  subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
+                  subtitle={
+                    studioSettings?.zone ?? t("profile.settings.noZone")
+                  }
                   icon="mappin.and.ellipse"
                   onPress={handleRequestEdit}
                 />
@@ -517,9 +622,15 @@ export default function StudioProfileScreen() {
                 ) : null}
                 <ProfileSettingRow
                   title={t("profile.language.title")}
-                  value={language === "en" ? t("language.english") : t("language.hebrew")}
+                  value={
+                    language === "en"
+                      ? t("language.english")
+                      : t("language.hebrew")
+                  }
                   icon="globe"
-                  onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                  onPress={() =>
+                    void setLanguage(language === "en" ? "he" : "en")
+                  }
                   showDivider
                 />
                 <ProfileSettingRow
@@ -529,7 +640,9 @@ export default function StudioProfileScreen() {
                   accessory={
                     <KitSwitch
                       value={preference === "system"}
-                      onValueChange={(value) => setPreference(value ? "system" : "light")}
+                      onValueChange={(value) =>
+                        setPreference(value ? "system" : "light")
+                      }
                     />
                   }
                 />
@@ -540,7 +653,9 @@ export default function StudioProfileScreen() {
                     <KitSwitch
                       disabled={preference === "system"}
                       value={preference === "dark"}
-                      onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                      onValueChange={(value) =>
+                        setPreference(value ? "dark" : "light")
+                      }
                     />
                   }
                 />
@@ -561,8 +676,14 @@ export default function StudioProfileScreen() {
                     paddingVertical: BrandSpacing.componentPadding,
                   }}
                 >
-                  <View style={{ width: 20, alignItems: "center", paddingTop: 2 }}>
-                    <IconSymbol name="clock.fill" size={16} color={color.textMuted} />
+                  <View
+                    style={{ width: 20, alignItems: "center", paddingTop: 2 }}
+                  >
+                    <IconSymbol
+                      name="clock.fill"
+                      size={16}
+                      color={color.textMuted}
+                    />
                   </View>
                   <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                     <Text
@@ -593,7 +714,9 @@ export default function StudioProfileScreen() {
                         selectedBackgroundColor={color.primary}
                         labelColor={color.text}
                         selectedLabelColor={color.onPrimary}
-                        onPress={() => handleAutoExpireMinutesBeforeChange(undefined)}
+                        onPress={() =>
+                          handleAutoExpireMinutesBeforeChange(undefined)
+                        }
                       />
                       {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
                         <ChoicePill
@@ -605,7 +728,9 @@ export default function StudioProfileScreen() {
                           selectedBackgroundColor={color.primary}
                           labelColor={color.text}
                           selectedLabelColor={color.onPrimary}
-                          onPress={() => handleAutoExpireMinutesBeforeChange(minutes)}
+                          onPress={() =>
+                            handleAutoExpireMinutesBeforeChange(minutes)
+                          }
                         />
                       ))}
                     </View>
@@ -626,7 +751,10 @@ export default function StudioProfileScreen() {
                   showDivider
                   accessory={
                     <KitSwitch
-                      disabled={isSavingAutoAcceptDefault || studioSettings === undefined}
+                      disabled={
+                        isSavingAutoAcceptDefault ||
+                        studioSettings === undefined
+                      }
                       value={autoAcceptDefault}
                       onValueChange={handleAutoAcceptDefaultChange}
                     />
@@ -636,7 +764,9 @@ export default function StudioProfileScreen() {
                   title={t("profile.settings.calendar.title")}
                   subtitle={calendarSummary}
                   icon="calendar.circle.fill"
-                  onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
+                  onPress={() =>
+                    router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)
+                  }
                   showDivider
                 />
                 <ProfileSettingRow
@@ -644,6 +774,13 @@ export default function StudioProfileScreen() {
                   subtitle={t("profile.sections.paymentsDesc")}
                   icon="creditcard.fill"
                   onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
+                  showDivider
+                />
+                <ProfileSettingRow
+                  title={t("profile.navigation.compliance")}
+                  subtitle={complianceSummaryLabel}
+                  icon="checkmark.shield.fill"
+                  onPress={() => router.push(STUDIO_COMPLIANCE_ROUTE as Href)}
                   showDivider
                 />
                 <ProfileSettingRow
@@ -668,7 +805,10 @@ export default function StudioProfileScreen() {
           bottomSpacing={BrandSpacing.xl}
         >
           <View style={styles.mobileContentPadding}>
-            <ProfileSectionHeader label={t("profile.sections.studio")} icon="building.2.fill" />
+            <ProfileSectionHeader
+              label={t("profile.sections.studio")}
+              icon="building.2.fill"
+            />
             <ProfileSectionCard>
               <ProfileSettingRow
                 title={t("profile.settings.publicProfile")}
@@ -680,7 +820,8 @@ export default function StudioProfileScreen() {
               <ProfileSettingRow
                 title={t("profile.settings.studioDetails")}
                 subtitle={
-                  studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
+                  studioSettings?.address ??
+                  t("profile.settings.completeOnboardingAddress")
                 }
                 icon="building.2.fill"
                 onPress={handleRequestEdit}
@@ -741,9 +882,15 @@ export default function StudioProfileScreen() {
               ) : null}
               <ProfileSettingRow
                 title={t("profile.language.title")}
-                value={language === "en" ? t("language.english") : t("language.hebrew")}
+                value={
+                  language === "en"
+                    ? t("language.english")
+                    : t("language.hebrew")
+                }
                 icon="globe"
-                onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                onPress={() =>
+                  void setLanguage(language === "en" ? "he" : "en")
+                }
                 showDivider
               />
               <ProfileSettingRow
@@ -753,7 +900,9 @@ export default function StudioProfileScreen() {
                 accessory={
                   <KitSwitch
                     value={preference === "system"}
-                    onValueChange={(value) => setPreference(value ? "system" : "light")}
+                    onValueChange={(value) =>
+                      setPreference(value ? "system" : "light")
+                    }
                   />
                 }
               />
@@ -764,7 +913,9 @@ export default function StudioProfileScreen() {
                   <KitSwitch
                     disabled={preference === "system"}
                     value={preference === "dark"}
-                    onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                    onValueChange={(value) =>
+                      setPreference(value ? "dark" : "light")
+                    }
                   />
                 }
               />
@@ -784,8 +935,14 @@ export default function StudioProfileScreen() {
                   paddingVertical: BrandSpacing.componentPadding,
                 }}
               >
-                <View style={{ width: 20, alignItems: "center", paddingTop: 1 }}>
-                  <IconSymbol name="clock.fill" size={18} color={color.secondary} />
+                <View
+                  style={{ width: 20, alignItems: "center", paddingTop: 1 }}
+                >
+                  <IconSymbol
+                    name="clock.fill"
+                    size={18}
+                    color={color.secondary}
+                  />
                 </View>
                 <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                   <Text
@@ -817,7 +974,9 @@ export default function StudioProfileScreen() {
                       selectedBackgroundColor={color.primary}
                       labelColor={color.text}
                       selectedLabelColor={color.onPrimary}
-                      onPress={() => handleAutoExpireMinutesBeforeChange(undefined)}
+                      onPress={() =>
+                        handleAutoExpireMinutesBeforeChange(undefined)
+                      }
                     />
                     {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
                       <ChoicePill
@@ -829,7 +988,9 @@ export default function StudioProfileScreen() {
                         selectedBackgroundColor={color.primary}
                         labelColor={color.text}
                         selectedLabelColor={color.onPrimary}
-                        onPress={() => handleAutoExpireMinutesBeforeChange(minutes)}
+                        onPress={() =>
+                          handleAutoExpireMinutesBeforeChange(minutes)
+                        }
                       />
                     ))}
                   </View>
@@ -850,7 +1011,9 @@ export default function StudioProfileScreen() {
                 showDivider
                 accessory={
                   <KitSwitch
-                    disabled={isSavingAutoAcceptDefault || studioSettings === undefined}
+                    disabled={
+                      isSavingAutoAcceptDefault || studioSettings === undefined
+                    }
                     value={autoAcceptDefault}
                     onValueChange={handleAutoAcceptDefaultChange}
                   />
@@ -860,7 +1023,16 @@ export default function StudioProfileScreen() {
                 title={t("profile.settings.calendar.title")}
                 subtitle={calendarSummary}
                 icon="calendar.circle.fill"
-                onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
+                onPress={() =>
+                  router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)
+                }
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.navigation.compliance")}
+                subtitle={complianceSummaryLabel}
+                icon="checkmark.shield.fill"
+                onPress={() => router.push(STUDIO_COMPLIANCE_ROUTE as Href)}
                 showDivider
               />
               <ProfileSettingRow
@@ -871,23 +1043,33 @@ export default function StudioProfileScreen() {
                 showDivider
               />
               <View style={{ padding: BrandSpacing.md }}>
-                <ProfileSignOutButton title={t("auth.signOutButton")} onPress={handleSignOut} />
+                <ProfileSignOutButton
+                  title={t("auth.signOutButton")}
+                  onPress={handleSignOut}
+                />
               </View>
             </ProfileSectionCard>
 
             {/* Support Section */}
-            <ProfileSectionHeader label={t("profile.sections.support")} icon="help" />
+            <ProfileSectionHeader
+              label={t("profile.sections.support")}
+              icon="help"
+            />
             <View style={{ paddingHorizontal: BrandSpacing.inset }}>
               <View style={{ flexDirection: "row", gap: BrandSpacing.md }}>
                 <ProfileSupportCard
                   icon="help_center"
                   title="Help Center"
-                  onPress={() => Linking.openURL("https://www.join-queue.com/he/help/")}
+                  onPress={() =>
+                    Linking.openURL("https://www.join-queue.com/he/help/")
+                  }
                 />
                 <ProfileSupportCard
                   icon="gavel"
                   title="Terms"
-                  onPress={() => Linking.openURL("https://www.join-queue.com/he/tos/")}
+                  onPress={() =>
+                    Linking.openURL("https://www.join-queue.com/he/tos/")
+                  }
                 />
               </View>
             </View>

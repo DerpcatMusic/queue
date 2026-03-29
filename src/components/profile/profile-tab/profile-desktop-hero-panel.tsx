@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Text, View } from "react-native";
+import { ProfileVerifiedBadge } from "@/components/profile/profile-verified-badge";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitStatusBadge } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
@@ -19,6 +20,7 @@ type ProfileDesktopHeroPanelProps = {
   secondaryAction?: ProfileHeroAction | undefined;
   onOpenSwitcher?: () => void;
   switcherActionLabel?: string;
+  isVerified?: boolean;
 };
 
 export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
@@ -33,6 +35,7 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
   secondaryAction,
   onOpenSwitcher,
   switcherActionLabel,
+  isVerified = false,
 }: ProfileDesktopHeroPanelProps) {
   const theme = useTheme();
 
@@ -48,12 +51,20 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
       }}
     >
       <View
-        style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.componentPadding }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: BrandSpacing.componentPadding,
+        }}
       >
         <ProfileAvatar
           imageUrl={profileImageUrl}
           fallbackName={profileName}
-          size={BrandSpacing.iconContainerLarge + BrandSpacing.xs + BrandSpacing.xs / 2}
+          size={
+            BrandSpacing.iconContainerLarge +
+            BrandSpacing.xs +
+            BrandSpacing.xs / 2
+          }
           roundedSquare
         />
         <View style={{ flex: 1, gap: BrandSpacing.xs }}>
@@ -65,15 +76,25 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
           >
             {roleLabel}
           </Text>
-          <Text
-            numberOfLines={2}
+          <View
             style={{
-              ...BrandType.headingDisplay,
-              color: theme.color.text,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: BrandSpacing.xs,
             }}
           >
-            {profileName}
-          </Text>
+            <Text
+              numberOfLines={2}
+              style={{
+                ...BrandType.headingDisplay,
+                color: theme.color.text,
+                flexShrink: 1,
+              }}
+            >
+              {profileName}
+            </Text>
+            {isVerified ? <ProfileVerifiedBadge /> : null}
+          </View>
         </View>
       </View>
 
@@ -81,7 +102,11 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
         <KitStatusBadge
           label={statusLabel}
           tone={
-            statusTone === "success" ? "success" : statusTone === "warning" ? "warning" : "neutral"
+            statusTone === "success"
+              ? "success"
+              : statusTone === "warning"
+                ? "warning"
+                : "neutral"
           }
           showDot
         />
@@ -109,7 +134,11 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
 
       <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
         <View style={{ flex: 1 }}>
-          <ActionButton label={primaryAction.label} onPress={primaryAction.onPress} fullWidth />
+          <ActionButton
+            label={primaryAction.label}
+            onPress={primaryAction.onPress}
+            fullWidth
+          />
         </View>
         {onOpenSwitcher ? (
           <View style={{ flex: 1 }}>

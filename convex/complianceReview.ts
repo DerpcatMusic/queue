@@ -1,0 +1,774 @@
+"use node";
+
+import { Resend as ResendApi } from "resend";
+import { ConvexError, v } from "convex/values";
+import { internal } from "./_generated/api";
+import { internalAction } from "./_generated/server";
+import { isSportType, SPORT_TYPES, toSportLabel } from "./constants";
+import { sendResendEmailWithDevFallback } from "./lib/resendDevRouting";
+
+const GEMINI_BASE_URL = (
+  process.env.GEMINI_BASE_URL?.trim() ||
+  "https://generativelanguage.googleapis.com"
+).replace(/\/+$/, "");
+const GEMINI_COMPLIANCE_MODEL =
+  process.env.GEMINI_COMPLIANCE_MODEL?.trim() || "gemini-2.5-flash";
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+type GeminiUploadedFile = {
+  name?: string;
+  uri?: string;
+  mimeType?: string;
+  state?: string | { name?: string };
+};
+
+type CertificateReviewResult = {
+  approved: boolean;
+  sports: string[];
+  machines: string[];
+  issuerName: string;
+  certificateTitle: string;
+  summary: string;
+  rejectionReasons: string[];
+};
+
+type InsuranceReviewResult = {
+  approved: boolean;
+  issuerName: string;
+  policyNumber: string;
+  expiresOn: string;
+  summary: string;
+  rejectionReasons: string[];
+};
+
+function getGeminiApiKey() {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) {
+    throw new ConvexError("GEMINI_API_KEY is not configured");
+  }
+  return apiKey;
+}
+
+function getAuthEmailFrom() {
+  return process.env.AUTH_EMAIL_FROM?.trim() || "Queue <onboarding@resend.dev>";
+}
+
+function normalizeOptionalText(value: string | undefined) {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeStringArray(values: unknown): string[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+  return values
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+}
+
+function parseStructuredPartText(responseJson: unknown) {
+  const text = (responseJson as any)?.candidates?.[0]?.content?.parts?.[0]
+    ?.text;
+  if (typeof text !== "string" || text.trim().length === 0) {
+    throw new ConvexError("Gemini review returned no structured content");
+  }
+  return text;
+}
+
+function parseIsoDateToExpiryMs(value: string | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!isoMatch) {
+    return undefined;
+  }
+
+  const [, yearText, monthText, dayText] = isoMatch;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day)
+  ) {
+    return undefined;
+  }
+
+  return Date.UTC(year, month - 1, day, 23, 59, 59, 999);
+}
+
+async function uploadFileToGemini(args: {
+  apiKey: string;
+  bytes: ArrayBuffer;
+  mimeType: string;
+  displayName: string;
+}): Promise<GeminiUploadedFile> {
+  const startResponse = await fetch(
+    `${GEMINI_BASE_URL}/upload/v1beta/files?key=${args.apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "X-Goog-Upload-Protocol": "resumable",
+        "X-Goog-Upload-Command": "start",
+        "X-Goog-Upload-Header-Content-Length": String(args.bytes.byteLength),
+        "X-Goog-Upload-Header-Content-Type": args.mimeType,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        file: {
+          display_name: args.displayName,
+        },
+      }),
+    },
+  );
+
+  if (!startResponse.ok) {
+    throw new ConvexError(
+      `Gemini file upload start failed (${startResponse.status})`,
+    );
+  }
+
+  const uploadUrl = startResponse.headers.get("x-goog-upload-url");
+  if (!uploadUrl) {
+    throw new ConvexError("Gemini file upload URL was missing");
+  }
+
+  const uploadResponse = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "Content-Length": String(args.bytes.byteLength),
+      "X-Goog-Upload-Offset": "0",
+      "X-Goog-Upload-Command": "upload, finalize",
+    },
+    body: Buffer.from(args.bytes),
+  });
+
+  if (!uploadResponse.ok) {
+    throw new ConvexError(
+      `Gemini file upload finalize failed (${uploadResponse.status})`,
+    );
+  }
+
+  const uploadJson = (await uploadResponse.json()) as {
+    file?: GeminiUploadedFile;
+  };
+  if (
+    !uploadJson.file?.uri ||
+    !uploadJson.file?.mimeType ||
+    !uploadJson.file?.name
+  ) {
+    throw new ConvexError("Gemini file upload returned incomplete metadata");
+  }
+
+  return uploadJson.file;
+}
+
+async function deleteGeminiFile(apiKey: string, fileName: string | undefined) {
+  if (!fileName) {
+    return;
+  }
+  await fetch(`${GEMINI_BASE_URL}/v1beta/${fileName}?key=${apiKey}`, {
+    method: "DELETE",
+  }).catch(() => undefined);
+}
+
+async function generateStructuredGeminiReview<T>(args: {
+  apiKey: string;
+  file: GeminiUploadedFile;
+  prompt: string;
+  responseSchema: Record<string, unknown>;
+}): Promise<T> {
+  const response = await fetch(
+    `${GEMINI_BASE_URL}/v1beta/models/${GEMINI_COMPLIANCE_MODEL}:generateContent?key=${args.apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: args.prompt },
+              {
+                file_data: {
+                  mime_type: args.file.mimeType,
+                  file_uri: args.file.uri,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          response_mime_type: "application/json",
+          response_schema: args.responseSchema,
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new ConvexError(`Gemini review request failed (${response.status})`);
+  }
+
+  const responseJson = await response.json();
+  return JSON.parse(parseStructuredPartText(responseJson)) as T;
+}
+
+function buildCertificatePrompt(args: {
+  declaredSport?: string;
+  diditLegalName?: string;
+  instructorDisplayName: string;
+  nowIsoDate: string;
+}) {
+  return [
+    "You are validating a sports instructor teaching certificate for marketplace compliance.",
+    `Today's date: ${args.nowIsoDate}.`,
+    `Instructor display name: ${args.instructorDisplayName}.`,
+    args.diditLegalName
+      ? `Instructor legal name from Didit: ${args.diditLegalName}.`
+      : null,
+    args.declaredSport
+      ? `User-selected sport hint: ${args.declaredSport}.`
+      : null,
+    `Allowed sport keys: ${SPORT_TYPES.map((sport) => `${sport} = ${toSportLabel(sport)}`).join("; ")}.`,
+    "Approve only if the document clearly appears to be a legitimate certificate or diploma allowing this person to teach one or more sports.",
+    "Check whether the name on the document reasonably matches the instructor, the issuing organization is present, the certificate title is visible, and the covered sports can be inferred from the document.",
+    "Return sports as sport keys from the allowed list only.",
+    "Return machines as short lowercase tags like reformer, cadillac, chair, tower, bike, trx when they are clearly supported by the certificate. Otherwise return an empty array.",
+    "Return JSON only.",
+    "Use an empty string when issuerName or certificateTitle are unclear.",
+    "Use rejectionReasons to explain what is missing or why the document should not be approved.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildInsurancePrompt(args: {
+  diditLegalName?: string;
+  instructorDisplayName: string;
+  nowIsoDate: string;
+}) {
+  return [
+    "You are validating proof of active third-party liability insurance for a sports instructor in Israel.",
+    `Today's date: ${args.nowIsoDate}.`,
+    `Instructor display name: ${args.instructorDisplayName}.`,
+    args.diditLegalName
+      ? `Instructor legal name from Didit: ${args.diditLegalName}.`
+      : null,
+    "Approve only if the document clearly appears to show an active insurance policy for the instructor.",
+    "The document must include an expiry date. Return expiresOn in ISO format YYYY-MM-DD when visible.",
+    "If the insured person does not reasonably match the instructor, or if expiry is missing or already past, do not approve.",
+    "Return JSON only.",
+    "Use an empty string when issuerName or policyNumber are unclear.",
+    "Use rejectionReasons to explain what is missing or why the document should not be approved.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildCertificateReviewSchema() {
+  return {
+    type: "OBJECT",
+    properties: {
+      approved: { type: "BOOLEAN" },
+      sports: {
+        type: "ARRAY",
+        items: { type: "STRING" },
+      },
+      machines: {
+        type: "ARRAY",
+        items: { type: "STRING" },
+      },
+      issuerName: { type: "STRING" },
+      certificateTitle: { type: "STRING" },
+      summary: { type: "STRING" },
+      rejectionReasons: {
+        type: "ARRAY",
+        items: { type: "STRING" },
+      },
+    },
+    required: [
+      "approved",
+      "sports",
+      "machines",
+      "issuerName",
+      "certificateTitle",
+      "summary",
+      "rejectionReasons",
+    ],
+  };
+}
+
+function buildInsuranceReviewSchema() {
+  return {
+    type: "OBJECT",
+    properties: {
+      approved: { type: "BOOLEAN" },
+      issuerName: { type: "STRING" },
+      policyNumber: { type: "STRING" },
+      expiresOn: { type: "STRING" },
+      summary: { type: "STRING" },
+      rejectionReasons: {
+        type: "ARRAY",
+        items: { type: "STRING" },
+      },
+    },
+    required: [
+      "approved",
+      "issuerName",
+      "policyNumber",
+      "expiresOn",
+      "summary",
+      "rejectionReasons",
+    ],
+  };
+}
+
+async function fetchDocumentBytes(storageUrl: string) {
+  const response = await fetch(storageUrl);
+  if (!response.ok) {
+    throw new ConvexError(
+      `Failed to fetch stored compliance file (${response.status})`,
+    );
+  }
+  return await response.arrayBuffer();
+}
+
+async function sendComplianceEmail(args: {
+  to?: string;
+  subject: string;
+  text: string;
+  html?: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey || !args.to) {
+    return false;
+  }
+
+  const resend = new ResendApi(apiKey);
+  await sendResendEmailWithDevFallback({
+    resend,
+    from: getAuthEmailFrom(),
+    originalTo: args.to,
+    subject: args.subject,
+    text: args.text,
+    ...(args.html ? { html: args.html } : {}),
+  });
+  return true;
+}
+
+export const reviewInstructorCertificate = internalAction({
+  args: {
+    certificateId: v.id("instructorCertificates"),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    status: v.string(),
+  }),
+  handler: async (ctx, args): Promise<{ ok: boolean; status: string }> => {
+    let apiKey: string | undefined;
+    await ctx.runMutation(
+      internal.compliance.markInstructorCertificateReviewProgress,
+      {
+        certificateId: args.certificateId,
+        reviewStatus: "ai_reviewing",
+        reviewProvider: "gemini",
+        reviewSummary: "Automatic review started.",
+      },
+    );
+
+    let geminiFileName: string | undefined;
+    try {
+      apiKey = getGeminiApiKey();
+      const reviewContext = await ctx.runQuery(
+        internal.compliance.getInstructorCertificateReviewContext,
+        {
+          certificateId: args.certificateId,
+        },
+      );
+      if (!reviewContext) {
+        return { ok: false, status: "missing" };
+      }
+
+      const bytes = await fetchDocumentBytes(reviewContext.storageUrl);
+      const uploadedFile = await uploadFileToGemini({
+        apiKey,
+        bytes,
+        mimeType: reviewContext.mimeType ?? "application/pdf",
+        displayName:
+          reviewContext.fileName ??
+          `certificate-${String(reviewContext.certificateId)}`,
+      });
+      geminiFileName = uploadedFile.name;
+
+      const parsed =
+        await generateStructuredGeminiReview<CertificateReviewResult>({
+          apiKey,
+          file: uploadedFile,
+          prompt: buildCertificatePrompt({
+            instructorDisplayName: reviewContext.instructorDisplayName,
+            nowIsoDate: new Date().toISOString().slice(0, 10),
+            ...(reviewContext.declaredSport
+              ? { declaredSport: reviewContext.declaredSport }
+              : {}),
+            ...(reviewContext.diditLegalName
+              ? { diditLegalName: reviewContext.diditLegalName }
+              : {}),
+          }),
+          responseSchema: buildCertificateReviewSchema(),
+        });
+
+      const rejectionReasons = normalizeStringArray(parsed.rejectionReasons);
+      const coveredSports = normalizeStringArray(parsed.sports).filter(
+        (sport): sport is (typeof SPORT_TYPES)[number] => isSportType(sport),
+      );
+      const machineTags = normalizeStringArray(parsed.machines).map((machine) =>
+        machine.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+      );
+      const approved: boolean =
+        parsed.approved === true && coveredSports.length > 0;
+      const issuerName = normalizeOptionalText(parsed.issuerName);
+      const certificateTitle = normalizeOptionalText(parsed.certificateTitle);
+      const reviewSummary = normalizeOptionalText(parsed.summary);
+
+      await ctx.runMutation(
+        internal.compliance.applyInstructorCertificateReviewDecision,
+        {
+          certificateId: args.certificateId,
+          reviewStatus: approved ? "approved" : "rejected",
+          reviewProvider: "gemini",
+          rejectionReasons,
+          reviewJson: JSON.stringify(parsed),
+          coveredSports,
+          machineTags,
+          ...(issuerName ? { issuerName } : {}),
+          ...(certificateTitle ? { certificateTitle } : {}),
+          ...(reviewSummary ? { reviewSummary } : {}),
+        },
+      );
+
+      await ctx.runMutation(
+        internal.compliance.createInstructorComplianceNotification,
+        {
+          recipientUserId: reviewContext.recipientUserId,
+          kind: approved
+            ? "compliance_certificate_approved"
+            : "compliance_certificate_rejected",
+          title: approved
+            ? "Certificate approved"
+            : "Certificate needs attention",
+          body: approved
+            ? `Certificate approved for ${coveredSports.map((sport) => toSportLabel(sport)).join(", ")}.`
+            : "Your certificate was not approved yet. Upload a clearer or corrected document to continue.",
+        },
+      );
+
+      return { ok: true, status: approved ? "approved" : "rejected" };
+    } catch (error) {
+      await ctx.runMutation(
+        internal.compliance.markInstructorCertificateReviewProgress,
+        {
+          certificateId: args.certificateId,
+          reviewStatus: "ai_pending",
+          reviewProvider: "gemini",
+          reviewSummary:
+            error instanceof Error && error.message
+              ? `Automatic review retry needed: ${error.message}`
+              : "Automatic review retry needed.",
+        },
+      );
+      return { ok: false, status: "retry_pending" };
+    } finally {
+      if (apiKey) {
+        await deleteGeminiFile(apiKey, geminiFileName).catch(() => undefined);
+      }
+    }
+  },
+});
+
+export const reviewInstructorInsurancePolicy = internalAction({
+  args: {
+    insurancePolicyId: v.id("instructorInsurancePolicies"),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    status: v.string(),
+  }),
+  handler: async (ctx, args): Promise<{ ok: boolean; status: string }> => {
+    let apiKey: string | undefined;
+    await ctx.runMutation(
+      internal.compliance.markInstructorInsuranceReviewProgress,
+      {
+        insurancePolicyId: args.insurancePolicyId,
+        reviewStatus: "ai_reviewing",
+        reviewProvider: "gemini",
+        reviewSummary: "Automatic review started.",
+      },
+    );
+
+    let geminiFileName: string | undefined;
+    try {
+      apiKey = getGeminiApiKey();
+      const reviewContext = await ctx.runQuery(
+        internal.compliance.getInstructorInsuranceReviewContext,
+        {
+          insurancePolicyId: args.insurancePolicyId,
+        },
+      );
+      if (!reviewContext) {
+        return { ok: false, status: "missing" };
+      }
+
+      const bytes = await fetchDocumentBytes(reviewContext.storageUrl);
+      const uploadedFile = await uploadFileToGemini({
+        apiKey,
+        bytes,
+        mimeType: reviewContext.mimeType ?? "application/pdf",
+        displayName:
+          reviewContext.fileName ??
+          `insurance-${String(reviewContext.insurancePolicyId)}`,
+      });
+      geminiFileName = uploadedFile.name;
+
+      const parsed =
+        await generateStructuredGeminiReview<InsuranceReviewResult>({
+          apiKey,
+          file: uploadedFile,
+          prompt: buildInsurancePrompt({
+            instructorDisplayName: reviewContext.instructorDisplayName,
+            nowIsoDate: new Date().toISOString().slice(0, 10),
+            ...(reviewContext.diditLegalName
+              ? { diditLegalName: reviewContext.diditLegalName }
+              : {}),
+          }),
+          responseSchema: buildInsuranceReviewSchema(),
+        });
+
+      const expiresAt = parseIsoDateToExpiryMs(parsed.expiresOn);
+      const rejectionReasons = normalizeStringArray(parsed.rejectionReasons);
+      const approved: boolean =
+        parsed.approved === true &&
+        typeof expiresAt === "number" &&
+        expiresAt > Date.now();
+      const issuerName = normalizeOptionalText(parsed.issuerName);
+      const policyNumber = normalizeOptionalText(parsed.policyNumber);
+      const expiresOn = normalizeOptionalText(parsed.expiresOn);
+      const reviewSummary = normalizeOptionalText(parsed.summary);
+
+      await ctx.runMutation(
+        internal.compliance.applyInstructorInsuranceReviewDecision,
+        {
+          insurancePolicyId: args.insurancePolicyId,
+          reviewStatus: approved ? "approved" : "rejected",
+          reviewProvider: "gemini",
+          rejectionReasons: approved
+            ? rejectionReasons
+            : rejectionReasons.length > 0
+              ? rejectionReasons
+              : [
+                  "Insurance proof is missing a valid future expiry date or could not be verified.",
+                ],
+          reviewJson: JSON.stringify(parsed),
+          ...(issuerName ? { issuerName } : {}),
+          ...(policyNumber ? { policyNumber } : {}),
+          ...(expiresOn ? { expiresOn } : {}),
+          ...(typeof expiresAt === "number" ? { expiresAt } : {}),
+          ...(reviewSummary ? { reviewSummary } : {}),
+        },
+      );
+
+      await ctx.runMutation(
+        internal.compliance.createInstructorComplianceNotification,
+        {
+          recipientUserId: reviewContext.recipientUserId,
+          kind: approved
+            ? "compliance_insurance_approved"
+            : "compliance_insurance_rejected",
+          title: approved ? "Insurance approved" : "Insurance needs attention",
+          body: approved
+            ? `Insurance approved${parsed.expiresOn ? ` until ${parsed.expiresOn}` : ""}.`
+            : "Your insurance document was not approved yet. Upload a valid active policy to continue.",
+        },
+      );
+
+      return { ok: true, status: approved ? "approved" : "rejected" };
+    } catch (error) {
+      await ctx.runMutation(
+        internal.compliance.markInstructorInsuranceReviewProgress,
+        {
+          insurancePolicyId: args.insurancePolicyId,
+          reviewStatus: "ai_pending",
+          reviewProvider: "gemini",
+          reviewSummary:
+            error instanceof Error && error.message
+              ? `Automatic review retry needed: ${error.message}`
+              : "Automatic review retry needed.",
+        },
+      );
+      return { ok: false, status: "retry_pending" };
+    } finally {
+      if (apiKey) {
+        await deleteGeminiFile(apiKey, geminiFileName).catch(() => undefined);
+      }
+    }
+  },
+});
+
+export const processInsuranceRenewalChecks = internalAction({
+  args: {
+    now: v.optional(v.number()),
+  },
+  returns: v.object({
+    processed: v.number(),
+    emailed: v.number(),
+    notified: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const now = args.now ?? Date.now();
+    const rows = await ctx.runQuery(
+      internal.compliance.listInsurancePoliciesForRenewalProcessing,
+      {},
+    );
+    const currentByInstructor = new Map<string, (typeof rows)[number]>();
+
+    for (const row of rows) {
+      const key = String(row.instructorId);
+      const current = currentByInstructor.get(key);
+      if (!current || row.expiresAt > current.expiresAt) {
+        currentByInstructor.set(key, row);
+      }
+    }
+
+    let processed = 0;
+    let emailed = 0;
+    let notified = 0;
+
+    for (const row of currentByInstructor.values()) {
+      if (row.reviewStatus !== "approved" && row.reviewStatus !== "expired") {
+        continue;
+      }
+
+      const daysUntilExpiry = Math.ceil((row.expiresAt - now) / DAY_MS);
+      if (
+        row.reviewStatus === "approved" &&
+        row.expiresAt <= now &&
+        row.expiredNoticeSentAt === undefined
+      ) {
+        processed += 1;
+        await ctx.runMutation(internal.compliance.markInsuranceReminderEvent, {
+          insurancePolicyId: row.insurancePolicyId,
+          event: "expired_notice",
+          at: now,
+        });
+        await ctx.runMutation(
+          internal.compliance.createInstructorComplianceNotification,
+          {
+            recipientUserId: row.recipientUserId,
+            kind: "compliance_insurance_expired",
+            title: "Insurance expired",
+            body: "Your insurance expired. Upload a new active policy to restore job actions.",
+          },
+        );
+        notified += 1;
+        if (
+          await sendComplianceEmail(
+            row.email
+              ? {
+                  to: row.email,
+                  subject: "Your Queue insurance document expired",
+                  text: `Hi ${row.instructorDisplayName}, your insurance document has expired. Upload a new active policy in Queue to restore job actions.`,
+                }
+              : { subject: "", text: "" },
+          )
+        ) {
+          emailed += 1;
+        }
+        continue;
+      }
+
+      if (
+        row.reviewStatus === "approved" &&
+        daysUntilExpiry <= 7 &&
+        daysUntilExpiry > 0 &&
+        row.finalReminderSentAt === undefined
+      ) {
+        processed += 1;
+        await ctx.runMutation(internal.compliance.markInsuranceReminderEvent, {
+          insurancePolicyId: row.insurancePolicyId,
+          event: "final_reminder",
+          at: now,
+        });
+        await ctx.runMutation(
+          internal.compliance.createInstructorComplianceNotification,
+          {
+            recipientUserId: row.recipientUserId,
+            kind: "compliance_insurance_expiring",
+            title: "Insurance expires in 7 days",
+            body: "Upload your next active insurance policy now so job actions stay unlocked.",
+          },
+        );
+        notified += 1;
+        if (
+          await sendComplianceEmail(
+            row.email
+              ? {
+                  to: row.email,
+                  subject: "Your Queue insurance expires in 7 days",
+                  text: `Hi ${row.instructorDisplayName}, your insurance expires in ${daysUntilExpiry} days. Upload the next active policy in Queue now so job actions stay unlocked.`,
+                }
+              : { subject: "", text: "" },
+          )
+        ) {
+          emailed += 1;
+        }
+        continue;
+      }
+
+      if (
+        row.reviewStatus === "approved" &&
+        daysUntilExpiry <= 30 &&
+        daysUntilExpiry > 7 &&
+        row.firstReminderSentAt === undefined
+      ) {
+        processed += 1;
+        await ctx.runMutation(internal.compliance.markInsuranceReminderEvent, {
+          insurancePolicyId: row.insurancePolicyId,
+          event: "first_reminder",
+          at: now,
+        });
+        await ctx.runMutation(
+          internal.compliance.createInstructorComplianceNotification,
+          {
+            recipientUserId: row.recipientUserId,
+            kind: "compliance_insurance_expiring",
+            title: "Insurance expires soon",
+            body: "Your insurance expires within a month. Upload the next active policy before it lapses.",
+          },
+        );
+        notified += 1;
+        if (
+          await sendComplianceEmail(
+            row.email
+              ? {
+                  to: row.email,
+                  subject: "Your Queue insurance expires within a month",
+                  text: `Hi ${row.instructorDisplayName}, your insurance expires in ${daysUntilExpiry} days. Upload the next active policy in Queue before it lapses.`,
+                }
+              : { subject: "", text: "" },
+          )
+        ) {
+          emailed += 1;
+        }
+      }
+    }
+
+    return { processed, emailed, notified };
+  },
+});

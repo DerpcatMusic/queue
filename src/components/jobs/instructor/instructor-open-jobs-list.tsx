@@ -17,7 +17,7 @@ type InstructorOpenJobsListProps = {
   applyingJobId: Id<"jobs"> | null;
   withdrawingApplicationId: Id<"jobApplications"> | null;
   now: number;
-  onApply: (jobId: Id<"jobs">) => void;
+  onApply: (job: InstructorMarketplaceJob) => void;
   onWithdrawApplication: (applicationId: Id<"jobApplications">) => void;
   onOpenStudio: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
   t: TFunction;
@@ -38,7 +38,7 @@ export const InstructorOpenJobsList = memo(function InstructorOpenJobsList({
   const { isDesktopWeb: isWideWeb } = useLayoutBreakpoint();
 
   const handleApply = useCallback(
-    (jobId: Id<"jobs">) => onApply(jobId),
+    (job: InstructorMarketplaceJob) => onApply(job),
     [onApply],
   );
 

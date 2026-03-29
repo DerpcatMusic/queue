@@ -18,7 +18,7 @@ import {
   getBoostPresentation,
   getJobStatusToneWithReason,
 } from "@/lib/jobs-utils";
-import type { PaymentStatus, PayoutStatus } from "@/lib/payments-utils";
+import type { PaymentStatus } from "@/lib/payments-utils";
 import { appStatusDot, paymentDotColor } from "./studio-jobs-list.helpers";
 import type { StudioJob, StudioJobApplication } from "./studio-jobs-list.types";
 
@@ -34,62 +34,6 @@ const PAYMENT_STATUS_KEY: Record<PaymentStatus, string> = {
   cancelled: "jobsTab.checkout.paymentStatus.cancelled",
   refunded: "jobsTab.checkout.paymentStatus.refunded",
 };
-
-const PAYOUT_STATUS_KEY: Record<PayoutStatus, string> = {
-  queued: "jobsTab.checkout.payoutStatus.queued",
-  processing: "jobsTab.checkout.payoutStatus.processing",
-  pending_provider: "jobsTab.checkout.payoutStatus.pendingProvider",
-  paid: "jobsTab.checkout.payoutStatus.paid",
-  failed: "jobsTab.checkout.payoutStatus.failed",
-  cancelled: "jobsTab.checkout.payoutStatus.cancelled",
-  needs_attention: "jobsTab.checkout.payoutStatus.needsAttention",
-};
-
-function MetaPill({
-  icon,
-  label,
-  tone = "default",
-}: {
-  icon: ComponentProps<typeof IconSymbol>["name"];
-  label: string;
-  tone?: "default" | "warning" | "danger" | "success";
-}) {
-  const theme = useTheme();
-  const backgroundColor =
-    tone === "warning"
-      ? theme.jobs.accentHeatSubtle
-      : tone === "danger"
-        ? theme.color.dangerSubtle
-        : tone === "success"
-          ? theme.color.primarySubtle
-          : theme.color.surfaceAlt;
-  const color =
-    tone === "warning"
-      ? theme.jobs.accentHeat
-      : tone === "danger"
-        ? theme.color.danger
-        : tone === "success"
-          ? theme.jobs.signal
-          : theme.color.textMuted;
-
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        borderRadius: BrandRadius.pill,
-        paddingHorizontal: BrandSpacing.sm,
-        paddingVertical: BrandSpacing.xs,
-        backgroundColor,
-      }}
-    >
-      <IconSymbol name={icon} size={12} color={color} />
-      <Text numberOfLines={1} style={{ ...BrandType.caption, color }}>
-        {label}
-      </Text>
-    </View>
-  );
-}
 
 function InlineMeta({
   icon,
@@ -132,7 +76,10 @@ type ApplicationRowProps = {
   locale: string;
   reviewingApplicationId: Id<"jobApplications"> | null;
   canReview: boolean;
-  onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
+  onReview: (
+    applicationId: Id<"jobApplications">,
+    status: "accepted" | "rejected",
+  ) => void;
   t: TFunction;
 };
 
@@ -265,7 +212,9 @@ export const ApplicationRow = memo(function ApplicationRow({
           </View>
         </View>
 
-        {application.message ? <InlineMeta icon="calendar.badge.clock" text={metaText} /> : null}
+        {application.message ? (
+          <InlineMeta icon="calendar.badge.clock" text={metaText} />
+        ) : null}
 
         {canReview ? (
           <View
@@ -277,13 +226,21 @@ export const ApplicationRow = memo(function ApplicationRow({
             }}
           >
             <ActionButton
-              label={isReviewing ? t("jobsTab.actions.rejecting") : t("jobsTab.actions.reject")}
+              label={
+                isReviewing
+                  ? t("jobsTab.actions.rejecting")
+                  : t("jobsTab.actions.reject")
+              }
               onPress={() => onReview(application.applicationId, "rejected")}
               tone="secondary"
               disabled={isReviewing}
             />
             <ActionButton
-              label={isReviewing ? t("jobsTab.actions.accepting") : t("jobsTab.actions.accept")}
+              label={
+                isReviewing
+                  ? t("jobsTab.actions.accepting")
+                  : t("jobsTab.actions.accept")
+              }
               onPress={() => onReview(application.applicationId, "accepted")}
               loading={isReviewing}
             />
@@ -302,7 +259,10 @@ type StudioJobCardProps = {
   zoneLanguage: "en" | "he";
   reviewingApplicationId: Id<"jobApplications"> | null;
   payingJobId: Id<"jobs"> | null;
-  onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
+  onReview: (
+    applicationId: Id<"jobApplications">,
+    status: "accepted" | "rejected",
+  ) => void;
   onStartPayment: (jobId: Id<"jobs">) => void;
   onJobPress: (jobId: Id<"jobs">) => void;
   t: TFunction;
@@ -331,7 +291,9 @@ export const StudioJobCard = memo(function StudioJobCard({
     ["filled", "completed"].includes(job.status) &&
     !(
       job.payment &&
-      ["created", "pending", "authorized", "captured", "refunded"].includes(job.payment.status)
+      ["created", "pending", "authorized", "captured", "refunded"].includes(
+        job.payment.status,
+      )
     );
   const zoneLabel = getZoneLabel(job.zone, zoneLanguage);
   const hasPending = job.pendingApplicationsCount > 0;
@@ -355,10 +317,17 @@ export const StudioJobCard = memo(function StudioJobCard({
     >
       <Pressable
         onPress={() => {
-          console.log("StudioJobCard pressed, jobId:", job.jobId, "sport:", job.sport);
+          console.log(
+            "StudioJobCard pressed, jobId:",
+            job.jobId,
+            "sport:",
+            job.sport,
+          );
           onJobPress(job.jobId);
         }}
-        style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.992 : 1 }] })}
+        style={({ pressed }) => ({
+          transform: [{ scale: pressed ? 0.992 : 1 }],
+        })}
       >
         <View
           style={{
@@ -375,7 +344,9 @@ export const StudioJobCard = memo(function StudioJobCard({
             <View
               style={{
                 height: BorderWidth.strong,
-                backgroundColor: boost.badgeKey ? theme.jobs.accentHeat : theme.color.primary,
+                backgroundColor: boost.badgeKey
+                  ? theme.jobs.accentHeat
+                  : theme.color.primary,
               }}
             />
           )}
@@ -390,7 +361,10 @@ export const StudioJobCard = memo(function StudioJobCard({
               }}
             >
               <View style={{ flex: 1 }}>
-                <Text numberOfLines={1} style={{ ...BrandType.title, color: theme.color.text }}>
+                <Text
+                  numberOfLines={1}
+                  style={{ ...BrandType.title, color: theme.color.text }}
+                >
                   {toSportLabel(job.sport as never)}
                 </Text>
                 <Text
@@ -402,20 +376,40 @@ export const StudioJobCard = memo(function StudioJobCard({
               </View>
 
               {/* Status indicators */}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: BrandSpacing.sm,
+                }}
+              >
                 {/* Status dot */}
                 <View
-                  style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: statusDotColor }}
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: statusDotColor,
+                  }}
                 />
 
                 {/* Payment status dot (for filled/completed) */}
                 {job.payment && (
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: payDot }} />
+                  <View
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: payDot,
+                    }}
+                  />
                 )}
 
                 {/* Boost indicator */}
                 {boost.badgeKey && (
-                  <Text style={{ ...BrandType.micro, color: theme.color.primary }}>
+                  <Text
+                    style={{ ...BrandType.micro, color: theme.color.primary }}
+                  >
                     +₪{job.boostBonusAmount ?? 20}
                   </Text>
                 )}
@@ -430,8 +424,18 @@ export const StudioJobCard = memo(function StudioJobCard({
                 justifyContent: "space-between",
               }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
-                <IconSymbol name="clock" size={16} color={theme.color.textMuted} />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: BrandSpacing.sm,
+                }}
+              >
+                <IconSymbol
+                  name="clock"
+                  size={16}
+                  color={theme.color.textMuted}
+                />
                 <Text
                   style={{
                     ...BrandType.bodyMedium,
@@ -441,7 +445,11 @@ export const StudioJobCard = memo(function StudioJobCard({
                 >
                   {formatTime(job.startTime, locale)}
                 </Text>
-                <Text style={{ ...BrandType.caption, color: theme.color.textMuted }}>—</Text>
+                <Text
+                  style={{ ...BrandType.caption, color: theme.color.textMuted }}
+                >
+                  —
+                </Text>
                 <Text
                   style={{
                     ...BrandType.bodyMedium,
@@ -466,21 +474,42 @@ export const StudioJobCard = memo(function StudioJobCard({
                 justifyContent: "space-between",
               }}
             >
-              <Text style={{ ...BrandType.caption, color: theme.color.textMuted }}>
+              <Text
+                style={{ ...BrandType.caption, color: theme.color.textMuted }}
+              >
                 {job.applicationsCount > 0
                   ? `${job.applicationsCount} ${job.applicationsCount === 1 ? "applicant" : "applicants"}`
                   : "No applicants yet"}
               </Text>
 
               {hasPending ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
-                  <Text style={{ ...BrandType.labelStrong, color: theme.color.primary }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: BrandSpacing.xs,
+                  }}
+                >
+                  <Text
+                    style={{
+                      ...BrandType.labelStrong,
+                      color: theme.color.primary,
+                    }}
+                  >
                     Review
                   </Text>
-                  <IconSymbol name="chevron.right" size={16} color={theme.color.primary} />
+                  <IconSymbol
+                    name="chevron.right"
+                    size={16}
+                    color={theme.color.primary}
+                  />
                 </View>
               ) : job.status === "open" ? (
-                <Text style={{ ...BrandType.micro, color: theme.color.textMuted }}>Live</Text>
+                <Text
+                  style={{ ...BrandType.micro, color: theme.color.textMuted }}
+                >
+                  Live
+                </Text>
               ) : null}
             </View>
           </View>
@@ -499,9 +528,21 @@ export const StudioJobCard = memo(function StudioJobCard({
                 borderTopColor: theme.color.border,
               }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
-                <IconSymbol name="creditcard" size={16} color={theme.color.textMuted} />
-                <Text style={{ ...BrandType.caption, color: theme.color.textMuted }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: BrandSpacing.sm,
+                }}
+              >
+                <IconSymbol
+                  name="creditcard"
+                  size={16}
+                  color={theme.color.textMuted}
+                />
+                <Text
+                  style={{ ...BrandType.caption, color: theme.color.textMuted }}
+                >
                   {job.payment
                     ? t(PAYMENT_STATUS_KEY[job.payment.status])
                     : t("jobsTab.checkout.notStarted")}
@@ -513,7 +554,8 @@ export const StudioJobCard = memo(function StudioJobCard({
                   label={
                     payingJobId === job.jobId
                       ? t("jobsTab.checkout.starting")
-                      : job.payment && ["failed", "cancelled"].includes(job.payment.status)
+                      : job.payment &&
+                          ["failed", "cancelled"].includes(job.payment.status)
                         ? t("jobsTab.checkout.retryPayment")
                         : t("jobsTab.checkout.payNow")
                   }

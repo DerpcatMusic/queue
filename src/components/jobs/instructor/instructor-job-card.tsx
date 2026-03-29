@@ -61,6 +61,11 @@ export type InstructorMarketplaceJob = {
   boostPreset?: BoostPreset;
   boostBonusAmount?: number;
   boostActive?: boolean;
+  canApplyToJob: boolean;
+  jobActionBlockedReason?:
+    | "identity_verification_required"
+    | "insurance_verification_required"
+    | "sport_certificate_required";
 };
 
 type InstructorJobCardProps = {
@@ -70,7 +75,7 @@ type InstructorJobCardProps = {
   applyingJobId?: Id<"jobs"> | null;
   withdrawingApplicationId?: Id<"jobApplications"> | null;
   now: number;
-  onApply?: (jobId: Id<"jobs">) => void;
+  onApply?: (job: InstructorMarketplaceJob) => void;
   onWithdrawApplication?: (applicationId: Id<"jobApplications">) => void;
   onOpenStudio?: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
   t: TFunction;
@@ -162,43 +167,6 @@ function StudioImageBackground({
   );
 }
 
-function JobExpiryPill({
-  label,
-  isExpired,
-  theme,
-}: {
-  label: string;
-  isExpired: boolean;
-  theme: ReturnType<typeof useTheme>;
-}) {
-  const backgroundColor = isExpired ? theme.color.dangerSubtle : theme.jobs.accentHeatSubtle;
-  const color = isExpired ? theme.color.danger : theme.jobs.accentHeat;
-
-  return (
-    <View
-      className="flex-row items-center rounded-pill"
-      style={{
-        backgroundColor,
-        paddingHorizontal: BrandSpacing.sm,
-        paddingVertical: BrandSpacing.xs,
-        gap: BrandSpacing.xxs,
-      }}
-    >
-      <IconSymbol name="clock.fill" size={12} color={color} />
-      <Text
-        numberOfLines={1}
-        style={{
-          ...BrandType.caption,
-          color,
-          fontWeight: "400",
-        }}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 export function InstructorJobCard({
   job,
   locale,
@@ -214,7 +182,6 @@ export function InstructorJobCard({
 }: InstructorJobCardProps) {
   const theme = useTheme();
   const { isDesktopWeb: isWideWeb } = useLayoutBreakpoint();
-  const showStudioImage = variant === "default";
   const boost = getBoostPresentation(
     job.pay,
     job.boostPreset,
@@ -230,10 +197,7 @@ export function InstructorJobCard({
   const shortLocation = locationStreet ? `${locationStreet} · ${zoneLabel}` : zoneLabel;
   const studioLabel = `${job.studioName} · ${job.branchName}`;
   const primaryTitle = variant === "studioDetail" ? toSportLabel(job.sport as never) : studioLabel;
-  const secondaryTitle =
-    variant === "studioDetail" ? shortLocation : toSportLabel(job.sport as never);
   const metaLine = variant === "studioDetail" ? studioLabel : shortLocation;
-  const contentWidth = showStudioImage ? (isWideWeb ? "52%" : "53%") : "100%";
   const isPressable = Boolean(onOpenStudio);
   const formattedPay = formatJobPay(boost.totalPay, locale);
   const imageFadeId = `job-card-fade-${String(job.jobId)}`;
@@ -253,6 +217,7 @@ export function InstructorJobCard({
     !job.applicationStatus ||
     job.applicationStatus === "withdrawn" ||
     job.applicationStatus === "rejected";
+  const applyBlockedByVerification = job.jobActionBlockedReason !== undefined;
 
   // Border: red when applied, subtle outline otherwise
   const cardBorderColor = hasApplied ? theme.color.danger : theme.color.outline;
@@ -455,27 +420,43 @@ export function InstructorJobCard({
                       label={
                         isExpired
                           ? t("jobsTab.form.expiryExpired")
+                          : applyBlockedByVerification
+                            ? t("jobsTab.actions.verifyToApply")
                           : applyingJobId === job.jobId
                             ? t("jobsTab.actions.applying")
                             : t("jobsTab.actions.apply")
                       }
                       onPress={(event) => {
                         event?.stopPropagation();
-                        onApply(job.jobId);
+                        onApply(job);
                       }}
                       loading={applyingJobId === job.jobId}
                       disabled={isExpired}
                       fullWidth
                       tone="secondary"
                       colors={{
-                        backgroundColor: isExpired ? theme.jobs.surfaceMuted : theme.color.tertiary,
+                        backgroundColor: isExpired
+                          ? theme.jobs.surfaceMuted
+                          : applyBlockedByVerification
+                            ? theme.jobs.surfaceRaised
+                            : theme.color.tertiary,
                         pressedBackgroundColor: isExpired
                           ? theme.jobs.surfaceMuted
+                          : applyBlockedByVerification
+                            ? theme.jobs.surfaceMuted
                           : theme.color.tertiarySubtle,
                         disabledBackgroundColor: theme.jobs.surfaceMuted,
-                        labelColor: isExpired ? theme.color.textMuted : theme.color.onPrimary,
+                        labelColor: isExpired
+                          ? theme.color.textMuted
+                          : applyBlockedByVerification
+                            ? theme.color.text
+                            : theme.color.onPrimary,
                         disabledLabelColor: theme.color.textMuted,
-                        nativeTintColor: isExpired ? theme.color.textMuted : theme.color.onPrimary,
+                        nativeTintColor: isExpired
+                          ? theme.color.textMuted
+                          : applyBlockedByVerification
+                            ? theme.color.text
+                            : theme.color.onPrimary,
                       }}
                       labelStyle={{ fontWeight: "800" }}
                       native={false}
@@ -654,17 +635,19 @@ export function InstructorJobCard({
                 label={
                   isExpired
                     ? t("jobsTab.form.expiryExpired")
+                    : applyBlockedByVerification
+                      ? t("jobsTab.actions.verifyToApply")
                     : applyingJobId === job.jobId
                       ? t("jobsTab.actions.applying")
                       : t("jobsTab.actions.apply")
                 }
                 onPress={(event) => {
                   event?.stopPropagation();
-                  onApply(job.jobId);
+                  onApply(job);
                 }}
                 loading={applyingJobId === job.jobId}
                 disabled={isExpired}
-                tone={isExpired ? "secondary" : "primary"}
+                tone={isExpired || applyBlockedByVerification ? "secondary" : "primary"}
                 native={false}
               />
             ) : null}

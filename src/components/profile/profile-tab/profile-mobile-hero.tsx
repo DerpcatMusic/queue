@@ -1,14 +1,25 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, View } from "react-native";
-import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
+import Svg, {
+  Defs,
+  Rect,
+  Stop,
+  LinearGradient as SvgLinearGradient,
+} from "react-native-svg";
+import { ProfileVerifiedBadge } from "@/components/profile/profile-verified-badge";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
-import { BorderWidth, FontFamily, IconSize, Opacity } from "@/lib/design-system";
+import {
+  BorderWidth,
+  FontFamily,
+  IconSize,
+  Opacity,
+} from "@/lib/design-system";
 import { Box } from "@/primitives";
 import {
   getActiveSocialCount,
@@ -30,7 +41,7 @@ type ProfileHeaderSheetProps = {
   sports: string[];
   visualVariant?: "default" | "studioFeature";
   memberSince?: string | undefined;
-  isPro?: boolean;
+  isVerified?: boolean;
 };
 
 const STUDIO_HERO_HEIGHT = 236;
@@ -57,13 +68,18 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   sports,
   visualVariant = "default",
   memberSince,
-  isPro: _isPro = false,
+  isVerified = false,
 }: ProfileHeaderSheetProps) {
   const { t, i18n } = useTranslation();
   const { color: palette } = useTheme();
-  const resolvedPrimaryActionLabel = primaryActionLabel ?? t("profile.actions.edit");
-  const isHebrew = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he");
-  const profileNameFont = isHebrew ? "Kanit_800ExtraBold" : FontFamily.displayBold;
+  const resolvedPrimaryActionLabel =
+    primaryActionLabel ?? t("profile.actions.edit");
+  const isHebrew = (i18n.resolvedLanguage ?? "en")
+    .toLowerCase()
+    .startsWith("he");
+  const profileNameFont = isHebrew
+    ? "Kanit_800ExtraBold"
+    : FontFamily.displayBold;
   const eyebrowFont = isHebrew ? "Kanit_600SemiBold" : FontFamily.label;
   const activeSocialCount = getActiveSocialCount(socialLinks);
   const sportsLabel = getSportsLabel(sports, t);
@@ -77,11 +93,18 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
         : status === "unverified"
           ? t("profile.hero.statusUnverified")
           : "");
-  const statusTone = status === "ready" ? "success" : status === "pending" ? "warning" : "neutral";
+  const statusTone =
+    status === "ready"
+      ? "success"
+      : status === "pending"
+        ? "warning"
+        : "neutral";
 
   if (visualVariant === "studioFeature") {
-    const topMaskColor = typeof palette.primary === "string" ? palette.primary : "#9BD300";
-    const bottomMaskColor = typeof palette.appBg === "string" ? palette.appBg : "#060708";
+    const topMaskColor =
+      typeof palette.primary === "string" ? palette.primary : "#9BD300";
+    const bottomMaskColor =
+      typeof palette.appBg === "string" ? palette.appBg : "#060708";
 
     return (
       <View style={styles.featureShell}>
@@ -102,7 +125,9 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
               style={StyleSheet.absoluteFillObject}
             />
           ) : (
-            <View style={[StyleSheet.absoluteFillObject, styles.featureFallback]}>
+            <View
+              style={[StyleSheet.absoluteFillObject, styles.featureFallback]}
+            >
               <ProfileAvatar
                 fallbackName={profileName}
                 imageUrl={null}
@@ -116,13 +141,24 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             pointerEvents="none"
             style={[
               StyleSheet.absoluteFillObject,
-              { backgroundColor: hexToRgba(bottomMaskColor, profileImageUrl ? 0.06 : 0) },
+              {
+                backgroundColor: hexToRgba(
+                  bottomMaskColor,
+                  profileImageUrl ? 0.06 : 0,
+                ),
+              },
             ]}
           />
 
           <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
             <Defs>
-              <SvgLinearGradient id="studioProfileHeroTopScrim" x1="0%" y1="0%" x2="0%" y2="100%">
+              <SvgLinearGradient
+                id="studioProfileHeroTopScrim"
+                x1="0%"
+                y1="0%"
+                x2="0%"
+                y2="100%"
+              >
                 <Stop offset="0%" stopColor={hexToRgba(topMaskColor, 0.54)} />
                 <Stop offset="36%" stopColor={hexToRgba(topMaskColor, 0.16)} />
                 <Stop offset="100%" stopColor={hexToRgba(topMaskColor, 0)} />
@@ -135,13 +171,27 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                 y2="100%"
               >
                 <Stop offset="0%" stopColor={hexToRgba(bottomMaskColor, 0)} />
-                <Stop offset="56%" stopColor={hexToRgba(bottomMaskColor, 0.08)} />
-                <Stop offset="78%" stopColor={hexToRgba(bottomMaskColor, 0.82)} />
+                <Stop
+                  offset="56%"
+                  stopColor={hexToRgba(bottomMaskColor, 0.08)}
+                />
+                <Stop
+                  offset="78%"
+                  stopColor={hexToRgba(bottomMaskColor, 0.82)}
+                />
                 <Stop offset="100%" stopColor={bottomMaskColor} />
               </SvgLinearGradient>
             </Defs>
-            <Rect width="100%" height="100%" fill="url(#studioProfileHeroTopScrim)" />
-            <Rect width="100%" height="100%" fill="url(#studioProfileHeroBottomScrim)" />
+            <Rect
+              width="100%"
+              height="100%"
+              fill="url(#studioProfileHeroTopScrim)"
+            />
+            <Rect
+              width="100%"
+              height="100%"
+              fill="url(#studioProfileHeroBottomScrim)"
+            />
           </Svg>
 
           <View style={styles.featureTopRail}>
@@ -154,7 +204,10 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                 },
               ]}
             >
-              <Text numberOfLines={1} style={[BrandType.micro, { color: STUDIO_HERO_TEXT }]}>
+              <Text
+                numberOfLines={1}
+                style={[BrandType.micro, { color: STUDIO_HERO_TEXT }]}
+              >
                 {roleLabel}
               </Text>
             </View>
@@ -164,15 +217,31 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
               onPress={onRequestEdit}
               tone="primarySubtle"
               size={BrandSpacing.controlLg}
-              icon={<IconSymbol name="pencil" size={IconSize.md + 1} color={topMaskColor} />}
+              icon={
+                <IconSymbol
+                  name="pencil"
+                  size={IconSize.md + 1}
+                  color={topMaskColor}
+                />
+              }
             />
           </View>
 
           <View style={styles.featureBottomRail}>
-            <View style={styles.featureTitleSkewWrap}>
-              <Text numberOfLines={2} style={[styles.featureTitle, { color: STUDIO_HERO_TEXT }]}>
-                {profileName}
-              </Text>
+            <View style={styles.featureTitleRow}>
+              <View style={styles.featureTitleSkewWrap}>
+                <Text
+                  numberOfLines={2}
+                  style={[styles.featureTitle, { color: STUDIO_HERO_TEXT }]}
+                >
+                  {profileName}
+                </Text>
+              </View>
+              {isVerified ? (
+                <ProfileVerifiedBadge
+                  size={BrandSpacing.component + BrandSpacing.xs}
+                />
+              ) : null}
             </View>
 
             <View style={styles.featureMetaRow}>
@@ -245,7 +314,10 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
         <Box
           style={[
             styles.mobileEyebrow,
-            { backgroundColor: palette.surfaceElevated, borderColor: palette.outlineStrong },
+            {
+              backgroundColor: palette.surfaceElevated,
+              borderColor: palette.outlineStrong,
+            },
           ]}
         >
           <Text
@@ -263,7 +335,10 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
         <Box
           style={[
             styles.mobileAvatarWrap,
-            { borderColor: palette.primary, backgroundColor: palette.surfaceAlt },
+            {
+              borderColor: palette.primary,
+              backgroundColor: palette.surfaceAlt,
+            },
           ]}
         >
           <ProfileAvatar
@@ -291,12 +366,23 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
             >
               {profileName}
             </Text>
+            {isVerified ? (
+              <ProfileVerifiedBadge
+                size={BrandSpacing.component + BrandSpacing.xxs}
+              />
+            ) : null}
             <IconButton
               accessibilityLabel={resolvedPrimaryActionLabel}
               onPress={onRequestEdit}
               size={32}
               tone="secondary"
-              icon={<IconSymbol name="pencil" size={IconSize.sm} color={palette.primary} />}
+              icon={
+                <IconSymbol
+                  name="pencil"
+                  size={IconSize.sm}
+                  color={palette.primary}
+                />
+              }
             />
           </Box>
           <Box style={styles.mobileMetaRow}>
@@ -354,6 +440,12 @@ const styles = StyleSheet.create({
   featureTitleSkewWrap: {
     alignSelf: "flex-start",
     transform: [{ skewX: "-10deg" }],
+  },
+  featureTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.sm,
+    maxWidth: "92%",
   },
   featureTitle: {
     ...BrandType.heroSmall,

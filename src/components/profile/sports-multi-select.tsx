@@ -5,7 +5,13 @@ import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { isSportType, SPORT_TYPES, toSportLabel } from "@/convex/constants";
+import {
+  getSportGenreKey,
+  SPORT_GENRES,
+  isSportType,
+  SPORT_TYPES,
+  toSportLabel,
+} from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
 
 type SportsMultiSelectProps = {
@@ -18,7 +24,7 @@ type SportsMultiSelectProps = {
   variant?: "card" | "content";
 };
 
-const SPORTS_HEADER_HORIZONTAL_PADDING = BrandSpacing.lg; // 16
+const SPORTS_HEADER_HORIZONTAL_PADDING = BrandSpacing.lg;
 const SPORTS_HEADER_VERTICAL_PADDING = BrandSpacing.componentPadding;
 const SPORTS_HEADER_BADGE_HORIZONTAL_PADDING = BrandSpacing.sm;
 const SPORTS_HEADER_BADGE_VERTICAL_PADDING = BrandSpacing.xs;
@@ -33,6 +39,7 @@ const SPORTS_RESULT_ROW_GAP = BrandSpacing.md;
 const SPORTS_RESULT_EMPTY_GAP = BrandSpacing.xs;
 const SPORTS_SELECTED_SPORT_GAP = BrandSpacing.xs / 2;
 const SPORTS_RESULTS_MAX_HEIGHT = 260;
+const SPORTS_GENRE_GROUP_GAP = BrandSpacing.md;
 
 export function SportsMultiSelect({
   selectedSports,
@@ -54,20 +61,43 @@ export function SportsMultiSelect({
     if (!normalized) {
       return SPORT_TYPES;
     }
-    return SPORT_TYPES.filter((sport) => toSportLabel(sport).toLowerCase().includes(normalized));
+    return SPORT_TYPES.filter((sport) =>
+      toSportLabel(sport).toLowerCase().includes(normalized),
+    );
   }, [query]);
+
   const selectedSportsList = useMemo(
     () => SPORT_TYPES.filter((sport) => selectedSports.includes(sport)),
     [selectedSports],
   );
+
   const availableSportsList = useMemo(
     () => filteredSports.filter((sport) => !selectedSports.includes(sport)),
     [filteredSports, selectedSports],
   );
 
+  const availableSportGroups = useMemo(
+    () =>
+      SPORT_GENRES.map((genre) => ({
+        key: genre.key,
+        label: genre.label,
+        sports: availableSportsList.filter(
+          (sport) => getSportGenreKey(sport) === genre.key,
+        ),
+      })).filter((group) => group.sports.length > 0),
+    [availableSportsList],
+  );
+
   const panel = (
-    <View style={[styles.panel, isCardVariant ? null : styles.panelContentOnly]}>
-      <NativeSearchField value={query} onChangeText={setQuery} placeholder={searchPlaceholder} />
+    <View
+      style={[styles.panel, isCardVariant ? null : styles.panelContentOnly]}
+    >
+      <NativeSearchField
+        value={query}
+        onChangeText={setQuery}
+        placeholder={searchPlaceholder}
+      />
+
       {selectedSportsList.length > 0 ? (
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: palette.textMuted }]}>
@@ -95,12 +125,17 @@ export function SportsMultiSelect({
                     {t("profile.sports.selectedBody")}
                   </Text>
                 </View>
-                <IconSymbol name="checkmark.circle.fill" size={18} color={palette.primary} />
+                <IconSymbol
+                  name="checkmark.circle.fill"
+                  size={18}
+                  color={palette.primary}
+                />
               </Pressable>
             ))}
           </View>
         </View>
       ) : null}
+
       <View style={styles.section}>
         <Text style={[styles.sectionLabel, { color: palette.textMuted }]}>
           {query.trim().length > 0
@@ -110,36 +145,49 @@ export function SportsMultiSelect({
         <ScrollView
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.resultsList}
+          contentContainerStyle={styles.genreGroupList}
           style={styles.resultsViewport}
         >
-          {availableSportsList.length > 0 ? (
-            availableSportsList.map((sport) => (
-              <Pressable
-                key={sport}
-                accessibilityRole="button"
-                onPress={() => onToggleSport(sport)}
-                style={({ pressed }) => [
-                  styles.resultRow,
-                  {
-                    backgroundColor: palette.surface,
-                    transform: [{ scale: pressed ? 0.992 : 1 }],
-                  },
-                ]}
-              >
-                <Text style={[styles.resultTitle, { color: palette.text }]}>
-                  {toSportLabel(sport)}
+          {availableSportGroups.length > 0 ? (
+            availableSportGroups.map((group) => (
+              <View key={group.key} style={styles.genreGroup}>
+                <Text style={[styles.genreLabel, { color: palette.textMuted }]}>
+                  {group.label}
                 </Text>
-                <IconSymbol name="plus.circle.fill" size={18} color={palette.textMuted} />
-              </Pressable>
+                <View style={styles.resultsList}>
+                  {group.sports.map((sport) => (
+                    <Pressable
+                      key={sport}
+                      accessibilityRole="button"
+                      onPress={() => onToggleSport(sport)}
+                      style={({ pressed }) => [
+                        styles.resultRow,
+                        {
+                          backgroundColor: palette.surface,
+                          transform: [{ scale: pressed ? 0.992 : 1 }],
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.resultTitle, { color: palette.text }]}
+                      >
+                        {toSportLabel(sport)}
+                      </Text>
+                      <IconSymbol
+                        name="plus.circle.fill"
+                        size={18}
+                        color={palette.textMuted}
+                      />
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
             ))
           ) : (
             <View
               style={[
                 styles.emptyState,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                },
+                { backgroundColor: palette.surfaceElevated },
               ]}
             >
               <Text style={[styles.resultTitle, { color: palette.text }]}>
@@ -160,25 +208,23 @@ export function SportsMultiSelect({
   }
 
   return (
-    <View
-      style={[
-        styles.shell,
-        {
-          backgroundColor: palette.surfaceElevated,
-        },
-      ]}
-    >
+    <View style={[styles.shell, { backgroundColor: palette.surfaceElevated }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={title}
         onPress={() => setIsOpen((value) => !value)}
-        style={({ pressed }) => [styles.header, { transform: [{ scale: pressed ? 0.992 : 1 }] }]}
+        style={({ pressed }) => [
+          styles.header,
+          { transform: [{ scale: pressed ? 0.992 : 1 }] },
+        ]}
       >
         <View style={styles.headerTextBlock}>
           <ThemedText type="defaultSemiBold">{title}</ThemedText>
           <ThemedText type="caption" style={{ color: palette.textMuted }}>
             {selectedSports.length > 0
-              ? t("profile.settings.sports.selected", { count: selectedSports.length })
+              ? t("profile.settings.sports.selected", {
+                  count: selectedSports.length,
+                })
               : emptyHint}
           </ThemedText>
         </View>
@@ -186,7 +232,9 @@ export function SportsMultiSelect({
           style={[
             styles.headerBadge,
             {
-              backgroundColor: isOpen ? palette.primary : palette.surfaceElevated,
+              backgroundColor: isOpen
+                ? palette.primary
+                : palette.surfaceElevated,
             },
           ]}
         >
@@ -240,8 +288,8 @@ const styles = StyleSheet.create({
     gap: SPORTS_PANEL_GAP,
   },
   panelContentOnly: {
-    paddingHorizontal: BrandSpacing.xs - BrandSpacing.xs,
-    paddingBottom: BrandSpacing.xs - BrandSpacing.xs,
+    paddingHorizontal: 0,
+    paddingBottom: 0,
   },
   section: {
     gap: SPORTS_SECTION_GAP,
@@ -259,6 +307,20 @@ const styles = StyleSheet.create({
   },
   resultsList: {
     gap: SPORTS_SECTION_GAP,
+  },
+  genreGroupList: {
+    gap: SPORTS_GENRE_GROUP_GAP,
+  },
+  genreGroup: {
+    gap: SPORTS_SECTION_GAP,
+  },
+  genreLabel: {
+    fontFamily: "Manrope_700Bold",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.24,
+    lineHeight: 16,
+    textTransform: "uppercase",
   },
   resultRow: {
     minHeight: SPORTS_RESULT_ROW_MIN_HEIGHT,

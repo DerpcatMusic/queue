@@ -1,5 +1,5 @@
 import { type ComponentProps, memo } from "react";
-import type { StyleProp, TextStyle, ViewStyle } from "react-native";
+import type { StyleProp, TextStyle } from "react-native";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { useTheme } from "@/hooks/use-theme";
@@ -20,18 +20,25 @@ type AppSymbolName = ComponentProps<typeof AppSymbol>["name"];
  *
  * Optional `color` token maps to theme color palette.
  */
-export const Icon = memo(function Icon({ name, size = "md", color, tintColor, style }: IconProps) {
+export const Icon = memo(function Icon({
+  name,
+  size = "md",
+  color,
+  tintColor,
+  style,
+}: IconProps) {
   const theme = useTheme();
 
   const resolvedSize = typeof size === "number" ? size : IconSize[size];
-  const resolvedColor = tintColor ?? (color ? theme.color[color] : theme.color.text);
+  const resolvedColor =
+    tintColor ?? (color ? theme.color[color] : theme.color.text);
 
   return (
     <AppSymbol
       name={name as AppSymbolName}
       size={resolvedSize}
       tintColor={resolvedColor}
-      style={style as StyleProp<ViewStyle | TextStyle>}
+      style={style as StyleProp<TextStyle>}
     />
   );
 });
