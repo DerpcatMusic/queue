@@ -85,7 +85,7 @@ export default function HomeScreen() {
 
   const activeRole = currentUser?.role ?? null;
   const studioHomeCounts = useMemo(() => {
-    const jobs = myStudioJobs ?? [];
+    const jobs: NonNullable<HomeRoleContentProps["myStudioJobs"]> = myStudioJobs ?? [];
     const openJobs = jobs.filter((job) => job.status === "open").length;
     const pendingApplicants = jobs.reduce((total, job) => total + job.pendingApplicationsCount, 0);
     const jobsFilled = jobs.filter((job) => job.status === "filled").length;

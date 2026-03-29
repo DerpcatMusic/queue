@@ -1,5 +1,7 @@
 import type BottomSheet from "@gorhom/bottom-sheet";
 import { useAction, useMutation, useQuery } from "convex/react";
+import type { Href } from "expo-router";
+import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -7,15 +9,28 @@ import { FEATURE_FLAGS } from "@/constants/feature-flags";
 import { useRapydReturn } from "@/contexts/rapyd-return-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DEVICE_TIME_ZONE, MINUTE_MS, type StudioDraft, trimOptional } from "@/lib/jobs-utils";
+import {
+  DEVICE_TIME_ZONE,
+  MINUTE_MS,
+  type StudioDraft,
+  trimOptional,
+} from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
+import { openStudioComplianceGate } from "@/lib/open-studio-compliance-gate";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
-import { createPerfTimer, logPerfSummary, recordPerfMetric } from "@/lib/perf-telemetry";
+import {
+  createPerfTimer,
+  logPerfSummary,
+  recordPerfMetric,
+} from "@/lib/perf-telemetry";
 import {
   isPushRegistrationError,
   registerForPushNotificationsAsync,
 } from "@/lib/push-notifications";
-import { buildRapydBridgeUrl, resolveRapydAppReturnUrl } from "@/lib/rapyd-hosted-flow";
+import {
+  buildRapydBridgeUrl,
+  resolveRapydAppReturnUrl,
+} from "@/lib/rapyd-hosted-flow";
 import {
   buildLatestPaymentByJobId,
   filterStudioJobsByTime,
@@ -25,18 +40,55 @@ import {
 
 export type StudioJobsTimeFilter = "all" | "active" | "past";
 
+const STUDIO_COMPLIANCE_ROUTE = "/studio/profile/compliance" as const;
+
 type UseStudioFeedControllerArgs = {
   t: TFunction;
 };
+
+function getStudioComplianceBlockersLabel(reasons: string[], t: TFunction) {
+  return reasons
+    .map((reason) => {
+      switch (reason) {
+        case "owner_identity_required":
+          return t("profile.studioCompliance.blockers.identity");
+        case "business_profile_required":
+          return t("profile.studioCompliance.blockers.billing");
+        case "payment_method_required":
+          return t("profile.studioCompliance.blockers.payment");
+        default:
+          return reason;
+      }
+    })
+    .join(" · ");
+}
+
+function parseStudioComplianceReasons(message: string): string[] | null {
+  const prefix = "Studio compliance required:";
+  if (!message.startsWith(prefix)) {
+    return null;
+  }
+
+  const reasons = message
+    .slice(prefix.length)
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return reasons.length > 0 ? reasons : null;
+}
 
 export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
   useEffect(() => {
     WebBrowser.maybeCompleteAuthSession();
   }, []);
 
+  const router = useRouter();
   const currentUser = useQuery(api.users.getCurrentUser);
-  const { consumeReturn: consumeCheckoutReturn, latestReturn: latestCheckoutReturn } =
-    useRapydReturn("checkout");
+  const {
+    consumeReturn: consumeCheckoutReturn,
+    latestReturn: latestCheckoutReturn,
+  } = useRapydReturn("checkout");
 
   const postJob = useMutation(api.jobs.postJob);
   const reviewApplication = useMutation(api.jobs.reviewApplication);
@@ -44,7 +96,9 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     api.users.updateMyStudioNotificationSettings,
   );
   const createCheckoutForJob = useAction(api.rapyd.createCheckoutForJob);
-  const retrieveCheckoutForPayment = useAction(api.rapyd.retrieveCheckoutForPayment);
+  const retrieveCheckoutForPayment = useAction(
+    api.rapyd.retrieveCheckoutForPayment,
+  );
 
   const studioJobs = useQuery(
     api.jobs.getMyStudioJobsWithApplications,
@@ -63,16 +117,20 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     api.studioBranches.getMyStudioBranches,
     currentUser?.role === "studio" ? {} : "skip",
   );
+  const studioComplianceSummary = useQuery(
+    api.complianceStudio.getMyStudioComplianceSummary,
+    currentUser?.role === "studio" ? {} : "skip",
+  );
 
   const createJobSheetRef = useRef<BottomSheet>(null);
   const [isSubmittingStudio, setIsSubmittingStudio] = useState(false);
   const [isEnablingStudioPush, setIsEnablingStudioPush] = useState(false);
   const [isReviewingApplicationId, setIsReviewingApplicationId] =
     useState<Id<"jobApplications"> | null>(null);
-  const [isStartingCheckoutForJobId, setIsStartingCheckoutForJobId] = useState<Id<"jobs"> | null>(
-    null,
-  );
-  const [jobsTimeFilter, setJobsTimeFilter] = useState<StudioJobsTimeFilter>("all");
+  const [isStartingCheckoutForJobId, setIsStartingCheckoutForJobId] =
+    useState<Id<"jobs"> | null>(null);
+  const [jobsTimeFilter, setJobsTimeFilter] =
+    useState<StudioJobsTimeFilter>("all");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const studioJobsStartedAtRef = useRef<number | null>(null);
@@ -228,7 +286,9 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     }
     const resolvedBranchId =
       draft.branchId ??
-      (studioBranches?.length === 1 ? (studioBranches[0]?.branchId ?? null) : null);
+      (studioBranches?.length === 1
+        ? (studioBranches[0]?.branchId ?? null)
+        : null);
 
     if (!resolvedBranchId) {
       setErrorMessage(t("jobsTab.errors.branchRequired"));
@@ -245,13 +305,37 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
       return;
     }
 
-    const applicationDeadline = draft.startTime - draft.applicationLeadMinutes * MINUTE_MS;
+    const applicationDeadline =
+      draft.startTime - draft.applicationLeadMinutes * MINUTE_MS;
 
     // Safety check for absolute minimum lead time (15 mins) if not specified
     const finalApplicationDeadline = Math.min(
       applicationDeadline,
       draft.startTime - 15 * MINUTE_MS,
     );
+
+    if (studioComplianceSummary === undefined) {
+      setErrorMessage(t("jobsTab.studioComplianceGate.loading"));
+      return;
+    }
+
+    if (!studioComplianceSummary.canPublishJobs) {
+      setErrorMessage(null);
+      setStatusMessage(null);
+      openStudioComplianceGate(t, {
+        blockers:
+          studioComplianceSummary.blockingReasons.length > 0
+            ? getStudioComplianceBlockersLabel(
+                studioComplianceSummary.blockingReasons,
+                t,
+              )
+            : t("jobsTab.studioComplianceGate.genericBlockers"),
+        onOpenCompliance: () => {
+          router.push(STUDIO_COMPLIANCE_ROUTE as Href);
+        },
+      });
+      return;
+    }
 
     setErrorMessage(null);
     setStatusMessage(null);
@@ -280,7 +364,24 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
       createJobSheetRef.current?.close();
     } catch (error) {
       const message =
-        error instanceof Error && error.message ? error.message : t("jobsTab.errors.failedToPost");
+        error instanceof Error && error.message
+          ? error.message
+          : t("jobsTab.errors.failedToPost");
+      const complianceReasons = parseStudioComplianceReasons(message);
+      if (complianceReasons) {
+        setErrorMessage(null);
+        setStatusMessage(null);
+        openStudioComplianceGate(t, {
+          blockers: getStudioComplianceBlockersLabel(
+            studioComplianceSummary?.blockingReasons ?? complianceReasons,
+            t,
+          ),
+          onOpenCompliance: () => {
+            router.push(STUDIO_COMPLIANCE_ROUTE as Href);
+          },
+        });
+        return;
+      }
       setErrorMessage(message);
     } finally {
       stopTimer?.();
@@ -304,7 +405,9 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     try {
       await reviewApplication({ applicationId, status });
       setStatusMessage(
-        status === "accepted" ? t("jobsTab.success.accepted") : t("jobsTab.success.rejected"),
+        status === "accepted"
+          ? t("jobsTab.success.accepted")
+          : t("jobsTab.success.rejected"),
       );
     } catch (error) {
       const message =
@@ -332,7 +435,10 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
       });
       setStatusMessage(t("jobsTab.success.pushEnabled"));
     } catch (error) {
-      if (isPushRegistrationError(error) && error.code === "permission_denied") {
+      if (
+        isPushRegistrationError(error) &&
+        error.code === "permission_denied"
+      ) {
         showOpenSettingsAlert({
           title: t("common.permissionRequired"),
           body: t("jobsTab.errors.pushPermissionRequired"),
@@ -413,7 +519,10 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
         completeCheckoutUrl,
         cancelCheckoutUrl,
       });
-      const authResult = await WebBrowser.openAuthSessionAsync(checkout.checkoutUrl, appReturnUrl);
+      const authResult = await WebBrowser.openAuthSessionAsync(
+        checkout.checkoutUrl,
+        appReturnUrl,
+      );
 
       if (authResult.type === "success" && authResult.url) {
         const resultUrl = new URL(authResult.url);
@@ -459,6 +568,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     startStudioCheckout,
     statusMessage,
     studioJobs,
+    studioComplianceSummary,
     studioNotificationSettings,
     studioBranches,
     toggleStudioPush,

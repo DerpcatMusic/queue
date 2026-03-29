@@ -1,7 +1,12 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { action, internalMutation, internalQuery, query } from "./_generated/server";
+import {
+  action,
+  internalMutation,
+  internalQuery,
+  query,
+} from "./_generated/server";
 import { requireUserRole } from "./lib/auth";
 import { omitUndefined } from "./lib/validation";
 
@@ -56,6 +61,11 @@ type InstructorVerificationContext = {
   instructorProfile: Doc<"instructorProfiles">;
 };
 
+type StudioVerificationContext = {
+  user: Doc<"users">;
+  studioProfile: Doc<"studioProfiles">;
+};
+
 type DiditRefreshResult = {
   status: DiditStatus;
   isVerified: boolean;
@@ -68,6 +78,8 @@ type DiditRefreshResult = {
   lastEventAt?: number;
   verifiedAt?: number;
 };
+
+type DiditVerificationTarget = "instructor" | "studio";
 
 const diditStatusValidator = v.union(
   v.literal("not_started"),
@@ -104,6 +116,38 @@ const coerceSessionStartStatus = (status: DiditStatus): DiditStatus => {
   // Once a Didit session exists, we should not regress to "not_started" even
   // if the provider omits status in the creation response.
   return status === "not_started" ? "in_progress" : status;
+};
+
+const buildDiditVendorData = (
+  target: DiditVerificationTarget,
+  userId: Id<"users">,
+) => `${target}:${String(userId)}`;
+
+const parseDiditVendorData = (
+  value: string | undefined,
+): {
+  target?: DiditVerificationTarget;
+  userId?: Id<"users">;
+} => {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return {};
+  }
+
+  const [maybeTarget, maybeUserId] = trimmed.split(":", 2);
+  if (
+    (maybeTarget === "instructor" || maybeTarget === "studio") &&
+    maybeUserId?.trim()
+  ) {
+    return {
+      target: maybeTarget,
+      userId: maybeUserId.trim() as Id<"users">,
+    };
+  }
+
+  return {
+    userId: trimmed as Id<"users">,
+  };
 };
 
 const normalizeNamePart = (value: unknown): string | undefined => {
@@ -146,7 +190,8 @@ const extractLegalName = (
         ? (idVerificationsRaw as Record<string, unknown>)
         : {};
   const idVerificationExtracted =
-    idVerification.extracted_data && typeof idVerification.extracted_data === "object"
+    idVerification.extracted_data &&
+    typeof idVerification.extracted_data === "object"
       ? (idVerification.extracted_data as Record<string, unknown>)
       : {};
 
@@ -171,7 +216,10 @@ const extractLegalName = (
       idVerificationExtracted.lastName ??
       rawDecision.last_name,
   );
-  const combined = [firstName, middleName, lastName].filter(Boolean).join(" ").trim();
+  const combined = [firstName, middleName, lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   return {
     ...omitUndefined({
       firstName,
@@ -201,15 +249,19 @@ const toTrimmedString = (value: unknown): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const sanitizeDiditWebhookPayload = (payload: unknown): Record<string, unknown> => {
+const sanitizeDiditWebhookPayload = (
+  payload: unknown,
+): Record<string, unknown> => {
   const root = toRecord(payload) ?? {};
   const data = toRecord(root.data);
   return omitUndefined({
     id: toTrimmedString(root.id),
     event_id: toTrimmedString(root.event_id),
-    session_id: toTrimmedString(root.session_id) ?? toTrimmedString(root.sessionId),
+    session_id:
+      toTrimmedString(root.session_id) ?? toTrimmedString(root.sessionId),
     status: toTrimmedString(root.status),
-    vendor_data: toTrimmedString(root.vendor_data) ?? toTrimmedString(root.vendorData),
+    vendor_data:
+      toTrimmedString(root.vendor_data) ?? toTrimmedString(root.vendorData),
     webhook_type: toTrimmedString(root.webhook_type),
     timestamp:
       typeof root.timestamp === "string" || typeof root.timestamp === "number"
@@ -222,7 +274,8 @@ const sanitizeDiditWebhookPayload = (payload: unknown): Record<string, unknown> 
           vendor_data: toTrimmedString(data.vendor_data),
           webhook_type: toTrimmedString(data.webhook_type),
           timestamp:
-            typeof data.timestamp === "string" || typeof data.timestamp === "number"
+            typeof data.timestamp === "string" ||
+            typeof data.timestamp === "number"
               ? String(data.timestamp)
               : undefined,
         })
@@ -248,6 +301,24 @@ export const getCurrentInstructorVerificationContext = internalQuery({
   },
 });
 
+export const getCurrentStudioVerificationContext = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<StudioVerificationContext | null> => {
+    const user = await requireUserRole(ctx, ["studio"]);
+    const studioProfile = await ctx.db
+      .query("studioProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!studioProfile) {
+      return null;
+    }
+    return {
+      user,
+      studioProfile,
+    };
+  },
+});
+
 export const createSessionForCurrentInstructor = action({
   args: {
     callback: v.optional(v.string()),
@@ -269,12 +340,17 @@ export const createSessionForCurrentInstructor = action({
 
     const diditApiKey = getRequiredEnv("DIDIT_API_KEY");
     const workflowId = getRequiredEnv("DIDIT_WORKFLOW_ID");
-    const diditBaseUrl = ensureUrl(process.env.DIDIT_BASE_URL?.trim() || DIDIT_BASE_URL);
+    const diditBaseUrl = ensureUrl(
+      process.env.DIDIT_BASE_URL?.trim() || DIDIT_BASE_URL,
+    );
     const endpoint = new URL("/v3/session/", diditBaseUrl).toString();
 
     const requestBody = {
       workflow_id: workflowId,
-      vendor_data: String(verificationContext.user._id),
+      vendor_data: buildDiditVendorData(
+        "instructor",
+        verificationContext.user._id,
+      ),
       ...omitUndefined({
         callback: args.callback?.trim() ? args.callback.trim() : undefined,
       }),
@@ -304,7 +380,9 @@ export const createSessionForCurrentInstructor = action({
     }
 
     const rootPayload =
-      payload && typeof payload === "object" ? (payload as Record<string, unknown>) : undefined;
+      payload && typeof payload === "object"
+        ? (payload as Record<string, unknown>)
+        : undefined;
     const dataPayload =
       rootPayload?.data && typeof rootPayload.data === "object"
         ? (rootPayload.data as Record<string, unknown>)
@@ -314,16 +392,31 @@ export const createSessionForCurrentInstructor = action({
       getTrimmedString(rootPayload, ["session_id", "sessionId", "id"]) ??
       getTrimmedString(dataPayload, ["session_id", "sessionId", "id"]);
     const sessionToken =
-      getTrimmedString(rootPayload, ["session_token", "sessionToken", "token"]) ??
+      getTrimmedString(rootPayload, [
+        "session_token",
+        "sessionToken",
+        "token",
+      ]) ??
       getTrimmedString(dataPayload, ["session_token", "sessionToken", "token"]);
     const verificationUrl =
-      getTrimmedString(rootPayload, ["verification_url", "verificationUrl", "url"]) ??
-      getTrimmedString(dataPayload, ["verification_url", "verificationUrl", "url"]);
+      getTrimmedString(rootPayload, [
+        "verification_url",
+        "verificationUrl",
+        "url",
+      ]) ??
+      getTrimmedString(dataPayload, [
+        "verification_url",
+        "verificationUrl",
+        "url",
+      ]);
     const statusRaw =
-      getTrimmedString(rootPayload, ["status"]) ?? getTrimmedString(dataPayload, ["status"]);
+      getTrimmedString(rootPayload, ["status"]) ??
+      getTrimmedString(dataPayload, ["status"]);
 
     if (!sessionId || !sessionToken || !verificationUrl) {
-      const topLevelKeys = rootPayload ? Object.keys(rootPayload).join(",") : "none";
+      const topLevelKeys = rootPayload
+        ? Object.keys(rootPayload).join(",")
+        : "none";
       throw new ConvexError(
         `Didit session creation response is missing required fields (keys: ${topLevelKeys})`,
       );
@@ -370,6 +463,170 @@ export const getMyDiditVerification = query({
     const user = await requireUserRole(ctx, ["instructor"]);
     const profile = await ctx.db
       .query("instructorProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) {
+      return null;
+    }
+    return {
+      status: profile.diditVerificationStatus ?? "not_started",
+      isVerified: profile.diditVerificationStatus === "approved",
+      ...omitUndefined({
+        sessionId: profile.diditSessionId,
+        legalName: profile.diditLegalName,
+        legalFirstName: profile.diditLegalFirstName,
+        legalMiddleName: profile.diditLegalMiddleName,
+        legalLastName: profile.diditLegalLastName,
+        statusRaw: profile.diditStatusRaw,
+        lastEventAt: profile.diditLastEventAt,
+        verifiedAt: profile.diditVerifiedAt,
+        decision: profile.diditDecision,
+      }),
+    };
+  },
+});
+
+export const createSessionForCurrentStudioOwner = action({
+  args: {
+    callback: v.optional(v.string()),
+  },
+  returns: v.object({
+    sessionId: v.string(),
+    sessionToken: v.string(),
+    verificationUrl: v.string(),
+    status: diditStatusValidator,
+  }),
+  handler: async (ctx, args) => {
+    const verificationContext = await ctx.runQuery(
+      internal.didit.getCurrentStudioVerificationContext,
+      {},
+    );
+    if (!verificationContext) {
+      throw new ConvexError("Studio profile not found");
+    }
+
+    const diditApiKey = getRequiredEnv("DIDIT_API_KEY");
+    const workflowId = getRequiredEnv("DIDIT_WORKFLOW_ID");
+    const diditBaseUrl = ensureUrl(
+      process.env.DIDIT_BASE_URL?.trim() || DIDIT_BASE_URL,
+    );
+    const endpoint = new URL("/v3/session/", diditBaseUrl).toString();
+
+    const requestBody = {
+      workflow_id: workflowId,
+      vendor_data: buildDiditVendorData("studio", verificationContext.user._id),
+      ...omitUndefined({
+        callback: args.callback?.trim() ? args.callback.trim() : undefined,
+      }),
+    };
+
+    const response = await fetchWithTimeout(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": diditApiKey,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      throw new ConvexError(
+        `Didit session creation failed (HTTP ${response.status}): ${responseText.slice(0, 240)}`,
+      );
+    }
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(responseText) as unknown;
+    } catch {
+      throw new ConvexError("Didit session creation returned invalid JSON");
+    }
+
+    const rootPayload =
+      payload && typeof payload === "object"
+        ? (payload as Record<string, unknown>)
+        : undefined;
+    const dataPayload =
+      rootPayload?.data && typeof rootPayload.data === "object"
+        ? (rootPayload.data as Record<string, unknown>)
+        : undefined;
+
+    const sessionId =
+      getTrimmedString(rootPayload, ["session_id", "sessionId", "id"]) ??
+      getTrimmedString(dataPayload, ["session_id", "sessionId", "id"]);
+    const sessionToken =
+      getTrimmedString(rootPayload, [
+        "session_token",
+        "sessionToken",
+        "token",
+      ]) ??
+      getTrimmedString(dataPayload, ["session_token", "sessionToken", "token"]);
+    const verificationUrl =
+      getTrimmedString(rootPayload, [
+        "verification_url",
+        "verificationUrl",
+        "url",
+      ]) ??
+      getTrimmedString(dataPayload, [
+        "verification_url",
+        "verificationUrl",
+        "url",
+      ]);
+    const statusRaw =
+      getTrimmedString(rootPayload, ["status"]) ??
+      getTrimmedString(dataPayload, ["status"]);
+
+    if (!sessionId || !sessionToken || !verificationUrl) {
+      const topLevelKeys = rootPayload
+        ? Object.keys(rootPayload).join(",")
+        : "none";
+      throw new ConvexError(
+        `Didit session creation response is missing required fields (keys: ${topLevelKeys})`,
+      );
+    }
+
+    const status = coerceSessionStartStatus(normalizeDiditStatus(statusRaw));
+    await ctx.runMutation(internal.didit.recordStudioDiditSessionStart, {
+      studioId: verificationContext.studioProfile._id,
+      sessionId,
+      mappedStatus: status,
+      ...omitUndefined({
+        statusRaw,
+      }),
+    });
+
+    return {
+      sessionId,
+      sessionToken,
+      verificationUrl,
+      status,
+    };
+  },
+});
+
+export const getMyStudioDiditVerification = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      status: diditStatusValidator,
+      isVerified: v.boolean(),
+      sessionId: v.optional(v.string()),
+      legalName: v.optional(v.string()),
+      legalFirstName: v.optional(v.string()),
+      legalMiddleName: v.optional(v.string()),
+      legalLastName: v.optional(v.string()),
+      statusRaw: v.optional(v.string()),
+      lastEventAt: v.optional(v.number()),
+      verifiedAt: v.optional(v.number()),
+      decision: v.optional(v.any()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx) => {
+    const user = await requireUserRole(ctx, ["studio"]);
+    const profile = await ctx.db
+      .query("studioProfiles")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .unique();
     if (!profile) {
@@ -461,6 +718,28 @@ export const recordDiditSessionStart = internalMutation({
   },
 });
 
+export const recordStudioDiditSessionStart = internalMutation({
+  args: {
+    studioId: v.id("studioProfiles"),
+    sessionId: v.string(),
+    statusRaw: v.optional(v.string()),
+    mappedStatus: diditStatusValidator,
+  },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.studioId);
+    if (!profile) {
+      throw new ConvexError("Studio profile not found");
+    }
+    await ctx.db.patch(profile._id, {
+      diditSessionId: args.sessionId,
+      diditVerificationStatus: args.mappedStatus,
+      diditStatusRaw: args.statusRaw,
+      diditLastEventAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export const processDiditWebhookEvent = internalMutation({
   args: {
     providerEventId: v.string(),
@@ -476,7 +755,9 @@ export const processDiditWebhookEvent = internalMutation({
     const canonicalPayload = sanitizeDiditWebhookPayload(args.payload);
     const existingEvent = await ctx.db
       .query("diditEvents")
-      .withIndex("by_provider_event_id", (q) => q.eq("providerEventId", args.providerEventId))
+      .withIndex("by_provider_event_id", (q) =>
+        q.eq("providerEventId", args.providerEventId),
+      )
       .unique();
     if (existingEvent) {
       return { ignored: true, reason: "duplicate_event" as const };
@@ -508,54 +789,102 @@ export const processDiditWebhookEvent = internalMutation({
       return { ignored: true, reason: "invalid_signature" as const };
     }
 
-    let profile = null;
+    const vendorData = parseDiditVendorData(args.vendorData);
+    let instructorProfile: Doc<"instructorProfiles"> | null = null;
+    let studioProfile: Doc<"studioProfiles"> | null = null;
+
     if (args.sessionId) {
-      profile = await ctx.db
+      instructorProfile = await ctx.db
         .query("instructorProfiles")
-        .withIndex("by_didit_session_id", (q) => q.eq("diditSessionId", args.sessionId))
+        .withIndex("by_didit_session_id", (q) =>
+          q.eq("diditSessionId", args.sessionId),
+        )
         .unique();
-    }
-    if (!profile && args.vendorData) {
-      const userId = args.vendorData as Id<"users">;
-      profile = await ctx.db
-        .query("instructorProfiles")
-        .withIndex("by_user_id", (q) => q.eq("userId", userId))
-        .unique();
+      if (!instructorProfile) {
+        studioProfile = await ctx.db
+          .query("studioProfiles")
+          .withIndex("by_didit_session_id", (q) =>
+            q.eq("diditSessionId", args.sessionId),
+          )
+          .unique();
+      }
     }
 
-    if (!profile) {
+    if (!instructorProfile && !studioProfile && vendorData.userId) {
+      if (vendorData.target === "instructor") {
+        instructorProfile = await ctx.db
+          .query("instructorProfiles")
+          .withIndex("by_user_id", (q) => q.eq("userId", vendorData.userId!))
+          .unique();
+      } else if (vendorData.target === "studio") {
+        studioProfile = await ctx.db
+          .query("studioProfiles")
+          .withIndex("by_user_id", (q) => q.eq("userId", vendorData.userId!))
+          .unique();
+      } else {
+        const [candidateInstructor, candidateStudio] = await Promise.all([
+          ctx.db
+            .query("instructorProfiles")
+            .withIndex("by_user_id", (q) => q.eq("userId", vendorData.userId!))
+            .unique(),
+          ctx.db
+            .query("studioProfiles")
+            .withIndex("by_user_id", (q) => q.eq("userId", vendorData.userId!))
+            .unique(),
+        ]);
+
+        if (candidateInstructor && candidateStudio) {
+          await ctx.db.patch(eventId, {
+            processingError: "ambiguous_vendor_data",
+            updatedAt: Date.now(),
+          });
+          return {
+            ignored: false,
+            processed: false,
+            reason: "ambiguous_vendor_data" as const,
+          };
+        }
+
+        instructorProfile = candidateInstructor;
+        studioProfile = candidateStudio;
+      }
+    }
+
+    if (!instructorProfile && !studioProfile) {
       await ctx.db.patch(eventId, {
-        processingError: "instructor_not_found",
+        processingError: "verification_subject_not_found",
         updatedAt: Date.now(),
       });
       return {
         ignored: false,
         processed: false,
-        reason: "instructor_not_found" as const,
+        reason: "verification_subject_not_found" as const,
       };
     }
 
-    await ctx.db.patch(profile._id, {
-      diditVerificationStatus: mappedStatus,
-      diditStatusRaw: args.statusRaw,
-      diditLastEventAt: now,
-      diditSessionId: args.sessionId ?? profile.diditSessionId,
-      ...omitUndefined({
-        diditDecision: args.decision,
-      }),
-      ...(mappedStatus === "approved" ? { diditVerifiedAt: now } : {}),
-      updatedAt: now,
-    });
+    const legalName =
+      mappedStatus === "approved" ? extractLegalName(args.decision) : {};
 
-    if (mappedStatus === "approved") {
-      const legalName = extractLegalName(args.decision);
+    if (instructorProfile) {
+      await ctx.db.patch(instructorProfile._id, {
+        diditVerificationStatus: mappedStatus,
+        diditStatusRaw: args.statusRaw,
+        diditLastEventAt: now,
+        diditSessionId: args.sessionId ?? instructorProfile.diditSessionId,
+        ...omitUndefined({
+          diditDecision: args.decision,
+        }),
+        ...(mappedStatus === "approved" ? { diditVerifiedAt: now } : {}),
+        updatedAt: now,
+      });
+
       if (legalName.fullName) {
-        await ctx.db.patch("users", profile.userId, {
+        await ctx.db.patch(instructorProfile.userId, {
           fullName: legalName.fullName,
           name: legalName.fullName,
           updatedAt: now,
         });
-        await ctx.db.patch(profile._id, {
+        await ctx.db.patch(instructorProfile._id, {
           displayName: legalName.fullName,
           ...omitUndefined({
             diditLegalFirstName: legalName.firstName,
@@ -566,15 +895,55 @@ export const processDiditWebhookEvent = internalMutation({
           updatedAt: now,
         });
       }
+
+      await ctx.db.patch(eventId, {
+        processed: true,
+        instructorId: instructorProfile._id,
+        updatedAt: Date.now(),
+      });
+
+      return {
+        ignored: false,
+        processed: true,
+        instructorId: instructorProfile._id,
+      };
+    }
+
+    await ctx.db.patch(studioProfile!._id, {
+      diditVerificationStatus: mappedStatus,
+      diditStatusRaw: args.statusRaw,
+      diditLastEventAt: now,
+      diditSessionId: args.sessionId ?? studioProfile!.diditSessionId,
+      ...omitUndefined({
+        diditDecision: args.decision,
+        diditLegalFirstName: legalName.firstName,
+        diditLegalMiddleName: legalName.middleName,
+        diditLegalLastName: legalName.lastName,
+        diditLegalName: legalName.fullName,
+      }),
+      ...(mappedStatus === "approved" ? { diditVerifiedAt: now } : {}),
+      updatedAt: now,
+    });
+
+    if (legalName.fullName) {
+      await ctx.db.patch(studioProfile!.userId, {
+        fullName: legalName.fullName,
+        name: legalName.fullName,
+        updatedAt: now,
+      });
     }
 
     await ctx.db.patch(eventId, {
       processed: true,
-      instructorId: profile._id,
+      studioId: studioProfile!._id,
       updatedAt: Date.now(),
     });
 
-    return { ignored: false, processed: true };
+    return {
+      ignored: false,
+      processed: true,
+      studioId: studioProfile!._id,
+    };
   },
 });
 
@@ -593,10 +962,11 @@ export const refreshMyDiditVerification = action({
     verifiedAt: v.optional(v.number()),
   }),
   handler: async (ctx): Promise<DiditRefreshResult> => {
-    const verificationContext: InstructorVerificationContext | null = await ctx.runQuery(
-      internal.didit.getCurrentInstructorVerificationContext,
-      {},
-    );
+    const verificationContext: InstructorVerificationContext | null =
+      await ctx.runQuery(
+        internal.didit.getCurrentInstructorVerificationContext,
+        {},
+      );
     if (!verificationContext) {
       throw new ConvexError("Instructor profile not found");
     }
@@ -620,7 +990,9 @@ export const refreshMyDiditVerification = action({
     }
 
     const diditApiKey = getRequiredEnv("DIDIT_API_KEY");
-    const diditBaseUrl = ensureUrl(process.env.DIDIT_BASE_URL?.trim() || DIDIT_BASE_URL);
+    const diditBaseUrl = ensureUrl(
+      process.env.DIDIT_BASE_URL?.trim() || DIDIT_BASE_URL,
+    );
     const decisionEndpoint = new URL(
       `/v3/session/${profile.diditSessionId}/decision/`,
       diditBaseUrl,
@@ -630,7 +1002,9 @@ export const refreshMyDiditVerification = action({
       diditBaseUrl,
     ).toString();
 
-    const fetchJson = async (url: string): Promise<Record<string, unknown> | null> => {
+    const fetchJson = async (
+      url: string,
+    ): Promise<Record<string, unknown> | null> => {
       const response = await fetchWithTimeout(url, {
         method: "GET",
         headers: {
@@ -641,7 +1015,9 @@ export const refreshMyDiditVerification = action({
       if (!response.ok) return null;
       try {
         const payload = (await response.json()) as unknown;
-        return payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+        return payload && typeof payload === "object"
+          ? (payload as Record<string, unknown>)
+          : null;
       } catch {
         return null;
       }
@@ -666,7 +1042,8 @@ export const refreshMyDiditVerification = action({
     const mappedStatus = normalizeDiditStatus(statusRaw);
     const decision = decisionData ?? profile.diditDecision;
     const now = Date.now();
-    const legalName = mappedStatus === "approved" ? extractLegalName(decision) : {};
+    const legalName =
+      mappedStatus === "approved" ? extractLegalName(decision) : {};
 
     await ctx.runMutation(internal.didit.applyDiditVerificationSnapshot, {
       instructorId: profile._id,
@@ -682,11 +1059,150 @@ export const refreshMyDiditVerification = action({
       }),
     });
 
-    const refreshedContext: InstructorVerificationContext | null = await ctx.runQuery(
-      internal.didit.getCurrentInstructorVerificationContext,
-      {},
-    );
+    const refreshedContext: InstructorVerificationContext | null =
+      await ctx.runQuery(
+        internal.didit.getCurrentInstructorVerificationContext,
+        {},
+      );
     const refreshed = refreshedContext?.instructorProfile;
+    if (!refreshed) {
+      throw new ConvexError("Verification state unavailable after refresh");
+    }
+    return {
+      status: refreshed.diditVerificationStatus ?? "not_started",
+      isVerified: refreshed.diditVerificationStatus === "approved",
+      ...omitUndefined({
+        sessionId: refreshed.diditSessionId,
+        legalName: refreshed.diditLegalName,
+        legalFirstName: refreshed.diditLegalFirstName,
+        legalMiddleName: refreshed.diditLegalMiddleName,
+        legalLastName: refreshed.diditLegalLastName,
+        statusRaw: refreshed.diditStatusRaw,
+        lastEventAt: refreshed.diditLastEventAt,
+        verifiedAt: refreshed.diditVerifiedAt,
+      }),
+    };
+  },
+});
+
+export const refreshMyStudioDiditVerification = action({
+  args: {},
+  returns: v.object({
+    status: diditStatusValidator,
+    isVerified: v.boolean(),
+    sessionId: v.optional(v.string()),
+    legalName: v.optional(v.string()),
+    legalFirstName: v.optional(v.string()),
+    legalMiddleName: v.optional(v.string()),
+    legalLastName: v.optional(v.string()),
+    statusRaw: v.optional(v.string()),
+    lastEventAt: v.optional(v.number()),
+    verifiedAt: v.optional(v.number()),
+  }),
+  handler: async (ctx): Promise<DiditRefreshResult> => {
+    const verificationContext: StudioVerificationContext | null =
+      await ctx.runQuery(
+        internal.didit.getCurrentStudioVerificationContext,
+        {},
+      );
+    if (!verificationContext) {
+      throw new ConvexError("Studio profile not found");
+    }
+
+    const profile = verificationContext.studioProfile;
+    if (!profile.diditSessionId) {
+      return {
+        status: profile.diditVerificationStatus ?? "not_started",
+        isVerified: profile.diditVerificationStatus === "approved",
+        ...omitUndefined({
+          sessionId: profile.diditSessionId,
+          legalName: profile.diditLegalName,
+          legalFirstName: profile.diditLegalFirstName,
+          legalMiddleName: profile.diditLegalMiddleName,
+          legalLastName: profile.diditLegalLastName,
+          statusRaw: profile.diditStatusRaw,
+          lastEventAt: profile.diditLastEventAt,
+          verifiedAt: profile.diditVerifiedAt,
+        }),
+      };
+    }
+
+    const diditApiKey = getRequiredEnv("DIDIT_API_KEY");
+    const diditBaseUrl = ensureUrl(
+      process.env.DIDIT_BASE_URL?.trim() || DIDIT_BASE_URL,
+    );
+    const decisionEndpoint = new URL(
+      `/v3/session/${profile.diditSessionId}/decision/`,
+      diditBaseUrl,
+    ).toString();
+    const sessionEndpoint = new URL(
+      `/v3/session/${profile.diditSessionId}/`,
+      diditBaseUrl,
+    ).toString();
+
+    const fetchJson = async (
+      url: string,
+    ): Promise<Record<string, unknown> | null> => {
+      const response = await fetchWithTimeout(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": diditApiKey,
+        },
+      });
+      if (!response.ok) return null;
+      try {
+        const payload = (await response.json()) as unknown;
+        return payload && typeof payload === "object"
+          ? (payload as Record<string, unknown>)
+          : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const decisionPayload = await fetchJson(decisionEndpoint);
+    const sessionPayload = await fetchJson(sessionEndpoint);
+
+    const decisionData =
+      decisionPayload?.data && typeof decisionPayload.data === "object"
+        ? (decisionPayload.data as Record<string, unknown>)
+        : (decisionPayload ?? undefined);
+    const sessionData =
+      sessionPayload?.data && typeof sessionPayload.data === "object"
+        ? (sessionPayload.data as Record<string, unknown>)
+        : (sessionPayload ?? undefined);
+
+    const statusRaw =
+      getTrimmedString(decisionData, ["status"]) ??
+      getTrimmedString(sessionData, ["status"]) ??
+      profile.diditStatusRaw;
+    const mappedStatus = normalizeDiditStatus(statusRaw);
+    const decision = decisionData ?? profile.diditDecision;
+    const now = Date.now();
+    const legalName =
+      mappedStatus === "approved" ? extractLegalName(decision) : {};
+
+    await ctx.runMutation(internal.didit.applyStudioDiditVerificationSnapshot, {
+      studioId: profile._id,
+      mappedStatus,
+      at: now,
+      ...omitUndefined({
+        statusRaw,
+        decision,
+        legalFirstName: legalName.firstName,
+        legalMiddleName: legalName.middleName,
+        legalLastName: legalName.lastName,
+        legalName: legalName.fullName,
+      }),
+    });
+
+    const refreshedContext: StudioVerificationContext | null =
+      await ctx.runQuery(
+        internal.didit.getCurrentStudioVerificationContext,
+        {},
+      );
+    const refreshed = refreshedContext?.studioProfile;
     if (!refreshed) {
       throw new ConvexError("Verification state unavailable after refresh");
     }
@@ -742,6 +1258,49 @@ export const applyDiditVerificationSnapshot = internalMutation({
             displayName: args.legalName,
           }
         : {}),
+      updatedAt: args.at,
+    });
+
+    if (args.legalName) {
+      await ctx.db.patch(profile.userId, {
+        fullName: args.legalName,
+        name: args.legalName,
+        updatedAt: args.at,
+      });
+    }
+  },
+});
+
+export const applyStudioDiditVerificationSnapshot = internalMutation({
+  args: {
+    studioId: v.id("studioProfiles"),
+    statusRaw: v.optional(v.string()),
+    mappedStatus: diditStatusValidator,
+    decision: v.optional(v.any()),
+    legalFirstName: v.optional(v.string()),
+    legalMiddleName: v.optional(v.string()),
+    legalLastName: v.optional(v.string()),
+    legalName: v.optional(v.string()),
+    at: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.studioId);
+    if (!profile) {
+      throw new ConvexError("Studio profile not found");
+    }
+
+    await ctx.db.patch(profile._id, {
+      diditVerificationStatus: args.mappedStatus,
+      diditStatusRaw: args.statusRaw,
+      diditLastEventAt: args.at,
+      ...(args.mappedStatus === "approved" ? { diditVerifiedAt: args.at } : {}),
+      ...omitUndefined({
+        diditDecision: args.decision,
+        diditLegalFirstName: args.legalFirstName,
+        diditLegalMiddleName: args.legalMiddleName,
+        diditLegalLastName: args.legalLastName,
+        diditLegalName: args.legalName,
+      }),
       updatedAt: args.at,
     });
 

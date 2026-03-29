@@ -27,6 +27,10 @@ export default function ProfileLayout() {
           title: t("profile.navigation.calendar"),
         },
         {
+          routeMatchPath: "/profile/compliance",
+          title: t("profile.navigation.compliance"),
+        },
+        {
           routeMatchPath: "/profile/edit",
           title: t("profile.navigation.edit"),
         },
@@ -44,15 +48,28 @@ export default function ProfileLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="branches" options={{ title: t("profile.navigation.branches") }} />
-        <Stack.Screen name="add-account" options={{ title: t("profile.navigation.addAccount") }} />
+        <Stack.Screen
+          name="branches"
+          options={{ title: t("profile.navigation.branches") }}
+        />
+        <Stack.Screen
+          name="add-account"
+          options={{ title: t("profile.navigation.addAccount") }}
+        />
         <Stack.Screen
           name="calendar-settings"
           options={{ title: t("profile.navigation.calendar") }}
         />
         <Stack.Screen
+          name="compliance"
+          options={{ title: t("profile.navigation.compliance") }}
+        />
+        <Stack.Screen
           name="edit"
-          options={{ title: t("profile.navigation.edit"), presentation: "modal" }}
+          options={{
+            title: t("profile.navigation.edit"),
+            presentation: "modal",
+          }}
         />
         <Stack.Screen
           name="payments"

@@ -10,7 +10,13 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
+import {
+  I18nManager,
+  type StyleProp,
+  StyleSheet,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
@@ -33,7 +39,10 @@ export type ProfileSubpageRouteConfig = {
 
 type ProfileSubpageAccessoryContextValue = {
   accessories: Record<string, React.ReactNode | null | undefined>;
-  setAccessory: (routeMatchPath: string, accessory: React.ReactNode | null) => void;
+  setAccessory: (
+    routeMatchPath: string,
+    accessory: React.ReactNode | null,
+  ) => void;
 };
 
 type ProfileSubpageSheetProviderProps = PropsWithChildren<{
@@ -41,11 +50,13 @@ type ProfileSubpageSheetProviderProps = PropsWithChildren<{
   ownerId: string;
 }>;
 
-const ProfileSubpageAccessoryContext = createContext<ProfileSubpageAccessoryContextValue | null>(
-  null,
-);
+const ProfileSubpageAccessoryContext =
+  createContext<ProfileSubpageAccessoryContextValue | null>(null);
 
-function isProfileSubpageRouteActive(pathname: string | null, routeMatchPath: string) {
+function isProfileSubpageRouteActive(
+  pathname: string | null,
+  routeMatchPath: string,
+) {
   if (!pathname) {
     return false;
   }
@@ -66,7 +77,9 @@ function ProfileSubpageSheetHeader({
   const { t } = useTranslation();
   const theme = useTheme();
   const isCustomAccent = Boolean(accentColor);
-  const foregroundColor = isCustomAccent ? theme.color.onPrimary : theme.color.text;
+  const foregroundColor = isCustomAccent
+    ? theme.color.onPrimary
+    : theme.color.text;
 
   return (
     <View style={styles.headerRow}>
@@ -74,7 +87,9 @@ function ProfileSubpageSheetHeader({
         <IconButton
           size={40}
           tone={isCustomAccent ? "primarySubtle" : "secondary"}
-          {...(isCustomAccent ? { backgroundColorOverride: theme.color.surface } : {})}
+          {...(isCustomAccent
+            ? { backgroundColorOverride: theme.color.surface }
+            : {})}
           accessibilityLabel={t("common.back")}
           onPress={onBack}
           icon={
@@ -94,13 +109,18 @@ function ProfileSubpageSheetHeader({
         <ThemedText
           numberOfLines={1}
           type="sheetTitle"
-          style={[styles.title, isCustomAccent ? { color: foregroundColor } : null]}
+          style={[
+            styles.title,
+            isCustomAccent ? { color: foregroundColor } : null,
+          ]}
         >
           {title}
         </ThemedText>
       </View>
 
-      <View style={[styles.edgeSlot, styles.edgeSlotEnd]}>{rightAccessory ?? null}</View>
+      <View style={[styles.edgeSlot, styles.edgeSlotEnd]}>
+        {rightAccessory ?? null}
+      </View>
     </View>
   );
 }
@@ -120,7 +140,10 @@ export function useProfileSubpageSheet({
     if (!setAccessory) {
       return;
     }
-    setAccessory(routeMatchPath, isActiveRoute ? (rightAccessory ?? null) : null);
+    setAccessory(
+      routeMatchPath,
+      isActiveRoute ? (rightAccessory ?? null) : null,
+    );
     return () => {
       setAccessory(routeMatchPath, null);
     };
@@ -142,17 +165,20 @@ export function ProfileSubpageSheetProvider({
   const router = useRouter();
   const pathname = usePathname();
   const theme = useTheme();
-  const setAccessory = useCallback((routeMatchPath: string, accessory: React.ReactNode | null) => {
-    setAccessories((current) => {
-      if (current[routeMatchPath] === accessory) {
-        return current;
-      }
-      return {
-        ...current,
-        [routeMatchPath]: accessory,
-      };
-    });
-  }, []);
+  const setAccessory = useCallback(
+    (routeMatchPath: string, accessory: React.ReactNode | null) => {
+      setAccessories((current) => {
+        if (current[routeMatchPath] === accessory) {
+          return current;
+        }
+        return {
+          ...current,
+          [routeMatchPath]: accessory,
+        };
+      });
+    },
+    [],
+  );
 
   const value = useMemo<ProfileSubpageAccessoryContextValue>(
     () => ({
@@ -163,7 +189,10 @@ export function ProfileSubpageSheetProvider({
   );
 
   const activeRoute = useMemo(
-    () => routes.find((route) => isProfileSubpageRouteActive(pathname, route.routeMatchPath)) ?? null,
+    () =>
+      routes.find((route) =>
+        isProfileSubpageRouteActive(pathname, route.routeMatchPath),
+      ) ?? null,
     [pathname, routes],
   );
 
@@ -172,7 +201,8 @@ export function ProfileSubpageSheetProvider({
       return null;
     }
 
-    const isDiditRoute = activeRoute.routeMatchPath === "/profile/identity-verification";
+    const isDiditRoute =
+      activeRoute.routeMatchPath === "/profile/identity-verification";
     const isPaymentsRoute =
       activeRoute.routeMatchPath === "/profile/payments" ||
       activeRoute.routeMatchPath.endsWith("/profile/payments");
@@ -195,7 +225,7 @@ export function ProfileSubpageSheetProvider({
         vertical: BrandSpacing.sm,
         horizontal: BrandSpacing.lg,
       },
-      steps: [0.12],
+      steps: [0],
       initialStep: 0,
       draggable: false,
       expandable: false,
@@ -203,7 +233,14 @@ export function ProfileSubpageSheetProvider({
       backgroundColor: accentColor,
       topInsetColor: accentColor,
     };
-  }, [activeRoute, accessories, router, theme.color.primary, theme.color.success, theme.color.tertiary]);
+  }, [
+    activeRoute,
+    accessories,
+    router,
+    theme.color.primary,
+    theme.color.success,
+    theme.color.tertiary,
+  ]);
 
   useGlobalTopSheet("profile", config, ownerId);
 

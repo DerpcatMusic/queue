@@ -39,8 +39,8 @@ export default function ProfileLayout() {
           title: t("profile.navigation.wallet"),
         },
         {
-          routeMatchPath: "/profile/identity-verification",
-          title: t("profile.navigation.identityVerification"),
+          routeMatchPath: "/profile/compliance",
+          title: t("profile.navigation.compliance"),
         },
       ]}
     >
@@ -51,21 +51,40 @@ export default function ProfileLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="add-account" options={{ title: t("profile.navigation.addAccount") }} />
+        <Stack.Screen
+          name="add-account"
+          options={{ title: t("profile.navigation.addAccount") }}
+        />
         <Stack.Screen
           name="edit"
-          options={{ title: t("profile.navigation.edit"), presentation: "modal" }}
+          options={{
+            title: t("profile.navigation.edit"),
+            presentation: "modal",
+          }}
         />
-        <Stack.Screen name="sports" options={{ title: t("profile.navigation.sports") }} />
-        <Stack.Screen name="location" options={{ title: t("profile.navigation.location") }} />
+        <Stack.Screen
+          name="sports"
+          options={{ title: t("profile.navigation.sports") }}
+        />
+        <Stack.Screen
+          name="location"
+          options={{ title: t("profile.navigation.location") }}
+        />
         <Stack.Screen
           name="calendar-settings"
           options={{ title: t("profile.navigation.calendar") }}
         />
-        <Stack.Screen name="payments" options={{ title: t("profile.navigation.wallet") }} />
+        <Stack.Screen
+          name="payments"
+          options={{ title: t("profile.navigation.wallet") }}
+        />
         <Stack.Screen
           name="identity-verification"
           options={{ title: t("profile.navigation.identityVerification") }}
+        />
+        <Stack.Screen
+          name="compliance"
+          options={{ title: t("profile.navigation.compliance") }}
         />
       </Stack>
     </ProfileSubpageSheetProvider>

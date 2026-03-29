@@ -24,13 +24,16 @@ const en = {
     },
     month: {
       emptyTitle: "No sessions in this month",
-      emptyBody: "Accepted sessions for this month will appear here automatically.",
+      emptyBody:
+        "Accepted sessions for this month will appear here automatically.",
     },
     empty: {
       nonInstructorTitle: "Instructor schedule only",
-      nonInstructorBody: "This calendar shows accepted teaching sessions for instructor accounts.",
+      nonInstructorBody:
+        "This calendar shows accepted teaching sessions for instructor accounts.",
       noSessionsTitle: "No accepted sessions yet",
-      noSessionsBody: "Accept a job from the Jobs tab and it will appear here automatically.",
+      noSessionsBody:
+        "Accept a job from the Jobs tab and it will appear here automatically.",
     },
     sync: {
       disabled: "Sync off",
@@ -72,10 +75,12 @@ const en = {
     },
     lessonRowAccessibility: "{{sport}} from {{start}} to {{end}}",
     lessonRowAccessibilityHint: "Select this day",
-    desktopSoon: "Desktop calendar board is temporarily unavailable in this merge.",
+    desktopSoon:
+      "Desktop calendar board is temporarily unavailable in this merge.",
     googleCalendar: "Google Calendar",
     unassignedInstructor: "Unassigned instructor",
-    footerHint: "Calendar interactions are enabled. Session events appear for instructor accounts.",
+    footerHint:
+      "Calendar interactions are enabled. Session events appear for instructor accounts.",
   },
   tabsLayout: {
     loading: {
@@ -114,7 +119,8 @@ const en = {
     english: "English",
     hebrew: "Hebrew",
     restartRequiredTitle: "Restart required",
-    restartRequiredMessage: "The app needs to reload to apply right-to-left layout changes.",
+    restartRequiredMessage:
+      "The app needs to reload to apply right-to-left layout changes.",
   },
   launch: {
     title: "Queue",
@@ -175,6 +181,7 @@ const en = {
       addAccount: "Add account",
       calendar: "Calendar",
       wallet: "Wallet",
+      compliance: "Verification",
       identityVerification: "Identity verification",
       paymentsPayouts: "Payments & payouts",
     },
@@ -192,7 +199,8 @@ const en = {
       professional: "Professional",
       professionalDesc: "What studios scan before they book you.",
       profiles: "Profiles",
-      profilesDesc: "Switch between the profiles already available on this account.",
+      profilesDesc:
+        "Switch between the profiles already available on this account.",
       operations: "Operations",
       operationsDesc: "Calendar, payouts, and workflow controls.",
       preferences: "Preferences",
@@ -205,7 +213,8 @@ const en = {
       studio: "Studio",
       studioDesc: "The identity and operating defaults people scan first.",
       branches: "Branches",
-      branchesDesc: "Manage every teaching location, defaults, and calendar mode from one place.",
+      branchesDesc:
+        "Manage every teaching location, defaults, and calendar mode from one place.",
       calendarDesc: "Choose whether posted jobs sync into your calendar.",
       support: "Support",
     },
@@ -221,15 +230,18 @@ const en = {
       sheetBody: "Switch accounts, add one, or sign out.",
       accountRowHint: "Open account actions for this device.",
       profilesTitle: "Profiles on this account",
-      profilesBody: "Quick access to the roles currently attached to this login.",
+      profilesBody:
+        "Quick access to the roles currently attached to this login.",
       savedAccountsTitle: "Accounts on this device",
       savedAccountsBody:
         "Tap a remembered account to jump back in without restarting the whole sign-in flow.",
-      savedAccountsEmpty: "No other remembered accounts are ready on this device yet.",
+      savedAccountsEmpty:
+        "No other remembered accounts are ready on this device yet.",
       accountsTitle: "Account actions",
       accountsBody: "Add another account or sign out.",
       useAnotherAccountTitle: "Use another account",
-      useAnotherAccountHint: "Open a compact sign-in sheet for another account.",
+      useAnotherAccountHint:
+        "Open a compact sign-in sheet for another account.",
       instructorActiveHint: "You are using your instructor profile right now.",
       studioActiveHint: "You are using your studio profile right now.",
       instructorSwitchHint: "Jump into instructor tabs, jobs, and payouts.",
@@ -276,6 +288,171 @@ const en = {
         disableSystemFirst: "Disable System theme first to set a manual mode.",
       },
     },
+    compliance: {
+      loading: "Loading verification...",
+      navigation: {
+        ready: "Ready for job actions",
+        blocked: "Finish verification to apply",
+      },
+      hero: {
+        readyTitle: "You are cleared to apply",
+        readyBody: "Identity, insurance, and certificates are approved.",
+        blockedTitle: "Finish verification to unlock job actions",
+        blockedBody:
+          "You can browse, but applying is locked until: {{blockers}}.",
+      },
+      sections: {
+        identity: "Identity",
+        insurance: "Insurance",
+        certificates: "Certificates",
+        certificatesDescription:
+          "Approved certificates stay public by issuer and title.",
+      },
+      identity: {
+        title: "Didit",
+        approved: "Didit is approved and your identity is active.",
+        required: "Complete Didit to unlock instructor job actions.",
+      },
+      insurance: {
+        title: "Liability insurance",
+        approvedBody: "Insurance is approved and active.",
+        approvedWithDate: "Insurance is approved and active until {{date}}.",
+        pendingBody: "Uploaded. Review is in progress.",
+        reuploadBody: "Upload a newer or clearer insurance file.",
+        missingBody: "Upload your active צד ג׳ insurance.",
+        expiredBody: "Insurance expired. Upload a new policy.",
+        expiredWithDate: "Insurance expired on {{date}}. Upload a new policy.",
+      },
+      certificate: {
+        title: "Teaching certificate",
+        missingBody: "Upload a teaching certificate for this sport.",
+        pendingBody: "Uploaded. Review is in progress.",
+        reuploadBody: "Upload a clearer or newer certificate.",
+        approvedBody: "Certificate approved.",
+        approvedWithDate: "Certificate approved on {{date}}.",
+        approvedWithSource: "Approved: {{source}}.",
+        approvedWithSourceAndDate: "Approved: {{source}} · {{date}}.",
+        noSportsTitle: "Choose sports first",
+        noSportsBody: "Add your sports before uploading certificates.",
+        uploadTitle: "Upload certificate",
+      },
+      actions: {
+        upload: "Upload",
+        uploadInsurance: "Upload insurance",
+        replaceInsurance: "Replace insurance",
+        uploadCertificate: "Upload certificate",
+        chooseSports: "Choose sports",
+        startIdentity: "Verify with Didit",
+        refreshIdentity: "Refresh Didit",
+        usePhoto: "Use photo",
+        useFile: "Use file or PDF",
+      },
+      uploadPicker: {
+        title: "Upload document",
+        body: "Choose a photo or file.",
+      },
+      values: {
+        approved: "Approved",
+        pending: "Pending",
+        actionRequired: "Action required",
+      },
+      blockers: {
+        identity: "Didit identity approval",
+        insurance: "active insurance",
+        certificate: "approved sport certificate",
+      },
+      feedback: {
+        identityApproved: "Didit is approved.",
+        identityRefreshStarted: "Didit status refreshed.",
+        insuranceUploaded: "Insurance uploaded. Review can start now.",
+        certificateUploaded: "Certificate uploaded. Review can start now.",
+      },
+      errors: {
+        missingSport: "Choose a sport before uploading a certificate.",
+        pickerUnavailable: "Document picking is unavailable in this build.",
+        photoPermissionRequired: "Allow photo access to upload an image.",
+        photoPermissionBlocked: "Photo access is blocked in Settings.",
+        identityStartFailed: "Could not start Didit verification.",
+        uploadFailed: "Failed to upload the selected document.",
+      },
+    },
+    studioCompliance: {
+      loading: "Loading studio verification...",
+      status: {
+        loading: "Checking studio readiness...",
+        ready: "Ready to publish jobs",
+        blocked: "Finish setup: {{blockers}}",
+      },
+      hero: {
+        readyTitle: "Studio is cleared to publish",
+        readyBody:
+          "Owner identity, billing profile, and payment readiness are all in a state that unlocks job posting.",
+        blockedTitle: "Finish setup to publish jobs",
+        blockedBody:
+          "You can still browse and manage the app, but posting jobs is blocked until these are complete: {{blockers}}.",
+      },
+      sections: {
+        identity: "Owner identity",
+        identityDescription:
+          "Didit approval is the hard identity requirement for studio job posting.",
+        billing: "Billing profile",
+        billingDescription:
+          "Keep your legal business details internal so invoices, settlements, and tax handling stay aligned.",
+        payment: "Payments",
+        paymentDescription:
+          "Checkout readiness must be configured before this studio can publish paid jobs.",
+      },
+      identity: {
+        title: "Studio owner verification",
+        approvedBody: "Didit is approved for {{legalName}}.",
+        requiredBody:
+          "Current status: {{status}}. Complete Didit to unlock job posting.",
+      },
+      billing: {
+        entityIndividual: "Individual",
+        entityCompany: "Company",
+        legalBusinessName: "Legal business name",
+        taxId: "Tax ID / company number",
+        billingEmail: "Billing email",
+        billingPhone: "Billing phone",
+        billingAddress: "Billing address",
+        vatReportingType: "VAT reporting type",
+        vatOptions: {
+          osek_patur: "Osek patur",
+          osek_murshe: "Osek murshe",
+          company: "Company",
+          other: "Other",
+        },
+      },
+      payment: {
+        title: "Payment readiness",
+        readyBody: "Checkout is configured and ready for studio charges.",
+        failedBody:
+          "Payment setup failed. Review the payments setup before publishing jobs.",
+        pendingBody: "Payment setup is still pending.",
+        missingBody: "Finish payment setup before publishing jobs.",
+      },
+      actions: {
+        startIdentity: "Start Didit",
+        refreshIdentity: "Refresh identity",
+        saveBilling: "Save billing profile",
+      },
+      blockers: {
+        identity: "owner Didit approval",
+        billing: "complete billing profile",
+        payment: "payment setup",
+      },
+      feedback: {
+        identityApproved: "Didit is approved for this studio owner.",
+        identityRefreshStarted:
+          "Didit status refreshed. We will keep the latest result here.",
+        billingSaved: "Billing profile saved.",
+      },
+      errors: {
+        identityStartFailed: "Failed to start studio identity verification.",
+        billingSaveFailed: "Failed to save the billing profile.",
+      },
+    },
     settings: {
       title: "Instructor settings",
       loading: "Loading your settings...",
@@ -285,7 +462,8 @@ const en = {
       notifications: {
         title: "Push notifications",
         description: "Get notified when matching jobs are posted.",
-        pushMissing: "Push is not configured on this device yet. Re-enable from onboarding first.",
+        pushMissing:
+          "Push is not configured on this device yet. Re-enable from onboarding first.",
       },
       hourly: {
         title: "Hourly expectation",
@@ -300,7 +478,8 @@ const en = {
         searchPlaceholder: "Search sports",
       },
       publicProfile: "Public profile",
-      publicProfilePrompt: "Shape the identity people scan before they apply or accept.",
+      publicProfilePrompt:
+        "Shape the identity people scan before they apply or accept.",
       publicProfileActive: "{{count}} public links are live.",
       studioDetails: "Studio details",
       completeOnboardingAddress: "Complete onboarding to set your address",
@@ -319,27 +498,32 @@ const en = {
         planTitle: "Plan",
         addAction: "Add branch",
         limitReached: "You are at the current branch limit for this plan.",
-        upgradeRequired: "Your current plan does not unlock extra branches yet.",
+        upgradeRequired:
+          "Your current plan does not unlock extra branches yet.",
         createTitle: "Create branch",
         editTitle: "Edit branch",
-        editorHint: "Keep branch details accurate so job posts and defaults stay aligned.",
+        editorHint:
+          "Keep branch details accurate so job posts and defaults stay aligned.",
         createAction: "Create branch",
         saveAction: "Save branch",
         listTitle: "Active branch system",
-        listBody: "Review which branch is primary, which defaults it uses, and what is archived.",
+        listBody:
+          "Review which branch is primary, which defaults it uses, and what is archived.",
         makePrimaryTitle: "Make this the primary branch?",
         makePrimaryBody:
           "{{name}} will become the default branch for studio settings and new job drafts.",
         makePrimaryAction: "Set primary",
         archiveTitle: "Archive this branch?",
-        archiveBody: "{{name}} will stop appearing in posting flows and active branch lists.",
+        archiveBody:
+          "{{name}} will stop appearing in posting flows and active branch lists.",
         archiveAction: "Archive",
         primaryBadge: "Primary",
         activeBadge: "Active",
         archivedBadge: "Archived",
         enabled: "Enabled",
         disabled: "Disabled",
-        autoAcceptHint: "Use this when the branch should auto-confirm the first qualified match.",
+        autoAcceptHint:
+          "Use this when the branch should auto-confirm the first qualified match.",
         calendarTitle: "Branch calendar mode",
         calendarHint:
           "This branch can keep its own calendar sync preference separate from the studio default.",
@@ -364,7 +548,8 @@ const en = {
       noZone: "No zone",
       autoExpireJobs: "Auto-expire jobs",
       autoAcceptJobs: "Auto-accept jobs",
-      autoAcceptJobsDescription: "Accept the first qualified instructor automatically.",
+      autoAcceptJobsDescription:
+        "Accept the first qualified instructor automatically.",
       paymentsPayouts: "Payments & payouts",
       payoutsConnected: "Verified destination connected.",
       payoutsNeeded: "Add a verified bank destination.",
@@ -388,17 +573,20 @@ const en = {
       },
       calendar: {
         title: "Calendar sync",
-        description: "Choose how accepted sessions sync into your device calendar.",
+        description:
+          "Choose how accepted sessions sync into your device calendar.",
         provider: {
           none: "No sync",
           google: "Google Calendar",
           apple: "Apple Calendar",
         },
         autoSync: "Auto-add accepted sessions",
-        pickerDescription: "Pick the calendar Queue should write accepted sessions into.",
+        pickerDescription:
+          "Pick the calendar Queue should write accepted sessions into.",
         futureNote:
           "Queue syncs to a dedicated device calendar. Cloud sync to Google or Apple depends on your phone account settings.",
-        googleConnectRequired: "Connect your Google account to enable direct Google Calendar sync.",
+        googleConnectRequired:
+          "Connect your Google account to enable direct Google Calendar sync.",
         googleReconnectRequired:
           "Reconnect Google Calendar to restore sync. This connection is missing refresh credentials.",
         googleConnectedAs: "Connected as {{email}}",
@@ -423,7 +611,8 @@ const en = {
         switchToAppleTitle: "Use Apple Calendar instead?",
         switchToAppleBody:
           "Queue will disconnect Google Calendar and start sending new sessions to the device calendar on this phone.",
-        disconnectCleanupWarningTitle: "Google disconnect completed with warnings",
+        disconnectCleanupWarningTitle:
+          "Google disconnect completed with warnings",
         disconnectCleanupWarningBody:
           "Queue removed the local connection, but some Queue-created Google events could not be deleted automatically.",
         actions: {
@@ -461,9 +650,11 @@ const en = {
         locationServicesDisabled:
           "Location services are disabled on this device. Enable GPS and try again.",
         locationTimeout: "Location request timed out. Try again.",
-        locationUnsupportedPlatform: "Location lookup is not supported in this browser.",
+        locationUnsupportedPlatform:
+          "Location lookup is not supported in this browser.",
         locationAddressNotFound: "Address was not found.",
-        locationOutsideSupportedZone: "This location is outside supported service zones.",
+        locationOutsideSupportedZone:
+          "This location is outside supported service zones.",
         studioNameRequired: "Studio name is required.",
         saveFailed: "Failed to save settings.",
       },
@@ -495,23 +686,27 @@ const en = {
       heroReady: "Your base is locked in",
       heroPending: "Finish the zone and save it",
       heroMissing: "Set the base you teach from",
-      heroReadyBody: "Address, coordinates, and detected zone are aligned and ready to publish.",
+      heroReadyBody:
+        "Address, coordinates, and detected zone are aligned and ready to publish.",
       heroPendingBody:
         "You have an address draft. Resolve the zone, confirm it, and save to make it live.",
-      heroMissingBody: "Add a base address or use GPS so studios see where you operate from.",
+      heroMissingBody:
+        "Add a base address or use GPS so studios see where you operate from.",
       signalAddress: "Address",
       signalAddressReady: "Ready",
       signalAddressMissing: "Missing",
       signalZone: "Zone",
       addressTitle: "Search your base address",
-      addressBody: "Type the address you teach from most often or let GPS pull it in instantly.",
+      addressBody:
+        "Type the address you teach from most often or let GPS pull it in instantly.",
       coordinatesLabel: "Coordinates",
       zoneLabel: "Zone state",
       zoneDescription:
         "Use the detected zone as your default operating zone when the address looks right.",
       zoneDetectedLabel: "Detected zone",
       zoneWaitingLabel: "Zone pending",
-      zonePendingBody: "Search an address or use GPS to resolve the service zone automatically.",
+      zonePendingBody:
+        "Search an address or use GPS to resolve the service zone automatically.",
       commandLabel: "Command",
       enterManually: "Enter manually",
       backToSearch: "Back to search",
@@ -544,9 +739,12 @@ const en = {
       signalProvider: "Provider",
       signalSync: "Mode",
       providerLabel: "Provider",
-      providerNoneBody: "Keep Queue self-contained and skip calendar export entirely.",
-      providerGoogleBody: "Push accepted sessions into the connected Google calendar account.",
-      providerAppleBody: "Write accepted sessions into the device calendar on this phone.",
+      providerNoneBody:
+        "Keep Queue self-contained and skip calendar export entirely.",
+      providerGoogleBody:
+        "Push accepted sessions into the connected Google calendar account.",
+      providerAppleBody:
+        "Write accepted sessions into the device calendar on this phone.",
       commandLabel: "Command",
       commandBody:
         "Choose whether accepted sessions auto-land in your calendar or stay available for manual sync.",
@@ -562,7 +760,8 @@ const en = {
       configErrors: {
         missingServerClientId:
           "Missing Google Calendar server client ID. Set EXPO_PUBLIC_GOOGLE_CALENDAR_SERVER_CLIENT_ID.",
-        missingClientId: "Missing Google Calendar OAuth client ID. Set {{env}}.",
+        missingClientId:
+          "Missing Google Calendar OAuth client ID. Set {{env}}.",
         invalidRedirectUri: "Google Calendar redirect URI is invalid.",
         missingScheme: "Google Calendar redirect URI is missing a scheme.",
         androidHttpsRequired:
@@ -570,7 +769,8 @@ const en = {
         invalidRedirectScheme:
           "Google Calendar redirect schemes must contain a period. The current `{{scheme}}:` scheme is invalid.",
         connectionFailed: "Google Calendar connection failed.",
-        androidBuildMissing: "Google Calendar is not configured for this Android build.",
+        androidBuildMissing:
+          "Google Calendar is not configured for this Android build.",
         buildMissing: "Google Calendar is not configured for this build.",
       },
     },
@@ -609,13 +809,15 @@ const en = {
       hide: "Hide",
     },
     payments: {
-      summarySubtitle: "Track amounts, payment processing, and payout delivery status.",
+      summarySubtitle:
+        "Track amounts, payment processing, and payout delivery status.",
       processedPayments: "Processed payments",
       paidOut: "Paid out",
       failed: "Failed",
       recentActivity: "Recent activity",
       recentTransactions: "Recent transactions",
-      studioSubtitle: "What studios were charged and what instructors should receive.",
+      studioSubtitle:
+        "What studios were charged and what instructors should receive.",
       instructorSubtitle: "What you should receive and payout progress.",
       empty: "No payments yet.",
       noTransactions: "No transactions yet.",
@@ -673,10 +875,12 @@ const en = {
       withdrawalStarted_other: "Withdrawal started for {{count}} payments.",
       withdrawalFailed: "Failed to start withdrawal.",
       withdrawConfirmTitle: "Withdraw to bank?",
-      withdrawConfirmBody: "This will start a payout for your available balance.",
+      withdrawConfirmBody:
+        "This will start a payout for your available balance.",
       withdrawConfirmAction: "Withdraw",
       preferenceTitle: "Payout release",
-      preferenceSubtitle: "Choose when eligible funds move into payout scheduling.",
+      preferenceSubtitle:
+        "Choose when eligible funds move into payout scheduling.",
       preferenceImmediate: "Auto",
       preferenceScheduled: "Schedule",
       preferenceHold: "Hold",
@@ -684,14 +888,17 @@ const en = {
         "Release eligible funds into payout scheduling as soon as they clear.",
       preferenceScheduledHint:
         "Keep eligible funds available, then queue payout on the date you choose.",
-      preferenceHoldHint: "Keep eligible funds available until you trigger payout manually.",
+      preferenceHoldHint:
+        "Keep eligible funds available until you trigger payout manually.",
       preferenceChooseDate: "Choose payout date",
       preferenceScheduleAt: "Scheduled for",
       preferenceSaveSchedule: "Save schedule",
       preferenceSaving: "Saving...",
-      preferenceSavedImmediate: "Payouts will schedule automatically when funds are eligible.",
+      preferenceSavedImmediate:
+        "Payouts will schedule automatically when funds are eligible.",
       preferenceSavedScheduled: "Scheduled payout updated.",
-      preferenceSavedHold: "Payouts will stay available until you release them.",
+      preferenceSavedHold:
+        "Payouts will stay available until you release them.",
       preferenceSaveFailed: "Failed to update payout preference.",
       preferenceScheduleInvalid: "Choose a future payout date.",
       receipt: "Receipt",
@@ -712,7 +919,8 @@ const en = {
       lastUpdate: "Last update {{date}}",
       loadingStatus: "Loading verification status...",
       refreshStatus: "Refresh verification status",
-      resolvingLabel: "Waiting for Didit to confirm your result. Keep this screen open.",
+      resolvingLabel:
+        "Waiting for Didit to confirm your result. Keep this screen open.",
       resolvingTitle: "Finalizing your verification",
       start: "Verify",
       starting: "Starting verification...",
@@ -726,9 +934,11 @@ const en = {
       externalLinkFailed: "Could not open the verification reference link.",
       slow: "Verification is taking longer than expected. Pull to refresh or try again shortly.",
       approvedInfo: "Identity verified. Your KYC is now active.",
-      declinedInfo: "Didit declined this attempt. Review your document details and try again.",
+      declinedInfo:
+        "Didit declined this attempt. Review your document details and try again.",
       finishedWithStatus: "Verification finished with status: {{status}}.",
-      confirmFailed: "We could not confirm your latest verification status. Please try again.",
+      confirmFailed:
+        "We could not confirm your latest verification status. Please try again.",
       primaryHint:
         "This runs inside our native verification flow. Most people finish in 2 to 3 minutes.",
       systemTitle: "How we verify you",
@@ -742,7 +952,8 @@ const en = {
         documentBody:
           "Use a passport or national identity document that matches the legal name you use for payouts.",
         faceTitle: "Use good lighting for the selfie check",
-        faceBody: "Didit may ask for a live face scan to confirm the document belongs to you.",
+        faceBody:
+          "Didit may ask for a live face scan to confirm the document belongs to you.",
         timeTitle: "Set aside a couple of minutes",
         timeBody:
           "The flow is quickest when your document is clean, readable, and your camera is steady.",
@@ -808,8 +1019,10 @@ const en = {
           "Your last attempt did not finish. Start a fresh secure verification to continue.",
         abandoned:
           "The verification flow was cancelled before completion. Start again when you are ready.",
-        expired: "This verification session expired. Start a new one to continue.",
-        default: "Complete identity verification to unlock KYC and payout access.",
+        expired:
+          "This verification session expired. Start a new one to continue.",
+        default:
+          "Complete identity verification to unlock KYC and payout access.",
       },
       status: {
         approved: "Approved",
@@ -842,7 +1055,8 @@ const en = {
     sheetSubtitle: "Sign in or create your account in one step.",
     codeSheetSubtitle: "Enter the code we sent to your email.",
     switchAccountTitle: "Switch account",
-    switchAccountSubtitle: "Sign in to another account. Queue will switch after verification.",
+    switchAccountSubtitle:
+      "Sign in to another account. Queue will switch after verification.",
     switchAccountCodeSubtitle: "Verify the new account to finish switching.",
     switchingAccounts: "Switching accounts...",
     keepCurrentAccount: "Keep current account",
@@ -877,15 +1091,19 @@ const en = {
     phoneNumberPlaceholder: "+972501234567",
     sendPhoneCodeButton: "Send phone code",
     sendingPhoneCode: "Sending code...",
-    phoneNumberRequiredForSignUp: "Your account requires a phone number. Add it to continue.",
-    magicLinkSent: "Magic link sent to {{email}}. Open it on this device to continue.",
+    phoneNumberRequiredForSignUp:
+      "Your account requires a phone number. Add it to continue.",
+    magicLinkSent:
+      "Magic link sent to {{email}}. Open it on this device to continue.",
     magicLinkVerified: "Magic link verified. Signing you in...",
     addAccountTitle: "Add account",
     addAccountSubtitle: "Sign in to another account and link it to this login.",
     addAccountBody:
       "Use email, magic link, Google, or Apple to connect another existing account to the one you are already using.",
-    addInstructorAccountBody: "Sign in to the instructor account you want to link to this login.",
-    addStudioAccountBody: "Sign in to the studio account you want to link to this login.",
+    addInstructorAccountBody:
+      "Sign in to the instructor account you want to link to this login.",
+    addStudioAccountBody:
+      "Sign in to the studio account you want to link to this login.",
     addAccountLinked: "Account linked. Finishing setup...",
     magicLinkUnavailableNative:
       "Email magic links are not supported in Expo native apps, so this flow uses one-time codes.",
@@ -898,9 +1116,11 @@ const en = {
     goToSignUp: "Need an account? Sign up",
     goToSignIn: "Already have an account? Sign in",
     additionalStepRequired: "Additional verification is required.",
-    additionalStepRequiredWithStatus: "Additional verification is required (status: {{status}}).",
+    additionalStepRequiredWithStatus:
+      "Additional verification is required (status: {{status}}).",
     sessionTaskPending: "Your session needs one more step (task: {{task}}).",
-    sessionActivationFailed: "Could not activate your session. Please sign in after verification.",
+    sessionActivationFailed:
+      "Could not activate your session. Please sign in after verification.",
     secondFactorUnavailable:
       "Second-factor verification is required, but no supported method is available.",
     unexpectedError: "Something went wrong. Please try again.",
@@ -910,15 +1130,20 @@ const en = {
   onboarding: {
     loading: "Loading onboarding...",
     title: "Build your profile",
-    subtitle: "Choose your role and complete your profile in a few quick steps.",
+    subtitle:
+      "Choose your role and complete your profile in a few quick steps.",
     rolePrompt: "I am joining as:",
     roleInstructorTitle: "Instructor",
-    roleInstructorDescription: "Find open classes that match your sports and travel zones.",
+    roleInstructorDescription:
+      "Find open classes that match your sports and travel zones.",
     roleStudioTitle: "Studio",
-    roleStudioDescription: "Post classes and hire freelance instructors quickly.",
+    roleStudioDescription:
+      "Post classes and hire freelance instructors quickly.",
     roleSelectHint: "Choose a role to continue.",
-    sheetInstructorSubtitle: "Add the details studios need before they book you.",
-    sheetStudioSubtitle: "Set your studio identity and location in a couple of steps.",
+    sheetInstructorSubtitle:
+      "Add the details studios need before they book you.",
+    sheetStudioSubtitle:
+      "Set your studio identity and location in a couple of steps.",
     studioDetailsTitle: "Studio details",
     instructorDetailsTitle: "Instructor details",
     instructorStep: "Step {{current}} of {{total}}",
@@ -944,7 +1169,8 @@ const en = {
       detectedZone: "Detected zone: {{zone}}",
       addDetectedZone: "Add detected zone",
       zonePending: "Zone will be set automatically from address or GPS.",
-      zoneOptionalHint: "Optional: detect your current zone and add it to your service zones.",
+      zoneOptionalHint:
+        "Optional: detect your current zone and add it to your service zones.",
     },
     zoneSearchPlaceholder: "Search zones",
     back: "Back",
@@ -954,23 +1180,37 @@ const en = {
     save: "Saving...",
     complete: "Complete onboarding",
     verification: {
-      title: "Identity verification",
-      subtitle: "Verify your identity",
-      body: "You can verify now to unlock payouts and complete KYC. You can also do this later from your profile.",
+      title: "Verification",
+      subtitle: "Finish verification to unlock job actions",
+      body: "Complete Didit, upload your insurance, and add sport certificates. You can keep browsing the app while documents are under review.",
+      studioBody:
+        "Complete owner identity and internal billing setup. Payment readiness is laid out here so we can swap providers without rebuilding the whole studio flow.",
       verifyNow: "Verify now",
       later: "Later",
+      reviewUpdatesEnabled:
+        "Push is enabled on this device. We will notify you when insurance or certificates are approved or rejected.",
+      reviewUpdatesDisabled:
+        "You can keep using the app while review is in progress. Enable push to get approval and rejection updates faster.",
+      openJobsReady: "Open jobs",
+      openJobsWhileReviewing: "Continue to jobs",
+      openCompliance: "Open compliance center",
+      studioPaymentGroundwork:
+        "Payment readiness is currently using the legacy checkout path while the next provider integration is being prepared.",
     },
     workspaceSetupInstructorHint:
       "Set up the instructor side of this account. You can polish bio, rates, and verification afterward.",
     workspaceSetupStudioHint:
       "Set up the studio side of this account. Just add the studio name and location to get started.",
     push: {
-      description: "Enable push notifications to get new job alerts as soon as studios post them.",
+      title: "Review updates",
+      description:
+        "Enable push notifications to get new job alerts as soon as studios post them.",
       requesting: "Requesting permission...",
       enabled: "Push enabled",
       requestPermission: "Enable push notifications",
       tokenSaved: "Push token saved.",
-      permissionNotGranted: "Push permission is not granted. You can continue and enable it later.",
+      permissionNotGranted:
+        "Push permission is not granted. You can continue and enable it later.",
       unavailableInExpoGo:
         "Push notifications are unavailable in Expo Go. Rebuild and reinstall the dev client.",
       requiresPhysicalDevice: "Push notifications require a physical device.",
@@ -999,7 +1239,8 @@ const en = {
         "Location services are disabled on this device. Enable GPS and try again.",
       locationTimeout: "Location request timed out. Try again.",
       locationAddressNotFound: "Address was not found.",
-      locationOutsideSupportedZone: "This location is outside supported service zones.",
+      locationOutsideSupportedZone:
+        "This location is outside supported service zones.",
       tooManyZones: "You selected too many zones.",
       failedToComplete: "Failed to complete onboarding.",
     },
@@ -1029,7 +1270,8 @@ const en = {
     web: {
       workspaceEyebrow: "Coverage workspace",
       workspaceTitle: "Shape your hiring radius",
-      workspaceBody: "Desktop mode keeps coverage editing, search, and saving in one command lane.",
+      workspaceBody:
+        "Desktop mode keeps coverage editing, search, and saving in one command lane.",
       stateEyebrow: "Coverage state",
       stateLive: "Live",
       stateStaged: "{{count}} staged",
@@ -1047,11 +1289,14 @@ const en = {
       pending: "Pending",
       limit: "Limit",
       left: "{{count}} left",
-      focusPinned: "{{zone}} is pinned as the current focus on the coverage board.",
-      focusPrompt: "Select a zone in the rail to focus it on the coverage board.",
+      focusPinned:
+        "{{zone}} is pinned as the current focus on the coverage board.",
+      focusPrompt:
+        "Select a zone in the rail to focus it on the coverage board.",
       liveTerritory: "Live territory",
       noTerritoryTitle: "No territory staged",
-      noTerritoryBody: "Use search or the coverage board to build your next live territory.",
+      noTerritoryBody:
+        "Use search or the coverage board to build your next live territory.",
       focusedOnCanvas: "Focused on canvas",
       tapToFocus: "Tap to focus",
       atlasEyebrow: "Coverage atlas",
@@ -1065,7 +1310,8 @@ const en = {
       interactive: "Interactive",
       preview: "Preview",
       territorySnapshot: "Territory snapshot",
-      emptySnapshot: "Add zones from the command rail or the board to build your live territory.",
+      emptySnapshot:
+        "Add zones from the command rail or the board to build your live territory.",
       focused: "Focused",
       referenceZone: "Reference zone",
       tapToRemove: "Tap to remove",
@@ -1094,9 +1340,11 @@ const en = {
       modeLive: "Live coverage",
       sheetExpandHint: "Pull down to edit",
       sheetCollapseHint: "Swipe up to confirm",
-      editorHint: "Tap the map or the list to toggle zones. Swipe up when you are done.",
+      editorHint:
+        "Tap the map or the list to toggle zones. Swipe up when you are done.",
       idleHint: "Coverage stays calm until you pull the editor down.",
-      overviewHint: "Pull the sheet down or tap the edit control to refine your live zones.",
+      overviewHint:
+        "Pull the sheet down or tap the edit control to refine your live zones.",
       emptySelection: "No live zones selected",
       noMatchingCities: "No matching cities",
       noMatchingCitiesHint: "Try a city name, a zone variant, or a zone ID.",
@@ -1114,7 +1362,8 @@ const en = {
     native: {
       loadingBody: "Adjust your active zones directly on the map.",
       unavailableTitle: "Map unavailable",
-      unavailableBody: "The map could not finish loading. Check your connection and try again.",
+      unavailableBody:
+        "The map could not finish loading. Check your connection and try again.",
       openAttribution: "Open map attribution",
     },
     errors: {
@@ -1136,7 +1385,8 @@ const en = {
     studioCreateTitle: "Create a job fast",
     studioSubtitle: "Create a job and notify matching instructors instantly.",
     studioPushTitle: "Enable studio push alerts",
-    studioPushDescription: "Get notified immediately when instructors apply to your lessons.",
+    studioPushDescription:
+      "Get notified immediately when instructors apply to your lessons.",
     studioFeedTitle: "Your recent jobs",
     studioApplicationsTitle: "Applications",
     instructorSubtitle: "Live zone-matched jobs. No manual refresh needed.",
@@ -1205,7 +1455,8 @@ const en = {
       boostBonusDescription: "Slide to set the bonus for instructors",
       boostEffectivePay: "Effective pay: ₪{{pay}}",
       boostTriggerLabel: "Auto-activate boost",
-      boostTriggerDescription: "Activate boost if no applicant applies before session",
+      boostTriggerDescription:
+        "Activate boost if no applicant applies before session",
       boostTriggerMinutes: "{{minutes}} min before session",
       boostEnabled: "Add boost bonus",
       boostDisabled: "No boost",
@@ -1214,8 +1465,10 @@ const en = {
       expiresInMinutes_other: "Expires in {{count}} minutes",
       expiresInHours_one: "Expires in {{count}} hour",
       expiresInHours_other: "Expires in {{count}} hours",
-      expiresInHoursAndMinutes_one: "Expires in {{count}} hour {{minutes}} minute",
-      expiresInHoursAndMinutes_other: "Expires in {{count}} hours {{minutes}} minutes",
+      expiresInHoursAndMinutes_one:
+        "Expires in {{count}} hour {{minutes}} minute",
+      expiresInHoursAndMinutes_other:
+        "Expires in {{count}} hours {{minutes}} minutes",
       boostBadge: "+₪{{bonus}} boost",
     },
     card: {
@@ -1257,7 +1510,8 @@ const en = {
       pipelineSubtitle:
         "Pending and accepted jobs remain visible as passive status states. Only the real apply action reads like a button.",
       mobileTitle: "Jobs near you",
-      mobileSubtitle: "Scan new openings, filter quickly, and stay above the queue.",
+      mobileSubtitle:
+        "Scan new openings, filter quickly, and stay above the queue.",
       openFilters: "Open filters",
       closeFilters: "Close filters",
       filterAnyTime: "Any time",
@@ -1303,10 +1557,12 @@ const en = {
       disableNotifications: "Disable notifications",
       needsReviewTitle: "Needs review",
       needsReviewSubtitle_one: "1 job has applicants waiting for a decision.",
-      needsReviewSubtitle_other: "{{count}} jobs have applicants waiting for a decision.",
+      needsReviewSubtitle_other:
+        "{{count}} jobs have applicants waiting for a decision.",
       mobileNeedsReviewSubtitle: "Only jobs with pending applicants are shown.",
       mobileSplitTitle: "Review lane and board",
-      mobileSplitSubtitle: "Handle waiting applicants first, then scan the remaining board.",
+      mobileSplitSubtitle:
+        "Handle waiting applicants first, then scan the remaining board.",
       mobileDecisionWaiting_one: "1 job is waiting for a decision.",
       mobileDecisionWaiting_other: "{{count}} jobs are waiting for a decision.",
       boardTitle: "Board",
@@ -1345,6 +1601,7 @@ const en = {
       post: "Post job",
       posting: "Posting...",
       apply: "Apply",
+      verifyToApply: "Complete verification",
       applying: "Applying...",
       applied: "Applied",
       cancel: "Cancel",
@@ -1363,6 +1620,18 @@ const en = {
       updatingReminder: "Updating...",
       markLessonDone: "Mark done",
       markingLessonDone: "Marking...",
+    },
+    verificationGate: {
+      title: "Complete verification to apply",
+      body: "You can browse every job, but applying stays locked until your Didit identity check is approved, your liability insurance is active, and you have an approved teaching certificate for this sport.",
+      action: "Open verification",
+    },
+    studioComplianceGate: {
+      title: "Finish studio verification to publish",
+      body: "This studio can keep drafting and browsing, but posting stays locked until these are complete: {{blockers}}.",
+      action: "Open studio verification",
+      loading: "Studio verification is still loading. Try again in a moment.",
+      genericBlockers: "owner identity, billing profile, and payment setup",
     },
     checkout: {
       payment: "Payment",
@@ -1409,17 +1678,20 @@ const en = {
       payRequired: "Enter a valid pay amount.",
       startMustBeFuture: "Start time must be in the future.",
       endMustBeAfterStart: "End time must be after start time.",
-      applicationDeadlineMustBeFuture: "Application deadline must still be in the future.",
+      applicationDeadlineMustBeFuture:
+        "Application deadline must still be in the future.",
       datetimePickerUnavailable:
         "Native date/time picker is unavailable in this build. Rebuild the Android/iOS dev client.",
       failedToPost: "Failed to post job.",
       failedToApply: "Failed to apply for this job.",
       failedToReview: "Failed to review this application.",
       failedToMarkAlertsRead: "Failed to mark alerts as read.",
-      pushPermissionRequired: "Notification permission is required to enable studio push alerts.",
+      pushPermissionRequired:
+        "Notification permission is required to enable studio push alerts.",
       pushUnavailableInExpoGo:
         "Push notifications are unavailable in Expo Go. Rebuild and reinstall the dev client.",
-      pushRequiresPhysicalDevice: "Push notifications require a physical device.",
+      pushRequiresPhysicalDevice:
+        "Push notifications require a physical device.",
       pushUnavailableInBuild:
         "Push notifications are unavailable in this build. Rebuild and reinstall the dev client.",
       pushUnsupportedOnWeb: "Push notifications are not supported on web.",
@@ -1428,7 +1700,8 @@ const en = {
       failedToMarkLessonDone: "Failed to mark lesson as complete.",
       failedToStartCheckout: "Failed to start checkout.",
       applyError: "Couldn't apply right now. Please try again.",
-      withdrawError: "Couldn't cancel this application right now. Please try again.",
+      withdrawError:
+        "Couldn't cancel this application right now. Please try again.",
     },
   },
   home: {
@@ -1465,7 +1738,8 @@ const en = {
       metricSelector: "Choose performance metric",
       timeframeSelector: "Choose performance timeframe",
       showMetric: "Show {{metric}}",
-      chartSummary: "{{metric}} chart for {{timeframe}}. Total {{total}}. {{insight}}",
+      chartSummary:
+        "{{metric}} chart for {{timeframe}}. Total {{total}}. {{insight}}",
       chartSwipeHint: "Swipe left or right to change timeframe.",
     },
     instructor: {
@@ -1553,7 +1827,8 @@ const en = {
     sectionAnimationsTitle: "Animations",
     sectionAnimationsBody:
       "This template includes an animated component using react-native-reanimated.",
-    sectionAnimationsIos: "ParallaxScrollView provides the parallax effect used in the header.",
+    sectionAnimationsIos:
+      "ParallaxScrollView provides the parallax effect used in the header.",
     learnMore: "Learn more",
   },
 };

@@ -19,6 +19,7 @@ import {
   type InstructorArchiveRow,
   InstructorJobsArchiveSheet,
 } from "@/components/jobs/instructor/instructor-jobs-archive-sheet";
+import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
@@ -39,6 +40,7 @@ import { toSportLabel } from "@/convex/constants";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { getBoostPresentation } from "@/lib/jobs-utils";
+import { openInstructorVerificationGate } from "@/lib/open-instructor-verification-gate";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import { Box } from "@/primitives";
 
@@ -225,7 +227,7 @@ export function InstructorFeed() {
     );
     return new Map<string, MyApplication>(entries);
   }, [myApplications]);
-  const jobs = useMemo(
+  const jobs = useMemo<InstructorMarketplaceJob[]>(
     () =>
       ((availableJobs ?? []) as AvailableJob[]).map((job: AvailableJob) => {
         const application = applicationByJobId.get(String(job.jobId));
@@ -310,6 +312,7 @@ export function InstructorFeed() {
           startTime: application.startTime,
           endTime: application.endTime,
           pay: application.pay,
+          canApplyToJob: false,
           appliedAt: application.appliedAt,
           jobStatus: application.jobStatus,
           applicationStatus: application.status,
@@ -438,11 +441,17 @@ export function InstructorFeed() {
   );
 
   const onApply = useCallback(
-    async (jobId: Id<"jobs">) => {
+    async (job: InstructorMarketplaceJob) => {
+      if (!job.canApplyToJob) {
+        openInstructorVerificationGate(t, {
+          onVerifyNow: () => router.push("/instructor/profile/compliance" as Href),
+        });
+        return;
+      }
       setActionErrorMessage(null);
-      setApplyingJobId(jobId);
+      setApplyingJobId(job.jobId);
       try {
-        await applyToJob({ jobId });
+        await applyToJob({ jobId: job.jobId });
       } catch (error) {
         console.error("[jobs] apply failed", error);
         setActionErrorMessage(t("jobsTab.errors.applyError"));
@@ -450,7 +459,7 @@ export function InstructorFeed() {
         setApplyingJobId(null);
       }
     },
-    [applyToJob, t],
+    [applyToJob, router, t],
   );
 
   const onWithdrawApplication = useCallback(

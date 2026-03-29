@@ -20,7 +20,10 @@ import {
   ProfileSupportCard,
 } from "@/components/profile/profile-settings-sections";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
-import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
+import {
+  ProfileDesktopHeroPanel,
+  ProfileHeaderSheet,
+} from "@/components/profile/profile-tab";
 import { KitSwitch } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
@@ -39,7 +42,10 @@ import {
   toDeviceAccountIdentity,
   validateSessionAfterSwitch,
 } from "@/modules/session/device-account-store";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import {
+  buildRoleTabRoute,
+  ROLE_TAB_ROUTE_NAMES,
+} from "@/navigation/role-routes";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -47,14 +53,21 @@ const ROLE_TRANSLATION_KEYS = {
   studio: "profile.roles.studio",
   admin: "profile.roles.admin",
 } as const;
-const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile);
-const INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE =
-  `${INSTRUCTOR_PROFILE_ROUTE}/identity-verification` as const;
+const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute(
+  "instructor",
+  ROLE_TAB_ROUTE_NAMES.profile,
+);
+const INSTRUCTOR_COMPLIANCE_ROUTE =
+  `${INSTRUCTOR_PROFILE_ROUTE}/compliance` as const;
 const INSTRUCTOR_SPORTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/sports` as const;
-const INSTRUCTOR_LOCATION_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/location` as const;
-const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
-const INSTRUCTOR_PAYMENTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
-const INSTRUCTOR_ADD_ACCOUNT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/add-account` as const;
+const INSTRUCTOR_LOCATION_ROUTE =
+  `${INSTRUCTOR_PROFILE_ROUTE}/location` as const;
+const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE =
+  `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
+const INSTRUCTOR_PAYMENTS_ROUTE =
+  `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
+const INSTRUCTOR_ADD_ACCOUNT_ROUTE =
+  `${INSTRUCTOR_PROFILE_ROUTE}/add-account` as const;
 const INSTRUCTOR_EDIT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/edit` as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
@@ -62,42 +75,11 @@ function getSportsSummary(sports: string[], t: TFunction) {
     return t("profile.settings.sports.none");
   }
   if (sports.length <= 2) {
-    return sports.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(", ");
+    return sports
+      .map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport))
+      .join(", ");
   }
   return t("profile.settings.sports.selected", { count: sports.length });
-}
-
-function getIdentityVerificationSummary(
-  status:
-    | "approved"
-    | "declined"
-    | "in_review"
-    | "pending"
-    | "in_progress"
-    | "abandoned"
-    | "expired"
-    | "not_started"
-    | undefined,
-  t: TFunction,
-) {
-  switch (status) {
-    case "approved":
-      return t("profile.identityVerification.headline.approved");
-    case "declined":
-      return t("profile.identityVerification.headline.declined");
-    case "in_review":
-      return t("profile.identityVerification.headline.in_review");
-    case "pending":
-      return t("profile.identityVerification.headline.pending");
-    case "in_progress":
-      return t("profile.identityVerification.headline.in_progress");
-    case "abandoned":
-      return t("profile.identityVerification.headline.abandoned");
-    case "expired":
-      return t("profile.identityVerification.headline.expired");
-    default:
-      return t("profile.identityVerification.headline.default");
-  }
 }
 
 export default function InstructorProfileScreen() {
@@ -115,9 +97,16 @@ export default function InstructorProfileScreen() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [hasActivated, setHasActivated] = useState(false);
-  const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
-  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
-  const isBodyReady = useDeferredTabMount(pathname === INSTRUCTOR_PROFILE_ROUTE, { delayMs: 36 });
+  const [rememberedAccounts, setRememberedAccounts] = useState<
+    RememberedDeviceAccount[]
+  >([]);
+  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(
+    null,
+  );
+  const isBodyReady = useDeferredTabMount(
+    pathname === INSTRUCTOR_PROFILE_ROUTE,
+    { delayMs: 36 },
+  );
 
   useEffect(() => {
     if (pathname === INSTRUCTOR_PROFILE_ROUTE) {
@@ -131,7 +120,8 @@ export default function InstructorProfileScreen() {
     }
   }, [edit, router]);
   const emptyArgs = useMemo(() => ({}), []);
-  const shouldLoadSettings = currentUser?.role === "instructor" && hasActivated && isBodyReady;
+  const shouldLoadSettings =
+    currentUser?.role === "instructor" && hasActivated && isBodyReady;
 
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
@@ -143,6 +133,10 @@ export default function InstructorProfileScreen() {
   );
   const diditVerification = useQuery(
     api.didit.getMyDiditVerification,
+    shouldLoadSettings ? emptyArgs : "skip",
+  );
+  const complianceSummary = useQuery(
+    api.compliance.getMyInstructorComplianceSummary,
     shouldLoadSettings ? emptyArgs : "skip",
   );
 
@@ -177,19 +171,25 @@ export default function InstructorProfileScreen() {
         try {
           await switchToRememberedDeviceAccount({
             accountId,
-            ...(currentUser ? { currentAccount: toDeviceAccountIdentity(currentUser) } : {}),
+            ...(currentUser
+              ? { currentAccount: toDeviceAccountIdentity(currentUser) }
+              : {}),
           });
           reloadAuthSession();
 
           // Validate that the new session actually works by checking if currentUser loads.
           // This prevents the race where isAuthenticated=true but currentUser=null,
           // which would cause sessionGate to redirect to sign-in unnecessarily.
-          const sessionValid = await validateSessionAfterSwitch(() => currentUser);
+          const sessionValid = await validateSessionAfterSwitch(
+            () => currentUser,
+          );
 
           if (!sessionValid) {
             // Stored session is invalid - backend rejected it
             // Throw to trigger error handling, user stays on this profile
-            throw new Error("Stored session is no longer valid. Please sign in again.");
+            throw new Error(
+              "Stored session is no longer valid. Please sign in again.",
+            );
           }
         } catch (error) {
           setSwitchingAccountId(null);
@@ -200,22 +200,32 @@ export default function InstructorProfileScreen() {
     [currentUser, reloadAuthSession],
   );
   const nameValue =
-    instructorSettings?.displayName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
+    instructorSettings?.displayName ??
+    currentUser?.fullName ??
+    t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
   const roleValue = t(
-    ROLE_TRANSLATION_KEYS[currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS] ??
-      "profile.roles.pending",
+    ROLE_TRANSLATION_KEYS[
+      currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS
+    ] ?? "profile.roles.pending",
   );
   const memberSince = currentUser?.createdAt
-    ? new Date(currentUser.createdAt).toLocaleDateString(i18n.resolvedLanguage ?? "en", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
+    ? new Date(currentUser.createdAt).toLocaleDateString(
+        i18n.resolvedLanguage ?? "en",
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        },
+      )
     : null;
 
   const identityVerified = diditVerification?.isVerified ?? false;
-  const identityVerificationSummary = getIdentityVerificationSummary(diditVerification?.status, t);
+  const complianceNavigationSummary = complianceSummary
+    ? complianceSummary.canApplyToJobs
+      ? t("profile.compliance.navigation.ready")
+      : t("profile.compliance.navigation.blocked")
+    : t("common.loading");
   const bankConnected = payoutSummary?.hasVerifiedDestination ?? false;
   const sportsSummary = getSportsSummary(instructorSettings?.sports ?? [], t);
   const locationSummary = instructorSettings?.address
@@ -236,7 +246,7 @@ export default function InstructorProfileScreen() {
     !identityVerified
       ? {
           label: t("profile.setup.verifyIdentity"),
-          onPress: () => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href),
+          onPress: () => router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href),
           icon: "checkmark.circle.fill" as const,
         }
       : null,
@@ -257,7 +267,8 @@ export default function InstructorProfileScreen() {
     !provider || provider === "none"
       ? {
           label: t("profile.setup.linkCalendar"),
-          onPress: () => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href),
+          onPress: () =>
+            router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href),
           icon: "calendar.badge.clock" as const,
         }
       : null,
@@ -271,7 +282,11 @@ export default function InstructorProfileScreen() {
     } => item !== null,
   );
   const profileStatus =
-    setupActions.length === 0 ? "ready" : identityVerified ? "pending" : "unverified";
+    setupActions.length === 0
+      ? "ready"
+      : identityVerified
+        ? "pending"
+        : "unverified";
 
   const publicProfileSummary =
     instructorSettings?.bio?.trim() ||
@@ -288,7 +303,9 @@ export default function InstructorProfileScreen() {
               ? t("profile.hero.verifiedInstructor")
               : t("profile.hero.instructorProfile")
           }
-          profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+          profileImageUrl={
+            instructorSettings?.profileImageUrl ?? currentUser?.image
+          }
           onRequestEdit={handleRequestEdit}
           primaryActionLabel={t("profile.actions.edit")}
           status={profileStatus}
@@ -296,6 +313,7 @@ export default function InstructorProfileScreen() {
           socialLinks={instructorSettings?.socialLinks}
           sports={instructorSettings?.sports ?? []}
           memberSince={memberSince ?? undefined}
+          isVerified={identityVerified}
         />
       </View>
     ),
@@ -319,7 +337,7 @@ export default function InstructorProfileScreen() {
       render: () => ({
         children: profileSheetContent,
       }),
-      steps: [0.12],
+      steps: [0],
       initialStep: 0,
       collapsedHeightMode: "content" as const,
       padding: {
@@ -365,7 +383,9 @@ export default function InstructorProfileScreen() {
                   ? t("profile.hero.verifiedInstructor")
                   : t("profile.hero.instructorProfile")
               }
-              profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+              profileImageUrl={
+                instructorSettings?.profileImageUrl ?? currentUser?.image
+              }
               summary={publicProfileSummary}
               statusLabel={
                 profileStatus === "ready"
@@ -392,6 +412,7 @@ export default function InstructorProfileScreen() {
                 label: t("profile.actions.edit"),
                 onPress: handleRequestEdit,
               }}
+              isVerified={identityVerified}
               onOpenSwitcher={handleOpenAccountSwitcher}
               switcherActionLabel={t("profile.switcher.openAction")}
             />
@@ -471,9 +492,15 @@ export default function InstructorProfileScreen() {
                 ) : null}
                 <ProfileSettingRow
                   title={t("profile.language.title")}
-                  value={language === "en" ? t("language.english") : t("language.hebrew")}
+                  value={
+                    language === "en"
+                      ? t("language.english")
+                      : t("language.hebrew")
+                  }
                   icon="globe"
-                  onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                  onPress={() =>
+                    void setLanguage(language === "en" ? "he" : "en")
+                  }
                   showDivider
                 />
                 <ProfileSettingRow
@@ -483,7 +510,9 @@ export default function InstructorProfileScreen() {
                   accessory={
                     <KitSwitch
                       value={preference === "system"}
-                      onValueChange={(value) => setPreference(value ? "system" : "light")}
+                      onValueChange={(value) =>
+                        setPreference(value ? "system" : "light")
+                      }
                     />
                   }
                 />
@@ -494,7 +523,9 @@ export default function InstructorProfileScreen() {
                     <KitSwitch
                       disabled={preference === "system"}
                       value={preference === "dark"}
-                      onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                      onValueChange={(value) =>
+                        setPreference(value ? "dark" : "light")
+                      }
                     />
                   }
                 />
@@ -507,10 +538,12 @@ export default function InstructorProfileScreen() {
               />
               <ProfileSectionCard style={styles.desktopCardGroup}>
                 <ProfileSettingRow
-                  title={t("profile.navigation.identityVerification")}
-                  subtitle={identityVerificationSummary}
-                  icon="checkmark.circle.fill"
-                  onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
+                  title={t("profile.navigation.compliance")}
+                  subtitle={complianceNavigationSummary}
+                  icon="checkmark.shield.fill"
+                  onPress={() =>
+                    router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href)
+                  }
                   tone="accent"
                   showDivider
                 />
@@ -518,7 +551,9 @@ export default function InstructorProfileScreen() {
                   title={t("profile.settings.calendar.title")}
                   subtitle={calendarSummary}
                   icon="calendar.badge.clock"
-                  onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
+                  onPress={() =>
+                    router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)
+                  }
                   showDivider
                 />
                 <ProfileSettingRow
@@ -603,10 +638,10 @@ export default function InstructorProfileScreen() {
                 showDivider
               />
               <ProfileSettingRow
-                title={t("profile.navigation.identityVerification")}
-                subtitle={identityVerificationSummary}
-                icon="checkmark.circle.fill"
-                onPress={() => router.push(INSTRUCTOR_IDENTITY_VERIFICATION_ROUTE as Href)}
+                title={t("profile.navigation.compliance")}
+                subtitle={complianceNavigationSummary}
+                icon="checkmark.shield.fill"
+                onPress={() => router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href)}
                 tone="accent"
                 showDivider
               />
@@ -614,7 +649,9 @@ export default function InstructorProfileScreen() {
                 title={t("profile.settings.calendar.title")}
                 subtitle={calendarSummary}
                 icon="calendar.badge.clock"
-                onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
+                onPress={() =>
+                  router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)
+                }
                 showDivider
               />
             </ProfileSectionCard>
@@ -638,7 +675,12 @@ export default function InstructorProfileScreen() {
                       borderRadius: BrandRadius.buttonSubtle,
                     }}
                   >
-                    <Text style={[BrandType.labelStrong, { color: theme.color.onPrimary }]}>
+                    <Text
+                      style={[
+                        BrandType.labelStrong,
+                        { color: theme.color.onPrimary },
+                      ]}
+                    >
                       ON
                     </Text>
                   </View>
@@ -652,7 +694,9 @@ export default function InstructorProfileScreen() {
                   <KitSwitch
                     disabled={preference === "system"}
                     value={preference === "dark"}
-                    onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                    onValueChange={(value) =>
+                      setPreference(value ? "dark" : "light")
+                    }
                   />
                 }
               />
@@ -663,35 +707,53 @@ export default function InstructorProfileScreen() {
                 accessory={
                   <KitSwitch
                     value={preference === "system"}
-                    onValueChange={(value) => setPreference(value ? "system" : "light")}
+                    onValueChange={(value) =>
+                      setPreference(value ? "system" : "light")
+                    }
                   />
                 }
               />
               <ProfileSettingRow
                 title={t("profile.language.title")}
-                value={language === "en" ? t("language.english") : t("language.hebrew")}
+                value={
+                  language === "en"
+                    ? t("language.english")
+                    : t("language.hebrew")
+                }
                 icon="globe"
-                onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                onPress={() =>
+                  void setLanguage(language === "en" ? "he" : "en")
+                }
               />
             </ProfileSectionCard>
 
             {/* Support Section */}
-            <ProfileSectionHeader label={t("profile.sections.support")} icon="help" />
+            <ProfileSectionHeader
+              label={t("profile.sections.support")}
+              icon="help"
+            />
             <View style={{ paddingHorizontal: BrandSpacing.inset }}>
               <View style={{ flexDirection: "row", gap: BrandSpacing.md }}>
                 <ProfileSupportCard
                   icon="help_center"
                   title="Help Center"
-                  onPress={() => Linking.openURL("https://www.join-queue.com/he/help/")}
+                  onPress={() =>
+                    Linking.openURL("https://www.join-queue.com/he/help/")
+                  }
                 />
                 <ProfileSupportCard
                   icon="gavel"
                   title="Terms"
-                  onPress={() => Linking.openURL("https://www.join-queue.com/he/tos/")}
+                  onPress={() =>
+                    Linking.openURL("https://www.join-queue.com/he/tos/")
+                  }
                 />
               </View>
               <View style={{ marginTop: BrandSpacing.md }}>
-                <ProfileSignOutButton title={t("auth.signOutButton")} onPress={handleSignOut} />
+                <ProfileSignOutButton
+                  title={t("auth.signOutButton")}
+                  onPress={handleSignOut}
+                />
               </View>
             </View>
           </View>
@@ -709,7 +771,9 @@ export default function InstructorProfileScreen() {
         onSelectRememberedAccount={handleSelectRememberedAccount}
         onSignOut={handleSignOut}
         onUseAnotherAccount={handleUseAnotherAccount}
-        profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+        profileImageUrl={
+          instructorSettings?.profileImageUrl ?? currentUser?.image
+        }
       />
     </TabScreenRoot>
   );

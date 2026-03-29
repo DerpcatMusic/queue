@@ -5,7 +5,10 @@ import { useTranslation } from "react-i18next";
 import { I18nManager, Platform, StyleSheet, Text, View } from "react-native";
 import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { DotStatusPill } from "@/components/home/home-shared";
-import { InstructorJobCard } from "@/components/jobs/instructor/instructor-job-card";
+import {
+  InstructorJobCard,
+  type InstructorMarketplaceJob,
+} from "@/components/jobs/instructor/instructor-job-card";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
@@ -19,6 +22,7 @@ import { toSportLabel } from "@/convex/constants";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { FontFamily, FontSize, LetterSpacing, LineHeight } from "@/lib/design-system";
+import { openInstructorVerificationGate } from "@/lib/open-instructor-verification-gate";
 import { Box } from "@/primitives";
 
 const STUDIO_HEADER_NATIVE_FILTERS: Filters = [
@@ -64,11 +68,17 @@ export default function InstructorStudioProfileRoute() {
   const myApplications = useQuery(api.jobs.getMyApplications, { limit: 120 });
 
   const onApply = useCallback(
-    async (nextJobId: Id<"jobs">) => {
+    async (job: InstructorMarketplaceJob) => {
+      if (!job.canApplyToJob) {
+        openInstructorVerificationGate(t, {
+          onVerifyNow: () => router.push("/instructor/profile/compliance"),
+        });
+        return;
+      }
       setActionErrorMessage(null);
-      setApplyingJobId(nextJobId);
+      setApplyingJobId(job.jobId);
       try {
-        await applyToJob({ jobId: nextJobId });
+        await applyToJob({ jobId: job.jobId });
       } catch (error) {
         console.error("[studio-profile] apply failed", error);
         setActionErrorMessage(t("jobsTab.errors.applyError"));
@@ -76,7 +86,7 @@ export default function InstructorStudioProfileRoute() {
         setApplyingJobId(null);
       }
     },
-    [applyToJob, t],
+    [applyToJob, router, t],
   );
 
   const onWithdrawApplication = useCallback(
@@ -95,10 +105,19 @@ export default function InstructorStudioProfileRoute() {
     [t, withdrawApplication],
   );
 
-  const sortedJobs = useMemo(() => {
+  const sortedJobs = useMemo<InstructorMarketplaceJob[]>(() => {
     if (!studioProfile?.jobs) return [];
+    const applications: Array<{
+      applicationId: Id<"jobApplications">;
+      jobId: Id<"jobs">;
+      status: NonNullable<InstructorMarketplaceJob["applicationStatus"]>;
+    }> = (myApplications ?? []).map((application) => ({
+      applicationId: application.applicationId,
+      jobId: application.jobId,
+      status: application.status,
+    }));
     const applicationByJobId = new Map(
-      (myApplications ?? []).map((application) => [String(application.jobId), application]),
+      applications.map((application) => [String(application.jobId), application] as const),
     );
     const selectedJobId = jobId ? String(jobId) : null;
     return [...studioProfile.jobs]
@@ -124,8 +143,9 @@ export default function InstructorStudioProfileRoute() {
       });
   }, [jobId, myApplications, studioProfile?.jobs]);
 
-  const sportsLabels = useMemo(
-    () => (studioProfile?.sports ?? []).map((sport) => toSportLabel(sport as never)),
+  const sportsLabels = useMemo<string[]>(
+    () =>
+      (studioProfile?.sports ?? []).map((sport: string) => toSportLabel(sport as never)),
     [studioProfile?.sports],
   );
 
@@ -289,7 +309,7 @@ export default function InstructorStudioProfileRoute() {
           >
             {sportsLabels.length > 0 ? (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {sportsLabels.map((label) => (
+                {sportsLabels.map((label: string) => (
                   <DotStatusPill
                     key={label}
                     backgroundColor={palette.primarySubtle}
