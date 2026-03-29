@@ -1,4 +1,3 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { usePathname } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import type { ReactNode } from "react";
@@ -127,6 +126,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   const tabs = getTabsForRole(appRole);
   const { color } = useTheme();
   const pathname = usePathname();
+  const sceneDescriptorsRef = useRef<Map<RoleTabRouteName, SceneDescriptor>>(new Map());
 
   // Extract active tab ID from pathname
   const activeTabId = useMemo<RoleTabRouteName>(() => {
@@ -156,7 +156,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   });
 
   // Scene descriptors registered by child screens
-  const [sceneDescriptors, setSceneDescriptors] = useState<Map<RoleTabRouteName, SceneDescriptor>>(
+  const [, setSceneDescriptors] = useState<Map<RoleTabRouteName, SceneDescriptor>>(
     () => new Map(),
   );
 
@@ -184,6 +184,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
           ...existing,
           ...descriptor,
         });
+        sceneDescriptorsRef.current = next;
         return next;
       });
     },
@@ -193,8 +194,12 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   // Unregister a scene descriptor
   const unregisterDescriptor = useCallback((tabId: RoleTabRouteName) => {
     setSceneDescriptors((current) => {
+      if (!current.has(tabId)) {
+        return current;
+      }
       const next = new Map(current);
       next.delete(tabId);
+      sceneDescriptorsRef.current = next;
       return next;
     });
   }, []);
@@ -202,9 +207,9 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   // Get a descriptor for a specific tab
   const getDescriptor = useCallback(
     (tabId: RoleTabRouteName): SceneDescriptor | undefined => {
-      return sceneDescriptors.get(tabId);
+      return sceneDescriptorsRef.current.get(tabId);
     },
-    [sceneDescriptors],
+    [],
   );
 
   // Mark a tab as activated when it becomes active
@@ -271,20 +276,6 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                       sf={{
                         default: tab.icon.sfDefault as never,
                         selected: tab.icon.sfSelected as never,
-                      }}
-                      src={{
-                        default: (
-                          <NativeTabs.Trigger.VectorIcon
-                            family={MaterialCommunityIcons}
-                            name={tab.icon.mdDefaultVector as any}
-                          />
-                        ),
-                        selected: (
-                          <NativeTabs.Trigger.VectorIcon
-                            family={MaterialCommunityIcons}
-                            name={tab.icon.mdSelectedVector as any}
-                          />
-                        ),
                       }}
                     />
                     <NativeTabBadge count={badgeCountByRoute[tab.routeName] ?? 0} />

@@ -122,7 +122,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           {profileImageUrl ? (
             <Image
               source={{ uri: profileImageUrl }}
-              resizeMode="cover"
+              contentFit="cover"
               style={StyleSheet.absoluteFillObject}
             />
           ) : (

@@ -62,7 +62,7 @@ export function ProfileAvatar({
             setFailedImageUrl(normalizedImageUrl);
           }}
           style={{ width: "100%", height: "100%" }}
-          resizeMode="cover"
+          contentFit="cover"
         />
       ) : initials ? (
         <Text
