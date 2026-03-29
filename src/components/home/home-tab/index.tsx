@@ -2,30 +2,21 @@ import { useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
 import { HomeHeaderSheet } from "@/components/home/home-header-sheet";
 import {
   HomeRoleContent,
   type HomeRoleContentProps,
 } from "@/components/home/home-tab/home-role-content";
-import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
-import { useDeferredTabMount } from "@/components/layout/use-deferred-tab-mount";
 import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
+import { useTabSceneLifecycle } from "@/modules/navigation/tab-scene-lifecycle";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
-function HomeBodyPlaceholder({ backgroundColor }: { backgroundColor: string }) {
-  return (
-    <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor }}>
-      <View style={{ flex: 1, backgroundColor }} />
-    </TabScreenRoot>
-  );
-}
 
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
@@ -33,16 +24,13 @@ export default function HomeScreen() {
   const liveNow = useMinuteNow();
   const queryNow = Math.floor(liveNow / (60 * 1000)) * 60 * 1000;
   const { color: palette } = useTheme();
+  const { hasActivated: hasActivatedHome } = useTabSceneLifecycle("index");
 
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
-  const requestedRole = currentUser?.role;
-  const homeBodyReady = useDeferredTabMount(
-    requestedRole === "instructor" || requestedRole === "studio",
-  );
   const canQueryInstructor =
-    homeBodyReady && !isAuthLoading && isAuthenticated && currentUser?.role === "instructor";
+    hasActivatedHome && !isAuthLoading && isAuthenticated && currentUser?.role === "instructor";
   const canQueryStudio =
-    homeBodyReady && !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
+    hasActivatedHome && !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
 
   const myStudioJobs = useQuery(
     api.jobs.getMyStudioJobsWithApplications,
@@ -113,6 +101,10 @@ export default function HomeScreen() {
       : activeRole === "studio"
         ? t("home.studio.role")
         : undefined;
+  const instructorLessonsCompleted = instructorHomeStats?.lessonEvents.length ?? 0;
+  const instructorTotalEarningsAgorot = instructorHomeStats?.totalEarningsAgorot ?? 0;
+  const instructorPendingApplications = instructorHomeStats?.pendingApplications ?? 0;
+  const instructorOpenJobs = availableInstructorJobs?.length ?? 0;
   const homeSheetContent = useMemo(
     () =>
       activeRole === "instructor" || activeRole === "studio" ? (
@@ -122,30 +114,31 @@ export default function HomeScreen() {
           isVerified={
             activeRole === "instructor" ? (instructorHomeStats?.isVerified ?? false) : false
           }
-          lessonsCompleted={instructorHomeStats?.lessonEvents.length ?? 0}
-          totalEarningsLabel={currencyFormatter.format(
-            (instructorHomeStats?.totalEarningsAgorot ?? 0) / 100,
-          )}
+          lessonsCompleted={instructorLessonsCompleted}
+          totalEarningsLabel={currencyFormatter.format(instructorTotalEarningsAgorot / 100)}
           pendingApplications={
             activeRole === "instructor"
-              ? (instructorHomeStats?.pendingApplications ?? 0)
+              ? instructorPendingApplications
               : studioHomeCounts.pendingApplicants
           }
-          openJobs={
-            activeRole === "instructor"
-              ? (availableInstructorJobs?.length ?? 0)
-              : studioHomeCounts.openJobs
-          }
+          openJobs={activeRole === "instructor" ? instructorOpenJobs : studioHomeCounts.openJobs}
           role={activeRole}
           {...(homeSubtitle ? { subtitle: homeSubtitle } : {})}
         />
       ) : null,
     [
       activeRole,
+      currencyFormatter,
       homeDisplayName,
       homeProfileImageUrl,
       homeSubtitle,
+      instructorLessonsCompleted,
+      instructorOpenJobs,
+      instructorPendingApplications,
+      instructorTotalEarningsAgorot,
       instructorHomeStats?.isVerified,
+      studioHomeCounts.openJobs,
+      studioHomeCounts.pendingApplicants,
     ],
   );
 
@@ -198,17 +191,9 @@ export default function HomeScreen() {
     return <LoadingScreen label={t("home.loading")} />;
   }
 
-  if (
-    (activeRole === "instructor" && !homeBodyReady) ||
-    (activeRole === "studio" && !homeBodyReady)
-  ) {
-    return <HomeBodyPlaceholder backgroundColor={palette.appBg} />;
-  }
-
   return (
     <HomeRoleContent
       activeRole={activeRole}
-      homeBodyReady={homeBodyReady}
       locale={locale}
       currencyFormatter={currencyFormatter}
       t={t}

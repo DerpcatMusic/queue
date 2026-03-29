@@ -1,8 +1,6 @@
 import { useAction, useMutation, useQuery } from "convex/react";
-import * as AuthSession from "expo-auth-session";
 import { Redirect, useRouter, type Href } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshControl, View } from "react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
@@ -27,6 +25,7 @@ import { KitTextField } from "@/components/ui/kit";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import { useTheme } from "@/hooks/use-theme";
+import { startDiditNativeVerification } from "@/lib/didit-native";
 
 type BillingProfile = {
   legalEntityType: "individual" | "company";
@@ -77,12 +76,9 @@ function getPaymentSubtitle(
 }
 
 export default function StudioComplianceScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const theme = useTheme();
-  useEffect(() => {
-    WebBrowser.maybeCompleteAuthSession();
-  }, []);
 
   useProfileSubpageSheet({
     title: t("profile.navigation.compliance"),
@@ -155,16 +151,6 @@ export default function StudioComplianceScreen() {
     setBillingPhone(currentUser?.phoneE164 ?? "");
   }, [billingProfile, currentUser?.email, currentUser?.phoneE164]);
 
-  const diditReturnUrl = useMemo(
-    () =>
-      AuthSession.makeRedirectUri({
-        native: "queue://didit/studio-return",
-        scheme: "queue",
-        path: "didit/studio-return",
-      }),
-    [],
-  );
-
   const refreshAll = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -204,14 +190,12 @@ export default function StudioComplianceScreen() {
     setIsStartingDidit(true);
     setFeedback(null);
     try {
-      const session = await createStudioDiditSession({
-        callback: diditReturnUrl,
+      const session = await createStudioDiditSession({});
+      const result = await startDiditNativeVerification({
+        sessionToken: session.sessionToken,
+        locale: i18n.resolvedLanguage ?? "en",
       });
-      const result = await WebBrowser.openAuthSessionAsync(
-        session.verificationUrl,
-        diditReturnUrl,
-      );
-      if (result.type === "success" || result.type === "dismiss") {
+      if (result.outcome !== "cancelled") {
         const latest = await refreshStudioDiditVerification({});
         setFeedback({
           tone: latest.isVerified ? "success" : "success",
@@ -233,7 +217,7 @@ export default function StudioComplianceScreen() {
     }
   }, [
     createStudioDiditSession,
-    diditReturnUrl,
+    i18n.resolvedLanguage,
     refreshStudioDiditVerification,
     t,
   ]);

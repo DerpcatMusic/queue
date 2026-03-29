@@ -1,6 +1,5 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import * as AuthSession from "expo-auth-session";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
@@ -15,7 +14,6 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import * as WebBrowser from "expo-web-browser";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -64,6 +62,7 @@ import {
   buildRoleTabRoute,
   ROLE_TAB_ROUTE_NAMES,
 } from "@/navigation/role-routes";
+import { startDiditNativeVerification } from "@/lib/didit-native";
 
 type OnboardingRole = "instructor" | "studio";
 type OnboardingStep = 0 | 1 | 2;
@@ -682,10 +681,6 @@ function OnboardingScreenContent() {
   );
   const onboardingScrollRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
-    WebBrowser.maybeCompleteAuthSession();
-  }, []);
-
   useEffect(
     () => () => {
       for (const timer of stepTransitionTimersRef.current) {
@@ -747,16 +742,6 @@ function OnboardingScreenContent() {
   const saveStudioBillingProfile = useMutation(
     api.complianceStudio.upsertMyStudioBillingProfile,
   );
-  const studioDiditReturnUrl = useMemo(
-    () =>
-      AuthSession.makeRedirectUri({
-        native: "queue://didit/studio-return",
-        scheme: "queue",
-        path: "didit/studio-return",
-      }),
-    [],
-  );
-
   useEffect(() => {
     if (!shouldLoadStudioVerification) {
       return;
@@ -956,14 +941,12 @@ function OnboardingScreenContent() {
     setIsStartingStudioDidit(true);
     setVerificationFeedback(null);
     try {
-      const session = await createStudioDiditSession({
-        callback: studioDiditReturnUrl,
+      const session = await createStudioDiditSession({});
+      const result = await startDiditNativeVerification({
+        sessionToken: session.sessionToken,
+        locale: i18n.resolvedLanguage ?? "en",
       });
-      const result = await WebBrowser.openAuthSessionAsync(
-        session.verificationUrl,
-        studioDiditReturnUrl,
-      );
-      if (result.type === "success" || result.type === "dismiss") {
+      if (result.outcome !== "cancelled") {
         const latest = await refreshStudioDiditVerification({});
         setVerificationFeedback({
           tone: "success",

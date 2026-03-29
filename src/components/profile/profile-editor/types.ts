@@ -34,5 +34,4 @@ export type ProfileEditorFormProps = {
   sportsTitle: string;
   sportsEmptyHint: string;
   extraField?: EditableExtraField;
-  contentTopInset?: number;
 };

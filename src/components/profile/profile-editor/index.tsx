@@ -1,7 +1,7 @@
-import { ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { ProfileSubpageScrollView } from "@/components/profile/profile-subpage-sheet";
 import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
 import { BrandSpacing, BrandType } from "@/constants/brand";
-import { useAppInsets } from "@/hooks/use-app-insets";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
 import { ProfileEditorActions } from "./profile-editor-actions";
@@ -32,10 +32,8 @@ export function ProfileEditorForm({
   sportsTitle,
   sportsEmptyHint,
   extraField,
-  contentTopInset = BrandSpacing.lg,
 }: ProfileEditorFormProps) {
   const { isDesktopWeb } = useLayoutBreakpoint();
-  const { safeBottom } = useAppInsets();
   const { color } = useTheme();
 
   const saveActions = (
@@ -43,16 +41,13 @@ export function ProfileEditorForm({
   );
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
+    <ProfileSubpageScrollView
       keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
       contentContainerStyle={{
-        paddingHorizontal: BrandSpacing.lg,
-        paddingTop: contentTopInset,
-        paddingBottom: BrandSpacing.xxl + safeBottom,
         gap: BrandSpacing.lg,
       }}
+      topSpacing={BrandSpacing.lg}
+      bottomSpacing={BrandSpacing.xxl}
     >
       {isDesktopWeb ? (
         <View
@@ -139,7 +134,7 @@ export function ProfileEditorForm({
           {saveActions}
         </>
       )}
-    </ScrollView>
+    </ProfileSubpageScrollView>
   );
 }
 

@@ -1,5 +1,5 @@
 import { type ComponentProps, memo } from "react";
-import type { StyleProp, TextStyle } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { useTheme } from "@/hooks/use-theme";
@@ -38,7 +38,7 @@ export const Icon = memo(function Icon({
       name={name as AppSymbolName}
       size={resolvedSize}
       tintColor={resolvedColor}
-      style={style as StyleProp<TextStyle>}
+      style={style as StyleProp<ViewStyle>}
     />
   );
 });

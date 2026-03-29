@@ -1,10 +1,6 @@
 import type { TFunction } from "i18next";
 import { Text, useWindowDimensions, View } from "react-native";
-import Animated, {
-  FadeInUp,
-  useAnimatedScrollHandler,
-  useSharedValue,
-} from "react-native-reanimated";
+import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 import { HomeAgendaWidget } from "@/components/home/home-agenda-widget";
 import { HomeSurface, useHomeDashboardLayout } from "@/components/home/home-dashboard-layout";
 import { HomeSignalTile } from "@/components/home/home-shared";
@@ -14,6 +10,7 @@ import {
   type InstructorMarketplaceJob,
 } from "@/components/jobs/instructor/instructor-job-card";
 import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provider";
+import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandSpacing } from "@/constants/brand";
@@ -117,136 +114,136 @@ export function InstructorHomeContent({
   const hasJobs = visibleAvailableJobs.length > 0;
 
   return (
-    <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
-      <TabScreenScrollView
-        animatedRef={scrollRef}
-        onScroll={onScroll}
-        routeKey="instructor/index"
-        style={{ flex: 1 }}
-        topInsetTone="sheet"
-        sheetInsets={{
-          topSpacing: BrandSpacing.xl,
-          bottomSpacing: BrandSpacing.section,
-          horizontalPadding: BrandSpacing.insetRoomy,
-        }}
-      >
-        <Animated.View
-          entering={FadeInUp.delay(70).duration(260)}
-          style={{
-            flexDirection: layout.isWideWeb ? "row" : "column",
-            gap: layout.topRowGap,
-            alignItems: "stretch",
+    <TabSceneTransition>
+      <View collapsable={false} style={{ flex: 1, backgroundColor: palette.appBg }}>
+        <TabScreenScrollView
+          animatedRef={scrollRef}
+          onScroll={onScroll}
+          routeKey="instructor/index"
+          style={{ flex: 1 }}
+          topInsetTone="sheet"
+          sheetInsets={{
+            topSpacing: BrandSpacing.xl,
+            bottomSpacing: BrandSpacing.section,
+            horizontalPadding: BrandSpacing.insetRoomy,
           }}
         >
-          {/* Jobs section — carousel or empty state */}
-          <View style={{ flex: layout.heroFlex }}>
-            {hasJobs ? (
-              <Animated.View style={{ gap: BrandSpacing.stackTight }}>
-                {/* Dot indicators */}
-                <JobCarouselDots
-                  count={visibleAvailableJobs.length}
-                  scrollX={scrollX}
-                  cardWidth={cardWidth}
+          <View
+            style={{
+              flexDirection: layout.isWideWeb ? "row" : "column",
+              gap: layout.topRowGap,
+              alignItems: "stretch",
+            }}
+          >
+            {/* Jobs section — carousel or empty state */}
+            <View style={{ flex: layout.heroFlex }}>
+              {hasJobs ? (
+                <Animated.View style={{ gap: BrandSpacing.stackTight }}>
+                  {/* Dot indicators */}
+                  <JobCarouselDots
+                    count={visibleAvailableJobs.length}
+                    scrollX={scrollX}
+                    cardWidth={cardWidth}
+                  />
+
+                  {/* Horizontal carousel */}
+                  <Animated.ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    snapToInterval={cardWidth}
+                    decelerationRate="fast"
+                    onScroll={scrollHandler}
+                    scrollEventThrottle={16}
+                    scrollEnabled={visibleAvailableJobs.length > 1}
+                  >
+                    {visibleAvailableJobs.map((job) => (
+                      <View
+                        key={job.jobId}
+                        style={{
+                          width: cardWidth,
+                        }}
+                      >
+                        <InstructorJobCard
+                          job={job}
+                          locale={locale}
+                          zoneLanguage={zoneLanguage}
+                          now={now}
+                          {...(withdrawingApplicationId !== undefined
+                            ? { withdrawingApplicationId }
+                            : {})}
+                          {...(onWithdrawApplication ? { onWithdrawApplication } : {})}
+                          onApply={() => onOpenStudio(job.studioId, job.jobId)}
+                          onOpenStudio={onOpenStudio}
+                          t={t}
+                        />
+                      </View>
+                    ))}
+                  </Animated.ScrollView>
+                </Animated.View>
+              ) : (
+                <InstructorJobsEmptyState t={t} />
+              )}
+            </View>
+
+            {/* Stats tiles */}
+            <View style={{ flex: layout.chartFlex, gap: BrandSpacing.stackTight }}>
+              <View style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
+                <HomeSignalTile
+                  label={t("home.actions.jobsTitle")}
+                  value={String(availableJobsCount)}
+                  tone="accent"
+                  icon="briefcase.fill"
                 />
-
-                {/* Horizontal carousel */}
-                <Animated.ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  snapToInterval={cardWidth}
-                  decelerationRate="fast"
-                  onScroll={scrollHandler}
-                  scrollEventThrottle={16}
-                  scrollEnabled={visibleAvailableJobs.length > 1}
-                >
-                  {visibleAvailableJobs.map((job) => (
-                    <View
-                      key={job.jobId}
-                      style={{
-                        width: cardWidth,
-                      }}
-                    >
-                      <InstructorJobCard
-                        job={job}
-                        locale={locale}
-                        zoneLanguage={zoneLanguage}
-                        now={now}
-                        {...(withdrawingApplicationId !== undefined
-                          ? { withdrawingApplicationId }
-                          : {})}
-                        {...(onWithdrawApplication ? { onWithdrawApplication } : {})}
-                        onApply={() => onOpenStudio(job.studioId, job.jobId)}
-                        onOpenStudio={onOpenStudio}
-                        t={t}
-                      />
-                    </View>
-                  ))}
-                </Animated.ScrollView>
-              </Animated.View>
-            ) : (
-              <InstructorJobsEmptyState t={t} />
-            )}
-          </View>
-
-          {/* Stats tiles */}
-          <View style={{ flex: layout.chartFlex, gap: BrandSpacing.stackTight }}>
-            <View style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
-              <HomeSignalTile
-                label={t("home.actions.jobsTitle")}
-                value={String(availableJobsCount)}
-                tone="accent"
-                icon="briefcase.fill"
-              />
-              <HomeSignalTile
-                label={t("home.instructor.pendingApps")}
-                value={String(pendingApplications)}
-                tone="warning"
-                icon="clock.badge.checkmark"
-              />
-            </View>
-            <View style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
-              <HomeSignalTile
-                label={t("home.performance.earnings")}
-                value={earningsLabel}
-                tone="success"
-                icon="banknote"
-              />
-              <HomeSignalTile
-                label={t("home.shared.jobsFilled")}
-                value={completionLabel}
-                tone="accent"
-                icon="checkmark.circle.fill"
-              />
+                <HomeSignalTile
+                  label={t("home.instructor.pendingApps")}
+                  value={String(pendingApplications)}
+                  tone="warning"
+                  icon="clock.badge.checkmark"
+                />
+              </View>
+              <View style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
+                <HomeSignalTile
+                  label={t("home.performance.earnings")}
+                  value={earningsLabel}
+                  tone="success"
+                  icon="banknote"
+                />
+                <HomeSignalTile
+                  label={t("home.shared.jobsFilled")}
+                  value={completionLabel}
+                  tone="accent"
+                  icon="checkmark.circle.fill"
+                />
+              </View>
             </View>
           </View>
-        </Animated.View>
 
-        <Animated.View
-          entering={FadeInUp.delay(140).duration(280)}
-          style={{
-            flexDirection: layout.isWideWeb ? "row" : "column",
-            gap: layout.topRowGap,
-            alignItems: "stretch",
-          }}
-        >
-          <HomeAgendaWidget
-            items={upcomingSessions.map((session) => ({
-              id: session.applicationId,
-              sport: session.sport,
-              name: session.studioName,
-              startTime: session.startTime,
-              zone: session.zone,
-            }))}
-            t={t}
-            locale={locale}
-            maxItems={layout.isWideWeb ? 8 : 5}
-            maxHeight={layout.isWideWeb ? 360 : 280}
-            heading={t("home.instructor.nextTitle")}
-            emptyLabel={t("home.instructor.noUpcoming")}
-            onPressAll={onOpenJobs}
-          />
-        </Animated.View>
-      </TabScreenScrollView>
-    </View>
+          <View
+            style={{
+              flexDirection: layout.isWideWeb ? "row" : "column",
+              gap: layout.topRowGap,
+              alignItems: "stretch",
+            }}
+          >
+            <HomeAgendaWidget
+              items={upcomingSessions.map((session) => ({
+                id: session.applicationId,
+                sport: session.sport,
+                name: session.studioName,
+                startTime: session.startTime,
+                zone: session.zone,
+              }))}
+              t={t}
+              locale={locale}
+              maxItems={layout.isWideWeb ? 8 : 5}
+              maxHeight={layout.isWideWeb ? 360 : 280}
+              heading={t("home.instructor.nextTitle")}
+              emptyLabel={t("home.instructor.noUpcoming")}
+              onPressAll={onOpenJobs}
+            />
+          </View>
+        </TabScreenScrollView>
+      </View>
+    </TabSceneTransition>
   );
 }

@@ -1,11 +1,7 @@
 import type { TFunction } from "i18next";
 import { memo, useCallback, useMemo, useState } from "react";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
-import Animated, {
-  FadeInUp,
-  useAnimatedScrollHandler,
-  useSharedValue,
-} from "react-native-reanimated";
+import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 import {
   HomeSectionHeading,
   HomeSurface,
@@ -15,6 +11,7 @@ import { HomeSignalTile } from "@/components/home/home-shared";
 import type { Application } from "@/components/home/home-tab/home-role-content";
 import { JobCarouselDots } from "@/components/home/job-carousel-dots";
 import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provider";
+import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -318,241 +315,230 @@ export function StudioHomeContent({
   );
 
   return (
-    <View collapsable={false} style={{ flex: 1 }}>
-      <TabScreenScrollView
-        animatedRef={scrollRef}
-        onScroll={onScroll}
-        routeKey="studio/index"
-        style={{ flex: 1 }}
-        topInsetTone="sheet"
-        sheetInsets={{
-          topSpacing: BrandSpacing.xl,
-          bottomSpacing: BrandSpacing.section,
-          horizontalPadding: BrandSpacing.insetRoomy,
-        }}
-      >
-        <Animated.View entering={FadeInUp.delay(80).duration(280)}>
-          <HomeSurface
-            tone="primary"
+    <TabSceneTransition>
+      <View collapsable={false} style={{ flex: 1 }}>
+        <TabScreenScrollView
+          animatedRef={scrollRef}
+          onScroll={onScroll}
+          routeKey="studio/index"
+          style={{ flex: 1 }}
+          topInsetTone="sheet"
+          sheetInsets={{
+            topSpacing: BrandSpacing.xl,
+            bottomSpacing: BrandSpacing.section,
+            horizontalPadding: BrandSpacing.insetRoomy,
+          }}
+        >
+          <View>
+            <HomeSurface
+              tone="primary"
+              style={{
+                padding: BrandSpacing.insetRoomy,
+                gap: BrandSpacing.stackRoomy,
+              }}
+            >
+              <View style={{ gap: BrandSpacing.stackTight }}>
+                <Text
+                  style={{
+                    ...BrandType.micro,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {t("home.studio.title")}
+                </Text>
+                <Text
+                  style={{
+                    ...BrandType.headingDisplay,
+                    lineHeight: layout.isWideWeb ? 36 : 30,
+                  }}
+                >
+                  {heroTitle}
+                </Text>
+                <Text style={BrandType.body}>
+                  {pendingApplications.length > 0
+                    ? t("home.studio.waitingCount", {
+                        count: pendingApplicants,
+                      })
+                    : t("home.studio.heroActive", {
+                        count: openJobs,
+                      })}
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: "row", gap: BrandSpacing.stack }}>
+                <HomeSignalTile
+                  label={t("home.actions.jobsTitle")}
+                  value={String(openJobs)}
+                  tone="accent"
+                  icon="briefcase.fill"
+                />
+                <HomeSignalTile
+                  label={t("home.studio.pendingApplicants")}
+                  value={String(pendingApplicants)}
+                  tone="warning"
+                  icon="clock.badge.checkmark"
+                />
+                <HomeSignalTile
+                  label={t("home.studio.recentlyFilled")}
+                  value={String(jobsFilled)}
+                  tone="success"
+                  icon="checkmark.circle.fill"
+                />
+              </View>
+
+              <View
+                style={{
+                  flexDirection: layout.isWideWeb ? "row" : "column",
+                  gap: BrandSpacing.stack,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <ActionButton
+                    accessibilityLabel={t("home.actions.jobsTitle")}
+                    label={t("home.actions.jobsTitle")}
+                    onPress={onOpenJobs}
+                    tone="secondary"
+                    fullWidth
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <ActionButton
+                    accessibilityLabel={t("home.actions.calendarTitle")}
+                    label={t("home.actions.calendarTitle")}
+                    onPress={onOpenCalendar}
+                    fullWidth
+                  />
+                </View>
+              </View>
+            </HomeSurface>
+          </View>
+
+          <View
             style={{
-              padding: BrandSpacing.insetRoomy,
-              gap: BrandSpacing.stackRoomy,
+              flexDirection: layout.isWideWeb && pendingApplications.length > 0 ? "row" : "column",
+              alignItems: "stretch",
+              gap: layout.sectionGap,
             }}
           >
-            <View style={{ gap: BrandSpacing.stackTight }}>
-              <Text
-                style={{
-                  ...BrandType.micro,
-                  textTransform: "uppercase",
-                }}
-              >
-                {t("home.studio.title")}
-              </Text>
-              <Text
-                style={{
-                  ...BrandType.headingDisplay,
-                  lineHeight: layout.isWideWeb ? 36 : 30,
-                }}
-              >
-                {heroTitle}
-              </Text>
-              <Text style={BrandType.body}>
-                {pendingApplications.length > 0
-                  ? t("home.studio.waitingCount", {
-                      count: pendingApplicants,
-                    })
-                  : t("home.studio.heroActive", {
-                      count: openJobs,
-                    })}
-              </Text>
-            </View>
+            {/* Review queue carousel */}
+            {pendingApplications.length > 0 ? (
+              <View style={{ flex: layout.isWideWeb ? 1.08 : undefined, gap: BrandSpacing.stack }}>
+                <HomeSectionHeading
+                  title={t("home.studio.needsReview")}
+                  eyebrow={t("home.studio.queueEyebrow")}
+                />
 
-            <View style={{ flexDirection: "row", gap: BrandSpacing.stack }}>
-              <HomeSignalTile
-                label={t("home.actions.jobsTitle")}
-                value={String(openJobs)}
-                tone="accent"
-                icon="briefcase.fill"
-              />
-              <HomeSignalTile
-                label={t("home.studio.pendingApplicants")}
-                value={String(pendingApplicants)}
-                tone="warning"
-                icon="clock.badge.checkmark"
-              />
-              <HomeSignalTile
-                label={t("home.studio.recentlyFilled")}
-                value={String(jobsFilled)}
-                tone="success"
-                icon="checkmark.circle.fill"
-              />
-            </View>
+                <View style={{ gap: BrandSpacing.stackTight }}>
+                  {/* Dot indicators */}
+                  <JobCarouselDots
+                    count={pendingApplications.length}
+                    scrollX={scrollX}
+                    cardWidth={cardWidth}
+                  />
 
+                  {/* Horizontal carousel */}
+                  <Animated.ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    snapToInterval={cardWidth}
+                    decelerationRate="fast"
+                    onScroll={scrollHandler}
+                    scrollEventThrottle={16}
+                    scrollEnabled={pendingApplications.length > 1}
+                  >
+                    {pendingApplications.map(({ application, job }) => (
+                      <View
+                        key={application.applicationId}
+                        style={{
+                          width: cardWidth,
+                        }}
+                      >
+                        <ReviewApplicationCard
+                          application={application}
+                          job={job}
+                          locale={locale}
+                          zoneLanguage={zoneLanguage}
+                          t={t}
+                          onReview={makeReviewHandler(application.applicationId)}
+                          isReviewing={reviewingId === application.applicationId}
+                          hasError={errorId === application.applicationId}
+                        />
+                      </View>
+                    ))}
+                  </Animated.ScrollView>
+                </View>
+              </View>
+            ) : (
+              <View style={{ gap: BrandSpacing.stack }}>
+                <HomeSectionHeading
+                  title={t("home.studio.needsReview")}
+                  eyebrow={t("home.studio.queueEyebrow")}
+                />
+                <ReviewQueueEmptyState t={t} />
+              </View>
+            )}
+
+            {/* Live board */}
             <View
               style={{
-                flexDirection: layout.isWideWeb ? "row" : "column",
+                flex: layout.isWideWeb && pendingApplications.length > 0 ? 0.92 : undefined,
                 gap: BrandSpacing.stack,
               }}
             >
-              <View style={{ flex: 1 }}>
-                <ActionButton
-                  accessibilityLabel={t("home.actions.jobsTitle")}
-                  label={t("home.actions.jobsTitle")}
-                  onPress={onOpenJobs}
-                  tone="secondary"
-                  fullWidth
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <ActionButton
-                  accessibilityLabel={t("home.actions.calendarTitle")}
-                  label={t("home.actions.calendarTitle")}
-                  onPress={onOpenCalendar}
-                  fullWidth
-                />
-              </View>
-            </View>
-          </HomeSurface>
-        </Animated.View>
-
-        <View
-          style={{
-            flexDirection: layout.isWideWeb && pendingApplications.length > 0 ? "row" : "column",
-            alignItems: "stretch",
-            gap: layout.sectionGap,
-          }}
-        >
-          {/* Review queue carousel */}
-          {pendingApplications.length > 0 ? (
-            <Animated.View
-              entering={FadeInUp.delay(180).duration(320)}
-              style={{ flex: layout.isWideWeb ? 1.08 : undefined, gap: BrandSpacing.stack }}
-            >
-              <HomeSectionHeading
-                title={t("home.studio.needsReview")}
-                eyebrow={t("home.studio.queueEyebrow")}
-              />
-
-              <Animated.View style={{ gap: BrandSpacing.stackTight }}>
-                {/* Dot indicators */}
-                <JobCarouselDots
-                  count={pendingApplications.length}
-                  scrollX={scrollX}
-                  cardWidth={cardWidth}
-                />
-
-                {/* Horizontal carousel */}
-                <Animated.ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  snapToInterval={cardWidth}
-                  decelerationRate="fast"
-                  onScroll={scrollHandler}
-                  scrollEventThrottle={16}
-                  scrollEnabled={pendingApplications.length > 1}
-                >
-                  {pendingApplications.map(({ application, job }) => (
-                    <View
-                      key={application.applicationId}
-                      style={{
-                        width: cardWidth,
-                      }}
-                    >
-                      <ReviewApplicationCard
-                        application={application}
-                        job={job}
-                        locale={locale}
-                        zoneLanguage={zoneLanguage}
-                        t={t}
-                        onReview={makeReviewHandler(application.applicationId)}
-                        isReviewing={reviewingId === application.applicationId}
-                        hasError={errorId === application.applicationId}
-                      />
-                    </View>
-                  ))}
-                </Animated.ScrollView>
-              </Animated.View>
-            </Animated.View>
-          ) : (
-            <Animated.View
-              entering={FadeInUp.delay(180).duration(320)}
-              style={{ gap: BrandSpacing.stack }}
-            >
-              <HomeSectionHeading
-                title={t("home.studio.needsReview")}
-                eyebrow={t("home.studio.queueEyebrow")}
-              />
-              <ReviewQueueEmptyState t={t} />
-            </Animated.View>
-          )}
-
-          {/* Live board */}
-          <Animated.View
-            entering={FadeInUp.delay(pendingApplications.length > 0 ? 220 : 180).duration(320)}
-            style={{
-              flex: layout.isWideWeb && pendingApplications.length > 0 ? 0.92 : undefined,
-              gap: BrandSpacing.stack,
-            }}
-          >
-            <HomeSectionHeading title={t("home.studio.boardEyebrow")} />
-            {recentJobs.length === 0 ? (
-              <HomeSurface style={{ padding: BrandSpacing.inset, gap: BrandSpacing.stackTight }}>
-                <Text style={{ ...BrandType.title, color: palette.text }}>
-                  {t("home.studio.noRecent")}
-                </Text>
-                <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
-                  {t("home.studio.emptyBoard")}
-                </Text>
-              </HomeSurface>
-            ) : (
-              <View style={{ gap: BrandSpacing.stack }}>
-                {visibleRecentJobs.map((job, index) => (
-                  <Animated.View
-                    key={job.jobId}
-                    entering={FadeInUp.delay(260 + index * 35)
-                      .duration(260)
-                      .springify()
-                      .damping(18)}
-                  >
-                    <HomeSurface style={{ padding: BrandSpacing.inset, gap: BrandSpacing.xs }}>
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "flex-start",
-                          justifyContent: "space-between",
-                          gap: BrandSpacing.stack,
-                        }}
-                      >
-                        <View style={{ flex: 1, gap: BrandSpacing.xs }}>
-                          <Text style={{ ...BrandType.title, color: palette.text }}>
-                            {toSportLabel(job.sport as never)}
-                          </Text>
-                          <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
-                            {[
-                              formatDateTime(job.startTime, locale),
-                              getZoneLabel(job.zone, zoneLanguage),
-                            ].join("  ·  ")}
-                          </Text>
-                        </View>
-                        <Text
-                          selectable
+              <HomeSectionHeading title={t("home.studio.boardEyebrow")} />
+              {recentJobs.length === 0 ? (
+                <HomeSurface style={{ padding: BrandSpacing.inset, gap: BrandSpacing.stackTight }}>
+                  <Text style={{ ...BrandType.title, color: palette.text }}>
+                    {t("home.studio.noRecent")}
+                  </Text>
+                  <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
+                    {t("home.studio.emptyBoard")}
+                  </Text>
+                </HomeSurface>
+              ) : (
+                <View style={{ gap: BrandSpacing.stack }}>
+                  {visibleRecentJobs.map((job) => (
+                    <View key={job.jobId}>
+                      <HomeSurface style={{ padding: BrandSpacing.inset, gap: BrandSpacing.xs }}>
+                        <View
                           style={{
-                            ...BrandType.title,
-                            fontVariant: ["tabular-nums"],
-                            color: palette.text,
+                            flexDirection: "row",
+                            alignItems: "flex-start",
+                            justifyContent: "space-between",
+                            gap: BrandSpacing.stack,
                           }}
                         >
-                          {currencyFormatter.format(job.pay)}
-                        </Text>
-                      </View>
-                    </HomeSurface>
-                  </Animated.View>
-                ))}
-              </View>
-            )}
-          </Animated.View>
-        </View>
-      </TabScreenScrollView>
-    </View>
+                          <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                            <Text style={{ ...BrandType.title, color: palette.text }}>
+                              {toSportLabel(job.sport as never)}
+                            </Text>
+                            <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
+                              {[
+                                formatDateTime(job.startTime, locale),
+                                getZoneLabel(job.zone, zoneLanguage),
+                              ].join("  ·  ")}
+                            </Text>
+                          </View>
+                          <Text
+                            selectable
+                            style={{
+                              ...BrandType.title,
+                              fontVariant: ["tabular-nums"],
+                              color: palette.text,
+                            }}
+                          >
+                            {currencyFormatter.format(job.pay)}
+                          </Text>
+                        </View>
+                      </HomeSurface>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        </TabScreenScrollView>
+      </View>
+    </TabSceneTransition>
   );
 }

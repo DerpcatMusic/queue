@@ -1,7 +1,6 @@
 import type { TFunction } from "i18next";
 import { useMemo } from "react";
 import { ScrollView, Text, View } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
 import { HomeSectionHeading, HomeSurface } from "@/components/home/home-dashboard-layout";
 import { getRelativeTimeLabel } from "@/components/home/home-shared";
 import { BrandSpacing } from "@/constants/brand";
@@ -107,7 +106,7 @@ export function HomeAgendaWidget({
   }
 
   return (
-    <Animated.View entering={FadeInUp.delay(180).duration(320)}>
+    <View>
       <HomeSurface
         style={{
           padding: BrandSpacing.lg,
@@ -127,13 +126,7 @@ export function HomeAgendaWidget({
             const relativeTime = getRelativeTimeLabel(item.startTime, now, locale);
 
             return (
-              <Animated.View
-                key={item.id}
-                entering={FadeInUp.delay(220 + index * 40)
-                  .duration(240)
-                  .springify()
-                  .damping(18)}
-              >
+              <View key={item.id}>
                 <View
                   style={{
                     flexDirection: "row",
@@ -216,7 +209,7 @@ export function HomeAgendaWidget({
                     />
                   </View>
                 </View>
-              </Animated.View>
+              </View>
             );
           })}
         </ScrollView>
@@ -243,6 +236,6 @@ export function HomeAgendaWidget({
           </View>
         ) : null}
       </HomeSurface>
-    </Animated.View>
+    </View>
   );
 }

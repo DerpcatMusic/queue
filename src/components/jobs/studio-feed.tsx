@@ -17,6 +17,7 @@ import {
   useStudioFeedController,
 } from "@/components/jobs/studio/use-studio-feed-controller";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
+import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -214,258 +215,260 @@ export function StudioFeed() {
   }
 
   return (
-    <Box flex={1} style={{ backgroundColor: theme.jobs.canvas }}>
-      <TabScreenScrollView
-        routeKey="studio/jobs/index"
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-        sheetInsets={{
-          topSpacing: BrandSpacing.lg,
-          bottomSpacing: BrandSpacing.xl,
-          horizontalPadding: BrandSpacing.lg,
-        }}
-        topInsetTone="sheet"
-        keyboardShouldPersistTaps="handled"
-      >
-        <Box flex={1} gap="lg">
-          {errorMessage ? (
-            <NoticeBanner
-              tone="error"
-              message={errorMessage}
-              onDismiss={() => setErrorMessage(null)}
-              borderColor={theme.color.danger}
-              backgroundColor={theme.color.dangerSubtle}
-              textColor={theme.color.danger}
-              iconColor={theme.color.danger}
-            />
-          ) : null}
-          {statusMessage ? (
-            <NoticeBanner
-              tone="success"
-              message={statusMessage}
-              onDismiss={() => setStatusMessage(null)}
-              borderColor={theme.color.success}
-              backgroundColor={theme.color.successSubtle}
-              textColor={theme.color.text}
-              iconColor={theme.color.success}
-            />
-          ) : null}
-          {studioJobs === undefined ? (
-            <View style={[styles.emptyStateWrap, { minHeight: 300 }]}>
-              <ActivityIndicator size="small" color={theme.color.primary} />
-              <ThemedText
-                style={{
-                  color: theme.color.textMuted,
-                  marginTop: BrandSpacing.xs,
-                }}
-              >
-                {t("jobsTab.loading")}
-              </ThemedText>
-            </View>
-          ) : studioJobs.length === 0 ? (
-            <View style={{ minHeight: 320, justifyContent: "center" }}>
-              <EmptyState icon="bag" title={t("jobsTab.emptyStudio")} body="" />
-            </View>
-          ) : filteredStudioJobs.length === 0 ? (
-            <View style={{ minHeight: 260, justifyContent: "center" }}>
-              <EmptyState
-                icon="briefcase.fill"
-                title={t("jobsTab.studioFeed.noJobsTitle")}
-                body={t("jobsTab.studioFeed.tryDifferentLane")}
+    <TabSceneTransition>
+      <Box flex={1} style={{ backgroundColor: theme.jobs.canvas }}>
+        <TabScreenScrollView
+          routeKey="studio/jobs/index"
+          style={styles.screen}
+          contentContainerStyle={styles.content}
+          sheetInsets={{
+            topSpacing: BrandSpacing.lg,
+            bottomSpacing: BrandSpacing.xl,
+            horizontalPadding: BrandSpacing.lg,
+          }}
+          topInsetTone="sheet"
+          keyboardShouldPersistTaps="handled"
+        >
+          <Box flex={1} gap="lg">
+            {errorMessage ? (
+              <NoticeBanner
+                tone="error"
+                message={errorMessage}
+                onDismiss={() => setErrorMessage(null)}
+                borderColor={theme.color.danger}
+                backgroundColor={theme.color.dangerSubtle}
+                textColor={theme.color.danger}
+                iconColor={theme.color.danger}
               />
-            </View>
-          ) : shouldSplitBoard ? (
-            <View style={styles.sectionStack}>
-              <View style={styles.sectionBlock}>
-                <JobsSectionHeader
-                  title={t("jobsTab.studioFeed.needsReviewTitle")}
-                  subtitle={t("jobsTab.studioFeed.mobileDecisionWaiting", {
-                    count: reviewQueueJobs.length,
-                  })}
-                />
-                <StudioJobsList
-                  jobs={reviewQueueJobs}
-                  locale={locale}
-                  zoneLanguage={zoneLanguage}
-                  reviewingApplicationId={isReviewingApplicationId}
-                  payingJobId={isStartingCheckoutForJobId}
-                  onReview={handleReviewApplication}
-                  onStartPayment={handleStartPayment}
-                  onJobPress={handleJobPress}
-                  t={t}
+            ) : null}
+            {statusMessage ? (
+              <NoticeBanner
+                tone="success"
+                message={statusMessage}
+                onDismiss={() => setStatusMessage(null)}
+                borderColor={theme.color.success}
+                backgroundColor={theme.color.successSubtle}
+                textColor={theme.color.text}
+                iconColor={theme.color.success}
+              />
+            ) : null}
+            {studioJobs === undefined ? (
+              <View style={[styles.emptyStateWrap, { minHeight: 300 }]}>
+                <ActivityIndicator size="small" color={theme.color.primary} />
+                <ThemedText
+                  style={{
+                    color: theme.color.textMuted,
+                    marginTop: BrandSpacing.xs,
+                  }}
+                >
+                  {t("jobsTab.loading")}
+                </ThemedText>
+              </View>
+            ) : studioJobs.length === 0 ? (
+              <View style={{ minHeight: 320, justifyContent: "center" }}>
+                <EmptyState icon="bag" title={t("jobsTab.emptyStudio")} body="" />
+              </View>
+            ) : filteredStudioJobs.length === 0 ? (
+              <View style={{ minHeight: 260, justifyContent: "center" }}>
+                <EmptyState
+                  icon="briefcase.fill"
+                  title={t("jobsTab.studioFeed.noJobsTitle")}
+                  body={t("jobsTab.studioFeed.tryDifferentLane")}
                 />
               </View>
-
-              <View style={styles.sectionBlock}>
-                <JobsSectionHeader title={t("jobsTab.studioFeed.boardTitle")} />
-                <StudioJobsList
-                  jobs={boardJobs}
-                  locale={locale}
-                  zoneLanguage={zoneLanguage}
-                  reviewingApplicationId={isReviewingApplicationId}
-                  payingJobId={isStartingCheckoutForJobId}
-                  onReview={handleReviewApplication}
-                  onStartPayment={handleStartPayment}
-                  onJobPress={handleJobPress}
-                  t={t}
-                />
-              </View>
-            </View>
-          ) : (
-            <View style={styles.sectionBlock}>
-              <JobsSectionHeader title={primarySectionTitle} subtitle={primarySectionSubtitle} />
-              {primaryJobs.length > 0 ? (
-                <StudioJobsList
-                  jobs={primaryJobs}
-                  locale={locale}
-                  zoneLanguage={zoneLanguage}
-                  reviewingApplicationId={isReviewingApplicationId}
-                  payingJobId={isStartingCheckoutForJobId}
-                  onReview={handleReviewApplication}
-                  onStartPayment={handleStartPayment}
-                  onJobPress={handleJobPress}
-                  t={t}
-                />
-              ) : (
-                <View style={{ minHeight: 220, justifyContent: "center" }}>
-                  <EmptyState
-                    icon="checkmark.circle"
-                    title={t("jobsTab.boardEmptyTitle")}
-                    body={t("jobsTab.boardEmptyBody")}
+            ) : shouldSplitBoard ? (
+              <View style={styles.sectionStack}>
+                <View style={styles.sectionBlock}>
+                  <JobsSectionHeader
+                    title={t("jobsTab.studioFeed.needsReviewTitle")}
+                    subtitle={t("jobsTab.studioFeed.mobileDecisionWaiting", {
+                      count: reviewQueueJobs.length,
+                    })}
+                  />
+                  <StudioJobsList
+                    jobs={reviewQueueJobs}
+                    locale={locale}
+                    zoneLanguage={zoneLanguage}
+                    reviewingApplicationId={isReviewingApplicationId}
+                    payingJobId={isStartingCheckoutForJobId}
+                    onReview={handleReviewApplication}
+                    onStartPayment={handleStartPayment}
+                    onJobPress={handleJobPress}
+                    t={t}
                   />
                 </View>
-              )}
-            </View>
-          )}
-        </Box>
-      </TabScreenScrollView>
 
-      {/* Multi-FAB */}
-      <TabOverlayAnchor side="right" offset={BrandSpacing.lg}>
-        <VStack align="end" gap="sm">
-          {/* Menu items - appear above main FAB with animation */}
-          {isFabMenuOpen && (
-            <Animated.View entering={FadeInUp.springify().damping(15)}>
-              <VStack gap="sm" align="end">
-                {/* Archive button with label */}
-                <HStack gap="sm" align="center">
-                  <Box
-                    backgroundColor="surfaceElevated"
-                    px="md"
-                    py="xs"
-                    style={{ borderRadius: BrandRadius.button }}
-                  >
-                    <Text variant="labelStrong" color="text">
-                      Archive
-                    </Text>
-                  </Box>
-                  <IconButton
-                    accessibilityLabel={t("jobsTab.archiveTitle")}
-                    onPress={() => {
-                      setIsFabMenuOpen(false);
-                      archiveSheetRef.current?.expand();
-                    }}
-                    tone="primary"
-                    size={48}
-                    icon={
-                      <IconSymbol name="archivebox.fill" size={18} color={theme.color.onPrimary} />
-                    }
+                <View style={styles.sectionBlock}>
+                  <JobsSectionHeader title={t("jobsTab.studioFeed.boardTitle")} />
+                  <StudioJobsList
+                    jobs={boardJobs}
+                    locale={locale}
+                    zoneLanguage={zoneLanguage}
+                    reviewingApplicationId={isReviewingApplicationId}
+                    payingJobId={isStartingCheckoutForJobId}
+                    onReview={handleReviewApplication}
+                    onStartPayment={handleStartPayment}
+                    onJobPress={handleJobPress}
+                    t={t}
                   />
-                </HStack>
-
-                {/* Post Job button with label */}
-                <HStack gap="sm" align="center">
-                  <Box
-                    backgroundColor="surfaceElevated"
-                    px="md"
-                    py="xs"
-                    style={{ borderRadius: BrandRadius.button }}
-                  >
-                    <Text variant="labelStrong" color="text">
-                      Post Job
-                    </Text>
-                  </Box>
-                  <IconButton
-                    accessibilityLabel={t("jobsTab.actions.post")}
-                    disabled={!areStudioBranchesReady}
-                    onPress={() => {
-                      setIsFabMenuOpen(false);
-                      setIsCreateSheetVisible(true);
-                      createJobSheetRef.current?.expand();
-                    }}
-                    tone="primary"
-                    size={48}
-                    icon={<IconSymbol name="plus" size={18} color={theme.color.onPrimary} />}
+                </View>
+              </View>
+            ) : (
+              <View style={styles.sectionBlock}>
+                <JobsSectionHeader title={primarySectionTitle} subtitle={primarySectionSubtitle} />
+                {primaryJobs.length > 0 ? (
+                  <StudioJobsList
+                    jobs={primaryJobs}
+                    locale={locale}
+                    zoneLanguage={zoneLanguage}
+                    reviewingApplicationId={isReviewingApplicationId}
+                    payingJobId={isStartingCheckoutForJobId}
+                    onReview={handleReviewApplication}
+                    onStartPayment={handleStartPayment}
+                    onJobPress={handleJobPress}
+                    t={t}
                   />
-                </HStack>
-              </VStack>
-            </Animated.View>
-          )}
+                ) : (
+                  <View style={{ minHeight: 220, justifyContent: "center" }}>
+                    <EmptyState
+                      icon="checkmark.circle"
+                      title={t("jobsTab.boardEmptyTitle")}
+                      body={t("jobsTab.boardEmptyBody")}
+                    />
+                  </View>
+                )}
+              </View>
+            )}
+          </Box>
+        </TabScreenScrollView>
 
-          {/* Main FAB */}
-          <IconButton
-            accessibilityLabel={isFabMenuOpen ? t("common.close") : t("jobsTab.actions.post")}
-            disabled={!areStudioBranchesReady && !isFabMenuOpen}
-            onPress={() => {
-              if (areStudioBranchesReady) {
-                setIsFabMenuOpen((current) => !current);
+        {/* Multi-FAB */}
+        <TabOverlayAnchor side="right" offset={BrandSpacing.lg}>
+          <VStack align="end" gap="sm">
+            {isFabMenuOpen && (
+              <Animated.View entering={FadeInUp.springify().damping(15)}>
+                <VStack gap="sm" align="end">
+                  <HStack gap="sm" align="center">
+                    <Box
+                      backgroundColor="surfaceElevated"
+                      px="md"
+                      py="xs"
+                      style={{ borderRadius: BrandRadius.button }}
+                    >
+                      <Text variant="labelStrong" color="text">
+                        Archive
+                      </Text>
+                    </Box>
+                    <IconButton
+                      accessibilityLabel={t("jobsTab.archiveTitle")}
+                      onPress={() => {
+                        setIsFabMenuOpen(false);
+                        archiveSheetRef.current?.expand();
+                      }}
+                      tone="primary"
+                      size={48}
+                      icon={
+                        <IconSymbol
+                          name="archivebox.fill"
+                          size={18}
+                          color={theme.color.onPrimary}
+                        />
+                      }
+                    />
+                  </HStack>
+
+                  <HStack gap="sm" align="center">
+                    <Box
+                      backgroundColor="surfaceElevated"
+                      px="md"
+                      py="xs"
+                      style={{ borderRadius: BrandRadius.button }}
+                    >
+                      <Text variant="labelStrong" color="text">
+                        Post Job
+                      </Text>
+                    </Box>
+                    <IconButton
+                      accessibilityLabel={t("jobsTab.actions.post")}
+                      disabled={!areStudioBranchesReady}
+                      onPress={() => {
+                        setIsFabMenuOpen(false);
+                        setIsCreateSheetVisible(true);
+                        createJobSheetRef.current?.expand();
+                      }}
+                      tone="primary"
+                      size={48}
+                      icon={<IconSymbol name="plus" size={18} color={theme.color.onPrimary} />}
+                    />
+                  </HStack>
+                </VStack>
+              </Animated.View>
+            )}
+
+            <IconButton
+              accessibilityLabel={isFabMenuOpen ? t("common.close") : t("jobsTab.actions.post")}
+              disabled={!areStudioBranchesReady && !isFabMenuOpen}
+              onPress={() => {
+                if (areStudioBranchesReady) {
+                  setIsFabMenuOpen((current) => !current);
+                }
+              }}
+              tone="primary"
+              size={58}
+              icon={
+                <IconSymbol
+                  name={isFabMenuOpen ? "xmark" : "plus"}
+                  size={22}
+                  color={theme.color.onPrimary}
+                />
               }
-            }}
-            tone="primary"
-            size={58}
-            icon={
-              <IconSymbol
-                name={isFabMenuOpen ? "xmark" : "plus"}
-                size={22}
-                color={theme.color.onPrimary}
-              />
-            }
+            />
+          </VStack>
+        </TabOverlayAnchor>
+
+        {isFocused && areStudioBranchesReady ? (
+          <CreateJobSheet
+            innerRef={createJobSheetRef as never}
+            isSubmitting={isSubmittingStudio}
+            onDismissed={() => setIsCreateSheetVisible(false)}
+            onPost={postStudioJob}
+            defaultBranchId={defaultBranchId}
           />
-        </VStack>
-      </TabOverlayAnchor>
+        ) : null}
 
-      {isFocused && areStudioBranchesReady ? (
-        <CreateJobSheet
-          innerRef={createJobSheetRef as never}
-          isSubmitting={isSubmittingStudio}
-          onDismissed={() => setIsCreateSheetVisible(false)}
-          onPost={postStudioJob}
-          defaultBranchId={defaultBranchId}
-        />
-      ) : null}
+        {isFocused ? (
+          <StudioJobDetailSheet
+            innerRef={detailSheetRef as never}
+            job={
+              selectedJobId
+                ? (filteredStudioJobsWithPayments.find((j) => String(j.jobId) === selectedJobId) ??
+                  null)
+                : null
+            }
+            locale={locale}
+            zoneLanguage={zoneLanguage}
+            onDismiss={() => {
+              setSelectedJobId(null);
+              detailSheetRef.current?.close();
+            }}
+            onReview={(applicationId, status) => {
+              void handleReviewApplication(applicationId as any, status);
+            }}
+            reviewingApplicationId={isReviewingApplicationId}
+          />
+        ) : null}
 
-      {isFocused ? (
-        <StudioJobDetailSheet
-          innerRef={detailSheetRef as never}
-          job={
-            selectedJobId
-              ? (filteredStudioJobsWithPayments.find((j) => String(j.jobId) === selectedJobId) ??
-                null)
-              : null
-          }
-          locale={locale}
-          zoneLanguage={zoneLanguage}
-          onDismiss={() => {
-            setSelectedJobId(null);
-            detailSheetRef.current?.close();
-          }}
-          onReview={(applicationId, status) => {
-            void handleReviewApplication(applicationId as any, status);
-          }}
-          reviewingApplicationId={isReviewingApplicationId}
-        />
-      ) : null}
-
-      {isFocused ? (
-        <StudioJobsArchiveSheet
-          innerRef={archiveSheetRef as never}
-          onDismissed={() => {}}
-          jobs={pastJobs}
-          locale={locale}
-          zoneLanguage={zoneLanguage}
-        />
-      ) : null}
-    </Box>
+        {isFocused ? (
+          <StudioJobsArchiveSheet
+            innerRef={archiveSheetRef as never}
+            onDismissed={() => {}}
+            jobs={pastJobs}
+            locale={locale}
+            zoneLanguage={zoneLanguage}
+          />
+        ) : null}
+      </Box>
+    </TabSceneTransition>
   );
 }
 

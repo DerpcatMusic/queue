@@ -1,96 +1,147 @@
-// Material Symbols Rounded icon component using static fonts
-// Uses MaterialSymbols_400Regular (filled style)
+// Google Material Symbols Rounded icon component for Android/web.
 
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import type { ComponentProps } from "react";
+import { MaterialSymbolsRounded_400Regular, useFonts } from "@expo-google-fonts/material-symbols-rounded";
+import { memo } from "react";
+import { Text, View } from "react-native";
 import type { OpaqueColorValue, StyleProp, TextStyle } from "react-native";
 
-type MaterialIconName = ComponentProps<typeof MaterialIcons>["name"];
+import androidSymbols from "./android-symbols.json";
 
-/**
- * SF Symbols to Material Icons (filled variants).
- */
-const SF_TO_MATERIAL_ICON: Record<string, MaterialIconName> = {
+const MATERIAL_SYMBOLS_NAME = "MaterialSymbolsRounded_400Regular";
+const MATERIAL_VARIATION_SETTINGS = '"FILL" 1, "GRAD" 0, "opsz" 24, "wght" 400';
+
+const SF_TO_ANDROID_SYMBOL = {
   "archivebox.fill": "archive",
+  bag: "shopping_bag",
   "arrow.clockwise": "autorenew",
+  "arrow.2.squarepath": "cached",
   "arrow.down": "south",
-  "arrow.right": "arrow-forward",
+  "arrow.right": "arrow_forward",
   "arrow.right.square": "logout",
-  "arrow.up.right": "north-east",
-  "bag.badge.plus": "work-outline",
+  "arrow.up.right": "north_east",
+  "bag.badge.plus": "work_outline",
   "bell.fill": "notifications",
-  "bell.slash.fill": "notifications-off",
+  "bell.slash.fill": "notifications_off",
   "briefcase.fill": "work",
   "building.2.fill": "business",
-  "building.columns.fill": "account-balance",
-  calendar: "calendar-today",
-  "calendar.badge.minus": "event-busy",
-  "calendar.badge.plus": "event-available",
+  "building.columns": "account_balance",
+  "building.columns.fill": "account_balance",
+  calendar: "calendar_today",
+  "calendar.badge.minus": "event_busy",
+  "calendar.badge.plus": "event_available",
   "calendar.badge.clock": "event",
   "calendar.circle.fill": "event",
-  "creditcard.fill": "credit-card",
-  checkmark: "check",
-  "house.fill": "home",
-  "map.fill": "map",
+  "checkmark.circle.fill": "check_circle",
+  "checkmark.seal.fill": "verified",
+  "checkmark.shield.fill": "verified_user",
+  "clock.badge.checkmark": "pending_actions",
+  "clock.fill": "access_time_filled",
   clock: "schedule",
-  "clock.fill": "access-time-filled",
+  "creditcard.fill": "credit_card",
+  creditcard: "credit_card",
   "exclamationmark.circle.fill": "error",
-  "exclamationmark.circle": "error-outline",
-  "flame.fill": "local-fire-department",
+  "exclamationmark.circle": "error_outline",
+  "flame.fill": "local_fire_department",
   globe: "language",
-  "gym.bag.fill": "fitness-center",
-  "mappin.and.ellipse": "place",
-  "mappin.circle.fill": "location-on",
-  magnifyingglass: "search",
-  plus: "add",
-  "plus.circle.fill": "add-circle",
-  "moon.fill": "dark-mode",
-  pencil: "edit",
-  "person.crop.circle.fill": "account-circle",
-  "person.3.sequence.fill": "groups",
-  "quote.bubble.fill": "format-quote",
-  "slider.horizontal.3": "tune",
-  sparkles: "auto-awesome",
-  "square.and.pencil": "edit",
-  "checkmark.circle.fill": "check-circle",
-  banknote: "payments",
-  "chevron.down": "expand-more",
-  "location.fill": "my-location",
-  "line.3.horizontal.decrease.circle": "filter-list",
-  "paperplane.fill": "send",
-  "chevron.left.forwardslash.chevron.right": "code",
-  "chevron.right": "chevron-right",
-  xmark: "close",
-  "xmark.circle.fill": "cancel",
-  "person.2.fill": "group",
-  "person.fill": "person",
+  "gym.bag.fill": "fitness_center",
   help: "help",
-  "help.circle.fill": "help-outline",
-};
+  "help.circle.fill": "help_outline",
+  "house.fill": "home",
+  "info.circle.fill": "info",
+  "line.3.horizontal.decrease.circle": "filter_list",
+  "location.fill": "my_location",
+  magnifyingglass: "search",
+  "map.fill": "map",
+  "mappin.and.ellipse": "place",
+  "mappin.circle.fill": "location_on",
+  "minus.circle.fill": "remove_circle",
+  minus: "remove",
+  "moon.fill": "dark_mode",
+  number: "numbers",
+  "paperplane.fill": "send",
+  "person.2": "group",
+  "person.2.fill": "group",
+  "person.badge.plus": "person_add",
+  "person.crop.circle.badge.plus": "person_add",
+  "person.crop.circle.fill": "account_circle",
+  "person.fill": "person",
+  "person.text.rectangle.fill": "id_card",
+  pencil: "edit",
+  plus: "add",
+  "plus.circle.fill": "add_circle",
+  "quote.bubble.fill": "format_quote",
+  rosette: "workspace_premium",
+  "rectangle.portrait.and.arrow.right": "logout",
+  "shield.lefthalf.filled": "shield",
+  "slider.horizontal.3": "tune",
+  sparkles: "auto_awesome",
+  "square.and.pencil": "edit",
+  "square.stack.3d.up.fill": "stack",
+  "xmark.circle.fill": "cancel",
+  xmark: "close",
+  "chevron.down": "expand_more",
+  "chevron.left": "chevron_left",
+  "chevron.left.forwardslash.chevron.right": "code",
+  "chevron.right": "chevron_right",
+  "doc.text": "description",
+  "doc.text.fill": "description",
+  "envelope": "mail",
+  "list.bullet.rectangle.portrait.fill": "list_alt",
+  "archivebox": "archive",
+} satisfies Record<string, string>;
 
-type IconSymbolName = keyof typeof SF_TO_MATERIAL_ICON;
+function resolveAndroidSymbolName(name: string): string {
+  const alias = SF_TO_ANDROID_SYMBOL[name as keyof typeof SF_TO_ANDROID_SYMBOL];
+  if (alias) return alias;
+  return name.replace(/\./g, "_").replace(/-+/g, "_");
+}
 
-/**
- * Icon component using Material Icons (filled variants).
- */
-export function IconSymbol({
+function toGlyph(name: string): string | null {
+  const symbolName = resolveAndroidSymbolName(name);
+  const codePoint = androidSymbols[symbolName as keyof typeof androidSymbols];
+  return typeof codePoint === "number" ? String.fromCharCode(codePoint) : null;
+}
+
+export const IconSymbol = memo(function IconSymbol({
   name,
   size = 24,
   color,
   style,
 }: {
-  name: IconSymbolName;
+  name: string;
   size?: number;
   color: string | OpaqueColorValue;
   style?: StyleProp<TextStyle>;
 }) {
-  const iconName = SF_TO_MATERIAL_ICON[name];
+  const [fontsLoaded] = useFonts({
+    [MATERIAL_SYMBOLS_NAME]: MaterialSymbolsRounded_400Regular,
+  });
 
-  if (iconName) {
-    return <MaterialIcons color={color} size={size} name={iconName} style={style} />;
+  const glyph = toGlyph(name);
+  if (!glyph) return null;
+
+  if (!fontsLoaded) {
+    return <View style={{ width: size, height: size }} />;
   }
 
-  // Fallback: use the icon name directly
-  const fallbackName = name.replace(/\./g, "_").replace(/_fill$/, "") as MaterialIconName;
-  return <MaterialIcons color={color} size={size} name={fallbackName} style={style} />;
-}
+  return (
+    <Text
+      allowFontScaling={false}
+      style={[
+        {
+          fontFamily: MATERIAL_SYMBOLS_NAME,
+          fontSize: size,
+          lineHeight: size,
+          color: color as string,
+          textAlign: "center",
+          includeFontPadding: false,
+          textAlignVertical: "center",
+        },
+        { fontVariationSettings: MATERIAL_VARIATION_SETTINGS } as any,
+        style,
+      ]}
+    >
+      {glyph}
+    </Text>
+  );
+});
