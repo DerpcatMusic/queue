@@ -6,6 +6,10 @@ import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
+import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
+import { MapSheetResults } from "@/components/map-tab/map/map-sheet-results";
+import { MapSheetHeader } from "@/components/map-tab/map-tab/map-sheet-header";
+import { buildZoneCityGroups, buildZoneCityListItems } from "@/components/map-tab/zone-city-tree";
 
 import type { QueueMapPin, StudioMapMarker } from "@/components/maps/queue-map.types";
 import { BrandSpacing, getMapBrandPalette } from "@/constants/brand";
@@ -13,6 +17,7 @@ import { ZONE_OPTIONS } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
+import { useTheme } from "@/hooks/use-theme";
 
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import {
@@ -24,10 +29,22 @@ import {
 const MAX_ZONES = 25;
 const MAP_CAMERA_TOP_OFFSET = BrandSpacing.xl;
 const MAP_CAMERA_BOTTOM_OFFSET = BrandSpacing.xl;
+const STATIC_ZONE_CITY_GROUPS = buildZoneCityGroups(ZONE_OPTIONS);
 const STATIC_ZONE_BY_ID = new Map(ZONE_OPTIONS.map((zone) => [zone.id, zone]));
+const STATIC_ZONE_CITY_BY_ZONE_ID = new Map<string, string>();
+const STATIC_ZONE_CITY_GROUP_BY_KEY = new Map(
+  STATIC_ZONE_CITY_GROUPS.map((group) => [group.cityKey, group]),
+);
+
+for (const group of STATIC_ZONE_CITY_GROUPS) {
+  for (const zone of group.zones) {
+    STATIC_ZONE_CITY_BY_ZONE_ID.set(zone.id, group.cityKey);
+  }
+}
 
 export function useMapTabController() {
   const { t, i18n } = useTranslation();
+  const theme = useTheme();
   const { resolvedScheme } = useThemePreference();
   const mapPalette = getMapBrandPalette(resolvedScheme);
   const { overlayBottom } = useAppInsets();
@@ -53,13 +70,18 @@ export function useMapTabController() {
 
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>([]);
   const [zoneModeActive, setZoneModeActive] = useState(false);
+  const [sheetStep, setSheetStep] = useState(0);
   const [zoneSearch, setZoneSearch] = useState("");
+  const [expandedCityKeys, setExpandedCityKeys] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [focusZoneId, setFocusZoneId] = useState<string | null>(null);
   const [mapPin] = useState<QueueMapPin | null>(null);
 
   const noopMapPress = useCallback(() => {}, []);
+  const openSearchSheet = useCallback(() => {
+    setSheetStep(2);
+  }, []);
 
   const handleFocusSelection = useCallback(() => {
     const nextFocusZoneId = focusZoneId ?? selectedZoneIds[0] ?? remoteZones?.zoneIds?.[0] ?? null;
@@ -125,14 +147,38 @@ export function useMapTabController() {
   );
 
   const persistedZoneIds = (remoteZones?.zoneIds ?? []) as string[];
+  const isSheetExpanded = sheetStep > 0;
 
   const hasChanges = useMemo(
     () => hasZoneSelectionChanges(persistedZoneIds, selectedZoneIds),
     [persistedZoneIds, selectedZoneIds],
   );
+  const deferredSelectedZoneSet = useMemo(() => new Set(selectedZoneIds), [selectedZoneIds]);
+  const expandedCityKeySet = useMemo(() => new Set(expandedCityKeys), [expandedCityKeys]);
   const filteredZones = useMemo(
     () => (Platform.OS === "web" ? buildFilteredZones(ZONE_OPTIONS, zoneSearch, zoneLanguage) : []),
     [zoneLanguage, zoneSearch],
+  );
+  const shouldBuildZoneCityItems =
+    isSheetExpanded || zoneModeActive || zoneSearch.trim().length > 0;
+  const zoneCityItems = useMemo(
+    () =>
+      shouldBuildZoneCityItems
+        ? buildZoneCityListItems({
+            groups: STATIC_ZONE_CITY_GROUPS,
+            language: zoneLanguage,
+            query: zoneSearch,
+            expandedCityKeys: expandedCityKeySet,
+            selectedZoneIds: deferredSelectedZoneSet,
+          })
+        : [],
+    [
+      deferredSelectedZoneSet,
+      expandedCityKeySet,
+      shouldBuildZoneCityItems,
+      zoneLanguage,
+      zoneSearch,
+    ],
   );
   const selectedZones = useMemo(
     () =>
@@ -158,6 +204,60 @@ export function useMapTabController() {
     [persistedZoneIds, selectedZoneIds],
   );
 
+  useEffect(() => {
+    if (!zoneModeActive) {
+      return;
+    }
+    setExpandedCityKeys((current) => {
+      const next = new Set(current);
+      for (const zoneId of selectedZoneIds) {
+        const cityKey = STATIC_ZONE_CITY_BY_ZONE_ID.get(zoneId);
+        if (cityKey) {
+          next.add(cityKey);
+        }
+      }
+      if (focusZoneId) {
+        const cityKey = STATIC_ZONE_CITY_BY_ZONE_ID.get(focusZoneId);
+        if (cityKey) {
+          next.add(cityKey);
+        }
+      }
+      return next.size === current.length ? current : [...next];
+    });
+  }, [focusZoneId, selectedZoneIds, zoneModeActive]);
+
+  const toggleCityExpanded = useCallback((cityKey: string) => {
+    setExpandedCityKeys((current) =>
+      current.includes(cityKey)
+        ? current.filter((entry) => entry !== cityKey)
+        : [...current, cityKey],
+    );
+  }, []);
+
+  const toggleCity = useCallback(
+    (cityKey: string) => {
+      const group = STATIC_ZONE_CITY_GROUP_BY_KEY.get(cityKey);
+      if (!group) return;
+      if (Platform.OS === "ios") {
+        void Haptics.selectionAsync();
+      }
+
+      const cityZoneIds = group.zones.map((zone) => zone.id);
+      const isFullySelected = cityZoneIds.every((zoneId) => selectedZoneIds.includes(zoneId));
+      const nextZoneIds = isFullySelected
+        ? selectedZoneIds.filter((zoneId) => !cityZoneIds.includes(zoneId))
+        : [...selectedZoneIds, ...cityZoneIds];
+      const preferredFocusZoneId = isFullySelected ? null : (cityZoneIds[0] ?? null);
+
+      if (applySelectedZoneIds(nextZoneIds, preferredFocusZoneId) && !isFullySelected) {
+        setExpandedCityKeys((current) =>
+          current.includes(cityKey) ? current : [...current, cityKey],
+        );
+      }
+    },
+    [applySelectedZoneIds, selectedZoneIds],
+  );
+
   const openZoneEditor = useCallback(() => {
     setSaveError(null);
     setZoneModeActive(true);
@@ -165,6 +265,9 @@ export function useMapTabController() {
 
   const handleMapSheetSearchChange = useCallback((text: string) => {
     setZoneSearch(text);
+    if (text.trim().length > 0) {
+      setSheetStep(2);
+    }
   }, []);
 
   const persistZoneSelection = useCallback(async () => {
@@ -225,6 +328,24 @@ export function useMapTabController() {
     openZoneEditor();
   }, [confirmZoneSelection, openZoneEditor, zoneModeActive]);
 
+  const handleSheetStepChange = useCallback((step: number) => {
+    setSheetStep(step);
+  }, []);
+
+  const handleZoneResultPress = useCallback(
+    (zoneId: string) => {
+      toggleZone(zoneId);
+    },
+    [toggleZone],
+  );
+
+  const handleCityResultPress = useCallback(
+    (cityKey: string) => {
+      toggleCity(cityKey);
+    },
+    [toggleCity],
+  );
+
   const mapCameraPadding = useMemo(
     () => ({
       top: collapsedSheetHeight + MAP_CAMERA_TOP_OFFSET,
@@ -233,6 +354,81 @@ export function useMapTabController() {
       left: BrandSpacing.lg,
     }),
     [collapsedSheetHeight, overlayBottom],
+  );
+  const mapExpandedResults = useMemo(
+    () => (
+      <MapSheetResults
+        isVisible={isSheetExpanded}
+        saveError={saveError}
+        zoneCityItems={zoneCityItems}
+        zoneLanguage={zoneLanguage}
+        zoneModeActive={zoneModeActive}
+        onPressZone={handleZoneResultPress}
+        onPressCity={handleCityResultPress}
+        onToggleCityExpanded={toggleCityExpanded}
+      />
+    ),
+    [
+      handleCityResultPress,
+      handleZoneResultPress,
+      isSheetExpanded,
+      saveError,
+      toggleCityExpanded,
+      zoneCityItems,
+      zoneLanguage,
+      zoneModeActive,
+    ],
+  );
+
+  const mapSheetConfig = useMemo(
+    () =>
+      createContentDrivenTopSheetConfig({
+        render: () => ({
+          stickyHeader: (
+            <MapSheetHeader
+              focusZoneId={focusZoneId}
+              onChangeSearch={handleMapSheetSearchChange}
+              onFocusSearch={openSearchSheet}
+              mapPalette={mapPalette}
+              selectedZones={selectedZones}
+              onPressZone={setFocusZoneId}
+              t={t}
+              zoneLanguage={zoneLanguage}
+              zoneSearch={zoneSearch}
+            />
+          ),
+          revealOnExpand: mapExpandedResults,
+          activeStep: sheetStep,
+          onStepChange: handleSheetStepChange,
+          backgroundColor: theme.color.surfaceElevated,
+          topInsetColor: theme.color.surfaceElevated,
+          padding: {
+            vertical: 2,
+            horizontal: BrandSpacing.lg,
+          },
+        }),
+        draggable: true,
+        expandable: true,
+        steps: [0, 0.5, 0.9],
+        activeStep: sheetStep,
+        expandMode: "overlay",
+        backgroundColor: theme.color.surfaceElevated,
+        topInsetColor: theme.color.surfaceElevated,
+      }),
+    [
+      focusZoneId,
+      handleMapSheetSearchChange,
+      handleSheetStepChange,
+      mapExpandedResults,
+      theme.color.surfaceElevated,
+      openSearchSheet,
+      selectedZones,
+      sheetStep,
+      t,
+      zoneLanguage,
+      zoneSearch,
+      mapPalette,
+    ],
   );
 
   return {
@@ -264,6 +460,7 @@ export function useMapTabController() {
     setFocusZoneId,
     t,
     toggleZone,
+    mapSheetConfig,
     zoneLanguage,
     zoneSearch,
     zoneModeActive,

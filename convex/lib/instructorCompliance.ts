@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { getSportGenreKey } from "../constants";
-import { normalizeSportType } from "./domainValidation";
+import { normalizeCapabilityTagArray, normalizeSportType } from "./domainValidation";
 import { omitUndefined } from "./validation";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -11,14 +11,17 @@ type InstructorJobActionBlockReason =
   | "insurance_verification_required"
   | "sport_certificate_required";
 
+type ApprovedSpecialtyMap = Map<string, Set<string>>;
+
 // Flip this to `false` to allow any approved certificate from the same genre
-// (for example any Pilates certificate) to unlock sibling sub-sports.
+// to unlock sibling sub-sports. Capability tags are still enforced when present.
 export const STRICT_INSTRUCTOR_CERTIFICATE_SUBSPORT_ENFORCEMENT = true;
 
 export type InstructorComplianceSnapshot = {
   hasApprovedInsurance: boolean;
   approvedCertificateSports: Set<string>;
   approvedCertificateGenres: Set<string>;
+  approvedSpecialtyCapabilities: ApprovedSpecialtyMap;
 };
 
 export const diditVerificationStatusValidator = v.union(
@@ -58,8 +61,12 @@ export const instructorJobActionBlockReasonValidator = v.union(
 );
 
 export const instructorPublicCertificateValidator = v.object({
-  sports: v.array(v.string()),
-  machines: v.optional(v.array(v.string())),
+  specialties: v.array(
+    v.object({
+      sport: v.string(),
+      capabilityTags: v.optional(v.array(v.string())),
+    }),
+  ),
   issuerName: v.optional(v.string()),
   certificateTitle: v.optional(v.string()),
   verifiedAt: v.optional(v.number()),
@@ -77,55 +84,55 @@ export const instructorComplianceSummaryValidator = v.object({
   pendingInsuranceCount: v.number(),
 });
 
-function isApprovedInsuranceActive(
-  row: Doc<"instructorInsurancePolicies">,
-  now: number,
-) {
-  return (
-    row.reviewStatus === "approved" && (!row.expiresAt || row.expiresAt > now)
-  );
+function isApprovedInsuranceActive(row: Doc<"instructorInsurancePolicies">, now: number) {
+  return row.reviewStatus === "approved" && (!row.expiresAt || row.expiresAt > now);
 }
 
-function getApprovedCertificateSports(
-  rows: ReadonlyArray<Doc<"instructorCertificates">>,
-) {
-  const sports = new Set<string>();
+function getCertificateSpecialties(
+  row: Doc<"instructorCertificates">,
+): Array<{ sport: string; capabilityTags?: string[] }> {
+  if (row.specialties && row.specialties.length > 0) {
+    return row.specialties.map((specialty) => {
+      const capabilityTags = normalizeCapabilityTagArray(specialty.capabilityTags);
+      return {
+        sport: normalizeSportType(specialty.sport),
+        ...(capabilityTags ? { capabilityTags } : {}),
+      };
+    });
+  }
+  if (row.sport) {
+    return [{ sport: normalizeSportType(row.sport) }];
+  }
+  return [];
+}
+
+function getApprovedSpecialtyCapabilities(rows: ReadonlyArray<Doc<"instructorCertificates">>) {
+  const specialties: ApprovedSpecialtyMap = new Map();
   for (const row of rows) {
     if (row.reviewStatus !== "approved") {
       continue;
     }
-    const coveredSports =
-      row.coveredSports && row.coveredSports.length > 0
-        ? row.coveredSports
-        : row.sport
-          ? [row.sport]
-          : [];
-    for (const sport of coveredSports) {
-      sports.add(normalizeSportType(sport));
+    for (const specialty of getCertificateSpecialties(row)) {
+      const existing = specialties.get(specialty.sport) ?? new Set<string>();
+      for (const tag of specialty.capabilityTags ?? []) {
+        existing.add(tag);
+      }
+      specialties.set(specialty.sport, existing);
     }
   }
-  return sports;
+  return specialties;
 }
 
-function getApprovedCertificateGenres(
-  rows: ReadonlyArray<Doc<"instructorCertificates">>,
-) {
+function getApprovedCertificateSports(specialtyMap: ApprovedSpecialtyMap) {
+  return new Set<string>(specialtyMap.keys());
+}
+
+function getApprovedCertificateGenres(specialtyMap: ApprovedSpecialtyMap) {
   const genres = new Set<string>();
-  for (const row of rows) {
-    if (row.reviewStatus !== "approved") {
-      continue;
-    }
-    const coveredSports =
-      row.coveredSports && row.coveredSports.length > 0
-        ? row.coveredSports
-        : row.sport
-          ? [row.sport]
-          : [];
-    for (const sport of coveredSports) {
-      const genreKey = getSportGenreKey(sport);
-      if (genreKey) {
-        genres.add(genreKey);
-      }
+  for (const sport of specialtyMap.keys()) {
+    const genreKey = getSportGenreKey(sport);
+    if (genreKey) {
+      genres.add(genreKey);
     }
   }
   return genres;
@@ -133,11 +140,15 @@ function getApprovedCertificateGenres(
 
 function hasCertificateCoverageForSport(args: {
   sport: string;
+  requiredCapabilityTags?: ReadonlyArray<string> | undefined;
   compliance: InstructorComplianceSnapshot;
 }) {
   const normalizedSport = normalizeSportType(args.sport);
-  if (args.compliance.approvedCertificateSports.has(normalizedSport)) {
-    return true;
+  const requiredCapabilityTags = normalizeCapabilityTagArray(args.requiredCapabilityTags) ?? [];
+  const directCapabilities = args.compliance.approvedSpecialtyCapabilities.get(normalizedSport);
+
+  if (directCapabilities) {
+    return requiredCapabilityTags.every((tag) => directCapabilities.has(tag));
   }
 
   if (STRICT_INSTRUCTOR_CERTIFICATE_SUBSPORT_ENFORCEMENT) {
@@ -145,9 +156,10 @@ function hasCertificateCoverageForSport(args: {
   }
 
   const genreKey = getSportGenreKey(normalizedSport);
-  return genreKey
-    ? args.compliance.approvedCertificateGenres.has(genreKey)
-    : false;
+  if (!genreKey || !args.compliance.approvedCertificateGenres.has(genreKey)) {
+    return false;
+  }
+  return requiredCapabilityTags.length === 0;
 }
 
 export async function loadInstructorComplianceSnapshot(
@@ -166,12 +178,13 @@ export async function loadInstructorComplianceSnapshot(
       .collect(),
   ]);
 
+  const approvedSpecialtyCapabilities = getApprovedSpecialtyCapabilities(certificateRows);
+
   return {
-    hasApprovedInsurance: insuranceRows.some((row) =>
-      isApprovedInsuranceActive(row, now),
-    ),
-    approvedCertificateSports: getApprovedCertificateSports(certificateRows),
-    approvedCertificateGenres: getApprovedCertificateGenres(certificateRows),
+    hasApprovedInsurance: insuranceRows.some((row) => isApprovedInsuranceActive(row, now)),
+    approvedCertificateSports: getApprovedCertificateSports(approvedSpecialtyCapabilities),
+    approvedCertificateGenres: getApprovedCertificateGenres(approvedSpecialtyCapabilities),
+    approvedSpecialtyCapabilities,
   };
 }
 
@@ -196,6 +209,7 @@ export function getInstructorJobActionBlockReason(args: {
   profile: Doc<"instructorProfiles">;
   compliance: InstructorComplianceSnapshot;
   sport: string;
+  requiredCapabilityTags?: ReadonlyArray<string> | undefined;
 }): InstructorJobActionBlockReason | undefined {
   if (args.profile.diditVerificationStatus !== "approved") {
     return "identity_verification_required";
@@ -213,6 +227,7 @@ export function canInstructorPerformJobActions(args: {
   profile: Doc<"instructorProfiles">;
   compliance: InstructorComplianceSnapshot;
   sport: string;
+  requiredCapabilityTags?: ReadonlyArray<string> | undefined;
 }) {
   return getInstructorJobActionBlockReason(args) === undefined;
 }
@@ -229,14 +244,8 @@ export async function getInstructorPublicCertificates(
     .collect();
 
   return rows.map((row) => ({
-    sports:
-      row.coveredSports && row.coveredSports.length > 0
-        ? row.coveredSports
-        : row.sport
-          ? [row.sport]
-          : [],
+    specialties: getCertificateSpecialties(row),
     ...omitUndefined({
-      machines: row.machineTags,
       issuerName: row.issuerName,
       certificateTitle: row.certificateTitle,
       verifiedAt: row.reviewedAt,
@@ -251,30 +260,26 @@ export async function buildInstructorComplianceSummary(
     now: number;
   },
 ) {
-  const [publicCertificates, insuranceRows, certificateRows] =
-    await Promise.all([
-      getInstructorPublicCertificates(ctx, args.instructor._id),
-      ctx.db
-        .query("instructorInsurancePolicies")
-        .withIndex("by_instructor", (q) =>
-          q.eq("instructorId", args.instructor._id),
-        )
-        .collect(),
-      ctx.db
-        .query("instructorCertificates")
-        .withIndex("by_instructor", (q) =>
-          q.eq("instructorId", args.instructor._id),
-        )
-        .collect(),
-    ]);
+  const [publicCertificates, insuranceRows, certificateRows] = await Promise.all([
+    getInstructorPublicCertificates(ctx, args.instructor._id),
+    ctx.db
+      .query("instructorInsurancePolicies")
+      .withIndex("by_instructor", (q) => q.eq("instructorId", args.instructor._id))
+      .collect(),
+    ctx.db
+      .query("instructorCertificates")
+      .withIndex("by_instructor", (q) => q.eq("instructorId", args.instructor._id))
+      .collect(),
+  ]);
 
+  const approvedSpecialtyCapabilities = getApprovedSpecialtyCapabilities(certificateRows);
   const compliance = {
-    hasApprovedInsurance: insuranceRows.some((row) =>
-      isApprovedInsuranceActive(row, args.now),
-    ),
-    approvedCertificateSports: getApprovedCertificateSports(certificateRows),
-    approvedCertificateGenres: getApprovedCertificateGenres(certificateRows),
+    hasApprovedInsurance: insuranceRows.some((row) => isApprovedInsuranceActive(row, args.now)),
+    approvedCertificateSports: getApprovedCertificateSports(approvedSpecialtyCapabilities),
+    approvedCertificateGenres: getApprovedCertificateGenres(approvedSpecialtyCapabilities),
+    approvedSpecialtyCapabilities,
   } satisfies InstructorComplianceSnapshot;
+
   const pendingCertificateCount = certificateRows.filter(
     (row) =>
       row.reviewStatus === "uploaded" ||

@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
+import {
+  createContentDrivenTopSheetConfig,
+  useGlobalTopSheet,
+} from "@/components/layout/top-sheet-registry";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -9,6 +13,7 @@ import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
 import type { TimelineListItem } from "../calendar-controller-helpers";
 import { useCalendarTabController } from "../use-calendar-tab-controller";
+import CalendarSheetHeader from "./calendar-sheet-header";
 import CalendarTimelineList from "./calendar-timeline-list";
 import CalendarTimelineRow from "./calendar-timeline-row";
 
@@ -37,6 +42,25 @@ export default function CalendarTabScreen({ controller, todayKey }: CalendarTabS
     overrideItemLayout,
     isLoading,
   } = controller;
+  const calendarSheetConfig = useMemo(
+    () =>
+      createContentDrivenTopSheetConfig({
+        content: <CalendarSheetHeader selectedDay={selectedDay} todayKey={todayKey} />,
+        padding: {
+          vertical: BrandSpacing.sm,
+          horizontal: BrandSpacing.xl,
+        },
+        backgroundColor: palette.primary,
+        topInsetColor: palette.primary,
+        style: {
+          shadowOpacity: 0,
+          shadowRadius: 0,
+          elevation: 0,
+        },
+      }),
+    [palette.primary, selectedDay, todayKey],
+  );
+  useGlobalTopSheet("calendar", calendarSheetConfig, "calendar:tab-screen");
   const listAnimationKey = `${selectedDay}:${listItems.length}`;
 
   const renderItem = useMemo(

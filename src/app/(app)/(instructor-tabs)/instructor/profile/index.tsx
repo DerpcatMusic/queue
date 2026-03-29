@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Linking, StyleSheet, Text, View } from "react-native";
 
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
+import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
 import {
   ProfileSectionCard,
@@ -280,21 +281,19 @@ export default function InstructorProfileScreen() {
   );
 
   const profileSheetConfig = useMemo(
-    () => ({
-      render: () => ({
-        children: profileSheetContent,
+    () =>
+      createContentDrivenTopSheetConfig({
+        render: () => ({
+          children: profileSheetContent,
+        }),
+        padding: {
+          vertical: 0,
+          horizontal: 0,
+        },
+        backgroundColor: theme.color.tertiary,
+        topInsetColor: theme.color.tertiary,
       }),
-      steps: [0],
-      initialStep: 0,
-      collapsedHeightMode: "content" as const,
-      padding: {
-        vertical: 0,
-        horizontal: 0,
-      },
-      backgroundColor: theme.color.surfaceAlt,
-      topInsetColor: theme.color.surfaceAlt,
-    }),
-    [profileSheetContent, theme.color.surfaceAlt],
+    [profileSheetContent, theme.color.tertiary],
   );
 
   const descriptorBody = (

@@ -309,7 +309,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   return (
     <Box
       pointerEvents="box-none"
-      style={[styles.mobileShell, { borderBottomColor: palette.outlineStrong }]}
+      style={styles.mobileShell}
     >
       <Box style={styles.mobileTopRail}>
         <Box
@@ -337,7 +337,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
           style={[
             styles.mobileAvatarWrap,
             {
-              borderColor: palette.primary,
+              borderColor: palette.tertiary,
               backgroundColor: palette.surfaceAlt,
             },
           ]}
@@ -357,8 +357,8 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
               style={{
                 ...BrandType.heroSmall,
                 fontFamily: profileNameFont,
-                fontStyle: isHebrew ? "normal" : "italic",
                 letterSpacing: -0.3,
+                lineHeight: 40,
                 color: palette.text,
                 includeFontPadding: false,
                 flex: 1,
@@ -381,7 +381,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
                 <IconSymbol
                   name="pencil"
                   size={IconSize.sm}
-                  color={palette.primary}
+                  color={palette.tertiary}
                 />
               }
             />
@@ -482,7 +482,6 @@ const styles = StyleSheet.create({
     paddingTop: BrandSpacing.sm,
     paddingBottom: BrandSpacing.lg,
     gap: BrandSpacing.md,
-    borderBottomWidth: BorderWidth.strong,
   },
   mobileTopRail: {
     flexDirection: "row",

@@ -13,13 +13,13 @@ import type { ColorValue, StyleProp, ViewStyle } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/use-theme";
+import type { AppTheme } from "@/theme/theme";
 import type {
   TopSheetCollapsedHeightMode,
   TopSheetExpandMode,
   TopSheetPadding,
   TopSheetProps,
 } from "./top-sheet";
-import type { AppTheme } from "@/theme/theme";
 
 export type TopSheetRenderProps = {
   scrollY: SharedValue<number>;
@@ -87,45 +87,55 @@ function areSheetOverridesEqual(
   );
 }
 
+function normalizeDynamicCollapsedSteps(steps?: readonly number[]) {
+  if (!steps || steps.length === 0) {
+    return [0] as const;
+  }
+
+  return [0, ...steps.slice(1)] as const;
+}
+
+export function createContentDrivenTopSheetConfig<T extends TopSheetTabOverride>(config: T): T {
+  return {
+    initialStep: 0,
+    collapsedHeightMode: "content",
+    ...config,
+    steps: normalizeDynamicCollapsedSteps(config.steps),
+  } as T;
+}
+
 const DEFAULT_TOP_SHEET_CONFIGS: Record<string, TopSheetTabConfig> = {
-  jobs: {
+  jobs: createContentDrivenTopSheetConfig({
     tabId: "jobs",
-    steps: [0.26],
-    initialStep: 0,
-  },
-  calendar: {
+    steps: [0],
+  }),
+  calendar: createContentDrivenTopSheetConfig({
     tabId: "calendar",
-    steps: [0.28],
-    initialStep: 0,
-  },
-  map: {
+    steps: [0],
+  }),
+  map: createContentDrivenTopSheetConfig({
     tabId: "map",
     draggable: true,
     expandable: true,
-    steps: [0.18, 0.52],
-    initialStep: 0,
+    steps: [0, 0.52],
     expandMode: "overlay",
-  },
-  index: {
+  }),
+  index: createContentDrivenTopSheetConfig({
     tabId: "index",
-    steps: [0.22],
-    initialStep: 0,
-  },
-  profile: {
+    steps: [0],
+  }),
+  profile: createContentDrivenTopSheetConfig({
     tabId: "profile",
-    steps: [0.22],
-    initialStep: 0,
-  },
-  "sign-in": {
+    steps: [0],
+  }),
+  "sign-in": createContentDrivenTopSheetConfig({
     tabId: "sign-in",
-    steps: [0.18],
-    initialStep: 0,
-  },
-  onboarding: {
+    steps: [0],
+  }),
+  onboarding: createContentDrivenTopSheetConfig({
     tabId: "onboarding",
-    steps: [0.22],
-    initialStep: 0,
-  },
+    steps: [0],
+  }),
 };
 
 export const DEFAULT_SHEET_PADDING_TOP = 140;
@@ -237,17 +247,10 @@ export function resolveTabSheetConfig(
   };
 }
 
-export function getDefaultSheetColors(tabId: string, theme: AppTheme) {
-  if (tabId === "map") {
-    return {
-      backgroundColor: theme.color.surfaceElevated,
-      topInsetColor: theme.color.surfaceElevated,
-    } as const;
-  }
-
+export function getDefaultSheetColors(_tabId: string, theme: AppTheme) {
   return {
-    backgroundColor: theme.color.primary,
-    topInsetColor: theme.color.primary,
+    backgroundColor: theme.color.surfaceElevated,
+    topInsetColor: theme.color.surfaceElevated,
   } as const;
 }
 
@@ -286,22 +289,19 @@ export function useResolvedTabSheetConfig(tabId: string | null) {
   const theme = useTheme();
   const activeEntry = tabId ? overrides[tabId]?.[overrides[tabId]!.length - 1] : undefined;
 
-  return useMemo(
-    () => {
-      if (!tabId) {
-        return null;
-      }
+  return useMemo(() => {
+    if (!tabId) {
+      return null;
+    }
 
-      return resolveSheetColors(
+    return resolveSheetColors(
+      tabId,
+      {
+        ...(DEFAULT_TOP_SHEET_CONFIGS[tabId] ?? { tabId }),
+        ...(activeEntry?.config ?? {}),
         tabId,
-        {
-          ...(DEFAULT_TOP_SHEET_CONFIGS[tabId] ?? { tabId }),
-          ...(activeEntry?.config ?? {}),
-          tabId,
-        },
-        theme,
-      );
-    },
-    [activeEntry, tabId, theme],
-  );
+      },
+      theme,
+    );
+  }, [activeEntry, tabId, theme]);
 }

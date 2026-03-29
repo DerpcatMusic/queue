@@ -2,6 +2,10 @@ import { v } from "convex/values";
 
 import { internalMutation, internalQuery } from "./_generated/server";
 import { isKnownZoneId } from "./lib/domainValidation";
+import {
+  canInstructorPerformJobActions,
+  loadInstructorComplianceSnapshot,
+} from "./lib/instructorCompliance";
 import { omitUndefined } from "./lib/validation";
 
 export const getJobAndEligibleInstructors = internalQuery({
@@ -45,6 +49,19 @@ export const getJobAndEligibleInstructors = internalQuery({
     const seen = new Set<string>();
     for (const row of coverageRows) {
       if (!row.notificationsEnabled || !row.expoPushToken) continue;
+      const profile = await ctx.db.get(row.instructorId);
+      if (!profile) continue;
+      const compliance = await loadInstructorComplianceSnapshot(ctx, row.instructorId, Date.now());
+      if (
+        !canInstructorPerformJobActions({
+          profile,
+          compliance,
+          sport: job.sport,
+          requiredCapabilityTags: job.requiredCapabilityTags,
+        })
+      ) {
+        continue;
+      }
       const key = `${row.instructorId}::${row.expoPushToken}`;
       if (seen.has(key)) continue;
       seen.add(key);

@@ -42,7 +42,7 @@ export function MapSheetResults({
   }
 
   return (
-    <View style={{ flex: 1, gap: BrandSpacing.sm }}>
+    <View style={{ flex: 1, minHeight: 0, gap: BrandSpacing.sm, paddingTop: BrandSpacing.xs }}>
       {saveError ? (
         <View
           style={{
@@ -62,8 +62,9 @@ export function MapSheetResults({
       <FlatList<ZoneCityListItem>
         data={zoneCityItems}
         keyExtractor={(item: ZoneCityListItem) => item.key}
+        style={{ flex: 1, minHeight: 0 }}
         contentContainerStyle={{
-          paddingTop: BrandSpacing.xs,
+          paddingTop: 0,
           paddingBottom: BrandSpacing.xxl,
           gap: BrandSpacing.xs,
         }}
@@ -111,7 +112,7 @@ export function MapSheetResults({
                   gap: BrandSpacing.md,
                   borderRadius: MAP_RESULT_RADIUS,
                   borderCurve: "continuous",
-                  backgroundColor: item.selected ? palette.primarySubtle : palette.surfaceAlt,
+                  backgroundColor: item.selected ? palette.primarySubtle : palette.surface,
                 }}
               >
                 <Pressable
@@ -184,7 +185,7 @@ export function MapSheetResults({
                     ? palette.primarySubtle
                     : isPartiallySelected
                       ? palette.primarySubtle
-                      : palette.surfaceAlt,
+                      : palette.surface,
                 borderRadius: MAP_RESULT_RADIUS,
                 borderCurve: "continuous",
               }}

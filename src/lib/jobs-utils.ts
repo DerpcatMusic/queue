@@ -67,6 +67,8 @@ type BoostPresentation = {
 export type StudioDraft = {
   branchId: Id<"studioBranches"> | null;
   sport: string;
+  requiredCapabilityTags: string[];
+  preferredCapabilityTags: string[];
   startTime: number;
   endTime: number;
   payInput: string;
@@ -107,6 +109,8 @@ export function createDefaultStudioDraft(branchId: StudioDraft["branchId"] = nul
   return {
     branchId,
     sport: "",
+    requiredCapabilityTags: [],
+    preferredCapabilityTags: [],
     startTime,
     endTime: startTime + 60 * MINUTE_MS,
     payInput: "250",
