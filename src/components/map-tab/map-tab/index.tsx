@@ -7,7 +7,11 @@ import { MapMobileStage } from "@/components/map-tab/map-tab/map-mobile-stage";
 import { MapWebWorkbench } from "@/components/map-tab/map-tab/map-web-workbench";
 import { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
 
-export default function MapTabScreen() {
+type MapTabScreenProps = {
+  controller: ReturnType<typeof useMapTabController>;
+};
+
+export default function MapTabScreen({ controller }: MapTabScreenProps) {
   const router = useRouter();
   const {
     currentUser,
@@ -40,7 +44,7 @@ export default function MapTabScreen() {
     zoneLanguage,
     zoneSearch,
     zoneModeActive,
-  } = useMapTabController();
+  } = controller;
   const [isMapLoading, setIsMapLoading] = useState(true);
   useEffect(() => {
     if (isMapBodyReady) {

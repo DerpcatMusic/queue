@@ -9,11 +9,15 @@ import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
 import type { TimelineListItem } from "../calendar-controller-helpers";
 import { useCalendarTabController } from "../use-calendar-tab-controller";
-import { toDayKey } from "./calendar-date-utils";
 import CalendarTimelineList from "./calendar-timeline-list";
 import CalendarTimelineRow from "./calendar-timeline-row";
 
-export default function CalendarTabScreen() {
+type CalendarTabScreenProps = {
+  controller: ReturnType<typeof useCalendarTabController>;
+  todayKey: string;
+};
+
+export default function CalendarTabScreen({ controller, todayKey }: CalendarTabScreenProps) {
   const { t } = useTranslation();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { color: palette } = useTheme();
@@ -22,7 +26,6 @@ export default function CalendarTabScreen() {
     bottomSpacing: BrandSpacing.xl,
     horizontalPadding: BrandSpacing.lg,
   });
-  const todayKey = useMemo(() => toDayKey(Date.now()), []);
   const {
     selectedDay,
     listRef,
@@ -33,7 +36,7 @@ export default function CalendarTabScreen() {
     handleTimelineScrollBegin,
     overrideItemLayout,
     isLoading,
-  } = useCalendarTabController();
+  } = controller;
   const listAnimationKey = `${selectedDay}:${listItems.length}`;
 
   const renderItem = useMemo(

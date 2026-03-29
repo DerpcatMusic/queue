@@ -5,7 +5,6 @@ import { Pressable, Text, View } from "react-native";
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
 import { GlobalTopSheetProvider } from "@/components/layout/top-sheet-registry";
-import { TabBarScrollProvider } from "@/contexts/tab-bar-scroll-context";
 import { useTheme } from "@/hooks/use-theme";
 import { buildRoleTabRoute, type RoleTabRouteName } from "@/navigation/role-routes";
 import { getTabsForRole } from "@/navigation/tab-registry";
@@ -43,8 +42,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   return (
     <ScrollSheetProvider>
       <GlobalTopSheetProvider>
-        <TabBarScrollProvider>
-          <View style={{ flex: 1, backgroundColor: palette.appBg }}>
+        <View style={{ flex: 1, backgroundColor: palette.appBg }}>
             <GlobalTopSheet />
             <View
               style={{
@@ -255,7 +253,6 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
               </View>
             </View>
           </View>
-        </TabBarScrollProvider>
       </GlobalTopSheetProvider>
     </ScrollSheetProvider>
   );

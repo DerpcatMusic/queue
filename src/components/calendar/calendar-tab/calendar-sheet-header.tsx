@@ -10,6 +10,7 @@ type CalendarSheetHeaderProps = {
 };
 
 function CalendarSheetHeader({ selectedDay, todayKey }: CalendarSheetHeaderProps) {
+
   // Calculate the week start (Monday) for the selected day
   // This is a simple implementation - we find the Monday of the week
   const selectedDate = new Date(selectedDay + "T00:00:00");

@@ -103,13 +103,20 @@ export function resolveTopSheetRouteIdentity(
   activeTabId: string | null,
   activeConfig: ResolvedTopSheetTabConfig | null,
 ): TopSheetRouteIdentity {
-  const activeRouteKey = pathname ?? activeTabId;
+  // activeTabId is the tab identifier (index, profile, jobs, calendar, map)
+  // pathname is the full route path (e.g., /instructor, /instructor/profile)
   const fallbackKey = activeConfig?.tabId ?? activeTabId ?? "global-top-sheet";
-  const routeKey = activeRouteKey ?? fallbackKey;
+
+  // stateKey is based on activeTabId so TopSheet doesn't remount when navigating
+  // nested routes within the same tab (e.g., /instructor/profile -> /instructor/profile/edit)
+  const stateKey = activeTabId ?? fallbackKey;
+
+  // transitionKey uses the full pathname so animations trigger on any route change
+  const transitionKey = pathname ?? activeTabId ?? fallbackKey;
 
   return {
-    stateKey: routeKey,
-    transitionKey: routeKey,
-    routeDepth: getRouteDepth(activeRouteKey),
+    stateKey,
+    transitionKey,
+    routeDepth: getRouteDepth(pathname),
   };
 }
