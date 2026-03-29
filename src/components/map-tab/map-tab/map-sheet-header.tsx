@@ -7,44 +7,51 @@ import { BrandSpacing, type getMapBrandPalette } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
 
 type MapSheetHeaderProps = {
-  focusZoneId: string | null;
-  onChangeSearch: (text: string) => void;
-  onFocusSearch: () => void;
-  mapPalette: ReturnType<typeof getMapBrandPalette>;
-  selectedZones: ZoneOption[];
-  onPressZone: (zoneId: string | null) => void;
-  t: TFunction;
-  zoneLanguage: "en" | "he";
-  zoneSearch: string;
+  focusZoneId?: string | null;
+  onChangeSearch?: (text: string) => void;
+  onFocusSearch?: () => void;
+  mapPalette?: ReturnType<typeof getMapBrandPalette>;
+  selectedZones?: ZoneOption[];
+  onPressZone?: (zoneId: string) => void;
+  t?: TFunction;
+  zoneLanguage?: "en" | "he";
+  zoneSearch?: string;
 };
 
 export function MapSheetHeader({
-  focusZoneId,
-  onChangeSearch,
-  onFocusSearch,
-  mapPalette: _mapPalette,
-  selectedZones,
-  onPressZone,
-  t,
-  zoneLanguage,
-  zoneSearch,
+  focusZoneId: focusZoneIdProp,
+  onChangeSearch: onChangeSearchProp,
+  onFocusSearch: _onFocusSearch,
+  mapPalette: mapPaletteProp,
+  selectedZones: selectedZonesProp,
+  onPressZone: onPressZoneProp,
+  t: tProp,
+  zoneLanguage: zoneLanguageProp,
+  zoneSearch: zoneSearchProp,
 }: MapSheetHeaderProps) {
+  const focusZoneId = focusZoneIdProp ?? null;
+  const selectedZones = selectedZonesProp ?? [];
+  const onPressZone = onPressZoneProp;
+  const zoneSearch = zoneSearchProp ?? "";
+
   return (
     <View style={{ gap: BrandSpacing.xs }}>
-      <NativeSearchField
-        value={zoneSearch}
-        onChangeText={onChangeSearch}
-        onFocus={onFocusSearch}
-        placeholder={t("mapTab.searchPlaceholder")}
-        clearAccessibilityLabel={t("common.clear")}
-        size="sm"
-        containerStyle={{ backgroundColor: _mapPalette.surfaceAlt }}
-      />
+      {onChangeSearchProp && mapPaletteProp && tProp && (
+        <NativeSearchField
+          value={zoneSearch}
+          onChangeText={onChangeSearchProp}
+          onFocus={_onFocusSearch}
+          placeholder={tProp("mapTab.searchPlaceholder")}
+          clearAccessibilityLabel={tProp("common.clear")}
+          size="sm"
+          containerStyle={{ backgroundColor: mapPaletteProp.surfaceAlt }}
+        />
+      )}
       <MapSelectedZonesStrip
         selectedZones={selectedZones}
         focusZoneId={focusZoneId}
-        zoneLanguage={zoneLanguage}
-        onPressZone={onPressZone}
+        zoneLanguage={zoneLanguageProp ?? "en"}
+        onPressZone={onPressZone ?? (() => {})}
       />
     </View>
   );

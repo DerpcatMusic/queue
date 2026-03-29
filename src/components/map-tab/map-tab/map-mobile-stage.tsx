@@ -36,8 +36,8 @@ export function MapMobileStage({
   mapBackgroundColor,
   isFocused,
   mapPin,
-  selectedZoneIds,
-  focusZoneId,
+  selectedZoneIds: selectedZoneIdsProp,
+  focusZoneId: focusZoneIdProp,
   zoneModeActive,
   isSaving,
   overlayBottom,
@@ -49,6 +49,9 @@ export function MapMobileStage({
   onEditToggle,
 }: MapMobileStageProps) {
   const theme = useTheme();
+  const selectedZoneIds = selectedZoneIdsProp;
+  const focusZoneId = focusZoneIdProp;
+  const handleZonePress = onPressZone;
 
   if (!isFocused) {
     return <View style={{ flex: 1, backgroundColor: mapBackgroundColor }} />;
@@ -65,7 +68,7 @@ export function MapMobileStage({
         cameraPadding={cameraPadding}
         studios={studios}
         onPressStudio={onPressStudio}
-        onPressZone={onPressZone}
+        onPressZone={handleZonePress}
         onPressMap={onPressMap}
         showGpsButton={false}
         showAttributionButton
