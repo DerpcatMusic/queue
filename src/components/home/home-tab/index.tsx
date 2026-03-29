@@ -14,6 +14,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
+import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
 
@@ -146,20 +147,17 @@ export default function HomeScreen() {
   const homeSheetConfig = useMemo(
     () =>
       activeRole === "instructor" || activeRole === "studio"
-        ? {
+        ? createContentDrivenTopSheetConfig({
             content: homeSheetContent,
-            steps: [0.1],
-            initialStep: 0,
-            collapsedHeightMode: "content" as const,
             padding: {
               vertical: 0,
               horizontal: 0,
             },
-            backgroundColor: palette.surface,
-            topInsetColor: palette.surface,
-          }
+            backgroundColor: palette.surfaceElevated,
+            topInsetColor: palette.surfaceElevated,
+          })
         : null,
-    [activeRole, homeSheetContent, palette.surface],
+    [activeRole, homeSheetContent, palette.surfaceElevated],
   );
 
   const descriptor = useMemo(

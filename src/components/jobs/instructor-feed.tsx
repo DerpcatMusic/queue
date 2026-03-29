@@ -2,29 +2,30 @@ import type BottomSheet from "@gorhom/bottom-sheet";
 import { useMutation, useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
-import {
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshControl, StyleSheet, View } from "react-native";
+import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
 import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
 import {
   type InstructorArchiveRow,
   InstructorJobsArchiveSheet,
 } from "@/components/jobs/instructor/instructor-jobs-archive-sheet";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
+import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
+import {
+  createContentDrivenTopSheetConfig,
+  useGlobalTopSheet,
+} from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitDisclosureButtonGroup, type KitDisclosureButtonGroupOption } from "@/components/ui/kit";
+import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
@@ -46,15 +47,17 @@ export function InstructorFeed() {
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const liveNow = useMinuteNow();
 
-  const [jobsSearchQuery] = useState("");
-  const [sortMode] = useState<"none" | "bonus" | "pay" | "time">("bonus");
-  const [sortDirection] = useState<"asc" | "desc">("desc");
+  const [jobsSearchQuery, setJobsSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState<"none" | "bonus" | "pay" | "time">("bonus");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [showJobsFilters, setShowJobsFilters] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [emptyVariantIndex, setEmptyVariantIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [applyingJobId, setApplyingJobId] = useState<Id<"jobs"> | null>(null);
   const [withdrawingApplicationId, setWithdrawingApplicationId] =
     useState<Id<"jobApplications"> | null>(null);
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveSheetRef = useRef<BottomSheet>(null);
   const deferredJobsSearchQuery = useDeferredValue(jobsSearchQuery);
@@ -200,6 +203,7 @@ export function InstructorFeed() {
       clearTimeout(refreshTimerRef.current);
     }
 
+    setShowJobsFilters(false);
     setEmptyVariantIndex((current) => (current + 1) % emptyVariants.length);
     setRefreshing(true);
     refreshTimerRef.current = setTimeout(() => {
@@ -217,6 +221,139 @@ export function InstructorFeed() {
     [],
   );
 
+  const jobsFilterOptions = useMemo(
+    () =>
+      [
+        { value: "none", label: "None" },
+        { value: "bonus", label: "Bonus" },
+        { value: "pay", label: "Pay" },
+        { value: "time", label: "Time" },
+      ] as const satisfies readonly KitDisclosureButtonGroupOption<
+        "none" | "bonus" | "pay" | "time"
+      >[],
+    [],
+  );
+  const jobsHeaderLayoutTransition = useMemo(
+    () => LinearTransition.duration(220).reduceMotion(ReduceMotion.System),
+    [],
+  );
+  const jobsSortSummaryLabel = useMemo(() => {
+    if (sortMode === "none") return "Sorted by: None";
+    if (sortMode === "bonus") return "Sorted by: Bonus";
+    if (sortMode === "pay") return `Sorted by: Pay ${sortDirection === "asc" ? "↑" : "↓"}`;
+    return `Sorted by: Time ${sortDirection === "asc" ? "↑" : "↓"}`;
+  }, [sortDirection, sortMode]);
+
+  const jobsSheetConfig = useMemo(
+    () =>
+      createContentDrivenTopSheetConfig({
+        stickyHeader: (
+          <View style={{ gap: BrandSpacing.sm }}>
+            <Animated.View layout={jobsHeaderLayoutTransition} style={styles.feedIntro}>
+              <ThemedText style={[BrandType.title, { color: theme.color.text }]}>
+                {t("jobsTab.availableJobsTitle")}
+              </ThemedText>
+            </Animated.View>
+            <Animated.View
+              layout={jobsHeaderLayoutTransition}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: BrandSpacing.sm,
+              }}
+            >
+              <Animated.View
+                layout={jobsHeaderLayoutTransition}
+                style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}
+              >
+                <NativeSearchField
+                  value={jobsSearchQuery}
+                  onChangeText={setJobsSearchQuery}
+                  placeholder={t("jobsTab.searchPlaceholder")}
+                  clearAccessibilityLabel={t("common.clear")}
+                  size="sm"
+                  animateLayout
+                  containerStyle={{ backgroundColor: theme.jobs.surface }}
+                />
+              </Animated.View>
+              <Animated.View
+                layout={jobsHeaderLayoutTransition}
+                style={{ flexShrink: 0, minWidth: 0 }}
+              >
+                <KitDisclosureButtonGroup
+                  accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
+                  expanded={showJobsFilters}
+                  onToggleExpanded={() => setShowJobsFilters((current) => !current)}
+                  options={jobsFilterOptions}
+                  value={sortMode}
+                  onChange={(value) => {
+                    setSortMode(value);
+                    if (value === "pay") setSortDirection("desc");
+                    if (value === "time") setSortDirection("asc");
+                    if (value === "bonus" || value === "none") setSortDirection("desc");
+                  }}
+                  triggerIcon={
+                    <IconSymbol
+                      name="line.3.horizontal.decrease.circle"
+                      size={18}
+                      color={theme.color.text}
+                    />
+                  }
+                  size="sm"
+                  railColor={theme.jobs.surface}
+                  selectedColor={theme.jobs.surfaceRaised}
+                  labelColor={theme.color.text}
+                  selectedLabelColor={theme.color.primary}
+                  dividerColor={theme.color.border}
+                />
+              </Animated.View>
+            </Animated.View>
+            <Animated.View layout={jobsHeaderLayoutTransition}>
+              <ThemedText
+                style={[
+                  BrandType.caption,
+                  { color: theme.jobs.idle, paddingHorizontal: BrandSpacing.xs },
+                ]}
+                onPress={() => {
+                  if (sortMode === "pay" || sortMode === "time") {
+                    setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+                  }
+                }}
+              >
+                {jobsSortSummaryLabel}
+              </ThemedText>
+            </Animated.View>
+            {actionErrorMessage ? (
+              <NoticeBanner
+                tone="error"
+                message={actionErrorMessage}
+                onDismiss={() => setActionErrorMessage(null)}
+              />
+            ) : null}
+          </View>
+        ),
+        padding: {
+          vertical: BrandSpacing.md,
+          horizontal: BrandSpacing.lg,
+        },
+        draggable: false,
+        expandable: false,
+        backgroundColor: theme.jobs.surfaceRaised,
+        topInsetColor: theme.jobs.surfaceRaised,
+      }),
+    [
+      actionErrorMessage,
+      jobsFilterOptions,
+      jobsHeaderLayoutTransition,
+      jobsSearchQuery,
+      jobsSortSummaryLabel,
+      showJobsFilters,
+      sortMode,
+      t,
+      theme,
+    ],
+  );
+
   const onApply = useCallback(
     async (job: InstructorMarketplaceJob) => {
       if (!job.canApplyToJob) {
@@ -225,11 +362,13 @@ export function InstructorFeed() {
         });
         return;
       }
+      setActionErrorMessage(null);
       setApplyingJobId(job.jobId);
       try {
         await applyToJob({ jobId: job.jobId });
       } catch (error) {
         console.error("[jobs] apply failed", error);
+        setActionErrorMessage(t("jobsTab.errors.applyError"));
       } finally {
         setApplyingJobId(null);
       }
@@ -239,11 +378,13 @@ export function InstructorFeed() {
 
   const onWithdrawApplication = useCallback(
     async (applicationId: Id<"jobApplications">) => {
+      setActionErrorMessage(null);
       setWithdrawingApplicationId(applicationId);
       try {
         await withdrawApplication({ applicationId });
       } catch (error) {
         console.error("[jobs] withdraw failed", error);
+        setActionErrorMessage(t("jobsTab.errors.withdrawError"));
       } finally {
         setWithdrawingApplicationId(null);
       }
@@ -259,6 +400,8 @@ export function InstructorFeed() {
     },
     [router],
   );
+
+  useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:instructor-feed");
 
   if (
     currentUser === undefined ||

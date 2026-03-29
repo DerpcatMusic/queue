@@ -5,6 +5,7 @@ import { MapSelectedZonesStrip } from "@/components/map-tab/map/map-selected-zon
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing, type getMapBrandPalette } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
+import { useTheme } from "@/hooks/use-theme";
 
 type MapSheetHeaderProps = {
   focusZoneId?: string | null;
@@ -29,6 +30,7 @@ export function MapSheetHeader({
   zoneLanguage: zoneLanguageProp,
   zoneSearch: zoneSearchProp,
 }: MapSheetHeaderProps) {
+  const { color: palette } = useTheme();
   const focusZoneId = focusZoneIdProp ?? null;
   const selectedZones = selectedZonesProp ?? [];
   const onPressZone = onPressZoneProp;
@@ -44,7 +46,7 @@ export function MapSheetHeader({
           placeholder={tProp("mapTab.searchPlaceholder")}
           clearAccessibilityLabel={tProp("common.clear")}
           size="sm"
-          containerStyle={{ backgroundColor: mapPaletteProp.surfaceAlt }}
+          containerStyle={{ backgroundColor: palette.surfaceAlt }}
         />
       )}
       <MapSelectedZonesStrip

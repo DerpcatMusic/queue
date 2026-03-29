@@ -1,19 +1,14 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
-import {
-  internalMutation,
-  internalQuery,
-  mutation,
-  query,
-} from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { requireUserRole } from "./lib/auth";
+import { normalizeCapabilityTagArray, normalizeSportType } from "./lib/domainValidation";
 import {
   buildInstructorComplianceSummary,
   instructorCertificateReviewStatusValidator,
   instructorComplianceSummaryValidator,
   instructorInsuranceReviewStatusValidator,
 } from "./lib/instructorCompliance";
-import { normalizeSportType } from "./lib/domainValidation";
 import { omitUndefined } from "./lib/validation";
 
 const DOCUMENT_UPLOAD_SESSION_TTL_MS = 10 * 60 * 1000;
@@ -28,15 +23,42 @@ function normalizeOptionalText(value: string | undefined) {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 }
 
-function normalizeOptionalStringArray(
-  values: ReadonlyArray<string> | undefined,
+function normalizeOptionalStringArray(values: ReadonlyArray<string> | undefined) {
+  if (!values) {
+    return undefined;
+  }
+  const normalized = values.map((value) => value.trim()).filter((value) => value.length > 0);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeOptionalSpecialties(
+  values:
+    | ReadonlyArray<{
+        sport: string;
+        capabilityTags?: ReadonlyArray<string>;
+      }>
+    | undefined,
 ) {
   if (!values) {
     return undefined;
   }
   const normalized = values
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
+    .map((value) => {
+      const capabilityTags = normalizeCapabilityTagArray(value.capabilityTags);
+      return {
+        sport: normalizeSportType(value.sport),
+        ...(capabilityTags ? { capabilityTags } : {}),
+      };
+    })
+    .filter((value, index, array) => {
+      const key = `${value.sport}::${(value.capabilityTags ?? []).join(",")}`;
+      return (
+        array.findIndex(
+          (candidate) =>
+            `${candidate.sport}::${(candidate.capabilityTags ?? []).join(",")}` === key,
+        ) === index
+      );
+    });
   return normalized.length > 0 ? normalized : undefined;
 }
 
@@ -73,9 +95,7 @@ export const createMyComplianceDocumentUploadSession = mutation({
     }
 
     const sport =
-      args.kind === "certificate" && args.sport
-        ? normalizeSportType(args.sport)
-        : undefined;
+      args.kind === "certificate" && args.sport ? normalizeSportType(args.sport) : undefined;
     const now = Date.now();
     const expiresAt = now + DOCUMENT_UPLOAD_SESSION_TTL_MS;
     const sessionToken = createUploadSessionToken(String(user._id), now);
@@ -108,10 +128,7 @@ export const completeMyComplianceDocumentUpload = mutation({
   returns: v.object({
     ok: v.boolean(),
     documentKind: v.union(v.literal("certificate"), v.literal("insurance")),
-    documentId: v.union(
-      v.id("instructorCertificates"),
-      v.id("instructorInsurancePolicies"),
-    ),
+    documentId: v.union(v.id("instructorCertificates"), v.id("instructorInsurancePolicies")),
   }),
   handler: async (ctx, args) => {
     const user = await requireUserRole(ctx, ["instructor"]);
@@ -136,9 +153,7 @@ export const completeMyComplianceDocumentUpload = mutation({
       throw new ConvexError("Uploaded file was not found");
     }
 
-    const mimeType = assertAllowedComplianceContentType(
-      uploadedFile.contentType ?? undefined,
-    );
+    const mimeType = assertAllowedComplianceContentType(uploadedFile.contentType ?? undefined);
     const fileName = normalizeOptionalText(args.fileName);
 
     if (session.kind === "certificate") {
@@ -161,13 +176,9 @@ export const completeMyComplianceDocumentUpload = mutation({
         storageId: args.storageId,
       });
 
-      await ctx.scheduler.runAfter(
-        0,
-        internal.complianceReview.reviewInstructorCertificate,
-        {
-          certificateId: documentId,
-        },
-      );
+      await ctx.scheduler.runAfter(0, internal.complianceReview.reviewInstructorCertificate, {
+        certificateId: documentId,
+      });
 
       return {
         ok: true,
@@ -193,13 +204,9 @@ export const completeMyComplianceDocumentUpload = mutation({
         storageId: args.storageId,
       });
 
-      await ctx.scheduler.runAfter(
-        0,
-        internal.complianceReview.reviewInstructorInsurancePolicy,
-        {
-          insurancePolicyId: documentId,
-        },
-      );
+      await ctx.scheduler.runAfter(0, internal.complianceReview.reviewInstructorInsurancePolicy, {
+        insurancePolicyId: documentId,
+      });
 
       return {
         ok: true,
@@ -244,8 +251,14 @@ export const getMyInstructorComplianceDetails = query({
       certificates: v.array(
         v.object({
           sport: v.optional(v.string()),
-          coveredSports: v.optional(v.array(v.string())),
-          machineTags: v.optional(v.array(v.string())),
+          specialties: v.optional(
+            v.array(
+              v.object({
+                sport: v.string(),
+                capabilityTags: v.optional(v.array(v.string())),
+              }),
+            ),
+          ),
           reviewStatus: instructorCertificateReviewStatusValidator,
           issuerName: v.optional(v.string()),
           certificateTitle: v.optional(v.string()),
@@ -299,8 +312,7 @@ export const getMyInstructorComplianceDetails = query({
         uploadedAt: row.uploadedAt,
         ...omitUndefined({
           sport: row.sport,
-          coveredSports: row.coveredSports,
-          machineTags: row.machineTags,
+          specialties: row.specialties,
           issuerName: row.issuerName,
           certificateTitle: row.certificateTitle,
           reviewedAt: row.reviewedAt,
@@ -332,8 +344,14 @@ export const applyInstructorCertificateReviewDecision = internalMutation({
     reviewProvider: v.optional(v.literal("gemini")),
     issuerName: v.optional(v.string()),
     certificateTitle: v.optional(v.string()),
-    coveredSports: v.optional(v.array(v.string())),
-    machineTags: v.optional(v.array(v.string())),
+    specialties: v.optional(
+      v.array(
+        v.object({
+          sport: v.string(),
+          capabilityTags: v.optional(v.array(v.string())),
+        }),
+      ),
+    ),
     completedAt: v.optional(v.number()),
     reviewSummary: v.optional(v.string()),
     reviewJson: v.optional(v.string()),
@@ -358,8 +376,7 @@ export const applyInstructorCertificateReviewDecision = internalMutation({
         reviewProvider: args.reviewProvider,
         issuerName: normalizeOptionalText(args.issuerName),
         certificateTitle: normalizeOptionalText(args.certificateTitle),
-        coveredSports: normalizeOptionalStringArray(args.coveredSports),
-        machineTags: normalizeOptionalStringArray(args.machineTags),
+        specialties: normalizeOptionalSpecialties(args.specialties),
         completedAt: args.completedAt,
         reviewSummary: normalizeOptionalText(args.reviewSummary),
         reviewJson: normalizeOptionalText(args.reviewJson),
@@ -600,18 +617,14 @@ export const createInstructorComplianceNotification = internalMutation({
       createdAt: Date.now(),
     });
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.userPushNotifications.sendUserPushNotification,
-      {
-        userId: args.recipientUserId,
-        title: args.title,
-        body: args.body,
-        data: {
-          type: args.kind,
-        },
+    await ctx.scheduler.runAfter(0, internal.userPushNotifications.sendUserPushNotification, {
+      userId: args.recipientUserId,
+      title: args.title,
+      body: args.body,
+      data: {
+        type: args.kind,
       },
-    );
+    });
 
     return { ok: true };
   },
@@ -668,9 +681,7 @@ export const listInsurancePoliciesForRenewalProcessing = internalQuery({
         }),
     );
 
-    return results.filter(
-      (row): row is NonNullable<typeof row> => row !== null,
-    );
+    return results.filter((row): row is NonNullable<typeof row> => row !== null);
   },
 });
 
@@ -725,8 +736,14 @@ export const getCurrentInstructorComplianceInternal = internalQuery({
       certificates: v.array(
         v.object({
           sport: v.optional(v.string()),
-          coveredSports: v.optional(v.array(v.string())),
-          machineTags: v.optional(v.array(v.string())),
+          specialties: v.optional(
+            v.array(
+              v.object({
+                sport: v.string(),
+                capabilityTags: v.optional(v.array(v.string())),
+              }),
+            ),
+          ),
           storageId: v.id("_storage"),
           reviewStatus: instructorCertificateReviewStatusValidator,
           issuerName: v.optional(v.string()),
@@ -783,8 +800,7 @@ export const getCurrentInstructorComplianceInternal = internalQuery({
         uploadedAt: row.uploadedAt,
         ...omitUndefined({
           sport: row.sport,
-          coveredSports: row.coveredSports,
-          machineTags: row.machineTags,
+          specialties: row.specialties,
           issuerName: row.issuerName,
           certificateTitle: row.certificateTitle,
           reviewedAt: row.reviewedAt,

@@ -19,14 +19,7 @@ const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.md;
 const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.md;
 const PROFILE_ICON_BUTTON_SIZE = 40;
 
-// Mock uses urgent-orange (#FF5E00) for danger/destructive actions
 const URGENT_ORANGE = "#FF5E00";
-
-// Mock's surface container highest color (#262626) for icon backgrounds
-const ICON_CONTAINER_BG_DARK = "#262626";
-
-// Support card background - matches surface-container in mock (#191919)
-const SUPPORT_CARD_BG = "#191919";
 
 export function ProfileSectionHeader({
   label,
@@ -97,8 +90,8 @@ export function ProfileSectionCard({
           borderRadius: BrandRadius.card,
           borderCurve: "continuous",
           borderWidth: BorderWidth.thin,
-          borderColor: "rgba(255, 255, 255, 0.05)", // white/5 from mock
-          backgroundColor: theme.color.surfaceAlt,
+          borderColor: theme.color.border,
+          backgroundColor: theme.color.surfaceElevated,
         },
         style,
       ]}
@@ -174,8 +167,7 @@ export function ProfileSettingRow({
         ? resolvedAccentColor
         : theme.color.primary;
 
-  // Mock uses white/5% for dividers
-  const dividerColor = "rgba(255, 255, 255, 0.05)";
+  const dividerColor = theme.color.divider;
 
   const content = (
     <Box>
@@ -193,7 +185,7 @@ export function ProfileSettingRow({
               width: 40,
               height: 40,
               borderRadius: BrandRadius.lg,
-              backgroundColor: ICON_CONTAINER_BG_DARK,
+              backgroundColor: theme.color.surfaceAlt,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -285,10 +277,10 @@ export function ProfileSupportCard({
   const cardContent = (
     <View
       style={{
-        backgroundColor: SUPPORT_CARD_BG,
+        backgroundColor: theme.color.surfaceAlt,
         borderRadius: BrandRadius.card,
         borderWidth: BorderWidth.thin,
-        borderColor: "rgba(255, 255, 255, 0.05)",
+        borderColor: theme.color.border,
         padding: BrandSpacing.md,
         flexDirection: "column",
         alignItems: "center",
@@ -322,13 +314,14 @@ export function ProfileSupportCard({
 
 // Sign Out button - matches mock's urgent-orange style
 export function ProfileSignOutButton({ title, onPress }: { title: string; onPress?: () => void }) {
+  const theme = useTheme();
   const cardContent = (
     <View
       style={{
-        backgroundColor: "rgba(255, 94, 0, 0.1)", // urgent-orange/10 from mock
+        backgroundColor: theme.color.secondarySubtle,
         borderRadius: BrandRadius.card,
         borderWidth: 1,
-        borderColor: "rgba(255, 94, 0, 0.2)", // urgent-orange/20 from mock
+        borderColor: theme.color.secondary,
         padding: BrandSpacing.md,
         flexDirection: "row",
         alignItems: "center",
@@ -337,11 +330,11 @@ export function ProfileSignOutButton({ title, onPress }: { title: string; onPres
         minHeight: 52,
       }}
     >
-      <IconSymbol name="logout" size={20} color={URGENT_ORANGE} />
+      <IconSymbol name="logout" size={20} color={theme.color.secondary} />
       <Text
         variant="bodyMedium"
         style={{
-          color: URGENT_ORANGE,
+          color: theme.color.secondary,
           fontWeight: "700",
         }}
       >

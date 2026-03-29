@@ -18,7 +18,7 @@ import { KitSwitch } from "@/components/ui/kit/kit-switch";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
 import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
+import { SPORT_TYPES, toCapabilityTagLabel, toSportLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
 import type { StudioDraft } from "@/lib/jobs-utils";
 import {
@@ -284,14 +284,100 @@ export function PayParticipantsSection({ draft, setDraft }: PayParticipantsSecti
 type PostingOptionsSectionProps = {
   draft: StudioDraft;
   setDraft: React.Dispatch<React.SetStateAction<StudioDraft>>;
+  supportedCapabilityTags: readonly string[];
 };
 
-export function PostingOptionsSection({ draft, setDraft }: PostingOptionsSectionProps) {
+export function PostingOptionsSection({
+  draft,
+  setDraft,
+  supportedCapabilityTags,
+}: PostingOptionsSectionProps) {
   const { t } = useTranslation();
   const { color: palette } = useTheme();
 
   return (
     <View style={{ gap: BrandSpacing.lg }}>
+      {supportedCapabilityTags.length > 0 ? (
+        <View style={{ gap: BrandSpacing.md }}>
+          <ThemedText type="defaultSemiBold" style={{ color: palette.text }}>
+            Capability Requirements
+          </ThemedText>
+          <ThemedText type="micro" style={{ color: palette.textMuted }}>
+            Mark required capabilities to hard-filter matches. Preferred tags are soft ranking only.
+          </ThemedText>
+          <View style={{ gap: BrandSpacing.sm }}>
+            <ThemedText type="micro" style={{ color: palette.textMuted }}>
+              Required
+            </ThemedText>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
+              {supportedCapabilityTags.map((tag) => {
+                const selected = draft.requiredCapabilityTags.includes(tag);
+                return (
+                  <ChoicePill
+                    key={`required-${tag}`}
+                    label={toCapabilityTagLabel(tag)}
+                    selected={selected}
+                    compact
+                    backgroundColor={palette.surfaceAlt}
+                    selectedBackgroundColor={palette.primary}
+                    labelColor={palette.text}
+                    selectedLabelColor={palette.onPrimary}
+                    onPress={() =>
+                      setDraft((current) => {
+                        const nextRequired = selected
+                          ? current.requiredCapabilityTags.filter((value) => value !== tag)
+                          : [...current.requiredCapabilityTags, tag];
+                        const nextPreferred = nextRequired.includes(tag)
+                          ? current.preferredCapabilityTags.filter((value) => value !== tag)
+                          : current.preferredCapabilityTags;
+                        return {
+                          ...current,
+                          requiredCapabilityTags: nextRequired,
+                          preferredCapabilityTags: nextPreferred,
+                        };
+                      })
+                    }
+                  />
+                );
+              })}
+            </View>
+          </View>
+          <View style={{ gap: BrandSpacing.sm }}>
+            <ThemedText type="micro" style={{ color: palette.textMuted }}>
+              Preferred
+            </ThemedText>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
+              {supportedCapabilityTags.map((tag) => {
+                const disabled = draft.requiredCapabilityTags.includes(tag);
+                const selected = draft.preferredCapabilityTags.includes(tag);
+                return (
+                  <ChoicePill
+                    key={`preferred-${tag}`}
+                    label={toCapabilityTagLabel(tag)}
+                    selected={selected}
+                    compact
+                    backgroundColor={palette.surfaceAlt}
+                    selectedBackgroundColor={palette.secondary}
+                    labelColor={palette.text}
+                    selectedLabelColor={palette.onPrimary}
+                    onPress={() =>
+                      !disabled &&
+                      setDraft((current) => ({
+                        ...current,
+                        preferredCapabilityTags: selected
+                          ? current.preferredCapabilityTags.filter((value) => value !== tag)
+                          : [...current.preferredCapabilityTags, tag],
+                      }))
+                    }
+                    disabled={disabled}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      ) : null}
+
       <View style={{ gap: BrandSpacing.md }}>
         <ThemedText type="defaultSemiBold" style={{ color: palette.text }}>
           {t("jobsTab.form.closeApplications")}

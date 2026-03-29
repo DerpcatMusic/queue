@@ -1,7 +1,7 @@
 import type BottomSheet from "@gorhom/bottom-sheet";
 import { useIsFocused } from "@react-navigation/native";
 import { Redirect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
@@ -11,12 +11,17 @@ import { CreateJobSheet } from "@/components/jobs/studio/create-job-sheet";
 import { StudioJobDetailSheet } from "@/components/jobs/studio/studio-job-detail-sheet";
 import { StudioJobsArchiveSheet } from "@/components/jobs/studio/studio-jobs-archive-sheet";
 import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
+import { StudioJobsTopSheetHeader } from "@/components/jobs/studio/studio-jobs-top-sheet";
 import {
   useStudioFeedController,
 } from "@/components/jobs/studio/use-studio-feed-controller";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
+import {
+  createContentDrivenTopSheetConfig,
+  useGlobalTopSheet,
+} from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -37,6 +42,7 @@ export function StudioFeed() {
     ,
     /* isCreateSheetVisible, unused but needed for sheet tracking */ setIsCreateSheetVisible,
   ] = useState(false);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [isFabMenuOpen, setIsFabMenuOpen] = useState(false);
   const detailSheetRef = useRef<BottomSheet>(null);
@@ -62,17 +68,22 @@ export function StudioFeed() {
     errorMessage,
     filteredStudioJobs,
     filteredStudioJobsWithPayments,
+    isEnablingStudioPush,
     isReviewingApplicationId,
     isStartingCheckoutForJobId,
     isSubmittingStudio,
+    jobsTimeFilter,
     postStudioJob,
     reviewStudioApplication,
     setErrorMessage,
+    setJobsTimeFilter,
     setStatusMessage,
     startStudioCheckout,
     statusMessage,
     studioBranches,
     studioJobs,
+    studioNotificationSettings,
+    toggleStudioPush,
   } = useStudioFeedController({ t });
   const defaultBranchId =
     studioBranches?.length === 1 ? (studioBranches[0]?.branchId ?? null) : null;
@@ -101,6 +112,17 @@ export function StudioFeed() {
         count: primaryJobs.length,
       });
 
+  const handleToggleJobsFilters = useCallback(() => {
+    setIsFilterExpanded((current) => !current);
+  }, []);
+
+  const handleChangeJobsFilter = useCallback(
+    (filter: typeof jobsTimeFilter) => {
+      setJobsTimeFilter(filter);
+    },
+    [setJobsTimeFilter],
+  );
+
   const handleReviewApplication = useCallback(
     (
       applicationId: Parameters<typeof reviewStudioApplication>[0],
@@ -122,6 +144,44 @@ export function StudioFeed() {
     },
     [],
   );
+
+  const jobsSheetConfig = useMemo(
+    () =>
+      createContentDrivenTopSheetConfig({
+        stickyHeader: (
+          <StudioJobsTopSheetHeader
+            currentFilter={jobsTimeFilter}
+            notificationsEnabled={Boolean(studioNotificationSettings?.notificationsEnabled)}
+            isTogglingNotifications={isEnablingStudioPush}
+            onToggleNotifications={toggleStudioPush}
+            isFilterExpanded={isFilterExpanded}
+            onToggleFilter={handleToggleJobsFilters}
+            onChangeFilter={handleChangeJobsFilter}
+            t={t}
+          />
+        ),
+        padding: {
+          vertical: BrandSpacing.sm,
+          horizontal: BrandSpacing.xl,
+        },
+        draggable: false,
+        expandable: false,
+        backgroundColor: theme.jobs.surfaceRaised,
+        topInsetColor: theme.jobs.surfaceRaised,
+      }),
+    [
+      handleChangeJobsFilter,
+      handleToggleJobsFilters,
+      isEnablingStudioPush,
+      isFilterExpanded,
+      jobsTimeFilter,
+      studioNotificationSettings?.notificationsEnabled,
+      t,
+      theme.jobs.surfaceRaised,
+      toggleStudioPush,
+    ],
+  );
+  useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:studio-feed");
 
   if (currentUser === undefined) {
     return <LoadingScreen label={t("jobsTab.loading")} />;

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Linking, StyleSheet, Text, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
+import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
 import {
   ProfileSectionCard,
@@ -387,21 +388,19 @@ export default function StudioProfileScreen() {
   );
 
   const profileSheetConfig = useMemo(
-    () => ({
-      render: () => ({
-        children: profileSheetContent,
+    () =>
+      createContentDrivenTopSheetConfig({
+        render: () => ({
+          children: profileSheetContent,
+        }),
+        padding: {
+          vertical: 0,
+          horizontal: 0,
+        },
+        backgroundColor: color.tertiary,
+        topInsetColor: color.tertiary,
       }),
-      steps: [0],
-      initialStep: 0,
-      collapsedHeightMode: "content" as const,
-      padding: {
-        vertical: 0,
-        horizontal: 0,
-      },
-      backgroundColor: color.surface,
-      topInsetColor: color.surface,
-    }),
-    [color.surface, profileSheetContent],
+    [color.tertiary, profileSheetContent],
   );
 
   const descriptorBody = (

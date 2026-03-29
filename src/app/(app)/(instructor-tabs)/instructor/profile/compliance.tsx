@@ -14,7 +14,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
-import { isSportType, toSportLabel } from "@/convex/constants";
+import { isSportType, toCapabilityTagLabel, toSportLabel } from "@/convex/constants";
 import {
   isComplianceDocumentUploadError,
   useComplianceDocumentUpload,
@@ -26,8 +26,10 @@ import { BorderWidth, Radius } from "@/theme/theme";
 
 type ComplianceCertificateRow = {
   sport?: string;
-  coveredSports?: string[];
-  machineTags?: string[];
+  specialties?: Array<{
+    sport: string;
+    capabilityTags?: string[];
+  }>;
   reviewStatus:
     | "uploaded"
     | "ai_pending"
@@ -73,38 +75,24 @@ function getLatestCertificate(rows: ComplianceCertificateRow[]) {
   }
 
   return [...rows].sort(
-    (left, right) =>
-      (right.reviewedAt ?? right.uploadedAt) -
-      (left.reviewedAt ?? left.uploadedAt),
+    (left, right) => (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt),
   )[0];
 }
 
-function getPreferredInsurancePolicy(
-  rows: ComplianceInsuranceRow[],
-  now: number,
-) {
+function getPreferredInsurancePolicy(rows: ComplianceInsuranceRow[], now: number) {
   if (rows.length === 0) {
     return null;
   }
 
   return [...rows].sort((left, right) => {
     const leftActiveApproved =
-      left.reviewStatus === "approved" &&
-      (!left.expiresAt || left.expiresAt > now)
-        ? 1
-        : 0;
+      left.reviewStatus === "approved" && (!left.expiresAt || left.expiresAt > now) ? 1 : 0;
     const rightActiveApproved =
-      right.reviewStatus === "approved" &&
-      (!right.expiresAt || right.expiresAt > now)
-        ? 1
-        : 0;
+      right.reviewStatus === "approved" && (!right.expiresAt || right.expiresAt > now) ? 1 : 0;
     if (leftActiveApproved !== rightActiveApproved) {
       return rightActiveApproved - leftActiveApproved;
     }
-    return (
-      (right.reviewedAt ?? right.uploadedAt) -
-      (left.reviewedAt ?? left.uploadedAt)
-    );
+    return (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt);
   })[0];
 }
 
@@ -118,14 +106,14 @@ function getCertificateSubtitle(
   }
 
   const reviewedAt = formatDate(row.reviewedAt, locale);
-  const coverage = (row.coveredSports ?? (row.sport ? [row.sport] : []))
+  const coverage = (
+    row.specialties?.map((specialty) => specialty.sport) ?? (row.sport ? [row.sport] : [])
+  )
     .map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport))
     .join(", ");
   switch (row.reviewStatus) {
     case "approved": {
-      const source = [row.certificateTitle, row.issuerName]
-        .filter(Boolean)
-        .join(" · ");
+      const source = [row.certificateTitle, row.issuerName].filter(Boolean).join(" · ");
       const summary = [coverage, source].filter(Boolean).join(" · ");
       if (summary) {
         return reviewedAt
@@ -188,14 +176,6 @@ function getInsuranceSubtitle(
     default:
       return t("profile.compliance.insurance.missingBody");
   }
-}
-
-function formatMachineTag(tag: string) {
-  return tag
-    .split(/[_-]/g)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 function getVerificationStatusPresentation(
@@ -318,11 +298,7 @@ function VerificationUploadPanel({
           </Box>
           <Box alignItems="center" gap="xxs">
             <Text variant="bodyStrong">{title}</Text>
-            <Text
-              variant="caption"
-              color="textMuted"
-              style={{ textAlign: "center" }}
-            >
+            <Text variant="caption" color="textMuted" style={{ textAlign: "center" }}>
               {subtitle}
             </Text>
             <Text
@@ -383,11 +359,7 @@ export default function InstructorComplianceScreen() {
   } | null>(null);
   const currentUser = useQuery(api.users.getCurrentUser);
   const complianceArgs =
-    currentUser?.role === "instructor"
-      ? refreshNonce > 0
-        ? { now: Date.now() }
-        : {}
-      : "skip";
+    currentUser?.role === "instructor" ? (refreshNonce > 0 ? { now: Date.now() } : {}) : "skip";
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
@@ -396,18 +368,10 @@ export default function InstructorComplianceScreen() {
     api.didit.getMyDiditVerification,
     currentUser?.role === "instructor" ? {} : "skip",
   );
-  const compliance = useQuery(
-    api.compliance.getMyInstructorComplianceDetails,
-    complianceArgs,
-  );
-  const createSessionForCurrentInstructor = useAction(
-    api.didit.createSessionForCurrentInstructor,
-  );
-  const refreshMyDiditVerification = useAction(
-    api.didit.refreshMyDiditVerification,
-  );
-  const { isUploading, pickAndUploadComplianceDocument } =
-    useComplianceDocumentUpload();
+  const compliance = useQuery(api.compliance.getMyInstructorComplianceDetails, complianceArgs);
+  const createSessionForCurrentInstructor = useAction(api.didit.createSessionForCurrentInstructor);
+  const refreshMyDiditVerification = useAction(api.didit.refreshMyDiditVerification);
+  const { isUploading, pickAndUploadComplianceDocument } = useComplianceDocumentUpload();
 
   const locale = i18n.resolvedLanguage ?? "en";
   const now = Date.now();
@@ -426,11 +390,9 @@ export default function InstructorComplianceScreen() {
         ? Array.from(
             new Set(
               (
-                latestCertificate.coveredSports ??
+                latestCertificate.specialties?.map((specialty) => specialty.sport) ??
                 (latestCertificate.sport ? [latestCertificate.sport] : [])
-              ).map((sport) =>
-                isSportType(sport) ? toSportLabel(sport) : sport,
-              ),
+              ).map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)),
             ),
           )
         : [],
@@ -441,7 +403,11 @@ export default function InstructorComplianceScreen() {
       latestCertificate?.reviewStatus === "approved"
         ? Array.from(
             new Set(
-              (latestCertificate.machineTags ?? []).map(formatMachineTag),
+              (
+                latestCertificate.specialties?.flatMap(
+                  (specialty) => specialty.capabilityTags ?? [],
+                ) ?? []
+              ).map((tag) => toCapabilityTagLabel(tag)),
             ),
           )
         : [],
@@ -709,11 +675,7 @@ export default function InstructorComplianceScreen() {
               borderColor: theme.color.tertiarySubtle,
             }}
           >
-            <IconSymbol
-              name="person.fill"
-              size={20}
-              color={theme.color.tertiary}
-            />
+            <IconSymbol name="person.fill" size={20} color={theme.color.tertiary} />
           </Box>
           <Box flex={1} minWidth={0} gap="xxs">
             <Text variant="titleLarge">
@@ -745,9 +707,7 @@ export default function InstructorComplianceScreen() {
         </Box>
 
         <Box gap="xs">
-          <Text variant="bodyStrong">
-            {t("profile.compliance.identity.cardTitle")}
-          </Text>
+          <Text variant="bodyStrong">{t("profile.compliance.identity.cardTitle")}</Text>
           <Text variant="caption" color="textMuted">
             {t("profile.compliance.identity.cardBody")}
           </Text>
@@ -760,16 +720,10 @@ export default function InstructorComplianceScreen() {
           loading={isDiditBusy}
           disabled={isDiditBusy}
           {...(diditButtonColors ? { colors: diditButtonColors } : {})}
-          {...(diditVerification.isVerified
-            ? { tone: "secondary" as const }
-            : {})}
+          {...(diditVerification.isVerified ? { tone: "secondary" as const } : {})}
         />
 
-        <Text
-          variant="caption"
-          color="textMuted"
-          style={{ textAlign: "center" }}
-        >
+        <Text variant="caption" color="textMuted" style={{ textAlign: "center" }}>
           {t("profile.compliance.identity.cardHint")}
         </Text>
       </KitSurface>
@@ -783,10 +737,7 @@ export default function InstructorComplianceScreen() {
           label={t("profile.compliance.insurance.title")}
           title={t("profile.compliance.documents.tapToUpload")}
           subtitle={getInsuranceSubtitle(preferredInsurance ?? null, locale, t)}
-          statusLabel={getDocumentStatusLabel(
-            preferredInsurance?.reviewStatus,
-            t,
-          )}
+          statusLabel={getDocumentStatusLabel(preferredInsurance?.reviewStatus, t)}
           onPress={onOpenInsuranceUpload}
           accentColor={theme.color.tertiary}
           disabled={isUploading}
@@ -795,15 +746,8 @@ export default function InstructorComplianceScreen() {
           icon="sparkles"
           label={t("profile.compliance.certificate.title")}
           title={t("profile.compliance.documents.tapToUpload")}
-          subtitle={getCertificateSubtitle(
-            latestCertificate ?? null,
-            locale,
-            t,
-          )}
-          statusLabel={getDocumentStatusLabel(
-            latestCertificate?.reviewStatus,
-            t,
-          )}
+          subtitle={getCertificateSubtitle(latestCertificate ?? null, locale, t)}
+          statusLabel={getDocumentStatusLabel(latestCertificate?.reviewStatus, t)}
           onPress={onOpenCertificateUpload}
           accentColor={theme.color.tertiary}
           disabled={isUploading}
@@ -827,9 +771,7 @@ export default function InstructorComplianceScreen() {
           </Text>
           {approvedCoverage.length > 0 ? (
             <Box gap="sm">
-              <Text variant="bodyMedium">
-                {t("profile.compliance.certificate.coverageSports")}
-              </Text>
+              <Text variant="bodyMedium">{t("profile.compliance.certificate.coverageSports")}</Text>
               <Box flexDirection="row" flexWrap="wrap" gap="sm">
                 {approvedCoverage.map((label) => (
                   <Box

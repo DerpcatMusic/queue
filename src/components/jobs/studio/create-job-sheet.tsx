@@ -7,7 +7,7 @@ import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provid
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { SPORT_TYPES, toSportLabel } from "@/convex/constants";
+import { getSportSupportedCapabilityTags, SPORT_TYPES, toSportLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
 import type { StudioDraft } from "@/lib/jobs-utils";
 import { createDefaultStudioDraft } from "@/lib/jobs-utils";
@@ -62,7 +62,12 @@ export function CreateJobSheet({
     );
   }, [sportQuery]);
   const selectSport = useCallback((sport: string) => {
-    setDraft((d) => ({ ...d, sport }));
+    setDraft((d) => ({
+      ...d,
+      sport,
+      requiredCapabilityTags: [],
+      preferredCapabilityTags: [],
+    }));
     setSportQuery("");
     setSportPickerOpen(false);
   }, []);
@@ -78,9 +83,18 @@ export function CreateJobSheet({
         .includes(normalized),
     );
     if (exactMatch) {
-      setDraft((curr) => ({ ...curr, sport: exactMatch }));
+      setDraft((curr) => ({
+        ...curr,
+        sport: exactMatch,
+        requiredCapabilityTags: curr.sport === exactMatch ? curr.requiredCapabilityTags : [],
+        preferredCapabilityTags: curr.sport === exactMatch ? curr.preferredCapabilityTags : [],
+      }));
     }
   }, []);
+  const supportedCapabilityTags = useMemo(
+    () => getSportSupportedCapabilityTags(draft.sport),
+    [draft.sport],
+  );
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -207,6 +221,12 @@ export function CreateJobSheet({
             selectSport={selectSport}
           />
 
+          <PostingOptionsSection
+            draft={draft}
+            setDraft={setDraft}
+            supportedCapabilityTags={supportedCapabilityTags}
+          />
+
           <ScheduleSection
             draft={draft}
             locale={locale}
@@ -215,7 +235,6 @@ export function CreateJobSheet({
             onOpenEndTime={() => setShowEndTimePicker(true)}
           />
 
-          <PostingOptionsSection draft={draft} setDraft={setDraft} />
           <BoostBonusSection draft={draft} setDraft={setDraft} />
           <PayParticipantsSection draft={draft} setDraft={setDraft} />
           <NotesSection draft={draft} setDraft={setDraft} />
