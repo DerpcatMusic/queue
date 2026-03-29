@@ -62,22 +62,22 @@ type OnboardingStep = 0 | 1 | 2;
 
 // Lazy-loaded step body components
 const StepInstructorProfileBody = lazy(() =>
-  import("@/components/onboarding/step-instructor-profile-body").then((m) => ({
+  import("../components/onboarding/step-instructor-profile-body").then((m) => ({
     default: m.StepInstructorProfileBody,
   }))
 );
 const StepStudioProfileBody = lazy(() =>
-  import("@/components/onboarding/step-studio-profile-body").then((m) => ({
+  import("../components/onboarding/step-studio-profile-body").then((m) => ({
     default: m.StepStudioProfileBody,
   }))
 );
 const StepInstructorComplianceBody = lazy(() =>
-  import("@/components/onboarding/step-instructor-compliance-body").then((m) => ({
+  import("../components/onboarding/step-instructor-compliance-body").then((m) => ({
     default: m.StepInstructorComplianceBody,
   }))
 );
 const StepStudioComplianceBody = lazy(() =>
-  import("@/components/onboarding/step-studio-compliance-body").then((m) => ({
+  import("../components/onboarding/step-studio-compliance-body").then((m) => ({
     default: m.StepStudioComplianceBody,
   }))
 );
