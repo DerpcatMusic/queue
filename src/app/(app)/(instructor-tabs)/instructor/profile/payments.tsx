@@ -263,26 +263,10 @@ export default function ProfilePaymentsScreen() {
     );
   }, [payoutSummary, pendingPreferenceMode]);
 
-  if (
-    currentUser === undefined ||
-    (isInstructorPaymentsRole && paymentRows === undefined) ||
-    (currentUser?.role === "instructor" && payoutSummary === undefined) ||
-    (activeOnboardingId !== null && activeOnboardingSession === undefined)
-  ) {
-    return <LoadingScreen label={t("jobsTab.loading")} />;
-  }
-  if (currentUser === null) {
-    return <Redirect href="/sign-in" />;
-  }
-  if (!currentUser.onboardingComplete || currentUser.role === "pending") {
-    return <Redirect href="/onboarding" />;
-  }
-  if (currentUser.role !== "instructor") {
-    return <Redirect href="/" />;
-  }
-
   const rows = useMemo(() => paymentRows ?? [], [paymentRows]);
-  const role = currentUser.role as "studio" | "instructor";
+  const role = (currentUser?.role === "studio" ? "studio" : "instructor") as
+    | "studio"
+    | "instructor";
   const isDetailLoading =
     selectedPaymentId !== null && selectedPaymentDetail === undefined;
   const isManualPayoutMode = payoutSummary?.payoutReleaseMode !== "automatic";
@@ -482,6 +466,24 @@ export default function ProfilePaymentsScreen() {
     },
     [payoutSummary?.payoutPreferenceScheduledDate, savePayoutPreference],
   );
+
+  if (
+    currentUser === undefined ||
+    (isInstructorPaymentsRole && paymentRows === undefined) ||
+    (currentUser?.role === "instructor" && payoutSummary === undefined) ||
+    (activeOnboardingId !== null && activeOnboardingSession === undefined)
+  ) {
+    return <LoadingScreen label={t("jobsTab.loading")} />;
+  }
+  if (currentUser === null) {
+    return <Redirect href="/sign-in" />;
+  }
+  if (!currentUser.onboardingComplete || currentUser.role === "pending") {
+    return <Redirect href="/onboarding" />;
+  }
+  if (currentUser.role !== "instructor") {
+    return <Redirect href="/" />;
+  }
 
   if (isFinalizingOnboarding) {
     return (

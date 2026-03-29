@@ -1,21 +1,18 @@
 import { useAction, useQuery } from "convex/react";
-import * as AuthSession from "expo-auth-session";
 import { Redirect } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, RefreshControl, View } from "react-native";
+import { Alert, Pressable } from "react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
-import {
-  ProfileSectionCard,
-  ProfileSectionHeader,
-  ProfileSettingRow,
-} from "@/components/profile/profile-settings-sections";
-import { ProfileSubpageScrollView } from "@/components/profile/profile-subpage-sheet";
-import { ThemedText } from "@/components/themed-text";
-import { ActionButton } from "@/components/ui/action-button";
 import { LoadingScreen } from "@/components/loading-screen";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import {
+  ProfileSubpageScrollView,
+  useProfileSubpageSheet,
+} from "@/components/profile/profile-subpage-sheet";
+import { ActionButton } from "@/components/ui/action-button";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitSurface } from "@/components/ui/kit";
+import { BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toSportLabel } from "@/convex/constants";
 import {
@@ -23,6 +20,9 @@ import {
   useComplianceDocumentUpload,
 } from "@/hooks/use-compliance-document-upload";
 import { useTheme } from "@/hooks/use-theme";
+import { startDiditNativeVerification } from "@/lib/didit-native";
+import { Box, Text } from "@/primitives";
+import { BorderWidth, Radius } from "@/theme/theme";
 
 type ComplianceCertificateRow = {
   sport?: string;
@@ -65,36 +65,6 @@ function formatDate(value: number | undefined, locale: string) {
     month: "short",
     day: "numeric",
   });
-}
-
-function getLatestCertificateForSport(
-  rows: ComplianceCertificateRow[],
-  sport: string,
-) {
-  const matchingRows = rows.filter((row) => {
-    const coveredSports =
-      row.coveredSports && row.coveredSports.length > 0
-        ? row.coveredSports
-        : row.sport
-          ? [row.sport]
-          : [];
-    return coveredSports.includes(sport);
-  });
-  if (matchingRows.length === 0) {
-    return null;
-  }
-
-  return [...matchingRows].sort((left, right) => {
-    const leftPriority = left.reviewStatus === "approved" ? 1 : 0;
-    const rightPriority = right.reviewStatus === "approved" ? 1 : 0;
-    if (leftPriority !== rightPriority) {
-      return rightPriority - leftPriority;
-    }
-    return (
-      (right.reviewedAt ?? right.uploadedAt) -
-      (left.reviewedAt ?? left.uploadedAt)
-    );
-  })[0];
 }
 
 function getLatestCertificate(rows: ComplianceCertificateRow[]) {
@@ -220,23 +190,156 @@ function getInsuranceSubtitle(
   }
 }
 
-function getBlockingSummary(
-  reasons: string[],
+function formatMachineTag(tag: string) {
+  return tag
+    .split(/[_-]/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getVerificationStatusPresentation(
+  status:
+    | "approved"
+    | "declined"
+    | "in_review"
+    | "pending"
+    | "in_progress"
+    | "abandoned"
+    | "expired"
+    | "not_started"
+    | undefined,
+  theme: ReturnType<typeof useTheme>,
   t: ReturnType<typeof useTranslation>["t"],
 ) {
-  const labels = reasons.map((reason) => {
-    switch (reason) {
-      case "identity_verification_required":
-        return t("profile.compliance.blockers.identity");
-      case "insurance_verification_required":
-        return t("profile.compliance.blockers.insurance");
-      case "sport_certificate_required":
-        return t("profile.compliance.blockers.certificate");
-      default:
-        return reason;
-    }
-  });
-  return labels.join(" · ");
+  switch (status) {
+    case "approved":
+      return {
+        label: t("profile.compliance.values.approved"),
+        backgroundColor: theme.color.primarySubtle,
+        borderColor: theme.color.primarySubtle,
+        textColor: theme.color.primary,
+      };
+    case "in_review":
+    case "pending":
+    case "in_progress":
+      return {
+        label: t("profile.compliance.values.pending"),
+        backgroundColor: theme.color.tertiarySubtle,
+        borderColor: theme.color.tertiarySubtle,
+        textColor: theme.color.tertiary,
+      };
+    default:
+      return {
+        label: t("profile.compliance.identity.unverified"),
+        backgroundColor: theme.color.tertiarySubtle,
+        borderColor: theme.color.tertiarySubtle,
+        textColor: theme.color.tertiary,
+      };
+  }
+}
+
+function getDocumentStatusLabel(
+  status:
+    | ComplianceCertificateRow["reviewStatus"]
+    | ComplianceInsuranceRow["reviewStatus"]
+    | undefined,
+  t: ReturnType<typeof useTranslation>["t"],
+) {
+  switch (status) {
+    case "approved":
+      return t("profile.compliance.values.approved");
+    case "uploaded":
+    case "ai_pending":
+    case "ai_reviewing":
+      return t("profile.compliance.values.pending");
+    case "rejected":
+    case "expired":
+    case "needs_resubmission":
+      return t("profile.compliance.values.reupload");
+    default:
+      return t("profile.compliance.actions.upload");
+  }
+}
+
+function VerificationUploadPanel({
+  icon,
+  label,
+  title,
+  subtitle,
+  statusLabel,
+  onPress,
+  accentColor,
+  disabled = false,
+}: {
+  icon: "checkmark.circle.fill" | "sparkles";
+  label: string;
+  title: string;
+  subtitle: string;
+  statusLabel: string;
+  onPress: () => void;
+  accentColor: string;
+  disabled?: boolean;
+}) {
+  const theme = useTheme();
+
+  return (
+    <Box gap="sm">
+      <Text variant="bodyStrong">{label}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={[label, title, subtitle].join(". ")}
+        onPress={onPress}
+        disabled={disabled}
+        style={({ pressed }) => [
+          {
+            borderRadius: Radius.soft,
+            borderWidth: BorderWidth.medium,
+            borderStyle: "dashed",
+            borderColor: theme.color.border,
+            backgroundColor: theme.color.surface,
+            padding: BrandSpacing.insetRoomy,
+            opacity: disabled ? 0.55 : pressed ? 0.92 : 1,
+          },
+        ]}
+      >
+        <Box alignItems="center" gap="md">
+          <Box
+            width={48}
+            height={48}
+            alignItems="center"
+            justifyContent="center"
+            style={{
+              borderRadius: Radius.full,
+              backgroundColor: theme.color.surfaceAlt,
+            }}
+          >
+            <IconSymbol name={icon} size={22} color={accentColor} />
+          </Box>
+          <Box alignItems="center" gap="xxs">
+            <Text variant="bodyStrong">{title}</Text>
+            <Text
+              variant="caption"
+              color="textMuted"
+              style={{ textAlign: "center" }}
+            >
+              {subtitle}
+            </Text>
+            <Text
+              variant="caption"
+              style={{
+                color: accentColor,
+                textTransform: "uppercase",
+                letterSpacing: 0.7,
+              }}
+            >
+              {statusLabel}
+            </Text>
+          </Box>
+        </Box>
+      </Pressable>
+    </Box>
+  );
 }
 
 function getDiditActionLabel(
@@ -267,6 +370,10 @@ function getDiditActionLabel(
 export default function InstructorComplianceScreen() {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
+  useProfileSubpageSheet({
+    title: t("profile.navigation.compliance"),
+    routeMatchPath: "/profile/compliance",
+  });
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [isStartingDidit, setIsStartingDidit] = useState(false);
   const [isRefreshingDidit, setIsRefreshingDidit] = useState(false);
@@ -274,9 +381,6 @@ export default function InstructorComplianceScreen() {
     tone: "success" | "error";
     message: string;
   } | null>(null);
-  useEffect(() => {
-    WebBrowser.maybeCompleteAuthSession();
-  }, []);
   const currentUser = useQuery(api.users.getCurrentUser);
   const complianceArgs =
     currentUser?.role === "instructor"
@@ -307,20 +411,7 @@ export default function InstructorComplianceScreen() {
 
   const locale = i18n.resolvedLanguage ?? "en";
   const now = Date.now();
-  const diditReturnUrl = useMemo(
-    () =>
-      AuthSession.makeRedirectUri({
-        native: "queue://didit/return",
-        scheme: "queue",
-        path: "didit/return",
-      }),
-    [],
-  );
 
-  const sports = useMemo<string[]>(
-    () => [...new Set(instructorSettings?.sports ?? [])].sort(),
-    [instructorSettings?.sports],
-  );
   const preferredInsurance = useMemo(
     () => getPreferredInsurancePolicy(compliance?.insurancePolicies ?? [], now),
     [compliance?.insurancePolicies, now],
@@ -328,6 +419,33 @@ export default function InstructorComplianceScreen() {
   const latestCertificate = useMemo(
     () => getLatestCertificate(compliance?.certificates ?? []),
     [compliance?.certificates],
+  );
+  const approvedCoverage = useMemo(
+    () =>
+      latestCertificate?.reviewStatus === "approved"
+        ? Array.from(
+            new Set(
+              (
+                latestCertificate.coveredSports ??
+                (latestCertificate.sport ? [latestCertificate.sport] : [])
+              ).map((sport) =>
+                isSportType(sport) ? toSportLabel(sport) : sport,
+              ),
+            ),
+          )
+        : [],
+    [latestCertificate],
+  );
+  const approvedMachines = useMemo(
+    () =>
+      latestCertificate?.reviewStatus === "approved"
+        ? Array.from(
+            new Set(
+              (latestCertificate.machineTags ?? []).map(formatMachineTag),
+            ),
+          )
+        : [],
+    [latestCertificate],
   );
 
   const refreshDiditStatus = useCallback(async () => {
@@ -361,15 +479,13 @@ export default function InstructorComplianceScreen() {
 
     setIsStartingDidit(true);
     try {
-      const session = await createSessionForCurrentInstructor({
-        callback: diditReturnUrl,
+      const session = await createSessionForCurrentInstructor({});
+      const result = await startDiditNativeVerification({
+        sessionToken: session.sessionToken,
+        locale,
       });
-      const browserResult = await WebBrowser.openAuthSessionAsync(
-        session.verificationUrl,
-        diditReturnUrl,
-      );
 
-      if (browserResult.type === "success") {
+      if (result.outcome !== "cancelled") {
         await refreshDiditStatus();
       }
     } catch (error) {
@@ -385,9 +501,9 @@ export default function InstructorComplianceScreen() {
     }
   }, [
     createSessionForCurrentInstructor,
-    diditReturnUrl,
     isRefreshingDidit,
     isStartingDidit,
+    locale,
     refreshDiditStatus,
     t,
   ]);
@@ -516,10 +632,6 @@ export default function InstructorComplianceScreen() {
     return <Redirect href="/" />;
   }
 
-  const blockersSummary = getBlockingSummary(
-    compliance.summary.blockingReasons,
-    t,
-  );
   const isDiditBusy = isStartingDidit || isRefreshingDidit;
   const diditActionLabel = getDiditActionLabel(diditVerification.status, t);
   const diditButtonColors = diditVerification.isVerified
@@ -532,6 +644,11 @@ export default function InstructorComplianceScreen() {
         disabledLabelColor: theme.color.onPrimary,
         nativeTintColor: theme.color.tertiary,
       };
+  const diditStatusPresentation = getVerificationStatusPresentation(
+    diditVerification.status,
+    theme,
+    t,
+  );
   const handleDiditAction = () => {
     if (
       diditVerification.status === "in_progress" ||
@@ -550,209 +667,230 @@ export default function InstructorComplianceScreen() {
 
   return (
     <ProfileSubpageScrollView
-      routeKey="instructor/profile/compliance"
-      style={{ flex: 1, backgroundColor: theme.color.appBg }}
-      contentContainerStyle={{ gap: BrandSpacing.xl }}
+      contentContainerStyle={{
+        gap: BrandSpacing.xl,
+        paddingHorizontal: BrandSpacing.inset,
+      }}
       topSpacing={BrandSpacing.md}
       bottomSpacing={BrandSpacing.xxl}
-      refreshControl={
-        <RefreshControl
-          refreshing={false}
-          onRefresh={() => {
-            setRefreshNonce((value) => value + 1);
-          }}
-          tintColor={theme.color.tertiary}
-        />
-      }
     >
-      <View
-        style={{ paddingHorizontal: BrandSpacing.inset, gap: BrandSpacing.xl }}
+      {feedback ? (
+        <NoticeBanner
+          tone={feedback.tone}
+          message={feedback.message}
+          onDismiss={() => setFeedback(null)}
+        />
+      ) : null}
+
+      <KitSurface
+        tone="base"
+        padding={BrandSpacing.insetRoomy}
+        gap={BrandSpacing.stackRoomy}
+        style={{
+          borderRadius: Radius.soft,
+          borderWidth: BorderWidth.medium,
+          borderColor: theme.color.border,
+          backgroundColor: theme.color.surfaceAlt,
+        }}
       >
-        {feedback ? (
-          <NoticeBanner
-            tone={feedback.tone}
-            message={feedback.message}
-            onDismiss={() => setFeedback(null)}
-          />
-        ) : null}
-
-        <View style={{ gap: BrandSpacing.sm }}>
-          <ThemedText selectable style={BrandType.title}>
-            {compliance.summary.canApplyToJobs
-              ? t("profile.compliance.hero.readyTitle")
-              : t("profile.compliance.hero.blockedTitle")}
-          </ThemedText>
-          <ThemedText
-            selectable
-            type="caption"
-            style={{ color: theme.color.textMuted }}
+        <Text variant="radarLabel" color="textMuted">
+          {t("profile.compliance.hero.missionLabel")}
+        </Text>
+        <Box flexDirection="row" alignItems="center" gap="md">
+          <Box
+            width={56}
+            height={56}
+            alignItems="center"
+            justifyContent="center"
+            style={{
+              borderRadius: Radius.lg,
+              backgroundColor: theme.color.surface,
+              borderWidth: BorderWidth.medium,
+              borderColor: theme.color.tertiarySubtle,
+            }}
           >
-            {compliance.summary.canApplyToJobs
-              ? t("profile.compliance.hero.readyBody")
-              : t("profile.compliance.hero.blockedBody", {
-                  blockers: blockersSummary,
-                })}
-          </ThemedText>
-        </View>
+            <IconSymbol
+              name="person.fill"
+              size={20}
+              color={theme.color.tertiary}
+            />
+          </Box>
+          <Box flex={1} minWidth={0} gap="xxs">
+            <Text variant="titleLarge">
+              {currentUser.fullName ?? t("profile.account.fallbackName")}
+            </Text>
+            <Box
+              alignSelf="flex-start"
+              px="md"
+              py="xs"
+              style={{
+                borderRadius: Radius.full,
+                backgroundColor: diditStatusPresentation.backgroundColor,
+                borderWidth: BorderWidth.thin,
+                borderColor: diditStatusPresentation.borderColor,
+              }}
+            >
+              <Text
+                variant="caption"
+                style={{
+                  color: diditStatusPresentation.textColor,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.7,
+                }}
+              >
+                {diditStatusPresentation.label}
+              </Text>
+            </Box>
+          </Box>
+        </Box>
 
-        {!diditVerification.isVerified ? (
-          <ActionButton
-            label={t("profile.compliance.actions.startIdentity")}
-            onPress={handleDiditAction}
-            fullWidth
-            loading={isDiditBusy}
-            disabled={isDiditBusy}
-            {...(diditButtonColors ? { colors: diditButtonColors } : {})}
-          />
-        ) : null}
+        <Box gap="xs">
+          <Text variant="bodyStrong">
+            {t("profile.compliance.identity.cardTitle")}
+          </Text>
+          <Text variant="caption" color="textMuted">
+            {t("profile.compliance.identity.cardBody")}
+          </Text>
+        </Box>
 
-        <View>
-          <ProfileSectionHeader
-            label={t("profile.compliance.sections.identity")}
-            icon="checkmark.shield.fill"
-          />
-          <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-            <ProfileSettingRow
-              title={t("profile.compliance.identity.title")}
-              subtitle={
-                diditVerification.isVerified
-                  ? t("profile.compliance.identity.approved")
-                  : t("profile.compliance.identity.required")
-              }
-              value={
-                diditVerification.isVerified
-                  ? t("profile.compliance.values.approved")
-                  : t("profile.compliance.values.actionRequired")
-              }
-              icon="person.text.rectangle.fill"
-            />
-          </ProfileSectionCard>
-          <View style={{ paddingTop: BrandSpacing.md }}>
-            <ActionButton
-              label={diditActionLabel}
-              onPress={handleDiditAction}
-              fullWidth
-              loading={isDiditBusy}
-              disabled={isDiditBusy}
-              {...(diditButtonColors ? { colors: diditButtonColors } : {})}
-              {...(diditVerification.isVerified
-                ? { tone: "secondary" as const }
-                : {})}
-            />
-          </View>
-        </View>
+        <ActionButton
+          label={diditActionLabel}
+          onPress={handleDiditAction}
+          fullWidth
+          loading={isDiditBusy}
+          disabled={isDiditBusy}
+          {...(diditButtonColors ? { colors: diditButtonColors } : {})}
+          {...(diditVerification.isVerified
+            ? { tone: "secondary" as const }
+            : {})}
+        />
 
-        <View>
-          <ProfileSectionHeader
-            label={t("profile.compliance.sections.insurance")}
-            icon="shield.lefthalf.filled"
-          />
-          <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-            <ProfileSettingRow
-              title={t("profile.compliance.insurance.title")}
-              subtitle={getInsuranceSubtitle(
-                preferredInsurance ?? null,
-                locale,
-                t,
-              )}
-              value={
-                compliance.summary.hasApprovedInsurance
-                  ? t("profile.compliance.values.approved")
-                  : t("profile.compliance.actions.upload")
-              }
-              icon="checkmark.shield.fill"
-              {...(!compliance.summary.hasApprovedInsurance
-                ? { onPress: onOpenInsuranceUpload }
-                : {})}
-            />
-          </ProfileSectionCard>
-          <View style={{ paddingTop: BrandSpacing.md }}>
-            <ActionButton
-              label={
-                compliance.summary.hasApprovedInsurance
-                  ? t("profile.compliance.actions.replaceInsurance")
-                  : t("profile.compliance.actions.uploadInsurance")
-              }
-              onPress={onOpenInsuranceUpload}
-              fullWidth
-              loading={isUploading}
-              disabled={isUploading}
-            />
-          </View>
-        </View>
+        <Text
+          variant="caption"
+          color="textMuted"
+          style={{ textAlign: "center" }}
+        >
+          {t("profile.compliance.identity.cardHint")}
+        </Text>
+      </KitSurface>
 
-        <View>
-          <ProfileSectionHeader
-            label={t("profile.compliance.sections.certificates")}
-            icon="rosette"
-          />
-          <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-            <ProfileSettingRow
-              title={t("profile.compliance.certificate.title")}
-              subtitle={getCertificateSubtitle(
-                latestCertificate ?? null,
-                locale,
-                t,
-              )}
-              value={
-                latestCertificate?.reviewStatus === "approved"
-                  ? t("profile.compliance.values.approved")
-                  : latestCertificate &&
-                      latestCertificate.reviewStatus !== "rejected" &&
-                      latestCertificate.reviewStatus !== "needs_resubmission"
-                    ? t("profile.compliance.values.pending")
-                    : t("profile.compliance.actions.upload")
-              }
-              icon="rosette"
-              onPress={onOpenCertificateUpload}
-              {...(sports.length > 0 ? { showDivider: true } : {})}
-            />
-            {sports.length > 0
-              ? sports.map((sport, index) => {
-                  const certificateRow = getLatestCertificateForSport(
-                    compliance.certificates,
-                    sport,
-                  );
+      <Box gap="sm">
+        <Text variant="radarLabel" color="textMuted">
+          {t("profile.compliance.documents.title")}
+        </Text>
+        <VerificationUploadPanel
+          icon="checkmark.circle.fill"
+          label={t("profile.compliance.insurance.title")}
+          title={t("profile.compliance.documents.tapToUpload")}
+          subtitle={getInsuranceSubtitle(preferredInsurance ?? null, locale, t)}
+          statusLabel={getDocumentStatusLabel(
+            preferredInsurance?.reviewStatus,
+            t,
+          )}
+          onPress={onOpenInsuranceUpload}
+          accentColor={theme.color.tertiary}
+          disabled={isUploading}
+        />
+        <VerificationUploadPanel
+          icon="sparkles"
+          label={t("profile.compliance.certificate.title")}
+          title={t("profile.compliance.documents.tapToUpload")}
+          subtitle={getCertificateSubtitle(
+            latestCertificate ?? null,
+            locale,
+            t,
+          )}
+          statusLabel={getDocumentStatusLabel(
+            latestCertificate?.reviewStatus,
+            t,
+          )}
+          onPress={onOpenCertificateUpload}
+          accentColor={theme.color.tertiary}
+          disabled={isUploading}
+        />
 
-                  return (
-                    <ProfileSettingRow
-                      key={sport}
-                      title={isSportType(sport) ? toSportLabel(sport) : sport}
-                      subtitle={getCertificateSubtitle(
-                        certificateRow ?? null,
-                        locale,
-                        t,
-                      )}
-                      value={
-                        certificateRow?.reviewStatus === "approved"
-                          ? t("profile.compliance.values.approved")
-                          : certificateRow &&
-                              certificateRow.reviewStatus !== "rejected" &&
-                              certificateRow.reviewStatus !==
-                                "needs_resubmission"
-                            ? t("profile.compliance.values.pending")
-                            : t("profile.compliance.values.actionRequired")
-                      }
-                      icon="rosette"
-                      {...(index < sports.length - 1
-                        ? { showDivider: true }
-                        : {})}
-                    />
-                  );
-                })
-              : null}
-          </ProfileSectionCard>
-          <View style={{ paddingTop: BrandSpacing.md }}>
-            <ActionButton
-              label={t("profile.compliance.actions.uploadCertificate")}
-              onPress={onOpenCertificateUpload}
-              fullWidth
-              loading={isUploading}
-              disabled={isUploading}
-            />
-          </View>
-        </View>
-      </View>
+        <KitSurface
+          tone="sunken"
+          padding={BrandSpacing.lg}
+          gap={BrandSpacing.sm}
+          style={{
+            borderRadius: Radius.cardSubtle,
+            borderWidth: BorderWidth.thin,
+            borderColor: theme.color.border,
+            backgroundColor: theme.color.surface,
+          }}
+        >
+          <Text variant="caption" color="textMuted">
+            {latestCertificate?.reviewStatus === "approved"
+              ? t("profile.compliance.certificate.coverageTitle")
+              : t("profile.compliance.certificate.coveragePending")}
+          </Text>
+          {approvedCoverage.length > 0 ? (
+            <Box gap="sm">
+              <Text variant="bodyMedium">
+                {t("profile.compliance.certificate.coverageSports")}
+              </Text>
+              <Box flexDirection="row" flexWrap="wrap" gap="sm">
+                {approvedCoverage.map((label) => (
+                  <Box
+                    key={label}
+                    px="md"
+                    py="xs"
+                    backgroundColor="primarySubtle"
+                    borderColor="primarySubtle"
+                    borderRadius={Radius.pill}
+                    borderWidth={BorderWidth.thin}
+                  >
+                    <Text variant="caption" color="primary">
+                      {label}
+                    </Text>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          ) : null}
+          {approvedMachines.length > 0 ? (
+            <Box gap="sm">
+              <Text variant="bodyMedium">
+                {t("profile.compliance.certificate.coverageMachines")}
+              </Text>
+              <Box flexDirection="row" flexWrap="wrap" gap="sm">
+                {approvedMachines.map((label) => (
+                  <Box
+                    key={label}
+                    px="md"
+                    py="xs"
+                    backgroundColor="surfaceAlt"
+                    borderColor="border"
+                    borderRadius={Radius.pill}
+                    borderWidth={BorderWidth.thin}
+                  >
+                    <Text variant="caption" color="text">
+                      {label}
+                    </Text>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          ) : null}
+        </KitSurface>
+
+        <KitSurface
+          tone="sunken"
+          padding={BrandSpacing.lg}
+          gap={BrandSpacing.xs}
+          style={{
+            borderRadius: Radius.cardSubtle,
+            borderWidth: BorderWidth.thin,
+            borderColor: theme.color.border,
+            backgroundColor: theme.color.surface,
+          }}
+        >
+          <Text variant="caption" color="textMuted">
+            {t("profile.compliance.documents.reviewNote")}
+          </Text>
+        </KitSurface>
+      </Box>
     </ProfileSubpageScrollView>
   );
 }

@@ -5,7 +5,6 @@ import type { TFunction } from "i18next";
 import { InstructorHomeContent } from "@/components/home/instructor-home-content";
 import { StudioHomeContent } from "@/components/home/studio-home-content";
 import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
-import { LoadingScreen } from "@/components/loading-screen";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
@@ -25,7 +24,6 @@ export type Application = {
 
 export type HomeRoleContentProps = {
   activeRole: "instructor" | "studio";
-  homeBodyReady: boolean;
   locale: string;
   now: number;
   currencyFormatter: Intl.NumberFormat;
@@ -68,7 +66,6 @@ export type HomeRoleContentProps = {
 
 export function HomeRoleContent({
   activeRole,
-  homeBodyReady,
   locale,
   now,
   currencyFormatter,
@@ -87,20 +84,16 @@ export function HomeRoleContent({
   };
 
   if (activeRole === "instructor") {
-    if (!homeBodyReady || instructorHomeStats === undefined) {
-      return <LoadingScreen label={t("home.loading")} />;
-    }
-
     return (
       <InstructorHomeContent
         currencyFormatter={currencyFormatter}
         locale={locale}
         now={now}
-        lessonsCompleted={instructorHomeStats.lessonEvents.length}
-        pendingApplications={instructorHomeStats.pendingApplications}
+        lessonsCompleted={instructorHomeStats?.lessonEvents.length ?? 0}
+        pendingApplications={instructorHomeStats?.pendingApplications ?? 0}
         t={t}
-        totalEarningsAgorot={instructorHomeStats.totalEarningsAgorot}
-        upcomingSessions={instructorHomeStats.upcomingSessions}
+        totalEarningsAgorot={instructorHomeStats?.totalEarningsAgorot ?? 0}
+        upcomingSessions={instructorHomeStats?.upcomingSessions ?? []}
         availableJobs={availableInstructorJobs}
         {...(withdrawingApplicationId !== undefined ? { withdrawingApplicationId } : {})}
         {...(onWithdrawApplication ? { onWithdrawApplication } : {})}
@@ -112,10 +105,6 @@ export function HomeRoleContent({
 
   if (activeRole !== "studio") {
     return <Redirect href="/onboarding" />;
-  }
-
-  if (!homeBodyReady || myStudioJobs === undefined) {
-    return <LoadingScreen label={t("home.loading")} />;
   }
 
   const studioJobs = myStudioJobs ?? [];

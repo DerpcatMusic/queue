@@ -8,11 +8,10 @@ import { LoadingScreen } from "@/components/loading-screen";
 import { ProfileEditorForm } from "@/components/profile/profile-editor";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { useProfileSubpageSheet } from "@/components/profile/profile-subpage-sheet";
-import { BrandSpacing } from "@/constants/brand";
-import { useTheme } from "@/hooks/use-theme";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isProfileImageUploadError, useProfileImageUpload } from "@/hooks/use-profile-image-upload";
+import { useTheme } from "@/hooks/use-theme";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 
 function toSocialLinksDraft(value: ProfileSocialLinks | undefined) {
@@ -44,7 +43,8 @@ export default function InstructorProfileEditScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useUser();
-  const collapsedSheetHeight = useProfileSubpageSheet({
+  const theme = useTheme();
+  useProfileSubpageSheet({
     title: t("profile.navigation.edit"),
     routeMatchPath: "/profile/edit",
   });
@@ -150,8 +150,6 @@ export default function InstructorProfileEditScreen() {
     ]);
   };
 
-  const theme = useTheme();
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.appBg }}>
       <ProfileEditorForm
@@ -195,7 +193,6 @@ export default function InstructorProfileEditScreen() {
         searchPlaceholder={t("profile.settings.sports.searchPlaceholder")}
         sportsTitle={t("profile.settings.sports.title")}
         sportsEmptyHint={t("profile.settings.sports.none")}
-        contentTopInset={collapsedSheetHeight + BrandSpacing.lg}
       />
     </View>
   );

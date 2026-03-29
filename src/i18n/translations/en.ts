@@ -295,6 +295,7 @@ const en = {
         blocked: "Finish verification to apply",
       },
       hero: {
+        missionLabel: "Mission Center",
         readyTitle: "You are cleared to apply",
         readyBody: "Identity, insurance, and certificates are approved.",
         blockedTitle: "Finish verification to unlock job actions",
@@ -312,6 +313,11 @@ const en = {
         title: "Didit",
         approved: "Didit is approved and your identity is active.",
         required: "Complete Didit to unlock instructor job actions.",
+        unverified: "Unverified",
+        cardTitle: "Didit identity verification",
+        cardBody:
+          "Global biometric and document verification for instructor access.",
+        cardHint: "Requires a government ID and camera access.",
       },
       insurance: {
         title: "Liability insurance",
@@ -325,13 +331,17 @@ const en = {
       },
       certificate: {
         title: "Teaching certificate",
-        missingBody: "Upload a teaching certificate for this sport.",
+        missingBody: "Upload a teaching certificate.",
         pendingBody: "Uploaded. Review is in progress.",
         reuploadBody: "Upload a clearer or newer certificate.",
         approvedBody: "Certificate approved.",
         approvedWithDate: "Certificate approved on {{date}}.",
         approvedWithSource: "Approved: {{source}}.",
         approvedWithSourceAndDate: "Approved: {{source}} · {{date}}.",
+        coverageTitle: "Approved coverage",
+        coveragePending: "AI tags sports and machines after review.",
+        coverageSports: "Sports",
+        coverageMachines: "Machines",
         noSportsTitle: "Choose sports first",
         noSportsBody: "Add your sports before uploading certificates.",
         uploadTitle: "Upload certificate",
@@ -351,10 +361,19 @@ const en = {
         title: "Upload document",
         body: "Choose a photo or file.",
       },
+      documents: {
+        title: "Document uploads",
+        tapToUpload: "Tap to upload",
+        insuranceSubtitle: "PDF, JPG or PNG",
+        certificatesSubtitle: "Supports multi-page qualification files",
+        reviewNote:
+          "We review documents after upload and notify you when anything changes.",
+      },
       values: {
         approved: "Approved",
         pending: "Pending",
         actionRequired: "Action required",
+        reupload: "Re-upload",
       },
       blockers: {
         identity: "Didit identity approval",

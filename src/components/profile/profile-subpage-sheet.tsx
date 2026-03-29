@@ -201,12 +201,13 @@ export function ProfileSubpageSheetProvider({
       return null;
     }
 
-    const isDiditRoute =
-      activeRoute.routeMatchPath === "/profile/identity-verification";
+    const isVerificationRoute =
+      activeRoute.routeMatchPath === "/profile/identity-verification" ||
+      activeRoute.routeMatchPath === "/profile/compliance";
     const isPaymentsRoute =
       activeRoute.routeMatchPath === "/profile/payments" ||
       activeRoute.routeMatchPath.endsWith("/profile/payments");
-    const accentColor = isDiditRoute
+    const accentColor = isVerificationRoute
       ? theme.color.tertiary
       : isPaymentsRoute
         ? theme.color.success
@@ -218,11 +219,11 @@ export function ProfileSubpageSheetProvider({
           title={activeRoute.title}
           rightAccessory={accessories[activeRoute.routeMatchPath] ?? null}
           onBack={() => router.back()}
-          {...(isDiditRoute || isPaymentsRoute ? { accentColor } : {})}
+          {...(isVerificationRoute || isPaymentsRoute ? { accentColor } : {})}
         />
       ),
       padding: {
-        vertical: BrandSpacing.sm,
+        vertical: isVerificationRoute ? 0 : BrandSpacing.sm,
         horizontal: BrandSpacing.lg,
       },
       steps: [0],

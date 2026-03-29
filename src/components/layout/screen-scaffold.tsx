@@ -5,6 +5,7 @@ import Animated from "react-native-reanimated";
 
 import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
 import { useScrollSheetLayout } from "@/components/layout/scroll-sheet-provider";
+import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { type InsetTone, useSystemUi } from "@/contexts/system-ui-context";
 import { Box } from "@/primitives";
 import { createSheetInsetStyle, getSheetProgressViewOffset } from "./sheet-inset-contract";
@@ -39,6 +40,7 @@ export type ScreenScaffoldProps = PropsWithChildren<
 export function ScreenScaffold(props: ScreenScaffoldProps) {
   const { setTopInsetTone } = useSystemUi();
   const topInsetTone = props.topInsetTone ?? "app";
+  const { collapsedSheetHeight, safeBottom } = useScrollSheetLayout();
 
   useEffect(() => {
     setTopInsetTone(topInsetTone);
@@ -57,12 +59,11 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
           props.style,
         ]}
       >
-        {props.children}
+        <TabSceneTransition>{props.children}</TabSceneTransition>
       </Box>
     );
   }
 
-  const { collapsedSheetHeight, safeBottom } = useScrollSheetLayout();
   const {
     contentContainerStyle,
     scrollProps,
@@ -104,16 +105,18 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
   );
 
   return (
-    <Animated.ScrollView
-      contentInsetAdjustmentBehavior="never"
-      automaticallyAdjustContentInsets={false}
-      showsVerticalScrollIndicator={false}
-      {...scrollProps}
-      style={[{ flex: 1 }, style]}
-      refreshControl={resolvedRefreshControl}
-      contentContainerStyle={!useDesktopFrame ? resolvedContentContainerStyle : undefined}
-    >
-      {content}
-    </Animated.ScrollView>
+    <TabSceneTransition>
+      <Animated.ScrollView
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        showsVerticalScrollIndicator={false}
+        {...scrollProps}
+        style={[{ flex: 1 }, style]}
+        refreshControl={resolvedRefreshControl}
+        contentContainerStyle={!useDesktopFrame ? resolvedContentContainerStyle : undefined}
+      >
+        {content}
+      </Animated.ScrollView>
+    </TabSceneTransition>
   );
 }

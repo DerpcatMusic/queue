@@ -91,3 +91,25 @@ export function getRouteDepth(routeKey: string | null) {
   if (!routeKey) return 0;
   return routeKey.split("/").filter(Boolean).length;
 }
+
+type TopSheetRouteIdentity = {
+  stateKey: string;
+  transitionKey: string;
+  routeDepth: number;
+};
+
+export function resolveTopSheetRouteIdentity(
+  pathname: string | null,
+  activeTabId: string | null,
+  activeConfig: ResolvedTopSheetTabConfig | null,
+): TopSheetRouteIdentity {
+  const activeRouteKey = pathname ?? activeTabId;
+  const fallbackKey = activeConfig?.tabId ?? activeTabId ?? "global-top-sheet";
+  const routeKey = activeRouteKey ?? fallbackKey;
+
+  return {
+    stateKey: routeKey,
+    transitionKey: routeKey,
+    routeDepth: getRouteDepth(activeRouteKey),
+  };
+}

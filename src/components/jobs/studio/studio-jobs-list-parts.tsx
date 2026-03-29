@@ -1,7 +1,6 @@
 import type { TFunction } from "i18next";
 import { type ComponentProps, memo } from "react";
 import { Pressable, Text, View } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
 import { DotStatusPill } from "@/components/home/home-shared";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -76,10 +75,7 @@ type ApplicationRowProps = {
   locale: string;
   reviewingApplicationId: Id<"jobApplications"> | null;
   canReview: boolean;
-  onReview: (
-    applicationId: Id<"jobApplications">,
-    status: "accepted" | "rejected",
-  ) => void;
+  onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
   t: TFunction;
 };
 
@@ -113,141 +109,129 @@ export const ApplicationRow = memo(function ApplicationRow({
   const metaText = `${t("jobsTab.card.applied")} · ${formatDateWithWeekday(application.appliedAt, locale)} · ${formatTime(application.appliedAt, locale)}`;
 
   return (
-    <Animated.View entering={FadeInUp.duration(220).springify().damping(18)}>
+    <View
+      style={{
+        gap: BrandSpacing.stack,
+        borderRadius: BrandRadius.medium,
+        borderCurve: "continuous",
+        paddingHorizontal: BrandSpacing.controlX,
+        paddingVertical: BrandSpacing.controlY,
+        backgroundColor: theme.jobs.surfaceRaised,
+      }}
+    >
       <View
         style={{
           gap: BrandSpacing.stack,
-          borderRadius: BrandRadius.medium,
-          borderCurve: "continuous",
-          paddingHorizontal: BrandSpacing.controlX,
-          paddingVertical: BrandSpacing.controlY,
-          backgroundColor: theme.jobs.surfaceRaised,
+          flexDirection: isWideWeb ? "row" : "column",
+          alignItems: isWideWeb ? "center" : "stretch",
+          justifyContent: "space-between",
         }}
       >
         <View
           style={{
+            flexDirection: "row",
+            alignItems: "flex-start",
             gap: BrandSpacing.stack,
-            flexDirection: isWideWeb ? "row" : "column",
-            alignItems: isWideWeb ? "center" : "stretch",
-            justifyContent: "space-between",
+            flex: 1,
+            minWidth: 0,
           }}
         >
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              gap: BrandSpacing.stack,
-              flex: 1,
-              minWidth: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              width: AVATAR_SIZE,
+              height: AVATAR_SIZE,
+              borderRadius: AVATAR_RADIUS,
+              borderCurve: "continuous",
+              backgroundColor: statusBackground,
             }}
           >
-            <View
+            <Text
               style={{
-                alignItems: "center",
-                justifyContent: "center",
-                width: AVATAR_SIZE,
-                height: AVATAR_SIZE,
-                borderRadius: AVATAR_RADIUS,
-                borderCurve: "continuous",
-                backgroundColor: statusBackground,
+                ...BrandType.bodyStrong,
+                color: appDot,
               }}
             >
+              {initials || "?"}
+            </Text>
+          </View>
+
+          <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xs }}>
+            <Text
+              numberOfLines={1}
+              style={{
+                ...BrandType.bodyStrong,
+                color: theme.color.text,
+              }}
+            >
+              {application.instructorName}
+            </Text>
+            {application.message ? (
               <Text
+                numberOfLines={isWideWeb ? 1 : 2}
                 style={{
-                  ...BrandType.bodyStrong,
-                  color: appDot,
+                  ...BrandType.caption,
+                  color: theme.color.textMuted,
                 }}
               >
-                {initials || "?"}
+                {application.message}
               </Text>
-            </View>
-
-            <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xs }}>
+            ) : (
               <Text
                 numberOfLines={1}
                 style={{
-                  ...BrandType.bodyStrong,
-                  color: theme.color.text,
+                  ...BrandType.caption,
+                  color: theme.color.textMicro,
                 }}
               >
-                {application.instructorName}
+                {metaText}
               </Text>
-              {application.message ? (
-                <Text
-                  numberOfLines={isWideWeb ? 1 : 2}
-                  style={{
-                    ...BrandType.caption,
-                    color: theme.color.textMuted,
-                  }}
-                >
-                  {application.message}
-                </Text>
-              ) : (
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    ...BrandType.caption,
-                    color: theme.color.textMicro,
-                  }}
-                >
-                  {metaText}
-                </Text>
-              )}
-            </View>
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: BrandSpacing.stackTight,
-              alignSelf: isWideWeb ? "center" : "flex-start",
-            }}
-          >
-            <DotStatusPill
-              backgroundColor={theme.color.surfaceAlt}
-              color={appDot}
-              label={t(getApplicationStatusTranslationKey(application.status))}
-            />
+            )}
           </View>
         </View>
 
-        {application.message ? (
-          <InlineMeta icon="calendar.badge.clock" text={metaText} />
-        ) : null}
-
-        {canReview ? (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: BrandSpacing.sm,
-              paddingTop: BrandSpacing.xs,
-            }}
-          >
-            <ActionButton
-              label={
-                isReviewing
-                  ? t("jobsTab.actions.rejecting")
-                  : t("jobsTab.actions.reject")
-              }
-              onPress={() => onReview(application.applicationId, "rejected")}
-              tone="secondary"
-              disabled={isReviewing}
-            />
-            <ActionButton
-              label={
-                isReviewing
-                  ? t("jobsTab.actions.accepting")
-                  : t("jobsTab.actions.accept")
-              }
-              onPress={() => onReview(application.applicationId, "accepted")}
-              loading={isReviewing}
-            />
-          </View>
-        ) : null}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: BrandSpacing.stackTight,
+            alignSelf: isWideWeb ? "center" : "flex-start",
+          }}
+        >
+          <DotStatusPill
+            backgroundColor={theme.color.surfaceAlt}
+            color={appDot}
+            label={t(getApplicationStatusTranslationKey(application.status))}
+          />
+        </View>
       </View>
-    </Animated.View>
+
+      {application.message ? <InlineMeta icon="calendar.badge.clock" text={metaText} /> : null}
+
+      {canReview ? (
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: BrandSpacing.sm,
+            paddingTop: BrandSpacing.xs,
+          }}
+        >
+          <ActionButton
+            label={isReviewing ? t("jobsTab.actions.rejecting") : t("jobsTab.actions.reject")}
+            onPress={() => onReview(application.applicationId, "rejected")}
+            tone="secondary"
+            disabled={isReviewing}
+          />
+          <ActionButton
+            label={isReviewing ? t("jobsTab.actions.accepting") : t("jobsTab.actions.accept")}
+            onPress={() => onReview(application.applicationId, "accepted")}
+            loading={isReviewing}
+          />
+        </View>
+      ) : null}
+    </View>
   );
 });
 
@@ -259,10 +243,7 @@ type StudioJobCardProps = {
   zoneLanguage: "en" | "he";
   reviewingApplicationId: Id<"jobApplications"> | null;
   payingJobId: Id<"jobs"> | null;
-  onReview: (
-    applicationId: Id<"jobApplications">,
-    status: "accepted" | "rejected",
-  ) => void;
+  onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
   onStartPayment: (jobId: Id<"jobs">) => void;
   onJobPress: (jobId: Id<"jobs">) => void;
   t: TFunction;
@@ -270,7 +251,7 @@ type StudioJobCardProps = {
 
 export const StudioJobCard = memo(function StudioJobCard({
   job,
-  index,
+  index: _index,
   locale,
   zoneLanguage,
   payingJobId,
@@ -291,9 +272,7 @@ export const StudioJobCard = memo(function StudioJobCard({
     ["filled", "completed"].includes(job.status) &&
     !(
       job.payment &&
-      ["created", "pending", "authorized", "captured", "refunded"].includes(
-        job.payment.status,
-      )
+      ["created", "pending", "authorized", "captured", "refunded"].includes(job.payment.status)
     );
   const zoneLabel = getZoneLabel(job.zone, zoneLanguage);
   const hasPending = job.pendingApplicationsCount > 0;
@@ -309,20 +288,10 @@ export const StudioJobCard = memo(function StudioJobCard({
           : theme.color.textMuted;
 
   return (
-    <Animated.View
-      entering={FadeInUp.delay(Math.min(index, 5) * 34)
-        .duration(260)
-        .springify()
-        .damping(18)}
-    >
+    <View>
       <Pressable
         onPress={() => {
-          console.log(
-            "StudioJobCard pressed, jobId:",
-            job.jobId,
-            "sport:",
-            job.sport,
-          );
+          console.log("StudioJobCard pressed, jobId:", job.jobId, "sport:", job.sport);
           onJobPress(job.jobId);
         }}
         style={({ pressed }) => ({
@@ -344,9 +313,7 @@ export const StudioJobCard = memo(function StudioJobCard({
             <View
               style={{
                 height: BorderWidth.strong,
-                backgroundColor: boost.badgeKey
-                  ? theme.jobs.accentHeat
-                  : theme.color.primary,
+                backgroundColor: boost.badgeKey ? theme.jobs.accentHeat : theme.color.primary,
               }}
             />
           )}
@@ -361,10 +328,7 @@ export const StudioJobCard = memo(function StudioJobCard({
               }}
             >
               <View style={{ flex: 1 }}>
-                <Text
-                  numberOfLines={1}
-                  style={{ ...BrandType.title, color: theme.color.text }}
-                >
+                <Text numberOfLines={1} style={{ ...BrandType.title, color: theme.color.text }}>
                   {toSportLabel(job.sport as never)}
                 </Text>
                 <Text
@@ -407,9 +371,7 @@ export const StudioJobCard = memo(function StudioJobCard({
 
                 {/* Boost indicator */}
                 {boost.badgeKey && (
-                  <Text
-                    style={{ ...BrandType.micro, color: theme.color.primary }}
-                  >
+                  <Text style={{ ...BrandType.micro, color: theme.color.primary }}>
                     +₪{job.boostBonusAmount ?? 20}
                   </Text>
                 )}
@@ -431,11 +393,7 @@ export const StudioJobCard = memo(function StudioJobCard({
                   gap: BrandSpacing.sm,
                 }}
               >
-                <IconSymbol
-                  name="clock"
-                  size={16}
-                  color={theme.color.textMuted}
-                />
+                <IconSymbol name="clock" size={16} color={theme.color.textMuted} />
                 <Text
                   style={{
                     ...BrandType.bodyMedium,
@@ -445,11 +403,7 @@ export const StudioJobCard = memo(function StudioJobCard({
                 >
                   {formatTime(job.startTime, locale)}
                 </Text>
-                <Text
-                  style={{ ...BrandType.caption, color: theme.color.textMuted }}
-                >
-                  —
-                </Text>
+                <Text style={{ ...BrandType.caption, color: theme.color.textMuted }}>—</Text>
                 <Text
                   style={{
                     ...BrandType.bodyMedium,
@@ -474,9 +428,7 @@ export const StudioJobCard = memo(function StudioJobCard({
                 justifyContent: "space-between",
               }}
             >
-              <Text
-                style={{ ...BrandType.caption, color: theme.color.textMuted }}
-              >
+              <Text style={{ ...BrandType.caption, color: theme.color.textMuted }}>
                 {job.applicationsCount > 0
                   ? `${job.applicationsCount} ${job.applicationsCount === 1 ? "applicant" : "applicants"}`
                   : "No applicants yet"}
@@ -498,18 +450,10 @@ export const StudioJobCard = memo(function StudioJobCard({
                   >
                     Review
                   </Text>
-                  <IconSymbol
-                    name="chevron.right"
-                    size={16}
-                    color={theme.color.primary}
-                  />
+                  <IconSymbol name="chevron.right" size={16} color={theme.color.primary} />
                 </View>
               ) : job.status === "open" ? (
-                <Text
-                  style={{ ...BrandType.micro, color: theme.color.textMuted }}
-                >
-                  Live
-                </Text>
+                <Text style={{ ...BrandType.micro, color: theme.color.textMuted }}>Live</Text>
               ) : null}
             </View>
           </View>
@@ -535,14 +479,8 @@ export const StudioJobCard = memo(function StudioJobCard({
                   gap: BrandSpacing.sm,
                 }}
               >
-                <IconSymbol
-                  name="creditcard"
-                  size={16}
-                  color={theme.color.textMuted}
-                />
-                <Text
-                  style={{ ...BrandType.caption, color: theme.color.textMuted }}
-                >
+                <IconSymbol name="creditcard" size={16} color={theme.color.textMuted} />
+                <Text style={{ ...BrandType.caption, color: theme.color.textMuted }}>
                   {job.payment
                     ? t(PAYMENT_STATUS_KEY[job.payment.status])
                     : t("jobsTab.checkout.notStarted")}
@@ -554,8 +492,7 @@ export const StudioJobCard = memo(function StudioJobCard({
                   label={
                     payingJobId === job.jobId
                       ? t("jobsTab.checkout.starting")
-                      : job.payment &&
-                          ["failed", "cancelled"].includes(job.payment.status)
+                      : job.payment && ["failed", "cancelled"].includes(job.payment.status)
                         ? t("jobsTab.checkout.retryPayment")
                         : t("jobsTab.checkout.payNow")
                   }
@@ -567,6 +504,6 @@ export const StudioJobCard = memo(function StudioJobCard({
           )}
         </View>
       </Pressable>
-    </Animated.View>
+    </View>
   );
 });

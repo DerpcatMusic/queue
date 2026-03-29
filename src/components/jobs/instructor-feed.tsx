@@ -15,14 +15,15 @@ import {
 import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
+import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
 import {
   type InstructorArchiveRow,
   InstructorJobsArchiveSheet,
 } from "@/components/jobs/instructor/instructor-jobs-archive-sheet";
-import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
+import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -513,129 +514,131 @@ export function InstructorFeed() {
   }
 
   return (
-    <Box flex={1} style={{ backgroundColor: theme.jobs.canvas }}>
-      <TabScreenScrollView
-        routeKey="instructor/jobs/index"
-        style={styles.screen}
-        contentContainerStyle={[styles.content, additionalSpacing]}
-        sheetInsets={{
-          topSpacing: BrandSpacing.lg,
-          bottomSpacing: BrandSpacing.xl,
-          horizontalPadding: BrandSpacing.lg,
-        }}
-        topInsetTone="sheet"
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.jobs.signal}
-            colors={[theme.jobs.signal]}
-          />
-        }
-        keyboardShouldPersistTaps="handled"
-      >
-        <Box flex={1} gap="lg">
-          {jobs.length === 0 ? (
-            <View
-              style={{
-                minHeight: listViewportMinHeight,
-                justifyContent: "center",
-                alignItems: "center",
-                paddingHorizontal: BrandSpacing.lg,
-              }}
-            >
-              <View style={{ alignItems: "center", gap: BrandSpacing.lg }}>
-                <IconSymbol name="briefcase.fill" size={32} color={theme.jobs.idle} />
-                <View style={{ alignItems: "center", gap: BrandSpacing.sm }}>
-                  <ThemedText style={[BrandType.title, { color: theme.color.text }]}>
-                    {t("jobsTab.instructorFeed.emptyInstructorShort")}
-                  </ThemedText>
-                  <ThemedText
-                    style={[BrandType.body, { color: theme.jobs.idle, textAlign: "center" }]}
-                  >
-                    {emptyJobsCopy}
+    <TabSceneTransition>
+      <Box flex={1} style={{ backgroundColor: theme.jobs.canvas }}>
+        <TabScreenScrollView
+          routeKey="instructor/jobs/index"
+          style={styles.screen}
+          contentContainerStyle={[styles.content, additionalSpacing]}
+          sheetInsets={{
+            topSpacing: BrandSpacing.lg,
+            bottomSpacing: BrandSpacing.xl,
+            horizontalPadding: BrandSpacing.lg,
+          }}
+          topInsetTone="sheet"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.jobs.signal}
+              colors={[theme.jobs.signal]}
+            />
+          }
+          keyboardShouldPersistTaps="handled"
+        >
+          <Box flex={1} gap="lg">
+            {jobs.length === 0 ? (
+              <View
+                style={{
+                  minHeight: listViewportMinHeight,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  paddingHorizontal: BrandSpacing.lg,
+                }}
+              >
+                <View style={{ alignItems: "center", gap: BrandSpacing.lg }}>
+                  <IconSymbol name="briefcase.fill" size={32} color={theme.jobs.idle} />
+                  <View style={{ alignItems: "center", gap: BrandSpacing.sm }}>
+                    <ThemedText style={[BrandType.title, { color: theme.color.text }]}>
+                      {t("jobsTab.instructorFeed.emptyInstructorShort")}
+                    </ThemedText>
+                    <ThemedText
+                      style={[BrandType.body, { color: theme.jobs.idle, textAlign: "center" }]}
+                    >
+                      {emptyJobsCopy}
+                    </ThemedText>
+                    <ThemedText
+                      style={[BrandType.caption, { color: theme.jobs.idle, textAlign: "center" }]}
+                    >
+                      {t("jobsTab.instructorFeed.emptyRefreshHint")}
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
+            ) : filteredAvailableJobs.length === 0 ? (
+              <View
+                style={{
+                  minHeight: Math.max(220, listViewportMinHeight * 0.75),
+                  justifyContent: "center",
+                  alignItems: "center",
+                  paddingHorizontal: BrandSpacing.lg,
+                }}
+              >
+                <View style={{ alignItems: "center", gap: BrandSpacing.md }}>
+                  <IconSymbol name="magnifyingglass" size={28} color={theme.jobs.idle} />
+                  <ThemedText style={[BrandType.bodyMedium, { color: theme.color.text }]}>
+                    {t("jobsTab.noJobsFound")}
                   </ThemedText>
                   <ThemedText
                     style={[BrandType.caption, { color: theme.jobs.idle, textAlign: "center" }]}
                   >
-                    {t("jobsTab.instructorFeed.emptyRefreshHint")}
+                    Try a different search or sorting mode.
                   </ThemedText>
                 </View>
               </View>
-            </View>
-          ) : filteredAvailableJobs.length === 0 ? (
-            <View
-              style={{
-                minHeight: Math.max(220, listViewportMinHeight * 0.75),
-                justifyContent: "center",
-                alignItems: "center",
-                paddingHorizontal: BrandSpacing.lg,
-              }}
-            >
-              <View style={{ alignItems: "center", gap: BrandSpacing.md }}>
-                <IconSymbol name="magnifyingglass" size={28} color={theme.jobs.idle} />
-                <ThemedText style={[BrandType.bodyMedium, { color: theme.color.text }]}>
-                  {t("jobsTab.noJobsFound")}
-                </ThemedText>
-                <ThemedText
-                  style={[BrandType.caption, { color: theme.jobs.idle, textAlign: "center" }]}
-                >
-                  Try a different search or sorting mode.
-                </ThemedText>
-              </View>
-            </View>
-          ) : (
-            <InstructorOpenJobsList
-              jobs={filteredAvailableJobs}
-              locale={locale}
-              zoneLanguage={zoneLanguage}
-              applyingJobId={applyingJobId}
-              withdrawingApplicationId={withdrawingApplicationId}
-              now={liveNow}
-              onApply={onApply}
-              onWithdrawApplication={onWithdrawApplication}
-              onOpenStudio={onOpenStudio}
-              t={t}
-            />
-          )}
-        </Box>
-      </TabScreenScrollView>
-      <TabOverlayAnchor side="right" offset={BrandSpacing.lg} style={{ zIndex: 60 }}>
-        <IconButton
-          accessibilityLabel={t("jobsTab.instructorFeed.openArchive")}
-          onPress={() => {
-            if (isArchiveOpen) {
-              setIsArchiveOpen(false);
-              archiveSheetRef.current?.close();
-              return;
+            ) : (
+              <InstructorOpenJobsList
+                jobs={filteredAvailableJobs}
+                locale={locale}
+                zoneLanguage={zoneLanguage}
+                applyingJobId={applyingJobId}
+                withdrawingApplicationId={withdrawingApplicationId}
+                now={liveNow}
+                onApply={onApply}
+                onWithdrawApplication={onWithdrawApplication}
+                onOpenStudio={onOpenStudio}
+                t={t}
+              />
+            )}
+          </Box>
+        </TabScreenScrollView>
+        <TabOverlayAnchor side="right" offset={BrandSpacing.lg} style={{ zIndex: 60 }}>
+          <IconButton
+            accessibilityLabel={t("jobsTab.instructorFeed.openArchive")}
+            onPress={() => {
+              if (isArchiveOpen) {
+                setIsArchiveOpen(false);
+                archiveSheetRef.current?.close();
+                return;
+              }
+              setIsArchiveOpen(true);
+              archiveSheetRef.current?.expand();
+            }}
+            tone={isArchiveOpen ? "primary" : "secondary"}
+            size={58}
+            floating
+            backgroundColorOverride={isArchiveOpen ? theme.jobs.signal : theme.jobs.surface}
+            icon={
+              <IconSymbol
+                name="archivebox.fill"
+                size={22}
+                color={isArchiveOpen ? theme.color.onPrimary : theme.jobs.signal}
+              />
             }
-            setIsArchiveOpen(true);
-            archiveSheetRef.current?.expand();
+          />
+        </TabOverlayAnchor>
+        <InstructorJobsArchiveSheet
+          innerRef={archiveSheetRef}
+          onDismissed={() => {
+            setIsArchiveOpen(false);
           }}
-          tone={isArchiveOpen ? "primary" : "secondary"}
-          size={58}
-          floating
-          backgroundColorOverride={isArchiveOpen ? theme.jobs.signal : theme.jobs.surface}
-          icon={
-            <IconSymbol
-              name="archivebox.fill"
-              size={22}
-              color={isArchiveOpen ? theme.color.onPrimary : theme.jobs.signal}
-            />
-          }
+          onOpenStateChange={setIsArchiveOpen}
+          rows={archiveRows}
+          locale={locale}
+          zoneLanguage={zoneLanguage}
         />
-      </TabOverlayAnchor>
-      <InstructorJobsArchiveSheet
-        innerRef={archiveSheetRef}
-        onDismissed={() => {
-          setIsArchiveOpen(false);
-        }}
-        onOpenStateChange={setIsArchiveOpen}
-        rows={archiveRows}
-        locale={locale}
-        zoneLanguage={zoneLanguage}
-      />
-    </Box>
+      </Box>
+    </TabSceneTransition>
   );
 }
 

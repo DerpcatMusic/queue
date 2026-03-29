@@ -1,7 +1,6 @@
 import type { TFunction } from "i18next";
-import { useCallback, memo } from "react";
+import { memo, useCallback } from "react";
 import { View } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
 import {
   InstructorJobCard,
   type InstructorMarketplaceJob,
@@ -37,10 +36,7 @@ export const InstructorOpenJobsList = memo(function InstructorOpenJobsList({
 }: InstructorOpenJobsListProps) {
   const { isDesktopWeb: isWideWeb } = useLayoutBreakpoint();
 
-  const handleApply = useCallback(
-    (job: InstructorMarketplaceJob) => onApply(job),
-    [onApply],
-  );
+  const handleApply = useCallback((job: InstructorMarketplaceJob) => onApply(job), [onApply]);
 
   const handleWithdraw = useCallback(
     (applicationId: Id<"jobApplications">) => onWithdrawApplication(applicationId),
@@ -61,14 +57,8 @@ export const InstructorOpenJobsList = memo(function InstructorOpenJobsList({
         paddingHorizontal: BrandSpacing.sm,
       }}
     >
-      {jobs.map((job, index) => (
-        <Animated.View
-          key={`animated-${job.jobId}`}
-          entering={FadeInUp.delay(Math.min(index, 6) * 36)
-            .duration(280)
-            .springify()
-            .damping(18)}
-        >
+      {jobs.map((job) => (
+        <View key={`job-${job.jobId}`}>
           <InstructorJobCard
             job={job}
             locale={locale}
@@ -81,7 +71,7 @@ export const InstructorOpenJobsList = memo(function InstructorOpenJobsList({
             onOpenStudio={handleOpenStudio}
             t={t}
           />
-        </Animated.View>
+        </View>
       ))}
     </View>
   );

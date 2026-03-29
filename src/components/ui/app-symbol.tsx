@@ -1,5 +1,5 @@
 import type { SymbolViewProps } from "expo-symbols";
-import type { OpaqueColorValue, StyleProp, TextStyle } from "react-native";
+import type { OpaqueColorValue, StyleProp } from "react-native";
 import { Platform } from "react-native";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
@@ -7,7 +7,7 @@ type AppSymbolProps = {
   name: unknown;
   size?: number;
   tintColor?: string | OpaqueColorValue;
-  style?: StyleProp<TextStyle>;
+  style?: StyleProp<any>;
 };
 
 function getSymbolName(name: unknown): string {

@@ -25,11 +25,17 @@ import {
   useResolvedTabSheetConfig,
 } from "@/components/layout/top-sheet-registry";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { buildBaseSheetProps, resolveTopSheetRouteTab } from "./global-top-sheet.helpers";
+import {
+  buildBaseSheetProps,
+  resolveTopSheetRouteIdentity,
+  resolveTopSheetRouteTab,
+} from "./global-top-sheet.helpers";
 import { getTopSheetStepHeights } from "./top-sheet.helpers";
 import {
   ANIMATION_DURATION_ENTER,
   ANIMATION_DURATION_EXIT,
+  ANIMATION_DURATION_TAB_ENTER,
+  ANIMATION_DURATION_TAB_EXIT,
   DEFAULT_STEPS,
 } from "./top-sheet-constants";
 
@@ -54,17 +60,19 @@ export function GlobalTopSheet() {
   const activeTabId = resolveTopSheetRouteTab(pathname);
   const routeConfig = useResolvedTabSheetConfig(activeTabId);
   const activeConfig = routeConfig;
-  const activeRouteKey = pathname ?? activeTabId;
-  const sheetInstanceKey = activeTabId ?? activeConfig?.tabId ?? "global-top-sheet";
+  const {
+    stateKey: sheetStateKey,
+    transitionKey,
+    routeDepth,
+  } = resolveTopSheetRouteIdentity(pathname, activeTabId, activeConfig);
 
   // ── ScrollY from provider (for custom animated sheets) ─────────────
   const { setCollapsedSheetHeight } = useScrollSheetLayout();
   const scrollY = useScrollSheetScrollValue();
   const measuredHeightRef = useRef<number | null>(null);
   const lastRenderedSheetHeightRef = useRef<number | null>(null);
-  // Track which tabId the height belongs to - only preserve height within the SAME tab
-  const lastHeightTabIdRef = useRef<string | null>(null);
-  const transitionKey = activeRouteKey ?? activeTabId ?? activeConfig?.tabId ?? "global-top-sheet";
+  const previousTabIdRef = useRef<string | null>(activeTabId);
+  const previousRouteDepthRef = useRef(routeDepth);
   const baseSheetProps = buildBaseSheetProps(activeConfig);
   const hasRenderableContent = Boolean(
     activeConfig &&
@@ -129,32 +137,51 @@ export function GlobalTopSheet() {
     },
     [setCollapsedSheetHeight],
   );
-  const handleSheetHeightChange = useCallback(
-    (height: number) => {
-      if (height <= 0) return;
-      lastRenderedSheetHeightRef.current = height;
-      lastHeightTabIdRef.current = activeTabId;
-    },
-    [activeTabId],
-  );
+  const handleSheetHeightChange = useCallback((height: number) => {
+    if (height <= 0) return;
+    lastRenderedSheetHeightRef.current = height;
+  }, []);
 
-  // Only preserve height within the SAME tab - allows cross-tab morphing to work
-  // When switching tabs, initialHeight is not set, so the new tab springs to its correct height
+  // Preserve the previous rendered shell height across tab switches so the next tab can morph
+  // from the outgoing shell instead of remounting from its own default size.
   const continuitySheetProps = {
-    ...(lastRenderedSheetHeightRef.current !== null && lastHeightTabIdRef.current === activeTabId
+    ...(lastRenderedSheetHeightRef.current !== null
       ? { initialHeight: lastRenderedSheetHeightRef.current }
       : {}),
     onHeightChange: handleSheetHeightChange,
   };
+
+  const isPrimaryTabSwitch =
+    previousTabIdRef.current !== null && previousTabIdRef.current !== activeTabId;
+  const isNestedRouteChange =
+    previousTabIdRef.current === activeTabId && previousRouteDepthRef.current !== routeDepth;
+
+  useEffect(() => {
+    previousTabIdRef.current = activeTabId;
+    previousRouteDepthRef.current = routeDepth;
+  }, [activeTabId, routeDepth]);
 
   const contentTransitionProps = (() => {
     if (reduceMotionEnabled) {
       return {};
     }
 
+    if (isPrimaryTabSwitch) {
+      return {
+        entering: FadeIn.duration(ANIMATION_DURATION_TAB_ENTER).reduceMotion(ReduceMotion.System),
+      };
+    }
+
+    if (isNestedRouteChange) {
+      return {
+        entering: FadeIn.duration(ANIMATION_DURATION_ENTER).reduceMotion(ReduceMotion.System),
+        exiting: FadeOut.duration(ANIMATION_DURATION_EXIT).reduceMotion(ReduceMotion.System),
+      };
+    }
+
     return {
-      entering: FadeIn.duration(ANIMATION_DURATION_ENTER).reduceMotion(ReduceMotion.System),
-      exiting: FadeOut.duration(ANIMATION_DURATION_EXIT).reduceMotion(ReduceMotion.System),
+      entering: FadeIn.duration(ANIMATION_DURATION_TAB_ENTER).reduceMotion(ReduceMotion.System),
+      exiting: FadeOut.duration(ANIMATION_DURATION_TAB_EXIT).reduceMotion(ReduceMotion.System),
     };
   })();
   const renderTransitionedNode = (
@@ -194,10 +221,11 @@ export function GlobalTopSheet() {
       return (
         <View pointerEvents="box-none" style={rootStyle}>
           <TopSheet
-            key={`${sheetInstanceKey}:sheet`}
             {...baseSheetProps}
             {...continuitySheetProps}
             {...richSheetProps}
+            stateKey={sheetStateKey}
+            transitionKey={transitionKey}
             {...(resolvedCollapsedHeightMode === "content"
               ? { onMinHeightChange: handleMeasuredLayout }
               : {})}
@@ -255,9 +283,10 @@ export function GlobalTopSheet() {
   return (
     <View pointerEvents="box-none" style={rootStyle}>
       <TopSheet
-        key={`${sheetInstanceKey}:sheet`}
         {...baseSheetProps!}
         {...continuitySheetProps}
+        stateKey={sheetStateKey}
+        transitionKey={transitionKey}
         {...(resolvedCollapsedHeightMode === "content"
           ? { onMinHeightChange: handleMeasuredLayout }
           : {})}
