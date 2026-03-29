@@ -3,8 +3,6 @@ import { useMutation, useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
 import {
-  type ComponentType,
-  memo,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -13,25 +11,20 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, RefreshControl, StyleSheet, View } from "react-native";
-import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
+import { RefreshControl, StyleSheet, View } from "react-native";
 import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
 import {
   type InstructorArchiveRow,
   InstructorJobsArchiveSheet,
 } from "@/components/jobs/instructor/instructor-jobs-archive-sheet";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
-import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitDisclosureButtonGroup, type KitDisclosureButtonGroupOption } from "@/components/ui/kit";
-import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
@@ -45,130 +38,6 @@ import { openInstructorVerificationGate } from "@/lib/open-instructor-verificati
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import { Box } from "@/primitives";
 
-type SortMode = "none" | "bonus" | "pay" | "time";
-
-// Layout transition builder type from LinearTransition.duration().reduceMotion()
-type JobsLayoutTransition = ReturnType<typeof LinearTransition.duration>;
-
-interface InstructorJobsSheetStickyHeaderProps {
-  actionErrorMessage: string | null;
-  jobsFilterOptions: readonly KitDisclosureButtonGroupOption<SortMode>[];
-  jobsHeaderLayoutTransition: JobsLayoutTransition;
-  jobsSearchQuery: string;
-  jobsSortSummaryLabel: string;
-  showJobsFilters: boolean;
-  sortMode: SortMode;
-  theme: ReturnType<typeof useTheme>;
-  t: ReturnType<typeof useTranslation>["t"];
-  onClearError: () => void;
-  onSearchChange: (text: string) => void;
-  onToggleFilters: () => void;
-  onSortChange: (value: SortMode) => void;
-  onToggleDirection: () => void;
-}
-
-const InstructorJobsSheetStickyHeader = memo(function InstructorJobsSheetStickyHeader({
-  actionErrorMessage,
-  jobsFilterOptions,
-  jobsHeaderLayoutTransition,
-  jobsSearchQuery,
-  jobsSortSummaryLabel,
-  showJobsFilters,
-  sortMode,
-  theme,
-  t,
-  onClearError,
-  onSearchChange,
-  onToggleFilters,
-  onSortChange,
-  onToggleDirection,
-}: InstructorJobsSheetStickyHeaderProps) {
-  return (
-    <View style={{ gap: BrandSpacing.sm }}>
-      <Animated.View
-        layout={jobsHeaderLayoutTransition}
-        style={[styles.feedIntro, { borderBottomColor: theme.jobs.line }]}
-      >
-        <Animated.View layout={jobsHeaderLayoutTransition} style={styles.feedIntroText}>
-          <ThemedText style={[BrandType.title, { color: theme.color.text }]}>
-            {t("jobsTab.availableJobsTitle")}
-          </ThemedText>
-        </Animated.View>
-      </Animated.View>
-
-      <Animated.View
-        layout={jobsHeaderLayoutTransition}
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: BrandSpacing.sm,
-        }}
-      >
-        <Animated.View
-          layout={jobsHeaderLayoutTransition}
-          style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}
-        >
-          <NativeSearchField
-            value={jobsSearchQuery}
-            onChangeText={onSearchChange}
-            placeholder={t("jobsTab.searchPlaceholder")}
-            clearAccessibilityLabel={t("common.clear")}
-            size="sm"
-            animateLayout
-            containerStyle={{ backgroundColor: theme.jobs.surface }}
-          />
-        </Animated.View>
-        <Animated.View layout={jobsHeaderLayoutTransition} style={{ flexShrink: 0, minWidth: 0 }}>
-          <KitDisclosureButtonGroup
-            accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
-            expanded={showJobsFilters}
-            onToggleExpanded={onToggleFilters}
-            options={jobsFilterOptions}
-            value={sortMode}
-            onChange={onSortChange}
-            triggerIcon={
-              <IconSymbol
-                name="line.3.horizontal.decrease.circle"
-                size={18}
-                color={theme.color.text}
-              />
-            }
-            size="sm"
-            railColor={theme.jobs.surface}
-            selectedColor={theme.jobs.surfaceRaised}
-            labelColor={theme.color.text}
-            selectedLabelColor={theme.color.tertiary}
-            dividerColor={theme.jobs.line}
-          />
-        </Animated.View>
-      </Animated.View>
-
-      <Animated.View layout={jobsHeaderLayoutTransition}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Toggle sort direction"
-          disabled={sortMode !== "pay" && sortMode !== "time"}
-          onPress={onToggleDirection}
-          style={({ pressed }) => ({
-            alignSelf: "flex-start",
-            paddingHorizontal: BrandSpacing.xs,
-            paddingVertical: BrandSpacing.xxs,
-            opacity: pressed ? 0.72 : 1,
-          })}
-        >
-          <ThemedText style={[BrandType.caption, { color: theme.jobs.idle }]}>
-            {jobsSortSummaryLabel}
-          </ThemedText>
-        </Pressable>
-      </Animated.View>
-
-      {actionErrorMessage ? (
-        <NoticeBanner tone="error" message={actionErrorMessage} onDismiss={onClearError} />
-      ) : null}
-    </View>
-  );
-} as ComponentType<InstructorJobsSheetStickyHeaderProps>);
-
 export function InstructorFeed() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -177,17 +46,15 @@ export function InstructorFeed() {
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const liveNow = useMinuteNow();
 
-  const [jobsSearchQuery, setJobsSearchQuery] = useState("");
-  const [sortMode, setSortMode] = useState<"none" | "bonus" | "pay" | "time">("bonus");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [showJobsFilters, setShowJobsFilters] = useState(false);
+  const [jobsSearchQuery] = useState("");
+  const [sortMode] = useState<"none" | "bonus" | "pay" | "time">("bonus");
+  const [sortDirection] = useState<"asc" | "desc">("desc");
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [emptyVariantIndex, setEmptyVariantIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [applyingJobId, setApplyingJobId] = useState<Id<"jobs"> | null>(null);
   const [withdrawingApplicationId, setWithdrawingApplicationId] =
     useState<Id<"jobApplications"> | null>(null);
-  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveSheetRef = useRef<BottomSheet>(null);
   const deferredJobsSearchQuery = useDeferredValue(jobsSearchQuery);
@@ -333,7 +200,6 @@ export function InstructorFeed() {
       clearTimeout(refreshTimerRef.current);
     }
 
-    setShowJobsFilters(false);
     setEmptyVariantIndex((current) => (current + 1) % emptyVariants.length);
     setRefreshing(true);
     refreshTimerRef.current = setTimeout(() => {
@@ -351,96 +217,6 @@ export function InstructorFeed() {
     [],
   );
 
-  const jobsFilterOptions = useMemo(
-    () =>
-      [
-        { value: "none", label: "None" },
-        { value: "bonus", label: "Bonus" },
-        { value: "pay", label: "Pay" },
-        { value: "time", label: "Time" },
-      ] as const satisfies readonly KitDisclosureButtonGroupOption<
-        "none" | "bonus" | "pay" | "time"
-      >[],
-    [],
-  );
-  const jobsSortSummaryLabel = useMemo(() => {
-    if (sortMode === "none") return "Sorted by: None";
-    if (sortMode === "bonus") return "Sorted by: Bonus";
-    if (sortMode === "pay") return `Sorted by: Pay ${sortDirection === "asc" ? "↑" : "↓"}`;
-    return `Sorted by: Time ${sortDirection === "asc" ? "↑" : "↓"}`;
-  }, [sortDirection, sortMode]);
-  const jobsHeaderLayoutTransition = useMemo(
-    () => LinearTransition.duration(220).reduceMotion(ReduceMotion.System),
-    [],
-  );
-
-  // Stable callbacks passed to memoized header - prevents header re-render on parent state changes
-  const onClearError = useCallback(() => setActionErrorMessage(null), []);
-  const onSearchChange = useCallback((text: string) => setJobsSearchQuery(text), []);
-  const onToggleFilters = useCallback(() => setShowJobsFilters((current) => !current), []);
-  const onSortChange = useCallback((value: SortMode) => {
-    setSortMode(value);
-    if (value === "pay") setSortDirection("desc");
-    if (value === "time") setSortDirection("asc");
-    if (value === "bonus" || value === "none") setSortDirection("desc");
-  }, []);
-  const onToggleDirection = useCallback(() => {
-    if (sortMode === "pay" || sortMode === "time") {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-    }
-  }, [sortMode]);
-
-  const jobsSheetConfig = useMemo(
-    () => ({
-      stickyHeader: (
-        <InstructorJobsSheetStickyHeader
-          actionErrorMessage={actionErrorMessage}
-          jobsFilterOptions={jobsFilterOptions}
-          jobsHeaderLayoutTransition={jobsHeaderLayoutTransition}
-          jobsSearchQuery={jobsSearchQuery}
-          jobsSortSummaryLabel={jobsSortSummaryLabel}
-          showJobsFilters={showJobsFilters}
-          sortMode={sortMode}
-          theme={theme}
-          t={t}
-          onClearError={onClearError}
-          onSearchChange={onSearchChange}
-          onToggleFilters={onToggleFilters}
-          onSortChange={onSortChange}
-          onToggleDirection={onToggleDirection}
-        />
-      ),
-      padding: {
-        vertical: BrandSpacing.md,
-        horizontal: BrandSpacing.lg,
-      },
-      draggable: false,
-      expandable: false,
-      minHeight: 188,
-      steps: [0],
-      initialStep: 0,
-      collapsedHeightMode: "content" as const,
-      backgroundColor: theme.jobs.canvas,
-      topInsetColor: theme.jobs.canvas,
-    }),
-    [
-      actionErrorMessage,
-      jobsFilterOptions,
-      jobsHeaderLayoutTransition,
-      jobsSearchQuery,
-      jobsSortSummaryLabel,
-      showJobsFilters,
-      sortMode,
-      t,
-      theme,
-      onClearError,
-      onSearchChange,
-      onToggleFilters,
-      onSortChange,
-      onToggleDirection,
-    ],
-  );
-
   const onApply = useCallback(
     async (job: InstructorMarketplaceJob) => {
       if (!job.canApplyToJob) {
@@ -449,13 +225,11 @@ export function InstructorFeed() {
         });
         return;
       }
-      setActionErrorMessage(null);
       setApplyingJobId(job.jobId);
       try {
         await applyToJob({ jobId: job.jobId });
       } catch (error) {
         console.error("[jobs] apply failed", error);
-        setActionErrorMessage(t("jobsTab.errors.applyError"));
       } finally {
         setApplyingJobId(null);
       }
@@ -465,13 +239,11 @@ export function InstructorFeed() {
 
   const onWithdrawApplication = useCallback(
     async (applicationId: Id<"jobApplications">) => {
-      setActionErrorMessage(null);
       setWithdrawingApplicationId(applicationId);
       try {
         await withdrawApplication({ applicationId });
       } catch (error) {
         console.error("[jobs] withdraw failed", error);
-        setActionErrorMessage(t("jobsTab.errors.withdrawError"));
       } finally {
         setWithdrawingApplicationId(null);
       }
@@ -487,8 +259,6 @@ export function InstructorFeed() {
     },
     [router],
   );
-
-  useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:instructor-feed");
 
   if (
     currentUser === undefined ||

@@ -1,5 +1,5 @@
 import { usePathname } from "expo-router";
-import { isValidElement, useCallback, useEffect, useRef } from "react";
+import { isValidElement, useCallback, useContext, useEffect, useMemo, useRef } from "react";
 import {
   Platform,
   type StyleProp,
@@ -24,6 +24,8 @@ import {
   DEFAULT_SHEET_PADDING_TOP,
   useResolvedTabSheetConfig,
 } from "@/components/layout/top-sheet-registry";
+import { TabSceneDescriptorContext } from "@/modules/navigation/role-tabs-layout";
+import type { RoleTabRouteName } from "@/navigation/role-routes";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import {
   buildBaseSheetProps,
@@ -59,7 +61,22 @@ export function GlobalTopSheet() {
   // ── Determine active tab config from route ──────────────────────────
   const activeTabId = resolveTopSheetRouteTab(pathname);
   const routeConfig = useResolvedTabSheetConfig(activeTabId);
-  const activeConfig = routeConfig;
+
+  // ── Merge scene descriptor sheetConfig (from TabSceneDescriptorContext) ──
+  const descriptorContext = useContext(TabSceneDescriptorContext);
+  const descriptorSheetConfig = descriptorContext?.getDescriptor(
+    activeTabId as RoleTabRouteName,
+  )?.sheetConfig;
+
+  const activeConfig = useMemo(() => {
+    if (!routeConfig) return null;
+    if (!descriptorSheetConfig) return routeConfig;
+    return {
+      ...routeConfig,
+      ...descriptorSheetConfig,
+      tabId: activeTabId ?? routeConfig.tabId,
+    } as (typeof routeConfig) & Partial<typeof descriptorSheetConfig>;
+  }, [routeConfig, descriptorSheetConfig, activeTabId]);
   const {
     stateKey: sheetStateKey,
     transitionKey,

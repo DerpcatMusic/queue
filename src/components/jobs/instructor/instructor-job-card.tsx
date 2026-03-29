@@ -1,6 +1,7 @@
 import { Image as ExpoImage } from "expo-image";
 import type { TFunction } from "i18next";
 import type React from "react";
+import { memo } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
 import { FilterImage, type Filters } from "react-native-svg/filter-image";
@@ -82,7 +83,7 @@ type InstructorJobCardProps = {
   variant?: "default" | "studioDetail";
 };
 
-function StudioImageBackground({
+const StudioImageBackground = memo(function StudioImageBackground({
   imageUrl,
   fallbackLabel,
   theme,
@@ -165,9 +166,9 @@ function StudioImageBackground({
       {children}
     </View>
   );
-}
+});
 
-export function InstructorJobCard({
+export const InstructorJobCard = memo(function InstructorJobCard({
   job,
   locale,
   zoneLanguage,
@@ -684,4 +685,4 @@ export function InstructorJobCard({
       </View>
     </Pressable>
   );
-}
+});

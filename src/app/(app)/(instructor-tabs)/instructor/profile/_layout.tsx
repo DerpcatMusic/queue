@@ -12,7 +12,6 @@ export default function ProfileLayout() {
 
   return (
     <ProfileSubpageSheetProvider
-      ownerId="profile-layout:instructor"
       routes={[
         {
           routeMatchPath: "/profile/add-account",

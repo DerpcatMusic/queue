@@ -407,7 +407,7 @@ export default function StudioBranchesScreen() {
           <ProfileSectionCard style={styles.editorCard}>
             <View style={styles.sectionCardContent}>
               <View style={styles.editorHeader}>
-                <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                <View style={styles.labelContainer}>
                   <ThemedText type="title">
                     {mode === "create"
                       ? t("profile.settings.branches.createTitle")
@@ -442,7 +442,7 @@ export default function StudioBranchesScreen() {
                 keyboardType="phone-pad"
               />
 
-              <View style={{ gap: BrandSpacing.sm }}>
+              <View style={styles.gapSm}>
                 <ThemedText type="bodyStrong">
                   {t("profile.settings.branches.fields.zone")}
                 </ThemedText>
@@ -478,7 +478,7 @@ export default function StudioBranchesScreen() {
                 </View>
               </View>
 
-              <View style={{ gap: BrandSpacing.sm }}>
+              <View style={styles.gapSm}>
                 <ThemedText type="bodyStrong">{t("profile.settings.autoExpireJobs")}</ThemedText>
                 <View style={styles.pillWrap}>
                   {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
@@ -503,7 +503,7 @@ export default function StudioBranchesScreen() {
               </View>
 
               <View style={styles.switchRow}>
-                <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                <View style={styles.flex1GapXs}>
                   <Text
                     style={[
                       {
@@ -529,7 +529,7 @@ export default function StudioBranchesScreen() {
                 />
               </View>
 
-              <View style={{ gap: BrandSpacing.sm }}>
+              <View style={styles.gapSm}>
                 <ThemedText type="bodyStrong">
                   {t("profile.settings.branches.calendarTitle")}
                 </ThemedText>
@@ -556,7 +556,7 @@ export default function StudioBranchesScreen() {
                   ))}
                 </View>
                 <View style={styles.switchRow}>
-                  <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                  <View style={styles.flex1GapXs}>
                     <Text
                       style={[
                         {
@@ -617,7 +617,7 @@ export default function StudioBranchesScreen() {
               <ProfileSectionCard key={String(branch.branchId)} style={styles.branchCard}>
                 <View style={styles.sectionCardContent}>
                   <View style={styles.branchHeader}>
-                    <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                    <View style={styles.flex1GapXs}>
                       <View style={styles.badgeRow}>
                         <ThemedText type="title">{branch.name}</ThemedText>
                         {branch.isPrimary ? (
@@ -914,6 +914,18 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: "row",
     flexWrap: "wrap",
+    gap: BrandSpacing.sm,
+  },
+  // Extracted reusable inline styles
+  flex1GapXs: {
+    flex: 1,
+    gap: BrandSpacing.xs,
+  },
+  labelContainer: {
+    flex: 1,
+    gap: BrandSpacing.xs,
+  },
+  gapSm: {
     gap: BrandSpacing.sm,
   },
 });

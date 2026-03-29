@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { type ColorValue, Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
@@ -17,7 +18,7 @@ type NoticeBannerProps = {
   style?: ViewStyle;
 };
 
-export function NoticeBanner({
+export const NoticeBanner = memo(function NoticeBanner({
   tone,
   message,
   onDismiss,
@@ -75,7 +76,7 @@ export function NoticeBanner({
       </Pressable>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

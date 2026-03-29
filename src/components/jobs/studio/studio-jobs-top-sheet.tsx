@@ -1,4 +1,5 @@
 import type { TFunction } from "i18next";
+import { memo } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { IconButton } from "@/components/ui/icon-button";
@@ -19,7 +20,7 @@ type StudioJobsTopSheetHeaderProps = {
   t: TFunction;
 };
 
-export function StudioJobsTopSheetHeader({
+export const StudioJobsTopSheetHeader = memo(function StudioJobsTopSheetHeader({
   currentFilter,
   isFilterExpanded,
   notificationsEnabled,
@@ -82,7 +83,7 @@ export function StudioJobsTopSheetHeader({
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   headerRow: {

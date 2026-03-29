@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MMKV } from "react-native-mmkv";
 import { Appearance, StyleSheet as RNStyleSheet, type TextStyle } from "react-native";
 import { StyleSheet, UnistylesRuntime } from "react-native-unistyles";
 
@@ -7,6 +7,7 @@ export type ThemePreference = "light" | "dark" | "system";
 export type ResolvedBrandScheme = ThemeScheme;
 
 const THEME_PREFERENCE_KEY = "app_theme_preference";
+const storage = new MMKV({ id: "app-storage" });
 
 export const Spacing = {
   xxs: 2,
@@ -527,18 +528,18 @@ function toThemePreference(value: string | null): ThemePreference | null {
   return value === "light" || value === "dark" || value === "system" ? value : null;
 }
 
-export async function loadThemePreference(): Promise<ThemePreference | null> {
+export function loadThemePreference(): ThemePreference | null {
   try {
-    const stored = await AsyncStorage.getItem(THEME_PREFERENCE_KEY);
-    return toThemePreference(stored);
+    const stored = storage.getString(THEME_PREFERENCE_KEY);
+    return toThemePreference(stored ?? null);
   } catch {
     return null;
   }
 }
 
-export async function persistThemePreference(preference: ThemePreference): Promise<void> {
+export function persistThemePreference(preference: ThemePreference): void {
   try {
-    await AsyncStorage.setItem(THEME_PREFERENCE_KEY, preference);
+    storage.set(THEME_PREFERENCE_KEY, preference);
   } catch {
     // Ignore persistence failures
   }

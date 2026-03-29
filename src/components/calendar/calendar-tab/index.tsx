@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { BrandSpacing } from "@/constants/brand";
@@ -11,14 +10,12 @@ import { useTheme } from "@/hooks/use-theme";
 import type { TimelineListItem } from "../calendar-controller-helpers";
 import { useCalendarTabController } from "../use-calendar-tab-controller";
 import { toDayKey } from "./calendar-date-utils";
-import CalendarSheetHeader from "./calendar-sheet-header";
 import CalendarTimelineList from "./calendar-timeline-list";
 import CalendarTimelineRow from "./calendar-timeline-row";
 
 export default function CalendarTabScreen() {
   const { t } = useTranslation();
   const { isDesktopWeb } = useLayoutBreakpoint();
-  const { width: screenWidth } = useWindowDimensions();
   const { color: palette } = useTheme();
   const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
     topSpacing: BrandSpacing.md,
@@ -38,26 +35,6 @@ export default function CalendarTabScreen() {
     isLoading,
   } = useCalendarTabController();
   const listAnimationKey = `${selectedDay}:${listItems.length}`;
-
-  const calendarHorizontalPadding = screenWidth < 390 ? BrandSpacing.lg : BrandSpacing.xl;
-
-  const calendarSheetConfig = useMemo(
-    () => ({
-      content: <CalendarSheetHeader selectedDay={selectedDay} todayKey={todayKey} />,
-      padding: {
-        vertical: BrandSpacing.sm,
-        horizontal: calendarHorizontalPadding,
-      },
-      steps: [0.18],
-      initialStep: 0,
-      collapsedHeightMode: "content" as const,
-      backgroundColor: palette.primary,
-      topInsetColor: palette.primary,
-    }),
-    [calendarHorizontalPadding, palette.primary, selectedDay, todayKey],
-  );
-
-  useGlobalTopSheet("calendar", calendarSheetConfig);
 
   const renderItem = useMemo(
     () =>

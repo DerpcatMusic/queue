@@ -326,7 +326,7 @@ export const getInstructorTabCounts = query({
     const applications = await ctx.db
       .query("jobApplications")
       .withIndex("by_instructor", (q) => q.eq("instructorId", instructor._id))
-      .collect();
+      .take(200);
     const acceptedJobIds = [
       ...new Set(
         applications
@@ -376,7 +376,7 @@ export const getStudioTabCounts = query({
     const jobs = await ctx.db
       .query("jobs")
       .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
-      .collect();
+      .take(200);
     const activeJobs = jobs.filter(
       (job) =>
         (job.status === "open" || job.status === "filled") && job.endTime > now,
@@ -947,7 +947,7 @@ export const getAvailableJobsForInstructor = query({
     const instructorApplications = await ctx.db
       .query("jobApplications")
       .withIndex("by_instructor", (q) => q.eq("instructorId", instructor._id))
-      .collect();
+      .take(100);
 
     for (const application of instructorApplications) {
       const jobId = String(application.jobId);

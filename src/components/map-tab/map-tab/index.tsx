@@ -1,5 +1,6 @@
 import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { Platform, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { MapMobileStage } from "@/components/map-tab/map-tab/map-mobile-stage";
@@ -40,6 +41,12 @@ export default function MapTabScreen() {
     zoneSearch,
     zoneModeActive,
   } = useMapTabController();
+  const [isMapLoading, setIsMapLoading] = useState(true);
+  useEffect(() => {
+    if (isMapBodyReady) {
+      setIsMapLoading(false);
+    }
+  }, [isMapBodyReady]);
   const handlePressStudio = (studioId: string) => {
     router.push(`/instructor/jobs/studios/${encodeURIComponent(studioId)}` as Href);
   };
@@ -64,7 +71,7 @@ export default function MapTabScreen() {
     return <Redirect href="/studio" />;
   }
 
-  if (!isMapBodyReady) {
+  if (isMapLoading) {
     return (
       <TabScreenRoot
         mode="static"
