@@ -676,21 +676,91 @@ export const processInsuranceRenewalChecks = internalAction({
 
       if (
         row.reviewStatus === "approved" &&
-        daysUntilExpiry <= 7 &&
+        daysUntilExpiry <= 1 &&
         daysUntilExpiry > 0 &&
-        row.finalReminderSentAt === undefined
+        row.dayReminderSentAt === undefined
       ) {
         processed += 1;
         await ctx.runMutation(internal.compliance.markInsuranceReminderEvent, {
           insurancePolicyId: row.insurancePolicyId,
-          event: "final_reminder",
+          event: "day_reminder",
+          at: now,
+        });
+        await ctx.runMutation(internal.compliance.createInstructorComplianceNotification, {
+          recipientUserId: row.recipientUserId,
+          kind: "compliance_insurance_expiring",
+          title: "Insurance expires tomorrow",
+          body: "Your insurance expires within a day. Upload the next active policy now to avoid a lapse.",
+        });
+        notified += 1;
+        if (
+          await sendComplianceEmail(
+            row.email
+              ? {
+                  to: row.email,
+                  subject: "Your Queue insurance expires tomorrow",
+                  text: `Hi ${row.instructorDisplayName}, your insurance expires in less than a day. Upload the next active policy in Queue now to avoid a lapse.`,
+                }
+              : { subject: "", text: "" },
+          )
+        ) {
+          emailed += 1;
+        }
+        continue;
+      }
+
+      if (
+        row.reviewStatus === "approved" &&
+        daysUntilExpiry <= 30 &&
+        daysUntilExpiry > 7 &&
+        row.monthReminderSentAt === undefined
+      ) {
+        processed += 1;
+        await ctx.runMutation(internal.compliance.markInsuranceReminderEvent, {
+          insurancePolicyId: row.insurancePolicyId,
+          event: "month_reminder",
+          at: now,
+        });
+        await ctx.runMutation(internal.compliance.createInstructorComplianceNotification, {
+          recipientUserId: row.recipientUserId,
+          kind: "compliance_insurance_expiring",
+          title: "Insurance expires within a month",
+          body: "Upload your next active insurance policy before it lapses and blocks job actions.",
+        });
+        notified += 1;
+        if (
+          await sendComplianceEmail(
+            row.email
+              ? {
+                  to: row.email,
+                  subject: "Your Queue insurance expires within a month",
+                  text: `Hi ${row.instructorDisplayName}, your insurance expires in ${daysUntilExpiry} days. Upload the next active policy in Queue now so job actions stay unlocked.`,
+                }
+              : { subject: "", text: "" },
+          )
+        ) {
+          emailed += 1;
+        }
+        continue;
+      }
+
+      if (
+        row.reviewStatus === "approved" &&
+        daysUntilExpiry <= 7 &&
+        daysUntilExpiry > 1 &&
+        row.weekReminderSentAt === undefined
+      ) {
+        processed += 1;
+        await ctx.runMutation(internal.compliance.markInsuranceReminderEvent, {
+          insurancePolicyId: row.insurancePolicyId,
+          event: "week_reminder",
           at: now,
         });
         await ctx.runMutation(internal.compliance.createInstructorComplianceNotification, {
           recipientUserId: row.recipientUserId,
           kind: "compliance_insurance_expiring",
           title: "Insurance expires in 7 days",
-          body: "Upload your next active insurance policy now so job actions stay unlocked.",
+          body: "Your insurance expires within a week. Upload the next active policy now.",
         });
         notified += 1;
         if (
@@ -711,21 +781,21 @@ export const processInsuranceRenewalChecks = internalAction({
 
       if (
         row.reviewStatus === "approved" &&
-        daysUntilExpiry <= 30 &&
-        daysUntilExpiry > 7 &&
-        row.firstReminderSentAt === undefined
+        daysUntilExpiry <= 1 &&
+        daysUntilExpiry > 0 &&
+        row.dayReminderSentAt === undefined
       ) {
         processed += 1;
         await ctx.runMutation(internal.compliance.markInsuranceReminderEvent, {
           insurancePolicyId: row.insurancePolicyId,
-          event: "first_reminder",
+          event: "day_reminder",
           at: now,
         });
         await ctx.runMutation(internal.compliance.createInstructorComplianceNotification, {
           recipientUserId: row.recipientUserId,
           kind: "compliance_insurance_expiring",
-          title: "Insurance expires soon",
-          body: "Your insurance expires within a month. Upload the next active policy before it lapses.",
+          title: "Insurance expires tomorrow",
+          body: "Your insurance expires in less than a day. Upload a renewed policy immediately.",
         });
         notified += 1;
         if (
@@ -733,8 +803,8 @@ export const processInsuranceRenewalChecks = internalAction({
             row.email
               ? {
                   to: row.email,
-                  subject: "Your Queue insurance expires within a month",
-                  text: `Hi ${row.instructorDisplayName}, your insurance expires in ${daysUntilExpiry} days. Upload the next active policy in Queue before it lapses.`,
+                  subject: "Your Queue insurance expires tomorrow",
+                  text: `Hi ${row.instructorDisplayName}, your insurance expires in less than a day. Upload a renewed policy in Queue immediately to avoid losing job actions.`,
                 }
               : { subject: "", text: "" },
           )

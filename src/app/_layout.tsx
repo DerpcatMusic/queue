@@ -25,7 +25,7 @@ import i18n from "@/i18n";
 import { getConvexClient, isConvexUrlConfigured } from "@/lib/convex";
 import { useAndroidNavigationBarTheme } from "@/modules/app-shell/use-android-navigation-bar-theme";
 import { useLocalizationBootstrapPrompt } from "@/modules/app-shell/use-localization-bootstrap-prompt";
-import { useStartupNotificationsSetup } from "@/modules/app-shell/use-startup-notifications-setup";
+import { StartupNotificationsBootstrap } from "@/modules/app-shell/startup-notifications-bootstrap";
 import { useStartupPerfMetrics } from "@/modules/app-shell/use-startup-perf-metrics";
 import { BrandSpacing, BrandType, getTheme } from "@/theme/theme";
 
@@ -118,7 +118,6 @@ function RootLayoutContent() {
     return Platform.OS === "android" || Platform.OS === "ios" ? secureStorage : null;
   }, []);
 
-  useStartupNotificationsSetup();
   useAndroidNavigationBarTheme(resolvedScheme);
 
   const authSessionController = useMemo(
@@ -206,6 +205,7 @@ function RootLayoutContent() {
           {...(nativeStorage ? { storage: nativeStorage } : {})}
         >
           <UserProvider>
+            <StartupNotificationsBootstrap />
             <RapydReturnProvider>
               <ThemeProvider value={navigationTheme}>
                 <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>

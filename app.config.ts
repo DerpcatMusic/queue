@@ -23,6 +23,8 @@ function buildGoogleIosUrlScheme(clientId: string | undefined) {
 const googleIosUrlScheme = buildGoogleIosUrlScheme(resolveGoogleIosClientId());
 
 export default ({ config }: { config: ExpoConfig }) => {
+  const easProjectId =
+    trimEnv(process.env.EXPO_PUBLIC_EAS_PROJECT_ID) ?? trimEnv(process.env.EAS_PROJECT_ID);
   const plugins = [...(config.plugins ?? [])];
   const hasGoogleSigninPlugin = plugins.some(
     (plugin) =>
@@ -42,5 +44,16 @@ export default ({ config }: { config: ExpoConfig }) => {
   return {
     ...config,
     plugins,
+    extra: {
+      ...(config.extra ?? {}),
+      ...(easProjectId
+        ? {
+            eas: {
+              ...(((config.extra ?? {}).eas as Record<string, unknown> | undefined) ?? {}),
+              projectId: easProjectId,
+            },
+          }
+        : {}),
+    },
   } satisfies ExpoConfig;
 };

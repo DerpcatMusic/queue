@@ -76,6 +76,21 @@ function normalizeTimeZone(value: string | undefined) {
   return trimmed;
 }
 
+async function enqueueUserNotification(
+  ctx: MutationCtx,
+  args: {
+    recipientUserId: Id<"users">;
+    actorUserId?: Id<"users">;
+    kind: Doc<"userNotifications">["kind"];
+    title: string;
+    body: string;
+    jobId?: Id<"jobs">;
+    applicationId?: Id<"jobApplications">;
+  },
+) {
+  return await ctx.runMutation(internal.notificationsCore.deliverNotificationEvent, args);
+}
+
 function isPresent<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
 }
@@ -483,46 +498,6 @@ const JOB_ACTION_VERIFICATION_REQUIRED_ERROR =
 
 function clampBadgeCount(value: number) {
   return Math.min(Math.max(value, 0), BADGE_COUNT_CAP);
-}
-
-async function enqueueUserNotification(
-  ctx: MutationCtx,
-  args: {
-    recipientUserId: Id<"users">;
-    actorUserId?: Id<"users">;
-    kind: Doc<"userNotifications">["kind"];
-    title: string;
-    body: string;
-    jobId?: Id<"jobs">;
-    applicationId?: Id<"jobApplications">;
-  },
-) {
-  const createdAt = Date.now();
-  await ctx.db.insert("userNotifications", {
-    recipientUserId: args.recipientUserId,
-    kind: args.kind,
-    title: args.title,
-    body: args.body,
-    ...omitUndefined({
-      actorUserId: args.actorUserId,
-      jobId: args.jobId,
-      applicationId: args.applicationId,
-    }),
-    createdAt,
-  });
-
-  await ctx.scheduler.runAfter(0, internal.userPushNotifications.sendUserPushNotification, {
-    userId: args.recipientUserId,
-    title: args.title,
-    body: args.body,
-    data: {
-      type: args.kind,
-      ...omitUndefined({
-        jobId: args.jobId ? String(args.jobId) : undefined,
-        applicationId: args.applicationId ? String(args.applicationId) : undefined,
-      }),
-    },
-  });
 }
 
 export const postJob = mutation({
@@ -2402,6 +2377,9 @@ export const runAcceptedApplicationReviewWorkflow = internalMutation({
         event: "lesson_completed",
       },
     );
+    await ctx.scheduler.runAfter(0, internal.notificationsCore.syncLessonReminderSchedulesForJob, {
+      jobId: job._id,
+    });
     const acceptedInstructorProfile = profileById.get(String(acceptedApplication.instructorId));
     await Promise.all([
       scheduleGoogleCalendarSyncForUser(ctx, args.studioUserId),
@@ -2484,6 +2462,10 @@ export const emitLessonLifecycleEvent = internalMutation({
 
     if (args.event === "lesson_completed" && job.status === "filled") {
       await ctx.db.patch("jobs", job._id, { status: "completed" });
+      await ctx.scheduler.runAfter(0, internal.notificationsCore.cancelJobNotificationSchedules, {
+        jobId: job._id,
+        reason: "lesson_completed",
+      });
       await ctx.scheduler.runAfter(0, internal.payouts.evaluatePayoutEligibility, {
         jobId: job._id,
       });
@@ -2530,6 +2512,10 @@ export const markLessonCompleted = mutation({
     }
 
     await ctx.db.patch("jobs", job._id, { status: "completed" });
+    await ctx.scheduler.runAfter(0, internal.notificationsCore.cancelJobNotificationSchedules, {
+      jobId: job._id,
+      reason: "lesson_completed",
+    });
     await ctx.scheduler.runAfter(0, internal.payouts.evaluatePayoutEligibility, {
       jobId: job._id,
     });
@@ -2568,6 +2554,10 @@ export const closeJobIfStillOpen = internalMutation({
     }
 
     await ctx.db.patch("jobs", job._id, { status: "cancelled" });
+    await ctx.scheduler.runAfter(0, internal.notificationsCore.cancelJobNotificationSchedules, {
+      jobId: job._id,
+      reason: "job_closed",
+    });
     const studio = await ctx.db.get("studioProfiles", job.studioId);
     await scheduleGoogleCalendarSyncForUser(ctx, studio?.userId);
     return { updated: true };
@@ -2600,6 +2590,10 @@ export const autoExpireUnfilledJob = internalMutation({
     await ctx.db.patch("jobs", job._id, {
       status: "cancelled",
       closureReason: "expired",
+    });
+    await ctx.scheduler.runAfter(0, internal.notificationsCore.cancelJobNotificationSchedules, {
+      jobId: job._id,
+      reason: "job_expired",
     });
     await scheduleGoogleCalendarSyncForUser(ctx, studio?.userId);
 
@@ -2676,6 +2670,10 @@ export const cancelMyBooking = mutation({
       status: "cancelled",
       filledByInstructorId: undefined,
     });
+    await ctx.scheduler.runAfter(0, internal.notificationsCore.cancelJobNotificationSchedules, {
+      jobId: job._id,
+      reason: "booking_cancelled",
+    });
 
     const applications = await ctx.db
       .query("jobApplications")
@@ -2736,6 +2734,10 @@ export const cancelFilledJob = mutation({
         status: "cancelled",
         closureReason: "studio_cancelled",
       });
+      await ctx.scheduler.runAfter(0, internal.notificationsCore.cancelJobNotificationSchedules, {
+        jobId: job._id,
+        reason: "studio_cancelled",
+      });
 
       const applications = await ctx.db
         .query("jobApplications")
@@ -2785,6 +2787,10 @@ export const cancelFilledJob = mutation({
     await ctx.db.patch("jobs", job._id, {
       status: "cancelled",
       closureReason: "studio_cancelled",
+    });
+    await ctx.scheduler.runAfter(0, internal.notificationsCore.cancelJobNotificationSchedules, {
+      jobId: job._id,
+      reason: "studio_cancelled",
     });
 
     const applications = await ctx.db

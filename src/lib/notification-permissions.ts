@@ -9,6 +9,14 @@ function hasGrantedNotificationPermission(
   Notifications: NotificationsModule,
   permissionStatus: NotificationPermissionsStatus,
 ): boolean {
+  if (
+    Platform.OS === "android" &&
+    typeof Platform.Version === "number" &&
+    Platform.Version < 33
+  ) {
+    return true;
+  }
+
   if (permissionStatus.granted) {
     return true;
   }
@@ -27,13 +35,26 @@ function hasGrantedNotificationPermission(
 
 export async function requestNotificationPermissionIfNeeded(
   Notifications: NotificationsModule,
+  options?: {
+    requestIfNeeded?: boolean;
+  },
 ): Promise<boolean> {
   const existingPermissions = await Notifications.getPermissionsAsync();
   if (hasGrantedNotificationPermission(Notifications, existingPermissions)) {
     return true;
   }
 
+  if (options?.requestIfNeeded === false) {
+    return false;
+  }
+
   const requestedPermissions = await Notifications.requestPermissionsAsync({
+    android: {
+      allowAlert: true,
+      allowBadge: true,
+      allowSound: true,
+      allowVibration: true,
+    },
     ios: {
       allowAlert: true,
       allowBadge: true,

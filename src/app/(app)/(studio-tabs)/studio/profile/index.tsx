@@ -55,6 +55,7 @@ const ROLE_TRANSLATION_KEYS = {
 const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
 const STUDIO_BRANCHES_ROUTE = `${STUDIO_PROFILE_ROUTE}/branches` as const;
 const STUDIO_ADD_ACCOUNT_ROUTE = `${STUDIO_PROFILE_ROUTE}/add-account` as const;
+const STUDIO_NOTIFICATIONS_ROUTE = `${STUDIO_PROFILE_ROUTE}/notifications` as const;
 const STUDIO_CALENDAR_SETTINGS_ROUTE = `${STUDIO_PROFILE_ROUTE}/calendar-settings` as const;
 const STUDIO_COMPLIANCE_ROUTE = `${STUDIO_PROFILE_ROUTE}/compliance` as const;
 const STUDIO_PAYMENTS_ROUTE = `${STUDIO_PROFILE_ROUTE}/payments` as const;
@@ -300,6 +301,11 @@ export default function StudioProfileScreen() {
           studioSettings?.studioName ??
           t("profile.settings.branches.none"),
       });
+  const notificationsSummary = studioSettings?.notificationsEnabled
+    ? t("profile.notifications.summaryOn", {
+        minutes: studioSettings.lessonReminderMinutesBefore,
+      })
+    : t("profile.notifications.summaryOff");
   const provider = studioSettings?.calendarProvider;
   const calendarSummary =
     !provider || provider === "none"
@@ -639,6 +645,13 @@ export default function StudioProfileScreen() {
                   }
                 />
                 <ProfileSettingRow
+                  title={t("profile.navigation.notifications")}
+                  subtitle={notificationsSummary}
+                  icon="bell.fill"
+                  onPress={() => router.push(STUDIO_NOTIFICATIONS_ROUTE as Href)}
+                  showDivider
+                />
+                <ProfileSettingRow
                   title={t("profile.settings.calendar.title")}
                   subtitle={calendarSummary}
                   icon="calendar.circle.fill"
@@ -868,6 +881,13 @@ export default function StudioProfileScreen() {
                     onValueChange={handleAutoAcceptDefaultChange}
                   />
                 }
+              />
+              <ProfileSettingRow
+                title={t("profile.navigation.notifications")}
+                subtitle={notificationsSummary}
+                icon="bell.fill"
+                onPress={() => router.push(STUDIO_NOTIFICATIONS_ROUTE as Href)}
+                showDivider
               />
               <ProfileSettingRow
                 title={t("profile.settings.calendar.title")}

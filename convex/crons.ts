@@ -46,4 +46,11 @@ crons.cron(
   {},
 );
 
+crons.interval(
+  "process due notification schedules",
+  { minutes: 5 },
+  internal.notificationsCore.processDueNotificationSchedules,
+  {},
+);
+
 export default crons;

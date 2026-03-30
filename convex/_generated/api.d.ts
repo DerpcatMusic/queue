@@ -36,6 +36,7 @@ import type * as lib_instructorCompliance from "../lib/instructorCompliance.js";
 import type * as lib_instructorCoverage from "../lib/instructorCoverage.js";
 import type * as lib_instructorEligibility from "../lib/instructorEligibility.js";
 import type * as lib_marketplace from "../lib/marketplace.js";
+import type * as lib_notificationPreferences from "../lib/notificationPreferences.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_resendDevRouting from "../lib/resendDevRouting.js";
 import type * as lib_studioBranches from "../lib/studioBranches.js";
@@ -94,6 +95,7 @@ declare const fullApi: ApiFromModules<{
   "lib/instructorCoverage": typeof lib_instructorCoverage;
   "lib/instructorEligibility": typeof lib_instructorEligibility;
   "lib/marketplace": typeof lib_marketplace;
+  "lib/notificationPreferences": typeof lib_notificationPreferences;
   "lib/rateLimit": typeof lib_rateLimit;
   "lib/resendDevRouting": typeof lib_resendDevRouting;
   "lib/studioBranches": typeof lib_studioBranches;

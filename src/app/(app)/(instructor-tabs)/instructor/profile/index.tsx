@@ -6,7 +6,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Linking, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, View } from "react-native";
 
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
@@ -21,7 +21,7 @@ import {
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
 import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
 import { KitSwitch } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -51,6 +51,7 @@ const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_
 const INSTRUCTOR_COMPLIANCE_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/compliance` as const;
 const INSTRUCTOR_SPORTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/sports` as const;
 const INSTRUCTOR_LOCATION_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/location` as const;
+const INSTRUCTOR_NOTIFICATIONS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/notifications` as const;
 const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
 const INSTRUCTOR_PAYMENTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
 const INSTRUCTOR_ADD_ACCOUNT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/add-account` as const;
@@ -188,6 +189,11 @@ export default function InstructorProfileScreen() {
       ? `${instructorSettings.address.slice(0, 32)}...`
       : instructorSettings.address
     : t("profile.settings.location.zoneNotDetected");
+  const notificationsSummary = instructorSettings?.notificationsEnabled
+    ? t("profile.notifications.summaryOn", {
+        minutes: instructorSettings.lessonReminderMinutesBefore,
+      })
+    : t("profile.notifications.summaryOff");
   const provider = instructorSettings?.calendarProvider;
   const calendarSummary =
     !provider || provider === "none"
@@ -414,6 +420,13 @@ export default function InstructorProfileScreen() {
                   />
                 ) : null}
                 <ProfileSettingRow
+                  title={t("profile.navigation.notifications")}
+                  subtitle={notificationsSummary}
+                  icon="bell.fill"
+                  onPress={() => router.push(INSTRUCTOR_NOTIFICATIONS_ROUTE as Href)}
+                  showDivider
+                />
+                <ProfileSettingRow
                   title={t("profile.language.title")}
                   value={language === "en" ? t("language.english") : t("language.hebrew")}
                   icon="globe"
@@ -570,23 +583,11 @@ export default function InstructorProfileScreen() {
             />
             <ProfileSectionCard>
               <ProfileSettingRow
-                title={t("profile.appearance.notifications")}
+                title={t("profile.navigation.notifications")}
+                subtitle={notificationsSummary}
                 icon="bell.fill"
+                onPress={() => router.push(INSTRUCTOR_NOTIFICATIONS_ROUTE as Href)}
                 showDivider
-                accessory={
-                  <View
-                    style={{
-                      backgroundColor: theme.color.primary,
-                      paddingHorizontal: BrandSpacing.xs,
-                      paddingVertical: BrandSpacing.xxs,
-                      borderRadius: BrandRadius.buttonSubtle,
-                    }}
-                  >
-                    <Text style={[BrandType.labelStrong, { color: theme.color.onPrimary }]}>
-                      ON
-                    </Text>
-                  </View>
-                }
               />
               <ProfileSettingRow
                 title={t("profile.appearance.darkMode.title")}
@@ -666,12 +667,7 @@ export default function InstructorProfileScreen() {
       insetTone: "sheet" as const,
       isLoading: currentUser?.role === "instructor" && instructorSettings === undefined,
     }),
-    [
-      descriptorBody,
-      profileSheetConfig,
-      currentUser?.role,
-      instructorSettings,
-    ],
+    [descriptorBody, profileSheetConfig, currentUser?.role, instructorSettings],
   );
 
   useTabSceneDescriptor(descriptor);

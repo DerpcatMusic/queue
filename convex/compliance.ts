@@ -609,21 +609,11 @@ export const createInstructorComplianceNotification = internalMutation({
   },
   returns: v.object({ ok: v.boolean() }),
   handler: async (ctx, args) => {
-    await ctx.db.insert("userNotifications", {
+    await ctx.runMutation(internal.notificationsCore.deliverNotificationEvent, {
       recipientUserId: args.recipientUserId,
       kind: args.kind,
       title: args.title,
       body: args.body,
-      createdAt: Date.now(),
-    });
-
-    await ctx.scheduler.runAfter(0, internal.userPushNotifications.sendUserPushNotification, {
-      userId: args.recipientUserId,
-      title: args.title,
-      body: args.body,
-      data: {
-        type: args.kind,
-      },
     });
 
     return { ok: true };
@@ -641,8 +631,11 @@ export const listInsurancePoliciesForRenewalProcessing = internalQuery({
       instructorDisplayName: v.string(),
       expiresAt: v.number(),
       reviewStatus: instructorInsuranceReviewStatusValidator,
+      monthReminderSentAt: v.optional(v.number()),
+      weekReminderSentAt: v.optional(v.number()),
       firstReminderSentAt: v.optional(v.number()),
       finalReminderSentAt: v.optional(v.number()),
+      dayReminderSentAt: v.optional(v.number()),
       expiredNoticeSentAt: v.optional(v.number()),
     }),
   ),
@@ -673,8 +666,11 @@ export const listInsurancePoliciesForRenewalProcessing = internalQuery({
             reviewStatus: row.reviewStatus,
             ...omitUndefined({
               email: user.email,
+              monthReminderSentAt: row.monthReminderSentAt,
+              weekReminderSentAt: row.weekReminderSentAt,
               firstReminderSentAt: row.firstReminderSentAt,
               finalReminderSentAt: row.finalReminderSentAt,
+              dayReminderSentAt: row.dayReminderSentAt,
               expiredNoticeSentAt: row.expiredNoticeSentAt,
             }),
           };
@@ -689,8 +685,11 @@ export const markInsuranceReminderEvent = internalMutation({
   args: {
     insurancePolicyId: v.id("instructorInsurancePolicies"),
     event: v.union(
+      v.literal("month_reminder"),
+      v.literal("week_reminder"),
       v.literal("first_reminder"),
       v.literal("final_reminder"),
+      v.literal("day_reminder"),
       v.literal("expired_notice"),
     ),
     at: v.optional(v.number()),
@@ -703,7 +702,17 @@ export const markInsuranceReminderEvent = internalMutation({
     }
 
     const at = args.at ?? Date.now();
-    if (args.event === "first_reminder") {
+    if (args.event === "month_reminder") {
+      await ctx.db.patch(args.insurancePolicyId, {
+        monthReminderSentAt: at,
+        updatedAt: at,
+      });
+    } else if (args.event === "week_reminder") {
+      await ctx.db.patch(args.insurancePolicyId, {
+        weekReminderSentAt: at,
+        updatedAt: at,
+      });
+    } else if (args.event === "first_reminder") {
       await ctx.db.patch(args.insurancePolicyId, {
         firstReminderSentAt: at,
         updatedAt: at,
@@ -711,6 +720,11 @@ export const markInsuranceReminderEvent = internalMutation({
     } else if (args.event === "final_reminder") {
       await ctx.db.patch(args.insurancePolicyId, {
         finalReminderSentAt: at,
+        updatedAt: at,
+      });
+    } else if (args.event === "day_reminder") {
+      await ctx.db.patch(args.insurancePolicyId, {
+        dayReminderSentAt: at,
         updatedAt: at,
       });
     } else {

@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Platform, Text, View } from "react-native";
+import { Alert, Platform, Pressable, Text, View } from "react-native";
 
 import appleCalendarIcon from "@/assets/images/calendar-apple-app-icon.jpg";
 import googleCalendarIcon from "@/assets/images/calendar-google-app-icon.jpg";
@@ -24,12 +24,17 @@ import { BorderWidth } from "@/lib/design-system";
 import { prepareDeviceCalendarSync } from "@/lib/device-calendar-sync";
 import { resolveGoogleCalendarAuthConfig } from "@/lib/google-calendar-auth-config";
 import {
+  isPushRegistrationError,
+  registerForPushNotificationsAsync,
+} from "@/lib/push-notifications";
+import {
   connectGoogleCalendarNative,
   disconnectGoogleCalendarNative,
 } from "@/lib/google-calendar-native-auth";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 
 type CalendarProvider = "none" | "google" | "apple";
+const LESSON_REMINDER_OPTIONS = [15, 30, 45, 60] as const;
 
 const GOOGLE_SCOPES = ["https://www.googleapis.com/auth/calendar.events", "openid", "email"];
 
@@ -112,6 +117,8 @@ export default function CalendarSettingsScreen() {
 
   const [provider, setProvider] = useState<CalendarProvider>("none");
   const [syncEnabled, setSyncEnabled] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [lessonReminderMinutesBefore, setLessonReminderMinutesBefore] = useState(30);
   const [isSaving, setIsSaving] = useState(false);
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
   const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
@@ -144,6 +151,8 @@ export default function CalendarSettingsScreen() {
     if (instructorSettings && !seeded) {
       setProvider((instructorSettings.calendarProvider as CalendarProvider) ?? "none");
       setSyncEnabled(instructorSettings.calendarSyncEnabled ?? false);
+      setNotificationsEnabled(instructorSettings.notificationsEnabled);
+      setLessonReminderMinutesBefore(instructorSettings.lessonReminderMinutesBefore ?? 30);
       setSeeded(true);
     }
   }, [instructorSettings, seeded]);
@@ -163,12 +172,22 @@ export default function CalendarSettingsScreen() {
   const isAppleConnected = provider === "apple";
   const isBusy = isSaving || isConnectingGoogle || isDisconnectingGoogle || isSyncingGoogle;
 
-  const persistCalendarSettings = async (
-    nextProvider: CalendarProvider,
-    nextSyncEnabled: boolean,
-  ) => {
+  const persistInstructorSettings = async ({
+    nextProvider = provider,
+    nextSyncEnabled = syncEnabled,
+    nextNotificationsEnabled = notificationsEnabled,
+    nextLessonReminderMinutesBefore = lessonReminderMinutesBefore,
+    nextExpoPushToken,
+  }: {
+    nextProvider?: CalendarProvider;
+    nextSyncEnabled?: boolean;
+    nextNotificationsEnabled?: boolean;
+    nextLessonReminderMinutesBefore?: number;
+    nextExpoPushToken?: string;
+  }) => {
     await saveSettings({
-      notificationsEnabled: instructorSettings.notificationsEnabled,
+      notificationsEnabled: nextNotificationsEnabled,
+      lessonReminderMinutesBefore: nextLessonReminderMinutesBefore,
       sports: instructorSettings.sports,
       calendarProvider: nextProvider,
       calendarSyncEnabled: nextSyncEnabled,
@@ -182,9 +201,12 @@ export default function CalendarSettingsScreen() {
       ...(instructorSettings.longitude !== undefined
         ? { longitude: instructorSettings.longitude }
         : {}),
+      ...(nextExpoPushToken !== undefined ? { expoPushToken: nextExpoPushToken } : {}),
     });
     setProvider(nextProvider);
     setSyncEnabled(nextSyncEnabled);
+    setNotificationsEnabled(nextNotificationsEnabled);
+    setLessonReminderMinutesBefore(nextLessonReminderMinutesBefore);
   };
 
   const showSaveError = (error: unknown) => {
@@ -262,7 +284,7 @@ export default function CalendarSettingsScreen() {
         });
       }
 
-      await persistCalendarSettings("google", true);
+      await persistInstructorSettings({ nextProvider: "google", nextSyncEnabled: true });
     } catch (error) {
       Alert.alert(
         t("profile.settings.errors.saveFailed"),
@@ -279,7 +301,7 @@ export default function CalendarSettingsScreen() {
     setIsDisconnectingGoogle(true);
     try {
       await disconnectGoogleConnection();
-      await persistCalendarSettings("none", false);
+      await persistInstructorSettings({ nextProvider: "none", nextSyncEnabled: false });
     } catch (error) {
       showSaveError(error);
     } finally {
@@ -302,7 +324,7 @@ export default function CalendarSettingsScreen() {
         await disconnectGoogleConnection();
       }
 
-      await persistCalendarSettings("apple", true);
+      await persistInstructorSettings({ nextProvider: "apple", nextSyncEnabled: true });
     } catch (error) {
       showSaveError(error);
     } finally {
@@ -313,7 +335,7 @@ export default function CalendarSettingsScreen() {
   const onDisconnectApple = async () => {
     setIsSaving(true);
     try {
-      await persistCalendarSettings("none", false);
+      await persistInstructorSettings({ nextProvider: "none", nextSyncEnabled: false });
     } catch (error) {
       showSaveError(error);
     } finally {
@@ -338,7 +360,7 @@ export default function CalendarSettingsScreen() {
         }
       }
 
-      await persistCalendarSettings(provider, nextValue);
+      await persistInstructorSettings({ nextProvider: provider, nextSyncEnabled: nextValue });
     } catch (error) {
       setSyncEnabled(previousValue);
       showSaveError(error);
@@ -360,6 +382,77 @@ export default function CalendarSettingsScreen() {
       await syncGoogleCalendar({});
     } finally {
       setIsSyncingGoogle(false);
+    }
+  };
+
+  const getPushErrorMessage = (error: unknown) => {
+    if (isPushRegistrationError(error)) {
+      switch (error.code) {
+        case "permission_denied":
+          return t("profile.settings.calendar.notifications.permissionRequired");
+        case "expo_go_unsupported":
+          return t("profile.settings.calendar.notifications.expoGoUnsupported");
+        case "physical_device_required":
+          return t("profile.settings.calendar.notifications.deviceRequired");
+        case "native_module_unavailable":
+          return t("profile.settings.calendar.notifications.nativeModuleUnavailable");
+        case "web_unsupported":
+          return t("profile.settings.calendar.notifications.webUnsupported");
+        default:
+          break;
+      }
+    }
+
+    return error instanceof Error && error.message
+      ? error.message
+      : t("profile.settings.errors.saveFailed");
+  };
+
+  const onToggleNotifications = async (nextValue: boolean) => {
+    setIsSaving(true);
+    try {
+      if (!nextValue) {
+        await persistInstructorSettings({ nextNotificationsEnabled: false });
+        return;
+      }
+
+      const token = await registerForPushNotificationsAsync();
+      await persistInstructorSettings({
+        nextNotificationsEnabled: true,
+        nextExpoPushToken: token,
+      });
+    } catch (error) {
+      if (isPushRegistrationError(error) && error.code === "permission_denied") {
+        showOpenSettingsAlert({
+          title: t("common.permissionRequired"),
+          body: t("profile.settings.calendar.notifications.permissionRequired"),
+          cancelLabel: t("common.cancel"),
+          settingsLabel: t("common.openSettings"),
+        });
+      }
+      Alert.alert(t("profile.settings.errors.saveFailed"), getPushErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const onSelectLessonReminderMinutes = async (nextValue: number) => {
+    if (nextValue === lessonReminderMinutesBefore || isBusy) {
+      return;
+    }
+
+    const previousValue = lessonReminderMinutesBefore;
+    setLessonReminderMinutesBefore(nextValue);
+    setIsSaving(true);
+    try {
+      await persistInstructorSettings({
+        nextLessonReminderMinutesBefore: nextValue,
+      });
+    } catch (error) {
+      setLessonReminderMinutesBefore(previousValue);
+      showSaveError(error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -457,6 +550,12 @@ export default function CalendarSettingsScreen() {
     void onSelectApple();
   };
 
+  const pushStatusDescription = notificationsEnabled
+    ? t("profile.settings.calendar.notifications.enabled")
+    : instructorSettings.hasExpoPushToken
+      ? t("profile.settings.calendar.notifications.disabled")
+      : t("profile.settings.calendar.notifications.off");
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.appBg }}>
       <ProfileSubpageScrollView
@@ -517,6 +616,76 @@ export default function CalendarSettingsScreen() {
             />
           </KitList>
         ) : null}
+
+        <KitList inset>
+          <KitSwitchRow
+            title={t("profile.settings.calendar.notifications.title")}
+            value={notificationsEnabled}
+            disabled={isBusy}
+            onValueChange={(nextValue) => {
+              void onToggleNotifications(nextValue);
+            }}
+            description={pushStatusDescription}
+          />
+        </KitList>
+
+        <View style={{ gap: BrandSpacing.sm }}>
+          <Text
+            style={{
+              color: theme.color.textMuted,
+              fontSize: 14,
+              lineHeight: 20,
+            }}
+          >
+            {t("profile.settings.calendar.notifications.reminderTitle")}
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
+            {LESSON_REMINDER_OPTIONS.map((option) => {
+              const selected = option === lessonReminderMinutesBefore;
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  disabled={isBusy}
+                  onPress={() => {
+                    void onSelectLessonReminderMinutes(option);
+                  }}
+                  style={{
+                    borderRadius: BrandRadius.pill,
+                    borderWidth: BorderWidth.thin,
+                    borderColor: selected ? theme.color.primary : theme.color.border,
+                    backgroundColor: selected ? theme.color.primarySubtle : theme.color.surface,
+                    paddingHorizontal: BrandSpacing.controlX,
+                    paddingVertical: BrandSpacing.controlY,
+                    opacity: isBusy ? 0.7 : 1,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: selected ? theme.color.primary : theme.color.text,
+                      fontSize: 15,
+                      lineHeight: 20,
+                    }}
+                  >
+                    {t("profile.settings.calendar.notifications.reminderValue", {
+                      minutes: option,
+                    })}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text
+            style={{
+              color: theme.color.textMuted,
+              fontSize: 14,
+              lineHeight: 20,
+            }}
+          >
+            {t("profile.settings.calendar.notifications.reminderDescription")}
+          </Text>
+        </View>
 
         {googleStatus?.lastError ? (
           <View

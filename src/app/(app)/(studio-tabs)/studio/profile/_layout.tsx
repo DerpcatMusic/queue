@@ -22,6 +22,10 @@ export default function ProfileLayout() {
           title: t("profile.navigation.branches"),
         },
         {
+          routeMatchPath: "/profile/notifications",
+          title: t("profile.navigation.notifications"),
+        },
+        {
           routeMatchPath: "/profile/calendar-settings",
           title: t("profile.navigation.calendar"),
         },
@@ -54,6 +58,10 @@ export default function ProfileLayout() {
         <Stack.Screen
           name="add-account"
           options={{ title: t("profile.navigation.addAccount") }}
+        />
+        <Stack.Screen
+          name="notifications"
+          options={{ title: t("profile.navigation.notifications") }}
         />
         <Stack.Screen
           name="calendar-settings"
