@@ -22,6 +22,7 @@ const MAX_ADDRESS_LENGTH = 220;
 const MAX_PHONE_LENGTH = 20;
 const MAX_SPORTS = 12;
 const MAX_ZONES = 25;
+const DEFAULT_LESSON_REMINDER_MINUTES_BEFORE = 30;
 type AppRole = "instructor" | "studio";
 
 function mergeOwnedRoles(existingRoles: AppRole[] | undefined, nextRole: AppRole) {
@@ -186,6 +187,7 @@ export const completeInstructorOnboarding = mutation({
             hourlyRateExpectation: args.hourlyRateExpectation,
           }),
           notificationsEnabled,
+          lessonReminderMinutesBefore: DEFAULT_LESSON_REMINDER_MINUTES_BEFORE,
           calendarProvider: "none",
           calendarSyncEnabled: false,
           createdAt: now,
@@ -212,6 +214,9 @@ export const completeInstructorOnboarding = mutation({
           hourlyRateExpectation: args.hourlyRateExpectation,
         }),
         notificationsEnabled,
+        lessonReminderMinutesBefore:
+          profileResolution.profile.lessonReminderMinutesBefore ??
+          DEFAULT_LESSON_REMINDER_MINUTES_BEFORE,
         calendarProvider: profileResolution.profile.calendarProvider ?? "none",
         calendarSyncEnabled: profileResolution.profile.calendarSyncEnabled ?? false,
         calendarConnectedAt: profileResolution.profile.calendarConnectedAt,

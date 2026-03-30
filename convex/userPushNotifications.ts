@@ -17,6 +17,7 @@ export const sendUserPushNotification = internalAction({
         type: v.string(),
         jobId: v.optional(v.string()),
         applicationId: v.optional(v.string()),
+        leadMinutes: v.optional(v.number()),
       }),
     ),
   },

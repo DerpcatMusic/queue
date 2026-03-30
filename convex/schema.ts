@@ -6,6 +6,10 @@ import {
   instructorCertificateReviewStatusValidator,
   instructorInsuranceReviewStatusValidator,
 } from "./lib/instructorCompliance";
+import {
+  NOTIFICATION_INBOX_KINDS,
+  NOTIFICATION_PREFERENCE_KEYS,
+} from "./lib/notificationPreferences";
 
 const socialLinksValidator = v.object({
   instagram: v.optional(v.string()),
@@ -68,6 +72,21 @@ const providerRequiredFieldValidator = v.object({
   description: v.optional(v.string()),
 });
 
+const notificationPreferenceKeyValidator = v.union(
+  ...NOTIFICATION_PREFERENCE_KEYS.map((key) => v.literal(key)),
+);
+
+const notificationInboxKindValidator = v.union(
+  ...NOTIFICATION_INBOX_KINDS.map((kind) => v.literal(kind)),
+);
+
+const notificationScheduleStatusValidator = v.union(
+  v.literal("scheduled"),
+  v.literal("sent"),
+  v.literal("cancelled"),
+  v.literal("skipped"),
+);
+
 export default defineSchema({
   ...authTables,
   users: defineTable({
@@ -84,6 +103,8 @@ export default defineSchema({
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
     isActive: v.boolean(),
+    notificationClientLastSeenAt: v.optional(v.number()),
+    notificationLocalRemindersCoverageUntil: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -134,6 +155,7 @@ export default defineSchema({
     longitude: v.optional(v.number()),
     expoPushToken: v.optional(v.string()),
     notificationsEnabled: v.boolean(),
+    lessonReminderMinutesBefore: v.optional(v.number()),
     profileImageStorageId: v.optional(v.id("_storage")),
     hourlyRateExpectation: v.optional(v.number()),
     calendarProvider: v.optional(
@@ -209,8 +231,11 @@ export default defineSchema({
     rejectionReasons: v.optional(v.array(v.string())),
     uploadedAt: v.number(),
     reviewedAt: v.optional(v.number()),
+    monthReminderSentAt: v.optional(v.number()),
+    weekReminderSentAt: v.optional(v.number()),
     firstReminderSentAt: v.optional(v.number()),
     finalReminderSentAt: v.optional(v.number()),
+    dayReminderSentAt: v.optional(v.number()),
     expiredNoticeSentAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -333,6 +358,7 @@ export default defineSchema({
     mapMarkerColor: v.optional(v.string()),
     expoPushToken: v.optional(v.string()),
     notificationsEnabled: v.optional(v.boolean()),
+    lessonReminderMinutesBefore: v.optional(v.number()),
     logoStorageId: v.optional(v.id("_storage")),
     autoExpireMinutesBefore: v.optional(v.number()),
     // NEW: studio-level marketplace auto-accept default (additive, optional)
@@ -420,6 +446,7 @@ export default defineSchema({
     contactPhone: v.optional(v.string()),
     expoPushToken: v.optional(v.string()),
     notificationsEnabled: v.optional(v.boolean()),
+    lessonReminderMinutesBefore: v.optional(v.number()),
     autoExpireMinutesBefore: v.optional(v.number()),
     autoAcceptDefault: v.optional(v.boolean()),
     calendarProvider: v.optional(
@@ -527,6 +554,7 @@ export default defineSchema({
     .index("by_branch_postedAt", ["branchId", "postedAt"])
     .index("by_branch_startTime", ["branchId", "startTime"])
     .index("by_status", ["status"])
+    .index("by_status_startTime", ["status", "startTime"])
     .index("by_status_postedAt", ["status", "postedAt"])
     .index("by_filledByInstructor_startTime", ["filledByInstructorId", "startTime"])
     .index("by_sport_and_status", ["sport", "status"])
@@ -1145,22 +1173,47 @@ export default defineSchema({
     .index("by_kind_cache_key", ["provider", "kind", "cacheKey"])
     .index("by_expiresAt", ["expiresAt"]),
 
+  notificationPreferences: defineTable({
+    userId: v.id("users"),
+    key: notificationPreferenceKeyValidator,
+    enabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId", "updatedAt"])
+    .index("by_user_key", ["userId", "key"]),
+
+  notificationSchedules: defineTable({
+    userId: v.id("users"),
+    actorUserId: v.optional(v.id("users")),
+    preferenceKey: notificationPreferenceKeyValidator,
+    kind: notificationInboxKindValidator,
+    title: v.string(),
+    body: v.string(),
+    jobId: v.optional(v.id("jobs")),
+    applicationId: v.optional(v.id("jobApplications")),
+    insurancePolicyId: v.optional(v.id("instructorInsurancePolicies")),
+    leadMinutes: v.optional(v.number()),
+    scheduledFor: v.number(),
+    dedupeKey: v.string(),
+    status: notificationScheduleStatusValidator,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    sentAt: v.optional(v.number()),
+    skippedAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
+    skipReason: v.optional(v.string()),
+  })
+    .index("by_status_scheduledFor", ["status", "scheduledFor"])
+    .index("by_job", ["jobId", "scheduledFor"])
+    .index("by_policy", ["insurancePolicyId", "scheduledFor"])
+    .index("by_dedupeKey", ["dedupeKey"])
+    .index("by_user_status", ["userId", "status"]),
+
   userNotifications: defineTable({
     recipientUserId: v.id("users"),
     actorUserId: v.optional(v.id("users")),
-    kind: v.union(
-      v.literal("application_received"),
-      v.literal("application_accepted"),
-      v.literal("application_rejected"),
-      v.literal("lesson_started"),
-      v.literal("lesson_completed"),
-      v.literal("compliance_certificate_approved"),
-      v.literal("compliance_certificate_rejected"),
-      v.literal("compliance_insurance_approved"),
-      v.literal("compliance_insurance_rejected"),
-      v.literal("compliance_insurance_expiring"),
-      v.literal("compliance_insurance_expired"),
-    ),
+    kind: notificationInboxKindValidator,
     title: v.string(),
     body: v.string(),
     jobId: v.optional(v.id("jobs")),
@@ -1182,4 +1235,15 @@ export default defineSchema({
     .index("by_job", ["jobId"])
     .index("by_instructor", ["instructorId"])
     .index("by_job_and_instructor", ["jobId", "instructorId"]),
+
+  lessonReminderDispatches: defineTable({
+    jobId: v.id("jobs"),
+    recipientUserId: v.id("users"),
+    targetRole: v.union(v.literal("instructor"), v.literal("studio")),
+    reminderMinutesBefore: v.number(),
+    sentAt: v.number(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_recipient", ["recipientUserId"])
+    .index("by_job_recipient_reminder", ["jobId", "recipientUserId", "reminderMinutesBefore"]),
 });

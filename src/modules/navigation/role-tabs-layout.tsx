@@ -1,7 +1,15 @@
 import { usePathname } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import type { ReactNode } from "react";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import Animated, {
   type SharedValue,
@@ -156,9 +164,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   });
 
   // Scene descriptors registered by child screens
-  const [, setSceneDescriptors] = useState<Map<RoleTabRouteName, SceneDescriptor>>(
-    () => new Map(),
-  );
+  const [, setSceneDescriptors] = useState<Map<RoleTabRouteName, SceneDescriptor>>(() => new Map());
 
   // Focus progress shared value for transition animations
   const focusProgress = useSharedValue<number>(1);
@@ -205,12 +211,9 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   }, []);
 
   // Get a descriptor for a specific tab
-  const getDescriptor = useCallback(
-    (tabId: RoleTabRouteName): SceneDescriptor | undefined => {
-      return sceneDescriptorsRef.current.get(tabId);
-    },
-    [],
-  );
+  const getDescriptor = useCallback((tabId: RoleTabRouteName): SceneDescriptor | undefined => {
+    return sceneDescriptorsRef.current.get(tabId);
+  }, []);
 
   // Mark a tab as activated when it becomes active
   useEffect(() => {

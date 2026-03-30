@@ -12,6 +12,12 @@ import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
 import { loadInstructorEligibility } from "./lib/instructorEligibility";
 import {
+  DEFAULT_LESSON_REMINDER_MINUTES,
+  getDefaultNotificationPreferencesForRole,
+  getNotificationPreferenceKeysForRole,
+  type NotificationPreferenceKey,
+} from "./lib/notificationPreferences";
+import {
   normalizeCoordinates,
   normalizeOptionalString,
   normalizeRequiredString,
@@ -36,6 +42,7 @@ const MAX_PHONE_LENGTH = 20;
 const MAX_PROFILE_BIO_LENGTH = 280;
 const MAX_SOCIAL_LINK_LENGTH = 220;
 const PROFILE_IMAGE_UPLOAD_SESSION_TTL_MS = 10 * 60 * 1000;
+const LESSON_REMINDER_MINUTES_OPTIONS = [15, 30, 45, 60] as const;
 const SOCIAL_LINK_KEYS = [
   "instagram",
   "tiktok",
@@ -53,6 +60,18 @@ const socialLinksValidator = v.object({
   website: v.optional(v.string()),
 });
 const appRoleValidator = v.union(v.literal("instructor"), v.literal("studio"));
+
+function normalizeLessonReminderMinutes(value: number) {
+  if (
+    !LESSON_REMINDER_MINUTES_OPTIONS.includes(
+      value as (typeof LESSON_REMINDER_MINUTES_OPTIONS)[number],
+    )
+  ) {
+    throw new ConvexError("lessonReminderMinutesBefore must be one of 15, 30, 45, or 60");
+  }
+  return value;
+}
+
 const studioBranchSummaryValidator = v.object({
   branchId: v.id("studioBranches"),
   name: v.string(),
@@ -65,6 +84,7 @@ const studioBranchSummaryValidator = v.object({
   longitude: v.optional(v.number()),
   contactPhone: v.optional(v.string()),
   notificationsEnabled: v.optional(v.boolean()),
+  lessonReminderMinutesBefore: v.optional(v.number()),
   autoExpireMinutesBefore: v.optional(v.number()),
   autoAcceptDefault: v.optional(v.boolean()),
   calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
@@ -477,6 +497,7 @@ export const getMyInstructorSettings = query({
       bio: v.optional(v.string()),
       notificationsEnabled: v.boolean(),
       hasExpoPushToken: v.boolean(),
+      lessonReminderMinutesBefore: v.number(),
       hourlyRateExpectation: v.optional(v.number()),
       sports: v.array(v.string()),
       profileImageUrl: v.optional(v.string()),
@@ -519,6 +540,7 @@ export const getMyInstructorSettings = query({
       displayName: profile.displayName,
       notificationsEnabled: profile.notificationsEnabled,
       hasExpoPushToken: Boolean(profile.expoPushToken),
+      lessonReminderMinutesBefore: profile.lessonReminderMinutesBefore ?? 30,
       sports,
       ...omitUndefined({
         bio: profile.bio,
@@ -544,6 +566,8 @@ export const getMyInstructorSettings = query({
 export const updateMyInstructorSettings = mutation({
   args: {
     notificationsEnabled: v.boolean(),
+    expoPushToken: v.optional(v.string()),
+    lessonReminderMinutesBefore: v.optional(v.number()),
     hourlyRateExpectation: v.optional(v.number()),
     sports: v.array(v.string()),
     address: v.optional(v.string()),
@@ -613,8 +637,14 @@ export const updateMyInstructorSettings = mutation({
     );
     const detectedZone = args.detectedZone ? normalizeZoneId(args.detectedZone) : undefined;
 
-    const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
-    const notificationsEnabled = args.notificationsEnabled && hasExpoPushToken;
+    const nextPushToken =
+      trimOptionalString(args.expoPushToken) ?? trimOptionalString(profile.expoPushToken);
+    const nextHasExpoPushToken = Boolean(nextPushToken);
+    const notificationsEnabled = args.notificationsEnabled && nextHasExpoPushToken;
+    const lessonReminderMinutesBefore =
+      args.lessonReminderMinutesBefore !== undefined
+        ? normalizeLessonReminderMinutes(args.lessonReminderMinutesBefore)
+        : (profile.lessonReminderMinutesBefore ?? 30);
 
     const calendarProvider = args.calendarProvider;
     const calendarSyncEnabled = calendarProvider !== "none" && args.calendarSyncEnabled;
@@ -661,7 +691,9 @@ export const updateMyInstructorSettings = mutation({
 
     await ctx.db.patch("instructorProfiles", profile._id, {
       notificationsEnabled,
+      lessonReminderMinutesBefore,
       ...omitUndefined({
+        expoPushToken: nextPushToken,
         hourlyRateExpectation: args.hourlyRateExpectation,
         address,
         addressCity,
@@ -687,6 +719,47 @@ export const updateMyInstructorSettings = mutation({
       calendarProvider,
       calendarSyncEnabled,
       zoneAdded,
+    };
+  },
+});
+
+export const updateMyInstructorNotificationSettings = mutation({
+  args: {
+    notificationsEnabled: v.boolean(),
+    expoPushToken: v.optional(v.string()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    notificationsEnabled: v.boolean(),
+    hasExpoPushToken: v.boolean(),
+    lessonReminderMinutesBefore: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const user = await requireUserRole(ctx, ["instructor"]);
+    const profile = await requireInstructorProfileByUserId(ctx, user._id);
+
+    const nextPushToken =
+      trimOptionalString(args.expoPushToken) ?? trimOptionalString(profile.expoPushToken);
+    const hasExpoPushToken = Boolean(nextPushToken);
+    const notificationsEnabled = args.notificationsEnabled && hasExpoPushToken;
+    const lessonReminderMinutesBefore = profile.lessonReminderMinutesBefore ?? 30;
+
+    await ctx.db.patch("instructorProfiles", profile._id, {
+      notificationsEnabled,
+      ...omitUndefined({
+        expoPushToken: nextPushToken,
+      }),
+      updatedAt: now,
+    });
+
+    await rebuildInstructorCoverage(ctx, profile._id);
+
+    return {
+      ok: true,
+      notificationsEnabled,
+      hasExpoPushToken,
+      lessonReminderMinutesBefore,
     };
   },
 });
@@ -780,6 +853,7 @@ export const getMyStudioSettings = query({
       contactPhone: v.optional(v.string()),
       notificationsEnabled: v.boolean(),
       hasExpoPushToken: v.boolean(),
+      lessonReminderMinutesBefore: v.number(),
       profileImageUrl: v.optional(v.string()),
       socialLinks: v.optional(socialLinksValidator),
       autoExpireMinutesBefore: v.number(),
@@ -853,10 +927,13 @@ export const getMyStudioSettings = query({
       }),
       notificationsEnabled,
       hasExpoPushToken,
+      lessonReminderMinutesBefore:
+        primaryBranch?.lessonReminderMinutesBefore ??
+        profile.lessonReminderMinutesBefore ??
+        DEFAULT_LESSON_REMINDER_MINUTES,
       autoExpireMinutesBefore:
         primaryBranch?.autoExpireMinutesBefore ?? profile.autoExpireMinutesBefore ?? 30,
-      autoAcceptDefault:
-        primaryBranch?.autoAcceptDefault ?? profile.autoAcceptDefault ?? false,
+      autoAcceptDefault: primaryBranch?.autoAcceptDefault ?? profile.autoAcceptDefault ?? false,
       sports,
       calendarProvider: primaryBranch?.calendarProvider ?? profile.calendarProvider ?? "none",
       calendarSyncEnabled:
@@ -883,6 +960,7 @@ export const getMyStudioSettings = query({
                 longitude: primaryBranch.longitude,
                 contactPhone: primaryBranch.contactPhone,
                 notificationsEnabled: primaryBranch.notificationsEnabled,
+                lessonReminderMinutesBefore: primaryBranch.lessonReminderMinutesBefore,
                 autoExpireMinutesBefore: primaryBranch.autoExpireMinutesBefore,
                 autoAcceptDefault: primaryBranch.autoAcceptDefault,
                 calendarConnectedAt: primaryBranch.calendarConnectedAt,
@@ -1231,6 +1309,7 @@ export const getMyStudioNotificationSettings = query({
       studioId: v.id("studioProfiles"),
       notificationsEnabled: v.boolean(),
       hasExpoPushToken: v.boolean(),
+      lessonReminderMinutesBefore: v.number(),
     }),
     v.null(),
   ),
@@ -1257,6 +1336,7 @@ export const getMyStudioNotificationSettings = query({
       studioId: profile._id,
       notificationsEnabled,
       hasExpoPushToken,
+      lessonReminderMinutesBefore: 30,
     };
   },
 });
@@ -1270,6 +1350,7 @@ export const updateMyStudioNotificationSettings = mutation({
     ok: v.boolean(),
     notificationsEnabled: v.boolean(),
     hasExpoPushToken: v.boolean(),
+    lessonReminderMinutesBefore: v.number(),
   }),
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -1295,6 +1376,264 @@ export const updateMyStudioNotificationSettings = mutation({
       ok: true,
       notificationsEnabled,
       hasExpoPushToken,
+      lessonReminderMinutesBefore: 30,
     };
+  },
+});
+
+export const getMyNotificationSettings = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      role: appRoleValidator,
+      notificationsEnabled: v.boolean(),
+      hasExpoPushToken: v.boolean(),
+      lessonReminderMinutesBefore: v.number(),
+      availablePreferenceKeys: v.array(
+        v.union(
+          v.literal("job_offer"),
+          v.literal("insurance_renewal"),
+          v.literal("application_received"),
+          v.literal("application_updates"),
+          v.literal("lesson_reminder"),
+          v.literal("lesson_updates"),
+        ),
+      ),
+      preferences: v.object({
+        job_offer: v.boolean(),
+        insurance_renewal: v.boolean(),
+        application_received: v.boolean(),
+        application_updates: v.boolean(),
+        lesson_reminder: v.boolean(),
+        lesson_updates: v.boolean(),
+      }),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx) => {
+    const user = await getCurrentUserDoc(ctx);
+    if (!user || !user.isActive || (user.role !== "instructor" && user.role !== "studio")) {
+      return null;
+    }
+
+    const preferenceDefaults = getDefaultNotificationPreferencesForRole(user.role);
+    const preferenceRows = await ctx.db
+      .query("notificationPreferences")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    for (const row of preferenceRows) {
+      preferenceDefaults[row.key] = row.enabled;
+    }
+
+    if (user.role === "instructor") {
+      const profile = await getUniqueInstructorProfileByUserId(ctx, user._id);
+      if (!profile) {
+        return null;
+      }
+      const hasExpoPushToken = Boolean(trimOptionalString(profile.expoPushToken));
+      return {
+        role: "instructor" as const,
+        notificationsEnabled: profile.notificationsEnabled && hasExpoPushToken,
+        hasExpoPushToken,
+        lessonReminderMinutesBefore:
+          profile.lessonReminderMinutesBefore ?? DEFAULT_LESSON_REMINDER_MINUTES,
+        availablePreferenceKeys: [...getNotificationPreferenceKeysForRole("instructor")],
+        preferences: preferenceDefaults,
+      };
+    }
+
+    const profile = await getUniqueStudioProfileByUserId(ctx, user._id);
+    if (!profile) {
+      return null;
+    }
+    const primaryBranch = await getPrimaryStudioBranch(ctx, profile._id);
+    const pushToken = trimOptionalString(primaryBranch?.expoPushToken ?? profile.expoPushToken);
+    const hasExpoPushToken = Boolean(pushToken);
+    return {
+      role: "studio" as const,
+      notificationsEnabled:
+        Boolean(primaryBranch?.notificationsEnabled ?? profile.notificationsEnabled) &&
+        hasExpoPushToken,
+      hasExpoPushToken,
+      lessonReminderMinutesBefore:
+        primaryBranch?.lessonReminderMinutesBefore ??
+        profile.lessonReminderMinutesBefore ??
+        DEFAULT_LESSON_REMINDER_MINUTES,
+      availablePreferenceKeys: [...getNotificationPreferenceKeysForRole("studio")],
+      preferences: preferenceDefaults,
+    };
+  },
+});
+
+export const updateMyNotificationSettings = mutation({
+  args: {
+    notificationsEnabled: v.boolean(),
+    expoPushToken: v.optional(v.string()),
+    lessonReminderMinutesBefore: v.optional(v.number()),
+    preferenceUpdates: v.optional(
+      v.array(
+        v.object({
+          key: v.union(
+            v.literal("job_offer"),
+            v.literal("insurance_renewal"),
+            v.literal("application_received"),
+            v.literal("application_updates"),
+            v.literal("lesson_reminder"),
+            v.literal("lesson_updates"),
+          ),
+          enabled: v.boolean(),
+        }),
+      ),
+    ),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    notificationsEnabled: v.boolean(),
+    hasExpoPushToken: v.boolean(),
+    lessonReminderMinutesBefore: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const user = await requireCurrentUser(ctx);
+    if (user.role !== "instructor" && user.role !== "studio") {
+      throw new ConvexError("Notification settings are unavailable for this user");
+    }
+
+    const allowedKeys = new Set<NotificationPreferenceKey>(
+      getNotificationPreferenceKeysForRole(user.role),
+    );
+    for (const row of args.preferenceUpdates ?? []) {
+      if (!allowedKeys.has(row.key)) {
+        throw new ConvexError(
+          `Notification preference ${row.key} is not available for ${user.role}`,
+        );
+      }
+    }
+
+    const lessonReminderMinutesBefore =
+      args.lessonReminderMinutesBefore !== undefined
+        ? normalizeLessonReminderMinutes(args.lessonReminderMinutesBefore)
+        : undefined;
+
+    if (user.role === "instructor") {
+      const profile = await requireInstructorProfileByUserId(ctx, user._id);
+      const nextPushToken =
+        trimOptionalString(args.expoPushToken) ?? trimOptionalString(profile.expoPushToken);
+      const hasExpoPushToken = Boolean(nextPushToken);
+      const notificationsEnabled = args.notificationsEnabled && hasExpoPushToken;
+      await ctx.db.patch("instructorProfiles", profile._id, {
+        notificationsEnabled,
+        ...(lessonReminderMinutesBefore !== undefined ? { lessonReminderMinutesBefore } : {}),
+        ...omitUndefined({ expoPushToken: nextPushToken }),
+        updatedAt: now,
+      });
+      await rebuildInstructorCoverage(ctx, profile._id);
+
+      for (const row of args.preferenceUpdates ?? []) {
+        const existing = await ctx.db
+          .query("notificationPreferences")
+          .withIndex("by_user_key", (q) => q.eq("userId", user._id).eq("key", row.key))
+          .unique();
+        if (existing) {
+          await ctx.db.patch(existing._id, {
+            enabled: row.enabled,
+            updatedAt: now,
+          });
+        } else {
+          await ctx.db.insert("notificationPreferences", {
+            userId: user._id,
+            key: row.key,
+            enabled: row.enabled,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+
+      return {
+        ok: true,
+        notificationsEnabled,
+        hasExpoPushToken,
+        lessonReminderMinutesBefore:
+          lessonReminderMinutesBefore ??
+          profile.lessonReminderMinutesBefore ??
+          DEFAULT_LESSON_REMINDER_MINUTES,
+      };
+    }
+
+    const { studio } = await requireStudioOwnerContext(ctx);
+    const { branch: primaryBranch } = await ensureStudioInfrastructure(ctx, studio, now);
+    const nextPushToken =
+      trimOptionalString(args.expoPushToken) ??
+      trimOptionalString(primaryBranch.expoPushToken ?? studio.expoPushToken);
+    const hasExpoPushToken = Boolean(nextPushToken);
+    const notificationsEnabled = args.notificationsEnabled && hasExpoPushToken;
+    const nextLessonReminderMinutes =
+      lessonReminderMinutesBefore ??
+      primaryBranch.lessonReminderMinutesBefore ??
+      studio.lessonReminderMinutesBefore ??
+      DEFAULT_LESSON_REMINDER_MINUTES;
+
+    await ctx.db.patch("studioProfiles", studio._id, {
+      notificationsEnabled,
+      lessonReminderMinutesBefore: nextLessonReminderMinutes,
+      ...omitUndefined({ expoPushToken: nextPushToken }),
+      updatedAt: now,
+    });
+    await ctx.db.patch("studioBranches", primaryBranch._id, {
+      notificationsEnabled,
+      lessonReminderMinutesBefore: nextLessonReminderMinutes,
+      ...omitUndefined({ expoPushToken: nextPushToken }),
+      updatedAt: now,
+    });
+
+    for (const row of args.preferenceUpdates ?? []) {
+      const existing = await ctx.db
+        .query("notificationPreferences")
+        .withIndex("by_user_key", (q) => q.eq("userId", user._id).eq("key", row.key))
+        .unique();
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          enabled: row.enabled,
+          updatedAt: now,
+        });
+      } else {
+        await ctx.db.insert("notificationPreferences", {
+          userId: user._id,
+          key: row.key,
+          enabled: row.enabled,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    return {
+      ok: true,
+      notificationsEnabled,
+      hasExpoPushToken,
+      lessonReminderMinutesBefore: nextLessonReminderMinutes,
+    };
+  },
+});
+
+export const touchMyNotificationClientState = mutation({
+  args: {
+    localReminderCoverageUntil: v.optional(v.number()),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+    const now = Date.now();
+
+    await ctx.db.patch("users", user._id, {
+      notificationClientLastSeenAt: now,
+      ...omitUndefined({
+        notificationLocalRemindersCoverageUntil: args.localReminderCoverageUntil,
+      }),
+      updatedAt: now,
+    });
+
+    return { ok: true };
   },
 });

@@ -24,9 +24,9 @@ import {
   DEFAULT_SHEET_PADDING_TOP,
   useResolvedTabSheetConfig,
 } from "@/components/layout/top-sheet-registry";
+import { useAppInsets } from "@/hooks/use-app-insets";
 import { TabSceneDescriptorContext } from "@/modules/navigation/role-tabs-layout";
 import type { RoleTabRouteName } from "@/navigation/role-routes";
-import { useAppInsets } from "@/hooks/use-app-insets";
 import {
   buildBaseSheetProps,
   resolveTopSheetRouteIdentity,
@@ -75,7 +75,7 @@ export function GlobalTopSheet() {
       ...routeConfig,
       ...descriptorSheetConfig,
       tabId: activeTabId ?? routeConfig.tabId,
-    } as (typeof routeConfig) & Partial<typeof descriptorSheetConfig>;
+    } as typeof routeConfig & Partial<typeof descriptorSheetConfig>;
   }, [routeConfig, descriptorSheetConfig, activeTabId]);
   const {
     stateKey: sheetStateKey,
@@ -161,17 +161,17 @@ export function GlobalTopSheet() {
 
   // Preserve the previous rendered shell height across tab switches so the next tab can morph
   // from the outgoing shell instead of remounting from its own default size.
-  const continuitySheetProps = {
-    ...(lastRenderedSheetHeightRef.current !== null
-      ? { initialHeight: lastRenderedSheetHeightRef.current }
-      : {}),
-    onHeightChange: handleSheetHeightChange,
-  };
-
   const isPrimaryTabSwitch =
     previousTabIdRef.current !== null && previousTabIdRef.current !== activeTabId;
   const isNestedRouteChange =
     previousTabIdRef.current === activeTabId && previousRouteDepthRef.current !== routeDepth;
+
+  const continuitySheetProps = {
+    ...(!isPrimaryTabSwitch && lastRenderedSheetHeightRef.current !== null
+      ? { initialHeight: lastRenderedSheetHeightRef.current }
+      : {}),
+    onHeightChange: handleSheetHeightChange,
+  };
 
   useEffect(() => {
     previousTabIdRef.current = activeTabId;
@@ -184,9 +184,7 @@ export function GlobalTopSheet() {
     }
 
     if (isPrimaryTabSwitch) {
-      return {
-        entering: FadeIn.duration(ANIMATION_DURATION_TAB_ENTER).reduceMotion(ReduceMotion.System),
-      };
+      return {};
     }
 
     if (isNestedRouteChange) {

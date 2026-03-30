@@ -13,6 +13,7 @@ export const getMyNotifications = query({
         v.literal("application_received"),
         v.literal("application_accepted"),
         v.literal("application_rejected"),
+        v.literal("lesson_reminder"),
         v.literal("lesson_started"),
         v.literal("lesson_completed"),
         v.literal("compliance_certificate_approved"),

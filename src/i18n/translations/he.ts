@@ -90,14 +90,12 @@ const he = {
     },
     errors: {
       authInitTimeoutTitle: "תם הזמן לטעינת אימות",
-      authInitTimeoutBody:
-        "Convex Auth לא סיים להיטען. בדקו רשת ומפתח publishable.",
+      authInitTimeoutBody: "Convex Auth לא סיים להיטען. בדקו רשת ומפתח publishable.",
       convexAuthTimeoutTitle: "תם הזמן לאימות Convex",
       convexAuthTimeoutBody:
         "Convex לא קיבל טוקן סשן תקין מ-Convex Auth. ודאו תבנית JWT בשם `convex` ואת `Convex Auth_JWT_ISSUER_DOMAIN` ב-Convex.",
       accountQueryTimeoutTitle: "תם הזמן לשאילתת חשבון",
-      accountQueryTimeoutBody:
-        "שאילתת המשתמש ב-Convex לא הושלמה. ודאו URL של Convex ותצורת אימות.",
+      accountQueryTimeoutBody: "שאילתת המשתמש ב-Convex לא הושלמה. ודאו URL של Convex ותצורת אימות.",
       accountSetupFailedTitle: "הקמת חשבון נכשלה",
       accountSetupFailedBody: "לא הצלחנו לאתחל את החשבון שלכם ב-Convex.",
       syncFailedFallback: "סנכרון חשבון המשתמש נכשל.",
@@ -150,6 +148,7 @@ const he = {
       edit: "עריכת פרופיל",
       sports: "תחומים",
       location: "מיקום",
+      notifications: "התראות",
       branches: "סניפים",
       addAccount: "הוספת חשבון",
       calendar: "יומן",
@@ -192,6 +191,50 @@ const he = {
     actions: {
       edit: "עריכת פרופיל",
     },
+    notifications: {
+      title: "שליטת התראות",
+      instructorDescription:
+        "בחרו אילו התראות חשובות לכם, שמרו על רישום ה-push תקין, והגדירו כמה זמן מראש תקבלו תזכורת לשיעור.",
+      studioDescription:
+        "נהלו התראות על פניות חדשות, תזמון שיעורים ורישום push של המכשיר ממסך אחד.",
+      pushSection: "מסירת push",
+      pushToggleTitle: "התראות push",
+      pushToggleOn: "מופעל במכשיר הזה",
+      pushToggleOff: "כבוי במכשיר הזה",
+      pushDisabled: "התראות push כבויות.",
+      deviceStatusTitle: "רישום מכשיר",
+      deviceStatusReady: "למכשיר הזה יש Expo push token פעיל.",
+      deviceStatusMissing: "עדיין לא נרשם push token למכשיר הזה.",
+      alertsSection: "סוגי התראות",
+      lessonReminderSection: "תזמון תזכורת לשיעור",
+      reminderOption: "{{minutes}} דקות לפני ההתחלה",
+      reminderOptionDescription:
+        "Queue ישלח את התזכורת בערך {{minutes}} דקות לפני תחילת השיעור.",
+      reminderSaved: "תזכורת השיעור נשמרה ל-{{minutes}} דקות לפני ההתחלה.",
+      preferenceSaved: "העדפת ההתראות עודכנה.",
+      summaryOn: "Push פעיל · תזכורת {{minutes}} דק׳ לפני",
+      summaryOff: "Push כבוי",
+      locationGroundworkTitle: "תשתית להתראות מבוססות מיקום",
+      locationGroundworkBody:
+        "תזמון התזכורות רץ עכשיו דרך הסקד׳ולר של השרת, כך שבהמשך נוכל להוסיף חלונות נסיעה והגעה בלי לכתוב מחדש את מסלול המסירה.",
+      locationGroundworkFootnote:
+        "השלב הבא: לשלב מיקום השיעור שאושר, הרשאת מיקום בחזית, ושכבת geofence/הערכת נסיעה כדי לשלוח תזכורות הגעה.",
+      updateFailed: "עדכון הגדרות ההתראות נכשל.",
+      preferences: {
+        jobOfferTitle: "הצעות עבודה חדשות",
+        jobOfferDescription: "להתריע למדריכים כשמתפרסמת משרה פתוחה מתאימה.",
+        insuranceRenewalTitle: "תזכורות לחידוש ביטוח",
+        insuranceRenewalDescription: "לשלוח תזכורות חודש, שבוע, יום ופג תוקף לביטוח מדריך.",
+        applicationReceivedTitle: "פניות חדשות",
+        applicationReceivedDescription: "להתריע לסטודיו בכל פעם שמדריך מגיש מועמדות למשרה.",
+        applicationUpdatesTitle: "החלטות על מועמדות",
+        applicationUpdatesDescription: "להתריע למדריכים כשסטודיו מאשר או דוחה מועמדות.",
+        lessonReminderTitle: "תזכורות לפני שיעור",
+        lessonReminderDescription: "לשלוח תזכורות לפני ששיעורים מאושרים מתחילים.",
+        lessonUpdatesTitle: "עדכוני סטטוס שיעור",
+        lessonUpdatesDescription: "לשלוח עדכונים כשהשיעור מתחיל או מסתיים.",
+      },
+    },
     switcher: {
       activeBadge: "פעיל",
       currentAccountBadge: "החשבון הנוכחי",
@@ -203,10 +246,8 @@ const he = {
       profilesTitle: "פרופילים בחשבון הזה",
       profilesBody: "גישה מהירה לכל התפקידים שמחוברים להתחברות הנוכחית.",
       savedAccountsTitle: "חשבונות במכשיר הזה",
-      savedAccountsBody:
-        "הקישו על חשבון שמור כדי לחזור אליו בלי להתחיל מחדש את כל תהליך ההתחברות.",
-      savedAccountsEmpty:
-        "עדיין אין במכשיר הזה חשבונות שמורים נוספים שאפשר לחזור אליהם.",
+      savedAccountsBody: "הקישו על חשבון שמור כדי לחזור אליו בלי להתחיל מחדש את כל תהליך ההתחברות.",
+      savedAccountsEmpty: "עדיין אין במכשיר הזה חשבונות שמורים נוספים שאפשר לחזור אליהם.",
       accountsTitle: "פעולות חשבון",
       accountsBody: "הוסיפו חשבון נוסף או התנתקו.",
       useAnotherAccountTitle: "שימוש בחשבון אחר",
@@ -274,8 +315,7 @@ const he = {
         identity: "זהות",
         insurance: "ביטוח",
         certificates: "תעודות",
-        certificatesDescription:
-          "תעודות מאושרות נשארות ציבוריות לפי הגוף המאשר ושם התעודה.",
+        certificatesDescription: "תעודות מאושרות נשארות ציבוריות לפי הגוף המאשר ושם התעודה.",
       },
       identity: {
         title: "Didit",
@@ -370,28 +410,24 @@ const he = {
       },
       hero: {
         readyTitle: "הסטודיו מוכן לפרסום",
-        readyBody:
-          "זהות הבעלים, פרופיל החיוב ומוכנות התשלומים כולם במצב שמאפשר פרסום משרות.",
+        readyBody: "זהות הבעלים, פרופיל החיוב ומוכנות התשלומים כולם במצב שמאפשר פרסום משרות.",
         blockedTitle: "צריך להשלים הגדרה כדי לפרסם משרות",
         blockedBody:
           "עדיין אפשר לגלוש ולנהל את האפליקציה, אבל פרסום משרות חסום עד שמשלימים: {{blockers}}.",
       },
       sections: {
         identity: "זהות הבעלים",
-        identityDescription:
-          "אישור Didit הוא דרישת הזהות המחייבת לפרסום משרות בסטודיו.",
+        identityDescription: "אישור Didit הוא דרישת הזהות המחייבת לפרסום משרות בסטודיו.",
         billing: "פרופיל חיוב",
         billingDescription:
           "שמרו את פרטי העסק החוקיים כפנימיים כדי שחשבוניות, סליקה ומיסוי יישארו מיושרים.",
         payment: "תשלומים",
-        paymentDescription:
-          "צריך להגדיר מוכנות לסליקה לפני שהסטודיו יכול לפרסם משרות בתשלום.",
+        paymentDescription: "צריך להגדיר מוכנות לסליקה לפני שהסטודיו יכול לפרסם משרות בתשלום.",
       },
       identity: {
         title: "אימות בעל/ת הסטודיו",
         approvedBody: "Didit אושר עבור {{legalName}}.",
-        requiredBody:
-          "הסטטוס הנוכחי: {{status}}. השלימו Didit כדי לפתוח פרסום משרות.",
+        requiredBody: "הסטטוס הנוכחי: {{status}}. השלימו Didit כדי לפתוח פרסום משרות.",
       },
       billing: {
         entityIndividual: "יחיד/ה",
@@ -412,8 +448,7 @@ const he = {
       payment: {
         title: "מוכנות לתשלום",
         readyBody: "הסליקה מוגדרת ומוכנה לחיובי סטודיו.",
-        failedBody:
-          "הגדרת התשלום נכשלה. עברו על הגדרות התשלומים לפני פרסום משרות.",
+        failedBody: "הגדרת התשלום נכשלה. עברו על הגדרות התשלומים לפני פרסום משרות.",
         pendingBody: "הגדרת התשלום עדיין בהמתנה.",
         missingBody: "השלימו הגדרת תשלומים לפני פרסום משרות.",
       },
@@ -429,8 +464,7 @@ const he = {
       },
       feedback: {
         identityApproved: "Didit אושר עבור בעל/ת הסטודיו.",
-        identityRefreshStarted:
-          "סטטוס Didit עודכן. נשמור כאן את התוצאה האחרונה.",
+        identityRefreshStarted: "סטטוס Didit עודכן. נשמור כאן את התוצאה האחרונה.",
         billingSaved: "פרופיל החיוב נשמר.",
       },
       errors: {
@@ -447,8 +481,7 @@ const he = {
       notifications: {
         title: "התראות Push",
         description: "קבלו התראות כשמתפרסמות משרות שמתאימות לכם.",
-        pushMissing:
-          "התראות Push עדיין לא מוגדרות במכשיר הזה. אפשר להפעיל מחדש דרך האונבורדינג.",
+        pushMissing: "התראות Push עדיין לא מוגדרות במכשיר הזה. אפשר להפעיל מחדש דרך האונבורדינג.",
       },
       hourly: {
         title: "ציפיית שכר לשעה",
@@ -463,8 +496,7 @@ const he = {
         searchPlaceholder: "חיפוש תחומים",
       },
       publicProfile: "פרופיל ציבורי",
-      publicProfilePrompt:
-        "עצבו את הזהות שאנשים סורקים לפני שהם פונים או מקבלים משרה.",
+      publicProfilePrompt: "עצבו את הזהות שאנשים סורקים לפני שהם פונים או מקבלים משרה.",
       publicProfileActive: "{{count}} קישורים ציבוריים כבר פעילים.",
       studioDetails: "פרטי סטודיו",
       completeOnboardingAddress: "השלימו אונבורדינג כדי להגדיר כתובת",
@@ -486,16 +518,13 @@ const he = {
         upgradeRequired: "התכנית הנוכחית עדיין לא פותחת סניפים נוספים.",
         createTitle: "יצירת סניף",
         editTitle: "עריכת סניף",
-        editorHint:
-          "שמרו על פרטי סניף מדויקים כדי שפרסומי המשרות והברירות יישארו מסונכרנים.",
+        editorHint: "שמרו על פרטי סניף מדויקים כדי שפרסומי המשרות והברירות יישארו מסונכרנים.",
         createAction: "יצירת סניף",
         saveAction: "שמירת סניף",
         listTitle: "מערכת הסניפים",
-        listBody:
-          "בדקו איזה סניף ראשי, אילו ברירות מחדל הוא מפעיל ומה כבר בארכיון.",
+        listBody: "בדקו איזה סניף ראשי, אילו ברירות מחדל הוא מפעיל ומה כבר בארכיון.",
         makePrimaryTitle: "להפוך לסניף הראשי?",
-        makePrimaryBody:
-          "{{name}} יהפוך לסניף ברירת המחדל להגדרות הסטודיו ולטיוטות משרה חדשות.",
+        makePrimaryBody: "{{name}} יהפוך לסניף ברירת המחדל להגדרות הסטודיו ולטיוטות משרה חדשות.",
         makePrimaryAction: "הגדרה כראשי",
         archiveTitle: "להעביר את הסניף לארכיון?",
         archiveBody: "{{name}} יפסיק להופיע בזרימת פרסום ובסניפים הפעילים.",
@@ -505,11 +534,9 @@ const he = {
         archivedBadge: "בארכיון",
         enabled: "פעיל",
         disabled: "כבוי",
-        autoAcceptHint:
-          "הפעילו אם הסניף צריך לאשר אוטומטית את ההתאמה המתאימה הראשונה.",
+        autoAcceptHint: "הפעילו אם הסניף צריך לאשר אוטומטית את ההתאמה המתאימה הראשונה.",
         calendarTitle: "מצב יומן של הסניף",
-        calendarHint:
-          "לסניף הזה יכולה להיות העדפת סנכרון יומן נפרדת מברירת המחדל של הסטודיו.",
+        calendarHint: "לסניף הזה יכולה להיות העדפת סנכרון יומן נפרדת מברירת המחדל של הסטודיו.",
         zoneSearchPlaceholder: "חיפוש אזור",
         zoneSelected: "האזור שנבחר: {{zone}}",
         zoneHint: "חפשו או בחרו את אזור הכיסוי של הסניף.",
@@ -531,8 +558,7 @@ const he = {
       noZone: "אין אזור",
       autoExpireJobs: "פג תוקף אוטומטי למשרות",
       autoAcceptJobs: "קבלה אוטומטית של משרות",
-      autoAcceptJobsDescription:
-        "קבלת המדריך/ה הראשון/ה שמתאים/ת באופן אוטומטי.",
+      autoAcceptJobsDescription: "קבלת המדריך/ה הראשון/ה שמתאים/ת באופן אוטומטי.",
       paymentsPayouts: "תשלומים ומשיכות",
       payoutsConnected: "יעד משיכה מאומת כבר מחובר.",
       payoutsNeeded: "הוסיפו חשבון בנק מאומת למשיכות.",
@@ -541,8 +567,7 @@ const he = {
         title: "מיקום ואזור",
         instructorDescription:
           "הגדירו כתובת או השתמשו ב-GPS, ואז בחרו אם להוסיף את האזור שזוהה לאזורי השירות שלכם.",
-        studioDescription:
-          "הגדירו את פרטי הסטודיו ואז חשבו את אזור השירות הרשמי לפי כתובת או GPS.",
+        studioDescription: "הגדירו את פרטי הסטודיו ואז חשבו את אזור השירות הרשמי לפי כתובת או GPS.",
         addressPlaceholder: "כתובת",
         findByAddress: "איתור לפי כתובת",
         useGps: "שימוש ב-GPS",
@@ -551,8 +576,7 @@ const he = {
         detectedZone: "אזור שזוהה: {{zone}}",
         zoneNotDetected: "האזור עדיין לא זוהה.",
         includeDetectedZone: "הוספת האזור שזוהה",
-        includeDetectedZoneDescription:
-          "בעת השמירה, האזור שזוהה יתווסף לאזורי השירות של המדריך/ה.",
+        includeDetectedZoneDescription: "בעת השמירה, האזור שזוהה יתווסף לאזורי השירות של המדריך/ה.",
       },
       calendar: {
         title: "סנכרון יומן",
@@ -566,8 +590,7 @@ const he = {
         pickerDescription: "בחרו את היומן שאליו Queue תכתוב שיעורים מאושרים.",
         futureNote:
           "Queue מסנכרנת ליומן ייעודי במכשיר. סנכרון ענן ל-Google או Apple תלוי בהגדרות החשבון במכשיר.",
-        googleConnectRequired:
-          "חברו חשבון Google כדי להפעיל סנכרון ישיר ל-Google Calendar.",
+        googleConnectRequired: "חברו חשבון Google כדי להפעיל סנכרון ישיר ל-Google Calendar.",
         googleReconnectRequired:
           "חברו מחדש את Google Calendar כדי לשחזר את הסנכרון. לחיבור הזה חסרות הרשאות רענון.",
         googleConnectedAs: "מחובר כ-{{email}}",
@@ -584,8 +607,7 @@ const he = {
         disconnectGoogleBody:
           "Queue תפסיק לשלוח שיעורים חדשים ליומן Google הזה. ייתכן שגם אירועי Queue קיימים ב-Google יוסרו.",
         disconnectAppleTitle: "לנתק את Apple Calendar?",
-        disconnectAppleBody:
-          "Queue תפסיק לשלוח שיעורים חדשים ליומן במכשיר הזה.",
+        disconnectAppleBody: "Queue תפסיק לשלוח שיעורים חדשים ליומן במכשיר הזה.",
         switchToGoogleTitle: "לעבור ל-Google Calendar?",
         switchToGoogleBody:
           "Queue תפסיק לשלוח שיעורים חדשים ל-Apple Calendar ותחבר את Google Calendar במקום.",
@@ -599,6 +621,23 @@ const he = {
           connectGoogle: "חיבור Google Calendar",
           disconnectGoogle: "ניתוק Google Calendar",
           syncNow: "סנכרון עכשיו",
+        },
+        notifications: {
+          title: "התראות Push",
+          enabled: "התראות על משרות ותזכורות לשיעורים פעילות במכשיר הזה.",
+          disabled: "Push מותקן במכשיר הזה, אבל ההתראות כבויות כרגע.",
+          off: "הפעילו Push כדי לקבל הצעות עבודה, עדכוני מועמדות ותזכורות לשיעורים.",
+          permissionRequired:
+            "Queue צריכה הרשאת התראות כדי לשלוח התראות על משרות ושיעורים במכשיר הזה.",
+          expoGoUnsupported: "התראות Push לא זמינות ב-Expo Go. בנו מחדש והתקינו שוב את dev client.",
+          deviceRequired: "התראות Push דורשות מכשיר פיזי.",
+          nativeModuleUnavailable:
+            "התראות Push לא זמינות בבילד הזה. בנו מחדש והתקינו שוב את dev client.",
+          webUnsupported: "התראות Push לא נתמכות ב-Web.",
+          reminderTitle: "תזמון תזכורת לשיעור",
+          reminderDescription:
+            "Queue שולחת תזכורת אחת לפני כל שיעור שאושר. תזכורות מבוססות מיקום מתוכננות להיבנות על גבי התזמון הזה.",
+          reminderValue: "{{minutes}} דק' לפני",
         },
       },
       actions: {
@@ -619,10 +658,8 @@ const he = {
         locationNativeMissing:
           "מודול המיקום לא זמין בבילד הזה. בנו מחדש והתקינו שוב את dev client.",
         locationPermissionDenied: "הרשאת מיקום נדחתה.",
-        locationPermissionBlocked:
-          "הרשאת מיקום חסומה. אפשרו מיקום בהגדרות המערכת.",
-        locationServicesDisabled:
-          "שירותי המיקום כבויים במכשיר. הפעילו GPS ונסו שוב.",
+        locationPermissionBlocked: "הרשאת מיקום חסומה. אפשרו מיקום בהגדרות המערכת.",
+        locationServicesDisabled: "שירותי המיקום כבויים במכשיר. הפעילו GPS ונסו שוב.",
         locationTimeout: "בקשת המיקום נכשלה עקב Timeout. נסו שוב.",
         locationUnsupportedPlatform: "איתור המיקום לא נתמך בדפדפן הזה.",
         locationAddressNotFound: "לא נמצאה כתובת.",
@@ -642,15 +679,13 @@ const he = {
       heroEmpty: "בנו את לוח התחומים שממנו תרצו לקבל משרות",
       heroReadyBody:
         "שמרו על לוח ממוקד. כל תחום שנבחר מחזק את ההתאמה, את בהירות הפרופיל ואת איכות המשרות.",
-      heroEmptyBody:
-        "בחרו רק את התחומים שאתם באמת מלמדים כדי ש-Queue תיראה ממוקדת ואמינה.",
+      heroEmptyBody: "בחרו רק את התחומים שאתם באמת מלמדים כדי ש-Queue תיראה ממוקדת ואמינה.",
       signalSelected: "נבחרו",
       signalState: "מצב",
       stateUnsaved: "יש שינויים שלא נשמרו",
       stateLive: "פעיל",
       boardLabel: "לוח תחומים",
-      boardBody:
-        "הקישו כדי להוסיף או להסיר. שמרו על כנות ומיקוד כדי שמנגנון ההתאמה יישאר חד.",
+      boardBody: "הקישו כדי להוסיף או להסיר. שמרו על כנות ומיקוד כדי שמנגנון ההתאמה יישאר חד.",
       selectedLabel: "תחומים שנבחרו",
       selectedBody: "נוסף לפרופיל ההוראה שלכם",
       matchingLabel: "תחומים תואמים",
@@ -664,27 +699,21 @@ const he = {
       heroReady: "הבסיס שלכם נעול",
       heroPending: "סיימו את האזור ושמרו",
       heroMissing: "הגדירו את הבסיס שממנו אתם מלמדים",
-      heroReadyBody:
-        "הכתובת, הקואורדינטות והאזור שזוהה מיושרים ומוכנים לפרסום.",
-      heroPendingBody:
-        "יש לכם טיוטת כתובת. פתרו את האזור, אשרו אותו ושמרו כדי להפוך אותו לפעיל.",
-      heroMissingBody:
-        "הוסיפו כתובת בסיס או השתמשו ב-GPS כדי שסטודיואים יראו מאיפה אתם פועלים.",
+      heroReadyBody: "הכתובת, הקואורדינטות והאזור שזוהה מיושרים ומוכנים לפרסום.",
+      heroPendingBody: "יש לכם טיוטת כתובת. פתרו את האזור, אשרו אותו ושמרו כדי להפוך אותו לפעיל.",
+      heroMissingBody: "הוסיפו כתובת בסיס או השתמשו ב-GPS כדי שסטודיואים יראו מאיפה אתם פועלים.",
       signalAddress: "כתובת",
       signalAddressReady: "מוכן",
       signalAddressMissing: "חסר",
       signalZone: "אזור",
       addressTitle: "חיפוש כתובת הבסיס",
-      addressBody:
-        "הקלידו את הכתובת שממנה אתם מלמדים לרוב, או תנו ל-GPS למשוך אותה מיידית.",
+      addressBody: "הקלידו את הכתובת שממנה אתם מלמדים לרוב, או תנו ל-GPS למשוך אותה מיידית.",
       coordinatesLabel: "קואורדינטות",
       zoneLabel: "מצב אזור",
-      zoneDescription:
-        "השתמשו באזור שזוהה כאזור הפעילות ברירת המחדל כשנראה שהכתובת נכונה.",
+      zoneDescription: "השתמשו באזור שזוהה כאזור הפעילות ברירת המחדל כשנראה שהכתובת נכונה.",
       zoneDetectedLabel: "אזור שזוהה",
       zoneWaitingLabel: "האזור ממתין",
-      zonePendingBody:
-        "חפשו כתובת או השתמשו ב-GPS כדי לפתור את אזור השירות אוטומטית.",
+      zonePendingBody: "חפשו כתובת או השתמשו ב-GPS כדי לפתור את אזור השירות אוטומטית.",
       commandLabel: "שליטה",
       enterManually: "הזנה ידנית",
       backToSearch: "חזרה לחיפוש",
@@ -710,10 +739,8 @@ const he = {
         "שיעורים מאושרים יכולים להיכנס ישירות ליומן Google שלכם עם חיבור פעיל אחד.",
       heroGooglePendingBody:
         "בחרו Google, חברו את החשבון, ואז החליטו אם שיעורים חדשים יתווספו אוטומטית או ידנית.",
-      heroAppleBody:
-        "Queue כותבת שיעורים מאושרים ליומן המכשיר שלכם אחרי הרשאת יומן מקומית.",
-      heroOffBody:
-        "השאירו את הסנכרון כבוי אם תרצו ש-Queue תישאר נפרדת ממערכת התזמון האישית שלכם.",
+      heroAppleBody: "Queue כותבת שיעורים מאושרים ליומן המכשיר שלכם אחרי הרשאת יומן מקומית.",
+      heroOffBody: "השאירו את הסנכרון כבוי אם תרצו ש-Queue תישאר נפרדת ממערכת התזמון האישית שלכם.",
       signalProvider: "ספק",
       signalSync: "מצב",
       providerLabel: "ספק",
@@ -721,22 +748,19 @@ const he = {
       providerGoogleBody: "שלחו שיעורים מאושרים ליומן Google המחובר.",
       providerAppleBody: "כתבו שיעורים מאושרים ליומן המכשיר בטלפון הזה.",
       commandLabel: "שליטה",
-      commandBody:
-        "בחרו אם שיעורים מאושרים יוזנו אוטומטית ליומן או יישארו זמינים לסנכרון ידני.",
+      commandBody: "בחרו אם שיעורים מאושרים יוזנו אוטומטית ליומן או יישארו זמינים לסנכרון ידני.",
       googleStateLive: "Google מחובר",
       googleStatePending: "Google ממתין",
       googleAccountFallback: "חשבון Google",
       appleLabel: "יומן Apple",
       noneLabel: "ללא סנכרון",
-      noneBody:
-        "Queue תעקוב אחרי שיעורים מאושרים פנימית בלי לכתוב ליומן חיצוני.",
+      noneBody: "Queue תעקוב אחרי שיעורים מאושרים פנימית בלי לכתוב ליומן חיצוני.",
       liveLabel: "פעיל",
       pickLabel: "בחרו",
       configErrors: {
         missingServerClientId:
           "חסר מזהה לקוח שרת של Google Calendar. הגדירו EXPO_PUBLIC_GOOGLE_CALENDAR_SERVER_CLIENT_ID.",
-        missingClientId:
-          "חסר מזהה לקוח OAuth של Google Calendar. הגדירו {{env}}.",
+        missingClientId: "חסר מזהה לקוח OAuth של Google Calendar. הגדירו {{env}}.",
         invalidRedirectUri: "כתובת ה-redirect של Google Calendar אינה תקינה.",
         missingScheme: "כתובת ה-redirect של Google Calendar חסרה scheme.",
         androidHttpsRequired:
@@ -744,8 +768,7 @@ const he = {
         invalidRedirectScheme:
           "Scheme של redirect ל-Google Calendar חייב לכלול נקודה. ה-scheme הנוכחי `{{scheme}}:` אינו תקין.",
         connectionFailed: "חיבור Google Calendar נכשל.",
-        androidBuildMissing:
-          "Google Calendar לא מוגדר עבור הבילד הזה ב-Android.",
+        androidBuildMissing: "Google Calendar לא מוגדר עבור הבילד הזה ב-Android.",
         buildMissing: "Google Calendar לא מוגדר עבור הבילד הזה.",
       },
     },
@@ -760,8 +783,7 @@ const he = {
       photoUpdateFailed: "עדכון תמונת הפרופיל נכשל.",
       photoPickerUnavailable:
         "בוחר התמונות אינו זמין בבילד הזה. עדכנו את Expo Go או בנו מחדש את dev client.",
-      photoPermissionBlocked:
-        "הגישה לספריית התמונות חסומה. אפשרו גישה בהגדרות המערכת.",
+      photoPermissionBlocked: "הגישה לספריית התמונות חסומה. אפשרו גישה בהגדרות המערכת.",
       photoPermissionRequired: "נדרשת הרשאת ספריית תמונות.",
       photoCompressionUnavailable:
         "דחיסת תמונות אינה זמינה בבילד הזה. עדכנו את Expo Go או בנו מחדש את dev client.",
@@ -816,15 +838,13 @@ const he = {
       statusAllSet: "הכל מוכן למשיכות",
       statusBankNeeded: "חברו בנק לקבלת משיכות",
       statusVerificationNeeded: "נדרש אימות זהות",
-      kycRequiredHint:
-        "השלימו אימות זהות בפרופיל לפני חיבור בנק או משיכת כספים.",
+      kycRequiredHint: "השלימו אימות זהות בפרופיל לפני חיבור בנק או משיכת כספים.",
       verifyToConnectBankTitle: "נדרש אימות זהות",
       verifyToConnectBankBody:
         "כדי לחבר את חשבון הבנק שלכם למשיכות, עליכם קודם לאמת את זהותכם. התהליך לוקח מספר דקות בלבד.",
       verifyToConnectBankCta: "אימות זהות",
       verificationInProgress: "האימות בתהליך...",
-      onboardingPending:
-        "האונבורדינג נשלח. השלימו את הזרימה והמתינו לאישור הספק.",
+      onboardingPending: "האונבורדינג נשלח. השלימו את הזרימה והמתינו לאישור הספק.",
       onboardingFailed: "אונבורדינג הבנק נכשל. נסו שוב.",
       available: "זמין",
       pending: "בהמתנה",
@@ -856,8 +876,7 @@ const he = {
       preferenceScheduled: "תזמון",
       preferenceHold: "החזקה",
       preferenceImmediateHint: "שחרור הכספים לתזמון משיכה ברגע שהם זכאים.",
-      preferenceScheduledHint:
-        "השאירו את הכספים זמינים, ואז תזמנו משיכה לתאריך שתבחרו.",
+      preferenceScheduledHint: "השאירו את הכספים זמינים, ואז תזמנו משיכה לתאריך שתבחרו.",
       preferenceHoldHint: "השאירו את הכספים זמינים עד שתפעילו משיכה ידנית.",
       preferenceChooseDate: "בחירת מועד משיכה",
       preferenceScheduleAt: "מתוזמן ל-",
@@ -886,8 +905,7 @@ const he = {
       lastUpdate: "עדכון אחרון {{date}}",
       loadingStatus: "טוען סטטוס אימות...",
       refreshStatus: "רענון סטטוס האימות",
-      resolvingLabel:
-        "ממתינים ל-Didit כדי לאשר את התוצאה. השאירו את המסך פתוח.",
+      resolvingLabel: "ממתינים ל-Didit כדי לאשר את התוצאה. השאירו את המסך פתוח.",
       resolvingTitle: "מסיימים את האימות שלכם",
       start: "אימות",
       starting: "מתחיל אימות...",
@@ -896,16 +914,14 @@ const he = {
       cancelled: "תהליך האימות בוטל.",
       invalidReturn: "Didit לא החזירה אות סיום תקין.",
       startFailed: "התחלת אימות Didit נכשלה.",
-      nativeUnavailable:
-        "אימות מקומי לא זמין בבילד הזה. עדכנו את האפליקציה ונסו שוב.",
+      nativeUnavailable: "אימות מקומי לא זמין בבילד הזה. עדכנו את האפליקציה ונסו שוב.",
       externalLinkFailed: "לא הצלחנו לפתוח את קישור הייחוס של האימות.",
       slow: "האימות לוקח יותר זמן מהצפוי. משכו לריענון או נסו שוב בקרוב.",
       approvedInfo: "הזהות אומתה. ה-KYC שלכם פעיל עכשיו.",
       declinedInfo: "Didit דחתה את הניסיון הזה. בדקו את פרטי המסמך ונסו שוב.",
       finishedWithStatus: "האימות הסתיים עם סטטוס: {{status}}.",
       confirmFailed: "לא הצלחנו לאשר את סטטוס האימות האחרון. נסו שוב.",
-      primaryHint:
-        "האימות רץ בתוך הזרימה המקומית של האפליקציה. לרוב זה לוקח 2 עד 3 דקות.",
+      primaryHint: "האימות רץ בתוך הזרימה המקומית של האפליקציה. לרוב זה לוקח 2 עד 3 דקות.",
       systemTitle: "איך האימות עובד",
       systemBody:
         "Queue משתמשת ב-SDK המקומי של Didit כדי לסרוק מסמך, לבצע בדיקות חיות, ולהחזיר תוצאת אימות מתוך האפליקציה.",
@@ -914,11 +930,9 @@ const he = {
       prepTitle: "מה להכין מראש",
       prep: {
         documentTitle: "הכינו מסמך ממשלתי אמיתי",
-        documentBody:
-          "השתמשו בדרכון או בתעודת זהות שתואמים לשם החוקי שמשמש למשיכות.",
+        documentBody: "השתמשו בדרכון או בתעודת זהות שתואמים לשם החוקי שמשמש למשיכות.",
         faceTitle: "השתמשו בתאורה טובה לסריקת הפנים",
-        faceBody:
-          "Didit עשויה לבקש בדיקת סלפי או חיות כדי לוודא שהמסמך שייך לכם.",
+        faceBody: "Didit עשויה לבקש בדיקת סלפי או חיות כדי לוודא שהמסמך שייך לכם.",
         timeTitle: "פנו כמה דקות",
         timeBody: "הזרימה מהירה יותר כשהמסמך נקי, קריא, והמצלמה יציבה.",
       },
@@ -942,8 +956,7 @@ const he = {
         "כי Queue תומכת בפעילות בתשלום ובהגדרת משיכות, אנחנו צריכים לוודא מי מקבל כסף ולצמצם סיכוני הונאה לפני הפעלת משיכות.",
       why: {
         payoutsTitle: "משיכות דורשות זהות מאומתת",
-        payoutsBody:
-          "כך אנחנו קושרים משיכות ובדיקות חשבון לאדם אמיתי במקום לפרופיל אנונימי.",
+        payoutsBody: "כך אנחנו קושרים משיכות ובדיקות חשבון לאדם אמיתי במקום לפרופיל אנונימי.",
         fraudTitle: "בקרות הונאה בתשלומים בישראל מתחזקות",
         fraudBody:
           "בדיקות זהות עוזרות לצמצם השתלטות על חשבונות, כרטיסים גנובים, וניצול לרעה סביב תשלומים דיגיטליים.",
@@ -971,15 +984,12 @@ const he = {
         default: "אמתו את הזהות שלכם",
       },
       body: {
-        approved:
-          "ה-KYC הושלם והזהות המאומתת שלכם פעילה עבור משיכות ובדיקות חשבון.",
-        declined:
-          "Didit דחתה את הניסיון הזה. התחילו אימות חדש ובדקו היטב את פרטי המסמך החוקי.",
+        approved: "ה-KYC הושלם והזהות המאומתת שלכם פעילה עבור משיכות ובדיקות חשבון.",
+        declined: "Didit דחתה את הניסיון הזה. התחילו אימות חדש ובדקו היטב את פרטי המסמך החוקי.",
         in_review:
           "Didit קיבלה את ההגשה שלכם ובודקת אותה כעת. המסך הזה ימשיך לעקוב אחרי שתחזרו מהזרימה.",
         pending: "ההגשה התקבלה. אנחנו מחכים לתוצאת בדיקה סופית מ-Didit.",
-        in_progress:
-          "הניסיון האחרון לא הושלם. התחילו אימות מאובטח חדש כדי להמשיך.",
+        in_progress: "הניסיון האחרון לא הושלם. התחילו אימות מאובטח חדש כדי להמשיך.",
         abandoned: "זרימת האימות בוטלה לפני השלמה. התחילו שוב כשתהיו מוכנים.",
         expired: "תוקף סשן האימות פג. התחילו סשן חדש כדי להמשיך.",
         default: "השלימו אימות זהות כדי לפתוח KYC וגישה למשיכות.",
@@ -1015,8 +1025,7 @@ const he = {
     sheetSubtitle: "התחברו או צרו חשבון בצעד אחד.",
     codeSheetSubtitle: "הזינו את הקוד ששלחנו לאימייל שלכם.",
     switchAccountTitle: "החלפת חשבון",
-    switchAccountSubtitle:
-      "התחברו לחשבון אחר. Queue תעביר אתכם אליו אחרי האימות.",
+    switchAccountSubtitle: "התחברו לחשבון אחר. Queue תעביר אתכם אליו אחרי האימות.",
     switchAccountCodeSubtitle: "אמתו את החשבון החדש כדי להשלים את ההחלפה.",
     switchingAccounts: "מחליף חשבונות...",
     keepCurrentAccount: "להישאר עם החשבון הנוכחי",
@@ -1040,13 +1049,11 @@ const he = {
     phoneNumberPlaceholder: "+972501234567",
     sendPhoneCodeButton: "שליחת קוד לטלפון",
     sendingPhoneCode: "...שולח קוד",
-    phoneNumberRequiredForSignUp:
-      "לחשבון הזה נדרש מספר טלפון. הוסיפו מספר כדי להמשיך.",
+    phoneNumberRequiredForSignUp: "לחשבון הזה נדרש מספר טלפון. הוסיפו מספר כדי להמשיך.",
     goToSignUp: "אין לכם חשבון? הירשמו",
     goToSignIn: "יש לכם חשבון? התחברו",
     additionalStepRequired: "נדרש שלב אימות נוסף.",
-    additionalStepRequiredWithStatus:
-      "נדרש שלב אימות נוסף (סטטוס: {{status}}).",
+    additionalStepRequiredWithStatus: "נדרש שלב אימות נוסף (סטטוס: {{status}}).",
     sessionTaskPending: "לסשן נדרש שלב נוסף ב-Convex Auth (משימה: {{task}}).",
     secondFactorUnavailable: "נדרש אימות דו-שלבי, אבל לא נמצאה שיטה נתמכת.",
     unexpectedError: "אירעה שגיאה. נסו שוב.",
@@ -1063,15 +1070,13 @@ const he = {
     identifierPlaceholder: "name@example.com",
     sendCodeButton: "Send code",
     sendMagicLinkButton: "Send magic link",
-    magicLinkSent:
-      "Magic link sent to {{email}}. Open it on this device to continue.",
+    magicLinkSent: "Magic link sent to {{email}}. Open it on this device to continue.",
     magicLinkVerified: "Magic link verified. Signing you in...",
     addAccountTitle: "הוספת חשבון",
     addAccountSubtitle: "התחברו לחשבון נוסף וקשרו אותו לחיבור הנוכחי.",
     addAccountBody:
       "השתמשו באימייל, קישור קסם, Google או Apple כדי לחבר חשבון קיים נוסף לחשבון שבו אתם כבר משתמשים.",
-    addInstructorAccountBody:
-      "התחברו לחשבון המדריך/ה שברצונכם לקשר לחיבור הזה.",
+    addInstructorAccountBody: "התחברו לחשבון המדריך/ה שברצונכם לקשר לחיבור הזה.",
     addStudioAccountBody: "התחברו לחשבון הסטודיו שברצונכם לקשר לחיבור הזה.",
     addAccountLinked: "החשבון קושר. משלימים את ההגדרה...",
     magicLinkUnavailableNative:
@@ -1082,8 +1087,7 @@ const he = {
     oauthFailed: "Google sign-in failed. Please try again.",
     noAccountHint:
       "No account yet? Use email, magic link, or Google and we will create it automatically.",
-    sessionActivationFailed:
-      "Could not activate your session. Please sign in after verification.",
+    sessionActivationFailed: "Could not activate your session. Please sign in after verification.",
   },
   onboarding: {
     loading: "...טוען הגדרת פרופיל",
@@ -1095,8 +1099,7 @@ const he = {
     roleStudioTitle: "סטודיו",
     roleStudioDescription: "פרסום שיעורים וגיוס מדריכים פרילנס במהירות.",
     roleSelectHint: "בחרו תפקיד כדי להמשיך.",
-    sheetInstructorSubtitle:
-      "הוסיפו את הפרטים שסטודיואים צריכים לפני שהם סוגרים אתכם.",
+    sheetInstructorSubtitle: "הוסיפו את הפרטים שסטודיואים צריכים לפני שהם סוגרים אתכם.",
     sheetStudioSubtitle: "הגדירו את זהות הסטודיו והמיקום בכמה צעדים פשוטים.",
     studioDetailsTitle: "פרטי סטודיו",
     instructorDetailsTitle: "פרטי מדריך/ה",
@@ -1123,8 +1126,7 @@ const he = {
       detectedZone: "אזור שזוהה: {{zone}}",
       addDetectedZone: "הוספת האזור שזוהה",
       zonePending: "האזור ייקבע אוטומטית לפי כתובת או GPS.",
-      zoneOptionalHint:
-        "אופציונלי: אפשר לזהות את האזור הנוכחי ולהוסיף אותו לאזורי השירות.",
+      zoneOptionalHint: "אופציונלי: אפשר לזהות את האזור הנוכחי ולהוסיף אותו לאזורי השירות.",
     },
     zoneSearchPlaceholder: "חיפוש אזורים",
     back: "חזרה",
@@ -1157,14 +1159,12 @@ const he = {
       "מגדירים את צד הסטודיו של החשבון הזה. מספיק להוסיף שם סטודיו ומיקום כדי להתחיל.",
     push: {
       title: "עדכוני בדיקה",
-      description:
-        "הפעילו התראות Push כדי לקבל התראות על משרות חדשות ברגע שהן מתפרסמות.",
+      description: "הפעילו התראות Push כדי לקבל התראות על משרות חדשות ברגע שהן מתפרסמות.",
       requesting: "מבקש הרשאה...",
       enabled: "התראות מופעלות",
       requestPermission: "הפעלת התראות Push",
       tokenSaved: "אסימון ההתראות נשמר.",
-      permissionNotGranted:
-        "הרשאת התראות לא אושרה. אפשר להמשיך ולהפעיל מאוחר יותר.",
+      permissionNotGranted: "הרשאת התראות לא אושרה. אפשר להמשיך ולהפעיל מאוחר יותר.",
       unavailableInExpoGo:
         "התראות Push לא זמינות ב-Expo Go. צריך לבנות מחדש ולהתקין שוב את ה-Dev Client.",
       requiresPhysicalDevice: "התראות Push דורשות מכשיר פיזי.",
@@ -1184,13 +1184,10 @@ const he = {
       instructorAddressRequired: "יש להזין כתובת קודם.",
       failedToResolveAddress: "איתור האזור לפי כתובת נכשל.",
       failedToResolveGps: "איתור האזור לפי GPS נכשל.",
-      locationNativeMissing:
-        "מודול המיקום חסר בגרסה הזו. בנו והתקינו מחדש Dev Client.",
+      locationNativeMissing: "מודול המיקום חסר בגרסה הזו. בנו והתקינו מחדש Dev Client.",
       locationPermissionDenied: "הרשאת מיקום נדחתה.",
-      locationPermissionBlocked:
-        "הרשאת מיקום חסומה. אפשרו אותה בהגדרות המכשיר.",
-      locationServicesDisabled:
-        "שירותי המיקום כבויים במכשיר. הפעילו GPS ונסו שוב.",
+      locationPermissionBlocked: "הרשאת מיקום חסומה. אפשרו אותה בהגדרות המכשיר.",
+      locationServicesDisabled: "שירותי המיקום כבויים במכשיר. הפעילו GPS ונסו שוב.",
       locationTimeout: "בקשת המיקום נכשלה עקב Timeout. נסו שוב.",
       locationAddressNotFound: "לא נמצאה כתובת.",
       locationOutsideSupportedZone: "המיקום מחוץ לאזורי השירות הנתמכים.",
@@ -1209,8 +1206,7 @@ const he = {
     saving: "...שומר",
     zoneModeOn: "מצב אזורים",
     zoneModeOff: "בחירת אזורים",
-    zoneModeHint:
-      "הקישו על אזור כדי להפעיל/לכבות. לחיצה 100ms מאפשרת גרירת מפה.",
+    zoneModeHint: "הקישו על אזור כדי להפעיל/לכבות. לחיצה 100ms מאפשרת גרירת מפה.",
     devBuildRequiredTitle: "המפה דורשת Build לפיתוח",
     devBuildRequiredBody:
       "הרכיב משתמש במודולים נייטיב שאינם זמינים ב-Expo Go. הריצו `bun run android` או Dev Client.",
@@ -1224,8 +1220,7 @@ const he = {
     web: {
       workspaceEyebrow: "מרחב כיסוי",
       workspaceTitle: "עצבו את רדיוס הגיוס שלכם",
-      workspaceBody:
-        "בדסקטופ אפשר לנהל עריכה, חיפוש ושמירה במסילה תפעולית אחת.",
+      workspaceBody: "בדסקטופ אפשר לנהל עריכה, חיפוש ושמירה במסילה תפעולית אחת.",
       stateEyebrow: "מצב הכיסוי",
       stateLive: "חי",
       stateStaged: "{{count}} בהמתנה",
@@ -1246,8 +1241,7 @@ const he = {
       focusPrompt: "בחרו אזור במסילה כדי למקד אותו על לוח הכיסוי.",
       liveTerritory: "טריטוריה חיה",
       noTerritoryTitle: "אין טריטוריה מוכנה",
-      noTerritoryBody:
-        "השתמשו בחיפוש או בלוח הכיסוי כדי לבנות את הטריטוריה החיה הבאה שלכם.",
+      noTerritoryBody: "השתמשו בחיפוש או בלוח הכיסוי כדי לבנות את הטריטוריה החיה הבאה שלכם.",
       focusedOnCanvas: "בפוקוס על הקנבס",
       tapToFocus: "הקישו כדי למקד",
       atlasEyebrow: "אטלס כיסוי",
@@ -1261,8 +1255,7 @@ const he = {
       interactive: "אינטראקטיבי",
       preview: "תצוגה מקדימה",
       territorySnapshot: "תמונת מצב טריטוריאלית",
-      emptySnapshot:
-        "הוסיפו אזורים מהמסילה או מהלוח כדי לבנות את הטריטוריה החיה שלכם.",
+      emptySnapshot: "הוסיפו אזורים מהמסילה או מהלוח כדי לבנות את הטריטוריה החיה שלכם.",
       focused: "ממוקד",
       referenceZone: "אזור ייחוס",
       tapToRemove: "הקישו להסרה",
@@ -1291,11 +1284,9 @@ const he = {
       modeLive: "כיסוי חי",
       sheetExpandHint: "משכו למטה כדי לערוך",
       sheetCollapseHint: "החליקו למעלה כדי לאשר",
-      editorHint:
-        "הקישו על המפה או על הרשימה כדי להפעיל או לכבות אזורים. החליקו למעלה כשתסיימו.",
+      editorHint: "הקישו על המפה או על הרשימה כדי להפעיל או לכבות אזורים. החליקו למעלה כשתסיימו.",
       idleHint: "הכיסוי נשאר יציב עד שתפתחו את העורך כלפי מטה.",
-      overviewHint:
-        "משכו את הגיליון למטה או הקישו על כפתור העריכה כדי לדייק את האזורים החיים.",
+      overviewHint: "משכו את הגיליון למטה או הקישו על כפתור העריכה כדי לדייק את האזורים החיים.",
       emptySelection: "לא נבחרו אזורים חיים",
       noMatchingCities: "לא נמצאו ערים תואמות",
       noMatchingCitiesHint: "נסו שם עיר, וריאציית אזור או מזהה אזור.",
@@ -1313,8 +1304,7 @@ const he = {
     native: {
       loadingBody: "עדכנו את האזורים הפעילים שלכם ישירות על המפה.",
       unavailableTitle: "המפה לא זמינה",
-      unavailableBody:
-        "המפה לא הצליחה להיטען עד הסוף. בדקו את החיבור ונסו שוב.",
+      unavailableBody: "המפה לא הצליחה להיטען עד הסוף. בדקו את החיבור ונסו שוב.",
       openAttribution: "פתיחת ייחוס המפה",
     },
     errors: {
@@ -1336,12 +1326,10 @@ const he = {
     studioCreateTitle: "יצירת משרה במהירות",
     studioSubtitle: "צרו משרה והודיעו מיד למדריכים מתאימים.",
     studioPushTitle: "הפעלת התראות Push לסטודיו",
-    studioPushDescription:
-      "קבלו התראה מיידית כשמדריכים מגישים מועמדות לשיעורים שלכם.",
+    studioPushDescription: "קבלו התראה מיידית כשמדריכים מגישים מועמדות לשיעורים שלכם.",
     studioFeedTitle: "המשרות האחרונות שלכם",
     studioApplicationsTitle: "פניות",
-    instructorSubtitle:
-      "משרות חיות לפי אזורי השירות שלכם. אין צורך בריענון ידני.",
+    instructorSubtitle: "משרות חיות לפי אזורי השירות שלכם. אין צורך בריענון ידני.",
     timezoneHint: "השעות מוצגות לפי אזור הזמן המקומי שלכם ({{timeZone}}).",
     instructorSessionsTitle: "ציר השיעורים שלי",
     currentLessonTitle: "השיעור הנוכחי",
@@ -1388,8 +1376,7 @@ const he = {
       notes: "הערות נוספות (אופציונלי)",
       notesPlaceholder: "פרטים אופציונליים למדריך/ה",
       closeApplications: "סגירת קבלת מועמדויות",
-      closeApplicationsDescription:
-        "השאירו על ברירת הסטודיו אלא אם משרה ספציפית צריכה דדליין אחר.",
+      closeApplicationsDescription: "השאירו על ברירת הסטודיו אלא אם משרה ספציפית צריכה דדליין אחר.",
       boostOnBoard: "בוסט בלוח",
       boostOnBoardDescription: "הוספת בונוס לתשלום כדי למשוך יותר מדריכים.",
       useStudioDefault: "ברירת הסטודיו",
@@ -1407,10 +1394,8 @@ const he = {
       expiresInMinutes_other: "פג תוקף עוד {{count}} דקות",
       expiresInHours_one: "פג תוקף עוד {{count}} שעה",
       expiresInHours_other: "פג תוקף עוד {{count}} שעות",
-      expiresInHoursAndMinutes_one:
-        "פג תוקף עוד {{count}} שעה ו-{{minutes}} דקה",
-      expiresInHoursAndMinutes_other:
-        "פג תוקף עוד {{count}} שעות ו-{{minutes}} דקות",
+      expiresInHoursAndMinutes_one: "פג תוקף עוד {{count}} שעה ו-{{minutes}} דקה",
+      expiresInHoursAndMinutes_other: "פג תוקף עוד {{count}} שעות ו-{{minutes}} דקות",
       boostBadge: "+₪{{bonus}} בוסט",
     },
     card: {
@@ -1609,8 +1594,7 @@ const he = {
       rejected: "הפנייה נדחתה.",
       pushEnabled: "התראות Push הופעלו.",
       lessonCompleted: "השיעור סומן כהושלם.",
-      checkoutOpened:
-        "עמוד התשלום נפתח. אפשר לעקוב אחר העדכונים באזור התשלומים.",
+      checkoutOpened: "עמוד התשלום נפתח. אפשר לעקוב אחר העדכונים באזור התשלומים.",
     },
     errors: {
       branchRequired: "בחרו סניף לפני פרסום המשרה.",
@@ -1625,8 +1609,7 @@ const he = {
       failedToApply: "הגשת הפנייה נכשלה.",
       failedToReview: "בדיקת הפנייה נכשלה.",
       failedToMarkAlertsRead: "סימון ההתראות כנקראו נכשל.",
-      pushPermissionRequired:
-        "נדרשת הרשאת התראות כדי להפעיל Push עבור הסטודיו.",
+      pushPermissionRequired: "נדרשת הרשאת התראות כדי להפעיל Push עבור הסטודיו.",
       pushUnavailableInExpoGo:
         "התראות Push לא זמינות ב-Expo Go. צריך לבנות מחדש ולהתקין שוב את ה-Dev Client.",
       pushRequiresPhysicalDevice: "התראות Push דורשות מכשיר פיזי.",
@@ -1683,8 +1666,7 @@ const he = {
       metricSelector: "בחירת מדד ביצועים",
       timeframeSelector: "בחירת טווח זמן",
       showMetric: "הצגת {{metric}}",
-      chartSummary:
-        "גרף {{metric}} עבור {{timeframe}}. סך הכל {{total}}. {{insight}}",
+      chartSummary: "גרף {{metric}} עבור {{timeframe}}. סך הכל {{total}}. {{insight}}",
       chartSwipeHint: "החליקו ימינה או שמאלה כדי להחליף טווח זמן.",
     },
     instructor: {
@@ -1761,17 +1743,13 @@ const he = {
     sectionRoutingLine2: "קובץ הפריסה בתוך",
     sectionRoutingLine2End: "מגדיר את לשוניות הניווט.",
     sectionPlatformsTitle: "תמיכה ב-Android, iOS ו-Web",
-    sectionPlatformsBody:
-      "אפשר להריץ את הפרויקט על Android, iOS וה-Web. ב-Web לחצו w בטרמינל.",
+    sectionPlatformsBody: "אפשר להריץ את הפרויקט על Android, iOS וה-Web. ב-Web לחצו w בטרמינל.",
     sectionImagesTitle: "תמונות",
-    sectionImagesBody:
-      "לתמונות סטטיות ניתן להשתמש בסיומות @2x ו-@3x למסכים בצפיפויות שונות.",
+    sectionImagesBody: "לתמונות סטטיות ניתן להשתמש בסיומות @2x ו-@3x למסכים בצפיפויות שונות.",
     sectionThemeTitle: "מצב בהיר וכהה",
-    sectionThemeBody:
-      "התבנית תומכת במצב בהיר וכהה. useColorScheme() מחזיר את ערכת הנושא הנוכחית.",
+    sectionThemeBody: "התבנית תומכת במצב בהיר וכהה. useColorScheme() מחזיר את ערכת הנושא הנוכחית.",
     sectionAnimationsTitle: "אנימציות",
-    sectionAnimationsBody:
-      "התבנית כוללת רכיב מונפש באמצעות react-native-reanimated.",
+    sectionAnimationsBody: "התבנית כוללת רכיב מונפש באמצעות react-native-reanimated.",
     sectionAnimationsIos: "ParallaxScrollView מספק את אפקט הפרלקסה בכותרת.",
     learnMore: "למידע נוסף",
   },
