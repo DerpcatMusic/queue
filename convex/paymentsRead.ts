@@ -8,7 +8,7 @@ import {
   resolveRapydMode,
 } from "./integrations/rapyd/config";
 import { requireCurrentUser, requireUserRole } from "./lib/auth";
-import { summarizeLedgerBalances } from "./lib/marketplace";
+import { resolveInternalAccessForUserId } from "./lib/internalAccess";
 import { omitUndefined } from "./lib/validation";
 
 const RAPYD_PROVIDER = "rapyd" as const;
@@ -25,8 +25,17 @@ type InvoiceInput = {
 
 const MANUAL_PAYOUT_RELEASE_MODE = "manual";
 const AUTOMATIC_PAYOUT_RELEASE_MODE = "automatic";
-
 type PayoutReleaseMode = typeof MANUAL_PAYOUT_RELEASE_MODE | typeof AUTOMATIC_PAYOUT_RELEASE_MODE;
+type PayoutSummaryAmounts = {
+  currency: string;
+  heldAmountAgorot: number;
+  availableAmountAgorot: number;
+  pendingAmountAgorot: number;
+  paidAmountAgorot: number;
+  attentionAmountAgorot: number;
+  outstandingAmountAgorot: number;
+  lifetimeEarnedAmountAgorot: number;
+};
 
 export const isSandboxMode = (): boolean => resolveRapydMode() !== "production";
 
@@ -55,6 +64,138 @@ const toInvoiceSummary = (invoice: InvoiceInput) =>
 
 function getUniqueIdsInOrder<T extends string>(ids: ReadonlyArray<T>) {
   return [...new Set(ids)];
+}
+
+async function sumInstructorLedgerBucket(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  balanceBucket: Doc<"ledgerEntries">["balanceBucket"],
+): Promise<number> {
+  const entries = await ctx.db
+    .query("ledgerEntries")
+    .withIndex("by_instructor_bucket", (q) =>
+      q.eq("instructorUserId", userId).eq("balanceBucket", balanceBucket),
+    )
+    .order("desc")
+    .collect();
+
+  return entries.reduce((total, entry) => total + entry.amountAgorot, 0);
+}
+
+async function readInstructorPayoutSummaryAmounts(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+): Promise<PayoutSummaryAmounts> {
+  const paymentOrders = await ctx.db
+    .query("paymentOrders")
+    .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", userId))
+    .order("desc")
+    .collect();
+  const payments = await ctx.db
+    .query("payments")
+    .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", userId))
+    .order("desc")
+    .collect();
+  const payouts = await ctx.db
+    .query("payouts")
+    .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", userId))
+    .order("desc")
+    .collect();
+  const heldAmountAgorot = await sumInstructorLedgerBucket(ctx, userId, "instructor_held");
+  const availableAmountAgorot = await sumInstructorLedgerBucket(
+    ctx,
+    userId,
+    "instructor_available",
+  );
+  const pendingAmountAgorot = await sumInstructorLedgerBucket(ctx, userId, "instructor_reserved");
+  const paidAmountAgorot = await sumInstructorLedgerBucket(ctx, userId, "instructor_paid");
+  const adjustmentsAmountAgorot = await sumInstructorLedgerBucket(ctx, userId, "adjustments");
+
+  const currency =
+    paymentOrders[0]?.currency ?? payments[0]?.currency ?? process.env.PAYMENTS_CURRENCY ?? "ILS";
+
+  if (paymentOrders.length > 0) {
+    const outstandingAmountAgorot = Math.max(
+      0,
+      heldAmountAgorot + availableAmountAgorot + pendingAmountAgorot,
+    );
+    const lifetimeEarnedAmountAgorot = Math.max(0, paidAmountAgorot + outstandingAmountAgorot);
+
+    return {
+      currency,
+      heldAmountAgorot: Math.max(0, heldAmountAgorot),
+      availableAmountAgorot: Math.max(0, availableAmountAgorot),
+      pendingAmountAgorot: Math.max(0, pendingAmountAgorot),
+      paidAmountAgorot: Math.max(0, paidAmountAgorot),
+      attentionAmountAgorot: Math.max(0, Math.abs(Math.min(adjustmentsAmountAgorot, 0))),
+      outstandingAmountAgorot,
+      lifetimeEarnedAmountAgorot,
+    };
+  }
+
+  const latestPayoutByPaymentId = new Map<string, Doc<"payouts">>();
+  for (const payout of payouts) {
+    const key = String(payout.paymentId);
+    if (!latestPayoutByPaymentId.has(key)) {
+      latestPayoutByPaymentId.set(key, payout);
+    }
+  }
+
+  let availableLegacyAmountAgorot = 0;
+  let pendingLegacyAmountAgorot = 0;
+  let paidLegacyAmountAgorot = 0;
+  let attentionLegacyAmountAgorot = 0;
+
+  for (const payment of payments) {
+    if (payment.status !== "captured") {
+      continue;
+    }
+
+    const latestPayout = latestPayoutByPaymentId.get(String(payment._id));
+    if (!latestPayout) {
+      availableLegacyAmountAgorot += payment.instructorBaseAmountAgorot;
+      continue;
+    }
+
+    if (latestPayout.status === "paid") {
+      paidLegacyAmountAgorot += latestPayout.amountAgorot;
+      continue;
+    }
+
+    if (
+      latestPayout.status === "queued" ||
+      latestPayout.status === "processing" ||
+      latestPayout.status === "pending_provider"
+    ) {
+      pendingLegacyAmountAgorot += latestPayout.amountAgorot;
+      continue;
+    }
+
+    attentionLegacyAmountAgorot += latestPayout.amountAgorot;
+  }
+
+  const outstandingAmountAgorot = Math.max(
+    0,
+    availableLegacyAmountAgorot + pendingLegacyAmountAgorot,
+  );
+
+  return {
+    currency,
+    heldAmountAgorot: 0,
+    availableAmountAgorot: availableLegacyAmountAgorot,
+    pendingAmountAgorot: pendingLegacyAmountAgorot,
+    paidAmountAgorot: paidLegacyAmountAgorot,
+    attentionAmountAgorot: attentionLegacyAmountAgorot,
+    outstandingAmountAgorot,
+    lifetimeEarnedAmountAgorot: Math.max(0, paidLegacyAmountAgorot + outstandingAmountAgorot),
+  };
+}
+
+export async function getMyInstructorPayoutSnapshotRead(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+): Promise<PayoutSummaryAmounts> {
+  return await readInstructorPayoutSummaryAmounts(ctx, userId);
 }
 
 async function loadPaymentListRelations(ctx: QueryCtx, payments: ReadonlyArray<Doc<"payments">>) {
@@ -119,6 +260,11 @@ export const isInstructorKycApproved = async (
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
 ): Promise<boolean> => {
+  const access = await resolveInternalAccessForUserId(ctx, userId);
+  if (access.verificationBypass) {
+    return true;
+  }
+
   const profile = await ctx.db
     .query("instructorProfiles")
     .withIndex("by_user_id", (q) => q.eq("userId", userId))
@@ -424,36 +570,13 @@ export async function listMyPayoutDestinationsRead(ctx: QueryCtx) {
 export async function getMyPayoutSummaryRead(ctx: QueryCtx) {
   const user = await requireUserRole(ctx, ["instructor"]);
 
-  const [
-    paymentOrders,
-    payments,
-    payouts,
-    payoutSchedules,
-    payoutReleaseRule,
-    destinations,
-    onboardingSessions,
-    kycApproved,
-  ] = await Promise.all([
-    ctx.db
-      .query("paymentOrders")
-      .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
-      .order("desc")
-      .take(400),
-    ctx.db
-      .query("payments")
-      .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
-      .order("desc")
-      .take(400),
-    ctx.db
-      .query("payouts")
-      .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
-      .order("desc")
-      .take(400),
-    ctx.db
-      .query("payoutSchedules")
-      .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
-      .order("desc")
-      .take(400),
+  const amounts = await readInstructorPayoutSummaryAmounts(ctx, user._id);
+  const payoutSchedules = await ctx.db
+    .query("payoutSchedules")
+    .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
+    .order("desc")
+    .collect();
+  const [payoutReleaseRule, destinations, onboardingSessions, kycApproved] = await Promise.all([
     ctx.db
       .query("payoutReleaseRules")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -471,100 +594,42 @@ export async function getMyPayoutSummaryRead(ctx: QueryCtx) {
     isInstructorKycApproved(ctx, user._id),
   ]);
 
-  const latestPayoutByPaymentId = new Map<string, Doc<"payouts">>();
-  for (const payout of payouts) {
-    const key = String(payout.paymentId);
-    if (!latestPayoutByPaymentId.has(key)) {
-      latestPayoutByPaymentId.set(key, payout);
-    }
-  }
-
-  let availableAmountAgorot = 0;
-  let pendingAmountAgorot = 0;
-  let paidAmountAgorot = 0;
-  let attentionAmountAgorot = 0;
   let availablePaymentsCount = 0;
   let pendingPaymentsCount = 0;
   let paidPaymentsCount = 0;
   let attentionPaymentsCount = 0;
-  const currency =
-    paymentOrders[0]?.currency ?? payments[0]?.currency ?? process.env.PAYMENTS_CURRENCY ?? "ILS";
 
-  if (paymentOrders.length > 0) {
-    const latestScheduleByOrderId = new Map<string, Doc<"payoutSchedules">>();
-    for (const schedule of payoutSchedules) {
-      const key = String(schedule.paymentOrderId);
-      if (!latestScheduleByOrderId.has(key)) {
-        latestScheduleByOrderId.set(key, schedule);
-      }
+  const latestScheduleByOrderId = new Map<string, Doc<"payoutSchedules">>();
+  for (const schedule of payoutSchedules) {
+    const key = String(schedule.paymentOrderId);
+    if (!latestScheduleByOrderId.has(key)) {
+      latestScheduleByOrderId.set(key, schedule);
     }
+  }
 
-    const ledgerEntriesByOrder = await Promise.all(
-      paymentOrders.map((order) =>
-        ctx.db
-          .query("ledgerEntries")
-          .withIndex("by_payment_order", (q) => q.eq("paymentOrderId", order._id))
-          .collect(),
-      ),
-    );
-
-    for (let index = 0; index < paymentOrders.length; index += 1) {
-      const order = paymentOrders[index];
-      if (!order) continue;
-      const balances = summarizeLedgerBalances(ledgerEntriesByOrder[index] ?? []);
-      const latestSchedule = latestScheduleByOrderId.get(String(order._id));
-
-      if (balances.instructor_available > 0) {
-        availableAmountAgorot += balances.instructor_available;
-        availablePaymentsCount += 1;
-      }
-      if (balances.instructor_reserved > 0) {
-        pendingAmountAgorot += balances.instructor_reserved;
-        pendingPaymentsCount += 1;
-      }
-      if (balances.instructor_paid > 0) {
-        paidAmountAgorot += balances.instructor_paid;
-        paidPaymentsCount += 1;
-      }
-      if (
-        balances.adjustments < 0 ||
-        latestSchedule?.status === "needs_attention" ||
-        latestSchedule?.status === "failed"
-      ) {
-        attentionAmountAgorot += Math.max(
-          Math.abs(balances.adjustments),
-          latestSchedule?.amountAgorot ?? 0,
-        );
-        attentionPaymentsCount += 1;
-      }
+  for (const schedule of latestScheduleByOrderId.values()) {
+    if (schedule.status === "available") {
+      availablePaymentsCount += 1;
+      continue;
     }
-  } else {
-    for (const payment of payments) {
-      if (payment.status !== "captured") continue;
-      const latestPayout = latestPayoutByPaymentId.get(String(payment._id));
-      if (!latestPayout) {
-        availableAmountAgorot += payment.instructorBaseAmountAgorot;
-        availablePaymentsCount += 1;
-        continue;
-      }
-
-      if (latestPayout.status === "paid") {
-        paidAmountAgorot += latestPayout.amountAgorot;
-        paidPaymentsCount += 1;
-        continue;
-      }
-
-      if (
-        latestPayout.status === "queued" ||
-        latestPayout.status === "processing" ||
-        latestPayout.status === "pending_provider"
-      ) {
-        pendingAmountAgorot += latestPayout.amountAgorot;
-        pendingPaymentsCount += 1;
-        continue;
-      }
-
-      attentionAmountAgorot += latestPayout.amountAgorot;
+    if (
+      schedule.status === "pending_eligibility" ||
+      schedule.status === "blocked" ||
+      schedule.status === "scheduled" ||
+      schedule.status === "processing"
+    ) {
+      pendingPaymentsCount += 1;
+      continue;
+    }
+    if (schedule.status === "paid") {
+      paidPaymentsCount += 1;
+      continue;
+    }
+    if (
+      schedule.status === "failed" ||
+      schedule.status === "needs_attention" ||
+      schedule.status === "cancelled"
+    ) {
       attentionPaymentsCount += 1;
     }
   }
@@ -582,7 +647,7 @@ export async function getMyPayoutSummaryRead(ctx: QueryCtx) {
     sandboxSelfVerifyEnabled: isSandboxDestinationSelfVerifyEnabled(),
     payoutPreferenceMode: payoutReleaseRule?.preferenceMode ?? "immediate_when_eligible",
     payoutPreferenceScheduledDate: payoutReleaseRule?.scheduledDate ?? null,
-    currency,
+    currency: amounts.currency,
     hasVerifiedDestination: Boolean(verifiedDefaultDestination),
     isIdentityVerified: kycApproved,
     verifiedDestination: verifiedDefaultDestination
@@ -595,10 +660,13 @@ export async function getMyPayoutSummaryRead(ctx: QueryCtx) {
           last4: verifiedDefaultDestination.last4,
         }
       : null,
-    availableAmountAgorot,
-    pendingAmountAgorot,
-    paidAmountAgorot,
-    attentionAmountAgorot,
+    heldAmountAgorot: amounts.heldAmountAgorot,
+    availableAmountAgorot: amounts.availableAmountAgorot,
+    pendingAmountAgorot: amounts.pendingAmountAgorot,
+    paidAmountAgorot: amounts.paidAmountAgorot,
+    attentionAmountAgorot: amounts.attentionAmountAgorot,
+    outstandingAmountAgorot: amounts.outstandingAmountAgorot,
+    lifetimeEarnedAmountAgorot: amounts.lifetimeEarnedAmountAgorot,
     availablePaymentsCount,
     pendingPaymentsCount,
     paidPaymentsCount,

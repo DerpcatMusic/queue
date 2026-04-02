@@ -50,6 +50,27 @@ const BOOST_CUSTOM_MIN = 10;
 const BOOST_CUSTOM_MAX = 100;
 const BOOST_CUSTOM_STEP = 10;
 const BOOST_TRIGGER_MINUTES_OPTIONS = [15, 30, 45, 60, 90] as const;
+const LESSON_CHECK_IN_DEFAULT_RADIUS_METERS = 10;
+const LESSON_CHECK_IN_DISTANCE_BUFFER_METERS = 4;
+const LESSON_CHECK_IN_MAX_ACCURACY_METERS = 22;
+const LESSON_CHECK_IN_MAX_SAMPLE_AGE_MS = 2 * 60 * 1000;
+const LESSON_CHECK_IN_WINDOW_BEFORE_MS = 45 * 60 * 1000;
+const LESSON_CHECK_IN_WINDOW_AFTER_MS = 30 * 60 * 1000;
+
+type LessonCheckInReason =
+  | "verified"
+  | "outside_radius"
+  | "accuracy_too_low"
+  | "sample_too_old"
+  | "outside_check_in_window"
+  | "branch_location_missing";
+
+type LessonCheckInSummary = {
+  checkInStatus: "verified" | "rejected";
+  checkInReason: LessonCheckInReason;
+  checkedInAt: number;
+  checkInDistanceMeters?: number;
+};
 
 function assertPositiveNumber(value: number, fieldName: string) {
   if (!Number.isFinite(value) || value <= 0) {
@@ -74,6 +95,89 @@ function normalizeTimeZone(value: string | undefined) {
     throw new ConvexError("Invalid timeZone");
   }
   return trimmed;
+}
+
+function getLessonLifecycle(
+  status: Doc<"jobs">["status"],
+  nowValue: number,
+  startTime: number,
+  endTime: number,
+): "upcoming" | "live" | "past" | "cancelled" {
+  if (status === "cancelled") return "cancelled";
+  if (nowValue < startTime) return "upcoming";
+  if (nowValue <= endTime) return "live";
+  return "past";
+}
+
+function getBranchArrivalRadiusMeters(branch: Doc<"studioBranches">) {
+  if (Number.isFinite(branch.arrivalRadiusMeters) && branch.arrivalRadiusMeters! > 0) {
+    return branch.arrivalRadiusMeters!;
+  }
+  return LESSON_CHECK_IN_DEFAULT_RADIUS_METERS;
+}
+
+function getAllowedCheckInDistanceMeters(branch: Doc<"studioBranches">) {
+  return getBranchArrivalRadiusMeters(branch) + LESSON_CHECK_IN_DISTANCE_BUFFER_METERS;
+}
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+function getDistanceMeters(
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number },
+) {
+  const earthRadiusMeters = 6371000;
+  const latitudeDelta = toRadians(to.latitude - from.latitude);
+  const longitudeDelta = toRadians(to.longitude - from.longitude);
+  const fromLatitude = toRadians(from.latitude);
+  const toLatitude = toRadians(to.latitude);
+
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(fromLatitude) * Math.cos(toLatitude) * Math.sin(longitudeDelta / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function toLessonCheckInSummary(
+  checkIn: Doc<"lessonCheckIns"> | null | undefined,
+): LessonCheckInSummary | undefined {
+  if (!checkIn) {
+    return undefined;
+  }
+
+  return {
+    checkInStatus: checkIn.verificationStatus,
+    checkInReason: checkIn.verificationReason,
+    checkedInAt: checkIn.checkedInAt,
+    ...(checkIn.distanceToBranchMeters !== undefined
+      ? { checkInDistanceMeters: checkIn.distanceToBranchMeters }
+      : {}),
+  };
+}
+
+async function loadLatestLessonCheckInSummary(
+  ctx: QueryCtx | MutationCtx,
+  args: {
+    jobId: Id<"jobs">;
+    instructorId: Id<"instructorProfiles"> | undefined;
+  },
+) {
+  if (!args.instructorId) {
+    return undefined;
+  }
+
+  const latestCheckIn = await ctx.db
+    .query("lessonCheckIns")
+    .withIndex("by_job_and_instructor", (q) =>
+      q.eq("jobId", args.jobId).eq("instructorId", args.instructorId!),
+    )
+    .order("desc")
+    .first();
+
+  return toLessonCheckInSummary(latestCheckIn);
 }
 
 async function enqueueUserNotification(
@@ -697,6 +801,19 @@ export const getAvailableJobsForInstructor = query({
       timeZone: v.optional(v.string()),
       pay: v.number(),
       note: v.optional(v.string()),
+      checkInStatus: v.optional(v.union(v.literal("verified"), v.literal("rejected"))),
+      checkInReason: v.optional(
+        v.union(
+          v.literal("verified"),
+          v.literal("outside_radius"),
+          v.literal("accuracy_too_low"),
+          v.literal("sample_too_old"),
+          v.literal("outside_check_in_window"),
+          v.literal("branch_location_missing"),
+        ),
+      ),
+      checkedInAt: v.optional(v.number()),
+      checkInDistanceMeters: v.optional(v.number()),
       status: v.union(
         v.literal("open"),
         v.literal("filled"),
@@ -2022,8 +2139,10 @@ export const getMyCalendarTimeline = query({
       roleView: v.union(v.literal("instructor"), v.literal("studio")),
       studioId: v.id("studioProfiles"),
       studioName: v.string(),
+      studioProfileImageUrl: v.optional(v.string()),
       instructorId: v.optional(v.id("instructorProfiles")),
       instructorName: v.optional(v.string()),
+      instructorProfileImageUrl: v.optional(v.string()),
       sport: v.string(),
       zone: v.string(),
       startTime: v.number(),
@@ -2046,18 +2165,6 @@ export const getMyCalendarTimeline = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const getLifecycle = (
-      status: Doc<"jobs">["status"],
-      nowValue: number,
-      startTime: number,
-      endTime: number,
-    ): "upcoming" | "live" | "past" | "cancelled" => {
-      if (status === "cancelled") return "cancelled";
-      if (nowValue < startTime) return "upcoming";
-      if (nowValue <= endTime) return "live";
-      return "past";
-    };
-
     if (!Number.isFinite(args.startTime) || !Number.isFinite(args.endTime)) {
       throw new ConvexError("startTime and endTime must be finite numbers");
     }
@@ -2091,18 +2198,38 @@ export const getMyCalendarTimeline = query({
       const studios = await Promise.all(
         studioIds.map((studioId) => ctx.db.get("studioProfiles", studioId)),
       );
+      const latestCheckIns = await Promise.all(
+        jobs.map((job) =>
+          loadLatestLessonCheckInSummary(ctx, {
+            jobId: job._id,
+            instructorId: instructor._id,
+          }),
+        ),
+      );
       const studioById = new Map<string, Doc<"studioProfiles">>();
+      const studioProfileImageUrlById = new Map<string, string | undefined>();
+      const checkInByJobId = new Map<string, LessonCheckInSummary>();
       for (let i = 0; i < studioIds.length; i += 1) {
         const studioId = studioIds[i];
         const studio = studios[i];
         if (studio) {
           studioById.set(String(studioId), studio);
+          const imageUrl = studio.logoStorageId
+            ? ((await ctx.storage.getUrl(studio.logoStorageId)) ?? undefined)
+            : undefined;
+          studioProfileImageUrlById.set(String(studioId), imageUrl);
+        }
+      }
+      for (let i = 0; i < jobs.length; i += 1) {
+        const latestCheckIn = latestCheckIns[i];
+        if (latestCheckIn) {
+          checkInByJobId.set(String(jobs[i]!._id), latestCheckIn);
         }
       }
 
       return jobs.map((job) => {
         const studio = studioById.get(String(job.studioId));
-        const lifecycle = getLifecycle(job.status, now, job.startTime, job.endTime);
+        const lifecycle = getLessonLifecycle(job.status, now, job.startTime, job.endTime);
         return {
           lessonId: job._id,
           roleView: "instructor" as const,
@@ -2118,8 +2245,10 @@ export const getMyCalendarTimeline = query({
           status: job.status,
           lifecycle,
           ...omitUndefined({
+            studioProfileImageUrl: studioProfileImageUrlById.get(String(job.studioId)),
             timeZone: job.timeZone,
             note: job.note,
+            ...checkInByJobId.get(String(job._id)),
           }),
         };
       });
@@ -2147,23 +2276,46 @@ export const getMyCalendarTimeline = query({
           .filter((id): id is Id<"instructorProfiles"> => !!id),
       ),
     ];
+    const latestCheckIns = await Promise.all(
+      jobs.map((job) =>
+        loadLatestLessonCheckInSummary(ctx, {
+          jobId: job._id,
+          instructorId: job.filledByInstructorId ?? undefined,
+        }),
+      ),
+    );
     const instructors = await Promise.all(
       instructorIds.map((instructorId) => ctx.db.get("instructorProfiles", instructorId)),
     );
     const instructorById = new Map<string, Doc<"instructorProfiles">>();
+    const instructorProfileImageUrlById = new Map<string, string | undefined>();
+    const checkInByJobId = new Map<string, LessonCheckInSummary>();
     for (let i = 0; i < instructorIds.length; i += 1) {
       const instructorId = instructorIds[i];
       const profile = instructors[i];
       if (profile) {
         instructorById.set(String(instructorId), profile);
+        const imageUrl = profile.profileImageStorageId
+          ? ((await ctx.storage.getUrl(profile.profileImageStorageId)) ?? undefined)
+          : undefined;
+        instructorProfileImageUrlById.set(String(instructorId), imageUrl);
       }
     }
+    for (let i = 0; i < jobs.length; i += 1) {
+      const latestCheckIn = latestCheckIns[i];
+      if (latestCheckIn) {
+        checkInByJobId.set(String(jobs[i]!._id), latestCheckIn);
+      }
+    }
+    const studioProfileImageUrl = studio.logoStorageId
+      ? ((await ctx.storage.getUrl(studio.logoStorageId)) ?? undefined)
+      : undefined;
 
     return jobs.map((job) => {
       const instructor = job.filledByInstructorId
         ? instructorById.get(String(job.filledByInstructorId))
         : undefined;
-      const lifecycle = getLifecycle(job.status, now, job.startTime, job.endTime);
+      const lifecycle = getLessonLifecycle(job.status, now, job.startTime, job.endTime);
 
       return {
         lessonId: job._id,
@@ -2178,13 +2330,296 @@ export const getMyCalendarTimeline = query({
         status: job.status,
         lifecycle,
         ...omitUndefined({
+          studioProfileImageUrl,
           instructorId: job.filledByInstructorId,
           instructorName: instructor?.displayName,
+          instructorProfileImageUrl: job.filledByInstructorId
+            ? instructorProfileImageUrlById.get(String(job.filledByInstructorId))
+            : undefined,
           timeZone: job.timeZone,
           note: job.note,
+          ...checkInByJobId.get(String(job._id)),
         }),
       };
     });
+  },
+});
+
+export const getMyCalendarLessonDetail = query({
+  args: {
+    jobId: v.id("jobs"),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      lessonId: v.id("jobs"),
+      roleView: v.union(v.literal("instructor"), v.literal("studio")),
+      sport: v.string(),
+      status: v.union(
+        v.literal("open"),
+        v.literal("filled"),
+        v.literal("cancelled"),
+        v.literal("completed"),
+      ),
+      lifecycle: v.union(
+        v.literal("upcoming"),
+        v.literal("live"),
+        v.literal("past"),
+        v.literal("cancelled"),
+      ),
+      startTime: v.number(),
+      endTime: v.number(),
+      zone: v.string(),
+      pay: v.number(),
+      studioId: v.id("studioProfiles"),
+      studioName: v.string(),
+      studioProfileImageUrl: v.optional(v.string()),
+      instructorId: v.optional(v.id("instructorProfiles")),
+      instructorName: v.optional(v.string()),
+      instructorProfileImageUrl: v.optional(v.string()),
+      note: v.optional(v.string()),
+      timeZone: v.optional(v.string()),
+      checkInStatus: v.optional(v.union(v.literal("verified"), v.literal("rejected"))),
+      checkInReason: v.optional(
+        v.union(
+          v.literal("verified"),
+          v.literal("outside_radius"),
+          v.literal("accuracy_too_low"),
+          v.literal("sample_too_old"),
+          v.literal("outside_check_in_window"),
+          v.literal("branch_location_missing"),
+        ),
+      ),
+      checkedInAt: v.optional(v.number()),
+      checkInDistanceMeters: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const actor = await requireUserRole(ctx, ["instructor", "studio"]);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) {
+      return null;
+    }
+
+    const studio = await ctx.db.get(job.studioId);
+    if (!studio) {
+      return null;
+    }
+
+    const studioProfileImageUrl = studio.logoStorageId
+      ? ((await ctx.storage.getUrl(studio.logoStorageId)) ?? undefined)
+      : undefined;
+
+    if (actor.role === "instructor") {
+      const instructor = await requireInstructorProfile(ctx);
+      if (job.filledByInstructorId !== instructor._id) {
+        return null;
+      }
+      const latestCheckIn = await loadLatestLessonCheckInSummary(ctx, {
+        jobId: job._id,
+        instructorId: instructor._id,
+      });
+
+      return {
+        lessonId: job._id,
+        roleView: "instructor" as const,
+        sport: job.sport,
+        status: job.status,
+        lifecycle: getLessonLifecycle(job.status, Date.now(), job.startTime, job.endTime),
+        startTime: job.startTime,
+        endTime: job.endTime,
+        zone: trimOptionalString(job.zone) ?? job.zone,
+        pay: job.pay,
+        studioId: studio._id,
+        studioName: studio.studioName,
+        ...omitUndefined({
+          studioProfileImageUrl,
+          instructorId: instructor._id,
+          instructorName: instructor.displayName,
+          note: trimOptionalString(job.note),
+          timeZone: job.timeZone,
+          ...latestCheckIn,
+        }),
+      };
+    }
+
+    const studioProfile = await requireStudioProfile(ctx);
+    if (job.studioId !== studioProfile._id) {
+      return null;
+    }
+
+    const instructor = job.filledByInstructorId
+      ? await ctx.db.get(job.filledByInstructorId)
+      : null;
+    const latestCheckIn = await loadLatestLessonCheckInSummary(ctx, {
+      jobId: job._id,
+      instructorId: job.filledByInstructorId ?? undefined,
+    });
+    const instructorProfileImageUrl =
+      instructor?.profileImageStorageId
+        ? ((await ctx.storage.getUrl(instructor.profileImageStorageId)) ?? undefined)
+        : undefined;
+
+    return {
+      lessonId: job._id,
+      roleView: "studio" as const,
+      sport: job.sport,
+      status: job.status,
+      lifecycle: getLessonLifecycle(job.status, Date.now(), job.startTime, job.endTime),
+      startTime: job.startTime,
+      endTime: job.endTime,
+      zone: trimOptionalString(job.zone) ?? job.zone,
+      pay: job.pay,
+      studioId: studio._id,
+      studioName: studio.studioName,
+      ...omitUndefined({
+        studioProfileImageUrl,
+        instructorId: job.filledByInstructorId,
+        instructorName: instructor?.displayName,
+        instructorProfileImageUrl,
+        note: trimOptionalString(job.note),
+        timeZone: job.timeZone,
+        ...latestCheckIn,
+      }),
+    };
+  },
+});
+
+export const checkIntoLesson = mutation({
+  args: {
+    jobId: v.id("jobs"),
+    latitude: v.number(),
+    longitude: v.number(),
+    accuracyMeters: v.number(),
+    sampledAt: v.number(),
+  },
+  returns: v.object({
+    status: v.union(v.literal("verified"), v.literal("rejected")),
+    reason: v.union(
+      v.literal("verified"),
+      v.literal("outside_radius"),
+      v.literal("accuracy_too_low"),
+      v.literal("sample_too_old"),
+      v.literal("outside_check_in_window"),
+      v.literal("branch_location_missing"),
+    ),
+    checkedInAt: v.number(),
+    distanceToBranchMeters: v.optional(v.number()),
+    allowedDistanceMeters: v.optional(v.number()),
+  }),
+  handler: async (ctx, args) => {
+    if (!Number.isFinite(args.latitude) || !Number.isFinite(args.longitude)) {
+      throw new ConvexError("Valid coordinates are required");
+    }
+    if (!Number.isFinite(args.accuracyMeters) || args.accuracyMeters < 0) {
+      throw new ConvexError("accuracyMeters must be a valid non-negative number");
+    }
+    if (!Number.isFinite(args.sampledAt)) {
+      throw new ConvexError("sampledAt must be a valid timestamp");
+    }
+
+    const instructor = await requireInstructorProfile(ctx);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) {
+      throw new ConvexError("Job not found");
+    }
+    if (job.filledByInstructorId !== instructor._id) {
+      throw new ConvexError("Not authorized for this lesson");
+    }
+    if (job.status !== "filled") {
+      throw new ConvexError("Only active filled lessons can be checked into");
+    }
+
+    const latestCheckIn = await ctx.db
+      .query("lessonCheckIns")
+      .withIndex("by_job_and_instructor", (q) =>
+        q.eq("jobId", job._id).eq("instructorId", instructor._id),
+      )
+      .order("desc")
+      .first();
+    if (latestCheckIn?.verificationStatus === "verified") {
+      return {
+        status: latestCheckIn.verificationStatus,
+        reason: latestCheckIn.verificationReason,
+        checkedInAt: latestCheckIn.checkedInAt,
+        ...omitUndefined({
+          distanceToBranchMeters: latestCheckIn.distanceToBranchMeters,
+          allowedDistanceMeters: latestCheckIn.allowedDistanceMeters,
+        }),
+      };
+    }
+
+    const branch = await ctx.db.get(job.branchId);
+    if (!branch) {
+      throw new ConvexError("Branch not found");
+    }
+
+    const now = Date.now();
+    let verificationStatus: "verified" | "rejected" = "verified";
+    let verificationReason: LessonCheckInReason = "verified";
+    let distanceToBranchMeters: number | undefined;
+    let allowedDistanceMeters: number | undefined;
+
+    if (
+      now < job.startTime - LESSON_CHECK_IN_WINDOW_BEFORE_MS ||
+      now > Math.min(job.endTime, job.startTime + LESSON_CHECK_IN_WINDOW_AFTER_MS)
+    ) {
+      verificationStatus = "rejected";
+      verificationReason = "outside_check_in_window";
+    } else if (now - args.sampledAt > LESSON_CHECK_IN_MAX_SAMPLE_AGE_MS) {
+      verificationStatus = "rejected";
+      verificationReason = "sample_too_old";
+    } else if (args.accuracyMeters > LESSON_CHECK_IN_MAX_ACCURACY_METERS) {
+      verificationStatus = "rejected";
+      verificationReason = "accuracy_too_low";
+    } else if (
+      !Number.isFinite(branch.latitude) ||
+      !Number.isFinite(branch.longitude)
+    ) {
+      verificationStatus = "rejected";
+      verificationReason = "branch_location_missing";
+    } else {
+      distanceToBranchMeters = getDistanceMeters(
+        { latitude: args.latitude, longitude: args.longitude },
+        { latitude: branch.latitude!, longitude: branch.longitude! },
+      );
+      allowedDistanceMeters = getAllowedCheckInDistanceMeters(branch);
+
+      if (distanceToBranchMeters > allowedDistanceMeters) {
+        verificationStatus = "rejected";
+        verificationReason = "outside_radius";
+      }
+    }
+
+    const checkedInAt = now;
+    await ctx.db.insert("lessonCheckIns", {
+      jobId: job._id,
+      branchId: branch._id,
+      studioId: job.studioId,
+      instructorId: instructor._id,
+      checkedInByUserId: instructor.userId,
+      verificationStatus,
+      verificationReason,
+      latitude: args.latitude,
+      longitude: args.longitude,
+      accuracyMeters: args.accuracyMeters,
+      sampledAt: args.sampledAt,
+      checkedInAt,
+      ...omitUndefined({
+        distanceToBranchMeters,
+        allowedDistanceMeters,
+      }),
+    });
+
+    return {
+      status: verificationStatus,
+      reason: verificationReason,
+      checkedInAt,
+      ...omitUndefined({
+        distanceToBranchMeters,
+        allowedDistanceMeters,
+      }),
+    };
   },
 });
 

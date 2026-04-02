@@ -1,13 +1,15 @@
 import { ConvexError, v } from "convex/values";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
   action,
   internalMutation,
   internalQuery,
+  mutation,
   query,
 } from "./_generated/server";
 import { requireUserRole } from "./lib/auth";
+import { resolveInternalAccessForUser } from "./lib/internalAccess";
 import { omitUndefined } from "./lib/validation";
 
 const DIDIT_BASE_URL = "https://verification.didit.me";
@@ -69,6 +71,7 @@ type StudioVerificationContext = {
 type DiditRefreshResult = {
   status: DiditStatus;
   isVerified: boolean;
+  verificationBypassed: boolean;
   sessionId?: string;
   legalName?: string;
   legalFirstName?: string;
@@ -77,6 +80,7 @@ type DiditRefreshResult = {
   statusRaw?: string;
   lastEventAt?: number;
   verifiedAt?: number;
+  decision?: unknown;
 };
 
 type DiditVerificationTarget = "instructor" | "studio";
@@ -283,6 +287,41 @@ const sanitizeDiditWebhookPayload = (
   });
 };
 
+function toDiditVerificationPayload<
+  T extends {
+    diditVerificationStatus?: string;
+    diditSessionId?: string;
+    diditLegalName?: string;
+    diditLegalFirstName?: string;
+    diditLegalMiddleName?: string;
+    diditLegalLastName?: string;
+    diditStatusRaw?: string;
+    diditLastEventAt?: number;
+    diditVerifiedAt?: number;
+    diditDecision?: unknown;
+  },
+>(profile: T, verificationBypass: boolean) {
+  return {
+    status:
+      verificationBypass || profile.diditVerificationStatus === "approved"
+        ? ("approved" as const)
+        : ((profile.diditVerificationStatus ?? "not_started") as DiditStatus),
+    isVerified: verificationBypass || profile.diditVerificationStatus === "approved",
+    verificationBypassed: verificationBypass,
+    ...omitUndefined({
+      sessionId: profile.diditSessionId,
+      legalName: profile.diditLegalName,
+      legalFirstName: profile.diditLegalFirstName,
+      legalMiddleName: profile.diditLegalMiddleName,
+      legalLastName: profile.diditLegalLastName,
+      statusRaw: profile.diditStatusRaw,
+      lastEventAt: profile.diditLastEventAt,
+      verifiedAt: profile.diditVerifiedAt,
+      decision: profile.diditDecision,
+    }),
+  };
+}
+
 export const getCurrentInstructorVerificationContext = internalQuery({
   args: {},
   handler: async (ctx): Promise<InstructorVerificationContext | null> => {
@@ -315,6 +354,84 @@ export const getCurrentStudioVerificationContext = internalQuery({
     return {
       user,
       studioProfile,
+    };
+  },
+});
+
+export const markMyDiditVerificationAbandoned = mutation({
+  args: {},
+  returns: v.object({
+    ok: v.boolean(),
+    status: diditStatusValidator,
+  }),
+  handler: async (
+    ctx,
+  ): Promise<{
+    ok: boolean;
+    status: DiditStatus;
+  }> => {
+    const user = await requireUserRole(ctx, ["instructor"]);
+    const profile = await ctx.db
+      .query("instructorProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile || profile.diditVerificationStatus === "approved") {
+      return {
+        ok: true,
+        status: (profile?.diditVerificationStatus ?? "not_started") as DiditStatus,
+      };
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(profile._id, {
+      diditVerificationStatus: "abandoned",
+      diditStatusRaw: "abandoned_local",
+      diditLastEventAt: now,
+      updatedAt: now,
+    });
+
+    return {
+      ok: true,
+      status: "abandoned",
+    };
+  },
+});
+
+export const markMyStudioDiditVerificationAbandoned = mutation({
+  args: {},
+  returns: v.object({
+    ok: v.boolean(),
+    status: diditStatusValidator,
+  }),
+  handler: async (
+    ctx,
+  ): Promise<{
+    ok: boolean;
+    status: DiditStatus;
+  }> => {
+    const user = await requireUserRole(ctx, ["studio"]);
+    const profile = await ctx.db
+      .query("studioProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile || profile.diditVerificationStatus === "approved") {
+      return {
+        ok: true,
+        status: (profile?.diditVerificationStatus ?? "not_started") as DiditStatus,
+      };
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(profile._id, {
+      diditVerificationStatus: "abandoned",
+      diditStatusRaw: "abandoned_local",
+      diditLastEventAt: now,
+      updatedAt: now,
+    });
+
+    return {
+      ok: true,
+      status: "abandoned",
     };
   },
 });
@@ -447,6 +564,7 @@ export const getMyDiditVerification = query({
     v.object({
       status: diditStatusValidator,
       isVerified: v.boolean(),
+      verificationBypassed: v.boolean(),
       sessionId: v.optional(v.string()),
       legalName: v.optional(v.string()),
       legalFirstName: v.optional(v.string()),
@@ -461,6 +579,7 @@ export const getMyDiditVerification = query({
   ),
   handler: async (ctx) => {
     const user = await requireUserRole(ctx, ["instructor"]);
+    const internalAccess = await resolveInternalAccessForUser(ctx, user);
     const profile = await ctx.db
       .query("instructorProfiles")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
@@ -468,21 +587,7 @@ export const getMyDiditVerification = query({
     if (!profile) {
       return null;
     }
-    return {
-      status: profile.diditVerificationStatus ?? "not_started",
-      isVerified: profile.diditVerificationStatus === "approved",
-      ...omitUndefined({
-        sessionId: profile.diditSessionId,
-        legalName: profile.diditLegalName,
-        legalFirstName: profile.diditLegalFirstName,
-        legalMiddleName: profile.diditLegalMiddleName,
-        legalLastName: profile.diditLegalLastName,
-        statusRaw: profile.diditStatusRaw,
-        lastEventAt: profile.diditLastEventAt,
-        verifiedAt: profile.diditVerifiedAt,
-        decision: profile.diditDecision,
-      }),
-    };
+    return toDiditVerificationPayload(profile, internalAccess.verificationBypass);
   },
 });
 
@@ -611,6 +716,7 @@ export const getMyStudioDiditVerification = query({
     v.object({
       status: diditStatusValidator,
       isVerified: v.boolean(),
+      verificationBypassed: v.boolean(),
       sessionId: v.optional(v.string()),
       legalName: v.optional(v.string()),
       legalFirstName: v.optional(v.string()),
@@ -625,6 +731,7 @@ export const getMyStudioDiditVerification = query({
   ),
   handler: async (ctx) => {
     const user = await requireUserRole(ctx, ["studio"]);
+    const internalAccess = await resolveInternalAccessForUser(ctx, user);
     const profile = await ctx.db
       .query("studioProfiles")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
@@ -632,21 +739,7 @@ export const getMyStudioDiditVerification = query({
     if (!profile) {
       return null;
     }
-    return {
-      status: profile.diditVerificationStatus ?? "not_started",
-      isVerified: profile.diditVerificationStatus === "approved",
-      ...omitUndefined({
-        sessionId: profile.diditSessionId,
-        legalName: profile.diditLegalName,
-        legalFirstName: profile.diditLegalFirstName,
-        legalMiddleName: profile.diditLegalMiddleName,
-        legalLastName: profile.diditLegalLastName,
-        statusRaw: profile.diditStatusRaw,
-        lastEventAt: profile.diditLastEventAt,
-        verifiedAt: profile.diditVerifiedAt,
-        decision: profile.diditDecision,
-      }),
-    };
+    return toDiditVerificationPayload(profile, internalAccess.verificationBypass);
   },
 });
 
@@ -952,6 +1045,7 @@ export const refreshMyDiditVerification = action({
   returns: v.object({
     status: diditStatusValidator,
     isVerified: v.boolean(),
+    verificationBypassed: v.boolean(),
     sessionId: v.optional(v.string()),
     legalName: v.optional(v.string()),
     legalFirstName: v.optional(v.string()),
@@ -960,6 +1054,7 @@ export const refreshMyDiditVerification = action({
     statusRaw: v.optional(v.string()),
     lastEventAt: v.optional(v.number()),
     verifiedAt: v.optional(v.number()),
+    decision: v.optional(v.any()),
   }),
   handler: async (ctx): Promise<DiditRefreshResult> => {
     const verificationContext: InstructorVerificationContext | null =
@@ -971,22 +1066,10 @@ export const refreshMyDiditVerification = action({
       throw new ConvexError("Instructor profile not found");
     }
 
+    const internalAccess = await ctx.runQuery(api.internalAccess.getMyInternalAccess, {});
     const profile = verificationContext.instructorProfile;
     if (!profile.diditSessionId) {
-      return {
-        status: profile.diditVerificationStatus ?? "not_started",
-        isVerified: profile.diditVerificationStatus === "approved",
-        ...omitUndefined({
-          sessionId: profile.diditSessionId,
-          legalName: profile.diditLegalName,
-          legalFirstName: profile.diditLegalFirstName,
-          legalMiddleName: profile.diditLegalMiddleName,
-          legalLastName: profile.diditLegalLastName,
-          statusRaw: profile.diditStatusRaw,
-          lastEventAt: profile.diditLastEventAt,
-          verifiedAt: profile.diditVerifiedAt,
-        }),
-      };
+      return toDiditVerificationPayload(profile, internalAccess.verificationBypass);
     }
 
     const diditApiKey = getRequiredEnv("DIDIT_API_KEY");
@@ -1068,20 +1151,7 @@ export const refreshMyDiditVerification = action({
     if (!refreshed) {
       throw new ConvexError("Verification state unavailable after refresh");
     }
-    return {
-      status: refreshed.diditVerificationStatus ?? "not_started",
-      isVerified: refreshed.diditVerificationStatus === "approved",
-      ...omitUndefined({
-        sessionId: refreshed.diditSessionId,
-        legalName: refreshed.diditLegalName,
-        legalFirstName: refreshed.diditLegalFirstName,
-        legalMiddleName: refreshed.diditLegalMiddleName,
-        legalLastName: refreshed.diditLegalLastName,
-        statusRaw: refreshed.diditStatusRaw,
-        lastEventAt: refreshed.diditLastEventAt,
-        verifiedAt: refreshed.diditVerifiedAt,
-      }),
-    };
+    return toDiditVerificationPayload(refreshed, internalAccess.verificationBypass);
   },
 });
 
@@ -1090,6 +1160,7 @@ export const refreshMyStudioDiditVerification = action({
   returns: v.object({
     status: diditStatusValidator,
     isVerified: v.boolean(),
+    verificationBypassed: v.boolean(),
     sessionId: v.optional(v.string()),
     legalName: v.optional(v.string()),
     legalFirstName: v.optional(v.string()),
@@ -1098,6 +1169,7 @@ export const refreshMyStudioDiditVerification = action({
     statusRaw: v.optional(v.string()),
     lastEventAt: v.optional(v.number()),
     verifiedAt: v.optional(v.number()),
+    decision: v.optional(v.any()),
   }),
   handler: async (ctx): Promise<DiditRefreshResult> => {
     const verificationContext: StudioVerificationContext | null =
@@ -1109,22 +1181,10 @@ export const refreshMyStudioDiditVerification = action({
       throw new ConvexError("Studio profile not found");
     }
 
+    const internalAccess = await ctx.runQuery(api.internalAccess.getMyInternalAccess, {});
     const profile = verificationContext.studioProfile;
     if (!profile.diditSessionId) {
-      return {
-        status: profile.diditVerificationStatus ?? "not_started",
-        isVerified: profile.diditVerificationStatus === "approved",
-        ...omitUndefined({
-          sessionId: profile.diditSessionId,
-          legalName: profile.diditLegalName,
-          legalFirstName: profile.diditLegalFirstName,
-          legalMiddleName: profile.diditLegalMiddleName,
-          legalLastName: profile.diditLegalLastName,
-          statusRaw: profile.diditStatusRaw,
-          lastEventAt: profile.diditLastEventAt,
-          verifiedAt: profile.diditVerifiedAt,
-        }),
-      };
+      return toDiditVerificationPayload(profile, internalAccess.verificationBypass);
     }
 
     const diditApiKey = getRequiredEnv("DIDIT_API_KEY");
@@ -1206,20 +1266,7 @@ export const refreshMyStudioDiditVerification = action({
     if (!refreshed) {
       throw new ConvexError("Verification state unavailable after refresh");
     }
-    return {
-      status: refreshed.diditVerificationStatus ?? "not_started",
-      isVerified: refreshed.diditVerificationStatus === "approved",
-      ...omitUndefined({
-        sessionId: refreshed.diditSessionId,
-        legalName: refreshed.diditLegalName,
-        legalFirstName: refreshed.diditLegalFirstName,
-        legalMiddleName: refreshed.diditLegalMiddleName,
-        legalLastName: refreshed.diditLegalLastName,
-        statusRaw: refreshed.diditStatusRaw,
-        lastEventAt: refreshed.diditLastEventAt,
-        verifiedAt: refreshed.diditVerifiedAt,
-      }),
-    };
+    return toDiditVerificationPayload(refreshed, internalAccess.verificationBypass);
   },
 });
 

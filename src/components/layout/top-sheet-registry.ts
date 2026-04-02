@@ -36,6 +36,8 @@ export type TopSheetRenderResult = React.ReactNode | TopSheetFrameConfig;
 export type TopSheetTabConfig = {
   tabId: string;
   content?: React.ReactNode;
+  collapsedContent?: React.ReactNode;
+  expandedContent?: React.ReactNode;
   render?: (props: TopSheetRenderProps) => TopSheetRenderResult;
   overlay?: React.ReactNode;
   contentPaddingTop?: number;
@@ -55,6 +57,8 @@ export type TopSheetTabConfig = {
   stickyHeader?: React.ReactNode;
   stickyFooter?: React.ReactNode;
   revealOnExpand?: React.ReactNode;
+  routeMatchPath?: string;
+  routeMatchExact?: boolean;
 };
 
 export type ResolvedTopSheetTabConfig = TopSheetTabConfig & {
@@ -68,11 +72,54 @@ type TopSheetTabOverrideEntry = {
   config: TopSheetTabOverride;
 };
 
+function isSheetRouteMatch(
+  pathname: string | null,
+  routeMatchPath?: string,
+  routeMatchExact?: boolean,
+) {
+  if (!routeMatchPath) {
+    return true;
+  }
+
+  if (!pathname) {
+    return false;
+  }
+
+  if (routeMatchExact) {
+    return pathname === routeMatchPath;
+  }
+
+  return pathname === routeMatchPath || pathname.endsWith(routeMatchPath);
+}
+
 function areSheetOverridesEqual(
   previous: TopSheetTabOverride | undefined,
   next: TopSheetTabOverride,
 ) {
   if (!previous) {
+    return false;
+  }
+
+  const previousKeys = Object.keys(previous);
+  const nextKeys = Object.keys(next);
+  if (previousKeys.length !== nextKeys.length) {
+    return false;
+  }
+
+  return nextKeys.every((key) =>
+    Object.is(previous[key as keyof TopSheetTabOverride], next[key as keyof TopSheetTabOverride]),
+  );
+}
+
+function areTopSheetConfigsEqual(
+  previous: TopSheetTabOverride | null | undefined,
+  next: TopSheetTabOverride | null,
+) {
+  if (previous === next) {
+    return true;
+  }
+
+  if (!previous || !next) {
     return false;
   }
 
@@ -137,8 +184,6 @@ const DEFAULT_TOP_SHEET_CONFIGS: Record<string, TopSheetTabConfig> = {
     steps: [0],
   }),
 };
-
-export const DEFAULT_SHEET_PADDING_TOP = 140;
 
 type TopSheetRegistryContextValue = {
   overrides: Record<string, TopSheetTabOverrideEntry[] | undefined>;
@@ -232,9 +277,21 @@ function useTopSheetRegistry() {
 export function resolveTabSheetConfig(
   tabId: string,
   overrides: Record<string, TopSheetTabOverrideEntry[] | undefined>,
+  pathname: string | null,
 ): TopSheetTabConfig | null {
   const baseConfig = DEFAULT_TOP_SHEET_CONFIGS[tabId];
-  const overrideConfig = overrides[tabId]?.[overrides[tabId]!.length - 1]?.config;
+  const matchingEntries =
+    overrides[tabId]?.filter((entry) =>
+      isSheetRouteMatch(pathname, entry.config.routeMatchPath, entry.config.routeMatchExact),
+    ) ?? [];
+  const overrideConfig =
+    matchingEntries
+      .sort((left, right) => {
+        const leftLength = left.config.routeMatchPath?.length ?? 0;
+        const rightLength = right.config.routeMatchPath?.length ?? 0;
+        return leftLength - rightLength;
+      })
+      .at(-1)?.config ?? null;
 
   if (!baseConfig && !overrideConfig) {
     return null;
@@ -268,40 +325,64 @@ export function useGlobalTopSheet(
   tabId: string,
   config: TopSheetTabOverride | null,
   explicitOwnerId?: string,
+  registration?: {
+    routeMatchPath?: string;
+    routeMatchExact?: boolean;
+  },
 ) {
   const { replaceConfig, clearConfig } = useTopSheetRegistry();
   const ownerIdRef = useRef<string | null>(null);
+  const lastConfigRef = useRef<TopSheetTabOverride | null>(null);
   if (!ownerIdRef.current) {
     ownerIdRef.current = `${tabId}:${Math.random().toString(36).slice(2, 10)}`;
   }
   const ownerId = explicitOwnerId ?? ownerIdRef.current;
+  const registeredConfig = useMemo<TopSheetTabOverride | null>(
+    () =>
+      config
+        ? {
+            ...config,
+            ...(registration?.routeMatchPath
+              ? { routeMatchPath: registration.routeMatchPath }
+              : {}),
+            ...(registration?.routeMatchExact !== undefined
+              ? { routeMatchExact: registration.routeMatchExact }
+              : {}),
+          }
+        : null,
+    [config, registration?.routeMatchExact, registration?.routeMatchPath],
+  );
 
   useEffect(() => {
-    replaceConfig(tabId, ownerId, config);
-    return () => {
+    if (areTopSheetConfigsEqual(lastConfigRef.current, registeredConfig)) {
+      return;
+    }
+    lastConfigRef.current = registeredConfig;
+    replaceConfig(tabId, ownerId, registeredConfig);
+  }, [clearConfig, ownerId, registeredConfig, replaceConfig, tabId]);
+
+  useEffect(
+    () => () => {
       clearConfig(tabId, ownerId);
-    };
-  }, [clearConfig, config, ownerId, replaceConfig, tabId]);
+    },
+    [clearConfig, ownerId, tabId],
+  );
 }
 
-export function useResolvedTabSheetConfig(tabId: string | null) {
+export function useResolvedTabSheetConfig(tabId: string | null, pathname: string | null) {
   const { overrides } = useTopSheetRegistry();
   const theme = useTheme();
-  const activeEntry = tabId ? overrides[tabId]?.[overrides[tabId]!.length - 1] : undefined;
 
   return useMemo(() => {
     if (!tabId) {
       return null;
     }
 
-    return resolveSheetColors(
-      tabId,
-      {
-        ...(DEFAULT_TOP_SHEET_CONFIGS[tabId] ?? { tabId }),
-        ...(activeEntry?.config ?? {}),
-        tabId,
-      },
-      theme,
-    );
-  }, [activeEntry, tabId, theme]);
+    const resolved = resolveTabSheetConfig(tabId, overrides, pathname);
+    if (!resolved) {
+      return null;
+    }
+
+    return resolveSheetColors(tabId, resolved, theme);
+  }, [overrides, pathname, tabId, theme]);
 }

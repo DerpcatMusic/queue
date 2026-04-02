@@ -4,7 +4,10 @@ import type { ScrollViewProps, StyleProp, ViewStyle } from "react-native";
 import Animated from "react-native-reanimated";
 
 import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
-import { useScrollSheetLayout } from "@/components/layout/scroll-sheet-provider";
+import {
+  useLayoutSheetHeight,
+  useScrollSheetLayout,
+} from "@/components/layout/scroll-sheet-provider";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { type InsetTone, useSystemUi } from "@/contexts/system-ui-context";
 import { Box } from "@/primitives";
@@ -31,6 +34,7 @@ type ScrollScreenScaffoldProps = BaseScreenScaffoldProps & {
 
 type StaticScreenScaffoldProps = BaseScreenScaffoldProps & {
   mode: "static";
+  sheetInsets?: ScreenScaffoldSheetInsets;
 };
 
 export type ScreenScaffoldProps = PropsWithChildren<
@@ -40,7 +44,8 @@ export type ScreenScaffoldProps = PropsWithChildren<
 export function ScreenScaffold(props: ScreenScaffoldProps) {
   const { setTopInsetTone } = useSystemUi();
   const topInsetTone = props.topInsetTone ?? "app";
-  const { collapsedSheetHeight, safeBottom } = useScrollSheetLayout();
+  const layoutSheetHeight = useLayoutSheetHeight();
+  const { safeBottom, setSceneViewportHeight } = useScrollSheetLayout();
 
   useEffect(() => {
     setTopInsetTone(topInsetTone);
@@ -49,9 +54,35 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
     };
   }, [setTopInsetTone, topInsetTone]);
 
+  const staticTopBlockHeight =
+    props.mode === "static" && props.sheetInsets
+      ? props.sheetInsets.topSpacing ?? 0
+      : 0;
+  const staticHorizontalPadding =
+    props.mode === "static" && props.sheetInsets?.horizontalPadding !== undefined
+      ? props.sheetInsets.horizontalPadding
+      : undefined;
+  const staticBottomPadding =
+    props.mode === "static" && props.sheetInsets?.bottomSpacing !== undefined
+      ? props.sheetInsets.bottomSpacing
+      : 0;
+  const handleSceneLayout = ({
+    nativeEvent: {
+      layout: { height },
+    },
+  }: {
+    nativeEvent: { layout: { height: number } };
+  }) => {
+    if (height <= 0) {
+      return;
+    }
+    setSceneViewportHeight(height);
+  };
+
   if (props.mode === "static") {
     return (
       <Box
+        onLayout={handleSceneLayout}
         style={[
           {
             flex: 1,
@@ -59,7 +90,28 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
           props.style,
         ]}
       >
-        <TabSceneTransition>{props.children}</TabSceneTransition>
+        <TabSceneTransition>
+          <Box style={{ flex: 1 }}>
+            {staticTopBlockHeight > 0 ? (
+              <Box style={{ height: staticTopBlockHeight, flexShrink: 0 }} />
+            ) : null}
+            <Box
+              style={[
+                {
+                  flex: 1,
+                  minHeight: 0,
+                  overflow: "hidden",
+                  paddingBottom: staticBottomPadding,
+                },
+                staticHorizontalPadding !== undefined
+                  ? { paddingHorizontal: staticHorizontalPadding }
+                  : null,
+              ]}
+            >
+              {props.children}
+            </Box>
+          </Box>
+        </TabSceneTransition>
       </Box>
     );
   }
@@ -75,7 +127,7 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
 
   const resolvedSheetInsetStyle = sheetInsets
     ? createSheetInsetStyle({
-        collapsedSheetHeight,
+        collapsedSheetHeight: layoutSheetHeight,
         safeBottom,
         topSpacing: sheetInsets.topSpacing,
         bottomSpacing: sheetInsets.bottomSpacing,
@@ -88,9 +140,9 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
   const refreshControl = scrollProps?.refreshControl;
   const resolvedRefreshControl =
     sheetInsets && isValidElement(refreshControl)
-      ? cloneElement(refreshControl, {
+        ? cloneElement(refreshControl, {
           progressViewOffset: getSheetProgressViewOffset({
-            collapsedSheetHeight,
+            collapsedSheetHeight: layoutSheetHeight,
             topSpacing: sheetInsets.topSpacing,
           }),
         })
@@ -105,18 +157,20 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
   );
 
   return (
-    <TabSceneTransition>
-      <Animated.ScrollView
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        showsVerticalScrollIndicator={false}
-        {...scrollProps}
-        style={[{ flex: 1 }, style]}
-        refreshControl={resolvedRefreshControl}
-        contentContainerStyle={!useDesktopFrame ? resolvedContentContainerStyle : undefined}
-      >
-        {content}
-      </Animated.ScrollView>
-    </TabSceneTransition>
+    <Box onLayout={handleSceneLayout} style={{ flex: 1 }}>
+      <TabSceneTransition>
+        <Animated.ScrollView
+          contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false}
+          showsVerticalScrollIndicator={false}
+          {...scrollProps}
+          style={[{ flex: 1 }, style]}
+          refreshControl={resolvedRefreshControl}
+          contentContainerStyle={!useDesktopFrame ? resolvedContentContainerStyle : undefined}
+        >
+          {content}
+        </Animated.ScrollView>
+      </TabSceneTransition>
+    </Box>
   );
 }

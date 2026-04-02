@@ -1,12 +1,10 @@
 import type { TFunction } from "i18next";
 import { memo, useCallback } from "react";
 import { View } from "react-native";
-import {
-  InstructorJobCard,
-  type InstructorMarketplaceJob,
-} from "@/components/jobs/instructor/instructor-job-card";
+import { InstructorJobCard } from "@/components/jobs/instructor/instructor-job-card";
 import { BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
+import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 
 type InstructorOpenJobsListProps = {

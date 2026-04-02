@@ -75,6 +75,7 @@ type ApplicationRowProps = {
   locale: string;
   reviewingApplicationId: Id<"jobApplications"> | null;
   canReview: boolean;
+  onInstructorPress?: (instructorId: Id<"instructorProfiles">) => void;
   onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
   t: TFunction;
 };
@@ -85,6 +86,7 @@ export const ApplicationRow = memo(function ApplicationRow({
   locale,
   reviewingApplicationId,
   canReview,
+  onInstructorPress,
   onReview,
   t,
 }: ApplicationRowProps) {
@@ -158,15 +160,21 @@ export const ApplicationRow = memo(function ApplicationRow({
           </View>
 
           <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xs }}>
-            <Text
-              numberOfLines={1}
-              style={{
-                ...BrandType.bodyStrong,
-                color: theme.color.text,
-              }}
+            <Pressable
+              disabled={!onInstructorPress}
+              onPress={() => onInstructorPress?.(application.instructorId)}
+              style={({ pressed }) => ({ opacity: pressed && onInstructorPress ? 0.82 : 1 })}
             >
-              {application.instructorName}
-            </Text>
+              <Text
+                numberOfLines={1}
+                style={{
+                  ...BrandType.bodyStrong,
+                  color: onInstructorPress ? theme.color.primary : theme.color.text,
+                }}
+              >
+                {application.instructorName}
+              </Text>
+            </Pressable>
             {application.message ? (
               <Text
                 numberOfLines={isWideWeb ? 1 : 2}
@@ -243,6 +251,7 @@ type StudioJobCardProps = {
   zoneLanguage: "en" | "he";
   reviewingApplicationId: Id<"jobApplications"> | null;
   payingJobId: Id<"jobs"> | null;
+  onInstructorPress?: (instructorId: Id<"instructorProfiles">) => void;
   onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
   onStartPayment: (jobId: Id<"jobs">) => void;
   onJobPress: (jobId: Id<"jobs">) => void;
@@ -252,9 +261,13 @@ type StudioJobCardProps = {
 export const StudioJobCard = memo(function StudioJobCard({
   job,
   index: _index,
+  isWideWeb,
   locale,
   zoneLanguage,
+  reviewingApplicationId,
+  onInstructorPress,
   payingJobId,
+  onReview,
   onStartPayment,
   onJobPress,
   t,
@@ -455,6 +468,24 @@ export const StudioJobCard = memo(function StudioJobCard({
                 <Text style={{ ...BrandType.micro, color: theme.color.textMuted }}>Live</Text>
               ) : null}
             </View>
+
+            {job.applications.length > 0 ? (
+              <View style={{ gap: BrandSpacing.sm }}>
+                {job.applications.slice(0, 2).map((application) => (
+                  <ApplicationRow
+                    key={String(application.applicationId)}
+                    application={application}
+                    isWideWeb={isWideWeb}
+                    locale={locale}
+                    reviewingApplicationId={reviewingApplicationId}
+                    canReview={job.status === "open"}
+                    {...(onInstructorPress ? { onInstructorPress } : {})}
+                    onReview={onReview}
+                    t={t}
+                  />
+                ))}
+              </View>
+            ) : null}
           </View>
 
           {/* Payment section (only for filled/completed) */}

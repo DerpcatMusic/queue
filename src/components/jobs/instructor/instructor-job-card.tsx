@@ -8,26 +8,16 @@ import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
-import { toSportLabel } from "@/convex/constants";
+import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
+import { getInstructorJobPresentation } from "@/features/jobs/instructor-job-presentation";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth, FontFamily, FontSize, LetterSpacing, LineHeight } from "@/lib/design-system";
 import {
-  type BoostPreset,
   formatTime,
-  getBoostPresentation,
-  getExpiryPresentation,
-  type JobClosureReason,
 } from "@/lib/jobs-utils";
 import { Box } from "@/primitives";
-
-function formatJobPay(amount: number, locale: string) {
-  return new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
 
 // SVG feColorMatrix filter for true grayscale on native.
 // First pass: desaturate to 0 (full grayscale).
@@ -41,33 +31,7 @@ const STUDIO_IMAGE_NATIVE_FILTERS: Filters = [
   },
 ];
 
-export type InstructorMarketplaceJob = {
-  jobId: Id<"jobs">;
-  applicationId?: Id<"jobApplications">;
-  studioId: Id<"studioProfiles">;
-  branchId: Id<"studioBranches">;
-  sport: string;
-  studioName: string;
-  branchName: string;
-  branchAddress?: string;
-  studioImageUrl?: string | null;
-  studioAddress?: string;
-  applicationStatus?: "pending" | "accepted" | "rejected" | "withdrawn";
-  applicationDeadline?: number;
-  startTime: number;
-  endTime: number;
-  zone: string;
-  pay: number;
-  closureReason?: JobClosureReason;
-  boostPreset?: BoostPreset;
-  boostBonusAmount?: number;
-  boostActive?: boolean;
-  canApplyToJob: boolean;
-  jobActionBlockedReason?:
-    | "identity_verification_required"
-    | "insurance_verification_required"
-    | "sport_certificate_required";
-};
+export type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 
 type InstructorJobCardProps = {
   job: InstructorMarketplaceJob;
@@ -183,42 +147,36 @@ export const InstructorJobCard = memo(function InstructorJobCard({
 }: InstructorJobCardProps) {
   const theme = useTheme();
   const { isDesktopWeb: isWideWeb } = useLayoutBreakpoint();
-  const boost = getBoostPresentation(
-    job.pay,
-    job.boostPreset,
-    job.boostBonusAmount,
-    job.boostActive,
-  );
-  const expiry = getExpiryPresentation(job.applicationDeadline, locale, now);
-  const isExpired = expiry?.isExpired ?? false;
-  const street = job.studioAddress?.split(",")[0]?.trim();
-  const branchStreet = job.branchAddress?.split(",")[0]?.trim();
-  const zoneLabel = getZoneLabel(job.zone, zoneLanguage);
-  const locationStreet = branchStreet ?? street;
-  const shortLocation = locationStreet ? `${locationStreet} · ${zoneLabel}` : zoneLabel;
-  const studioLabel = `${job.studioName} · ${job.branchName}`;
-  const primaryTitle = variant === "studioDetail" ? toSportLabel(job.sport as never) : studioLabel;
+  const {
+    boost,
+    expiry,
+    isExpired,
+    zoneLabel,
+    shortLocation,
+    studioLabel,
+    sportLabel,
+    formattedPay,
+    hasApplied,
+    canWithdrawPendingApplication,
+    canApplyFromCard,
+    applyBlockedByVerification,
+  } = getInstructorJobPresentation({
+    job,
+    locale,
+    now,
+    zoneLanguage,
+  });
+  const primaryTitle = variant === "studioDetail" ? sportLabel : studioLabel;
   const metaLine = variant === "studioDetail" ? studioLabel : shortLocation;
   const isPressable = Boolean(onOpenStudio);
-  const formattedPay = formatJobPay(boost.totalPay, locale);
   const imageFadeId = `job-card-fade-${String(job.jobId)}`;
   const isWithdrawing = Boolean(
     job.applicationId && withdrawingApplicationId === job.applicationId,
   );
 
-  // Has an active application (pending or accepted)
-  const hasApplied = job.applicationStatus === "pending" || job.applicationStatus === "accepted";
-  // Can cancel — only pending can be withdrawn; accepted can't
   const canCancelApplication =
-    hasApplied &&
-    job.applicationStatus === "pending" &&
-    Boolean(job.applicationId) &&
+    canWithdrawPendingApplication &&
     Boolean(onWithdrawApplication);
-  const canApplyFromCard =
-    !job.applicationStatus ||
-    job.applicationStatus === "withdrawn" ||
-    job.applicationStatus === "rejected";
-  const applyBlockedByVerification = job.jobActionBlockedReason !== undefined;
 
   // Border: red when applied, subtle outline otherwise
   const cardBorderColor = hasApplied ? theme.color.danger : theme.color.outline;
@@ -232,7 +190,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
       <Pressable
         accessibilityRole={isPressable ? "button" : undefined}
         accessibilityLabel={
-          isPressable ? `${job.studioName} ${toSportLabel(job.sport as never)}` : undefined
+          isPressable ? `${job.studioName} ${sportLabel}` : undefined
         }
         disabled={!isPressable}
         onPress={() => onOpenStudio?.(job.studioId, job.jobId)}
@@ -288,7 +246,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                     transform: [{ skewX: "-8deg" }],
                   }}
                 >
-                  {toSportLabel(job.sport as never)}
+                  {sportLabel}
                 </Text>
                 <Text
                   numberOfLines={1}
@@ -504,7 +462,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
     <Pressable
       accessibilityRole={isPressable ? "button" : undefined}
       accessibilityLabel={
-        isPressable ? `${job.studioName} ${toSportLabel(job.sport as never)}` : undefined
+        isPressable ? `${job.studioName} ${sportLabel}` : undefined
       }
       disabled={!isPressable}
       onPress={() => onOpenStudio?.(job.studioId, job.jobId)}

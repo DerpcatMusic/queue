@@ -17,6 +17,10 @@ type HomeHeaderSheetProps = {
   // Performance metrics
   lessonsCompleted?: number;
   totalEarningsLabel?: string;
+  paidOutLabel?: string;
+  outstandingLabel?: string;
+  totalEarningsAgorot?: number;
+  paidOutAmountAgorot?: number;
   pendingApplications?: number;
   openJobs?: number;
   currency?: string;
@@ -31,6 +35,10 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
   onPressAvatar,
   lessonsCompleted,
   totalEarningsLabel,
+  paidOutLabel,
+  outstandingLabel,
+  totalEarningsAgorot,
+  paidOutAmountAgorot,
   pendingApplications,
   openJobs,
   role = "instructor",
@@ -38,15 +46,19 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
   const { color: palette } = useTheme();
   const { t } = useTranslation();
 
+  const isInstructor = role === "instructor";
   const earningsValue = totalEarningsLabel ?? "0";
+  const paidOutValue = paidOutLabel ?? earningsValue;
+  const outstandingValue = outstandingLabel ?? "0";
   const lessonsValue = String(lessonsCompleted ?? 0);
   const pendingValue = String(pendingApplications ?? 0);
   const jobsValue = String(openJobs ?? 0);
-  const headlineValue = role === "instructor" ? earningsValue : jobsValue;
-  const headlineMinor = role === "instructor" ? undefined : t("home.actions.jobsTitle");
-  const progressCurrent =
-    role === "instructor" ? Number(lessonsCompleted ?? 0) : Number(openJobs ?? 0);
-  const progressTarget = Math.max(progressCurrent + Number(pendingApplications ?? 0), 1);
+  const headlineValue = isInstructor ? paidOutValue : jobsValue;
+  const headlineMinor = isInstructor ? t("profile.payments.paidOut") : t("home.actions.jobsTitle");
+  const progressCurrent = isInstructor ? Number(paidOutAmountAgorot ?? 0) : Number(openJobs ?? 0);
+  const progressTarget = isInstructor
+    ? Math.max(Number(totalEarningsAgorot ?? 0), 1)
+    : Math.max(progressCurrent + Number(pendingApplications ?? 0), 1);
   const progressPercent = Math.max(
     0,
     Math.min(100, Math.round((progressCurrent / progressTarget) * 100)),
@@ -72,7 +84,7 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
               letterSpacing: 2,
             }}
           >
-            {role === "instructor" ? "Weekly Performance" : "Queue Performance"}
+            {isInstructor ? t("home.instructor.earningsOverview") : "Queue Performance"}
           </Text>
           <Text
             numberOfLines={1}
@@ -150,7 +162,7 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
               letterSpacing: 1.8,
             }}
           >
-            {role === "instructor" ? "Completed Missions" : "Pending Review"}
+            {isInstructor ? t("home.shared.totalEarnings") : "Pending Review"}
           </Text>
           <Box flexDirection="row" alignItems="flex-end" gap="xs">
             <Text
@@ -163,11 +175,13 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
                 includeFontPadding: false,
               }}
             >
-              {role === "instructor" ? lessonsValue : pendingValue}
+              {isInstructor ? earningsValue : pendingValue}
             </Text>
-            <Text
-              style={{ ...BrandType.caption, color: palette.textMicro }}
-            >{`/ ${progressTarget}`}</Text>
+            {!isInstructor ? (
+              <Text
+                style={{ ...BrandType.caption, color: palette.textMicro }}
+              >{`/ ${progressTarget}`}</Text>
+            ) : null}
           </Box>
         </Box>
         <Box flex={1} gap="xxs">
@@ -179,7 +193,7 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
               letterSpacing: 1.8,
             }}
           >
-            {role === "instructor" ? "Open Matches" : "Filled"}
+            {isInstructor ? t("home.instructor.stillOwed") : "Filled"}
           </Text>
           <Box flexDirection="row" alignItems="flex-end" gap="xs">
             <Text
@@ -192,9 +206,11 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
                 includeFontPadding: false,
               }}
             >
-              {role === "instructor" ? jobsValue : lessonsValue}
+              {isInstructor ? outstandingValue : lessonsValue}
             </Text>
-            <IconSymbol name="flame.fill" size={18} color={palette.secondary} />
+            {!isInstructor ? (
+              <IconSymbol name="flame.fill" size={18} color={palette.secondary} />
+            ) : null}
           </Box>
         </Box>
       </Box>
@@ -209,7 +225,7 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
               letterSpacing: 1.8,
             }}
           >
-            Goal Velocity
+            {isInstructor ? t("home.instructor.payoutProgress") : "Goal Velocity"}
           </Text>
           <Text
             style={{
@@ -219,7 +235,9 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
               letterSpacing: 1.8,
             }}
           >
-            {`${progressPercent}% Reached`}
+            {isInstructor
+              ? t("home.instructor.paidPercent", { percent: progressPercent })
+              : `${progressPercent}% Reached`}
           </Text>
         </Box>
         <View

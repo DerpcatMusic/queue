@@ -15,6 +15,7 @@ import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -44,6 +45,7 @@ type StudioHomeContentProps = {
   recentJobs: RecentJob[];
   onOpenJobs: () => void;
   onOpenCalendar: () => void;
+  onOpenInstructorProfile: (instructorId: Id<"instructorProfiles">) => void;
   reviewApplication: (args: {
     applicationId: Id<"jobApplications">;
     status: "accepted" | "rejected";
@@ -80,6 +82,7 @@ const ReviewApplicationCard = memo(function ReviewApplicationCard({
   onReview,
   isReviewing,
   hasError,
+  onOpenInstructorProfile,
 }: {
   application: Application;
   job: RecentJob;
@@ -89,6 +92,7 @@ const ReviewApplicationCard = memo(function ReviewApplicationCard({
   onReview: (status: "accepted" | "rejected") => void;
   isReviewing: boolean;
   hasError: boolean;
+  onOpenInstructorProfile: (instructorId: Id<"instructorProfiles">) => void;
 }) {
   const { color: palette } = useTheme();
   return (
@@ -105,7 +109,27 @@ const ReviewApplicationCard = memo(function ReviewApplicationCard({
           >
             {toSportLabel(job.sport as never)}
           </Text>
-          <Text style={BrandType.title}>{application.instructorName}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={application.instructorName}
+            onPress={() => onOpenInstructorProfile(application.instructorId)}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: BrandSpacing.sm,
+              opacity: pressed ? 0.82 : 1,
+            })}
+          >
+            <ProfileAvatar
+              imageUrl={application.profileImageUrl}
+              fallbackName={application.instructorName}
+              size={BrandSpacing.controlMd}
+              roundedSquare={false}
+            />
+            <Text style={[BrandType.title, { color: palette.primary }]}>
+              {application.instructorName}
+            </Text>
+          </Pressable>
           <Text
             style={{
               ...BrandType.caption,
@@ -245,6 +269,7 @@ export function StudioHomeContent({
   recentJobs,
   onOpenJobs,
   onOpenCalendar,
+  onOpenInstructorProfile,
   reviewApplication,
 }: StudioHomeContentProps) {
   const { color: palette } = useTheme();
@@ -462,6 +487,7 @@ export function StudioHomeContent({
                           onReview={makeReviewHandler(application.applicationId)}
                           isReviewing={reviewingId === application.applicationId}
                           hasError={errorId === application.applicationId}
+                          onOpenInstructorProfile={onOpenInstructorProfile}
                         />
                       </View>
                     ))}

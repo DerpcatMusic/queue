@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { requireUserRole } from "./lib/auth";
 import { normalizeCapabilityTagArray, normalizeSportType } from "./lib/domainValidation";
@@ -12,6 +14,39 @@ import {
 import { omitUndefined } from "./lib/validation";
 
 const DOCUMENT_UPLOAD_SESSION_TTL_MS = 10 * 60 * 1000;
+
+export const instructorComplianceDetailsValidator = v.object({
+  summary: instructorComplianceSummaryValidator,
+  certificates: v.array(
+    v.object({
+      sport: v.optional(v.string()),
+      specialties: v.optional(
+        v.array(
+          v.object({
+            sport: v.string(),
+            capabilityTags: v.optional(v.array(v.string())),
+          }),
+        ),
+      ),
+      reviewStatus: instructorCertificateReviewStatusValidator,
+      issuerName: v.optional(v.string()),
+      certificateTitle: v.optional(v.string()),
+      uploadedAt: v.number(),
+      reviewedAt: v.optional(v.number()),
+    }),
+  ),
+  insurancePolicies: v.array(
+    v.object({
+      reviewStatus: instructorInsuranceReviewStatusValidator,
+      issuerName: v.optional(v.string()),
+      policyNumber: v.optional(v.string()),
+      expiresOn: v.optional(v.string()),
+      expiresAt: v.optional(v.number()),
+      uploadedAt: v.number(),
+      reviewedAt: v.optional(v.number()),
+    }),
+  ),
+});
 
 function createUploadSessionToken(userId: string, now: number) {
   const entropy = Math.random().toString(36).slice(2, 12);
@@ -240,96 +275,75 @@ export const getMyInstructorComplianceSummary = query({
   },
 });
 
+export async function getInstructorComplianceDetailsRead(
+  ctx: QueryCtx,
+  args: {
+    userId: Doc<"users">["_id"];
+    now: number;
+  },
+) {
+  const instructor = await ctx.db
+    .query("instructorProfiles")
+    .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+    .unique();
+
+  if (!instructor) {
+    return null;
+  }
+
+  const [summary, certificates, insurancePolicies] = await Promise.all([
+    buildInstructorComplianceSummary(ctx, {
+      instructor,
+      now: args.now,
+    }),
+    ctx.db
+      .query("instructorCertificates")
+      .withIndex("by_instructor", (q) => q.eq("instructorId", instructor._id))
+      .collect(),
+    ctx.db
+      .query("instructorInsurancePolicies")
+      .withIndex("by_instructor", (q) => q.eq("instructorId", instructor._id))
+      .collect(),
+  ]);
+
+  return {
+    summary,
+    certificates: certificates.map((row) => ({
+      reviewStatus: row.reviewStatus,
+      uploadedAt: row.uploadedAt,
+      ...omitUndefined({
+        sport: row.sport,
+        specialties: row.specialties,
+        issuerName: row.issuerName,
+        certificateTitle: row.certificateTitle,
+        reviewedAt: row.reviewedAt,
+      }),
+    })),
+    insurancePolicies: insurancePolicies.map((row) => ({
+      reviewStatus: row.reviewStatus,
+      uploadedAt: row.uploadedAt,
+      ...omitUndefined({
+        issuerName: row.issuerName,
+        policyNumber: row.policyNumber,
+        expiresOn: row.expiresOn,
+        expiresAt: row.expiresAt,
+        reviewedAt: row.reviewedAt,
+      }),
+    })),
+  };
+}
+
 export const getMyInstructorComplianceDetails = query({
   args: {
     now: v.optional(v.number()),
   },
-  returns: v.union(
-    v.null(),
-    v.object({
-      summary: instructorComplianceSummaryValidator,
-      certificates: v.array(
-        v.object({
-          sport: v.optional(v.string()),
-          specialties: v.optional(
-            v.array(
-              v.object({
-                sport: v.string(),
-                capabilityTags: v.optional(v.array(v.string())),
-              }),
-            ),
-          ),
-          reviewStatus: instructorCertificateReviewStatusValidator,
-          issuerName: v.optional(v.string()),
-          certificateTitle: v.optional(v.string()),
-          uploadedAt: v.number(),
-          reviewedAt: v.optional(v.number()),
-        }),
-      ),
-      insurancePolicies: v.array(
-        v.object({
-          reviewStatus: instructorInsuranceReviewStatusValidator,
-          issuerName: v.optional(v.string()),
-          policyNumber: v.optional(v.string()),
-          expiresOn: v.optional(v.string()),
-          expiresAt: v.optional(v.number()),
-          uploadedAt: v.number(),
-          reviewedAt: v.optional(v.number()),
-        }),
-      ),
-    }),
-  ),
+  returns: v.union(v.null(), instructorComplianceDetailsValidator),
   handler: async (ctx, args) => {
     const user = await requireUserRole(ctx, ["instructor"]);
-    const instructor = await ctx.db
-      .query("instructorProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
-
-    if (!instructor) {
-      return null;
-    }
-
-    const [summary, certificates, insurancePolicies] = await Promise.all([
-      buildInstructorComplianceSummary(ctx, {
-        instructor,
-        now: args.now ?? Date.now(),
-      }),
-      ctx.db
-        .query("instructorCertificates")
-        .withIndex("by_instructor", (q) => q.eq("instructorId", instructor._id))
-        .collect(),
-      ctx.db
-        .query("instructorInsurancePolicies")
-        .withIndex("by_instructor", (q) => q.eq("instructorId", instructor._id))
-        .collect(),
-    ]);
-
-    return {
-      summary,
-      certificates: certificates.map((row) => ({
-        reviewStatus: row.reviewStatus,
-        uploadedAt: row.uploadedAt,
-        ...omitUndefined({
-          sport: row.sport,
-          specialties: row.specialties,
-          issuerName: row.issuerName,
-          certificateTitle: row.certificateTitle,
-          reviewedAt: row.reviewedAt,
-        }),
-      })),
-      insurancePolicies: insurancePolicies.map((row) => ({
-        reviewStatus: row.reviewStatus,
-        uploadedAt: row.uploadedAt,
-        ...omitUndefined({
-          issuerName: row.issuerName,
-          policyNumber: row.policyNumber,
-          expiresOn: row.expiresOn,
-          expiresAt: row.expiresAt,
-          reviewedAt: row.reviewedAt,
-        }),
-      })),
-    };
+    return await getInstructorComplianceDetailsRead(ctx, {
+      userId: user._id,
+      now: args.now ?? Date.now(),
+    });
   },
 });
 

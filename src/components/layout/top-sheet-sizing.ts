@@ -1,5 +1,3 @@
-import { MIN_BOTTOM_CHROME_ESTIMATE, TAB_BAR_ESTIMATE } from "./top-sheet-constants";
-
 export function computeStepHeights(
   steps: readonly number[],
   availableHeight: number,
@@ -11,14 +9,9 @@ export function computeStepHeights(
 }
 
 export function computeAvailableHeight(
-  screenHeight: number,
-  safeTop: number,
-  safeBottom: number,
-  bottomChromeEstimate?: number,
+  sceneViewportHeight: number,
 ): number {
-  const chrome =
-    bottomChromeEstimate ?? Math.max(MIN_BOTTOM_CHROME_ESTIMATE, safeBottom + TAB_BAR_ESTIMATE);
-  return screenHeight - safeTop - chrome;
+  return Math.max(0, sceneViewportHeight);
 }
 
 export function computeIntrinsicMinHeight(

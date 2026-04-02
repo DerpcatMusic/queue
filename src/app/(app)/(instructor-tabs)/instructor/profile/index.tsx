@@ -25,11 +25,12 @@ import { BrandSpacing } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
-import { isSportType, toSportLabel } from "@/convex/constants";
+
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { toSportLabelI18n } from "@/lib/sport-i18n";
 import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
 import {
   forgetRememberedDeviceAccount,
@@ -62,7 +63,7 @@ function getSportsSummary(sports: string[], t: TFunction) {
     return t("profile.settings.sports.none");
   }
   if (sports.length <= 2) {
-    return sports.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(", ");
+    return sports.map((sport) => toSportLabelI18n(sport, t)).join(", ");
   }
   return t("profile.settings.sports.selected", { count: sports.length });
 }
@@ -99,14 +100,12 @@ export default function InstructorProfileScreen() {
     api.payments.getMyPayoutSummary,
     shouldLoadSettings ? emptyArgs : "skip",
   );
-  const diditVerification = useQuery(
-    api.didit.getMyDiditVerification,
+  const instructorAccessSnapshot = useQuery(
+    api.access.getMyInstructorAccessSnapshot,
     shouldLoadSettings ? emptyArgs : "skip",
   );
-  const complianceSummary = useQuery(
-    api.compliance.getMyInstructorComplianceSummary,
-    shouldLoadSettings ? emptyArgs : "skip",
-  );
+  const diditVerification = instructorAccessSnapshot?.verification;
+  const complianceSummary = instructorAccessSnapshot?.compliance.summary;
 
   const handleRequestEdit = useCallback(() => {
     router.push(INSTRUCTOR_EDIT_ROUTE as Href);
@@ -289,9 +288,7 @@ export default function InstructorProfileScreen() {
   const profileSheetConfig = useMemo(
     () =>
       createContentDrivenTopSheetConfig({
-        render: () => ({
-          children: profileSheetContent,
-        }),
+        collapsedContent: profileSheetContent,
         padding: {
           vertical: 0,
           horizontal: 0,
@@ -508,7 +505,6 @@ export default function InstructorProfileScreen() {
           contentContainerStyle={{
             gap: BrandSpacing.xl,
           }}
-          topSpacing={BrandSpacing.md}
           bottomSpacing={BrandSpacing.xl}
         >
           <View style={styles.mobileContentPadding}>

@@ -10,7 +10,9 @@ import {
   useMemo,
   useState,
 } from "react";
-import { type StyleProp, type ViewStyle, View } from "react-native";
+import { type LayoutChangeEvent, type StyleProp, type ViewStyle, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { StyleSheet } from "react-native-unistyles";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import {
@@ -23,6 +25,10 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandType } from "@/constants/brand";
 import { BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { FontFamily } from "@/lib/design-system";
+
+const PROFILE_SUBPAGE_HEADER_SIDE_WIDTH = 44;
+const PROFILE_SUBPAGE_HEADER_TITLE_GUTTER = BrandSpacing.md;
 
 type ProfileSubpageSheetOptions = {
   title: string;
@@ -68,41 +74,39 @@ export function useProfileSubpageSheet({
   const pathname = usePathname();
   const router = useRouter();
   const theme = useTheme();
+  const { i18n } = useTranslation();
   const accessoryContext = useContext(ProfileSubpageAccessoryContext);
   const setAccessory = accessoryContext?.setAccessory;
   const collapsedSheetHeight = useCollapsedSheetHeight();
   const isActiveRoute = isProfileSubpageRouteActive(pathname, routeMatchPath);
+  const isHebrew = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he");
+  const titleFontFamily = isHebrew ? FontFamily.kanitBold : FontFamily.displayBold;
+  const [rightAccessoryWidth, setRightAccessoryWidth] = useState(
+    PROFILE_SUBPAGE_HEADER_SIDE_WIDTH,
+  );
+  const titleHorizontalInset = Math.max(
+    PROFILE_SUBPAGE_HEADER_SIDE_WIDTH,
+    rightAccessoryWidth,
+  ) + PROFILE_SUBPAGE_HEADER_TITLE_GUTTER;
+
+  const handleRightAccessoryLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextWidth = Math.max(
+      PROFILE_SUBPAGE_HEADER_SIDE_WIDTH,
+      Math.ceil(event.nativeEvent.layout.width),
+    );
+    setRightAccessoryWidth((current) =>
+      current === nextWidth ? current : nextWidth,
+    );
+  }, []);
 
   const subpageSheetConfig = useMemo(
     () =>
       isActiveRoute
         ? createContentDrivenTopSheetConfig({
             stickyHeader: (
-              <View
-                style={{
-                  paddingHorizontal: BrandSpacing.inset,
-                  paddingTop: BrandSpacing.sm,
-                  paddingBottom: BrandSpacing.md,
-                  gap: BrandSpacing.sm,
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: BrandSpacing.sm,
-                  }}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: BrandSpacing.sm,
-                      flex: 1,
-                      minWidth: 0,
-                    }}
-                  >
+              <View style={styles.sheetHeader}>
+                <View style={styles.sheetHeaderRow}>
+                  <View style={styles.sheetHeaderSide("start")}>
                     <IconButton
                       accessibilityLabel="Go back"
                       onPress={() => router.back()}
@@ -116,20 +120,27 @@ export function useProfileSubpageSheet({
                         />
                       }
                     />
+                  </View>
+                  <View
+                    pointerEvents="none"
+                    style={styles.sheetHeaderTitleSlot(titleHorizontalInset)}
+                  >
                     <ThemedText
                       numberOfLines={1}
                       style={[
                         BrandType.title,
-                        {
-                          color: theme.color.onPrimary,
-                          flexShrink: 1,
-                        },
+                        styles.sheetHeaderTitle(theme.color.onPrimary, titleFontFamily),
                       ]}
                     >
                       {title}
                     </ThemedText>
                   </View>
-                  {rightAccessory ? <View>{rightAccessory}</View> : null}
+                  <View
+                    onLayout={handleRightAccessoryLayout}
+                    style={styles.sheetHeaderSide("end")}
+                  >
+                    {rightAccessory}
+                  </View>
                 </View>
               </View>
             ),
@@ -141,10 +152,22 @@ export function useProfileSubpageSheet({
             topInsetColor: theme.color.tertiary,
           })
         : null,
-    [isActiveRoute, rightAccessory, router, theme.color.onPrimary, theme.color.tertiary, title],
+    [
+      isActiveRoute,
+      rightAccessory,
+      router,
+      theme.color.onPrimary,
+      theme.color.tertiary,
+      title,
+      titleFontFamily,
+      titleHorizontalInset,
+      handleRightAccessoryLayout,
+    ],
   );
 
-  useGlobalTopSheet("profile", subpageSheetConfig, `profile-subpage:${routeMatchPath}`);
+  useGlobalTopSheet("profile", subpageSheetConfig, `profile-subpage:${routeMatchPath}`, {
+    routeMatchPath,
+  });
 
   useLayoutEffect(() => {
     if (!setAccessory) {
@@ -227,7 +250,7 @@ export function ProfileSubpageScrollView({
 
 export function ProfileIndexScrollView({
   contentContainerStyle,
-  topSpacing = BrandSpacing.lg,
+  topSpacing = 0,
   bottomSpacing = BrandSpacing.xl,
   ...props
 }: ProfileSubpageScrollViewProps) {
@@ -239,3 +262,42 @@ export function ProfileIndexScrollView({
     />
   );
 }
+
+const styles = StyleSheet.create(() => ({
+  sheetHeader: {
+    paddingHorizontal: BrandSpacing.inset,
+    paddingTop: BrandSpacing.sm,
+    paddingBottom: BrandSpacing.md,
+  },
+  sheetHeaderRow: {
+    minHeight: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    position: "relative",
+  },
+  sheetHeaderSide: (side: "start" | "end") => ({
+    minWidth: PROFILE_SUBPAGE_HEADER_SIDE_WIDTH,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1,
+    ...(side === "start" ? { alignSelf: "flex-start" } : { alignSelf: "flex-end" }),
+  }),
+  sheetHeaderTitleSlot: (horizontalInset: number) => ({
+    position: "absolute",
+    left: horizontalInset,
+    right: horizontalInset,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  }),
+  sheetHeaderTitle: (color: string, fontFamily: string) => ({
+    color,
+    width: "100%",
+    textAlign: "center",
+    fontFamily,
+    fontWeight: "700",
+  }),
+}));

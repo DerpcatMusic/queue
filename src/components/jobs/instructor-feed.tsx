@@ -6,7 +6,6 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { useTranslation } from "react-i18next";
 import { RefreshControl, StyleSheet, View } from "react-native";
 import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
-import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
 import {
   type InstructorArchiveRow,
   InstructorJobsArchiveSheet,
@@ -32,6 +31,11 @@ import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
+import {
+  type InstructorJobApplicationOverlay,
+  type InstructorMarketplaceJob,
+  mergeInstructorJobsWithApplications,
+} from "@/features/jobs/instructor-marketplace-job";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { getBoostPresentation } from "@/lib/jobs-utils";
@@ -89,29 +93,22 @@ export function InstructorFeed() {
   type AvailableJob = NonNullable<typeof availableJobs>[number];
   type MyApplication = NonNullable<typeof myApplications>[number];
 
-  const applicationByJobId = useMemo(() => {
-    const entries = ((myApplications ?? []) as MyApplication[]).map(
-      (application: MyApplication): [string, MyApplication] => [
-        String(application.jobId),
-        application,
-      ],
-    );
-    return new Map<string, MyApplication>(entries);
-  }, [myApplications]);
+  const applicationOverlays = useMemo<InstructorJobApplicationOverlay[]>(
+    () =>
+      ((myApplications ?? []) as MyApplication[]).map((application: MyApplication) => ({
+        applicationId: application.applicationId,
+        jobId: application.jobId,
+        status: application.status,
+      })),
+    [myApplications],
+  );
   const jobs = useMemo<InstructorMarketplaceJob[]>(
     () =>
-      ((availableJobs ?? []) as AvailableJob[]).map((job: AvailableJob) => {
-        const application = applicationByJobId.get(String(job.jobId));
-        if (!application) {
-          return job;
-        }
-        return {
-          ...job,
-          applicationId: application.applicationId,
-          applicationStatus: application.status,
-        };
-      }),
-    [applicationByJobId, availableJobs],
+      mergeInstructorJobsWithApplications(
+        (availableJobs ?? []) as AvailableJob[],
+        applicationOverlays,
+      ),
+    [applicationOverlays, availableJobs],
   );
   const emptyVariants = [
     t("jobsTab.instructorFeed.emptyInstructorFreshOne"),
@@ -395,13 +392,16 @@ export function InstructorFeed() {
   const onOpenStudio = useCallback(
     (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => {
       router.push(
-        `/instructor/jobs/studios/${encodeURIComponent(String(studioId))}?jobId=${encodeURIComponent(String(jobId))}` as Href,
+        `/profiles/studios/${encodeURIComponent(String(studioId))}?jobId=${encodeURIComponent(String(jobId))}` as Href,
       );
     },
     [router],
   );
 
-  useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:instructor-feed");
+  useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:instructor-feed", {
+    routeMatchPath: "/instructor/jobs",
+    routeMatchExact: true,
+  });
 
   if (
     currentUser === undefined ||

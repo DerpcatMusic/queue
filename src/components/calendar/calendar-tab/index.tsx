@@ -6,7 +6,6 @@ import {
   useGlobalTopSheet,
 } from "@/components/layout/top-sheet-registry";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { BrandSpacing } from "@/constants/brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
@@ -25,12 +24,16 @@ type CalendarTabScreenProps = {
 export default function CalendarTabScreen({ controller, todayKey }: CalendarTabScreenProps) {
   const { t } = useTranslation();
   const { isDesktopWeb } = useLayoutBreakpoint();
-  const { color: palette } = useTheme();
-  const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
-    topSpacing: BrandSpacing.md,
-    bottomSpacing: BrandSpacing.xl,
-    horizontalPadding: BrandSpacing.lg,
-  });
+  const theme = useTheme();
+  const { color: palette } = theme;
+  const sheetBackgroundColor = palette.primary;
+  const sheetContentInsets = useMemo(
+    () => ({
+      paddingTop: BrandSpacing.xs,
+      paddingHorizontal: BrandSpacing.lg,
+    }),
+    [],
+  );
   const {
     selectedDay,
     listRef,
@@ -45,20 +48,24 @@ export default function CalendarTabScreen({ controller, todayKey }: CalendarTabS
   const calendarSheetConfig = useMemo(
     () =>
       createContentDrivenTopSheetConfig({
-        content: <CalendarSheetHeader selectedDay={selectedDay} todayKey={todayKey} />,
+        collapsedContent: <CalendarSheetHeader selectedDay={selectedDay} todayKey={todayKey} />,
         padding: {
           vertical: BrandSpacing.sm,
           horizontal: BrandSpacing.xl,
         },
-        backgroundColor: palette.primary,
-        topInsetColor: palette.primary,
+        backgroundColor: sheetBackgroundColor,
+        topInsetColor: sheetBackgroundColor,
         style: {
           shadowOpacity: 0,
           shadowRadius: 0,
           elevation: 0,
+          borderColor: sheetBackgroundColor,
+          borderBottomColor: sheetBackgroundColor,
+          borderLeftColor: sheetBackgroundColor,
+          borderRightColor: sheetBackgroundColor,
         },
       }),
-    [palette.primary, selectedDay, todayKey],
+    [selectedDay, sheetBackgroundColor, todayKey],
   );
   useGlobalTopSheet("calendar", calendarSheetConfig, "calendar:tab-screen");
   const listAnimationKey = `${selectedDay}:${listItems.length}`;

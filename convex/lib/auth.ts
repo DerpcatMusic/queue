@@ -2,6 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { resolveInternalAccessForUser } from "./internalAccess";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -52,6 +53,17 @@ export async function requireUserRole(ctx: Ctx, roles: UserRole[]): Promise<Doc<
 
   if (!roles.includes(user.role)) {
     throw new ConvexError("Not authorized for this operation");
+  }
+
+  return user;
+}
+
+export async function requireInternalAdmin(ctx: Ctx): Promise<Doc<"users">> {
+  const user = await requireCurrentUser(ctx);
+  const access = await resolveInternalAccessForUser(ctx, user);
+
+  if (!access.canManageInternalAccess) {
+    throw new ConvexError("Internal admin access required");
   }
 
   return user;

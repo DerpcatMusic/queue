@@ -3,6 +3,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { getSportGenreKey } from "../constants";
 import { normalizeCapabilityTagArray, normalizeSportType } from "./domainValidation";
+import { resolveInternalAccessForUserId } from "./internalAccess";
 import { omitUndefined } from "./validation";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -18,6 +19,7 @@ type ApprovedSpecialtyMap = Map<string, Set<string>>;
 export const STRICT_INSTRUCTOR_CERTIFICATE_SUBSPORT_ENFORCEMENT = true;
 
 export type InstructorComplianceSnapshot = {
+  hasVerificationBypass: boolean;
   hasApprovedInsurance: boolean;
   approvedCertificateSports: Set<string>;
   approvedCertificateGenres: Set<string>;
@@ -74,6 +76,7 @@ export const instructorPublicCertificateValidator = v.object({
 
 export const instructorComplianceSummaryValidator = v.object({
   diditApproved: v.boolean(),
+  verificationBypassed: v.boolean(),
   diditStatus: v.optional(diditVerificationStatusValidator),
   canApplyToJobs: v.boolean(),
   canBeAcceptedForJobs: v.boolean(),
@@ -167,7 +170,8 @@ export async function loadInstructorComplianceSnapshot(
   instructorId: Id<"instructorProfiles">,
   now: number,
 ): Promise<InstructorComplianceSnapshot> {
-  const [insuranceRows, certificateRows] = await Promise.all([
+  const [profile, insuranceRows, certificateRows] = await Promise.all([
+    ctx.db.get(instructorId),
     ctx.db
       .query("instructorInsurancePolicies")
       .withIndex("by_instructor", (q) => q.eq("instructorId", instructorId))
@@ -179,8 +183,10 @@ export async function loadInstructorComplianceSnapshot(
   ]);
 
   const approvedSpecialtyCapabilities = getApprovedSpecialtyCapabilities(certificateRows);
+  const access = profile ? await resolveInternalAccessForUserId(ctx, profile.userId) : null;
 
   return {
+    hasVerificationBypass: access?.verificationBypass === true,
     hasApprovedInsurance: insuranceRows.some((row) => isApprovedInsuranceActive(row, now)),
     approvedCertificateSports: getApprovedCertificateSports(approvedSpecialtyCapabilities),
     approvedCertificateGenres: getApprovedCertificateGenres(approvedSpecialtyCapabilities),
@@ -192,6 +198,10 @@ export function getInstructorGlobalJobActionBlockReasons(args: {
   profile: Doc<"instructorProfiles">;
   compliance: InstructorComplianceSnapshot;
 }) {
+  if (args.compliance.hasVerificationBypass) {
+    return [];
+  }
+
   const reasons: InstructorJobActionBlockReason[] = [];
   if (args.profile.diditVerificationStatus !== "approved") {
     reasons.push("identity_verification_required");
@@ -211,6 +221,10 @@ export function getInstructorJobActionBlockReason(args: {
   sport: string;
   requiredCapabilityTags?: ReadonlyArray<string> | undefined;
 }): InstructorJobActionBlockReason | undefined {
+  if (args.compliance.hasVerificationBypass) {
+    return undefined;
+  }
+
   if (args.profile.diditVerificationStatus !== "approved") {
     return "identity_verification_required";
   }
@@ -273,7 +287,9 @@ export async function buildInstructorComplianceSummary(
   ]);
 
   const approvedSpecialtyCapabilities = getApprovedSpecialtyCapabilities(certificateRows);
+  const access = await resolveInternalAccessForUserId(ctx, args.instructor.userId);
   const compliance = {
+    hasVerificationBypass: access.verificationBypass,
     hasApprovedInsurance: insuranceRows.some((row) => isApprovedInsuranceActive(row, args.now)),
     approvedCertificateSports: getApprovedCertificateSports(approvedSpecialtyCapabilities),
     approvedCertificateGenres: getApprovedCertificateGenres(approvedSpecialtyCapabilities),
@@ -298,12 +314,14 @@ export async function buildInstructorComplianceSummary(
   });
 
   return {
-    diditApproved: args.instructor.diditVerificationStatus === "approved",
+    diditApproved:
+      access.verificationBypass || args.instructor.diditVerificationStatus === "approved",
+    verificationBypassed: access.verificationBypass,
     canApplyToJobs: blockingReasons.length === 0,
     canBeAcceptedForJobs: blockingReasons.length === 0,
     blockingReasons,
     publicCertificates,
-    hasApprovedInsurance: compliance.hasApprovedInsurance,
+    hasApprovedInsurance: access.verificationBypass || compliance.hasApprovedInsurance,
     pendingCertificateCount,
     pendingInsuranceCount,
     ...omitUndefined({

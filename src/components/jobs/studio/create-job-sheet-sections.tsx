@@ -18,7 +18,7 @@ import { KitSwitch } from "@/components/ui/kit/kit-switch";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
 import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-import { SPORT_TYPES, toCapabilityTagLabel, toSportLabel } from "@/convex/constants";
+import { SPORT_TYPES, toCapabilityTagLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
 import type { StudioDraft } from "@/lib/jobs-utils";
 import {
@@ -33,6 +33,7 @@ import {
   formatTime,
   sanitizeDecimalInput,
 } from "@/lib/jobs-utils";
+import { toSportLabelI18n } from "@/lib/sport-i18n";
 
 type SportPickerSectionProps = {
   draft: StudioDraft;
@@ -61,7 +62,7 @@ export function SportPickerSection({
   const { t } = useTranslation();
   const { color: palette } = useTheme();
   const selectedSportLabel = draft.sport
-    ? toSportLabel(draft.sport as never)
+    ? toSportLabelI18n(draft.sport, t)
     : t("jobsTab.form.pickSport");
 
   return (
@@ -104,7 +105,7 @@ export function SportPickerSection({
             onSubmitEditing={() => {
               const exact = SPORT_TYPES.find(
                 (sport) =>
-                  toSportLabel(sport as never).toLowerCase() === sportQuery.trim().toLowerCase(),
+                  toSportLabelI18n(sport, t).toLowerCase() === sportQuery.trim().toLowerCase(),
               );
               if (exact) {
                 selectSport(exact);
@@ -137,7 +138,7 @@ export function SportPickerSection({
                   return (
                     <ChoicePill
                       key={sport}
-                      label={toSportLabel(sport as never)}
+                      label={toSportLabelI18n(sport, t)}
                       selected={isSelected}
                       compact
                       backgroundColor={palette.surfaceAlt}

@@ -1,14 +1,15 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { Image } from "expo-image";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Image } from "expo-image";
 import { Pressable, View } from "react-native";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { ActionButton } from "@/components/ui/action-button";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
+import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth } from "@/lib/design-system";
@@ -24,6 +25,7 @@ type StudioJobDetailSheetProps = {
   onDismiss: () => void;
   onReview: (applicationId: string, status: "accepted" | "rejected") => void;
   reviewingApplicationId: string | null;
+  onInstructorPress?: ((instructorId: Id<"instructorProfiles">) => void) | undefined;
 };
 
 export function StudioJobDetailSheet({
@@ -34,6 +36,7 @@ export function StudioJobDetailSheet({
   onDismiss,
   onReview,
   reviewingApplicationId,
+  onInstructorPress,
 }: StudioJobDetailSheetProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -183,11 +186,11 @@ export function StudioJobDetailSheet({
                             ]}
                           >
                             {application.profileImageUrl ? (
-                                <Image
-                                  source={{ uri: application.profileImageUrl }}
-                                  style={styles.avatarImage}
-                                  contentFit="cover"
-                                />
+                              <Image
+                                source={{ uri: application.profileImageUrl }}
+                                style={styles.avatarImage}
+                                contentFit="cover"
+                              />
                             ) : (
                               <Text variant="title" color="primary">
                                 {initials}
@@ -199,7 +202,24 @@ export function StudioJobDetailSheet({
                           <Box style={{ flex: 1, justifyContent: "center" }} p="md">
                             <VStack gap="md">
                               {/* Name */}
-                              <Text variant="title">{application.instructorName}</Text>
+                              <Pressable
+                                disabled={!onInstructorPress}
+                                onPress={() => onInstructorPress?.(application.instructorId)}
+                                style={({ pressed }) => ({
+                                  opacity: pressed && onInstructorPress ? 0.82 : 1,
+                                })}
+                              >
+                                <Text
+                                  variant="title"
+                                  style={{
+                                    color: onInstructorPress
+                                      ? theme.color.primary
+                                      : theme.color.text,
+                                  }}
+                                >
+                                  {application.instructorName}
+                                </Text>
+                              </Pressable>
 
                               {/* Buttons below name - reject LEFT, accept RIGHT */}
                               <HStack gap="sm">

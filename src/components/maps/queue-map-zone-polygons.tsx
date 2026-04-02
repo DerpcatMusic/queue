@@ -1,5 +1,5 @@
 import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import type { getMapBrandPalette } from "@/constants/brand";
@@ -12,6 +12,7 @@ type QueueMapZonePolygonsProps = {
   mode: QueueMapProps["mode"];
   isEditing: boolean;
   showLabelLayers: boolean;
+  selectedZoneIds: QueueMapProps["selectedZoneIds"];
   selectedZoneFilter: Expression;
   zoneGeoJson: QueueMapProps["zoneGeoJson"];
   zoneIdProperty: string;
@@ -31,6 +32,7 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
   mode,
   isEditing,
   showLabelLayers,
+  selectedZoneIds,
   selectedZoneFilter,
   zoneGeoJson,
   zoneIdProperty,
@@ -65,6 +67,30 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
   const allZonesLabelOpacity = showAllZones && showLabelLayers ? 0.78 : 0;
   const selectedOutlineOpacity = Math.min(APPLE_MAP_THEME.overlay.selectionOutlineOpacity, 0.82);
   const selectedOutlineWidth = Math.max(APPLE_MAP_THEME.overlay.selectionOutlineWidth - 0.35, 1.4);
+  const selectionTransition = useMemo(
+    () => ({
+      duration: APPLE_MAP_THEME.overlay.selectionTransitionDuration,
+      delay: 0,
+    }),
+    [],
+  );
+  const selectedZoneIdsLiteral = useMemo(() => ["literal", selectedZoneIds] as const, [selectedZoneIds]);
+  const isSelectedExpression = useMemo(
+    () => ["in", ["get", zoneIdProperty], selectedZoneIdsLiteral] as const,
+    [selectedZoneIdsLiteral, zoneIdProperty],
+  );
+  const selectedFillOpacityExpression = useMemo(
+    () => ["case", isSelectedExpression, APPLE_MAP_THEME.overlay.selectionFillOpacity, 0] as const,
+    [isSelectedExpression],
+  );
+  const selectedOutlineOpacityExpression = useMemo(
+    () => ["case", isSelectedExpression, selectedOutlineOpacity, 0] as const,
+    [isSelectedExpression, selectedOutlineOpacity],
+  );
+  const selectedOutlineWidthExpression = useMemo(
+    () => ["case", isSelectedExpression, selectedOutlineWidth, 0.6] as const,
+    [isSelectedExpression, selectedOutlineWidth],
+  );
 
   return (
     <GeoJSONSource
@@ -104,21 +130,24 @@ export const QueueMapZonePolygons = memo(function QueueMapZonePolygons({
       />
       <Layer
         id="queue-zone-selected-fill"
-        filter={selectedZoneFilter as any}
         type="fill"
         paint={{
           "fill-color": mapPalette.primary,
-          "fill-opacity": APPLE_MAP_THEME.overlay.selectionFillOpacity,
+          "fill-opacity": selectedFillOpacityExpression as any,
+          "fill-opacity-transition": selectionTransition as any,
+          "fill-color-transition": selectionTransition as any,
         }}
       />
       <Layer
         id="queue-zone-selected-outline"
-        filter={selectedZoneFilter as any}
         type="line"
         paint={{
           "line-color": mapPalette.selectedOutline,
-          "line-width": selectedOutlineWidth,
-          "line-opacity": selectedOutlineOpacity,
+          "line-width": selectedOutlineWidthExpression as any,
+          "line-opacity": selectedOutlineOpacityExpression as any,
+          "line-opacity-transition": selectionTransition as any,
+          "line-color-transition": selectionTransition as any,
+          "line-width-transition": selectionTransition as any,
         }}
         layout={{
           "line-join": "round",

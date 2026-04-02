@@ -1,11 +1,11 @@
 import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Platform, View } from "react-native";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { MapMobileStage } from "@/components/map-tab/map-tab/map-mobile-stage";
 import { MapWebWorkbench } from "@/components/map-tab/map-tab/map-web-workbench";
-import { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
+import type { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
 
 type MapTabScreenProps = {
   controller: ReturnType<typeof useMapTabController>;
@@ -18,11 +18,14 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     filteredZones,
     focusZoneId,
     focusedZoneLabel,
+    focusedZoneStudioCount,
     handleDiscardChanges,
+    handleCloseStudio,
     handleEditButtonPress,
     handleFocusSelection,
     handleMapSheetSearchChange,
     handleSaveZones,
+    handleSelectStudio,
     hasChanges,
     isFocused,
     isMapBodyReady,
@@ -36,6 +39,8 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     pendingChangeCount,
     persistedZoneIds,
     saveError,
+    selectedStudio,
+    selectedStudioId,
     selectedZoneIds,
     selectedZones,
     setFocusZoneId,
@@ -51,9 +56,15 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
       setIsMapLoading(false);
     }
   }, [isMapBodyReady]);
-  const handlePressStudio = (studioId: string) => {
-    router.push(`/instructor/jobs/studios/${encodeURIComponent(studioId)}` as Href);
-  };
+  const handleOpenStudioProfile = useCallback(
+    (studioId: string) => {
+      handleCloseStudio();
+      requestAnimationFrame(() => {
+        router.push(`/instructor/map/studios/${encodeURIComponent(studioId)}` as Href);
+      });
+    },
+    [handleCloseStudio, router],
+  );
 
   if (currentUser === undefined) {
     return (
@@ -128,9 +139,16 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
       isSaving={isSaving}
       overlayBottom={overlayBottom}
       cameraPadding={mapCameraPadding}
+      selectedStudio={selectedStudio}
+      selectedStudioId={selectedStudioId}
+      focusedZoneLabel={focusedZoneLabel}
+      focusedZoneStudioCount={focusedZoneStudioCount}
+      zoneLanguage={zoneLanguage}
       onPressZone={toggleZone}
       onPressMap={noopMapPress}
-      onPressStudio={handlePressStudio}
+      onPressStudio={handleSelectStudio}
+      onCloseStudio={handleCloseStudio}
+      onOpenStudioProfile={handleOpenStudioProfile}
       onEditToggle={handleEditButtonPress}
     />
   );

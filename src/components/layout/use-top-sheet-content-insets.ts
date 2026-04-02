@@ -18,7 +18,7 @@
 import { useMemo } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 
-import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
+import { useLayoutSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { createSheetInsetStyle, getSheetProgressViewOffset } from "./sheet-inset-contract";
 
@@ -36,7 +36,7 @@ export function useTopSheetContentInsets({
   bottomSpacing = 0,
   horizontalPadding,
 }: TopSheetContentInsetOptions = {}) {
-  const collapsedSheetHeight = useCollapsedSheetHeight();
+  const collapsedSheetHeight = useLayoutSheetHeight();
   const { safeBottom } = useAppInsets();
 
   const contentContainerStyle = useMemo<StyleProp<ViewStyle>>(

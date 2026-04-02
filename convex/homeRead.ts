@@ -10,7 +10,9 @@ import {
   isEligibleForJob,
   loadInstructorEligibility,
 } from "./lib/instructorEligibility";
+import { resolveInternalAccessForUserId } from "./lib/internalAccess";
 import { trimOptionalString } from "./lib/validation";
+import { getMyInstructorPayoutSnapshotRead } from "./paymentsRead";
 
 const HOME_MATCH_COUNT_CAP = 99;
 const HOME_UPCOMING_SESSIONS_LIMIT = 3;
@@ -232,8 +234,6 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
     (job) => job.status !== "cancelled" && (job.status === "completed" || job.endTime <= now),
   );
 
-  const totalEarningsAgorot = countableJobs.reduce((sum, job) => sum + toAgorot(job.pay), 0);
-
   const earningsEvents = countableJobs
     .filter((job) => job.endTime >= performanceWindowStart)
     .map((job) => ({
@@ -246,14 +246,24 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
     .map((job) => ({
       endTime: job.endTime,
     }));
+  const [internalAccess, payoutSnapshot] = await Promise.all([
+    resolveInternalAccessForUserId(ctx, instructorProfile.userId),
+    getMyInstructorPayoutSnapshotRead(ctx, user._id),
+  ]);
 
   return {
     isVerified:
-      instructorProfile.diditVerificationStatus === "approved" &&
-      Boolean(instructorProfile.diditLegalName?.trim()),
+      internalAccess.verificationBypass ||
+      (instructorProfile.diditVerificationStatus === "approved" &&
+        Boolean(instructorProfile.diditLegalName?.trim())),
     openMatches,
     pendingApplications,
-    totalEarningsAgorot,
+    totalEarningsAgorot: payoutSnapshot.lifetimeEarnedAmountAgorot,
+    paidOutAmountAgorot: payoutSnapshot.paidAmountAgorot,
+    outstandingAmountAgorot: payoutSnapshot.outstandingAmountAgorot,
+    availableAmountAgorot: payoutSnapshot.availableAmountAgorot,
+    heldAmountAgorot: payoutSnapshot.heldAmountAgorot,
+    currency: payoutSnapshot.currency,
     earningsEvents,
     lessonEvents,
     upcomingSessions: upcomingApplications.map(({ application, job }) => ({

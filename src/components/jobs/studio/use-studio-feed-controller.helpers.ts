@@ -11,6 +11,7 @@ export type StudioControllerJob = {
   applications: Array<{
     applicationId: Id<"jobApplications">;
     appliedAt: number;
+    instructorId: Id<"instructorProfiles">;
     instructorName: string;
     message?: string | null;
     status: "pending" | "accepted" | "rejected" | "withdrawn";

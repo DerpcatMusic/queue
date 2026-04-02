@@ -27,7 +27,7 @@ import { BrandSpacing } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
-import { isSportType, toSportLabel } from "@/convex/constants";
+
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
@@ -35,6 +35,7 @@ import { useThemePreference } from "@/hooks/use-theme-preference";
 import { BorderWidth } from "@/lib/design-system";
 import { EXPIRY_OVERRIDE_PRESETS } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
+import { toSportLabelI18n } from "@/lib/sport-i18n";
 import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
 import {
   forgetRememberedDeviceAccount,
@@ -66,7 +67,7 @@ function getSportsSummary(sports: string[], t: TFunction) {
     return t("profile.settings.sports.none");
   }
   if (sports.length <= 2) {
-    return sports.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(", ");
+    return sports.map((sport) => toSportLabelI18n(sport, t)).join(", ");
   }
   return t("profile.settings.sports.selected", { count: sports.length });
 }
@@ -134,14 +135,12 @@ export default function StudioProfileScreen() {
     api.users.getMyStudioSettings,
     shouldLoadSettings ? emptyArgs : "skip",
   );
-  const studioComplianceSummary = useQuery(
-    api.complianceStudio.getMyStudioComplianceSummary,
+  const studioAccessSnapshot = useQuery(
+    api.access.getMyStudioAccessSnapshot,
     shouldLoadSettings ? emptyArgs : "skip",
   );
-  const studioDiditVerification = useQuery(
-    api.didit.getMyStudioDiditVerification,
-    shouldLoadSettings ? emptyArgs : "skip",
-  );
+  const studioComplianceSummary = studioAccessSnapshot?.compliance.summary;
+  const studioDiditVerification = studioAccessSnapshot?.verification;
   const updateMyStudioSettings = useMutation(api.users.updateMyStudioSettings);
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
   const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
@@ -272,9 +271,7 @@ export default function StudioProfileScreen() {
     [currentUser, reloadAuthSession],
   );
   const profileName =
-    studioSettings?.studioName ??
-    currentUser?.fullName ??
-    t("profile.account.fallbackName");
+    studioSettings?.studioName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
   const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
   const roleValue = t(
     ROLE_TRANSLATION_KEYS[currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS] ??
@@ -396,9 +393,7 @@ export default function StudioProfileScreen() {
   const profileSheetConfig = useMemo(
     () =>
       createContentDrivenTopSheetConfig({
-        render: () => ({
-          children: profileSheetContent,
-        }),
+        collapsedContent: profileSheetContent,
         padding: {
           vertical: 0,
           horizontal: 0,
@@ -464,8 +459,7 @@ export default function StudioProfileScreen() {
                 <ProfileSettingRow
                   title={t("profile.settings.studioDetails")}
                   subtitle={
-                    studioSettings?.address ??
-                    t("profile.settings.completeOnboardingAddress")
+                    studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
                   }
                   icon="building.2.fill"
                   onPress={handleRequestEdit}
@@ -690,7 +684,6 @@ export default function StudioProfileScreen() {
           contentContainerStyle={{
             gap: BrandSpacing.xl,
           }}
-          topSpacing={BrandSpacing.md}
           bottomSpacing={BrandSpacing.xl}
         >
           <View style={styles.mobileContentPadding}>

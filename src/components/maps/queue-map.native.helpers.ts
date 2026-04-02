@@ -3,7 +3,7 @@ import { OfflineManager } from "@maplibre/maplibre-react-native";
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import type { getMapBrandPalette } from "@/constants/brand";
 import { ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
-import type { QueueMapPin, StudioMapMarker } from "./queue-map.types";
+import type { QueueMapBounds, QueueMapPin, StudioMapMarker } from "./queue-map.types";
 
 export type Expression = unknown;
 export type AnyStyleLayer = Record<string, any>;
@@ -421,6 +421,99 @@ export function createStudioMarkersGeoJson(
         },
       })),
   };
+}
+
+function normalizeLng(lng: number) {
+  if (!Number.isFinite(lng)) return lng;
+  while (lng < -180) lng += 360;
+  while (lng > 180) lng -= 360;
+  return lng;
+}
+
+function isStudioInsideBounds(studio: StudioMapMarker, bounds: QueueMapBounds) {
+  const west = normalizeLng(bounds.sw[0]);
+  const east = normalizeLng(bounds.ne[0]);
+  const south = Math.min(bounds.sw[1], bounds.ne[1]);
+  const north = Math.max(bounds.sw[1], bounds.ne[1]);
+  const latitude = studio.latitude;
+  const longitude = normalizeLng(studio.longitude);
+
+  if (latitude < south || latitude > north) {
+    return false;
+  }
+
+  if (west <= east) {
+    return longitude >= west && longitude <= east;
+  }
+
+  return longitude >= west || longitude <= east;
+}
+
+function getBoundsCenter(bounds: QueueMapBounds): [number, number] {
+  const west = normalizeLng(bounds.sw[0]);
+  const east = normalizeLng(bounds.ne[0]);
+  const south = Math.min(bounds.sw[1], bounds.ne[1]);
+  const north = Math.max(bounds.sw[1], bounds.ne[1]);
+
+  const centerLatitude = (south + north) / 2;
+  const centerLongitude = west <= east ? (west + east) / 2 : normalizeLng((west + east + 360) / 2);
+
+  return [centerLongitude, centerLatitude];
+}
+
+function getStudioCenterDistanceScore(studio: StudioMapMarker, center: [number, number] | null) {
+  if (!center) return 0;
+  const lngDistance = studio.longitude - center[0];
+  const latDistance = studio.latitude - center[1];
+  return lngDistance * lngDistance + latDistance * latDistance;
+}
+
+export function getStudioMarkerRenderLimit(zoomLevel: number) {
+  if (zoomLevel < 10) return 0;
+  if (zoomLevel < 11) return 8;
+  if (zoomLevel < 12) return 12;
+  if (zoomLevel < 13) return 20;
+  if (zoomLevel < 14) return 32;
+  if (zoomLevel < 15) return 48;
+  if (zoomLevel < 16) return 72;
+  return 120;
+}
+
+export function selectRenderableStudioMarkers(
+  studios: readonly StudioMapMarker[],
+  options: {
+    bounds?: QueueMapBounds | null;
+    zoomLevel?: number | null;
+    selectedStudioId?: string | null;
+  },
+) {
+  const zoomLevel = options.zoomLevel ?? null;
+  if (zoomLevel === null) {
+    return [];
+  }
+
+  const renderLimit = getStudioMarkerRenderLimit(zoomLevel);
+  if (renderLimit <= 0) {
+    return [];
+  }
+
+  const boundedStudios = options.bounds
+    ? studios.filter((studio) => isStudioInsideBounds(studio, options.bounds as QueueMapBounds))
+    : [...studios];
+  const center = options.bounds ? getBoundsCenter(options.bounds as QueueMapBounds) : null;
+  const selectedStudioId = options.selectedStudioId ?? null;
+
+  const sortedStudios = [...boundedStudios].sort((left, right) => {
+    const leftSelected = selectedStudioId !== null && left.studioId === selectedStudioId;
+    const rightSelected = selectedStudioId !== null && right.studioId === selectedStudioId;
+    if (leftSelected !== rightSelected) {
+      return leftSelected ? -1 : 1;
+    }
+
+    return getStudioCenterDistanceScore(left, center) - getStudioCenterDistanceScore(right, center);
+  });
+
+  return sortedStudios.slice(0, renderLimit);
 }
 
 export function resolveThemedMapStyle(

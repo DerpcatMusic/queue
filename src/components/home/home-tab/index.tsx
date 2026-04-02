@@ -7,6 +7,7 @@ import {
   HomeRoleContent,
   type HomeRoleContentProps,
 } from "@/components/home/home-tab/home-role-content";
+import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -14,7 +15,6 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
-import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
 
 const HOME_STUDIO_JOBS_LIMIT = 36;
 
@@ -28,8 +28,7 @@ export default function HomeScreen() {
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
   const canQueryInstructor =
     !isAuthLoading && isAuthenticated && currentUser?.role === "instructor";
-  const canQueryStudio =
-    !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
+  const canQueryStudio = !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
 
   const myStudioJobs = useQuery(
     api.jobs.getMyStudioJobsWithApplications,
@@ -63,17 +62,19 @@ export default function HomeScreen() {
     [withdrawApplication],
   );
 
+  const activeRole = currentUser?.role ?? null;
+  const instructorCurrency = instructorHomeStats?.currency ?? "ILS";
+  const displayCurrency = activeRole === "instructor" ? instructorCurrency : "ILS";
   const currencyFormatter = useMemo(
     () =>
       new Intl.NumberFormat(locale, {
         style: "currency",
-        currency: "ILS",
+        currency: displayCurrency,
         maximumFractionDigits: 0,
       }),
-    [locale],
+    [displayCurrency, locale],
   );
 
-  const activeRole = currentUser?.role ?? null;
   const studioHomeCounts = useMemo(() => {
     const jobs: NonNullable<HomeRoleContentProps["myStudioJobs"]> = myStudioJobs ?? [];
     const openJobs = jobs.filter((job) => job.status === "open").length;
@@ -105,6 +106,8 @@ export default function HomeScreen() {
         : undefined;
   const instructorLessonsCompleted = instructorHomeStats?.lessonEvents.length ?? 0;
   const instructorTotalEarningsAgorot = instructorHomeStats?.totalEarningsAgorot ?? 0;
+  const instructorPaidOutAmountAgorot = instructorHomeStats?.paidOutAmountAgorot ?? 0;
+  const instructorOutstandingAmountAgorot = instructorHomeStats?.outstandingAmountAgorot ?? 0;
   const instructorPendingApplications = instructorHomeStats?.pendingApplications ?? 0;
   const instructorOpenJobs = availableInstructorJobs?.length ?? 0;
   const homeSheetContent = useMemo(
@@ -118,6 +121,10 @@ export default function HomeScreen() {
           }
           lessonsCompleted={instructorLessonsCompleted}
           totalEarningsLabel={currencyFormatter.format(instructorTotalEarningsAgorot / 100)}
+          paidOutLabel={currencyFormatter.format(instructorPaidOutAmountAgorot / 100)}
+          outstandingLabel={currencyFormatter.format(instructorOutstandingAmountAgorot / 100)}
+          totalEarningsAgorot={instructorTotalEarningsAgorot}
+          paidOutAmountAgorot={instructorPaidOutAmountAgorot}
           pendingApplications={
             activeRole === "instructor"
               ? instructorPendingApplications
@@ -137,6 +144,8 @@ export default function HomeScreen() {
       instructorLessonsCompleted,
       instructorOpenJobs,
       instructorPendingApplications,
+      instructorPaidOutAmountAgorot,
+      instructorOutstandingAmountAgorot,
       instructorTotalEarningsAgorot,
       instructorHomeStats?.isVerified,
       studioHomeCounts.openJobs,
@@ -148,7 +157,7 @@ export default function HomeScreen() {
     () =>
       activeRole === "instructor" || activeRole === "studio"
         ? createContentDrivenTopSheetConfig({
-            content: homeSheetContent,
+            collapsedContent: homeSheetContent,
             padding: {
               vertical: 0,
               horizontal: 0,

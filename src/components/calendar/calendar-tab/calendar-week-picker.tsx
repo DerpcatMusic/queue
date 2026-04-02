@@ -9,19 +9,21 @@ import { formatMonthYear } from "./calendar-date-utils";
 type CalendarWeekPickerProps = {
   selectedDay: string;
   todayKey: string;
-  /** Current week start day key (ISO week start = Monday) */
-  weekStartDay: string;
+  /** First visible day in the rolling 7-day strip. */
+  startDay: string;
 };
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"] as const;
 
-function CalendarWeekPicker({ selectedDay, todayKey, weekStartDay }: CalendarWeekPickerProps) {
-  const { color: palette } = useTheme();
+function CalendarWeekPicker({ selectedDay, todayKey, startDay }: CalendarWeekPickerProps) {
+  const theme = useTheme();
+  const { color: palette } = theme;
+  const headingColor = palette.onPrimary;
+  const subheadingColor = palette.onPrimary;
 
-  // Generate the 7 days of the week starting from weekStartDay
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
-      const dayKey = addDays(weekStartDay, i);
+      const dayKey = addDays(startDay, i);
       const date = new Date(dayKey + "T00:00:00");
       return {
         dayKey,
@@ -31,20 +33,20 @@ function CalendarWeekPicker({ selectedDay, todayKey, weekStartDay }: CalendarWee
         isSelected: dayKey === selectedDay,
       };
     });
-  }, [weekStartDay, todayKey, selectedDay]);
+  }, [selectedDay, startDay, todayKey]);
 
-  const monthYear = useMemo(() => formatMonthYear(weekStartDay, "en-US"), [weekStartDay]);
+  const monthYear = useMemo(() => formatMonthYear(startDay, "en-US"), [startDay]);
 
-  const weekNumber = useMemo(() => getWeekNumber(weekStartDay), [weekStartDay]);
+  const weekNumber = useMemo(() => getWeekNumber(startDay), [startDay]);
 
   return (
     <Animated.View entering={FadeIn.duration(200)} style={styles.root}>
       {/* Month/Year and Week Number Header */}
       <View style={styles.headerRow}>
-        <Text style={[styles.monthYear, { color: palette.onPrimary }]}>
+        <Text style={[styles.monthYear, { color: headingColor }]}>
           {monthYear.toUpperCase()}
         </Text>
-        <Text style={[styles.weekNumber, { color: palette.onPrimary }]}>WK {weekNumber}</Text>
+        <Text style={[styles.weekNumber, { color: subheadingColor }]}>WK {weekNumber}</Text>
       </View>
 
       {/* Days Row - Read-only, for display only */}
@@ -75,27 +77,24 @@ type DayCellProps = {
 };
 
 const DayCell = memo(function DayCell({ dayLabel, dayNumber, isToday, isSelected }: DayCellProps) {
-  const { color: palette } = useTheme();
-
-  // Only today gets the primary highlight with glow
-  // Selected day uses a different color (surfaceElevated with border) so it's visible but distinct
-  const isTodayActive = isToday;
-  const isSelectedActive = isSelected && !isToday;
-
-  // Use surfaceElevated for both but give today a distinct border ring
-  const backgroundColor = palette.surfaceElevated;
-
-  const labelColor = isTodayActive
-    ? palette.text
-    : isSelectedActive
+  const theme = useTheme();
+  const { color: palette } = theme;
+  const isAnchorDay = isToday || isSelected;
+  const backgroundColor = isAnchorDay
+    ? palette.surfaceElevated
+    : theme.scheme === "light"
       ? palette.text
-      : palette.textMuted;
-
-  const numberColor = isTodayActive ? palette.text : isSelectedActive ? palette.text : palette.text;
-
-  // Today gets a primary color ring/border to stand out from sheet bg
-  const borderColor = isTodayActive ? palette.primary : "transparent";
-  const borderWidth = isTodayActive ? 2 : 0;
+      : palette.surface;
+  const labelColor = isAnchorDay
+    ? palette.textMuted
+    : theme.scheme === "light"
+      ? palette.surfaceAlt
+      : palette.textMicro;
+  const numberColor = isAnchorDay
+    ? palette.text
+    : theme.scheme === "light"
+      ? palette.surfaceElevated
+      : palette.text;
 
   return (
     <Animated.View
@@ -104,11 +103,10 @@ const DayCell = memo(function DayCell({ dayLabel, dayNumber, isToday, isSelected
         styles.dayCell,
         {
           backgroundColor,
-          borderColor,
-          borderWidth,
-          shadowColor: palette.primary,
-          shadowOpacity: isToday ? 0.4 : 0,
-          shadowRadius: isToday ? 12 : 0,
+          shadowColor: "transparent",
+          shadowOpacity: 0,
+          shadowRadius: 0,
+          elevation: 0,
         },
       ]}
     >
@@ -118,7 +116,7 @@ const DayCell = memo(function DayCell({ dayLabel, dayNumber, isToday, isSelected
           styles.dayNumber,
           {
             color: numberColor,
-            fontWeight: isTodayActive ? "800" : "700",
+            fontWeight: isAnchorDay ? "800" : "700",
           },
         ]}
       >
@@ -155,7 +153,6 @@ const styles = StyleSheet.create({
     ...BrandType.micro,
     letterSpacing: 0.7,
     textTransform: "uppercase",
-    opacity: 0.7,
   },
   daysContainer: {
     flexDirection: "row",

@@ -23,6 +23,7 @@ import { useSystemUi } from "@/contexts/system-ui-context";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
 import { BrandRadius, BrandSpacing } from "@/theme/theme";
+import { useLayoutSheetHeight, useSceneViewportHeight } from "./scroll-sheet-provider";
 import {
   ANIMATION_DURATION_EXPANDED_PROGRESS,
   ANIMATION_DURATION_TOP_SHEET_SHELL,
@@ -32,11 +33,9 @@ import {
   HANDLE_HEIGHT,
   HANDLE_PILL_HEIGHT,
   HANDLE_PILL_WIDTH,
-  MIN_BOTTOM_CHROME_ESTIMATE,
   REVEAL_TRANSLATE_OFFSET,
   SHEET_CORNER_RADIUS,
   SHEET_SPRING,
-  TAB_BAR_ESTIMATE,
   TOP_SHEET_INACTIVE_OPACITY,
   TOP_SHEET_INACTIVE_SCALE,
   VELOCITY_THRESHOLD,
@@ -91,10 +90,16 @@ export type TopSheetProps = PropsWithChildren<{
   initialHeight?: number;
   /** Reports the animated outer sheet height. */
   onHeightChange?: (height: number) => void;
+  /** Reports the height that should affect surrounding layout. */
+  onLayoutHeightChange?: (height: number) => void;
   /** Content that always sticks to the top of the sheet (visible always). */
   stickyHeader?: React.ReactNode;
   /** Content that always sticks to the bottom of the sheet (visible always). */
   stickyFooter?: React.ReactNode;
+  /** Content that determines the minimum sheet footprint. Defaults to children. */
+  collapsedContent?: React.ReactNode;
+  /** Extra content revealed during expansion. */
+  expandedContent?: React.ReactNode;
   /** Content that only reveals when sheet is expanded past the initial step. */
   revealOnExpand?: React.ReactNode;
   /** Expand mode: 'resize' pushes content down, 'overlay' overlaps without resizing. @default 'resize' */
@@ -133,24 +138,25 @@ export function TopSheet({
   stateKey,
   transitionKey,
   onHeightChange,
+  onLayoutHeightChange,
   stickyHeader,
   stickyFooter,
+  collapsedContent,
+  expandedContent,
   revealOnExpand,
-  expandMode: _expandMode = "resize", // Reserved for future overlay mode implementation
+  expandMode = "resize",
   onMinHeightChange,
 }: TopSheetProps) {
   const theme = useTheme();
   const { setTopInsetTone, setTopInsetBackgroundColor } = useSystemUi();
   const { safeTop, safeBottom } = useAppInsets();
+  const layoutSheetHeight = useLayoutSheetHeight();
+  const sceneViewportHeight = useSceneViewportHeight();
   const { height: screenHeight } = useWindowDimensions();
   const resolvedBackground = backgroundColor ?? theme.color.surfaceElevated;
   const resolvedInsetColor = topInsetColor ?? resolvedBackground;
   const backgroundColorValue =
     typeof resolvedBackground === "string" ? resolvedBackground : theme.color.surfaceElevated;
-  const sheetGlowColor =
-    backgroundColorValue === theme.jobs.canvas || backgroundColorValue === theme.jobs.surface
-      ? theme.jobs.glowStrong
-      : theme.color.sheetGlowStrong;
 
   const [internalStepIndex, setInternalStepIndex] = useState(initialStep);
   const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState(0);
@@ -158,6 +164,10 @@ export function TopSheet({
   const [measuredFooterHeight, setMeasuredFooterHeight] = useState(0);
   const resolvedStepIndex = activeStep ?? internalStepIndex;
   const isExpanded = resolvedStepIndex > initialStep;
+  const baseContent = collapsedContent ?? children;
+  const hasBaseContent = baseContent !== null && baseContent !== undefined;
+  const revealedContent = expandedContent ?? revealOnExpand;
+  const hasExpandedContent = Boolean(revealedContent);
   const animatedBackground = useSharedValue(backgroundColorValue);
   const expandedProgress = useSharedValue(isExpanded ? 1 : 0);
   const shellTransitionProgress = useSharedValue(1);
@@ -165,10 +175,25 @@ export function TopSheet({
   useEffect(() => {
     void stateKey;
     setInternalStepIndex(initialStep);
-    setMeasuredHeaderHeight(0);
-    setMeasuredBodyHeight(0);
-    setMeasuredFooterHeight(0);
   }, [initialStep, stateKey]);
+
+  useEffect(() => {
+    if (!stickyHeader) {
+      setMeasuredHeaderHeight(0);
+    }
+  }, [stickyHeader]);
+
+  useEffect(() => {
+    if (!stickyFooter) {
+      setMeasuredFooterHeight(0);
+    }
+  }, [stickyFooter]);
+
+  useEffect(() => {
+    if (!baseContent) {
+      setMeasuredBodyHeight(0);
+    }
+  }, [baseContent]);
 
   useEffect(() => {
     animatedBackground.value = backgroundColorValue;
@@ -198,9 +223,10 @@ export function TopSheet({
     };
   }, [resolvedInsetColor, setTopInsetBackgroundColor, setTopInsetTone]);
 
-  // Available height for sheet steps (screen minus safe top minus bottom tabs)
-  const bottomChromeEstimate = Math.max(MIN_BOTTOM_CHROME_ESTIMATE, safeBottom + TAB_BAR_ESTIMATE);
-  const availableHeight = screenHeight - safeTop - bottomChromeEstimate;
+  const availableHeight =
+    sceneViewportHeight > 0
+      ? sceneViewportHeight + layoutSheetHeight
+      : Math.max(0, screenHeight - safeBottom);
 
   const resolvedPadding = useMemo(
     () => ({
@@ -235,12 +261,11 @@ export function TopSheet({
 
   useEffect(() => {
     if (!onMinHeightChange) return;
-    onMinHeightChange(resolvedMinHeight || stepHeights[0] || 0);
-  }, [onMinHeightChange, resolvedMinHeight, stepHeights]);
+    onMinHeightChange(stepHeights[initialStep] ?? resolvedMinHeight ?? 0);
+  }, [initialStep, onMinHeightChange, resolvedMinHeight, stepHeights]);
 
   // Sheet height shared value
-  const defaultHeight =
-    stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? (resolvedMinHeight || 100);
+  const defaultHeight = stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? resolvedMinHeight ?? 0;
   const sheetHeight = useSharedValue(initialHeight ?? defaultHeight);
   const currentStepIndex = useSharedValue(resolvedStepIndex);
 
@@ -255,12 +280,42 @@ export function TopSheet({
     [onHeightChange, sheetHeight],
   );
 
+  const minimumLayoutHeight = stepHeights[initialStep] ?? resolvedMinHeight ?? defaultHeight;
+  const targetLayoutHeight =
+    stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? resolvedMinHeight ?? defaultHeight;
+  const shouldAnimateLayoutHeight = expandMode === "resize" && draggable && expandable;
+
+  useAnimatedReaction(
+    () =>
+      Math.round(
+        expandMode === "overlay"
+          ? minimumLayoutHeight
+          : shouldAnimateLayoutHeight
+            ? sheetHeight.value
+            : targetLayoutHeight,
+      ),
+    (next, prev) => {
+      if (!onLayoutHeightChange || next === prev) return;
+      runOnJS(onLayoutHeightChange)(next);
+    },
+    [
+      draggable,
+      expandable,
+      expandMode,
+      minimumLayoutHeight,
+      onLayoutHeightChange,
+      sheetHeight,
+      targetLayoutHeight,
+      shouldAnimateLayoutHeight,
+    ],
+  );
+
   useEffect(() => {
     const clampedStepIndex = Math.max(
       0,
       Math.min(resolvedStepIndex, Math.max(stepHeights.length - 1, 0)),
     );
-    const nextHeight = stepHeights[clampedStepIndex] ?? resolvedMinHeight ?? 100;
+    const nextHeight = stepHeights[clampedStepIndex] ?? resolvedMinHeight ?? 0;
 
     currentStepIndex.value = clampedStepIndex;
     dragStartHeight.value = nextHeight;
@@ -288,7 +343,7 @@ export function TopSheet({
         .onUpdate((event) => {
           const h = stepHeights;
           if (h.length === 0) return;
-          const minH = h[0] ?? resolvedMinHeight ?? 100;
+          const minH = h[0] ?? resolvedMinHeight ?? 0;
           const maxH = h[h.length - 1]!;
           const startHeight = dragStartHeight.value ?? sheetHeight.value;
           sheetHeight.value = Math.max(minH, Math.min(maxH, startHeight + event.translationY));
@@ -323,7 +378,7 @@ export function TopSheet({
             direction === "down"
               ? Math.min(nearestStepIdx + 1, h.length - 1)
               : Math.max(nearestStepIdx - 1, 0);
-          const targetHeight = h[targetIdx] ?? h[0] ?? resolvedMinHeight ?? 100;
+          const targetHeight = h[targetIdx] ?? h[0] ?? resolvedMinHeight ?? 0;
 
           sheetHeight.value = withSpring(targetHeight, SHEET_SPRING);
           if (targetIdx !== currentStepIndex.value) {
@@ -376,6 +431,15 @@ export function TopSheet({
   const revealStyle = useAnimatedStyle(() => ({
     flex: 1,
     minHeight: 0,
+    opacity: expandedProgress.value,
+    transform: [
+      {
+        translateY: (1 - expandedProgress.value) * REVEAL_TRANSLATE_OFFSET,
+      },
+    ],
+  }));
+  const overlayRevealStyle = useAnimatedStyle(() => ({
+    opacity: expandedProgress.value,
     transform: [
       {
         translateY: (1 - expandedProgress.value) * REVEAL_TRANSLATE_OFFSET,
@@ -383,7 +447,12 @@ export function TopSheet({
     ],
   }));
 
-  const mainContentFlex = revealOnExpand ? 0 : 1;
+  const mainContentFlex =
+    hasExpandedContent && expandMode === "resize"
+      ? 0
+      : hasBaseContent
+        ? 1
+        : 0;
   const shouldUseContentScroll = collapsedHeightMode === "content";
   const bodyScrollEnabled =
     shouldUseContentScroll && chromeHeight + intrinsicContentHeight > availableHeight;
@@ -401,13 +470,7 @@ export function TopSheet({
     <Animated.View
       style={[
         styles.sheetShell,
-        {
-          shadowColor: sheetGlowColor,
-          shadowOffset: { width: 0, height: 14 },
-          shadowOpacity: 1,
-          shadowRadius: 28,
-          elevation: 18,
-        },
+        styles.sheetChrome(theme.color.border),
         shellBackgroundStyle,
         shellTransitionStyle,
         outerStyle,
@@ -423,7 +486,7 @@ export function TopSheet({
         ) : null}
 
         {/* Main children - always visible */}
-        {shouldUseContentScroll ? (
+        {hasBaseContent && shouldUseContentScroll ? (
           <ScrollView
             bounces={bodyScrollEnabled}
             onContentSizeChange={(_, height) => handleBodyLayout(height)}
@@ -431,21 +494,21 @@ export function TopSheet({
             showsVerticalScrollIndicator={bodyScrollEnabled}
             style={styles.scrollBody}
           >
-            <View>{children}</View>
+            <View>{baseContent}</View>
           </ScrollView>
-        ) : (
+        ) : hasBaseContent ? (
           <View
-            style={{ flex: mainContentFlex }}
+            style={styles.collapsedBody(mainContentFlex)}
             onLayout={(event) => handleBodyLayout(event.nativeEvent.layout.height)}
           >
-            {children}
+            {baseContent}
           </View>
-        )}
+        ) : null}
 
-        {/* Reveal on Expand - stays mounted to avoid React mount churn during snaps */}
-        {revealOnExpand ? (
+        {/* Push expansion participates in layout below the collapsed footprint. */}
+        {revealedContent && expandMode === "resize" ? (
           <Animated.View pointerEvents={isExpanded ? "auto" : "none"} style={revealStyle}>
-            {revealOnExpand}
+            {revealedContent}
           </Animated.View>
         ) : null}
 
@@ -454,6 +517,19 @@ export function TopSheet({
           <View onLayout={(event) => handleFooterLayout(event.nativeEvent.layout.height)}>
             {stickyFooter}
           </View>
+        ) : null}
+
+        {/* Overlay expansion renders below the collapsed footprint without changing layout. */}
+        {revealedContent && expandMode === "overlay" ? (
+          <Animated.View
+            pointerEvents={isExpanded ? "auto" : "none"}
+            style={[
+              styles.overlayExpandedContent(minimumLayoutHeight, measuredFooterHeight),
+              overlayRevealStyle,
+            ]}
+          >
+            {revealedContent}
+          </Animated.View>
         ) : null}
       </Animated.View>
       {draggable && gestureEnabled ? (
@@ -502,6 +578,17 @@ const styles = StyleSheet.create(() => ({
     flex: 1,
     minHeight: 0,
   },
+  collapsedBody: (flex: number) => ({
+    flex,
+  }),
+  overlayExpandedContent: (top: number, bottom: number) => ({
+    position: "absolute" as const,
+    top,
+    right: 0,
+    bottom,
+    left: 0,
+    zIndex: 2,
+  }),
   sheetShell: {
     borderBottomLeftRadius: SHEET_CORNER_RADIUS,
     borderBottomRightRadius: SHEET_CORNER_RADIUS,
@@ -509,6 +596,12 @@ const styles = StyleSheet.create(() => ({
     overflow: "hidden" as const,
     zIndex: 100,
   },
+  sheetChrome: (borderColor: ColorValue) => ({
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor,
+  }),
   dragHandleZone: {
     position: "absolute" as const,
     bottom: 0,

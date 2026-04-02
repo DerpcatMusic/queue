@@ -46,7 +46,9 @@ type InsetTone = "app" | "sheet" | "card" | "primary";
 // Tab-specific sheet config (subset of TopSheetTabConfig without tabId)
 type TabSheetOverride = {
   content?: React.ReactNode;
-  render?: (props: { scrollY: SharedValue<number> }) => { children: React.ReactNode };
+  collapsedContent?: React.ReactNode;
+  expandedContent?: React.ReactNode;
+  render?: (props: { scrollY: SharedValue<number> }) => { children?: React.ReactNode };
   overlay?: React.ReactNode;
   contentPaddingTop?: number;
   draggable?: boolean;
@@ -55,6 +57,8 @@ type TabSheetOverride = {
   initialStep?: number;
   activeStep?: number;
   minHeight?: number;
+  collapsedHeightMode?: unknown;
+  expandMode?: unknown;
   padding?: unknown;
   backgroundColor?: unknown;
   topInsetColor?: unknown;
@@ -85,26 +89,27 @@ const TabSceneDescriptorContext = createContext<TabSceneDescriptorContextValue |
 function TabTransitionVeil({
   tintColor,
   focusProgress,
+  transitionKey,
 }: {
   tintColor: string;
   focusProgress: SharedValue<number>;
+  transitionKey: string;
 }) {
-  const pathname = usePathname();
-  const previousPathnameRef = useRef(pathname);
+  const previousTransitionKeyRef = useRef(transitionKey);
 
   useEffect(() => {
-    if (previousPathnameRef.current === pathname) {
+    if (previousTransitionKeyRef.current === transitionKey) {
       return;
     }
 
-    previousPathnameRef.current = pathname;
-    // Trigger the veil animation when pathname changes
+    previousTransitionKeyRef.current = transitionKey;
+    // Trigger the veil animation only when the primary tab changes.
     focusProgress.value = 0;
     focusProgress.value = withSpring(1, {
       damping: 20,
       stiffness: 200,
     });
-  }, [pathname, focusProgress]);
+  }, [focusProgress, transitionKey]);
 
   const veilStyle = useAnimatedStyle(() => ({
     opacity: (1 - focusProgress.value) * TAB_TRANSITION_VEIL_OPACITY,
@@ -135,6 +140,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   const { color } = useTheme();
   const pathname = usePathname();
   const sceneDescriptorsRef = useRef<Map<RoleTabRouteName, SceneDescriptor>>(new Map());
+  const activeTabIdRef = useRef<RoleTabRouteName>("index" as RoleTabRouteName);
 
   // Extract active tab ID from pathname
   const activeTabId = useMemo<RoleTabRouteName>(() => {
@@ -147,24 +153,8 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
     return lastPart as RoleTabRouteName;
   }, [pathname]);
 
-  // Track which tabs have been activated (focused at least once)
-  const [activatedTabs, setActivatedTabs] = useState<Set<RoleTabRouteName>>(() => {
-    const initial = new Set<RoleTabRouteName>();
-    // Start with home tab activated
-    initial.add("index" as RoleTabRouteName);
-    return initial;
-  });
-
-  // Track first activation (tabs that have been focused at least once)
-  const [firstActivation, setFirstActivation] = useState<Set<RoleTabRouteName>>(() => {
-    const initial = new Set<RoleTabRouteName>();
-    // Home tab is considered "first activated"
-    initial.add("index" as RoleTabRouteName);
-    return initial;
-  });
-
-  // Scene descriptors registered by child screens
-  const [, setSceneDescriptors] = useState<Map<RoleTabRouteName, SceneDescriptor>>(() => new Map());
+  // Bump the shell only when the active tab descriptor changes.
+  const [, setActiveDescriptorVersion] = useState(0);
 
   // Focus progress shared value for transition animations
   const focusProgress = useSharedValue<number>(1);
@@ -172,42 +162,47 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   // Register a scene descriptor from a child screen
   const registerDescriptor = useCallback(
     (tabId: RoleTabRouteName, descriptor: Partial<SceneDescriptor>) => {
-      setSceneDescriptors((current) => {
-        const existing = current.get(tabId);
-        // Skip update if body and sheetConfig are the same reference
-        // (avoids infinite re-render loops: descriptorContext changes → useEffect re-runs → registerDescriptor → sceneDescriptors updates → repeat)
-        if (
-          existing &&
-          existing.body === descriptor.body &&
-          existing.sheetConfig === descriptor.sheetConfig
-        ) {
-          return current;
-        }
-        const next = new Map(current);
-        next.set(tabId, {
-          tabId,
-          body: null,
-          ...existing,
-          ...descriptor,
-        });
-        sceneDescriptorsRef.current = next;
-        return next;
+      const current = sceneDescriptorsRef.current;
+      const existing = current.get(tabId);
+      if (
+        existing &&
+        existing.sheetConfig === descriptor.sheetConfig &&
+        existing.insetTone === descriptor.insetTone &&
+        existing.isLoading === descriptor.isLoading
+      ) {
+        return;
+      }
+
+      const next = new Map(current);
+      next.set(tabId, {
+        tabId,
+        body: null,
+        ...existing,
+        ...descriptor,
       });
+      sceneDescriptorsRef.current = next;
+
+      if (activeTabIdRef.current === tabId) {
+        setActiveDescriptorVersion((version) => version + 1);
+      }
     },
     [],
   );
 
   // Unregister a scene descriptor
   const unregisterDescriptor = useCallback((tabId: RoleTabRouteName) => {
-    setSceneDescriptors((current) => {
-      if (!current.has(tabId)) {
-        return current;
-      }
-      const next = new Map(current);
-      next.delete(tabId);
-      sceneDescriptorsRef.current = next;
-      return next;
-    });
+    const current = sceneDescriptorsRef.current;
+    if (!current.has(tabId)) {
+      return;
+    }
+
+    const next = new Map(current);
+    next.delete(tabId);
+    sceneDescriptorsRef.current = next;
+
+    if (activeTabIdRef.current === tabId) {
+      setActiveDescriptorVersion((version) => version + 1);
+    }
   }, []);
 
   // Get a descriptor for a specific tab
@@ -215,15 +210,9 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
     return sceneDescriptorsRef.current.get(tabId);
   }, []);
 
-  // Mark a tab as activated when it becomes active
   useEffect(() => {
-    if (!activatedTabs.has(activeTabId)) {
-      setActivatedTabs((current) => new Set(current).add(activeTabId));
-    }
-    if (!firstActivation.has(activeTabId)) {
-      setFirstActivation((current) => new Set(current).add(activeTabId));
-    }
-  }, [activeTabId, activatedTabs, firstActivation]);
+    activeTabIdRef.current = activeTabId;
+  }, [activeTabId]);
 
   // Context value for child descriptor registration
   const descriptorContext = useMemo<TabSceneDescriptorContextValue>(
@@ -240,20 +229,8 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
       <GlobalTopSheetProvider>
         <TabSceneDescriptorContext.Provider value={descriptorContext}>
           <View style={{ flex: 1, backgroundColor: color.appBg }}>
-            <View
-              pointerEvents="none"
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 144,
-                backgroundColor: color.surfaceElevated,
-                zIndex: 0,
-              }}
-            />
             <GlobalTopSheet />
-            <View style={{ flex: 1, zIndex: 2 }}>
+            <View style={{ flex: 1, minHeight: 0, zIndex: 2 }}>
               <NativeTabs
                 tintColor={color.primary}
                 iconColor={{
@@ -286,7 +263,11 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                 ))}
               </NativeTabs>
             </View>
-            <TabTransitionVeil tintColor={color.surface} focusProgress={focusProgress} />
+            <TabTransitionVeil
+              tintColor={color.surface}
+              focusProgress={focusProgress}
+              transitionKey={activeTabId}
+            />
           </View>
         </TabSceneDescriptorContext.Provider>
       </GlobalTopSheetProvider>
