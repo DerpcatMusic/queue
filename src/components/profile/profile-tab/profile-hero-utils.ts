@@ -1,6 +1,6 @@
 import type { useTranslation } from "react-i18next";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
-import { isSportType, type SPORT_TYPES, toSportLabel } from "@/convex/constants";
+import { toSportLabelI18n } from "@/lib/sport-i18n";
 
 const PROFILE_HEADER_CONTENT_HEIGHT = 128;
 
@@ -25,10 +25,8 @@ export function getSportsLabel(sports: string[], t: ReturnType<typeof useTransla
   return sports.length === 0
     ? t("profile.settings.sports.none")
     : sports.length <= 2
-      ? sports.map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport)).join(", ")
-      : `${isSportType(sports[0] ?? "") ? toSportLabel(sports[0] as (typeof SPORT_TYPES)[number]) : sports[0]} +${String(
-          sports.length - 1,
-        )}`;
+      ? sports.map((sport) => toSportLabelI18n(sport, t)).join(", ")
+      : `${toSportLabelI18n(sports[0] ?? "", t)} +${String(sports.length - 1)}`;
 }
 
 export function getProfileSummary(

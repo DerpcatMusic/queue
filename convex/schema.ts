@@ -6,6 +6,7 @@ import {
   instructorCertificateReviewStatusValidator,
   instructorInsuranceReviewStatusValidator,
 } from "./lib/instructorCompliance";
+import { internalAccessRoleValidator } from "./lib/internalAccess";
 import {
   NOTIFICATION_INBOX_KINDS,
   NOTIFICATION_PREFERENCE_KEYS,
@@ -110,6 +111,21 @@ export default defineSchema({
   })
     .index("by_role", ["role"])
     .index("by_email", ["email"]),
+
+  internalAccessGrants: defineTable({
+    userId: v.optional(v.id("users")),
+    email: v.optional(v.string()),
+    role: internalAccessRoleValidator,
+    verificationBypass: v.boolean(),
+    active: v.boolean(),
+    notes: v.optional(v.string()),
+    grantedByUserId: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_active", ["userId", "active", "updatedAt"])
+    .index("by_email_active", ["email", "active", "updatedAt"])
+    .index("by_role_active", ["role", "active", "updatedAt"]),
 
   profileImageUploadSessions: defineTable({
     userId: v.id("users"),
@@ -443,6 +459,7 @@ export default defineSchema({
     zone: v.string(),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    arrivalRadiusMeters: v.optional(v.number()),
     contactPhone: v.optional(v.string()),
     expoPushToken: v.optional(v.string()),
     notificationsEnabled: v.optional(v.boolean()),
@@ -560,6 +577,33 @@ export default defineSchema({
     .index("by_sport_and_status", ["sport", "status"])
     .index("by_sport_zone_status_postedAt", ["sport", "zone", "status", "postedAt"])
     .index("by_zone_and_status", ["zone", "status"]),
+
+  lessonCheckIns: defineTable({
+    jobId: v.id("jobs"),
+    branchId: v.id("studioBranches"),
+    studioId: v.id("studioProfiles"),
+    instructorId: v.id("instructorProfiles"),
+    checkedInByUserId: v.id("users"),
+    verificationStatus: v.union(v.literal("verified"), v.literal("rejected")),
+    verificationReason: v.union(
+      v.literal("verified"),
+      v.literal("outside_radius"),
+      v.literal("accuracy_too_low"),
+      v.literal("sample_too_old"),
+      v.literal("outside_check_in_window"),
+      v.literal("branch_location_missing"),
+    ),
+    latitude: v.number(),
+    longitude: v.number(),
+    accuracyMeters: v.number(),
+    sampledAt: v.number(),
+    checkedInAt: v.number(),
+    distanceToBranchMeters: v.optional(v.number()),
+    allowedDistanceMeters: v.optional(v.number()),
+  })
+    .index("by_job", ["jobId", "checkedInAt"])
+    .index("by_job_and_instructor", ["jobId", "instructorId", "checkedInAt"])
+    .index("by_instructor", ["instructorId", "checkedInAt"]),
 
   jobApplications: defineTable({
     jobId: v.id("jobs"),

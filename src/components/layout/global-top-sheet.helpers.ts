@@ -59,6 +59,8 @@ export function buildBaseSheetProps(
     ...(config.onStepChange ? { onStepChange: config.onStepChange } : {}),
     ...(config.stickyHeader ? { stickyHeader: config.stickyHeader } : {}),
     ...(config.stickyFooter ? { stickyFooter: config.stickyFooter } : {}),
+    ...(config.collapsedContent ? { collapsedContent: config.collapsedContent } : {}),
+    ...(config.expandedContent ? { expandedContent: config.expandedContent } : {}),
     ...(config.revealOnExpand ? { revealOnExpand: config.revealOnExpand } : {}),
     backgroundColor: config.backgroundColor,
     topInsetColor: config.topInsetColor,
@@ -107,12 +109,17 @@ export function resolveTopSheetRouteIdentity(
   // pathname is the full route path (e.g., /instructor, /instructor/profile)
   const fallbackKey = activeConfig?.tabId ?? activeTabId ?? "global-top-sheet";
 
-  // stateKey is based on activeTabId so TopSheet doesn't remount when navigating
-  // nested routes within the same tab (e.g., /instructor/profile -> /instructor/profile/edit)
-  const stateKey = activeTabId ?? fallbackKey;
+  // Route-scoped sheets own their own measurement/state. Parent tab sheets keep tab-level state.
+  const stateKey =
+    activeConfig?.routeMatchPath ??
+    activeTabId ??
+    fallbackKey;
 
-  // transitionKey uses the full pathname so animations trigger on any route change
-  const transitionKey = pathname ?? activeTabId ?? fallbackKey;
+  const transitionKey =
+    activeConfig?.routeMatchPath ??
+    pathname ??
+    activeTabId ??
+    fallbackKey;
 
   return {
     stateKey,

@@ -5,6 +5,7 @@ import type { PaymentStatus, PayoutStatus } from "@/lib/payments-utils";
 
 export type StudioJobApplication = {
   applicationId: Id<"jobApplications">;
+  instructorId: Id<"instructorProfiles">;
   instructorName: string;
   profileImageUrl?: string | null;
   status: "pending" | "accepted" | "rejected" | "withdrawn";
@@ -42,6 +43,7 @@ export type StudioJobsListProps = {
   zoneLanguage: "en" | "he";
   reviewingApplicationId: Id<"jobApplications"> | null;
   payingJobId: Id<"jobs"> | null;
+  onInstructorPress?: (instructorId: Id<"instructorProfiles">) => void;
   onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
   onStartPayment: (jobId: Id<"jobs">) => void;
   onJobPress: (jobId: Id<"jobs">) => void;

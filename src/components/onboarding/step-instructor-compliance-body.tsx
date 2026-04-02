@@ -5,7 +5,16 @@ import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { IdentityStatusBadge } from "@/components/profile/identity-status-ui";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
-import { isSportType, toSportLabel } from "@/convex/constants";
+import {
+  getCertificateSubtitle as getSharedCertificateSubtitle,
+  getComplianceDocumentValue,
+  getInstructorBlockingSummary,
+  getInsuranceSubtitle as getSharedInsuranceSubtitle,
+  getLatestCertificate as getSharedLatestCertificate,
+  getLatestCertificateForSport as getSharedLatestCertificateForSport,
+  getPreferredInsurancePolicy as getSharedPreferredInsurancePolicy,
+  toComplianceDisplayLabel,
+} from "@/features/compliance/compliance-ui";
 
 type OnboardingComplianceCertificateRow = {
   sport?: string;
@@ -90,47 +99,18 @@ interface StepInstructorComplianceBodyProps {
 }
 
 function toDisplayLabel(value: string): string {
-  if (isSportType(value)) return toSportLabel(value);
-  return value
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  return toComplianceDisplayLabel(value);
 }
 
 function getLatestCertificateForSport(
   rows: OnboardingComplianceCertificateRow[],
   sport: string,
 ): OnboardingComplianceCertificateRow | null {
-  const matchingRows = rows.filter((row) => {
-    const specialties =
-      row.specialties?.map((specialty) => specialty.sport) ?? (row.sport ? [row.sport] : []);
-    return specialties.includes(sport);
-  });
-  if (matchingRows.length === 0) return null;
-  const sorted = [...matchingRows].sort((left, right) => {
-    const leftPriority = left.reviewStatus === "approved" ? 1 : 0;
-    const rightPriority = right.reviewStatus === "approved" ? 1 : 0;
-    if (leftPriority !== rightPriority) return rightPriority - leftPriority;
-    return (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt);
-  });
-  return sorted[0] ?? null;
+  return getSharedLatestCertificateForSport(rows, sport);
 }
 
 function getBlockingSummary(reasons: string[], t: ReturnType<typeof useTranslation>["t"]): string {
-  return reasons
-    .map((reason) => {
-      switch (reason) {
-        case "identity_verification_required":
-          return t("profile.compliance.blockers.identity");
-        case "insurance_verification_required":
-          return t("profile.compliance.blockers.insurance");
-        case "sport_certificate_required":
-          return t("profile.compliance.blockers.certificate");
-        default:
-          return reason;
-      }
-    })
-    .join(" · ");
+  return getInstructorBlockingSummary(reasons, t);
 }
 
 function getDocumentValue(
@@ -140,14 +120,7 @@ function getDocumentValue(
     | undefined,
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
-  if (reviewStatus === "approved") return t("profile.compliance.values.approved");
-  if (
-    reviewStatus === "uploaded" ||
-    reviewStatus === "ai_pending" ||
-    reviewStatus === "ai_reviewing"
-  )
-    return t("profile.compliance.values.pending");
-  return t("profile.compliance.values.actionRequired");
+  return getComplianceDocumentValue(reviewStatus, t);
 }
 
 function getInsuranceSubtitle(
@@ -155,22 +128,7 @@ function getInsuranceSubtitle(
   _locale: string,
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
-  if (!row) return t("profile.compliance.insurance.missingBody");
-  switch (row.reviewStatus) {
-    case "approved":
-      return t("profile.compliance.insurance.approvedBody");
-    case "expired":
-      return t("profile.compliance.insurance.expiredBody");
-    case "uploaded":
-    case "ai_pending":
-    case "ai_reviewing":
-      return t("profile.compliance.insurance.pendingBody");
-    case "rejected":
-    case "needs_resubmission":
-      return t("profile.compliance.insurance.reuploadBody");
-    default:
-      return t("profile.compliance.insurance.missingBody");
-  }
+  return getSharedInsuranceSubtitle(row, _locale, t);
 }
 
 function getCertificateSubtitle(
@@ -178,46 +136,20 @@ function getCertificateSubtitle(
   _locale: string,
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
-  if (!row) return t("profile.compliance.certificate.missingBody");
-  switch (row.reviewStatus) {
-    case "approved":
-      return t("profile.compliance.certificate.approvedBody");
-    case "uploaded":
-    case "ai_pending":
-    case "ai_reviewing":
-      return t("profile.compliance.certificate.pendingBody");
-    case "rejected":
-    case "needs_resubmission":
-      return t("profile.compliance.certificate.reuploadBody");
-    default:
-      return t("profile.compliance.certificate.missingBody");
-  }
+  return getSharedCertificateSubtitle(row, _locale, t);
 }
 
 function getLatestCertificate(
   rows: OnboardingComplianceCertificateRow[],
 ): OnboardingComplianceCertificateRow | null {
-  if (rows.length === 0) return null;
-  const sorted = [...rows].sort(
-    (left, right) => (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt),
-  );
-  return sorted[0] ?? null;
+  return getSharedLatestCertificate(rows);
 }
 
 function getPreferredInsurancePolicy(
   rows: OnboardingComplianceInsuranceRow[],
   now: number,
 ): OnboardingComplianceInsuranceRow | null {
-  if (rows.length === 0) return null;
-  const sorted = [...rows].sort((left, right) => {
-    const leftActiveApproved =
-      left.reviewStatus === "approved" && (!left.expiresAt || left.expiresAt > now) ? 1 : 0;
-    const rightActiveApproved =
-      right.reviewStatus === "approved" && (!right.expiresAt || right.expiresAt > now) ? 1 : 0;
-    if (leftActiveApproved !== rightActiveApproved) return rightActiveApproved - leftActiveApproved;
-    return (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt);
-  });
-  return sorted[0] ?? null;
+  return getSharedPreferredInsurancePolicy(rows, now);
 }
 
 export function StepInstructorComplianceBody({
@@ -320,9 +252,15 @@ export function StepInstructorComplianceBody({
       </View>
       {!diditState.isVerified ? (
         <ActionButton
-          label={t("profile.compliance.actions.startIdentity")}
+          label={t("profile.identityVerification.verifyNow")}
           fullWidth
+          native={false}
           {...(diditButtonColors ? { colors: diditButtonColors } : {})}
+          labelStyle={{
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+            fontWeight: "700",
+          }}
           onPress={() => router.replace("/instructor/profile/compliance")}
         />
       ) : null}
@@ -347,11 +285,17 @@ export function StepInstructorComplianceBody({
           label={
             diditState.isVerified
               ? t("profile.navigation.identityVerification")
-              : t("profile.compliance.actions.startIdentity")
+              : t("profile.identityVerification.verifyNow")
           }
           fullWidth
+          native={false}
           {...(diditButtonColors ? { colors: diditButtonColors } : {})}
           {...(diditState.isVerified ? { tone: "secondary" as const } : {})}
+          labelStyle={{
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+            fontWeight: "700",
+          }}
           onPress={() => router.replace("/instructor/profile/compliance")}
         />
       </View>

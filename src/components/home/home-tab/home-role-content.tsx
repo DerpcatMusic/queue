@@ -4,9 +4,9 @@ import { Redirect, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { InstructorHomeContent } from "@/components/home/instructor-home-content";
 import { StudioHomeContent } from "@/components/home/studio-home-content";
-import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
@@ -17,6 +17,7 @@ export type Application = {
   applicationId: Id<"jobApplications">;
   instructorId: Id<"instructorProfiles">;
   instructorName: string;
+  profileImageUrl?: string;
   status: "pending" | "accepted" | "rejected" | "withdrawn";
   appliedAt: number;
   message?: string;
@@ -33,6 +34,11 @@ export type HomeRoleContentProps = {
         isVerified: boolean;
         pendingApplications: number;
         totalEarningsAgorot: number;
+        paidOutAmountAgorot: number;
+        outstandingAmountAgorot: number;
+        availableAmountAgorot: number;
+        heldAmountAgorot: number;
+        currency: string;
         lessonEvents: Array<{
           endTime: number;
         }>;
@@ -80,7 +86,10 @@ export function HomeRoleContent({
   const reviewApplication = useMutation(api.jobs.reviewApplication);
 
   const openInstructorStudio = (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => {
-    router.push(`/instructor/jobs/studios/${String(studioId)}?jobId=${String(jobId)}` as Href);
+    router.push(`/profiles/studios/${String(studioId)}?jobId=${String(jobId)}` as Href);
+  };
+  const openPublicInstructor = (instructorId: Id<"instructorProfiles">) => {
+    router.push(`/studio/jobs/instructors/${String(instructorId)}` as Href);
   };
 
   if (activeRole === "instructor") {
@@ -89,10 +98,10 @@ export function HomeRoleContent({
         currencyFormatter={currencyFormatter}
         locale={locale}
         now={now}
-        lessonsCompleted={instructorHomeStats?.lessonEvents.length ?? 0}
         pendingApplications={instructorHomeStats?.pendingApplications ?? 0}
         t={t}
-        totalEarningsAgorot={instructorHomeStats?.totalEarningsAgorot ?? 0}
+        paidOutAmountAgorot={instructorHomeStats?.paidOutAmountAgorot ?? 0}
+        outstandingAmountAgorot={instructorHomeStats?.outstandingAmountAgorot ?? 0}
         upcomingSessions={instructorHomeStats?.upcomingSessions ?? []}
         availableJobs={availableInstructorJobs}
         {...(withdrawingApplicationId !== undefined ? { withdrawingApplicationId } : {})}
@@ -126,6 +135,7 @@ export function HomeRoleContent({
       jobsFilled={jobsFilled}
       onOpenJobs={() => router.push(STUDIO_JOBS_ROUTE)}
       onOpenCalendar={() => router.push(STUDIO_CALENDAR_ROUTE)}
+      onOpenInstructorProfile={openPublicInstructor}
       reviewApplication={reviewApplication}
     />
   );

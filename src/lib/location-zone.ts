@@ -14,6 +14,14 @@ export type ResolvedLocation = {
   postalCode?: string;
 };
 
+export type CurrentLocationSample = {
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number;
+  sampledAt: number;
+  source: "current" | "last_known";
+};
+
 export type LocationResolveErrorCode =
   | "native_module_missing"
   | "permission_denied"
@@ -331,6 +339,65 @@ async function getCurrentCoordinatesOnWeb(): Promise<{
   );
 }
 
+async function getCurrentPositionSampleOnWeb(): Promise<CurrentLocationSample> {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    throw createLocationError(
+      "unsupported_platform",
+      locationMessage("profile.settings.errors.locationUnsupportedPlatform"),
+    );
+  }
+
+  return await withTimeout(
+    new Promise<CurrentLocationSample>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracyMeters: Number.isFinite(position.coords.accuracy)
+              ? position.coords.accuracy
+              : 999,
+            sampledAt: Number.isFinite(position.timestamp) ? position.timestamp : Date.now(),
+            source: "current",
+          });
+        },
+        (error) => {
+          if (error.code === error.PERMISSION_DENIED) {
+            reject(
+              createLocationError(
+                "permission_denied",
+                locationMessage("profile.settings.errors.locationPermissionDenied"),
+              ),
+            );
+            return;
+          }
+          if (error.code === error.TIMEOUT) {
+            reject(
+              createLocationError(
+                "timeout",
+                locationMessage("profile.settings.errors.locationTimeout"),
+              ),
+            );
+            return;
+          }
+          reject(
+            createLocationError(
+              "services_disabled",
+              locationMessage("profile.settings.errors.locationResolveFailed"),
+            ),
+          );
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 2 * 60 * 1000,
+        },
+      );
+    }),
+    18000,
+  );
+}
+
 async function getFindZoneIdForCoordinate() {
   if (!findZoneIdForCoordinatePromise) {
     findZoneIdForCoordinatePromise = import("@/constants/zones-map").then(
@@ -565,10 +632,7 @@ export async function resolveCoordinatesToZone(input: {
   }
 }
 
-async function getBestCurrentCoordinates(location: LocationModule): Promise<{
-  latitude: number;
-  longitude: number;
-}> {
+async function getBestCurrentLocationSample(location: LocationModule): Promise<CurrentLocationSample> {
   let preciseError: LocationResolveError | null = null;
 
   try {
@@ -582,6 +646,10 @@ async function getBestCurrentCoordinates(location: LocationModule): Promise<{
     return {
       latitude: precisePosition.coords.latitude,
       longitude: precisePosition.coords.longitude,
+      accuracyMeters:
+        typeof precisePosition.coords.accuracy === "number" ? precisePosition.coords.accuracy : 999,
+      sampledAt: typeof precisePosition.timestamp === "number" ? precisePosition.timestamp : Date.now(),
+      source: "current",
     };
   } catch (error) {
     preciseError = normalizeLocationResolveError(error);
@@ -602,10 +670,36 @@ async function getBestCurrentCoordinates(location: LocationModule): Promise<{
     return {
       latitude: lastKnown.coords.latitude,
       longitude: lastKnown.coords.longitude,
+      accuracyMeters: typeof lastKnown.coords.accuracy === "number" ? lastKnown.coords.accuracy : 300,
+      sampledAt: typeof lastKnown.timestamp === "number" ? lastKnown.timestamp : Date.now(),
+      source: "last_known",
     };
   }
 
   throw preciseError;
+}
+
+export async function captureCurrentLocationSample(): Promise<CurrentLocationSample> {
+  try {
+    if (Platform.OS === "web") {
+      return await getCurrentPositionSampleOnWeb();
+    }
+
+    const location = await getLocationModule();
+    await ensureForegroundPermission(location);
+
+    const servicesEnabled = await location.hasServicesEnabledAsync();
+    if (!servicesEnabled) {
+      throw createLocationError(
+        "services_disabled",
+        locationMessage("profile.settings.errors.locationServicesDisabled"),
+      );
+    }
+
+    return await getBestCurrentLocationSample(location);
+  } catch (error) {
+    throw normalizeLocationResolveError(error);
+  }
 }
 
 export async function resolveCurrentLocationToZone(): Promise<ResolvedLocation> {
@@ -630,7 +724,7 @@ export async function resolveCurrentLocationToZone(): Promise<ResolvedLocation> 
       );
     }
 
-    const { latitude, longitude } = await getBestCurrentCoordinates(location);
+    const { latitude, longitude } = await getBestCurrentLocationSample(location);
 
     return await resolveCoordinatesToZone({
       latitude,

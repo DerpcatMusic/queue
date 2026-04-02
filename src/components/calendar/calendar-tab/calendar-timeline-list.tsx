@@ -38,10 +38,17 @@ function CalendarTimelineList({
 }: CalendarTimelineListProps) {
   const { safeBottom } = useAppInsets();
   const { color: palette } = useTheme();
-
+  const contentBackgroundColor = palette.jobsCanvas;
   return (
-    <TabScreenRoot mode="static" topInsetTone="sheet" style={{ backgroundColor: palette.appBg }}>
-      <Box style={[calendarTimelineStyles.timelineViewport, { backgroundColor: palette.appBg }]}>
+    <TabScreenRoot
+      mode="static"
+      topInsetTone="sheet"
+      style={{ backgroundColor: contentBackgroundColor }}
+      sheetInsets={{ topSpacing: 0 }}
+    >
+      <Box
+        style={[calendarTimelineStyles.timelineViewport, { backgroundColor: contentBackgroundColor }]}
+      >
         {/* Central Timeline Line */}
         <View
           style={[
@@ -68,7 +75,11 @@ function CalendarTimelineList({
           onViewableItemsChanged={onViewableItemsChanged as never}
           viewabilityConfig={viewabilityConfig as never}
           scrollIndicatorInsets={{ bottom: safeBottom + BrandSpacing.md }}
-          contentContainerStyle={[calendarTimelineStyles.timelineContent, contentContainerStyle]}
+          contentContainerStyle={[
+            calendarTimelineStyles.timelineContent,
+            { paddingBottom: safeBottom + BrandSpacing.xl },
+            contentContainerStyle,
+          ]}
         />
       </Box>
     </TabScreenRoot>

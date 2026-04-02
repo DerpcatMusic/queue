@@ -1,8 +1,8 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Redirect, useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshControl, View } from "react-native";
+import { AppState, type AppStateStatus, RefreshControl, View } from "react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
@@ -24,6 +24,16 @@ import { ChoicePill } from "@/components/ui/choice-pill";
 import { KitTextField } from "@/components/ui/kit";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
+import {
+  getStudioBlockingSummary,
+  getStudioPaymentSubtitle,
+} from "@/features/compliance/compliance-ui";
+import {
+  getDiditActionButtonColors,
+  getDiditPrimaryActionLabel,
+  shouldAutoRefreshDiditStatus,
+  shouldOfferDiditManualRefresh,
+} from "@/features/compliance/didit-ui";
 import { useTheme } from "@/hooks/use-theme";
 import { startDiditNativeVerification } from "@/lib/didit-native";
 
@@ -39,42 +49,6 @@ type BillingProfile = {
   completedAt?: number;
 };
 
-function getBlockingSummary(
-  reasons: string[],
-  t: ReturnType<typeof useTranslation>["t"],
-) {
-  return reasons
-    .map((reason) => {
-      switch (reason) {
-        case "owner_identity_required":
-          return t("profile.studioCompliance.blockers.identity");
-        case "business_profile_required":
-          return t("profile.studioCompliance.blockers.billing");
-        case "payment_method_required":
-          return t("profile.studioCompliance.blockers.payment");
-        default:
-          return reason;
-      }
-    })
-    .join(" · ");
-}
-
-function getPaymentSubtitle(
-  status: "missing" | "pending" | "ready" | "failed",
-  t: ReturnType<typeof useTranslation>["t"],
-) {
-  switch (status) {
-    case "ready":
-      return t("profile.studioCompliance.payment.readyBody");
-    case "failed":
-      return t("profile.studioCompliance.payment.failedBody");
-    case "pending":
-      return t("profile.studioCompliance.payment.pendingBody");
-    default:
-      return t("profile.studioCompliance.payment.missingBody");
-  }
-}
-
 export default function StudioComplianceScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -87,14 +61,12 @@ export default function StudioComplianceScreen() {
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const shouldLoad = currentUser?.role === "studio";
-  const compliance = useQuery(
-    api.complianceStudio.getMyStudioComplianceDetails,
+  const accessSnapshot = useQuery(
+    api.access.getMyStudioAccessSnapshot,
     shouldLoad ? {} : "skip",
   );
-  const diditVerification = useQuery(
-    api.didit.getMyStudioDiditVerification,
-    shouldLoad ? {} : "skip",
-  );
+  const compliance = accessSnapshot?.compliance;
+  const diditVerification = accessSnapshot?.verification;
   const paymentsPreflight = useQuery(
     api.payments.getPaymentsPreflight,
     shouldLoad ? {} : "skip",
@@ -104,6 +76,9 @@ export default function StudioComplianceScreen() {
   );
   const refreshStudioDiditVerification = useAction(
     api.didit.refreshMyStudioDiditVerification,
+  );
+  const markMyStudioDiditVerificationAbandoned = useMutation(
+    api.didit.markMyStudioDiditVerificationAbandoned,
   );
   const saveBillingProfile = useMutation(
     api.complianceStudio.upsertMyStudioBillingProfile,
@@ -116,6 +91,7 @@ export default function StudioComplianceScreen() {
     tone: "success" | "error";
     message: string;
   } | null>(null);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const billingProfile = compliance?.billingProfile as
     | BillingProfile
@@ -162,29 +138,67 @@ export default function StudioComplianceScreen() {
     }
   }, [refreshStudioDiditVerification]);
 
-  const refreshDiditStatus = useCallback(async () => {
+  const refreshDiditStatus = useCallback(async (options?: { silent?: boolean }) => {
     setRefreshing(true);
-    setFeedback(null);
+    if (!options?.silent) {
+      setFeedback(null);
+    }
     try {
       const latest = await refreshStudioDiditVerification({});
-      setFeedback({
-        tone: "success",
-        message: latest.isVerified
-          ? t("profile.studioCompliance.feedback.identityApproved")
-          : t("profile.studioCompliance.feedback.identityRefreshStarted"),
-      });
+      if (!options?.silent) {
+        setFeedback({
+          tone: "success",
+          message: latest.isVerified
+            ? t("profile.studioCompliance.feedback.identityApproved")
+            : t("profile.studioCompliance.feedback.identityRefreshStarted"),
+        });
+      }
     } catch (error) {
-      setFeedback({
-        tone: "error",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : t("profile.studioCompliance.errors.identityStartFailed"),
-      });
+      if (!options?.silent) {
+        setFeedback({
+          tone: "error",
+          message:
+            error instanceof Error && error.message
+              ? error.message
+              : t("profile.studioCompliance.errors.identityStartFailed"),
+        });
+      }
     } finally {
       setRefreshing(false);
     }
   }, [refreshStudioDiditVerification, t]);
+
+  useEffect(() => {
+    if (
+      !shouldAutoRefreshDiditStatus(
+        diditVerification?.status,
+        diditVerification?.isVerified ?? false,
+        diditVerification?.sessionId,
+      )
+    ) {
+      return;
+    }
+
+    void refreshDiditStatus({ silent: true });
+
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const wasInactive =
+        appStateRef.current === "background" || appStateRef.current === "inactive";
+      appStateRef.current = nextState;
+      if (nextState === "active" && wasInactive) {
+        void refreshDiditStatus({ silent: true });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [
+    diditVerification?.isVerified,
+    diditVerification?.sessionId,
+    diditVerification?.status,
+    refreshDiditStatus,
+  ]);
 
   const startDidit = useCallback(async () => {
     setIsStartingDidit(true);
@@ -195,7 +209,9 @@ export default function StudioComplianceScreen() {
         sessionToken: session.sessionToken,
         locale: i18n.resolvedLanguage ?? "en",
       });
-      if (result.outcome !== "cancelled") {
+      if (result.outcome === "cancelled") {
+        await markMyStudioDiditVerificationAbandoned({});
+      } else {
         const latest = await refreshStudioDiditVerification({});
         setFeedback({
           tone: latest.isVerified ? "success" : "success",
@@ -218,6 +234,7 @@ export default function StudioComplianceScreen() {
   }, [
     createStudioDiditSession,
     i18n.resolvedLanguage,
+    markMyStudioDiditVerificationAbandoned,
     refreshStudioDiditVerification,
     t,
   ]);
@@ -286,20 +303,27 @@ export default function StudioComplianceScreen() {
     return <Redirect href="/" />;
   }
 
-  const blockersSummary = getBlockingSummary(
-    compliance.summary.blockingReasons,
-    t,
-  );
+  const blockersSummary = getStudioBlockingSummary(compliance.summary.blockingReasons, t);
   const paymentStatus =
     paymentsPreflight.readyForCheckout &&
     compliance.summary.paymentStatus === "ready"
       ? "ready"
       : compliance.summary.paymentStatus;
-  const paymentSubtitle =
-    paymentStatus !== "ready" &&
-    compliance.summary.paymentReadinessSource === "legacy_env"
-      ? t("onboarding.verification.studioPaymentGroundwork")
-      : getPaymentSubtitle(paymentStatus, t);
+  const paymentSubtitle = getStudioPaymentSubtitle(
+    {
+      status: paymentStatus,
+      paymentReadinessSource: compliance.summary.paymentReadinessSource,
+    },
+    t,
+  );
+  const identityButtonColors = getDiditActionButtonColors(
+    diditVerification.isVerified,
+    theme.color,
+  );
+  const showDiditManualRefresh = shouldOfferDiditManualRefresh(
+    diditVerification.status,
+    diditVerification.isVerified,
+  );
 
   return (
     <ProfileSubpageScrollView
@@ -381,14 +405,21 @@ export default function StudioComplianceScreen() {
                     })}
               </ThemedText>
               <ActionButton
-                label={
-                  diditVerification.isVerified
-                    ? t("profile.studioCompliance.actions.refreshIdentity")
-                    : t("profile.studioCompliance.actions.startIdentity")
-                }
+                label={getDiditPrimaryActionLabel(
+                  diditVerification.isVerified,
+                  t,
+                )}
                 fullWidth
                 loading={isStartingDidit || refreshing}
                 disabled={isStartingDidit || refreshing}
+                native={false}
+                {...(identityButtonColors ? { colors: identityButtonColors } : {})}
+                {...(diditVerification.isVerified ? { tone: "secondary" as const } : {})}
+                labelStyle={{
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                  fontWeight: "700",
+                }}
                 onPress={() => {
                   if (diditVerification.isVerified) {
                     void refreshDiditStatus();
@@ -397,6 +428,15 @@ export default function StudioComplianceScreen() {
                   void startDidit();
                 }}
               />
+              {showDiditManualRefresh && !(isStartingDidit || refreshing) ? (
+                <ActionButton
+                  label={t("profile.identityVerification.checkStatus")}
+                  tone="secondary"
+                  fullWidth
+                  native={false}
+                  onPress={() => void refreshDiditStatus()}
+                />
+              ) : null}
             </View>
           </ProfileSectionCard>
         </View>

@@ -1,4 +1,6 @@
 import { ConvexError, v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { requireStudioOwnerContext } from "./lib/studioBranches";
 import {
@@ -23,6 +25,41 @@ const MAX_BILLING_EMAIL_LENGTH = 160;
 const MAX_BILLING_PHONE_LENGTH = 32;
 const MAX_BILLING_ADDRESS_LENGTH = 220;
 
+export const studioComplianceDetailsValidator = v.object({
+  summary: studioComplianceSummaryValidator,
+  billingProfile: v.union(
+    v.null(),
+    v.object({
+      legalEntityType: studioLegalEntityTypeValidator,
+      status: studioBillingProfileStatusValidator,
+      legalBusinessName: v.optional(v.string()),
+      taxId: v.optional(v.string()),
+      vatReportingType: v.optional(studioVatReportingTypeValidator),
+      billingEmail: v.optional(v.string()),
+      billingPhone: v.optional(v.string()),
+      billingAddress: v.optional(v.string()),
+      completedAt: v.optional(v.number()),
+    }),
+  ),
+  paymentProfile: v.union(
+    v.null(),
+    v.object({
+      provider: v.string(),
+      status: studioPaymentStatusValidator,
+      providerCustomerId: v.optional(v.string()),
+      providerMerchantId: v.optional(v.string()),
+      providerReference: v.optional(v.string()),
+      displayName: v.optional(v.string()),
+      requirementsSummary: v.optional(v.string()),
+      chargesEnabled: v.optional(v.boolean()),
+      payoutsEnabled: v.optional(v.boolean()),
+      readyForChargesAt: v.optional(v.number()),
+      readyForPayoutsAt: v.optional(v.number()),
+      lastSyncedAt: v.optional(v.number()),
+    }),
+  ),
+});
+
 function normalizeEmail(value: string) {
   const normalized = normalizeRequiredString(
     value,
@@ -44,89 +81,67 @@ export const getMyStudioComplianceSummary = query({
   },
 });
 
+export async function getStudioComplianceDetailsRead(
+  ctx: QueryCtx,
+  args: {
+    studioId: Doc<"studioProfiles">["_id"];
+  },
+) {
+  const studio = await ctx.db.get(args.studioId);
+  if (!studio) {
+    return null;
+  }
+
+  const [summary, billingProfile, paymentProfile] = await Promise.all([
+    buildStudioComplianceSummary(ctx, { studio }),
+    getStudioBillingProfile(ctx, studio._id),
+    getStudioPaymentProfile(ctx, studio._id),
+  ]);
+
+  return {
+    summary,
+    billingProfile: billingProfile
+      ? {
+          legalEntityType: billingProfile.legalEntityType,
+          status: billingProfile.status,
+          ...omitUndefined({
+            legalBusinessName: billingProfile.legalBusinessName,
+            taxId: billingProfile.taxId,
+            vatReportingType: billingProfile.vatReportingType,
+            billingEmail: billingProfile.billingEmail,
+            billingPhone: billingProfile.billingPhone,
+            billingAddress: billingProfile.billingAddress,
+            completedAt: billingProfile.completedAt,
+          }),
+        }
+      : null,
+    paymentProfile: paymentProfile
+      ? {
+          provider: paymentProfile.provider,
+          status: paymentProfile.status,
+          ...omitUndefined({
+            providerCustomerId: paymentProfile.providerCustomerId,
+            providerMerchantId: paymentProfile.providerMerchantId,
+            providerReference: paymentProfile.providerReference,
+            displayName: paymentProfile.displayName,
+            requirementsSummary: paymentProfile.requirementsSummary,
+            chargesEnabled: paymentProfile.chargesEnabled,
+            payoutsEnabled: paymentProfile.payoutsEnabled,
+            readyForChargesAt: paymentProfile.readyForChargesAt,
+            readyForPayoutsAt: paymentProfile.readyForPayoutsAt,
+            lastSyncedAt: paymentProfile.lastSyncedAt,
+          }),
+        }
+      : null,
+  };
+}
+
 export const getMyStudioComplianceDetails = query({
   args: {},
-  returns: v.union(
-    v.null(),
-    v.object({
-      summary: studioComplianceSummaryValidator,
-      billingProfile: v.union(
-        v.null(),
-        v.object({
-          legalEntityType: studioLegalEntityTypeValidator,
-          status: studioBillingProfileStatusValidator,
-          legalBusinessName: v.optional(v.string()),
-          taxId: v.optional(v.string()),
-          vatReportingType: v.optional(studioVatReportingTypeValidator),
-          billingEmail: v.optional(v.string()),
-          billingPhone: v.optional(v.string()),
-          billingAddress: v.optional(v.string()),
-          completedAt: v.optional(v.number()),
-        }),
-      ),
-      paymentProfile: v.union(
-        v.null(),
-        v.object({
-          provider: v.string(),
-          status: studioPaymentStatusValidator,
-          providerCustomerId: v.optional(v.string()),
-          providerMerchantId: v.optional(v.string()),
-          providerReference: v.optional(v.string()),
-          displayName: v.optional(v.string()),
-          requirementsSummary: v.optional(v.string()),
-          chargesEnabled: v.optional(v.boolean()),
-          payoutsEnabled: v.optional(v.boolean()),
-          readyForChargesAt: v.optional(v.number()),
-          readyForPayoutsAt: v.optional(v.number()),
-          lastSyncedAt: v.optional(v.number()),
-        }),
-      ),
-    }),
-  ),
+  returns: v.union(v.null(), studioComplianceDetailsValidator),
   handler: async (ctx) => {
     const { studio } = await requireStudioOwnerContext(ctx);
-    const [summary, billingProfile, paymentProfile] = await Promise.all([
-      buildStudioComplianceSummary(ctx, { studio }),
-      getStudioBillingProfile(ctx, studio._id),
-      getStudioPaymentProfile(ctx, studio._id),
-    ]);
-
-    return {
-      summary,
-      billingProfile: billingProfile
-        ? {
-            legalEntityType: billingProfile.legalEntityType,
-            status: billingProfile.status,
-            ...omitUndefined({
-              legalBusinessName: billingProfile.legalBusinessName,
-              taxId: billingProfile.taxId,
-              vatReportingType: billingProfile.vatReportingType,
-              billingEmail: billingProfile.billingEmail,
-              billingPhone: billingProfile.billingPhone,
-              billingAddress: billingProfile.billingAddress,
-              completedAt: billingProfile.completedAt,
-            }),
-          }
-        : null,
-      paymentProfile: paymentProfile
-        ? {
-            provider: paymentProfile.provider,
-            status: paymentProfile.status,
-            ...omitUndefined({
-              providerCustomerId: paymentProfile.providerCustomerId,
-              providerMerchantId: paymentProfile.providerMerchantId,
-              providerReference: paymentProfile.providerReference,
-              displayName: paymentProfile.displayName,
-              requirementsSummary: paymentProfile.requirementsSummary,
-              chargesEnabled: paymentProfile.chargesEnabled,
-              payoutsEnabled: paymentProfile.payoutsEnabled,
-              readyForChargesAt: paymentProfile.readyForChargesAt,
-              readyForPayoutsAt: paymentProfile.readyForPayoutsAt,
-              lastSyncedAt: paymentProfile.lastSyncedAt,
-            }),
-          }
-        : null,
-    };
+    return await getStudioComplianceDetailsRead(ctx, { studioId: studio._id });
   },
 });
 

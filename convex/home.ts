@@ -9,6 +9,11 @@ export const getMyInstructorHomeStats = query({
     openMatches: v.number(),
     pendingApplications: v.number(),
     totalEarningsAgorot: v.number(),
+    paidOutAmountAgorot: v.number(),
+    outstandingAmountAgorot: v.number(),
+    availableAmountAgorot: v.number(),
+    heldAmountAgorot: v.number(),
+    currency: v.string(),
     earningsEvents: v.array(
       v.object({
         timestamp: v.number(),

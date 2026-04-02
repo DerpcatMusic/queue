@@ -5,16 +5,14 @@ import { HomeAgendaWidget } from "@/components/home/home-agenda-widget";
 import { HomeSurface, useHomeDashboardLayout } from "@/components/home/home-dashboard-layout";
 import { HomeSignalTile } from "@/components/home/home-shared";
 import { JobCarouselDots } from "@/components/home/job-carousel-dots";
-import {
-  InstructorJobCard,
-  type InstructorMarketplaceJob,
-} from "@/components/jobs/instructor/instructor-job-card";
+import { InstructorJobCard } from "@/components/jobs/instructor/instructor-job-card";
 import { useScrollSheetBindings } from "@/components/layout/scroll-sheet-provider";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
+import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 import { useTheme } from "@/hooks/use-theme";
 
 type UpcomingSession = {
@@ -30,11 +28,11 @@ type InstructorHomeContentProps = {
   currencyFormatter: Intl.NumberFormat;
   locale: string;
   now: number;
-  lessonsCompleted: number;
   pendingApplications: number;
   availableJobs?: InstructorMarketplaceJob[] | undefined;
   t: TFunction;
-  totalEarningsAgorot: number;
+  paidOutAmountAgorot: number;
+  outstandingAmountAgorot: number;
   upcomingSessions: UpcomingSession[];
   onOpenJobs: () => void;
   onOpenStudio: (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => void;
@@ -81,11 +79,11 @@ export function InstructorHomeContent({
   currencyFormatter,
   locale,
   now,
-  lessonsCompleted,
   pendingApplications,
   availableJobs,
   t,
-  totalEarningsAgorot,
+  paidOutAmountAgorot,
+  outstandingAmountAgorot,
   upcomingSessions,
   onOpenJobs,
   onOpenStudio,
@@ -108,8 +106,8 @@ export function InstructorHomeContent({
 
   const availableJobsCount = availableJobs?.length ?? 0;
   const visibleAvailableJobs = (availableJobs ?? []).slice(0, 4);
-  const earningsLabel = currencyFormatter.format(totalEarningsAgorot / 100);
-  const completionLabel = String(lessonsCompleted);
+  const paidOutLabel = currencyFormatter.format(paidOutAmountAgorot / 100);
+  const outstandingLabel = currencyFormatter.format(outstandingAmountAgorot / 100);
 
   const hasJobs = visibleAvailableJobs.length > 0;
 
@@ -203,16 +201,18 @@ export function InstructorHomeContent({
               </View>
               <View style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
                 <HomeSignalTile
-                  label={t("home.performance.earnings")}
-                  value={earningsLabel}
+                  label={t("profile.payments.paidOut")}
+                  value={paidOutLabel}
                   tone="success"
                   icon="banknote"
                 />
                 <HomeSignalTile
-                  label={t("home.shared.jobsFilled")}
-                  value={completionLabel}
-                  tone="accent"
-                  icon="checkmark.circle.fill"
+                  label={t("home.instructor.stillOwed")}
+                  value={outstandingLabel}
+                  tone={outstandingAmountAgorot > 0 ? "warning" : "accent"}
+                  icon={
+                    outstandingAmountAgorot > 0 ? "clock.badge.checkmark" : "checkmark.circle.fill"
+                  }
                 />
               </View>
             </View>

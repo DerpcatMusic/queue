@@ -21,6 +21,7 @@ type TabScreenRootScrollProps = BaseProps & {
 
 type TabScreenRootStaticProps = BaseProps & {
   mode: "static";
+  sheetInsets?: ScreenScaffoldSheetInsets;
 };
 
 export type TabScreenRootProps = PropsWithChildren<
@@ -34,6 +35,7 @@ export function TabScreenRoot(props: TabScreenRootProps) {
         mode="static"
         style={props.style}
         {...(props.topInsetTone ? { topInsetTone: props.topInsetTone } : {})}
+        {...(props.sheetInsets ? { sheetInsets: props.sheetInsets } : {})}
       >
         {props.children}
       </ScreenScaffold>

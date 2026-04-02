@@ -57,39 +57,19 @@ describe("top-sheet helpers", () => {
   });
 
   describe("computeAvailableHeight", () => {
-    it("subtracts safe top and explicit bottom chrome from screen height", () => {
-      const result = computeAvailableHeight(800, 50, 100, 150);
-      expect(result).toBe(600);
+    it("returns the measured scene viewport height", () => {
+      const result = computeAvailableHeight(800);
+      expect(result).toBe(800);
     });
 
-    it("uses default bottom chrome when safeBottom+64 exceeds MIN_BOTTOM_CHROME_ESTIMATE", () => {
-      const result = computeAvailableHeight(800, 50, 30);
-      expect(result).toBe(656);
+    it("clamps negative heights to zero", () => {
+      const result = computeAvailableHeight(-20);
+      expect(result).toBe(0);
     });
 
-    it("uses provided bottom chrome estimate when explicit", () => {
-      const result = computeAvailableHeight(800, 50, 100, 200);
-      expect(result).toBe(550);
-    });
-
-    it("handles zero safe top with explicit bottom chrome", () => {
-      const result = computeAvailableHeight(800, 0, 100, 150);
-      expect(result).toBe(650);
-    });
-
-    it("handles zero safe bottom using default chrome", () => {
-      const result = computeAvailableHeight(800, 50, 0);
-      expect(result).toBe(670);
-    });
-
-    it("handles zero safe areas using default bottom chrome minimum", () => {
-      const result = computeAvailableHeight(800, 0, 0);
-      expect(result).toBe(720);
-    });
-
-    it("handles large explicit bottom chrome", () => {
-      const result = computeAvailableHeight(800, 100, 150, 200);
-      expect(result).toBe(500);
+    it("handles zero scene height", () => {
+      const result = computeAvailableHeight(0);
+      expect(result).toBe(0);
     });
   });
 

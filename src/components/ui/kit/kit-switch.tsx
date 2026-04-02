@@ -1,6 +1,11 @@
 import { useEffect } from "react";
 import { Pressable, StyleSheet } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 import { BrandRadius } from "@/constants/brand";
 import { triggerSelectionHaptic } from "./native-interaction";
@@ -24,6 +29,7 @@ const TRACK_HEIGHT = 32;
 const TRACK_PADDING = 3;
 const THUMB_SIZE = 26;
 const THUMB_DISTANCE = TRACK_WIDTH - TRACK_PADDING * 2 - THUMB_SIZE;
+const THUMB_RADIUS = 9;
 
 export function KitSwitch({
   value,
@@ -49,7 +55,10 @@ export function KitSwitch({
   }));
 
   const thumbStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: progress.value * THUMB_DISTANCE }],
+    transform: [
+      { translateX: progress.value * THUMB_DISTANCE },
+      { rotate: `${interpolate(progress.value, [0, 1], [0, 180])}deg` },
+    ],
     backgroundColor: value ? interaction.switchThumbOn : interaction.switchThumbOff,
   }));
   return (
@@ -87,7 +96,7 @@ export function KitSwitch({
             {
               width: THUMB_SIZE,
               height: THUMB_SIZE,
-              borderRadius: THUMB_SIZE / 2,
+              borderRadius: THUMB_RADIUS,
             },
             thumbStyle,
           ]}

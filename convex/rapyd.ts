@@ -947,13 +947,15 @@ export const createBeneficiaryOnboardingForInstructor = action({
     if (!currentUser || currentUser.role !== "instructor") {
       throw new ConvexError("Only instructors can onboard payout destinations");
     }
+    const internalAccess = await ctx.runQuery(api.internalAccess.getMyInternalAccess, {});
     const verificationContext = await ctx.runQuery(
       internal.didit.getCurrentInstructorVerificationContext,
       {},
     );
     if (
-      !verificationContext ||
-      verificationContext.instructorProfile.diditVerificationStatus !== "approved"
+      !internalAccess.verificationBypass &&
+      (!verificationContext ||
+        verificationContext.instructorProfile.diditVerificationStatus !== "approved")
     ) {
       throw new ConvexError(
         "Identity verification is required before payout onboarding. Complete Didit verification first.",

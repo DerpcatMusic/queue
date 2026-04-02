@@ -3,6 +3,8 @@ import { View } from "react-native";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { QueueMap } from "@/components/maps/queue-map";
 import type { QueueMapPin, StudioMapMarker } from "@/components/maps/queue-map.types";
+import { StudioMapDetailModal } from "@/components/maps/studio-map-detail-modal";
+import { ZoneStudioSummary } from "@/components/maps/zone-studio-summary";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandSpacing } from "@/constants/brand";
@@ -25,7 +27,14 @@ type MapMobileStageProps = {
     left: number;
   };
   studios: StudioMapMarker[];
+  selectedStudio: StudioMapMarker | null;
+  selectedStudioId: string | null;
+  focusedZoneLabel: string | null;
+  focusedZoneStudioCount: number;
+  zoneLanguage: "en" | "he";
   onPressStudio: (studioId: string) => void;
+  onCloseStudio: () => void;
+  onOpenStudioProfile: (studioId: string) => void;
   onPressZone: (zoneId: string) => void;
   onPressMap: () => void;
   onEditToggle: () => void;
@@ -43,7 +52,14 @@ export function MapMobileStage({
   overlayBottom,
   cameraPadding,
   studios,
+  selectedStudio,
+  selectedStudioId,
+  focusedZoneLabel,
+  focusedZoneStudioCount,
+  zoneLanguage,
   onPressStudio,
+  onCloseStudio,
+  onOpenStudioProfile,
   onPressZone,
   onPressMap,
   onEditToggle,
@@ -67,6 +83,7 @@ export function MapMobileStage({
         isEditing={zoneModeActive}
         cameraPadding={cameraPadding}
         studios={studios}
+        selectedStudioId={selectedStudioId}
         onPressStudio={onPressStudio}
         onPressZone={handleZonePress}
         onPressMap={onPressMap}
@@ -96,6 +113,25 @@ export function MapMobileStage({
           }
         />
       </TabOverlayAnchor>
+
+      {zoneModeActive && focusedZoneLabel ? (
+        <TabOverlayAnchor
+          side="left"
+          offset={BrandSpacing.lg}
+          style={{
+            bottom: (overlayBottom ?? BrandSpacing.lg) + BrandSpacing.xxl + BrandSpacing.lg,
+          }}
+        >
+          <ZoneStudioSummary zoneLabel={focusedZoneLabel} count={focusedZoneStudioCount} />
+        </TabOverlayAnchor>
+      ) : null}
+
+      <StudioMapDetailModal
+        studio={selectedStudio}
+        zoneLanguage={zoneLanguage}
+        onClose={onCloseStudio}
+        onOpenStudio={onOpenStudioProfile}
+      />
     </View>
   );
 }

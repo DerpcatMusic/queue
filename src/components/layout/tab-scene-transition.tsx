@@ -1,32 +1,45 @@
 import { useIsFocused } from "@react-navigation/native";
 import { type PropsWithChildren, useEffect } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from "react-native-reanimated";
 
-import {
-  ANIMATION_DURATION_TAB_CONTENT,
-  TAB_CONTENT_INACTIVE_OPACITY,
-  TAB_CONTENT_INACTIVE_SCALE,
-} from "./top-sheet-constants";
+import { ANIMATION_DURATION_TAB_CONTENT } from "./top-sheet-constants";
+
+const TAB_CONTENT_EASING = Easing.bezier(0.22, 1, 0.36, 1);
+const TAB_SCENE_HIDDEN_OPACITY = 0;
+const TAB_SCENE_FADE_OUT_DURATION = 96;
+const TAB_SCENE_FADE_IN_DELAY = 60;
 
 export function useTabSceneTransitionStyle() {
   const isFocused = useIsFocused();
-  const animatedFocusProgress = useSharedValue(isFocused ? 1 : 0);
+  const animatedOpacity = useSharedValue(isFocused ? 1 : 0);
 
   useEffect(() => {
-    animatedFocusProgress.value = withTiming(isFocused ? 1 : 0, {
-      duration: ANIMATION_DURATION_TAB_CONTENT,
-    });
-  }, [animatedFocusProgress, isFocused]);
+    cancelAnimation(animatedOpacity);
+    animatedOpacity.value = isFocused
+      ? withDelay(
+          TAB_SCENE_FADE_IN_DELAY,
+          withTiming(1, {
+            duration: ANIMATION_DURATION_TAB_CONTENT,
+            easing: TAB_CONTENT_EASING,
+          }),
+        )
+      : withTiming(TAB_SCENE_HIDDEN_OPACITY, {
+          duration: TAB_SCENE_FADE_OUT_DURATION,
+          easing: TAB_CONTENT_EASING,
+        });
+  }, [animatedOpacity, isFocused]);
 
   return useAnimatedStyle(() => {
-    const progress = animatedFocusProgress.value;
-    const opacity = TAB_CONTENT_INACTIVE_OPACITY + (1 - TAB_CONTENT_INACTIVE_OPACITY) * progress;
-    const scale = TAB_CONTENT_INACTIVE_SCALE + (1 - TAB_CONTENT_INACTIVE_SCALE) * progress;
-
     return {
-      opacity,
-      transform: [{ scale }],
+      opacity: animatedOpacity.value,
     };
   });
 }

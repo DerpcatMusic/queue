@@ -2,11 +2,18 @@
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, View } from "react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
-import { IdentityStatusBadge } from "@/components/profile/identity-status-ui";
+import {
+  IdentityStatusBadge,
+  getIdentityStatusLabel,
+} from "@/components/profile/identity-status-ui";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { KitTextField } from "@/components/ui/kit";
+import {
+  getStudioBlockingSummary as getSharedStudioBlockingSummary,
+  getStudioPaymentSubtitle,
+} from "@/features/compliance/compliance-ui";
 
 type StudioDiditVerification = { status: string; isVerified: boolean; legalName?: string };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,21 +52,13 @@ interface StepStudioComplianceBodyProps {
   styles: OnboardingStyles;
 }
 
-function getIdentityStatusLabel(status: string): string { return status; }
 function getStudioBlockingSummary(reasons: string[], t: ReturnType<typeof useTranslation>["t"]): string {
-  return reasons.map((reason) => {
-    switch (reason) {
-      case "owner_identity_required": return t("profile.studioCompliance.blockers.identity");
-      case "business_profile_required": return t("profile.studioCompliance.blockers.billing");
-      case "payment_method_required": return t("profile.studioCompliance.blockers.payment");
-      default: return reason;
-    }
-  }).join(" · ");
+  return getSharedStudioBlockingSummary(reasons, t);
 }
 
 export function StepStudioComplianceBody({ currentUser, studioDiditVerification, onboardingStudioCompliance, verificationFeedback, setVerificationFeedback, isStartingStudioDidit, isSavingStudioBilling, studioLegalEntityType, setStudioLegalEntityType, studioVatReportingType, setStudioVatReportingType, studioLegalBusinessName, setStudioLegalBusinessName, studioTaxId, setStudioTaxId, studioBillingEmail, setStudioBillingEmail, studioBillingAddress, setStudioBillingAddress, router, buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES, saveStudioBillingFromOnboarding, startStudioDiditFromOnboarding, refreshStudioDiditFromOnboarding, styles, }: StepStudioComplianceBodyProps) {
   const { t } = useTranslation();
-  const color = { primary: "#8B5CF6", textMuted: "#6B7280", surface: "#FFFFFF", surfaceAlt: "#F9FAFB", borderStrong: "#E5E7EB" };
+  const color = { primary: "#8B5CF6", textMuted: "#6B7280", surface: "#FFFFFF", surfaceAlt: "#F9FAFB", borderStrong: "#E5E7EB", onPrimary: "#FFFFFF" };
 
   if (currentUser?.role !== "studio" || studioDiditVerification == null || onboardingStudioCompliance == null) {
     return (
@@ -87,7 +86,7 @@ export function StepStudioComplianceBody({ currentUser, studioDiditVerification,
       <View style={[styles.verificationCard, { backgroundColor: color.surfaceAlt, borderColor: color.borderStrong }]}>
         <View style={styles.verificationCardHeader}><ThemedText type="defaultSemiBold">{t("profile.studioCompliance.sections.identity")}</ThemedText><IdentityStatusBadge status={studioDiditState.status} /></View>
         <ThemedText style={{ color: color.textMuted }}>{studioDiditState.isVerified ? t("profile.studioCompliance.identity.approvedBody", { legalName: studioDiditState.legalName ?? currentUser.fullName ?? t("profile.account.fallbackName") }) : t("profile.studioCompliance.identity.requiredBody", { status: getIdentityStatusLabel(studioDiditState.status) })}</ThemedText>
-        <ActionButton label={studioDiditState.isVerified ? t("profile.studioCompliance.actions.refreshIdentity") : t("profile.studioCompliance.actions.startIdentity")} fullWidth loading={isStartingStudioDidit} disabled={isStartingStudioDidit} onPress={() => { if (studioDiditState.isVerified) { void refreshStudioDiditFromOnboarding(); return; } void startStudioDiditFromOnboarding(); }} />
+        <ActionButton label={studioDiditState.isVerified ? t("profile.studioCompliance.actions.refreshIdentity") : t("profile.identityVerification.verifyNow")} fullWidth native={false} loading={isStartingStudioDidit} disabled={isStartingStudioDidit} {...(!studioDiditState.isVerified ? { colors: { backgroundColor: color.primary, pressedBackgroundColor: color.primary, disabledBackgroundColor: color.surfaceAlt, labelColor: color.onPrimary, disabledLabelColor: color.onPrimary, nativeTintColor: color.primary } } : {})} labelStyle={{ textTransform: "uppercase", letterSpacing: 0.8, fontWeight: "700" }} onPress={() => { if (studioDiditState.isVerified) { void refreshStudioDiditFromOnboarding(); return; } void startStudioDiditFromOnboarding(); }} />
       </View>
       <View style={[styles.verificationCard, { backgroundColor: color.surfaceAlt, borderColor: color.borderStrong }]}>
         <View style={styles.sectionBlock}>
@@ -106,7 +105,7 @@ export function StepStudioComplianceBody({ currentUser, studioDiditVerification,
       </View>
       <View style={[styles.verificationCard, { backgroundColor: color.surfaceAlt, borderColor: color.borderStrong }]}>
         <View style={styles.verificationCardHeader}><ThemedText type="defaultSemiBold">{t("profile.studioCompliance.sections.payment")}</ThemedText><ThemedText type="caption" style={{ color: color.textMuted }}>{studioComplianceDetails.summary.paymentStatus === "ready" ? t("profile.compliance.values.approved") : t("profile.compliance.values.pending")}</ThemedText></View>
-        <ThemedText style={{ color: color.textMuted }}>{t(studioComplianceDetails.summary.paymentStatus === "ready" ? "profile.studioCompliance.payment.readyBody" : studioComplianceDetails.summary.paymentReadinessSource === "legacy_env" ? "onboarding.verification.studioPaymentGroundwork" : "profile.studioCompliance.payment.pendingBody")}</ThemedText>
+        <ThemedText style={{ color: color.textMuted }}>{getStudioPaymentSubtitle({ status: studioComplianceDetails.summary.paymentStatus, paymentReadinessSource: studioComplianceDetails.summary.paymentReadinessSource }, t)}</ThemedText>
         <ActionButton label={t("onboarding.verification.openCompliance")} tone="secondary" fullWidth onPress={() => router.replace("/studio/profile/compliance")} />
       </View>
       <View style={styles.verifyActions}>

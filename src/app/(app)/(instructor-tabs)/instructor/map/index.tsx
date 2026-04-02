@@ -14,7 +14,9 @@ export default function MapTabRoute() {
     <MapTabScreen controller={controller} />
   );
   useTabSceneDescriptor({ tabId: "map", body: descriptorBody, insetTone: "sheet" });
-  useGlobalTopSheet("map", controller.mapSheetConfig, "map:instructor-route");
+  useGlobalTopSheet("map", controller.mapSheetConfig, "map:instructor-route", {
+    routeMatchPath: "/instructor/map",
+  });
 
   return descriptorBody;
 }

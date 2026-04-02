@@ -14,6 +14,7 @@ export const StudioJobsList = memo(function StudioJobsList({
   zoneLanguage,
   reviewingApplicationId,
   payingJobId,
+  onInstructorPress,
   onReview,
   onStartPayment,
   onJobPress,
@@ -31,6 +32,7 @@ export const StudioJobsList = memo(function StudioJobsList({
         zoneLanguage={zoneLanguage}
         reviewingApplicationId={reviewingApplicationId}
         payingJobId={payingJobId}
+        {...(onInstructorPress ? { onInstructorPress } : {})}
         onReview={onReview}
         onStartPayment={onStartPayment}
         onJobPress={onJobPress}
@@ -40,6 +42,7 @@ export const StudioJobsList = memo(function StudioJobsList({
     [
       isWideWeb,
       locale,
+      onInstructorPress,
       onReview,
       onStartPayment,
       onJobPress,

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as access from "../access.js";
 import type * as auth from "../auth.js";
 import type * as calendar from "../calendar.js";
 import type * as calendarNode from "../calendarNode.js";
@@ -25,6 +26,7 @@ import type * as instructorZones from "../instructorZones.js";
 import type * as integrations_rapyd_client from "../integrations/rapyd/client.js";
 import type * as integrations_rapyd_config from "../integrations/rapyd/config.js";
 import type * as integrations_rapyd_payloads from "../integrations/rapyd/payloads.js";
+import type * as internalAccess from "../internalAccess.js";
 import type * as invoicing from "../invoicing.js";
 import type * as jobs from "../jobs.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -35,6 +37,7 @@ import type * as lib_domainValidation from "../lib/domainValidation.js";
 import type * as lib_instructorCompliance from "../lib/instructorCompliance.js";
 import type * as lib_instructorCoverage from "../lib/instructorCoverage.js";
 import type * as lib_instructorEligibility from "../lib/instructorEligibility.js";
+import type * as lib_internalAccess from "../lib/internalAccess.js";
 import type * as lib_marketplace from "../lib/marketplace.js";
 import type * as lib_notificationPreferences from "../lib/notificationPreferences.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
@@ -67,6 +70,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  access: typeof access;
   auth: typeof auth;
   calendar: typeof calendar;
   calendarNode: typeof calendarNode;
@@ -84,6 +88,7 @@ declare const fullApi: ApiFromModules<{
   "integrations/rapyd/client": typeof integrations_rapyd_client;
   "integrations/rapyd/config": typeof integrations_rapyd_config;
   "integrations/rapyd/payloads": typeof integrations_rapyd_payloads;
+  internalAccess: typeof internalAccess;
   invoicing: typeof invoicing;
   jobs: typeof jobs;
   "lib/auth": typeof lib_auth;
@@ -94,6 +99,7 @@ declare const fullApi: ApiFromModules<{
   "lib/instructorCompliance": typeof lib_instructorCompliance;
   "lib/instructorCoverage": typeof lib_instructorCoverage;
   "lib/instructorEligibility": typeof lib_instructorEligibility;
+  "lib/internalAccess": typeof lib_internalAccess;
   "lib/marketplace": typeof lib_marketplace;
   "lib/notificationPreferences": typeof lib_notificationPreferences;
   "lib/rateLimit": typeof lib_rateLimit;

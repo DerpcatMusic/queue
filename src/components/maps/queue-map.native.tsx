@@ -1,9 +1,10 @@
 import {
   Camera,
   GeoJSONSource,
-  Images,
   Layer,
   Map as MapLibreMap,
+  type MapRef,
+  Marker,
 } from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -23,14 +24,14 @@ import { KitSurface } from "../ui/kit";
 import {
   type AnyStyleSpec,
   createPinShape,
-  createStudioMarkersGeoJson,
   createZoneFilter,
   ensureVectorOfflinePack,
-  getStudioMarkerImageEntries,
   sanitizeZoom,
+  selectRenderableStudioMarkers,
   toBounds,
 } from "./queue-map.native.helpers";
 import type { QueueMapProps } from "./queue-map.types";
+import { STUDIO_MAP_MARKER_OUTER_SIZE, StudioMapMarkerView } from "./studio-map-marker-view";
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 180;
@@ -44,6 +45,7 @@ export const QueueMap = memo(function QueueMap({
   zoneGeoJson,
   zoneIdProperty = "id",
   studios,
+  selectedStudioId,
   onPressStudio,
   onPressZone,
   onPressMap,
@@ -67,9 +69,7 @@ export const QueueMap = memo(function QueueMap({
   const mapStyle = customMapStyle;
   const mapKey = resolvedScheme;
 
-  const mapRef = useRef<{
-    showAttribution?: () => void;
-  } | null>(null);
+  const mapRef = useRef<MapRef | null>(null);
   const mapLoadStateRef = useRef<MapLoadState>("loading");
   const cameraRef = useRef<{
     fitBounds: (
@@ -88,21 +88,23 @@ export const QueueMap = memo(function QueueMap({
     [selectedZoneIds, zoneIdProperty],
   );
   const pinShape = useMemo(() => createPinShape(pin), [pin]);
-  const studioMarkersGeoJSON = useMemo(
-    () => createStudioMarkersGeoJson(studios ?? [], "logo"),
-    [studios],
+  const [markerZoomLevel, setMarkerZoomLevel] = useState<number | null>(null);
+  const [markerBounds, setMarkerBounds] = useState<{
+    sw: [number, number];
+    ne: [number, number];
+  } | null>(null);
+  const renderableStudios = useMemo(
+    () =>
+      selectRenderableStudioMarkers(studios ?? [], {
+        bounds: markerBounds,
+        zoomLevel: markerZoomLevel,
+        selectedStudioId: selectedStudioId ?? null,
+      }),
+    [markerBounds, markerZoomLevel, selectedStudioId, studios],
   );
-  const studioImageEntries = useMemo(() => getStudioMarkerImageEntries(studios ?? []), [studios]);
   const handleMapPress = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (event: any) => {
-      const features = event?.nativeEvent?.features ?? [];
-      const firstFeature = features[0];
-      // Studio marker tapped — navigate to studio profile
-      if (firstFeature?.properties?.studioId) {
-        onPressStudio?.(firstFeature.properties.studioId);
-        return;
-      }
       // Pin-drop mode: record dropped pin coordinate
       if (mode !== "pinDrop") return;
       if (!onPressMap) return;
@@ -111,8 +113,42 @@ export const QueueMap = memo(function QueueMap({
       if (!coordinates) return;
       onPressMap({ latitude: coordinates[1], longitude: coordinates[0] });
     },
-    [mode, onPressMap, onPressStudio],
+    [mode, onPressMap],
   );
+
+  const syncMarkerViewport = useCallback(async () => {
+    try {
+      const [bounds, zoom] = await Promise.all([
+        mapRef.current?.getBounds(),
+        mapRef.current?.getZoom(),
+      ]);
+
+      if (bounds) {
+        setMarkerBounds((current) => {
+          const next = {
+            sw: [bounds[0], bounds[1]] as [number, number],
+            ne: [bounds[2], bounds[3]] as [number, number],
+          };
+          if (
+            current &&
+            current.sw[0] === next.sw[0] &&
+            current.sw[1] === next.sw[1] &&
+            current.ne[0] === next.ne[0] &&
+            current.ne[1] === next.ne[1]
+          ) {
+            return current;
+          }
+          return next;
+        });
+      }
+
+      if (typeof zoom === "number") {
+        setMarkerZoomLevel((current) => (current === zoom ? current : zoom));
+      }
+    } catch {
+      // Ignore transient native errors while the map settles.
+    }
+  }, []);
 
   const updateMapLoadState = useCallback(
     (nextState: MapLoadState, errorMessage?: string | null) => {
@@ -162,6 +198,7 @@ export const QueueMap = memo(function QueueMap({
 
   useEffect(() => {
     if (mapLoadState !== "ready") return;
+    void syncMarkerViewport();
 
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -193,7 +230,7 @@ export const QueueMap = memo(function QueueMap({
         clearTimeout(timeoutId);
       }
     };
-  }, [mapLoadState]);
+  }, [mapLoadState, syncMarkerViewport]);
 
   useEffect(() => {
     if (!focusZoneId) return;
@@ -261,6 +298,9 @@ export const QueueMap = memo(function QueueMap({
         onWillStartLoadingMap={handleWillStartLoadingMap}
         onDidFinishLoadingMap={handleDidFinishLoadingMap}
         onDidFailLoadingMap={handleDidFailLoadingMap}
+        onRegionDidChange={() => {
+          void syncMarkerViewport();
+        }}
         onPress={handleMapPress as any}
       >
         <Camera
@@ -278,6 +318,7 @@ export const QueueMap = memo(function QueueMap({
           mode={mode}
           isEditing={isEditing}
           showLabelLayers={mode !== "zoneSelect" || isEditing}
+          selectedZoneIds={selectedZoneIds}
           selectedZoneFilter={selectedZoneFilter}
           zoneGeoJson={zoneGeoJson}
           zoneIdProperty={zoneIdProperty}
@@ -298,27 +339,27 @@ export const QueueMap = memo(function QueueMap({
           />
         </GeoJSONSource>
 
-        {Object.keys(studioImageEntries).length > 0 ? (
-          <>
-            <Images images={studioImageEntries} />
-            <GeoJSONSource id="studio-markers" data={studioMarkersGeoJSON}>
-              <Layer
-                id="studio-markers-symbol"
-                type="symbol"
-                layout={{
-                  "icon-image": ["case", ["get", "hasImage"], ["get", "imageKey"], ""],
-                  "icon-size": 0.3,
-                  "icon-anchor": "bottom",
-                  "icon-allow-overlap": true,
-                  "icon-offset": [0, -12],
-                }}
-                paint={{
-                  "icon-opacity": 1,
-                }}
+        {renderableStudios.map((studio) => (
+          <Marker
+            key={studio.studioId}
+            id={`studio-marker:${studio.studioId}`}
+            lngLat={[studio.longitude, studio.latitude]}
+            anchor="top-left"
+            offset={[-STUDIO_MAP_MARKER_OUTER_SIZE / 2, -STUDIO_MAP_MARKER_OUTER_SIZE / 2]}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={studio.studioName}
+              onPress={() => onPressStudio?.(studio.studioId)}
+              style={{ width: STUDIO_MAP_MARKER_OUTER_SIZE, height: STUDIO_MAP_MARKER_OUTER_SIZE }}
+            >
+              <StudioMapMarkerView
+                studio={studio}
+                selected={selectedStudioId === studio.studioId}
               />
-            </GeoJSONSource>
-          </>
-        ) : null}
+            </Pressable>
+          </Marker>
+        ))}
       </MapLibreMap>
 
       {mapLoadState === "loading" && showLoadingOverlay ? (

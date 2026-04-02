@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import type { InstructorMarketplaceJob } from "@/components/jobs/instructor/instructor-job-card";
+import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";

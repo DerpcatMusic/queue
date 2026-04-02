@@ -16,6 +16,11 @@ export type StudioMapMarker = {
   mapMarkerColor?: string;
 };
 
+export type QueueMapBounds = {
+  sw: [number, number];
+  ne: [number, number];
+};
+
 export type QueueMapMode = "zoneSelect" | "pinDrop";
 
 export type QueueMapViewPadding = {
@@ -29,6 +34,7 @@ export type QueueMapProps = {
   mode: QueueMapMode;
   pin: QueueMapPin | null;
   studios?: StudioMapMarker[];
+  selectedStudioId?: string | null;
   selectedZoneIds: string[];
   focusZoneId: string | null;
   isEditing?: boolean;

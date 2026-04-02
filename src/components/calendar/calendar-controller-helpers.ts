@@ -29,9 +29,25 @@ export type TimelineRow = {
   lessonId: string;
   source: "job" | "google";
   roleView: "instructor" | "studio";
+  studioId?: string;
   studioName: string;
+  studioProfileImageUrl?: string;
   instructorName?: string;
+  instructorProfileImageUrl?: string;
   sport: string;
+  zone?: string;
+  pay?: number;
+  note?: string;
+  checkInStatus?: "verified" | "rejected";
+  checkInReason?:
+    | "verified"
+    | "outside_radius"
+    | "accuracy_too_low"
+    | "sample_too_old"
+    | "outside_check_in_window"
+    | "branch_location_missing";
+  checkedInAt?: number;
+  checkInDistanceMeters?: number;
   startTime: number;
   endTime: number;
   status: "open" | "filled" | "cancelled" | "completed" | "confirmed" | "tentative";
@@ -56,7 +72,7 @@ export type AgendaSection = {
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const CACHE_TTL_MS = 15 * 60 * 1000;
-export const CACHE_VERSION = 3;
+export const CACHE_VERSION = 4;
 export const TIMELINE_RANGE_DAYS = 120;
 export const TIMELINE_EXTEND_BUFFER_DAYS = 90;
 export const TIMELINE_PREFETCH_THRESHOLD_DAYS = 35;
@@ -97,7 +113,7 @@ export function buildTimelineRowsSignature(rows: TimelineRow[]) {
   return rows
     .map(
       (row) =>
-        `${row.source}:${row.lessonId}:${row.sport}:${row.startTime}:${row.endTime}:${row.status}:${row.lifecycle}`,
+        `${row.source}:${row.lessonId}:${row.sport}:${row.startTime}:${row.endTime}:${row.status}:${row.lifecycle}:${row.checkInStatus ?? "none"}:${row.checkInReason ?? "none"}:${row.checkedInAt ?? "none"}`,
     )
     .sort()
     .join("|");

@@ -36,6 +36,7 @@ export type QueueMapAppleTheme = {
     selectionFillOpacity: number;
     selectionOutlineWidth: number;
     selectionOutlineOpacity: number;
+    selectionTransitionDuration: number;
     touchFillOpacity: number;
     pinRadius: number;
     pinStrokeWidth: number;
@@ -80,6 +81,7 @@ export const APPLE_MAP_THEME: QueueMapAppleTheme = {
     selectionFillOpacity: 0.16,
     selectionOutlineWidth: 2.2,
     selectionOutlineOpacity: 0.95,
+    selectionTransitionDuration: 240,
     touchFillOpacity: 0.05,
     pinRadius: 6,
     pinStrokeWidth: 2,

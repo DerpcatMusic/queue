@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { getRapydEnvPresence } from "../integrations/rapyd/config";
+import { resolveInternalAccessForUserId } from "./internalAccess";
 import { omitUndefined } from "./validation";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -58,6 +59,7 @@ export const studioComplianceSummaryValidator = v.object({
   canCreateDraftJobs: v.boolean(),
   canPublishJobs: v.boolean(),
   canRunPayments: v.boolean(),
+  verificationBypassed: v.boolean(),
   blockingReasons: v.array(studioComplianceBlockReasonValidator),
   ownerIdentityStatus: studioOwnerIdentityStatusValidator,
   diditStatus: v.optional(v.string()),
@@ -146,6 +148,26 @@ export async function buildStudioComplianceSummary(
     getStudioBillingProfile(ctx, args.studio._id),
     getStudioPaymentReadiness(ctx, args.studio._id),
   ]);
+  const access = await resolveInternalAccessForUserId(ctx, args.studio.userId);
+  if (access.verificationBypass) {
+    return {
+      canBrowse: true,
+      canCreateDraftJobs: true,
+      canPublishJobs: true,
+      canRunPayments: true,
+      verificationBypassed: true,
+      blockingReasons: [],
+      ownerIdentityStatus: "approved" as const,
+      businessProfileStatus: "complete" as const,
+      paymentStatus: "ready" as const,
+      ...omitUndefined({
+        diditStatus: args.studio.diditVerificationStatus,
+        paymentProvider: paymentReadiness.provider,
+      }),
+      paymentReadinessSource: paymentReadiness.source,
+    };
+  }
+
   const ownerIdentityStatus = getOwnerIdentityStatus(args.studio);
   const businessProfileStatus = getBusinessProfileStatus(billingProfile);
   const paymentStatus = paymentReadiness.status;
@@ -166,6 +188,7 @@ export async function buildStudioComplianceSummary(
     canCreateDraftJobs: true,
     canPublishJobs: blockingReasons.length === 0,
     canRunPayments: paymentStatus === "ready",
+    verificationBypassed: false,
     blockingReasons,
     ownerIdentityStatus,
     businessProfileStatus,

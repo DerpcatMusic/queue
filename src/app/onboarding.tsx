@@ -370,9 +370,9 @@ function OnboardingScreenContent() {
   const verificationQueryArgs = verificationRefreshAt
     ? { now: verificationRefreshAt }
     : {};
-  const diditVerification = useQuery(
-    api.didit.getMyDiditVerification,
-    shouldLoadInstructorVerification ? {} : "skip",
+  const instructorAccessSnapshot = useQuery(
+    api.access.getMyInstructorAccessSnapshot,
+    shouldLoadInstructorVerification ? verificationQueryArgs : "skip",
   );
   const shouldLoadStudioVerification =
     role === "studio" && step === 2 && currentUser?.role === "studio";
@@ -380,23 +380,22 @@ function OnboardingScreenContent() {
     api.users.getMyInstructorSettings,
     shouldLoadInstructorVerification ? {} : "skip",
   );
-  const onboardingCompliance = useQuery(
-    api.compliance.getMyInstructorComplianceDetails,
-    shouldLoadInstructorVerification ? verificationQueryArgs : "skip",
-  );
-  const studioDiditVerification = useQuery(
-    api.didit.getMyStudioDiditVerification,
+  const studioAccessSnapshot = useQuery(
+    api.access.getMyStudioAccessSnapshot,
     shouldLoadStudioVerification ? {} : "skip",
   );
-  const onboardingStudioCompliance = useQuery(
-    api.complianceStudio.getMyStudioComplianceDetails,
-    shouldLoadStudioVerification ? {} : "skip",
-  );
+  const diditVerification = instructorAccessSnapshot?.verification;
+  const onboardingCompliance = instructorAccessSnapshot?.compliance;
+  const studioDiditVerification = studioAccessSnapshot?.verification;
+  const onboardingStudioCompliance = studioAccessSnapshot?.compliance;
   const createStudioDiditSession = useAction(
     api.didit.createSessionForCurrentStudioOwner,
   );
   const refreshStudioDiditVerification = useAction(
     api.didit.refreshMyStudioDiditVerification,
+  );
+  const markMyStudioDiditVerificationAbandoned = useMutation(
+    api.didit.markMyStudioDiditVerificationAbandoned,
   );
   const saveStudioBillingProfile = useMutation(
     api.complianceStudio.upsertMyStudioBillingProfile,
@@ -605,7 +604,9 @@ function OnboardingScreenContent() {
         sessionToken: session.sessionToken,
         locale: i18n.resolvedLanguage ?? "en",
       });
-      if (result.outcome !== "cancelled") {
+      if (result.outcome === "cancelled") {
+        await markMyStudioDiditVerificationAbandoned({});
+      } else {
         const latest = await refreshStudioDiditVerification({});
         setVerificationFeedback({
           tone: "success",

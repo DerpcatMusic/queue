@@ -1,6 +1,7 @@
 import type BottomSheet from "@gorhom/bottom-sheet";
 import { useIsFocused } from "@react-navigation/native";
-import { Redirect } from "expo-router";
+import type { Href } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
@@ -12,9 +13,7 @@ import { StudioJobDetailSheet } from "@/components/jobs/studio/studio-job-detail
 import { StudioJobsArchiveSheet } from "@/components/jobs/studio/studio-jobs-archive-sheet";
 import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
 import { StudioJobsTopSheetHeader } from "@/components/jobs/studio/studio-jobs-top-sheet";
-import {
-  useStudioFeedController,
-} from "@/components/jobs/studio/use-studio-feed-controller";
+import { useStudioFeedController } from "@/components/jobs/studio/use-studio-feed-controller";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
@@ -28,11 +27,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useTheme } from "@/hooks/use-theme";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import { Box, HStack, Text, VStack } from "@/primitives";
 
 export function StudioFeed() {
+  const router = useRouter();
   const theme = useTheme();
   const { t, i18n } = useTranslation();
   const isFocused = useIsFocused();
@@ -138,11 +139,14 @@ export function StudioFeed() {
     },
     [startStudioCheckout],
   );
-  const handleJobPress = useCallback(
-    (jobId: string) => {
-      setSelectedJobId(jobId);
+  const handleJobPress = useCallback((jobId: string) => {
+    setSelectedJobId(jobId);
+  }, []);
+  const handleInstructorPress = useCallback(
+    (instructorId: Id<"instructorProfiles">) => {
+      router.push(`/studio/jobs/instructors/${encodeURIComponent(String(instructorId))}` as Href);
     },
-    [],
+    [router],
   );
 
   const jobsSheetConfig = useMemo(
@@ -181,7 +185,10 @@ export function StudioFeed() {
       toggleStudioPush,
     ],
   );
-  useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:studio-feed");
+  useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:studio-feed", {
+    routeMatchPath: "/studio/jobs",
+    routeMatchExact: true,
+  });
 
   if (currentUser === undefined) {
     return <LoadingScreen label={t("jobsTab.loading")} />;
@@ -280,6 +287,7 @@ export function StudioFeed() {
                     zoneLanguage={zoneLanguage}
                     reviewingApplicationId={isReviewingApplicationId}
                     payingJobId={isStartingCheckoutForJobId}
+                    onInstructorPress={handleInstructorPress}
                     onReview={handleReviewApplication}
                     onStartPayment={handleStartPayment}
                     onJobPress={handleJobPress}
@@ -295,6 +303,7 @@ export function StudioFeed() {
                     zoneLanguage={zoneLanguage}
                     reviewingApplicationId={isReviewingApplicationId}
                     payingJobId={isStartingCheckoutForJobId}
+                    onInstructorPress={handleInstructorPress}
                     onReview={handleReviewApplication}
                     onStartPayment={handleStartPayment}
                     onJobPress={handleJobPress}
@@ -312,6 +321,7 @@ export function StudioFeed() {
                     zoneLanguage={zoneLanguage}
                     reviewingApplicationId={isReviewingApplicationId}
                     payingJobId={isStartingCheckoutForJobId}
+                    onInstructorPress={handleInstructorPress}
                     onReview={handleReviewApplication}
                     onStartPayment={handleStartPayment}
                     onJobPress={handleJobPress}
@@ -444,6 +454,7 @@ export function StudioFeed() {
               void handleReviewApplication(applicationId as any, status);
             }}
             reviewingApplicationId={isReviewingApplicationId}
+            onInstructorPress={handleInstructorPress}
           />
         ) : null}
 

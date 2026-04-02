@@ -1,8 +1,8 @@
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Pressable } from "react-native";
+import { Alert, AppState, type AppStateStatus, Pressable } from "react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
@@ -15,6 +15,20 @@ import { KitSurface } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toCapabilityTagLabel, toSportLabel } from "@/convex/constants";
+import {
+  getCertificateSubtitle as getSharedCertificateSubtitle,
+  getComplianceDocumentValue,
+  getLatestCertificate as getSharedLatestCertificate,
+  getInsuranceSubtitle as getSharedInsuranceSubtitle,
+  getPreferredInsurancePolicy as getSharedPreferredInsurancePolicy,
+} from "@/features/compliance/compliance-ui";
+import {
+  getDiditActionButtonColors,
+  getDiditPrimaryActionLabel,
+  getDiditVerificationStatusPresentation,
+  shouldAutoRefreshDiditStatus,
+  shouldOfferDiditManualRefresh,
+} from "@/features/compliance/didit-ui";
 import {
   isComplianceDocumentUploadError,
   useComplianceDocumentUpload,
@@ -60,40 +74,12 @@ type ComplianceInsuranceRow = {
   reviewedAt?: number;
 };
 
-function formatDate(value: number | undefined, locale: string) {
-  if (!value) return null;
-  return new Date(value).toLocaleDateString(locale, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 function getLatestCertificate(rows: ComplianceCertificateRow[]) {
-  if (rows.length === 0) {
-    return null;
-  }
-
-  return [...rows].sort(
-    (left, right) => (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt),
-  )[0];
+  return getSharedLatestCertificate(rows);
 }
 
 function getPreferredInsurancePolicy(rows: ComplianceInsuranceRow[], now: number) {
-  if (rows.length === 0) {
-    return null;
-  }
-
-  return [...rows].sort((left, right) => {
-    const leftActiveApproved =
-      left.reviewStatus === "approved" && (!left.expiresAt || left.expiresAt > now) ? 1 : 0;
-    const rightActiveApproved =
-      right.reviewStatus === "approved" && (!right.expiresAt || right.expiresAt > now) ? 1 : 0;
-    if (leftActiveApproved !== rightActiveApproved) {
-      return rightActiveApproved - leftActiveApproved;
-    }
-    return (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt);
-  })[0];
+  return getSharedPreferredInsurancePolicy(rows, now);
 }
 
 function getCertificateSubtitle(
@@ -101,46 +87,7 @@ function getCertificateSubtitle(
   locale: string,
   t: ReturnType<typeof useTranslation>["t"],
 ) {
-  if (!row) {
-    return t("profile.compliance.certificate.missingBody");
-  }
-
-  const reviewedAt = formatDate(row.reviewedAt, locale);
-  const coverage = (
-    row.specialties?.map((specialty) => specialty.sport) ?? (row.sport ? [row.sport] : [])
-  )
-    .map((sport) => (isSportType(sport) ? toSportLabel(sport) : sport))
-    .join(", ");
-  switch (row.reviewStatus) {
-    case "approved": {
-      const source = [row.certificateTitle, row.issuerName].filter(Boolean).join(" · ");
-      const summary = [coverage, source].filter(Boolean).join(" · ");
-      if (summary) {
-        return reviewedAt
-          ? t("profile.compliance.certificate.approvedWithSourceAndDate", {
-              source: summary,
-              date: reviewedAt,
-            })
-          : t("profile.compliance.certificate.approvedWithSource", {
-              source: summary,
-            });
-      }
-      return reviewedAt
-        ? t("profile.compliance.certificate.approvedWithDate", {
-            date: reviewedAt,
-          })
-        : t("profile.compliance.certificate.approvedBody");
-    }
-    case "uploaded":
-    case "ai_pending":
-    case "ai_reviewing":
-      return t("profile.compliance.certificate.pendingBody");
-    case "rejected":
-    case "needs_resubmission":
-      return t("profile.compliance.certificate.reuploadBody");
-    default:
-      return t("profile.compliance.certificate.missingBody");
-  }
+  return getSharedCertificateSubtitle(row, locale, t);
 }
 
 function getInsuranceSubtitle(
@@ -148,75 +95,7 @@ function getInsuranceSubtitle(
   locale: string,
   t: ReturnType<typeof useTranslation>["t"],
 ) {
-  if (!row) {
-    return t("profile.compliance.insurance.missingBody");
-  }
-
-  const expiresLabel = formatDate(row.expiresAt, locale);
-  switch (row.reviewStatus) {
-    case "approved":
-      return expiresLabel
-        ? t("profile.compliance.insurance.approvedWithDate", {
-            date: expiresLabel,
-          })
-        : t("profile.compliance.insurance.approvedBody");
-    case "expired":
-      return expiresLabel
-        ? t("profile.compliance.insurance.expiredWithDate", {
-            date: expiresLabel,
-          })
-        : t("profile.compliance.insurance.expiredBody");
-    case "uploaded":
-    case "ai_pending":
-    case "ai_reviewing":
-      return t("profile.compliance.insurance.pendingBody");
-    case "rejected":
-    case "needs_resubmission":
-      return t("profile.compliance.insurance.reuploadBody");
-    default:
-      return t("profile.compliance.insurance.missingBody");
-  }
-}
-
-function getVerificationStatusPresentation(
-  status:
-    | "approved"
-    | "declined"
-    | "in_review"
-    | "pending"
-    | "in_progress"
-    | "abandoned"
-    | "expired"
-    | "not_started"
-    | undefined,
-  theme: ReturnType<typeof useTheme>,
-  t: ReturnType<typeof useTranslation>["t"],
-) {
-  switch (status) {
-    case "approved":
-      return {
-        label: t("profile.compliance.values.approved"),
-        backgroundColor: theme.color.primarySubtle,
-        borderColor: theme.color.primarySubtle,
-        textColor: theme.color.primary,
-      };
-    case "in_review":
-    case "pending":
-    case "in_progress":
-      return {
-        label: t("profile.compliance.values.pending"),
-        backgroundColor: theme.color.tertiarySubtle,
-        borderColor: theme.color.tertiarySubtle,
-        textColor: theme.color.tertiary,
-      };
-    default:
-      return {
-        label: t("profile.compliance.identity.unverified"),
-        backgroundColor: theme.color.tertiarySubtle,
-        borderColor: theme.color.tertiarySubtle,
-        textColor: theme.color.tertiary,
-      };
-  }
+  return getSharedInsuranceSubtitle(row, locale, t);
 }
 
 function getDocumentStatusLabel(
@@ -226,20 +105,7 @@ function getDocumentStatusLabel(
     | undefined,
   t: ReturnType<typeof useTranslation>["t"],
 ) {
-  switch (status) {
-    case "approved":
-      return t("profile.compliance.values.approved");
-    case "uploaded":
-    case "ai_pending":
-    case "ai_reviewing":
-      return t("profile.compliance.values.pending");
-    case "rejected":
-    case "expired":
-    case "needs_resubmission":
-      return t("profile.compliance.values.reupload");
-    default:
-      return t("profile.compliance.actions.upload");
-  }
+  return getComplianceDocumentValue(status, t);
 }
 
 function VerificationUploadPanel({
@@ -318,31 +184,6 @@ function VerificationUploadPanel({
   );
 }
 
-function getDiditActionLabel(
-  status:
-    | "approved"
-    | "declined"
-    | "in_review"
-    | "pending"
-    | "in_progress"
-    | "abandoned"
-    | "expired"
-    | "not_started"
-    | undefined,
-  t: ReturnType<typeof useTranslation>["t"],
-) {
-  switch (status) {
-    case "approved":
-      return t("profile.compliance.actions.refreshIdentity");
-    case "in_review":
-    case "pending":
-    case "in_progress":
-      return t("profile.identityVerification.checkStatus");
-    default:
-      return t("profile.compliance.actions.startIdentity");
-  }
-}
-
 export default function InstructorComplianceScreen() {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
@@ -357,6 +198,7 @@ export default function InstructorComplianceScreen() {
     tone: "success" | "error";
     message: string;
   } | null>(null);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const currentUser = useQuery(api.users.getCurrentUser);
   const complianceArgs =
     currentUser?.role === "instructor" ? (refreshNonce > 0 ? { now: Date.now() } : {}) : "skip";
@@ -364,13 +206,17 @@ export default function InstructorComplianceScreen() {
     api.users.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
   );
-  const diditVerification = useQuery(
-    api.didit.getMyDiditVerification,
-    currentUser?.role === "instructor" ? {} : "skip",
+  const accessSnapshot = useQuery(
+    api.access.getMyInstructorAccessSnapshot,
+    currentUser?.role === "instructor" ? complianceArgs : "skip",
   );
-  const compliance = useQuery(api.compliance.getMyInstructorComplianceDetails, complianceArgs);
+  const diditVerification = accessSnapshot?.verification;
+  const compliance = accessSnapshot?.compliance;
   const createSessionForCurrentInstructor = useAction(api.didit.createSessionForCurrentInstructor);
   const refreshMyDiditVerification = useAction(api.didit.refreshMyDiditVerification);
+  const markMyDiditVerificationAbandoned = useMutation(
+    api.didit.markMyDiditVerificationAbandoned,
+  );
   const { isUploading, pickAndUploadComplianceDocument } = useComplianceDocumentUpload();
 
   const locale = i18n.resolvedLanguage ?? "en";
@@ -414,29 +260,65 @@ export default function InstructorComplianceScreen() {
     [latestCertificate],
   );
 
-  const refreshDiditStatus = useCallback(async () => {
+  const refreshDiditStatus = useCallback(async (options?: { silent?: boolean }) => {
     setIsRefreshingDidit(true);
     try {
       const latest = await refreshMyDiditVerification({});
-      setFeedback({
-        tone: "success",
-        message: latest.isVerified
-          ? t("profile.compliance.feedback.identityApproved")
-          : t("profile.compliance.feedback.identityRefreshStarted"),
-      });
+      if (!options?.silent) {
+        setFeedback({
+          tone: "success",
+          message: latest.isVerified
+            ? t("profile.compliance.feedback.identityApproved")
+            : t("profile.compliance.feedback.identityRefreshStarted"),
+        });
+      }
       setRefreshNonce((value) => value + 1);
     } catch (error) {
-      setFeedback({
-        tone: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : t("profile.compliance.errors.identityStartFailed"),
-      });
+      if (!options?.silent) {
+        setFeedback({
+          tone: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : t("profile.compliance.errors.identityStartFailed"),
+        });
+      }
     } finally {
       setIsRefreshingDidit(false);
     }
   }, [refreshMyDiditVerification, t]);
+
+  useEffect(() => {
+    if (
+      !shouldAutoRefreshDiditStatus(
+        diditVerification?.status,
+        diditVerification?.isVerified ?? false,
+        diditVerification?.sessionId,
+      )
+    ) {
+      return;
+    }
+
+    void refreshDiditStatus({ silent: true });
+
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const wasInactive =
+        appStateRef.current === "background" || appStateRef.current === "inactive";
+      appStateRef.current = nextState;
+      if (nextState === "active" && wasInactive) {
+        void refreshDiditStatus({ silent: true });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [
+    diditVerification?.isVerified,
+    diditVerification?.sessionId,
+    diditVerification?.status,
+    refreshDiditStatus,
+  ]);
 
   const startDiditVerification = useCallback(async () => {
     if (isStartingDidit || isRefreshingDidit) {
@@ -451,7 +333,10 @@ export default function InstructorComplianceScreen() {
         locale,
       });
 
-      if (result.outcome !== "cancelled") {
+      if (result.outcome === "cancelled") {
+        await markMyDiditVerificationAbandoned({});
+        setRefreshNonce((value) => value + 1);
+      } else {
         await refreshDiditStatus();
       }
     } catch (error) {
@@ -470,6 +355,7 @@ export default function InstructorComplianceScreen() {
     isRefreshingDidit,
     isStartingDidit,
     locale,
+    markMyDiditVerificationAbandoned,
     refreshDiditStatus,
     t,
   ]);
@@ -599,31 +485,24 @@ export default function InstructorComplianceScreen() {
   }
 
   const isDiditBusy = isStartingDidit || isRefreshingDidit;
-  const diditActionLabel = getDiditActionLabel(diditVerification.status, t);
-  const diditButtonColors = diditVerification.isVerified
-    ? undefined
-    : {
-        backgroundColor: theme.color.tertiary,
-        pressedBackgroundColor: theme.color.tertiary,
-        disabledBackgroundColor: theme.color.tertiarySubtle,
-        labelColor: theme.color.onPrimary,
-        disabledLabelColor: theme.color.onPrimary,
-        nativeTintColor: theme.color.tertiary,
-      };
-  const diditStatusPresentation = getVerificationStatusPresentation(
-    diditVerification.status,
-    theme,
+  const diditActionLabel = getDiditPrimaryActionLabel(
+    diditVerification.isVerified,
     t,
   );
+  const diditButtonColors = getDiditActionButtonColors(
+    diditVerification.isVerified,
+    theme.color,
+  );
+  const diditStatusPresentation = getDiditVerificationStatusPresentation(
+    diditVerification.status,
+    theme.color,
+    t,
+  );
+  const showDiditManualRefresh = shouldOfferDiditManualRefresh(
+    diditVerification.status,
+    diditVerification.isVerified,
+  );
   const handleDiditAction = () => {
-    if (
-      diditVerification.status === "in_progress" ||
-      diditVerification.status === "pending" ||
-      diditVerification.status === "in_review"
-    ) {
-      void refreshDiditStatus();
-      return;
-    }
     if (diditVerification.isVerified) {
       void refreshDiditStatus();
       return;
@@ -659,9 +538,6 @@ export default function InstructorComplianceScreen() {
           backgroundColor: theme.color.surfaceAlt,
         }}
       >
-        <Text variant="radarLabel" color="textMuted">
-          {t("profile.compliance.hero.missionLabel")}
-        </Text>
         <Box flexDirection="row" alignItems="center" gap="md">
           <Box
             width={56}
@@ -707,25 +583,56 @@ export default function InstructorComplianceScreen() {
         </Box>
 
         <Box gap="xs">
-          <Text variant="bodyStrong">{t("profile.compliance.identity.cardTitle")}</Text>
+          <Text variant="bodyStrong">{t("profile.compliance.identity.title")}</Text>
           <Text variant="caption" color="textMuted">
-            {t("profile.compliance.identity.cardBody")}
+            {diditVerification.isVerified
+              ? t("profile.compliance.identity.approved")
+              : t("profile.compliance.identity.required")}
           </Text>
+          {!diditVerification.isVerified ? (
+            <Text variant="caption" color="textMuted">
+              {t("profile.studioCompliance.identity.requiredBody", {
+                status: diditStatusPresentation.label,
+              })}
+            </Text>
+          ) : null}
         </Box>
 
-        <ActionButton
-          label={diditActionLabel}
-          onPress={handleDiditAction}
-          fullWidth
-          loading={isDiditBusy}
-          disabled={isDiditBusy}
-          {...(diditButtonColors ? { colors: diditButtonColors } : {})}
-          {...(diditVerification.isVerified ? { tone: "secondary" as const } : {})}
-        />
-
-        <Text variant="caption" color="textMuted" style={{ textAlign: "center" }}>
-          {t("profile.compliance.identity.cardHint")}
-        </Text>
+        <Box gap="sm">
+          <ActionButton
+            label={diditActionLabel}
+            onPress={handleDiditAction}
+            fullWidth
+            loading={isStartingDidit}
+            disabled={isDiditBusy}
+            native={false}
+            {...(diditButtonColors ? { colors: diditButtonColors } : {})}
+            {...(diditVerification.isVerified ? { tone: "secondary" as const } : {})}
+            labelStyle={{
+              textTransform: "uppercase",
+              letterSpacing: 0.8,
+              fontWeight: "700",
+            }}
+          />
+          {showDiditManualRefresh ? (
+            <ActionButton
+              label={t("profile.identityVerification.checkStatus")}
+              onPress={() => {
+                void refreshDiditStatus();
+              }}
+              fullWidth
+              tone="secondary"
+              loading={isRefreshingDidit}
+              disabled={isDiditBusy}
+              native={false}
+              labelStyle={{
+                textTransform: "uppercase",
+                letterSpacing: 0.8,
+                fontWeight: "700",
+              }}
+            />
+          ) : null}
+        </Box>
       </KitSurface>
 
       <Box gap="sm">

@@ -11,19 +11,13 @@ import {
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
 import { loadInstructorEligibility } from "./lib/instructorEligibility";
+import { resolveInternalAccessForUser } from "./lib/internalAccess";
 import {
   DEFAULT_LESSON_REMINDER_MINUTES,
   getDefaultNotificationPreferencesForRole,
   getNotificationPreferenceKeysForRole,
   type NotificationPreferenceKey,
 } from "./lib/notificationPreferences";
-import {
-  normalizeCoordinates,
-  normalizeOptionalString,
-  normalizeRequiredString,
-  omitUndefined,
-  trimOptionalString,
-} from "./lib/validation";
 import {
   ensurePrimaryStudioBranch,
   ensureStudioInfrastructure,
@@ -33,6 +27,13 @@ import {
   requireStudioOwnerContext,
   syncStudioProfileFromBranch,
 } from "./lib/studioBranches";
+import {
+  normalizeCoordinates,
+  normalizeOptionalString,
+  normalizeRequiredString,
+  omitUndefined,
+  trimOptionalString,
+} from "./lib/validation";
 
 const MAX_SPORTS = 12;
 const MAX_ZONES = 25;
@@ -102,6 +103,18 @@ const studioEntitlementSummaryValidator = v.object({
     v.literal("canceled"),
   ),
   activeBranchCount: v.number(),
+});
+const publicStudioBranchValidator = v.object({
+  branchId: v.id("studioBranches"),
+  studioId: v.id("studioProfiles"),
+  name: v.string(),
+  address: v.string(),
+  zone: v.string(),
+  isPrimary: v.boolean(),
+  status: v.union(v.literal("active"), v.literal("archived")),
+  latitude: v.optional(v.number()),
+  longitude: v.optional(v.number()),
+  contactPhone: v.optional(v.string()),
 });
 
 type SocialLinkKey = (typeof SOCIAL_LINK_KEYS)[number];
@@ -194,7 +207,9 @@ async function resolveOwnedRoles(ctx: UserProfileCtx, user: Doc<"users">) {
   });
 }
 
-function toCurrentUserPayload(user: Doc<"users">, roles: AppRole[]) {
+async function toCurrentUserPayload(ctx: UserProfileCtx, user: Doc<"users">, roles: AppRole[]) {
+  const internalAccess = await resolveInternalAccessForUser(ctx, user);
+
   return {
     _id: user._id,
     _creationTime: user._creationTime,
@@ -204,6 +219,7 @@ function toCurrentUserPayload(user: Doc<"users">, roles: AppRole[]) {
     isActive: user.isActive,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
+    hasVerificationBypass: internalAccess.verificationBypass,
     ...omitUndefined({
       email: user.email,
       fullName: user.fullName,
@@ -214,6 +230,7 @@ function toCurrentUserPayload(user: Doc<"users">, roles: AppRole[]) {
       phone: user.phone,
       phoneVerificationTime: user.phoneVerificationTime,
       isAnonymous: user.isAnonymous,
+      internalRole: internalAccess.role,
     }),
   };
 }
@@ -306,6 +323,8 @@ export const getCurrentUser = query({
       phoneVerificationTime: v.optional(v.number()),
       isAnonymous: v.optional(v.boolean()),
       isActive: v.boolean(),
+      internalRole: v.optional(v.union(v.literal("tester"), v.literal("admin"))),
+      hasVerificationBypass: v.boolean(),
       createdAt: v.number(),
       updatedAt: v.number(),
     }),
@@ -320,7 +339,7 @@ export const getCurrentUser = query({
 
     const roles = await resolveOwnedRoles(ctx, user);
 
-    return toCurrentUserPayload(user, roles);
+    return await toCurrentUserPayload(ctx, user, roles);
   },
 });
 
@@ -1046,6 +1065,131 @@ export const getInstructorMapStudios = query({
         mapMarkerColor: studio.mapMarkerColor,
       }),
     }));
+  },
+});
+
+export const getStudioPublicProfileForInstructor = query({
+  args: {
+    studioId: v.id("studioProfiles"),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      studioId: v.id("studioProfiles"),
+      studioName: v.string(),
+      address: v.string(),
+      zone: v.string(),
+      bio: v.optional(v.string()),
+      profileImageUrl: v.optional(v.string()),
+      contactPhone: v.optional(v.string()),
+      mapMarkerColor: v.optional(v.string()),
+      sports: v.array(v.string()),
+      branches: v.array(publicStudioBranchValidator),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserDoc(ctx);
+    if (!user || !user.isActive || user.role !== "instructor") {
+      return null;
+    }
+
+    const studio = await ctx.db.get(args.studioId);
+    if (!studio) {
+      return null;
+    }
+
+    const [sportsRows, branches, profileImageUrl, primaryBranch] = await Promise.all([
+      ctx.db
+        .query("studioSports")
+        .withIndex("by_studio_id", (q) => q.eq("studioId", args.studioId))
+        .collect(),
+      listStudioBranches(ctx, args.studioId, "active"),
+      studio.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
+      getPrimaryStudioBranch(ctx, args.studioId),
+    ]);
+
+    return {
+      studioId: studio._id,
+      studioName: studio.studioName,
+      address: primaryBranch?.address ?? studio.address,
+      zone: primaryBranch?.zone ?? studio.zone,
+      sports: [...new Set(sportsRows.map((row) => row.sport))].sort(),
+      branches: branches.map((branch) => ({
+        branchId: branch._id,
+        studioId: branch.studioId,
+        name: branch.name,
+        address: branch.address,
+        zone: branch.zone,
+        isPrimary: branch.isPrimary,
+        status: branch.status,
+        ...omitUndefined({
+          latitude: branch.latitude,
+          longitude: branch.longitude,
+          contactPhone: branch.contactPhone,
+        }),
+      })),
+      ...omitUndefined({
+        bio: studio.bio,
+        profileImageUrl: profileImageUrl ?? undefined,
+        contactPhone: primaryBranch?.contactPhone ?? studio.contactPhone,
+        mapMarkerColor: studio.mapMarkerColor,
+      }),
+    };
+  },
+});
+
+export const getInstructorPublicProfileForInstructor = query({
+  args: {
+    instructorId: v.id("instructorProfiles"),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      instructorId: v.id("instructorProfiles"),
+      displayName: v.string(),
+      bio: v.optional(v.string()),
+      profileImageUrl: v.optional(v.string()),
+      hourlyRateExpectation: v.optional(v.number()),
+      sports: v.array(v.string()),
+      zones: v.array(v.string()),
+      isVerified: v.boolean(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserDoc(ctx);
+    if (!user || !user.isActive || user.role !== "instructor") {
+      return null;
+    }
+
+    const profile = await ctx.db.get(args.instructorId);
+    if (!profile) {
+      return null;
+    }
+
+    const [sportsRows, zoneRows, profileImageUrl] = await Promise.all([
+      ctx.db
+        .query("instructorSports")
+        .withIndex("by_instructor_id", (q) => q.eq("instructorId", args.instructorId))
+        .collect(),
+      ctx.db
+        .query("instructorZones")
+        .withIndex("by_instructor_id", (q) => q.eq("instructorId", args.instructorId))
+        .collect(),
+      profile.profileImageStorageId ? ctx.storage.getUrl(profile.profileImageStorageId) : null,
+    ]);
+
+    return {
+      instructorId: profile._id,
+      displayName: profile.displayName,
+      sports: [...new Set(sportsRows.map((row) => row.sport))].sort(),
+      zones: [...new Set(zoneRows.map((row) => row.zone))].sort(),
+      isVerified: profile.diditVerificationStatus === "approved",
+      ...omitUndefined({
+        bio: profile.bio,
+        profileImageUrl: profileImageUrl ?? undefined,
+        hourlyRateExpectation: profile.hourlyRateExpectation,
+      }),
+    };
   },
 });
 

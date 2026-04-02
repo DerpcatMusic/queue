@@ -9,22 +9,22 @@ export type SheetInsetArgs = {
 };
 
 export function createSheetInsetStyle({
-  collapsedSheetHeight,
+  collapsedSheetHeight: _collapsedSheetHeight,
   safeBottom,
   topSpacing = 0,
   bottomSpacing = 0,
   horizontalPadding,
 }: SheetInsetArgs): StyleProp<ViewStyle> {
   return {
-    paddingTop: collapsedSheetHeight + topSpacing,
+    paddingTop: topSpacing,
     paddingBottom: safeBottom + bottomSpacing,
     ...(horizontalPadding !== undefined ? { paddingHorizontal: horizontalPadding } : {}),
   };
 }
 
 export function getSheetProgressViewOffset({
-  collapsedSheetHeight,
+  collapsedSheetHeight: _collapsedSheetHeight,
   topSpacing = 0,
 }: Pick<SheetInsetArgs, "collapsedSheetHeight" | "topSpacing">) {
-  return collapsedSheetHeight + topSpacing;
+  return topSpacing;
 }

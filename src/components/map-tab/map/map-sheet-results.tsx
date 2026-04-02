@@ -8,7 +8,7 @@ import { useIsRtl } from "@/hooks/use-is-rtl";
 import { useTheme } from "@/hooks/use-theme";
 
 const MAP_RESULT_INDENT = BrandSpacing.xl + BrandSpacing.lg;
-const MAP_RESULT_RADIUS = BrandRadius.card - BrandSpacing.md;
+const MAP_RESULT_RADIUS = BrandRadius.card;
 const MAP_RESULT_STATUS_DOT_SIZE = BrandSpacing.statusDot;
 const MAP_RESULT_ERROR_RADIUS = BrandRadius.md;
 
@@ -67,6 +67,7 @@ export function MapSheetResults({
           paddingTop: 0,
           paddingBottom: BrandSpacing.xxl,
           gap: BrandSpacing.xs,
+          alignItems: "center",
         }}
         keyboardShouldPersistTaps="handled"
         initialNumToRender={20}
@@ -107,12 +108,15 @@ export function MapSheetResults({
             return (
               <View
                 style={{
+                  width: "95%",
                   flexDirection: "row",
                   alignItems: "center",
                   gap: BrandSpacing.md,
                   borderRadius: MAP_RESULT_RADIUS,
                   borderCurve: "continuous",
-                  backgroundColor: item.selected ? palette.primarySubtle : palette.surface,
+                  backgroundColor: item.selected
+                    ? palette.primarySubtle
+                    : palette.surfaceElevated,
                 }}
               >
                 <Pressable
@@ -177,6 +181,7 @@ export function MapSheetResults({
           return (
             <View
               style={{
+                width: "95%",
                 flexDirection: isRtl ? "row-reverse" : "row",
                 alignItems: "center",
                 gap: BrandSpacing.md,
@@ -185,7 +190,7 @@ export function MapSheetResults({
                     ? palette.primarySubtle
                     : isPartiallySelected
                       ? palette.primarySubtle
-                      : palette.surface,
+                      : palette.surfaceElevated,
                 borderRadius: MAP_RESULT_RADIUS,
                 borderCurve: "continuous",
               }}

@@ -5,14 +5,9 @@ import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import {
-  getSportGenreKey,
-  SPORT_GENRES,
-  isSportType,
-  SPORT_TYPES,
-  toSportLabel,
-} from "@/convex/constants";
+import { getSportGenreKey, SPORT_GENRES, SPORT_TYPES } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
+import { toSportLabelI18n } from "@/lib/sport-i18n";
 
 type SportsMultiSelectProps = {
   selectedSports: string[];
@@ -62,9 +57,9 @@ export function SportsMultiSelect({
       return SPORT_TYPES;
     }
     return SPORT_TYPES.filter((sport) =>
-      toSportLabel(sport).toLowerCase().includes(normalized),
+      toSportLabelI18n(sport, t).toLowerCase().includes(normalized),
     );
-  }, [query]);
+  }, [query, t]);
 
   const selectedSportsList = useMemo(
     () => SPORT_TYPES.filter((sport) => selectedSports.includes(sport)),
@@ -81,22 +76,14 @@ export function SportsMultiSelect({
       SPORT_GENRES.map((genre) => ({
         key: genre.key,
         label: genre.label,
-        sports: availableSportsList.filter(
-          (sport) => getSportGenreKey(sport) === genre.key,
-        ),
+        sports: availableSportsList.filter((sport) => getSportGenreKey(sport) === genre.key),
       })).filter((group) => group.sports.length > 0),
     [availableSportsList],
   );
 
   const panel = (
-    <View
-      style={[styles.panel, isCardVariant ? null : styles.panelContentOnly]}
-    >
-      <NativeSearchField
-        value={query}
-        onChangeText={setQuery}
-        placeholder={searchPlaceholder}
-      />
+    <View style={[styles.panel, isCardVariant ? null : styles.panelContentOnly]}>
+      <NativeSearchField value={query} onChangeText={setQuery} placeholder={searchPlaceholder} />
 
       {selectedSportsList.length > 0 ? (
         <View style={styles.section}>
@@ -119,17 +106,13 @@ export function SportsMultiSelect({
               >
                 <View style={{ flex: 1, gap: SPORTS_SELECTED_SPORT_GAP }}>
                   <Text style={[styles.resultTitle, { color: palette.text }]}>
-                    {isSportType(sport) ? toSportLabel(sport) : sport}
+                    {toSportLabelI18n(sport, t)}
                   </Text>
                   <Text style={[styles.resultMeta, { color: palette.primary }]}>
                     {t("profile.sports.selectedBody")}
                   </Text>
                 </View>
-                <IconSymbol
-                  name="checkmark.circle.fill"
-                  size={18}
-                  color={palette.primary}
-                />
+                <IconSymbol name="checkmark.circle.fill" size={18} color={palette.primary} />
               </Pressable>
             ))}
           </View>
@@ -152,7 +135,7 @@ export function SportsMultiSelect({
             availableSportGroups.map((group) => (
               <View key={group.key} style={styles.genreGroup}>
                 <Text style={[styles.genreLabel, { color: palette.textMuted }]}>
-                  {group.label}
+                  {t(`sports.${group.key}`, { defaultValue: group.label })}
                 </Text>
                 <View style={styles.resultsList}>
                   {group.sports.map((sport) => (
@@ -168,28 +151,17 @@ export function SportsMultiSelect({
                         },
                       ]}
                     >
-                      <Text
-                        style={[styles.resultTitle, { color: palette.text }]}
-                      >
-                        {toSportLabel(sport)}
+                      <Text style={[styles.resultTitle, { color: palette.text }]}>
+                        {toSportLabelI18n(sport, t)}
                       </Text>
-                      <IconSymbol
-                        name="plus.circle.fill"
-                        size={18}
-                        color={palette.textMuted}
-                      />
+                      <IconSymbol name="plus.circle.fill" size={18} color={palette.textMuted} />
                     </Pressable>
                   ))}
                 </View>
               </View>
             ))
           ) : (
-            <View
-              style={[
-                styles.emptyState,
-                { backgroundColor: palette.surfaceElevated },
-              ]}
-            >
+            <View style={[styles.emptyState, { backgroundColor: palette.surfaceElevated }]}>
               <Text style={[styles.resultTitle, { color: palette.text }]}>
                 {t("profile.sports.emptyTitle")}
               </Text>
@@ -213,10 +185,7 @@ export function SportsMultiSelect({
         accessibilityRole="button"
         accessibilityLabel={title}
         onPress={() => setIsOpen((value) => !value)}
-        style={({ pressed }) => [
-          styles.header,
-          { transform: [{ scale: pressed ? 0.992 : 1 }] },
-        ]}
+        style={({ pressed }) => [styles.header, { transform: [{ scale: pressed ? 0.992 : 1 }] }]}
       >
         <View style={styles.headerTextBlock}>
           <ThemedText type="defaultSemiBold">{title}</ThemedText>
@@ -232,9 +201,7 @@ export function SportsMultiSelect({
           style={[
             styles.headerBadge,
             {
-              backgroundColor: isOpen
-                ? palette.primary
-                : palette.surfaceElevated,
+              backgroundColor: isOpen ? palette.primary : palette.surfaceElevated,
             },
           ]}
         >
