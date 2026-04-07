@@ -36,7 +36,7 @@ import {
   resolveTopSheetRouteTab,
 } from "./global-top-sheet.helpers";
 import { getTopSheetStepHeights } from "./top-sheet.helpers";
-import { ANIMATION_DURATION_TOP_SHEET_SHELL, DEFAULT_STEPS } from "./top-sheet-constants";
+import { DEFAULT_STEPS } from "./top-sheet-constants";
 
 /**
  * One global TopSheet mounted in RoleTabsLayout above NativeTabs.
@@ -242,7 +242,7 @@ export function GlobalTopSheet() {
         lastCommittedLayoutHeightRef.current;
       commitLayoutHeight(nextHeight);
       layoutFreezeTimeoutRef.current = null;
-    }, ANIMATION_DURATION_TOP_SHEET_SHELL + 36);
+    }, 16);
 
     return () => {
       if (layoutFreezeTimeoutRef.current !== null) {

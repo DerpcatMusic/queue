@@ -11,9 +11,6 @@ export const TAB_CONTENT_INACTIVE_OPACITY = 0.72;
 export const TAB_CONTENT_INACTIVE_SCALE = 0.985;
 export const ANIMATION_DURATION_TAB_TRANSITION_VEIL = 210;
 export const TAB_TRANSITION_VEIL_OPACITY = 0.08;
-export const ANIMATION_DURATION_TOP_SHEET_SHELL = 280;
-export const TOP_SHEET_INACTIVE_OPACITY = 0.88;
-export const TOP_SHEET_INACTIVE_SCALE = 0.96;
 
 export const GESTURE_ACTIVE_OFFSET_Y: [number, number] = [-4, 4];
 export const GESTURE_FAIL_OFFSET_X: [number, number] = [-18, 18];

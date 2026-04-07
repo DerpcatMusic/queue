@@ -26,7 +26,6 @@ import { BrandRadius, BrandSpacing } from "@/theme/theme";
 import { useLayoutSheetHeight, useSceneViewportHeight } from "./scroll-sheet-provider";
 import {
   ANIMATION_DURATION_EXPANDED_PROGRESS,
-  ANIMATION_DURATION_TOP_SHEET_SHELL,
   DEFAULT_STEPS,
   GESTURE_ACTIVE_OFFSET_Y,
   GESTURE_FAIL_OFFSET_X,
@@ -36,8 +35,6 @@ import {
   REVEAL_TRANSLATE_OFFSET,
   SHEET_CORNER_RADIUS,
   SHEET_SPRING,
-  TOP_SHEET_INACTIVE_OPACITY,
-  TOP_SHEET_INACTIVE_SCALE,
   VELOCITY_THRESHOLD,
 } from "./top-sheet-constants";
 import { TopSheetSearchBar } from "./top-sheet-search-bar";
@@ -165,9 +162,9 @@ export function TopSheet({
   const hasBaseContent = baseContent !== null && baseContent !== undefined;
   const revealedContent = expandedContent ?? revealOnExpand;
   const hasExpandedContent = Boolean(revealedContent);
+  void transitionKey; // intentionally unused — kept for interface compatibility
   const animatedBackground = useSharedValue(backgroundColorValue);
   const expandedProgress = useSharedValue(isExpanded ? 1 : 0);
-  const shellTransitionProgress = useSharedValue(1);
 
   useEffect(() => {
     void stateKey;
@@ -201,14 +198,6 @@ export function TopSheet({
       duration: ANIMATION_DURATION_EXPANDED_PROGRESS,
     });
   }, [expandedProgress, isExpanded]);
-
-  useEffect(() => {
-    void transitionKey;
-    shellTransitionProgress.value = 0;
-    shellTransitionProgress.value = withTiming(1, {
-      duration: ANIMATION_DURATION_TOP_SHEET_SHELL,
-    });
-  }, [shellTransitionProgress, transitionKey]);
 
   // Inset coloring
   useLayoutEffect(() => {
@@ -278,22 +267,12 @@ export function TopSheet({
     stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? resolvedBaseHeight ?? defaultHeight;
 
   useAnimatedReaction(
-    () =>
-      Math.round(
-        expandMode === "overlay"
-          ? minimumLayoutHeight
-          : targetLayoutHeight,
-      ),
+    () => Math.round(expandMode === "overlay" ? minimumLayoutHeight : targetLayoutHeight),
     (next, prev) => {
       if (!onLayoutHeightChange || next === prev) return;
       runOnJS(onLayoutHeightChange)(next);
     },
-    [
-      expandMode,
-      minimumLayoutHeight,
-      onLayoutHeightChange,
-      targetLayoutHeight,
-    ],
+    [expandMode, minimumLayoutHeight, onLayoutHeightChange, targetLayoutHeight],
   );
 
   useEffect(() => {
@@ -428,16 +407,9 @@ export function TopSheet({
   const shellBackgroundStyle = useAnimatedStyle(() => ({
     backgroundColor: animatedBackground.value,
   }));
-  const shellTransitionStyle = useAnimatedStyle(() => {
-    const progress = shellTransitionProgress.value;
-    const opacity = TOP_SHEET_INACTIVE_OPACITY + (1 - TOP_SHEET_INACTIVE_OPACITY) * progress;
-    const scale = TOP_SHEET_INACTIVE_SCALE + (1 - TOP_SHEET_INACTIVE_SCALE) * progress;
-
-    return {
-      opacity,
-      transform: [{ scale }],
-    };
-  });
+  // Sheet has its OWN animation: height morph driven by content.
+  // Do NOT add opacity or scale here — that creates the pop/bounce effect.
+  // The TabTransitionVeil handles the overlay fade separately.
   const revealStyle = useAnimatedStyle(() => ({
     flex: 1,
     minHeight: 0,
@@ -478,7 +450,6 @@ export function TopSheet({
         styles.sheetShell,
         styles.sheetChrome(theme.color.border),
         shellBackgroundStyle,
-        shellTransitionStyle,
         outerStyle,
         style,
       ]}

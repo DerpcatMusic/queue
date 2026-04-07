@@ -14,9 +14,11 @@ import {
 import { Platform, View } from "react-native";
 import Animated, {
   type SharedValue,
+  cancelAnimation,
+  Easing,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -91,10 +93,12 @@ function TabTransitionVeil({
 
     previousTransitionKeyRef.current = transitionKey;
     // Trigger the veil animation only when the primary tab changes.
+    // Use cancelAnimation + withTiming for a clean, non-bouncy fade.
+    cancelAnimation(focusProgress);
     focusProgress.value = 0;
-    focusProgress.value = withSpring(1, {
-      damping: 20,
-      stiffness: 200,
+    focusProgress.value = withTiming(1, {
+      duration: 260,
+      easing: Easing.inOut(Easing.ease),
     });
   }, [focusProgress, transitionKey]);
 
