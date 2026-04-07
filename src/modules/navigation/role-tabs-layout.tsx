@@ -65,6 +65,14 @@ type TabSceneDescriptorContextValue = {
 
 const TabSceneDescriptorContext = createContext<TabSceneDescriptorContextValue | null>(null);
 
+// Context that exposes tab transition state (focusProgress, activeTabId).
+// GlobalTopSheet reads this from OUTSIDE the memoized layoutShell so it
+// re-renders on tab switch and can animate its content.
+const TabTransitionContext = createContext<{
+  focusProgress: SharedValue<number>;
+  activeTabId: RoleTabRouteName;
+} | null>(null);
+
 function TabTransitionVeil({
   tintColor,
   focusProgress,
@@ -199,72 +207,67 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   );
 
   // ── Memoized layout shell ──────────────────────────────────────────────────
-  // Wrapping the entire return in useMemo breaks the re-render cascade:
+  // Wrapping the tab content in useMemo breaks the re-render cascade:
   // when pathname changes, RoleTabsLayout re-renders BUT the JSX tree
   // below is returned as the SAME object reference, so React skips
-  // re-evaluating all children (GlobalTopSheet, NativeTabs, etc.).
+  // re-evaluating NativeTabs and the tab content.
+  //
+  // GlobalTopSheet is rendered OUTSIDE this memo so it CAN re-render on
+  // tab switch — it needs to fire useEffect hooks for the sheet animation.
+  // TabTransitionContext.Provider exposes focusProgress (SharedValue) and
+  // activeTabId to GlobalTopSheet without it calling usePathname().
   //
   // Dependencies must ALL be stable across pathname changes:
-  //   - color strings: primitives (destructured below), always stable when theme scheme is stable
+  //   - color strings: primitives (destructured below), stable when theme scheme is stable
   //   - tabs: useMemo([appRole]) — stable reference
   //   - badgeCountByRoute: stable (memoized in parent InstructorTabsLayout)
   //   - descriptorContext: stable (useMemo with stable callback deps)
-  //   - focusProgress: SharedValue ref, stable reference
   //
-  // TabTransitionVeil is OUTSIDE the memo block because it needs activeTabId
-  // (which changes on tab switch). Keeping it outside prevents activeTabId
-  // from being a dep of the layout shell memo.
+  // TabTransitionVeil is rendered outside the memo (like GlobalTopSheet)
+  // because it needs activeTabId which changes on tab switch.
   //
   // Destructuring ensures deps are primitive strings, not the color object reference.
   const { appBg, onPrimaryContainer, textMicro, primary, onPrimary, primaryContainer, surface } =
     color;
 
-  // focusProgress is a SharedValue — its reference is stable across renders.
-  // Only TabTransitionVeil reads .value via useAnimatedStyle, which does NOT
-  // cause useMemo deps to change.
   const layoutShell = useMemo(
     () => (
       <ScrollSheetProvider>
-        <GlobalTopSheetProvider>
-          <TabSceneDescriptorContext.Provider value={descriptorContext}>
-            <View style={{ flex: 1, backgroundColor: appBg }}>
-              <GlobalTopSheet />
-              <View style={{ flex: 1, minHeight: 0, zIndex: 2, backgroundColor: appBg }}>
-                <NativeTabs
-                  tintColor={onPrimaryContainer}
-                  iconColor={{
-                    default: textMicro,
-                    selected: onPrimaryContainer,
-                  }}
-                  backgroundColor={appBg}
-                  badgeBackgroundColor={primary}
-                  badgeTextColor={onPrimary}
-                  indicatorColor={primaryContainer}
-                  shadowColor={surface}
-                  labelVisibilityMode="unlabeled"
-                  disableTransparentOnScrollEdge
+        <View style={{ flex: 1, backgroundColor: appBg }}>
+          <View style={{ flex: 1, minHeight: 0, zIndex: 2, backgroundColor: appBg }}>
+            <NativeTabs
+              tintColor={onPrimaryContainer}
+              iconColor={{
+                default: textMicro,
+                selected: onPrimaryContainer,
+              }}
+              backgroundColor={appBg}
+              badgeBackgroundColor={primary}
+              badgeTextColor={onPrimary}
+              indicatorColor={primaryContainer}
+              shadowColor={surface}
+              labelVisibilityMode="unlabeled"
+              disableTransparentOnScrollEdge
+            >
+              {tabs.map((tab) => (
+                <NativeTabs.Trigger
+                  key={tab.id}
+                  name={tab.routeName}
+                  contentStyle={{ backgroundColor: appBg }}
                 >
-                  {tabs.map((tab) => (
-                    <NativeTabs.Trigger
-                      key={tab.id}
-                      name={tab.routeName}
-                      contentStyle={{ backgroundColor: appBg }}
-                    >
-                      <NativeTabs.Trigger.Icon
-                        md={tab.icon.md}
-                        sf={{
-                          default: tab.icon.sfDefault as never,
-                          selected: tab.icon.sfSelected as never,
-                        }}
-                      />
-                      <NativeTabBadge count={badgeCountByRoute[tab.routeName] ?? 0} />
-                    </NativeTabs.Trigger>
-                  ))}
-                </NativeTabs>
-              </View>
-            </View>
-          </TabSceneDescriptorContext.Provider>
-        </GlobalTopSheetProvider>
+                  <NativeTabs.Trigger.Icon
+                    md={tab.icon.md}
+                    sf={{
+                      default: tab.icon.sfDefault as never,
+                      selected: tab.icon.sfSelected as never,
+                    }}
+                  />
+                  <NativeTabBadge count={badgeCountByRoute[tab.routeName] ?? 0} />
+                </NativeTabs.Trigger>
+              ))}
+            </NativeTabs>
+          </View>
+        </View>
       </ScrollSheetProvider>
     ),
     [
@@ -277,24 +280,30 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
       surface,
       tabs,
       badgeCountByRoute,
-      descriptorContext,
     ],
   );
 
   return (
-    <>
-      {layoutShell}
-      <TabTransitionVeil
-        tintColor={color.surface}
-        focusProgress={focusProgress}
-        transitionKey={activeTabId}
-      />
-    </>
+    <TabSceneDescriptorContext.Provider value={descriptorContext}>
+      <TabTransitionContext.Provider value={{ focusProgress, activeTabId }}>
+        <ScrollSheetProvider>
+          <GlobalTopSheetProvider>
+            <GlobalTopSheet />
+          </GlobalTopSheetProvider>
+        </ScrollSheetProvider>
+        {layoutShell}
+        <TabTransitionVeil
+          tintColor={color.surface}
+          focusProgress={focusProgress}
+          transitionKey={activeTabId}
+        />
+      </TabTransitionContext.Provider>
+    </TabSceneDescriptorContext.Provider>
   );
 }
 
 // Export context for child screens to use
-export { TabSceneDescriptorContext };
+export { TabSceneDescriptorContext, TabTransitionContext };
 
 // Hook for child screens to register their scene descriptors
 function useTabSceneDescriptorScene(
