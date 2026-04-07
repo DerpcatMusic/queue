@@ -4,7 +4,6 @@ import type { StyleProp, ViewStyle } from "react-native";
 import Animated, {
   cancelAnimation,
   Easing,
-  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -14,18 +13,13 @@ import Animated, {
 import { Motion } from "@/theme/theme";
 import { ANIMATION_DURATION_TAB_CONTENT } from "./top-sheet-constants";
 
-// Mercury-style: content fades in while growing from small + rising up.
-// Scale: 0.94 → 1.0 (noticeable grow effect)
-// TranslateY: 8px → 0 (rises into place)
-// Spring config: gentle overshoot for premium feel
-const TAB_SCENE_SCALE_HIDDEN = 0.94;
-const TAB_SCENE_TRANSLATE_Y_HIDDEN = 8; // pixels — content "rises" into place
+// Elegant fade in + out. No scale pop, no bounce.
+// Content just fades smoothly in and out on tab switch.
+// Opacity: 0 → 1 (ease-in-out, 180ms, 40ms delay)
 const TAB_SCENE_FADE_OUT_DURATION = Motion.fast; // 140ms
 const TAB_SCENE_FADE_IN_DELAY = Motion.staggerBase; // 40ms
-
-// Spring-like easing for enter (gentle overshoot feel without actual overshoot)
-const TAB_ENTER_EASING = Easing.bezier(0.34, 1.56, 0.64, 1); // slight overshoot feel
-const TAB_EXIT_EASING = Easing.bezier(0.22, 1, 0.36, 1);
+const TAB_ENTER_EASING = Easing.inOut(Easing.ease);
+const TAB_EXIT_EASING = Easing.inOut(Easing.ease);
 
 export function useTabSceneTransitionStyle() {
   const isFocused = useIsFocused();
@@ -47,18 +41,10 @@ export function useTabSceneTransitionStyle() {
         });
   }, [animatedProgress, isFocused]);
 
-  return useAnimatedStyle(() => {
-    const scale = interpolate(animatedProgress.value, [0, 1], [TAB_SCENE_SCALE_HIDDEN, 1]);
-    const translateY = interpolate(
-      animatedProgress.value,
-      [0, 1],
-      [TAB_SCENE_TRANSLATE_Y_HIDDEN, 0],
-    );
-    return {
-      opacity: animatedProgress.value,
-      transform: [{ scale }, { translateY }],
-    };
-  });
+  // Pure fade — no scale, no translateY. Elegant and clean.
+  return useAnimatedStyle(() => ({
+    opacity: animatedProgress.value,
+  }));
 }
 
 export function TabSceneTransition({
