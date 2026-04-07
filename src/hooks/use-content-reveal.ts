@@ -52,8 +52,8 @@ export function useContentReveal(
     animatedStyle,
     // For use with Animated.View — fade in with stagger, no spring
     entering: FadeIn.delay(staggerIndex * Motion.staggerBase)
-      .duration(revealDuration)
-      .easing(Easing.inOut(Easing.ease)),
+      .duration(revealDuration + 40)
+      .easing(Easing.bezier(0.4, 0, 0.2, 1)),
   };
 }
 
@@ -63,7 +63,7 @@ export function useContentReveal(
 export function useListItemAnimation(index: number) {
   return {
     entering: FadeIn.delay(Math.min(index, 8) * Motion.staggerBase)
-      .duration(Motion.contentReveal)
-      .easing(Easing.inOut(Easing.ease)),
+      .duration(Motion.contentReveal + 40)
+      .easing(Easing.bezier(0.4, 0, 0.2, 1)),
   };
 }

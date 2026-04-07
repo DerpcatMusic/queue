@@ -4,6 +4,7 @@ import type { StyleProp, ViewStyle } from "react-native";
 import Animated, {
   cancelAnimation,
   Easing,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -13,13 +14,15 @@ import Animated, {
 import { Motion } from "@/theme/theme";
 import { ANIMATION_DURATION_TAB_CONTENT } from "./top-sheet-constants";
 
-// Elegant fade in + out. No scale pop, no bounce.
-// Content just fades smoothly in and out on tab switch.
-// Opacity: 0 → 1 (ease-in-out, 180ms, 40ms delay)
+// Elegant fade + subtle scale + subtle rise.
+// Content fades in smoothly while gently growing and floating up.
+// Gentle ease-in-out — no spring, no bounce, no pop.
+const TAB_SCENE_SCALE_HIDDEN = 0.97; // subtle, not aggressive
+const TAB_SCENE_TRANSLATE_Y_HIDDEN = 4; // pixels — gentle float up
 const TAB_SCENE_FADE_OUT_DURATION = Motion.fast; // 140ms
 const TAB_SCENE_FADE_IN_DELAY = Motion.staggerBase; // 40ms
-const TAB_ENTER_EASING = Easing.inOut(Easing.ease);
-const TAB_EXIT_EASING = Easing.inOut(Easing.ease);
+const TAB_ENTER_EASING = Easing.bezier(0.4, 0, 0.2, 1); // ease-in-out-ish, smooth
+const TAB_EXIT_EASING = Easing.bezier(0.4, 0, 0.2, 1);
 
 export function useTabSceneTransitionStyle() {
   const isFocused = useIsFocused();
@@ -31,7 +34,7 @@ export function useTabSceneTransitionStyle() {
       ? withDelay(
           TAB_SCENE_FADE_IN_DELAY,
           withTiming(1, {
-            duration: ANIMATION_DURATION_TAB_CONTENT,
+            duration: ANIMATION_DURATION_TAB_CONTENT + 60, // 240ms — slightly slower
             easing: TAB_ENTER_EASING,
           }),
         )
@@ -41,10 +44,19 @@ export function useTabSceneTransitionStyle() {
         });
   }, [animatedProgress, isFocused]);
 
-  // Pure fade — no scale, no translateY. Elegant and clean.
-  return useAnimatedStyle(() => ({
-    opacity: animatedProgress.value,
-  }));
+  return useAnimatedStyle(() => {
+    const opacity = animatedProgress.value;
+    const scale = interpolate(animatedProgress.value, [0, 1], [TAB_SCENE_SCALE_HIDDEN, 1]);
+    const translateY = interpolate(
+      animatedProgress.value,
+      [0, 1],
+      [TAB_SCENE_TRANSLATE_Y_HIDDEN, 0],
+    );
+    return {
+      opacity,
+      transform: [{ scale }, { translateY }],
+    };
+  });
 }
 
 export function TabSceneTransition({
