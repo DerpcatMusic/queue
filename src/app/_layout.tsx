@@ -11,7 +11,7 @@ import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LogBox, Platform, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
@@ -135,10 +135,22 @@ function RootLayoutContent() {
 
   useAndroidNavigationBarTheme(resolvedScheme);
 
+  // Debounce reloadAuthSession calls to prevent rapid ConvexAuthProvider remounts.
+  // Multiple screens (profile, sign-in, etc.) may call reloadAuthSession in quick
+  // succession. Each remount triggers a token refresh from the server, which is
+  // wasteful and can cause the app to feel sluggish even when idle.
+  const reloadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const authSessionController = useMemo(
     () => ({
       reloadAuthSession: () => {
-        setAuthSessionVersion((currentVersion) => currentVersion + 1);
+        if (reloadDebounceRef.current !== null) {
+          return; // Already scheduled — skip
+        }
+        reloadDebounceRef.current = setTimeout(() => {
+          reloadDebounceRef.current = null;
+          setAuthSessionVersion((v) => v + 1);
+        }, 500);
       },
     }),
     [],

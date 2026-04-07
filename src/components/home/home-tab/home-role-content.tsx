@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useMutation } from "convex/react";
 import { Redirect, useRouter, type Href } from "expo-router";
 import type { TFunction } from "i18next";
@@ -39,7 +40,6 @@ export type Application = {
 export type HomeRoleContentProps = {
   activeRole: "instructor" | "studio";
   locale: string;
-  now: number;
   currencyFormatter: Intl.NumberFormat;
   t: TFunction;
   instructorHomeStats:
@@ -143,10 +143,9 @@ export type HomeRoleContentProps = {
   onWithdrawApplication?: (applicationId: Id<"jobApplications">) => void;
 };
 
-export function HomeRoleContent({
+export const HomeRoleContent = memo(function HomeRoleContent({
   activeRole,
   locale,
-  now,
   currencyFormatter,
   t,
   instructorHomeStats,
@@ -215,7 +214,6 @@ export function HomeRoleContent({
       <InstructorHomeContent
         isLoading={isLoading}
         locale={locale}
-        now={now}
         pendingApplications={instructorHomeStats?.pendingApplications ?? 0}
         t={t}
         upcomingSessions={instructorHomeStats?.upcomingSessions ?? []}
@@ -243,7 +241,9 @@ export function HomeRoleContent({
   const jobsFilled = studioJobs.filter((job) => job.status === "filled").length;
 
   const isLoading =
-    myStudioJobs === undefined || studioSettings === undefined || studioComplianceSummary === undefined;
+    myStudioJobs === undefined ||
+    studioSettings === undefined ||
+    studioComplianceSummary === undefined;
   const studioSetupItems: HomeChecklistItem[] = [
     {
       id: "owner",
@@ -300,4 +300,4 @@ export function HomeRoleContent({
       reviewApplication={reviewApplication}
     />
   );
-}
+});

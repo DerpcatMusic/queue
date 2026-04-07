@@ -29,6 +29,7 @@ import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 import { useContentReveal } from "@/hooks/use-content-reveal";
+import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { Box, Text } from "@/primitives";
 
@@ -66,7 +67,6 @@ type CheckInSession = {
 type InstructorHomeContentProps = {
   isLoading: boolean;
   locale: string;
-  now: number;
   pendingApplications: number;
   availableJobs?: InstructorMarketplaceJob[] | undefined;
   t: TFunction;
@@ -126,10 +126,7 @@ function SkeletonInstructorHome() {
   const { color: palette } = useTheme();
 
   return (
-    <Animated.View
-      entering={FadeIn.duration(200)}
-      style={{ flex: 1 }}
-    >
+    <Animated.View entering={FadeIn.duration(200)} style={{ flex: 1 }}>
       <Box style={{ padding: BrandSpacing.lg, gap: BrandSpacing.xl }}>
         {/* Task list skeleton */}
         <Box
@@ -350,7 +347,6 @@ function InstructorCheckInCard({
 export function InstructorHomeContent({
   isLoading,
   locale,
-  now,
   pendingApplications,
   availableJobs,
   t,
@@ -362,6 +358,7 @@ export function InstructorHomeContent({
   withdrawingApplicationId,
   onWithdrawApplication,
 }: InstructorHomeContentProps) {
+  const now = useMinuteNow();
   const { color: palette } = useTheme();
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const layout = useHomeDashboardLayout();

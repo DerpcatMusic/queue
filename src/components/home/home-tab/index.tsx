@@ -175,15 +175,15 @@ export default function HomeScreen() {
   const homeSheetConfig = useMemo(
     () =>
       activeRole === "instructor" || activeRole === "studio"
-            ? createContentDrivenTopSheetConfig({
-                collapsedContent: homeSheetContent,
-                padding: {
-                  vertical: 0,
-                  horizontal: 0,
-                },
-                backgroundColor: mainTabSheetBackgroundColor,
-                topInsetColor: mainTabSheetBackgroundColor,
-              })
+        ? createContentDrivenTopSheetConfig({
+            collapsedContent: homeSheetContent,
+            padding: {
+              vertical: 0,
+              horizontal: 0,
+            },
+            backgroundColor: mainTabSheetBackgroundColor,
+            topInsetColor: mainTabSheetBackgroundColor,
+          })
         : null,
     [activeRole, homeSheetContent, mainTabSheetBackgroundColor],
   );
@@ -197,7 +197,6 @@ export default function HomeScreen() {
           locale={locale}
           currencyFormatter={currencyFormatter}
           t={t}
-          now={liveNow}
           instructorHomeStats={instructorHomeStats}
           instructorSettings={instructorSettings}
           instructorComplianceSummary={instructorComplianceSummary}
@@ -220,7 +219,6 @@ export default function HomeScreen() {
       locale,
       currencyFormatter,
       t,
-      liveNow,
       instructorHomeStats,
       instructorSettings,
       instructorComplianceSummary,
@@ -272,7 +270,6 @@ export default function HomeScreen() {
       locale={locale}
       currencyFormatter={currencyFormatter}
       t={t}
-      now={liveNow}
       instructorHomeStats={instructorHomeStats}
       instructorSettings={instructorSettings}
       instructorComplianceSummary={instructorComplianceSummary}
