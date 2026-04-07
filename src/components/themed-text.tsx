@@ -1,6 +1,7 @@
 // Deprecated during primitive-first migration.
 // Prefer src/primitives/text.tsx for new code.
 import { I18nManager, Text, type TextProps, type TextStyle } from "react-native";
+import { useTheme } from "@/hooks/use-theme";
 import { BrandType } from "@/theme/theme";
 
 export type ThemedTextType =
@@ -65,10 +66,21 @@ const LEGACY_MAP: Record<string, ThemedTextType> = {
 };
 
 export function ThemedText({ style, type = "body", ...rest }: ThemedTextProps) {
+  const { color } = useTheme();
   const resolved = LEGACY_MAP[type] ?? type;
   const textStyle = TYPE_STYLES[resolved] ?? TYPE_STYLES.body;
 
   return (
-    <Text style={[textStyle, { writingDirection: I18nManager.isRTL ? "rtl" : "ltr" }, style]} {...rest} />
+    <Text
+      style={[
+        textStyle,
+        {
+          color: color.text,
+          writingDirection: I18nManager.isRTL ? "rtl" : "ltr",
+        },
+        style,
+      ]}
+      {...rest}
+    />
   );
 }

@@ -1,7 +1,7 @@
 import DateTimePicker from "@expo/ui/datetimepicker";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { I18nManager, Platform, Pressable, ScrollView, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   FadeIn,
@@ -34,6 +34,8 @@ import {
   sanitizeDecimalInput,
 } from "@/lib/jobs-utils";
 import { toSportLabelI18n } from "@/lib/sport-i18n";
+import { Text } from "@/primitives";
+import { Motion } from "@/theme/theme";
 
 type SportPickerSectionProps = {
   draft: StudioDraft;
@@ -627,7 +629,7 @@ export function BoostBonusSection({ draft, setDraft }: BoostBonusSectionProps) {
 
       {/* Slider (shown when enabled) */}
       {isBoostEnabled && (
-        <Animated.View entering={FadeIn.duration(150)}>
+        <Animated.View entering={FadeIn.duration(Motion.fast)}>
           <BoostSliderRow
             value={currentBonus}
             onValueChange={handleAmountChange}

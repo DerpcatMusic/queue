@@ -1,12 +1,13 @@
 import { useMemo } from "react";
-import { Pressable, StyleSheet, View, type ViewProps } from "react-native";
+import { Pressable, View, type ViewProps } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { useTheme } from "@/hooks/use-theme";
 import { getTheme } from "@/lib/design-system";
 
-type MeshGradientPreset = "primary" | "primaryDark" | "warm" | "teal";
+type KitTonalSurfacePreset = "primary" | "primaryDark" | "warm" | "teal";
 
-type MeshGradientViewProps = ViewProps & {
-  preset?: MeshGradientPreset;
+type KitTonalSurfaceProps = ViewProps & {
+  preset?: KitTonalSurfacePreset;
   borderRadius?: number;
   pressable?: boolean;
   darkVariant?: boolean;
@@ -32,7 +33,7 @@ function shiftHexColor(color: string, amount: number) {
   return `#${next}`;
 }
 
-export function MeshGradientView({
+export function KitTonalSurface({
   preset = "primary",
   borderRadius = 0,
   pressable = false,
@@ -40,7 +41,7 @@ export function MeshGradientView({
   style,
   children,
   ...props
-}: MeshGradientViewProps) {
+}: KitTonalSurfaceProps) {
   const theme = useTheme();
 
   const { fill, pressed } = useMemo(() => {

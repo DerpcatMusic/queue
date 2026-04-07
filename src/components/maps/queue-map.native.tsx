@@ -9,7 +9,8 @@ import {
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { buildCustomMapStyle } from "@/components/maps/queue-custom-map-style";
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons";
@@ -373,9 +374,9 @@ export const QueueMap = memo(function QueueMap({
         >
           <View
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
+              width: BrandSpacing.controlMd,
+              height: BrandSpacing.controlMd,
+              borderRadius: BrandRadius.mapMarker,
               borderCurve: "continuous",
               alignItems: "center",
               justifyContent: "center",
@@ -429,8 +430,8 @@ export const QueueMap = memo(function QueueMap({
           style={({ pressed }) => [
             styles.gps,
             {
-              width: 58,
-              height: 58,
+              width: BrandSpacing.controlLg,
+              height: BrandSpacing.controlLg,
               alignItems: "center",
               justifyContent: "center",
               borderWidth: 1.2,

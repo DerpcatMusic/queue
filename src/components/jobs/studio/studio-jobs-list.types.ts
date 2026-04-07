@@ -31,7 +31,7 @@ export type StudioJob = {
   pendingApplicationsCount: number;
   applications: StudioJobApplication[];
   payment: {
-    paymentId: Id<"payments">;
+    paymentId: Id<"paymentOrdersV2">;
     status: PaymentStatus;
     payoutStatus: PayoutStatus | null;
   } | null;

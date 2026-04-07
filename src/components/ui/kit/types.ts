@@ -9,14 +9,6 @@ export type KitTextFieldProps = TextInputProps & {
   trailing?: ReactNode;
 };
 
-export type KitChipProps = {
-  label: string;
-  selected?: boolean;
-  disabled?: boolean;
-  onPress: () => void;
-  style?: StyleProp<ViewStyle>;
-};
-
 export type KitStatusBadgeTone = "neutral" | "accent" | "success" | "warning" | "danger";
 
 export type KitStatusBadgeProps = {

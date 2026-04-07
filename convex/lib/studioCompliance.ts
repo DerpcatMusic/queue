@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { getRapydEnvPresence } from "../integrations/rapyd/config";
+import { getAirwallexEnvPresence } from "../integrations/airwallex/config";
 import { resolveInternalAccessForUserId } from "./internalAccess";
 import { omitUndefined } from "./validation";
 
@@ -44,7 +44,7 @@ export const studioPaymentStatusValidator = v.union(
 
 export const studioPaymentReadinessSourceValidator = v.union(
   v.literal("payment_profile"),
-  v.literal("legacy_env"),
+  v.literal("airwallex_env"),
 );
 
 export const studioOwnerIdentityStatusValidator = v.union(
@@ -115,7 +115,7 @@ export async function getStudioPaymentProfile(
 }
 
 function getLegacyPaymentStatus(): "missing" | "ready" {
-  return getRapydEnvPresence().readyForCheckout ? "ready" : "missing";
+  return getAirwallexEnvPresence().readyForCheckout ? "ready" : "missing";
 }
 
 async function getStudioPaymentReadiness(
@@ -133,8 +133,8 @@ async function getStudioPaymentReadiness(
 
   return {
     status: getLegacyPaymentStatus(),
-    source: "legacy_env" as const,
-    provider: undefined,
+    source: "airwallex_env" as const,
+    provider: "airwallex",
   };
 }
 

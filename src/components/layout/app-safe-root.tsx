@@ -1,8 +1,8 @@
 import { type PropsWithChildren, useLayoutEffect } from "react";
 import type { ColorValue } from "react-native";
-import { View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Box } from "@/primitives";
 
 export function AppSafeRoot({
   children,
@@ -20,7 +20,7 @@ export function AppSafeRoot({
   }));
 
   return (
-    <View style={{ flex: 1 }}>
+    <Box style={{ flex: 1 }}>
       {/* Status bar background - always on top with zIndex */}
       <Animated.View
         pointerEvents="none"
@@ -36,7 +36,7 @@ export function AppSafeRoot({
           animatedInsetStyle,
         ]}
       />
-      <View style={{ flex: 1 }}>{children}</View>
-    </View>
+      <Box style={{ flex: 1 }}>{children}</Box>
+    </Box>
   );
 }

@@ -43,8 +43,8 @@ export function KitSegmentedToggle<T extends string>({
         return (
           <Pressable
             key={option.value}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: option.disabled, selected }}
+            accessibilityRole="radio"
+            accessibilityState={{ disabled: option.disabled, checked: selected }}
             disabled={option.disabled}
             onPress={() => {
               triggerSelectionHaptic();

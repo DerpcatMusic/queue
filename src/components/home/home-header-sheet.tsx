@@ -1,127 +1,142 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, View } from "react-native";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitFloatingBadge } from "@/components/ui/kit/kit-floating-badge";
+import { Pressable } from "react-native";
+import { getMainTabSheetBackgroundColor } from "@/components/layout/top-sheet-registry";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType, FontFamily } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
-import { Box } from "@/primitives";
+import { Box, Text } from "@/primitives";
 
 type HomeHeaderSheetProps = {
   displayName: string;
-  subtitle?: string;
   profileImageUrl?: string | null | undefined;
-  isVerified?: boolean;
   onPressAvatar?: (() => void) | undefined;
-  // Performance metrics
-  lessonsCompleted?: number;
-  totalEarningsLabel?: string;
-  paidOutLabel?: string;
-  outstandingLabel?: string;
+  subtitle?: string;
+  isVerified?: boolean;
+  thisMonthEarningsLabel?: string;
+  thisMonthEarningsAgorot?: number;
   totalEarningsAgorot?: number;
   paidOutAmountAgorot?: number;
+  outstandingAmountAgorot?: number;
   pendingApplications?: number;
   openJobs?: number;
-  currency?: string;
+  missionsCount?: number;
   role?: "instructor" | "studio";
 };
 
 export const HomeHeaderSheet = memo(function HomeHeaderSheet({
   displayName,
-  subtitle,
   profileImageUrl,
-  isVerified = false,
   onPressAvatar,
-  lessonsCompleted,
-  totalEarningsLabel,
-  paidOutLabel,
-  outstandingLabel,
+  thisMonthEarningsLabel,
   totalEarningsAgorot,
   paidOutAmountAgorot,
+  outstandingAmountAgorot,
   pendingApplications,
   openJobs,
+  missionsCount = 0,
   role = "instructor",
 }: HomeHeaderSheetProps) {
-  const { color: palette } = useTheme();
-  const { t } = useTranslation();
+  const theme = useTheme();
+  const { color: palette } = theme;
+  const mainTabSheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
+  const { t, i18n } = useTranslation();
+
+  const compactCurrencySpacing = (value: string) =>
+    value
+      .replace(/[\u00A0\u202F\s]*₪[\u00A0\u202F\s]*/g, "₪")
+      .replace(/[\u200E\u200F]/g, "")
+      .trim();
 
   const isInstructor = role === "instructor";
-  const earningsValue = totalEarningsLabel ?? "0";
-  const paidOutValue = paidOutLabel ?? earningsValue;
-  const outstandingValue = outstandingLabel ?? "0";
-  const lessonsValue = String(lessonsCompleted ?? 0);
-  const pendingValue = String(pendingApplications ?? 0);
+  const monthlyValue = compactCurrencySpacing(thisMonthEarningsLabel ?? "0");
   const jobsValue = String(openJobs ?? 0);
-  const headlineValue = isInstructor ? paidOutValue : jobsValue;
-  const headlineMinor = isInstructor ? t("profile.payments.paidOut") : t("home.actions.jobsTitle");
-  const progressCurrent = isInstructor ? Number(paidOutAmountAgorot ?? 0) : Number(openJobs ?? 0);
-  const progressTarget = isInstructor
-    ? Math.max(Number(totalEarningsAgorot ?? 0), 1)
-    : Math.max(progressCurrent + Number(pendingApplications ?? 0), 1);
+  const headlineValue = isInstructor ? monthlyValue : jobsValue;
+  const headlineMinor = isInstructor ? undefined : t("home.actions.jobsTitle");
+
+  // Multi-color progress bar logic
+  const totalAmount = Math.max(0, Number(totalEarningsAgorot ?? 0));
+  const paidAmount = Math.max(0, Number(paidOutAmountAgorot ?? 0));
+  const processingAmount = Math.max(0, Number(outstandingAmountAgorot ?? 0));
+  const scaleTotal = Math.max(totalAmount, 1);
+
+  const paidPercent = Math.max(0, Math.min(100, (paidAmount / scaleTotal) * 100));
+  const processingPercent = Math.max(0, Math.min(100, (processingAmount / scaleTotal) * 100));
+
   const progressPercent = Math.max(
     0,
-    Math.min(100, Math.round((progressCurrent / progressTarget) * 100)),
+    Math.min(100, Math.round(((openJobs ?? 0) / Math.max((openJobs ?? 0) + (pendingApplications ?? 0), 1)) * 100)),
   );
+
+  const today = new Date();
+  const monthLabel = new Intl.DateTimeFormat(i18n.resolvedLanguage ?? "en", {
+    month: "short",
+    day: "numeric",
+  }).format(today);
 
   return (
     <Box
       pointerEvents="box-none"
       style={{
         paddingHorizontal: BrandSpacing.xl,
-        paddingTop: BrandSpacing.md,
+        paddingTop: BrandSpacing.lg,
         paddingBottom: BrandSpacing.xl,
-        gap: BrandSpacing.lg,
+        gap: BrandSpacing.md,
+        backgroundColor: mainTabSheetBackgroundColor,
+        borderBottomLeftRadius: BrandRadius.soft,
+        borderBottomRightRadius: BrandRadius.soft,
+        shadowColor: "#000000",
+        shadowOpacity: 0.4,
+        shadowRadius: 24,
+        shadowOffset: { width: 0, height: 12 },
+        elevation: 12,
       }}
     >
       <Box flexDirection="row" alignItems="center" justifyContent="space-between" gap="md">
         <Box flex={1} gap="xxs">
           <Text
             style={{
-              ...BrandType.micro,
-              color: palette.textMicro,
-              textTransform: "uppercase",
-              letterSpacing: 2,
+              ...BrandType.microItalic,
+              color: palette.textMuted,
             }}
           >
-            {isInstructor ? t("home.instructor.earningsOverview") : "Queue Performance"}
+            {isInstructor ? t("home.instructor.thisMonthLabel") : "QUEUE PERFORMANCE"}
           </Text>
-          <Text
-            numberOfLines={1}
-            style={{
-              fontFamily: "Lexend_800ExtraBold",
-              fontSize: 46,
-              color: palette.text,
-              letterSpacing: -1.1,
-              includeFontPadding: false,
-            }}
-          >
-            {headlineValue}
-            {headlineMinor ? (
+          <Box flexDirection="row" alignItems="baseline" gap="xs">
+            <Text
+              numberOfLines={1}
+              style={{
+                ...BrandType.displayItalic,
+                color: palette.primary,
+                transform: [{ skewX: "-6deg" }],
+              }}
+            >
+              {headlineValue}
+            </Text>
+            {isInstructor ? (
               <Text
                 style={{
-                  fontFamily: "Manrope_600SemiBold",
-                  fontSize: 14,
-                  color: palette.textMicro,
+                  ...BrandType.title,
+                  fontFamily: FontFamily.display,
+                  color: palette.textMuted,
+                  transform: [{ skewX: "-6deg" }],
+                }}
+              >
+                {`${missionsCount} ${t("home.instructor.missions")}`}
+              </Text>
+            ) : headlineMinor ? (
+              <Text
+                style={{
+                  ...BrandType.title,
+                  fontFamily: FontFamily.display,
+                  color: palette.primary,
+                  transform: [{ skewX: "-6deg" }],
                 }}
               >
                 {` ${headlineMinor}`}
               </Text>
             ) : null}
-          </Text>
-          {subtitle ? (
-            <Text
-              style={{
-                fontFamily: "Manrope_400Regular",
-                fontSize: 12,
-                fontWeight: "400",
-                lineHeight: 16,
-                color: palette.textMuted,
-              }}
-            >
-              {subtitle}
-            </Text>
-          ) : null}
+          </Box>
         </Box>
 
         <Pressable
@@ -129,136 +144,117 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
           accessibilityLabel={onPressAvatar ? t("home.actions.profileTitle") : undefined}
           onPress={onPressAvatar}
           disabled={!onPressAvatar}
-          style={{ borderRadius: 22 }}
+          style={{
+            borderRadius: BrandRadius.pill,
+            borderWidth: 2,
+            borderColor: palette.primary,
+            padding: 2,
+          }}
         >
-          <View style={{ position: "relative" }}>
-            <ProfileAvatar
-              imageUrl={profileImageUrl}
-              fallbackName={displayName}
-              size={52}
-              roundedSquare
-            />
-            <KitFloatingBadge
-              visible={isVerified}
-              size={18}
-              motion="none"
-              style={{ top: -8, left: 12 }}
-            >
-              <View style={{ transform: [{ rotate: "-18deg" }] }}>
-                <Text style={{ fontSize: 14, lineHeight: 14 }}>{"\u{1F451}"}</Text>
-              </View>
-            </KitFloatingBadge>
-          </View>
+          <ProfileAvatar
+            imageUrl={profileImageUrl}
+            fallbackName={displayName}
+            size={48}
+            roundedSquare
+          />
         </Pressable>
       </Box>
 
-      <Box flexDirection="row" justifyContent="space-between" gap="xl">
-        <Box flex={1} gap="xxs">
-          <Text
-            style={{
-              ...BrandType.micro,
-              color: palette.textMicro,
-              textTransform: "uppercase",
-              letterSpacing: 1.8,
-            }}
-          >
-            {isInstructor ? t("home.shared.totalEarnings") : "Pending Review"}
-          </Text>
-          <Box flexDirection="row" alignItems="flex-end" gap="xs">
+      {isInstructor ? (
+        <Box gap="xs">
+          <Box flexDirection="row" justifyContent="space-between" alignItems="center">
             <Text
               style={{
-                fontFamily: "Lexend_800ExtraBold",
-                fontSize: 34,
-                lineHeight: 34,
+                ...BrandType.microItalic,
+                color: palette.textMuted,
+              }}
+            >
+              {monthLabel.toUpperCase()}
+            </Text>
+            <Text
+              style={{
+                ...BrandType.microItalic,
                 color: palette.primary,
-                letterSpacing: -0.8,
-                includeFontPadding: false,
               }}
             >
-              {isInstructor ? earningsValue : pendingValue}
+              {t("home.instructor.status")}
             </Text>
-            {!isInstructor ? (
-              <Text
-                style={{ ...BrandType.caption, color: palette.textMicro }}
-              >{`/ ${progressTarget}`}</Text>
-            ) : null}
           </Box>
-        </Box>
-        <Box flex={1} gap="xxs">
-          <Text
+          <Box
             style={{
-              ...BrandType.micro,
-              color: palette.textMicro,
-              textTransform: "uppercase",
-              letterSpacing: 1.8,
+              height: 10,
+              width: "100%",
+              borderRadius: BrandRadius.pill,
+              backgroundColor: palette.surfaceAlt,
+              overflow: "hidden",
             }}
           >
-            {isInstructor ? t("home.instructor.stillOwed") : "Filled"}
-          </Text>
-          <Box flexDirection="row" alignItems="flex-end" gap="xs">
+            {/* Paid Amount */}
+            <Box
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: `${paidPercent}%`,
+                backgroundColor: palette.primary,
+                borderRadius: BrandRadius.pill,
+              }}
+            />
+            {/* Processing Amount */}
+            <Box
+              style={{
+                position: "absolute",
+                left: `${paidPercent}%`,
+                top: 0,
+                bottom: 0,
+                width: `${processingPercent}%`,
+                backgroundColor: palette.secondary,
+                borderRadius: BrandRadius.pill,
+              }}
+            />
+          </Box>
+        </Box>
+      ) : (
+        <Box gap="xs">
+          <Box flexDirection="row" alignItems="center" justifyContent="space-between">
             <Text
               style={{
-                fontFamily: "Lexend_800ExtraBold",
-                fontSize: 34,
-                lineHeight: 34,
-                color: palette.secondary,
-                letterSpacing: -0.8,
-                includeFontPadding: false,
+                ...BrandType.microItalic,
+                color: palette.textMuted,
               }}
             >
-              {isInstructor ? outstandingValue : lessonsValue}
+              PENDING REVIEW
             </Text>
-            {!isInstructor ? (
-              <IconSymbol name="flame.fill" size={18} color={palette.secondary} />
-            ) : null}
+            <Text
+              style={{
+                ...BrandType.microItalic,
+                color: palette.primary,
+              }}
+            >
+              {t("home.studio.waitingCount", { count: pendingApplications ?? 0 })}
+            </Text>
+          </Box>
+          <Box
+            style={{
+              height: 10,
+              width: "100%",
+              backgroundColor: palette.surfaceAlt,
+              borderRadius: BrandRadius.pill,
+              overflow: "hidden",
+            }}
+          >
+            <Box
+              style={{
+                height: "100%",
+                width: `${progressPercent}%`,
+                backgroundColor: palette.primary,
+                borderRadius: BrandRadius.pill,
+              }}
+            />
           </Box>
         </Box>
-      </Box>
-
-      <Box gap="xs">
-        <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-          <Text
-            style={{
-              ...BrandType.micro,
-              color: palette.textMicro,
-              textTransform: "uppercase",
-              letterSpacing: 1.8,
-            }}
-          >
-            {isInstructor ? t("home.instructor.payoutProgress") : "Goal Velocity"}
-          </Text>
-          <Text
-            style={{
-              ...BrandType.micro,
-              color: palette.primary,
-              textTransform: "uppercase",
-              letterSpacing: 1.8,
-            }}
-          >
-            {isInstructor
-              ? t("home.instructor.paidPercent", { percent: progressPercent })
-              : `${progressPercent}% Reached`}
-          </Text>
-        </Box>
-        <View
-          style={{
-            height: 12,
-            width: "100%",
-            backgroundColor: palette.surfaceAlt,
-            borderRadius: BrandRadius.pill,
-            overflow: "hidden",
-          }}
-        >
-          <View
-            style={{
-              height: "100%",
-              width: `${progressPercent}%`,
-              backgroundColor: palette.primary,
-              borderRadius: BrandRadius.pill,
-            }}
-          />
-        </View>
-      </Box>
+      )}
     </Box>
   );
 });

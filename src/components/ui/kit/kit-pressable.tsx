@@ -7,6 +7,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { triggerSelectionHaptic } from "./native-interaction";
 
@@ -56,6 +57,7 @@ type KitPressableProps = {
   disabled?: boolean;
   loading?: boolean;
   accessibilityLabel?: string | undefined;
+  accessibilityHint?: string | undefined;
   accessibilityState?: AccessibilityState;
   accessibilityRole?:
     | "button"
@@ -109,6 +111,7 @@ export function KitPressable({
   disabled = false,
   loading = false,
   accessibilityLabel,
+  accessibilityHint,
   accessibilityState,
   accessibilityRole = "button",
   style,
@@ -170,12 +173,12 @@ export function KitPressable({
   const resolvedDisabledBorderColor = disabledBorderColor ?? resolvedBorderColor;
 
   // Size defaults
-  const resolvedBorderRadius = size?.borderRadius ?? 8;
+  const resolvedBorderRadius = size?.borderRadius ?? BrandRadius.button;
   const resolvedMinHeight = size?.minHeight;
   const resolvedMinWidth = size?.minWidth;
   const resolvedWidth = size?.width;
-  const resolvedPaddingH = padding?.horizontal ?? 14;
-  const resolvedPaddingV = padding?.vertical ?? 8;
+  const resolvedPaddingH = padding?.horizontal ?? BrandSpacing.component;
+  const resolvedPaddingV = padding?.vertical ?? BrandSpacing.sm;
   const resolvedBorderWidth = border?.width ?? 0;
   const resolvedAlignSelf = layout?.alignSelf;
 
@@ -184,6 +187,7 @@ export function KitPressable({
       testID={testID}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: isDisabled, busy: loading, ...accessibilityState }}
       disabled={isDisabled}
       onPress={

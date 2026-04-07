@@ -1,9 +1,10 @@
-import { memo } from "react";
 import type { ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
-
+import { memo } from "react";
+import { View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
 
 type StatusSignalTone = "surface" | "accent";
 
@@ -19,10 +20,15 @@ const STATUS_SIGNAL_HORIZONTAL_PADDING = BrandSpacing.controlX;
 const STATUS_SIGNAL_VERTICAL_PADDING = BrandSpacing.controlY;
 const STATUS_SIGNAL_CONTENT_GAP = 2;
 
-export const StatusSignal = memo(function StatusSignal({ label, value, tone = "surface", icon }: StatusSignalProps) {
+export const StatusSignal = memo(function StatusSignal({
+  label,
+  value,
+  tone = "surface",
+  icon,
+}: StatusSignalProps) {
   const { color: palette } = useTheme();
-  const backgroundColor = tone === "accent" ? palette.primarySubtle : palette.surfaceElevated;
-  const labelColor = tone === "accent" ? palette.primary : palette.textMuted;
+  const backgroundColor = tone === "accent" ? "#CCFF00" : palette.surfaceElevated;
+  const labelColor = tone === "accent" ? "#161E00" : palette.textMuted;
   const valueColor = palette.text;
 
   return (

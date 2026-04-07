@@ -51,7 +51,6 @@ export function buildBaseSheetProps(
     ...(config.steps ? { steps: config.steps } : {}),
     ...(config.initialStep !== undefined ? { initialStep: config.initialStep } : {}),
     ...(config.activeStep !== undefined ? { activeStep: config.activeStep } : {}),
-    ...(config.minHeight !== undefined ? { minHeight: config.minHeight } : {}),
     ...(config.collapsedHeightMode ? { collapsedHeightMode: config.collapsedHeightMode } : {}),
     ...(config.expandMode ? { expandMode: config.expandMode } : {}),
     ...(config.padding ? { padding: config.padding } : {}),

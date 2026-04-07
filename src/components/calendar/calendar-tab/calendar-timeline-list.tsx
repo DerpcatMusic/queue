@@ -1,6 +1,7 @@
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { memo, type RefObject } from "react";
-import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
+import { type StyleProp, View, type ViewStyle } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { BrandSpacing } from "@/constants/brand";
 import { useAppInsets } from "@/hooks/use-app-insets";
@@ -38,7 +39,7 @@ function CalendarTimelineList({
 }: CalendarTimelineListProps) {
   const { safeBottom } = useAppInsets();
   const { color: palette } = useTheme();
-  const contentBackgroundColor = palette.jobsCanvas;
+  const contentBackgroundColor = palette.appBg;
   return (
     <TabScreenRoot
       mode="static"
@@ -47,7 +48,10 @@ function CalendarTimelineList({
       sheetInsets={{ topSpacing: 0 }}
     >
       <Box
-        style={[calendarTimelineStyles.timelineViewport, { backgroundColor: contentBackgroundColor }]}
+        style={[
+          calendarTimelineStyles.timelineViewport,
+          { backgroundColor: contentBackgroundColor },
+        ]}
       >
         {/* Central Timeline Line */}
         <View

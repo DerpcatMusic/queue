@@ -6,7 +6,6 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
-import { useThemePreference } from "@/hooks/use-theme-preference";
 import { BorderWidth, FontFamily, LetterSpacing } from "@/lib/design-system";
 import { Box, Text } from "@/primitives";
 
@@ -18,6 +17,7 @@ const PROFILE_SETTING_ROW_SECONDARY_GAP = BrandSpacing.xxs;
 const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.md;
 const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.md;
 const PROFILE_ICON_BUTTON_SIZE = 40;
+const BRIGHT_LIME = "#CCFF00";
 
 const URGENT_ORANGE = "#FF5E00";
 
@@ -89,9 +89,12 @@ export function ProfileSectionCard({
           overflow: "hidden",
           borderRadius: BrandRadius.card,
           borderCurve: "continuous",
-          borderWidth: BorderWidth.thin,
-          borderColor: theme.color.border,
-          backgroundColor: theme.color.surfaceElevated,
+          backgroundColor: theme.scheme === "light" ? "#FFFFFF" : theme.color.surfaceElevated,
+          shadowColor: "#000000",
+          shadowOpacity: theme.scheme === "light" ? 0.05 : 0.06,
+          shadowRadius: theme.scheme === "light" ? 20 : 16,
+          shadowOffset: { width: 0, height: theme.scheme === "light" ? 10 : 8 },
+          elevation: theme.scheme === "light" ? 0 : 2,
         },
         style,
       ]}
@@ -113,7 +116,7 @@ export function ProfileIconButton({
   tone?: "neutral" | "accent";
 }) {
   const theme = useTheme();
-  const iconColor = tone === "accent" ? theme.color.primary : theme.color.text;
+  const iconColor = tone === "accent" ? BRIGHT_LIME : theme.color.text;
 
   return (
     <IconButton
@@ -148,16 +151,13 @@ export function ProfileSettingRow({
   showDivider?: boolean;
 }) {
   const theme = useTheme();
-  const { resolvedScheme } = useThemePreference();
-  const resolvedAccentColor = accentColor ?? theme.color.tertiary;
+  const resolvedAccentColor = accentColor ?? BRIGHT_LIME;
 
   const secondaryColor =
     tone === "danger"
       ? URGENT_ORANGE
       : tone === "accent"
-        ? resolvedScheme === "dark"
-          ? theme.color.primary
-          : theme.color.primary
+        ? BRIGHT_LIME
         : theme.color.textMuted;
 
   const iconColor =
@@ -165,9 +165,9 @@ export function ProfileSettingRow({
       ? URGENT_ORANGE
       : tone === "accent"
         ? resolvedAccentColor
-        : theme.color.primary;
+        : BRIGHT_LIME;
 
-  const dividerColor = theme.color.divider;
+  const dividerColor = theme.scheme === "light" ? "transparent" : theme.color.divider;
 
   const content = (
     <Box>
@@ -178,6 +178,9 @@ export function ProfileSettingRow({
         px="md"
         py="md"
         minHeight={BrandSpacing.listItemMinHeight}
+        style={{
+          backgroundColor: theme.scheme === "light" ? theme.color.surface : "transparent",
+        }}
       >
         {icon ? (
           <View
@@ -185,7 +188,8 @@ export function ProfileSettingRow({
               width: 40,
               height: 40,
               borderRadius: BrandRadius.lg,
-              backgroundColor: theme.color.surfaceAlt,
+              backgroundColor:
+                theme.scheme === "light" ? theme.color.surfaceAlt : theme.color.surfaceElevated,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -220,7 +224,7 @@ export function ProfileSettingRow({
             <Text
               variant="caption"
               numberOfLines={1}
-              style={{ textAlign: "right", color: theme.color.textMuted }}
+              style={{ textAlign: "auto", color: theme.color.textMuted }}
             >
               {value}
             </Text>
@@ -245,7 +249,11 @@ export function ProfileSettingRow({
   );
 
   if (!onPress) {
-    return content;
+    return (
+      <View accessibilityLabel={[title, subtitle, value].filter(Boolean).join(". ")}>
+        {content}
+      </View>
+    );
   }
 
   return (
@@ -277,16 +285,19 @@ export function ProfileSupportCard({
   const cardContent = (
     <View
       style={{
-        backgroundColor: theme.color.surfaceAlt,
+        backgroundColor: theme.color.surfaceElevated,
         borderRadius: BrandRadius.card,
-        borderWidth: BorderWidth.thin,
-        borderColor: theme.color.border,
         padding: BrandSpacing.md,
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         gap: BrandSpacing.xs,
         minHeight: 80,
+        shadowColor: "#000000",
+        shadowOpacity: 0.05,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 1,
       }}
     >
       <IconSymbol name={icon} size={24} color={theme.color.textMuted} />
@@ -318,16 +329,19 @@ export function ProfileSignOutButton({ title, onPress }: { title: string; onPres
   const cardContent = (
     <View
       style={{
-        backgroundColor: theme.color.secondarySubtle,
+        backgroundColor: theme.color.surfaceElevated,
         borderRadius: BrandRadius.card,
-        borderWidth: 1,
-        borderColor: theme.color.secondary,
         padding: BrandSpacing.md,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
         gap: BrandSpacing.sm,
         minHeight: 52,
+        shadowColor: "#000000",
+        shadowOpacity: 0.05,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 1,
       }}
     >
       <IconSymbol name="logout" size={20} color={theme.color.secondary} />

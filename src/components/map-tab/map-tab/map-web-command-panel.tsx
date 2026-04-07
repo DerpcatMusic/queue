@@ -1,10 +1,11 @@
 import type { TFunction } from "i18next";
-import { Pressable, ScrollView, Text, View } from "react-native";
-
+import { Pressable, ScrollView, View } from "react-native";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { NativeSearchField } from "@/components/ui/native-search-field";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
 
 type MapWebCommandPanelProps = {
   t: TFunction;
@@ -39,8 +40,8 @@ export function MapWebCommandPanel({
   return (
     <View
       style={{
-        width: 360,
-        borderRadius: 34,
+        width: BrandSpacing.shellCommandPanel,
+        borderRadius: BrandRadius.mapOverlay,
         borderCurve: "continuous",
         backgroundColor: palette.surfaceAlt,
         paddingHorizontal: 16,
@@ -48,7 +49,7 @@ export function MapWebCommandPanel({
         gap: 14,
       }}
     >
-      <View style={{ gap: 6 }}>
+      <View style={{ gap: BrandSpacing.sm }}>
         <Text
           style={{
             fontFamily: "Lexend_500Medium",
@@ -76,15 +77,15 @@ export function MapWebCommandPanel({
 
       <View
         style={{
-          borderRadius: 24,
+          borderRadius: BrandRadius.soft,
           borderCurve: "continuous",
           backgroundColor: palette.surface,
           paddingHorizontal: 14,
           paddingVertical: 14,
-          gap: 10,
+          gap: BrandSpacing.md,
         }}
       >
-        <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ flexDirection: "row", gap: BrandSpacing.md }}>
           <View
             style={{
               flex: 1,
@@ -209,7 +210,7 @@ export function MapWebCommandPanel({
         </View>
       ) : null}
 
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: BrandSpacing.md }}>
         <Text
           style={{
             fontFamily: "Manrope_500Medium",
@@ -235,7 +236,7 @@ export function MapWebCommandPanel({
                 backgroundColor: palette.surface,
                 paddingHorizontal: 14,
                 paddingVertical: 16,
-                gap: 4,
+                gap: BrandSpacing.xs,
               }}
             >
               <Text
@@ -268,7 +269,7 @@ export function MapWebCommandPanel({
                 style={{
                   flexDirection: "row",
                   alignItems: "stretch",
-                  gap: 10,
+                  gap: BrandSpacing.md,
                   borderRadius: 22,
                   borderCurve: "continuous",
                   backgroundColor:
@@ -347,7 +348,7 @@ export function MapWebCommandPanel({
         </ScrollView>
       </View>
 
-      <View style={{ gap: 10, flex: 1, minHeight: 0 }}>
+      <View style={{ gap: BrandSpacing.md, flex: 1, minHeight: 0 }}>
         <Text
           style={{
             fontFamily: "Manrope_500Medium",

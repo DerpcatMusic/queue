@@ -1,7 +1,8 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
 
 type JobsSectionHeaderProps = {
   title: string;
@@ -12,19 +13,27 @@ export function JobsSectionHeader({ title, subtitle }: JobsSectionHeaderProps) {
   const theme = useTheme();
 
   return (
-    <View
-      style={{
-        gap: BrandSpacing.xs,
-        paddingHorizontal: BrandSpacing.xs,
-      }}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+    <View style={{ gap: BrandSpacing.xs, paddingHorizontal: BrandSpacing.xs }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: BrandSpacing.sm,
+          alignSelf: "flex-start",
+          paddingHorizontal: BrandSpacing.sm,
+          paddingVertical: BrandSpacing.xs,
+          borderRadius: BrandRadius.pill,
+          backgroundColor: theme.color.surfaceAlt,
+          borderWidth: 1,
+          borderColor: theme.color.border,
+        }}
+      >
         <View
           style={{
             width: theme.spacing.statusDot,
             height: theme.spacing.statusDot,
             borderRadius: BrandRadius.full,
-            backgroundColor: theme.jobs.signal,
+            backgroundColor: theme.color.primary,
           }}
         />
         <Text style={[theme.typography.radarLabel, { color: theme.color.textMuted }]}>

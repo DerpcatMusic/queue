@@ -2,7 +2,8 @@ import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
@@ -102,10 +103,10 @@ export function CreateJobSheet({
         {...props}
         disappearsAt={-1}
         appearsAt={0}
-        style={[props.style, { backgroundColor: palette.surface }]}
+        style={[props.style, { backgroundColor: palette.overlay }]}
       />
     ),
-    [palette.surface],
+    [palette.overlay],
   );
 
   const handleDateChange = (_event: any, selectedDate?: Date) => {
@@ -187,7 +188,7 @@ export function CreateJobSheet({
       onClose={handleDismissed}
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={{ backgroundColor: palette.borderStrong }}
-      backgroundStyle={{ backgroundColor: palette.appBg }}
+      backgroundStyle={{ backgroundColor: palette.surface }}
     >
       <BottomSheetScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>

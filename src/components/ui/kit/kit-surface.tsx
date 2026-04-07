@@ -1,8 +1,9 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
+import { memo } from "react";
 import { View, type ViewProps } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 
 export type KitSurfaceTone = "base" | "elevated" | "glass" | "sheet" | "sunken";
@@ -11,6 +12,7 @@ export type KitSurfaceProps = ViewProps & {
   tone?: KitSurfaceTone;
   padding?: number;
   gap?: number;
+  children?: ReactNode;
 };
 
 type GlassModule = {
@@ -38,7 +40,30 @@ function getGlassModule(): GlassModule | null {
   return cachedGlassModule;
 }
 
-export function KitSurface({
+const styles = StyleSheet.create((theme) => ({
+  base: {
+    borderRadius: BrandRadius.card,
+    borderCurve: "continuous" as const,
+    overflow: "hidden" as const,
+  },
+  tone_base: {
+    backgroundColor: theme.color.surfaceAlt,
+  },
+  tone_elevated: {
+    backgroundColor: theme.color.surfaceElevated,
+  },
+  tone_glass: {
+    backgroundColor: theme.color.surface,
+  },
+  tone_sheet: {
+    backgroundColor: theme.color.surface,
+  },
+  tone_sunken: {
+    backgroundColor: theme.color.surfaceAlt,
+  },
+}));
+
+const KitSurface = memo(function KitSurface({
   tone = "base",
   padding = BrandSpacing.lg,
   gap = BrandSpacing.stackTight,
@@ -46,29 +71,10 @@ export function KitSurface({
   style,
   ...rest
 }: KitSurfaceProps) {
-  const { color } = useTheme();
   const { resolvedScheme: scheme } = useThemePreference();
   const isGlass = tone === "glass";
   const allowNativeGlass = process.env.EXPO_OS === "ios";
   const glassModule = allowNativeGlass ? getGlassModule() : null;
-  const backgroundColor =
-    tone === "elevated"
-      ? color.surfaceElevated
-      : tone === "glass" || tone === "sheet"
-        ? color.surface
-        : color.surfaceAlt;
-
-  const baseStyle = [
-    {
-      borderRadius: BrandRadius.card,
-      borderCurve: "continuous" as const,
-      padding,
-      gap,
-      backgroundColor,
-      overflow: "hidden" as const,
-    },
-    style,
-  ];
 
   if (isGlass && glassModule && glassModule.isLiquidGlassAvailable()) {
     const GlassView = glassModule.GlassView;
@@ -76,7 +82,7 @@ export function KitSurface({
       <GlassView
         glassEffectStyle="regular"
         colorScheme={scheme === "dark" ? "dark" : "light"}
-        style={baseStyle}
+        style={[styles.base, styles[`tone_${tone}`], { padding, gap }, style]}
         {...rest}
       >
         {children}
@@ -85,8 +91,10 @@ export function KitSurface({
   }
 
   return (
-    <View style={baseStyle} {...rest}>
+    <View style={[styles.base, styles[`tone_${tone}`], { padding, gap }, style]} {...rest}>
       {children}
     </View>
   );
-}
+});
+
+export { KitSurface };

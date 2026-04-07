@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
 import { Image } from "expo-image";
-import { Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { View, type ViewProps } from "react-native";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { FontSize, IconSize, LetterSpacing } from "@/lib/design-system";
+import { Text } from "@/primitives";
 
 type ProfileAvatarProps = {
   imageUrl?: string | null | undefined;
@@ -12,7 +13,7 @@ type ProfileAvatarProps = {
   size?: number;
   roundedSquare?: boolean;
   fallbackIcon?: string;
-};
+} & Pick<ViewProps, "accessibilityLabel">;
 
 function toInitials(name: string | null | undefined) {
   if (!name) return null;
@@ -33,6 +34,7 @@ export function ProfileAvatar({
   size = 56,
   roundedSquare = true,
   fallbackIcon = "person.fill",
+  accessibilityLabel,
 }: ProfileAvatarProps) {
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   const { color } = useTheme();
@@ -44,6 +46,7 @@ export function ProfileAvatar({
 
   return (
     <View
+      accessibilityLabel={accessibilityLabel}
       style={{
         width: size,
         height: size,

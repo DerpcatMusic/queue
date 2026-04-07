@@ -1,9 +1,7 @@
 import { useMutation, useQuery } from "convex/react";
 import type { TFunction } from "i18next";
-import { useTranslation } from "react-i18next";
 import { useState } from "react";
-import { Text, View } from "react-native";
-
+import { useTranslation } from "react-i18next";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
   ProfileSectionCard,
@@ -26,6 +24,7 @@ import {
   isPushRegistrationError,
   registerForPushNotificationsAsync,
 } from "@/lib/push-notifications";
+import { Box, Text } from "@/primitives";
 
 const REMINDER_OPTIONS = [15, 30, 45, 60] as const;
 
@@ -98,10 +97,10 @@ function getPreferenceCopy(
 }
 
 export function NotificationSettingsScreen({
-  role,
+  actorRole,
   routeMatchPath,
 }: {
-  role: NotificationSettingsRole;
+  actorRole: NotificationSettingsRole;
   routeMatchPath: string;
 }) {
   const { t } = useTranslation();
@@ -115,7 +114,7 @@ export function NotificationSettingsScreen({
 
   const settings = useQuery(
     api.users.getMyNotificationSettings,
-    currentUser?.role === role ? {} : "skip",
+    currentUser?.role === actorRole ? {} : "skip",
   );
   const updateSettings = useMutation(api.users.updateMyNotificationSettings);
 
@@ -219,16 +218,16 @@ export function NotificationSettingsScreen({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.color.appBg }}>
+    <Box style={{ flex: 1, backgroundColor: theme.color.appBg }}>
       <ProfileSubpageScrollView
-        routeKey={`${role}/profile/notifications`}
+        routeKey={`${actorRole}/profile/notifications`}
         contentContainerStyle={{
           paddingHorizontal: BrandSpacing.inset,
           paddingBottom: overlayBottom + BrandSpacing.xxl,
           gap: BrandSpacing.stackRoomy,
         }}
       >
-        <View style={{ gap: BrandSpacing.stackTight }}>
+        <Box style={{ gap: BrandSpacing.stackTight }}>
           <Text style={[BrandType.radarLabel, { color: theme.color.textMuted }]}>
             {t("profile.navigation.notifications")}
           </Text>
@@ -236,11 +235,11 @@ export function NotificationSettingsScreen({
             {t("profile.notifications.title")}
           </Text>
           <Text style={[BrandType.body, { color: theme.color.textMuted }]}>
-            {role === "instructor"
+            {actorRole === "instructor"
               ? t("profile.notifications.instructorDescription")
               : t("profile.notifications.studioDescription")}
           </Text>
-        </View>
+        </Box>
 
         <ProfileSectionHeader label={t("profile.notifications.pushSection")} icon="bell.fill" />
         <ProfileSectionCard>
@@ -274,7 +273,10 @@ export function NotificationSettingsScreen({
           />
         </ProfileSectionCard>
 
-        <ProfileSectionHeader label={t("profile.notifications.alertsSection")} icon="bell.badge.fill" />
+        <ProfileSectionHeader
+          label={t("profile.notifications.alertsSection")}
+          icon="bell.badge.fill"
+        />
         <ProfileSectionCard>
           {settings.availablePreferenceKeys.map((key, index) => {
             const copy = getPreferenceCopy(key, t);
@@ -328,27 +330,23 @@ export function NotificationSettingsScreen({
           icon="location.fill"
         />
         <ProfileSectionCard>
-          <View style={{ gap: BrandSpacing.xs, padding: BrandSpacing.componentPadding }}>
+          <Box style={{ gap: BrandSpacing.xs, padding: BrandSpacing.componentPadding }}>
             <Text style={[BrandType.bodyMedium, { color: theme.color.text }]}>
               {t("profile.notifications.locationGroundworkBody")}
             </Text>
             <Text style={[BrandType.body, { color: theme.color.textMuted }]}>
               {t("profile.notifications.locationGroundworkFootnote")}
             </Text>
-          </View>
+          </Box>
         </ProfileSectionCard>
 
         {statusMessage ? (
-          <Text style={[BrandType.body, { color: theme.color.success }]}>
-            {statusMessage}
-          </Text>
+          <Text style={[BrandType.body, { color: theme.color.success }]}>{statusMessage}</Text>
         ) : null}
         {errorMessage ? (
-          <Text style={[BrandType.body, { color: theme.color.danger }]}>
-            {errorMessage}
-          </Text>
+          <Text style={[BrandType.body, { color: theme.color.danger }]}>{errorMessage}</Text>
         ) : null}
       </ProfileSubpageScrollView>
-    </View>
+    </Box>
   );
 }

@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { cloneElement, isValidElement, useEffect } from "react";
-import type { ScrollViewProps, StyleProp, ViewStyle } from "react-native";
+import { View, type ScrollViewProps, type StyleProp, type ViewStyle } from "react-native";
 import Animated from "react-native-reanimated";
 
 import { DesktopDashboardFrame } from "@/components/layout/desktop-dashboard-frame";
@@ -10,7 +10,6 @@ import {
 } from "@/components/layout/scroll-sheet-provider";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { type InsetTone, useSystemUi } from "@/contexts/system-ui-context";
-import { Box } from "@/primitives";
 import { createSheetInsetStyle, getSheetProgressViewOffset } from "./sheet-inset-contract";
 
 export type ScreenScaffoldSheetInsets = {
@@ -81,27 +80,29 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
 
   if (props.mode === "static") {
     return (
-      <Box
+      <View
         onLayout={handleSceneLayout}
         style={[
           {
             flex: 1,
+            borderRadius: 0,
           },
           props.style,
         ]}
       >
         <TabSceneTransition>
-          <Box style={{ flex: 1 }}>
+          <View style={{ flex: 1, borderRadius: 0 }}>
             {staticTopBlockHeight > 0 ? (
-              <Box style={{ height: staticTopBlockHeight, flexShrink: 0 }} />
+              <View style={{ height: staticTopBlockHeight, flexShrink: 0 }} />
             ) : null}
-            <Box
+            <View
               style={[
                 {
                   flex: 1,
                   minHeight: 0,
                   overflow: "hidden",
                   paddingBottom: staticBottomPadding,
+                  borderRadius: 0,
                 },
                 staticHorizontalPadding !== undefined
                   ? { paddingHorizontal: staticHorizontalPadding }
@@ -109,10 +110,10 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
               ]}
             >
               {props.children}
-            </Box>
-          </Box>
+            </View>
+          </View>
         </TabSceneTransition>
-      </Box>
+      </View>
     );
   }
 
@@ -157,7 +158,7 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
   );
 
   return (
-    <Box onLayout={handleSceneLayout} style={{ flex: 1 }}>
+    <View onLayout={handleSceneLayout} style={{ flex: 1, borderRadius: 0 }}>
       <TabSceneTransition>
         <Animated.ScrollView
           contentInsetAdjustmentBehavior="never"
@@ -171,6 +172,6 @@ export function ScreenScaffold(props: ScreenScaffoldProps) {
           {content}
         </Animated.ScrollView>
       </TabSceneTransition>
-    </Box>
+    </View>
   );
 }

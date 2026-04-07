@@ -60,20 +60,15 @@ export async function resolveInternalAccessForUser(
 
   const tableGrant =
     grantByUserId ??
-    (grantByEmail && grantByEmail.userId === undefined ? grantByEmail : grantByEmail ?? null);
+    (grantByEmail && grantByEmail.userId === undefined ? grantByEmail : (grantByEmail ?? null));
   const envAdmin = normalizedEmail ? getEnvInternalAdminEmails().has(normalizedEmail) : false;
 
   const role: InternalAccessRole | undefined = envAdmin ? "admin" : tableGrant?.role;
-  const verificationBypass = envAdmin || tableGrant?.verificationBypass === true;
   const canManageInternalAccess = envAdmin || tableGrant?.role === "admin";
+  const verificationBypass =
+    envAdmin || canManageInternalAccess || tableGrant?.verificationBypass === true;
   const source: InternalAccessSummary["source"] =
-    envAdmin && tableGrant
-      ? "table+env"
-      : envAdmin
-        ? "env"
-        : tableGrant
-          ? "table"
-          : "none";
+    envAdmin && tableGrant ? "table+env" : envAdmin ? "env" : tableGrant ? "table" : "none";
 
   return {
     verificationBypass,

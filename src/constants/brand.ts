@@ -2,6 +2,7 @@ export {
   BrandRadius,
   BrandSpacing,
   BrandType,
+  FontFamily,
   MapBrandPalette,
   getMapBrandPalette,
   type ResolvedBrandScheme,

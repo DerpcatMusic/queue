@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { TabSubrouteStack } from "@/components/layout/tab-subroute-stack";
 import { ProfileSubpageSheetProvider } from "@/components/profile/profile-subpage-sheet";
 
 /**
@@ -49,14 +50,13 @@ export default function ProfileLayout() {
           routeMatchPath: "/profile/compliance",
           title: t("profile.navigation.compliance"),
         },
+        {
+          routeMatchPath: "/profile/airwallex-onboarding",
+          title: t("profile.navigation.wallet"),
+        },
       ]}
     >
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: "slide_from_right",
-        }}
-      >
+      <TabSubrouteStack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="add-account" options={{ title: t("profile.navigation.addAccount") }} />
         <Stack.Screen
@@ -82,7 +82,11 @@ export default function ProfileLayout() {
           options={{ title: t("profile.navigation.identityVerification") }}
         />
         <Stack.Screen name="compliance" options={{ title: t("profile.navigation.compliance") }} />
-      </Stack>
+        <Stack.Screen
+          name="airwallex-onboarding"
+          options={{ title: t("profile.navigation.wallet") }}
+        />
+      </TabSubrouteStack>
     </ProfileSubpageSheetProvider>
   );
 }

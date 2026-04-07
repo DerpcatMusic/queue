@@ -6,9 +6,13 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Linking, StyleSheet, Text, View } from "react-native";
+import { Linking, Text } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
+import {
+  createContentDrivenTopSheetConfig,
+  getMainTabSheetBackgroundColor,
+} from "@/components/layout/top-sheet-registry";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
 import {
   ProfileSectionCard,
@@ -23,7 +27,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -46,6 +50,7 @@ import {
   validateSessionAfterSwitch,
 } from "@/modules/session/device-account-store";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import { Box } from "@/primitives";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -116,7 +121,6 @@ export default function StudioProfileScreen() {
   const { color } = useTheme();
   const { t, i18n } = useTranslation();
   const router = useRouter();
-
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
@@ -360,7 +364,7 @@ export default function StudioProfileScreen() {
   const isStudioVerified = studioDiditVerification?.isVerified ?? false;
   const profileSheetContent = useMemo(
     () => (
-      <View>
+      <Box>
         <ProfileHeaderSheet
           profileName={profileName}
           roleLabel={t("profile.hero.studioProfile")}
@@ -374,7 +378,7 @@ export default function StudioProfileScreen() {
           sports={studioSettings?.sports ?? []}
           isVerified={isStudioVerified}
         />
-      </View>
+      </Box>
     ),
     [
       currentUser?.image,
@@ -391,292 +395,296 @@ export default function StudioProfileScreen() {
   );
 
   const profileSheetConfig = useMemo(
-    () =>
-      createContentDrivenTopSheetConfig({
+    () => {
+      const sheetBackgroundColor = getMainTabSheetBackgroundColor({ color } as never);
+      return createContentDrivenTopSheetConfig({
         collapsedContent: profileSheetContent,
         padding: {
           vertical: 0,
           horizontal: 0,
         },
-        backgroundColor: color.tertiary,
-        topInsetColor: color.tertiary,
-      }),
-    [color.tertiary, profileSheetContent],
+        backgroundColor: sheetBackgroundColor,
+        topInsetColor: sheetBackgroundColor,
+      });
+    },
+    [color, profileSheetContent],
   );
 
   const descriptorBody = (
-    <TabScreenRoot
-      mode="static"
-      topInsetTone="sheet"
-      style={[styles.screen, { backgroundColor: color.appBg }]}
-    >
+    <>
       {isDesktopWeb ? (
-        <View style={styles.desktopShell}>
-          <View style={styles.desktopRail}>
-            <ProfileDesktopHeroPanel
-              profileName={profileName}
-              roleLabel={t("profile.hero.studioProfile")}
-              profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
-              summary={publicProfileSummary}
-              statusLabel={
-                profileStatus === "ready"
-                  ? t("profile.hero.statusReady")
-                  : t("profile.hero.statusPending")
-              }
-              statusTone={profileStatus === "ready" ? "success" : "warning"}
-              metaLabel={
-                memberSince
-                  ? t("profile.account.memberSinceValue", {
-                      date: memberSince,
-                    })
-                  : sportsSummary
-              }
-              primaryAction={{
-                label: t("profile.actions.edit"),
-                onPress: handleRequestEdit,
-              }}
-              isVerified={isStudioVerified}
-              onOpenSwitcher={handleOpenAccountSwitcher}
-              switcherActionLabel={t("profile.switcher.openAction")}
-            />
-          </View>
-
-          <View style={styles.desktopContent}>
-            <View style={styles.desktopMainColumn}>
-              <ProfileSectionHeader
-                label={t("profile.sections.studio")}
-                icon="building.2.fill"
-                flush
+        <TabScreenRoot
+          mode="static"
+          topInsetTone="sheet"
+          style={[styles.screen, { backgroundColor: color.appBg }]}
+        >
+          <Box style={styles.desktopShell}>
+            <Box style={styles.desktopRail}>
+              <ProfileDesktopHeroPanel
+                profileName={profileName}
+                roleLabel={t("profile.hero.studioProfile")}
+                profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
+                summary={publicProfileSummary}
+                statusLabel={
+                  profileStatus === "ready"
+                    ? t("profile.hero.statusReady")
+                    : t("profile.hero.statusPending")
+                }
+                statusTone={profileStatus === "ready" ? "success" : "warning"}
+                metaLabel={
+                  memberSince
+                    ? t("profile.account.memberSinceValue", {
+                        date: memberSince,
+                      })
+                    : sportsSummary
+                }
+                primaryAction={{
+                  label: t("profile.actions.edit"),
+                  onPress: handleRequestEdit,
+                }}
+                isVerified={isStudioVerified}
+                onOpenSwitcher={handleOpenAccountSwitcher}
+                switcherActionLabel={t("profile.switcher.openAction")}
               />
-              <ProfileSectionCard style={styles.desktopCardGroup}>
-                <ProfileSettingRow
-                  title={t("profile.settings.publicProfile")}
-                  subtitle={publicProfileSummary}
-                  icon="person.crop.circle.fill"
-                  onPress={handleRequestEdit}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.settings.studioDetails")}
-                  subtitle={
-                    studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
-                  }
+            </Box>
+
+            <Box style={styles.desktopContent}>
+              <Box style={styles.desktopMainColumn}>
+                <ProfileSectionHeader
+                  label={t("profile.sections.studio")}
                   icon="building.2.fill"
-                  onPress={handleRequestEdit}
-                  showDivider
+                  flush
                 />
-                <ProfileSettingRow
-                  title={t("profile.settings.branches.title")}
-                  subtitle={branchSummary}
-                  icon="square.stack.3d.up.fill"
-                  onPress={() => router.push(STUDIO_BRANCHES_ROUTE as Href)}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.settings.coverageZone")}
-                  subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
-                  icon="mappin.and.ellipse"
-                  onPress={handleRequestEdit}
-                />
-              </ProfileSectionCard>
-            </View>
-
-            <View style={styles.desktopSideColumn}>
-              <ProfileSectionHeader
-                label={t("profile.account.title")}
-                icon="person.crop.circle.fill"
-                flush
-              />
-              <ProfileSectionCard style={styles.desktopCardGroup}>
-                <ProfileSettingRow
-                  title={t("profile.switcher.openAction")}
-                  subtitle={t("profile.switcher.accountRowHint")}
-                  icon="person.2.fill"
-                  onPress={handleOpenAccountSwitcher}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.account.nameLabel")}
-                  value={currentUser?.fullName ?? profileName}
-                  icon="person.crop.circle.fill"
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.account.emailLabel")}
-                  value={emailValue}
-                  icon="paperplane.fill"
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.account.roleLabel")}
-                  value={roleValue}
-                  icon="checkmark.circle.fill"
-                  showDivider
-                />
-                {memberSince ? (
+                <ProfileSectionCard style={styles.desktopCardGroup}>
                   <ProfileSettingRow
-                    title={t("profile.account.memberSince")}
-                    value={memberSince}
-                    icon="calendar.circle.fill"
+                    title={t("profile.settings.publicProfile")}
+                    subtitle={publicProfileSummary}
+                    icon="person.crop.circle.fill"
+                    onPress={handleRequestEdit}
                     showDivider
                   />
-                ) : null}
-                <ProfileSettingRow
-                  title={t("profile.language.title")}
-                  value={language === "en" ? t("language.english") : t("language.hebrew")}
-                  icon="globe"
-                  onPress={() => void setLanguage(language === "en" ? "he" : "en")}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.appearance.systemTheme.title")}
-                  icon="slider.horizontal.3"
-                  showDivider
-                  accessory={
-                    <KitSwitch
-                      value={preference === "system"}
-                      onValueChange={(value) => setPreference(value ? "system" : "light")}
-                    />
-                  }
-                />
-                <ProfileSettingRow
-                  title={t("profile.appearance.darkMode.title")}
-                  icon="moon.fill"
-                  accessory={
-                    <KitSwitch
-                      disabled={preference === "system"}
-                      value={preference === "dark"}
-                      onValueChange={(value) => setPreference(value ? "dark" : "light")}
-                    />
-                  }
-                />
-              </ProfileSectionCard>
+                  <ProfileSettingRow
+                    title={t("profile.settings.studioDetails")}
+                    subtitle={
+                      studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
+                    }
+                    icon="building.2.fill"
+                    onPress={handleRequestEdit}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.settings.branches.title")}
+                    subtitle={branchSummary}
+                    icon="square.stack.3d.up.fill"
+                    onPress={() => router.push(STUDIO_BRANCHES_ROUTE as Href)}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.settings.coverageZone")}
+                    subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
+                    icon="mappin.and.ellipse"
+                    onPress={handleRequestEdit}
+                  />
+                </ProfileSectionCard>
+              </Box>
 
-              <ProfileSectionHeader
-                label={t("profile.sections.operations")}
-                icon="slider.horizontal.3"
-                flush
-              />
-              <ProfileSectionCard style={styles.desktopCardGroup}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "flex-start",
-                    gap: BrandSpacing.sm,
-                    paddingHorizontal: BrandSpacing.md,
-                    paddingVertical: BrandSpacing.componentPadding,
-                  }}
-                >
-                  <View style={{ width: 20, alignItems: "center", paddingTop: 2 }}>
-                    <IconSymbol name="clock.fill" size={16} color={color.textMuted} />
-                  </View>
-                  <View style={{ flex: 1, gap: BrandSpacing.xs }}>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: "500",
-                        color: color.text,
-                      }}
-                    >
-                      {t("profile.settings.autoExpireJobs")}
-                    </Text>
-                    <ThemedText type="micro" style={{ color: color.textMuted }}>
-                      {t("profile.settings.autoExpire.description")}
-                    </ThemedText>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: BrandSpacing.xs,
-                        marginTop: BrandSpacing.xs,
-                      }}
-                    >
-                      <ChoicePill
-                        label={t("jobsTab.form.useStudioDefault")}
-                        selected={autoExpireMinutesBefore === undefined}
-                        compact
-                        backgroundColor={color.surfaceAlt}
-                        selectedBackgroundColor={color.primary}
-                        labelColor={color.text}
-                        selectedLabelColor={color.onPrimary}
-                        onPress={() => handleAutoExpireMinutesBeforeChange(undefined)}
-                      />
-                      {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
-                        <ChoicePill
-                          key={minutes}
-                          label={t("jobsTab.form.minutes", { value: minutes })}
-                          selected={autoExpireMinutesBefore === minutes}
-                          compact
-                          backgroundColor={color.surfaceAlt}
-                          selectedBackgroundColor={color.primary}
-                          labelColor={color.text}
-                          selectedLabelColor={color.onPrimary}
-                          onPress={() => handleAutoExpireMinutesBeforeChange(minutes)}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                </View>
-                <View
-                  style={{
-                    height: BorderWidth.thin,
-                    marginLeft: BrandSpacing.md + 20,
-                    marginRight: BrandSpacing.md,
-                    backgroundColor: color.divider,
-                  }}
+              <Box style={styles.desktopSideColumn}>
+                <ProfileSectionHeader
+                  label={t("profile.account.title")}
+                  icon="person.crop.circle.fill"
+                  flush
                 />
-                <ProfileSettingRow
-                  title={t("profile.settings.autoAcceptJobs")}
-                  subtitle={t("profile.settings.autoAcceptJobsDescription")}
-                  icon="checkmark.seal.fill"
-                  showDivider
-                  accessory={
-                    <KitSwitch
-                      disabled={isSavingAutoAcceptDefault || studioSettings === undefined}
-                      value={autoAcceptDefault}
-                      onValueChange={handleAutoAcceptDefaultChange}
+                <ProfileSectionCard style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title={t("profile.switcher.openAction")}
+                    subtitle={t("profile.switcher.accountRowHint")}
+                    icon="person.2.fill"
+                    onPress={handleOpenAccountSwitcher}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.account.nameLabel")}
+                    value={currentUser?.fullName ?? profileName}
+                    icon="person.crop.circle.fill"
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.account.emailLabel")}
+                    value={emailValue}
+                    icon="paperplane.fill"
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.account.roleLabel")}
+                    value={roleValue}
+                    icon="checkmark.circle.fill"
+                    showDivider
+                  />
+                  {memberSince ? (
+                    <ProfileSettingRow
+                      title={t("profile.account.memberSince")}
+                      value={memberSince}
+                      icon="calendar.circle.fill"
+                      showDivider
                     />
-                  }
+                  ) : null}
+                  <ProfileSettingRow
+                    title={t("profile.language.title")}
+                    value={language === "en" ? t("language.english") : t("language.hebrew")}
+                    icon="globe"
+                    onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.appearance.systemTheme.title")}
+                    icon="slider.horizontal.3"
+                    showDivider
+                    accessory={
+                      <KitSwitch
+                        value={preference === "system"}
+                        onValueChange={(value) => setPreference(value ? "system" : "light")}
+                      />
+                    }
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.appearance.darkMode.title")}
+                    icon="moon.fill"
+                    accessory={
+                      <KitSwitch
+                        disabled={preference === "system"}
+                        value={preference === "dark"}
+                        onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                      />
+                    }
+                  />
+                </ProfileSectionCard>
+
+                <ProfileSectionHeader
+                  label={t("profile.sections.operations")}
+                  icon="slider.horizontal.3"
+                  flush
                 />
-                <ProfileSettingRow
-                  title={t("profile.navigation.notifications")}
-                  subtitle={notificationsSummary}
-                  icon="bell.fill"
-                  onPress={() => router.push(STUDIO_NOTIFICATIONS_ROUTE as Href)}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.settings.calendar.title")}
-                  subtitle={calendarSummary}
-                  icon="calendar.circle.fill"
-                  onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.settings.paymentsPayouts")}
-                  subtitle={t("profile.sections.paymentsDesc")}
-                  icon="creditcard.fill"
-                  onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.navigation.compliance")}
-                  subtitle={complianceSummaryLabel}
-                  icon="checkmark.shield.fill"
-                  onPress={() => router.push(STUDIO_COMPLIANCE_ROUTE as Href)}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("auth.signOutButton")}
-                  subtitle={t("profile.settings.signOutDesc")}
-                  icon="arrow.right.square"
-                  onPress={handleSignOut}
-                  tone="danger"
-                />
-              </ProfileSectionCard>
-            </View>
-          </View>
-        </View>
+                <ProfileSectionCard style={styles.desktopCardGroup}>
+                  <Box
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      gap: BrandSpacing.sm,
+                      paddingHorizontal: BrandSpacing.md,
+                      paddingVertical: BrandSpacing.componentPadding,
+                    }}
+                  >
+                    <Box style={{ width: 20, alignItems: "center", paddingTop: 2 }}>
+                      <IconSymbol name="clock.fill" size={16} color={color.textMuted} />
+                    </Box>
+                    <Box style={{ flex: 1, gap: BrandSpacing.xs }}>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "500",
+                          color: color.text,
+                        }}
+                      >
+                        {t("profile.settings.autoExpireJobs")}
+                      </Text>
+                      <ThemedText type="micro" style={{ color: color.textMuted }}>
+                        {t("profile.settings.autoExpire.description")}
+                      </ThemedText>
+                      <Box
+                        style={{
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          gap: BrandSpacing.xs,
+                          marginTop: BrandSpacing.xs,
+                        }}
+                      >
+                        <ChoicePill
+                          label={t("jobsTab.form.useStudioDefault")}
+                          selected={autoExpireMinutesBefore === undefined}
+                          compact
+                          backgroundColor={color.surfaceElevated}
+                          selectedBackgroundColor="#CCFF00"
+                          labelColor={color.text}
+                          selectedLabelColor="#161E00"
+                          onPress={() => handleAutoExpireMinutesBeforeChange(undefined)}
+                        />
+                        {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
+                          <ChoicePill
+                            key={minutes}
+                            label={t("jobsTab.form.minutes", { value: minutes })}
+                            selected={autoExpireMinutesBefore === minutes}
+                            compact
+                            backgroundColor={color.surfaceElevated}
+                            selectedBackgroundColor="#CCFF00"
+                            labelColor={color.text}
+                            selectedLabelColor="#161E00"
+                            onPress={() => handleAutoExpireMinutesBeforeChange(minutes)}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  </Box>
+                  <Box
+                    style={{
+                      height: BorderWidth.thin,
+                      marginLeft: BrandSpacing.md + 20,
+                      marginRight: BrandSpacing.md,
+                      backgroundColor: color.divider,
+                    }}
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.settings.autoAcceptJobs")}
+                    subtitle={t("profile.settings.autoAcceptJobsDescription")}
+                    icon="checkmark.seal.fill"
+                    showDivider
+                    accessory={
+                      <KitSwitch
+                        disabled={isSavingAutoAcceptDefault || studioSettings === undefined}
+                        value={autoAcceptDefault}
+                        onValueChange={handleAutoAcceptDefaultChange}
+                      />
+                    }
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.navigation.notifications")}
+                    subtitle={notificationsSummary}
+                    icon="bell.fill"
+                    onPress={() => router.push(STUDIO_NOTIFICATIONS_ROUTE as Href)}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.settings.calendar.title")}
+                    subtitle={calendarSummary}
+                    icon="calendar.circle.fill"
+                    onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.settings.paymentsPayouts")}
+                    subtitle={t("profile.sections.paymentsDesc")}
+                    icon="creditcard.fill"
+                    onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.navigation.compliance")}
+                    subtitle={complianceSummaryLabel}
+                    icon="checkmark.shield.fill"
+                    onPress={() => router.push(STUDIO_COMPLIANCE_ROUTE as Href)}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("auth.signOutButton")}
+                    subtitle={t("profile.settings.signOutDesc")}
+                    icon="arrow.right.square"
+                    onPress={handleSignOut}
+                    tone="danger"
+                  />
+                </ProfileSectionCard>
+              </Box>
+            </Box>
+          </Box>
+        </TabScreenRoot>
       ) : (
         <ProfileIndexScrollView
           routeKey="studio/profile"
@@ -686,7 +694,7 @@ export default function StudioProfileScreen() {
           }}
           bottomSpacing={BrandSpacing.xl}
         >
-          <View style={styles.mobileContentPadding}>
+          <Box style={styles.mobileContentPadding}>
             <ProfileSectionHeader label={t("profile.sections.studio")} icon="building.2.fill" />
             <ProfileSectionCard>
               <ProfileSettingRow
@@ -794,7 +802,7 @@ export default function StudioProfileScreen() {
               icon="slider.horizontal.3"
             />
             <ProfileSectionCard>
-              <View
+              <Box
                 style={{
                   flexDirection: "row",
                   alignItems: "flex-start",
@@ -803,13 +811,13 @@ export default function StudioProfileScreen() {
                   paddingVertical: BrandSpacing.componentPadding,
                 }}
               >
-                <View style={{ width: 20, alignItems: "center", paddingTop: 1 }}>
+                <Box style={{ width: 20, alignItems: "center", paddingTop: 1 }}>
                   <IconSymbol name="clock.fill" size={18} color={color.secondary} />
-                </View>
-                <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+                </Box>
+                <Box style={{ flex: 1, gap: BrandSpacing.xs }}>
                   <Text
                     style={{
-                      fontSize: 15,
+                      fontSize: BrandType.bodyStrong.fontSize,
                       fontWeight: "600",
                       lineHeight: 20,
                       color: color.text,
@@ -820,7 +828,7 @@ export default function StudioProfileScreen() {
                   <ThemedText type="micro" style={{ color: color.textMuted }}>
                     {t("profile.settings.autoExpire.description")}
                   </ThemedText>
-                  <View
+                  <Box
                     style={{
                       flexDirection: "row",
                       flexWrap: "wrap",
@@ -832,10 +840,10 @@ export default function StudioProfileScreen() {
                       label={t("jobsTab.form.useStudioDefault")}
                       selected={autoExpireMinutesBefore === undefined}
                       compact
-                      backgroundColor={color.surfaceAlt}
-                      selectedBackgroundColor={color.primary}
+                      backgroundColor={color.surfaceElevated}
+                      selectedBackgroundColor="#CCFF00"
                       labelColor={color.text}
-                      selectedLabelColor={color.onPrimary}
+                      selectedLabelColor="#161E00"
                       onPress={() => handleAutoExpireMinutesBeforeChange(undefined)}
                     />
                     {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
@@ -844,20 +852,20 @@ export default function StudioProfileScreen() {
                         label={t("jobsTab.form.minutes", { value: minutes })}
                         selected={autoExpireMinutesBefore === minutes}
                         compact
-                        backgroundColor={color.surfaceAlt}
-                        selectedBackgroundColor={color.primary}
+                        backgroundColor={color.surfaceElevated}
+                        selectedBackgroundColor="#CCFF00"
                         labelColor={color.text}
-                        selectedLabelColor={color.onPrimary}
+                        selectedLabelColor="#161E00"
                         onPress={() => handleAutoExpireMinutesBeforeChange(minutes)}
                       />
                     ))}
-                  </View>
-                </View>
-              </View>
-              <View
+                  </Box>
+                </Box>
+              </Box>
+              <Box
                 style={{
-                  height: 1,
-                  marginLeft: BrandSpacing.insetSoft + 32,
+                  height: BorderWidth.thin,
+                  marginLeft: BrandSpacing.insetSoft + BrandSpacing.section,
                   marginRight: BrandSpacing.insetSoft,
                   backgroundColor: color.border,
                 }}
@@ -903,15 +911,15 @@ export default function StudioProfileScreen() {
                 onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
                 showDivider
               />
-              <View style={{ padding: BrandSpacing.md }}>
+              <Box style={{ padding: BrandSpacing.md }}>
                 <ProfileSignOutButton title={t("auth.signOutButton")} onPress={handleSignOut} />
-              </View>
+              </Box>
             </ProfileSectionCard>
 
             {/* Support Section */}
             <ProfileSectionHeader label={t("profile.sections.support")} icon="help" />
-            <View style={{ paddingHorizontal: BrandSpacing.inset }}>
-              <View style={{ flexDirection: "row", gap: BrandSpacing.md }}>
+            <Box style={{ paddingHorizontal: BrandSpacing.inset }}>
+              <Box style={{ flexDirection: "row", gap: BrandSpacing.md }}>
                 <ProfileSupportCard
                   icon="help_center"
                   title="Help Center"
@@ -922,9 +930,9 @@ export default function StudioProfileScreen() {
                   title="Terms"
                   onPress={() => Linking.openURL("https://www.join-queue.com/he/tos/")}
                 />
-              </View>
-            </View>
-          </View>
+              </Box>
+            </Box>
+          </Box>
         </ProfileIndexScrollView>
       )}
       <ProfileAccountSwitcherSheet
@@ -941,7 +949,7 @@ export default function StudioProfileScreen() {
         onUseAnotherAccount={handleUseAnotherAccount}
         profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
       />
-    </TabScreenRoot>
+    </>
   );
 
   const descriptor = useMemo(

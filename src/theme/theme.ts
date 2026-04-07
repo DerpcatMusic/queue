@@ -1,5 +1,5 @@
-import { MMKV } from "react-native-mmkv";
 import { Appearance, StyleSheet as RNStyleSheet, type TextStyle } from "react-native";
+import { MMKV } from "react-native-mmkv";
 import { StyleSheet, UnistylesRuntime } from "react-native-unistyles";
 
 export type ThemeScheme = "light" | "dark";
@@ -61,9 +61,26 @@ export const Spacing = {
   avatarMd: 48,
   avatarLg: 78,
   avatarCard: 66,
+  avatarXl: 68,
   progressPillInactive: 18,
   progressPillActive: 28,
   signalPulse: 20,
+  // Badge dimensions
+  badgeSize: 22,
+  // Button minimum heights (xs=compact, sm=base, md=lg, lg=xl, xl=xxl)
+  buttonMinHeightXs: 38,
+  buttonMinHeightSm: 44,
+  buttonMinHeightMd: 48,
+  buttonMinHeightLg: 50,
+  buttonMinHeightXl: 54,
+} as const;
+
+// Shadow tokens for text shadows (separate from Spacing since these are objects, not numbers)
+export const Shadow = {
+  text: {
+    offset: { width: 0, height: 2 },
+    radius: 4,
+  },
 } as const;
 
 export const Radius = {
@@ -83,11 +100,16 @@ export const Radius = {
   input: 8,
   pill: 999,
   full: 999,
+  // Map-specific radii for overlays, markers, and highlights
+  mapMarker: 22,
+  mapOverlay: 28,
+  mapHighlight: 36,
 } as const;
 
 export const BorderWidth = {
   hairline: RNStyleSheet.hairlineWidth,
   thin: 1,
+  divider: 1, // For replacing height: 1 patterns with semantic token
   medium: 1.5,
   strong: 2,
   heavy: 3,
@@ -111,12 +133,45 @@ export const IconSize = {
   emptyState: 52,
 } as const;
 
+// Spring configurations for Reanimated
+export const Spring = {
+  // Standard spring - balanced damping for most UI
+  standard: {
+    damping: 20,
+    stiffness: 200,
+    mass: 1,
+  },
+  // Gentle spring - smoother, more overshoot
+  gentle: {
+    damping: 15,
+    stiffness: 150,
+    mass: 0.8,
+  },
+  // Bouncy spring - more playful, visible overshoot
+  bouncy: {
+    damping: 11,
+    stiffness: 180,
+    mass: 0.6,
+  },
+  // Snappy spring - fast response, minimal overshoot
+  snappy: {
+    damping: 24,
+    stiffness: 300,
+    mass: 0.8,
+  },
+} as const;
+
 export const Motion = {
   instant: 0,
   fast: 140,
   normal: 220,
   slow: 320,
   emphasis: 420,
+  // Stagger delay base (ms per item)
+  staggerBase: 40,
+  // Fade durations for content transitions
+  skeletonFade: 200,
+  contentReveal: 300,
 } as const;
 
 export const FontFamily = {
@@ -204,6 +259,30 @@ export const Typography = {
     letterSpacing: LetterSpacing.heroCompact,
     lineHeight: LineHeight.heroCompact,
   } satisfies TextStyle,
+  displayItalic: {
+    fontFamily: FontFamily.display,
+    fontSize: FontSize.display,
+    fontWeight: "900" as const,
+    fontStyle: "italic",
+    letterSpacing: LetterSpacing.display,
+    lineHeight: LineHeight.display,
+  } satisfies TextStyle,
+  heroItalic: {
+    fontFamily: FontFamily.display,
+    fontSize: FontSize.hero,
+    fontWeight: "800" as const,
+    fontStyle: "italic",
+    letterSpacing: LetterSpacing.hero,
+    lineHeight: LineHeight.hero,
+  } satisfies TextStyle,
+  headingItalic: {
+    fontFamily: FontFamily.heading,
+    fontSize: FontSize.heading,
+    fontWeight: "700" as const,
+    fontStyle: "italic",
+    letterSpacing: LetterSpacing.heading,
+    lineHeight: LineHeight.heading,
+  } satisfies TextStyle,
   heading: {
     fontFamily: FontFamily.heading,
     fontSize: FontSize.heading,
@@ -269,6 +348,15 @@ export const Typography = {
     letterSpacing: LetterSpacing.label,
     lineHeight: LineHeight.micro,
   } satisfies TextStyle,
+  microItalic: {
+    fontFamily: FontFamily.label,
+    fontSize: FontSize.micro,
+    fontWeight: "700" as const,
+    fontStyle: "italic",
+    letterSpacing: 1.2,
+    lineHeight: LineHeight.micro,
+    textTransform: "uppercase",
+  } satisfies TextStyle,
   radarLabel: {
     fontFamily: FontFamily.label,
     fontSize: FontSize.micro,
@@ -280,61 +368,75 @@ export const Typography = {
 } as const;
 
 const lightColors = {
-  primary: "#5E8000",
-  primarySubtle: "#5E80001A",
-  primaryPressed: "#4F6C00",
-  onPrimary: "#FFFFFF",
-  secondary: "#FF5E00",
-  secondarySubtle: "#FF5E001A",
-  tertiary: "#00CCFF",
-  tertiarySubtle: "#00CCFF1A",
-  success: "#22C55E",
-  successSubtle: "#22C55E1A",
-  danger: "#EF4444",
-  dangerSubtle: "#EF44441A",
-  warning: "#F59E0B",
-  warningSubtle: "#F59E0B1A",
-  appBg: "#F5EEE3",
-  surface: "#FBF5EC",
-  surfaceAlt: "#EFE4D0",
-  surfaceElevated: "#FEFAF4",
-  border: "#D7C9B2",
-  borderStrong: "#C4B299",
-  divider: "#E8DCC9",
-  text: "#221B13",
-  textMuted: "#6A5D4B",
-  textMicro: "#94846D",
-  onSurface: "#221B13",
-  overlay: "#221B1370",
-  shadow: "#5A432218",
-  sheetGlow: "#FF5E0014",
-  sheetGlowStrong: "#FF5E0024",
-  jobsCanvas: "#F0E5D4",
-  jobsSurface: "#F8EEDF",
-  jobsSurfaceRaised: "#FDF5E9",
-  jobsSurfaceMuted: "#EEE0CB",
-  jobsLine: "#DBCAB0",
-  jobsGlow: "#5E800018",
-  jobsGlowStrong: "#5E80002E",
-  jobsHeroTint: "#F0E8D4",
+  primary: "#CCFF00",
+  primaryContainer: "#CCFF00",
+  primarySubtle: "#CCFF0018",
+  primaryPressed: "#ABD600",
+  onPrimary: "#161E00",
+  onPrimaryContainer: "#161E00",
+  secondary: "#A63B00",
+  secondaryContainer: "#FF5E00",
+  secondarySubtle: "#A63B0014",
+  onSecondaryContainer: "#FFFFFF",
+  tertiary: "#5B6D7A",
+  tertiaryContainer: "#DCEFFF",
+  tertiarySubtle: "#5B6D7A14",
+  onTertiaryContainer: "#374956",
+  success: "#2E7D32",
+  successSubtle: "#2E7D3214",
+  danger: "#BA1A1A",
+  dangerSubtle: "#BA1A1A14",
+  warning: "#B7791F",
+  warningSubtle: "#B7791F14",
+  appBg: "#FFF8F5",
+  surface: "#FAF2EE",
+  surfaceVariant: "#E9E1DD",
+  surfaceAlt: "#F4ECE8",
+  surfaceElevated: "#E9E1DD",
+  surfaceContainer: "#F4ECE8",
+  border: "#D8CEC5",
+  borderStrong: "#C6B9AF",
+  divider: "#ECE3DD",
+  text: "#1E1B19",
+  textMuted: "#6B625B",
+  textMicro: "#968B82",
+  onSurface: "#1E1B19",
+  overlay: "#1E1B1970",
+  shadow: "#1E1B1910",
+  sheetGlow: "#50660010",
+  sheetGlowStrong: "#5066001A",
+  jobsCanvas: "#FFF8F5",
+  jobsSurface: "#FCF4F1",
+  jobsSurfaceRaised: "#F2E9E3",
+  jobsSurfaceMuted: "#E8DDD6",
+  jobsLine: "#D9CEC6",
+  jobsGlow: "#CCFF0012",
+  jobsGlowStrong: "#CCFF0020",
+  jobsHeroTint: "#F3ECE7",
   jobsCardOverlay: "#FFFFFF00",
-  jobsAccentHeat: "#D95400",
-  jobsAccentHeatSubtle: "#FF5E001A",
-  jobsSignal: "#6F8C3B",
-  jobsIdle: "#9B8A71",
-  outline: "#D7C9B2",
-  outlineStrong: "#C4B299",
+  jobsAccentHeat: "#A63B00",
+  jobsAccentHeatSubtle: "#A63B0014",
+  jobsSignal: "#CCFF00",
+  jobsIdle: "#91837A",
+  outline: "#D8CEC5",
+  outlineStrong: "#C6B9AF",
 } as const;
 
 const darkColors = {
   primary: "#CCFF00",
+  primaryContainer: "#CCFF00",
   primarySubtle: "#CCFF0014",
   primaryPressed: "#A8CC00",
   onPrimary: "#000000",
+  onPrimaryContainer: "#161E00",
   secondary: "#FF5E00",
+  secondaryContainer: "#FF5E00",
   secondarySubtle: "#FF5E0014",
+  onSecondaryContainer: "#FFFFFF",
   tertiary: "#00CCFF",
+  tertiaryContainer: "#10333B",
   tertiarySubtle: "#00CCFF14",
+  onTertiaryContainer: "#C3F5FF",
   success: "#4ADE80",
   successSubtle: "#4ADE8014",
   danger: "#F87171",
@@ -343,6 +445,7 @@ const darkColors = {
   warningSubtle: "#FBBF2414",
   appBg: "#0e0e0e",
   surface: "#0e0e0e",
+  surfaceVariant: "#1A1A1A",
   surfaceAlt: "#131313",
   surfaceElevated: "#181818",
   surfaceContainer: "#131313",
@@ -359,7 +462,7 @@ const darkColors = {
   shadow: "#00000040",
   sheetGlow: "#FF5E0020",
   sheetGlowStrong: "#FF5E0038",
-  jobsCanvas: "#0A0A0A",
+  jobsCanvas: "#0e0e0e",
   jobsSurface: "#111111",
   jobsSurfaceRaised: "#181818",
   jobsSurfaceMuted: "#1C1C1C",
@@ -403,7 +506,7 @@ export function createTheme(scheme: ThemeScheme) {
     typography: Typography,
     fontFamily: FontFamily,
     jobs: {
-      canvas: color.jobsCanvas,
+      canvas: color.appBg,
       surface: color.jobsSurface,
       surfaceRaised: color.jobsSurfaceRaised,
       surfaceMuted: color.jobsSurfaceMuted,
@@ -626,37 +729,36 @@ export const BrandType = Typography;
 
 const NativeMapBrandPalette = {
   light: {
-    // Base canvas — warm off-white, feels like quality paper
-    styleBackground: "#F6F4F1",
-    // Water — subtle Mediterranean blue
-    waterFill: "#8BBFD4",
-    waterLine: "#6FA8C2",
-    // Landcover — muted sage, urban parks
-    landcover: "#C8D9C4",
-    // Roads — subtle warm gray, don't compete with buildings
-    roadPrimary: "#CAC6C0",
-    roadSecondary: "#BEB9B3",
-    roadTertiary: "#ADA9A3",
-    // Buildings — medium warm gray, the DOMINANT urban feature
-    // This is what makes the map feel like a real city map
-    buildingFill: "#9A9590",
+    // Base canvas — pearl
+    styleBackground: "#FFF8F5",
+    // Water — muted slate-blue
+    waterFill: "#D2E5F5",
+    waterLine: "#B6C9D8",
+    // Landcover — pale mineral green
+    landcover: "#D7DBC9",
+    // Roads — soft clay neutrals
+    roadPrimary: "#D7D0CA",
+    roadSecondary: "#C9C1BA",
+    roadTertiary: "#B8AEA7",
+    // Buildings — darker clay to give urban structure
+    buildingFill: "#AAA09A",
     buildingOpacity: 0.88,
-    // Zone overlay — muted olive
-    zoneOutline: "#7A8C70",
+    // Zone overlay — olive brand
+    zoneOutline: "#747A60",
     zoneOutlineOpacity: 0.3,
     // Touch/hover preview
-    previewFill: "#D4E5CF",
+    previewFill: "#E3EBCF",
     previewFillOpacity: 0.2,
-    previewOutline: "#8AAF7A",
+    previewOutline: "#93A55A",
     previewOutlineOpacity: 0.55,
     // Selected zone — brand green
-    selectedOutline: "#6DB82A",
+    selectedOutline: "#506600",
     selectedOutlineOpacity: 1,
-    surfaceAlt: "#F2F1EF",
-    primary: "#8FBF3C",
-    markerAccent: "#2A8FD8",
-    text: "#2C2825",
-    textHalo: "#F8F7F5",
+    surfaceAlt: "#F4ECE8",
+    primary: "#506600",
+    markerAccent: "#5B6D7A",
+    text: "#1E1B19",
+    textHalo: "#FFF8F5",
   },
   dark: {
     // Base canvas — warm charcoal

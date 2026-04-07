@@ -1,7 +1,8 @@
 import { useMutation, useQuery } from "convex/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
@@ -23,6 +24,7 @@ import { getZoneLabel, ZONE_OPTIONS } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { Box } from "@/primitives";
 import { useTheme } from "@/hooks/use-theme";
 import { EXPIRY_OVERRIDE_PRESETS } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
@@ -335,7 +337,7 @@ export default function StudioBranchesScreen() {
       topSpacing={BrandSpacing.lg}
       bottomSpacing={BrandSpacing.xxl}
     >
-      <View style={styles.content}>
+      <Box style={styles.content}>
         {errorMessage ? (
           <NoticeBanner
             tone="error"
@@ -387,7 +389,7 @@ export default function StudioBranchesScreen() {
           />
         </ProfileSectionCard>
 
-        <View style={styles.actionRow}>
+        <Box style={styles.actionRow}>
           <ActionButton
             label={t("profile.settings.branches.addAction")}
             onPress={startCreate}
@@ -401,13 +403,13 @@ export default function StudioBranchesScreen() {
                 : t("profile.settings.branches.upgradeRequired")}
             </ThemedText>
           ) : null}
-        </View>
+        </Box>
 
         {mode ? (
           <ProfileSectionCard style={styles.editorCard}>
-            <View style={styles.sectionCardContent}>
-              <View style={styles.editorHeader}>
-                <View style={styles.labelContainer}>
+            <Box style={styles.sectionCardContent}>
+              <Box style={styles.editorHeader}>
+                <Box style={styles.labelContainer}>
                   <ThemedText type="title">
                     {mode === "create"
                       ? t("profile.settings.branches.createTitle")
@@ -416,9 +418,9 @@ export default function StudioBranchesScreen() {
                   <ThemedText type="caption" style={{ color: palette.textMuted }}>
                     {t("profile.settings.branches.editorHint")}
                   </ThemedText>
-                </View>
+                </Box>
                 <ActionButton label={t("common.cancel")} onPress={resetEditor} tone="secondary" />
-              </View>
+              </Box>
 
               <KitTextField
                 label={t("profile.settings.branches.fields.name")}
@@ -442,7 +444,7 @@ export default function StudioBranchesScreen() {
                 keyboardType="phone-pad"
               />
 
-              <View style={styles.gapSm}>
+              <Box style={styles.gapSm}>
                 <ThemedText type="bodyStrong">
                   {t("profile.settings.branches.fields.zone")}
                 </ThemedText>
@@ -458,7 +460,7 @@ export default function StudioBranchesScreen() {
                       : t("profile.settings.branches.zoneHint")
                   }
                 />
-                <View style={styles.zoneList}>
+                <Box style={styles.zoneList}>
                   {matchingZones.map((zone) => {
                     const selected = form.zone === zone.id;
                     return (
@@ -468,19 +470,19 @@ export default function StudioBranchesScreen() {
                         selected={selected}
                         compact
                         onPress={() => setForm((current) => ({ ...current, zone: zone.id }))}
-                        backgroundColor={palette.surfaceAlt}
-                        selectedBackgroundColor={palette.primary}
+                        backgroundColor={palette.surfaceElevated}
+                        selectedBackgroundColor="#CCFF00"
                         labelColor={palette.text}
-                        selectedLabelColor={palette.onPrimary}
+                        selectedLabelColor="#161E00"
                       />
                     );
                   })}
-                </View>
-              </View>
+                </Box>
+              </Box>
 
-              <View style={styles.gapSm}>
+              <Box style={styles.gapSm}>
                 <ThemedText type="bodyStrong">{t("profile.settings.autoExpireJobs")}</ThemedText>
-                <View style={styles.pillWrap}>
+                <Box style={styles.pillWrap}>
                   {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
                     <ChoicePill
                       key={minutes}
@@ -493,47 +495,37 @@ export default function StudioBranchesScreen() {
                           autoExpireMinutesBefore: minutes,
                         }))
                       }
-                      backgroundColor={palette.surfaceAlt}
-                      selectedBackgroundColor={palette.primary}
+                      backgroundColor={palette.surfaceElevated}
+                      selectedBackgroundColor="#CCFF00"
                       labelColor={palette.text}
-                      selectedLabelColor={palette.onPrimary}
+                      selectedLabelColor="#161E00"
                     />
                   ))}
-                </View>
-              </View>
+                </Box>
+              </Box>
 
-              <View style={styles.switchRow}>
-                <View style={styles.flex1GapXs}>
-                  <Text
-                    style={[
-                      {
-                        fontFamily: "Manrope_600SemiBold",
-                        fontSize: 16,
-                        fontWeight: "600",
-                        lineHeight: 22,
-                      },
-                      { color: palette.text },
-                    ]}
-                  >
+              <Box style={styles.switchRow}>
+                <Box style={styles.flex1GapXs}>
+                  <ThemedText type="bodyStrong" style={{ color: palette.text }}>
                     {t("profile.settings.autoAcceptJobs")}
-                  </Text>
+                  </ThemedText>
                   <ThemedText type="caption" style={{ color: palette.textMuted }}>
                     {t("profile.settings.branches.autoAcceptHint")}
                   </ThemedText>
-                </View>
+                </Box>
                 <KitSwitch
                   value={form.autoAcceptDefault}
                   onValueChange={(value) =>
                     setForm((current) => ({ ...current, autoAcceptDefault: value }))
                   }
                 />
-              </View>
+              </Box>
 
-              <View style={styles.gapSm}>
+              <Box style={styles.gapSm}>
                 <ThemedText type="bodyStrong">
                   {t("profile.settings.branches.calendarTitle")}
                 </ThemedText>
-                <View style={styles.pillWrap}>
+                <Box style={styles.pillWrap}>
                   {(["none", "google", "apple"] as const).map((provider) => (
                     <ChoicePill
                       key={provider}
@@ -548,32 +540,22 @@ export default function StudioBranchesScreen() {
                             provider === "none" ? false : current.calendarSyncEnabled,
                         }))
                       }
-                      backgroundColor={palette.surfaceAlt}
-                      selectedBackgroundColor={palette.primary}
+                      backgroundColor={palette.surfaceElevated}
+                      selectedBackgroundColor="#CCFF00"
                       labelColor={palette.text}
-                      selectedLabelColor={palette.onPrimary}
+                      selectedLabelColor="#161E00"
                     />
                   ))}
-                </View>
-                <View style={styles.switchRow}>
-                  <View style={styles.flex1GapXs}>
-                    <Text
-                      style={[
-                        {
-                          fontFamily: "Manrope_600SemiBold",
-                          fontSize: 16,
-                          fontWeight: "600",
-                          lineHeight: 22,
-                        },
-                        { color: palette.text },
-                      ]}
-                    >
+                </Box>
+                <Box style={styles.switchRow}>
+                  <Box style={styles.flex1GapXs}>
+                    <ThemedText type="bodyStrong" style={{ color: palette.text }}>
                       {t("profile.settings.calendar.autoSync")}
-                    </Text>
+                    </ThemedText>
                     <ThemedText type="caption" style={{ color: palette.textMuted }}>
                       {t("profile.settings.branches.calendarHint")}
                     </ThemedText>
-                  </View>
+                  </Box>
                   <KitSwitch
                     disabled={form.calendarProvider === "none"}
                     value={form.calendarSyncEnabled}
@@ -581,8 +563,8 @@ export default function StudioBranchesScreen() {
                       setForm((current) => ({ ...current, calendarSyncEnabled: value }))
                     }
                   />
-                </View>
-              </View>
+                </Box>
+              </Box>
 
               <ActionButton
                 label={
@@ -599,7 +581,7 @@ export default function StudioBranchesScreen() {
                 loading={isSaving}
                 fullWidth
               />
-            </View>
+            </Box>
           </ProfileSectionCard>
         ) : null}
 
@@ -609,36 +591,25 @@ export default function StudioBranchesScreen() {
           icon="list.bullet.rectangle.portrait.fill"
         />
 
-        <View style={styles.branchStack}>
+        <Box style={styles.branchStack}>
           {sortedBranches.map((branch) => {
             const canArchive = !branch.isPrimary && branch.status === "active";
             const canPromote = !branch.isPrimary && branch.status === "active";
             return (
               <ProfileSectionCard key={String(branch.branchId)} style={styles.branchCard}>
-                <View style={styles.sectionCardContent}>
-                  <View style={styles.branchHeader}>
-                    <View style={styles.flex1GapXs}>
-                      <View style={styles.badgeRow}>
+                <Box style={styles.sectionCardContent}>
+                  <Box style={styles.branchHeader}>
+                    <Box style={styles.flex1GapXs}>
+                      <Box style={styles.badgeRow}>
                         <ThemedText type="title">{branch.name}</ThemedText>
                         {branch.isPrimary ? (
-                          <View style={[styles.badge, { backgroundColor: palette.primarySubtle }]}>
-                            <Text
-                              style={[
-                                {
-                                  fontFamily: "Manrope_500Medium",
-                                  fontSize: 12,
-                                  fontWeight: "500",
-                                  letterSpacing: 0.2,
-                                  lineHeight: 16,
-                                },
-                                { color: palette.primary },
-                              ]}
-                            >
+                          <Box style={[styles.badge, { backgroundColor: palette.primarySubtle }]}>
+                            <ThemedText type="micro" style={{ color: palette.primary }}>
                               {t("profile.settings.branches.primaryBadge")}
-                            </Text>
-                          </View>
+                            </ThemedText>
+                          </Box>
                         ) : null}
-                        <View
+                        <Box
                           style={[
                             styles.badge,
                             {
@@ -649,157 +620,65 @@ export default function StudioBranchesScreen() {
                             },
                           ]}
                         >
-                          <Text
-                            style={[
-                              {
-                                fontFamily: "Manrope_500Medium",
-                                fontSize: 12,
-                                fontWeight: "500",
-                                letterSpacing: 0.2,
-                                lineHeight: 16,
-                              },
-                              {
-                                color:
-                                  branch.status === "active" ? palette.success : palette.textMuted,
-                              },
-                            ]}
+                          <ThemedText
+                            type="micro"
+                            style={{
+                              color:
+                                branch.status === "active" ? palette.success : palette.textMuted,
+                            }}
                           >
                             {branch.status === "active"
                               ? t("profile.settings.branches.activeBadge")
                               : t("profile.settings.branches.archivedBadge")}
-                          </Text>
-                        </View>
-                      </View>
+                          </ThemedText>
+                        </Box>
+                      </Box>
                       <ThemedText type="caption" style={{ color: palette.textMuted }}>
                         {branch.address}
                       </ThemedText>
-                    </View>
-                  </View>
+                    </Box>
+                  </Box>
 
-                  <View style={styles.metaGrid}>
-                    <View style={styles.metaItem}>
-                      <Text
-                        style={[
-                          {
-                            fontFamily: "Manrope_500Medium",
-                            fontSize: 12,
-                            fontWeight: "500",
-                            letterSpacing: 0.2,
-                            lineHeight: 16,
-                          },
-                          { color: palette.textMuted },
-                        ]}
-                      >
+                  <Box style={styles.metaGrid}>
+                    <Box style={styles.metaItem}>
+                      <ThemedText type="micro" style={{ color: palette.textMuted }}>
                         {t("profile.settings.coverageZone")}
-                      </Text>
-                      <Text
-                        style={[
-                          {
-                            fontFamily: "Manrope_500Medium",
-                            fontSize: 16,
-                            fontWeight: "500",
-                            lineHeight: 22,
-                          },
-                          { color: palette.text },
-                        ]}
-                      >
+                      </ThemedText>
+                      <ThemedText type="bodyMedium" style={{ color: palette.text }}>
                         {getZoneLabel(branch.zone, zoneLanguage)}
-                      </Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Text
-                        style={[
-                          {
-                            fontFamily: "Manrope_500Medium",
-                            fontSize: 12,
-                            fontWeight: "500",
-                            letterSpacing: 0.2,
-                            lineHeight: 16,
-                          },
-                          { color: palette.textMuted },
-                        ]}
-                      >
+                      </ThemedText>
+                    </Box>
+                    <Box style={styles.metaItem}>
+                      <ThemedText type="micro" style={{ color: palette.textMuted }}>
                         {t("profile.settings.autoExpireJobs")}
-                      </Text>
-                      <Text
-                        style={[
-                          {
-                            fontFamily: "Manrope_500Medium",
-                            fontSize: 16,
-                            fontWeight: "500",
-                            lineHeight: 22,
-                          },
-                          { color: palette.text },
-                        ]}
-                      >
+                      </ThemedText>
+                      <ThemedText type="bodyMedium" style={{ color: palette.text }}>
                         {t("jobsTab.form.minutes", { value: branch.autoExpireMinutesBefore ?? 30 })}
-                      </Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Text
-                        style={[
-                          {
-                            fontFamily: "Manrope_500Medium",
-                            fontSize: 12,
-                            fontWeight: "500",
-                            letterSpacing: 0.2,
-                            lineHeight: 16,
-                          },
-                          { color: palette.textMuted },
-                        ]}
-                      >
+                      </ThemedText>
+                    </Box>
+                    <Box style={styles.metaItem}>
+                      <ThemedText type="micro" style={{ color: palette.textMuted }}>
                         {t("profile.settings.autoAcceptJobs")}
-                      </Text>
-                      <Text
-                        style={[
-                          {
-                            fontFamily: "Manrope_500Medium",
-                            fontSize: 16,
-                            fontWeight: "500",
-                            lineHeight: 22,
-                          },
-                          { color: palette.text },
-                        ]}
-                      >
+                      </ThemedText>
+                      <ThemedText type="bodyMedium" style={{ color: palette.text }}>
                         {branch.autoAcceptDefault
                           ? t("profile.settings.branches.enabled")
                           : t("profile.settings.branches.disabled")}
-                      </Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Text
-                        style={[
-                          {
-                            fontFamily: "Manrope_500Medium",
-                            fontSize: 12,
-                            fontWeight: "500",
-                            letterSpacing: 0.2,
-                            lineHeight: 16,
-                          },
-                          { color: palette.textMuted },
-                        ]}
-                      >
+                      </ThemedText>
+                    </Box>
+                    <Box style={styles.metaItem}>
+                      <ThemedText type="micro" style={{ color: palette.textMuted }}>
                         {t("profile.settings.calendar.title")}
-                      </Text>
-                      <Text
-                        style={[
-                          {
-                            fontFamily: "Manrope_500Medium",
-                            fontSize: 16,
-                            fontWeight: "500",
-                            lineHeight: 22,
-                          },
-                          { color: palette.text },
-                        ]}
-                      >
+                      </ThemedText>
+                      <ThemedText type="bodyMedium" style={{ color: palette.text }}>
                         {t(
                           `profile.settings.calendar.provider.${branch.calendarProvider ?? "none"}`,
                         )}
-                      </Text>
-                    </View>
-                  </View>
+                      </ThemedText>
+                    </Box>
+                  </Box>
 
-                  <View style={styles.buttonRow}>
+                  <Box style={styles.buttonRow}>
                     <ActionButton
                       label={t("common.edit")}
                       onPress={() => startEdit(branch)}
@@ -829,13 +708,13 @@ export default function StudioBranchesScreen() {
                         disabled={pendingArchiveBranchId !== null}
                       />
                     ) : null}
-                  </View>
-                </View>
+                  </Box>
+                </Box>
               </ProfileSectionCard>
             );
           })}
-        </View>
-      </View>
+        </Box>
+      </Box>
     </ProfileSubpageScrollView>
   );
 }

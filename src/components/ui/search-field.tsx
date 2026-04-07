@@ -5,6 +5,7 @@ import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimate
 import { StyleSheet } from "react-native-unistyles";
 
 import { useTheme } from "@/hooks/use-theme";
+import i18n from "@/i18n";
 import { Icon } from "@/primitives";
 import { Radius, Spacing } from "@/theme/theme";
 
@@ -103,11 +104,11 @@ const styles = StyleSheet.create((theme) => ({
 export function SearchField({
   value,
   onChangeText,
-  placeholder = "Search...",
+  placeholder = i18n.t("common.searchPlaceholder", { defaultValue: "Search..." }),
   size = "md",
   colors,
   animateLayout = false,
-  clearAccessibilityLabel = "Clear search",
+  clearAccessibilityLabel = i18n.t("common.clearSearch", { defaultValue: "Clear search" }),
   containerStyle,
   inputStyle,
   onFocus,

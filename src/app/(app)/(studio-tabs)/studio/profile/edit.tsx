@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, View } from "react-native";
+import { Alert } from "react-native";
 
 import { LoadingScreen } from "@/components/loading-screen";
 import { ProfileEditorForm } from "@/components/profile/profile-editor";
@@ -13,6 +13,7 @@ import { api } from "@/convex/_generated/api";
 import { isProfileImageUploadError, useProfileImageUpload } from "@/hooks/use-profile-image-upload";
 import { useTheme } from "@/hooks/use-theme";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
+import { Box } from "@/primitives";
 
 function toSocialLinksDraft(value: ProfileSocialLinks | undefined) {
   return { ...(value ?? {}) };
@@ -155,7 +156,7 @@ export default function StudioProfileEditScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.color.appBg }}>
+    <Box style={{ flex: 1, backgroundColor: theme.color.appBg }}>
       <ProfileEditorForm
         profileName={nameDraft || studioSettings.studioName}
         roleLabel={t("profile.hero.studioProfile")}
@@ -208,6 +209,6 @@ export default function StudioProfileEditScreen() {
           keyboardType: "phone-pad",
         }}
       />
-    </View>
+    </Box>
   );
 }

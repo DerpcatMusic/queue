@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { NativeSearchField } from "@/components/ui/native-search-field";
@@ -8,6 +9,7 @@ import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { getSportGenreKey, SPORT_GENRES, SPORT_TYPES } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
 import { toSportLabelI18n } from "@/lib/sport-i18n";
+import { Text } from "@/primitives";
 
 type SportsMultiSelectProps = {
   selectedSports: string[];
@@ -35,6 +37,7 @@ const SPORTS_RESULT_EMPTY_GAP = BrandSpacing.xs;
 const SPORTS_SELECTED_SPORT_GAP = BrandSpacing.xs / 2;
 const SPORTS_RESULTS_MAX_HEIGHT = 260;
 const SPORTS_GENRE_GROUP_GAP = BrandSpacing.md;
+const BRIGHT_LIME = "#CCFF00";
 
 export function SportsMultiSelect({
   selectedSports,
@@ -94,25 +97,26 @@ export function SportsMultiSelect({
             {selectedSportsList.map((sport) => (
               <Pressable
                 key={`selected-${sport}`}
-                accessibilityRole="button"
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: true }}
                 onPress={() => onToggleSport(sport)}
                 style={({ pressed }) => [
                   styles.resultRow,
                   {
-                    backgroundColor: palette.primarySubtle,
+                    backgroundColor: BRIGHT_LIME,
                     transform: [{ scale: pressed ? 0.992 : 1 }],
                   },
                 ]}
               >
                 <View style={{ flex: 1, gap: SPORTS_SELECTED_SPORT_GAP }}>
-                  <Text style={[styles.resultTitle, { color: palette.text }]}>
+                  <Text style={[styles.resultTitle, { color: "#161E00" }]}>
                     {toSportLabelI18n(sport, t)}
                   </Text>
-                  <Text style={[styles.resultMeta, { color: palette.primary }]}>
+                  <Text style={[styles.resultMeta, { color: "#161E00" }]}>
                     {t("profile.sports.selectedBody")}
                   </Text>
                 </View>
-                <IconSymbol name="checkmark.circle.fill" size={18} color={palette.primary} />
+                <IconSymbol name="checkmark.circle.fill" size={18} color="#161E00" />
               </Pressable>
             ))}
           </View>
@@ -141,12 +145,13 @@ export function SportsMultiSelect({
                   {group.sports.map((sport) => (
                     <Pressable
                       key={sport}
-                      accessibilityRole="button"
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: false }}
                       onPress={() => onToggleSport(sport)}
                       style={({ pressed }) => [
                         styles.resultRow,
                         {
-                          backgroundColor: palette.surface,
+                          backgroundColor: palette.surfaceElevated,
                           transform: [{ scale: pressed ? 0.992 : 1 }],
                         },
                       ]}
@@ -201,7 +206,7 @@ export function SportsMultiSelect({
           style={[
             styles.headerBadge,
             {
-              backgroundColor: isOpen ? palette.primary : palette.surfaceElevated,
+              backgroundColor: isOpen ? BRIGHT_LIME : palette.surfaceAlt,
             },
           ]}
         >
@@ -211,7 +216,7 @@ export function SportsMultiSelect({
               fontSize: 16,
               fontWeight: "500",
               lineHeight: 22,
-              color: isOpen ? palette.onPrimary : palette.textMuted,
+              color: isOpen ? "#161E00" : palette.textMuted,
               includeFontPadding: false,
             }}
           >
@@ -230,6 +235,11 @@ const styles = StyleSheet.create({
     borderRadius: BrandRadius.soft,
     borderCurve: "continuous",
     overflow: "hidden",
+    shadowColor: "#000000",
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 1,
   },
   header: {
     paddingHorizontal: SPORTS_HEADER_HORIZONTAL_PADDING,
@@ -318,5 +328,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPORTS_RESULT_ROW_PADDING_HORIZONTAL,
     paddingVertical: SPORTS_RESULT_ROW_PADDING_VERTICAL,
     gap: SPORTS_RESULT_EMPTY_GAP,
+    shadowColor: "#000000",
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
 });

@@ -6,15 +6,16 @@ import { IdentityStatusBadge } from "@/components/profile/identity-status-ui";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import {
-  getCertificateSubtitle as getSharedCertificateSubtitle,
   getComplianceDocumentValue,
   getInstructorBlockingSummary,
+  getCertificateSubtitle as getSharedCertificateSubtitle,
   getInsuranceSubtitle as getSharedInsuranceSubtitle,
   getLatestCertificate as getSharedLatestCertificate,
   getLatestCertificateForSport as getSharedLatestCertificateForSport,
   getPreferredInsurancePolicy as getSharedPreferredInsurancePolicy,
   toComplianceDisplayLabel,
 } from "@/features/compliance/compliance-ui";
+import { useTheme } from "@/hooks/use-theme";
 
 type OnboardingComplianceCertificateRow = {
   sport?: string;
@@ -171,16 +172,7 @@ export function StepInstructorComplianceBody({
   styles,
 }: StepInstructorComplianceBodyProps) {
   const { t, i18n } = useTranslation();
-  const color = {
-    primary: "#8B5CF6",
-    textMuted: "#6B7280",
-    surface: "#FFFFFF",
-    surfaceAlt: "#F9FAFB",
-    borderStrong: "#E5E7EB",
-    tertiary: "#8B5CF6",
-    tertiarySubtle: "#EDE9FE",
-    onPrimary: "#FFFFFF",
-  };
+  const { color } = useTheme();
 
   if (
     currentUser?.role !== "instructor" ||

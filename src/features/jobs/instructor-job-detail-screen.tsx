@@ -2,20 +2,19 @@ import { useMutation, useQuery } from "convex/react";
 import { usePathname, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
 
 import { DotStatusPill } from "@/components/home/home-shared";
 import { InstructorJobCard } from "@/components/jobs/instructor/instructor-job-card";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
+import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import {
   createContentDrivenTopSheetConfig,
   useGlobalTopSheet,
 } from "@/components/layout/top-sheet-registry";
-import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -25,10 +24,10 @@ import {
 } from "@/features/jobs/instructor-job-detail";
 import { createInstructorJobDetailViewModel } from "@/features/jobs/instructor-job-detail-view-model";
 import {
-  mergeInstructorJobsWithApplications,
-  sortInstructorJobsBySelectedId,
   type InstructorJobApplicationOverlay,
   type InstructorMarketplaceJob,
+  mergeInstructorJobsWithApplications,
+  sortInstructorJobsBySelectedId,
 } from "@/features/jobs/instructor-marketplace-job";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
@@ -125,7 +124,7 @@ export function InstructorJobDetailScreen({
     [studioProfile?.sports],
   );
   const selectedJob = useMemo(
-    () => (jobId ? sortedJobs.find((job) => String(job.jobId) === String(jobId)) ?? null : null),
+    () => (jobId ? (sortedJobs.find((job) => String(job.jobId) === String(jobId)) ?? null) : null),
     [jobId, sortedJobs],
   );
   const selectedJobDetail = useMemo(
@@ -244,15 +243,15 @@ export function InstructorJobDetailScreen({
         />
       ),
       padding: { vertical: 0, horizontal: 0 },
-      backgroundColor: "#111111",
-      topInsetColor: "#111111",
+      backgroundColor: theme.color.surfaceElevated,
+      topInsetColor: theme.color.surfaceElevated,
       style: {
         shadowOpacity: 0,
         shadowRadius: 0,
         elevation: 0,
       },
     });
-  }, [pathname, router, selectedJob, studioProfile]);
+  }, [pathname, router, selectedJob, studioProfile, theme]);
 
   useGlobalTopSheet(sheetTabId, topSheetConfig, `${ownerPrefix}:${pathname}`, {
     routeMatchPath: pathname ?? undefined,
@@ -287,14 +286,14 @@ export function InstructorJobDetailScreen({
       ]}
     >
       {sportsLabels.length > 0 || studioProfile.bio ? (
-        <View
+        <Box
           style={{
-            borderRadius: 32,
+            borderRadius: BrandRadius.soft,
             borderCurve: "continuous",
             backgroundColor: palette.surface,
           }}
         >
-          <View
+          <Box
             style={{
               paddingHorizontal: BrandSpacing.xl,
               paddingVertical: BrandSpacing.lg,
@@ -302,7 +301,7 @@ export function InstructorJobDetailScreen({
             }}
           >
             {sportsLabels.length > 0 ? (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <Box style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
                 {sportsLabels.map((label: string) => (
                   <DotStatusPill
                     key={label}
@@ -311,7 +310,7 @@ export function InstructorJobDetailScreen({
                     label={label}
                   />
                 ))}
-              </View>
+              </Box>
             ) : null}
             {studioProfile.bio ? (
               <ThemedText
@@ -324,8 +323,8 @@ export function InstructorJobDetailScreen({
                 {studioProfile.bio}
               </ThemedText>
             ) : null}
-          </View>
-        </View>
+          </Box>
+        </Box>
       ) : null}
 
       {actionErrorMessage ? (

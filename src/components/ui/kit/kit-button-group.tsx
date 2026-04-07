@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { ColorValue, DimensionValue, TextStyle, ViewStyle } from "react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
@@ -111,7 +112,6 @@ export function KitButtonGroup<T extends string>({
 
   return (
     <View
-      accessible
       style={[
         styles.group,
         {
@@ -171,9 +171,9 @@ export function KitButtonGroup<T extends string>({
               />
             ) : null}
             <Pressable
-              accessibilityRole="button"
+              accessibilityRole="radio"
               accessibilityLabel={option.accessibilityLabel ?? option.label}
-              accessibilityState={{ selected, disabled: option.disabled }}
+              accessibilityState={{ checked: selected, disabled: option.disabled }}
               disabled={option.disabled}
               onPress={() => {
                 if (option.disabled) return;
@@ -270,6 +270,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...BrandType.bodyMedium,
+    // Intentional override: selected labels need bolder weight for visual prominence
     fontWeight: "700",
     includeFontPadding: false,
     textAlign: "center",

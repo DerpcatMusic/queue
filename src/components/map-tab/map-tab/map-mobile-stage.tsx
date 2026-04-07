@@ -1,5 +1,4 @@
 import type { TFunction } from "i18next";
-import { View } from "react-native";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { QueueMap } from "@/components/maps/queue-map";
 import type { QueueMapPin, StudioMapMarker } from "@/components/maps/queue-map.types";
@@ -9,6 +8,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Box } from "@/primitives";
 
 type MapMobileStageProps = {
   t: TFunction;
@@ -70,11 +70,11 @@ export function MapMobileStage({
   const handleZonePress = onPressZone;
 
   if (!isFocused) {
-    return <View style={{ flex: 1, backgroundColor: mapBackgroundColor }} />;
+    return <Box style={{ flex: 1, backgroundColor: mapBackgroundColor }} />;
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: mapBackgroundColor }}>
+    <Box style={{ flex: 1, backgroundColor: mapBackgroundColor }}>
       <QueueMap
         mode="zoneSelect"
         pin={mapPin}
@@ -132,6 +132,6 @@ export function MapMobileStage({
         onClose={onCloseStudio}
         onOpenStudio={onOpenStudioProfile}
       />
-    </View>
+    </Box>
   );
 }

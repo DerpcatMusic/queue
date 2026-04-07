@@ -1,4 +1,3 @@
-import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Platform, View } from "react-native";
@@ -6,6 +5,7 @@ import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { MapMobileStage } from "@/components/map-tab/map-tab/map-mobile-stage";
 import { MapWebWorkbench } from "@/components/map-tab/map-tab/map-web-workbench";
 import type { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
+import { buildStudioProfileRoute } from "@/navigation/public-profile-routes";
 
 type MapTabScreenProps = {
   controller: ReturnType<typeof useMapTabController>;
@@ -60,7 +60,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     (studioId: string) => {
       handleCloseStudio();
       requestAnimationFrame(() => {
-        router.push(`/instructor/map/studios/${encodeURIComponent(studioId)}` as Href);
+        router.push(buildStudioProfileRoute({ owner: "map", studioId }));
       });
     },
     [handleCloseStudio, router],
@@ -70,7 +70,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     return (
       <TabScreenRoot
         mode="static"
-        topInsetTone="sheet"
+        topInsetTone="card"
         style={{ backgroundColor: mapPalette.styleBackground }}
       >
         <View style={{ flex: 1, backgroundColor: mapPalette.styleBackground }} />
@@ -90,7 +90,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     return (
       <TabScreenRoot
         mode="static"
-        topInsetTone="sheet"
+        topInsetTone="card"
         style={{ backgroundColor: mapPalette.styleBackground }}
       >
         <View style={{ flex: 1, backgroundColor: mapPalette.styleBackground }} />

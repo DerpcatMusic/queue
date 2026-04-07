@@ -73,10 +73,10 @@ export function ProfileAccountSwitcherSheet({
         {...props}
         disappearsAt={-1}
         appearsAt={0}
-        style={[props.style, { backgroundColor: theme.color.appBg }]}
+        style={[props.style, { backgroundColor: theme.color.overlay }]}
       />
     ),
-    [theme.color.appBg],
+    [theme.color.overlay],
   );
 
   return (
@@ -133,7 +133,7 @@ export function ProfileAccountSwitcherSheet({
           style={{
             borderRadius: BrandRadius.soft,
             borderCurve: "continuous",
-            backgroundColor: theme.color.surface,
+            backgroundColor: theme.color.surfaceElevated,
             padding: BrandSpacing.lg,
             gap: BrandSpacing.sm,
           }}
@@ -162,12 +162,12 @@ export function ProfileAccountSwitcherSheet({
                   alignSelf: "flex-start",
                   borderRadius: BrandRadius.pill,
                   borderCurve: "continuous",
-                  backgroundColor: theme.color.primarySubtle,
+                  backgroundColor: "#CCFF00",
                   paddingHorizontal: BrandSpacing.controlX,
                   paddingVertical: BrandSpacing.xs,
                 }}
               >
-                <ThemedText type="micro" style={{ color: theme.color.primary }}>
+                <ThemedText type="micro" style={{ color: "#161E00" }}>
                   {t("profile.switcher.currentAccountBadge")}
                 </ThemedText>
               </View>
@@ -228,12 +228,12 @@ export function ProfileAccountSwitcherSheet({
                           style={{
                             borderRadius: BrandRadius.pill,
                             borderCurve: "continuous",
-                            backgroundColor: theme.color.primarySubtle,
+                            backgroundColor: "#CCFF00",
                             paddingHorizontal: BrandSpacing.controlX,
                             paddingVertical: BrandSpacing.xs,
                           }}
                         >
-                          <ThemedText type="micro" style={{ color: theme.color.primary }}>
+                          <ThemedText type="micro" style={{ color: "#161E00" }}>
                             {t("profile.switcher.loadingLabel")}
                           </ThemedText>
                         </View>

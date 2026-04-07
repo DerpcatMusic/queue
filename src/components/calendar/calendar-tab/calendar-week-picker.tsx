@@ -1,8 +1,11 @@
 import { memo, useMemo } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { ScrollView, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
+import { StyleSheet } from "react-native-unistyles";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
 import { addDays } from "../calendar-controller-helpers";
 import { formatMonthYear } from "./calendar-date-utils";
 
@@ -14,12 +17,20 @@ type CalendarWeekPickerProps = {
 };
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"] as const;
+const LIGHT_ACCENT = "#506600";
+const LIGHT_ACCENT_CONTAINER = "#CCFF00";
+const LIGHT_SURFACE_LOW = "#F3F3F3";
+const LIGHT_BORDER = "#C4C9AC";
+const LIGHT_TEXT = "#1A1C1C";
+const LIGHT_TEXT_MUTED = "#444933";
 
 function CalendarWeekPicker({ selectedDay, todayKey, startDay }: CalendarWeekPickerProps) {
+  const { i18n } = useTranslation();
   const theme = useTheme();
   const { color: palette } = theme;
-  const headingColor = palette.onPrimary;
-  const subheadingColor = palette.onPrimary;
+  const isLightTheme = theme.scheme === "light";
+  const headingColor = isLightTheme ? LIGHT_TEXT : palette.text;
+  const subheadingColor = isLightTheme ? LIGHT_ACCENT : palette.primary;
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -35,7 +46,10 @@ function CalendarWeekPicker({ selectedDay, todayKey, startDay }: CalendarWeekPic
     });
   }, [selectedDay, startDay, todayKey]);
 
-  const monthYear = useMemo(() => formatMonthYear(startDay, "en-US"), [startDay]);
+  const monthYear = useMemo(
+    () => formatMonthYear(startDay, i18n.resolvedLanguage ?? "en"),
+    [i18n.resolvedLanguage, startDay],
+  );
 
   const weekNumber = useMemo(() => getWeekNumber(startDay), [startDay]);
 
@@ -43,9 +57,7 @@ function CalendarWeekPicker({ selectedDay, todayKey, startDay }: CalendarWeekPic
     <Animated.View entering={FadeIn.duration(200)} style={styles.root}>
       {/* Month/Year and Week Number Header */}
       <View style={styles.headerRow}>
-        <Text style={[styles.monthYear, { color: headingColor }]}>
-          {monthYear.toUpperCase()}
-        </Text>
+        <Text style={[styles.monthYear, { color: headingColor }]}>{monthYear.toUpperCase()}</Text>
         <Text style={[styles.weekNumber, { color: subheadingColor }]}>WK {weekNumber}</Text>
       </View>
 
@@ -79,21 +91,28 @@ type DayCellProps = {
 const DayCell = memo(function DayCell({ dayLabel, dayNumber, isToday, isSelected }: DayCellProps) {
   const theme = useTheme();
   const { color: palette } = theme;
+  const isLightTheme = theme.scheme === "light";
   const isAnchorDay = isToday || isSelected;
   const backgroundColor = isAnchorDay
-    ? palette.surfaceElevated
-    : theme.scheme === "light"
-      ? palette.text
+    ? isLightTheme
+      ? LIGHT_ACCENT_CONTAINER
+      : palette.surfaceElevated
+    : isLightTheme
+      ? LIGHT_SURFACE_LOW
       : palette.surface;
   const labelColor = isAnchorDay
-    ? palette.textMuted
-    : theme.scheme === "light"
-      ? palette.surfaceAlt
+    ? isLightTheme
+      ? "#161E00"
+      : palette.textMuted
+    : isLightTheme
+      ? LIGHT_TEXT_MUTED
       : palette.textMicro;
   const numberColor = isAnchorDay
-    ? palette.text
-    : theme.scheme === "light"
-      ? palette.surfaceElevated
+    ? isLightTheme
+      ? "#161E00"
+      : palette.text
+    : isLightTheme
+      ? LIGHT_TEXT
       : palette.text;
 
   return (
@@ -103,6 +122,8 @@ const DayCell = memo(function DayCell({ dayLabel, dayNumber, isToday, isSelected
         styles.dayCell,
         {
           backgroundColor,
+          borderWidth: isLightTheme ? 1 : 0,
+          borderColor: isLightTheme ? LIGHT_BORDER : "transparent",
           shadowColor: "transparent",
           shadowOpacity: 0,
           shadowRadius: 0,

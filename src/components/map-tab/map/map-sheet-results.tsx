@@ -1,11 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, View } from "react-native";
 import type { ZoneCityListItem } from "@/components/map-tab/zone-city-tree";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useIsRtl } from "@/hooks/use-is-rtl";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
 
 const MAP_RESULT_INDENT = BrandSpacing.xl + BrandSpacing.lg;
 const MAP_RESULT_RADIUS = BrandRadius.card;
@@ -114,9 +115,7 @@ export function MapSheetResults({
                   gap: BrandSpacing.md,
                   borderRadius: MAP_RESULT_RADIUS,
                   borderCurve: "continuous",
-                  backgroundColor: item.selected
-                    ? palette.primarySubtle
-                    : palette.surfaceElevated,
+                  backgroundColor: item.selected ? palette.primarySubtle : palette.surfaceElevated,
                 }}
               >
                 <Pressable

@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { View } from "react-native";
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -11,6 +10,7 @@ import Animated, {
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { BorderWidth, IconSize } from "@/lib/design-system";
+import { Box } from "@/primitives";
 import { useKitTheme } from "./use-kit-theme";
 
 type BurstBubbleConfig = {
@@ -20,6 +20,9 @@ type BurstBubbleConfig = {
   size: number;
 };
 
+// Artistic constants: These decorative bubble positions, sizes, and animation timings
+// are specific to this success burst animation's choreography. They don't map to
+// generic design tokens because they define the unique character of this animation.
 const BUBBLES: readonly BurstBubbleConfig[] = [
   { id: "left-top", x: -48, y: -12, size: 10 },
   { id: "right-top", x: 46, y: -18, size: 12 },
@@ -119,7 +122,7 @@ export function KitSuccessBurst({
   }));
 
   return (
-    <View style={{ height, alignItems: "center", justifyContent: "center" }}>
+    <Box style={{ height, alignItems: "center", justifyContent: "center" }}>
       <Animated.View
         style={[
           {
@@ -166,6 +169,6 @@ export function KitSuccessBurst({
           tintColor={color.success as string}
         />
       </Animated.View>
-    </View>
+    </Box>
   );
 }

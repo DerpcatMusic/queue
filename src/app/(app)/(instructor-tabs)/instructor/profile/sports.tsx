@@ -3,9 +3,9 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
-
-import { LoadingScreen } from "@/components/loading-screen";
+import { Text } from "react-native";
+import Animated from "react-native-reanimated";
+import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
@@ -19,11 +19,13 @@ import { StatusSignal } from "@/components/profile/status-signal";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-import { BorderWidth } from "@/lib/design-system";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useAppInsets } from "@/hooks/use-app-insets";
+import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useTheme } from "@/hooks/use-theme";
+import { Box } from "@/primitives";
+import { BorderWidth } from "@/lib/design-system";
 
 export default function SportsScreen() {
   const { t } = useTranslation();
@@ -46,15 +48,12 @@ export default function SportsScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  if (instructorSettings === undefined) {
-    return <LoadingScreen label={t("profile.settings.loading")} />;
-  }
-  if (instructorSettings === null) {
-    return <LoadingScreen label={t("profile.settings.unavailable")} />;
-  }
+  const isLoading = instructorSettings === undefined || instructorSettings === null;
+  const { animatedStyle } = useContentReveal(isLoading);
 
-  const serverSports = instructorSettings.sports;
-  const sports = draft ?? serverSports;
+  // Only access instructorSettings when not loading
+  const serverSports = isLoading ? [] : instructorSettings.sports;
+  const sports = isLoading ? [] : (draft ?? serverSports);
 
   const toggleSport = (sport: string) => {
     if (process.env.EXPO_OS === "ios") {
@@ -86,31 +85,26 @@ export default function SportsScreen() {
     sports.length > 0 ? t("profile.sports.heroReadyBody") : t("profile.sports.heroEmptyBody");
 
   const onSave = async () => {
-    if (!hasChanges || !draft) {
+    if (!hasChanges || !draft || !instructorSettings) {
       router.back();
       return;
     }
 
     setIsSaving(true);
     setErrorMessage(null);
+    const settings = instructorSettings;
     try {
       await saveSettings({
-        notificationsEnabled: instructorSettings.notificationsEnabled,
+        notificationsEnabled: settings!.notificationsEnabled,
         sports: draft,
-        calendarProvider: instructorSettings.calendarProvider,
-        calendarSyncEnabled: instructorSettings.calendarSyncEnabled,
-        ...(instructorSettings.hourlyRateExpectation !== undefined
-          ? { hourlyRateExpectation: instructorSettings.hourlyRateExpectation }
+        calendarProvider: settings!.calendarProvider,
+        calendarSyncEnabled: settings!.calendarSyncEnabled,
+        ...(settings!.hourlyRateExpectation !== undefined
+          ? { hourlyRateExpectation: settings!.hourlyRateExpectation }
           : {}),
-        ...(instructorSettings.address !== undefined
-          ? { address: instructorSettings.address }
-          : {}),
-        ...(instructorSettings.latitude !== undefined
-          ? { latitude: instructorSettings.latitude }
-          : {}),
-        ...(instructorSettings.longitude !== undefined
-          ? { longitude: instructorSettings.longitude }
-          : {}),
+        ...(settings!.address !== undefined ? { address: settings!.address } : {}),
+        ...(settings!.latitude !== undefined ? { latitude: settings!.latitude } : {}),
+        ...(settings!.longitude !== undefined ? { longitude: settings!.longitude } : {}),
       });
       router.back();
     } catch (error) {
@@ -123,136 +117,148 @@ export default function SportsScreen() {
   };
 
   return (
-    <View style={{ flex: 1, position: "relative", backgroundColor: theme.color.appBg }}>
-      <ProfileSubpageScrollView
-        routeKey="instructor/profile/sports"
-        contentContainerStyle={{
-          paddingHorizontal: BrandSpacing.inset,
-          paddingBottom: overlayBottom + 92,
-          gap: BrandSpacing.stackRoomy,
-        }}
-      >
-        <View
-          style={{
-            gap: BrandSpacing.stackRoomy,
-            borderRadius: BrandRadius.soft,
-            padding: BrandSpacing.insetRoomy,
-            borderWidth: BorderWidth.thin,
-            borderColor: theme.color.border,
-            backgroundColor: theme.color.surfaceAlt,
-            borderCurve: "continuous",
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: BrandSpacing.stack }}>
-            <View style={{ flex: 1, gap: BrandSpacing.stackTight, minWidth: 0 }}>
-              <Text style={[BrandType.radarLabel, { color: theme.color.textMuted }]}>
-                {t("profile.settings.sports.title")}
-              </Text>
-              <Text style={[BrandType.heading, { color: theme.color.text }]}>
-                {heroTitle}
-              </Text>
-              <Text style={[BrandType.body, { color: theme.color.textMuted }]}>
-                {heroBody}
-              </Text>
-            </View>
-            <View
+    <TabSceneTransition>
+      <Box style={{ flex: 1, position: "relative", backgroundColor: theme.color.appBg }}>
+        <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+          <ProfileSubpageScrollView
+            routeKey="instructor/profile/sports"
+            contentContainerStyle={{
+              paddingHorizontal: BrandSpacing.inset,
+              paddingBottom: overlayBottom + 92,
+              gap: BrandSpacing.stackRoomy,
+            }}
+          >
+            <Box
               style={{
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: BrandRadius.pill,
-                backgroundColor: theme.color.primarySubtle,
+                gap: BrandSpacing.stackRoomy,
+                borderRadius: BrandRadius.soft,
+                padding: BrandSpacing.insetRoomy,
                 borderWidth: BorderWidth.thin,
-                borderColor: theme.color.primarySubtle,
-                width: BrandSpacing.avatarMd,
-                height: BrandSpacing.avatarMd,
+                borderColor: theme.color.border,
+                backgroundColor: theme.color.surfaceElevated,
                 borderCurve: "continuous",
               }}
             >
-              <IconSymbol name="sparkles" size={22} color={theme.color.primary} />
-            </View>
-          </View>
+              <Box
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: BrandSpacing.stack,
+                }}
+              >
+                <Box style={{ flex: 1, gap: BrandSpacing.stackTight, minWidth: 0 }}>
+                  <Text style={[BrandType.radarLabel, { color: theme.color.textMuted }]}>
+                    {t("profile.settings.sports.title")}
+                  </Text>
+                  <Text style={[BrandType.heading, { color: theme.color.text }]}>{heroTitle}</Text>
+                  <Text style={[BrandType.body, { color: theme.color.textMuted }]}>{heroBody}</Text>
+                </Box>
+                <Box
+                  style={{
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: BrandRadius.pill,
+                    backgroundColor: theme.color.primarySubtle,
+                    borderWidth: BorderWidth.thin,
+                    borderColor: theme.color.primarySubtle,
+                    width: BrandSpacing.avatarXl,
+                    height: BrandSpacing.avatarXl,
+                    borderCurve: "continuous",
+                  }}
+                >
+                  <IconSymbol
+                    name="sparkles"
+                    size={BrandSpacing.iconLg}
+                    color={theme.color.primary}
+                  />
+                </Box>
+              </Box>
 
-          <View style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
-            <StatusSignal
-              label={t("profile.sports.signalSelected")}
-              value={t("profile.settings.sports.selected", {
-                count: sports.length,
-              })}
-              tone="accent"
-            />
-            <StatusSignal
-              label={t("profile.sports.signalState")}
-              value={hasChanges ? t("profile.sports.stateUnsaved") : t("profile.sports.stateLive")}
-            />
-          </View>
-        </View>
+              <Box style={{ flexDirection: "row", gap: BrandSpacing.stackTight }}>
+                <StatusSignal
+                  label={t("profile.sports.signalSelected")}
+                  value={t("profile.settings.sports.selected", {
+                    count: sports.length,
+                  })}
+                  tone="accent"
+                />
+                <StatusSignal
+                  label={t("profile.sports.signalState")}
+                  value={
+                    hasChanges ? t("profile.sports.stateUnsaved") : t("profile.sports.stateLive")
+                  }
+                />
+              </Box>
+            </Box>
 
-        <View style={{ gap: BrandSpacing.stackTight }}>
-          <ProfileSectionHeader
-            label={t("profile.sports.boardLabel")}
-            description={t("profile.sports.boardBody")}
-            icon="sparkles"
-            flush
-          />
-          <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-            <SportsMultiSelect
-              selectedSports={sports}
-              onToggleSport={toggleSport}
-              searchPlaceholder={t("profile.settings.sports.searchPlaceholder")}
-              title={t("profile.settings.sports.title")}
-              emptyHint={t("profile.settings.sports.none")}
-              defaultOpen
-              variant="content"
-            />
-          </ProfileSectionCard>
-        </View>
+            <Box style={{ gap: BrandSpacing.stackTight }}>
+              <ProfileSectionHeader
+                label={t("profile.sports.boardLabel")}
+                description={t("profile.sports.boardBody")}
+                icon="sparkles"
+                flush
+              />
+              <ProfileSectionCard style={{ marginHorizontal: 0 }}>
+                <SportsMultiSelect
+                  selectedSports={sports}
+                  onToggleSport={toggleSport}
+                  searchPlaceholder={t("profile.settings.sports.searchPlaceholder")}
+                  title={t("profile.settings.sports.title")}
+                  emptyHint={t("profile.settings.sports.none")}
+                  defaultOpen
+                  variant="content"
+                />
+              </ProfileSectionCard>
+            </Box>
 
-        {errorMessage ? (
-          <View
+            {errorMessage ? (
+              <Box
+                style={{
+                  borderRadius: BrandRadius.md,
+                  paddingHorizontal: BrandSpacing.controlX,
+                  paddingVertical: BrandSpacing.controlY,
+                  borderWidth: BorderWidth.thin,
+                  borderColor: theme.color.danger,
+                  backgroundColor: theme.color.dangerSubtle,
+                  borderCurve: "continuous",
+                }}
+              >
+                <Text selectable style={[BrandType.bodyMedium, { color: theme.color.danger }]}>
+                  {errorMessage}
+                </Text>
+              </Box>
+            ) : null}
+          </ProfileSubpageScrollView>
+
+          <Box
             style={{
-              borderRadius: BrandRadius.md,
-              paddingHorizontal: BrandSpacing.controlX,
-              paddingVertical: BrandSpacing.controlY,
-              borderWidth: BorderWidth.thin,
-              borderColor: theme.color.danger,
-              backgroundColor: theme.color.dangerSubtle,
-              borderCurve: "continuous",
+              position: "absolute",
+              left: BrandSpacing.inset,
+              right: BrandSpacing.inset,
+              gap: BrandSpacing.stackTight,
+              backgroundColor: theme.color.appBg,
+              bottom: overlayBottom,
             }}
           >
-            <Text selectable style={[BrandType.bodyMedium, { color: theme.color.danger }]}>
-              {errorMessage}
-            </Text>
-          </View>
-        ) : null}
-      </ProfileSubpageScrollView>
-
-      <View
-        style={{
-          position: "absolute",
-          left: BrandSpacing.inset,
-          right: BrandSpacing.inset,
-          gap: BrandSpacing.stackTight,
-          backgroundColor: theme.color.appBg,
-          bottom: overlayBottom,
-        }}
-      >
-        <ActionButton
-          label={
-            isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
-          }
-          onPress={() => {
-            void onSave();
-          }}
-          disabled={isSaving || !hasChanges}
-          fullWidth
-        />
-        <ActionButton
-          label={t("common.cancel")}
-          onPress={() => router.back()}
-          tone="secondary"
-          fullWidth
-        />
-      </View>
-    </View>
+            <ActionButton
+              label={
+                isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
+              }
+              onPress={() => {
+                void onSave();
+              }}
+              disabled={isSaving || !hasChanges}
+              fullWidth
+            />
+            <ActionButton
+              label={t("common.cancel")}
+              onPress={() => router.back()}
+              tone="secondary"
+              fullWidth
+            />
+          </Box>
+        </Animated.View>
+      </Box>
+    </TabSceneTransition>
   );
 }

@@ -1,6 +1,6 @@
 import { Image as ExpoImage } from "expo-image";
-import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
 import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
@@ -20,13 +20,7 @@ const BADGE_TONE_STYLE = {
   warning: "warning",
 } as const;
 
-function DetailBadge({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: keyof typeof BADGE_TONE_STYLE;
-}) {
+function DetailBadge({ label, tone }: { label: string; tone: keyof typeof BADGE_TONE_STYLE }) {
   const { color: palette } = useTheme();
 
   const colors = {
@@ -142,6 +136,7 @@ export function InstructorJobDetailBanner({
   onBack: () => void;
 }) {
   const { t } = useTranslation();
+  const { color: palette } = useTheme();
 
   return (
     <Box
@@ -150,7 +145,7 @@ export function InstructorJobDetailBanner({
         overflow: "hidden",
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
-        backgroundColor: "#111111",
+        backgroundColor: palette.surfaceElevated,
       }}
     >
       {studioImageUrl ? (
@@ -185,8 +180,8 @@ export function InstructorJobDetailBanner({
             accessibilityLabel={t("common.close")}
             onPress={onBack}
             size={36}
-            backgroundColorOverride="#171717"
-            icon={<IconSymbol name="chevron.left" size={18} color="#FFFFFF" />}
+            backgroundColorOverride={palette.surfaceAlt}
+            icon={<IconSymbol name="chevron.left" size={18} color={palette.text} />}
           />
         </Box>
 
@@ -194,7 +189,7 @@ export function InstructorJobDetailBanner({
           <ThemedText
             type="micro"
             style={{
-              color: "#D9D0C2",
+              color: palette.textMuted,
               textTransform: "uppercase",
               letterSpacing: 1.2,
               fontWeight: "700",
@@ -207,7 +202,7 @@ export function InstructorJobDetailBanner({
             type="display"
             numberOfLines={2}
             style={{
-              color: "#FFFFFF",
+              color: palette.text,
               textAlign: "center",
               fontSize: 28,
               lineHeight: 32,
@@ -222,7 +217,7 @@ export function InstructorJobDetailBanner({
           <ThemedText
             type="caption"
             style={{
-              color: "#F2E7D2",
+              color: palette.textMuted,
               textAlign: "center",
             }}
           >

@@ -1,11 +1,13 @@
+import { Image } from "expo-image";
 import { memo } from "react";
 import type { ImageSourcePropType } from "react-native";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { Image } from "expo-image";
-
+import { ActivityIndicator, Pressable, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
+const BRIGHT_LIME = "#CCFF00";
 
 type CalendarConnectionRowProps = {
   iconSource: ImageSourcePropType;
@@ -34,7 +36,9 @@ export const CalendarConnectionRow = memo(function CalendarConnectionRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.row,
-        pressed ? { backgroundColor: palette.surfaceAlt } : null,
+        {
+          backgroundColor: pressed ? palette.surfaceAlt : palette.surfaceElevated,
+        },
       ]}
     >
       <View
@@ -48,25 +52,21 @@ export const CalendarConnectionRow = memo(function CalendarConnectionRow({
             : null,
         ]}
       >
-        <Image source={iconSource as number} style={styles.icon} contentFit="cover" />
+          <Image source={iconSource as number} style={styles.icon} contentFit="cover" />
 
         <View style={styles.copy}>
-          <Text style={[styles.title, { color: palette.primary }]}>
-            {title}
-          </Text>
-          <Text style={[styles.detail, { color: palette.textMuted }]}>
-            {detail}
-          </Text>
+          <Text style={[styles.title, { color: BRIGHT_LIME }]}>{title}</Text>
+          <Text style={[styles.detail, { color: palette.textMuted }]}>{detail}</Text>
         </View>
 
         <View style={styles.trailing}>
           {loading ? (
-            <ActivityIndicator size="small" color={palette.primary} />
+            <ActivityIndicator size="small" color={BRIGHT_LIME} />
           ) : (
             <AppSymbol
               name={connected ? "checkmark.circle.fill" : "chevron.right"}
               size={BrandSpacing.iconMd - BrandSpacing.xs / 2}
-              tintColor={connected ? palette.primary : palette.textMuted}
+              tintColor={connected ? BRIGHT_LIME : palette.textMuted}
             />
           )}
         </View>
@@ -78,6 +78,14 @@ export const CalendarConnectionRow = memo(function CalendarConnectionRow({
 const styles = StyleSheet.create({
   row: {
     minHeight: 92,
+    borderRadius: BrandRadius.card,
+    borderCurve: "continuous",
+    overflow: "hidden",
+    shadowColor: "#000000",
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 1,
   },
   rowInner: {
     flexDirection: "row",
@@ -103,7 +111,7 @@ const styles = StyleSheet.create({
   },
   detail: {
     fontFamily: "Manrope_400Regular",
-    fontSize: 15,
+    fontSize: BrandType.body.fontSize,
     fontWeight: "400",
     lineHeight: 20,
   },

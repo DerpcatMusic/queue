@@ -1,8 +1,9 @@
 import type { TFunction } from "i18next";
-import { Text, View } from "react-native";
-
+import { View } from "react-native";
 import { ActionButton } from "@/components/ui/action-button";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
 
 type MapWebHeaderPanelsProps = {
   t: TFunction;
@@ -36,7 +37,7 @@ export function MapWebHeaderPanels({
           backgroundColor: palette.surfaceAlt,
           paddingHorizontal: 18,
           paddingVertical: 18,
-          gap: 6,
+          gap: BrandSpacing.sm,
         }}
       >
         <Text
@@ -103,7 +104,7 @@ export function MapWebHeaderPanels({
         <Text
           style={{
             fontFamily: "BarlowCondensed_800ExtraBold",
-            fontSize: 34,
+            fontSize: BrandType.heroSmall.fontSize,
             lineHeight: 32,
             letterSpacing: -0.8,
             color: palette.onPrimary,
@@ -124,7 +125,7 @@ export function MapWebHeaderPanels({
         >
           {hasChanges ? t("mapTab.web.statePending") : t("mapTab.web.stateReady")}
         </Text>
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+        <View style={{ flexDirection: "row", gap: BrandSpacing.md, marginTop: 4 }}>
           <View
             style={{
               flex: 1,
@@ -202,7 +203,7 @@ export function MapWebHeaderPanels({
             </Text>
           </View>
         </View>
-        <View style={{ flexDirection: "row", gap: 10, marginTop: "auto" }}>
+        <View style={{ flexDirection: "row", gap: BrandSpacing.md, marginTop: "auto" }}>
           <ActionButton
             label={t("mapTab.web.saveCoverage")}
             onPress={onSave}

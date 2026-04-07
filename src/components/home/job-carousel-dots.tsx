@@ -1,9 +1,11 @@
-import { View } from "react-native";
 import Animated, { type SharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import { BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Box } from "@/primitives";
+import { Spring } from "@/theme/theme";
 
-const DOT_SIZE = 6;
-const DOT_GAP = 4;
+const DOT_SIZE = BrandSpacing.statusDot;
+const DOT_GAP = BrandSpacing.xs;
 
 type JobCarouselDotsProps = {
   count: number;
@@ -29,14 +31,14 @@ function Dot({
       transform: [
         {
           scale: withSpring(isActive ? 1.35 : 1.0, {
-            damping: 18,
-            stiffness: 300,
+            damping: Spring.gentle.damping,
+            stiffness: Spring.gentle.stiffness,
           }),
         },
       ],
       opacity: withSpring(isActive ? 1.0 : 0.35, {
-        damping: 20,
-        stiffness: 250,
+        damping: Spring.gentle.damping,
+        stiffness: Spring.gentle.stiffness,
       }),
     };
   });
@@ -67,7 +69,7 @@ export function JobCarouselDots({ count, scrollX, cardWidth }: JobCarouselDotsPr
   }
 
   return (
-    <View
+    <Box
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -77,6 +79,6 @@ export function JobCarouselDots({ count, scrollX, cardWidth }: JobCarouselDotsPr
       accessibilityRole="none"
     >
       {dots}
-    </View>
+    </Box>
   );
 }

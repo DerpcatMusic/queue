@@ -2,22 +2,20 @@ import { Image as ExpoImage } from "expo-image";
 import type { TFunction } from "i18next";
 import type React from "react";
 import { memo } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { I18nManager, Platform, Pressable, StyleSheet, View } from "react-native";
 import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
 import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 import { getInstructorJobPresentation } from "@/features/jobs/instructor-job-presentation";
+import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth, FontFamily, FontSize, LetterSpacing, LineHeight } from "@/lib/design-system";
-import {
-  formatTime,
-} from "@/lib/jobs-utils";
-import { Box } from "@/primitives";
+import { formatTime } from "@/lib/jobs-utils";
+import { Box, Text } from "@/primitives";
 
 // SVG feColorMatrix filter for true grayscale on native.
 // First pass: desaturate to 0 (full grayscale).
@@ -174,24 +172,23 @@ export const InstructorJobCard = memo(function InstructorJobCard({
     job.applicationId && withdrawingApplicationId === job.applicationId,
   );
 
-  const canCancelApplication =
-    canWithdrawPendingApplication &&
-    Boolean(onWithdrawApplication);
-
-  // Border: red when applied, subtle outline otherwise
-  const cardBorderColor = hasApplied ? theme.color.danger : theme.color.outline;
+  const canCancelApplication = canWithdrawPendingApplication && Boolean(onWithdrawApplication);
+  const hasBoost = Boolean(boost.bonusAmount || boost.badgeKey);
+  const accentColor = hasApplied
+    ? theme.color.tertiary
+    : hasBoost
+      ? theme.color.secondary
+      : theme.color.primary;
+  const cardBorderColor = isExpired ? theme.color.outline : accentColor;
 
   if (variant === "default") {
-    const metaAccent = boost.bonusAmount ? theme.color.secondary : theme.color.primaryPressed;
+    const metaAccent = hasBoost ? theme.color.secondary : accentColor;
     const studioMeta = job.branchName ? `${job.studioName} · ${job.branchName}` : job.studioName;
-    const combinedMeta = `${studioMeta} | ${zoneLabel}`;
 
     return (
       <Pressable
         accessibilityRole={isPressable ? "button" : undefined}
-        accessibilityLabel={
-          isPressable ? `${job.studioName} ${sportLabel}` : undefined
-        }
+        accessibilityLabel={isPressable ? `${job.studioName} ${sportLabel}` : undefined}
         disabled={!isPressable}
         onPress={() => onOpenStudio?.(job.studioId, job.jobId)}
         style={({ pressed }) => ({
@@ -210,6 +207,12 @@ export const InstructorJobCard = memo(function InstructorJobCard({
             overflow: "hidden",
           }}
         >
+          <View
+            style={{
+              height: BorderWidth.strong,
+              backgroundColor: isExpired ? theme.color.outline : accentColor,
+            }}
+          />
           <StudioImageBackground
             imageUrl={job.studioImageUrl}
             fallbackLabel={job.studioName}
@@ -254,12 +257,33 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                     fontFamily: FontFamily.bodyMedium,
                     fontSize: FontSize.caption,
                     lineHeight: LineHeight.caption,
-                    color: theme.color.textMuted,
+                    color: theme.color.text,
                     includeFontPadding: false,
                   }}
                 >
-                  {combinedMeta}
+                  {studioMeta}
                 </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: BrandSpacing.xs,
+                  }}
+                >
+                  <IconSymbol name="location_on" size={13} color={accentColor} />
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontFamily: FontFamily.bodyMedium,
+                      fontSize: FontSize.caption,
+                      lineHeight: LineHeight.caption,
+                      color: theme.color.textMuted,
+                      includeFontPadding: false,
+                    }}
+                  >
+                    {zoneLabel}
+                  </Text>
+                </View>
                 {expiry ? (
                   <Text
                     style={{
@@ -303,7 +327,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                       lineHeight: LineHeight.heroSmall,
                       letterSpacing: LetterSpacing.heroSmall,
                       color: metaAccent,
-                      textAlign: "right",
+                      textAlign: I18nManager.isRTL ? "left" : "right",
                       fontWeight: "900",
                       includeFontPadding: false,
                     }}
@@ -318,32 +342,59 @@ export const InstructorJobCard = memo(function InstructorJobCard({
               <View
                 style={{
                   flexDirection: "row",
-                  alignItems: "center",
+                  alignItems: "flex-end",
                   justifyContent: "space-between",
                   gap: BrandSpacing.sm,
                 }}
               >
                 <View
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: BrandSpacing.xs,
                     flex: 1,
+                    gap: BrandSpacing.xs,
                   }}
                 >
-                  <IconSymbol name="clock.fill" size={14} color={metaAccent} />
-                  <Text
+                  <View
                     style={{
-                      fontFamily: FontFamily.bodyStrong,
-                      fontSize: FontSize.body,
-                      lineHeight: LineHeight.body,
-                      color: theme.color.textMuted,
-                      includeFontPadding: false,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: BrandSpacing.xs,
                     }}
-                    numberOfLines={1}
                   >
-                    {formatTime(job.startTime, locale)} — {formatTime(job.endTime, locale)}
-                  </Text>
+                    <IconSymbol name="clock.fill" size={14} color={metaAccent} />
+                    <Text
+                      style={{
+                        fontFamily: FontFamily.bodyStrong,
+                        fontSize: FontSize.body,
+                        lineHeight: LineHeight.body,
+                        color: theme.color.textMuted,
+                        includeFontPadding: false,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {formatTime(job.startTime, locale)} — {formatTime(job.endTime, locale)}
+                    </Text>
+                  </View>
+                  {isPressable ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: BrandSpacing.xs,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          ...BrandType.labelStrong,
+                          color: accentColor,
+                          fontStyle: "italic",
+                          transform: [{ skewX: "-8deg" }],
+                        }}
+                      >
+                        {t("common.viewDetails")}
+                      </Text>
+                      <IconSymbol name="arrow.forward" size={14} color={accentColor} />
+                    </View>
+                  ) : null}
                 </View>
 
                 <View style={{ minWidth: 124, alignItems: "flex-end", flexShrink: 0 }}>
@@ -367,9 +418,9 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                         backgroundColor: theme.color.danger,
                         pressedBackgroundColor: theme.color.dangerSubtle,
                         disabledBackgroundColor: theme.color.danger,
-                        labelColor: "#FFFFFF",
-                        disabledLabelColor: "#FFFFFF99",
-                        nativeTintColor: "#FFFFFF",
+                        labelColor: theme.color.onPrimary,
+                        disabledLabelColor: theme.color.textMuted,
+                        nativeTintColor: theme.color.onPrimary,
                       }}
                       labelStyle={{ fontWeight: "700" }}
                       native={false}
@@ -381,9 +432,9 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                           ? t("jobsTab.form.expiryExpired")
                           : applyBlockedByVerification
                             ? t("jobsTab.actions.verifyToApply")
-                          : applyingJobId === job.jobId
-                            ? t("jobsTab.actions.applying")
-                            : t("jobsTab.actions.apply")
+                            : applyingJobId === job.jobId
+                              ? t("jobsTab.actions.applying")
+                              : t("jobsTab.actions.apply")
                       }
                       onPress={(event) => {
                         event?.stopPropagation();
@@ -403,7 +454,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                           ? theme.jobs.surfaceMuted
                           : applyBlockedByVerification
                             ? theme.jobs.surfaceMuted
-                          : theme.color.tertiarySubtle,
+                            : theme.color.tertiarySubtle,
                         disabledBackgroundColor: theme.jobs.surfaceMuted,
                         labelColor: isExpired
                           ? theme.color.textMuted
@@ -432,7 +483,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                 position: "absolute",
                 bottom: BrandSpacing.xs,
                 left: BrandSpacing.xs,
-                backgroundColor: theme.color.danger,
+                backgroundColor: theme.color.tertiary,
                 paddingHorizontal: BrandSpacing.md,
                 paddingVertical: BrandSpacing.xxs,
                 transform: [{ rotate: "-12deg" }],
@@ -444,7 +495,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                   ...BrandType.labelStrong,
                   fontSize: 8,
                   letterSpacing: 1,
-                  color: "#FFFFFF",
+                  color: theme.color.onPrimary,
                   textTransform: "uppercase",
                 }}
               >
@@ -461,9 +512,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
   return (
     <Pressable
       accessibilityRole={isPressable ? "button" : undefined}
-      accessibilityLabel={
-        isPressable ? `${job.studioName} ${sportLabel}` : undefined
-      }
+      accessibilityLabel={isPressable ? `${job.studioName} ${sportLabel}` : undefined}
       disabled={!isPressable}
       onPress={() => onOpenStudio?.(job.studioId, job.jobId)}
       style={({ pressed }) => ({
@@ -471,11 +520,11 @@ export const InstructorJobCard = memo(function InstructorJobCard({
         transform: [{ scale: isPressable && pressed ? 0.992 : 1 }],
       })}
     >
-      <View
-        style={{
-          borderRadius: BrandRadius.card,
-          borderCurve: "continuous",
-          backgroundColor: theme.jobs.surface,
+        <View
+          style={{
+            borderRadius: BrandRadius.card,
+            borderCurve: "continuous",
+            backgroundColor: theme.jobs.surface,
           borderWidth: BorderWidth.thin,
           borderColor: cardBorderColor,
           overflow: "hidden",
@@ -487,7 +536,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
             style={{
               height: BorderWidth.strong,
               backgroundColor:
-                job.applicationStatus === "pending" ? theme.jobs.signal : theme.color.primary,
+                job.applicationStatus === "pending" ? theme.color.tertiary : theme.color.secondary,
             }}
           />
         )}
@@ -582,9 +631,9 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                   backgroundColor: theme.color.danger,
                   pressedBackgroundColor: theme.color.dangerSubtle,
                   disabledBackgroundColor: theme.color.danger,
-                  labelColor: "#FFFFFF",
-                  disabledLabelColor: "#FFFFFF99",
-                  nativeTintColor: "#FFFFFF",
+                  labelColor: theme.color.onPrimary,
+                  disabledLabelColor: theme.color.textMuted,
+                  nativeTintColor: theme.color.onPrimary,
                 }}
                 labelStyle={{ fontWeight: "700" }}
                 native={false}
@@ -596,9 +645,9 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                     ? t("jobsTab.form.expiryExpired")
                     : applyBlockedByVerification
                       ? t("jobsTab.actions.verifyToApply")
-                    : applyingJobId === job.jobId
-                      ? t("jobsTab.actions.applying")
-                      : t("jobsTab.actions.apply")
+                      : applyingJobId === job.jobId
+                        ? t("jobsTab.actions.applying")
+                        : t("jobsTab.actions.apply")
                 }
                 onPress={(event) => {
                   event?.stopPropagation();
@@ -632,7 +681,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                 ...BrandType.labelStrong,
                 fontSize: 8,
                 letterSpacing: 1,
-                color: "#FFFFFF",
+                color: theme.color.onPrimary,
                 textTransform: "uppercase",
               }}
             >

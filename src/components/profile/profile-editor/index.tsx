@@ -1,9 +1,10 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { ProfileSubpageScrollView } from "@/components/profile/profile-subpage-sheet";
 import { SportsMultiSelect } from "@/components/profile/sports-multi-select";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
 import { ProfileEditorActions } from "./profile-editor-actions";
 import { ProfileEditorBasicsPanel } from "./profile-editor-basics-panel";
 import { ProfileEditorIdentityPanel } from "./profile-editor-identity-panel";

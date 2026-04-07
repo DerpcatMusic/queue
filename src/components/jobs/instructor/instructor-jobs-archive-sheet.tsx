@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
@@ -14,6 +13,7 @@ import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
+import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 import { useTheme } from "@/hooks/use-theme";
 import {
   formatDateWithWeekday,
@@ -24,6 +24,7 @@ import {
   getJobStatusTranslationKey,
   type JobClosureReason,
 } from "@/lib/jobs-utils";
+import { Motion, Spring } from "@/theme/theme";
 
 export type InstructorArchiveRow = InstructorMarketplaceJob & {
   applicationId: Id<"jobApplications">;
@@ -197,10 +198,9 @@ function ArchiveRow({
 
   return (
     <Animated.View
-      entering={FadeInUp.delay(Math.min(index, 5) * 34)
-        .duration(240)
+      entering={FadeInUp.delay(Math.min(index, 8) * Motion.staggerBase)
         .springify()
-        .damping(18)}
+        .damping(Spring.standard.damping)}
     >
       <View
         style={{
@@ -448,10 +448,10 @@ export function InstructorJobsArchiveSheet({
         {...props}
         disappearsAt={-1}
         appearsAt={0}
-        style={[props.style, { backgroundColor: theme.color.appBg }]}
+        style={[props.style, { backgroundColor: theme.color.overlay }]}
       />
     ),
-    [theme.color.appBg],
+    [theme.color.overlay],
   );
 
   const toggleExpanded = useCallback((applicationId: string) => {
@@ -476,7 +476,7 @@ export function InstructorJobsArchiveSheet({
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={{ backgroundColor: theme.color.borderStrong }}
       backgroundStyle={{
-        backgroundColor: theme.color.surfaceElevated,
+        backgroundColor: theme.color.surface,
       }}
     >
       <BottomSheetScrollView

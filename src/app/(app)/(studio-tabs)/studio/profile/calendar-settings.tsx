@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Platform, Text, View } from "react-native";
+import { Alert, Platform, Text } from "react-native";
 import appleCalendarIcon from "@/assets/images/calendar-apple-app-icon.jpg";
 import googleCalendarIcon from "@/assets/images/calendar-google-app-icon.jpg";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -13,11 +13,13 @@ import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
+import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
-import { KitList, KitSwitchRow } from "@/components/ui/kit";
+import { KitList, KitListItem, KitSwitch } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
+import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth } from "@/lib/design-system";
 import { prepareDeviceCalendarSync } from "@/lib/device-calendar-sync";
 import { resolveGoogleCalendarAuthConfig } from "@/lib/google-calendar-auth-config";
@@ -25,8 +27,8 @@ import {
   connectGoogleCalendarNative,
   disconnectGoogleCalendarNative,
 } from "@/lib/google-calendar-native-auth";
-import { useTheme } from "@/hooks/use-theme";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
+import { Box } from "@/primitives";
 
 type CalendarProvider = "none" | "google" | "apple";
 
@@ -76,6 +78,7 @@ export default function StudioCalendarSettingsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useUser();
+  const theme = useTheme();
   useEffect(() => {
     WebBrowser.maybeCompleteAuthSession();
   }, []);
@@ -447,10 +450,8 @@ export default function StudioCalendarSettingsScreen() {
     void onSelectApple();
   };
 
-  const theme = useTheme();
-
   return (
-    <View style={{ flex: 1, backgroundColor: theme.color.appBg }}>
+    <Box style={{ flex: 1, backgroundColor: theme.color.appBg }}>
       <ProfileSubpageScrollView
         routeKey="studio/profile/calendar-settings"
         contentContainerStyle={{
@@ -460,7 +461,13 @@ export default function StudioCalendarSettingsScreen() {
         }}
         style={{ flex: 1, backgroundColor: theme.color.appBg }}
       >
-        <View style={{ overflow: "hidden", borderRadius: BrandRadius.card, backgroundColor: theme.color.surface }}>
+        <Box
+          style={{
+            overflow: "hidden",
+            borderRadius: BrandRadius.card,
+            backgroundColor: theme.color.surfaceElevated,
+          }}
+        >
           <CalendarConnectionRow
             iconSource={googleCalendarIcon}
             title={t("profile.settings.calendar.provider.google")}
@@ -489,24 +496,31 @@ export default function StudioCalendarSettingsScreen() {
             loading={isSaving && !isConnectingGoogle && !isDisconnectingGoogle}
             onPress={handleAppleRowPress}
           />
-        </View>
+        </Box>
 
         {provider !== "none" ? (
           <KitList inset>
-            <KitSwitchRow
+            <KitListItem
               title={t("profile.settings.calendar.autoSync")}
-              value={syncEnabled}
-              disabled={isBusy}
-              onValueChange={(nextValue) => {
-                void onToggleSyncEnabled(nextValue);
-              }}
-              description={t("profile.settings.calendar.futureNote")}
-            />
+              accessory={
+                <KitSwitch
+                  value={syncEnabled}
+                  disabled={isBusy}
+                  onValueChange={(nextValue) => {
+                    void onToggleSyncEnabled(nextValue);
+                  }}
+                />
+              }
+            >
+              <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
+                {t("profile.settings.calendar.futureNote")}
+              </ThemedText>
+            </KitListItem>
           </KitList>
         ) : null}
 
         {googleStatus?.lastError ? (
-          <View
+          <Box
             style={{
               paddingHorizontal: BrandSpacing.sm,
               paddingVertical: BrandSpacing.sm,
@@ -516,12 +530,14 @@ export default function StudioCalendarSettingsScreen() {
               borderColor: theme.color.danger,
             }}
           >
-            <Text style={{ fontSize: 16, color: theme.color.danger }}>{googleStatus.lastError}</Text>
-          </View>
+            <Text style={{ fontSize: 16, color: theme.color.danger }}>
+              {googleStatus.lastError}
+            </Text>
+          </Box>
         ) : null}
 
         {needsGoogleReconnect ? (
-          <View
+          <Box
             style={{
               paddingHorizontal: BrandSpacing.sm,
               paddingVertical: BrandSpacing.sm,
@@ -534,11 +550,11 @@ export default function StudioCalendarSettingsScreen() {
             <Text style={{ fontSize: 16, color: theme.color.warning }}>
               {t("profile.settings.calendar.googleReconnectRequired")}
             </Text>
-          </View>
+          </Box>
         ) : null}
 
         {googleConfigError ? (
-          <View
+          <Box
             style={{
               paddingHorizontal: BrandSpacing.sm,
               paddingVertical: BrandSpacing.sm,
@@ -549,11 +565,11 @@ export default function StudioCalendarSettingsScreen() {
             }}
           >
             <Text style={{ fontSize: 16, color: theme.color.warning }}>{googleConfigError}</Text>
-          </View>
+          </Box>
         ) : null}
 
         {provider === "google" ? (
-          <View style={{ gap: BrandSpacing.stackDense }}>
+          <Box style={{ gap: BrandSpacing.stackDense }}>
             <ActionButton
               label={
                 isSyncingGoogle
@@ -566,11 +582,11 @@ export default function StudioCalendarSettingsScreen() {
               disabled={!canUseGoogleCalendar || isSyncingGoogle || isBusy}
               fullWidth
             />
-          </View>
+          </Box>
         ) : null}
       </ProfileSubpageScrollView>
 
-      <View
+      <Box
         style={{
           position: "absolute",
           left: BrandSpacing.md,
@@ -579,7 +595,7 @@ export default function StudioCalendarSettingsScreen() {
         }}
       >
         <ActionButton label={t("common.done")} onPress={() => router.back()} fullWidth />
-      </View>
-    </View>
+      </Box>
+    </Box>
   );
 }

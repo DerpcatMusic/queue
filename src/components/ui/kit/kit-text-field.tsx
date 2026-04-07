@@ -1,4 +1,5 @@
 import { Text, TextInput, View } from "react-native";
+import { I18nManager } from "react-native";
 
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
@@ -23,12 +24,12 @@ export function KitTextField({
     <View style={{ gap: BrandSpacing.sm }}>
       {label ? (
         <Text
+          nativeID={inputProps.nativeID ? `${inputProps.nativeID}-label` : undefined}
           style={{
             ...BrandType.caption,
             color: theme.color.text,
             includeFontPadding: false,
           }}
-          selectable
         >
           {label}
         </Text>
@@ -51,6 +52,9 @@ export function KitTextField({
         {leading ? <View>{leading}</View> : null}
         <TextInput
           {...inputProps}
+          accessibilityLabel={inputProps.accessibilityLabel ?? label}
+          accessibilityHint={inputProps.accessibilityHint ?? helperText ?? errorText ?? undefined}
+          textAlign={inputProps.textAlign ?? (I18nManager.isRTL ? "right" : "left")}
           placeholderTextColor={placeholderTextColor ?? theme.color.textMuted}
           selectionColor={theme.color.primary}
           cursorColor={theme.color.primary}
@@ -75,7 +79,6 @@ export function KitTextField({
             ...BrandType.micro,
             color: theme.color.danger,
           }}
-          selectable
         >
           {errorText}
         </Text>
@@ -85,7 +88,6 @@ export function KitTextField({
             ...BrandType.micro,
             color: theme.color.textMuted,
           }}
-          selectable
         >
           {helperText}
         </Text>

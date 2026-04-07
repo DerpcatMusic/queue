@@ -62,14 +62,12 @@ export type TopSheetProps = PropsWithChildren<{
   draggable?: boolean;
   /** Allow height to change between steps via drag. @default false */
   expandable?: boolean;
-  /** Height snap points as fractions of the available content area. */
+  /** Height snap points as fractions of the remaining viewport above the measured base content. */
   steps?: readonly number[];
   /** Step index to start at. @default 0 */
   initialStep?: number;
   /** Controlled active step index. When set, the sheet snaps to this step. */
   activeStep?: number;
-  /** Absolute minimum sheet height in pixels. */
-  minHeight?: number;
   /** How the collapsed sheet height is resolved. @default 'step' */
   collapsedHeightMode?: TopSheetCollapsedHeightMode;
   /** Padding inside the sheet below the safe area. */
@@ -128,7 +126,6 @@ export function TopSheet({
   initialStep = 0,
   activeStep,
   initialHeight,
-  minHeight,
   collapsedHeightMode = "step",
   padding,
   backgroundColor,
@@ -241,34 +238,30 @@ export function TopSheet({
     [measuredBodyHeight, measuredFooterHeight, measuredHeaderHeight],
   );
   const chromeHeight = safeTop + resolvedPadding.vertical * 2 + (draggable ? HANDLE_HEIGHT : 0);
-  const resolvedMinHeight = useMemo(() => {
-    if (collapsedHeightMode === "content") {
-      return computeCollapsedHeight(
-        chromeHeight + intrinsicContentHeight,
-        minHeight ?? 0,
-        availableHeight,
-      );
-    }
+  const resolvedBaseHeight = useMemo(
+    () => computeCollapsedHeight(chromeHeight + intrinsicContentHeight, availableHeight),
+    [availableHeight, chromeHeight, intrinsicContentHeight],
+  );
 
-    return Math.max(0, Math.ceil(minHeight ?? 0));
-  }, [availableHeight, chromeHeight, collapsedHeightMode, intrinsicContentHeight, minHeight]);
-
-  // Compute step heights in pixels
+  // Compute step heights as additive growth on top of the measured base height.
   const stepHeights = useMemo(
-    () => computeStepHeights(steps, availableHeight, resolvedMinHeight),
-    [availableHeight, resolvedMinHeight, steps],
+    () => computeStepHeights(steps, availableHeight, resolvedBaseHeight),
+    [availableHeight, resolvedBaseHeight, steps],
   );
 
   useEffect(() => {
     if (!onMinHeightChange) return;
-    onMinHeightChange(stepHeights[initialStep] ?? resolvedMinHeight ?? 0);
-  }, [initialStep, onMinHeightChange, resolvedMinHeight, stepHeights]);
+    onMinHeightChange(resolvedBaseHeight);
+  }, [onMinHeightChange, resolvedBaseHeight]);
 
   // Sheet height shared value
-  const defaultHeight = stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? resolvedMinHeight ?? 0;
+  const defaultHeight = stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? resolvedBaseHeight ?? 0;
   const sheetHeight = useSharedValue(initialHeight ?? defaultHeight);
   const currentStepIndex = useSharedValue(resolvedStepIndex);
 
+  // translateY for drag feedback (GPU-composited, no layout thrash)
+  // Only used during active drag; height snaps on release
+  const translateY = useSharedValue(0);
   const dragStartHeight = useSharedValue<number | null>(null);
 
   useAnimatedReaction(
@@ -280,33 +273,26 @@ export function TopSheet({
     [onHeightChange, sheetHeight],
   );
 
-  const minimumLayoutHeight = stepHeights[initialStep] ?? resolvedMinHeight ?? defaultHeight;
+  const minimumLayoutHeight = stepHeights[initialStep] ?? resolvedBaseHeight ?? defaultHeight;
   const targetLayoutHeight =
-    stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? resolvedMinHeight ?? defaultHeight;
-  const shouldAnimateLayoutHeight = expandMode === "resize" && draggable && expandable;
+    stepHeights[resolvedStepIndex] ?? stepHeights[0] ?? resolvedBaseHeight ?? defaultHeight;
 
   useAnimatedReaction(
     () =>
       Math.round(
         expandMode === "overlay"
           ? minimumLayoutHeight
-          : shouldAnimateLayoutHeight
-            ? sheetHeight.value
-            : targetLayoutHeight,
+          : targetLayoutHeight,
       ),
     (next, prev) => {
       if (!onLayoutHeightChange || next === prev) return;
       runOnJS(onLayoutHeightChange)(next);
     },
     [
-      draggable,
-      expandable,
       expandMode,
       minimumLayoutHeight,
       onLayoutHeightChange,
-      sheetHeight,
       targetLayoutHeight,
-      shouldAnimateLayoutHeight,
     ],
   );
 
@@ -315,7 +301,7 @@ export function TopSheet({
       0,
       Math.min(resolvedStepIndex, Math.max(stepHeights.length - 1, 0)),
     );
-    const nextHeight = stepHeights[clampedStepIndex] ?? resolvedMinHeight ?? 0;
+    const nextHeight = stepHeights[clampedStepIndex] ?? resolvedBaseHeight ?? 0;
 
     currentStepIndex.value = clampedStepIndex;
     dragStartHeight.value = nextHeight;
@@ -323,7 +309,7 @@ export function TopSheet({
   }, [
     currentStepIndex,
     dragStartHeight,
-    resolvedMinHeight,
+    resolvedBaseHeight,
     resolvedStepIndex,
     sheetHeight,
     stepHeights,
@@ -339,47 +325,51 @@ export function TopSheet({
         .onStart(() => {
           // Record the height when drag starts
           dragStartHeight.value = sheetHeight.value;
+          translateY.value = 0;
         })
         .onUpdate((event) => {
-          const h = stepHeights;
-          if (h.length === 0) return;
-          const minH = h[0] ?? resolvedMinHeight ?? 0;
-          const maxH = h[h.length - 1]!;
-          const startHeight = dragStartHeight.value ?? sheetHeight.value;
-          sheetHeight.value = Math.max(minH, Math.min(maxH, startHeight + event.translationY));
+          // Use translateY for immediate drag feedback (GPU-composited)
+          // Height only changes on release via snap
+          translateY.value = event.translationY;
         })
         .onEnd((event) => {
           const h = stepHeights;
           if (h.length === 0) return;
-          const currentHeight = sheetHeight.value;
-          const startHeight = dragStartHeight.value ?? currentHeight;
+
+          // Calculate target based on drag direction and velocity
+          const startHeight = dragStartHeight.value ?? sheetHeight.value;
           dragStartHeight.value = null;
 
+          // Determine nearest step to the starting height
           let nearestStepIdx = 0;
-          let minDistance = Math.abs(currentHeight - h[0]!);
+          let minDistance = Math.abs(startHeight - h[0]!);
           for (let index = 1; index < h.length; index++) {
-            const distance = Math.abs(currentHeight - h[index]!);
+            const distance = Math.abs(startHeight - h[index]!);
             if (distance < minDistance) {
               nearestStepIdx = index;
               minDistance = distance;
             }
           }
 
+          // Determine direction: dragging UP (translateY < 0) = want larger height = higher step
+          // dragging DOWN (translateY > 0) = want smaller height = lower step
           const direction =
             Math.abs(event.velocityY) > VELOCITY_THRESHOLD
               ? event.velocityY < 0
                 ? "up"
                 : "down"
-              : currentHeight > startHeight
-                ? "down"
-                : "up";
+              : translateY.value < 0
+                ? "up"
+                : "down";
 
           const targetIdx =
             direction === "down"
               ? Math.min(nearestStepIdx + 1, h.length - 1)
               : Math.max(nearestStepIdx - 1, 0);
-          const targetHeight = h[targetIdx] ?? h[0] ?? resolvedMinHeight ?? 0;
+          const targetHeight = h[targetIdx] ?? h[0] ?? resolvedBaseHeight ?? 0;
 
+          // Reset translateY and animate height to target (single layout recalc)
+          translateY.value = withSpring(0, SHEET_SPRING);
           sheetHeight.value = withSpring(targetHeight, SHEET_SPRING);
           if (targetIdx !== currentStepIndex.value) {
             currentStepIndex.value = targetIdx;
@@ -396,17 +386,37 @@ export function TopSheet({
       currentStepIndex,
       dragStartHeight,
       onStepChange,
-      resolvedMinHeight,
+      resolvedBaseHeight,
       sheetHeight,
       stepHeights,
+      translateY,
     ],
   );
 
-  const outerStyle = useAnimatedStyle(() => ({
-    height: sheetHeight.value,
-  }));
+  // Keep layout commits and visual growth separate.
+  // In overlay mode the surrounding scene keeps the collapsed footprint while the sheet
+  // surface itself can still grow visually to the active step without relayouting the scene.
+  const outerStyle = useAnimatedStyle(() => {
+    // For overlay mode: the visual surface grows to the animated sheet height, while
+    // onLayoutHeightChange continues to publish the fixed collapsed footprint.
+    if (expandMode === "overlay") {
+      return {
+        height: sheetHeight.value,
+        transform: [{ translateY: translateY.value }],
+        overflow: "hidden" as const,
+      };
+    }
+    // For resize mode: height affects layout, but use translateY for drag feedback
+    // translateY provides immediate visual response during drag (GPU-composited)
+    // Height only snaps to final value on release (single layout recalc)
+    return {
+      height: sheetHeight.value,
+      transform: [{ translateY: translateY.value }],
+      overflow: "hidden" as const,
+    };
+  });
 
-  // Animated inner content (padding + background)
+  // Animated inner content uses translateY for reveal (GPU-composited, no layout thrash)
   const innerStyle = useAnimatedStyle(() => ({
     flex: 1,
     paddingTop: safeTop + resolvedPadding.vertical,
@@ -448,11 +458,7 @@ export function TopSheet({
   }));
 
   const mainContentFlex =
-    hasExpandedContent && expandMode === "resize"
-      ? 0
-      : hasBaseContent
-        ? 1
-        : 0;
+    hasExpandedContent && expandMode === "resize" ? 0 : hasBaseContent ? 1 : 0;
   const shouldUseContentScroll = collapsedHeightMode === "content";
   const bodyScrollEnabled =
     shouldUseContentScroll && chromeHeight + intrinsicContentHeight > availableHeight;

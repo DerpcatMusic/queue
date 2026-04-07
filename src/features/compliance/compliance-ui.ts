@@ -243,11 +243,11 @@ export function getCertificateSubtitle(
 export function getStudioPaymentSubtitle(
   args: {
     status: "missing" | "pending" | "ready" | "failed";
-    paymentReadinessSource?: "payment_profile" | "legacy_env";
+    paymentReadinessSource?: "payment_profile" | "airwallex_env";
   },
   t: TFunction,
 ): string {
-  if (args.status !== "ready" && args.paymentReadinessSource === "legacy_env") {
+  if (args.status !== "ready" && args.paymentReadinessSource === "airwallex_env") {
     return t("onboarding.verification.studioPaymentGroundwork");
   }
 

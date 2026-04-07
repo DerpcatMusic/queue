@@ -9,6 +9,7 @@ import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimate
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import i18n from "@/i18n";
 
 const SEARCH_SIZE_SM = {
   containerMinHeight: BrandSpacing.controlSm + BrandSpacing.sm,
@@ -41,7 +42,7 @@ export function NativeSearchField({
   value,
   onChangeText,
   placeholder,
-  clearAccessibilityLabel = "Clear search",
+  clearAccessibilityLabel = i18n.t("common.clearSearch", { defaultValue: "Clear search" }),
   size = "md",
   containerStyle,
   animateLayout = false,

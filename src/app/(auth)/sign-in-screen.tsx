@@ -6,7 +6,8 @@ import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-route
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Text, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { ActionButton } from "@/components/ui/action-button";
@@ -32,6 +33,8 @@ import {
   type PostSignOutAuthMethod,
   setPendingPostSignOutAuthHandoff,
 } from "@/modules/session/post-signout-auth-intent";
+
+import { FontSize, LetterSpacing } from "@/theme/theme";
 
 type Step = "email" | "code";
 
@@ -465,7 +468,7 @@ export default function SignInScreen() {
           flexGrow: 1,
         }}
       >
-        <View style={{ flex: 1, justifyContent: 'space-between', gap: BrandSpacing.xl }}>
+        <View style={{ flex: 1, justifyContent: "space-between", gap: BrandSpacing.xl }}>
           <View style={{ gap: BrandSpacing.lg }}>
             <KitTextField
               value={email}
@@ -478,13 +481,14 @@ export default function SignInScreen() {
               textContentType="emailAddress"
               inputMode="email"
               placeholder={t("auth.emailPlaceholder")}
+              accessibilityLabel={t("auth.email")}
               leading={<FontAwesome5 name="at" size={16} color={theme.color.textMuted} />}
               style={styles.emailInput}
             />
 
             {step === "email" ? (
               <>
-                <View style={{ flexDirection: 'row', gap: BrandSpacing.sm }}>
+                <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
                   <View style={{ flex: 1 }}>
                     <ActionButton
                       label={isSubmitting ? t("auth.signingIn") : t("auth.sendCodeButton")}
@@ -510,22 +514,48 @@ export default function SignInScreen() {
                   </View>
                 </View>
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: BrandSpacing.sm, paddingVertical: BrandSpacing.xs }}>
-                  <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: theme.color.border }} />
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: BrandSpacing.sm,
+                    paddingVertical: BrandSpacing.xs,
+                  }}
+                >
+                  <View
+                    style={{
+                      flex: 1,
+                      height: StyleSheet.hairlineWidth,
+                      backgroundColor: theme.color.border,
+                    }}
+                  />
                   <Text
                     style={{
                       ...BrandType.micro,
-                      letterSpacing: 0.7,
-                      textTransform: 'uppercase',
+                      letterSpacing: LetterSpacing.trackingWide,
+                      textTransform: "uppercase",
                       color: theme.color.textMuted,
                     }}
                   >
                     {t("auth.or")}
                   </Text>
-                  <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: theme.color.border }} />
+                  <View
+                    style={{
+                      flex: 1,
+                      height: StyleSheet.hairlineWidth,
+                      backgroundColor: theme.color.border,
+                    }}
+                  />
                 </View>
 
-                <View style={{ flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', gap: BrandSpacing.sm }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "stretch",
+                    justifyContent: "center",
+                    gap: BrandSpacing.sm,
+                  }}
+                >
                   <IconButton
                     accessibilityLabel={
                       isSignUpIntent ? t("auth.signUpWithGoogle") : t("auth.signInWithGoogle")
@@ -560,7 +590,7 @@ export default function SignInScreen() {
               <View style={{ gap: BrandSpacing.sm }}>
                 <Text
                   style={{
-                    textAlign: 'center',
+                    textAlign: "center",
                     ...BrandType.caption,
                     color: theme.color.textMuted,
                   }}
@@ -579,7 +609,7 @@ export default function SignInScreen() {
                   placeholder="123456"
                   style={styles.codeInput}
                 />
-                <View style={{ flexDirection: 'row', gap: BrandSpacing.sm }}>
+                <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
                   <View style={{ flex: 1 }}>
                     <ActionButton
                       label={isSubmitting ? t("auth.verifyingCode") : t("auth.verifyCodeButton")}
@@ -638,15 +668,15 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   emailInput: {
     fontFamily: "Manrope_500Medium",
-    fontSize: 16,
-    fontWeight: "500",
+    fontSize: FontSize.body,
+    fontWeight: 500,
     lineHeight: 22,
     includeFontPadding: false,
   },
   codeInput: {
     fontFamily: "Lexend_600SemiBold",
     fontSize: 28,
-    fontWeight: "600",
+    fontWeight: 600,
     letterSpacing: 10,
     lineHeight: 32,
     textAlign: "center",

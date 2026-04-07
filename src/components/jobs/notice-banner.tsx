@@ -1,5 +1,6 @@
 import { memo } from "react";
-import { type ColorValue, Pressable, StyleSheet, View, type ViewStyle } from "react-native";
+import { type ColorValue, Pressable, View, type ViewStyle } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";

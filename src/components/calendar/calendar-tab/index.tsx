@@ -1,17 +1,20 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, View } from "react-native";
+import { View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
+import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import {
   createContentDrivenTopSheetConfig,
-  useGlobalTopSheet,
+  getMainTabSheetBackgroundColor,
 } from "@/components/layout/top-sheet-registry";
-import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { LoadingScreen } from "@/components/loading-screen";
 import { BrandSpacing } from "@/constants/brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
+import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
+import { Text } from "@/primitives";
 import type { TimelineListItem } from "../calendar-controller-helpers";
-import { useCalendarTabController } from "../use-calendar-tab-controller";
+import type { useCalendarTabController } from "../use-calendar-tab-controller";
 import CalendarSheetHeader from "./calendar-sheet-header";
 import CalendarTimelineList from "./calendar-timeline-list";
 import CalendarTimelineRow from "./calendar-timeline-row";
@@ -26,7 +29,7 @@ export default function CalendarTabScreen({ controller, todayKey }: CalendarTabS
   const { isDesktopWeb } = useLayoutBreakpoint();
   const theme = useTheme();
   const { color: palette } = theme;
-  const sheetBackgroundColor = palette.primary;
+  const sheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
   const sheetContentInsets = useMemo(
     () => ({
       paddingTop: BrandSpacing.xs,
@@ -67,7 +70,11 @@ export default function CalendarTabScreen({ controller, todayKey }: CalendarTabS
       }),
     [selectedDay, sheetBackgroundColor, todayKey],
   );
-  useGlobalTopSheet("calendar", calendarSheetConfig, "calendar:tab-screen");
+  useTabSceneDescriptor({
+    tabId: "calendar",
+    insetTone: "sheet",
+    sheetConfig: calendarSheetConfig,
+  });
   const listAnimationKey = `${selectedDay}:${listItems.length}`;
 
   const renderItem = useMemo(
@@ -84,7 +91,7 @@ export default function CalendarTabScreen({ controller, todayKey }: CalendarTabS
 
   if (isDesktopWeb) {
     return (
-      <TabScreenRoot mode="static">
+      <TabScreenRoot mode="static" style={{ backgroundColor: palette.appBg }}>
         <View style={styles.desktopEmptyState}>
           <Text
             style={{

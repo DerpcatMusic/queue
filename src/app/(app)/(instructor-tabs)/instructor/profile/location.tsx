@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput } from "react-native";
 
 import { LoadingScreen } from "@/components/loading-screen";
 import {
@@ -24,6 +24,7 @@ import { useAppInsets } from "@/hooks/use-app-insets";
 import { useLocationResolution } from "@/hooks/use-location-resolution";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth, FontSize } from "@/lib/design-system";
+import { Box } from "@/primitives";
 import {
   fetchPlaceByZipCode,
   type PlaceCoordinates,
@@ -414,7 +415,7 @@ export default function LocationScreen() {
   const renderStructuredRow = (label: string, value: string) => {
     if (!value) return null;
     return (
-      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+      <Box style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
         <Text
           style={{
             fontFamily: "Manrope_400Regular",
@@ -437,12 +438,12 @@ export default function LocationScreen() {
         >
           {value}
         </Text>
-      </View>
+      </Box>
     );
   };
 
   return (
-    <View style={{ flex: 1, position: "relative", backgroundColor: palette.appBg }}>
+    <Box style={{ flex: 1, position: "relative", backgroundColor: palette.appBg }}>
       <ProfileSubpageScrollView
         routeKey="instructor/profile/location"
         keyboardShouldPersistTaps="handled"
@@ -460,7 +461,7 @@ export default function LocationScreen() {
         />
 
         {/* Search bar */}
-        <View style={{ gap: BrandSpacing.sm }}>
+        <Box style={{ gap: BrandSpacing.sm }}>
           <AddressAutocomplete
             value={addressInput}
             onChangeText={handleAddressChange}
@@ -488,11 +489,11 @@ export default function LocationScreen() {
             tone="secondary"
             fullWidth
           />
-        </View>
+        </Box>
 
         {/* Structured address summary — auto-filled from search/GPS */}
         {showStructuredSummary ? (
-            <View
+            <Box
               style={{
                 gap: BrandSpacing.xs,
                 paddingHorizontal: BrandSpacing.md,
@@ -512,15 +513,15 @@ export default function LocationScreen() {
             {hasContent(postalCode)
               ? renderStructuredRow(`${t("profile.location.fieldZipCode")}:`, postalCode)
               : null}
-          </View>
+          </Box>
         ) : null}
 
         {/* Structured fields — editable in manual mode */}
         {manualMode ? (
-          <View style={{ gap: BrandSpacing.sm }}>
+          <Box style={{ gap: BrandSpacing.sm }}>
             {/* Row: city + street */}
-            <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
-              <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+            <Box style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+              <Box style={{ flex: 1, gap: BrandSpacing.xs }}>
                 <FieldLabel>{t("profile.location.fieldCity")}</FieldLabel>
                 <ManualField
                   value={city}
@@ -532,8 +533,8 @@ export default function LocationScreen() {
                   surfaceElevated={palette.surfaceElevated}
                   text={palette.text}
                 />
-              </View>
-              <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+              </Box>
+              <Box style={{ flex: 1, gap: BrandSpacing.xs }}>
                 <FieldLabel>{t("profile.location.fieldStreet")}</FieldLabel>
                 <ManualField
                   value={street}
@@ -545,12 +546,12 @@ export default function LocationScreen() {
                   surfaceElevated={palette.surfaceElevated}
                   text={palette.text}
                 />
-              </View>
-            </View>
+              </Box>
+            </Box>
 
             {/* Row: number + floor + zip */}
-            <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
-              <View style={{ width: 80, gap: BrandSpacing.xs }}>
+            <Box style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+              <Box style={{ width: 80, gap: BrandSpacing.xs }}>
                 <FieldLabel>{t("profile.location.fieldNumber")}</FieldLabel>
                 <ManualField
                   value={streetNumber}
@@ -562,8 +563,8 @@ export default function LocationScreen() {
                   surfaceElevated={palette.surfaceElevated}
                   text={palette.text}
                 />
-              </View>
-              <View style={{ width: 80, gap: BrandSpacing.xs }}>
+              </Box>
+              <Box style={{ width: 80, gap: BrandSpacing.xs }}>
                 <FieldLabel>{t("profile.location.fieldFloor")}</FieldLabel>
                 <ManualField
                   value={floor}
@@ -575,8 +576,8 @@ export default function LocationScreen() {
                   surfaceElevated={palette.surfaceElevated}
                   text={palette.text}
                 />
-              </View>
-              <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+              </Box>
+              <Box style={{ flex: 1, gap: BrandSpacing.xs }}>
                 <FieldLabel>{t("profile.location.fieldZipCode")}</FieldLabel>
                 <ManualField
                   value={postalCode}
@@ -590,13 +591,13 @@ export default function LocationScreen() {
                   surfaceElevated={palette.surfaceElevated}
                   text={palette.text}
                 />
-              </View>
-            </View>
-          </View>
+              </Box>
+            </Box>
+          </Box>
         ) : null}
 
         {/* Secondary actions row */}
-        <View style={{ flexDirection: "row", gap: BrandSpacing.md, alignItems: "center" }}>
+        <Box style={{ flexDirection: "row", gap: BrandSpacing.md, alignItems: "center" }}>
           {!manualMode ? (
             <Pressable
               onPress={() => setManualMode(true)}
@@ -637,7 +638,7 @@ export default function LocationScreen() {
 
           {manualMode && (
             <>
-              <View
+              <Box
                 style={{ height: 12, width: BorderWidth.thin, backgroundColor: palette.border as string }}
               />
               <Pressable
@@ -666,11 +667,11 @@ export default function LocationScreen() {
               </Pressable>
             </>
           )}
-        </View>
+        </Box>
 
         {/* Zip lookup results */}
         {showZipResults && zipResults.length > 0 ? (
-          <View
+          <Box
             style={{
               overflow: "hidden",
               borderRadius: BrandRadius.lg,
@@ -723,7 +724,7 @@ export default function LocationScreen() {
                 </Text>
               </Pressable>
             ))}
-          </View>
+          </Box>
         ) : null}
 
         {/* ── Zone section ── */}
@@ -734,7 +735,7 @@ export default function LocationScreen() {
         />
 
         <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-          <View
+          <Box
             style={{
               paddingHorizontal: BrandSpacing.lg,
               paddingVertical: BrandSpacing.md,
@@ -742,9 +743,9 @@ export default function LocationScreen() {
             }}
           >
             {/* Zone status row */}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
-                <View
+            <Box style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Box style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+                <Box
                   style={{
                     width: BrandSpacing.statusDot,
                     height: BrandSpacing.statusDot,
@@ -763,11 +764,11 @@ export default function LocationScreen() {
                 >
                   {zoneDisplayValue}
                 </Text>
-              </View>
+              </Box>
               {hasDetectedZone ? (
                 <KitSwitch value={includeDetectedZone} onValueChange={setIncludeDetectedZone} />
               ) : null}
-            </View>
+            </Box>
 
             {!hasDetectedZone ? (
               <Text
@@ -794,12 +795,12 @@ export default function LocationScreen() {
                 {t("profile.settings.location.includeDetectedZoneDescription")}
               </Text>
             )}
-          </View>
+          </Box>
         </ProfileSectionCard>
 
         {/* Error */}
         {errorMessage ? (
-          <View
+          <Box
             style={{
               borderRadius: BrandRadius.lg,
               paddingHorizontal: BrandSpacing.lg,
@@ -820,12 +821,12 @@ export default function LocationScreen() {
             >
               {errorMessage}
             </Text>
-          </View>
+          </Box>
         ) : null}
       </ProfileSubpageScrollView>
 
       {/* Save rail */}
-      <View
+      <Box
         style={{
           position: "absolute",
           left: BrandSpacing.inset,
@@ -851,7 +852,7 @@ export default function LocationScreen() {
           tone="secondary"
           fullWidth
         />
-      </View>
-    </View>
+      </Box>
+    </Box>
   );
 }

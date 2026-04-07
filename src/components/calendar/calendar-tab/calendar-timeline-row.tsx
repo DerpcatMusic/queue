@@ -1,8 +1,10 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
 import type { TimelineListItem } from "../calendar-controller-helpers";
 import { calendarTimelineStyles, formatDayHeading, formatDaySubtitle } from "./calendar-date-utils";
 import CalendarTimelineItem from "./calendar-timeline-item";
@@ -14,7 +16,8 @@ type CalendarTimelineRowProps = {
 
 function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
   const { t, i18n } = useTranslation();
-  const { color: palette } = useTheme();
+  const theme = useTheme();
+  const { color: palette } = theme;
 
   if (item.kind === "dayHeader") {
     const isToday = item.dayKey === todayKey;
@@ -25,12 +28,21 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
           <Text
             style={[
               calendarTimelineStyles.dayHeading,
-              { color: isToday ? palette.primary : palette.text },
+              {
+                ...BrandType.headingItalic,
+                color: isToday ? palette.primary : palette.text,
+                transform: [{ skewX: "-6deg" }],
+              },
             ]}
           >
-            {formatDayHeading(item.dayKey, i18n.language)}
+            {formatDayHeading(item.dayKey, i18n.language).toUpperCase()}
           </Text>
-          <Text style={[calendarTimelineStyles.daySubtitle, { color: palette.textMuted }]}>
+          <Text
+            style={[
+              calendarTimelineStyles.daySubtitle,
+              { ...BrandType.microItalic, color: palette.textMuted },
+            ]}
+          >
             {formatDaySubtitle(item.dayKey, i18n.language)}
           </Text>
         </View>
@@ -41,7 +53,12 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
   if (item.kind === "empty") {
     return (
       <Animated.View entering={FadeInUp.duration(160)} style={calendarTimelineStyles.timelineRow}>
-        <View style={[calendarTimelineStyles.emptyStateCard, { backgroundColor: palette.surface }]}>
+        <View
+          style={[
+            calendarTimelineStyles.emptyStateCard,
+            { backgroundColor: palette.surfaceAlt },
+          ]}
+        >
           <Text style={[calendarTimelineStyles.emptyStateTitle, { color: palette.textMuted }]}>
             {t("calendarTab.timeline.noLessons")}
           </Text>

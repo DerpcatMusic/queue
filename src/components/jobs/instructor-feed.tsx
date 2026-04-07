@@ -4,8 +4,9 @@ import type { Href } from "expo-router";
 import { Redirect, useRouter } from "expo-router";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshControl, StyleSheet, View } from "react-native";
-import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
+import { RefreshControl, View } from "react-native";
+import Animated, { FadeIn, LinearTransition, ReduceMotion } from "react-native-reanimated";
+import { StyleSheet } from "react-native-unistyles";
 import {
   type InstructorArchiveRow,
   InstructorJobsArchiveSheet,
@@ -17,15 +18,15 @@ import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import {
   createContentDrivenTopSheetConfig,
-  useGlobalTopSheet,
+  getMainTabSheetBackgroundColor,
 } from "@/components/layout/top-sheet-registry";
-import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitDisclosureButtonGroup, type KitDisclosureButtonGroupOption } from "@/components/ui/kit";
 import { NativeSearchField } from "@/components/ui/native-search-field";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { SkeletonLine } from "@/components/ui/skeleton";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -36,12 +37,54 @@ import {
   type InstructorMarketplaceJob,
   mergeInstructorJobsWithApplications,
 } from "@/features/jobs/instructor-marketplace-job";
+import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useMinuteNow } from "@/hooks/use-minute-now";
 import { useTheme } from "@/hooks/use-theme";
 import { getBoostPresentation } from "@/lib/jobs-utils";
 import { openInstructorVerificationGate } from "@/lib/open-instructor-verification-gate";
+import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
+import { buildStudioProfileRoute } from "@/navigation/public-profile-routes";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
-import { Box } from "@/primitives";
+import { Box, HStack, VStack } from "@/primitives";
+import { Motion } from "@/theme/theme";
+
+// ============================================================
+// Skeleton Components - match real job card layout
+// ============================================================
+
+function SkeletonJobList() {
+  return (
+    <Animated.View entering={FadeIn.duration(Motion.skeletonFade)}>
+      <Box gap="md" px="sm">
+        {[1, 2, 3].map((i) => (
+          <SkeletonJobCard key={i} />
+        ))}
+      </Box>
+    </Animated.View>
+  );
+}
+
+function SkeletonJobCard() {
+  const { color } = useTheme();
+
+  return (
+    <Box p="lg" style={{ backgroundColor: color.surfaceElevated, borderRadius: BrandRadius.card }}>
+      <VStack gap="md">
+        <HStack gap="md" align="start">
+          <SkeletonLine width={48} height={48} radius={BrandRadius.cardSubtle} />
+          <Box flex={1}>
+            <VStack gap="xs">
+              <SkeletonLine width="60%" height={14} />
+              <SkeletonLine width="40%" height={12} />
+            </VStack>
+          </Box>
+        </HStack>
+        <SkeletonLine width="100%" height={12} />
+        <SkeletonLine width="75%" height={12} />
+      </VStack>
+    </Box>
+  );
+}
 
 export function InstructorFeed() {
   const { t, i18n } = useTranslation();
@@ -242,26 +285,15 @@ export function InstructorFeed() {
   }, [sortDirection, sortMode]);
 
   const jobsSheetConfig = useMemo(
-    () =>
-      createContentDrivenTopSheetConfig({
-        stickyHeader: (
-          <View style={{ gap: BrandSpacing.sm }}>
-            <Animated.View layout={jobsHeaderLayoutTransition} style={styles.feedIntro}>
-              <ThemedText style={[BrandType.title, { color: theme.color.text }]}>
-                {t("jobsTab.availableJobsTitle")}
-              </ThemedText>
-            </Animated.View>
-            <Animated.View
-              layout={jobsHeaderLayoutTransition}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: BrandSpacing.sm,
-              }}
-            >
+    () => {
+      const sheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
+      return createContentDrivenTopSheetConfig({
+        collapsedContent: (
+          <Animated.View layout={jobsHeaderLayoutTransition} style={styles.jobsTopSheetContent}>
+            <Animated.View layout={jobsHeaderLayoutTransition} style={styles.jobsControlsRow}>
               <Animated.View
                 layout={jobsHeaderLayoutTransition}
-                style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}
+                style={styles.jobsSearchWrap}
               >
                 <NativeSearchField
                   value={jobsSearchQuery}
@@ -270,13 +302,10 @@ export function InstructorFeed() {
                   clearAccessibilityLabel={t("common.clear")}
                   size="sm"
                   animateLayout
-                  containerStyle={{ backgroundColor: theme.jobs.surface }}
+                  containerStyle={{ backgroundColor: theme.color.surface }}
                 />
               </Animated.View>
-              <Animated.View
-                layout={jobsHeaderLayoutTransition}
-                style={{ flexShrink: 0, minWidth: 0 }}
-              >
+              <Animated.View layout={jobsHeaderLayoutTransition} style={styles.jobsFilterWrap}>
                 <KitDisclosureButtonGroup
                   accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
                   expanded={showJobsFilters}
@@ -297,8 +326,8 @@ export function InstructorFeed() {
                     />
                   }
                   size="sm"
-                  railColor={theme.jobs.surface}
-                  selectedColor={theme.jobs.surfaceRaised}
+                  railColor={theme.color.surface}
+                  selectedColor={theme.color.primarySubtle}
                   labelColor={theme.color.text}
                   selectedLabelColor={theme.color.primary}
                   dividerColor={theme.color.border}
@@ -309,7 +338,7 @@ export function InstructorFeed() {
               <ThemedText
                 style={[
                   BrandType.caption,
-                  { color: theme.jobs.idle, paddingHorizontal: BrandSpacing.xs },
+                  { color: theme.color.textMuted, paddingHorizontal: BrandSpacing.xs },
                 ]}
                 onPress={() => {
                   if (sortMode === "pay" || sortMode === "time") {
@@ -320,14 +349,7 @@ export function InstructorFeed() {
                 {jobsSortSummaryLabel}
               </ThemedText>
             </Animated.View>
-            {actionErrorMessage ? (
-              <NoticeBanner
-                tone="error"
-                message={actionErrorMessage}
-                onDismiss={() => setActionErrorMessage(null)}
-              />
-            ) : null}
-          </View>
+          </Animated.View>
         ),
         padding: {
           vertical: BrandSpacing.md,
@@ -335,19 +357,26 @@ export function InstructorFeed() {
         },
         draggable: false,
         expandable: false,
-        backgroundColor: theme.jobs.surfaceRaised,
-        topInsetColor: theme.jobs.surfaceRaised,
-      }),
+        backgroundColor: sheetBackgroundColor,
+        topInsetColor: sheetBackgroundColor,
+      });
+    },
     [
-      actionErrorMessage,
       jobsFilterOptions,
       jobsHeaderLayoutTransition,
       jobsSearchQuery,
       jobsSortSummaryLabel,
+      setJobsSearchQuery,
       showJobsFilters,
       sortMode,
       t,
+      theme.color.border,
+      theme.color.primary,
+      theme.color.primarySubtle,
+      theme.color.surfaceElevated,
       theme,
+      theme.color.text,
+      theme.color.textMuted,
     ],
   );
 
@@ -392,24 +421,40 @@ export function InstructorFeed() {
   const onOpenStudio = useCallback(
     (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => {
       router.push(
-        `/profiles/studios/${encodeURIComponent(String(studioId))}?jobId=${encodeURIComponent(String(jobId))}` as Href,
+        buildStudioProfileRoute({
+          owner: "jobs",
+          studioId: String(studioId),
+          jobId: String(jobId),
+        }),
       );
     },
     [router],
   );
 
-  useGlobalTopSheet("jobs", jobsSheetConfig, "jobs:instructor-feed", {
-    routeMatchPath: "/instructor/jobs",
-    routeMatchExact: true,
+  useTabSceneDescriptor({
+    tabId: "jobs",
+    insetTone: "sheet",
+    sheetConfig: jobsSheetConfig,
   });
 
-  if (
+  const isLoading =
     currentUser === undefined ||
-    (currentUser?.role === "instructor" && availableJobs === undefined)
-  ) {
-    return <LoadingScreen label={t("jobsTab.loading")} />;
+    (currentUser?.role === "instructor" && availableJobs === undefined);
+
+  const { animatedStyle } = useContentReveal(isLoading);
+
+  // Guard: if still loading after hook call, show skeleton (currentUser is undefined)
+  if (isLoading) {
+    return (
+      <TabSceneTransition>
+        <Box flex={1}>
+          <SkeletonJobList />
+        </Box>
+      </TabSceneTransition>
+    );
   }
 
+  // At this point, currentUser is defined (not undefined)
   if (currentUser === null) {
     return <Redirect href="/sign-in" />;
   }
@@ -428,10 +473,10 @@ export function InstructorFeed() {
 
   return (
     <TabSceneTransition>
-      <Box flex={1} style={{ backgroundColor: theme.jobs.canvas }}>
+      <Box flex={1} style={{ backgroundColor: theme.color.appBg }}>
         <TabScreenScrollView
           routeKey="instructor/jobs/index"
-          style={styles.screen}
+          style={[styles.screen, { backgroundColor: theme.color.appBg }]}
           contentContainerStyle={[styles.content, additionalSpacing]}
           sheetInsets={{
             topSpacing: BrandSpacing.lg,
@@ -449,71 +494,87 @@ export function InstructorFeed() {
           }
           keyboardShouldPersistTaps="handled"
         >
-          <Box flex={1} gap="lg">
-            {jobs.length === 0 ? (
-              <View
-                style={{
-                  minHeight: listViewportMinHeight,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  paddingHorizontal: BrandSpacing.lg,
-                }}
-              >
-                <View style={{ alignItems: "center", gap: BrandSpacing.lg }}>
-                  <IconSymbol name="briefcase.fill" size={32} color={theme.jobs.idle} />
-                  <View style={{ alignItems: "center", gap: BrandSpacing.sm }}>
-                    <ThemedText style={[BrandType.title, { color: theme.color.text }]}>
-                      {t("jobsTab.instructorFeed.emptyInstructorShort")}
-                    </ThemedText>
-                    <ThemedText
-                      style={[BrandType.body, { color: theme.jobs.idle, textAlign: "center" }]}
-                    >
-                      {emptyJobsCopy}
-                    </ThemedText>
-                    <ThemedText
-                      style={[BrandType.caption, { color: theme.jobs.idle, textAlign: "center" }]}
-                    >
-                      {t("jobsTab.instructorFeed.emptyRefreshHint")}
-                    </ThemedText>
-                  </View>
-                </View>
-              </View>
-            ) : filteredAvailableJobs.length === 0 ? (
-              <View
-                style={{
-                  minHeight: Math.max(220, listViewportMinHeight * 0.75),
-                  justifyContent: "center",
-                  alignItems: "center",
-                  paddingHorizontal: BrandSpacing.lg,
-                }}
-              >
-                <View style={{ alignItems: "center", gap: BrandSpacing.md }}>
-                  <IconSymbol name="magnifyingglass" size={28} color={theme.jobs.idle} />
-                  <ThemedText style={[BrandType.bodyMedium, { color: theme.color.text }]}>
-                    {t("jobsTab.noJobsFound")}
-                  </ThemedText>
-                  <ThemedText
-                    style={[BrandType.caption, { color: theme.jobs.idle, textAlign: "center" }]}
-                  >
-                    Try a different search or sorting mode.
-                  </ThemedText>
-                </View>
-              </View>
+          <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+            {isLoading ? (
+              <SkeletonJobList />
             ) : (
-              <InstructorOpenJobsList
-                jobs={filteredAvailableJobs}
-                locale={locale}
-                zoneLanguage={zoneLanguage}
-                applyingJobId={applyingJobId}
-                withdrawingApplicationId={withdrawingApplicationId}
-                now={liveNow}
-                onApply={onApply}
-                onWithdrawApplication={onWithdrawApplication}
-                onOpenStudio={onOpenStudio}
-                t={t}
-              />
+              <Box flex={1} gap="lg">
+                {actionErrorMessage ? (
+                  <NoticeBanner
+                    tone="error"
+                    message={actionErrorMessage}
+                    onDismiss={() => setActionErrorMessage(null)}
+                  />
+                ) : null}
+                {jobs.length === 0 ? (
+                  <View
+                    style={{
+                      minHeight: listViewportMinHeight,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      paddingHorizontal: BrandSpacing.lg,
+                    }}
+                  >
+                    <View style={{ alignItems: "center", gap: BrandSpacing.lg }}>
+                      <IconSymbol name="briefcase.fill" size={32} color={theme.jobs.idle} />
+                      <View style={{ alignItems: "center", gap: BrandSpacing.sm }}>
+                        <ThemedText style={[BrandType.title, { color: theme.color.text }]}>
+                          {t("jobsTab.instructorFeed.emptyInstructorShort")}
+                        </ThemedText>
+                        <ThemedText
+                          style={[BrandType.body, { color: theme.jobs.idle, textAlign: "center" }]}
+                        >
+                          {emptyJobsCopy}
+                        </ThemedText>
+                        <ThemedText
+                          style={[
+                            BrandType.caption,
+                            { color: theme.jobs.idle, textAlign: "center" },
+                          ]}
+                        >
+                          {t("jobsTab.instructorFeed.emptyRefreshHint")}
+                        </ThemedText>
+                      </View>
+                    </View>
+                  </View>
+                ) : filteredAvailableJobs.length === 0 ? (
+                  <View
+                    style={{
+                      minHeight: Math.max(220, listViewportMinHeight * 0.75),
+                      justifyContent: "center",
+                      alignItems: "center",
+                      paddingHorizontal: BrandSpacing.lg,
+                    }}
+                  >
+                    <View style={{ alignItems: "center", gap: BrandSpacing.md }}>
+                      <IconSymbol name="magnifyingglass" size={28} color={theme.jobs.idle} />
+                      <ThemedText style={[BrandType.bodyMedium, { color: theme.color.text }]}>
+                        {t("jobsTab.noJobsFound")}
+                      </ThemedText>
+                      <ThemedText
+                        style={[BrandType.caption, { color: theme.jobs.idle, textAlign: "center" }]}
+                      >
+                        Try a different search or sorting mode.
+                      </ThemedText>
+                    </View>
+                  </View>
+                ) : (
+                  <InstructorOpenJobsList
+                    jobs={filteredAvailableJobs}
+                    locale={locale}
+                    zoneLanguage={zoneLanguage}
+                    applyingJobId={applyingJobId}
+                    withdrawingApplicationId={withdrawingApplicationId}
+                    now={liveNow}
+                    onApply={onApply}
+                    onWithdrawApplication={onWithdrawApplication}
+                    onOpenStudio={onOpenStudio}
+                    t={t}
+                  />
+                )}
+              </Box>
             )}
-          </Box>
+          </Animated.View>
         </TabScreenScrollView>
         <TabOverlayAnchor side="right" offset={BrandSpacing.lg} style={{ zIndex: 60 }}>
           <IconButton
@@ -562,6 +623,24 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     gap: BrandSpacing.lg,
+  },
+  jobsTopSheetContent: {
+    gap: BrandSpacing.sm,
+  },
+  jobsControlsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.sm,
+  },
+  jobsSearchWrap: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+  },
+  jobsFilterWrap: {
+    flexShrink: 0,
+    minWidth: 0,
   },
   feedIntro: {
     paddingVertical: BrandSpacing.md,

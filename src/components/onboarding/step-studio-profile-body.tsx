@@ -1,8 +1,9 @@
 // Step 1 - Studio profile details body
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, View } from "react-native";
-import { ActionButton } from "@/components/ui/action-button";
 import { ThemedText } from "@/components/themed-text";
+import { ActionButton } from "@/components/ui/action-button";
+import { useTheme } from "@/hooks/use-theme";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type OnboardingStyles = Record<string, any>;
@@ -34,7 +35,7 @@ export function StepStudioProfileBody({
   styles,
 }: StepStudioProfileBodyProps) {
   const { t } = useTranslation();
-  const color = { primary: "#8B5CF6", textMuted: "#6B7280" };
+  const { color } = useTheme();
 
   if (!detailsReady) {
     return (
@@ -47,9 +48,7 @@ export function StepStudioProfileBody({
         </View>
         <View style={styles.detailsLoadingRow}>
           <ActivityIndicator color={color.primary} />
-          <ThemedText style={{ color: color.textMuted }}>
-            {t("onboarding.loading")}
-          </ThemedText>
+          <ThemedText style={{ color: color.textMuted }}>{t("onboarding.loading")}</ThemedText>
         </View>
       </View>
     );
@@ -62,7 +61,12 @@ export function StepStudioProfileBody({
       <View style={styles.navBar}>
         <View style={styles.navRowSplit}>
           <View style={styles.navAction}>
-            <ActionButton label={t("onboarding.back")} tone="secondary" fullWidth onPress={onBack} />
+            <ActionButton
+              label={t("onboarding.back")}
+              tone="secondary"
+              fullWidth
+              onPress={onBack}
+            />
           </View>
           <View style={styles.navAction}>
             <ActionButton

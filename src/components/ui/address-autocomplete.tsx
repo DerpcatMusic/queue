@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type ColorValue, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { type ColorValue, Pressable, TextInput, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";

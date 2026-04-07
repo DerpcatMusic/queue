@@ -1,7 +1,8 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { internalAction } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { omitUndefined } from "./lib/validation";
 
 type InvoiceProvider = "icount" | "morning";
@@ -32,6 +33,103 @@ type InvoiceIssueResult =
       provider: InvoiceProvider;
       externalInvoiceId: string;
     };
+
+async function getPaymentForInvoicingRead(
+  ctx: QueryCtx,
+  { paymentId }: { paymentId: Id<"payments"> },
+) {
+  const payment = await ctx.db.get(paymentId);
+  if (!payment) return null;
+
+  const [studioUser, job] = await Promise.all([
+    ctx.db.get(payment.studioUserId),
+    ctx.db.get(payment.jobId),
+  ]);
+
+  return {
+    payment: {
+      _id: payment._id,
+      status: payment.status,
+      currency: payment.currency,
+      studioChargeAmountAgorot: payment.studioChargeAmountAgorot,
+    },
+    studioUser,
+    job,
+  };
+}
+
+export const getPaymentForInvoicing = internalQuery({
+  args: {
+    paymentId: v.id("payments"),
+  },
+  handler: async (ctx, args) => await getPaymentForInvoicingRead(ctx, args),
+});
+
+export const createInvoiceRecord = internalMutation({
+  args: {
+    paymentId: v.id("payments"),
+    provider: v.union(v.literal("icount"), v.literal("morning")),
+    currency: v.string(),
+    amountAgorot: v.number(),
+    vatRate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("invoices")
+      .withIndex("by_payment", (q) => q.eq("paymentId", args.paymentId))
+      .order("desc")
+      .first();
+    if (existing) {
+      return existing;
+    }
+
+    const now = Date.now();
+    const invoiceId = await ctx.db.insert("invoices", {
+      paymentId: args.paymentId,
+      provider: args.provider,
+      status: "pending",
+      currency: args.currency,
+      amountAgorot: args.amountAgorot,
+      vatRate: args.vatRate,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return await ctx.db.get(invoiceId);
+  },
+});
+
+export const markInvoiceIssued = internalMutation({
+  args: {
+    invoiceId: v.id("invoices"),
+    externalInvoiceId: v.string(),
+    externalInvoiceUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.invoiceId, {
+      status: "issued",
+      externalInvoiceId: args.externalInvoiceId,
+      issuedAt: Date.now(),
+      updatedAt: Date.now(),
+      ...omitUndefined({
+        externalInvoiceUrl: args.externalInvoiceUrl,
+      }),
+    });
+  },
+});
+
+export const markInvoiceFailed = internalMutation({
+  args: {
+    invoiceId: v.id("invoices"),
+    error: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.invoiceId, {
+      status: "failed",
+      error: args.error,
+      updatedAt: Date.now(),
+    });
+  },
+});
 
 /**
  * Default timeout for external API calls in milliseconds.
@@ -222,7 +320,7 @@ const issueIcountInvoice = async ({
 export const issueInvoiceForPayment = internalAction({
   args: { paymentId: v.id("payments") },
   handler: async (ctx, { paymentId }): Promise<InvoiceIssueResult> => {
-    const context = (await ctx.runQuery(internal.payments.getPaymentForInvoicing, {
+    const context = (await ctx.runQuery(internal.invoicing.getPaymentForInvoicing, {
       paymentId,
     })) as InvoicingContext | null;
     if (!context?.payment || !context.job) {
@@ -233,7 +331,7 @@ export const issueInvoiceForPayment = internalAction({
     }
 
     const provider = resolveInvoiceProvider();
-    const invoice = (await ctx.runMutation(internal.payments.createInvoiceRecord, {
+    const invoice = (await ctx.runMutation(internal.invoicing.createInvoiceRecord, {
       paymentId,
       provider,
       currency: context.payment.currency,
@@ -277,7 +375,7 @@ export const issueInvoiceForPayment = internalAction({
               description,
             });
 
-      await ctx.runMutation(internal.payments.markInvoiceIssued, {
+      await ctx.runMutation(internal.invoicing.markInvoiceIssued, {
         invoiceId: invoice._id,
         externalInvoiceId: issued.externalInvoiceId,
         ...omitUndefined({
@@ -291,7 +389,7 @@ export const issueInvoiceForPayment = internalAction({
         externalInvoiceId: issued.externalInvoiceId,
       };
     } catch (error) {
-      await ctx.runMutation(internal.payments.markInvoiceFailed, {
+      await ctx.runMutation(internal.invoicing.markInvoiceFailed, {
         invoiceId: invoice._id,
         error: error instanceof Error ? error.message : "Unknown invoice error",
       });

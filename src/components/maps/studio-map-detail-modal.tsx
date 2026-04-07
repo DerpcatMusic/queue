@@ -5,7 +5,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitSurface } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
@@ -37,7 +37,7 @@ export function StudioMapDetailModal({
         style={{
           flex: 1,
           justifyContent: "flex-end",
-          backgroundColor: "rgba(0, 0, 0, 0.36)",
+          backgroundColor: color.overlay,
           paddingHorizontal: BrandSpacing.lg,
           paddingTop: BrandSpacing.xxl,
           paddingBottom: overlayBottom + BrandSpacing.xxl,
@@ -72,7 +72,7 @@ export function StudioMapDetailModal({
 
           <View
             style={{
-              borderRadius: 18,
+              borderRadius: BrandRadius.cardSubtle,
               borderCurve: "continuous",
               paddingHorizontal: BrandSpacing.md,
               paddingVertical: BrandSpacing.sm,

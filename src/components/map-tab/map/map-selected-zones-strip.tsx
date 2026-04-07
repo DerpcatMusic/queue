@@ -1,9 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
 
 const COMPACT_ZONE_PILL_MIN_HEIGHT = BrandSpacing.controlSm - BrandSpacing.xs;
 const COMPACT_ZONE_PILL_RADIUS = BrandRadius.cardSubtle - BrandSpacing.sm;

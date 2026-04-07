@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { TabSubrouteStack } from "@/components/layout/tab-subroute-stack";
 import { ProfileSubpageSheetProvider } from "@/components/profile/profile-subpage-sheet";
 
 /**
@@ -43,22 +44,10 @@ export default function ProfileLayout() {
         },
       ]}
     >
-      <Stack
-        initialRouteName="index"
-        screenOptions={{
-          headerShown: false,
-          animation: "slide_from_right",
-        }}
-      >
+      <TabSubrouteStack initialRouteName="index">
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="branches"
-          options={{ title: t("profile.navigation.branches") }}
-        />
-        <Stack.Screen
-          name="add-account"
-          options={{ title: t("profile.navigation.addAccount") }}
-        />
+        <Stack.Screen name="branches" options={{ title: t("profile.navigation.branches") }} />
+        <Stack.Screen name="add-account" options={{ title: t("profile.navigation.addAccount") }} />
         <Stack.Screen
           name="notifications"
           options={{ title: t("profile.navigation.notifications") }}
@@ -67,10 +56,7 @@ export default function ProfileLayout() {
           name="calendar-settings"
           options={{ title: t("profile.navigation.calendar") }}
         />
-        <Stack.Screen
-          name="compliance"
-          options={{ title: t("profile.navigation.compliance") }}
-        />
+        <Stack.Screen name="compliance" options={{ title: t("profile.navigation.compliance") }} />
         <Stack.Screen
           name="edit"
           options={{
@@ -82,7 +68,7 @@ export default function ProfileLayout() {
           name="payments"
           options={{ title: t("profile.navigation.paymentsPayouts") }}
         />
-      </Stack>
+      </TabSubrouteStack>
     </ProfileSubpageSheetProvider>
   );
 }

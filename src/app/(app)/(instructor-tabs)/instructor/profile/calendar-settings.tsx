@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Platform, Pressable, Text, View } from "react-native";
+import { Alert, Platform, Pressable, Text } from "react-native";
 
 import appleCalendarIcon from "@/assets/images/calendar-apple-app-icon.jpg";
 import googleCalendarIcon from "@/assets/images/calendar-google-app-icon.jpg";
@@ -14,9 +14,10 @@ import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
+import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
-import { KitList, KitSwitchRow } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { KitList, KitListItem, KitSwitch } from "@/components/ui/kit";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { useTheme } from "@/hooks/use-theme";
@@ -24,14 +25,15 @@ import { BorderWidth } from "@/lib/design-system";
 import { prepareDeviceCalendarSync } from "@/lib/device-calendar-sync";
 import { resolveGoogleCalendarAuthConfig } from "@/lib/google-calendar-auth-config";
 import {
-  isPushRegistrationError,
-  registerForPushNotificationsAsync,
-} from "@/lib/push-notifications";
-import {
   connectGoogleCalendarNative,
   disconnectGoogleCalendarNative,
 } from "@/lib/google-calendar-native-auth";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
+import {
+  isPushRegistrationError,
+  registerForPushNotificationsAsync,
+} from "@/lib/push-notifications";
+import { Box } from "@/primitives";
 
 type CalendarProvider = "none" | "google" | "apple";
 const LESSON_REMINDER_OPTIONS = [15, 30, 45, 60] as const;
@@ -557,7 +559,7 @@ export default function CalendarSettingsScreen() {
       : t("profile.settings.calendar.notifications.off");
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.color.appBg }}>
+    <Box style={{ flex: 1, backgroundColor: theme.color.appBg }}>
       <ProfileSubpageScrollView
         routeKey="instructor/profile/calendar-settings"
         contentContainerStyle={{
@@ -566,11 +568,11 @@ export default function CalendarSettingsScreen() {
           gap: BrandSpacing.xl,
         }}
       >
-        <View
+        <Box
           style={{
             overflow: "hidden",
             borderRadius: BrandRadius.soft,
-            backgroundColor: theme.color.surface as string,
+            backgroundColor: theme.color.surfaceElevated as string,
           }}
         >
           <CalendarConnectionRow
@@ -601,35 +603,49 @@ export default function CalendarSettingsScreen() {
             loading={isSaving && !isConnectingGoogle && !isDisconnectingGoogle}
             onPress={handleAppleRowPress}
           />
-        </View>
+        </Box>
 
         {provider !== "none" ? (
           <KitList inset>
-            <KitSwitchRow
+            <KitListItem
               title={t("profile.settings.calendar.autoSync")}
-              value={syncEnabled}
-              disabled={isBusy}
-              onValueChange={(nextValue) => {
-                void onToggleSyncEnabled(nextValue);
-              }}
-              description={t("profile.settings.calendar.futureNote")}
-            />
+              accessory={
+                <KitSwitch
+                  value={syncEnabled}
+                  disabled={isBusy}
+                  onValueChange={(nextValue) => {
+                    void onToggleSyncEnabled(nextValue);
+                  }}
+                />
+              }
+            >
+              <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
+                {t("profile.settings.calendar.futureNote")}
+              </ThemedText>
+            </KitListItem>
           </KitList>
         ) : null}
 
         <KitList inset>
-          <KitSwitchRow
+          <KitListItem
             title={t("profile.settings.calendar.notifications.title")}
-            value={notificationsEnabled}
-            disabled={isBusy}
-            onValueChange={(nextValue) => {
-              void onToggleNotifications(nextValue);
-            }}
-            description={pushStatusDescription}
-          />
+            accessory={
+              <KitSwitch
+                value={notificationsEnabled}
+                disabled={isBusy}
+                onValueChange={(nextValue) => {
+                  void onToggleNotifications(nextValue);
+                }}
+              />
+            }
+          >
+            <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
+              {pushStatusDescription}
+            </ThemedText>
+          </KitListItem>
         </KitList>
 
-        <View style={{ gap: BrandSpacing.sm }}>
+        <Box style={{ gap: BrandSpacing.sm }}>
           <Text
             style={{
               color: theme.color.textMuted,
@@ -639,32 +655,36 @@ export default function CalendarSettingsScreen() {
           >
             {t("profile.settings.calendar.notifications.reminderTitle")}
           </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
+          <Box style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
             {LESSON_REMINDER_OPTIONS.map((option) => {
               const selected = option === lessonReminderMinutesBefore;
               return (
                 <Pressable
                   key={option}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected }}
                   disabled={isBusy}
                   onPress={() => {
                     void onSelectLessonReminderMinutes(option);
                   }}
                   style={{
                     borderRadius: BrandRadius.pill,
-                    borderWidth: BorderWidth.thin,
-                    borderColor: selected ? theme.color.primary : theme.color.border,
-                    backgroundColor: selected ? theme.color.primarySubtle : theme.color.surface,
+                    backgroundColor:
+                      selected ? "#CCFF00" : theme.color.surfaceElevated,
                     paddingHorizontal: BrandSpacing.controlX,
                     paddingVertical: BrandSpacing.controlY,
+                    shadowColor: "#000000",
+                    shadowOpacity: selected ? 0.08 : 0.04,
+                    shadowRadius: 10,
+                    shadowOffset: { width: 0, height: 4 },
+                    elevation: 1,
                     opacity: isBusy ? 0.7 : 1,
                   }}
                 >
                   <Text
                     style={{
-                      color: selected ? theme.color.primary : theme.color.text,
-                      fontSize: 15,
+                      color: selected ? "#161E00" : theme.color.text,
+                      fontSize: BrandType.body.fontSize,
                       lineHeight: 20,
                     }}
                   >
@@ -675,7 +695,7 @@ export default function CalendarSettingsScreen() {
                 </Pressable>
               );
             })}
-          </View>
+          </Box>
           <Text
             style={{
               color: theme.color.textMuted,
@@ -685,10 +705,10 @@ export default function CalendarSettingsScreen() {
           >
             {t("profile.settings.calendar.notifications.reminderDescription")}
           </Text>
-        </View>
+        </Box>
 
         {googleStatus?.lastError ? (
-          <View
+          <Box
             style={{
               borderRadius: BrandRadius.md,
               paddingHorizontal: BrandSpacing.controlX,
@@ -710,11 +730,11 @@ export default function CalendarSettingsScreen() {
             >
               {googleStatus.lastError}
             </Text>
-          </View>
+          </Box>
         ) : null}
 
         {needsGoogleReconnect ? (
-          <View
+          <Box
             style={{
               borderRadius: BrandRadius.md,
               paddingHorizontal: BrandSpacing.controlX,
@@ -736,11 +756,11 @@ export default function CalendarSettingsScreen() {
             >
               {t("profile.settings.calendar.googleReconnectRequired")}
             </Text>
-          </View>
+          </Box>
         ) : null}
 
         {googleConfigError ? (
-          <View
+          <Box
             style={{
               borderRadius: BrandRadius.md,
               paddingHorizontal: BrandSpacing.controlX,
@@ -762,11 +782,11 @@ export default function CalendarSettingsScreen() {
             >
               {googleConfigError}
             </Text>
-          </View>
+          </Box>
         ) : null}
 
         {provider === "google" ? (
-          <View style={{ gap: BrandSpacing.stackTight }}>
+          <Box style={{ gap: BrandSpacing.stackTight }}>
             <ActionButton
               label={
                 isSyncingGoogle
@@ -779,11 +799,11 @@ export default function CalendarSettingsScreen() {
               disabled={!canUseGoogleCalendar || isSyncingGoogle || isBusy}
               fullWidth
             />
-          </View>
+          </Box>
         ) : null}
       </ProfileSubpageScrollView>
 
-      <View
+      <Box
         style={{
           position: "absolute",
           left: BrandSpacing.inset,
@@ -792,7 +812,7 @@ export default function CalendarSettingsScreen() {
         }}
       >
         <ActionButton label={t("common.done")} onPress={() => router.back()} fullWidth />
-      </View>
-    </View>
+      </Box>
+    </Box>
   );
 }

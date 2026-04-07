@@ -1,11 +1,10 @@
 import type { TFunction } from "i18next";
-import { View } from "react-native";
-
 import { QueueMap } from "@/components/maps/queue-map";
 import type { QueueMapPin } from "@/components/maps/queue-map.types";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
 import { useTheme } from "@/hooks/use-theme";
+import { Box } from "@/primitives";
 import { MapWebCommandPanel } from "./map-web-command-panel";
 import { MapWebHeaderPanels } from "./map-web-header-panels";
 
@@ -54,7 +53,7 @@ export function MapWebWorkbench({
 }: MapWebWorkbenchProps) {
   const { color: palette } = useTheme();
   return (
-    <View
+    <Box
       style={{
         flex: 1,
         paddingHorizontal: BrandSpacing.xl,
@@ -74,8 +73,8 @@ export function MapWebWorkbench({
         onReset={onHandleDiscardChanges}
       />
 
-      <View style={{ flex: 1, minHeight: 0, flexDirection: "row", gap: BrandSpacing.lg }}>
-        <View
+      <Box style={{ flex: 1, minHeight: 0, flexDirection: "row", gap: BrandSpacing.lg }}>
+        <Box
           style={{
             flex: 1.45,
             minWidth: 0,
@@ -95,7 +94,7 @@ export function MapWebWorkbench({
             onUseGps={onHandleFocusSelection}
             showGpsButton={false}
           />
-        </View>
+        </Box>
 
         <MapWebCommandPanel
           t={t}
@@ -111,7 +110,7 @@ export function MapWebWorkbench({
           onSetFocusZone={onSetFocusZone}
           onToggleZone={onToggleZone}
         />
-      </View>
-    </View>
+      </Box>
+    </Box>
   );
 }

@@ -1,11 +1,12 @@
 import type { TFunction } from "i18next";
 import { useMemo } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView } from "react-native";
 import { HomeSectionHeading, HomeSurface } from "@/components/home/home-dashboard-layout";
 import { getRelativeTimeLabel } from "@/components/home/home-shared";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { toSportLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
+import { Box, Text } from "@/primitives";
 
 type AgendaItem = {
   id: string;
@@ -90,15 +91,7 @@ export function HomeAgendaWidget({
         }}
       >
         <HomeSectionHeading title={heading} />
-        <Text
-          style={{
-            fontFamily: "Manrope_400Regular",
-            fontSize: 14,
-            fontWeight: "400",
-            lineHeight: 19,
-            color: palette.textMuted,
-          }}
-        >
+        <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
           {emptyLabel ?? t("home.agenda.empty")}
         </Text>
       </HomeSurface>
@@ -106,7 +99,7 @@ export function HomeAgendaWidget({
   }
 
   return (
-    <View>
+    <Box>
       <HomeSurface
         style={{
           padding: BrandSpacing.lg,
@@ -126,8 +119,8 @@ export function HomeAgendaWidget({
             const relativeTime = getRelativeTimeLabel(item.startTime, now, locale);
 
             return (
-              <View key={item.id}>
-                <View
+              <Box key={item.id}>
+                <Box
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -137,7 +130,7 @@ export function HomeAgendaWidget({
                     borderBottomColor: palette.border,
                   }}
                 >
-                  <View
+                  <Box
                     style={{
                       width: 56,
                       alignItems: "flex-end",
@@ -145,10 +138,8 @@ export function HomeAgendaWidget({
                   >
                     <Text
                       style={{
-                        fontFamily: "Lexend_600SemiBold",
-                        fontSize: 15,
+                        ...BrandType.body,
                         fontWeight: "600",
-                        lineHeight: 18,
                         color: palette.text,
                         fontVariant: ["tabular-nums"],
                       }}
@@ -157,23 +148,17 @@ export function HomeAgendaWidget({
                     </Text>
                     <Text
                       style={{
-                        fontFamily: "Manrope_400Regular",
-                        fontSize: 10,
-                        fontWeight: "400",
-                        lineHeight: 14,
+                        ...BrandType.micro,
                         color: palette.textMuted,
                       }}
                     >
                       {isToday ? relativeTime : formatGroupDate(item.startTime, locale)}
                     </Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 1 }}>
+                  </Box>
+                  <Box style={{ flex: 1, gap: 1 }}>
                     <Text
                       style={{
-                        fontFamily: "Manrope_600SemiBold",
-                        fontSize: 15,
-                        fontWeight: "600",
-                        lineHeight: 22,
+                        ...BrandType.bodyStrong,
                         color: palette.text,
                       }}
                       numberOfLines={1}
@@ -182,60 +167,56 @@ export function HomeAgendaWidget({
                     </Text>
                     <Text
                       style={{
-                        fontFamily: "Manrope_400Regular",
-                        fontSize: 14,
-                        fontWeight: "400",
-                        lineHeight: 19,
+                        ...BrandType.caption,
                         color: palette.textMuted,
                       }}
                       numberOfLines={1}
                     >
                       {item.name}
                     </Text>
-                  </View>
-                  <View
+                  </Box>
+                  <Box
                     style={{
                       width: 20,
                       alignItems: "center",
                     }}
                   >
-                    <View
+                    <Box
                       style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: 3,
+                        width: BrandSpacing.statusDot,
+                        height: BrandSpacing.statusDot,
+                        borderRadius: BrandRadius.statusDot,
                         backgroundColor: isToday ? palette.primary : palette.textMicro,
                       }}
                     />
-                  </View>
-                </View>
-              </View>
+                  </Box>
+                </Box>
+              </Box>
             );
           })}
         </ScrollView>
 
         {onPressAll ? (
-          <View
+          <Box
             style={{
               marginTop: BrandSpacing.sm,
               alignItems: "flex-end",
             }}
           >
             <Text
+              accessibilityRole="button"
+              accessibilityLabel={t("home.agenda.viewAll")}
               style={{
-                fontFamily: "Manrope_400Regular",
-                fontSize: 13,
-                fontWeight: "400",
-                lineHeight: 18,
+                ...BrandType.caption,
                 color: palette.primary,
               }}
               onPress={onPressAll}
             >
               {t("home.agenda.viewAll")}
             </Text>
-          </View>
+          </Box>
         ) : null}
       </HomeSurface>
-    </View>
+    </Box>
   );
 }

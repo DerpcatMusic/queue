@@ -7,7 +7,10 @@ import {
   HomeRoleContent,
   type HomeRoleContentProps,
 } from "@/components/home/home-tab/home-role-content";
-import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
+import {
+  createContentDrivenTopSheetConfig,
+  getMainTabSheetBackgroundColor,
+} from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -23,7 +26,8 @@ export default function HomeScreen() {
   const locale = i18n.resolvedLanguage ?? "en";
   const liveNow = useMinuteNow();
   const queryNow = Math.floor(liveNow / (60 * 1000)) * 60 * 1000;
-  const { color: palette } = useTheme();
+  const theme = useTheme();
+  const mainTabSheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
 
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
   const canQueryInstructor =
@@ -46,7 +50,19 @@ export default function HomeScreen() {
     api.users.getMyInstructorSettings,
     canQueryInstructor ? {} : "skip",
   );
+  const instructorComplianceSummary = useQuery(
+    api.compliance.getMyInstructorComplianceSummary,
+    canQueryInstructor ? { now: queryNow } : "skip",
+  );
+  const instructorPayoutSummary = useQuery(
+    api.paymentsV2.getMyPayoutSummaryV2,
+    canQueryInstructor ? {} : "skip",
+  );
   const studioSettings = useQuery(api.users.getMyStudioSettings, canQueryStudio ? {} : "skip");
+  const studioComplianceSummary = useQuery(
+    api.complianceStudio.getMyStudioComplianceSummary,
+    canQueryStudio ? {} : "skip",
+  );
 
   const [withdrawingApplicationId, setWithdrawingApplicationId] =
     useState<Id<"jobApplications"> | null>(null);
@@ -104,11 +120,8 @@ export default function HomeScreen() {
       : activeRole === "studio"
         ? t("home.studio.role")
         : undefined;
-  const instructorLessonsCompleted = instructorHomeStats?.lessonEvents.length ?? 0;
-  const instructorTotalEarningsAgorot = instructorHomeStats?.totalEarningsAgorot ?? 0;
-  const instructorPaidOutAmountAgorot = instructorHomeStats?.paidOutAmountAgorot ?? 0;
-  const instructorOutstandingAmountAgorot = instructorHomeStats?.outstandingAmountAgorot ?? 0;
   const instructorPendingApplications = instructorHomeStats?.pendingApplications ?? 0;
+  const instructorThisMonthEarningsAgorot = instructorHomeStats?.thisMonthEarningsAgorot ?? 0;
   const instructorOpenJobs = availableInstructorJobs?.length ?? 0;
   const homeSheetContent = useMemo(
     () =>
@@ -119,18 +132,22 @@ export default function HomeScreen() {
           isVerified={
             activeRole === "instructor" ? (instructorHomeStats?.isVerified ?? false) : false
           }
-          lessonsCompleted={instructorLessonsCompleted}
-          totalEarningsLabel={currencyFormatter.format(instructorTotalEarningsAgorot / 100)}
-          paidOutLabel={currencyFormatter.format(instructorPaidOutAmountAgorot / 100)}
-          outstandingLabel={currencyFormatter.format(instructorOutstandingAmountAgorot / 100)}
-          totalEarningsAgorot={instructorTotalEarningsAgorot}
-          paidOutAmountAgorot={instructorPaidOutAmountAgorot}
+          thisMonthEarningsLabel={currencyFormatter.format(instructorThisMonthEarningsAgorot / 100)}
+          thisMonthEarningsAgorot={instructorThisMonthEarningsAgorot}
+          totalEarningsAgorot={instructorHomeStats?.totalEarningsAgorot ?? 0}
+          paidOutAmountAgorot={instructorHomeStats?.paidOutAmountAgorot ?? 0}
+          outstandingAmountAgorot={instructorHomeStats?.outstandingAmountAgorot ?? 0}
           pendingApplications={
             activeRole === "instructor"
               ? instructorPendingApplications
               : studioHomeCounts.pendingApplicants
           }
           openJobs={activeRole === "instructor" ? instructorOpenJobs : studioHomeCounts.openJobs}
+          missionsCount={
+            activeRole === "instructor"
+              ? (instructorHomeStats?.lessonEvents?.length ?? 0)
+              : (myStudioJobs?.length ?? 0)
+          }
           role={activeRole}
           {...(homeSubtitle ? { subtitle: homeSubtitle } : {})}
         />
@@ -141,13 +158,15 @@ export default function HomeScreen() {
       homeDisplayName,
       homeProfileImageUrl,
       homeSubtitle,
-      instructorLessonsCompleted,
       instructorOpenJobs,
       instructorPendingApplications,
-      instructorPaidOutAmountAgorot,
-      instructorOutstandingAmountAgorot,
-      instructorTotalEarningsAgorot,
+      instructorThisMonthEarningsAgorot,
       instructorHomeStats?.isVerified,
+      instructorHomeStats?.totalEarningsAgorot,
+      instructorHomeStats?.paidOutAmountAgorot,
+      instructorHomeStats?.outstandingAmountAgorot,
+      instructorHomeStats?.lessonEvents?.length,
+      myStudioJobs?.length,
       studioHomeCounts.openJobs,
       studioHomeCounts.pendingApplicants,
     ],
@@ -156,17 +175,17 @@ export default function HomeScreen() {
   const homeSheetConfig = useMemo(
     () =>
       activeRole === "instructor" || activeRole === "studio"
-        ? createContentDrivenTopSheetConfig({
-            collapsedContent: homeSheetContent,
-            padding: {
-              vertical: 0,
-              horizontal: 0,
-            },
-            backgroundColor: palette.surfaceElevated,
-            topInsetColor: palette.surfaceElevated,
-          })
+            ? createContentDrivenTopSheetConfig({
+                collapsedContent: homeSheetContent,
+                padding: {
+                  vertical: 0,
+                  horizontal: 0,
+                },
+                backgroundColor: mainTabSheetBackgroundColor,
+                topInsetColor: mainTabSheetBackgroundColor,
+              })
         : null,
-    [activeRole, homeSheetContent, palette.surfaceElevated],
+    [activeRole, homeSheetContent, mainTabSheetBackgroundColor],
   );
 
   const descriptor = useMemo(
@@ -180,7 +199,12 @@ export default function HomeScreen() {
           t={t}
           now={liveNow}
           instructorHomeStats={instructorHomeStats}
+          instructorSettings={instructorSettings}
+          instructorComplianceSummary={instructorComplianceSummary}
+          instructorPayoutSummary={instructorPayoutSummary}
           availableInstructorJobs={availableInstructorJobs}
+          studioSettings={studioSettings}
+          studioComplianceSummary={studioComplianceSummary}
           myStudioJobs={myStudioJobs as HomeRoleContentProps["myStudioJobs"]}
           withdrawingApplicationId={withdrawingApplicationId}
           onWithdrawApplication={handleWithdrawApplication}
@@ -198,7 +222,12 @@ export default function HomeScreen() {
       t,
       liveNow,
       instructorHomeStats,
+      instructorSettings,
+      instructorComplianceSummary,
+      instructorPayoutSummary,
       availableInstructorJobs,
+      studioSettings,
+      studioComplianceSummary,
       myStudioJobs,
       withdrawingApplicationId,
       handleWithdrawApplication,
@@ -245,7 +274,12 @@ export default function HomeScreen() {
       t={t}
       now={liveNow}
       instructorHomeStats={instructorHomeStats}
+      instructorSettings={instructorSettings}
+      instructorComplianceSummary={instructorComplianceSummary}
+      instructorPayoutSummary={instructorPayoutSummary}
       availableInstructorJobs={availableInstructorJobs}
+      studioSettings={studioSettings}
+      studioComplianceSummary={studioComplianceSummary}
       myStudioJobs={myStudioJobs as HomeRoleContentProps["myStudioJobs"]}
       withdrawingApplicationId={withdrawingApplicationId}
       onWithdrawApplication={handleWithdrawApplication}

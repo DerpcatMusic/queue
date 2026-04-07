@@ -17,9 +17,12 @@ import {
   type StatusTone,
 } from "@/lib/payments-utils";
 
+type PaymentActivityId = Id<"payments"> | Id<"paymentOrdersV2">;
+
 type PaymentActivityItem = {
   payment: {
-    _id: Id<"payments">;
+    _id: PaymentActivityId;
+    jobId?: Id<"jobs">;
     status: PaymentStatus;
     currency: string;
     studioChargeAmountAgorot: number;
@@ -46,11 +49,17 @@ type PaymentActivityListProps = {
   title: string;
   subtitle?: string;
   emptyLabel: string;
-  onSelectPaymentId?: (paymentId: Id<"payments">) => void;
+  onSelectPaymentId?: (paymentId: PaymentActivityId) => void;
 };
 
 const StatusDot = memo(function StatusDot({ color }: { color: string }) {
-  return <View style={{ width: 8, height: 8, borderRadius: BrandRadius.statusDot, backgroundColor: color }} />;
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ width: 8, height: 8, borderRadius: BrandRadius.statusDot, backgroundColor: color }}
+    />
+  );
 });
 
 type PaymentActivityRowProps = {
@@ -58,7 +67,7 @@ type PaymentActivityRowProps = {
   locale: string;
   viewerRole: "studio" | "instructor";
   statusColors: Record<StatusTone, string>;
-  onSelectPaymentId?: (paymentId: Id<"payments">) => void;
+  onSelectPaymentId?: (paymentId: PaymentActivityId) => void;
   isLast: boolean;
 };
 
@@ -89,6 +98,7 @@ const PaymentActivityRow = memo(function PaymentActivityRow({
     <Pressable
       onPress={onSelectPaymentId ? handlePress : undefined}
       accessibilityRole={onSelectPaymentId ? "button" : undefined}
+      accessibilityLabel={`${sportLabel}. ${paymentStatus}${payoutStatus ? `. ${payoutStatus}` : ""}.`}
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
@@ -104,8 +114,10 @@ const PaymentActivityRow = memo(function PaymentActivityRow({
       <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: BrandSpacing.md }}>
         <StatusDot color={statusColors[getPaymentStatusTone(item.payment.status)]} />
         <View style={{ flex: 1 }}>
-          <ThemedText type="bodyStrong">{sportLabel}</ThemedText>
-          <ThemedText type="caption" style={{ color: palette.textMuted }}>
+          <ThemedText numberOfLines={1} type="bodyStrong">
+            {sportLabel}
+          </ThemedText>
+          <ThemedText numberOfLines={1} type="caption" style={{ color: palette.textMuted }}>
             {item.job
               ? formatDateTime(item.job.startTime, locale)
               : formatDateTime(item.payment.createdAt, locale)}
@@ -117,7 +129,6 @@ const PaymentActivityRow = memo(function PaymentActivityRow({
       <View style={{ alignItems: "flex-end" }}>
         <ThemedText
           type="bodyStrong"
-          selectable
           style={{
             fontVariant: ["tabular-nums"],
             fontWeight: "600",
@@ -152,6 +163,7 @@ export function PaymentActivityList({
   emptyLabel,
   onSelectPaymentId,
 }: PaymentActivityListProps) {
+  const { t } = useTranslation();
   const { color: palette } = useTheme();
 
   const statusColors = useMemo<Record<StatusTone, string>>(() => ({
@@ -175,7 +187,10 @@ export function PaymentActivityList({
         </View>
         {items.length > 0 && (
           <ThemedText type="caption" style={{ color: palette.textMuted }}>
-            {items.length} {items.length === 1 ? "item" : "items"}
+            {t("common.itemsCount", {
+              count: items.length,
+              defaultValue: `${items.length} ${items.length === 1 ? "item" : "items"}`,
+            })}
           </ThemedText>
         )}
       </View>

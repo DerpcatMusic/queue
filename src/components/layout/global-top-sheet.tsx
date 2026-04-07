@@ -76,8 +76,8 @@ export function GlobalTopSheet() {
     }
     if (!descriptorSheetConfig) return routeConfig;
     return {
-      ...descriptorSheetConfig,
       ...routeConfig,
+      ...descriptorSheetConfig,
       tabId: activeTabId ?? routeConfig.tabId,
     } as typeof routeConfig & Partial<typeof descriptorSheetConfig>;
   }, [routeConfig, descriptorSheetConfig, activeTabId]);
@@ -123,7 +123,6 @@ export function GlobalTopSheet() {
     : null;
   const resolvedCollapsedHeightMode =
     richResult?.collapsedHeightMode ?? activeConfig?.collapsedHeightMode ?? "step";
-  const resolvedMinHeight = richResult?.minHeight ?? activeConfig?.minHeight;
   const staticCollapsedHeight =
     activeConfig &&
     resolvedCollapsedHeightMode !== "content" &&
@@ -131,7 +130,6 @@ export function GlobalTopSheet() {
       ? (getTopSheetStepHeights(
           richResult?.steps ?? activeConfig.steps ?? DEFAULT_STEPS,
           availableSheetHeight,
-          resolvedMinHeight,
         )[0] ?? 0)
       : null;
 
@@ -244,7 +242,7 @@ export function GlobalTopSheet() {
   }, [commitLayoutHeight, isNestedRouteChange, isPrimaryTabSwitch, reduceMotionEnabled]);
 
   const continuitySheetProps = {
-    ...(!isPrimaryTabSwitch && lastRenderedSheetHeightRef.current !== null
+    ...(isPrimaryTabSwitch && lastRenderedSheetHeightRef.current !== null
       ? { initialHeight: lastRenderedSheetHeightRef.current }
       : {}),
     onHeightChange: handleSheetHeightChange,

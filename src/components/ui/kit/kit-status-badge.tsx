@@ -1,7 +1,6 @@
-import { View } from "react-native";
-
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { Box } from "@/primitives";
 import type { KitStatusBadgeProps } from "./types";
 import { useKitTheme } from "./use-kit-theme";
 
@@ -45,7 +44,7 @@ export function KitStatusBadge({
               };
 
   return (
-    <View
+    <Box
       style={[
         {
           flexDirection: "row",
@@ -61,7 +60,7 @@ export function KitStatusBadge({
       ]}
     >
       {showDot ? (
-        <View
+        <Box
           style={{
             width: BrandSpacing.statusDotBadge,
             height: BrandSpacing.statusDotBadge,
@@ -73,6 +72,6 @@ export function KitStatusBadge({
       <ThemedText type="micro" style={{ color: resolvedTone.text }}>
         {label}
       </ThemedText>
-    </View>
+    </Box>
   );
 }

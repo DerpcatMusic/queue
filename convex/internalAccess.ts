@@ -12,6 +12,7 @@ import {
 import { omitUndefined } from "./lib/validation";
 
 const MAX_NOTES_LENGTH = 240;
+const INTERNAL_ACCESS_BOOTSTRAP_TOKEN_ENV = "INTERNAL_ACCESS_BOOTSTRAP_TOKEN";
 
 function normalizeNotes(value: string | undefined) {
   if (!value) {
@@ -70,6 +71,83 @@ async function deactivateMatchingActiveGrants(
   );
 }
 
+function isValidInternalAccessBootstrapToken(accessToken: string | undefined): boolean {
+  const expected = process.env[INTERNAL_ACCESS_BOOTSTRAP_TOKEN_ENV]?.trim();
+  return Boolean(expected) && accessToken?.trim() === expected;
+}
+
+function requireInternalAccessBootstrapToken(accessToken: string | undefined) {
+  if (!isValidInternalAccessBootstrapToken(accessToken)) {
+    throw new ConvexError(
+      "Unauthorized internal access bootstrap operation. Set INTERNAL_ACCESS_BOOTSTRAP_TOKEN and pass accessToken.",
+    );
+  }
+}
+
+async function applyInternalAccessGrant(
+  ctx: MutationCtx,
+  args: {
+    userId?: Doc<"users">["_id"];
+    email?: string;
+    role: "tester" | "admin";
+    verificationBypass?: boolean;
+    active?: boolean;
+    notes?: string;
+    grantedByUserId?: Doc<"users">["_id"];
+  },
+) {
+  assertSingleInternalAccessTarget(args);
+
+  const now = Date.now();
+  const targetUser = args.userId ? await ctx.db.get(args.userId) : null;
+  if (args.userId && !targetUser) {
+    throw new ConvexError("Target user not found");
+  }
+
+  const normalizedEmail = normalizeInternalAccessEmail(args.email ?? targetUser?.email);
+  if (!args.userId && !normalizedEmail) {
+    throw new ConvexError("Target email is required when userId is not provided");
+  }
+
+  await deactivateMatchingActiveGrants(ctx, {
+    now,
+    ...omitUndefined({
+      userId: args.userId,
+      email: normalizedEmail,
+    }),
+  });
+
+  const active = args.active ?? true;
+  const verificationBypass = args.verificationBypass ?? true;
+
+  if (active) {
+    await ctx.db.insert("internalAccessGrants", {
+      role: args.role,
+      verificationBypass,
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+      ...omitUndefined({
+        userId: args.userId,
+        email: normalizedEmail,
+        notes: normalizeNotes(args.notes),
+        grantedByUserId: args.grantedByUserId,
+      }),
+    });
+  }
+
+  return {
+    ok: true,
+    verificationBypass: active ? verificationBypass : false,
+    active,
+    ...omitUndefined({
+      userId: args.userId,
+      email: normalizedEmail,
+      role: active ? args.role : undefined,
+    }),
+  };
+}
+
 export const getMyInternalAccess = query({
   args: {},
   returns: v.object({
@@ -116,7 +194,9 @@ export const listInternalAccessGrants = query({
           .query("internalAccessGrants")
           .withIndex("by_role_active", (q) => q.eq("role", "tester").eq("active", true))
           .collect();
-        return [...adminRows, ...testerRows].sort((left, right) => right.updatedAt - left.updatedAt);
+        return [...adminRows, ...testerRows].sort(
+          (left, right) => right.updatedAt - left.updatedAt,
+        );
       });
   },
 });
@@ -140,55 +220,33 @@ export const setInternalAccessGrant = mutation({
   }),
   handler: async (ctx, args) => {
     const adminUser = await requireInternalAdmin(ctx);
-    assertSingleInternalAccessTarget(args);
-
-    const now = Date.now();
-    const targetUser = args.userId ? await ctx.db.get(args.userId) : null;
-    if (args.userId && !targetUser) {
-      throw new ConvexError("Target user not found");
-    }
-
-    const normalizedEmail = normalizeInternalAccessEmail(args.email ?? targetUser?.email);
-    if (!args.userId && !normalizedEmail) {
-      throw new ConvexError("Target email is required when userId is not provided");
-    }
-
-    await deactivateMatchingActiveGrants(ctx, {
-      now,
-      ...omitUndefined({
-        userId: args.userId,
-        email: normalizedEmail,
-      }),
+    return await applyInternalAccessGrant(ctx, {
+      ...args,
+      grantedByUserId: adminUser._id,
     });
+  },
+});
 
-    const active = args.active ?? true;
-    const verificationBypass = args.verificationBypass ?? true;
-
-    if (active) {
-      await ctx.db.insert("internalAccessGrants", {
-        role: args.role,
-        verificationBypass,
-        active: true,
-        createdAt: now,
-        updatedAt: now,
-        grantedByUserId: adminUser._id,
-        ...omitUndefined({
-          userId: args.userId,
-          email: normalizedEmail,
-          notes: normalizeNotes(args.notes),
-        }),
-      });
-    }
-
-    return {
-      ok: true,
-      verificationBypass: active ? verificationBypass : false,
-      active,
-      ...omitUndefined({
-        userId: args.userId,
-        email: normalizedEmail,
-        role: active ? args.role : undefined,
-      }),
-    };
+export const setInternalAccessGrantWithAccessToken = mutation({
+  args: {
+    accessToken: v.string(),
+    userId: v.optional(v.id("users")),
+    email: v.optional(v.string()),
+    role: internalAccessRoleValidator,
+    verificationBypass: v.optional(v.boolean()),
+    active: v.optional(v.boolean()),
+    notes: v.optional(v.string()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    userId: v.optional(v.id("users")),
+    email: v.optional(v.string()),
+    role: v.optional(internalAccessRoleValidator),
+    verificationBypass: v.boolean(),
+    active: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    requireInternalAccessBootstrapToken(args.accessToken);
+    return await applyInternalAccessGrant(ctx, args);
   },
 });

@@ -2,9 +2,6 @@ import { NotificationSettingsScreen } from "@/components/profile/notification-se
 
 export default function InstructorNotificationsScreen() {
   return (
-    <NotificationSettingsScreen
-      role="instructor"
-      routeMatchPath="/profile/notifications"
-    />
+    <NotificationSettingsScreen actorRole="instructor" routeMatchPath="/profile/notifications" />
   );
 }

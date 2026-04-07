@@ -4,6 +4,7 @@ import type React from "react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { ActionButton } from "@/components/ui/action-button";
 import { AppSymbol } from "@/components/ui/app-symbol";
@@ -67,10 +68,10 @@ export function StudioJobDetailSheet({
         {...props}
         disappearsAt={-1}
         appearsAt={0}
-        style={[props.style, { backgroundColor: theme.color.surface }]}
+        style={[props.style, { backgroundColor: theme.color.overlay }]}
       />
     ),
-    [theme.color.surface],
+    [theme.color.overlay],
   );
 
   return (
@@ -83,7 +84,7 @@ export function StudioJobDetailSheet({
       onClose={onDismiss}
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={{ backgroundColor: theme.color.borderStrong }}
-      backgroundStyle={{ backgroundColor: theme.color.appBg }}
+      backgroundStyle={{ backgroundColor: theme.color.surface }}
     >
       <BottomSheetScrollView contentContainerStyle={styles.scrollContent}>
         {job ? (
@@ -234,7 +235,7 @@ export function StudioJobDetailSheet({
                                   disabled={isReviewing}
                                   colors={{
                                     backgroundColor: theme.color.danger,
-                                    labelColor: "#FFFFFF",
+                                    labelColor: theme.color.onPrimary,
                                     pressedBackgroundColor: theme.color.dangerSubtle,
                                     disabledBackgroundColor: theme.color.surfaceAlt,
                                     disabledLabelColor: theme.color.textMuted,
@@ -327,5 +328,4 @@ const styles = StyleSheet.create({
   },
 });
 
-import { StyleSheet } from "react-native";
 import { Icon } from "@/primitives";

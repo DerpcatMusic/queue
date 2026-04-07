@@ -10,7 +10,7 @@ import {
   runAcceptedApplicationReviewWorkflow,
   runRejectedApplicationReviewWorkflow,
 } from "../../convex/jobs";
-import { diditWebhook } from "../../convex/webhooks";
+import { diditWebhook } from "../../convex/webhooksDidit";
 import {
   type ScheduledCall,
   InMemoryConvexDb,

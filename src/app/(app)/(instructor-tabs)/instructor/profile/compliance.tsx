@@ -3,8 +3,9 @@ import { Redirect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, AppState, type AppStateStatus, Pressable } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
-import { LoadingScreen } from "@/components/loading-screen";
+import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
@@ -12,14 +13,15 @@ import {
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
-import { BrandSpacing } from "@/constants/brand";
+import { SkeletonLine } from "@/components/ui/skeleton";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import { isSportType, toCapabilityTagLabel, toSportLabel } from "@/convex/constants";
 import {
-  getCertificateSubtitle as getSharedCertificateSubtitle,
   getComplianceDocumentValue,
-  getLatestCertificate as getSharedLatestCertificate,
+  getCertificateSubtitle as getSharedCertificateSubtitle,
   getInsuranceSubtitle as getSharedInsuranceSubtitle,
+  getLatestCertificate as getSharedLatestCertificate,
   getPreferredInsurancePolicy as getSharedPreferredInsurancePolicy,
 } from "@/features/compliance/compliance-ui";
 import {
@@ -33,10 +35,11 @@ import {
   isComplianceDocumentUploadError,
   useComplianceDocumentUpload,
 } from "@/hooks/use-compliance-document-upload";
+import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useTheme } from "@/hooks/use-theme";
 import { startDiditNativeVerification } from "@/lib/didit-native";
-import { Box, Text } from "@/primitives";
-import { BorderWidth, Radius } from "@/theme/theme";
+import { Box, HStack, Spacer, Text, VStack } from "@/primitives";
+import { BorderWidth, LetterSpacing, Motion, Radius } from "@/theme/theme";
 
 type ComplianceCertificateRow = {
   sport?: string;
@@ -108,6 +111,53 @@ function getDocumentStatusLabel(
   return getComplianceDocumentValue(status, t);
 }
 
+// ============================================================
+// Skeleton - matches real compliance screen layout
+// ============================================================
+
+function SkeletonProfile() {
+  const { color: theme } = useTheme();
+
+  return (
+    <Animated.View entering={FadeIn.duration(Motion.skeletonFade)}>
+      <VStack gap="xl" style={{ padding: BrandSpacing.lg }}>
+        {/* Identity verification card */}
+        <Box p="lg" style={{ backgroundColor: theme.surfaceAlt, borderRadius: BrandRadius.soft }}>
+          <HStack gap="md" align="center">
+            <SkeletonLine width={48} height={48} radius={BrandRadius.lg} />
+            <VStack gap="xs" style={{ flex: 1 }}>
+              <SkeletonLine width="50%" height={16} />
+              <SkeletonLine width="30%" height={12} />
+            </VStack>
+          </HStack>
+          <Spacer size="lg" />
+          <SkeletonLine width="100%" height={44} radius={BrandRadius.button} />
+        </Box>
+
+        {/* Document upload sections */}
+        <VStack gap="lg">
+          <Box
+            p="lg"
+            style={{ backgroundColor: theme.surfaceElevated, borderRadius: BrandRadius.cardSubtle }}
+          >
+            <SkeletonLine width="40%" height={14} />
+            <Spacer size="md" />
+            <SkeletonLine width="100%" height={80} radius={BrandRadius.soft} />
+          </Box>
+          <Box
+            p="lg"
+            style={{ backgroundColor: theme.surfaceElevated, borderRadius: BrandRadius.cardSubtle }}
+          >
+            <SkeletonLine width="40%" height={14} />
+            <Spacer size="md" />
+            <SkeletonLine width="100%" height={80} radius={BrandRadius.soft} />
+          </Box>
+        </VStack>
+      </VStack>
+    </Animated.View>
+  );
+}
+
 function VerificationUploadPanel({
   icon,
   label,
@@ -143,7 +193,7 @@ function VerificationUploadPanel({
             borderWidth: BorderWidth.medium,
             borderStyle: "dashed",
             borderColor: theme.color.border,
-            backgroundColor: theme.color.surface,
+            backgroundColor: theme.color.surfaceElevated,
             padding: BrandSpacing.insetRoomy,
             opacity: disabled ? 0.55 : pressed ? 0.92 : 1,
           },
@@ -172,7 +222,7 @@ function VerificationUploadPanel({
               style={{
                 color: accentColor,
                 textTransform: "uppercase",
-                letterSpacing: 0.7,
+                letterSpacing: LetterSpacing.trackingWide,
               }}
             >
               {statusLabel}
@@ -214,9 +264,7 @@ export default function InstructorComplianceScreen() {
   const compliance = accessSnapshot?.compliance;
   const createSessionForCurrentInstructor = useAction(api.didit.createSessionForCurrentInstructor);
   const refreshMyDiditVerification = useAction(api.didit.refreshMyDiditVerification);
-  const markMyDiditVerificationAbandoned = useMutation(
-    api.didit.markMyDiditVerificationAbandoned,
-  );
+  const markMyDiditVerificationAbandoned = useMutation(api.didit.markMyDiditVerificationAbandoned);
   const { isUploading, pickAndUploadComplianceDocument } = useComplianceDocumentUpload();
 
   const locale = i18n.resolvedLanguage ?? "en";
@@ -260,33 +308,36 @@ export default function InstructorComplianceScreen() {
     [latestCertificate],
   );
 
-  const refreshDiditStatus = useCallback(async (options?: { silent?: boolean }) => {
-    setIsRefreshingDidit(true);
-    try {
-      const latest = await refreshMyDiditVerification({});
-      if (!options?.silent) {
-        setFeedback({
-          tone: "success",
-          message: latest.isVerified
-            ? t("profile.compliance.feedback.identityApproved")
-            : t("profile.compliance.feedback.identityRefreshStarted"),
-        });
+  const refreshDiditStatus = useCallback(
+    async (options?: { silent?: boolean }) => {
+      setIsRefreshingDidit(true);
+      try {
+        const latest = await refreshMyDiditVerification({});
+        if (!options?.silent) {
+          setFeedback({
+            tone: "success",
+            message: latest.isVerified
+              ? t("profile.compliance.feedback.identityApproved")
+              : t("profile.compliance.feedback.identityRefreshStarted"),
+          });
+        }
+        setRefreshNonce((value) => value + 1);
+      } catch (error) {
+        if (!options?.silent) {
+          setFeedback({
+            tone: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : t("profile.compliance.errors.identityStartFailed"),
+          });
+        }
+      } finally {
+        setIsRefreshingDidit(false);
       }
-      setRefreshNonce((value) => value + 1);
-    } catch (error) {
-      if (!options?.silent) {
-        setFeedback({
-          tone: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : t("profile.compliance.errors.identityStartFailed"),
-        });
-      }
-    } finally {
-      setIsRefreshingDidit(false);
-    }
-  }, [refreshMyDiditVerification, t]);
+    },
+    [refreshMyDiditVerification, t],
+  );
 
   useEffect(() => {
     if (
@@ -460,15 +511,26 @@ export default function InstructorComplianceScreen() {
     );
   }, [t, uploadCertificate]);
 
-  if (
+  const isLoading =
     currentUser === undefined ||
     (currentUser?.role === "instructor" &&
       (instructorSettings === undefined ||
         compliance === undefined ||
-        diditVerification === undefined))
-  ) {
-    return <LoadingScreen label={t("profile.compliance.loading")} />;
+        diditVerification === undefined));
+
+  const { animatedStyle } = useContentReveal(isLoading);
+
+  // Guard: if still loading, show skeleton
+  if (isLoading) {
+    return (
+      <TabSceneTransition>
+        <Box style={{ flex: 1, backgroundColor: theme.color.appBg }}>
+          <SkeletonProfile />
+        </Box>
+      </TabSceneTransition>
+    );
   }
+
   if (currentUser === null) {
     return <Redirect href="/sign-in" />;
   }
@@ -485,14 +547,8 @@ export default function InstructorComplianceScreen() {
   }
 
   const isDiditBusy = isStartingDidit || isRefreshingDidit;
-  const diditActionLabel = getDiditPrimaryActionLabel(
-    diditVerification.isVerified,
-    t,
-  );
-  const diditButtonColors = getDiditActionButtonColors(
-    diditVerification.isVerified,
-    theme.color,
-  );
+  const diditActionLabel = getDiditPrimaryActionLabel(diditVerification.isVerified, t);
+  const diditButtonColors = getDiditActionButtonColors(diditVerification.isVerified, theme.color);
   const diditStatusPresentation = getDiditVerificationStatusPresentation(
     diditVerification.status,
     theme.color,
@@ -511,235 +567,241 @@ export default function InstructorComplianceScreen() {
   };
 
   return (
-    <ProfileSubpageScrollView
-      contentContainerStyle={{
-        gap: BrandSpacing.xl,
-        paddingHorizontal: BrandSpacing.inset,
-      }}
-      topSpacing={BrandSpacing.md}
-      bottomSpacing={BrandSpacing.xxl}
-    >
-      {feedback ? (
-        <NoticeBanner
-          tone={feedback.tone}
-          message={feedback.message}
-          onDismiss={() => setFeedback(null)}
-        />
-      ) : null}
-
-      <KitSurface
-        tone="base"
-        padding={BrandSpacing.insetRoomy}
-        gap={BrandSpacing.stackRoomy}
-        style={{
-          borderRadius: Radius.soft,
-          borderWidth: BorderWidth.medium,
-          borderColor: theme.color.border,
-          backgroundColor: theme.color.surfaceAlt,
-        }}
-      >
-        <Box flexDirection="row" alignItems="center" gap="md">
-          <Box
-            width={56}
-            height={56}
-            alignItems="center"
-            justifyContent="center"
-            style={{
-              borderRadius: Radius.lg,
-              backgroundColor: theme.color.surface,
-              borderWidth: BorderWidth.medium,
-              borderColor: theme.color.tertiarySubtle,
-            }}
-          >
-            <IconSymbol name="person.fill" size={20} color={theme.color.tertiary} />
-          </Box>
-          <Box flex={1} minWidth={0} gap="xxs">
-            <Text variant="titleLarge">
-              {currentUser.fullName ?? t("profile.account.fallbackName")}
-            </Text>
-            <Box
-              alignSelf="flex-start"
-              px="md"
-              py="xs"
-              style={{
-                borderRadius: Radius.full,
-                backgroundColor: diditStatusPresentation.backgroundColor,
-                borderWidth: BorderWidth.thin,
-                borderColor: diditStatusPresentation.borderColor,
-              }}
-            >
-              <Text
-                variant="caption"
-                style={{
-                  color: diditStatusPresentation.textColor,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.7,
-                }}
-              >
-                {diditStatusPresentation.label}
-              </Text>
-            </Box>
-          </Box>
-        </Box>
-
-        <Box gap="xs">
-          <Text variant="bodyStrong">{t("profile.compliance.identity.title")}</Text>
-          <Text variant="caption" color="textMuted">
-            {diditVerification.isVerified
-              ? t("profile.compliance.identity.approved")
-              : t("profile.compliance.identity.required")}
-          </Text>
-          {!diditVerification.isVerified ? (
-            <Text variant="caption" color="textMuted">
-              {t("profile.studioCompliance.identity.requiredBody", {
-                status: diditStatusPresentation.label,
-              })}
-            </Text>
-          ) : null}
-        </Box>
-
-        <Box gap="sm">
-          <ActionButton
-            label={diditActionLabel}
-            onPress={handleDiditAction}
-            fullWidth
-            loading={isStartingDidit}
-            disabled={isDiditBusy}
-            native={false}
-            {...(diditButtonColors ? { colors: diditButtonColors } : {})}
-            {...(diditVerification.isVerified ? { tone: "secondary" as const } : {})}
-            labelStyle={{
-              textTransform: "uppercase",
-              letterSpacing: 0.8,
-              fontWeight: "700",
-            }}
-          />
-          {showDiditManualRefresh ? (
-            <ActionButton
-              label={t("profile.identityVerification.checkStatus")}
-              onPress={() => {
-                void refreshDiditStatus();
-              }}
-              fullWidth
-              tone="secondary"
-              loading={isRefreshingDidit}
-              disabled={isDiditBusy}
-              native={false}
-              labelStyle={{
-                textTransform: "uppercase",
-                letterSpacing: 0.8,
-                fontWeight: "700",
-              }}
+    <TabSceneTransition>
+      <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+        <ProfileSubpageScrollView
+          contentContainerStyle={{
+            gap: BrandSpacing.xl,
+            paddingHorizontal: BrandSpacing.inset,
+          }}
+          topSpacing={BrandSpacing.md}
+          bottomSpacing={BrandSpacing.xxl}
+        >
+          {feedback ? (
+            <NoticeBanner
+              tone={feedback.tone}
+              message={feedback.message}
+              onDismiss={() => setFeedback(null)}
             />
           ) : null}
-        </Box>
-      </KitSurface>
 
-      <Box gap="sm">
-        <Text variant="radarLabel" color="textMuted">
-          {t("profile.compliance.documents.title")}
-        </Text>
-        <VerificationUploadPanel
-          icon="checkmark.circle.fill"
-          label={t("profile.compliance.insurance.title")}
-          title={t("profile.compliance.documents.tapToUpload")}
-          subtitle={getInsuranceSubtitle(preferredInsurance ?? null, locale, t)}
-          statusLabel={getDocumentStatusLabel(preferredInsurance?.reviewStatus, t)}
-          onPress={onOpenInsuranceUpload}
-          accentColor={theme.color.tertiary}
-          disabled={isUploading}
-        />
-        <VerificationUploadPanel
-          icon="sparkles"
-          label={t("profile.compliance.certificate.title")}
-          title={t("profile.compliance.documents.tapToUpload")}
-          subtitle={getCertificateSubtitle(latestCertificate ?? null, locale, t)}
-          statusLabel={getDocumentStatusLabel(latestCertificate?.reviewStatus, t)}
-          onPress={onOpenCertificateUpload}
-          accentColor={theme.color.tertiary}
-          disabled={isUploading}
-        />
-
-        <KitSurface
-          tone="sunken"
-          padding={BrandSpacing.lg}
-          gap={BrandSpacing.sm}
-          style={{
-            borderRadius: Radius.cardSubtle,
-            borderWidth: BorderWidth.thin,
-            borderColor: theme.color.border,
-            backgroundColor: theme.color.surface,
-          }}
-        >
-          <Text variant="caption" color="textMuted">
-            {latestCertificate?.reviewStatus === "approved"
-              ? t("profile.compliance.certificate.coverageTitle")
-              : t("profile.compliance.certificate.coveragePending")}
-          </Text>
-          {approvedCoverage.length > 0 ? (
-            <Box gap="sm">
-              <Text variant="bodyMedium">{t("profile.compliance.certificate.coverageSports")}</Text>
-              <Box flexDirection="row" flexWrap="wrap" gap="sm">
-                {approvedCoverage.map((label) => (
-                  <Box
-                    key={label}
-                    px="md"
-                    py="xs"
-                    backgroundColor="primarySubtle"
-                    borderColor="primarySubtle"
-                    borderRadius={Radius.pill}
-                    borderWidth={BorderWidth.thin}
+          <KitSurface
+            tone="base"
+            padding={BrandSpacing.insetRoomy}
+            gap={BrandSpacing.stackRoomy}
+            style={{
+              borderRadius: Radius.soft,
+              borderWidth: BorderWidth.medium,
+              borderColor: theme.color.border,
+              backgroundColor: theme.color.surfaceElevated,
+            }}
+          >
+            <Box flexDirection="row" alignItems="center" gap="md">
+              <Box
+                width={BrandSpacing.avatarMd}
+                height={BrandSpacing.avatarMd}
+                alignItems="center"
+                justifyContent="center"
+                style={{
+                  borderRadius: Radius.lg,
+                  backgroundColor: theme.color.surfaceAlt,
+                  borderWidth: BorderWidth.medium,
+                  borderColor: theme.color.border,
+                }}
+              >
+                <IconSymbol name="person.fill" size={20} color={theme.color.primary} />
+              </Box>
+              <Box flex={1} minWidth={0} gap="xxs">
+                <Text variant="titleLarge">
+                  {currentUser.fullName ?? t("profile.account.fallbackName")}
+                </Text>
+                <Box
+                  alignSelf="flex-start"
+                  px="md"
+                  py="xs"
+                  style={{
+                    borderRadius: Radius.full,
+                    backgroundColor: diditStatusPresentation.backgroundColor,
+                    borderWidth: BorderWidth.thin,
+                    borderColor: diditStatusPresentation.borderColor,
+                  }}
+                >
+                  <Text
+                    variant="caption"
+                    style={{
+                      color: diditStatusPresentation.textColor,
+                      textTransform: "uppercase",
+                      letterSpacing: LetterSpacing.trackingWide,
+                    }}
                   >
-                    <Text variant="caption" color="primary">
-                      {label}
-                    </Text>
-                  </Box>
-                ))}
+                    {diditStatusPresentation.label}
+                  </Text>
+                </Box>
               </Box>
             </Box>
-          ) : null}
-          {approvedMachines.length > 0 ? (
-            <Box gap="sm">
-              <Text variant="bodyMedium">
-                {t("profile.compliance.certificate.coverageMachines")}
+
+            <Box gap="xs">
+              <Text variant="bodyStrong">{t("profile.compliance.identity.title")}</Text>
+              <Text variant="caption" color="textMuted">
+                {diditVerification.isVerified
+                  ? t("profile.compliance.identity.approved")
+                  : t("profile.compliance.identity.required")}
               </Text>
-              <Box flexDirection="row" flexWrap="wrap" gap="sm">
-                {approvedMachines.map((label) => (
-                  <Box
-                    key={label}
-                    px="md"
-                    py="xs"
-                    backgroundColor="surfaceAlt"
-                    borderColor="border"
-                    borderRadius={Radius.pill}
-                    borderWidth={BorderWidth.thin}
-                  >
-                    <Text variant="caption" color="text">
-                      {label}
-                    </Text>
-                  </Box>
-                ))}
-              </Box>
+              {!diditVerification.isVerified ? (
+                <Text variant="caption" color="textMuted">
+                  {t("profile.studioCompliance.identity.requiredBody", {
+                    status: diditStatusPresentation.label,
+                  })}
+                </Text>
+              ) : null}
             </Box>
-          ) : null}
-        </KitSurface>
 
-        <KitSurface
-          tone="sunken"
-          padding={BrandSpacing.lg}
-          gap={BrandSpacing.xs}
-          style={{
-            borderRadius: Radius.cardSubtle,
-            borderWidth: BorderWidth.thin,
-            borderColor: theme.color.border,
-            backgroundColor: theme.color.surface,
-          }}
-        >
-          <Text variant="caption" color="textMuted">
-            {t("profile.compliance.documents.reviewNote")}
-          </Text>
-        </KitSurface>
-      </Box>
-    </ProfileSubpageScrollView>
+            <Box gap="sm">
+              <ActionButton
+                label={diditActionLabel}
+                onPress={handleDiditAction}
+                fullWidth
+                loading={isStartingDidit}
+                disabled={isDiditBusy}
+                native={false}
+                {...(diditButtonColors ? { colors: diditButtonColors } : {})}
+                {...(diditVerification.isVerified ? { tone: "secondary" as const } : {})}
+                labelStyle={{
+                  textTransform: "uppercase",
+                  letterSpacing: LetterSpacing.trackingWide,
+                  fontWeight: "700",
+                }}
+              />
+              {showDiditManualRefresh ? (
+                <ActionButton
+                  label={t("profile.identityVerification.checkStatus")}
+                  onPress={() => {
+                    void refreshDiditStatus();
+                  }}
+                  fullWidth
+                  tone="secondary"
+                  loading={isRefreshingDidit}
+                  disabled={isDiditBusy}
+                  native={false}
+                  labelStyle={{
+                    textTransform: "uppercase",
+                    letterSpacing: LetterSpacing.trackingWide,
+                    fontWeight: "700",
+                  }}
+                />
+              ) : null}
+            </Box>
+          </KitSurface>
+
+          <Box gap="sm">
+            <Text variant="radarLabel" color="textMuted">
+              {t("profile.compliance.documents.title")}
+            </Text>
+              <VerificationUploadPanel
+                icon="checkmark.circle.fill"
+                label={t("profile.compliance.insurance.title")}
+                title={t("profile.compliance.documents.tapToUpload")}
+                subtitle={getInsuranceSubtitle(preferredInsurance ?? null, locale, t)}
+                statusLabel={getDocumentStatusLabel(preferredInsurance?.reviewStatus, t)}
+                onPress={onOpenInsuranceUpload}
+              accentColor="#CCFF00"
+                disabled={isUploading}
+              />
+              <VerificationUploadPanel
+                icon="sparkles"
+                label={t("profile.compliance.certificate.title")}
+                title={t("profile.compliance.documents.tapToUpload")}
+                subtitle={getCertificateSubtitle(latestCertificate ?? null, locale, t)}
+                statusLabel={getDocumentStatusLabel(latestCertificate?.reviewStatus, t)}
+                onPress={onOpenCertificateUpload}
+              accentColor="#CCFF00"
+                disabled={isUploading}
+              />
+          </Box>
+
+          <KitSurface
+            tone="sunken"
+            padding={BrandSpacing.lg}
+            gap={BrandSpacing.sm}
+            style={{
+              borderRadius: Radius.cardSubtle,
+              borderWidth: BorderWidth.thin,
+              borderColor: theme.color.border,
+              backgroundColor: theme.color.surfaceElevated,
+            }}
+          >
+            <Text variant="caption" color="textMuted">
+              {latestCertificate?.reviewStatus === "approved"
+                ? t("profile.compliance.certificate.coverageTitle")
+                : t("profile.compliance.certificate.coveragePending")}
+            </Text>
+            {approvedCoverage.length > 0 ? (
+              <Box gap="sm">
+                <Text variant="bodyMedium">
+                  {t("profile.compliance.certificate.coverageSports")}
+                </Text>
+                <Box flexDirection="row" flexWrap="wrap" gap="sm">
+                  {approvedCoverage.map((label) => (
+                    <Box
+                      key={label}
+                      px="md"
+                      py="xs"
+                      backgroundColor="primarySubtle"
+                      borderColor="primarySubtle"
+                      borderRadius={Radius.pill}
+                      borderWidth={BorderWidth.thin}
+                    >
+                      <Text variant="caption" color="primary">
+                        {label}
+                      </Text>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            ) : null}
+            {approvedMachines.length > 0 ? (
+              <Box gap="sm">
+                <Text variant="bodyMedium">
+                  {t("profile.compliance.certificate.coverageMachines")}
+                </Text>
+                <Box flexDirection="row" flexWrap="wrap" gap="sm">
+                  {approvedMachines.map((label) => (
+                    <Box
+                      key={label}
+                      px="md"
+                      py="xs"
+                      backgroundColor="surfaceAlt"
+                      borderColor="border"
+                      borderRadius={Radius.pill}
+                      borderWidth={BorderWidth.thin}
+                    >
+                      <Text variant="caption" color="text">
+                        {label}
+                      </Text>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            ) : null}
+          </KitSurface>
+
+          <KitSurface
+            tone="sunken"
+            padding={BrandSpacing.lg}
+            gap={BrandSpacing.xs}
+            style={{
+              borderRadius: Radius.cardSubtle,
+              borderWidth: BorderWidth.thin,
+              borderColor: theme.color.border,
+              backgroundColor: theme.color.surfaceElevated,
+            }}
+          >
+            <Text variant="caption" color="textMuted">
+              {t("profile.compliance.documents.reviewNote")}
+            </Text>
+          </KitSurface>
+        </ProfileSubpageScrollView>
+      </Animated.View>
+    </TabSceneTransition>
   );
 }

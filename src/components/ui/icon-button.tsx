@@ -1,6 +1,6 @@
-import { View } from "react-native";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Box } from "@/primitives";
 import { AppButton } from "./app-button";
 import { getSurfaceElevationStyle } from "./surface-elevation";
 
@@ -47,7 +47,7 @@ export function IconButton({
       : theme.color.surface;
 
   return (
-    <View style={raisedStyle}>
+    <Box style={raisedStyle}>
       <AppButton
         accessibilityLabel={accessibilityLabel}
         colors={{
@@ -58,11 +58,11 @@ export function IconButton({
         disabled={disabled}
         dimension={size}
         haptic={false}
-        icon={<View>{icon}</View>}
+        icon={<Box>{icon}</Box>}
         onPress={onPress}
         radius={BrandRadius.buttonSubtle}
         shape="square"
       />
-    </View>
+    </Box>
   );
 }

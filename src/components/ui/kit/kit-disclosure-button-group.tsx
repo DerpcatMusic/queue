@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import type { TextStyle, ViewStyle } from "react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Animated, { LinearTransition, ReduceMotion } from "react-native-reanimated";
+import { StyleSheet } from "react-native-unistyles";
 
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
@@ -130,9 +131,9 @@ export function KitDisclosureButtonGroup<T extends string>({
                   />
                 ) : null}
                 <Pressable
-                  accessibilityRole="button"
+                  accessibilityRole="radio"
                   accessibilityLabel={option.accessibilityLabel ?? option.label}
-                  accessibilityState={{ selected }}
+                  accessibilityState={{ checked: selected }}
                   onPress={() => {
                     triggerSelectionHaptic();
                     onChange(option.value);

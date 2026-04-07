@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Text } from "react-native";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
@@ -10,15 +10,18 @@ import {
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
+
 import { ThemedText } from "@/components/themed-text";
-import { KitChip } from "@/components/ui/kit/kit-chip";
+import { KitPressable } from "@/components/ui/kit/kit-pressable";
+import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
+import { Box } from "@/primitives";
 
 export function PublicInstructorProfileScreen() {
   const { instructorId } = useLocalSearchParams<{ instructorId: string }>();
@@ -46,42 +49,43 @@ export function PublicInstructorProfileScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <TabScreenScrollView contentContainerStyle={{ paddingBottom: BrandSpacing.section }}>
-        <View
+        <Box
           style={{
             marginHorizontal: BrandSpacing.inset,
             marginTop: BrandSpacing.lg,
-            borderRadius: 24,
+            borderRadius: BrandRadius.soft,
             borderCurve: "continuous",
             padding: BrandSpacing.lg,
             gap: BrandSpacing.md,
             backgroundColor: color.surfaceElevated,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.md }}>
+          <Box style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.md }}>
             <ProfileAvatar
               imageUrl={profile.profileImageUrl}
               fallbackName={profile.displayName}
               size={64}
               roundedSquare={false}
+              accessibilityLabel={profile.displayName}
             />
-            <View style={{ flex: 1, gap: BrandSpacing.xxs }}>
+            <Box style={{ flex: 1, gap: BrandSpacing.xxs }}>
               <ThemedText type="title">{profile.displayName}</ThemedText>
               <ThemedText type="caption" style={{ color: color.textMuted }}>
                 {profile.isVerified
                   ? t("publicProfile.instructor.verified", { defaultValue: "Verified instructor" })
                   : t("publicProfile.instructor.public", { defaultValue: "Instructor profile" })}
               </ThemedText>
-            </View>
-          </View>
+            </Box>
+          </Box>
           {profile.bio ? <ThemedText>{profile.bio}</ThemedText> : null}
-        </View>
+        </Box>
 
         {sports.length > 0 ? (
           <>
             <ProfileSectionHeader
               label={t("publicProfile.instructor.sports", { defaultValue: "Sports" })}
             />
-            <View
+            <Box
               style={{
                 flexDirection: "row",
                 flexWrap: "wrap",
@@ -89,10 +93,46 @@ export function PublicInstructorProfileScreen() {
                 paddingHorizontal: BrandSpacing.inset,
               }}
             >
-              {sports.map((sport) => (
-                <KitChip key={sport} label={sport} selected={false} onPress={() => {}} disabled />
-              ))}
-            </View>
+              {sports.map((sport) => {
+                const bgColor = color.surface;
+                const pressedBgColor = color.surface;
+                const textColor = color.textMuted;
+                return (
+                  <KitPressable
+                    key={sport}
+                    accessibilityRole="none"
+                    accessibilityHint={t("publicProfile.instructor.sportChipHint", {
+                      defaultValue: "Sport offered by this instructor",
+                    })}
+                    disabled
+                    haptic={false}
+                    onPress={() => {
+                      triggerSelectionHaptic();
+                    }}
+                    style={{
+                      tone: "surface",
+                      variant: "solid",
+                      size: {
+                        minHeight: BrandSpacing.controlSm,
+                        borderRadius: BrandRadius.buttonSubtle,
+                      },
+                      padding: {
+                        horizontal: BrandSpacing.controlX,
+                        vertical: BrandSpacing.sm,
+                      },
+                      backgroundColor: bgColor,
+                      pressedBackgroundColor: pressedBgColor,
+                    }}
+                  >
+                    <Text
+                      style={[BrandType.micro, { color: textColor, includeFontPadding: false }]}
+                    >
+                      {sport}
+                    </Text>
+                  </KitPressable>
+                );
+              })}
+            </Box>
           </>
         ) : null}
 

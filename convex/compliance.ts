@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { complianceWorkpool } from "./components";
 import { requireUserRole } from "./lib/auth";
 import { normalizeCapabilityTagArray, normalizeSportType } from "./lib/domainValidation";
 import {
@@ -211,9 +212,12 @@ export const completeMyComplianceDocumentUpload = mutation({
         storageId: args.storageId,
       });
 
-      await ctx.scheduler.runAfter(0, internal.complianceReview.reviewInstructorCertificate, {
-        certificateId: documentId,
-      });
+      // Enqueue via Workpool: provides exponential backoff retry if Gemini fails
+      await complianceWorkpool.enqueueAction(
+        ctx,
+        internal.complianceReview.reviewInstructorCertificate,
+        { certificateId: documentId },
+      );
 
       return {
         ok: true,
@@ -239,9 +243,12 @@ export const completeMyComplianceDocumentUpload = mutation({
         storageId: args.storageId,
       });
 
-      await ctx.scheduler.runAfter(0, internal.complianceReview.reviewInstructorInsurancePolicy, {
-        insurancePolicyId: documentId,
-      });
+      // Enqueue via Workpool: provides exponential backoff retry if Gemini fails
+      await complianceWorkpool.enqueueAction(
+        ctx,
+        internal.complianceReview.reviewInstructorInsurancePolicy,
+        { insurancePolicyId: documentId },
+      );
 
       return {
         ok: true,
@@ -413,6 +420,7 @@ export const applyInstructorInsuranceReviewDecision = internalMutation({
     ),
     reviewProvider: v.optional(v.literal("gemini")),
     issuerName: v.optional(v.string()),
+    policyHolderName: v.optional(v.string()),
     policyNumber: v.optional(v.string()),
     expiresOn: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
@@ -438,6 +446,7 @@ export const applyInstructorInsuranceReviewDecision = internalMutation({
       ...omitUndefined({
         reviewProvider: args.reviewProvider,
         issuerName: normalizeOptionalText(args.issuerName),
+        policyHolderName: normalizeOptionalText(args.policyHolderName),
         policyNumber: normalizeOptionalText(args.policyNumber),
         expiresOn: normalizeOptionalText(args.expiresOn),
         expiresAt: args.expiresAt,

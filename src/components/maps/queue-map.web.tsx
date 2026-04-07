@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, View } from "react-native";
-
+import { Pressable, View } from "react-native";
 import { AppSymbol } from "@/components/ui/app-symbol";
-import { BrandRadius } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
 import type { QueueMapProps } from "./queue-map.types";
 import { buildCoverageNodes, getResponseLabel, getZone } from "./queue-map.web.helpers";
 
@@ -37,13 +37,13 @@ export function QueueMap(props: QueueMapProps) {
       style={{
         flex: 1,
         backgroundColor: palette.surfaceAlt,
-        padding: 20,
+        padding: BrandSpacing.insetComfort,
       }}
     >
       <View
         style={{
           flex: 1,
-          borderRadius: 28,
+          borderRadius: BrandRadius.mapOverlay,
           borderCurve: "continuous",
           backgroundColor: palette.surface,
           overflow: "hidden",
@@ -53,7 +53,7 @@ export function QueueMap(props: QueueMapProps) {
           style={{
             flex: 1,
             justifyContent: "space-between",
-            padding: 22,
+            padding: BrandSpacing.insetRoomy,
             backgroundColor: palette.surfaceAlt,
           }}
         >
@@ -63,19 +63,13 @@ export function QueueMap(props: QueueMapProps) {
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                gap: 12,
+                gap: BrandSpacing.md,
               }}
             >
-              <View style={{ gap: 4, flex: 1 }}>
+              <View style={{ gap: BrandSpacing.xs, flex: 1 }}>
                 <Text
                   style={{
-                    ...{
-                      fontFamily: "Manrope_500Medium",
-                      fontSize: 12,
-                      fontWeight: "500",
-                      letterSpacing: 0.2,
-                      lineHeight: 16,
-                    },
+                    ...BrandType.micro,
                     color: palette.primary,
                     letterSpacing: 1.1,
                     textTransform: "uppercase",
@@ -85,10 +79,7 @@ export function QueueMap(props: QueueMapProps) {
                 </Text>
                 <Text
                   style={{
-                    fontFamily: "BarlowCondensed_800ExtraBold",
-                    fontSize: 38,
-                    lineHeight: 36,
-                    letterSpacing: -1,
+                    ...BrandType.hero,
                     color: palette.text,
                   }}
                 >
@@ -98,9 +89,9 @@ export function QueueMap(props: QueueMapProps) {
 
               <View
                 style={{
-                  width: 68,
-                  height: 68,
-                  borderRadius: 22,
+                  width: BrandSpacing.avatarXl,
+                  height: BrandSpacing.avatarXl,
+                  borderRadius: BrandRadius.mapMarker,
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor: palette.primary,
@@ -112,12 +103,7 @@ export function QueueMap(props: QueueMapProps) {
 
             <Text
               style={{
-                ...{
-                  fontFamily: "Manrope_400Regular",
-                  fontSize: 16,
-                  fontWeight: "400",
-                  lineHeight: 22,
-                },
+                ...BrandType.body,
                 color: palette.textMuted,
                 maxWidth: 560,
               }}
@@ -129,11 +115,11 @@ export function QueueMap(props: QueueMapProps) {
           <View
             style={{
               flex: 1,
-              minHeight: 320,
-              borderRadius: 28,
+              minHeight: BrandSpacing.mapCanvasMinHeight,
+              borderRadius: BrandRadius.mapOverlay,
               borderCurve: "continuous",
               backgroundColor: palette.appBg,
-              marginVertical: 18,
+              marginVertical: BrandSpacing.insetSoft,
               overflow: "hidden",
             }}
           >
@@ -176,7 +162,7 @@ export function QueueMap(props: QueueMapProps) {
                   top: "10%" as never,
                   width: "52%" as never,
                   height: "72%" as never,
-                  borderRadius: 36,
+                  borderRadius: BrandRadius.mapHighlight,
                   backgroundColor: palette.primarySubtle,
                   transform: [{ rotate: "-10deg" }],
                 }}
@@ -188,7 +174,7 @@ export function QueueMap(props: QueueMapProps) {
                   top: "22%" as never,
                   width: "32%" as never,
                   height: "48%" as never,
-                  borderRadius: 28,
+                  borderRadius: BrandRadius.mapOverlay,
                   backgroundColor: palette.successSubtle,
                   transform: [{ rotate: "11deg" }],
                 }}
@@ -198,35 +184,29 @@ export function QueueMap(props: QueueMapProps) {
             <View
               style={{
                 position: "absolute",
-                top: 18,
-                left: 18,
-                right: 18,
+                top: BrandSpacing.insetSoft,
+                left: BrandSpacing.insetSoft,
+                right: BrandSpacing.insetSoft,
                 flexDirection: "row",
                 alignItems: "flex-start",
                 justifyContent: "space-between",
-                gap: 12,
+                gap: BrandSpacing.md,
               }}
             >
               <View
                 style={{
                   maxWidth: 320,
-                  borderRadius: 22,
+                  borderRadius: BrandRadius.mapMarker,
                   borderCurve: "continuous",
                   backgroundColor: palette.surface,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                  gap: 4,
+                  paddingHorizontal: BrandSpacing.componentPadding,
+                  paddingVertical: BrandSpacing.md,
+                  gap: BrandSpacing.xs,
                 }}
               >
                 <Text
                   style={{
-                    ...{
-                      fontFamily: "Manrope_500Medium",
-                      fontSize: 12,
-                      fontWeight: "500",
-                      letterSpacing: 0.2,
-                      lineHeight: 16,
-                    },
+                    ...BrandType.micro,
                     color: palette.primary,
                     letterSpacing: 1,
                     textTransform: "uppercase",
@@ -237,12 +217,7 @@ export function QueueMap(props: QueueMapProps) {
                 <Text
                   numberOfLines={1}
                   style={{
-                    ...{
-                      fontFamily: "Manrope_500Medium",
-                      fontSize: 16,
-                      fontWeight: "500",
-                      lineHeight: 22,
-                    },
+                    ...BrandType.bodyMedium,
                     color: palette.text,
                   }}
                 >
@@ -250,12 +225,7 @@ export function QueueMap(props: QueueMapProps) {
                 </Text>
                 <Text
                   style={{
-                    ...{
-                      fontFamily: "Manrope_400Regular",
-                      fontSize: 14,
-                      fontWeight: "400",
-                      lineHeight: 19,
-                    },
+                    ...BrandType.caption,
                     color: palette.textMuted,
                   }}
                 >
@@ -265,23 +235,17 @@ export function QueueMap(props: QueueMapProps) {
 
               <View
                 style={{
-                  borderRadius: 22,
+                  borderRadius: BrandRadius.mapMarker,
                   borderCurve: "continuous",
                   backgroundColor: palette.primary,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                  gap: 2,
+                  paddingHorizontal: BrandSpacing.componentPadding,
+                  paddingVertical: BrandSpacing.md,
+                  gap: BrandSpacing.xs,
                 }}
               >
                 <Text
                   style={{
-                    ...{
-                      fontFamily: "Manrope_500Medium",
-                      fontSize: 12,
-                      fontWeight: "500",
-                      letterSpacing: 0.2,
-                      lineHeight: 16,
-                    },
+                    ...BrandType.micro,
                     color: palette.onPrimary,
                     letterSpacing: 1,
                     textTransform: "uppercase",
@@ -291,9 +255,7 @@ export function QueueMap(props: QueueMapProps) {
                 </Text>
                 <Text
                   style={{
-                    fontFamily: "BarlowCondensed_800ExtraBold",
-                    fontSize: 30,
-                    lineHeight: 28,
+                    ...BrandType.heroSmall,
                     color: palette.onPrimary,
                     fontVariant: ["tabular-nums"],
                   }}
@@ -326,11 +288,11 @@ export function QueueMap(props: QueueMapProps) {
                     top: `${node.top}%` as `${number}%`,
                     width: `${node.width}%` as `${number}%`,
                     height: `${node.height}%` as `${number}%`,
-                    borderRadius: 24,
+                    borderRadius: BrandRadius.soft,
                     borderCurve: "continuous",
                     backgroundColor: blockBackground,
-                    paddingHorizontal: 12,
-                    paddingVertical: 12,
+                    paddingHorizontal: BrandSpacing.md,
+                    paddingVertical: BrandSpacing.md,
                     justifyContent: "space-between",
                     transform: [{ rotate: `${String(node.rotate)}deg` }],
                     borderWidth: pressed ? 1.5 : 1,
@@ -344,27 +306,16 @@ export function QueueMap(props: QueueMapProps) {
                   <Text
                     numberOfLines={2}
                     style={{
-                      ...{
-                        fontFamily: "Manrope_500Medium",
-                        fontSize: 16,
-                        fontWeight: "500",
-                        lineHeight: 22,
-                      },
+                      ...BrandType.bodyMedium,
                       color: titleColor,
                     }}
                   >
                     {node.label}
                   </Text>
-                  <View style={{ gap: 2 }}>
+                  <View style={{ gap: BrandSpacing.xs }}>
                     <Text
                       style={{
-                        ...{
-                          fontFamily: "Manrope_500Medium",
-                          fontSize: 12,
-                          fontWeight: "500",
-                          letterSpacing: 0.2,
-                          lineHeight: 16,
-                        },
+                        ...BrandType.micro,
                         color: metaColor,
                         letterSpacing: 0.8,
                         textTransform: "uppercase",
@@ -378,12 +329,7 @@ export function QueueMap(props: QueueMapProps) {
                     </Text>
                     <Text
                       style={{
-                        ...{
-                          fontFamily: "Manrope_400Regular",
-                          fontSize: 14,
-                          fontWeight: "400",
-                          lineHeight: 19,
-                        },
+                        ...BrandType.caption,
                         color: metaColor,
                       }}
                     >
@@ -409,23 +355,17 @@ export function QueueMap(props: QueueMapProps) {
             <View
               style={{
                 flex: 1,
-                borderRadius: 24,
+                borderRadius: BrandRadius.soft,
                 borderCurve: "continuous",
                 backgroundColor: palette.primary,
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                gap: 2,
+                paddingHorizontal: BrandSpacing.lg,
+                paddingVertical: BrandSpacing.component,
+                gap: BrandSpacing.xs,
               }}
             >
               <Text
                 style={{
-                  ...{
-                    fontFamily: "Manrope_500Medium",
-                    fontSize: 12,
-                    fontWeight: "500",
-                    letterSpacing: 0.2,
-                    lineHeight: 16,
-                  },
+                  ...BrandType.micro,
                   color: palette.onPrimary,
                   letterSpacing: 1,
                   textTransform: "uppercase",
@@ -435,9 +375,7 @@ export function QueueMap(props: QueueMapProps) {
               </Text>
               <Text
                 style={{
-                  fontFamily: "BarlowCondensed_800ExtraBold",
-                  fontSize: 30,
-                  lineHeight: 28,
+                  ...BrandType.heroSmall,
                   color: palette.onPrimary,
                 }}
               >
@@ -448,23 +386,17 @@ export function QueueMap(props: QueueMapProps) {
             <View
               style={{
                 flex: 1.5,
-                borderRadius: 24,
+                borderRadius: BrandRadius.soft,
                 borderCurve: "continuous",
                 backgroundColor: palette.surface,
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                gap: 10,
+                paddingHorizontal: BrandSpacing.lg,
+                paddingVertical: BrandSpacing.component,
+                gap: BrandSpacing.stackDense,
               }}
             >
               <Text
                 style={{
-                  ...{
-                    fontFamily: "Manrope_500Medium",
-                    fontSize: 12,
-                    fontWeight: "500",
-                    letterSpacing: 0.2,
-                    lineHeight: 16,
-                  },
+                  ...BrandType.micro,
                   color: palette.textMuted,
                   letterSpacing: 1,
                   textTransform: "uppercase",
@@ -482,19 +414,13 @@ export function QueueMap(props: QueueMapProps) {
                         borderRadius: BrandRadius.pill,
                         borderCurve: "continuous",
                         backgroundColor: node.focused ? palette.primaryPressed : palette.surfaceAlt,
-                        paddingHorizontal: 10,
-                        paddingVertical: 7,
+                        paddingHorizontal: BrandSpacing.sm,
+                        paddingVertical: BrandSpacing.stackMicro,
                       }}
                     >
                       <Text
                         style={{
-                          ...{
-                            fontFamily: "Manrope_500Medium",
-                            fontSize: 12,
-                            fontWeight: "500",
-                            letterSpacing: 0.2,
-                            lineHeight: 16,
-                          },
+                          ...BrandType.micro,
                           color: node.focused ? palette.onPrimary : palette.text,
                         }}
                       >
@@ -506,12 +432,7 @@ export function QueueMap(props: QueueMapProps) {
               ) : (
                 <Text
                   style={{
-                    ...{
-                      fontFamily: "Manrope_400Regular",
-                      fontSize: 14,
-                      fontWeight: "400",
-                      lineHeight: 19,
-                    },
+                    ...BrandType.caption,
                     color: palette.textMuted,
                   }}
                 >

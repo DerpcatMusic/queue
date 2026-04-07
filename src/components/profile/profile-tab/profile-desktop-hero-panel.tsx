@@ -1,12 +1,13 @@
 import { memo } from "react";
-import { Text, View } from "react-native";
 import { ProfileVerifiedBadge } from "@/components/profile/profile-verified-badge";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitStatusBadge } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Box, Text } from "@/primitives";
 import type { ProfileHeroAction } from "./profile-hero-utils";
+const BRIGHT_LIME = "#CCFF00";
 
 type ProfileDesktopHeroPanelProps = {
   profileName: string;
@@ -40,17 +41,22 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
   const theme = useTheme();
 
   return (
-    <View
+    <Box
       style={{
         borderRadius: BrandRadius.soft,
         borderCurve: "continuous",
-        backgroundColor: theme.color.surface,
+        backgroundColor: theme.scheme === "light" ? "#FFFFFF" : theme.color.surfaceElevated,
         paddingHorizontal: BrandSpacing.xl,
         paddingVertical: BrandSpacing.xl,
         gap: BrandSpacing.lg,
+        shadowColor: "#000000",
+        shadowOpacity: theme.scheme === "light" ? 0.05 : 0.06,
+        shadowRadius: theme.scheme === "light" ? 22 : 18,
+        shadowOffset: { width: 0, height: theme.scheme === "light" ? 10 : 8 },
+        elevation: theme.scheme === "light" ? 0 : 2,
       }}
     >
-      <View
+      <Box
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -60,23 +66,19 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
         <ProfileAvatar
           imageUrl={profileImageUrl}
           fallbackName={profileName}
-          size={
-            BrandSpacing.iconContainerLarge +
-            BrandSpacing.xs +
-            BrandSpacing.xs / 2
-          }
+          size={BrandSpacing.iconContainerLarge + BrandSpacing.xs + BrandSpacing.xs / 2}
           roundedSquare
         />
-        <View style={{ flex: 1, gap: BrandSpacing.xs }}>
+        <Box style={{ flex: 1, gap: BrandSpacing.xs }}>
           <Text
             style={{
               ...BrandType.micro,
-              color: theme.color.textMicro,
+              color: BRIGHT_LIME,
             }}
           >
             {roleLabel}
           </Text>
-          <View
+          <Box
             style={{
               flexDirection: "row",
               alignItems: "center",
@@ -94,19 +96,15 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
               {profileName}
             </Text>
             {isVerified ? <ProfileVerifiedBadge /> : null}
-          </View>
-        </View>
-      </View>
+          </Box>
+        </Box>
+      </Box>
 
-      <View style={{ gap: BrandSpacing.sm }}>
+      <Box style={{ gap: BrandSpacing.sm }}>
         <KitStatusBadge
           label={statusLabel}
           tone={
-            statusTone === "success"
-              ? "success"
-              : statusTone === "warning"
-                ? "warning"
-                : "neutral"
+            statusTone === "success" ? "success" : statusTone === "warning" ? "warning" : "neutral"
           }
           showDot
         />
@@ -130,37 +128,44 @@ export const ProfileDesktopHeroPanel = memo(function ProfileDesktopHeroPanel({
             {metaLabel}
           </Text>
         ) : null}
-      </View>
+      </Box>
 
-      <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
-        <View style={{ flex: 1 }}>
+      <Box style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+        <Box style={{ flex: 1 }}>
           <ActionButton
             label={primaryAction.label}
             onPress={primaryAction.onPress}
             fullWidth
+            colors={{
+              backgroundColor: BRIGHT_LIME,
+              pressedBackgroundColor: "#D9FF4D",
+              disabledBackgroundColor: "#E7EEAF",
+              labelColor: "#161E00",
+              disabledLabelColor: "#7B7B7B",
+            }}
           />
-        </View>
+        </Box>
         {onOpenSwitcher ? (
-          <View style={{ flex: 1 }}>
+          <Box style={{ flex: 1 }}>
             <ActionButton
               label={switcherActionLabel ?? "Switch account"}
               onPress={onOpenSwitcher}
               tone="secondary"
               fullWidth
             />
-          </View>
+          </Box>
         ) : null}
         {secondaryAction ? (
-          <View style={{ flex: 1 }}>
+          <Box style={{ flex: 1 }}>
             <ActionButton
               label={secondaryAction.label}
               onPress={secondaryAction.onPress}
               tone="secondary"
               fullWidth
             />
-          </View>
+          </Box>
         ) : null}
-      </View>
-    </View>
+      </Box>
+    </Box>
   );
 });

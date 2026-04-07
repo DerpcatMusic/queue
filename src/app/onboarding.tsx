@@ -2,27 +2,27 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
-import { startTransition, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, startTransition, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
   I18nManager,
   ScrollView,
-  StyleSheet,
+  Text,
   useWindowDimensions,
   View,
 } from "react-native";
 import Animated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { StyleSheet } from "react-native-unistyles";
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
-import {
-  GlobalTopSheetProvider,
-} from "@/components/layout/top-sheet-registry";
+import { GlobalTopSheetProvider } from "@/components/layout/top-sheet-registry";
 import { useTopSheetContentInsets } from "@/components/layout/use-top-sheet-content-insets";
 import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
@@ -31,8 +31,10 @@ import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { IconButton } from "@/components/ui/icon-button";
-import { KitChip, KitTextField } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { KitTextField } from "@/components/ui/kit";
+import { KitPressable } from "@/components/ui/kit/kit-pressable";
+import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { ZONE_OPTIONS } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import { isSportType, SPORT_TYPES, toSportLabel } from "@/convex/constants";
@@ -43,6 +45,7 @@ import {
 import { useLocationResolution } from "@/hooks/use-location-resolution";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth, IconSize } from "@/lib/design-system";
+import { startDiditNativeVerification } from "@/lib/didit-native";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
@@ -50,12 +53,8 @@ import {
   isPushRegistrationError,
   registerForPushNotificationsAsync,
 } from "@/lib/push-notifications";
-import {
-  buildRoleTabRoute,
-  ROLE_TAB_ROUTE_NAMES,
-} from "@/navigation/role-routes";
-import { startDiditNativeVerification } from "@/lib/didit-native";
-import { Suspense, lazy } from "react";
+import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import { Motion } from "@/theme/theme";
 
 type OnboardingRole = "instructor" | "studio";
 type OnboardingStep = 0 | 1 | 2;
@@ -64,27 +63,27 @@ type OnboardingStep = 0 | 1 | 2;
 const StepInstructorProfileBody = lazy(() =>
   import("../components/onboarding/step-instructor-profile-body").then((m) => ({
     default: m.StepInstructorProfileBody,
-  }))
+  })),
 );
 const StepStudioProfileBody = lazy(() =>
   import("../components/onboarding/step-studio-profile-body").then((m) => ({
     default: m.StepStudioProfileBody,
-  }))
+  })),
 );
 const StepInstructorComplianceBody = lazy(() =>
   import("../components/onboarding/step-instructor-compliance-body").then((m) => ({
     default: m.StepInstructorComplianceBody,
-  }))
+  })),
 );
 const StepStudioComplianceBody = lazy(() =>
   import("../components/onboarding/step-studio-compliance-body").then((m) => ({
     default: m.StepStudioComplianceBody,
-  }))
+  })),
 );
 
 const MAX_INSTRUCTOR_ZONES = 25;
-const STEP_EXIT_MS = 170;
-const STEP_ENTER_MS = 220;
+const STEP_EXIT_MS = Motion.fast; // 140ms for natural deceleration
+const STEP_ENTER_MS = Motion.normal; // 220ms for smooth entry
 const DETAILS_READY_DELAY_MS = 110;
 const LOCATION_MAP_READY_DELAY_MS = 60;
 
@@ -158,12 +157,18 @@ function OnboardingStageLayer({
 
     if (phase === "enter") {
       translateX.value = incomingOffset;
-      translateX.value = withTiming(0, { duration: STEP_ENTER_MS });
+      translateX.value = withTiming(0, {
+        duration: STEP_ENTER_MS,
+        easing: Easing.out(Easing.cubic),
+      });
       return;
     }
 
     if (phase === "exit") {
-      translateX.value = withTiming(outgoingOffset, { duration: STEP_EXIT_MS });
+      translateX.value = withTiming(outgoingOffset, {
+        duration: STEP_EXIT_MS,
+        easing: Easing.out(Easing.cubic),
+      });
       return;
     }
 
@@ -175,9 +180,7 @@ function OnboardingStageLayer({
   }));
 
   return (
-    <Animated.View style={[{ flex: 1, width: "100%" }, animatedStyle]}>
-      {children}
-    </Animated.View>
+    <Animated.View style={[{ flex: 1, width: "100%" }, animatedStyle]}>{children}</Animated.View>
   );
 }
 
@@ -197,25 +200,19 @@ function OnboardingScreenContent() {
   const { t, i18n } = useTranslation();
   const { color } = useTheme();
 
-  const { contentContainerStyle: sheetContentInsets } =
-    useTopSheetContentInsets({
-      topSpacing: BrandSpacing.lg,
-      bottomSpacing: BrandSpacing.insetComfort,
-      horizontalPadding: BrandSpacing.inset,
-    });
+  const { contentContainerStyle: sheetContentInsets } = useTopSheetContentInsets({
+    topSpacing: BrandSpacing.lg,
+    bottomSpacing: BrandSpacing.insetComfort,
+    horizontalPadding: BrandSpacing.inset,
+  });
   const { width } = useWindowDimensions();
   const isDesktop = width >= 980;
   const language = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
 
   const currentUser = useQuery(api.users.getCurrentUser);
-  const completeInstructorOnboarding = useMutation(
-    api.onboarding.completeInstructorOnboarding,
-  );
-  const completeStudioOnboarding = useMutation(
-    api.onboarding.completeStudioOnboarding,
-  );
-  const { isUploading, pickAndUploadComplianceDocument } =
-    useComplianceDocumentUpload();
+  const completeInstructorOnboarding = useMutation(api.onboarding.completeInstructorOnboarding);
+  const completeStudioOnboarding = useMutation(api.onboarding.completeStudioOnboarding);
+  const { isUploading, pickAndUploadComplianceDocument } = useComplianceDocumentUpload();
 
   const [step, setStep] = useState<OnboardingStep>(0);
   const [visibleStep, setVisibleStep] = useState<OnboardingStep>(0);
@@ -235,10 +232,8 @@ function OnboardingScreenContent() {
   const requestedRole = isOnboardingRole(roleParam) ? roleParam : null;
 
   const ownedRoles = currentUser?.roles ?? [];
-  const isAdditionalProfileSetup =
-    requestedRole !== null && !ownedRoles.includes(requestedRole);
-  const isForcedWorkspaceSetup =
-    isAdditionalProfileSetup && ownedRoles.length > 0;
+  const isAdditionalProfileSetup = requestedRole !== null && !ownedRoles.includes(requestedRole);
+  const isForcedWorkspaceSetup = isAdditionalProfileSetup && ownedRoles.length > 0;
   const isBlockedAlternateAccountSetup =
     currentUser?.onboardingComplete === true &&
     requestedRole !== null &&
@@ -290,15 +285,9 @@ function OnboardingScreenContent() {
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [selectedZones, setSelectedZones] = useState<string[]>([]);
   const [instructorAddress, setInstructorAddress] = useState("");
-  const [instructorLatitude, setInstructorLatitude] = useState<
-    number | undefined
-  >();
-  const [instructorLongitude, setInstructorLongitude] = useState<
-    number | undefined
-  >();
-  const [instructorDetectedZone, setInstructorDetectedZone] = useState<
-    string | null
-  >(null);
+  const [instructorLatitude, setInstructorLatitude] = useState<number | undefined>();
+  const [instructorLongitude, setInstructorLongitude] = useState<number | undefined>();
+  const [instructorDetectedZone, setInstructorDetectedZone] = useState<string | null>(null);
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isRequestingPush, setIsRequestingPush] = useState(false);
 
@@ -307,12 +296,10 @@ function OnboardingScreenContent() {
   const [studioContactPhone, setStudioContactPhone] = useState("");
   const [studioLatitude, setStudioLatitude] = useState<number | undefined>();
   const [studioLongitude, setStudioLongitude] = useState<number | undefined>();
-  const [studioDetectedZone, setStudioDetectedZone] = useState<string | null>(
-    null,
+  const [studioDetectedZone, setStudioDetectedZone] = useState<string | null>(null);
+  const [studioLegalEntityType, setStudioLegalEntityType] = useState<"individual" | "company">(
+    "individual",
   );
-  const [studioLegalEntityType, setStudioLegalEntityType] = useState<
-    "individual" | "company"
-  >("individual");
   const [studioVatReportingType, setStudioVatReportingType] = useState<
     "osek_patur" | "osek_murshe" | "company" | "other" | null
   >(null);
@@ -325,9 +312,7 @@ function OnboardingScreenContent() {
   const [isStartingStudioDidit, setIsStartingStudioDidit] = useState(false);
   const [isSavingStudioBilling, setIsSavingStudioBilling] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [verificationRefreshAt, setVerificationRefreshAt] = useState<
-    number | null
-  >(null);
+  const [verificationRefreshAt, setVerificationRefreshAt] = useState<number | null>(null);
   const [verificationFeedback, setVerificationFeedback] = useState<{
     tone: "success" | "error";
     message: string;
@@ -335,9 +320,7 @@ function OnboardingScreenContent() {
 
   const instructorResolver = useLocationResolution();
   const studioResolver = useLocationResolution();
-  const stepTransitionTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>(
-    [],
-  );
+  const stepTransitionTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
   const onboardingScrollRef = useRef<ScrollView>(null);
 
   useEffect(
@@ -367,9 +350,7 @@ function OnboardingScreenContent() {
 
   const shouldLoadInstructorVerification =
     role === "instructor" && step === 2 && currentUser?.role === "instructor";
-  const verificationQueryArgs = verificationRefreshAt
-    ? { now: verificationRefreshAt }
-    : {};
+  const verificationQueryArgs = verificationRefreshAt ? { now: verificationRefreshAt } : {};
   const instructorAccessSnapshot = useQuery(
     api.access.getMyInstructorAccessSnapshot,
     shouldLoadInstructorVerification ? verificationQueryArgs : "skip",
@@ -388,18 +369,12 @@ function OnboardingScreenContent() {
   const onboardingCompliance = instructorAccessSnapshot?.compliance;
   const studioDiditVerification = studioAccessSnapshot?.verification;
   const onboardingStudioCompliance = studioAccessSnapshot?.compliance;
-  const createStudioDiditSession = useAction(
-    api.didit.createSessionForCurrentStudioOwner,
-  );
-  const refreshStudioDiditVerification = useAction(
-    api.didit.refreshMyStudioDiditVerification,
-  );
+  const createStudioDiditSession = useAction(api.didit.createSessionForCurrentStudioOwner);
+  const refreshStudioDiditVerification = useAction(api.didit.refreshMyStudioDiditVerification);
   const markMyStudioDiditVerificationAbandoned = useMutation(
     api.didit.markMyStudioDiditVerificationAbandoned,
   );
-  const saveStudioBillingProfile = useMutation(
-    api.complianceStudio.upsertMyStudioBillingProfile,
-  );
+  const saveStudioBillingProfile = useMutation(api.complianceStudio.upsertMyStudioBillingProfile);
   useEffect(() => {
     if (!shouldLoadStudioVerification) {
       return;
@@ -409,16 +384,10 @@ function OnboardingScreenContent() {
     if (billingProfile) {
       setStudioLegalEntityType(billingProfile.legalEntityType);
       setStudioVatReportingType(billingProfile.vatReportingType ?? null);
-      setStudioLegalBusinessName(
-        billingProfile.legalBusinessName ?? studioName.trim(),
-      );
+      setStudioLegalBusinessName(billingProfile.legalBusinessName ?? studioName.trim());
       setStudioTaxId(billingProfile.taxId ?? "");
-      setStudioBillingEmail(
-        billingProfile.billingEmail ?? currentUser?.email ?? "",
-      );
-      setStudioBillingAddress(
-        billingProfile.billingAddress ?? studioAddress.trim(),
-      );
+      setStudioBillingEmail(billingProfile.billingEmail ?? currentUser?.email ?? "");
+      setStudioBillingAddress(billingProfile.billingAddress ?? studioAddress.trim());
       return;
     }
 
@@ -475,9 +444,7 @@ function OnboardingScreenContent() {
     ),
   ].sort();
 
-  const uploadInsuranceFromOnboarding = async (
-    source: "document" | "image",
-  ) => {
+  const uploadInsuranceFromOnboarding = async (source: "document" | "image") => {
     try {
       const result = await pickAndUploadComplianceDocument({
         kind: "insurance",
@@ -499,9 +466,7 @@ function OnboardingScreenContent() {
     }
   };
 
-  const uploadCertificateFromOnboarding = async (
-    source: "document" | "image",
-  ) => {
+  const uploadCertificateFromOnboarding = async (source: "document" | "image") => {
     try {
       const result = await pickAndUploadComplianceDocument({
         kind: "certificate",
@@ -635,15 +600,9 @@ function OnboardingScreenContent() {
         legalBusinessName: studioLegalBusinessName,
         taxId: studioTaxId,
         billingEmail: studioBillingEmail,
-        ...(studioVatReportingType
-          ? { vatReportingType: studioVatReportingType }
-          : {}),
-        ...(studioContactPhone.trim()
-          ? { billingPhone: studioContactPhone }
-          : {}),
-        ...(studioBillingAddress.trim()
-          ? { billingAddress: studioBillingAddress }
-          : {}),
+        ...(studioVatReportingType ? { vatReportingType: studioVatReportingType } : {}),
+        ...(studioContactPhone.trim() ? { billingPhone: studioContactPhone } : {}),
+        ...(studioBillingAddress.trim() ? { billingAddress: studioBillingAddress } : {}),
       });
       setVerificationFeedback({
         tone: "success",
@@ -662,9 +621,7 @@ function OnboardingScreenContent() {
 
   const toggleSport = (sport: string) => {
     setSelectedSports((current) =>
-      current.includes(sport)
-        ? current.filter((value) => value !== sport)
-        : [...current, sport],
+      current.includes(sport) ? current.filter((value) => value !== sport) : [...current, sport],
     );
   };
 
@@ -767,8 +724,7 @@ function OnboardingScreenContent() {
     }
 
     setErrorMessage(null);
-    const result =
-      await instructorResolver.resolveFromAddress(instructorAddress);
+    const result = await instructorResolver.resolveFromAddress(instructorAddress);
     if (!result.ok) {
       setErrorMessage(
         getLocationResolveErrorMessage({
@@ -805,10 +761,7 @@ function OnboardingScreenContent() {
     applyInstructorResolution(result.data.value, true);
   };
 
-  const resolveInstructorFromMapPin = async (pin: {
-    latitude: number;
-    longitude: number;
-  }) => {
+  const resolveInstructorFromMapPin = async (pin: { latitude: number; longitude: number }) => {
     setErrorMessage(null);
     const result = await instructorResolver.resolveFromCoordinates(pin);
     if (!result.ok) {
@@ -871,10 +824,7 @@ function OnboardingScreenContent() {
     applyStudioResolution(result.data.value);
   };
 
-  const resolveStudioFromMapPin = async (pin: {
-    latitude: number;
-    longitude: number;
-  }) => {
+  const resolveStudioFromMapPin = async (pin: { latitude: number; longitude: number }) => {
     setErrorMessage(null);
     const result = await studioResolver.resolveFromCoordinates(pin);
     if (!result.ok) {
@@ -901,10 +851,7 @@ function OnboardingScreenContent() {
       const token = await registerForPushNotificationsAsync();
       setPushToken(token);
     } catch (error) {
-      if (
-        isPushRegistrationError(error) &&
-        error.code === "permission_denied"
-      ) {
+      if (isPushRegistrationError(error) && error.code === "permission_denied") {
         showOpenSettingsAlert({
           title: t("common.permissionRequired"),
           body: t("onboarding.push.permissionNotGranted"),
@@ -960,9 +907,7 @@ function OnboardingScreenContent() {
         startTransition(() => {
           setVisibleStep(nextStep);
           setStepTransition((current) =>
-            current?.targetStep === nextStep
-              ? { ...current, phase: "enter" }
-              : current,
+            current?.targetStep === nextStep ? { ...current, phase: "enter" } : current,
           );
         });
       }, STEP_EXIT_MS),
@@ -1013,8 +958,7 @@ function OnboardingScreenContent() {
 
     try {
       const hourly = Number.parseFloat(hourlyRate);
-      const hourlyRateExpectation =
-        Number.isFinite(hourly) && hourly > 0 ? hourly : undefined;
+      const hourlyRateExpectation = Number.isFinite(hourly) && hourly > 0 ? hourly : undefined;
 
       await completeInstructorOnboarding({
         displayName: displayName.trim(),
@@ -1032,9 +976,7 @@ function OnboardingScreenContent() {
       });
 
       if (isForcedWorkspaceSetup) {
-        router.replace(
-          buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile),
-        );
+        router.replace(buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile));
         return;
       }
 
@@ -1069,11 +1011,7 @@ function OnboardingScreenContent() {
       let resolvedLatitude = studioLatitude;
       let resolvedLongitude = studioLongitude;
 
-      if (
-        !resolvedZone ||
-        resolvedLatitude === undefined ||
-        resolvedLongitude === undefined
-      ) {
+      if (!resolvedZone || resolvedLatitude === undefined || resolvedLongitude === undefined) {
         const result = await studioResolver.resolveFromAddress(studioAddress);
         if (!result.ok) {
           throw new Error(
@@ -1094,11 +1032,7 @@ function OnboardingScreenContent() {
         resolvedLongitude = resolved.longitude;
       }
 
-      if (
-        !resolvedZone ||
-        resolvedLatitude === undefined ||
-        resolvedLongitude === undefined
-      ) {
+      if (!resolvedZone || resolvedLatitude === undefined || resolvedLongitude === undefined) {
         throw new Error(t("onboarding.errors.failedToResolveAddress"));
       }
 
@@ -1113,9 +1047,7 @@ function OnboardingScreenContent() {
       });
 
       if (isForcedWorkspaceSetup) {
-        router.replace(
-          buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile),
-        );
+        router.replace(buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile));
         return;
       }
 
@@ -1168,15 +1100,13 @@ function OnboardingScreenContent() {
               mode={role === "instructor" ? "zoneSelect" : "pinDrop"}
               pin={
                 role === "instructor"
-                  ? instructorLatitude !== undefined &&
-                    instructorLongitude !== undefined
+                  ? instructorLatitude !== undefined && instructorLongitude !== undefined
                     ? {
                         latitude: instructorLatitude,
                         longitude: instructorLongitude,
                       }
                     : null
-                  : studioLatitude !== undefined &&
-                      studioLongitude !== undefined
+                  : studioLatitude !== undefined && studioLongitude !== undefined
                     ? { latitude: studioLatitude, longitude: studioLongitude }
                     : null
               }
@@ -1187,22 +1117,12 @@ function OnboardingScreenContent() {
                     ? [studioDetectedZone]
                     : []
               }
-              focusZoneId={
-                role === "instructor"
-                  ? instructorDetectedZone
-                  : studioDetectedZone
-              }
+              focusZoneId={role === "instructor" ? instructorDetectedZone : studioDetectedZone}
               onPressZone={toggleZone}
               onPressMap={
-                role === "instructor"
-                  ? resolveInstructorFromMapPin
-                  : resolveStudioFromMapPin
+                role === "instructor" ? resolveInstructorFromMapPin : resolveStudioFromMapPin
               }
-              onUseGps={
-                role === "instructor"
-                  ? resolveInstructorFromGps
-                  : resolveStudioFromGps
-              }
+              onUseGps={role === "instructor" ? resolveInstructorFromGps : resolveStudioFromGps}
             />
           ) : (
             <View
@@ -1214,9 +1134,7 @@ function OnboardingScreenContent() {
               ]}
             >
               <ActivityIndicator color={color.primary} />
-              <ThemedText style={{ color: color.textMuted }}>
-                {t("onboarding.loading")}
-              </ThemedText>
+              <ThemedText style={{ color: color.textMuted }}>{t("onboarding.loading")}</ThemedText>
             </View>
           )}
         </View>
@@ -1232,9 +1150,7 @@ function OnboardingScreenContent() {
         },
       ]}
     >
-      <ThemedText type="subtitle">
-        {t("onboarding.instructorDetailsTitle")}
-      </ThemedText>
+      <ThemedText type="subtitle">{t("onboarding.instructorDetailsTitle")}</ThemedText>
       {isForcedWorkspaceSetup ? (
         <ThemedText style={{ color: color.textMuted }}>
           {t("onboarding.workspaceSetupInstructorHint")}
@@ -1268,25 +1184,49 @@ function OnboardingScreenContent() {
       ) : null}
 
       <View style={styles.sectionBlock}>
-        <ThemedText type="defaultSemiBold">
-          {t("onboarding.sportsTitle")}
-        </ThemedText>
+        <ThemedText type="defaultSemiBold">{t("onboarding.sportsTitle")}</ThemedText>
         <View style={styles.chipGrid}>
-          {SPORT_TYPES.map((sport) => (
-            <KitChip
-              key={sport}
-              label={toDisplayLabel(sport)}
-              selected={selectedSports.includes(sport)}
-              onPress={() => toggleSport(sport)}
-            />
-          ))}
+          {SPORT_TYPES.map((sport) => {
+            const isSelected = selectedSports.includes(sport);
+            const bgColor = isSelected ? color.primary : color.surfaceAlt;
+            const pressedBgColor = isSelected ? color.primaryPressed : color.surfaceElevated;
+            const textColor = isSelected ? color.onPrimary : color.text;
+            return (
+              <KitPressable
+                key={sport}
+                accessibilityRole="checkbox"
+                accessibilityState={{ disabled: false, checked: isSelected }}
+                haptic={false}
+                onPress={() => {
+                  triggerSelectionHaptic();
+                  toggleSport(sport);
+                }}
+                style={{
+                  tone: isSelected ? "primary" : "surface",
+                  variant: "solid",
+                  size: {
+                    minHeight: BrandSpacing.controlSm,
+                    borderRadius: BrandRadius.buttonSubtle,
+                  },
+                  padding: {
+                    horizontal: BrandSpacing.controlX,
+                    vertical: BrandSpacing.sm,
+                  },
+                  backgroundColor: bgColor,
+                  pressedBackgroundColor: pressedBgColor,
+                }}
+              >
+                <Text style={[BrandType.micro, { color: textColor, includeFontPadding: false }]}>
+                  {toDisplayLabel(sport)}
+                </Text>
+              </KitPressable>
+            );
+          })}
         </View>
       </View>
 
       <View style={styles.sectionBlock}>
-        <ThemedText type="defaultSemiBold">
-          {t("profile.settings.location.title")}
-        </ThemedText>
+        <ThemedText type="defaultSemiBold">{t("profile.settings.location.title")}</ThemedText>
         {showLocationSection ? (
           <>
             <AddressAutocomplete
@@ -1334,14 +1274,44 @@ function OnboardingScreenContent() {
               {selectedZones.map((zoneId) => {
                 const zone = ZONE_OPTIONS.find((item) => item.id === zoneId);
                 const label = zone ? zone.label[language] : zoneId;
-                return (
-                  <KitChip
-                    key={zoneId}
-                    label={label}
-                    selected
-                    onPress={() => toggleZone(zoneId)}
-                  />
-                );
+                return (() => {
+                  const isSelected = true;
+                  const bgColor = color.primary;
+                  const pressedBgColor = color.primaryPressed;
+                  const textColor = color.onPrimary;
+                  return (
+                    <KitPressable
+                      key={zoneId}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ disabled: false, checked: isSelected }}
+                      haptic={false}
+                      onPress={() => {
+                        triggerSelectionHaptic();
+                        toggleZone(zoneId);
+                      }}
+                      style={{
+                        tone: "primary",
+                        variant: "solid",
+                        size: {
+                          minHeight: BrandSpacing.controlSm,
+                          borderRadius: BrandRadius.buttonSubtle,
+                        },
+                        padding: {
+                          horizontal: BrandSpacing.controlX,
+                          vertical: BrandSpacing.sm,
+                        },
+                        backgroundColor: bgColor,
+                        pressedBackgroundColor: pressedBgColor,
+                      }}
+                    >
+                      <Text
+                        style={[BrandType.micro, { color: textColor, includeFontPadding: false }]}
+                      >
+                        {label}
+                      </Text>
+                    </KitPressable>
+                  );
+                })();
               })}
             </View>
           </>
@@ -1365,9 +1335,7 @@ function OnboardingScreenContent() {
         },
       ]}
     >
-      <ThemedText type="subtitle">
-        {t("onboarding.studioDetailsTitle")}
-      </ThemedText>
+      <ThemedText type="subtitle">{t("onboarding.studioDetailsTitle")}</ThemedText>
       {isForcedWorkspaceSetup ? (
         <ThemedText style={{ color: color.textMuted }}>
           {t("onboarding.workspaceSetupStudioHint")}
@@ -1492,7 +1460,7 @@ function OnboardingScreenContent() {
               onPress={() => goToProfileStep()}
               disabled={!role}
               tone="primary"
-              size={60}
+              size={BrandSpacing.iconButtonSize}
             />
           </View>
         </View>
@@ -1516,22 +1484,24 @@ function OnboardingScreenContent() {
         });
       };
       return (
-        <Suspense fallback={
-          <View style={styles.detailsLoadingStage}>
-            <View style={styles.detailsLoadingHeader}>
-              <ThemedText type="title">{t("onboarding.loading")}</ThemedText>
-              <ThemedText type="caption" style={{ color: color.textMuted }}>
-                {t("onboarding.sheetInstructorSubtitle")}
-              </ThemedText>
+        <Suspense
+          fallback={
+            <View style={styles.detailsLoadingStage}>
+              <View style={styles.detailsLoadingHeader}>
+                <ThemedText type="title">{t("onboarding.loading")}</ThemedText>
+                <ThemedText type="caption" style={{ color: color.textMuted }}>
+                  {t("onboarding.sheetInstructorSubtitle")}
+                </ThemedText>
+              </View>
+              <View style={styles.detailsLoadingRow}>
+                <ActivityIndicator color={color.primary} />
+                <ThemedText style={{ color: color.textMuted }}>
+                  {t("onboarding.loading")}
+                </ThemedText>
+              </View>
             </View>
-            <View style={styles.detailsLoadingRow}>
-              <ActivityIndicator color={color.primary} />
-              <ThemedText style={{ color: color.textMuted }}>
-                {t("onboarding.loading")}
-              </ThemedText>
-            </View>
-          </View>
-        }>
+          }
+        >
           <StepInstructorProfileBody
             detailsReady={detailsReady}
             isDesktop={isDesktop}
@@ -1565,22 +1535,24 @@ function OnboardingScreenContent() {
         });
       };
       return (
-        <Suspense fallback={
-          <View style={styles.detailsLoadingStage}>
-            <View style={styles.detailsLoadingHeader}>
-              <ThemedText type="title">{t("onboarding.loading")}</ThemedText>
-              <ThemedText type="caption" style={{ color: color.textMuted }}>
-                {t("onboarding.sheetStudioSubtitle")}
-              </ThemedText>
+        <Suspense
+          fallback={
+            <View style={styles.detailsLoadingStage}>
+              <View style={styles.detailsLoadingHeader}>
+                <ThemedText type="title">{t("onboarding.loading")}</ThemedText>
+                <ThemedText type="caption" style={{ color: color.textMuted }}>
+                  {t("onboarding.sheetStudioSubtitle")}
+                </ThemedText>
+              </View>
+              <View style={styles.detailsLoadingRow}>
+                <ActivityIndicator color={color.primary} />
+                <ThemedText style={{ color: color.textMuted }}>
+                  {t("onboarding.loading")}
+                </ThemedText>
+              </View>
             </View>
-            <View style={styles.detailsLoadingRow}>
-              <ActivityIndicator color={color.primary} />
-              <ThemedText style={{ color: color.textMuted }}>
-                {t("onboarding.loading")}
-              </ThemedText>
-            </View>
-          </View>
-        }>
+          }
+        >
           <StepStudioProfileBody
             detailsReady={detailsReady}
             isDesktop={isDesktop}
@@ -1599,24 +1571,24 @@ function OnboardingScreenContent() {
 
     if (bodyStep === 2 && role === "instructor") {
       return (
-        <Suspense fallback={
-          <View style={styles.detailsLoadingStage}>
-            <View style={styles.detailsLoadingHeader}>
-              <ThemedText type="title">
-                {t("profile.compliance.loading")}
-              </ThemedText>
-              <ThemedText type="caption" style={{ color: color.textMuted }}>
-                {t("onboarding.verification.body")}
-              </ThemedText>
+        <Suspense
+          fallback={
+            <View style={styles.detailsLoadingStage}>
+              <View style={styles.detailsLoadingHeader}>
+                <ThemedText type="title">{t("profile.compliance.loading")}</ThemedText>
+                <ThemedText type="caption" style={{ color: color.textMuted }}>
+                  {t("onboarding.verification.body")}
+                </ThemedText>
+              </View>
+              <View style={styles.detailsLoadingRow}>
+                <ActivityIndicator color={color.primary} />
+                <ThemedText style={{ color: color.textMuted }}>
+                  {t("profile.compliance.loading")}
+                </ThemedText>
+              </View>
             </View>
-            <View style={styles.detailsLoadingRow}>
-              <ActivityIndicator color={color.primary} />
-              <ThemedText style={{ color: color.textMuted }}>
-                {t("profile.compliance.loading")}
-              </ThemedText>
-            </View>
-          </View>
-        }>
+          }
+        >
           <StepInstructorComplianceBody
             currentUser={currentUser}
             diditVerification={diditVerification}
@@ -1641,24 +1613,24 @@ function OnboardingScreenContent() {
 
     if (bodyStep === 2 && role === "studio") {
       return (
-        <Suspense fallback={
-          <View style={styles.detailsLoadingStage}>
-            <View style={styles.detailsLoadingHeader}>
-              <ThemedText type="title">
-                {t("profile.studioCompliance.loading")}
-              </ThemedText>
-              <ThemedText type="caption" style={{ color: color.textMuted }}>
-                {t("onboarding.verification.studioBody")}
-              </ThemedText>
+        <Suspense
+          fallback={
+            <View style={styles.detailsLoadingStage}>
+              <View style={styles.detailsLoadingHeader}>
+                <ThemedText type="title">{t("profile.studioCompliance.loading")}</ThemedText>
+                <ThemedText type="caption" style={{ color: color.textMuted }}>
+                  {t("onboarding.verification.studioBody")}
+                </ThemedText>
+              </View>
+              <View style={styles.detailsLoadingRow}>
+                <ActivityIndicator color={color.primary} />
+                <ThemedText style={{ color: color.textMuted }}>
+                  {t("profile.studioCompliance.loading")}
+                </ThemedText>
+              </View>
             </View>
-            <View style={styles.detailsLoadingRow}>
-              <ActivityIndicator color={color.primary} />
-              <ThemedText style={{ color: color.textMuted }}>
-                {t("profile.studioCompliance.loading")}
-              </ThemedText>
-            </View>
-          </View>
-        }>
+          }
+        >
           <StepStudioComplianceBody
             currentUser={currentUser}
             studioDiditVerification={studioDiditVerification}
@@ -1712,17 +1684,11 @@ function OnboardingScreenContent() {
           {stepTransition.phase === "idle" ? (
             renderBody(step)
           ) : stepTransition.phase === "exit" ? (
-            <OnboardingStageLayer
-              phase="exit"
-              direction={stepTransition.direction}
-            >
+            <OnboardingStageLayer phase="exit" direction={stepTransition.direction}>
               {renderBody(visibleStep)}
             </OnboardingStageLayer>
           ) : stepTransition.phase === "enter" ? (
-            <OnboardingStageLayer
-              phase="enter"
-              direction={stepTransition.direction}
-            >
+            <OnboardingStageLayer phase="enter" direction={stepTransition.direction}>
               {renderBody(visibleStep)}
             </OnboardingStageLayer>
           ) : null}
@@ -1738,9 +1704,7 @@ function OnboardingScreenContent() {
               },
             ]}
           >
-            <ThemedText style={{ color: color.danger }}>
-              {errorMessage}
-            </ThemedText>
+            <ThemedText style={{ color: color.danger }}>{errorMessage}</ThemedText>
           </View>
         ) : null}
       </ScrollView>
@@ -1800,8 +1764,7 @@ const styles = StyleSheet.create({
   roleStageFooter: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    marginTop: "auto",
-    paddingTop: BrandSpacing.xl,
+    marginTop: BrandSpacing.xl,
   },
   navBar: {
     marginTop: BrandSpacing.sm,

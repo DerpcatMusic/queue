@@ -1,9 +1,9 @@
 import type { PropsWithChildren } from "react";
-import { type StyleProp, Text, View, type ViewStyle } from "react-native";
-
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { type StyleProp, type ViewStyle } from "react-native";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
 import { useTheme } from "@/hooks/use-theme";
+import { Box, Text } from "@/primitives";
 
 export function useHomeDashboardLayout() {
   const { isDesktopWeb: isWideWeb, isExpandedWeb } = useLayoutBreakpoint();
@@ -25,43 +25,50 @@ type HomeSurfaceProps = PropsWithChildren<{
   style?: StyleProp<ViewStyle>;
 }>;
 
-export function HomeSurface({ children, tone = "alt", style }: HomeSurfaceProps) {
-  const { color: palette } = useTheme();
+export function HomeSurface({ children, tone = "surface", style }: HomeSurfaceProps) {
+  const theme = useTheme();
+  const { color: palette } = theme;
+  const isLight = theme.scheme === "light";
   const backgroundColor =
     tone === "primary"
-      ? palette.primary
+      ? isLight
+        ? palette.primarySubtle
+        : palette.primary
       : tone === "surface"
         ? palette.surface
         : palette.surfaceAlt;
 
   return (
-    <View
+    <Box
       style={[
         {
           borderRadius: BrandRadius.card,
           borderCurve: "continuous",
           backgroundColor,
+          borderWidth: 0,
+          borderColor: "transparent",
+          shadowColor: isLight ? palette.shadow : "transparent",
+          shadowOpacity: isLight ? 1 : 0,
+          shadowRadius: isLight ? 16 : 0,
+          shadowOffset: isLight ? { width: 0, height: 10 } : { width: 0, height: 0 },
+          elevation: isLight ? 0 : 0,
         },
         style,
       ]}
     >
       {children}
-    </View>
+    </Box>
   );
 }
 
 export function HomeSectionHeading({ title, eyebrow }: { title: string; eyebrow?: string }) {
   const { color: palette } = useTheme();
   return (
-    <View style={{ gap: BrandSpacing.xs }}>
+    <Box style={{ gap: BrandSpacing.xs }}>
       {eyebrow ? (
         <Text
           style={{
-            fontFamily: "Manrope_500Medium",
-            fontSize: 12,
-            fontWeight: "500",
-            letterSpacing: 0.2,
-            lineHeight: 16,
+            ...BrandType.microItalic,
             color: palette.textMuted,
           }}
         >
@@ -70,16 +77,14 @@ export function HomeSectionHeading({ title, eyebrow }: { title: string; eyebrow?
       ) : null}
       <Text
         style={{
-          fontFamily: "Lexend_600SemiBold",
-          fontSize: 28,
-          fontWeight: "600",
-          letterSpacing: -0.45,
-          lineHeight: 34,
-          color: palette.text,
+          ...BrandType.headingItalic,
+          fontSize: 14,
+          color: palette.primary,
+          transform: [{ skewX: "-6deg" }],
         }}
       >
-        {title}
+        {title.toUpperCase()}
       </Text>
-    </View>
+    </Box>
   );
 }

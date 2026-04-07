@@ -45,6 +45,40 @@ export function buildRoleTabRoute<R extends AppRole, N extends RoleTabRouteName>
   return `${basePath}/${routeName}` as RoleTabRouteFor<R, N>;
 }
 
+/**
+ * Resolve the owning tab for any nested route inside a role tab tree.
+ * Examples:
+ * - /instructor -> index
+ * - /instructor/map -> map
+ * - /instructor/map/studios/123 -> map
+ * - /studio/jobs/instructors/abc -> jobs
+ */
+export function resolveRoleTabRouteName(pathname: string | null, role: AppRole): RoleTabRouteName {
+  if (!pathname) {
+    return ROLE_TAB_ROUTE_NAMES.home;
+  }
+
+  const pathParts = pathname.split("/").filter(Boolean);
+  if (pathParts.length === 0) {
+    return ROLE_TAB_ROUTE_NAMES.home;
+  }
+
+  const roleSegmentIndex = pathParts.indexOf(role);
+  if (roleSegmentIndex === -1) {
+    return ROLE_TAB_ROUTE_NAMES.home;
+  }
+
+  const tabSegment = pathParts[roleSegmentIndex + 1];
+  if (!tabSegment || tabSegment === ROLE_TAB_ROUTE_NAMES.home) {
+    return ROLE_TAB_ROUTE_NAMES.home;
+  }
+
+  const routeNames = Object.values(ROLE_TAB_ROUTE_NAMES) as RoleTabRouteName[];
+  return routeNames.includes(tabSegment as RoleTabRouteName)
+    ? (tabSegment as RoleTabRouteName)
+    : ROLE_TAB_ROUTE_NAMES.home;
+}
+
 export function isRolePath(pathname: string, role: AppRole): boolean {
   const roleRootPath = `/${role}`;
   const roleTabPath = getRoleTabBasePath(role);

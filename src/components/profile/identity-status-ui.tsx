@@ -51,9 +51,9 @@ export function getIdentityStatusTone(
     case "in_progress":
     case "in_review":
       return {
-        accent: palette.primary,
-        background: palette.primarySubtle,
-        text: palette.text,
+        accent: "#CCFF00",
+        background: "rgba(204, 255, 0, 0.18)",
+        text: "#161E00",
       };
     case "abandoned":
     case "expired":

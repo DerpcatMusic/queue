@@ -1,12 +1,12 @@
 import type { TFunction } from "i18next";
 import { memo } from "react";
-import { StyleSheet, View } from "react-native";
-
+import { StyleSheet } from "react-native-unistyles";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitDisclosureButtonGroup, type KitDisclosureButtonGroupOption } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Box } from "@/primitives";
 import type { StudioJobsTimeFilter } from "./use-studio-feed-controller";
 
 type StudioJobsTopSheetHeaderProps = {
@@ -38,7 +38,7 @@ export const StudioJobsTopSheetHeader = memo(function StudioJobsTopSheetHeader({
   ];
 
   return (
-    <View style={styles.headerRow}>
+    <Box style={styles.headerRow}>
       <IconButton
         size={42}
         tone="primarySubtle"
@@ -53,7 +53,7 @@ export const StudioJobsTopSheetHeader = memo(function StudioJobsTopSheetHeader({
           <IconSymbol
             name={notificationsEnabled ? "bell.fill" : "bell.slash.fill"}
             size={18}
-            color={theme.color.onPrimary}
+            color={theme.color.primary}
           />
         }
       />
@@ -71,17 +71,17 @@ export const StudioJobsTopSheetHeader = memo(function StudioJobsTopSheetHeader({
           <IconSymbol
             name="line.3.horizontal.decrease.circle"
             size={18}
-            color={theme.color.onPrimary}
+            color={theme.color.primary}
           />
         }
         size="sm"
-        railColor={theme.color.primaryPressed}
-        selectedColor={theme.color.primarySubtle}
-        labelColor={theme.color.onPrimary}
-        selectedLabelColor={theme.color.onPrimary}
-        dividerColor={theme.color.primary}
+        railColor={theme.color.border}
+        selectedColor={theme.color.surfaceAlt}
+        labelColor={theme.color.text}
+        selectedLabelColor={theme.color.text}
+        dividerColor={theme.color.border}
       />
-    </View>
+    </Box>
   );
 });
 

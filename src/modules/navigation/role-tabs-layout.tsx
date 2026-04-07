@@ -6,24 +6,29 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, View } from "react-native";
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { StyleSheet } from "react-native-unistyles";
 
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
 import { TAB_TRANSITION_VEIL_OPACITY } from "@/components/layout/top-sheet-constants";
-import { GlobalTopSheetProvider } from "@/components/layout/top-sheet-registry";
+import {
+  GlobalTopSheetProvider,
+  type TopSheetDescriptorConfig,
+} from "@/components/layout/top-sheet-registry";
 import { useTheme } from "@/hooks/use-theme";
-import type { RoleTabRouteName } from "@/navigation/role-routes";
+import { type RoleTabRouteName, resolveRoleTabRouteName } from "@/navigation/role-routes";
 import { getTabsForRole } from "@/navigation/tab-registry";
 import type { AppRole } from "@/navigation/types";
 
@@ -43,36 +48,10 @@ type RoleTabsLayoutProps = {
 // New types for owned scene state
 type InsetTone = "app" | "sheet" | "card" | "primary";
 
-// Tab-specific sheet config (subset of TopSheetTabConfig without tabId)
-type TabSheetOverride = {
-  content?: React.ReactNode;
-  collapsedContent?: React.ReactNode;
-  expandedContent?: React.ReactNode;
-  render?: (props: { scrollY: SharedValue<number> }) => { children?: React.ReactNode };
-  overlay?: React.ReactNode;
-  contentPaddingTop?: number;
-  draggable?: boolean;
-  expandable?: boolean;
-  steps?: readonly number[];
-  initialStep?: number;
-  activeStep?: number;
-  minHeight?: number;
-  collapsedHeightMode?: unknown;
-  expandMode?: unknown;
-  padding?: unknown;
-  backgroundColor?: unknown;
-  topInsetColor?: unknown;
-  style?: unknown;
-  stickyHeader?: React.ReactNode;
-  stickyFooter?: React.ReactNode;
-  revealOnExpand?: React.ReactNode;
-  onStepChange?: (step: number) => void;
-};
-
 type SceneDescriptor = {
   tabId: RoleTabRouteName;
-  body: ReactNode;
-  sheetConfig?: TabSheetOverride | null;
+  body?: ReactNode;
+  sheetConfig?: TopSheetDescriptorConfig | null;
   insetTone?: InsetTone;
   isLoading?: boolean;
 };
@@ -144,14 +123,8 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
 
   // Extract active tab ID from pathname
   const activeTabId = useMemo<RoleTabRouteName>(() => {
-    const pathParts = pathname.split("/").filter(Boolean);
-    const lastPart = pathParts[pathParts.length - 1];
-    // Map pathname to RoleTabRouteName
-    if (lastPart === "index" || pathname.endsWith("/instructor") || pathname.endsWith("/studio")) {
-      return "index" as RoleTabRouteName;
-    }
-    return lastPart as RoleTabRouteName;
-  }, [pathname]);
+    return resolveRoleTabRouteName(pathname, appRole);
+  }, [appRole, pathname]);
 
   // Bump the shell only when the active tab descriptor changes.
   const [, setActiveDescriptorVersion] = useState(0);
@@ -176,7 +149,6 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
       const next = new Map(current);
       next.set(tabId, {
         tabId,
-        body: null,
         ...existing,
         ...descriptor,
       });
@@ -210,10 +182,6 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
     return sceneDescriptorsRef.current.get(tabId);
   }, []);
 
-  useEffect(() => {
-    activeTabIdRef.current = activeTabId;
-  }, [activeTabId]);
-
   // Context value for child descriptor registration
   const descriptorContext = useMemo<TabSceneDescriptorContextValue>(
     () => ({
@@ -230,17 +198,17 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
         <TabSceneDescriptorContext.Provider value={descriptorContext}>
           <View style={{ flex: 1, backgroundColor: color.appBg }}>
             <GlobalTopSheet />
-            <View style={{ flex: 1, minHeight: 0, zIndex: 2 }}>
+            <View style={{ flex: 1, minHeight: 0, zIndex: 2, backgroundColor: color.appBg }}>
               <NativeTabs
-                tintColor={color.primary}
+                tintColor={color.onPrimaryContainer}
                 iconColor={{
                   default: color.textMicro,
-                  selected: color.primary,
+                  selected: color.onPrimaryContainer,
                 }}
-                backgroundColor={color.surfaceElevated}
+                backgroundColor={color.appBg}
                 badgeBackgroundColor={color.primary}
                 badgeTextColor={color.onPrimary}
-                indicatorColor={color.primarySubtle}
+                indicatorColor={color.primaryContainer}
                 shadowColor={color.surface}
                 labelVisibilityMode="unlabeled"
                 disableTransparentOnScrollEdge
@@ -249,7 +217,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                   <NativeTabs.Trigger
                     key={tab.id}
                     name={tab.routeName}
-                    contentStyle={{ backgroundColor: color.surfaceElevated }}
+                    contentStyle={{ backgroundColor: color.appBg }}
                   >
                     <NativeTabs.Trigger.Icon
                       md={tab.icon.md}
@@ -285,7 +253,7 @@ function useTabSceneDescriptorScene(
 ): void {
   const { registerDescriptor, unregisterDescriptor } = useContext(TabSceneDescriptorContext) ?? {};
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!registerDescriptor) return;
     registerDescriptor(tabId, descriptor);
     return () => {

@@ -71,9 +71,10 @@ export function SheetHeaderBlock({
             {Array.from({ length: progressCount }, (_, index) => {
               const isActive = index < progressIndex;
               const isCurrent = index + 1 === progressIndex;
+              const stepId = `step-${index}`;
               return (
                 <View
-                  key={`progress-${index + 1}`}
+                  key={stepId}
                   style={{
                     width: isCurrent
                       ? BrandSpacing.progressPillActive

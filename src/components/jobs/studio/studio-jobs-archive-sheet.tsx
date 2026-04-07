@@ -13,6 +13,7 @@ import { toSportLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
 import { getBoostPresentation } from "@/lib/jobs-utils";
 import { Box, HStack, VStack } from "@/primitives";
+import { Motion, Spring } from "@/theme/theme";
 import type { StudioJob } from "./studio-jobs-list.types";
 
 type StudioJobsArchiveSheetProps = {
@@ -82,10 +83,9 @@ function StudioArchiveRow({
 
   return (
     <Animated.View
-      entering={FadeInUp.delay(Math.min(index, 5) * 34)
-        .duration(240)
+      entering={FadeInUp.delay(Math.min(index, 8) * Motion.staggerBase)
         .springify()
-        .damping(18)}
+        .damping(Spring.standard.damping)}
     >
       <View
         style={{
@@ -392,10 +392,10 @@ export function StudioJobsArchiveSheet({
         {...props}
         disappearsAt={-1}
         appearsAt={0}
-        style={[props.style, { backgroundColor: theme.color.appBg }]}
+        style={[props.style, { backgroundColor: theme.color.overlay }]}
       />
     ),
-    [theme.color.appBg],
+    [theme.color.overlay],
   );
 
   const toggleExpanded = useCallback((jobId: string) => {
@@ -412,7 +412,7 @@ export function StudioJobsArchiveSheet({
       onClose={onDismissed}
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={{ backgroundColor: theme.color.borderStrong }}
-      backgroundStyle={{ backgroundColor: theme.color.appBg }}
+      backgroundStyle={{ backgroundColor: theme.color.surface }}
     >
       <BottomSheetScrollView
         contentContainerStyle={{

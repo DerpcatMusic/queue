@@ -1,12 +1,13 @@
-import { memo } from "react";
 import type { ComponentProps } from "react";
-import { Text, View } from "react-native";
+import { memo } from "react";
+import { Pressable } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import type { JobStatus } from "@/lib/status-tokens";
 import { getJobStatusTokens } from "@/lib/status-tokens";
+import { Box, Text } from "@/primitives";
 
 export const CONTENT_VERTICAL_PADDING = BrandSpacing.lg;
 
@@ -74,7 +75,7 @@ export const StatusPill = memo(function StatusPill({ label, status }: StatusPill
       : getJobStatusTokens(status, palette);
 
   return (
-    <View
+    <Box
       style={{
         borderCurve: "continuous",
         borderRadius: BrandRadius.pill,
@@ -86,7 +87,7 @@ export const StatusPill = memo(function StatusPill({ label, status }: StatusPill
       <ThemedText type="micro" style={{ color: tokens.fg }}>
         {label}
       </ThemedText>
-    </View>
+    </Box>
   );
 });
 
@@ -99,9 +100,13 @@ type DotStatusPillProps = {
 };
 
 /** Colored-dot status pill used in job cards. */
-export const DotStatusPill = memo(function DotStatusPill({ backgroundColor, color, label }: DotStatusPillProps) {
+export const DotStatusPill = memo(function DotStatusPill({
+  backgroundColor,
+  color,
+  label,
+}: DotStatusPillProps) {
   return (
-    <View
+    <Box
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -112,7 +117,7 @@ export const DotStatusPill = memo(function DotStatusPill({ backgroundColor, colo
         backgroundColor,
       }}
     >
-      <View
+      <Box
         style={{
           width: 7,
           height: 7,
@@ -120,19 +125,8 @@ export const DotStatusPill = memo(function DotStatusPill({ backgroundColor, colo
           backgroundColor: color,
         }}
       />
-      <Text
-        style={{
-          fontFamily: "Manrope_400Regular",
-          fontSize: 14,
-          fontWeight: "400",
-          lineHeight: 19,
-          letterSpacing: 0.1,
-          color,
-        }}
-      >
-        {label}
-      </Text>
-    </View>
+      <Text style={{ ...BrandType.caption, letterSpacing: 0.1, color }}>{label}</Text>
+    </Box>
   );
 });
 
@@ -144,40 +138,40 @@ type MetricCellProps = {
 };
 
 /** Label + value metric pair used in job cards. */
-export const MetricCell = memo(function MetricCell({ align = "flex-start", icon, label, value }: MetricCellProps) {
+export const MetricCell = memo(function MetricCell({
+  align = "flex-start",
+  icon,
+  label,
+  value,
+}: MetricCellProps) {
   const { color: palette } = useTheme();
   return (
-    <View style={{ gap: BrandSpacing.xs, alignItems: align }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+    <Box style={{ gap: BrandSpacing.xs, alignItems: align }}>
+      <Box style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
         {icon ? <IconSymbol name={icon} size={12} color={palette.textMuted} /> : null}
         <Text
           style={{
-            fontFamily: "Manrope_400Regular",
-            fontSize: 14,
-            fontWeight: "400",
-            lineHeight: 19,
+            ...BrandType.caption,
             letterSpacing: 0.1,
             color: palette.textMuted,
           }}
         >
           {label}
         </Text>
-      </View>
+      </Box>
       <Text
         selectable
         style={{
-          fontFamily: "Manrope_600SemiBold",
-          fontSize: 16,
-          fontWeight: "600",
-          lineHeight: 18,
+          ...BrandType.bodyStrong,
+          lineHeight: 22,
           color: palette.text,
-          textAlign: align === "flex-end" ? "right" : "left",
+          textAlign: "auto",
           fontVariant: ["tabular-nums"],
         }}
       >
         {value}
       </Text>
-    </View>
+    </Box>
   );
 });
 
@@ -206,7 +200,7 @@ export const HomeSignalTile = memo(function HomeSignalTile({
           ? palette.warningSubtle
           : tone === "danger"
             ? palette.dangerSubtle
-            : palette.surfaceElevated;
+            : palette.surfaceAlt;
   const labelColor =
     tone === "accent"
       ? palette.primary
@@ -220,7 +214,7 @@ export const HomeSignalTile = memo(function HomeSignalTile({
   const valueColor = palette.text;
 
   return (
-    <View
+    <Box
       style={{
         minWidth: 0,
         flex: 1,
@@ -232,32 +226,24 @@ export const HomeSignalTile = memo(function HomeSignalTile({
         backgroundColor,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+      <Box style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
         {icon ? <IconSymbol name={icon} size={13} color={labelColor} /> : null}
         <Text
           style={{
-            fontFamily: "Manrope_500Medium",
-            fontSize: 12,
-            fontWeight: "500",
-            letterSpacing: 0.6,
-            lineHeight: 16,
+            ...BrandType.microItalic,
             color: labelColor,
-            textTransform: "uppercase",
           }}
         >
           {label}
         </Text>
-      </View>
+      </Box>
       <Text
         numberOfLines={1}
         style={{
-          fontFamily: "Lexend_500Medium",
-          fontSize: 21,
-          fontWeight: "500",
-          letterSpacing: -0.24,
-          lineHeight: 23,
+          ...BrandType.headingItalic,
           color: valueColor,
           fontVariant: ["tabular-nums"],
+          transform: [{ skewX: "-5deg" }],
         }}
       >
         {value}
@@ -266,16 +252,151 @@ export const HomeSignalTile = memo(function HomeSignalTile({
         <Text
           numberOfLines={1}
           style={{
-            fontFamily: "Manrope_400Regular",
-            fontSize: 14,
-            fontWeight: "400",
-            lineHeight: 19,
+            ...BrandType.caption,
             color: labelColor,
           }}
         >
           {detail}
         </Text>
       ) : null}
-    </View>
+    </Box>
+  );
+});
+
+export type HomeChecklistItem = {
+  id: string;
+  label: string;
+  description?: string;
+  done: boolean;
+  onPress: () => void;
+};
+
+export const HomeChecklistCard = memo(function HomeChecklistCard({
+  title,
+  subtitle,
+  items,
+}: {
+  title: string;
+  subtitle: string;
+  items: HomeChecklistItem[];
+}) {
+  const { color: palette } = useTheme();
+  const completedCount = items.filter((item) => item.done).length;
+  const remainingCount = items.length - completedCount;
+  const orderedItems = [...items].sort((a, b) => Number(a.done) - Number(b.done));
+
+  return (
+    <Box
+      style={{
+        borderRadius: BrandRadius.card,
+        borderCurve: "continuous",
+        backgroundColor: palette.surface,
+        padding: BrandSpacing.md,
+        gap: BrandSpacing.sm,
+      }}
+    >
+      <Box style={{ gap: BrandSpacing.xs }}>
+        <Box
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: BrandSpacing.stack,
+          }}
+        >
+          <Text
+            style={{
+              ...BrandType.headingItalic,
+              fontSize: 14,
+              color: palette.primary,
+              transform: [{ skewX: "-5deg" }],
+            }}
+          >
+            {title}
+          </Text>
+          <Box
+            style={{
+              borderRadius: BrandRadius.pill,
+              borderCurve: "continuous",
+              paddingHorizontal: BrandSpacing.sm,
+              paddingVertical: BrandSpacing.xs,
+              backgroundColor:
+                remainingCount === 0 ? palette.tertiarySubtle : palette.primarySubtle,
+            }}
+          >
+            <Text
+              style={{
+                ...BrandType.micro,
+                color: remainingCount === 0 ? palette.tertiary : palette.primary,
+                fontWeight: "600",
+              }}
+            >
+              {`${completedCount}/${items.length}`}
+            </Text>
+          </Box>
+        </Box>
+        <Text style={{ ...BrandType.caption, color: palette.textMuted }}>{subtitle}</Text>
+      </Box>
+
+      <Box style={{ gap: BrandSpacing.sm }}>
+        {orderedItems.map((item) => (
+          <Pressable
+            key={item.id}
+            accessibilityRole="button"
+            accessibilityLabel={item.label}
+            onPress={item.onPress}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: BrandSpacing.md,
+                minWidth: 0,
+                borderRadius: BrandRadius.medium,
+                borderCurve: "continuous",
+                paddingHorizontal: BrandSpacing.md,
+                paddingVertical: BrandSpacing.sm,
+                backgroundColor: item.done
+                  ? palette.surface
+                  : pressed
+                    ? palette.surfaceElevated
+                    : palette.surfaceAlt,
+                borderWidth: 0,
+                borderColor: "transparent",
+                opacity: pressed ? 0.92 : 1,
+              })}
+          >
+            <Box
+              style={{
+                width: BrandSpacing.iconContainer,
+                height: BrandSpacing.iconContainer,
+                borderRadius: BrandRadius.pill,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: item.done ? palette.tertiarySubtle : palette.primarySubtle,
+              }}
+            >
+              <IconSymbol
+                name={item.done ? "circle.fill" : "circle"}
+                size={15}
+                color={item.done ? palette.tertiary : palette.primary}
+              />
+            </Box>
+            <Box style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                numberOfLines={1}
+                style={{
+                  ...BrandType.bodyStrong,
+                  color: palette.text,
+                }}
+              >
+                {item.label}
+              </Text>
+            </Box>
+            {item.done ? null : (
+              <IconSymbol name="chevron.right" size={16} color={palette.textMuted} />
+            )}
+          </Pressable>
+        ))}
+      </Box>
+    </Box>
   );
 });

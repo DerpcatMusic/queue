@@ -1,9 +1,13 @@
 // Google Material Symbols Rounded icon component for Android/web.
 
-import { MaterialSymbolsRounded_400Regular, useFonts } from "@expo-google-fonts/material-symbols-rounded";
+import {
+  MaterialSymbolsRounded_400Regular,
+  useFonts,
+} from "@expo-google-fonts/material-symbols-rounded";
 import { memo } from "react";
-import { Text, View } from "react-native";
 import type { OpaqueColorValue, StyleProp, TextStyle } from "react-native";
+import { View } from "react-native";
+import { Text } from "@/primitives";
 
 import androidSymbols from "./android-symbols.json";
 
@@ -34,6 +38,9 @@ const SF_TO_ANDROID_SYMBOL = {
   "checkmark.circle.fill": "check_circle",
   "checkmark.seal.fill": "verified",
   "checkmark.shield.fill": "verified_user",
+  "checkmark.circle": "check_circle_outline",
+  circle: "circle_outline",
+  "circle.fill": "check_circle",
   "clock.badge.checkmark": "pending_actions",
   "clock.fill": "access_time_filled",
   clock: "schedule",
@@ -70,7 +77,7 @@ const SF_TO_ANDROID_SYMBOL = {
   plus: "add",
   "plus.circle.fill": "add_circle",
   "quote.bubble.fill": "format_quote",
-  rosette: "workspace_premium",
+   rosettes: "workspace_premium",
   "rectangle.portrait.and.arrow.right": "logout",
   "shield.lefthalf.filled": "shield",
   "slider.horizontal.3": "tune",
@@ -85,9 +92,10 @@ const SF_TO_ANDROID_SYMBOL = {
   "chevron.right": "chevron_right",
   "doc.text": "description",
   "doc.text.fill": "description",
-  "envelope": "mail",
+  envelope: "mail",
   "list.bullet.rectangle.portrait.fill": "list_alt",
-  "archivebox": "archive",
+  archivebox: "archive",
+  checkmark: "check",
 } satisfies Record<string, string>;
 
 function resolveAndroidSymbolName(name: string): string {

@@ -1,5 +1,4 @@
 import { Redirect } from "expo-router";
-import { useGlobalTopSheet } from "@/components/layout/top-sheet-registry";
 import MapTabScreen from "@/components/map-tab";
 import { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
 import { isFeatureEnabled } from "@/navigation/tab-registry";
@@ -13,9 +12,11 @@ export default function MapTabRoute() {
   ) : (
     <MapTabScreen controller={controller} />
   );
-  useTabSceneDescriptor({ tabId: "map", body: descriptorBody, insetTone: "sheet" });
-  useGlobalTopSheet("map", controller.mapSheetConfig, "map:instructor-route", {
-    routeMatchPath: "/instructor/map",
+  useTabSceneDescriptor({
+    tabId: "map",
+    body: descriptorBody,
+    insetTone: "sheet",
+    sheetConfig: controller.mapSheetConfig,
   });
 
   return descriptorBody;

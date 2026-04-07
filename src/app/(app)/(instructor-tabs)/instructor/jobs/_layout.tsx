@@ -1,15 +1,15 @@
 import { Stack } from "expo-router";
+import { TabSubrouteStack } from "@/components/layout/tab-subroute-stack";
 
 export default function InstructorJobsLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        animation: "slide_from_right",
-      }}
-    >
+    <TabSubrouteStack>
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="studios/[studioId]" options={{ headerShown: true }} />
-    </Stack>
+      <Stack.Screen
+        name="studios/[studioId]/branches/[branchId]"
+        options={{ headerShown: false }}
+      />
+    </TabSubrouteStack>
   );
 }

@@ -1,11 +1,15 @@
 export function computeStepHeights(
   steps: readonly number[],
   availableHeight: number,
-  minHeight: number = 0,
+  baseHeight: number = 0,
 ): number[] {
   const safeAvailableHeight = Math.max(0, availableHeight);
-  const safeMinHeight = Math.max(0, Math.ceil(minHeight));
-  return steps.map((s) => Math.max(Math.round(s * safeAvailableHeight), safeMinHeight));
+  const safeBaseHeight = Math.min(safeAvailableHeight, Math.max(0, Math.ceil(baseHeight)));
+  const expandableRange = Math.max(0, safeAvailableHeight - safeBaseHeight);
+
+  return steps.map((s) =>
+    Math.min(safeAvailableHeight, safeBaseHeight + Math.round(Math.max(0, s) * expandableRange)),
+  );
 }
 
 export function computeAvailableHeight(
@@ -24,16 +28,11 @@ export function computeIntrinsicMinHeight(
 
 export function computeCollapsedHeight(
   intrinsicHeight: number,
-  minHeight: number = 0,
   maxHeight: number = Number.POSITIVE_INFINITY,
 ): number {
   const safeIntrinsicHeight = Math.max(0, intrinsicHeight);
-  const safeMinHeight = Math.max(0, minHeight);
   const safeMaxHeight = Math.max(0, maxHeight);
-  return Math.min(
-    safeMaxHeight,
-    Math.max(Math.ceil(safeIntrinsicHeight), Math.ceil(safeMinHeight)),
-  );
+  return Math.min(safeMaxHeight, Math.ceil(safeIntrinsicHeight));
 }
 
 export type OverflowMode = "fit" | "overflow";

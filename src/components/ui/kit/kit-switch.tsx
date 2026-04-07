@@ -1,11 +1,12 @@
 import { useEffect } from "react";
-import { Pressable, StyleSheet } from "react-native";
+import { Pressable } from "react-native";
 import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { StyleSheet } from "react-native-unistyles";
 
 import { BrandRadius } from "@/constants/brand";
 import { triggerSelectionHaptic } from "./native-interaction";
@@ -16,6 +17,7 @@ type KitSwitchProps = {
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
   accessibilityLabel?: string;
+  accessibilityHint?: string;
 };
 
 /**
@@ -36,6 +38,7 @@ export function KitSwitch({
   onValueChange,
   disabled = false,
   accessibilityLabel,
+  accessibilityHint,
 }: KitSwitchProps) {
   const { interaction } = useKitTheme();
   const progress = useSharedValue(value ? 1 : 0);
@@ -64,6 +67,7 @@ export function KitSwitch({
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
       disabled={disabled}

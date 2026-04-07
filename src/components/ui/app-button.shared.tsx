@@ -1,7 +1,7 @@
-import { ActivityIndicator, Text, View } from "react-native";
-
+import { ActivityIndicator, I18nManager, View } from "react-native";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
 import type { AppButtonProps } from "./app-button.types";
 import { KitPressable } from "./kit/kit-pressable";
 
@@ -142,7 +142,7 @@ export function AppButtonFallback({
                 ...theme.typography.bodyMedium,
                 color: textColor,
                 includeFontPadding: false,
-                textAlign: isIconOnly ? "center" : "left",
+                textAlign: isIconOnly ? "center" : I18nManager.isRTL ? "right" : "left",
                 flexShrink: 1,
                 ...labelStyle,
               }}

@@ -27,6 +27,8 @@ const rapydProviderResponsePayloadValidator = v.any();
 
 const diditCanonicalPayloadValidator = v.any();
 
+const airwallexCanonicalPayloadValidator = v.any();
+
 const storedSpecialtyValidator = v.object({
   sport: v.string(),
   capabilityTags: v.optional(v.array(v.string())),
@@ -40,12 +42,36 @@ const paymentMetadataValidator = v.object({
   rapydResolvedPaymentMethodTypes: v.optional(v.array(v.string())),
 });
 
+const v2MoneyBreakdownValidator = v.object({
+  baseLessonAmountAgorot: v.number(),
+  bonusAmountAgorot: v.number(),
+  instructorOfferAmountAgorot: v.number(),
+  platformServiceFeeAgorot: v.number(),
+  studioChargeAmountAgorot: v.number(),
+});
+
+const v2PricingSnapshotValidator = v.object({
+  pricingRuleVersion: v.string(),
+  feeMode: v.union(v.literal("standard"), v.literal("bonus")),
+  hasBonus: v.boolean(),
+});
+
+const v2MetadataValidator = v.object({
+  jobSnapshotStatus: v.optional(v.string()),
+  failureCode: v.optional(v.string()),
+  failureReason: v.optional(v.string()),
+  providerStatusRaw: v.optional(v.string()),
+  providerEventId: v.optional(v.string()),
+});
+
 const integrationMetadataValidator = v.object({
   providerPaymentId: v.optional(v.string()),
   providerCheckoutId: v.optional(v.string()),
   merchantReferenceId: v.optional(v.string()),
   statusRaw: v.optional(v.string()),
   providerPayoutId: v.optional(v.string()),
+  providerAccountId: v.optional(v.string()),
+  providerFundsSplitId: v.optional(v.string()),
   payoutId: v.optional(v.string()),
   beneficiaryId: v.optional(v.string()),
   payoutMethodType: v.optional(v.string()),
@@ -72,6 +98,81 @@ const providerRequiredFieldValidator = v.object({
   required: v.optional(v.boolean()),
   description: v.optional(v.string()),
 });
+
+const v2ConnectedAccountStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("action_required"),
+  v.literal("active"),
+  v.literal("restricted"),
+  v.literal("rejected"),
+  v.literal("disabled"),
+);
+
+const v2RequirementKindValidator = v.union(
+  v.literal("agreement"),
+  v.literal("identity"),
+  v.literal("business"),
+  v.literal("bank_account"),
+  v.literal("payment_method"),
+  v.literal("other"),
+);
+
+const v2PaymentOrderStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("requires_payment_method"),
+  v.literal("processing"),
+  v.literal("succeeded"),
+  v.literal("partially_refunded"),
+  v.literal("refunded"),
+  v.literal("failed"),
+  v.literal("cancelled"),
+);
+
+const v2FundSplitStatusValidator = v.union(
+  v.literal("pending_create"),
+  v.literal("created"),
+  v.literal("released"),
+  v.literal("settled"),
+  v.literal("failed"),
+  v.literal("reversed"),
+);
+
+const v2PayoutTransferStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("processing"),
+  v.literal("sent"),
+  v.literal("paid"),
+  v.literal("failed"),
+  v.literal("cancelled"),
+  v.literal("needs_attention"),
+);
+
+const v2LedgerEntryTypeValidator = v.union(
+  v.literal("studio_charge"),
+  v.literal("platform_gross_revenue"),
+  v.literal("processor_fee_expense"),
+  v.literal("instructor_offer_reserved"),
+  v.literal("fund_split_created"),
+  v.literal("fund_split_released"),
+  v.literal("payout_transfer_sent"),
+  v.literal("refund_gross"),
+  v.literal("refund_platform_reversal"),
+  v.literal("refund_instructor_reversal"),
+  v.literal("adjustment"),
+);
+
+const v2LedgerBucketValidator = v.union(
+  v.literal("provider_clearing"),
+  v.literal("platform_gross_revenue"),
+  v.literal("platform_fee_expense"),
+  v.literal("platform_net_revenue"),
+  v.literal("instructor_split_pending"),
+  v.literal("instructor_split_available"),
+  v.literal("instructor_payout_in_flight"),
+  v.literal("instructor_paid_out"),
+  v.literal("refund_reserve"),
+  v.literal("adjustments"),
+);
 
 const notificationPreferenceKeyValidator = v.union(
   ...NOTIFICATION_PREFERENCE_KEYS.map((key) => v.literal(key)),
@@ -239,6 +340,8 @@ export default defineSchema({
     reviewStatus: instructorInsuranceReviewStatusValidator,
     reviewProvider: v.optional(v.literal("gemini")),
     issuerName: v.optional(v.string()),
+    /** Name of the person who holds/is named on the insurance policy (the insured instructor) */
+    policyHolderName: v.optional(v.string()),
     policyNumber: v.optional(v.string()),
     expiresOn: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
@@ -902,18 +1005,24 @@ export default defineSchema({
     .index("by_user", ["userId", "createdAt"]),
 
   integrationEvents: defineTable({
-    provider: v.union(v.literal("rapyd"), v.literal("didit")),
+    provider: v.union(v.literal("rapyd"), v.literal("didit"), v.literal("airwallex")),
     route: v.union(
       v.literal("payment"),
       v.literal("payout"),
       v.literal("beneficiary"),
       v.literal("kyc"),
+      v.literal("connected_account"),
+      v.literal("fund_split"),
     ),
     providerEventId: v.string(),
     eventType: v.optional(v.string()),
     signatureValid: v.boolean(),
     payloadHash: v.string(),
-    payload: v.union(rapydCanonicalPayloadValidator, diditCanonicalPayloadValidator),
+    payload: v.union(
+      rapydCanonicalPayloadValidator,
+      diditCanonicalPayloadValidator,
+      airwallexCanonicalPayloadValidator,
+    ),
     metadata: v.optional(integrationMetadataValidator),
     processingState: v.union(v.literal("pending"), v.literal("processed"), v.literal("failed")),
     processingError: v.optional(v.string()),
@@ -935,7 +1044,7 @@ export default defineSchema({
     .index("by_provider_route_createdAt", ["provider", "route", "createdAt"]),
 
   webhookInvalidSignatureThrottle: defineTable({
-    provider: v.union(v.literal("rapyd"), v.literal("didit")),
+    provider: v.union(v.literal("rapyd"), v.literal("didit"), v.literal("airwallex")),
     fingerprint: v.string(),
     invalidCount: v.number(),
     windowStartedAt: v.number(),
@@ -1061,6 +1170,247 @@ export default defineSchema({
     .index("by_legacy_payment", ["legacyPaymentId", "createdAt"])
     .index("by_correlation_token", ["correlationToken"]),
 
+  paymentOffersV2: defineTable({
+    jobId: v.id("jobs"),
+    studioId: v.id("studioProfiles"),
+    studioUserId: v.id("users"),
+    instructorId: v.id("instructorProfiles"),
+    instructorUserId: v.id("users"),
+    providerCountry: v.string(),
+    currency: v.string(),
+    pricing: v2MoneyBreakdownValidator,
+    pricingSnapshot: v2PricingSnapshotValidator,
+    bonusReason: v.optional(v.string()),
+    bonusAppliedByUserId: v.optional(v.id("users")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("ready"),
+      v.literal("superseded"),
+      v.literal("paid"),
+      v.literal("cancelled"),
+    ),
+    expiresAt: v.optional(v.number()),
+    metadata: v.optional(v2MetadataValidator),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_job", ["jobId", "createdAt"])
+    .index("by_studio_user", ["studioUserId", "createdAt"])
+    .index("by_instructor_user", ["instructorUserId", "createdAt"])
+    .index("by_status", ["status", "createdAt"]),
+
+  paymentOrdersV2: defineTable({
+    offerId: v.id("paymentOffersV2"),
+    jobId: v.id("jobs"),
+    studioId: v.id("studioProfiles"),
+    studioUserId: v.id("users"),
+    instructorId: v.id("instructorProfiles"),
+    instructorUserId: v.id("users"),
+    provider: v.literal("airwallex"),
+    status: v2PaymentOrderStatusValidator,
+    providerCountry: v.string(),
+    currency: v.string(),
+    pricing: v2MoneyBreakdownValidator,
+    capturedAmountAgorot: v.number(),
+    refundedAmountAgorot: v.number(),
+    correlationKey: v.string(),
+    latestError: v.optional(v.string()),
+    metadata: v.optional(v2MetadataValidator),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    succeededAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
+  })
+    .index("by_offer", ["offerId", "createdAt"])
+    .index("by_job", ["jobId", "createdAt"])
+    .index("by_studio_user", ["studioUserId", "createdAt"])
+    .index("by_instructor_user", ["instructorUserId", "createdAt"])
+    .index("by_status", ["status", "createdAt"])
+    .index("by_correlation_key", ["correlationKey"]),
+
+  paymentAttemptsV2: defineTable({
+    paymentOrderId: v.id("paymentOrdersV2"),
+    provider: v.literal("airwallex"),
+    providerPaymentIntentId: v.string(),
+    providerAttemptId: v.optional(v.string()),
+    clientSecretRef: v.optional(v.string()),
+    status: v2PaymentOrderStatusValidator,
+    statusRaw: v.optional(v.string()),
+    requestId: v.string(),
+    idempotencyKey: v.string(),
+    lastError: v.optional(v.string()),
+    metadata: v.optional(v2MetadataValidator),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_payment_order", ["paymentOrderId", "createdAt"])
+    .index("by_provider_payment_intent", ["provider", "providerPaymentIntentId"])
+    .index("by_idempotency", ["idempotencyKey"]),
+
+  providerObjectsV2: defineTable({
+    provider: v.literal("airwallex"),
+    entityType: v.union(
+      v.literal("payment_order"),
+      v.literal("payment_attempt"),
+      v.literal("connected_account"),
+      v.literal("fund_split"),
+      v.literal("payout_transfer"),
+    ),
+    entityId: v.string(),
+    providerObjectType: v.string(),
+    providerObjectId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_provider_object", ["provider", "providerObjectType", "providerObjectId"])
+    .index("by_entity", ["entityType", "entityId", "createdAt"]),
+
+  connectedAccountsV2: defineTable({
+    userId: v.id("users"),
+    role: v.literal("instructor"),
+    provider: v.literal("airwallex"),
+    providerAccountId: v.string(),
+    accountCapability: v.union(v.literal("ledger"), v.literal("withdrawal"), v.literal("full")),
+    status: v2ConnectedAccountStatusValidator,
+    kycStatus: v.optional(v.string()),
+    kybStatus: v.optional(v.string()),
+    serviceAgreementType: v.optional(v.string()),
+    country: v.string(),
+    currency: v.string(),
+    defaultPayoutMethod: v.optional(v.string()),
+    metadata: v.optional(v2MetadataValidator),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    activatedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId", "createdAt"])
+    .index("by_provider_account", ["provider", "providerAccountId"])
+    .index("by_status", ["status", "createdAt"]),
+
+  connectedAccountRequirementsV2: defineTable({
+    connectedAccountId: v.id("connectedAccountsV2"),
+    providerRequirementId: v.string(),
+    kind: v2RequirementKindValidator,
+    code: v.optional(v.string()),
+    message: v.string(),
+    blocking: v.boolean(),
+    resolvedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_connected_account", ["connectedAccountId", "createdAt"])
+    .index("by_unresolved_blocking", ["blocking", "resolvedAt", "createdAt"]),
+
+  fundSplitsV2: defineTable({
+    paymentOrderId: v.id("paymentOrdersV2"),
+    paymentAttemptId: v.id("paymentAttemptsV2"),
+    connectedAccountId: v.id("connectedAccountsV2"),
+    provider: v.literal("airwallex"),
+    providerFundsSplitId: v.optional(v.string()),
+    sourcePaymentIntentId: v.string(),
+    destinationAccountId: v.string(),
+    amountAgorot: v.number(),
+    currency: v.string(),
+    autoRelease: v.boolean(),
+    releaseMode: v.union(
+      v.literal("automatic"),
+      v.literal("manual"),
+      v.literal("scheduled"),
+    ),
+    status: v2FundSplitStatusValidator,
+    requestId: v.string(),
+    idempotencyKey: v.string(),
+    failureReason: v.optional(v.string()),
+    metadata: v.optional(v2MetadataValidator),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    releasedAt: v.optional(v.number()),
+    settledAt: v.optional(v.number()),
+  })
+    .index("by_payment_order", ["paymentOrderId", "createdAt"])
+    .index("by_connected_account", ["connectedAccountId", "createdAt"])
+    .index("by_provider_split", ["provider", "providerFundsSplitId"])
+    .index("by_status", ["status", "createdAt"]),
+
+  payoutTransfersV2: defineTable({
+    connectedAccountId: v.id("connectedAccountsV2"),
+    fundSplitId: v.id("fundSplitsV2"),
+    provider: v.literal("airwallex"),
+    providerTransferId: v.optional(v.string()),
+    amountAgorot: v.number(),
+    currency: v.string(),
+    status: v2PayoutTransferStatusValidator,
+    statusRaw: v.optional(v.string()),
+    requestId: v.string(),
+    idempotencyKey: v.string(),
+    failureReason: v.optional(v.string()),
+    metadata: v.optional(v2MetadataValidator),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    paidAt: v.optional(v.number()),
+  })
+    .index("by_connected_account", ["connectedAccountId", "createdAt"])
+    .index("by_fund_split", ["fundSplitId", "createdAt"])
+    .index("by_provider_transfer", ["provider", "providerTransferId"])
+    .index("by_status", ["status", "createdAt"]),
+
+  payoutPreferencesV2: defineTable({
+    userId: v.id("users"),
+    mode: v.union(
+      v.literal("immediate_when_eligible"),
+      v.literal("scheduled_date"),
+      v.literal("manual_hold"),
+    ),
+    scheduledDate: v.optional(v.number()),
+    autoPayoutEnabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  ledgerEntriesV2: defineTable({
+    paymentOrderId: v.id("paymentOrdersV2"),
+    paymentAttemptId: v.optional(v.id("paymentAttemptsV2")),
+    fundSplitId: v.optional(v.id("fundSplitsV2")),
+    payoutTransferId: v.optional(v.id("payoutTransfersV2")),
+    jobId: v.id("jobs"),
+    studioUserId: v.id("users"),
+    instructorUserId: v.optional(v.id("users")),
+    entryType: v2LedgerEntryTypeValidator,
+    bucket: v2LedgerBucketValidator,
+    amountAgorot: v.number(),
+    currency: v.string(),
+    dedupeKey: v.string(),
+    referenceType: v.union(
+      v.literal("payment_order"),
+      v.literal("payment_attempt"),
+      v.literal("fund_split"),
+      v.literal("payout_transfer"),
+      v.literal("provider_event"),
+      v.literal("refund"),
+      v.literal("adjustment"),
+    ),
+    referenceId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_payment_order", ["paymentOrderId", "createdAt"])
+    .index("by_instructor_bucket", ["instructorUserId", "bucket", "createdAt"])
+    .index("by_reference", ["referenceType", "referenceId", "createdAt"])
+    .index("by_dedupe_key", ["dedupeKey"]),
+
+  pricingRulesV2: defineTable({
+    code: v.string(),
+    country: v.string(),
+    currency: v.string(),
+    basePlatformFeeAgorot: v.number(),
+    bonusPlatformFeeAgorot: v.number(),
+    bonusTriggerMode: v.union(v.literal("bonus_amount_positive")),
+    active: v.boolean(),
+    version: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_code", ["code", "createdAt"])
+    .index("by_active_country_currency", ["active", "country", "currency", "createdAt"]),
+
   ledgerEntries: defineTable({
     paymentOrderId: v.id("paymentOrders"),
     jobId: v.id("jobs"),
@@ -1173,12 +1523,14 @@ export default defineSchema({
     .index("by_merchant_reference", ["provider", "merchantReferenceId"]),
 
   webhookDeliveries: defineTable({
-    provider: v.union(v.literal("rapyd"), v.literal("didit")),
+    provider: v.union(v.literal("rapyd"), v.literal("didit"), v.literal("airwallex")),
     route: v.union(
       v.literal("payment"),
       v.literal("payout"),
       v.literal("beneficiary"),
       v.literal("kyc"),
+      v.literal("connected_account"),
+      v.literal("fund_split"),
     ),
     providerEventId: v.string(),
     deliveryKey: v.string(),

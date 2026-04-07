@@ -7,7 +7,7 @@ const DEFAULT_INVALID_SIGNATURE_BLOCK_MS = 15 * 60 * 1000;
 const DEFAULT_CLEANUP_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const DEFAULT_CLEANUP_BATCH_SIZE = 100;
 
-const webhookProviderValidator = v.union(v.literal("rapyd"), v.literal("didit"));
+const webhookProviderValidator = v.union(v.literal("didit"), v.literal("airwallex"));
 const cleanupCursorValidator = v.object({
   paymentEvents: v.optional(v.string()),
   payoutDestinationEvents: v.optional(v.string()),

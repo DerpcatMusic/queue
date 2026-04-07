@@ -2,11 +2,9 @@ import type BottomSheet from "@gorhom/bottom-sheet";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { Href } from "expo-router";
 import { useRouter } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FEATURE_FLAGS } from "@/constants/feature-flags";
-import { useRapydReturn } from "@/contexts/rapyd-return-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DEVICE_TIME_ZONE, MINUTE_MS, type StudioDraft, trimOptional } from "@/lib/jobs-utils";
@@ -18,13 +16,16 @@ import {
   isPushRegistrationError,
   registerForPushNotificationsAsync,
 } from "@/lib/push-notifications";
-import { buildRapydBridgeUrl, resolveRapydAppReturnUrl } from "@/lib/rapyd-hosted-flow";
 import {
   buildLatestPaymentByJobId,
   filterStudioJobsByTime,
   getStudioPushErrorMessage,
   type StudioControllerJob,
 } from "./use-studio-feed-controller.helpers";
+import {
+  buildAirwallexNativePaymentSession,
+  presentAirwallexNativePaymentFlow,
+} from "@/features/payments/lib/airwallex-native";
 
 export type StudioJobsTimeFilter = "all" | "active" | "past";
 
@@ -67,22 +68,19 @@ function parseStudioComplianceReasons(message: string): string[] | null {
 }
 
 export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
-  useEffect(() => {
-    WebBrowser.maybeCompleteAuthSession();
-  }, []);
-
   const router = useRouter();
   const currentUser = useQuery(api.users.getCurrentUser);
-  const { consumeReturn: consumeCheckoutReturn, latestReturn: latestCheckoutReturn } =
-    useRapydReturn("checkout");
 
   const postJob = useMutation(api.jobs.postJob);
   const reviewApplication = useMutation(api.jobs.reviewApplication);
   const updateStudioNotificationSettings = useMutation(
     api.users.updateMyStudioNotificationSettings,
   );
-  const createCheckoutForJob = useAction(api.rapyd.createCheckoutForJob);
-  const retrieveCheckoutForPayment = useAction(api.rapyd.retrieveCheckoutForPayment);
+  const createStudioPaymentOfferV2 = useMutation(api.paymentsV2.createStudioPaymentOfferV2);
+  const createStudioPaymentOrderV2 = useMutation(api.paymentsV2.createStudioPaymentOrderV2);
+  const createAirwallexCheckoutSessionForPaymentOrderV2 = useAction(
+    api.paymentsV2Actions.createAirwallexCheckoutSessionForPaymentOrderV2,
+  );
 
   const studioJobs = useQuery(
     api.jobs.getMyStudioJobsWithApplications,
@@ -94,7 +92,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     currentUser?.role === "studio" ? {} : "skip",
   );
   const studioPayments = useQuery(
-    api.payments.listMyPayments,
+    api.paymentsV2.listMyPaymentsV2,
     currentUser?.role === "studio" ? { limit: 200 } : "skip",
   );
   const studioBranches = useQuery(
@@ -118,7 +116,6 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const studioJobsStartedAtRef = useRef<number | null>(null);
-  const lastHandledCheckoutReturnRef = useRef<string | null>(null);
 
   const filteredStudioJobs = useMemo(() => {
     return filterStudioJobsByTime(studioJobs, jobsTimeFilter, Date.now());
@@ -162,99 +159,6 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
       studioJobsStartedAtRef.current = null;
     }
   }, [studioJobs]);
-
-  const applyCheckoutOutcome = useMemo(
-    () =>
-      (
-        paymentStatus:
-          | "created"
-          | "pending"
-          | "authorized"
-          | "captured"
-          | "failed"
-          | "cancelled"
-          | "refunded",
-      ) => {
-        if (paymentStatus === "captured") {
-          setStatusMessage(t("jobsTab.checkout.completed"));
-          return;
-        }
-        if (
-          paymentStatus === "pending" ||
-          paymentStatus === "authorized" ||
-          paymentStatus === "created"
-        ) {
-          setStatusMessage(t("jobsTab.checkout.pendingConfirmation"));
-          return;
-        }
-        if (paymentStatus === "cancelled") {
-          setStatusMessage(t("jobsTab.checkout.cancelled"));
-          return;
-        }
-
-        setErrorMessage(t("jobsTab.checkout.failed"));
-      },
-    [t],
-  );
-
-  useEffect(() => {
-    if (currentUser?.role !== "studio" || !latestCheckoutReturn) {
-      return;
-    }
-
-    if (latestCheckoutReturn.result === "cancel") {
-      consumeCheckoutReturn();
-      setErrorMessage(null);
-      setStatusMessage(t("jobsTab.checkout.cancelled"));
-      return;
-    }
-
-    const jobId = latestCheckoutReturn.jobId;
-    if (!jobId) {
-      consumeCheckoutReturn();
-      setErrorMessage(null);
-      setStatusMessage(t("jobsTab.checkout.pendingConfirmation"));
-      return;
-    }
-
-    const latestPayment = latestPaymentByJobId.get(jobId);
-    if (!latestPayment) {
-      return;
-    }
-
-    const handledKey = `${latestCheckoutReturn.url}:${latestPayment.paymentId}`;
-    if (lastHandledCheckoutReturnRef.current === handledKey) {
-      return;
-    }
-    lastHandledCheckoutReturnRef.current = handledKey;
-
-    setErrorMessage(null);
-    void (async () => {
-      try {
-        const checkoutStatus = await retrieveCheckoutForPayment({
-          paymentId: latestPayment.paymentId,
-        });
-        applyCheckoutOutcome(checkoutStatus.paymentStatus);
-      } catch (error) {
-        const message =
-          error instanceof Error && error.message
-            ? error.message
-            : t("jobsTab.errors.failedToStartCheckout");
-        setErrorMessage(message);
-      } finally {
-        consumeCheckoutReturn();
-        lastHandledCheckoutReturnRef.current = null;
-      }
-    })();
-  }, [
-    applyCheckoutOutcome,
-    consumeCheckoutReturn,
-    currentUser?.role,
-    latestCheckoutReturn,
-    latestPaymentByJobId,
-    retrieveCheckoutForPayment,
-    t,
-  ]);
 
   const postStudioJob = async (draft: StudioDraft) => {
     if (currentUser?.role !== "studio") return;
@@ -472,43 +376,36 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     setStatusMessage(null);
 
     try {
-      const appReturnUrl = resolveRapydAppReturnUrl("checkout");
-      const completeCheckoutUrl = buildRapydBridgeUrl({
-        bridgePath: "/rapyd/checkout-return-bridge",
-        result: "complete",
-        appReturnUrl,
-        query: {
-          jobId: String(jobId),
-        },
+      const offer = await createStudioPaymentOfferV2({ jobId });
+      const order = await createStudioPaymentOrderV2({ offerId: offer._id });
+      const checkout = await createAirwallexCheckoutSessionForPaymentOrderV2({
+        paymentOrderId: order._id,
       });
-      const cancelCheckoutUrl = buildRapydBridgeUrl({
-        bridgePath: "/rapyd/checkout-return-bridge",
-        result: "cancel",
-        appReturnUrl,
-        query: {
-          jobId: String(jobId),
-        },
-      });
-      const checkout = await createCheckoutForJob({
-        jobId,
-        completeCheckoutUrl,
-        cancelCheckoutUrl,
-      });
-      const authResult = await WebBrowser.openAuthSessionAsync(checkout.checkoutUrl, appReturnUrl);
-
-      if (authResult.type === "success" && authResult.url) {
-        const resultUrl = new URL(authResult.url);
-        if ((resultUrl.searchParams.get("result") ?? "complete") === "cancel") {
-          setStatusMessage(t("jobsTab.checkout.cancelled"));
-          return;
-        }
+      if (!checkout.clientSecret) {
+        throw new Error(t("jobsTab.errors.failedToStartCheckout"));
       }
 
-      const checkoutStatus = await retrieveCheckoutForPayment({
-        paymentId: checkout.paymentId,
+      const session = buildAirwallexNativePaymentSession({
+        paymentIntentId: checkout.providerPaymentIntentId,
+        clientSecret: checkout.clientSecret,
+        amountAgorot: order.capturedAmountAgorot || order.pricing.studioChargeAmountAgorot,
+        currency: order.currency,
+        countryCode: order.providerCountry,
       });
 
-      applyCheckoutOutcome(checkoutStatus.paymentStatus);
+      const result = await presentAirwallexNativePaymentFlow(session, {
+        environment: checkout.sdkEnvironment,
+      });
+      if (result.status === "success") {
+        setStatusMessage(t("jobsTab.checkout.completed"));
+        return;
+      }
+      if (result.status === "inProgress") {
+        setStatusMessage(t("jobsTab.checkout.pendingConfirmation"));
+        return;
+      }
+
+      setStatusMessage(t("jobsTab.checkout.cancelled"));
     } catch (error) {
       const message =
         error instanceof Error && error.message

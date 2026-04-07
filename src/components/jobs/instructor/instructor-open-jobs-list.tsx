@@ -1,11 +1,11 @@
 import type { TFunction } from "i18next";
 import { memo, useCallback } from "react";
-import { View } from "react-native";
 import { InstructorJobCard } from "@/components/jobs/instructor/instructor-job-card";
 import { BrandSpacing } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { Box } from "@/primitives";
 
 type InstructorOpenJobsListProps = {
   jobs: InstructorMarketplaceJob[];
@@ -49,14 +49,14 @@ export const InstructorOpenJobsList = memo(function InstructorOpenJobsList({
   if (jobs.length === 0) return null;
 
   return (
-    <View
+    <Box
       style={{
         gap: isWideWeb ? 10 : BrandSpacing.md,
         paddingHorizontal: BrandSpacing.sm,
       }}
     >
       {jobs.map((job) => (
-        <View key={`job-${job.jobId}`}>
+        <Box key={`job-${job.jobId}`}>
           <InstructorJobCard
             job={job}
             locale={locale}
@@ -69,8 +69,8 @@ export const InstructorOpenJobsList = memo(function InstructorOpenJobsList({
             onOpenStudio={handleOpenStudio}
             t={t}
           />
-        </View>
+        </Box>
       ))}
-    </View>
+    </Box>
   );
 });

@@ -1,8 +1,8 @@
 import { FlashList } from "@shopify/flash-list";
 import { memo, useCallback } from "react";
-import { View } from "react-native";
 import { BrandSpacing } from "@/constants/brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { Box } from "@/primitives";
 import type { StudioJobsListProps } from "./studio-jobs-list.types";
 import { StudioJobCard } from "./studio-jobs-list-parts";
 
@@ -56,7 +56,7 @@ export const StudioJobsList = memo(function StudioJobsList({
   if (jobs.length === 0) return null;
 
   return (
-    <View
+    <Box
       style={{
         gap: isWideWeb ? BrandSpacing.md : BrandSpacing.sm,
         paddingHorizontal: isWideWeb ? BrandSpacing.lg : BrandSpacing.md,
@@ -70,9 +70,9 @@ export const StudioJobsList = memo(function StudioJobsList({
         scrollEnabled={false}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => (
-          <View style={{ height: isWideWeb ? BrandSpacing.md : BrandSpacing.sm }} />
+          <Box style={{ height: isWideWeb ? BrandSpacing.md : BrandSpacing.sm }} />
         )}
       />
-    </View>
+    </Box>
   );
 });

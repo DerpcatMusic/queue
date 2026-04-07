@@ -1,10 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitSurface } from "@/components/ui/kit";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Text } from "@/primitives";
+const BRIGHT_LIME = "#CCFF00";
 
 type ProfileEditorIdentityPanelProps = {
   profileName: string;
@@ -38,7 +40,7 @@ export function ProfileEditorIdentityPanel({
       style={
         isDesktopWeb
           ? {
-              backgroundColor: color.primary,
+              backgroundColor: BRIGHT_LIME,
             }
           : undefined
       }
@@ -55,7 +57,7 @@ export function ProfileEditorIdentityPanel({
             style={[
               BrandType.micro,
               {
-                color: isDesktopWeb ? color.onPrimary : color.textMuted,
+                color: isDesktopWeb ? "#161E00" : color.textMuted,
                 includeFontPadding: false,
               },
             ]}
@@ -66,7 +68,7 @@ export function ProfileEditorIdentityPanel({
             style={[
               isDesktopWeb ? BrandType.display : BrandType.title,
               {
-                color: isDesktopWeb ? color.onPrimary : color.text,
+                color: isDesktopWeb ? "#161E00" : color.text,
                 includeFontPadding: false,
               },
             ]}
@@ -78,7 +80,7 @@ export function ProfileEditorIdentityPanel({
               style={[
                 BrandType.micro,
                 {
-                  color: isDesktopWeb ? color.onPrimary : color.textMuted,
+                  color: isDesktopWeb ? "#161E00" : color.textMuted,
                   includeFontPadding: false,
                 },
               ]}

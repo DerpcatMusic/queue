@@ -1,8 +1,13 @@
+import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import * as ExpoLinking from "expo-linking";
-import { View } from "react-native";
-
-import { KitSocialIconButton } from "@/components/ui/kit";
-import { BrandSpacing } from "@/constants/brand";
+import { Pressable, View } from "react-native";
+import { AppSymbol } from "@/components/ui/app-symbol";
+import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { useTheme } from "@/hooks/use-theme";
+import { IconSize } from "@/lib/design-system";
+import { Box } from "@/primitives";
+const BRIGHT_LIME = "#CCFF00";
 
 export const PROFILE_SOCIAL_FIELDS = [
   {
@@ -64,6 +69,69 @@ function toOpenableUrl(key: ProfileSocialKey, value: string) {
   return `https://${trimmed}`;
 }
 
+type BrandIconName = "instagram" | "tiktok" | "whatsapp" | "facebook" | "linkedin";
+
+function SocialIconButton({
+  accessibilityLabel,
+  icon,
+  onPress,
+  active = true,
+  size = BrandSpacing.iconContainer,
+}: {
+  accessibilityLabel: string;
+  icon: BrandIconName | "website";
+  onPress?: () => void;
+  active?: boolean;
+  size?: number;
+}) {
+  const { color: palette } = useTheme();
+  const iconSize = Math.max(IconSize.xs, Math.round(size * 0.44));
+  const backgroundColor = active ? BRIGHT_LIME : palette.surfaceElevated;
+  const pressedBackgroundColor = active ? "#D9FF4D" : palette.surfaceAlt;
+  const tintColor = active ? "#161E00" : palette.textMuted;
+
+  const circle = (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: BrandRadius.full,
+        borderCurve: "continuous",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor,
+      }}
+    >
+      {icon === "website" ? (
+        <AppSymbol name="globe" size={iconSize} tintColor={tintColor} />
+      ) : (
+        <FontAwesome5 name={icon} size={iconSize} color={tintColor} />
+      )}
+    </View>
+  );
+
+  if (!onPress) {
+    return circle;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={() => {
+        triggerSelectionHaptic();
+        onPress();
+      }}
+      style={({ pressed }) => ({
+        borderRadius: BrandRadius.full,
+        backgroundColor: pressed ? pressedBackgroundColor : backgroundColor,
+      })}
+    >
+      {circle}
+    </Pressable>
+  );
+}
+
 export function ProfileSocialLinksRow({
   socialLinks,
   iconSize = BrandSpacing.iconContainer - BrandSpacing.xs / 2,
@@ -78,11 +146,11 @@ export function ProfileSocialLinksRow({
   }
 
   return (
-    <View
+    <Box
       style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm, flexWrap: "wrap" }}
     >
       {activeFields.map((field) => (
-        <KitSocialIconButton
+        <SocialIconButton
           key={field.key}
           accessibilityLabel={field.label}
           icon={field.icon}
@@ -97,6 +165,6 @@ export function ProfileSocialLinksRow({
           }}
         />
       ))}
-    </View>
+    </Box>
   );
 }

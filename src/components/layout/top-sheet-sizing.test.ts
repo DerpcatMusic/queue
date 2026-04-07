@@ -20,14 +20,14 @@ describe("top-sheet helpers", () => {
       expect(result).toEqual([400]);
     });
 
-    it("clamps step heights up to a minimum height floor", () => {
+    it("treats the third argument as measured base height and adds growth on top", () => {
       const result = computeStepHeights([0.1, 0.5], 800, 120);
-      expect(result).toEqual([120, 400]);
+      expect(result).toEqual([188, 460]);
     });
 
-    it("clamps all steps below the minimum height floor", () => {
+    it("keeps step 0 anchored to the measured base height", () => {
       const result = computeStepHeights([0.05, 0.1, 0.2], 800, 100);
-      expect(result).toEqual([100, 100, 160]);
+      expect(result).toEqual([135, 170, 240]);
     });
 
     it("maps multiple fractional steps to pixel heights", () => {
@@ -106,28 +106,23 @@ describe("top-sheet helpers", () => {
   });
 
   describe("computeCollapsedHeight", () => {
-    it("returns intrinsic height when above the minimum floor", () => {
-      const result = computeCollapsedHeight(280, 150, 500);
+    it("returns intrinsic height when it fits within max height", () => {
+      const result = computeCollapsedHeight(280, 500);
       expect(result).toBe(280);
     });
 
-    it("returns the minimum floor when intrinsic height is smaller", () => {
-      const result = computeCollapsedHeight(80, 150, 500);
-      expect(result).toBe(150);
-    });
-
     it("caps collapsed height to the maximum height", () => {
-      const result = computeCollapsedHeight(600, 150, 500);
+      const result = computeCollapsedHeight(600, 500);
       expect(result).toBe(500);
     });
 
-    it("treats negative values as zero before applying floors", () => {
-      const result = computeCollapsedHeight(-20, 100, 500);
-      expect(result).toBe(100);
+    it("treats negative values as zero before clamping", () => {
+      const result = computeCollapsedHeight(-20, 500);
+      expect(result).toBe(0);
     });
 
     it("rounds intrinsic values upward", () => {
-      const result = computeCollapsedHeight(99.2, 0, 500);
+      const result = computeCollapsedHeight(99.2, 500);
       expect(result).toBe(100);
     });
   });

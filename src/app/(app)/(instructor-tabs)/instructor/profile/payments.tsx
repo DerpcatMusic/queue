@@ -1,13 +1,12 @@
-import DateTimePicker from "@expo/ui/datetimepicker";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
-import type { Href } from "expo-router";
-import { Redirect, useRouter } from "expo-router";
+import { type Href, Redirect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Platform, Pressable, View } from "react-native";
-import { LoadingScreen } from "@/components/loading-screen";
+import { Alert, Platform, Pressable } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
+import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
 import {
   ProfileSubpageScrollView,
@@ -15,15 +14,12 @@ import {
 } from "@/components/profile/profile-subpage-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import {
-  KitSegmentedToggle,
-  KitStatusBadge,
-  KitSuccessBurst,
-} from "@/components/ui/kit";
+import { KitStatusBadge } from "@/components/ui/kit";
+import { SkeletonLine } from "@/components/ui/skeleton";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-import { useRapydReturn } from "@/contexts/rapyd-return-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth } from "@/lib/design-system";
 import { formatDateTime } from "@/lib/jobs-utils";
@@ -32,57 +28,102 @@ import {
   getPaymentStatusLabel,
   getPayoutStatusLabel,
 } from "@/lib/payments-utils";
-import {
-  buildRapydBridgeUrl,
-  resolveRapydAppReturnUrl,
-} from "@/lib/rapyd-hosted-flow";
+import { Box, HStack, Spacer, VStack } from "@/primitives";
+import { Motion } from "@/theme/theme";
 
 const INSTRUCTOR_COMPLIANCE_ROUTE = "/instructor/profile/compliance" as const;
-type PayoutPreferenceMode =
-  | "immediate_when_eligible"
-  | "scheduled_date"
-  | "manual_hold";
+const AIRWALLEX_ONBOARDING_ROUTE = "/instructor/profile/airwallex-onboarding" as const;
 
-// ─── Local Style Constants ─────────────────────────────────────────────────────
-const VERIFY_MODAL_AVATAR_SIZE = 80;
-const VERIFY_MODAL_AVATAR_RADIUS = VERIFY_MODAL_AVATAR_SIZE / 2;
-const VERIFY_MODAL_ICON_SIZE = 40;
+type ConnectedAccountStatus = "pending" | "action_required" | "active" | "restricted" | "rejected" | "disabled";
 
-const HERO_CARD_RADIUS = BrandRadius.cardSubtle; // 28
-const HERO_CARD_PADDING = BrandSpacing.xl; // 24
-const HERO_BUTTON_RADIUS = BrandRadius.medium; // 18
-const HERO_BUTTON_MIN_HEIGHT = 54;
-const HERO_BUTTON_PADDING = BrandSpacing.component; // 14
+const STATUS_TONE: Record<ConnectedAccountStatus, "neutral" | "warning" | "success" | "danger"> = {
+  pending: "warning",
+  action_required: "warning",
+  active: "success",
+  restricted: "danger",
+  rejected: "danger",
+  disabled: "danger",
+};
 
-const STATUS_DOT_SIZE = BrandSpacing.statusDot; // 6
-const STATUS_DOT_RADIUS = BrandSpacing.statusDot / 2; // 3
-
-const BANNER_RADIUS = BrandRadius.lg; // 12
-const BANNER_PADDING_H = BrandSpacing.component; // 14
-const BANNER_PADDING_V = BrandSpacing.stackDense; // 10
-
-const ACTION_HINT_RADIUS = BrandRadius.pill; // 999
-const ACTION_HINT_PADDING_H = BrandSpacing.component; // 14
-const ACTION_HINT_PADDING_V = BrandSpacing.sm; // 8
-
-const PREFERENCE_CARD_RADIUS = BrandRadius.xl; // 16
-const PREFERENCE_BUTTON_RADIUS = BrandRadius.xl; // 16
-const PREFERENCE_BUTTON_MIN_HEIGHT = BrandSpacing.controlSm; // 38
-const PREFERENCE_BUTTON_PADDING_H = BrandSpacing.component; // 14
-const PREFERENCE_BUTTON_PADDING_V = BrandSpacing.stackDense; // 10
-
-const RECEIPT_CARD_RADIUS = BrandRadius.soft; // 24
-const RECEIPT_ICON_SIZE = 48;
-const RECEIPT_ICON_RADIUS = RECEIPT_ICON_SIZE / 2;
-
-function buildDefaultScheduledDate(timestamp?: number | null) {
-  if (timestamp && Number.isFinite(timestamp) && timestamp > Date.now()) {
-    return new Date(timestamp);
+function getReleaseModeLabel(
+  t: ReturnType<typeof useTranslation>["t"],
+  releaseMode: "automatic" | "manual" | "scheduled",
+) {
+  switch (releaseMode) {
+    case "automatic":
+      return t("profile.payments.releaseModeAutomatic");
+    case "scheduled":
+      return t("profile.payments.releaseModeScheduled");
+    default:
+      return t("profile.payments.releaseModeManual");
   }
-  const next = new Date();
-  next.setDate(next.getDate() + 1);
-  next.setHours(9, 0, 0, 0);
-  return next;
+}
+
+function SkeletonProfile() {
+  const { color } = useTheme();
+
+  return (
+    <Animated.View entering={FadeIn.duration(Motion.skeletonFade)}>
+      <Box gap="xl" p="lg">
+        <Box
+          p="xl"
+          style={{ backgroundColor: color.surfaceElevated, borderRadius: BrandRadius.cardSubtle }}
+        >
+          <VStack gap="lg">
+            <SkeletonLine width={120} height={14} />
+            <SkeletonLine width="72%" height={36} />
+            <SkeletonLine width="88%" height={14} />
+            <HStack gap="md">
+              <SkeletonLine width="48%" height={44} radius={BrandRadius.medium} />
+              <SkeletonLine width="48%" height={44} radius={BrandRadius.medium} />
+            </HStack>
+          </VStack>
+        </Box>
+        <Box
+          p="lg"
+          style={{ backgroundColor: color.surfaceElevated, borderRadius: BrandRadius.soft }}
+        >
+          <SkeletonLine width={120} height={16} />
+          <Spacer size="md" />
+          <SkeletonLine width="100%" height={56} radius={BrandRadius.soft} />
+        </Box>
+      </Box>
+    </Animated.View>
+  );
+}
+
+function statusCopy(t: ReturnType<typeof useTranslation>["t"], status?: ConnectedAccountStatus | null) {
+  if (!status) {
+    return {
+      label: t("profile.payments.airwallexNotConnected"),
+      caption: t("profile.payments.airwallexDirectSplitNote"),
+      tone: "warning" as const,
+    };
+  }
+
+  switch (status) {
+    case "active":
+      return {
+        label: t("profile.payments.airwallexActive"),
+        caption: t("profile.payments.airwallexActiveHint"),
+        tone: "success" as const,
+      };
+    case "action_required":
+    case "pending":
+      return {
+        label: t("profile.payments.airwallexActionRequired"),
+        caption: t("profile.payments.airwallexActionRequiredHint"),
+        tone: "warning" as const,
+      };
+    case "restricted":
+    case "rejected":
+    case "disabled":
+      return {
+        label: t("profile.payments.airwallexBlocked"),
+        caption: t("profile.payments.airwallexBlockedHint"),
+        tone: "danger" as const,
+      };
+  }
 }
 
 export default function ProfilePaymentsScreen() {
@@ -92,389 +133,114 @@ export default function ProfilePaymentsScreen() {
   const theme = useTheme();
   const { color } = theme;
 
-  useEffect(() => {
-    WebBrowser.maybeCompleteAuthSession();
-  }, []);
   useProfileSubpageSheet({
     title: t("profile.navigation.wallet"),
     routeMatchPath: "/profile/payments",
   });
 
   const currentUser = useQuery(api.users.getCurrentUser);
-  const isInstructorPaymentsRole = currentUser?.role === "instructor";
-  const {
-    consumeReturn: consumeBeneficiaryReturn,
-    latestReturn: latestBeneficiaryReturn,
-  } = useRapydReturn("beneficiary");
+  const isInstructor = currentUser?.role === "instructor";
 
   const paymentRows = useQuery(
-    api.payments.listMyPayments,
-    isInstructorPaymentsRole ? { limit: 40 } : "skip",
+    api.paymentsV2.listMyPaymentsV2,
+    isInstructor ? { limit: 20 } : "skip",
   );
-  const payoutSummary = useQuery(
-    api.payments.getMyPayoutSummary,
-    currentUser?.role === "instructor" ? {} : "skip",
+  const connectedAccount = useQuery(
+    api.paymentsV2.getMyInstructorConnectedAccountV2,
+    isInstructor ? {} : "skip",
   );
-  const requestPayoutWithdrawal = useMutation(
-    api.payments.requestMyPayoutWithdrawal,
-  );
-  const upsertMyPayoutPreference = useMutation(
-    api.payments.upsertMyPayoutPreference,
-  );
-  const createBeneficiaryOnboardingForInstructor = useAction(
-    api.rapyd.createBeneficiaryOnboardingForInstructor,
-  );
-  const [destinationError, setDestinationError] = useState<string | null>(null);
-  const [destinationInfo, setDestinationInfo] = useState<string | null>(null);
-  const [onboardingBusy, setOnboardingBusy] = useState(false);
-  const [activeOnboardingId, setActiveOnboardingId] =
-    useState<Id<"payoutDestinationOnboarding"> | null>(null);
-  const [isFinalizingOnboarding, setIsFinalizingOnboarding] = useState(false);
-  const [showOnboardingSuccess, setShowOnboardingSuccess] = useState(false);
-  const [withdrawBusy, setWithdrawBusy] = useState(false);
-  const [withdrawError, setWithdrawError] = useState<string | null>(null);
-  const [withdrawInfo, setWithdrawInfo] = useState<string | null>(null);
-  const [preferenceBusy, setPreferenceBusy] = useState(false);
-  const [preferenceError, setPreferenceError] = useState<string | null>(null);
-  const [preferenceInfo, setPreferenceInfo] = useState<string | null>(null);
-  const [pendingPreferenceMode, setPendingPreferenceMode] =
-    useState<PayoutPreferenceMode | null>(null);
-  const [showSchedulePicker, setShowSchedulePicker] = useState(false);
-  const [scheduleDraft, setScheduleDraft] = useState<Date>(
-    buildDefaultScheduledDate(),
-  );
-  const [selectedPaymentId, setSelectedPaymentId] =
-    useState<Id<"payments"> | null>(null);
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
+
+  const requestAirwallexAccount = useAction(api.paymentsV2Actions.ensureMyInstructorConnectedAccountV2);
+
+  const [connectBusy, setConnectBusy] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const [connectInfo, setConnectInfo] = useState<string | null>(null);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrdersV2"> | null>(null);
 
   const selectedPaymentDetail = useQuery(
-    api.payments.getMyPaymentDetail,
-    selectedPaymentId ? { paymentId: selectedPaymentId } : "skip",
-  );
-  const activeOnboardingSession = useQuery(
-    api.payments.getMyPayoutOnboardingSession,
-    activeOnboardingId ? { sessionId: activeOnboardingId } : "skip",
+    api.paymentsV2.getMyPaymentDetailV2,
+    selectedPaymentId ? { paymentOrderId: selectedPaymentId } : "skip",
   );
 
-  useEffect(() => {
-    if (!isFinalizingOnboarding || !activeOnboardingSession) return;
-
-    if (activeOnboardingSession.status === "completed") {
-      setIsFinalizingOnboarding(false);
-      setActiveOnboardingId(null);
-      setDestinationError(null);
-      setDestinationInfo(t("profile.payments.connectSuccess"));
-      setShowOnboardingSuccess(true);
-      if (Platform.OS === "ios") {
-        void Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
-      }
-      return;
-    }
-
-    if (
-      activeOnboardingSession.status === "failed" ||
-      activeOnboardingSession.status === "expired"
-    ) {
-      setIsFinalizingOnboarding(false);
-      setActiveOnboardingId(null);
-      setDestinationInfo(null);
-      setDestinationError(
-        activeOnboardingSession.lastError ??
-          (activeOnboardingSession.status === "expired"
-            ? t("profile.payments.expired")
-            : t("profile.payments.onboardingFailed")),
-      );
-    }
-  }, [activeOnboardingSession, isFinalizingOnboarding, t]);
-
-  useEffect(() => {
-    if (!latestBeneficiaryReturn) return;
-
-    consumeBeneficiaryReturn();
-    if (latestBeneficiaryReturn.result === "cancel") {
-      setActiveOnboardingId(null);
-      setIsFinalizingOnboarding(false);
-      setDestinationError(null);
-      setDestinationInfo(t("profile.payments.cancelled"));
-      return;
-    }
-
-    setDestinationError(null);
-    setDestinationInfo(t("profile.payments.finalizingTitle"));
-    setIsFinalizingOnboarding(true);
-  }, [consumeBeneficiaryReturn, latestBeneficiaryReturn, t]);
-
-  useEffect(() => {
-    if (
-      !isFinalizingOnboarding ||
-      activeOnboardingId !== null ||
-      !payoutSummary
-    ) {
-      return;
-    }
-
-    if (
-      payoutSummary.hasVerifiedDestination ||
-      payoutSummary.onboardingStatus === "completed"
-    ) {
-      setIsFinalizingOnboarding(false);
-      setDestinationError(null);
-      setDestinationInfo(t("profile.payments.connectSuccess"));
-      setShowOnboardingSuccess(true);
-      if (Platform.OS === "ios") {
-        void Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
-      }
-      return;
-    }
-
-    if (
-      payoutSummary.onboardingStatus === "failed" ||
-      payoutSummary.onboardingStatus === "expired"
-    ) {
-      setIsFinalizingOnboarding(false);
-      setDestinationInfo(null);
-      setDestinationError(
-        payoutSummary.onboardingLastError ??
-          (payoutSummary.onboardingStatus === "expired"
-            ? t("profile.payments.expired")
-            : t("profile.payments.onboardingFailed")),
-      );
-    }
-  }, [activeOnboardingId, isFinalizingOnboarding, payoutSummary, t]);
-
-  useEffect(() => {
-    if (!showOnboardingSuccess) return;
-    const timeout = setTimeout(() => {
-      setShowOnboardingSuccess(false);
-    }, 1600);
-    return () => clearTimeout(timeout);
-  }, [showOnboardingSuccess]);
-
-  useEffect(() => {
-    if (!payoutSummary || pendingPreferenceMode === "scheduled_date") {
-      return;
-    }
-    setScheduleDraft(
-      buildDefaultScheduledDate(payoutSummary.payoutPreferenceScheduledDate),
-    );
-  }, [payoutSummary, pendingPreferenceMode]);
+  const isDetailLoading = selectedPaymentId !== null && selectedPaymentDetail === undefined;
 
   const rows = useMemo(() => paymentRows ?? [], [paymentRows]);
-  const role = (currentUser?.role === "studio" ? "studio" : "instructor") as
-    | "studio"
-    | "instructor";
-  const isDetailLoading =
-    selectedPaymentId !== null && selectedPaymentDetail === undefined;
-  const isManualPayoutMode = payoutSummary?.payoutReleaseMode !== "automatic";
-  const isIdentityVerified = payoutSummary?.isIdentityVerified ?? false;
-  const hasVerifiedDestination = payoutSummary?.hasVerifiedDestination ?? false;
-  const withdrawDisabled =
-    !isManualPayoutMode ||
-    !isIdentityVerified ||
-    !hasVerifiedDestination ||
-    (payoutSummary?.availableAmountAgorot ?? 0) <= 0;
-  const savedPreferenceMode =
-    (payoutSummary?.payoutPreferenceMode as PayoutPreferenceMode | undefined) ??
-    "immediate_when_eligible";
-  const effectivePreferenceMode = pendingPreferenceMode ?? savedPreferenceMode;
-  const scheduledAtLabel = formatDateTime(scheduleDraft.getTime(), locale);
-  const appReturnUrl = resolveRapydAppReturnUrl("beneficiary");
-  const buildBridgeUrl = useCallback(
-    (result: "complete" | "cancel"): string => {
-      return buildRapydBridgeUrl({
-        bridgePath: "/rapyd/beneficiary-return-bridge",
-        result,
-        appReturnUrl,
-      });
-    },
-    [appReturnUrl],
-  );
-  const beneficiaryCompleteUrl = useMemo(
-    () => buildBridgeUrl("complete"),
-    [buildBridgeUrl],
-  );
-  const beneficiaryCancelUrl = useMemo(
-    () => buildBridgeUrl("cancel"),
-    [buildBridgeUrl],
-  );
+  const accountStatus = (connectedAccount?.status ?? null) as ConnectedAccountStatus | null;
+  const accountCopy = statusCopy(t, accountStatus);
+  const accountTone = accountStatus ? STATUS_TONE[accountStatus] : accountCopy.tone;
+  const primaryAccountActionLabel =
+    accountStatus === "active"
+      ? t("profile.payments.airwallexRefreshAccount")
+      : accountStatus
+        ? t("profile.payments.airwallexContinueOnboarding")
+        : t("profile.payments.airwallexConnectAccount");
 
-  const withdrawToBank = useCallback(async () => {
-    setWithdrawBusy(true);
-    setWithdrawError(null);
-    setWithdrawInfo(null);
+  const isLoading =
+    currentUser === undefined ||
+    (isInstructor && paymentRows === undefined) ||
+    (isInstructor && connectedAccount === undefined);
+
+  const { animatedStyle } = useContentReveal(isLoading);
+
+  useEffect(() => {
+    if (!connectInfo) return;
+    const timeout = setTimeout(() => setConnectInfo(null), Motion.emphasis);
+    return () => clearTimeout(timeout);
+  }, [connectInfo]);
+
+  const handleConnect = useCallback(async () => {
+    setConnectBusy(true);
+    setConnectError(null);
+    setConnectInfo(null);
     try {
-      const result = await requestPayoutWithdrawal({
-        maxPayments: 25,
-      });
-      if (result.scheduledCount === 0) {
-        setWithdrawInfo(t("profile.payments.availableBalanceEmpty"));
-      } else {
-        setWithdrawInfo(
-          t("profile.payments.withdrawalStarted", {
-            count: result.scheduledCount,
-          }),
-        );
+      const result = await requestAirwallexAccount();
+      setConnectInfo(
+        result.status === "active"
+          ? t("profile.payments.airwallexConnected")
+          : t("profile.payments.airwallexConnectStarted"),
+      );
+      if (result.status !== "active") {
+        router.push(AIRWALLEX_ONBOARDING_ROUTE as Href);
+      }
+      if (Platform.OS === "ios") {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error) {
-      setWithdrawError(
-        error instanceof Error
-          ? error.message
-          : t("profile.payments.withdrawalFailed"),
+      setConnectError(
+        error instanceof Error ? error.message : t("profile.payments.airwallexConnectFailed"),
       );
     } finally {
-      setWithdrawBusy(false);
+      setConnectBusy(false);
     }
-  }, [requestPayoutWithdrawal, t]);
+  }, [requestAirwallexAccount, t]);
 
-  const confirmWithdrawToBank = useCallback(() => {
+  const confirmConnect = useCallback(() => {
     Alert.alert(
-      t("profile.payments.withdrawConfirmTitle"),
-      t("profile.payments.withdrawConfirmBody"),
+      t("profile.payments.airwallexConnectTitle"),
+      t("profile.payments.airwallexConnectBody"),
       [
         { text: t("common.cancel"), style: "cancel" },
         {
-          text: t("profile.payments.withdrawConfirmAction"),
+          text: accountStatus ? t("profile.payments.airwallexRefreshAccount") : t("profile.payments.airwallexConnectAccount"),
           style: "default",
           onPress: () => {
-            void withdrawToBank();
+            void handleConnect();
           },
         },
       ],
     );
-  }, [t, withdrawToBank]);
+  }, [accountStatus, handleConnect, t]);
 
-  const startHostedBankOnboarding = useCallback(async () => {
-    setOnboardingBusy(true);
-    setIsFinalizingOnboarding(false);
-    setShowOnboardingSuccess(false);
-    setActiveOnboardingId(null);
-    setDestinationError(null);
-    setDestinationInfo(null);
-    try {
-      const session = await createBeneficiaryOnboardingForInstructor({
-        completeUrl: beneficiaryCompleteUrl,
-        cancelUrl: beneficiaryCancelUrl,
-      });
-      setActiveOnboardingId(session.onboardingId);
-      const authResult = await WebBrowser.openAuthSessionAsync(
-        session.redirectUrl,
-        appReturnUrl,
-      );
-      if (authResult.type === "success") {
-        const resultUrl = authResult.url ? new URL(authResult.url) : null;
-        const result = resultUrl?.searchParams.get("result") ?? "complete";
-        if (result === "cancel") {
-          setActiveOnboardingId(null);
-          setDestinationInfo(t("profile.payments.cancelled"));
-        } else {
-          setDestinationInfo(t("profile.payments.finalizingTitle"));
-          setIsFinalizingOnboarding(true);
-        }
-      } else if (
-        authResult.type === "dismiss" ||
-        authResult.type === "cancel"
-      ) {
-        setActiveOnboardingId(null);
-        setDestinationInfo(t("profile.payments.closed"));
-      } else {
-        setDestinationInfo(t("profile.payments.opened"));
-      }
-    } catch (error) {
-      setActiveOnboardingId(null);
-      setDestinationError(
-        error instanceof Error
-          ? error.message
-          : t("profile.payments.openFailed"),
-      );
-    } finally {
-      setOnboardingBusy(false);
-    }
-  }, [
-    createBeneficiaryOnboardingForInstructor,
-    beneficiaryCompleteUrl,
-    beneficiaryCancelUrl,
-    appReturnUrl,
-    t,
-  ]);
-
-  const savePayoutPreference = useCallback(
-    async (preferenceMode: PayoutPreferenceMode, scheduledDate?: number) => {
-      setPreferenceBusy(true);
-      setPreferenceError(null);
-      setPreferenceInfo(null);
-      try {
-        if (preferenceMode === "scheduled_date") {
-          if (!scheduledDate || scheduledDate <= Date.now()) {
-            throw new Error(t("profile.payments.preferenceScheduleInvalid"));
-          }
-        }
-
-        await upsertMyPayoutPreference({
-          preferenceMode,
-          ...(preferenceMode === "scheduled_date" && scheduledDate
-            ? { scheduledDate }
-            : {}),
-        });
-        setPendingPreferenceMode(null);
-        setPreferenceInfo(
-          preferenceMode === "scheduled_date"
-            ? t("profile.payments.preferenceSavedScheduled")
-            : preferenceMode === "manual_hold"
-              ? t("profile.payments.preferenceSavedHold")
-              : t("profile.payments.preferenceSavedImmediate"),
-        );
-        if (Platform.OS === "ios") {
-          void Haptics.notificationAsync(
-            Haptics.NotificationFeedbackType.Success,
-          );
-        }
-      } catch (error) {
-        setPreferenceError(
-          error instanceof Error
-            ? error.message
-            : t("profile.payments.preferenceSaveFailed"),
-        );
-      } finally {
-        setPreferenceBusy(false);
-      }
-    },
-    [upsertMyPayoutPreference, t],
-  );
-
-  const handlePreferenceModeChange = useCallback(
-    (mode: PayoutPreferenceMode) => {
-      setPreferenceError(null);
-      setPreferenceInfo(null);
-      if (mode === "scheduled_date") {
-        setPendingPreferenceMode(mode);
-        setScheduleDraft(
-          buildDefaultScheduledDate(
-            payoutSummary?.payoutPreferenceScheduledDate,
-          ),
-        );
-        setShowSchedulePicker(true);
-        return;
-      }
-
-      setPendingPreferenceMode(null);
-      setShowSchedulePicker(false);
-      void savePayoutPreference(mode);
-    },
-    [payoutSummary?.payoutPreferenceScheduledDate, savePayoutPreference],
-  );
-
-  if (
-    currentUser === undefined ||
-    (isInstructorPaymentsRole && paymentRows === undefined) ||
-    (currentUser?.role === "instructor" && payoutSummary === undefined) ||
-    (activeOnboardingId !== null && activeOnboardingSession === undefined)
-  ) {
-    return <LoadingScreen label={t("jobsTab.loading")} />;
+  if (isLoading) {
+    return (
+      <TabSceneTransition>
+        <Box style={{ flex: 1, backgroundColor: color.appBg }}>
+          <SkeletonProfile />
+        </Box>
+      </TabSceneTransition>
+    );
   }
+
   if (currentUser === null) {
     return <Redirect href="/sign-in" />;
   }
@@ -485,937 +251,361 @@ export default function ProfilePaymentsScreen() {
     return <Redirect href="/" />;
   }
 
-  if (isFinalizingOnboarding) {
-    return (
-      <ProfileSubpageScrollView
-        routeKey="instructor/profile/payments"
-        style={{ flex: 1, backgroundColor: color.appBg }}
-        contentContainerStyle={{
-          flexGrow: 1,
-          paddingHorizontal: BrandSpacing.lg,
-          justifyContent: "center",
-        }}
-        bottomSpacing={BrandSpacing.lg}
-      >
-        <View
-          style={{
-            backgroundColor: color.surfaceAlt,
-            borderRadius: HERO_CARD_RADIUS,
-            borderCurve: "continuous",
-            padding: HERO_CARD_PADDING,
-            gap: BrandSpacing.stackDense,
-            alignItems: "center",
-          }}
-        >
-          <ThemedText type="title">
-            {t("profile.payments.finalizingTitle")}
-          </ThemedText>
-          <ThemedText
-            type="caption"
-            style={{ color: color.textMuted, textAlign: "center" }}
-          >
-            {t("profile.payments.finalizingBody")}
-          </ThemedText>
-        </View>
-      </ProfileSubpageScrollView>
-    );
-  }
-
-  if (showOnboardingSuccess) {
-    return (
-      <ProfileSubpageScrollView
-        routeKey="instructor/profile/payments"
-        style={{ flex: 1, backgroundColor: color.appBg }}
-        contentContainerStyle={{
-          flexGrow: 1,
-          paddingHorizontal: BrandSpacing.lg,
-          justifyContent: "center",
-        }}
-        bottomSpacing={BrandSpacing.lg}
-      >
-        <View
-          style={{
-            backgroundColor: color.surfaceAlt,
-            borderRadius: HERO_CARD_RADIUS,
-            borderCurve: "continuous",
-            padding: HERO_CARD_PADDING,
-            gap: BrandSpacing.stackDense,
-            alignItems: "center",
-          }}
-        >
-          <KitSuccessBurst iconName="building.columns.fill" />
-          <ThemedText type="title">
-            {t("profile.payments.successTitle")}
-          </ThemedText>
-          <ThemedText
-            type="caption"
-            style={{ color: color.textMuted, textAlign: "center" }}
-          >
-            {t("profile.payments.successBody")}
-          </ThemedText>
-        </View>
-      </ProfileSubpageScrollView>
-    );
-  }
-
-  if (showVerifyModal) {
-    return (
-      <ProfileSubpageScrollView
-        routeKey="instructor/profile/payments"
-        style={{ flex: 1, backgroundColor: color.appBg }}
-        contentContainerStyle={{
-          flexGrow: 1,
-          paddingHorizontal: BrandSpacing.lg,
-          justifyContent: "center",
-        }}
-        bottomSpacing={BrandSpacing.lg}
-      >
-        <View
-          style={{
-            backgroundColor: color.surfaceAlt,
-            borderRadius: HERO_CARD_RADIUS,
-            borderCurve: "continuous",
-            padding: HERO_CARD_PADDING,
-            gap: BrandSpacing.insetComfort,
-            alignItems: "center",
-          }}
-        >
-          <View
-            style={{
-              width: VERIFY_MODAL_AVATAR_SIZE,
-              height: VERIFY_MODAL_AVATAR_SIZE,
-              borderRadius: VERIFY_MODAL_AVATAR_RADIUS,
-              backgroundColor: color.tertiary,
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: BorderWidth.thin,
-              borderColor: color.onPrimary,
-            }}
-          >
-            <IconSymbol
-              name="person.crop.circle.fill"
-              size={VERIFY_MODAL_ICON_SIZE}
-              color={color.onPrimary}
-            />
-          </View>
-          <ThemedText type="title" style={{ textAlign: "center" }}>
-            {t("profile.payments.verifyToConnectBankTitle")}
-          </ThemedText>
-          <ThemedText
-            type="caption"
-            style={{
-              color: color.textMuted,
-              textAlign: "center",
-              lineHeight: BrandType.caption.lineHeight,
-            }}
-          >
-            {t("profile.payments.verifyToConnectBankBody")}
-          </ThemedText>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: BrandSpacing.stackMicro,
-              paddingHorizontal: BrandSpacing.md,
-              paddingVertical: BrandSpacing.stackMicro,
-              borderRadius: BrandRadius.pill,
-              backgroundColor: color.tertiarySubtle,
-            }}
-          >
-            <ThemedText
-              type="micro"
-              style={{ color: color.tertiary, fontWeight: "600" }}
-            >
-              {t("profile.identityVerification.providerPill")}
-            </ThemedText>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("profile.payments.verifyToConnectBankCta")}
-            onPress={() => {
-              setShowVerifyModal(false);
-              void router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href);
-            }}
-            style={({ pressed }) => ({
-              width: "100%",
-              paddingVertical: BrandSpacing.inset,
-              paddingHorizontal: BrandSpacing.component,
-              borderRadius: BrandRadius.medium,
-              borderCurve: "continuous",
-              alignItems: "center",
-              backgroundColor: pressed ? color.primaryPressed : color.tertiary,
-            })}
-          >
-            <ThemedText type="bodyStrong" style={{ color: color.onPrimary }}>
-              {t("profile.payments.verifyToConnectBankCta")}
-            </ThemedText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("common.cancel")}
-            onPress={() => setShowVerifyModal(false)}
-            style={({ pressed }) => ({
-              paddingVertical: PREFERENCE_BUTTON_PADDING_V,
-              paddingHorizontal: PREFERENCE_BUTTON_PADDING_H,
-              borderRadius: BrandRadius.pill,
-              borderCurve: "continuous",
-              borderWidth: BorderWidth.thin,
-              borderColor: color.border,
-              backgroundColor: pressed
-                ? color.surfaceElevated
-                : color.surfaceAlt,
-            })}
-          >
-            <ThemedText type="caption" style={{ color: color.textMuted }}>
-              {t("common.cancel")}
-            </ThemedText>
-          </Pressable>
-        </View>
-      </ProfileSubpageScrollView>
-    );
-  }
-
   return (
-    <ProfileSubpageScrollView
-      routeKey="instructor/profile/payments"
-      style={{ flex: 1, backgroundColor: color.appBg }}
-      contentContainerStyle={{
-        gap: BrandSpacing.xl,
-      }}
-      topSpacing={BrandSpacing.md}
-      bottomSpacing={40}
-    >
-      <View
-        style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.sm }}
-      >
-        {/* Consolidated Error/Info Banner */}
-        {destinationError || withdrawError || preferenceError ? (
-          <View
-            style={{
-              backgroundColor: color.dangerSubtle,
-              borderRadius: BANNER_RADIUS,
-              paddingHorizontal: BANNER_PADDING_H,
-              paddingVertical: BANNER_PADDING_V,
-              borderWidth: BorderWidth.thin,
-              borderColor: color.danger as string,
-            }}
-          >
-            <ThemedText type="caption" style={{ color: color.danger }}>
-              {destinationError || withdrawError || preferenceError}
-            </ThemedText>
-          </View>
-        ) : destinationInfo || withdrawInfo || preferenceInfo ? (
-          <View
-            style={{
-              backgroundColor: color.surfaceAlt,
-              borderRadius: BANNER_RADIUS,
-              paddingHorizontal: BANNER_PADDING_H,
-              paddingVertical: BANNER_PADDING_V,
-            }}
-          >
-            <ThemedText type="caption" style={{ color: color.textMuted }}>
-              {destinationInfo || withdrawInfo || preferenceInfo}
-            </ThemedText>
-          </View>
-        ) : null}
-
-        {/* Simplified Status Pill */}
-        <KitStatusBadge
-          label={
-            isIdentityVerified && payoutSummary?.hasVerifiedDestination
-              ? t("profile.payments.statusAllSet")
-              : isIdentityVerified
-                ? t("profile.payments.statusBankNeeded")
-                : t("profile.payments.statusVerificationNeeded")
-          }
-          tone={
-            isIdentityVerified && payoutSummary?.hasVerifiedDestination
-              ? "success"
-              : isIdentityVerified || payoutSummary?.hasVerifiedDestination
-                ? "warning"
-                : "danger"
-          }
-          showDot
-        />
-
-        {/* Action hint if needed */}
-        {!isIdentityVerified ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("profile.setup.verifyIdentity")}
-            onPress={() => router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href)}
-            style={({ pressed }) => ({
-              alignSelf: "flex-start",
-              paddingHorizontal: ACTION_HINT_PADDING_H,
-              paddingVertical: ACTION_HINT_PADDING_V,
-              borderRadius: ACTION_HINT_RADIUS,
-              borderCurve: "continuous",
-              backgroundColor: pressed ? color.surfaceAlt : color.primarySubtle,
-              borderWidth: BorderWidth.thin,
-              borderColor: color.primary as string,
-            })}
-          >
-            <ThemedText type="caption" style={{ color: color.primary }}>
-              {t("profile.setup.verifyIdentity")}
-            </ThemedText>
-          </Pressable>
-        ) : !payoutSummary?.hasVerifiedDestination ? (
-          <ThemedText type="caption" style={{ color: color.textMuted }}>
-            {payoutSummary?.onboardingStatus === "pending"
-              ? t("profile.payments.onboardingPending")
-              : payoutSummary?.onboardingStatus === "failed"
-                ? (payoutSummary?.onboardingLastError ??
-                  t("profile.payments.onboardingFailed"))
-                : t("profile.payments.kycRequiredHint")}
-          </ThemedText>
-        ) : null}
-      </View>
-
-      {/* Hero Balance Card */}
-      <View style={{ paddingHorizontal: BrandSpacing.md }}>
-        <View
-          style={{
-            backgroundColor: color.success,
-            borderRadius: HERO_CARD_RADIUS,
-            padding: HERO_CARD_PADDING,
-            gap: BrandSpacing.xl,
-            borderCurve: "continuous",
-          }}
+    <TabSceneTransition>
+      <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+        <ProfileSubpageScrollView
+          routeKey="instructor/profile/payments"
+          style={{ flex: 1, backgroundColor: color.appBg }}
+          contentContainerStyle={{ gap: BrandSpacing.xl }}
+          topSpacing={BrandSpacing.md}
+          bottomSpacing={BrandSpacing.xxl}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: BrandSpacing.md,
-            }}
-          >
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <ThemedText
-                type="caption"
+          <Box style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.sm }}>
+            {connectError || connectInfo ? (
+              <Box
                 style={{
-                  color: color.onPrimary,
-                  textTransform: "uppercase",
-                  letterSpacing: BrandSpacing.xs + BrandSpacing.xxs,
-                  fontWeight: "600",
-                }}
-              >
-                {t("profile.payments.available")}
-              </ThemedText>
-              <ThemedText
-                numberOfLines={1}
-                minimumFontScale={0.76}
-                adjustsFontSizeToFit
-                style={{
-                  ...BrandType.display,
-                  color: color.onPrimary,
-                  marginTop: BrandSpacing.xs,
-                  flexShrink: 1,
-                }}
-              >
-                {formatAgorotCurrency(
-                  payoutSummary?.availableAmountAgorot ?? 0,
-                  locale,
-                  payoutSummary?.currency ?? "ILS",
-                )}
-              </ThemedText>
-            </View>
-            <View
-              style={{
-                backgroundColor: color.surface,
-                paddingHorizontal: BrandSpacing.stackDense,
-                paddingVertical: BrandSpacing.stackMicro,
-                borderRadius: BrandRadius.pill,
-              }}
-            >
-              <ThemedText
-                type="micro"
-                style={{ color: color.text, fontWeight: "700" }}
-              >
-                {payoutSummary?.currency ?? "ILS"}
-              </ThemedText>
-            </View>
-          </View>
-
-          <View style={{ flexDirection: "row", gap: BrandSpacing.md }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("profile.payments.withdrawToBank")}
-              style={({ pressed }) => ({
-                flex: 1,
-                backgroundColor: withdrawDisabled
-                  ? color.surfaceAlt
-                  : pressed
-                    ? color.primaryPressed
-                    : color.primary,
-                borderRadius: HERO_BUTTON_RADIUS,
-                minHeight: HERO_BUTTON_MIN_HEIGHT,
-                padding: HERO_BUTTON_PADDING,
-                alignItems: "center",
-                borderCurve: "continuous",
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: BrandSpacing.sm,
-                overflow: "hidden",
-              })}
-              onPress={() => {
-                confirmWithdrawToBank();
-              }}
-              disabled={withdrawBusy || withdrawDisabled}
-            >
-              <IconSymbol
-                name="arrow.down"
-                size={BrandSpacing.iconSm}
-                color={color.onPrimary}
-              />
-              <ThemedText type="labelStrong" style={{ color: color.onPrimary }}>
-                {t("profile.payments.withdraw")}
-              </ThemedText>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                hasVerifiedDestination
-                  ? t("profile.payments.manageBank")
-                  : t("profile.payments.connectBank")
-              }
-              style={({ pressed }) => ({
-                flex: 1,
-                backgroundColor: hasVerifiedDestination
-                  ? pressed
-                    ? color.surfaceElevated
-                    : color.surfaceAlt
-                  : pressed
-                    ? color.primaryPressed
-                    : color.text,
-                borderRadius: HERO_BUTTON_RADIUS,
-                minHeight: HERO_BUTTON_MIN_HEIGHT,
-                padding: HERO_BUTTON_PADDING,
-                alignItems: "center",
-                borderCurve: "continuous",
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: BrandSpacing.sm,
-                overflow: "hidden",
-                borderWidth: BorderWidth.thin,
-                borderColor: hasVerifiedDestination
-                  ? color.borderStrong
-                  : color.text,
-              })}
-              onPress={() => {
-                if (!isIdentityVerified) {
-                  setShowVerifyModal(true);
-                  return;
-                }
-                void startHostedBankOnboarding();
-              }}
-              disabled={onboardingBusy}
-            >
-              <IconSymbol
-                name="building.columns.fill"
-                size={BrandSpacing.iconSm}
-                color={hasVerifiedDestination ? color.text : color.onPrimary}
-              />
-              <ThemedText
-                type="labelStrong"
-                style={{
-                  color: hasVerifiedDestination ? color.text : color.onPrimary,
-                }}
-              >
-                {hasVerifiedDestination
-                  ? t("profile.payments.manageBank")
-                  : t("profile.payments.connectBank")}
-              </ThemedText>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Stats Row - Merged into Hero Card */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "center",
-            gap: BrandSpacing.xl,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: BrandSpacing.stackMicro,
-            }}
-          >
-            <View
-              style={{
-                width: STATUS_DOT_SIZE,
-                height: STATUS_DOT_SIZE,
-                borderRadius: STATUS_DOT_RADIUS,
-                backgroundColor: color.warning,
-              }}
-            />
-            <ThemedText type="caption" style={{ color: color.onPrimary }}>
-              {t("profile.payments.pending")}
-            </ThemedText>
-            <ThemedText
-              type="bodyStrong"
-              style={{ color: color.onPrimary, fontVariant: ["tabular-nums"] }}
-            >
-              {formatAgorotCurrency(
-                payoutSummary?.pendingAmountAgorot ?? 0,
-                locale,
-                payoutSummary?.currency ?? "ILS",
-              )}
-            </ThemedText>
-          </View>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: BrandSpacing.stackMicro,
-            }}
-          >
-            <View
-              style={{
-                width: STATUS_DOT_SIZE,
-                height: STATUS_DOT_SIZE,
-                borderRadius: STATUS_DOT_RADIUS,
-                backgroundColor: color.success,
-              }}
-            />
-            <ThemedText type="caption" style={{ color: color.onPrimary }}>
-              {t("profile.payments.paid")}
-            </ThemedText>
-            <ThemedText
-              type="bodyStrong"
-              style={{ color: color.onPrimary, fontVariant: ["tabular-nums"] }}
-            >
-              {formatAgorotCurrency(
-                payoutSummary?.paidAmountAgorot ?? 0,
-                locale,
-                payoutSummary?.currency ?? "ILS",
-              )}
-            </ThemedText>
-          </View>
-        </View>
-      </View>
-
-      <View
-        style={{ paddingHorizontal: BrandSpacing.md, gap: BrandSpacing.md }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <ThemedText type="bodyStrong">
-            {t("profile.payments.preferenceTitle")}
-          </ThemedText>
-        </View>
-
-        <KitSegmentedToggle<PayoutPreferenceMode>
-          value={effectivePreferenceMode}
-          onChange={handlePreferenceModeChange}
-          options={[
-            {
-              label: t("profile.payments.preferenceImmediate"),
-              value: "immediate_when_eligible",
-            },
-            {
-              label: t("profile.payments.preferenceScheduled"),
-              value: "scheduled_date",
-            },
-            {
-              label: t("profile.payments.preferenceHold"),
-              value: "manual_hold",
-            },
-          ]}
-        />
-
-        <ThemedText type="caption" style={{ color: color.textMuted }}>
-          {effectivePreferenceMode === "scheduled_date"
-            ? t("profile.payments.preferenceScheduledHint")
-            : effectivePreferenceMode === "manual_hold"
-              ? t("profile.payments.preferenceHoldHint")
-              : t("profile.payments.preferenceImmediateHint")}
-        </ThemedText>
-
-        {effectivePreferenceMode === "scheduled_date" ? (
-          <View style={{ gap: BrandSpacing.md }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("profile.payments.preferenceChooseDate")}
-              onPress={() => setShowSchedulePicker((value) => !value)}
-              style={({ pressed }) => ({
-                borderRadius: PREFERENCE_CARD_RADIUS,
-                borderCurve: "continuous",
-                borderWidth: BorderWidth.thin,
-                borderColor: color.border as string,
-                backgroundColor: pressed ? color.surfaceElevated : color.appBg,
-                paddingHorizontal: BrandSpacing.inset,
-                paddingVertical: BrandSpacing.md,
-                gap: BrandSpacing.xs,
-              })}
-            >
-              <ThemedText type="micro" style={{ color: color.textMuted }}>
-                {t("profile.payments.preferenceScheduleAt")}
-              </ThemedText>
-              <ThemedText type="bodyStrong">{scheduledAtLabel}</ThemedText>
-            </Pressable>
-
-            {showSchedulePicker ? (
-              <View
-                style={{
-                  borderRadius: PREFERENCE_CARD_RADIUS,
-                  borderCurve: "continuous",
+                  backgroundColor: connectError ? color.dangerSubtle : color.surfaceAlt,
+                  borderRadius: BrandRadius.lg,
+                  paddingHorizontal: BrandSpacing.component,
+                  paddingVertical: BrandSpacing.stackDense,
                   borderWidth: BorderWidth.thin,
-                  borderColor: color.border as string,
-                  backgroundColor: color.surface,
-                  padding: BrandSpacing.md,
-                  gap: BrandSpacing.stackDense,
+                  borderColor: connectError ? (color.danger as string) : color.border,
                 }}
               >
-                <DateTimePicker
-                  value={scheduleDraft}
-                  mode="datetime"
-                  presentation="inline"
-                  minimumDate={new Date(Date.now() + 60_000)}
-                  onValueChange={(_event, value) => {
-                    if (!value) {
-                      return;
-                    }
-                    setScheduleDraft(value);
-                  }}
-                  onDismiss={() => {
-                    setShowSchedulePicker(false);
-                  }}
-                />
-                {Platform.OS === "ios" ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t("common.done")}
-                    onPress={() => setShowSchedulePicker(false)}
-                    style={({ pressed }) => ({
-                      alignSelf: "flex-start",
-                      paddingHorizontal: PREFERENCE_BUTTON_PADDING_H,
-                      paddingVertical: PREFERENCE_BUTTON_PADDING_V,
-                      borderRadius: BrandRadius.pill,
-                      borderCurve: "continuous",
-                      backgroundColor: pressed
-                        ? color.primaryPressed
-                        : color.primary,
-                    })}
-                  >
-                    <ThemedText
-                      type="bodyStrong"
-                      style={{ color: color.onPrimary }}
-                    >
-                      {t("common.done")}
-                    </ThemedText>
-                  </Pressable>
-                ) : null}
-              </View>
+                <ThemedText
+                  type="caption"
+                  style={{ color: connectError ? color.danger : color.textMuted }}
+                >
+                  {connectError || connectInfo}
+                </ThemedText>
+              </Box>
             ) : null}
 
-            <View style={{ flexDirection: "row", gap: BrandSpacing.md }}>
+            <KitStatusBadge
+              label={accountCopy.label}
+              tone={accountTone}
+              showDot
+            />
+
+            <ThemedText type="caption" style={{ color: color.textMuted, lineHeight: 20 }}>
+              {t("profile.payments.airwallexDirectSplitNote")}
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: color.textMuted }}>
+              {t("profile.payments.liveStatusHint")}
+            </ThemedText>
+
+            <Box
+              style={{
+                flexDirection: "row",
+                gap: BrandSpacing.md,
+              }}
+            >
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={t("common.cancel")}
-                onPress={() => {
-                  setPendingPreferenceMode(null);
-                  setShowSchedulePicker(false);
-                  setScheduleDraft(
-                    buildDefaultScheduledDate(
-                      payoutSummary?.payoutPreferenceScheduledDate,
-                    ),
-                  );
-                }}
+                accessibilityLabel={
+                  primaryAccountActionLabel
+                }
+                onPress={confirmConnect}
+                disabled={connectBusy}
                 style={({ pressed }) => ({
                   flex: 1,
+                  borderRadius: BrandRadius.medium,
+                  borderCurve: "continuous",
+                  minHeight: BrandSpacing.buttonMinHeightXl,
                   alignItems: "center",
                   justifyContent: "center",
-                  minHeight: PREFERENCE_BUTTON_MIN_HEIGHT,
-                  borderRadius: PREFERENCE_BUTTON_RADIUS,
-                  borderCurve: "continuous",
-                  borderWidth: BorderWidth.thin,
-                  borderColor: color.border as string,
-                  backgroundColor: pressed ? color.surfaceAlt : color.appBg,
-                })}
-              >
-                <ThemedText type="bodyStrong">{t("common.cancel")}</ThemedText>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t(
-                  "profile.payments.preferenceSaveSchedule",
-                )}
-                onPress={() => {
-                  void savePayoutPreference(
-                    "scheduled_date",
-                    scheduleDraft.getTime(),
-                  );
-                }}
-                disabled={preferenceBusy}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minHeight: PREFERENCE_BUTTON_MIN_HEIGHT,
-                  borderRadius: PREFERENCE_BUTTON_RADIUS,
-                  borderCurve: "continuous",
-                  backgroundColor: preferenceBusy
+                  flexDirection: "row",
+                  gap: BrandSpacing.sm,
+                  backgroundColor: connectBusy
                     ? color.surfaceAlt
                     : pressed
-                      ? color.primaryPressed
-                      : color.success,
+                        ? "#D9FF4D"
+                      : "#CCFF00",
                 })}
               >
-                <ThemedText
-                  type="bodyStrong"
-                  style={{
-                    color: preferenceBusy ? color.textMuted : color.onPrimary,
-                  }}
-                >
-                  {preferenceBusy
-                    ? t("profile.payments.preferenceSaving")
-                    : t("profile.payments.preferenceSaveSchedule")}
+                <IconSymbol
+                  name="building.columns.fill"
+                  size={BrandSpacing.iconSm}
+                  color={connectBusy ? color.textMuted : "#161E00"}
+                />
+                <ThemedText type="labelStrong" style={{ color: connectBusy ? color.textMuted : "#161E00" }}>
+                  {primaryAccountActionLabel}
                 </ThemedText>
               </Pressable>
-            </View>
-          </View>
-        ) : null}
 
-        {preferenceError ? (
-          <ThemedText type="caption" style={{ color: color.danger }}>
-            {preferenceError}
-          </ThemedText>
-        ) : preferenceInfo ? (
-          <ThemedText type="caption" style={{ color: color.textMuted }}>
-            {preferenceInfo}
-          </ThemedText>
-        ) : null}
-      </View>
-
-      {selectedPaymentId ? (
-        <View
-          style={{
-            paddingHorizontal: BrandSpacing.md,
-            gap: BrandSpacing.md,
-            marginTop: BrandSpacing.sm,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <ThemedText type="title">
-              {t("profile.payments.receipt")}
-            </ThemedText>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("profile.payments.close")}
-              onPress={() => setSelectedPaymentId(null)}
-              style={({ pressed }) => ({
-                backgroundColor: pressed
-                  ? color.surfaceElevated
-                  : color.surfaceAlt,
-                paddingHorizontal: BrandSpacing.md,
-                paddingVertical: BrandSpacing.stackMicro,
-                borderRadius: BrandRadius.pill,
-                borderCurve: "continuous",
-                borderWidth: BorderWidth.thin,
-                borderColor: color.border,
-              })}
-            >
-              <ThemedText
-                type="caption"
-                style={{ color: color.text, fontWeight: "600" }}
-              >
-                {t("profile.payments.close")}
-              </ThemedText>
-            </Pressable>
-          </View>
-          {isDetailLoading ? (
-            <View
-              style={{
-                backgroundColor: color.surfaceAlt,
-                padding: HERO_CARD_PADDING,
-                borderRadius: RECEIPT_CARD_RADIUS,
-                alignItems: "center",
-              }}
-            >
-              <ThemedText style={{ color: color.textMuted }}>
-                {t("profile.payments.loadingReceipt")}
-              </ThemedText>
-            </View>
-          ) : !selectedPaymentDetail ? (
-            <View
-              style={{
-                backgroundColor: color.surfaceAlt,
-                padding: HERO_CARD_PADDING,
-                borderRadius: RECEIPT_CARD_RADIUS,
-                alignItems: "center",
-              }}
-            >
-              <ThemedText style={{ color: color.textMuted }}>
-                {t("profile.payments.paymentNotFound")}
-              </ThemedText>
-            </View>
-          ) : (
-            <View
-              style={{
-                backgroundColor: color.surfaceAlt,
-                borderRadius: RECEIPT_CARD_RADIUS,
-                borderCurve: "continuous",
-                overflow: "hidden",
-              }}
-            >
-              <View
-                style={{
-                  padding: BrandSpacing.insetComfort,
-                  borderBottomWidth: BorderWidth.thin,
-                  borderBottomColor: color.border,
-                  borderStyle: "dashed",
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("profile.compliance.openCompliance")}
+                onPress={() => router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href)}
+                style={({ pressed }) => ({
+                  paddingHorizontal: BrandSpacing.component,
+                  minHeight: BrandSpacing.buttonMinHeightXl,
                   alignItems: "center",
-                  gap: BrandSpacing.sm,
-                }}
+                  justifyContent: "center",
+                  borderRadius: BrandRadius.medium,
+                  borderCurve: "continuous",
+                  borderWidth: BorderWidth.thin,
+                  borderColor: color.border,
+                  backgroundColor: pressed ? color.surfaceElevated : color.surfaceAlt,
+                })}
               >
-                <View
-                  style={{
-                    width: RECEIPT_ICON_SIZE,
-                    height: RECEIPT_ICON_SIZE,
-                    borderRadius: RECEIPT_ICON_RADIUS,
-                    backgroundColor: color.successSubtle,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: BrandSpacing.xs,
-                  }}
-                >
-                  <IconSymbol
-                    name="checkmark"
-                    size={BrandSpacing.iconMd}
-                    color={color.success as import("react-native").ColorValue}
-                  />
-                </View>
-                <ThemedText
-                  type="title"
-                  style={{
-                    fontVariant: ["tabular-nums"],
-                    ...BrandType.titleLarge,
-                  }}
-                >
-                  {formatAgorotCurrency(
-                    role === "studio"
-                      ? selectedPaymentDetail.payment.studioChargeAmountAgorot
-                      : selectedPaymentDetail.payment
-                          .instructorBaseAmountAgorot,
-                    locale,
-                    selectedPaymentDetail.payment.currency,
-                  )}
+                <ThemedText type="caption" style={{ color: color.text }}>
+                  {t("profile.compliance.openCompliance")}
                 </ThemedText>
-                <ThemedText type="caption" style={{ color: color.textMuted }}>
-                  {formatDateTime(
-                    selectedPaymentDetail.payment.createdAt,
-                    locale,
-                  )}
-                </ThemedText>
-              </View>
-              <View
-                style={{
-                  padding: BrandSpacing.insetComfort,
-                  gap: BrandSpacing.inset,
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <ThemedText type="caption" style={{ color: color.textMuted }}>
-                    {t("profile.payments.status")}
-                  </ThemedText>
-                  <ThemedText type="bodyStrong">
-                    {getPaymentStatusLabel(
-                      selectedPaymentDetail.payment.status,
-                    )}
-                  </ThemedText>
-                </View>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <ThemedText type="caption" style={{ color: color.textMuted }}>
-                    {t("profile.payments.payout")}
-                  </ThemedText>
-                  <ThemedText type="bodyStrong">
-                    {selectedPaymentDetail.payout
-                      ? getPayoutStatusLabel(
-                          selectedPaymentDetail.payout.status,
-                        )
-                      : t("profile.payments.pending")}
-                  </ThemedText>
-                </View>
-                {selectedPaymentDetail.invoice?.externalInvoiceUrl ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t("profile.payments.downloadInvoice")}
-                    onPress={() => {
-                      void WebBrowser.openBrowserAsync(
-                        selectedPaymentDetail.invoice!.externalInvoiceUrl!,
-                      );
-                    }}
-                    style={({ pressed }) => ({
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      paddingVertical: BrandSpacing.sm,
-                      paddingHorizontal: BrandSpacing.md,
-                      borderRadius: BrandRadius.lg,
-                      borderCurve: "continuous",
-                      borderWidth: BorderWidth.thin,
-                      borderColor: color.border,
-                      backgroundColor: pressed
-                        ? color.surfaceAlt
-                        : color.surface,
-                    })}
-                  >
-                    <ThemedText
-                      type="bodyStrong"
-                      style={{ color: color.primary }}
-                    >
-                      {t("profile.payments.downloadInvoice")}
-                    </ThemedText>
-                    <IconSymbol
-                      name="arrow.up.right"
-                      size={BrandSpacing.iconSm}
-                      color={color.primary}
-                    />
-                  </Pressable>
-                ) : null}
-              </View>
-            </View>
-          )}
-        </View>
-      ) : null}
+              </Pressable>
+            </Box>
 
-      <View style={{ marginTop: BrandSpacing.sm }}>
-        <PaymentActivityList
-          viewerRole={role}
-          items={rows}
-          locale={locale}
-          title={t("profile.payments.recentTransactions")}
-          emptyLabel={t("profile.payments.noTransactions")}
-          onSelectPaymentId={setSelectedPaymentId}
-        />
-      </View>
-    </ProfileSubpageScrollView>
+            <ThemedText type="caption" style={{ color: color.textMuted }}>
+              {accountCopy.caption}
+            </ThemedText>
+          </Box>
+
+          <Box style={{ paddingHorizontal: BrandSpacing.md }}>
+            <PaymentActivityList
+              viewerRole="instructor"
+              items={rows}
+              locale={locale}
+              title={t("profile.payments.recentTransactions")}
+              emptyLabel={t("profile.payments.noTransactions")}
+              onSelectPaymentId={(paymentId) =>
+                setSelectedPaymentId(paymentId as Id<"paymentOrdersV2">)
+              }
+            />
+          </Box>
+
+          {selectedPaymentId ? (
+            <Box
+              style={{
+                paddingHorizontal: BrandSpacing.md,
+                gap: BrandSpacing.md,
+                marginTop: BrandSpacing.sm,
+              }}
+            >
+              <Box
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <ThemedText type="title">{t("profile.payments.receipt")}</ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("profile.payments.close")}
+                  onPress={() => setSelectedPaymentId(null)}
+                  style={({ pressed }) => ({
+                    backgroundColor: pressed ? color.surfaceElevated : color.surfaceAlt,
+                    paddingHorizontal: BrandSpacing.md,
+                    paddingVertical: BrandSpacing.stackMicro,
+                    borderRadius: BrandRadius.pill,
+                    borderCurve: "continuous",
+                    borderWidth: BorderWidth.thin,
+                    borderColor: color.border,
+                  })}
+                >
+                  <ThemedText type="caption" style={{ color: color.text, fontWeight: "600" }}>
+                    {t("profile.payments.close")}
+                  </ThemedText>
+                </Pressable>
+              </Box>
+              {isDetailLoading ? (
+                <Box
+                  style={{
+                    backgroundColor: color.surfaceAlt,
+                    padding: BrandSpacing.xl,
+                    borderRadius: BrandRadius.soft,
+                    alignItems: "center",
+                  }}
+                >
+                  <ThemedText style={{ color: color.textMuted }}>
+                    {t("profile.payments.loadingReceipt")}
+                  </ThemedText>
+                </Box>
+              ) : !selectedPaymentDetail ? (
+                <Box
+                  style={{
+                    backgroundColor: color.surfaceAlt,
+                    padding: BrandSpacing.xl,
+                    borderRadius: BrandRadius.soft,
+                    alignItems: "center",
+                  }}
+                >
+                  <ThemedText style={{ color: color.textMuted }}>
+                    {t("profile.payments.paymentNotFound")}
+                  </ThemedText>
+                </Box>
+              ) : (
+                <Box
+                  style={{
+                    backgroundColor: color.surfaceAlt,
+                    borderRadius: BrandRadius.soft,
+                    borderCurve: "continuous",
+                    overflow: "hidden",
+                  }}
+                >
+                  <Box
+                    style={{
+                      padding: BrandSpacing.insetComfort,
+                      borderBottomWidth: BorderWidth.thin,
+                      borderBottomColor: color.border,
+                      borderStyle: "dashed",
+                      alignItems: "center",
+                      gap: BrandSpacing.sm,
+                    }}
+                  >
+                    <Box
+                      style={{
+                        width: BrandSpacing.avatarMd,
+                        height: BrandSpacing.avatarMd,
+                        borderRadius: BrandRadius.soft,
+                        backgroundColor: color.successSubtle,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginBottom: BrandSpacing.xs,
+                      }}
+                    >
+                      <IconSymbol
+                        name="checkmark"
+                        size={BrandSpacing.iconMd}
+                        color={color.success as import("react-native").ColorValue}
+                      />
+                    </Box>
+                    <ThemedText
+                      type="title"
+                      style={{
+                        fontVariant: ["tabular-nums"],
+                        ...BrandType.titleLarge,
+                      }}
+                    >
+                      {formatAgorotCurrency(
+                        selectedPaymentDetail.payment.instructorBaseAmountAgorot,
+                        locale,
+                        selectedPaymentDetail.payment.currency,
+                      )}
+                    </ThemedText>
+                    <ThemedText type="caption" style={{ color: color.textMuted }}>
+                      {formatDateTime(selectedPaymentDetail.payment.createdAt, locale)}
+                    </ThemedText>
+                  </Box>
+                  <Box
+                    style={{
+                      padding: BrandSpacing.insetComfort,
+                      gap: BrandSpacing.inset,
+                    }}
+                  >
+                    <Box
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <ThemedText type="caption" style={{ color: color.textMuted }}>
+                        {t("profile.payments.status")}
+                      </ThemedText>
+                      <ThemedText type="bodyStrong">
+                        {getPaymentStatusLabel(selectedPaymentDetail.payment.status)}
+                      </ThemedText>
+                    </Box>
+                    <Box
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <ThemedText type="caption" style={{ color: color.textMuted }}>
+                        {t("profile.payments.payout")}
+                      </ThemedText>
+                      <ThemedText type="bodyStrong">
+                        {selectedPaymentDetail.payout
+                          ? getPayoutStatusLabel(selectedPaymentDetail.payout.status)
+                          : t("profile.payments.pending")}
+                      </ThemedText>
+                    </Box>
+                    <Box
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <ThemedText type="caption" style={{ color: color.textMuted }}>
+                        {t("profile.payments.splitStatus")}
+                      </ThemedText>
+                      <ThemedText type="bodyStrong">
+                        {selectedPaymentDetail.fundSplit
+                          ? getPayoutStatusLabel(selectedPaymentDetail.fundSplit.payoutStatus)
+                          : t("profile.payments.notCreated")}
+                      </ThemedText>
+                    </Box>
+                    {selectedPaymentDetail.fundSplit ? (
+                      <Box
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <ThemedText type="caption" style={{ color: color.textMuted }}>
+                          {t("profile.payments.releaseMode")}
+                        </ThemedText>
+                        <ThemedText type="bodyStrong">
+                          {getReleaseModeLabel(t, selectedPaymentDetail.fundSplit.releaseMode)}
+                        </ThemedText>
+                      </Box>
+                    ) : null}
+                    <Box
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <ThemedText type="caption" style={{ color: color.textMuted }}>
+                        {t("profile.payments.receiptStatus")}
+                      </ThemedText>
+                      <ThemedText type="bodyStrong">
+                        {selectedPaymentDetail.receipt.status === "ready"
+                          ? t("profile.payments.receiptReady")
+                          : t("profile.payments.receiptPending")}
+                      </ThemedText>
+                    </Box>
+                    {selectedPaymentDetail.invoice?.externalInvoiceUrl ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={t("profile.payments.downloadInvoice")}
+                        onPress={() => {
+                          void WebBrowser.openBrowserAsync(
+                            selectedPaymentDetail.invoice!.externalInvoiceUrl!,
+                          );
+                        }}
+                        style={({ pressed }) => ({
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          paddingVertical: BrandSpacing.sm,
+                          paddingHorizontal: BrandSpacing.md,
+                          borderRadius: BrandRadius.lg,
+                          borderCurve: "continuous",
+                          borderWidth: BorderWidth.thin,
+                          borderColor: color.border,
+                          backgroundColor: pressed ? color.surfaceAlt : color.surfaceElevated,
+                        })}
+                      >
+                        <ThemedText type="bodyStrong" style={{ color: "#CCFF00" }}>
+                          {t("profile.payments.downloadInvoice")}
+                        </ThemedText>
+                        <IconSymbol
+                          name="arrow.up.right"
+                          size={BrandSpacing.iconSm}
+                          color="#CCFF00"
+                        />
+                      </Pressable>
+                    ) : null}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          ) : null}
+        </ProfileSubpageScrollView>
+      </Animated.View>
+    </TabSceneTransition>
   );
 }

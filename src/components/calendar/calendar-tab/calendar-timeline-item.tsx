@@ -2,15 +2,18 @@ import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
 import { FilterImage, type Filters } from "react-native-svg/filter-image";
+import { StyleSheet } from "react-native-unistyles";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useTheme } from "@/hooks/use-theme";
 import { formatTime } from "@/lib/jobs-utils";
+import { toSportLabelI18n } from "@/lib/sport-i18n";
+import { Text } from "@/primitives";
 import type { TimelineRow } from "../calendar-controller-helpers";
 import { useLessonCheckIn } from "../use-lesson-check-in";
 
@@ -96,6 +99,19 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
   const theme = useTheme();
   const { color: palette } = theme;
   const { isSubmitting, submitCheckIn } = useLessonCheckIn();
+  const isLightTheme = theme.scheme === "light";
+  const lightCardBg = "#FFFFFF";
+  const lightCardBorder = "#E1D8CE";
+  const lightText = "#1A1C1C";
+  const lightTextMuted = "#444933";
+  const lightTextSubtle = "#7A7A7A";
+  const lightButtonBg = "#EEEEEE";
+  const lightButtonBorder = "#D8CEC5";
+  const lightButtonText = "#1A1C1C";
+  const lightAccentContainer = "#CCFF00";
+  const lightAccentContainerText = "#161E00";
+  const lightPrimarySurface = "#F7FBE8";
+  const lightPrimaryTint = "#CCFF0022";
 
   const timeStartLabel = item.isAllDay
     ? t("calendarTab.timeline.allDay")
@@ -108,6 +124,7 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
       : item.roleView === "instructor"
         ? item.studioName
         : (item.instructorName ?? t("calendarTab.unassignedInstructor"));
+  const sportLabel = toSportLabelI18n(item.sport, t);
   const counterpartImageUrl =
     item.source !== "job"
       ? undefined
@@ -115,20 +132,20 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
         ? item.studioProfileImageUrl
         : item.instructorProfileImageUrl;
   const fallbackLabel = counterpart || item.sport;
-  const isLightTheme = theme.scheme === "light";
   const imageFadeId = useMemo(() => `calendar-card-fade-${item.lessonId}`, [item.lessonId]);
   const tintFadeId = useMemo(() => `calendar-card-tint-${item.lessonId}`, [item.lessonId]);
   const webFilterStyle = useMemo(
     () => ({
       filter: isLightTheme
-        ? "grayscale(100%) contrast(126%) brightness(62%)"
+        ? "grayscale(100%) contrast(120%) brightness(82%)"
         : "grayscale(100%) contrast(116%) brightness(48%)",
     }),
     [isLightTheme],
   );
 
   const now = Date.now();
-  const canCheckInWindow = !item.isAllDay && item.startTime - now <= ONE_HOUR_MS && item.endTime >= now;
+  const canCheckInWindow =
+    !item.isAllDay && item.startTime - now <= ONE_HOUR_MS && item.endTime >= now;
   const canOpenDetails = item.source === "job";
   const isCheckedIn = item.checkInStatus === "verified";
   const hasRejectedCheckIn = item.checkInStatus === "rejected";
@@ -145,9 +162,9 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
   );
   const indicatorColors = {
     good: {
-      accentColor: palette.primary,
-      backgroundColor: palette.primary,
-      labelColor: palette.onPrimary,
+      accentColor: isLightTheme ? lightAccentContainerText : palette.primary,
+      backgroundColor: isLightTheme ? lightAccentContainer : palette.primary,
+      labelColor: isLightTheme ? lightAccentContainerText : palette.onPrimary,
     },
     warning: {
       accentColor: palette.warning,
@@ -166,7 +183,7 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
     },
     muted: {
       accentColor: palette.textMuted,
-      backgroundColor: theme.scheme === "light" ? palette.surfaceElevated : palette.surfaceAlt,
+      backgroundColor: isLightTheme ? lightPrimarySurface : palette.surfaceAlt,
       labelColor: palette.textMuted,
     },
   }[indicator.tone];
@@ -209,17 +226,33 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
         accessibilityRole={canOpenDetails ? "button" : undefined}
         disabled={!canOpenDetails}
         onPress={handleOpenDetails}
-        style={({ pressed }) => [
+      style={({ pressed }) => [
           styles.card,
           {
-            backgroundColor: palette.surfaceElevated,
-            borderColor: item.source === "job" ? indicatorColors.accentColor : palette.outline,
-            shadowColor: palette.shadow,
+            backgroundColor: isLightTheme ? lightCardBg : palette.surfaceElevated,
+            borderColor:
+              item.source === "job"
+                ? indicatorColors.accentColor
+                : isLightTheme
+                  ? lightCardBorder
+                  : palette.outline,
+            shadowColor: isLightTheme ? "#1A1C1C12" : palette.shadow,
             transform: [{ scale: canOpenDetails && pressed ? 0.992 : 1 }],
           },
         ]}
       >
         <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+          {item.source === "job" ? (
+            <View
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  backgroundColor: isLightTheme ? lightPrimaryTint : palette.primarySubtle,
+                  opacity: isLightTheme ? 1 : 0.16,
+                },
+              ]}
+            />
+          ) : null}
           {counterpartImageUrl ? (
             Platform.select({
               web: (
@@ -265,21 +298,9 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
           <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
             <Defs>
               <SvgLinearGradient id={tintFadeId} x1="0%" y1="0%" x2="100%" y2="100%">
-                <Stop
-                  offset="0%"
-                  stopColor="#000000"
-                  stopOpacity={isLightTheme ? 0.22 : 0.24}
-                />
-                <Stop
-                  offset="32%"
-                  stopColor="#000000"
-                  stopOpacity={isLightTheme ? 0.12 : 0.12}
-                />
-                <Stop
-                  offset="100%"
-                  stopColor="#000000"
-                  stopOpacity={isLightTheme ? 0.01 : 0.02}
-                />
+                <Stop offset="0%" stopColor="#000000" stopOpacity={isLightTheme ? 0.22 : 0.24} />
+                <Stop offset="32%" stopColor="#000000" stopOpacity={isLightTheme ? 0.12 : 0.12} />
+                <Stop offset="100%" stopColor="#000000" stopOpacity={isLightTheme ? 0.01 : 0.02} />
               </SvgLinearGradient>
               <SvgLinearGradient id={imageFadeId} x1="0%" y1="0%" x2="0%" y2="100%">
                 <Stop
@@ -325,24 +346,51 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
                 </View>
               ) : null}
               {isCheckedIn ? (
-                <View style={[styles.badge, { backgroundColor: palette.primarySubtle }]}>
-                  <Text style={[styles.badgeText, { color: palette.primary }]}>
+                <View
+                  style={[
+                    styles.badge,
+                    {
+                      backgroundColor: isLightTheme ? lightAccentContainer : palette.primarySubtle,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.badgeText,
+                      { color: isLightTheme ? lightAccentContainerText : palette.primary },
+                    ]}
+                  >
                     {t("calendarTab.card.indicators.checkedIn")}
                   </Text>
                 </View>
               ) : null}
             </View>
-            <Text style={[styles.cardTitle, { color: "#FFFFFF" }]} numberOfLines={1}>
-              {item.sport}
+            <Text
+              style={[styles.cardTitle, { color: isLightTheme ? lightText : "#FFFFFF" }]}
+              numberOfLines={1}
+            >
+              {sportLabel}
             </Text>
-            <Text style={[styles.indicatorHint, { color: "#D9D2C8" }]} numberOfLines={2}>
+            <Text
+              style={[
+                styles.indicatorHint,
+                { color: isLightTheme ? lightTextMuted : "#D9D2C8" },
+              ]}
+              numberOfLines={2}
+            >
               {indicator.hint}
             </Text>
           </View>
           <View style={styles.cardHeaderRight}>
-            <Text style={[styles.timeStart, { color: "#FFFFFF" }]}>{timeStartLabel}</Text>
+            <Text
+              style={[styles.timeStart, { color: isLightTheme ? lightText : "#FFFFFF" }]}
+            >
+              {timeStartLabel}
+            </Text>
             {timeEndLabel ? (
-              <Text style={[styles.timeEnd, { color: "#CEC7BD" }]}>
+              <Text
+                style={[styles.timeEnd, { color: isLightTheme ? lightTextSubtle : "#CEC7BD" }]}
+              >
                 {t("calendarTab.card.to")} {timeEndLabel}
               </Text>
             ) : null}
@@ -350,8 +398,15 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
         </View>
 
         <View style={styles.locationRow}>
-          <IconSymbol name="location_on" size={14} color="#D4CDC2" />
-          <Text style={[styles.locationText, { color: "#D9D2C8" }]} numberOfLines={1}>
+          <IconSymbol
+            name="location_on"
+            size={14}
+            color={isLightTheme ? lightTextMuted : "#D4CDC2"}
+          />
+          <Text
+            style={[styles.locationText, { color: isLightTheme ? lightTextMuted : "#D9D2C8" }]}
+            numberOfLines={1}
+          >
             {counterpart}
           </Text>
         </View>
@@ -360,13 +415,20 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
           <View
             style={[
               styles.noteBox,
-              { backgroundColor: isLightTheme ? "#161311" : "#111111" },
+              {
+                backgroundColor: isLightTheme ? lightPrimarySurface : palette.primarySubtle,
+              },
             ]}
           >
-            <Text style={[styles.noteLabel, { color: "#BEB5A8" }]}>
+            <Text
+              style={[styles.noteLabel, { color: isLightTheme ? lightTextSubtle : "#BEB5A8" }]}
+            >
               {t("calendarTab.card.noteLabel")}
             </Text>
-            <Text style={[styles.noteText, { color: "#FFFFFF" }]} numberOfLines={2}>
+            <Text
+              style={[styles.noteText, { color: isLightTheme ? lightText : "#FFFFFF" }]}
+              numberOfLines={2}
+            >
               {item.note}
             </Text>
           </View>
@@ -377,18 +439,20 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
             style={[
               styles.ctaButton,
               {
-                backgroundColor: isLightTheme ? "#F4E7D1" : "#161616",
+                backgroundColor: isLightTheme ? lightButtonBg : "#161616",
                 borderWidth: 1,
-                borderColor: isLightTheme ? "#E1D1BA" : "#2B2B2B",
+                borderColor: isLightTheme ? lightButtonBorder : "#2B2B2B",
               },
             ]}
           >
             <IconSymbol
               name={canOpenDetails ? "arrow_outward" : "calendar_today"}
               size={16}
-              color={isLightTheme ? "#1A1611" : "#FFFFFF"}
+              color={isLightTheme ? lightButtonText : "#FFFFFF"}
             />
-            <Text style={[styles.ctaText, { color: isLightTheme ? "#1A1611" : "#FFFFFF" }]}>
+            <Text
+              style={[styles.ctaText, { color: isLightTheme ? lightButtonText : "#FFFFFF" }]}
+            >
               {canOpenDetails ? t("calendarTab.card.viewDetails") : t("calendarTab.card.viewEvent")}
             </Text>
           </View>
@@ -400,13 +464,26 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
               style={({ pressed }) => [
                 styles.ctaButton,
                 {
-                  backgroundColor: isCheckedIn ? palette.primaryPressed : palette.primary,
+                  backgroundColor: isLightTheme
+                    ? lightAccentContainer
+                    : isCheckedIn
+                      ? palette.primaryPressed
+                      : palette.primary,
                   transform: [{ scale: pressed && !isSubmitting ? 0.985 : 1 }],
                 },
               ]}
             >
-              <IconSymbol name="checkmark" size={16} color={palette.onPrimary} />
-              <Text style={[styles.ctaText, { color: palette.onPrimary }]}>
+              <IconSymbol
+                name="checkmark"
+                size={16}
+                color={isLightTheme ? lightAccentContainerText : palette.onPrimary}
+              />
+              <Text
+                style={[
+                  styles.ctaText,
+                  { color: isLightTheme ? lightAccentContainerText : palette.onPrimary },
+                ]}
+              >
                 {isSubmitting
                   ? t("common.loading")
                   : isCheckedIn
@@ -488,7 +565,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: "Lexend_700Bold",
-    fontSize: 20,
+    fontSize: BrandType.titleLarge.fontSize,
     fontWeight: "700",
     letterSpacing: -0.24,
   },

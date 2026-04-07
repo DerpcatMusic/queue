@@ -2,7 +2,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { Redirect, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AppState, type AppStateStatus, RefreshControl, View } from "react-native";
+import { AppState, type AppStateStatus, RefreshControl } from "react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
@@ -28,6 +28,7 @@ import {
   getStudioBlockingSummary,
   getStudioPaymentSubtitle,
 } from "@/features/compliance/compliance-ui";
+import { Box } from "@/primitives";
 import {
   getDiditActionButtonColors,
   getDiditPrimaryActionLabel,
@@ -68,7 +69,7 @@ export default function StudioComplianceScreen() {
   const compliance = accessSnapshot?.compliance;
   const diditVerification = accessSnapshot?.verification;
   const paymentsPreflight = useQuery(
-    api.payments.getPaymentsPreflight,
+    api.paymentsV2.getPaymentsPreflightV2,
     shouldLoad ? {} : "skip",
   );
   const createStudioDiditSession = useAction(
@@ -339,7 +340,7 @@ export default function StudioComplianceScreen() {
         />
       }
     >
-      <View
+      <Box
         style={{ paddingHorizontal: BrandSpacing.inset, gap: BrandSpacing.xl }}
       >
         {feedback ? (
@@ -350,7 +351,7 @@ export default function StudioComplianceScreen() {
           />
         ) : null}
 
-        <View style={{ gap: BrandSpacing.sm }}>
+        <Box style={{ gap: BrandSpacing.sm }}>
           <ThemedText selectable style={BrandType.title}>
             {compliance.summary.canPublishJobs
               ? t("profile.studioCompliance.hero.readyTitle")
@@ -367,9 +368,9 @@ export default function StudioComplianceScreen() {
                   blockers: blockersSummary,
                 })}
           </ThemedText>
-        </View>
+        </Box>
 
-        <View>
+        <Box>
           <ProfileSectionHeader
             label={t("profile.studioCompliance.sections.identity")}
             description={t(
@@ -378,8 +379,8 @@ export default function StudioComplianceScreen() {
             icon="person.text.rectangle.fill"
           />
           <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-            <View style={{ gap: BrandSpacing.md, padding: BrandSpacing.md }}>
-              <View
+            <Box style={{ gap: BrandSpacing.md, padding: BrandSpacing.md }}>
+              <Box
                 style={{
                   flexDirection: "row",
                   justifyContent: "space-between",
@@ -391,7 +392,7 @@ export default function StudioComplianceScreen() {
                   {t("profile.studioCompliance.identity.title")}
                 </ThemedText>
                 <IdentityStatusBadge status={diditVerification.status} />
-              </View>
+              </Box>
               <ThemedText style={{ color: theme.color.textMuted }}>
                 {diditVerification.isVerified
                   ? t("profile.studioCompliance.identity.approvedBody", {
@@ -437,11 +438,11 @@ export default function StudioComplianceScreen() {
                   onPress={() => void refreshDiditStatus()}
                 />
               ) : null}
-            </View>
+            </Box>
           </ProfileSectionCard>
-        </View>
+        </Box>
 
-        <View>
+        <Box>
           <ProfileSectionHeader
             label={t("profile.studioCompliance.sections.billing")}
             description={t(
@@ -450,8 +451,8 @@ export default function StudioComplianceScreen() {
             icon="doc.text.fill"
           />
           <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-            <View style={{ gap: BrandSpacing.md, padding: BrandSpacing.md }}>
-              <View
+            <Box style={{ gap: BrandSpacing.md, padding: BrandSpacing.md }}>
+              <Box
                 style={{
                   flexDirection: "row",
                   flexWrap: "wrap",
@@ -462,21 +463,21 @@ export default function StudioComplianceScreen() {
                   label={t("profile.studioCompliance.billing.entityIndividual")}
                   selected={legalEntityType === "individual"}
                   onPress={() => setLegalEntityType("individual")}
-                  backgroundColor={theme.color.surface}
-                  selectedBackgroundColor={theme.color.primary}
+                  backgroundColor={theme.color.surfaceElevated}
+                  selectedBackgroundColor="#CCFF00"
                   labelColor={theme.color.text}
-                  selectedLabelColor={theme.color.onPrimary}
+                  selectedLabelColor="#161E00"
                 />
                 <ChoicePill
                   label={t("profile.studioCompliance.billing.entityCompany")}
                   selected={legalEntityType === "company"}
                   onPress={() => setLegalEntityType("company")}
-                  backgroundColor={theme.color.surface}
-                  selectedBackgroundColor={theme.color.primary}
+                  backgroundColor={theme.color.surfaceElevated}
+                  selectedBackgroundColor="#CCFF00"
                   labelColor={theme.color.text}
-                  selectedLabelColor={theme.color.onPrimary}
+                  selectedLabelColor="#161E00"
                 />
-              </View>
+              </Box>
 
               <KitTextField
                 label={t("profile.studioCompliance.billing.legalBusinessName")}
@@ -507,14 +508,14 @@ export default function StudioComplianceScreen() {
                 onChangeText={setBillingAddress}
               />
 
-              <View style={{ gap: BrandSpacing.xs }}>
+              <Box style={{ gap: BrandSpacing.xs }}>
                 <ThemedText
                   type="caption"
                   style={{ color: theme.color.textMuted }}
                 >
                   {t("profile.studioCompliance.billing.vatReportingType")}
                 </ThemedText>
-                <View
+                <Box
                   style={{
                     flexDirection: "row",
                     flexWrap: "wrap",
@@ -531,14 +532,14 @@ export default function StudioComplianceScreen() {
                       )}
                       selected={vatReportingType === value}
                       onPress={() => setVatReportingType(value)}
-                      backgroundColor={theme.color.surface}
-                      selectedBackgroundColor={theme.color.primary}
+                      backgroundColor={theme.color.surfaceElevated}
+                      selectedBackgroundColor="#CCFF00"
                       labelColor={theme.color.text}
-                      selectedLabelColor={theme.color.onPrimary}
+                      selectedLabelColor="#161E00"
                     />
                   ))}
-                </View>
-              </View>
+                </Box>
+              </Box>
 
               <ActionButton
                 label={t("profile.studioCompliance.actions.saveBilling")}
@@ -549,11 +550,11 @@ export default function StudioComplianceScreen() {
                   void saveBilling();
                 }}
               />
-            </View>
+            </Box>
           </ProfileSectionCard>
-        </View>
+        </Box>
 
-        <View>
+        <Box>
           <ProfileSectionHeader
             label={t("profile.studioCompliance.sections.payment")}
             description={t(
@@ -574,8 +575,8 @@ export default function StudioComplianceScreen() {
               onPress={() => router.push("/studio/profile/payments" as Href)}
             />
           </ProfileSectionCard>
-        </View>
-      </View>
+        </Box>
+      </Box>
     </ProfileSubpageScrollView>
   );
 }

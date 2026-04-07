@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
 import { type ComponentProps, memo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { DotStatusPill } from "@/components/home/home-shared";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -18,6 +18,7 @@ import {
   getJobStatusToneWithReason,
 } from "@/lib/jobs-utils";
 import type { PaymentStatus } from "@/lib/payments-utils";
+import { Text } from "@/primitives";
 import { appStatusDot, paymentDotColor } from "./studio-jobs-list.helpers";
 import type { StudioJob, StudioJobApplication } from "./studio-jobs-list.types";
 
@@ -362,9 +363,9 @@ export const StudioJobCard = memo(function StudioJobCard({
                 {/* Status dot */}
                 <View
                   style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
+                    width: BrandSpacing.statusDot,
+                    height: BrandSpacing.statusDot,
+                    borderRadius: BrandRadius.statusDot,
                     backgroundColor: statusDotColor,
                   }}
                 />
@@ -373,9 +374,9 @@ export const StudioJobCard = memo(function StudioJobCard({
                 {job.payment && (
                   <View
                     style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
+                      width: BrandSpacing.statusDot,
+                      height: BrandSpacing.statusDot,
+                      borderRadius: BrandRadius.statusDot,
                       backgroundColor: payDot,
                     }}
                   />

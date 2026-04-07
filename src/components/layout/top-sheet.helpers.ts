@@ -22,8 +22,8 @@ export function getTopSheetAvailableHeight(sceneViewportHeight: number) {
 export function getTopSheetStepHeights(
   steps: readonly number[],
   sceneViewportHeight: number,
-  minHeight?: number,
+  baseHeight?: number,
 ) {
   const availableHeight = computeAvailableHeight(sceneViewportHeight);
-  return computeStepHeights(steps, availableHeight, minHeight ?? 0);
+  return computeStepHeights(steps, availableHeight, baseHeight ?? 0);
 }

@@ -1,8 +1,9 @@
-import { View } from "react-native";
 import type { StudioMapMarker } from "@/components/maps/queue-map.types";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Box } from "@/primitives";
+import { BorderWidth } from "@/theme/theme";
 
 export const STUDIO_MAP_MARKER_SIZE = BrandSpacing.avatarSm;
 export const STUDIO_MAP_MARKER_OUTER_SIZE = STUDIO_MAP_MARKER_SIZE + BrandSpacing.xs * 2;
@@ -19,16 +20,16 @@ export function StudioMapMarkerView({ studio, selected = false }: StudioMapMarke
   const borderColor = studio.mapMarkerColor ?? color.secondary;
 
   return (
-    <View
+    <Box
       style={{
         width: outerSize,
         height: outerSize,
-        borderRadius: outerSize / 2,
+        borderRadius: BrandRadius.full,
         borderCurve: "continuous",
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: color.surfaceElevated,
-        borderWidth: selected ? 2.5 : 1.5,
+        borderWidth: selected ? BorderWidth.heavy : BorderWidth.medium,
         borderColor,
       }}
     >
@@ -39,6 +40,6 @@ export function StudioMapMarkerView({ studio, selected = false }: StudioMapMarke
         roundedSquare={false}
         fallbackIcon="building.2.fill"
       />
-    </View>
+    </Box>
   );
 }

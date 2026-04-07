@@ -6,10 +6,14 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Linking, StyleSheet, View } from "react-native";
+import { Linking } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 import { TabScreenRoot } from "@/components/layout/tab-screen-root";
-import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
+import {
+  createContentDrivenTopSheetConfig,
+  getMainTabSheetBackgroundColor,
+} from "@/components/layout/top-sheet-registry";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
 import {
   ProfileSectionCard,
@@ -41,6 +45,7 @@ import {
   validateSessionAfterSwitch,
 } from "@/modules/session/device-account-store";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
+import { Box } from "@/primitives";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
@@ -77,7 +82,6 @@ export default function InstructorProfileScreen() {
   const theme = useTheme();
   const { t, i18n } = useTranslation();
   const router = useRouter();
-
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
@@ -97,7 +101,7 @@ export default function InstructorProfileScreen() {
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const payoutSummary = useQuery(
-    api.payments.getMyPayoutSummary,
+    api.paymentsV2.getMyPayoutSummaryV2,
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const instructorAccessSnapshot = useQuery(
@@ -250,7 +254,7 @@ export default function InstructorProfileScreen() {
       : t("profile.settings.publicProfilePrompt"));
   const profileSheetContent = useMemo(
     () => (
-      <View>
+      <Box>
         <ProfileHeaderSheet
           profileName={nameValue}
           roleLabel={
@@ -268,7 +272,7 @@ export default function InstructorProfileScreen() {
           memberSince={memberSince ?? undefined}
           isVerified={identityVerified}
         />
-      </View>
+      </Box>
     ),
     [
       currentUser?.image,
@@ -286,218 +290,230 @@ export default function InstructorProfileScreen() {
   );
 
   const profileSheetConfig = useMemo(
-    () =>
-      createContentDrivenTopSheetConfig({
+    () => {
+      const sheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
+      return createContentDrivenTopSheetConfig({
         collapsedContent: profileSheetContent,
         padding: {
           vertical: 0,
           horizontal: 0,
         },
-        backgroundColor: theme.color.tertiary,
-        topInsetColor: theme.color.tertiary,
-      }),
-    [profileSheetContent, theme.color.tertiary],
+        backgroundColor: sheetBackgroundColor,
+        topInsetColor: sheetBackgroundColor,
+      });
+    },
+    [profileSheetContent, theme],
   );
 
   const descriptorBody = (
-    <TabScreenRoot mode="static" topInsetTone="sheet" style={styles.screen}>
+    <>
       {isDesktopWeb ? (
-        <View style={styles.desktopShell}>
-          <View style={styles.desktopRail}>
-            <ProfileDesktopHeroPanel
-              profileName={nameValue}
-              roleLabel={
-                identityVerified
-                  ? t("profile.hero.verifiedInstructor")
-                  : t("profile.hero.instructorProfile")
-              }
-              profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
-              summary={publicProfileSummary}
-              statusLabel={
-                profileStatus === "ready"
-                  ? t("profile.hero.statusReady")
-                  : profileStatus === "pending"
-                    ? t("profile.hero.statusPending")
-                    : t("profile.hero.statusUnverified")
-              }
-              statusTone={
-                profileStatus === "ready"
-                  ? "success"
-                  : profileStatus === "pending"
-                    ? "warning"
-                    : "neutral"
-              }
-              metaLabel={
-                memberSince
-                  ? t("profile.account.memberSinceValue", {
-                      date: memberSince,
-                    })
-                  : sportsSummary
-              }
-              primaryAction={{
-                label: t("profile.actions.edit"),
-                onPress: handleRequestEdit,
-              }}
-              isVerified={identityVerified}
-              onOpenSwitcher={handleOpenAccountSwitcher}
-              switcherActionLabel={t("profile.switcher.openAction")}
-            />
-          </View>
-
-          <View style={styles.desktopContent}>
-            <View style={styles.desktopMainColumn}>
-              <ProfileSectionHeader
-                label={t("profile.sections.professional")}
-                icon="person.crop.circle.fill"
-                flush
+        <TabScreenRoot
+          mode="static"
+          topInsetTone="sheet"
+          style={[styles.screen, { backgroundColor: theme.color.appBg }]}
+        >
+          <Box style={styles.desktopShell}>
+            <Box style={styles.desktopRail}>
+              <ProfileDesktopHeroPanel
+                profileName={nameValue}
+                roleLabel={
+                  identityVerified
+                    ? t("profile.hero.verifiedInstructor")
+                    : t("profile.hero.instructorProfile")
+                }
+                profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+                summary={publicProfileSummary}
+                statusLabel={
+                  profileStatus === "ready"
+                    ? t("profile.hero.statusReady")
+                    : profileStatus === "pending"
+                      ? t("profile.hero.statusPending")
+                      : t("profile.hero.statusUnverified")
+                }
+                statusTone={
+                  profileStatus === "ready"
+                    ? "success"
+                    : profileStatus === "pending"
+                      ? "warning"
+                      : "neutral"
+                }
+                metaLabel={
+                  memberSince
+                    ? t("profile.account.memberSinceValue", {
+                        date: memberSince,
+                      })
+                    : sportsSummary
+                }
+                primaryAction={{
+                  label: t("profile.actions.edit"),
+                  onPress: handleRequestEdit,
+                }}
+                isVerified={identityVerified}
+                onOpenSwitcher={handleOpenAccountSwitcher}
+                switcherActionLabel={t("profile.switcher.openAction")}
               />
-              <ProfileSectionCard style={styles.desktopCardGroup}>
-                <ProfileSettingRow
-                  title={t("profile.settings.publicProfile")}
-                  subtitle={publicProfileSummary}
-                  icon="person.crop.circle.fill"
-                  onPress={handleRequestEdit}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.settings.sports.title")}
-                  subtitle={sportsSummary}
-                  icon="gym.bag.fill"
-                  onPress={() => router.push(INSTRUCTOR_SPORTS_ROUTE as Href)}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.settings.location.title")}
-                  subtitle={locationSummary}
-                  icon="mappin.and.ellipse"
-                  onPress={() => router.push(INSTRUCTOR_LOCATION_ROUTE as Href)}
-                  showDivider
-                />
-              </ProfileSectionCard>
-            </View>
+            </Box>
 
-            <View style={styles.desktopSideColumn}>
-              <ProfileSectionHeader
-                label={t("profile.account.title")}
-                icon="person.crop.circle.fill"
-                flush
-              />
-              <ProfileSectionCard style={styles.desktopCardGroup}>
-                <ProfileSettingRow
-                  title={t("profile.switcher.openAction")}
-                  subtitle={t("profile.switcher.accountRowHint")}
-                  icon="person.2.fill"
-                  onPress={handleOpenAccountSwitcher}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.account.nameLabel")}
-                  value={currentUser?.fullName ?? nameValue}
+            <Box style={styles.desktopContent}>
+              <Box style={styles.desktopMainColumn}>
+                <ProfileSectionHeader
+                  label={t("profile.sections.professional")}
                   icon="person.crop.circle.fill"
-                  showDivider
+                  flush
                 />
-                <ProfileSettingRow
-                  title={t("profile.account.emailLabel")}
-                  value={emailValue}
-                  icon="paperplane.fill"
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.account.roleLabel")}
-                  value={roleValue}
-                  icon="checkmark.circle.fill"
-                  showDivider
-                />
-                {memberSince ? (
+                <ProfileSectionCard style={styles.desktopCardGroup}>
                   <ProfileSettingRow
-                    title={t("profile.account.memberSince")}
-                    value={memberSince}
-                    icon="calendar.circle.fill"
+                    title={t("profile.settings.publicProfile")}
+                    subtitle={publicProfileSummary}
+                    icon="person.crop.circle.fill"
+                    onPress={handleRequestEdit}
                     showDivider
                   />
-                ) : null}
-                <ProfileSettingRow
-                  title={t("profile.navigation.notifications")}
-                  subtitle={notificationsSummary}
-                  icon="bell.fill"
-                  onPress={() => router.push(INSTRUCTOR_NOTIFICATIONS_ROUTE as Href)}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.language.title")}
-                  value={language === "en" ? t("language.english") : t("language.hebrew")}
-                  icon="globe"
-                  onPress={() => void setLanguage(language === "en" ? "he" : "en")}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("profile.appearance.systemTheme.title")}
-                  icon="slider.horizontal.3"
-                  showDivider
-                  accessory={
-                    <KitSwitch
-                      value={preference === "system"}
-                      onValueChange={(value) => setPreference(value ? "system" : "light")}
-                    />
-                  }
-                />
-                <ProfileSettingRow
-                  title={t("profile.appearance.darkMode.title")}
-                  icon="moon.fill"
-                  accessory={
-                    <KitSwitch
-                      disabled={preference === "system"}
-                      value={preference === "dark"}
-                      onValueChange={(value) => setPreference(value ? "dark" : "light")}
-                    />
-                  }
-                />
-              </ProfileSectionCard>
+                  <ProfileSettingRow
+                    title={t("profile.settings.sports.title")}
+                    subtitle={sportsSummary}
+                    icon="gym.bag.fill"
+                    onPress={() => router.push(INSTRUCTOR_SPORTS_ROUTE as Href)}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.settings.location.title")}
+                    subtitle={locationSummary}
+                    icon="mappin.and.ellipse"
+                    onPress={() => router.push(INSTRUCTOR_LOCATION_ROUTE as Href)}
+                    showDivider
+                  />
+                </ProfileSectionCard>
+              </Box>
 
-              <ProfileSectionHeader
-                label={t("profile.sections.operations")}
-                icon="slider.horizontal.3"
-                flush
-              />
-              <ProfileSectionCard style={styles.desktopCardGroup}>
-                <ProfileSettingRow
-                  title={t("profile.navigation.compliance")}
-                  subtitle={complianceNavigationSummary}
-                  icon="checkmark.shield.fill"
-                  onPress={() => router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href)}
-                  tone="accent"
-                  showDivider
+              <Box style={styles.desktopSideColumn}>
+                <ProfileSectionHeader
+                  label={t("profile.account.title")}
+                  icon="person.crop.circle.fill"
+                  flush
                 />
-                <ProfileSettingRow
-                  title={t("profile.settings.calendar.title")}
-                  subtitle={calendarSummary}
-                  icon="calendar.badge.clock"
-                  onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
-                  showDivider
+                <ProfileSectionCard style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title={t("profile.switcher.openAction")}
+                    subtitle={t("profile.switcher.accountRowHint")}
+                    icon="person.2.fill"
+                    onPress={handleOpenAccountSwitcher}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.account.nameLabel")}
+                    value={currentUser?.fullName ?? nameValue}
+                    icon="person.crop.circle.fill"
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.account.emailLabel")}
+                    value={emailValue}
+                    icon="paperplane.fill"
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.account.roleLabel")}
+                    value={roleValue}
+                    icon="checkmark.circle.fill"
+                    showDivider
+                  />
+                  {memberSince ? (
+                    <ProfileSettingRow
+                      title={t("profile.account.memberSince")}
+                      value={memberSince}
+                      icon="calendar.circle.fill"
+                      showDivider
+                    />
+                  ) : null}
+                  <ProfileSettingRow
+                    title={t("profile.navigation.notifications")}
+                    subtitle={notificationsSummary}
+                    icon="bell.fill"
+                    onPress={() => router.push(INSTRUCTOR_NOTIFICATIONS_ROUTE as Href)}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.language.title")}
+                    value={language === "en" ? t("language.english") : t("language.hebrew")}
+                    icon="globe"
+                    onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.appearance.systemTheme.title")}
+                    icon="slider.horizontal.3"
+                    showDivider
+                    accessory={
+                      <KitSwitch
+                        accessibilityLabel={t("profile.appearance.systemTheme.title")}
+                        accessibilityHint="Toggles automatic theme based on system settings"
+                        value={preference === "system"}
+                        onValueChange={(value) => setPreference(value ? "system" : "light")}
+                      />
+                    }
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.appearance.darkMode.title")}
+                    icon="moon.fill"
+                    accessory={
+                      <KitSwitch
+                        accessibilityLabel={t("profile.appearance.darkMode.title")}
+                        accessibilityHint="Toggles dark mode appearance"
+                        disabled={preference === "system"}
+                        value={preference === "dark"}
+                        onValueChange={(value) => setPreference(value ? "dark" : "light")}
+                      />
+                    }
+                  />
+                </ProfileSectionCard>
+
+                <ProfileSectionHeader
+                  label={t("profile.sections.operations")}
+                  icon="slider.horizontal.3"
+                  flush
                 />
-                <ProfileSettingRow
-                  title={t("profile.settings.paymentsPayouts")}
-                  subtitle={
-                    bankConnected
-                      ? t("profile.settings.payoutsConnected")
-                      : t("profile.settings.payoutsNeeded")
-                  }
-                  icon="creditcard.fill"
-                  onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
-                  tone="accent"
-                  accentColor={theme.color.success}
-                  showDivider
-                />
-                <ProfileSettingRow
-                  title={t("auth.signOutButton")}
-                  icon="arrow.right.square"
-                  onPress={handleSignOut}
-                  tone="danger"
-                />
-              </ProfileSectionCard>
-            </View>
-          </View>
-        </View>
+                <ProfileSectionCard style={styles.desktopCardGroup}>
+                  <ProfileSettingRow
+                    title={t("profile.navigation.compliance")}
+                    subtitle={complianceNavigationSummary}
+                    icon="checkmark.shield.fill"
+                    onPress={() => router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href)}
+                    tone="accent"
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.settings.calendar.title")}
+                    subtitle={calendarSummary}
+                    icon="calendar.badge.clock"
+                    onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("profile.settings.paymentsPayouts")}
+                    subtitle={
+                      bankConnected
+                        ? t("profile.settings.payoutsConnected")
+                        : t("profile.settings.payoutsNeeded")
+                    }
+                    icon="creditcard.fill"
+                    onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
+                    tone="accent"
+                    accentColor="#CCFF00"
+                    showDivider
+                  />
+                  <ProfileSettingRow
+                    title={t("auth.signOutButton")}
+                    icon="arrow.right.square"
+                    onPress={handleSignOut}
+                    tone="danger"
+                  />
+                </ProfileSectionCard>
+              </Box>
+            </Box>
+          </Box>
+        </TabScreenRoot>
       ) : (
         <ProfileIndexScrollView
           routeKey="instructor/profile"
@@ -507,7 +523,7 @@ export default function InstructorProfileScreen() {
           }}
           bottomSpacing={BrandSpacing.xl}
         >
-          <View style={styles.mobileContentPadding}>
+          <Box style={styles.mobileContentPadding}>
             {/* Account Section */}
             <ProfileSectionHeader
               label={t("profile.sections.account")}
@@ -552,7 +568,7 @@ export default function InstructorProfileScreen() {
                 icon="creditcard.fill"
                 onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
                 tone="accent"
-                accentColor={theme.color.success}
+                accentColor="#CCFF00"
                 showDivider
               />
               <ProfileSettingRow
@@ -618,8 +634,8 @@ export default function InstructorProfileScreen() {
 
             {/* Support Section */}
             <ProfileSectionHeader label={t("profile.sections.support")} icon="help" />
-            <View style={{ paddingHorizontal: BrandSpacing.inset }}>
-              <View style={{ flexDirection: "row", gap: BrandSpacing.md }}>
+            <Box style={{ paddingHorizontal: BrandSpacing.inset }}>
+              <Box style={{ flexDirection: "row", gap: BrandSpacing.md }}>
                 <ProfileSupportCard
                   icon="help_center"
                   title="Help Center"
@@ -630,12 +646,12 @@ export default function InstructorProfileScreen() {
                   title="Terms"
                   onPress={() => Linking.openURL("https://www.join-queue.com/he/tos/")}
                 />
-              </View>
-              <View style={{ marginTop: BrandSpacing.md }}>
+              </Box>
+              <Box style={{ marginTop: BrandSpacing.md }}>
                 <ProfileSignOutButton title={t("auth.signOutButton")} onPress={handleSignOut} />
-              </View>
-            </View>
-          </View>
+              </Box>
+            </Box>
+          </Box>
         </ProfileIndexScrollView>
       )}
       <ProfileAccountSwitcherSheet
@@ -652,7 +668,7 @@ export default function InstructorProfileScreen() {
         onUseAnotherAccount={handleUseAnotherAccount}
         profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
       />
-    </TabScreenRoot>
+    </>
   );
 
   const descriptor = useMemo(

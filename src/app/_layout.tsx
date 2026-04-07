@@ -9,6 +9,7 @@ import {
 import { loadAsync } from "expo-font";
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
 import { LogBox, Platform, Text, View } from "react-native";
@@ -17,15 +18,14 @@ import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-rean
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppSafeRoot } from "@/components/layout/app-safe-root";
 import { AuthSessionControllerProvider } from "@/contexts/auth-session-context";
-import { RapydReturnProvider } from "@/contexts/rapyd-return-context";
 import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
 import { UserProvider } from "@/contexts/user-context";
 import { ThemePreferenceProvider, useThemePreference } from "@/hooks/use-theme-preference";
 import i18n from "@/i18n";
 import { getConvexClient, isConvexUrlConfigured } from "@/lib/convex";
+import { StartupNotificationsBootstrap } from "@/modules/app-shell/startup-notifications-bootstrap";
 import { useAndroidNavigationBarTheme } from "@/modules/app-shell/use-android-navigation-bar-theme";
 import { useLocalizationBootstrapPrompt } from "@/modules/app-shell/use-localization-bootstrap-prompt";
-import { StartupNotificationsBootstrap } from "@/modules/app-shell/startup-notifications-bootstrap";
 import { useStartupPerfMetrics } from "@/modules/app-shell/use-startup-perf-metrics";
 import { BrandSpacing, BrandType, getTheme } from "@/theme/theme";
 
@@ -75,7 +75,12 @@ function RootLayoutContent() {
   // Using loadAsync with dynamic imports instead of useFonts with
   // static imports to enable code-splitting of font packages.
   useEffect(() => {
+    let isMounted = true;
+
     const loadFonts = async () => {
+      // Prevent splash screen from hiding while fonts load to avoid blank flash
+      await SplashScreen.preventAutoHideAsync();
+
       try {
         const [barlow, kanit, lexend, manrope, rubik] = await Promise.all([
           import("@expo-google-fonts/barlow-condensed"),
@@ -99,14 +104,24 @@ function RootLayoutContent() {
           Rubik_400Regular: rubik.Rubik_400Regular,
           Rubik_500Medium: rubik.Rubik_500Medium,
         });
-        setFontsLoaded(true);
+        if (isMounted) {
+          setFontsLoaded(true);
+          await SplashScreen.hideAsync();
+        }
       } catch (error) {
         // Fonts failed to load - app will use system fonts as fallback
         console.warn("Failed to load custom fonts:", error);
-        setFontsLoaded(true); // Still allow app to render
+        if (isMounted) {
+          setFontsLoaded(true);
+          await SplashScreen.hideAsync();
+        }
       }
     };
     void loadFonts();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const nativeStorage = useMemo(() => {
@@ -189,7 +204,7 @@ function RootLayoutContent() {
   const statusInsetColor =
     topInsetBackgroundColor ??
     (topInsetTone === "sheet"
-      ? navColors.primary
+      ? navColors.card
       : topInsetTone === "card"
         ? navColors.card
         : topInsetTone === "app"
@@ -206,39 +221,37 @@ function RootLayoutContent() {
         >
           <UserProvider>
             <StartupNotificationsBootstrap />
-            <RapydReturnProvider>
-              <ThemeProvider value={navigationTheme}>
-                <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
-                  <View style={{ flex: 1 }}>
-                    <Stack
-                      screenOptions={{
-                        headerTintColor: navColors.text,
-                        headerTitleStyle: { color: navColors.text },
+            <ThemeProvider value={navigationTheme}>
+              <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
+                <View style={{ flex: 1 }}>
+                  <Stack
+                    screenOptions={{
+                      headerTintColor: navColors.text,
+                      headerTitleStyle: { color: navColors.text },
+                    }}
+                  >
+                    <Stack.Screen
+                      name="index"
+                      options={{
+                        headerShown: false,
+                        animation: "none",
                       }}
-                    >
-                      <Stack.Screen
-                        name="index"
-                        options={{
-                          headerShown: false,
-                          animation: "none",
-                        }}
-                      />
-                      <Stack.Screen name="(app)" options={{ headerShown: false }} />
-                      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                      <Stack.Screen
-                        name="modal"
-                        options={{
-                          presentation: "modal",
-                          title: i18n.t("modal.headerTitle"),
-                        }}
-                      />
-                    </Stack>
-                  </View>
-                  <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
-                </AppSafeRoot>
-              </ThemeProvider>
-            </RapydReturnProvider>
+                    />
+                    <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                    <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                    <Stack.Screen
+                      name="modal"
+                      options={{
+                        presentation: "modal",
+                        title: i18n.t("modal.headerTitle"),
+                      }}
+                    />
+                  </Stack>
+                </View>
+                <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
+              </AppSafeRoot>
+            </ThemeProvider>
           </UserProvider>
         </ConvexAuthProvider>
       </AuthSessionControllerProvider>

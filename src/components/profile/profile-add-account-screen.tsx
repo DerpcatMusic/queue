@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
@@ -40,6 +40,7 @@ import {
   peekPendingPostSignOutAuthHandoff,
   setPendingPostSignOutAuthHandoff,
 } from "@/modules/session/post-signout-auth-intent";
+import { Text } from "@/primitives";
 
 type Step = "email" | "code";
 

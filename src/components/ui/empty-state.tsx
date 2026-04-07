@@ -1,5 +1,4 @@
 import type { SymbolViewProps } from "expo-symbols";
-import { View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
@@ -8,6 +7,8 @@ import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { IconSize } from "@/lib/design-system";
+import { Box } from "@/primitives";
+import { Motion, Spring } from "@/theme/theme";
 
 type EmptyStateAction = {
   label: string;
@@ -39,7 +40,7 @@ export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
 
   return (
     <Animated.View
-      entering={FadeIn.duration(400).springify().damping(20)}
+      entering={FadeIn.duration(Motion.slow).springify().damping(Spring.standard.damping)}
       style={{
         alignItems: "center",
         justifyContent: "center",
@@ -49,7 +50,7 @@ export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
       }}
     >
       <AppSymbol name={icon} size={IconSize.emptyState} tintColor={color.textMicro} />
-      <View style={{ gap: BrandSpacing.xs, alignItems: "center" }}>
+      <Box style={{ gap: BrandSpacing.xs, alignItems: "center" }}>
         <ThemedText type="title" style={{ textAlign: "center", color: color.text }} selectable>
           {title}
         </ThemedText>
@@ -62,7 +63,7 @@ export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
             {body}
           </ThemedText>
         ) : null}
-      </View>
+      </Box>
       {action ? <ActionButton label={action.label} onPress={action.onPress} /> : null}
     </Animated.View>
   );

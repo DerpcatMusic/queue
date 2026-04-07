@@ -1,5 +1,6 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, type StyleProp, View, type ViewStyle } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -21,21 +22,55 @@ type KitListItemProps = {
   onPress?: () => void;
 };
 
-export function KitList({ children, style, inset = true }: KitListProps) {
+const styles = StyleSheet.create({
+  containerInset: {
+    borderWidth: BorderWidth.thin,
+    borderRadius: BrandRadius.card,
+    marginHorizontal: BrandSpacing.lg,
+    overflow: "hidden",
+  },
+  containerNoInset: {
+    borderWidth: BorderWidth.thin,
+    borderRadius: 0,
+    marginHorizontal: 0,
+    overflow: "hidden",
+  },
+  divider: {
+    height: 1,
+    marginStart: BrandSpacing.lg,
+  },
+  itemBase: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: BrandSpacing.lg,
+    paddingVertical: BrandSpacing.md,
+    minHeight: BrandSpacing.listItemMinHeight,
+  },
+  itemPressable: {
+    width: "100%",
+  },
+  leading: {
+    marginEnd: BrandSpacing.md,
+  },
+  content: {
+    flex: 1,
+    justifyContent: "center",
+    gap: BrandSpacing.xs,
+  },
+  trailing: {
+    marginStart: BrandSpacing.md,
+  },
+});
+
+const KitListComponent = ({ children, style, inset = true }: KitListProps) => {
   const { border, background } = useKitTheme();
   const entries = React.Children.toArray(children);
 
   return (
     <View
       style={[
-        {
-          borderWidth: BorderWidth.thin,
-          borderColor: border.primary,
-          backgroundColor: background.surfaceElevated,
-          borderRadius: inset ? BrandRadius.card : 0,
-          marginHorizontal: inset ? BrandSpacing.lg : 0,
-          overflow: "hidden",
-        },
+        inset ? styles.containerInset : styles.containerNoInset,
+        { borderColor: border.primary, backgroundColor: background.surfaceElevated },
         style,
       ]}
     >
@@ -51,35 +86,29 @@ export function KitList({ children, style, inset = true }: KitListProps) {
           <View key={childKey}>
             {child}
             {!isLast ? (
-              <View
-                style={{
-                  height: 1,
-                  marginStart: BrandSpacing.lg,
-                  backgroundColor: border.primary,
-                }}
-              />
+              <View style={[styles.divider, { backgroundColor: border.primary }]} />
             ) : null}
           </View>
         );
       })}
     </View>
   );
-}
+};
 
-export function KitListItem({
+const KitListItemComponent = ({
   children,
   style,
   title,
   accessory,
   leading,
   onPress,
-}: KitListItemProps) {
+}: KitListItemProps) => {
   const { foreground, background } = useKitTheme();
 
   const content = (
     <>
-      {leading ? <View style={{ marginEnd: BrandSpacing.md }}>{leading}</View> : null}
-      <View style={{ flex: 1, justifyContent: "center", gap: children ? BrandSpacing.xs : 0 }}>
+      {leading ? <View style={styles.leading}>{leading}</View> : null}
+      <View style={styles.content}>
         {title ? (
           <ThemedText type="bodyStrong" style={{ color: foreground.secondary }}>
             {title}
@@ -87,7 +116,7 @@ export function KitListItem({
         ) : null}
         {children}
       </View>
-      {accessory ? <View style={{ marginStart: BrandSpacing.md }}>{accessory}</View> : null}
+      {accessory ? <View style={styles.trailing}>{accessory}</View> : null}
     </>
   );
 
@@ -97,12 +126,9 @@ export function KitListItem({
         accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [
+          styles.itemBase,
+          styles.itemPressable,
           {
-            flexDirection: "row",
-            alignItems: "center",
-            paddingHorizontal: BrandSpacing.lg,
-            paddingVertical: BrandSpacing.md,
-            minHeight: BrandSpacing.listItemMinHeight,
             backgroundColor: pressed ? background.surfaceSecondary : background.surfaceElevated,
           },
           style,
@@ -113,20 +139,8 @@ export function KitListItem({
     );
   }
 
-  return (
-    <View
-      style={[
-        {
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: BrandSpacing.lg,
-          paddingVertical: BrandSpacing.md,
-          minHeight: BrandSpacing.listItemMinHeight,
-        },
-        style,
-      ]}
-    >
-      {content}
-    </View>
-  );
-}
+  return <View style={[styles.itemBase, style]}>{content}</View>;
+};
+
+export const KitList = memo(KitListComponent);
+export const KitListItem = memo(KitListItemComponent);

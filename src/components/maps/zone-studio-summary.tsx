@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { KitSurface } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
+import { Box } from "@/primitives";
 
 type ZoneStudioSummaryProps = {
   zoneLabel: string;
@@ -20,19 +20,19 @@ export function ZoneStudioSummary({ zoneLabel, count }: ZoneStudioSummaryProps) 
 
   return (
     <KitSurface tone="sheet" style={{ minWidth: 180, gap: BrandSpacing.sm }}>
-      <View style={{ gap: BrandSpacing.xxs }}>
+      <Box style={{ gap: BrandSpacing.xxs }}>
         <ThemedText type="micro" style={{ color: color.textMuted }}>
           {t("mapTab.mobile.zoneStudioSummaryTitle", { defaultValue: "Zone selection" })}
         </ThemedText>
         <ThemedText type="cardTitle" numberOfLines={1}>
           {zoneLabel}
         </ThemedText>
-      </View>
+      </Box>
 
-      <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
+      <Box style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
+        <Box style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
           {Array.from({ length: previewCount }).map((_, index) => (
-            <View
+            <Box
               key={`zone-studio-dot-${String(index)}`}
               style={{
                 width: BrandSpacing.statusDotBadge,
@@ -48,7 +48,7 @@ export function ZoneStudioSummary({ zoneLabel, count }: ZoneStudioSummaryProps) 
               +{String(extraCount)}
             </ThemedText>
           ) : null}
-        </View>
+        </Box>
         <ThemedText type="meta" style={{ color: color.textMuted, flexShrink: 1 }}>
           {count === 1
             ? t("mapTab.mobile.zoneStudioSummaryCountSingle", {
@@ -59,7 +59,7 @@ export function ZoneStudioSummary({ zoneLabel, count }: ZoneStudioSummaryProps) 
                 defaultValue: "{{count}} studios inside this zone",
               })}
         </ThemedText>
-      </View>
+      </Box>
     </KitSurface>
   );
 }

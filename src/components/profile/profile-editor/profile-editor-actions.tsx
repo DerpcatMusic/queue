@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
 import { ActionButton } from "@/components/ui/action-button";
 import { BrandSpacing } from "@/constants/brand";
+import { Box } from "@/primitives";
 
 type ProfileEditorActionsProps = {
   onSave: () => void;
@@ -13,16 +13,16 @@ export function ProfileEditorActions({ onSave, onCancel, isSaving }: ProfileEdit
   const { t } = useTranslation();
 
   return (
-    <View style={{ flexDirection: "row", gap: BrandSpacing.md }}>
-      <View style={{ flex: 1 }}>
+    <Box style={{ flexDirection: "row", gap: BrandSpacing.md }}>
+      <Box style={{ flex: 1 }}>
         <ActionButton
           label={isSaving ? t("profile.editor.saving") : t("profile.editor.save")}
           onPress={onSave}
           disabled={isSaving}
           fullWidth
         />
-      </View>
-      <View style={{ flex: 1 }}>
+      </Box>
+      <Box style={{ flex: 1 }}>
         <ActionButton
           label={t("profile.editor.cancel")}
           onPress={onCancel}
@@ -30,7 +30,7 @@ export function ProfileEditorActions({ onSave, onCancel, isSaving }: ProfileEdit
           tone="secondary"
           fullWidth
         />
-      </View>
-    </View>
+      </Box>
+    </Box>
   );
 }

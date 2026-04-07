@@ -7,9 +7,9 @@ import {
   useRef,
   useSyncExternalStore,
 } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type Animated from "react-native-reanimated";
 import { useAnimatedRef, useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BrandSpacing } from "@/theme/theme";
 
@@ -51,7 +51,9 @@ function createScrollSheetLayoutStore(
   const listeners = new Set<() => void>();
 
   const emit = () => {
-    listeners.forEach((listener) => listener());
+    listeners.forEach((listener) => {
+      listener();
+    });
   };
 
   return {
@@ -136,7 +138,6 @@ export function ScrollSheetProvider({ children }: PropsWithChildren) {
     [
       insets.bottom,
       insets.top,
-      overlayBottom,
       updateCollapsedSheetHeight,
       updateLayoutSheetHeight,
       updateSceneViewportHeight,

@@ -1,11 +1,10 @@
 import type { TFunction } from "i18next";
-import { View } from "react-native";
-
 import { MapSelectedZonesStrip } from "@/components/map-tab/map/map-selected-zones-strip";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing, type getMapBrandPalette } from "@/constants/brand";
 import type { ZoneOption } from "@/constants/zones";
 import { useTheme } from "@/hooks/use-theme";
+import { Box } from "@/primitives";
 
 type MapSheetHeaderProps = {
   focusZoneId?: string | null;
@@ -37,7 +36,7 @@ export function MapSheetHeader({
   const zoneSearch = zoneSearchProp ?? "";
 
   return (
-    <View style={{ gap: BrandSpacing.xs }}>
+    <Box style={{ gap: BrandSpacing.xs }}>
       {onChangeSearchProp && mapPaletteProp && tProp && (
         <NativeSearchField
           value={zoneSearch}
@@ -55,6 +54,6 @@ export function MapSheetHeader({
         zoneLanguage={zoneLanguageProp ?? "en"}
         onPressZone={onPressZone ?? (() => {})}
       />
-    </View>
+    </Box>
   );
 }

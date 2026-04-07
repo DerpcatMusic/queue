@@ -2901,9 +2901,6 @@ export const emitLessonLifecycleEvent = internalMutation({
         jobId: job._id,
         reason: "lesson_completed",
       });
-      await ctx.scheduler.runAfter(0, internal.payouts.evaluatePayoutEligibility, {
-        jobId: job._id,
-      });
     }
 
     await enqueueUserNotification(ctx, {
@@ -2951,10 +2948,6 @@ export const markLessonCompleted = mutation({
       jobId: job._id,
       reason: "lesson_completed",
     });
-    await ctx.scheduler.runAfter(0, internal.payouts.evaluatePayoutEligibility, {
-      jobId: job._id,
-    });
-
     const studio = await ctx.db.get("studioProfiles", job.studioId);
     if (studio) {
       await enqueueUserNotification(ctx, {

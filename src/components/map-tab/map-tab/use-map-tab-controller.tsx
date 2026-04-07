@@ -6,7 +6,10 @@ import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
-import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
+import {
+  createContentDrivenTopSheetConfig,
+  getMainTabSheetBackgroundColor,
+} from "@/components/layout/top-sheet-registry";
 import { MapSheetResults } from "@/components/map-tab/map/map-sheet-results";
 import { MapSheetHeader } from "@/components/map-tab/map-tab/map-sheet-header";
 import { buildZoneCityGroups, buildZoneCityListItems } from "@/components/map-tab/zone-city-tree";
@@ -438,7 +441,7 @@ export function useMapTabController() {
   );
 
   const mapSheetConfig = useMemo(() => {
-    const mapSheetBackgroundColor = theme.color.surface;
+    const mapSheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
     return createContentDrivenTopSheetConfig({
       stickyHeader: (
         <MapSheetHeader
@@ -478,7 +481,7 @@ export function useMapTabController() {
     handleMapSheetSearchChange,
     handleSheetStepChange,
     mapExpandedResults,
-    theme.color.surface,
+    theme,
     openSearchSheet,
     selectedZones,
     sheetStep,

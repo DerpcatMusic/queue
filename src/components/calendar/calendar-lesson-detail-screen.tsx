@@ -1,15 +1,14 @@
+import { useQuery } from "convex/react";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useMemo } from "react";
-import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
-import { LoadingScreen } from "@/components/loading-screen";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
 import {
   createContentDrivenTopSheetConfig,
   useGlobalTopSheet,
 } from "@/components/layout/top-sheet-registry";
+import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -20,14 +19,15 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
 import { formatTime } from "@/lib/jobs-utils";
+import { Box } from "@/primitives";
 import { useLessonCheckIn } from "./use-lesson-check-in";
 
 type CalendarLessonDetailScreenProps = {
-  role: "instructor" | "studio";
+  actorRole: "instructor" | "studio";
 };
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
-export function CalendarLessonDetailScreen({ role }: CalendarLessonDetailScreenProps) {
+export function CalendarLessonDetailScreen({ actorRole: role }: CalendarLessonDetailScreenProps) {
   const params = useLocalSearchParams<{ jobId?: string }>();
   const jobId = Array.isArray(params.jobId) ? params.jobId[0] : params.jobId;
   const { t } = useTranslation();
@@ -49,19 +49,15 @@ export function CalendarLessonDetailScreen({ role }: CalendarLessonDetailScreenP
       pathname
         ? createContentDrivenTopSheetConfig({
             stickyHeader: (
-              <View style={styles.sheetHeader}>
-                <View style={styles.sheetHeaderRow}>
+              <Box style={styles.sheetHeader}>
+                <Box style={styles.sheetHeaderRow}>
                   <IconButton
                     accessibilityLabel={t("common.close")}
                     onPress={() => router.back()}
                     tone="secondary"
-                    size={36}
+                    size={44}
                     icon={
-                      <IconSymbol
-                        name="chevron.left"
-                        size={18}
-                        color={topSheetForegroundColor}
-                      />
+                      <IconSymbol name="chevron.left" size={18} color={topSheetForegroundColor} />
                     }
                   />
                   <ThemedText
@@ -70,9 +66,9 @@ export function CalendarLessonDetailScreen({ role }: CalendarLessonDetailScreenP
                   >
                     {title}
                   </ThemedText>
-                  <View style={styles.sheetHeaderSpacer} />
-                </View>
-              </View>
+                  <Box style={styles.sheetHeaderSpacer} />
+                </Box>
+              </Box>
             ),
             padding: {
               vertical: 0,
@@ -122,42 +118,39 @@ export function CalendarLessonDetailScreen({ role }: CalendarLessonDetailScreenP
     detail.lifecycle !== "past" &&
     detail.lifecycle !== "cancelled" &&
     !isCheckedIn;
-  const statusLabel =
-    isCheckedIn
-      ? t("calendarTab.card.indicators.checkedIn")
-      : hasRejectedCheckIn
-        ? t("calendarTab.card.indicators.checkInFailed")
-        : detail.lifecycle === "live"
-          ? t("calendarTab.card.indicators.arriveNow")
+  const statusLabel = isCheckedIn
+    ? t("calendarTab.card.indicators.checkedIn")
+    : hasRejectedCheckIn
+      ? t("calendarTab.card.indicators.checkInFailed")
+      : detail.lifecycle === "live"
+        ? t("calendarTab.card.indicators.arriveNow")
+        : detail.lifecycle === "past"
+          ? t("calendarTab.card.indicators.complete")
+          : detail.lifecycle === "cancelled"
+            ? t("calendarTab.card.indicators.cancelled")
+            : t("calendarTab.card.indicators.goodToGo");
+  const statusColor = isCheckedIn
+    ? theme.color.primary
+    : hasRejectedCheckIn
+      ? theme.color.danger
+      : detail.lifecycle === "live"
+        ? theme.color.secondary
+        : detail.lifecycle === "cancelled"
+          ? theme.color.danger
           : detail.lifecycle === "past"
-            ? t("calendarTab.card.indicators.complete")
-            : detail.lifecycle === "cancelled"
-              ? t("calendarTab.card.indicators.cancelled")
-              : t("calendarTab.card.indicators.goodToGo");
-  const statusColor =
-    isCheckedIn
-      ? theme.color.primary
-      : hasRejectedCheckIn
-        ? theme.color.danger
-        : detail.lifecycle === "live"
-          ? theme.color.secondary
-          : detail.lifecycle === "cancelled"
-            ? theme.color.danger
-            : detail.lifecycle === "past"
-              ? theme.color.textMuted
-              : theme.color.primary;
-  const statusBackground =
-    isCheckedIn
-      ? theme.color.primarySubtle
-      : hasRejectedCheckIn
-        ? theme.color.dangerSubtle
-        : detail.lifecycle === "live"
-          ? theme.color.secondarySubtle
-          : detail.lifecycle === "cancelled"
-            ? theme.color.dangerSubtle
-            : detail.lifecycle === "past"
-              ? theme.color.surfaceAlt
-              : theme.color.primarySubtle;
+            ? theme.color.textMuted
+            : theme.color.primary;
+  const statusBackground = isCheckedIn
+    ? theme.color.primarySubtle
+    : hasRejectedCheckIn
+      ? theme.color.dangerSubtle
+      : detail.lifecycle === "live"
+        ? theme.color.secondarySubtle
+        : detail.lifecycle === "cancelled"
+          ? theme.color.dangerSubtle
+          : detail.lifecycle === "past"
+            ? theme.color.surfaceAlt
+            : theme.color.primarySubtle;
 
   const handleCheckIn = () => {
     if (!canCheckIn) {
@@ -172,7 +165,7 @@ export function CalendarLessonDetailScreen({ role }: CalendarLessonDetailScreenP
       sheetInsets={{ topSpacing: 0, bottomSpacing: BrandSpacing.xxl }}
       contentContainerStyle={styles.contentContainer}
     >
-      <View
+      <Box
         style={[
           styles.heroCard,
           {
@@ -182,34 +175,34 @@ export function CalendarLessonDetailScreen({ role }: CalendarLessonDetailScreenP
           },
         ]}
       >
-        <View style={styles.heroTopRow}>
-          <View style={[styles.statusPill, { backgroundColor: statusBackground }]}>
+        <Box style={styles.heroTopRow}>
+          <Box style={[styles.statusPill, { backgroundColor: statusBackground }]}>
             <ThemedText style={[styles.statusPillText, { color: statusColor }]}>
               {statusLabel}
             </ThemedText>
-          </View>
+          </Box>
           <ThemedText style={[styles.payText, { color: theme.color.primary }]}>
             ₪{Math.round(detail.pay)}
           </ThemedText>
-        </View>
+        </Box>
 
-        <View style={styles.heroBody}>
-          <View style={styles.infoRow}>
+        <Box style={styles.heroBody}>
+          <Box style={styles.infoRow}>
             <IconSymbol name="schedule" size={16} color={theme.color.textMuted} />
             <ThemedText style={[styles.infoText, { color: theme.color.text }]}>
               {formatTime(detail.startTime, "en-US")} - {formatTime(detail.endTime, "en-US")}
             </ThemedText>
-          </View>
-          <View style={styles.infoRow}>
+          </Box>
+          <Box style={styles.infoRow}>
             <IconSymbol name="location_on" size={16} color={theme.color.textMuted} />
             <ThemedText style={[styles.infoText, { color: theme.color.text }]}>
               {detail.zone}
             </ThemedText>
-          </View>
-        </View>
-      </View>
+          </Box>
+        </Box>
+      </Box>
 
-      <View
+      <Box
         style={[
           styles.sectionCard,
           {
@@ -224,10 +217,10 @@ export function CalendarLessonDetailScreen({ role }: CalendarLessonDetailScreenP
         <ThemedText style={[styles.sectionTitle, { color: theme.color.text }]}>
           {counterpartTitle}
         </ThemedText>
-      </View>
+      </Box>
 
       {detail.checkInStatus ? (
-        <View
+        <Box
           style={[
             styles.sectionCard,
             {
@@ -260,11 +253,11 @@ export function CalendarLessonDetailScreen({ role }: CalendarLessonDetailScreenP
                 ? t(`calendarTab.card.checkInReasons.${detail.checkInReason}` as never)
                 : t("calendarTab.card.checkInReasons.unknown")}
           </ThemedText>
-        </View>
+        </Box>
       ) : null}
 
       {detail.note ? (
-        <View
+        <Box
           style={[
             styles.sectionCard,
             {
@@ -279,10 +272,10 @@ export function CalendarLessonDetailScreen({ role }: CalendarLessonDetailScreenP
           <ThemedText style={[styles.noteBody, { color: theme.color.text }]}>
             {detail.note}
           </ThemedText>
-        </View>
+        </Box>
       ) : null}
 
-      <View style={styles.actionsRow}>
+      <Box style={styles.actionsRow}>
         <ActionButton
           label={t("common.close")}
           tone="secondary"
@@ -296,7 +289,7 @@ export function CalendarLessonDetailScreen({ role }: CalendarLessonDetailScreenP
             onPress={handleCheckIn}
           />
         ) : null}
-      </View>
+      </Box>
     </TabScreenScrollView>
   );
 }
@@ -354,7 +347,7 @@ const styles = StyleSheet.create(() => ({
   },
   payText: {
     fontFamily: "Lexend_800ExtraBold",
-    fontSize: 24,
+    fontSize: BrandType.heading.fontSize,
     fontWeight: "800",
   },
   heroBody: {
@@ -367,7 +360,7 @@ const styles = StyleSheet.create(() => ({
   },
   infoText: {
     fontFamily: "Manrope_600SemiBold",
-    fontSize: 15,
+    fontSize: BrandType.body.fontSize,
     fontWeight: "600",
   },
   sectionCard: {
@@ -385,7 +378,7 @@ const styles = StyleSheet.create(() => ({
   },
   sectionTitle: {
     fontFamily: "Lexend_700Bold",
-    fontSize: 20,
+    fontSize: BrandType.titleLarge.fontSize,
     fontWeight: "700",
   },
   noteBody: {

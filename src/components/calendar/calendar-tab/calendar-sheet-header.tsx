@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { View } from "react-native";
+import { Box } from "@/primitives";
 import { calendarSheetStyles } from "./calendar-date-utils";
 import CalendarWeekPicker from "./calendar-week-picker";
 
@@ -10,13 +10,9 @@ type CalendarSheetHeaderProps = {
 
 function CalendarSheetHeader({ selectedDay, todayKey }: CalendarSheetHeaderProps) {
   return (
-    <View style={calendarSheetStyles.root}>
-      <CalendarWeekPicker
-        selectedDay={selectedDay}
-        todayKey={todayKey}
-        startDay={selectedDay}
-      />
-    </View>
+    <Box style={calendarSheetStyles.root}>
+      <CalendarWeekPicker selectedDay={selectedDay} todayKey={todayKey} startDay={selectedDay} />
+    </Box>
   );
 }
 

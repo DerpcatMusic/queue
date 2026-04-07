@@ -4,6 +4,7 @@ import { ConvexError, v } from "convex/values";
 import { Resend as ResendApi } from "resend";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
+import { geminiReviewRateLimiter } from "./components";
 import {
   isCapabilityTag,
   isSportType,
@@ -34,6 +35,7 @@ type CertificateReviewResult = {
   }>;
   issuerName: string;
   certificateTitle: string;
+  completedOn: string;
   summary: string;
   rejectionReasons: string[];
 };
@@ -41,6 +43,8 @@ type CertificateReviewResult = {
 type InsuranceReviewResult = {
   approved: boolean;
   issuerName: string;
+  /** The name of the person who is the policy holder (the insured instructor) */
+  policyHolderName: string;
   policyNumber: string;
   expiresOn: string;
   summary: string;
@@ -252,10 +256,10 @@ async function generateStructuredGeminiReview<T>(args: {
 }
 
 function buildCertificatePrompt(args: {
-  declaredSport?: string;
-  diditLegalName?: string;
   instructorDisplayName: string;
   nowIsoDate: string;
+  diditLegalName?: string;
+  declaredSport?: string;
 }) {
   return [
     "You are validating a sports instructor teaching certificate for marketplace compliance.",
@@ -266,6 +270,7 @@ function buildCertificatePrompt(args: {
     `Allowed sport keys: ${SPORT_TYPES.map((sport) => `${sport} = ${toSportLabel(sport)}`).join("; ")}.`,
     "Approve only if the document clearly appears to be a legitimate certificate or diploma allowing this person to teach one or more sports.",
     "Check whether the name on the document reasonably matches the instructor, the issuing organization is present, the certificate title is visible, and the covered sports can be inferred from the document.",
+    "Also extract the date the instructor completed their certification course (completedOn). Return in ISO format YYYY-MM-DD if visible. Return empty string if not found.",
     "Return specialties as objects shaped like { sport, capabilityTags } using only allowed sport keys.",
     "Use capabilityTags only when the certificate clearly supports a narrower apparatus or modality, such as cadillac, tower, wunda_chair, trx, pads, heavy_bag, aerial_hammock, rehab, prenatal, or postnatal.",
     "If a certificate supports a sport but no narrower capability tags are clear, return that specialty with an empty or omitted capabilityTags array.",
@@ -289,9 +294,10 @@ function buildInsurancePrompt(args: {
     args.diditLegalName ? `Instructor legal name from Didit: ${args.diditLegalName}.` : null,
     "Approve only if the document clearly appears to show an active insurance policy for the instructor.",
     "The document must include an expiry date. Return expiresOn in ISO format YYYY-MM-DD when visible.",
+    "Also extract the name of the insurance company (issuerName) and the name of the policy holder / insured person (policyHolderName).",
     "If the insured person does not reasonably match the instructor, or if expiry is missing or already past, do not approve.",
     "Return JSON only.",
-    "Use an empty string when issuerName or policyNumber are unclear.",
+    "Use an empty string when issuerName, policyNumber, or policyHolderName are unclear.",
     "Use rejectionReasons to explain what is missing or why the document should not be approved.",
   ]
     .filter(Boolean)
@@ -319,6 +325,8 @@ function buildCertificateReviewSchema() {
       },
       issuerName: { type: "STRING" },
       certificateTitle: { type: "STRING" },
+      /** ISO date string YYYY-MM-DD when the instructor completed the certification course */
+      completedOn: { type: "STRING" },
       summary: { type: "STRING" },
       rejectionReasons: {
         type: "ARRAY",
@@ -330,6 +338,7 @@ function buildCertificateReviewSchema() {
       "specialties",
       "issuerName",
       "certificateTitle",
+      "completedOn",
       "summary",
       "rejectionReasons",
     ],
@@ -342,6 +351,8 @@ function buildInsuranceReviewSchema() {
     properties: {
       approved: { type: "BOOLEAN" },
       issuerName: { type: "STRING" },
+      /** Name of the policy holder / insured person */
+      policyHolderName: { type: "STRING" },
       policyNumber: { type: "STRING" },
       expiresOn: { type: "STRING" },
       summary: { type: "STRING" },
@@ -353,6 +364,7 @@ function buildInsuranceReviewSchema() {
     required: [
       "approved",
       "issuerName",
+      "policyHolderName",
       "policyNumber",
       "expiresOn",
       "summary",
@@ -361,12 +373,44 @@ function buildInsuranceReviewSchema() {
   };
 }
 
-async function fetchDocumentBytes(storageUrl: string) {
+/**
+ * Fetch a compliance document from Convex storage with SHA256 integrity verification.
+ *
+ * Convex storage serves files with an HTTP Digest header containing the SHA256
+ * of the stored bytes (e.g., `Digest: sha-256=<hex>`). We verify this header
+ * matches the downloaded content to detect any corruption or tampering that
+ * may have occurred between upload and AI review.
+ *
+ * Note: Convex already verifies SHA256 at upload time, but we re-verify at
+ * read time as a defense-in-depth measure.
+ */
+async function fetchAndVerifyDocumentBytes(storageUrl: string): Promise<ArrayBuffer> {
   const response = await fetch(storageUrl);
   if (!response.ok) {
     throw new ConvexError(`Failed to fetch stored compliance file (${response.status})`);
   }
-  return await response.arrayBuffer();
+  const bytes = await response.arrayBuffer();
+
+  // Verify SHA256 integrity using the Digest header Convex includes in the response
+  const digestHeader = response.headers.get("digest");
+  if (digestHeader) {
+    // Digest header format: "sha-256=<hex>" or "SHA-256=<hex>"
+    const match = digestHeader.match(/sha-256=([a-fA-F0-9]{64})/i);
+    if (match && match[1]) {
+      const storedHash = match[1].toLowerCase();
+      // Compute SHA-256 of downloaded bytes
+      const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
+      const downloadedHash = Buffer.from(hashBuffer).toString("hex");
+      if (downloadedHash !== storedHash) {
+        throw new ConvexError(
+          `Document integrity check failed: SHA256 mismatch. ` +
+            `Expected ${storedHash}, got ${downloadedHash}. The uploaded document may have been corrupted or tampered with.`,
+        );
+      }
+    }
+  }
+
+  return bytes;
 }
 
 async function sendComplianceEmail(args: {
@@ -402,16 +446,11 @@ export const reviewInstructorCertificate = internalAction({
   }),
   handler: async (ctx, args): Promise<{ ok: boolean; status: string }> => {
     let apiKey: string | undefined;
-    await ctx.runMutation(internal.compliance.markInstructorCertificateReviewProgress, {
-      certificateId: args.certificateId,
-      reviewStatus: "ai_reviewing",
-      reviewProvider: "gemini",
-      reviewSummary: "Automatic review started.",
-    });
-
     let geminiFileName: string | undefined;
     try {
       apiKey = getGeminiApiKey();
+
+      // Get review context first — needed for rate limiting key
       const reviewContext = await ctx.runQuery(
         internal.compliance.getInstructorCertificateReviewContext,
         {
@@ -422,7 +461,21 @@ export const reviewInstructorCertificate = internalAction({
         return { ok: false, status: "missing" };
       }
 
-      const bytes = await fetchDocumentBytes(reviewContext.storageUrl);
+      // Rate limit: prevent runaway uploads from exhausting Gemini quota
+      await geminiReviewRateLimiter.limit(ctx, "instructorReview", {
+        key: String(reviewContext.instructorId),
+        throws: true,
+      });
+
+      // Mark as ai_reviewing only after passing rate limit
+      await ctx.runMutation(internal.compliance.markInstructorCertificateReviewProgress, {
+        certificateId: args.certificateId,
+        reviewStatus: "ai_reviewing",
+        reviewProvider: "gemini",
+        reviewSummary: "Automatic review started.",
+      });
+
+      const bytes = await fetchAndVerifyDocumentBytes(reviewContext.storageUrl);
       const uploadedFile = await uploadFileToGemini({
         apiKey,
         bytes,
@@ -449,6 +502,7 @@ export const reviewInstructorCertificate = internalAction({
       const issuerName = normalizeOptionalText(parsed.issuerName);
       const certificateTitle = normalizeOptionalText(parsed.certificateTitle);
       const reviewSummary = normalizeOptionalText(parsed.summary);
+      const completedAt = parseIsoDateToExpiryMs(parsed.completedOn);
 
       await ctx.runMutation(internal.compliance.applyInstructorCertificateReviewDecision, {
         certificateId: args.certificateId,
@@ -459,6 +513,7 @@ export const reviewInstructorCertificate = internalAction({
         specialties,
         ...(issuerName ? { issuerName } : {}),
         ...(certificateTitle ? { certificateTitle } : {}),
+        ...(completedAt !== undefined ? { completedAt } : {}),
         ...(reviewSummary ? { reviewSummary } : {}),
       });
 
@@ -509,16 +564,10 @@ export const reviewInstructorInsurancePolicy = internalAction({
   }),
   handler: async (ctx, args): Promise<{ ok: boolean; status: string }> => {
     let apiKey: string | undefined;
-    await ctx.runMutation(internal.compliance.markInstructorInsuranceReviewProgress, {
-      insurancePolicyId: args.insurancePolicyId,
-      reviewStatus: "ai_reviewing",
-      reviewProvider: "gemini",
-      reviewSummary: "Automatic review started.",
-    });
-
     let geminiFileName: string | undefined;
     try {
       apiKey = getGeminiApiKey();
+
       const reviewContext = await ctx.runQuery(
         internal.compliance.getInstructorInsuranceReviewContext,
         {
@@ -529,7 +578,21 @@ export const reviewInstructorInsurancePolicy = internalAction({
         return { ok: false, status: "missing" };
       }
 
-      const bytes = await fetchDocumentBytes(reviewContext.storageUrl);
+      // Rate limit: prevent runaway uploads from exhausting Gemini quota
+      await geminiReviewRateLimiter.limit(ctx, "instructorReview", {
+        key: String(reviewContext.instructorId),
+        throws: true,
+      });
+
+      // Mark as ai_reviewing only after passing rate limit
+      await ctx.runMutation(internal.compliance.markInstructorInsuranceReviewProgress, {
+        insurancePolicyId: args.insurancePolicyId,
+        reviewStatus: "ai_reviewing",
+        reviewProvider: "gemini",
+        reviewSummary: "Automatic review started.",
+      });
+
+      const bytes = await fetchAndVerifyDocumentBytes(reviewContext.storageUrl);
       const uploadedFile = await uploadFileToGemini({
         apiKey,
         bytes,
@@ -558,6 +621,7 @@ export const reviewInstructorInsurancePolicy = internalAction({
       const policyNumber = normalizeOptionalText(parsed.policyNumber);
       const expiresOn = normalizeOptionalText(parsed.expiresOn);
       const reviewSummary = normalizeOptionalText(parsed.summary);
+      const policyHolderName = normalizeOptionalText(parsed.policyHolderName);
 
       await ctx.runMutation(internal.compliance.applyInstructorInsuranceReviewDecision, {
         insurancePolicyId: args.insurancePolicyId,
@@ -570,6 +634,7 @@ export const reviewInstructorInsurancePolicy = internalAction({
             : ["Insurance proof is missing a valid future expiry date or could not be verified."],
         reviewJson: JSON.stringify(parsed),
         ...(issuerName ? { issuerName } : {}),
+        ...(policyHolderName ? { policyHolderName } : {}),
         ...(policyNumber ? { policyNumber } : {}),
         ...(expiresOn ? { expiresOn } : {}),
         ...(typeof expiresAt === "number" ? { expiresAt } : {}),

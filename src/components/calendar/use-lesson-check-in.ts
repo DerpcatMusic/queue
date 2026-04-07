@@ -50,7 +50,14 @@ function getRejectedReasonMessage(
   }
 }
 
-export function useLessonCheckIn() {
+type UseLessonCheckInOptions = {
+  onVerified?: ((result: Extract<LessonCheckInResult, { status: "verified" }>) => void) | undefined;
+  onRejected?: ((result: Extract<LessonCheckInResult, { status: "rejected" }>) => void) | undefined;
+  onError?: ((message: string) => void) | undefined;
+  suppressAlerts?: boolean | undefined;
+};
+
+export function useLessonCheckIn(options?: UseLessonCheckInOptions) {
   const { t } = useTranslation();
   const checkIntoLesson = useMutation(api.jobs.checkIntoLesson);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,17 +80,23 @@ export function useLessonCheckIn() {
         })) as LessonCheckInResult;
 
         if (result.status === "verified") {
-          Alert.alert(
-            t("calendarTab.card.checkInVerifiedTitle"),
-            t("calendarTab.card.checkInVerifiedBody", {
-              distance: Math.max(0, Math.round(result.distanceToBranchMeters ?? 0)),
-            }),
-          );
+          options?.onVerified?.(result);
+          if (!options?.suppressAlerts) {
+            Alert.alert(
+              t("calendarTab.card.checkInVerifiedTitle"),
+              t("calendarTab.card.checkInVerifiedBody", {
+                distance: Math.max(0, Math.round(result.distanceToBranchMeters ?? 0)),
+              }),
+            );
+          }
         } else {
-          Alert.alert(
-            t("calendarTab.card.checkInRetryTitle"),
-            getRejectedReasonMessage(result.reason, t),
-          );
+          options?.onRejected?.(result);
+          if (!options?.suppressAlerts) {
+            Alert.alert(
+              t("calendarTab.card.checkInRetryTitle"),
+              getRejectedReasonMessage(result.reason, t),
+            );
+          }
         }
 
         return result;
@@ -94,13 +107,16 @@ export function useLessonCheckIn() {
             : error instanceof Error
               ? error.message
               : t("calendarTab.card.checkInReasons.unknown");
-        Alert.alert(t("calendarTab.card.checkInErrorTitle"), message);
+        options?.onError?.(message);
+        if (!options?.suppressAlerts) {
+          Alert.alert(t("calendarTab.card.checkInErrorTitle"), message);
+        }
         return null;
       } finally {
         setIsSubmitting(false);
       }
     },
-    [checkIntoLesson, isSubmitting, t],
+    [checkIntoLesson, isSubmitting, options, t],
   );
 
   return {

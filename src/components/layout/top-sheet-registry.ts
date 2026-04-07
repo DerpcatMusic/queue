@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -46,7 +47,6 @@ export type TopSheetTabConfig = {
   steps?: readonly number[];
   initialStep?: number;
   activeStep?: number;
-  minHeight?: number;
   collapsedHeightMode?: TopSheetCollapsedHeightMode;
   expandMode?: TopSheetExpandMode;
   onStepChange?: (step: number) => void;
@@ -67,6 +67,10 @@ export type ResolvedTopSheetTabConfig = TopSheetTabConfig & {
 };
 
 type TopSheetTabOverride = Omit<Partial<TopSheetTabConfig>, "tabId">;
+export type TopSheetDescriptorConfig = Omit<
+  Partial<TopSheetTabConfig>,
+  "tabId" | "routeMatchPath" | "routeMatchExact"
+>;
 type TopSheetTabOverrideEntry = {
   ownerId: string;
   config: TopSheetTabOverride;
@@ -85,11 +89,23 @@ function isSheetRouteMatch(
     return false;
   }
 
+  // Check if pathname has a role prefix but routeMatchPath doesn't
+  // This allows /instructor/profile/sports to match routeMatchPath /profile/sports
+  // while still allowing /instructor/jobs to match routeMatchPath /instructor/jobs
+  const pathnameHasRolePrefix = /^\/(instructor|studio)\//.test(pathname);
+  const routeMatchPathHasRolePrefix = /^\/(instructor|studio)\//.test(routeMatchPath);
+
   if (routeMatchExact) {
     return pathname === routeMatchPath;
   }
 
-  return pathname === routeMatchPath || pathname.endsWith(routeMatchPath);
+  // If pathname has role prefix but routeMatchPath doesn't, strip role prefix from pathname
+  if (pathnameHasRolePrefix && !routeMatchPathHasRolePrefix) {
+    const strippedPathname = pathname.replace(/^\/(instructor|studio)\//, "/");
+    return strippedPathname === routeMatchPath || strippedPathname.startsWith(`${routeMatchPath}/`);
+  }
+
+  return pathname === routeMatchPath || pathname.startsWith(`${routeMatchPath}/`);
 }
 
 function areSheetOverridesEqual(
@@ -304,10 +320,17 @@ export function resolveTabSheetConfig(
   };
 }
 
+export function getMainTabSheetBackgroundColor(theme: AppTheme) {
+  return "surfaceContainerHigh" in theme.color
+    ? theme.color.surfaceContainerHigh
+    : theme.color.surfaceContainer;
+}
+
 export function getDefaultSheetColors(_tabId: string, theme: AppTheme) {
+  const backgroundColor = getMainTabSheetBackgroundColor(theme);
   return {
-    backgroundColor: theme.color.surfaceElevated,
-    topInsetColor: theme.color.surfaceElevated,
+    backgroundColor,
+    topInsetColor: backgroundColor,
   } as const;
 }
 
@@ -353,13 +376,13 @@ export function useGlobalTopSheet(
     [config, registration?.routeMatchExact, registration?.routeMatchPath],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (areTopSheetConfigsEqual(lastConfigRef.current, registeredConfig)) {
       return;
     }
     lastConfigRef.current = registeredConfig;
     replaceConfig(tabId, ownerId, registeredConfig);
-  }, [clearConfig, ownerId, registeredConfig, replaceConfig, tabId]);
+  }, [ownerId, registeredConfig, replaceConfig, tabId]);
 
   useEffect(
     () => () => {
