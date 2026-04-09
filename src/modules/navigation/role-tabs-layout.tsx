@@ -231,8 +231,18 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   // because it needs activeTabId which changes on tab switch.
   //
   // Destructuring ensures deps are primitive strings, not the color object reference.
-  const { appBg, onPrimaryContainer, textMicro, primary, onPrimary, primaryContainer, surface } =
-    color;
+  const {
+    appBg,
+    onPrimaryContainer,
+    textMicro,
+    primary,
+    onPrimary,
+    primaryContainer,
+    surface,
+    surfaceAlt,
+  } = color;
+
+  const navbarBg = surfaceAlt;
 
   const layoutShell = useMemo(
     () => (
@@ -245,7 +255,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                 default: textMicro,
                 selected: onPrimaryContainer,
               }}
-              backgroundColor={appBg}
+              backgroundColor={navbarBg}
               badgeBackgroundColor={primary}
               badgeTextColor={onPrimary}
               indicatorColor={primaryContainer}
@@ -276,6 +286,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
     ),
     [
       appBg,
+      navbarBg,
       onPrimaryContainer,
       textMicro,
       primary,
@@ -290,17 +301,17 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   return (
     <TabSceneDescriptorContext.Provider value={descriptorContext}>
       <TabTransitionContext.Provider value={{ focusProgress, activeTabId }}>
-        <ScrollSheetProvider>
-          <GlobalTopSheetProvider>
+        <GlobalTopSheetProvider>
+          <ScrollSheetProvider>
             <GlobalTopSheet />
-          </GlobalTopSheetProvider>
-        </ScrollSheetProvider>
-        {layoutShell}
-        <TabTransitionVeil
-          tintColor={color.surface}
-          focusProgress={focusProgress}
-          transitionKey={activeTabId}
-        />
+          </ScrollSheetProvider>
+          {layoutShell}
+          <TabTransitionVeil
+            tintColor={color.surface}
+            focusProgress={focusProgress}
+            transitionKey={activeTabId}
+          />
+        </GlobalTopSheetProvider>
       </TabTransitionContext.Provider>
     </TabSceneDescriptorContext.Provider>
   );

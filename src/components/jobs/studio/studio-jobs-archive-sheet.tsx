@@ -1,4 +1,5 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { useRouter } from "expo-router";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -38,6 +39,7 @@ function StudioArchiveRow({
   zoneLanguage,
   t,
   index,
+  onOpenReceipt,
 }: {
   job: StudioJob;
   expanded: boolean;
@@ -46,6 +48,7 @@ function StudioArchiveRow({
   zoneLanguage: "en" | "he";
   t: ReturnType<typeof useTranslation>["t"];
   index: number;
+  onOpenReceipt?: () => void;
 }) {
   const theme = useTheme();
   const sportLabel = useMemo(() => toSportLabel(job.sport as never), [job.sport]);
@@ -246,7 +249,10 @@ function StudioArchiveRow({
             )}
 
             {/* Receipt placeholder */}
-            <View
+            <Pressable
+              accessibilityRole={onOpenReceipt ? "button" : undefined}
+              disabled={!onOpenReceipt}
+              onPress={onOpenReceipt}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -271,11 +277,14 @@ function StudioArchiveRow({
                 <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
                   {t("jobsTab.archive.receipt")}
                 </ThemedText>
-                <ThemedText type="bodyMedium" style={{ color: theme.color.textMuted }}>
-                  {t("jobsTab.archive.receiptComingSoon")}
+                <ThemedText
+                  type="bodyMedium"
+                  style={{ color: onOpenReceipt ? theme.archive.accent : theme.color.textMuted }}
+                >
+                  {onOpenReceipt ? t("profile.payments.openReceipt") : t("jobsTab.archive.receiptComingSoon")}
                 </ThemedText>
               </View>
-            </View>
+            </Pressable>
           </View>
         ) : null}
       </View>
@@ -376,6 +385,7 @@ export function StudioJobsArchiveSheet({
   locale,
   zoneLanguage,
 }: StudioJobsArchiveSheetProps) {
+  const router = useRouter();
   const { t } = useTranslation();
   const theme = useTheme();
   const collapsedSheetHeight = useCollapsedSheetHeight();
@@ -457,6 +467,13 @@ export function StudioJobsArchiveSheet({
               t={t}
               zoneLanguage={zoneLanguage}
               index={index}
+              {...(job.payment?.paymentId
+                ? {
+                    onOpenReceipt: () => {
+                      router.push(`/receipt/${job.payment!.paymentId}`);
+                    },
+                  }
+                : {})}
             />
           ))
         )}

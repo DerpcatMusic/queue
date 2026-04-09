@@ -5,6 +5,11 @@ import { getStudioComplianceDetailsRead, studioComplianceDetailsValidator } from
 import { requireUserRole } from "./lib/auth";
 import { diditVerificationStatusValidator } from "./lib/instructorCompliance";
 import { internalAccessRoleValidator, resolveInternalAccessForUser } from "./lib/internalAccess";
+import {
+  getLatestStripeConnectedAccount,
+  isStripeIdentityVerified,
+  mapStripeConnectedAccountStatusToIdentityStatus,
+} from "./lib/stripeIdentity";
 
 const diditVerificationPayloadValidator = v.object({
   status: diditVerificationStatusValidator,
@@ -36,20 +41,20 @@ type DiditVerificationPayload = {
   decision?: unknown;
 };
 
-type DiditProfileFields = {
-  diditVerificationStatus: string | undefined;
-  diditSessionId: string | undefined;
-  diditLegalName: string | undefined;
-  diditLegalFirstName: string | undefined;
-  diditLegalMiddleName: string | undefined;
-  diditLegalLastName: string | undefined;
-  diditStatusRaw: string | undefined;
-  diditLastEventAt: number | undefined;
-  diditVerifiedAt: number | undefined;
-  diditDecision: unknown;
+type VerificationProfileFields = {
+  identityStatus: string | undefined;
+  sessionId: string | undefined;
+  legalName: string | undefined;
+  legalFirstName: string | undefined;
+  legalMiddleName: string | undefined;
+  legalLastName: string | undefined;
+  statusRaw: string | undefined;
+  lastEventAt: number | undefined;
+  verifiedAt: number | undefined;
+  decision: unknown;
 };
 
-function toStudioDiditStatus(ownerIdentityStatus: "approved" | "pending" | "missing" | "failed") {
+function toStudioVerificationStatus(ownerIdentityStatus: "approved" | "pending" | "missing" | "failed") {
   switch (ownerIdentityStatus) {
     case "approved":
       return "approved" as const;
@@ -63,25 +68,25 @@ function toStudioDiditStatus(ownerIdentityStatus: "approved" | "pending" | "miss
 }
 
 function buildDiditVerificationPayload(
-  profile: DiditProfileFields,
+  profile: VerificationProfileFields,
   verificationBypass: boolean,
 ): DiditVerificationPayload {
   return {
     status:
-      verificationBypass || profile.diditVerificationStatus === "approved"
+      verificationBypass || profile.identityStatus === "approved"
         ? "approved"
-        : ((profile.diditVerificationStatus ?? "not_started") as DiditVerificationPayload["status"]),
-    isVerified: verificationBypass || profile.diditVerificationStatus === "approved",
+        : ((profile.identityStatus ?? "not_started") as DiditVerificationPayload["status"]),
+    isVerified: verificationBypass || profile.identityStatus === "approved",
     verificationBypassed: verificationBypass,
-    ...(profile.diditSessionId ? { sessionId: profile.diditSessionId } : {}),
-    ...(profile.diditLegalName ? { legalName: profile.diditLegalName } : {}),
-    ...(profile.diditLegalFirstName ? { legalFirstName: profile.diditLegalFirstName } : {}),
-    ...(profile.diditLegalMiddleName ? { legalMiddleName: profile.diditLegalMiddleName } : {}),
-    ...(profile.diditLegalLastName ? { legalLastName: profile.diditLegalLastName } : {}),
-    ...(profile.diditStatusRaw ? { statusRaw: profile.diditStatusRaw } : {}),
-    ...(profile.diditLastEventAt ? { lastEventAt: profile.diditLastEventAt } : {}),
-    ...(profile.diditVerifiedAt ? { verifiedAt: profile.diditVerifiedAt } : {}),
-    ...(profile.diditDecision !== undefined ? { decision: profile.diditDecision } : {}),
+    ...(profile.sessionId ? { sessionId: profile.sessionId } : {}),
+    ...(profile.legalName ? { legalName: profile.legalName } : {}),
+    ...(profile.legalFirstName ? { legalFirstName: profile.legalFirstName } : {}),
+    ...(profile.legalMiddleName ? { legalMiddleName: profile.legalMiddleName } : {}),
+    ...(profile.legalLastName ? { legalLastName: profile.legalLastName } : {}),
+    ...(profile.statusRaw ? { statusRaw: profile.statusRaw } : {}),
+    ...(profile.lastEventAt ? { lastEventAt: profile.lastEventAt } : {}),
+    ...(profile.verifiedAt ? { verifiedAt: profile.verifiedAt } : {}),
+    ...(profile.decision !== undefined ? { decision: profile.decision } : {}),
   };
 }
 
@@ -110,7 +115,7 @@ export const getMyInstructorAccessSnapshot = query({
   handler: async (ctx, args) => {
     const user = await requireUserRole(ctx, ["instructor"]);
     const internalAccess = await resolveInternalAccessForUser(ctx, user);
-    const [profile, compliance] = await Promise.all([
+    const [profile, compliance, stripeAccount] = await Promise.all([
       ctx.db
         .query("instructorProfiles")
         .withIndex("by_user_id", (q) => q.eq("userId", user._id))
@@ -119,6 +124,7 @@ export const getMyInstructorAccessSnapshot = query({
         userId: user._id,
         now: args.now ?? Date.now(),
       }),
+      getLatestStripeConnectedAccount(ctx, user._id),
     ]);
     if (!compliance) {
       return null;
@@ -129,17 +135,20 @@ export const getMyInstructorAccessSnapshot = query({
       compliance,
       verification: buildDiditVerificationPayload(
         {
-          diditVerificationStatus:
-            profile?.diditVerificationStatus ?? compliance.summary.diditStatus,
-          diditSessionId: profile?.diditSessionId,
-          diditLegalName: profile?.diditLegalName,
-          diditLegalFirstName: profile?.diditLegalFirstName,
-          diditLegalMiddleName: profile?.diditLegalMiddleName,
-          diditLegalLastName: profile?.diditLegalLastName,
-          diditStatusRaw: profile?.diditStatusRaw,
-          diditLastEventAt: profile?.diditLastEventAt,
-          diditVerifiedAt: profile?.diditVerifiedAt,
-          diditDecision: profile?.diditDecision,
+          identityStatus:
+            isStripeIdentityVerified(stripeAccount)
+              ? "approved"
+              : mapStripeConnectedAccountStatusToIdentityStatus(stripeAccount?.status) ??
+                compliance.summary.diditStatus,
+          sessionId: stripeAccount?.providerAccountId,
+          legalName: profile?.diditLegalName ?? user.fullName ?? profile?.displayName,
+          legalFirstName: profile?.diditLegalFirstName,
+          legalMiddleName: profile?.diditLegalMiddleName,
+          legalLastName: profile?.diditLegalLastName,
+          statusRaw: stripeAccount?.status,
+          lastEventAt: stripeAccount?.updatedAt,
+          verifiedAt: stripeAccount?.activatedAt,
+          decision: stripeAccount?.metadata,
         },
         internalAccess.verificationBypass,
       ),
@@ -187,18 +196,16 @@ export const getMyStudioAccessSnapshot = query({
       compliance,
       verification: buildDiditVerificationPayload(
         {
-          diditVerificationStatus:
-            studio.diditVerificationStatus ??
-            toStudioDiditStatus(compliance.summary.ownerIdentityStatus),
-          diditSessionId: studio.diditSessionId,
-          diditLegalName: studio.diditLegalName,
-          diditLegalFirstName: studio.diditLegalFirstName,
-          diditLegalMiddleName: studio.diditLegalMiddleName,
-          diditLegalLastName: studio.diditLegalLastName,
-          diditStatusRaw: studio.diditStatusRaw,
-          diditLastEventAt: studio.diditLastEventAt,
-          diditVerifiedAt: studio.diditVerifiedAt,
-          diditDecision: studio.diditDecision,
+          identityStatus: toStudioVerificationStatus(compliance.summary.ownerIdentityStatus),
+          sessionId: undefined,
+          legalName: undefined,
+          legalFirstName: undefined,
+          legalMiddleName: undefined,
+          legalLastName: undefined,
+          statusRaw: undefined,
+          lastEventAt: undefined,
+          verifiedAt: undefined,
+          decision: undefined,
         },
         internalAccess.verificationBypass,
       ),

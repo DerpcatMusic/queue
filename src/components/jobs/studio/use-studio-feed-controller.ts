@@ -4,9 +4,14 @@ import type { Href } from "expo-router";
 import { useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { FEATURE_FLAGS } from "@/constants/feature-flags";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import {
+  ensureStripeNativeSdkInitialized,
+  presentStripeNativePaymentSheet,
+} from "@/features/payments/lib/stripe-native";
 import { DEVICE_TIME_ZONE, MINUTE_MS, type StudioDraft, trimOptional } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
@@ -22,10 +27,6 @@ import {
   getStudioPushErrorMessage,
   type StudioControllerJob,
 } from "./use-studio-feed-controller.helpers";
-import {
-  buildAirwallexNativePaymentSession,
-  presentAirwallexNativePaymentFlow,
-} from "@/features/payments/lib/airwallex-native";
 
 export type StudioJobsTimeFilter = "all" | "active" | "past";
 
@@ -78,8 +79,8 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
   );
   const createStudioPaymentOfferV2 = useMutation(api.paymentsV2.createStudioPaymentOfferV2);
   const createStudioPaymentOrderV2 = useMutation(api.paymentsV2.createStudioPaymentOrderV2);
-  const createAirwallexCheckoutSessionForPaymentOrderV2 = useAction(
-    api.paymentsV2Actions.createAirwallexCheckoutSessionForPaymentOrderV2,
+  const createStripePaymentSheetForPaymentOrderV2 = useAction(
+    api.paymentsV2Actions.createStripePaymentSheetForPaymentOrderV2,
   );
 
   const studioJobs = useQuery(
@@ -370,42 +371,41 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
 
   const startStudioCheckout = async (jobId: Id<"jobs">) => {
     if (currentUser?.role !== "studio") return;
+    if (Platform.OS === "web") {
+      setErrorMessage("Stripe native checkout is not available on web yet.");
+      return;
+    }
 
     setIsStartingCheckoutForJobId(jobId);
     setErrorMessage(null);
     setStatusMessage(null);
 
     try {
+      await ensureStripeNativeSdkInitialized();
       const offer = await createStudioPaymentOfferV2({ jobId });
       const order = await createStudioPaymentOrderV2({ offerId: offer._id });
-      const checkout = await createAirwallexCheckoutSessionForPaymentOrderV2({
+      const checkout = await createStripePaymentSheetForPaymentOrderV2({
         paymentOrderId: order._id,
       });
-      if (!checkout.clientSecret) {
-        throw new Error(t("jobsTab.errors.failedToStartCheckout"));
-      }
-
-      const session = buildAirwallexNativePaymentSession({
-        paymentIntentId: checkout.providerPaymentIntentId,
+      const paymentSheetInput: {
+        clientSecret: string;
+        billingEmail?: string;
+      } = {
         clientSecret: checkout.clientSecret,
-        amountAgorot: order.capturedAmountAgorot || order.pricing.studioChargeAmountAgorot,
-        currency: order.currency,
-        countryCode: order.providerCountry,
-      });
-
-      const result = await presentAirwallexNativePaymentFlow(session, {
-        environment: checkout.sdkEnvironment,
-      });
+      };
+      if (currentUser.email) {
+        paymentSheetInput.billingEmail = currentUser.email;
+      }
+      const result = await presentStripeNativePaymentSheet(paymentSheetInput);
       if (result.status === "success") {
         setStatusMessage(t("jobsTab.checkout.completed"));
         return;
       }
-      if (result.status === "inProgress") {
-        setStatusMessage(t("jobsTab.checkout.pendingConfirmation"));
+      if (result.status === "canceled") {
+        setStatusMessage(t("jobsTab.checkout.cancelled"));
         return;
       }
-
-      setStatusMessage(t("jobsTab.checkout.cancelled"));
+      throw new Error(result.error);
     } catch (error) {
       const message =
         error instanceof Error && error.message

@@ -12,14 +12,12 @@ import {
   type QueryCtx,
   query,
 } from "./_generated/server";
-import {
-  dedupeUsersByEmail,
-  normalizeEmail,
-  resolveCanonicalUserByEmail,
-} from "./lib/authDedupe";
+import { dedupeUsersByEmail, normalizeEmail, resolveCanonicalUserByEmail } from "./lib/authDedupe";
 import { isKnownZoneId } from "./lib/domainValidation";
+import { diditVerificationStatusValidator } from "./lib/instructorCompliance";
 import { mapLegacyPaymentStatusToOrderStatus, summarizeLedgerBalances } from "./lib/marketplace";
 import { ensureStudioInfrastructure } from "./lib/studioBranches";
+import { generateUniqueInstructorSlug, generateUniqueStudioSlug } from "./lib/slug";
 import { omitUndefined } from "./lib/validation";
 
 const DEFAULT_BATCH_SIZE = 200;
@@ -2028,7 +2026,7 @@ export const backfillDiditVerificationSnapshots = action({
         const decision = decisionData ?? profile.diditDecision;
         const legal = mappedStatus === "approved" ? extractLegalName(decision) : {};
 
-        await ctx.runMutation(internal.didit.applyDiditVerificationSnapshot, {
+        await ctx.runMutation(internal.migrations.applyDiditVerificationSnapshotCompat, {
           instructorId: profile.instructorId,
           mappedStatus,
           at: now,
@@ -2058,6 +2056,40 @@ export const backfillDiditVerificationSnapshots = action({
         continueCursor: page.isDone ? undefined : page.continueCursor,
       }),
     };
+  },
+});
+
+export const applyDiditVerificationSnapshotCompat = internalMutation({
+  args: {
+    instructorId: v.id("instructorProfiles"),
+    mappedStatus: diditVerificationStatusValidator,
+    at: v.number(),
+    statusRaw: v.optional(v.string()),
+    decision: v.optional(v.any()),
+    legalFirstName: v.optional(v.string()),
+    legalMiddleName: v.optional(v.string()),
+    legalLastName: v.optional(v.string()),
+    legalName: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.instructorId);
+    if (!profile) {
+      return null;
+    }
+
+    await ctx.db.patch(profile._id, {
+      diditVerificationStatus: args.mappedStatus,
+      diditStatusRaw: args.statusRaw,
+      diditDecision: args.decision,
+      diditVerifiedAt: args.at,
+      diditLegalFirstName: args.legalFirstName,
+      diditLegalMiddleName: args.legalMiddleName,
+      diditLegalLastName: args.legalLastName,
+      diditLegalName: args.legalName,
+      updatedAt: Date.now(),
+    });
+    return null;
   },
 });
 
@@ -2113,7 +2145,10 @@ export const getDuplicateUserEmailReport = action({
     scannedEmails: v.number(),
     duplicateEmails: v.array(duplicateUserEmailReportEntryValidator),
   }),
-  handler: async (ctx, args): Promise<{
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
     scannedEmails: number;
     duplicateEmails: DuplicateUserEmailReportEntry[];
   }> => {
@@ -2638,6 +2673,68 @@ export const backfillStudioBranchInfrastructure = mutation({
       updatedCalendarIntegrations,
       hasMore: !page.isDone,
       continueCursor: page.continueCursor,
+    };
+  },
+});
+
+/**
+ * Backfill slug field for all existing instructor and studio profiles
+ * that don't have a slug yet. Safe to run multiple times — only patches
+ * profiles that are missing the slug field.
+ *
+ * Run via: npx convex run migrations:backfillPublicProfileSlugs --watch
+ * Convex will prompt for next cursor if hasMore is true.
+ */
+export const backfillPublicProfileSlugs = internalMutation({
+  args: {
+    cursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
+  },
+  returns: v.object({
+    updatedInstructors: v.number(),
+    updatedStudios: v.number(),
+    hasMore: v.boolean(),
+    nextCursor: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const batchSize = Math.min(Math.max(args.batchSize ?? DEFAULT_BATCH_SIZE, 1), MAX_BATCH_SIZE);
+
+    // ── Instructors ─────────────────────────────────────────────────────────
+    const instructorPage = await ctx.db
+      .query("instructorProfiles")
+      .paginate({ cursor: args.cursor ?? null, numItems: batchSize });
+
+    let updatedInstructors = 0;
+    for (const profile of instructorPage.page) {
+      if (!profile.slug) {
+        const slug = await generateUniqueInstructorSlug(profile.displayName, ctx);
+        await ctx.db.patch(profile._id, { slug });
+        updatedInstructors += 1;
+      }
+    }
+
+    // ── Studios ───────────────────────────────────────────────────────────────
+    // Convex only allows one paginated query per function. Studio profiles are
+    // backfilled opportunistically from a bounded collect here.
+    const studioProfiles = await ctx.db.query("studioProfiles").collect();
+    let updatedStudios = 0;
+    for (const profile of studioProfiles.slice(0, batchSize)) {
+      if (!profile.slug) {
+        const slug = await generateUniqueStudioSlug(profile.studioName, ctx);
+        await ctx.db.patch(profile._id, { slug });
+        updatedStudios += 1;
+      }
+    }
+
+    const hasMore = !instructorPage.isDone;
+
+    return {
+      updatedInstructors,
+      updatedStudios,
+      hasMore,
+      ...omitUndefined({
+        nextCursor: instructorPage.isDone ? undefined : instructorPage.continueCursor,
+      }),
     };
   },
 });

@@ -1,6 +1,6 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
 import type { TFunction } from "i18next";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Pressable, useWindowDimensions } from "react-native";
 import Animated, {
   FadeIn,
@@ -23,7 +23,6 @@ import {
 } from "@/components/layout/scroll-sheet-provider";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { SkeletonLine } from "@/components/ui/skeleton";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -79,49 +78,6 @@ type InstructorHomeContentProps = {
   onWithdrawApplication?: (applicationId: Id<"jobApplications">) => void;
 };
 
-function InstructorJobsEmptyState({ t }: { t: TFunction }) {
-  const { color: palette } = useTheme();
-  return (
-    <HomeSurface
-      style={{
-        paddingHorizontal: BrandSpacing.md,
-        paddingVertical: BrandSpacing.sm,
-        backgroundColor: palette.surfaceAlt,
-      }}
-    >
-      <Box
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: BrandSpacing.sm,
-        }}
-      >
-        <Box style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm, flex: 1 }}>
-          <IconSymbol name="sparkles" size={14} color={palette.primary} />
-          <Text
-            numberOfLines={1}
-            style={{
-              ...BrandType.microItalic,
-              color: palette.text,
-            }}
-          >
-            {t("home.instructor.noJobsAvailable").toUpperCase()}
-          </Text>
-        </Box>
-        <Text
-          style={{
-            ...BrandType.micro,
-            color: palette.textMuted,
-          }}
-        >
-          {t("home.instructor.noJobsHint")}
-        </Text>
-      </Box>
-    </HomeSurface>
-  );
-}
-
 function SkeletonInstructorHome() {
   const { color: palette } = useTheme();
 
@@ -132,15 +88,12 @@ function SkeletonInstructorHome() {
         <Box
           style={[
             {
-              backgroundColor: palette.surface,
-              borderRadius: BrandRadius.card,
-              padding: BrandSpacing.inset,
-              gap: BrandSpacing.md,
+              padding: BrandSpacing.md,
+              gap: BrandSpacing.sm,
             },
           ]}
         >
           <SkeletonLine width={120} height={18} />
-          <SkeletonLine width="70%" height={12} />
           {[1, 2, 3].map((i) => (
             <Box
               key={i}
@@ -257,14 +210,6 @@ function InstructorCheckInCard({
       }}
     >
       <Box style={{ gap: BrandSpacing.xs }}>
-        <Text
-          style={{
-            ...BrandType.microItalic,
-            color: palette.textMuted,
-          }}
-        >
-          {t("home.checkIn.eyebrow")}
-        </Text>
         <Text
           style={{
             ...BrandType.headingItalic,
@@ -437,12 +382,6 @@ export function InstructorHomeContent({
     ),
     [palette.appBg],
   );
-  const setupSubtitle = useMemo(() => {
-    const remaining = setupItems.filter((item) => !item.done).length;
-    return remaining === 0
-      ? t("home.tasks.allDone")
-      : t("home.tasks.remaining", { count: remaining });
-  }, [setupItems, t]);
 
   return (
     <TabSceneTransition>
@@ -515,17 +454,11 @@ export function InstructorHomeContent({
                         ))}
                       </Animated.ScrollView>
                     </Animated.View>
-                  ) : (
-                    <InstructorJobsEmptyState t={t} />
-                  )}
+                  ) : null}
                 </Box>
 
                 <Box style={{ flex: layout.chartFlex, gap: BrandSpacing.stackTight }}>
-                  <HomeChecklistCard
-                    title={t("home.tasks.instructor.title")}
-                    subtitle={setupSubtitle}
-                    items={setupItems}
-                  />
+                  <HomeChecklistCard title={t("home.tasks.instructor.title")} items={setupItems} />
                   {nextCheckInSession ? (
                     <InstructorCheckInCard
                       session={
@@ -541,25 +474,7 @@ export function InstructorHomeContent({
                       feedback={checkInFeedback}
                       onCheckIn={handleCheckIn}
                     />
-                  ) : (
-                    <HomeSurface
-                      tone="surface"
-                      style={{
-                        padding: BrandSpacing.inset,
-                        gap: BrandSpacing.xs,
-                      }}
-                    >
-                      <Text style={{ ...BrandType.title, color: palette.text }}>
-                        {t("home.instructor.boardSummaryTitle")}
-                      </Text>
-                      <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
-                        {t("home.instructor.boardSummaryBody", {
-                          jobs: availableJobsCount,
-                          pending: pendingApplications,
-                        })}
-                      </Text>
-                    </HomeSurface>
-                  )}
+                  ) : null}
                 </Box>
               </Box>
 

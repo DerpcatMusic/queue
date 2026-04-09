@@ -2,6 +2,7 @@ import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { requireCurrentUser, requireUserRole } from "./auth";
+import { buildLegacyZoneBoundary } from "./boundaries";
 import { omitUndefined, trimOptionalString } from "./validation";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -214,6 +215,8 @@ export async function createStudioBranch(
     name: string;
     address: string;
     zone: string;
+    boundaryProvider?: string;
+    boundaryId?: string;
     latitude?: number;
     longitude?: number;
     contactPhone?: string;
@@ -237,6 +240,7 @@ export async function createStudioBranch(
     slug,
     address: args.address,
     zone: args.zone,
+    ...buildLegacyZoneBoundary(args.boundaryId ?? args.zone, args.boundaryProvider),
     isPrimary: args.isPrimary ?? false,
     status: args.status ?? DEFAULT_BRANCH_STATUS,
     createdAt: now,
@@ -269,6 +273,8 @@ export async function ensurePrimaryStudioBranch(
     | "studioName"
     | "address"
     | "zone"
+    | "boundaryProvider"
+    | "boundaryId"
     | "latitude"
     | "longitude"
     | "contactPhone"
@@ -297,6 +303,8 @@ export async function ensurePrimaryStudioBranch(
     calendarSyncEnabled: studio.calendarSyncEnabled ?? false,
     now,
     ...omitUndefined({
+      boundaryProvider: studio.boundaryProvider,
+      boundaryId: studio.boundaryId ?? studio.zone,
       latitude: studio.latitude,
       longitude: studio.longitude,
       contactPhone: studio.contactPhone,
@@ -318,6 +326,8 @@ export async function ensureStudioInfrastructure(
     | "studioName"
     | "address"
     | "zone"
+    | "boundaryProvider"
+    | "boundaryId"
     | "latitude"
     | "longitude"
     | "contactPhone"
@@ -346,6 +356,8 @@ export async function syncStudioProfileFromBranch(
     Doc<"studioBranches">,
     | "address"
     | "zone"
+    | "boundaryProvider"
+    | "boundaryId"
     | "latitude"
     | "longitude"
     | "contactPhone"
@@ -362,6 +374,7 @@ export async function syncStudioProfileFromBranch(
   await ctx.db.patch(studioId, {
     address: branch.address,
     zone: branch.zone,
+    ...buildLegacyZoneBoundary(branch.boundaryId ?? branch.zone, branch.boundaryProvider),
     updatedAt: now,
     ...omitUndefined({
       latitude: branch.latitude,

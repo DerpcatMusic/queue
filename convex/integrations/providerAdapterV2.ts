@@ -1,4 +1,4 @@
-export type PaymentsProviderV2 = "airwallex";
+export type PaymentsProviderV2 = "stripe";
 
 export type CanonicalPaymentOrderStatusV2 =
   | "draft"

@@ -1,8 +1,9 @@
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
+import * as WebBrowser from "expo-web-browser";
 import { Redirect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, AppState, type AppStateStatus, Pressable } from "react-native";
+import { Alert, AppState, type AppStateStatus, Platform, Pressable } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
@@ -37,7 +38,7 @@ import {
 } from "@/hooks/use-compliance-document-upload";
 import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useTheme } from "@/hooks/use-theme";
-import { startDiditNativeVerification } from "@/lib/didit-native";
+import { STRIPE_CONNECT_RETURN_URL } from "@/lib/stripe";
 import { Box, HStack, Spacer, Text, VStack } from "@/primitives";
 import { BorderWidth, LetterSpacing, Motion, Radius } from "@/theme/theme";
 
@@ -262,9 +263,12 @@ export default function InstructorComplianceScreen() {
   );
   const diditVerification = accessSnapshot?.verification;
   const compliance = accessSnapshot?.compliance;
-  const createSessionForCurrentInstructor = useAction(api.didit.createSessionForCurrentInstructor);
-  const refreshMyDiditVerification = useAction(api.didit.refreshMyDiditVerification);
-  const markMyDiditVerificationAbandoned = useMutation(api.didit.markMyDiditVerificationAbandoned);
+  const createSessionForCurrentInstructor = useAction(
+    api.paymentsV2Actions.createMyInstructorStripeAccountLinkV2,
+  );
+  const refreshMyDiditVerification = useAction(
+    api.paymentsV2Actions.refreshMyInstructorStripeConnectedAccountV2,
+  );
   const { isUploading, pickAndUploadComplianceDocument } = useComplianceDocumentUpload();
 
   const locale = i18n.resolvedLanguage ?? "en";
@@ -379,16 +383,21 @@ export default function InstructorComplianceScreen() {
     setIsStartingDidit(true);
     try {
       const session = await createSessionForCurrentInstructor({});
-      const result = await startDiditNativeVerification({
-        sessionToken: session.sessionToken,
-        locale,
-      });
+      const result = await WebBrowser.openAuthSessionAsync(
+        session.onboardingUrl,
+        STRIPE_CONNECT_RETURN_URL,
+      );
 
-      if (result.outcome === "cancelled") {
-        await markMyDiditVerificationAbandoned({});
-        setRefreshNonce((value) => value + 1);
-      } else {
+      if (result.type === "success") {
         await refreshDiditStatus();
+      } else if (result.type === "cancel") {
+        setFeedback({
+          tone: "success",
+          message: t("profile.payments.cancelled"),
+        });
+      }
+      if (Platform.OS === "ios") {
+        setRefreshNonce((value) => value + 1);
       }
     } catch (error) {
       setFeedback({
@@ -405,8 +414,6 @@ export default function InstructorComplianceScreen() {
     createSessionForCurrentInstructor,
     isRefreshingDidit,
     isStartingDidit,
-    locale,
-    markMyDiditVerificationAbandoned,
     refreshDiditStatus,
     t,
   ]);

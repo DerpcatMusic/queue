@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { type Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { normalizeZoneId } from "./lib/domainValidation";
+import { resolveBoundaryAssignment } from "./lib/boundaries";
 import {
   assertStudioCanCreateAnotherBranch,
   createStudioBranch as createStudioBranchRecord,
@@ -29,6 +30,8 @@ function normalizeBranchUpdateArgs(args: {
   name: string;
   address: string;
   zone: string;
+  boundaryProvider?: string;
+  boundaryId?: string;
   contactPhone?: string;
   latitude?: number;
   longitude?: number;
@@ -38,6 +41,13 @@ function normalizeBranchUpdateArgs(args: {
   const name = normalizeRequiredString(args.name, MAX_BRANCH_NAME_LENGTH, "Branch name");
   const address = normalizeRequiredString(args.address, MAX_ADDRESS_LENGTH, "Address");
   const zone = normalizeZoneId(args.zone);
+  const boundaryAssignment = resolveBoundaryAssignment(
+    omitUndefined({
+      provider: args.boundaryProvider,
+      boundaryId: args.boundaryId,
+      legacyZone: zone,
+    }),
+  );
   const contactPhone = normalizeOptionalString(
     args.contactPhone,
     MAX_PHONE_LENGTH,
@@ -67,6 +77,7 @@ function normalizeBranchUpdateArgs(args: {
     name,
     address,
     zone,
+    ...boundaryAssignment,
     contactPhone,
     latitude,
     longitude,
@@ -88,6 +99,8 @@ function toBranchPayload(branch: Doc<"studioBranches">) {
     createdAt: branch.createdAt,
     updatedAt: branch.updatedAt,
     ...omitUndefined({
+      boundaryProvider: branch.boundaryProvider,
+      boundaryId: branch.boundaryId,
       latitude: branch.latitude,
       longitude: branch.longitude,
       contactPhone: branch.contactPhone,
@@ -113,6 +126,8 @@ export const getMyStudioBranches = query({
       slug: v.string(),
       address: v.string(),
       zone: v.string(),
+      boundaryProvider: v.optional(v.string()),
+      boundaryId: v.optional(v.string()),
       isPrimary: v.boolean(),
       status: v.union(v.literal("active"), v.literal("archived")),
       latitude: v.optional(v.number()),
@@ -151,6 +166,8 @@ export const getMyPrimaryStudioBranch = query({
       slug: v.string(),
       address: v.string(),
       zone: v.string(),
+      boundaryProvider: v.optional(v.string()),
+      boundaryId: v.optional(v.string()),
       isPrimary: v.boolean(),
       status: v.union(v.literal("active"), v.literal("archived")),
       latitude: v.optional(v.number()),
@@ -211,6 +228,8 @@ export const createStudioBranch = mutation({
     name: v.string(),
     address: v.string(),
     zone: v.string(),
+    boundaryProvider: v.optional(v.string()),
+    boundaryId: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
@@ -231,6 +250,8 @@ export const createStudioBranch = mutation({
       name: normalized.name,
       address: normalized.address,
       zone: normalized.zone,
+      boundaryProvider: normalized.boundaryProvider,
+      boundaryId: normalized.boundaryId,
       isPrimary: false,
       status: "active",
       now,
@@ -252,6 +273,8 @@ export const updateStudioBranch = mutation({
     name: v.string(),
     address: v.string(),
     zone: v.string(),
+    boundaryProvider: v.optional(v.string()),
+    boundaryId: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),

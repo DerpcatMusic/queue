@@ -3,7 +3,7 @@ import { Pressable, ScrollView, View } from "react-native";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import type { ZoneOption } from "@/constants/zones";
+import type { SelectableBoundary } from "@/features/maps/boundaries/catalog";
 import { useTheme } from "@/hooks/use-theme";
 import { Text } from "@/primitives";
 
@@ -11,8 +11,8 @@ type MapWebCommandPanelProps = {
   t: TFunction;
   zoneLanguage: "en" | "he";
   zoneSearch: string;
-  selectedZones: ZoneOption[];
-  filteredZones: ZoneOption[];
+  selectedZones: SelectableBoundary[];
+  filteredZones: SelectableBoundary[];
   focusZoneId: string | null;
   focusedZoneLabel: string | null;
   pendingChangeCount: number;

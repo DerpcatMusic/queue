@@ -1,4 +1,6 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { useQuery } from "convex/react";
+import { useRouter } from "expo-router";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,6 +12,7 @@ import { AppSymbol } from "@/components/ui/app-symbol";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { api } from "@/convex/_generated/api";
 import { getZoneLabel } from "@/constants/zones";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
@@ -152,6 +155,7 @@ function ArchiveRow({
   zoneLanguage,
   t,
   index,
+  onOpenReceipt,
 }: {
   row: InstructorArchiveRow;
   expanded: boolean;
@@ -160,6 +164,7 @@ function ArchiveRow({
   zoneLanguage: "en" | "he";
   t: ReturnType<typeof useTranslation>["t"];
   index: number;
+  onOpenReceipt?: () => void;
 }) {
   const theme = useTheme();
   const archiveOutcome = useMemo(() => buildArchiveOutcome(row, t), [row, t]);
@@ -351,7 +356,10 @@ function ArchiveRow({
             />
 
             {/* Receipt — placeholder chip */}
-            <View
+            <Pressable
+              accessibilityRole={onOpenReceipt ? "button" : undefined}
+              disabled={!onOpenReceipt}
+              onPress={onOpenReceipt}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -376,11 +384,14 @@ function ArchiveRow({
                 <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
                   {t("jobsTab.archive.receipt")}
                 </ThemedText>
-                <ThemedText type="bodyMedium" style={{ color: theme.color.textMuted }}>
-                  {t("jobsTab.archive.receiptComingSoon")}
+                <ThemedText
+                  type="bodyMedium"
+                  style={{ color: onOpenReceipt ? theme.archive.accent : theme.color.textMuted }}
+                >
+                  {onOpenReceipt ? t("profile.payments.openReceipt") : t("jobsTab.archive.receiptComingSoon")}
                 </ThemedText>
               </View>
-            </View>
+            </Pressable>
           </View>
         ) : null}
       </View>
@@ -436,11 +447,20 @@ export function InstructorJobsArchiveSheet({
   locale,
   zoneLanguage,
 }: InstructorJobsArchiveSheetProps) {
+  const router = useRouter();
   const { t } = useTranslation();
   const theme = useTheme();
+  const payments = useQuery(api.paymentsV2.listMyPaymentsV2, { limit: 200 });
   const collapsedSheetHeight = useCollapsedSheetHeight();
   const [expandedApplicationId, setExpandedApplicationId] = useState<string | null>(null);
   const snapPoints = ["88%"];
+  const paymentIdByJobId = useMemo(() => {
+    const map = new Map<string, Id<"paymentOrdersV2">>();
+    for (const row of payments ?? []) {
+      map.set(String(row.payment.jobId), row.payment._id as Id<"paymentOrdersV2">);
+    }
+    return map;
+  }, [payments]);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -526,6 +546,13 @@ export function InstructorJobsArchiveSheet({
               t={t}
               zoneLanguage={zoneLanguage}
               index={index}
+              {...(paymentIdByJobId.get(String(row.jobId))
+                ? {
+                    onOpenReceipt: () => {
+                      router.push(`/receipt/${paymentIdByJobId.get(String(row.jobId))!}`);
+                    },
+                  }
+                : {})}
             />
           ))
         )}

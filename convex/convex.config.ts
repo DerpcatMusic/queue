@@ -1,4 +1,5 @@
 import rateLimiter from "@convex-dev/rate-limiter/convex.config.js";
+import stripe from "@convex-dev/stripe/convex.config.js";
 import workflow from "@convex-dev/workflow/convex.config.js";
 import workpool from "@convex-dev/workpool/convex.config.js";
 import { defineApp } from "convex/server";
@@ -15,5 +16,8 @@ app.use(workflow);
 
 // Rate limiter: protects Gemini API quota from abuse
 app.use(rateLimiter);
+
+// Stripe: checkout, billing, and webhook sync foundation for payments migration
+app.use(stripe);
 
 export default app;

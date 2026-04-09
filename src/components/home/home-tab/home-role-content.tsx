@@ -1,10 +1,11 @@
 import { memo } from "react";
 import { useMutation } from "convex/react";
-import { Redirect, useRouter, type Href } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { InstructorHomeContent } from "@/components/home/instructor-home-content";
 import { StudioHomeContent } from "@/components/home/studio-home-content";
 import type { HomeChecklistItem } from "@/components/home/home-shared";
+import { useOpenInstructorSheet, useOpenStudioSheet } from "@/contexts/sheet-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
@@ -17,15 +18,6 @@ import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-route
 const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
 const STUDIO_JOBS_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.jobs);
 const STUDIO_CALENDAR_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.calendar);
-const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile);
-const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
-const INSTRUCTOR_COMPLIANCE_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/compliance` as const;
-const INSTRUCTOR_PAYMENTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
-const INSTRUCTOR_EDIT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/edit` as const;
-const INSTRUCTOR_SPORTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/sports` as const;
-const STUDIO_COMPLIANCE_ROUTE = `${STUDIO_PROFILE_ROUTE}/compliance` as const;
-const STUDIO_EDIT_ROUTE = `${STUDIO_PROFILE_ROUTE}/edit` as const;
-const STUDIO_BRANCHES_ROUTE = `${STUDIO_PROFILE_ROUTE}/branches` as const;
 
 export type Application = {
   applicationId: Id<"jobApplications">;
@@ -162,6 +154,12 @@ export const HomeRoleContent = memo(function HomeRoleContent({
   const router = useRouter();
   const reviewApplication = useMutation(api.jobs.reviewApplication);
 
+  // Sheet openers for instructor profile sub-pages
+  const instructorSheetHandlers = useOpenInstructorSheet();
+
+  // Sheet openers for studio profile sub-pages
+  const studioSheetHandlers = useOpenStudioSheet();
+
   const openInstructorStudio = (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => {
     router.push(
       buildStudioProfileRoute({
@@ -188,26 +186,30 @@ export const HomeRoleContent = memo(function HomeRoleContent({
       {
         id: "verify",
         label: t("profile.setup.verifyIdentity"),
+        icon: "shield.lefthalf.filled",
         done: instructorComplianceSummary?.diditApproved ?? false,
-        onPress: () => router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href),
+        onPress: () => instructorSheetHandlers.openCompliance(),
       },
       {
         id: "payouts",
         label: t("profile.setup.connectPayouts"),
+        icon: "creditcard.fill",
         done: instructorPayoutSummary?.hasVerifiedDestination ?? false,
-        onPress: () => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href),
+        onPress: () => instructorSheetHandlers.openPayments(),
       },
       {
         id: "profile",
         label: t("home.tasks.instructor.profileTitle"),
+        icon: "person.fill",
         done: Boolean(instructorSettings?.displayName?.trim() && instructorSettings?.bio?.trim()),
-        onPress: () => router.push(INSTRUCTOR_EDIT_ROUTE as Href),
+        onPress: () => instructorSheetHandlers.openEdit(),
       },
       {
         id: "sports",
         label: t("profile.setup.chooseSports"),
+        icon: "flame.fill",
         done: (instructorSettings?.sports?.length ?? 0) > 0,
-        onPress: () => router.push(INSTRUCTOR_SPORTS_ROUTE as Href),
+        onPress: () => instructorSheetHandlers.openSports(),
       },
     ];
     return (
@@ -248,38 +250,44 @@ export const HomeRoleContent = memo(function HomeRoleContent({
     {
       id: "owner",
       label: t("home.tasks.studio.ownerTitle"),
+      icon: "person.crop.circle.fill",
       done: studioComplianceSummary?.ownerIdentityStatus === "approved",
-      onPress: () => router.push(STUDIO_COMPLIANCE_ROUTE as Href),
+      onPress: () => studioSheetHandlers.openCompliance(),
     },
     {
       id: "business",
       label: t("home.tasks.studio.businessTitle"),
+      icon: "building.2.fill",
       done: studioComplianceSummary?.businessProfileStatus === "complete",
-      onPress: () => router.push(STUDIO_COMPLIANCE_ROUTE as Href),
+      onPress: () => studioSheetHandlers.openCompliance(),
     },
     {
       id: "payments",
       label: t("profile.setup.connectPayouts"),
+      icon: "creditcard.fill",
       done: studioComplianceSummary?.paymentStatus === "ready",
-      onPress: () => router.push(STUDIO_COMPLIANCE_ROUTE as Href),
+      onPress: () => studioSheetHandlers.openCompliance(),
     },
     {
       id: "profile",
       label: t("home.tasks.studio.profileTitle"),
+      icon: "building.columns.fill",
       done: Boolean(studioSettings?.studioName?.trim() && studioSettings?.bio?.trim()),
-      onPress: () => router.push(STUDIO_EDIT_ROUTE as Href),
+      onPress: () => studioSheetHandlers.openEdit(),
     },
     {
       id: "sports",
       label: t("profile.setup.chooseSports"),
+      icon: "flame.fill",
       done: (studioSettings?.sports?.length ?? 0) > 0,
-      onPress: () => router.push(STUDIO_EDIT_ROUTE as Href),
+      onPress: () => studioSheetHandlers.openEdit(),
     },
     {
       id: "branch",
       label: t("home.tasks.studio.branchTitle"),
+      icon: "location.fill",
       done: Boolean(studioSettings?.primaryBranch),
-      onPress: () => router.push(STUDIO_BRANCHES_ROUTE as Href),
+      onPress: () => studioSheetHandlers.openBranches(),
     },
   ];
 

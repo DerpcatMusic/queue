@@ -1,8 +1,8 @@
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { Redirect, useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AppState, type AppStateStatus, RefreshControl } from "react-native";
+import { RefreshControl } from "react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
@@ -29,14 +29,7 @@ import {
   getStudioPaymentSubtitle,
 } from "@/features/compliance/compliance-ui";
 import { Box } from "@/primitives";
-import {
-  getDiditActionButtonColors,
-  getDiditPrimaryActionLabel,
-  shouldAutoRefreshDiditStatus,
-  shouldOfferDiditManualRefresh,
-} from "@/features/compliance/didit-ui";
 import { useTheme } from "@/hooks/use-theme";
-import { startDiditNativeVerification } from "@/lib/didit-native";
 
 type BillingProfile = {
   legalEntityType: "individual" | "company";
@@ -51,7 +44,7 @@ type BillingProfile = {
 };
 
 export default function StudioComplianceScreen() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const router = useRouter();
   const theme = useTheme();
 
@@ -72,27 +65,16 @@ export default function StudioComplianceScreen() {
     api.paymentsV2.getPaymentsPreflightV2,
     shouldLoad ? {} : "skip",
   );
-  const createStudioDiditSession = useAction(
-    api.didit.createSessionForCurrentStudioOwner,
-  );
-  const refreshStudioDiditVerification = useAction(
-    api.didit.refreshMyStudioDiditVerification,
-  );
-  const markMyStudioDiditVerificationAbandoned = useMutation(
-    api.didit.markMyStudioDiditVerificationAbandoned,
-  );
   const saveBillingProfile = useMutation(
     api.complianceStudio.upsertMyStudioBillingProfile,
   );
 
   const [refreshing, setRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isStartingDidit, setIsStartingDidit] = useState(false);
   const [feedback, setFeedback] = useState<{
     tone: "success" | "error";
     message: string;
   } | null>(null);
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const billingProfile = compliance?.billingProfile as
     | BillingProfile
@@ -130,115 +112,8 @@ export default function StudioComplianceScreen() {
 
   const refreshAll = useCallback(async () => {
     setRefreshing(true);
-    try {
-      await refreshStudioDiditVerification({});
-    } catch {
-      // Keep refresh silent; query will still re-run on next paint if network allows.
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshStudioDiditVerification]);
-
-  const refreshDiditStatus = useCallback(async (options?: { silent?: boolean }) => {
-    setRefreshing(true);
-    if (!options?.silent) {
-      setFeedback(null);
-    }
-    try {
-      const latest = await refreshStudioDiditVerification({});
-      if (!options?.silent) {
-        setFeedback({
-          tone: "success",
-          message: latest.isVerified
-            ? t("profile.studioCompliance.feedback.identityApproved")
-            : t("profile.studioCompliance.feedback.identityRefreshStarted"),
-        });
-      }
-    } catch (error) {
-      if (!options?.silent) {
-        setFeedback({
-          tone: "error",
-          message:
-            error instanceof Error && error.message
-              ? error.message
-              : t("profile.studioCompliance.errors.identityStartFailed"),
-        });
-      }
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshStudioDiditVerification, t]);
-
-  useEffect(() => {
-    if (
-      !shouldAutoRefreshDiditStatus(
-        diditVerification?.status,
-        diditVerification?.isVerified ?? false,
-        diditVerification?.sessionId,
-      )
-    ) {
-      return;
-    }
-
-    void refreshDiditStatus({ silent: true });
-
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      const wasInactive =
-        appStateRef.current === "background" || appStateRef.current === "inactive";
-      appStateRef.current = nextState;
-      if (nextState === "active" && wasInactive) {
-        void refreshDiditStatus({ silent: true });
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [
-    diditVerification?.isVerified,
-    diditVerification?.sessionId,
-    diditVerification?.status,
-    refreshDiditStatus,
-  ]);
-
-  const startDidit = useCallback(async () => {
-    setIsStartingDidit(true);
-    setFeedback(null);
-    try {
-      const session = await createStudioDiditSession({});
-      const result = await startDiditNativeVerification({
-        sessionToken: session.sessionToken,
-        locale: i18n.resolvedLanguage ?? "en",
-      });
-      if (result.outcome === "cancelled") {
-        await markMyStudioDiditVerificationAbandoned({});
-      } else {
-        const latest = await refreshStudioDiditVerification({});
-        setFeedback({
-          tone: latest.isVerified ? "success" : "success",
-          message: latest.isVerified
-            ? t("profile.studioCompliance.feedback.identityApproved")
-            : t("profile.studioCompliance.feedback.identityRefreshStarted"),
-        });
-      }
-    } catch (error) {
-      setFeedback({
-        tone: "error",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : t("profile.studioCompliance.errors.identityStartFailed"),
-      });
-    } finally {
-      setIsStartingDidit(false);
-    }
-  }, [
-    createStudioDiditSession,
-    i18n.resolvedLanguage,
-    markMyStudioDiditVerificationAbandoned,
-    refreshStudioDiditVerification,
-    t,
-  ]);
+    setRefreshing(false);
+  }, []);
 
   const saveBilling = useCallback(async () => {
     setIsSaving(true);
@@ -317,15 +192,6 @@ export default function StudioComplianceScreen() {
     },
     t,
   );
-  const identityButtonColors = getDiditActionButtonColors(
-    diditVerification.isVerified,
-    theme.color,
-  );
-  const showDiditManualRefresh = shouldOfferDiditManualRefresh(
-    diditVerification.status,
-    diditVerification.isVerified,
-  );
-
   return (
     <ProfileSubpageScrollView
       routeKey="studio/profile/compliance"
@@ -405,39 +271,6 @@ export default function StudioComplianceScreen() {
                       status: getIdentityStatusLabel(diditVerification.status),
                     })}
               </ThemedText>
-              <ActionButton
-                label={getDiditPrimaryActionLabel(
-                  diditVerification.isVerified,
-                  t,
-                )}
-                fullWidth
-                loading={isStartingDidit || refreshing}
-                disabled={isStartingDidit || refreshing}
-                native={false}
-                {...(identityButtonColors ? { colors: identityButtonColors } : {})}
-                {...(diditVerification.isVerified ? { tone: "secondary" as const } : {})}
-                labelStyle={{
-                  textTransform: "uppercase",
-                  letterSpacing: 0.8,
-                  fontWeight: "700",
-                }}
-                onPress={() => {
-                  if (diditVerification.isVerified) {
-                    void refreshDiditStatus();
-                    return;
-                  }
-                  void startDidit();
-                }}
-              />
-              {showDiditManualRefresh && !(isStartingDidit || refreshing) ? (
-                <ActionButton
-                  label={t("profile.identityVerification.checkStatus")}
-                  tone="secondary"
-                  fullWidth
-                  native={false}
-                  onPress={() => void refreshDiditStatus()}
-                />
-              ) : null}
             </Box>
           </ProfileSectionCard>
         </Box>

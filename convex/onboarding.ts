@@ -4,8 +4,14 @@ import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { mutation } from "./_generated/server";
 import { requireCurrentUser } from "./lib/auth";
+import {
+  DEFAULT_BOUNDARY_PROVIDER,
+  replaceInstructorBoundarySubscriptions,
+  resolveBoundaryAssignment,
+} from "./lib/boundaries";
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
+import { generateUniqueInstructorSlug, generateUniqueStudioSlug } from "./lib/slug";
 import { ensureStudioInfrastructure } from "./lib/studioBranches";
 import {
   normalizeCoordinates,
@@ -67,6 +73,7 @@ async function getUniqueInstructorProfileByUserId(ctx: MutationCtx, userId: Doc<
 async function getOrCreateInstructorProfileWithGuard(args: {
   ctx: MutationCtx;
   userId: Doc<"users">["_id"];
+  slug: string;
   create: () => Promise<Doc<"instructorProfiles">["_id"]>;
 }) {
   const existingProfile = await getUniqueInstructorProfileByUserId(args.ctx, args.userId);
@@ -93,6 +100,7 @@ async function getUniqueStudioProfileByUserId(ctx: MutationCtx, userId: Doc<"use
 async function getOrCreateStudioProfileWithGuard(args: {
   ctx: MutationCtx;
   userId: Doc<"users">["_id"];
+  slug: string;
   create: () => Promise<Doc<"studioProfiles">["_id"]>;
 }) {
   const existingProfile = await getUniqueStudioProfileByUserId(args.ctx, args.userId);
@@ -122,6 +130,7 @@ export const completeInstructorOnboarding = mutation({
   },
   returns: v.object({
     instructorId: v.id("instructorProfiles"),
+    slug: v.string(),
     sportsCount: v.number(),
     zonesCount: v.number(),
   }),
@@ -171,13 +180,18 @@ export const completeInstructorOnboarding = mutation({
 
     const notificationsEnabled = args.notificationsEnabled && Boolean(pushToken);
 
+    // Generate unique slug for public profile URL
+    const slug = await generateUniqueInstructorSlug(requestedDisplayName, ctx);
+
     const profileResolution = await getOrCreateInstructorProfileWithGuard({
       ctx,
       userId: user._id,
+      slug,
       create: () =>
         ctx.db.insert("instructorProfiles", {
           userId: user._id,
           displayName: requestedDisplayName,
+          slug,
           ...omitUndefined({
             bio,
             expoPushToken: pushToken,
@@ -257,6 +271,12 @@ export const completeInstructorOnboarding = mutation({
       ),
     ]);
 
+    await replaceInstructorBoundarySubscriptions(ctx, {
+      instructorId,
+      provider: DEFAULT_BOUNDARY_PROVIDER,
+      boundaryIds: zones,
+    });
+
     await ctx.db.patch("users", user._id, {
       role: "instructor",
       roles: existingRoles,
@@ -267,7 +287,7 @@ export const completeInstructorOnboarding = mutation({
 
     await rebuildInstructorCoverage(ctx, instructorId);
 
-    return { instructorId, sportsCount: sports.length, zonesCount: zones.length };
+    return { instructorId, slug, sportsCount: sports.length, zonesCount: zones.length };
   },
 });
 
@@ -276,6 +296,8 @@ export const completeStudioOnboarding = mutation({
     studioName: v.string(),
     address: v.string(),
     zone: v.string(),
+    boundaryProvider: v.optional(v.string()),
+    boundaryId: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
@@ -284,7 +306,10 @@ export const completeStudioOnboarding = mutation({
     logoStorageId: v.optional(v.id("_storage")),
     sports: v.array(v.string()),
   },
-  returns: v.id("studioProfiles"),
+  returns: v.object({
+    studioId: v.id("studioProfiles"),
+    slug: v.string(),
+  }),
   handler: async (ctx, args) => {
     const now = Date.now();
     const user = await requireCurrentUser(ctx);
@@ -298,6 +323,13 @@ export const completeStudioOnboarding = mutation({
     );
     const address = normalizeRequiredString(args.address, MAX_ADDRESS_LENGTH, "Address");
     const zone = normalizeZoneId(args.zone);
+    const boundaryAssignment = resolveBoundaryAssignment(
+      omitUndefined({
+        provider: args.boundaryProvider,
+        boundaryId: args.boundaryId,
+        legacyZone: zone,
+      }),
+    );
     const contactPhone = normalizeOptionalString(
       args.contactPhone,
       MAX_PHONE_LENGTH,
@@ -318,15 +350,21 @@ export const completeStudioOnboarding = mutation({
       );
     }
 
+    // Generate unique slug for public profile URL
+    const slug = await generateUniqueStudioSlug(studioName, ctx);
+
     const profileResolution = await getOrCreateStudioProfileWithGuard({
       ctx,
       userId: user._id,
+      slug,
       create: () =>
         ctx.db.insert("studioProfiles", {
           userId: user._id,
           studioName,
+          slug,
           address,
           zone,
+          ...boundaryAssignment,
           ...omitUndefined({
             contactPhone,
             latitude,
@@ -347,6 +385,7 @@ export const completeStudioOnboarding = mutation({
         studioName,
         address,
         zone,
+        ...boundaryAssignment,
         ...omitUndefined({
           contactPhone,
           latitude,
@@ -399,7 +438,7 @@ export const completeStudioOnboarding = mutation({
         updatedAt: now,
       });
 
-      return studioId;
+      return { studioId, slug };
     }
 
     await Promise.all(
@@ -420,6 +459,6 @@ export const completeStudioOnboarding = mutation({
       updatedAt: now,
     });
 
-    return studioId;
+    return { studioId, slug };
   },
 });

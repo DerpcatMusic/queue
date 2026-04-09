@@ -33,6 +33,12 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     mapCameraPadding,
     mapPalette,
     mapPin,
+    boundaryIdProperty,
+    boundaryInteractionBounds,
+    boundaryLabelPropertyCandidates,
+    boundarySource,
+    focusBoundaryBounds,
+    initialBoundaryViewport,
     studios,
     noopMapPress,
     overlayBottom,
@@ -150,6 +156,12 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
       onCloseStudio={handleCloseStudio}
       onOpenStudioProfile={handleOpenStudioProfile}
       onEditToggle={handleEditButtonPress}
+      {...(boundarySource ? { boundarySource } : {})}
+      {...(boundaryIdProperty ? { boundaryIdProperty } : {})}
+      {...(boundaryLabelPropertyCandidates ? { boundaryLabelPropertyCandidates } : {})}
+      {...(boundaryInteractionBounds ? { boundaryInteractionBounds } : {})}
+      {...(focusBoundaryBounds ? { focusBoundaryBounds } : {})}
+      {...(initialBoundaryViewport ? { initialBoundaryViewport } : {})}
     />
   );
 }

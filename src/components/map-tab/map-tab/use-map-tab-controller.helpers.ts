@@ -1,4 +1,4 @@
-import type { ZoneOption } from "@/constants/zones";
+import type { SelectableBoundary } from "@/features/maps/boundaries/catalog";
 
 export function hasZoneSelectionChanges(persistedZoneIds: string[], selectedZoneIds: string[]) {
   if (persistedZoneIds.length !== selectedZoneIds.length) return true;
@@ -25,7 +25,7 @@ export function countPendingZoneSelectionChanges(
 }
 
 export function buildFilteredZones(
-  zones: readonly ZoneOption[],
+  zones: readonly SelectableBoundary[],
   zoneSearch: string,
   zoneLanguage: "en" | "he",
 ) {

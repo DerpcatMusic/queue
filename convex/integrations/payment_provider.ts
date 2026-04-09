@@ -2,7 +2,7 @@
  * Payment Provider Interface
  *
  * This module defines the canonical interface that all payment providers must implement.
- * Use this to add new providers (Airwallex, Stripe, Payme, etc.) without changing core logic.
+ * Use this to add new providers (Stripe, Payme, etc.) without changing core logic.
  */
 
 import type { Id } from "../_generated/dataModel";
@@ -11,7 +11,7 @@ import type { Id } from "../_generated/dataModel";
 // Provider Identity
 // =============================================================================
 
-export type PaymentProviderId = "airwallex" | "stripe" | "payme";
+export type PaymentProviderId = "stripe" | "payme";
 
 export interface PaymentProviderConfig {
   id: PaymentProviderId;
@@ -224,8 +224,8 @@ export interface CountryProviderMapping {
 }
 
 export const DEFAULT_COUNTRY_MAPPINGS: Record<string, CountryProviderMapping> = {
-  // Israel → Airwallex (primary)
-  IL: { provider: "airwallex", currency: "ILS" },
+  // Israel → Stripe
+  IL: { provider: "stripe", currency: "ILS" },
 
   // EU countries → Stripe Connect
   DE: { provider: "stripe", currency: "EUR" },

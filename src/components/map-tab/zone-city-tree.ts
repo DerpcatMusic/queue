@@ -1,9 +1,8 @@
-import type { ZoneOption } from "@/constants/zones";
-import { getZoneCityMeta } from "@/constants/zones-map";
+import type { SelectableBoundary } from "@/features/maps/boundaries/catalog";
 
 export type ZoneLanguage = "en" | "he";
 
-export type ZoneCityGroupZone = ZoneOption & {
+export type ZoneCityGroupZone = SelectableBoundary & {
   variantLabel: {
     en: string;
     he: string;
@@ -84,16 +83,12 @@ function matchesQuery(query: string, values: string[]) {
   return values.some((value) => normalizeLabel(value).includes(query));
 }
 
-export function buildZoneCityGroups(zones: ZoneOption[]): ZoneCityGroup[] {
+export function buildZoneCityGroups(zones: SelectableBoundary[]): ZoneCityGroup[] {
   const groupsByCityKey = new Map<string, ZoneCityGroup>();
 
   for (const zone of zones) {
-    const cityMeta = getZoneCityMeta(zone.id);
-    const cityKey = cityMeta?.cityKey ?? zone.id;
-    const cityLabel = {
-      en: cityMeta?.cityEng ?? zone.label.en,
-      he: cityMeta?.cityHeb ?? zone.label.he,
-    };
+    const cityKey = zone.parentCityKey;
+    const cityLabel = zone.parentCityLabel;
 
     const existing = groupsByCityKey.get(cityKey);
     const nextZone: ZoneCityGroupZone = {

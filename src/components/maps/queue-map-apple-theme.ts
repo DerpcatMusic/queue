@@ -1,8 +1,5 @@
-// Positron is a clean, modern, warm-toned style with excellent road hierarchy
-// Dark Matter is its dark counterpart — deep charcoal with warm highlights
-// Both share the same OpenFreeMap vector tile source, so Israeli data coverage is identical
-const DEFAULT_MAP_STYLE_LIGHT_URL = "https://tiles.openfreemap.org/styles/positron";
-const DEFAULT_MAP_STYLE_DARK_URL = "https://tiles.openfreemap.org/styles/dark-matter";
+const DEFAULT_MAP_STYLE_LIGHT_URL = "mapbox://styles/mapbox/standard";
+const DEFAULT_MAP_STYLE_DARK_URL = "mapbox://styles/mapbox/standard";
 
 function parseNumber(value: string | undefined, fallback: number) {
   const parsed = Number.parseFloat(value ?? "");
@@ -54,7 +51,7 @@ export const APPLE_MAP_THEME: QueueMapAppleTheme = {
     process.env.EXPO_PUBLIC_BASEMAP_STYLE_URL?.trim() ||
     process.env.EXPO_PUBLIC_MAP_VECTOR_STYLE_URL?.trim() ||
     DEFAULT_MAP_STYLE_DARK_URL,
-  minZoom: parseNumber(process.env.EXPO_PUBLIC_MAP_MIN_ZOOM, 7.5),
+  minZoom: parseNumber(process.env.EXPO_PUBLIC_MAP_MIN_ZOOM, 1.5),
   maxZoom: parseNumber(process.env.EXPO_PUBLIC_MAP_MAX_ZOOM, 16),
   defaultCenter: [34.85, 31.5],
   defaultZoomWithoutPin: 8.8,

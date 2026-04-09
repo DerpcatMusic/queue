@@ -388,12 +388,12 @@ const en = {
         certificatesDescription: "Approved certificates stay public by issuer and title.",
       },
       identity: {
-        title: "Didit",
-        approved: "Didit is approved and your identity is active.",
-        required: "Complete Didit to unlock instructor job actions.",
+        title: "Stripe identity",
+        approved: "Stripe identity onboarding is complete and your identity is active.",
+        required: "Complete Stripe identity onboarding to unlock instructor job actions.",
         unverified: "Unverified",
-        cardTitle: "Didit identity verification",
-        cardBody: "Global biometric and document verification for instructor access.",
+        cardTitle: "Stripe identity verification",
+        cardBody: "Document and identity onboarding for instructor access and payouts.",
         cardHint: "Requires a government ID and camera access.",
       },
       insurance: {
@@ -429,8 +429,8 @@ const en = {
         replaceInsurance: "Replace insurance",
         uploadCertificate: "Upload certificate",
         chooseSports: "Choose sports",
-        startIdentity: "Verify with Didit",
-        refreshIdentity: "Refresh Didit",
+        startIdentity: "Verify with Stripe",
+        refreshIdentity: "Refresh identity",
         usePhoto: "Use photo",
         useFile: "Use file or PDF",
       },
@@ -452,13 +452,13 @@ const en = {
         reupload: "Re-upload",
       },
       blockers: {
-        identity: "Didit identity approval",
+        identity: "Stripe identity approval",
         insurance: "active insurance",
         certificate: "approved sport certificate",
       },
       feedback: {
-        identityApproved: "Didit is approved.",
-        identityRefreshStarted: "Didit status refreshed.",
+        identityApproved: "Stripe identity is approved.",
+        identityRefreshStarted: "Identity status refreshed.",
         insuranceUploaded: "Insurance uploaded. Review can start now.",
         certificateUploaded: "Certificate uploaded. Review can start now.",
       },
@@ -467,7 +467,7 @@ const en = {
         pickerUnavailable: "Document picking is unavailable in this build.",
         photoPermissionRequired: "Allow photo access to upload an image.",
         photoPermissionBlocked: "Photo access is blocked in Settings.",
-        identityStartFailed: "Could not start Didit verification.",
+        identityStartFailed: "Could not start Stripe identity onboarding.",
         uploadFailed: "Failed to upload the selected document.",
       },
     },
@@ -489,7 +489,7 @@ const en = {
       sections: {
         identity: "Owner identity",
         identityDescription:
-          "Didit approval is the hard identity requirement for studio job posting.",
+          "Identity approval is the hard requirement for studio job posting.",
         billing: "Billing profile",
         billingDescription:
           "Keep your legal business details internal so invoices, settlements, and tax handling stay aligned.",
@@ -499,8 +499,8 @@ const en = {
       },
       identity: {
         title: "Studio owner verification",
-        approvedBody: "Didit is approved for {{legalName}}.",
-        requiredBody: "Current status: {{status}}. Complete Didit to unlock job posting.",
+        approvedBody: "Identity is approved for {{legalName}}.",
+        requiredBody: "Current status: {{status}}. Complete identity onboarding to unlock job posting.",
       },
       billing: {
         entityIndividual: "Individual",
@@ -526,18 +526,18 @@ const en = {
         missingBody: "Finish payment setup before publishing jobs.",
       },
       actions: {
-        startIdentity: "Start Didit",
+        startIdentity: "Start identity onboarding",
         refreshIdentity: "Refresh identity",
         saveBilling: "Save billing profile",
       },
       blockers: {
-        identity: "owner Didit approval",
+        identity: "owner identity approval",
         billing: "complete billing profile",
         payment: "payment setup",
       },
       feedback: {
-        identityApproved: "Didit is approved for this studio owner.",
-        identityRefreshStarted: "Didit status refreshed. We will keep the latest result here.",
+        identityApproved: "Identity is approved for this studio owner.",
+        identityRefreshStarted: "Identity status refreshed. We will keep the latest result here.",
         billingSaved: "Billing profile saved.",
       },
       errors: {
@@ -898,32 +898,32 @@ const en = {
     payments: {
       summarySubtitle: "Track amounts, payment processing, and payout delivery status.",
       airwallexDirectSplitNote:
-        "Instructor funds split directly to your Airwallex connected account. Nothing routes through a platform payout wallet.",
-      airwallexNotConnected: "Airwallex account not connected",
-      airwallexActive: "Airwallex account active",
-      airwallexActionRequired: "Airwallex action required",
-      airwallexBlocked: "Airwallex account blocked",
+        "Instructor funds route directly into the connected Stripe account for this lesson.",
+      airwallexNotConnected: "Stripe account not connected",
+      airwallexActive: "Stripe account active",
+      airwallexActionRequired: "Stripe action required",
+      airwallexBlocked: "Stripe account blocked",
       airwallexActiveHint: "Your connected account is ready to receive split funds.",
       airwallexActionRequiredHint:
-        "Airwallex may need extra verification before the account can receive split funds.",
+        "Stripe may need extra verification before the account can receive split funds.",
       airwallexBlockedHint:
         "This account cannot receive split funds yet. Review compliance and account status.",
-      airwallexConnectTitle: "Connect your Airwallex account?",
+      airwallexConnectTitle: "Connect your Stripe account?",
       airwallexConnectBody:
         "This creates or refreshes the connected account used for direct instructor split settlement.",
-      airwallexConnectAccount: "Connect Airwallex",
-      airwallexContinueOnboarding: "Continue Airwallex onboarding",
+      airwallexConnectAccount: "Connect Stripe",
+      airwallexContinueOnboarding: "Continue Stripe onboarding",
       airwallexRefreshAccount: "Refresh status",
-      airwallexConnected: "Airwallex account connected.",
-      airwallexConnectStarted: "Airwallex account setup updated.",
-      airwallexConnectFailed: "Failed to connect Airwallex account.",
-      airwallexOnboardingTitle: "Airwallex onboarding",
-      airwallexOnboardingLoading: "Loading secure Airwallex onboarding...",
+      airwallexConnected: "Stripe account connected.",
+      airwallexConnectStarted: "Stripe account setup updated.",
+      airwallexConnectFailed: "Failed to connect Stripe account.",
+      airwallexOnboardingTitle: "Stripe onboarding",
+      airwallexOnboardingLoading: "Loading secure Stripe onboarding...",
       airwallexOnboardingHint:
-        "Complete the Airwallex onboarding steps here. Wallet and payout status update automatically when Airwallex sends new events.",
-      airwallexOnboardingLoadFailed: "Failed to load Airwallex onboarding.",
+        "Complete the Stripe onboarding steps here. Connected account and payout status update automatically when Stripe sends new events.",
+      airwallexOnboardingLoadFailed: "Failed to load Stripe onboarding.",
       airwallexOnboardingRetryHint:
-        "Try again in a moment. If this keeps failing, refresh the Airwallex account first.",
+        "Try again in a moment. If this keeps failing, refresh the Stripe account first.",
       processedPayments: "Processed payments",
       paidOut: "Paid out",
       failed: "Failed",
@@ -950,15 +950,28 @@ const en = {
       created: "Created",
       noProviderEvents: "No provider events recorded yet.",
       notCreated: "Not created",
-      liveStatusHint: "This screen updates automatically as Airwallex events arrive.",
+      liveStatusHint: "This screen updates automatically as Stripe payment and account events arrive.",
       releaseModeManual: "Manual release",
       releaseModeAutomatic: "Automatic release",
       releaseModeScheduled: "Scheduled release",
       receiptReady: "Payment confirmation ready",
       receiptPending: "Receipt will be generated after payment confirmation",
+      openReceipt: "Open receipt",
+      openHostedReceipt: "Open hosted receipt",
+      receiptStudioTotal: "Studio total paid",
+      receiptInstructorGross: "Instructor gross amount",
+      receiptPlatformFee: "Platform fee",
+      receiptIssuedAt: "Issued at",
+      receiptNumber: "Receipt number",
+      receiptStudioBody:
+        "This receipt reflects the full lesson amount paid by the studio, including your platform fee.",
+      receiptInstructorBody:
+        "This payout receipt reflects the instructor gross amount before Stripe processing fees.",
+      receiptFeesBody:
+        "Stripe fees are absorbed by the platform and do not reduce the instructor gross shown here.",
       releaseInstructorFunds: "Release instructor funds",
       releasingInstructorFunds: "Releasing instructor funds...",
-      releaseInstructorFundsSuccess: "Instructor funds released to Airwallex settlement.",
+      releaseInstructorFundsSuccess: "Instructor funds marked for Stripe settlement.",
       releaseInstructorFundsFailed: "Failed to release instructor funds.",
       notIssued: "Not issued",
       bankConnected: "Bank connected",
@@ -986,7 +999,7 @@ const en = {
       connectBank: "Connect bank",
       manageBank: "Manage bank",
       finalizingTitle: "Finalizing bank connection",
-      finalizingBody: "Waiting for Airwallex to confirm your payout destination.",
+      finalizingBody: "Waiting for Stripe to confirm your payout destination.",
       successTitle: "Bank connected",
       successBody: "Your payout destination is ready.",
       connectSuccess: "Bank account connected.",
@@ -1032,36 +1045,36 @@ const en = {
     identityVerification: {
       title: "Identity verification",
       eyebrow: "Secure payout verification",
-      providerPill: "Powered by Didit native SDK",
+      providerPill: "Powered by Stripe Connect",
       unlockPill: "Unlocks payouts and banking",
       verifiedLegalName: "Verified legal name",
       verifiedAt: "Verified at {{date}}",
       lastUpdate: "Last update {{date}}",
       loadingStatus: "Loading verification status...",
       refreshStatus: "Refresh verification status",
-      resolvingLabel: "Waiting for Didit to confirm your result. Keep this screen open.",
+      resolvingLabel: "Waiting for Stripe to confirm your result. Keep this screen open.",
       resolvingTitle: "Finalizing your verification",
       start: "Verify",
       starting: "Starting verification...",
       checkStatus: "Check verification status",
       restart: "Start a fresh verification",
       cancelled: "Verification flow was cancelled.",
-      invalidReturn: "Didit did not return a valid completion signal.",
-      startFailed: "Failed to start Didit verification.",
+      invalidReturn: "Stripe did not return a valid completion signal.",
+      startFailed: "Failed to start Stripe verification.",
       nativeUnavailable:
-        "Native verification is not available in this build. Update the app and try again.",
+        "In-app verification is not available in this build. Update the app and try again.",
       externalLinkFailed: "Could not open the verification reference link.",
       slow: "Verification is taking longer than expected. Pull to refresh or try again shortly.",
       approvedInfo: "Identity verified. Your KYC is now active.",
-      declinedInfo: "Didit declined this attempt. Review your document details and try again.",
+      declinedInfo: "Stripe declined this attempt. Review your document details and try again.",
       finishedWithStatus: "Verification finished with status: {{status}}.",
       confirmFailed: "We could not confirm your latest verification status. Please try again.",
       primaryHint:
-        "This runs inside our native verification flow. Most people finish in 2 to 3 minutes.",
+        "This opens Stripe Connect onboarding. Most people finish in 2 to 3 minutes.",
       systemTitle: "How we verify you",
       systemBody:
-        "Queue uses Didit’s native identity verification SDK to scan your document, run liveness checks, and return a verification result inside the app.",
-      systemDocs: "Open Didit docs",
+        "Queue uses Stripe Connect onboarding to collect identity details, review documents, and return verification status to the app.",
+      systemDocs: "Open Stripe docs",
       systemCode: "View provider repo",
       prepTitle: "Before you start",
       prep: {
@@ -1069,7 +1082,7 @@ const en = {
         documentBody:
           "Use a passport or national identity document that matches the legal name you use for payouts.",
         faceTitle: "Use good lighting for the selfie check",
-        faceBody: "Didit may ask for a live face scan to confirm the document belongs to you.",
+        faceBody: "Stripe may ask for extra confirmation steps to verify the document belongs to you.",
         timeTitle: "Set aside a couple of minutes",
         timeBody:
           "The flow is quickest when your document is clean, readable, and your camera is steady.",
@@ -1078,7 +1091,7 @@ const en = {
       steps: {
         one: {
           title: "1. Scan your ID",
-          body: "We collect the document images Didit needs to verify that the document is real and readable.",
+          body: "We collect the document images Stripe needs to verify that the document is real and readable.",
         },
         two: {
           title: "2. Match the person to the document",
@@ -1126,11 +1139,11 @@ const en = {
         approved:
           "Your KYC is complete and your verified identity is active across payouts and account review.",
         declined:
-          "Didit declined this attempt. Start a fresh verification and double-check your legal document details.",
+          "Stripe declined this attempt. Start a fresh verification and double-check your legal document details.",
         in_review:
-          "Didit has your submission and is reviewing it now. This screen will keep checking once you return from the flow.",
+          "Stripe has your submission and is reviewing it now. This screen will keep checking once you return from the flow.",
         pending:
-          "Your submission was received. We are waiting for a final review result from Didit.",
+          "Your submission was received. We are waiting for a final review result from Stripe.",
         in_progress:
           "Your last attempt did not finish. Start a fresh secure verification to continue.",
         abandoned:
@@ -1283,7 +1296,7 @@ const en = {
     verification: {
       title: "Verification",
       subtitle: "Finish verification to unlock job actions",
-      body: "Complete Didit, upload your insurance, and add sport certificates. You can keep browsing the app while documents are under review.",
+      body: "Complete Stripe identity onboarding, upload your insurance, and add sport certificates. You can keep browsing the app while documents are under review.",
       studioBody:
         "Complete owner identity and internal billing setup. Payment readiness is laid out here so we can swap providers without rebuilding the whole studio flow.",
       verifyNow: "Verify now",
@@ -1747,7 +1760,7 @@ const en = {
     },
     verificationGate: {
       title: "Complete verification to apply",
-      body: "You can browse every job, but applying stays locked until your Didit identity check is approved, your liability insurance is active, and you have an approved teaching certificate for this sport.",
+      body: "You can browse every job, but applying stays locked until your identity check is approved, your liability insurance is active, and you have an approved teaching certificate for this sport.",
       action: "Open verification",
     },
     studioComplianceGate: {

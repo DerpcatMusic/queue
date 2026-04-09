@@ -15,7 +15,7 @@
       "infoPlist": {
         "ExpoLocalization_supportsRTL": true,
         "CFBundleLocalizations": ["en", "he", "en", "he"],
-        "NSCameraUsageDescription": "Camera access is required to scan identity documents and complete Didit verification.",
+        "NSCameraUsageDescription": "Camera access is required to scan identity documents and complete Stripe identity onboarding.",
         "NFCReaderUsageDescription": "NFC is used to read passport and identity document chips during verification.",
         "com.apple.developer.nfc.readersession.iso7816.select-identifiers": ["A0000002471001"]
       },
@@ -148,7 +148,12 @@
         }
       ],
       "expo-notifications",
-      "@maplibre/maplibre-react-native",
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsVersion": "11.18.2"
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "expo-build-properties",
@@ -159,12 +164,12 @@
           }
         }
       ],
-      "@didit-protocol/sdk-react-native",
       "expo-secure-store",
       "expo-web-browser"
     ],
     "extra": {
-      "supportsRTL": true
+      "supportsRTL": true,
+      "mapboxPublicToken": "MAPBOX_PUBLIC_TOKEN_REMOVED"
     },
     "experiments": {
       "typedRoutes": true,

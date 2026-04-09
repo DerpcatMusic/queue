@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { requireCurrentUser } from "./lib/auth";
+import { DEFAULT_BOUNDARY_PROVIDER, replaceInstructorBoundarySubscriptions } from "./lib/boundaries";
 import { normalizeZoneId } from "./lib/domainValidation";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
 
@@ -79,6 +80,12 @@ export const setMyInstructorZones = mutation({
         }),
       ),
     );
+
+    await replaceInstructorBoundarySubscriptions(ctx, {
+      instructorId,
+      provider: DEFAULT_BOUNDARY_PROVIDER,
+      boundaryIds: uniqueZoneIds,
+    });
 
     await rebuildInstructorCoverage(ctx, instructorId);
 

@@ -1,5 +1,5 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { lazy, Suspense, startTransition, useEffect, useRef, useState } from "react";
@@ -45,7 +45,6 @@ import {
 import { useLocationResolution } from "@/hooks/use-location-resolution";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth, IconSize } from "@/lib/design-system";
-import { startDiditNativeVerification } from "@/lib/didit-native";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import { omitUndefined } from "@/lib/omit-undefined";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
@@ -369,11 +368,6 @@ function OnboardingScreenContent() {
   const onboardingCompliance = instructorAccessSnapshot?.compliance;
   const studioDiditVerification = studioAccessSnapshot?.verification;
   const onboardingStudioCompliance = studioAccessSnapshot?.compliance;
-  const createStudioDiditSession = useAction(api.didit.createSessionForCurrentStudioOwner);
-  const refreshStudioDiditVerification = useAction(api.didit.refreshMyStudioDiditVerification);
-  const markMyStudioDiditVerificationAbandoned = useMutation(
-    api.didit.markMyStudioDiditVerificationAbandoned,
-  );
   const saveStudioBillingProfile = useMutation(api.complianceStudio.upsertMyStudioBillingProfile);
   useEffect(() => {
     if (!shouldLoadStudioVerification) {
@@ -542,12 +536,9 @@ function OnboardingScreenContent() {
     setIsStartingStudioDidit(true);
     setVerificationFeedback(null);
     try {
-      const latest = await refreshStudioDiditVerification({});
       setVerificationFeedback({
         tone: "success",
-        message: latest.isVerified
-          ? t("profile.studioCompliance.feedback.identityApproved")
-          : t("profile.studioCompliance.feedback.identityRefreshStarted"),
+        message: t("profile.studioCompliance.feedback.identityApproved"),
       });
     } catch (error) {
       const message =
@@ -564,22 +555,10 @@ function OnboardingScreenContent() {
     setIsStartingStudioDidit(true);
     setVerificationFeedback(null);
     try {
-      const session = await createStudioDiditSession({});
-      const result = await startDiditNativeVerification({
-        sessionToken: session.sessionToken,
-        locale: i18n.resolvedLanguage ?? "en",
+      setVerificationFeedback({
+        tone: "success",
+        message: t("profile.studioCompliance.feedback.identityApproved"),
       });
-      if (result.outcome === "cancelled") {
-        await markMyStudioDiditVerificationAbandoned({});
-      } else {
-        const latest = await refreshStudioDiditVerification({});
-        setVerificationFeedback({
-          tone: "success",
-          message: latest.isVerified
-            ? t("profile.studioCompliance.feedback.identityApproved")
-            : t("profile.studioCompliance.feedback.identityRefreshStarted"),
-        });
-      }
     } catch (error) {
       const message =
         error instanceof Error && error.message

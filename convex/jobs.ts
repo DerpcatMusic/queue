@@ -6,6 +6,11 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { APPLICATION_STATUSES, REQUIRED_LEVELS, SESSION_LANGUAGES } from "./constants";
 import { requireUserRole } from "./lib/auth";
 import {
+  buildLegacyZoneBoundary,
+  hasInstructorBoundarySubscription,
+  listInstructorBoundarySubscriptionPairs,
+} from "./lib/boundaries";
+import {
   isKnownZoneId,
   normalizeCapabilityTagArray,
   normalizeSportType,
@@ -76,6 +81,76 @@ function assertPositiveNumber(value: number, fieldName: string) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new ConvexError(`${fieldName} must be greater than 0`);
   }
+}
+
+function isOpenJobStillActionable(
+  job: Doc<"jobs">,
+  now: number,
+) {
+  if (job.startTime <= now) return false;
+  if (
+    typeof job.applicationDeadline === "number" &&
+    Number.isFinite(job.applicationDeadline) &&
+    job.applicationDeadline <= now
+  ) {
+    return false;
+  }
+  return true;
+}
+
+async function collectOpenJobsByBoundaryCoverage(
+  ctx: QueryCtx,
+  args: {
+    sports: ReadonlySet<string>;
+    boundaryPairs: ReadonlyArray<{ provider: string; boundaryId: string }>;
+    now: number;
+    limit: number;
+  },
+) {
+  if (args.sports.size === 0 || args.boundaryPairs.length === 0) {
+    return new Map<Id<"jobs">, Doc<"jobs">>();
+  }
+
+  const coveragePairs = [...args.sports].flatMap((sport) =>
+    args.boundaryPairs.map(({ provider, boundaryId }) => ({
+      sport,
+      provider,
+      boundaryId,
+    })),
+  );
+
+  const fetchPerPair = Math.min(
+    Math.max(Math.ceil((args.limit * 2) / coveragePairs.length), 8),
+    80,
+  );
+
+  const jobsByPair = await Promise.all(
+    coveragePairs.map(({ sport, provider, boundaryId }) =>
+      ctx.db
+        .query("jobs")
+        .withIndex("by_sport_boundary_status_postedAt", (q) =>
+          q
+            .eq("sport", sport)
+            .eq("boundaryProvider", provider)
+            .eq("boundaryId", boundaryId)
+            .eq("status", "open"),
+        )
+        .order("desc")
+        .take(fetchPerPair),
+    ),
+  );
+
+  const matchingById = new Map<Id<"jobs">, Doc<"jobs">>();
+  for (const jobsForPair of jobsByPair) {
+    for (const job of jobsForPair) {
+      if (!isOpenJobStillActionable(job, args.now)) {
+        continue;
+      }
+      matchingById.set(job._id, job);
+    }
+  }
+
+  return matchingById;
 }
 
 function normalizeRequired(value: string | undefined, fieldName: string) {
@@ -342,10 +417,27 @@ export const getInstructorTabCounts = query({
     }
     const now = args.now ?? Date.now();
 
-    const eligibility = await loadInstructorEligibility(ctx, instructor._id);
+    const [eligibility, boundaryPairs] = await Promise.all([
+      loadInstructorEligibility(ctx, instructor._id),
+      listInstructorBoundarySubscriptionPairs(ctx, { instructorId: instructor._id }),
+    ]);
     let jobsBadgeCount = 0;
+    const matchingById = new Set<string>();
 
-    if (eligibility.coverageCount > 0) {
+    if (boundaryPairs.length > 0 && eligibility.sports.size > 0) {
+      const boundaryMatches = await collectOpenJobsByBoundaryCoverage(ctx, {
+        sports: eligibility.sports,
+        boundaryPairs,
+        now,
+        limit: BADGE_COUNT_CAP,
+      });
+      for (const job of boundaryMatches.values()) {
+        matchingById.add(String(job._id));
+        if (matchingById.size >= BADGE_COUNT_CAP) break;
+      }
+    }
+
+    if (matchingById.size < BADGE_COUNT_CAP && eligibility.coverageCount > 0) {
       const fetchPerPair = Math.min(
         Math.max(Math.ceil((BADGE_COUNT_CAP * 2) / eligibility.coveragePairs.length), 8),
         60,
@@ -362,7 +454,6 @@ export const getInstructorTabCounts = query({
         ),
       );
 
-      const matchingById = new Set<string>();
       for (const jobsForPair of openJobsByCoveragePair) {
         for (const job of jobsForPair) {
           const normalizedJobZone = trimOptionalString(job.zone);
@@ -372,8 +463,7 @@ export const getInstructorTabCounts = query({
           if (!hasCoverageKey(eligibility, job.sport, normalizedJobZone)) {
             continue;
           }
-          if (job.startTime <= now) continue;
-          if (job.applicationDeadline !== undefined && job.applicationDeadline < now) {
+          if (!isOpenJobStillActionable(job, now)) {
             continue;
           }
 
@@ -382,9 +472,7 @@ export const getInstructorTabCounts = query({
         }
         if (matchingById.size >= BADGE_COUNT_CAP) break;
       }
-
-      jobsBadgeCount = matchingById.size;
-    } else if (eligibility.sports.size > 0) {
+    } else if (matchingById.size < BADGE_COUNT_CAP && eligibility.sports.size > 0) {
       const sports = [...eligibility.sports];
       const fetchPerSport = Math.min(
         Math.max(Math.ceil((BADGE_COUNT_CAP * 2) / sports.length), 8),
@@ -410,8 +498,7 @@ export const getInstructorTabCounts = query({
           if (!isEligibleForJob(eligibility, job.sport, normalizedJobZone)) {
             continue;
           }
-          if (job.startTime <= now) continue;
-          if (job.applicationDeadline !== undefined && job.applicationDeadline < now) {
+          if (!isOpenJobStillActionable(job, now)) {
             continue;
           }
 
@@ -421,8 +508,9 @@ export const getInstructorTabCounts = query({
         if (matchingById.size >= BADGE_COUNT_CAP) break;
       }
 
-      jobsBadgeCount = matchingById.size;
     }
+
+    jobsBadgeCount = matchingById.size;
 
     const applications = await ctx.db
       .query("jobApplications")
@@ -726,6 +814,7 @@ export const postJob = mutation({
       studioId: studio._id,
       branchId: branch._id,
       zone: branchZone,
+      ...buildLegacyZoneBoundary(branch.boundaryId ?? branchZone, branch.boundaryProvider),
       sport,
       startTime: args.startTime,
       endTime: args.endTime,
@@ -796,6 +885,8 @@ export const getAvailableJobsForInstructor = query({
       studioAddress: v.optional(v.string()),
       sport: v.string(),
       zone: v.string(),
+      boundaryProvider: v.optional(v.string()),
+      boundaryId: v.optional(v.string()),
       startTime: v.number(),
       endTime: v.number(),
       timeZone: v.optional(v.string()),
@@ -866,8 +957,11 @@ export const getAvailableJobsForInstructor = query({
     const now = args.now ?? Date.now();
     const compliance = await loadInstructorComplianceSnapshot(ctx, instructor._id, now);
 
-    const eligibility = await loadInstructorEligibility(ctx, instructor._id);
-    if (eligibility.coverageCount === 0 && eligibility.sports.size === 0) {
+    const [eligibility, boundaryPairs] = await Promise.all([
+      loadInstructorEligibility(ctx, instructor._id),
+      listInstructorBoundarySubscriptionPairs(ctx, { instructorId: instructor._id }),
+    ]);
+    if (eligibility.coverageCount === 0 && eligibility.sports.size === 0 && boundaryPairs.length === 0) {
       return [];
     }
 
@@ -876,6 +970,18 @@ export const getAvailableJobsForInstructor = query({
     const limit = Math.min(rawLimit, 200);
 
     const matchingById = new Map<Id<"jobs">, Doc<"jobs">>();
+    if (boundaryPairs.length > 0 && eligibility.sports.size > 0) {
+      const boundaryMatches = await collectOpenJobsByBoundaryCoverage(ctx, {
+        sports: eligibility.sports,
+        boundaryPairs,
+        now,
+        limit,
+      });
+      for (const [jobId, job] of boundaryMatches.entries()) {
+        matchingById.set(jobId, job);
+      }
+    }
+
     if (eligibility.coverageCount > 0) {
       const fetchPerPair = Math.min(
         Math.max(Math.ceil((limit * 2) / eligibility.coveragePairs.length), 8),
@@ -904,12 +1010,7 @@ export const getAvailableJobsForInstructor = query({
           if (!zoneSetForSport?.has(normalizedJobZone)) {
             continue;
           }
-          if (job.startTime <= now) continue;
-          if (
-            typeof job.applicationDeadline === "number" &&
-            Number.isFinite(job.applicationDeadline) &&
-            job.applicationDeadline <= now
-          ) {
+          if (!isOpenJobStillActionable(job, now)) {
             continue;
           }
           matchingById.set(job._id, job);
@@ -937,12 +1038,7 @@ export const getAvailableJobsForInstructor = query({
           if (!isEligibleForJob(eligibility, job.sport, normalizedJobZone)) {
             continue;
           }
-          if (job.startTime <= now) continue;
-          if (
-            typeof job.applicationDeadline === "number" &&
-            Number.isFinite(job.applicationDeadline) &&
-            job.applicationDeadline <= now
-          ) {
+          if (!isOpenJobStillActionable(job, now)) {
             continue;
           }
           matchingById.set(job._id, job);
@@ -1046,6 +1142,8 @@ export const getAvailableJobsForInstructor = query({
         postedAt: job.postedAt,
         canApplyToJob,
         ...omitUndefined({
+          boundaryProvider: job.boundaryProvider,
+          boundaryId: job.boundaryId,
           studioImageUrl: studioImageUrlById.get(String(job.studioId)),
           branchAddress: job.branchAddressSnapshot ?? branch?.address,
           studioAddress: job.branchAddressSnapshot ?? branch?.address ?? studio?.address,
@@ -1083,6 +1181,8 @@ export const getStudioProfileForInstructor = query({
       studioName: v.string(),
       studioAddress: v.string(),
       zone: v.string(),
+      boundaryProvider: v.optional(v.string()),
+      boundaryId: v.optional(v.string()),
       bio: v.optional(v.string()),
       studioImageUrl: v.optional(v.string()),
       sports: v.array(v.string()),
@@ -1098,6 +1198,8 @@ export const getStudioProfileForInstructor = query({
           studioAddress: v.optional(v.string()),
           sport: v.string(),
           zone: v.string(),
+          boundaryProvider: v.optional(v.string()),
+          boundaryId: v.optional(v.string()),
           startTime: v.number(),
           endTime: v.number(),
           timeZone: v.optional(v.string()),
@@ -1233,6 +1335,8 @@ export const getStudioProfileForInstructor = query({
       zone: primaryBranch?.zone ?? studio.zone,
       sports: [...new Set(sportsRows.map((row: Doc<"studioSports">) => row.sport))].sort(),
       ...omitUndefined({
+        boundaryProvider: primaryBranch?.boundaryProvider ?? studio.boundaryProvider,
+        boundaryId: primaryBranch?.boundaryId ?? studio.boundaryId,
         bio: studio.bio,
         studioImageUrl: studioImageUrl ?? undefined,
       }),
@@ -1266,6 +1370,8 @@ export const getStudioProfileForInstructor = query({
           postedAt: job.postedAt,
           canApplyToJob,
           ...omitUndefined({
+            boundaryProvider: job.boundaryProvider,
+            boundaryId: job.boundaryId,
             studioImageUrl: studioImageUrl ?? undefined,
             branchAddress: job.branchAddressSnapshot ?? branch?.address,
             studioAddress: job.branchAddressSnapshot ?? branch?.address ?? studio.address,
@@ -1314,6 +1420,8 @@ export const getMyApplications = query({
       studioImageUrl: v.optional(v.string()),
       sport: v.string(),
       zone: v.string(),
+      boundaryProvider: v.optional(v.string()),
+      boundaryId: v.optional(v.string()),
       startTime: v.number(),
       endTime: v.number(),
       timeZone: v.optional(v.string()),
@@ -1432,6 +1540,8 @@ export const getMyApplications = query({
         pay: job.pay,
         jobStatus: job.status,
         ...omitUndefined({
+          boundaryProvider: job.boundaryProvider,
+          boundaryId: job.boundaryId,
           message: application.message,
           branchAddress: job.branchAddressSnapshot ?? branch?.address,
           studioImageUrl: studioImageUrlById.get(String(job.studioId)),
@@ -1484,6 +1594,20 @@ export const applyToJob = mutation({
     const studioAutoAcceptDefault = studio?.autoAcceptDefault;
     const autoAcceptEnabled =
       job.autoAcceptEnabled ?? studioAutoAcceptEnabled ?? studioAutoAcceptDefault ?? false;
+    const hasBoundaryEligibility =
+      job.boundaryProvider && job.boundaryId
+        ? await hasInstructorBoundarySubscription(ctx, {
+            instructorId: instructor._id,
+            provider: job.boundaryProvider,
+            boundaryId: job.boundaryId,
+          })
+        : false;
+    const normalizedJobZone = trimOptionalString(job.zone);
+    const hasZoneEligibility =
+      normalizedJobZone && isKnownZoneId(normalizedJobZone)
+        ? isEligibleForJob(eligibility, job.sport, normalizedJobZone)
+        : false;
+    const canApplyByLocation = hasBoundaryEligibility || hasZoneEligibility;
 
     if (!autoAcceptEnabled) {
       if (job.status !== "open") throw new ConvexError("Job is not open");
@@ -1493,11 +1617,7 @@ export const applyToJob = mutation({
       if (now >= job.startTime) {
         throw new ConvexError("Job has already started");
       }
-      const normalizedJobZone = trimOptionalString(job.zone);
-      if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
-        throw new ConvexError("Job has invalid zone configuration");
-      }
-      if (!isEligibleForJob(eligibility, job.sport, normalizedJobZone)) {
+      if (!canApplyByLocation) {
         throw new ConvexError("You are not eligible for this job");
       }
 
@@ -1586,11 +1706,7 @@ export const applyToJob = mutation({
       return { applicationId, status: "rejected" as const };
     }
 
-    const normalizedJobZone = trimOptionalString(job.zone);
-    if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
-      throw new ConvexError("Job has invalid zone configuration");
-    }
-    if (!isEligibleForJob(eligibility, job.sport, normalizedJobZone)) {
+    if (!canApplyByLocation) {
       throw new ConvexError("You are not eligible for this job");
     }
     if (job.applicationDeadline !== undefined && now > job.applicationDeadline) {

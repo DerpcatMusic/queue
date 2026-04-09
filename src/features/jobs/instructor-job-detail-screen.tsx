@@ -108,13 +108,16 @@ export function InstructorJobDetailScreen({
 
   const sortedJobs = useMemo<InstructorMarketplaceJob[]>(() => {
     if (!studioProfile?.jobs) return [];
-    const applications: InstructorJobApplicationOverlay[] = (myApplications ?? []).map(
-      (application) => ({
+    const applicationRows = (myApplications ?? []) as Array<{
+      applicationId: Id<"jobApplications">;
+      jobId: Id<"jobs">;
+      status: InstructorJobApplicationOverlay["status"];
+    }>;
+    const applications: InstructorJobApplicationOverlay[] = applicationRows.map((application) => ({
         applicationId: application.applicationId,
         jobId: application.jobId,
         status: application.status,
-      }),
-    );
+      }));
     const mergedJobs = mergeInstructorJobsWithApplications(studioProfile.jobs, applications);
     return sortInstructorJobsBySelectedId(mergedJobs, jobId ? String(jobId) : null);
   }, [jobId, myApplications, studioProfile?.jobs]);

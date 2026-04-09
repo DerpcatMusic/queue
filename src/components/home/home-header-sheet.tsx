@@ -6,7 +6,6 @@ import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing, BrandType, FontFamily } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { Box, Text } from "@/primitives";
-
 type HomeHeaderSheetProps = {
   displayName: string;
   profileImageUrl?: string | null | undefined;
@@ -65,7 +64,12 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
 
   const progressPercent = Math.max(
     0,
-    Math.min(100, Math.round(((openJobs ?? 0) / Math.max((openJobs ?? 0) + (pendingApplications ?? 0), 1)) * 100)),
+    Math.min(
+      100,
+      Math.round(
+        ((openJobs ?? 0) / Math.max((openJobs ?? 0) + (pendingApplications ?? 0), 1)) * 100,
+      ),
+    ),
   );
 
   const today = new Date();
@@ -83,13 +87,6 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
         paddingBottom: BrandSpacing.xl,
         gap: BrandSpacing.md,
         backgroundColor: mainTabSheetBackgroundColor,
-        borderBottomLeftRadius: BrandRadius.soft,
-        borderBottomRightRadius: BrandRadius.soft,
-        shadowColor: "#000000",
-        shadowOpacity: 0.4,
-        shadowRadius: 24,
-        shadowOffset: { width: 0, height: 12 },
-        elevation: 12,
       }}
     >
       <Box flexDirection="row" alignItems="center" justifyContent="space-between" gap="md">

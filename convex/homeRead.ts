@@ -11,7 +11,7 @@ import {
   loadInstructorEligibility,
 } from "./lib/instructorEligibility";
 import { resolveInternalAccessForUserId } from "./lib/internalAccess";
-import { trimOptionalString } from "./lib/validation";
+import { omitUndefined, trimOptionalString } from "./lib/validation";
 
 const HOME_MATCH_COUNT_CAP = 99;
 const HOME_UPCOMING_SESSIONS_LIMIT = 3;
@@ -399,8 +399,7 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
   return {
     isVerified:
       internalAccess.verificationBypass ||
-      (instructorProfile.diditVerificationStatus === "approved" &&
-        Boolean(instructorProfile.diditLegalName?.trim())),
+      payoutSnapshot.hasVerifiedDestination,
     openMatches,
     pendingApplications,
     thisMonthEarningsAgorot,
@@ -419,6 +418,10 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
       zone: trimOptionalString(job.zone) ?? job.zone,
       startTime: job.startTime,
       pay: job.pay,
+      ...omitUndefined({
+        boundaryProvider: job.boundaryProvider,
+        boundaryId: job.boundaryId,
+      }),
     })),
     nextCheckInSession:
       nextCheckInJob && nextCheckInApplication
@@ -436,6 +439,10 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
             endTime: nextCheckInJob.endTime,
             pay: nextCheckInJob.pay,
             ...(nextCheckInBranchAddress ? { branchAddress: nextCheckInBranchAddress } : {}),
+            ...omitUndefined({
+              boundaryProvider: nextCheckInJob.boundaryProvider,
+              boundaryId: nextCheckInJob.boundaryId,
+            }),
             ...(latestCheckIn
               ? {
                   checkInStatus: latestCheckIn.verificationStatus,

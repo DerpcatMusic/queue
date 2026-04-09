@@ -78,7 +78,7 @@ export const StatusPill = memo(function StatusPill({ label, status }: StatusPill
     <Box
       style={{
         borderCurve: "continuous",
-        borderRadius: BrandRadius.pill,
+        borderRadius: BrandRadius.buttonSubtle,
         paddingHorizontal: BrandSpacing.sm,
         paddingVertical: BrandSpacing.xs,
         backgroundColor: tokens.bg,
@@ -110,7 +110,7 @@ export const DotStatusPill = memo(function DotStatusPill({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        borderRadius: BrandRadius.pill,
+        borderRadius: BrandRadius.buttonSubtle,
         paddingHorizontal: BrandSpacing.sm,
         paddingVertical: BrandSpacing.xs,
         gap: BrandSpacing.xs,
@@ -267,6 +267,7 @@ export type HomeChecklistItem = {
   id: string;
   label: string;
   description?: string;
+  icon: ComponentProps<typeof IconSymbol>["name"];
   done: boolean;
   onPress: () => void;
 };
@@ -277,7 +278,7 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
   items,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   items: HomeChecklistItem[];
 }) {
   const { color: palette } = useTheme();
@@ -286,15 +287,7 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
   const orderedItems = [...items].sort((a, b) => Number(a.done) - Number(b.done));
 
   return (
-    <Box
-      style={{
-        borderRadius: BrandRadius.card,
-        borderCurve: "continuous",
-        backgroundColor: palette.surface,
-        padding: BrandSpacing.md,
-        gap: BrandSpacing.sm,
-      }}
-    >
+    <Box style={{ padding: BrandSpacing.md, gap: BrandSpacing.sm }}>
       <Box style={{ gap: BrandSpacing.xs }}>
         <Box
           style={{
@@ -316,7 +309,7 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
           </Text>
           <Box
             style={{
-              borderRadius: BrandRadius.pill,
+              borderRadius: BrandRadius.buttonSubtle,
               borderCurve: "continuous",
               paddingHorizontal: BrandSpacing.sm,
               paddingVertical: BrandSpacing.xs,
@@ -335,7 +328,9 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
             </Text>
           </Box>
         </Box>
-        <Text style={{ ...BrandType.caption, color: palette.textMuted }}>{subtitle}</Text>
+        {subtitle ? (
+          <Text style={{ ...BrandType.caption, color: palette.textMuted }}>{subtitle}</Text>
+        ) : null}
       </Box>
 
       <Box style={{ gap: BrandSpacing.sm }}>
@@ -345,47 +340,37 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
             accessibilityRole="button"
             accessibilityLabel={item.label}
             onPress={item.onPress}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                gap: BrandSpacing.md,
-                minWidth: 0,
-                borderRadius: BrandRadius.medium,
-                borderCurve: "continuous",
-                paddingHorizontal: BrandSpacing.md,
-                paddingVertical: BrandSpacing.sm,
-                backgroundColor: item.done
-                  ? palette.surface
-                  : pressed
-                    ? palette.surfaceElevated
-                    : palette.surfaceAlt,
-                borderWidth: 0,
-                borderColor: "transparent",
-                opacity: pressed ? 0.92 : 1,
-              })}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: BrandSpacing.md,
+              minWidth: 0,
+              borderRadius: item.done ? BrandRadius.lg : BrandRadius.medium,
+              borderCurve: "continuous",
+              paddingHorizontal: BrandSpacing.md,
+              paddingVertical: BrandSpacing.sm,
+              backgroundColor: item.done
+                ? palette.surface
+                : pressed
+                  ? palette.surfaceElevated
+                  : palette.surfaceAlt,
+              borderWidth: item.done ? 1 : 0,
+              borderColor: item.done ? palette.successSubtle : "transparent",
+              opacity: pressed ? 0.92 : 1,
+            })}
           >
-            <Box
-              style={{
-                width: BrandSpacing.iconContainer,
-                height: BrandSpacing.iconContainer,
-                borderRadius: BrandRadius.pill,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: item.done ? palette.tertiarySubtle : palette.primarySubtle,
-              }}
-            >
-              <IconSymbol
-                name={item.done ? "circle.fill" : "circle"}
-                size={15}
-                color={item.done ? palette.tertiary : palette.primary}
-              />
-            </Box>
+            {item.done ? (
+              <IconSymbol name="checkmark.circle.fill" size={22} color={palette.success} />
+            ) : (
+              <IconSymbol name={item.icon} size={20} color={palette.primary} />
+            )}
             <Box style={{ flex: 1, minWidth: 0 }}>
               <Text
                 numberOfLines={1}
                 style={{
                   ...BrandType.bodyStrong,
-                  color: palette.text,
+                  color: item.done ? palette.textMuted : palette.text,
+                  ...(item.done ? { textDecorationLine: "none" } : {}),
                 }}
               >
                 {item.label}

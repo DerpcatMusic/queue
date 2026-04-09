@@ -1,8 +1,7 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import type BottomSheet from "@gorhom/bottom-sheet";
 import { useMutation, useQuery } from "convex/react";
-import type { Href } from "expo-router";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -29,6 +28,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
+import { useSheetContext } from "@/contexts/sheet-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 
@@ -49,7 +49,6 @@ import {
   toDeviceAccountIdentity,
   validateSessionAfterSwitch,
 } from "@/modules/session/device-account-store";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import { Box } from "@/primitives";
 
 const ROLE_TRANSLATION_KEYS = {
@@ -58,14 +57,6 @@ const ROLE_TRANSLATION_KEYS = {
   studio: "profile.roles.studio",
   admin: "profile.roles.admin",
 } as const;
-const STUDIO_PROFILE_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.profile);
-const STUDIO_BRANCHES_ROUTE = `${STUDIO_PROFILE_ROUTE}/branches` as const;
-const STUDIO_ADD_ACCOUNT_ROUTE = `${STUDIO_PROFILE_ROUTE}/add-account` as const;
-const STUDIO_NOTIFICATIONS_ROUTE = `${STUDIO_PROFILE_ROUTE}/notifications` as const;
-const STUDIO_CALENDAR_SETTINGS_ROUTE = `${STUDIO_PROFILE_ROUTE}/calendar-settings` as const;
-const STUDIO_COMPLIANCE_ROUTE = `${STUDIO_PROFILE_ROUTE}/compliance` as const;
-const STUDIO_PAYMENTS_ROUTE = `${STUDIO_PROFILE_ROUTE}/payments` as const;
-const STUDIO_EDIT_ROUTE = `${STUDIO_PROFILE_ROUTE}/edit` as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
   if (sports.length === 0) {
@@ -120,18 +111,49 @@ export default function StudioProfileScreen() {
   const { preference, setPreference } = useThemePreference();
   const { color } = useTheme();
   const { t, i18n } = useTranslation();
-  const router = useRouter();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
 
+  // Sheet context for opening BottomSheets instead of routes
+  const { openStudioSheet } = useSheetContext();
+
+  // Sheet openers - using BottomSheets instead of routes
+  const handleOpenPayments = useCallback(() => {
+    openStudioSheet("payments");
+  }, [openStudioSheet]);
+
+  const handleOpenCompliance = useCallback(() => {
+    openStudioSheet("compliance");
+  }, [openStudioSheet]);
+
+  const handleOpenBranches = useCallback(() => {
+    openStudioSheet("branches");
+  }, [openStudioSheet]);
+
+  const handleOpenCalendarSettings = useCallback(() => {
+    openStudioSheet("calendar-settings");
+  }, [openStudioSheet]);
+
+  const handleOpenEdit = useCallback(() => {
+    openStudioSheet("edit");
+  }, [openStudioSheet]);
+
+  const handleOpenNotifications = useCallback(() => {
+    openStudioSheet("notifications");
+  }, [openStudioSheet]);
+
+  const handleOpenAddAccount = useCallback(() => {
+    openStudioSheet("add-account");
+  }, [openStudioSheet]);
+
   useEffect(() => {
     if (edit === "1") {
-      router.replace(STUDIO_EDIT_ROUTE as Href);
+      handleOpenEdit();
     }
-  }, [edit, router]);
+  }, [edit, handleOpenEdit]);
   const emptyArgs = useMemo(() => ({}), []);
   const shouldLoadSettings = currentUser?.role === "studio";
 
@@ -222,8 +244,8 @@ export default function StudioProfileScreen() {
   );
 
   const handleRequestEdit = useCallback(() => {
-    router.push(STUDIO_EDIT_ROUTE as Href);
-  }, [router]);
+    handleOpenEdit();
+  }, [handleOpenEdit]);
 
   const handleOpenAccountSwitcher = useCallback(() => {
     void listRememberedDeviceAccounts().then((accounts) => {
@@ -242,8 +264,8 @@ export default function StudioProfileScreen() {
   }, [currentUser?._id, signOut]);
   const handleUseAnotherAccount = useCallback(() => {
     accountSwitcherSheetRef.current?.close();
-    router.push(STUDIO_ADD_ACCOUNT_ROUTE as Href);
-  }, [router]);
+    handleOpenAddAccount();
+  }, [handleOpenAddAccount]);
   const handleSelectRememberedAccount = useCallback(
     (accountId: string) => {
       accountSwitcherSheetRef.current?.close();
@@ -394,21 +416,18 @@ export default function StudioProfileScreen() {
     ],
   );
 
-  const profileSheetConfig = useMemo(
-    () => {
-      const sheetBackgroundColor = getMainTabSheetBackgroundColor({ color } as never);
-      return createContentDrivenTopSheetConfig({
-        collapsedContent: profileSheetContent,
-        padding: {
-          vertical: 0,
-          horizontal: 0,
-        },
-        backgroundColor: sheetBackgroundColor,
-        topInsetColor: sheetBackgroundColor,
-      });
-    },
-    [color, profileSheetContent],
-  );
+  const profileSheetConfig = useMemo(() => {
+    const sheetBackgroundColor = getMainTabSheetBackgroundColor({ color } as never);
+    return createContentDrivenTopSheetConfig({
+      collapsedContent: profileSheetContent,
+      padding: {
+        vertical: 0,
+        horizontal: 0,
+      },
+      backgroundColor: sheetBackgroundColor,
+      topInsetColor: sheetBackgroundColor,
+    });
+  }, [color, profileSheetContent]);
 
   const descriptorBody = (
     <>
@@ -476,7 +495,7 @@ export default function StudioProfileScreen() {
                     title={t("profile.settings.branches.title")}
                     subtitle={branchSummary}
                     icon="square.stack.3d.up.fill"
-                    onPress={() => router.push(STUDIO_BRANCHES_ROUTE as Href)}
+                    onPress={() => handleOpenBranches()}
                     showDivider
                   />
                   <ProfileSettingRow
@@ -603,9 +622,9 @@ export default function StudioProfileScreen() {
                           selected={autoExpireMinutesBefore === undefined}
                           compact
                           backgroundColor={color.surfaceElevated}
-                          selectedBackgroundColor="#CCFF00"
+                          selectedBackgroundColor={color.primary}
                           labelColor={color.text}
-                          selectedLabelColor="#161E00"
+                          selectedLabelColor={color.onPrimary}
                           onPress={() => handleAutoExpireMinutesBeforeChange(undefined)}
                         />
                         {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
@@ -615,9 +634,9 @@ export default function StudioProfileScreen() {
                             selected={autoExpireMinutesBefore === minutes}
                             compact
                             backgroundColor={color.surfaceElevated}
-                            selectedBackgroundColor="#CCFF00"
+                            selectedBackgroundColor={color.primary}
                             labelColor={color.text}
-                            selectedLabelColor="#161E00"
+                            selectedLabelColor={color.onPrimary}
                             onPress={() => handleAutoExpireMinutesBeforeChange(minutes)}
                           />
                         ))}
@@ -649,28 +668,28 @@ export default function StudioProfileScreen() {
                     title={t("profile.navigation.notifications")}
                     subtitle={notificationsSummary}
                     icon="bell.fill"
-                    onPress={() => router.push(STUDIO_NOTIFICATIONS_ROUTE as Href)}
+                    onPress={() => handleOpenNotifications()}
                     showDivider
                   />
                   <ProfileSettingRow
                     title={t("profile.settings.calendar.title")}
                     subtitle={calendarSummary}
                     icon="calendar.circle.fill"
-                    onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
+                    onPress={() => handleOpenCalendarSettings()}
                     showDivider
                   />
                   <ProfileSettingRow
                     title={t("profile.settings.paymentsPayouts")}
                     subtitle={t("profile.sections.paymentsDesc")}
                     icon="creditcard.fill"
-                    onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
+                    onPress={() => handleOpenPayments()}
                     showDivider
                   />
                   <ProfileSettingRow
                     title={t("profile.navigation.compliance")}
                     subtitle={complianceSummaryLabel}
                     icon="checkmark.shield.fill"
-                    onPress={() => router.push(STUDIO_COMPLIANCE_ROUTE as Href)}
+                    onPress={() => handleOpenCompliance()}
                     showDivider
                   />
                   <ProfileSettingRow
@@ -717,7 +736,7 @@ export default function StudioProfileScreen() {
                 title={t("profile.settings.branches.title")}
                 subtitle={branchSummary}
                 icon="square.stack.3d.up.fill"
-                onPress={() => router.push(STUDIO_BRANCHES_ROUTE as Href)}
+                onPress={() => handleOpenBranches()}
                 showDivider
               />
               <ProfileSettingRow
@@ -853,9 +872,9 @@ export default function StudioProfileScreen() {
                         selected={autoExpireMinutesBefore === minutes}
                         compact
                         backgroundColor={color.surfaceElevated}
-                        selectedBackgroundColor="#CCFF00"
+                        selectedBackgroundColor={color.primary}
                         labelColor={color.text}
-                        selectedLabelColor="#161E00"
+                        selectedLabelColor={color.onPrimary}
                         onPress={() => handleAutoExpireMinutesBeforeChange(minutes)}
                       />
                     ))}
@@ -887,28 +906,28 @@ export default function StudioProfileScreen() {
                 title={t("profile.navigation.notifications")}
                 subtitle={notificationsSummary}
                 icon="bell.fill"
-                onPress={() => router.push(STUDIO_NOTIFICATIONS_ROUTE as Href)}
+                onPress={() => handleOpenNotifications()}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.settings.calendar.title")}
                 subtitle={calendarSummary}
                 icon="calendar.circle.fill"
-                onPress={() => router.push(STUDIO_CALENDAR_SETTINGS_ROUTE as Href)}
+                onPress={() => handleOpenCalendarSettings()}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.navigation.compliance")}
                 subtitle={complianceSummaryLabel}
                 icon="checkmark.shield.fill"
-                onPress={() => router.push(STUDIO_COMPLIANCE_ROUTE as Href)}
+                onPress={() => handleOpenCompliance()}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.settings.paymentsPayouts")}
                 subtitle={t("profile.sections.paymentsDesc")}
                 icon="creditcard.fill"
-                onPress={() => router.push(STUDIO_PAYMENTS_ROUTE as Href)}
+                onPress={() => handleOpenPayments()}
                 showDivider
               />
               <Box style={{ padding: BrandSpacing.md }}>

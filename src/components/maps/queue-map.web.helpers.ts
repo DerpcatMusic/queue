@@ -1,4 +1,7 @@
-import { ZONE_OPTIONS } from "@/constants/zones";
+import {
+  getSelectableBoundary,
+  SELECTABLE_BOUNDARY_OPTIONS,
+} from "@/features/maps/boundaries/catalog";
 
 export type CoverageSlot = {
   left: number;
@@ -32,7 +35,7 @@ const COVERAGE_SLOTS: readonly CoverageSlot[] = [
 ] as const;
 
 export function getZone(zoneId: string) {
-  return ZONE_OPTIONS.find((zone) => zone.id === zoneId);
+  return getSelectableBoundary(zoneId);
 }
 
 export function buildCoverageNodes(
@@ -50,7 +53,7 @@ export function buildCoverageNodes(
     orderedSelected.splice(focusIndex, 1);
     orderedSelected.unshift(focusedZone);
   }
-  const previewZones = ZONE_OPTIONS.filter((zone) => !selectedSet.has(zone.id)).slice(
+  const previewZones = SELECTABLE_BOUNDARY_OPTIONS.filter((zone) => !selectedSet.has(zone.id)).slice(
     0,
     Math.max(0, COVERAGE_SLOTS.length - orderedSelected.length),
   );
@@ -69,7 +72,7 @@ export function buildCoverageNodes(
       rotate,
       zoneId: zone.id,
       label: zone.label.en,
-      seconds: zone.seconds,
+      seconds: zone.seconds ?? 0,
       selected: selectedSet.has(zone.id),
       focused: zone.id === focusZoneId,
     });

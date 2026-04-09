@@ -4,6 +4,11 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { getSportGenreKey } from "../constants";
 import { normalizeCapabilityTagArray, normalizeSportType } from "./domainValidation";
 import { resolveInternalAccessForUserId } from "./internalAccess";
+import {
+  getLatestStripeConnectedAccount,
+  isStripeIdentityVerified,
+  mapStripeConnectedAccountStatusToIdentityStatus,
+} from "./stripeIdentity";
 import { omitUndefined } from "./validation";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -20,6 +25,7 @@ export const STRICT_INSTRUCTOR_CERTIFICATE_SUBSPORT_ENFORCEMENT = true;
 
 export type InstructorComplianceSnapshot = {
   hasVerificationBypass: boolean;
+  hasApprovedIdentity: boolean;
   hasApprovedInsurance: boolean;
   approvedCertificateSports: Set<string>;
   approvedCertificateGenres: Set<string>;
@@ -187,6 +193,7 @@ export async function loadInstructorComplianceSnapshot(
 
   return {
     hasVerificationBypass: access?.verificationBypass === true,
+    hasApprovedIdentity: access?.verificationBypass === true,
     hasApprovedInsurance: insuranceRows.some((row) => isApprovedInsuranceActive(row, now)),
     approvedCertificateSports: getApprovedCertificateSports(approvedSpecialtyCapabilities),
     approvedCertificateGenres: getApprovedCertificateGenres(approvedSpecialtyCapabilities),
@@ -203,7 +210,7 @@ export function getInstructorGlobalJobActionBlockReasons(args: {
   }
 
   const reasons: InstructorJobActionBlockReason[] = [];
-  if (args.profile.diditVerificationStatus !== "approved") {
+  if (!args.compliance.hasApprovedIdentity) {
     reasons.push("identity_verification_required");
   }
   if (!args.compliance.hasApprovedInsurance) {
@@ -225,7 +232,7 @@ export function getInstructorJobActionBlockReason(args: {
     return undefined;
   }
 
-  if (args.profile.diditVerificationStatus !== "approved") {
+  if (!args.compliance.hasApprovedIdentity) {
     return "identity_verification_required";
   }
   if (!args.compliance.hasApprovedInsurance) {
@@ -274,7 +281,7 @@ export async function buildInstructorComplianceSummary(
     now: number;
   },
 ) {
-  const [publicCertificates, insuranceRows, certificateRows] = await Promise.all([
+  const [publicCertificates, insuranceRows, certificateRows, stripeAccount] = await Promise.all([
     getInstructorPublicCertificates(ctx, args.instructor._id),
     ctx.db
       .query("instructorInsurancePolicies")
@@ -284,12 +291,14 @@ export async function buildInstructorComplianceSummary(
       .query("instructorCertificates")
       .withIndex("by_instructor", (q) => q.eq("instructorId", args.instructor._id))
       .collect(),
+    getLatestStripeConnectedAccount(ctx, args.instructor.userId),
   ]);
 
   const approvedSpecialtyCapabilities = getApprovedSpecialtyCapabilities(certificateRows);
   const access = await resolveInternalAccessForUserId(ctx, args.instructor.userId);
   const compliance = {
     hasVerificationBypass: access.verificationBypass,
+    hasApprovedIdentity: access.verificationBypass || isStripeIdentityVerified(stripeAccount),
     hasApprovedInsurance: insuranceRows.some((row) => isApprovedInsuranceActive(row, args.now)),
     approvedCertificateSports: getApprovedCertificateSports(approvedSpecialtyCapabilities),
     approvedCertificateGenres: getApprovedCertificateGenres(approvedSpecialtyCapabilities),
@@ -314,8 +323,7 @@ export async function buildInstructorComplianceSummary(
   });
 
   return {
-    diditApproved:
-      access.verificationBypass || args.instructor.diditVerificationStatus === "approved",
+    diditApproved: compliance.hasApprovedIdentity,
     verificationBypassed: access.verificationBypass,
     canApplyToJobs: blockingReasons.length === 0,
     canBeAcceptedForJobs: blockingReasons.length === 0,
@@ -325,7 +333,7 @@ export async function buildInstructorComplianceSummary(
     pendingCertificateCount,
     pendingInsuranceCount,
     ...omitUndefined({
-      diditStatus: args.instructor.diditVerificationStatus,
+      diditStatus: mapStripeConnectedAccountStatusToIdentityStatus(stripeAccount?.status),
     }),
   };
 }

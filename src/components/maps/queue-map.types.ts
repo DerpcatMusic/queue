@@ -1,4 +1,5 @@
 import type { FeatureCollection } from "geojson";
+import type { BoundaryGeometrySource, BoundaryViewportTarget } from "@/features/maps/boundaries/types";
 
 export type QueueMapPin = {
   latitude: number;
@@ -37,10 +38,20 @@ export type QueueMapProps = {
   selectedStudioId?: string | null;
   selectedZoneIds: string[];
   focusZoneId: string | null;
+  selectedBoundaryIds?: string[];
+  focusBoundaryId?: string | null;
   isEditing?: boolean;
   zoneGeoJson?: FeatureCollection;
   zoneIdProperty?: string;
+  boundarySource?: BoundaryGeometrySource;
+  boundaryIdProperty?: string;
+  boundaryLabelPropertyCandidates?: string[];
+  boundaryInteractionBounds?: QueueMapBounds | null;
+  focusBoundaryBounds?: QueueMapBounds | null;
+  initialBoundaryViewport?: BoundaryViewportTarget | null;
+  visibleBounds?: QueueMapBounds | null;
   onPressZone?: (zoneId: string) => void;
+  onPressBoundary?: (boundaryId: string) => void;
   onPressMap?: (pin: QueueMapPin) => void;
   onPressStudio?: (studioId: string) => void;
   onUseGps?: () => void;

@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import type { StudioMapMarker } from "@/components/maps/queue-map.types";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -13,7 +15,7 @@ type StudioMapMarkerViewProps = {
   selected?: boolean;
 };
 
-export function StudioMapMarkerView({ studio, selected = false }: StudioMapMarkerViewProps) {
+const StudioMapMarkerViewBase = ({ studio, selected = false }: StudioMapMarkerViewProps) => {
   const { color } = useTheme();
   const markerSize = STUDIO_MAP_MARKER_SIZE;
   const outerSize = STUDIO_MAP_MARKER_OUTER_SIZE;
@@ -42,4 +44,14 @@ export function StudioMapMarkerView({ studio, selected = false }: StudioMapMarke
       />
     </Box>
   );
-}
+};
+
+export const StudioMapMarkerView = memo(StudioMapMarkerViewBase, (prev, next) => {
+  return (
+    prev.studio.studioId === next.studio.studioId &&
+    prev.studio.studioName === next.studio.studioName &&
+    prev.studio.logoImageUrl === next.studio.logoImageUrl &&
+    prev.studio.mapMarkerColor === next.studio.mapMarkerColor &&
+    prev.selected === next.selected
+  );
+});

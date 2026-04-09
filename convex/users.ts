@@ -8,10 +8,12 @@ import {
   requireIdentity,
   requireUserRole,
 } from "./lib/auth";
+import { resolveBoundaryAssignment } from "./lib/boundaries";
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
 import { loadInstructorEligibility } from "./lib/instructorEligibility";
 import { resolveInternalAccessForUser } from "./lib/internalAccess";
+import { isStripeIdentityVerified } from "./lib/stripeIdentity";
 import {
   DEFAULT_LESSON_REMINDER_MINUTES,
   getDefaultNotificationPreferencesForRole,
@@ -348,7 +350,7 @@ export const setMyRole = mutation({
     role: v.union(v.literal("instructor"), v.literal("studio")),
   },
   returns: v.id("users"),
-  handler: async (ctx, args) => {
+  handler: (async (ctx: any, args: any): Promise<any> => {
     const existing = await requireCurrentUser(ctx);
     const existingRoles = await resolveOwnedRoles(ctx, existing);
 
@@ -368,7 +370,7 @@ export const setMyRole = mutation({
     });
 
     return existing._id;
-  },
+  }) as any,
 });
 
 export const switchActiveRole = mutation({
@@ -380,7 +382,7 @@ export const switchActiveRole = mutation({
     role: appRoleValidator,
     roles: v.array(appRoleValidator),
   }),
-  handler: async (ctx, args) => {
+  handler: (async (ctx: any, args: any): Promise<any> => {
     const user = await requireCurrentUser(ctx);
     const roles = await resolveOwnedRoles(ctx, user);
 
@@ -399,7 +401,7 @@ export const switchActiveRole = mutation({
       role: args.role,
       roles,
     };
-  },
+  }) as any,
 });
 
 export const createMyProfileImageUploadSession = mutation({
@@ -1138,6 +1140,169 @@ export const getStudioPublicProfileForInstructor = query({
   },
 });
 
+export const getInstructorPublicProfileBySlug = query({
+  args: {
+    slug: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    // Public query — no auth required
+    const profile = await ctx.db
+      .query("instructorProfiles")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .first();
+
+    if (!profile) {
+      return null;
+    }
+
+    const [sportsRows, zoneRows, profileImageUrl, stripeAccounts] = await Promise.all([
+      ctx.db
+        .query("instructorSports")
+        .withIndex("by_instructor_id", (q) => q.eq("instructorId", profile._id))
+        .collect(),
+      ctx.db
+        .query("instructorZones")
+        .withIndex("by_instructor_id", (q) => q.eq("instructorId", profile._id))
+        .collect(),
+      profile.profileImageStorageId ? ctx.storage.getUrl(profile.profileImageStorageId) : null,
+      ctx.db
+        .query("connectedAccountsV2")
+        .withIndex("by_user", (q) => q.eq("userId", profile.userId))
+        .order("desc")
+        .take(10),
+    ]);
+    const stripeAccount = stripeAccounts.find((account) => account.provider === "stripe") ?? null;
+
+    return {
+      instructorId: profile._id,
+      displayName: profile.displayName,
+      sports: [...new Set(sportsRows.map((row) => row.sport))].sort(),
+      zones: [...new Set(zoneRows.map((row) => row.zone))].sort(),
+      isVerified: isStripeIdentityVerified(stripeAccount),
+      slug: profile.slug,
+      ...omitUndefined({
+        bio: profile.bio,
+        profileImageUrl: profileImageUrl ?? undefined,
+        hourlyRateExpectation: profile.hourlyRateExpectation,
+      }),
+    };
+  },
+});
+
+/**
+ * Public query: get instructor profile redirect info by ULID.
+ * Returns { slug } if found so old /profiles/instructors/[ulid] URLs
+ * can redirect to the new /instructor/{slug} URL.
+ */
+export const getInstructorProfileRedirect = query({
+  args: {
+    instructorId: v.id("instructorProfiles"),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      slug: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Public query — no auth required
+    const profile = await ctx.db.get(args.instructorId);
+    if (!profile || !profile.slug) {
+      return null;
+    }
+    return { slug: profile.slug };
+  },
+});
+
+/**
+ * Public query: get studio profile redirect info by ULID.
+ * Returns { slug } if found so old /profiles/studios/[ulid] URLs
+ * can redirect to the new /studio/[slug] URL.
+ */
+export const getStudioProfileRedirect = query({
+  args: {
+    studioId: v.id("studioProfiles"),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      slug: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    // Public query — no auth required
+    const studio = await ctx.db.get(args.studioId);
+    if (!studio || !studio.slug) {
+      return null;
+    }
+    return { slug: studio.slug };
+  },
+});
+
+export const getStudioPublicProfileBySlug = query({
+  args: {
+    slug: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    // Public query — no auth required
+    const studio = await ctx.db
+      .query("studioProfiles")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .first();
+
+    if (!studio) {
+      return null;
+    }
+
+    const [sportsRows, branches, profileImageUrl, primaryBranch] = await Promise.all([
+      ctx.db
+        .query("studioSports")
+        .withIndex("by_studio_id", (q) => q.eq("studioId", studio._id))
+        .collect(),
+      ctx.db
+        .query("studioBranches")
+        .withIndex("by_studio_id", (q) => q.eq("studioId", studio._id))
+        .collect(),
+      studio.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
+      ctx.db
+        .query("studioBranches")
+        .withIndex("by_studio_primary", (q) => q.eq("studioId", studio._id).eq("isPrimary", true))
+        .first(),
+    ]);
+
+    return {
+      studioId: studio._id,
+      studioName: studio.studioName,
+      address: primaryBranch?.address ?? studio.address,
+      zone: primaryBranch?.zone ?? studio.zone,
+      sports: [...new Set(sportsRows.map((row) => row.sport))].sort(),
+      branches: branches.map((branch) => ({
+        branchId: branch._id,
+        studioId: branch.studioId,
+        name: branch.name,
+        address: branch.address,
+        zone: branch.zone,
+        isPrimary: branch.isPrimary,
+        status: branch.status,
+        ...omitUndefined({
+          latitude: branch.latitude,
+          longitude: branch.longitude,
+          contactPhone: branch.contactPhone,
+        }),
+      })),
+      slug: studio.slug,
+      isVerified: studio.diditVerificationStatus === "approved",
+      ...omitUndefined({
+        bio: studio.bio,
+        profileImageUrl: profileImageUrl ?? undefined,
+        contactPhone: primaryBranch?.contactPhone ?? studio.contactPhone,
+      }),
+    };
+  },
+});
+
 export const getInstructorPublicProfileForInstructor = query({
   args: {
     instructorId: v.id("instructorProfiles"),
@@ -1166,7 +1331,7 @@ export const getInstructorPublicProfileForInstructor = query({
       return null;
     }
 
-    const [sportsRows, zoneRows, profileImageUrl] = await Promise.all([
+    const [sportsRows, zoneRows, profileImageUrl, stripeAccounts] = await Promise.all([
       ctx.db
         .query("instructorSports")
         .withIndex("by_instructor_id", (q) => q.eq("instructorId", args.instructorId))
@@ -1176,14 +1341,20 @@ export const getInstructorPublicProfileForInstructor = query({
         .withIndex("by_instructor_id", (q) => q.eq("instructorId", args.instructorId))
         .collect(),
       profile.profileImageStorageId ? ctx.storage.getUrl(profile.profileImageStorageId) : null,
+      ctx.db
+        .query("connectedAccountsV2")
+        .withIndex("by_user", (q) => q.eq("userId", profile.userId))
+        .order("desc")
+        .take(10),
     ]);
+    const stripeAccount = stripeAccounts.find((account) => account.provider === "stripe") ?? null;
 
     return {
       instructorId: profile._id,
       displayName: profile.displayName,
       sports: [...new Set(sportsRows.map((row) => row.sport))].sort(),
       zones: [...new Set(zoneRows.map((row) => row.zone))].sort(),
-      isVerified: profile.diditVerificationStatus === "approved",
+      isVerified: isStripeIdentityVerified(stripeAccount),
       ...omitUndefined({
         bio: profile.bio,
         profileImageUrl: profileImageUrl ?? undefined,
@@ -1242,6 +1413,8 @@ export const updateMyStudioSettings = mutation({
     addressFloor: v.optional(v.string()),
     addressPostalCode: v.optional(v.string()),
     zone: v.string(),
+    boundaryProvider: v.optional(v.string()),
+    boundaryId: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
@@ -1283,6 +1456,13 @@ export const updateMyStudioSettings = mutation({
       "AddressPostalCode",
     );
     const zone = normalizeZoneId(args.zone);
+    const boundaryAssignment = resolveBoundaryAssignment(
+      omitUndefined({
+        provider: args.boundaryProvider,
+        boundaryId: args.boundaryId,
+        legacyZone: zone,
+      }),
+    );
     const contactPhone = normalizeOptionalString(
       args.contactPhone,
       MAX_PHONE_LENGTH,
@@ -1315,6 +1495,7 @@ export const updateMyStudioSettings = mutation({
       studioName,
       address,
       zone,
+      ...boundaryAssignment,
       ...omitUndefined({
         contactPhone,
         latitude,
@@ -1333,6 +1514,7 @@ export const updateMyStudioSettings = mutation({
     await ctx.db.patch("studioBranches", primaryBranch._id, {
       address,
       zone,
+      ...boundaryAssignment,
       ...omitUndefined({
         contactPhone,
         latitude,

@@ -71,3 +71,33 @@ export function buildInstructorProfileRoute(args: {
   }
   return `/profiles/instructors/${encodedInstructorId}` as Href;
 }
+
+/**
+ * Build a public short-link URL for an instructor profile.
+ * Use this for shareable links shown to users.
+ *
+ * On web:     https://join-queue.com/instructor/{slug}
+ * In native:  queue://instructor/{slug} (via universal link)
+ */
+export function buildInstructorPublicUrl(args: { slug: string }): string {
+  return `https://join-queue.com/instructor/${args.slug}`;
+}
+
+/**
+ * Build a public short-link URL for a studio profile.
+ */
+export function buildStudioPublicUrl(args: { slug: string }): string {
+  return `https://join-queue.com/studio/${args.slug}`;
+}
+
+/**
+ * Build a public deep-link href for expo-router.
+ * Returns a relative href that opens the public profile in-app.
+ */
+export function buildInstructorPublicHref(args: { slug: string }): Href {
+  return `/instructor/${args.slug}` as Href;
+}
+
+export function buildStudioPublicHref(args: { slug: string }): Href {
+  return `/studio/${args.slug}` as Href;
+}

@@ -1,8 +1,8 @@
 import type { PropsWithChildren } from "react";
 import { type StyleProp, type ViewStyle } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
-import { useTheme } from "@/hooks/use-theme";
 import { Box, Text } from "@/primitives";
 
 export function useHomeDashboardLayout() {
@@ -20,71 +20,58 @@ export function useHomeDashboardLayout() {
   };
 }
 
-type HomeSurfaceProps = PropsWithChildren<{
-  tone?: "surface" | "alt" | "primary";
+type HomeSurfaceTone = "surface" | "alt" | "primary";
+
+const surfaceStyles = StyleSheet.create((theme) => ({
+  base: {
+    borderRadius: BrandRadius.card,
+    borderCurve: "continuous",
+    borderWidth: 0,
+    borderColor: "transparent",
+  },
+  tone_surface: {
+    backgroundColor: theme.color.surface,
+    ...theme.shadow.card,
+  },
+  tone_alt: {
+    backgroundColor: theme.color.surfaceAlt,
+    ...theme.shadow.card,
+  },
+  tone_primary: {
+    backgroundColor: theme.color.primarySubtle,
+    ...theme.shadow.card,
+  },
+}));
+
+export function HomeSurface({
+  children,
+  tone = "surface",
+  style,
+}: PropsWithChildren<{
+  tone?: HomeSurfaceTone;
   style?: StyleProp<ViewStyle>;
-}>;
-
-export function HomeSurface({ children, tone = "surface", style }: HomeSurfaceProps) {
-  const theme = useTheme();
-  const { color: palette } = theme;
-  const isLight = theme.scheme === "light";
-  const backgroundColor =
-    tone === "primary"
-      ? isLight
-        ? palette.primarySubtle
-        : palette.primary
-      : tone === "surface"
-        ? palette.surface
-        : palette.surfaceAlt;
-
-  return (
-    <Box
-      style={[
-        {
-          borderRadius: BrandRadius.card,
-          borderCurve: "continuous",
-          backgroundColor,
-          borderWidth: 0,
-          borderColor: "transparent",
-          shadowColor: isLight ? palette.shadow : "transparent",
-          shadowOpacity: isLight ? 1 : 0,
-          shadowRadius: isLight ? 16 : 0,
-          shadowOffset: isLight ? { width: 0, height: 10 } : { width: 0, height: 0 },
-          elevation: isLight ? 0 : 0,
-        },
-        style,
-      ]}
-    >
-      {children}
-    </Box>
-  );
+}>) {
+  return <Box style={[surfaceStyles.base, surfaceStyles[`tone_${tone}`], style]}>{children}</Box>;
 }
 
+const headingStyles = StyleSheet.create((theme) => ({
+  eyebrow: {
+    ...BrandType.microItalic,
+    color: theme.color.textMuted,
+  },
+  title: {
+    ...BrandType.headingItalic,
+    fontSize: 14,
+    color: theme.color.primary,
+    transform: [{ skewX: "-6deg" }],
+  },
+}));
+
 export function HomeSectionHeading({ title, eyebrow }: { title: string; eyebrow?: string }) {
-  const { color: palette } = useTheme();
   return (
     <Box style={{ gap: BrandSpacing.xs }}>
-      {eyebrow ? (
-        <Text
-          style={{
-            ...BrandType.microItalic,
-            color: palette.textMuted,
-          }}
-        >
-          {eyebrow}
-        </Text>
-      ) : null}
-      <Text
-        style={{
-          ...BrandType.headingItalic,
-          fontSize: 14,
-          color: palette.primary,
-          transform: [{ skewX: "-6deg" }],
-        }}
-      >
-        {title.toUpperCase()}
-      </Text>
+      {eyebrow ? <Text style={headingStyles.eyebrow}>{eyebrow}</Text> : null}
+      <Text style={headingStyles.title}>{title.toUpperCase()}</Text>
     </Box>
   );
 }

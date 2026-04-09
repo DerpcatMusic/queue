@@ -2,7 +2,7 @@ import type { TFunction } from "i18next";
 import { MapSelectedZonesStrip } from "@/components/map-tab/map/map-selected-zones-strip";
 import { NativeSearchField } from "@/components/ui/native-search-field";
 import { BrandSpacing, type getMapBrandPalette } from "@/constants/brand";
-import type { ZoneOption } from "@/constants/zones";
+import type { SelectableBoundary } from "@/features/maps/boundaries/catalog";
 import { useTheme } from "@/hooks/use-theme";
 import { Box } from "@/primitives";
 
@@ -11,7 +11,7 @@ type MapSheetHeaderProps = {
   onChangeSearch?: (text: string) => void;
   onFocusSearch?: () => void;
   mapPalette?: ReturnType<typeof getMapBrandPalette>;
-  selectedZones?: ZoneOption[];
+  selectedZones?: SelectableBoundary[];
   onPressZone?: (zoneId: string) => void;
   t?: TFunction;
   zoneLanguage?: "en" | "he";

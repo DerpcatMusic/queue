@@ -10,6 +10,7 @@
 
 import type * as access from "../access.js";
 import type * as auth from "../auth.js";
+import type * as boundaries from "../boundaries.js";
 import type * as calendar from "../calendar.js";
 import type * as calendarNode from "../calendarNode.js";
 import type * as compliance from "../compliance.js";
@@ -18,23 +19,21 @@ import type * as complianceStudio from "../complianceStudio.js";
 import type * as components_ from "../components.js";
 import type * as constants from "../constants.js";
 import type * as crons from "../crons.js";
-import type * as didit from "../didit.js";
 import type * as home from "../home.js";
 import type * as homeRead from "../homeRead.js";
 import type * as http from "../http.js";
 import type * as inbox from "../inbox.js";
 import type * as instructorZones from "../instructorZones.js";
-import type * as integrations_airwallex_adapters_checkout from "../integrations/airwallex/adapters/checkout.js";
-import type * as integrations_airwallex_auth from "../integrations/airwallex/auth.js";
-import type * as integrations_airwallex_client from "../integrations/airwallex/client.js";
-import type * as integrations_airwallex_config from "../integrations/airwallex/config.js";
 import type * as integrations_payment_provider from "../integrations/payment_provider.js";
 import type * as integrations_providerAdapterV2 from "../integrations/providerAdapterV2.js";
+import type * as integrations_stripe_config from "../integrations/stripe/config.js";
+import type * as integrations_stripe_connectV2 from "../integrations/stripe/connectV2.js";
 import type * as internalAccess from "../internalAccess.js";
 import type * as invoicing from "../invoicing.js";
 import type * as jobs from "../jobs.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_authDedupe from "../lib/authDedupe.js";
+import type * as lib_boundaries from "../lib/boundaries.js";
 import type * as lib_calendarCrypto from "../lib/calendarCrypto.js";
 import type * as lib_calendarShared from "../lib/calendarShared.js";
 import type * as lib_domainValidation from "../lib/domainValidation.js";
@@ -46,6 +45,8 @@ import type * as lib_marketplace from "../lib/marketplace.js";
 import type * as lib_notificationPreferences from "../lib/notificationPreferences.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_resendDevRouting from "../lib/resendDevRouting.js";
+import type * as lib_slug from "../lib/slug.js";
+import type * as lib_stripeIdentity from "../lib/stripeIdentity.js";
 import type * as lib_studioBranches from "../lib/studioBranches.js";
 import type * as lib_studioCompliance from "../lib/studioCompliance.js";
 import type * as lib_validation from "../lib/validation.js";
@@ -59,12 +60,11 @@ import type * as paymentsV2Actions from "../paymentsV2Actions.js";
 import type * as resendMagicLink from "../resendMagicLink.js";
 import type * as resendOtp from "../resendOtp.js";
 import type * as security from "../security.js";
+import type * as stripe from "../stripe.js";
 import type * as studioBranches from "../studioBranches.js";
 import type * as userPushNotifications from "../userPushNotifications.js";
 import type * as users from "../users.js";
 import type * as webhookSecurity from "../webhookSecurity.js";
-import type * as webhooksAirwallex from "../webhooksAirwallex.js";
-import type * as webhooksDidit from "../webhooksDidit.js";
 
 import type {
   ApiFromModules,
@@ -75,6 +75,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   access: typeof access;
   auth: typeof auth;
+  boundaries: typeof boundaries;
   calendar: typeof calendar;
   calendarNode: typeof calendarNode;
   compliance: typeof compliance;
@@ -83,23 +84,21 @@ declare const fullApi: ApiFromModules<{
   components: typeof components_;
   constants: typeof constants;
   crons: typeof crons;
-  didit: typeof didit;
   home: typeof home;
   homeRead: typeof homeRead;
   http: typeof http;
   inbox: typeof inbox;
   instructorZones: typeof instructorZones;
-  "integrations/airwallex/adapters/checkout": typeof integrations_airwallex_adapters_checkout;
-  "integrations/airwallex/auth": typeof integrations_airwallex_auth;
-  "integrations/airwallex/client": typeof integrations_airwallex_client;
-  "integrations/airwallex/config": typeof integrations_airwallex_config;
   "integrations/payment_provider": typeof integrations_payment_provider;
   "integrations/providerAdapterV2": typeof integrations_providerAdapterV2;
+  "integrations/stripe/config": typeof integrations_stripe_config;
+  "integrations/stripe/connectV2": typeof integrations_stripe_connectV2;
   internalAccess: typeof internalAccess;
   invoicing: typeof invoicing;
   jobs: typeof jobs;
   "lib/auth": typeof lib_auth;
   "lib/authDedupe": typeof lib_authDedupe;
+  "lib/boundaries": typeof lib_boundaries;
   "lib/calendarCrypto": typeof lib_calendarCrypto;
   "lib/calendarShared": typeof lib_calendarShared;
   "lib/domainValidation": typeof lib_domainValidation;
@@ -111,6 +110,8 @@ declare const fullApi: ApiFromModules<{
   "lib/notificationPreferences": typeof lib_notificationPreferences;
   "lib/rateLimit": typeof lib_rateLimit;
   "lib/resendDevRouting": typeof lib_resendDevRouting;
+  "lib/slug": typeof lib_slug;
+  "lib/stripeIdentity": typeof lib_stripeIdentity;
   "lib/studioBranches": typeof lib_studioBranches;
   "lib/studioCompliance": typeof lib_studioCompliance;
   "lib/validation": typeof lib_validation;
@@ -124,12 +125,11 @@ declare const fullApi: ApiFromModules<{
   resendMagicLink: typeof resendMagicLink;
   resendOtp: typeof resendOtp;
   security: typeof security;
+  stripe: typeof stripe;
   studioBranches: typeof studioBranches;
   userPushNotifications: typeof userPushNotifications;
   users: typeof users;
   webhookSecurity: typeof webhookSecurity;
-  webhooksAirwallex: typeof webhooksAirwallex;
-  webhooksDidit: typeof webhooksDidit;
 }>;
 
 /**
@@ -905,6 +905,440 @@ export declare const components: {
     };
     time: {
       getServerTime: FunctionReference<"mutation", "internal", {}, number>;
+    };
+  };
+  stripe: {
+    private: {
+      handleCheckoutSessionCompleted: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          metadata?: any;
+          mode: string;
+          stripeCheckoutSessionId: string;
+          stripeCustomerId?: string;
+        },
+        null
+      >;
+      handleCustomerCreated: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          email?: string;
+          metadata?: any;
+          name?: string;
+          stripeCustomerId: string;
+        },
+        null
+      >;
+      handleCustomerUpdated: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          email?: string;
+          metadata?: any;
+          name?: string;
+          stripeCustomerId: string;
+        },
+        null
+      >;
+      handleInvoiceCreated: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          amountDue: number;
+          amountPaid: number;
+          created: number;
+          status: string;
+          stripeCustomerId: string;
+          stripeInvoiceId: string;
+          stripeSubscriptionId?: string;
+        },
+        null
+      >;
+      handleInvoicePaid: FunctionReference<
+        "mutation",
+        "internal",
+        { amountPaid: number; stripeInvoiceId: string },
+        null
+      >;
+      handleInvoicePaymentFailed: FunctionReference<
+        "mutation",
+        "internal",
+        { stripeInvoiceId: string },
+        null
+      >;
+      handlePaymentIntentSucceeded: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          amount: number;
+          created: number;
+          currency: string;
+          metadata?: any;
+          status: string;
+          stripeCustomerId?: string;
+          stripePaymentIntentId: string;
+        },
+        null
+      >;
+      handleSubscriptionCreated: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          cancelAt?: number;
+          cancelAtPeriodEnd: boolean;
+          currentPeriodEnd: number;
+          metadata?: any;
+          priceId: string;
+          quantity?: number;
+          status: string;
+          stripeCustomerId: string;
+          stripeSubscriptionId: string;
+        },
+        null
+      >;
+      handleSubscriptionDeleted: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          cancelAt?: number;
+          cancelAtPeriodEnd?: boolean;
+          currentPeriodEnd?: number;
+          stripeSubscriptionId: string;
+        },
+        null
+      >;
+      handleSubscriptionUpdated: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          cancelAt?: number;
+          cancelAtPeriodEnd: boolean;
+          currentPeriodEnd: number;
+          metadata?: any;
+          priceId?: string;
+          quantity?: number;
+          status: string;
+          stripeSubscriptionId: string;
+        },
+        null
+      >;
+      listSubscriptionsWithCreationTime: FunctionReference<
+        "query",
+        "internal",
+        { stripeCustomerId: string },
+        Array<{
+          _creationTime: number;
+          status: string;
+          stripeCustomerId: string;
+          stripeSubscriptionId: string;
+        }>
+      >;
+      updatePaymentCustomer: FunctionReference<
+        "mutation",
+        "internal",
+        { stripeCustomerId: string; stripePaymentIntentId: string },
+        null
+      >;
+      updateSubscriptionQuantityInternal: FunctionReference<
+        "mutation",
+        "internal",
+        { quantity: number; stripeSubscriptionId: string },
+        null
+      >;
+    };
+    public: {
+      createOrUpdateCustomer: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          email?: string;
+          metadata?: any;
+          name?: string;
+          stripeCustomerId: string;
+        },
+        string
+      >;
+      getCheckoutSession: FunctionReference<
+        "query",
+        "internal",
+        { stripeCheckoutSessionId: string },
+        {
+          metadata?: any;
+          mode: string;
+          status: string;
+          stripeCheckoutSessionId: string;
+          stripeCustomerId?: string;
+        } | null
+      >;
+      getCustomer: FunctionReference<
+        "query",
+        "internal",
+        { stripeCustomerId: string },
+        {
+          email?: string;
+          metadata?: any;
+          name?: string;
+          stripeCustomerId: string;
+          userId?: string;
+        } | null
+      >;
+      getCustomerByEmail: FunctionReference<
+        "query",
+        "internal",
+        { email: string },
+        {
+          email?: string;
+          metadata?: any;
+          name?: string;
+          stripeCustomerId: string;
+          userId?: string;
+        } | null
+      >;
+      getCustomerByUserId: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        {
+          email?: string;
+          metadata?: any;
+          name?: string;
+          stripeCustomerId: string;
+          userId?: string;
+        } | null
+      >;
+      getPayment: FunctionReference<
+        "query",
+        "internal",
+        { stripePaymentIntentId: string },
+        {
+          amount: number;
+          created: number;
+          currency: string;
+          metadata?: any;
+          orgId?: string;
+          status: string;
+          stripeCustomerId?: string;
+          stripePaymentIntentId: string;
+          userId?: string;
+        } | null
+      >;
+      getSubscription: FunctionReference<
+        "query",
+        "internal",
+        { stripeSubscriptionId: string },
+        {
+          cancelAt?: number;
+          cancelAtPeriodEnd: boolean;
+          currentPeriodEnd: number;
+          metadata?: any;
+          orgId?: string;
+          priceId: string;
+          quantity?: number;
+          status: string;
+          stripeCustomerId: string;
+          stripeSubscriptionId: string;
+          userId?: string;
+        } | null
+      >;
+      getSubscriptionByOrgId: FunctionReference<
+        "query",
+        "internal",
+        { orgId: string },
+        {
+          cancelAt?: number;
+          cancelAtPeriodEnd: boolean;
+          currentPeriodEnd: number;
+          metadata?: any;
+          orgId?: string;
+          priceId: string;
+          quantity?: number;
+          status: string;
+          stripeCustomerId: string;
+          stripeSubscriptionId: string;
+          userId?: string;
+        } | null
+      >;
+      listCheckoutSessions: FunctionReference<
+        "query",
+        "internal",
+        { stripeCustomerId: string },
+        Array<{
+          metadata?: any;
+          mode: string;
+          status: string;
+          stripeCheckoutSessionId: string;
+          stripeCustomerId?: string;
+        }>
+      >;
+      listInvoices: FunctionReference<
+        "query",
+        "internal",
+        { stripeCustomerId: string },
+        Array<{
+          amountDue: number;
+          amountPaid: number;
+          created: number;
+          orgId?: string;
+          status: string;
+          stripeCustomerId: string;
+          stripeInvoiceId: string;
+          stripeSubscriptionId?: string;
+          userId?: string;
+        }>
+      >;
+      listInvoicesByOrgId: FunctionReference<
+        "query",
+        "internal",
+        { orgId: string },
+        Array<{
+          amountDue: number;
+          amountPaid: number;
+          created: number;
+          orgId?: string;
+          status: string;
+          stripeCustomerId: string;
+          stripeInvoiceId: string;
+          stripeSubscriptionId?: string;
+          userId?: string;
+        }>
+      >;
+      listInvoicesByUserId: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        Array<{
+          amountDue: number;
+          amountPaid: number;
+          created: number;
+          orgId?: string;
+          status: string;
+          stripeCustomerId: string;
+          stripeInvoiceId: string;
+          stripeSubscriptionId?: string;
+          userId?: string;
+        }>
+      >;
+      listPayments: FunctionReference<
+        "query",
+        "internal",
+        { stripeCustomerId: string },
+        Array<{
+          amount: number;
+          created: number;
+          currency: string;
+          metadata?: any;
+          orgId?: string;
+          status: string;
+          stripeCustomerId?: string;
+          stripePaymentIntentId: string;
+          userId?: string;
+        }>
+      >;
+      listPaymentsByOrgId: FunctionReference<
+        "query",
+        "internal",
+        { orgId: string },
+        Array<{
+          amount: number;
+          created: number;
+          currency: string;
+          metadata?: any;
+          orgId?: string;
+          status: string;
+          stripeCustomerId?: string;
+          stripePaymentIntentId: string;
+          userId?: string;
+        }>
+      >;
+      listPaymentsByUserId: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        Array<{
+          amount: number;
+          created: number;
+          currency: string;
+          metadata?: any;
+          orgId?: string;
+          status: string;
+          stripeCustomerId?: string;
+          stripePaymentIntentId: string;
+          userId?: string;
+        }>
+      >;
+      listSubscriptions: FunctionReference<
+        "query",
+        "internal",
+        { stripeCustomerId: string },
+        Array<{
+          cancelAt?: number;
+          cancelAtPeriodEnd: boolean;
+          currentPeriodEnd: number;
+          metadata?: any;
+          orgId?: string;
+          priceId: string;
+          quantity?: number;
+          status: string;
+          stripeCustomerId: string;
+          stripeSubscriptionId: string;
+          userId?: string;
+        }>
+      >;
+      listSubscriptionsByOrgId: FunctionReference<
+        "query",
+        "internal",
+        { orgId: string },
+        Array<{
+          cancelAt?: number;
+          cancelAtPeriodEnd: boolean;
+          currentPeriodEnd: number;
+          metadata?: any;
+          orgId?: string;
+          priceId: string;
+          quantity?: number;
+          status: string;
+          stripeCustomerId: string;
+          stripeSubscriptionId: string;
+          userId?: string;
+        }>
+      >;
+      listSubscriptionsByUserId: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        Array<{
+          cancelAt?: number;
+          cancelAtPeriodEnd: boolean;
+          currentPeriodEnd: number;
+          metadata?: any;
+          orgId?: string;
+          priceId: string;
+          quantity?: number;
+          status: string;
+          stripeCustomerId: string;
+          stripeSubscriptionId: string;
+          userId?: string;
+        }>
+      >;
+      updateSubscriptionMetadata: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          metadata: any;
+          orgId?: string;
+          stripeSubscriptionId: string;
+          userId?: string;
+        },
+        null
+      >;
+      updateSubscriptionQuantity: FunctionReference<
+        "action",
+        "internal",
+        { quantity: number; stripeSubscriptionId: string },
+        null
+      >;
     };
   };
 };

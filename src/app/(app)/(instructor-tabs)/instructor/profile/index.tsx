@@ -1,8 +1,7 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import type BottomSheet from "@gorhom/bottom-sheet";
 import { useQuery } from "convex/react";
-import type { Href } from "expo-router";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -27,6 +26,7 @@ import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profil
 import { KitSwitch } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
+import { useSheetContext } from "@/contexts/sheet-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 
@@ -44,7 +44,6 @@ import {
   toDeviceAccountIdentity,
   validateSessionAfterSwitch,
 } from "@/modules/session/device-account-store";
-import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import { Box } from "@/primitives";
 
 const ROLE_TRANSLATION_KEYS = {
@@ -53,15 +52,6 @@ const ROLE_TRANSLATION_KEYS = {
   studio: "profile.roles.studio",
   admin: "profile.roles.admin",
 } as const;
-const INSTRUCTOR_PROFILE_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.profile);
-const INSTRUCTOR_COMPLIANCE_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/compliance` as const;
-const INSTRUCTOR_SPORTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/sports` as const;
-const INSTRUCTOR_LOCATION_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/location` as const;
-const INSTRUCTOR_NOTIFICATIONS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/notifications` as const;
-const INSTRUCTOR_CALENDAR_SETTINGS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/calendar-settings` as const;
-const INSTRUCTOR_PAYMENTS_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/payments` as const;
-const INSTRUCTOR_ADD_ACCOUNT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/add-account` as const;
-const INSTRUCTOR_EDIT_ROUTE = `${INSTRUCTOR_PROFILE_ROUTE}/edit` as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
   if (sports.length === 0) {
@@ -81,18 +71,53 @@ export default function InstructorProfileScreen() {
   const { preference, setPreference } = useThemePreference();
   const theme = useTheme();
   const { t, i18n } = useTranslation();
-  const router = useRouter();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const accountSwitcherSheetRef = useRef<BottomSheet>(null);
   const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
 
+  // Sheet context for opening BottomSheets instead of routes
+  const { openInstructorSheet } = useSheetContext();
+
+  // Sheet openers - using BottomSheets instead of routes
+  const handleOpenPayments = useCallback(() => {
+    openInstructorSheet("payments");
+  }, [openInstructorSheet]);
+
+  const handleOpenSports = useCallback(() => {
+    openInstructorSheet("sports");
+  }, [openInstructorSheet]);
+
+  const handleOpenLocation = useCallback(() => {
+    openInstructorSheet("location");
+  }, [openInstructorSheet]);
+
+  const handleOpenCompliance = useCallback(() => {
+    openInstructorSheet("compliance");
+  }, [openInstructorSheet]);
+
+  const handleOpenCalendarSettings = useCallback(() => {
+    openInstructorSheet("calendar-settings");
+  }, [openInstructorSheet]);
+
+  const handleOpenEdit = useCallback(() => {
+    openInstructorSheet("edit");
+  }, [openInstructorSheet]);
+
+  const handleOpenNotifications = useCallback(() => {
+    openInstructorSheet("notifications");
+  }, [openInstructorSheet]);
+
+  const handleOpenAddAccount = useCallback(() => {
+    openInstructorSheet("add-account");
+  }, [openInstructorSheet]);
+
   useEffect(() => {
     if (edit === "1") {
-      router.replace(INSTRUCTOR_EDIT_ROUTE as Href);
+      handleOpenEdit();
     }
-  }, [edit, router]);
+  }, [edit, handleOpenEdit]);
   const emptyArgs = useMemo(() => ({}), []);
   const shouldLoadSettings = currentUser?.role === "instructor";
 
@@ -112,8 +137,8 @@ export default function InstructorProfileScreen() {
   const complianceSummary = instructorAccessSnapshot?.compliance.summary;
 
   const handleRequestEdit = useCallback(() => {
-    router.push(INSTRUCTOR_EDIT_ROUTE as Href);
-  }, [router]);
+    handleOpenEdit();
+  }, [handleOpenEdit]);
 
   const handleOpenAccountSwitcher = useCallback(() => {
     void listRememberedDeviceAccounts().then((accounts) => {
@@ -132,8 +157,8 @@ export default function InstructorProfileScreen() {
   }, [currentUser?._id, signOut]);
   const handleUseAnotherAccount = useCallback(() => {
     accountSwitcherSheetRef.current?.close();
-    router.push(INSTRUCTOR_ADD_ACCOUNT_ROUTE as Href);
-  }, [router]);
+    handleOpenAddAccount();
+  }, [handleOpenAddAccount]);
   const handleSelectRememberedAccount = useCallback(
     (accountId: string) => {
       accountSwitcherSheetRef.current?.close();
@@ -210,28 +235,28 @@ export default function InstructorProfileScreen() {
     !identityVerified
       ? {
           label: t("profile.setup.verifyIdentity"),
-          onPress: () => router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href),
+          onPress: () => handleOpenCompliance(),
           icon: "checkmark.circle.fill" as const,
         }
       : null,
     !bankConnected
       ? {
           label: t("profile.setup.connectPayouts"),
-          onPress: () => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href),
+          onPress: () => handleOpenPayments(),
           icon: "sparkles" as const,
         }
       : null,
     sportsCount === 0
       ? {
           label: t("profile.setup.chooseSports"),
-          onPress: () => router.push(INSTRUCTOR_SPORTS_ROUTE as Href),
+          onPress: () => handleOpenSports(),
           icon: "sparkles" as const,
         }
       : null,
     !provider || provider === "none"
       ? {
           label: t("profile.setup.linkCalendar"),
-          onPress: () => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href),
+          onPress: () => handleOpenCalendarSettings(),
           icon: "calendar.badge.clock" as const,
         }
       : null,
@@ -289,21 +314,18 @@ export default function InstructorProfileScreen() {
     ],
   );
 
-  const profileSheetConfig = useMemo(
-    () => {
-      const sheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
-      return createContentDrivenTopSheetConfig({
-        collapsedContent: profileSheetContent,
-        padding: {
-          vertical: 0,
-          horizontal: 0,
-        },
-        backgroundColor: sheetBackgroundColor,
-        topInsetColor: sheetBackgroundColor,
-      });
-    },
-    [profileSheetContent, theme],
-  );
+  const profileSheetConfig = useMemo(() => {
+    const sheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
+    return createContentDrivenTopSheetConfig({
+      collapsedContent: profileSheetContent,
+      padding: {
+        vertical: 0,
+        horizontal: 0,
+      },
+      backgroundColor: sheetBackgroundColor,
+      topInsetColor: sheetBackgroundColor,
+    });
+  }, [profileSheetContent, theme]);
 
   const descriptorBody = (
     <>
@@ -374,14 +396,14 @@ export default function InstructorProfileScreen() {
                     title={t("profile.settings.sports.title")}
                     subtitle={sportsSummary}
                     icon="gym.bag.fill"
-                    onPress={() => router.push(INSTRUCTOR_SPORTS_ROUTE as Href)}
+                    onPress={() => handleOpenSports()}
                     showDivider
                   />
                   <ProfileSettingRow
                     title={t("profile.settings.location.title")}
                     subtitle={locationSummary}
                     icon="mappin.and.ellipse"
-                    onPress={() => router.push(INSTRUCTOR_LOCATION_ROUTE as Href)}
+                    onPress={() => handleOpenLocation()}
                     showDivider
                   />
                 </ProfileSectionCard>
@@ -431,7 +453,7 @@ export default function InstructorProfileScreen() {
                     title={t("profile.navigation.notifications")}
                     subtitle={notificationsSummary}
                     icon="bell.fill"
-                    onPress={() => router.push(INSTRUCTOR_NOTIFICATIONS_ROUTE as Href)}
+                    onPress={() => handleOpenNotifications()}
                     showDivider
                   />
                   <ProfileSettingRow
@@ -479,7 +501,7 @@ export default function InstructorProfileScreen() {
                     title={t("profile.navigation.compliance")}
                     subtitle={complianceNavigationSummary}
                     icon="checkmark.shield.fill"
-                    onPress={() => router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href)}
+                    onPress={() => handleOpenCompliance()}
                     tone="accent"
                     showDivider
                   />
@@ -487,7 +509,7 @@ export default function InstructorProfileScreen() {
                     title={t("profile.settings.calendar.title")}
                     subtitle={calendarSummary}
                     icon="calendar.badge.clock"
-                    onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
+                    onPress={() => handleOpenCalendarSettings()}
                     showDivider
                   />
                   <ProfileSettingRow
@@ -498,9 +520,8 @@ export default function InstructorProfileScreen() {
                         : t("profile.settings.payoutsNeeded")
                     }
                     icon="creditcard.fill"
-                    onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
+                    onPress={() => handleOpenPayments()}
                     tone="accent"
-                    accentColor="#CCFF00"
                     showDivider
                   />
                   <ProfileSettingRow
@@ -548,14 +569,14 @@ export default function InstructorProfileScreen() {
                 title={t("profile.settings.sports.title")}
                 subtitle={sportsSummary}
                 icon="gym.bag.fill"
-                onPress={() => router.push(INSTRUCTOR_SPORTS_ROUTE as Href)}
+                onPress={() => handleOpenSports()}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.settings.location.title")}
                 subtitle={locationSummary}
                 icon="mappin.and.ellipse"
-                onPress={() => router.push(INSTRUCTOR_LOCATION_ROUTE as Href)}
+                onPress={() => handleOpenLocation()}
                 showDivider
               />
               <ProfileSettingRow
@@ -566,16 +587,15 @@ export default function InstructorProfileScreen() {
                     : t("profile.settings.payoutsNeeded")
                 }
                 icon="creditcard.fill"
-                onPress={() => router.push(INSTRUCTOR_PAYMENTS_ROUTE as Href)}
+                onPress={() => handleOpenPayments()}
                 tone="accent"
-                accentColor="#CCFF00"
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.navigation.compliance")}
                 subtitle={complianceNavigationSummary}
                 icon="checkmark.shield.fill"
-                onPress={() => router.push(INSTRUCTOR_COMPLIANCE_ROUTE as Href)}
+                onPress={() => handleOpenCompliance()}
                 tone="accent"
                 showDivider
               />
@@ -583,7 +603,7 @@ export default function InstructorProfileScreen() {
                 title={t("profile.settings.calendar.title")}
                 subtitle={calendarSummary}
                 icon="calendar.badge.clock"
-                onPress={() => router.push(INSTRUCTOR_CALENDAR_SETTINGS_ROUTE as Href)}
+                onPress={() => handleOpenCalendarSettings()}
                 showDivider
               />
             </ProfileSectionCard>
@@ -598,7 +618,7 @@ export default function InstructorProfileScreen() {
                 title={t("profile.navigation.notifications")}
                 subtitle={notificationsSummary}
                 icon="bell.fill"
-                onPress={() => router.push(INSTRUCTOR_NOTIFICATIONS_ROUTE as Href)}
+                onPress={() => handleOpenNotifications()}
                 showDivider
               />
               <ProfileSettingRow

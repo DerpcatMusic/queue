@@ -1,9 +1,7 @@
-// Google Material Symbols Rounded icon component for Android/web.
+// Google Material Symbols Rounded — instanced at FILL=1, GRAD=200, opsz=48, wght=700.
+// Pre-baked static font so all axes work on every platform without fontVariationSettings.
 
-import {
-  MaterialSymbolsRounded_400Regular,
-  useFonts,
-} from "@expo-google-fonts/material-symbols-rounded";
+import { useFonts } from "expo-font";
 import { memo } from "react";
 import type { OpaqueColorValue, StyleProp, TextStyle } from "react-native";
 import { View } from "react-native";
@@ -11,8 +9,7 @@ import { Text } from "@/primitives";
 
 import androidSymbols from "./android-symbols.json";
 
-const MATERIAL_SYMBOLS_NAME = "MaterialSymbolsRounded_400Regular";
-const MATERIAL_VARIATION_SETTINGS = '"FILL" 1, "GRAD" 0, "opsz" 24, "wght" 400';
+const FONT_KEY = "MaterialSymbolsRoundedFill";
 
 const SF_TO_ANDROID_SYMBOL = {
   "archivebox.fill": "archive",
@@ -77,7 +74,7 @@ const SF_TO_ANDROID_SYMBOL = {
   plus: "add",
   "plus.circle.fill": "add_circle",
   "quote.bubble.fill": "format_quote",
-   rosettes: "workspace_premium",
+  rosettes: "workspace_premium",
   "rectangle.portrait.and.arrow.right": "logout",
   "shield.lefthalf.filled": "shield",
   "slider.horizontal.3": "tune",
@@ -122,7 +119,7 @@ export const IconSymbol = memo(function IconSymbol({
   style?: StyleProp<TextStyle>;
 }) {
   const [fontsLoaded] = useFonts({
-    [MATERIAL_SYMBOLS_NAME]: MaterialSymbolsRounded_400Regular,
+    [FONT_KEY]: require("../../../assets/fonts/MaterialSymbolsRounded_FillGrad700.ttf"),
   });
 
   const glyph = toGlyph(name);
@@ -137,7 +134,7 @@ export const IconSymbol = memo(function IconSymbol({
       allowFontScaling={false}
       style={[
         {
-          fontFamily: MATERIAL_SYMBOLS_NAME,
+          fontFamily: FONT_KEY,
           fontSize: size,
           lineHeight: size,
           color: color as string,
@@ -145,7 +142,6 @@ export const IconSymbol = memo(function IconSymbol({
           includeFontPadding: false,
           textAlignVertical: "center",
         },
-        { fontVariationSettings: MATERIAL_VARIATION_SETTINGS } as any,
         style,
       ]}
     >

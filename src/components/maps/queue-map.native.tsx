@@ -1,58 +1,72 @@
-import {
-  Camera,
-  GeoJSONSource,
-  Layer,
-  Map as MapLibreMap,
-  type MapRef,
-  Marker,
-} from "@maplibre/maplibre-react-native";
 import Constants from "expo-constants";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
-import { buildCustomMapStyle } from "@/components/maps/queue-custom-map-style";
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
-import { QueueMapZonePolygons } from "@/components/maps/queue-map-zone-polygons";
+import { QueueMapBoundaryPolygons } from "@/components/maps/queue-map-boundary-polygons";
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing, getMapBrandPalette } from "@/constants/brand";
-import { getZoneIndexEntry, ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
+import {
+  buildZoneFeatureCollection,
+  getZoneIndexEntry,
+  ISRAEL_MAP_INTERACTION_BOUNDS,
+  PIKUD_ZONE_GEOJSON,
+} from "@/constants/zones-map";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
 import {
-  type AnyStyleSpec,
   createPinShape,
-  createZoneFilter,
+  createPropertyInFilter,
   ensureVectorOfflinePack,
   sanitizeZoom,
   selectRenderableStudioMarkers,
   toBounds,
 } from "./queue-map.native.helpers";
+import {
+  Camera,
+  CircleLayer,
+  GeoJSONSource,
+  MapView,
+  Marker,
+  StyleImport,
+  type MapRef,
+} from "./native-map-sdk";
 import type { QueueMapProps } from "./queue-map.types";
 import { STUDIO_MAP_MARKER_OUTER_SIZE, StudioMapMarkerView } from "./studio-map-marker-view";
 
 type MapLoadState = "loading" | "ready" | "error";
-const MAP_LOADING_OVERLAY_DELAY_MS = 180;
+const MAP_LOADING_OVERLAY_DELAY_MS = 80;
+const MAP_LOADING_HARD_TIMEOUT_MS = 12000;
 
 export const QueueMap = memo(function QueueMap({
   mode,
   pin,
   selectedZoneIds,
   focusZoneId,
+  selectedBoundaryIds,
+  focusBoundaryId,
   isEditing = mode === "zoneSelect",
   zoneGeoJson,
   zoneIdProperty = "id",
+  boundarySource,
+  boundaryIdProperty,
+  boundaryLabelPropertyCandidates,
+  boundaryInteractionBounds,
+  focusBoundaryBounds,
+  initialBoundaryViewport,
   studios,
   selectedStudioId,
   onPressStudio,
   onPressZone,
+  onPressBoundary,
   onPressMap,
   onUseGps,
   showGpsButton = true,
-  showAttributionButton = true,
+  showAttributionButton = false,
   contentInset,
   cameraPadding,
 }: QueueMapProps) {
@@ -63,12 +77,79 @@ export const QueueMap = memo(function QueueMap({
   const [mapLoadState, setMapLoadState] = useState<MapLoadState>("loading");
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   const [mapErrorMessage, setMapErrorMessage] = useState<string | null>(null);
-
-  // Self-contained custom map style — no network fetch required.
-  // Regenerates whenever the scheme changes (light/dark).
-  const customMapStyle = useMemo<AnyStyleSpec>(() => buildCustomMapStyle(mapPalette), [mapPalette]);
-  const mapStyle = customMapStyle;
+  const mapStyle =
+    resolvedScheme === "dark" ? APPLE_MAP_THEME.mapStyleDarkUrl : APPLE_MAP_THEME.mapStyleLightUrl;
+  const standardBasemapConfig = useMemo(
+    () =>
+      ({
+        showPointOfInterestLabels: false,
+        showTransitLabels: false,
+        showPedestrianRoads: false,
+        showAdminBoundaries: false,
+        show3dObjects: false,
+        showLandmarkIcons: false,
+        showLandmarkIconLabels: false,
+        showPlaceLabels: true,
+        showRoadLabels: false,
+        lightPreset: resolvedScheme === "dark" ? "night" : "day",
+        theme: "default",
+      }) as any,
+    [resolvedScheme],
+  );
   const mapKey = resolvedScheme;
+  const activeBoundaryIds = selectedBoundaryIds ?? selectedZoneIds;
+  const activeFocusBoundaryId = focusBoundaryId ?? focusZoneId;
+  const activeBoundaryIdProperty = boundaryIdProperty ?? zoneIdProperty;
+  const defaultBoundarySource = useMemo(() => {
+    const defaultGeoJson =
+      zoneGeoJson ??
+      (mode === "zoneSelect"
+        ? isEditing
+          ? PIKUD_ZONE_GEOJSON
+          : selectedZoneIds.length > 0
+            ? buildZoneFeatureCollection(selectedZoneIds)
+            : PIKUD_ZONE_GEOJSON
+        : null);
+
+    if (!defaultGeoJson) {
+      return undefined;
+    }
+
+    return {
+      kind: "geojson" as const,
+      featureCollection: defaultGeoJson,
+      idProperty: zoneIdProperty,
+    };
+  }, [isEditing, mode, selectedZoneIds, zoneGeoJson, zoneIdProperty]);
+  const activeBoundarySource = boundarySource ?? defaultBoundarySource;
+  const activeBoundaryPressHandler = onPressBoundary ?? onPressZone;
+  const activeBoundaryInteractionBounds =
+    boundaryInteractionBounds ??
+    (boundarySource ? null : zoneGeoJson ? ISRAEL_MAP_INTERACTION_BOUNDS : null);
+  const activeBoundaryLabelPropertyCandidates = boundaryLabelPropertyCandidates ?? [
+    "engName",
+    "hebName",
+    "name",
+    "postcode",
+    "postal_code",
+    "id",
+  ];
+  const initialCenter = useMemo<[number, number]>(() => {
+    if (pin) {
+      return [pin.longitude, pin.latitude];
+    }
+    const viewportBounds = initialBoundaryViewport?.bbox;
+    if (viewportBounds) {
+      return [
+        (viewportBounds.sw[0] + viewportBounds.ne[0]) / 2,
+        (viewportBounds.sw[1] + viewportBounds.ne[1]) / 2,
+      ];
+    }
+    return APPLE_MAP_THEME.defaultCenter;
+  }, [initialBoundaryViewport?.bbox, pin]);
+  const initialZoom = pin
+    ? APPLE_MAP_THEME.defaultZoomWithPin
+    : (initialBoundaryViewport?.zoom ?? APPLE_MAP_THEME.defaultZoomWithoutPin);
 
   const mapRef = useRef<MapRef | null>(null);
   const mapLoadStateRef = useRef<MapLoadState>("loading");
@@ -84,9 +165,9 @@ export const QueueMap = memo(function QueueMap({
     flyTo: (coordinates: [number, number], animationDuration?: number) => void;
     zoomTo: (zoomLevel: number, animationDuration?: number) => void;
   } | null>(null);
-  const selectedZoneFilter = useMemo(
-    () => createZoneFilter(selectedZoneIds, zoneIdProperty),
-    [selectedZoneIds, zoneIdProperty],
+  const selectedBoundaryFilter = useMemo(
+    () => createPropertyInFilter(activeBoundaryIds, activeBoundaryIdProperty),
+    [activeBoundaryIdProperty, activeBoundaryIds],
   );
   const pinShape = useMemo(() => createPinShape(pin), [pin]);
   const [markerZoomLevel, setMarkerZoomLevel] = useState<number | null>(null);
@@ -151,6 +232,33 @@ export const QueueMap = memo(function QueueMap({
     }
   }, []);
 
+  // Throttle syncMarkerViewport to ~60fps (16ms) to avoid flooding the JS thread during pan.
+  const lastSyncTimeRef = useRef<number>(0);
+  const rafHandleRef = useRef<number | null>(null);
+  const syncMarkerViewportThrottled = useCallback(() => {
+    const now = performance.now();
+    const elapsed = now - lastSyncTimeRef.current;
+    if (elapsed >= 16) {
+      // Enough time has passed — execute immediately
+      lastSyncTimeRef.current = now;
+      if (rafHandleRef.current !== null) {
+        cancelAnimationFrame(rafHandleRef.current);
+        rafHandleRef.current = null;
+      }
+      void syncMarkerViewport();
+      return;
+    }
+    // Within the 16ms window — cancel any pending and schedule a new one
+    if (rafHandleRef.current !== null) {
+      cancelAnimationFrame(rafHandleRef.current);
+    }
+    rafHandleRef.current = requestAnimationFrame(() => {
+      rafHandleRef.current = null;
+      lastSyncTimeRef.current = performance.now();
+      void syncMarkerViewport();
+    });
+  }, [syncMarkerViewport]);
+
   const updateMapLoadState = useCallback(
     (nextState: MapLoadState, errorMessage?: string | null) => {
       const nextError = errorMessage ?? null;
@@ -178,6 +286,14 @@ export const QueueMap = memo(function QueueMap({
     updateMapLoadState("ready");
   }, [updateMapLoadState]);
 
+  const handleDidFinishLoadingStyle = useCallback(() => {
+    updateMapLoadState("ready");
+  }, [updateMapLoadState]);
+
+  const handleDidFinishRenderingMapFully = useCallback(() => {
+    updateMapLoadState("ready");
+  }, [updateMapLoadState]);
+
   const handleDidFailLoadingMap = useCallback(() => {
     updateMapLoadState("error", t("mapTab.native.unavailableBody"));
   }, [updateMapLoadState, t]);
@@ -196,6 +312,20 @@ export const QueueMap = memo(function QueueMap({
       clearTimeout(timeout);
     };
   }, [mapLoadState]);
+
+  useEffect(() => {
+    if (mapLoadState !== "loading") {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      updateMapLoadState("error", t("mapTab.native.unavailableBody"));
+    }, MAP_LOADING_HARD_TIMEOUT_MS);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [mapLoadState, t, updateMapLoadState]);
 
   useEffect(() => {
     if (mapLoadState !== "ready") return;
@@ -234,10 +364,6 @@ export const QueueMap = memo(function QueueMap({
   }, [mapLoadState, syncMarkerViewport]);
 
   useEffect(() => {
-    if (!focusZoneId) return;
-    const zone = getZoneIndexEntry(focusZoneId);
-    if (!zone) return;
-
     const padding = cameraPadding ?? {
       top: APPLE_MAP_THEME.focusPadding.top,
       right: APPLE_MAP_THEME.focusPadding.right,
@@ -245,13 +371,25 @@ export const QueueMap = memo(function QueueMap({
       left: APPLE_MAP_THEME.focusPadding.left,
     };
 
-    // MapLibre uses fitBounds([west, south, east, north]) — zone.bbox is [west, south, east, north]
-    cameraRef.current?.fitBounds([zone.bbox[0], zone.bbox[1], zone.bbox[2], zone.bbox[3]], {
+    const nextBounds: [number, number, number, number] | null = focusBoundaryBounds
+      ? [
+          focusBoundaryBounds.sw[0],
+          focusBoundaryBounds.sw[1],
+          focusBoundaryBounds.ne[0],
+          focusBoundaryBounds.ne[1],
+        ]
+      : activeFocusBoundaryId
+        ? (getZoneIndexEntry(activeFocusBoundaryId)?.bbox ?? null)
+        : null;
+
+    if (!nextBounds) return;
+
+    cameraRef.current?.fitBounds(nextBounds, {
       padding,
       duration: 350,
       easing: "ease",
     });
-  }, [cameraPadding, focusZoneId]);
+  }, [activeFocusBoundaryId, cameraPadding, focusBoundaryBounds]);
 
   useEffect(() => {
     if (!pin) return;
@@ -283,11 +421,13 @@ export const QueueMap = memo(function QueueMap({
 
   return (
     <View style={[styles.wrap, { backgroundColor: mapPalette.styleBackground }]}>
-      <MapLibreMap
+      <MapView
         ref={mapRef as any}
         key={mapKey}
         style={styles.map}
         mapStyle={mapStyle as any}
+        surfaceView
+        preferredFramesPerSecond={60}
         {...(contentInset ? { contentInset } : {})}
         dragPan
         touchAndDoubleTapZoom
@@ -298,39 +438,55 @@ export const QueueMap = memo(function QueueMap({
         attribution={false}
         onWillStartLoadingMap={handleWillStartLoadingMap}
         onDidFinishLoadingMap={handleDidFinishLoadingMap}
+        onDidFinishLoadingStyle={handleDidFinishLoadingStyle}
+        onDidFinishRenderingMapFully={handleDidFinishRenderingMapFully}
         onDidFailLoadingMap={handleDidFailLoadingMap}
-        onRegionDidChange={() => {
-          void syncMarkerViewport();
+        onMapIdle={() => {
+          void syncMarkerViewportThrottled();
         }}
         onPress={handleMapPress as any}
       >
+        {mapStyle === "mapbox://styles/mapbox/standard" ? (
+          <StyleImport id="basemap" existing config={standardBasemapConfig} />
+        ) : null}
+
         <Camera
           ref={cameraRef as any}
-          maxBounds={toBounds(ISRAEL_MAP_INTERACTION_BOUNDS.sw, ISRAEL_MAP_INTERACTION_BOUNDS.ne)}
+          {...(activeBoundaryInteractionBounds
+            ? {
+                maxBounds: toBounds(
+                  activeBoundaryInteractionBounds.sw,
+                  activeBoundaryInteractionBounds.ne,
+                ),
+              }
+            : {})}
           minZoom={sanitizeZoom(APPLE_MAP_THEME.minZoom, 7.5)}
           maxZoom={sanitizeZoom(APPLE_MAP_THEME.maxZoom, 16)}
           initialViewState={{
-            center: pin ? [pin.longitude, pin.latitude] : APPLE_MAP_THEME.defaultCenter,
-            zoom: pin ? APPLE_MAP_THEME.defaultZoomWithPin : APPLE_MAP_THEME.defaultZoomWithoutPin,
+            center: initialCenter,
+            zoom: initialZoom,
           }}
         />
 
-        <QueueMapZonePolygons
-          mode={mode}
-          isEditing={isEditing}
-          showLabelLayers={mode !== "zoneSelect" || isEditing}
-          selectedZoneIds={selectedZoneIds}
-          selectedZoneFilter={selectedZoneFilter}
-          zoneGeoJson={zoneGeoJson}
-          zoneIdProperty={zoneIdProperty}
-          mapPalette={mapPalette}
-          onPressZone={onPressZone}
-        />
+        {mapLoadState === "ready" ? (
+          <QueueMapBoundaryPolygons
+            mode={mode}
+            isEditing={isEditing}
+            showLabelLayers
+            selectedBoundaryIds={activeBoundaryIds}
+            selectedBoundaryFilter={selectedBoundaryFilter}
+            boundarySource={activeBoundarySource}
+            boundaryIdProperty={activeBoundaryIdProperty}
+            boundaryLabelPropertyCandidates={activeBoundaryLabelPropertyCandidates}
+            visibleBounds={markerBounds}
+            mapPalette={mapPalette}
+            onPressBoundary={activeBoundaryPressHandler}
+          />
+        ) : null}
 
         <GeoJSONSource id="queue-pin-source" data={pinShape}>
-          <Layer
+          <CircleLayer
             id="queue-pin-dot"
-            type="circle"
             paint={{
               "circle-radius": APPLE_MAP_THEME.overlay.pinRadius,
               "circle-color": mapPalette.primary,
@@ -340,28 +496,17 @@ export const QueueMap = memo(function QueueMap({
           />
         </GeoJSONSource>
 
-        {renderableStudios.map((studio) => (
-          <Marker
-            key={studio.studioId}
-            id={`studio-marker:${studio.studioId}`}
-            lngLat={[studio.longitude, studio.latitude]}
-            anchor="top-left"
-            offset={[-STUDIO_MAP_MARKER_OUTER_SIZE / 2, -STUDIO_MAP_MARKER_OUTER_SIZE / 2]}
-          >
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={studio.studioName}
-              onPress={() => onPressStudio?.(studio.studioId)}
-              style={{ width: STUDIO_MAP_MARKER_OUTER_SIZE, height: STUDIO_MAP_MARKER_OUTER_SIZE }}
-            >
-              <StudioMapMarkerView
-                studio={studio}
-                selected={selectedStudioId === studio.studioId}
-              />
-            </Pressable>
-          </Marker>
-        ))}
-      </MapLibreMap>
+        <StudioMarkerList
+          studios={renderableStudios}
+          selectedStudioId={selectedStudioId}
+          onPressStudio={
+            onPressStudio ??
+            (() => {
+              /* intentionally empty — tab switches can trigger a brief render before the callback is set */
+            })
+          }
+        />
+      </MapView>
 
       {mapLoadState === "loading" && showLoadingOverlay ? (
         <View
@@ -471,6 +616,65 @@ export const QueueMap = memo(function QueueMap({
     </View>
   );
 });
+
+// ─── Studio Marker List ────────────────────────────────────────────────────────
+// Extracted to prevent MapLibre native marker churn on every pan event.
+// Only re-renders when renderableStudios or selectedStudioId actually change.
+type StudioMarkerListProps = {
+  studios: readonly import("./queue-map.types").StudioMapMarker[];
+  selectedStudioId: string | null | undefined;
+  onPressStudio: (studioId: string) => void;
+};
+
+const StudioMarkerList = memo(
+  function StudioMarkerList({ studios, selectedStudioId, onPressStudio }: StudioMarkerListProps) {
+    return (
+      <>
+        {studios.map((studio) => (
+          <Marker
+            key={studio.studioId}
+            id={`studio-marker:${studio.studioId}`}
+            lngLat={[studio.longitude, studio.latitude]}
+            anchor="top-left"
+            offset={[-STUDIO_MAP_MARKER_OUTER_SIZE / 2, -STUDIO_MAP_MARKER_OUTER_SIZE / 2]}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={studio.studioName}
+              onPress={() => onPressStudio(studio.studioId)}
+              style={{ width: STUDIO_MAP_MARKER_OUTER_SIZE, height: STUDIO_MAP_MARKER_OUTER_SIZE }}
+            >
+              <StudioMapMarkerView
+                studio={studio}
+                selected={selectedStudioId === studio.studioId}
+              />
+            </Pressable>
+          </Marker>
+        ))}
+      </>
+    );
+  },
+  (prev, next) => {
+    // Custom comparison: only re-render if studio list or selection actually changed
+    if (prev.selectedStudioId !== next.selectedStudioId) return false;
+    if (prev.studios.length !== next.studios.length) return false;
+    for (let i = 0; i < prev.studios.length; i++) {
+      const a = prev.studios[i]!;
+      const b = next.studios[i]!;
+      if (
+        a.studioId !== b.studioId ||
+        a.studioName !== b.studioName ||
+        a.logoImageUrl !== b.logoImageUrl ||
+        a.mapMarkerColor !== b.mapMarkerColor ||
+        a.latitude !== b.latitude ||
+        a.longitude !== b.longitude
+      ) {
+        return false;
+      }
+    }
+    return true;
+  },
+);
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },

@@ -62,6 +62,15 @@ const v2MetadataValidator = v.object({
   failureReason: v.optional(v.string()),
   providerStatusRaw: v.optional(v.string()),
   providerEventId: v.optional(v.string()),
+  receipt_url: v.optional(v.string()),
+  receipt_number: v.optional(v.string()),
+  charge_id: v.optional(v.string()),
+  dashboard: v.optional(v.string()),
+  requirementsSummary: v.optional(v.string()),
+  blockingRequirementsCount: v.optional(v.string()),
+  lastWebhookEventType: v.optional(v.string()),
+  payoutMethod: v.optional(v.string()),
+  sourcePaymentIntentId: v.optional(v.string()),
 });
 
 const integrationMetadataValidator = v.object({
@@ -260,6 +269,7 @@ export default defineSchema({
   instructorProfiles: defineTable({
     userId: v.id("users"),
     displayName: v.string(),
+    slug: v.optional(v.string()),
     bio: v.optional(v.string()),
     socialLinks: v.optional(socialLinksValidator),
     address: v.optional(v.string()),
@@ -305,7 +315,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_user_id", ["userId"])
-    .index("by_didit_session_id", ["diditSessionId"]),
+    .index("by_didit_session_id", ["diditSessionId"])
+    .index("by_slug", ["slug"]),
 
   instructorCertificates: defineTable({
     instructorId: v.id("instructorProfiles"),
@@ -439,6 +450,44 @@ export default defineSchema({
     .index("by_zone", ["zone"])
     .index("by_zone_and_instructor", ["zone", "instructorId"]),
 
+  boundaries: defineTable({
+    provider: v.string(),
+    boundaryId: v.string(),
+    kind: v.string(),
+    countryCode: v.string(),
+    name: v.string(),
+    parentBoundaryId: v.optional(v.string()),
+    cityKey: v.optional(v.string()),
+    postcode: v.optional(v.string()),
+    centroidLatitude: v.optional(v.number()),
+    centroidLongitude: v.optional(v.number()),
+    bbox: v.optional(
+      v.object({
+        swLng: v.number(),
+        swLat: v.number(),
+        neLng: v.number(),
+        neLat: v.number(),
+      }),
+    ),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_provider_boundary", ["provider", "boundaryId"])
+    .index("by_provider_country_kind", ["provider", "countryCode", "kind"])
+    .index("by_provider_parent", ["provider", "parentBoundaryId"])
+    .index("by_provider_city", ["provider", "cityKey"]),
+
+  instructorBoundarySubscriptions: defineTable({
+    instructorId: v.id("instructorProfiles"),
+    provider: v.string(),
+    boundaryId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_instructor_provider", ["instructorId", "provider"])
+    .index("by_provider_boundary", ["provider", "boundaryId"])
+    .index("by_provider_boundary_instructor", ["provider", "boundaryId", "instructorId"]),
+
   instructorCoverage: defineTable({
     instructorId: v.id("instructorProfiles"),
     sport: v.string(),
@@ -462,6 +511,7 @@ export default defineSchema({
   studioProfiles: defineTable({
     userId: v.id("users"),
     studioName: v.string(),
+    slug: v.optional(v.string()),
     bio: v.optional(v.string()),
     socialLinks: v.optional(socialLinksValidator),
     address: v.string(),
@@ -471,6 +521,8 @@ export default defineSchema({
     addressFloor: v.optional(v.string()),
     addressPostalCode: v.optional(v.string()),
     zone: v.string(),
+    boundaryProvider: v.optional(v.string()),
+    boundaryId: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     contactPhone: v.optional(v.string()),
@@ -502,7 +554,9 @@ export default defineSchema({
   })
     .index("by_user_id", ["userId"])
     .index("by_didit_session_id", ["diditSessionId"])
-    .index("by_zone", ["zone"]),
+    .index("by_zone", ["zone"])
+    .index("by_boundary", ["boundaryProvider", "boundaryId"])
+    .index("by_slug", ["slug"]),
 
   studioBillingProfiles: defineTable({
     studioId: v.id("studioProfiles"),
@@ -560,6 +614,8 @@ export default defineSchema({
     slug: v.string(),
     address: v.string(),
     zone: v.string(),
+    boundaryProvider: v.optional(v.string()),
+    boundaryId: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     arrivalRadiusMeters: v.optional(v.number()),
@@ -583,7 +639,8 @@ export default defineSchema({
     .index("by_studio_active", ["studioId", "status"])
     .index("by_studio_slug", ["studioId", "slug"])
     .index("by_studio_primary", ["studioId", "isPrimary"])
-    .index("by_zone", ["zone"]),
+    .index("by_zone", ["zone"])
+    .index("by_boundary", ["boundaryProvider", "boundaryId"]),
 
   studioMemberships: defineTable({
     studioId: v.id("studioProfiles"),
@@ -618,6 +675,8 @@ export default defineSchema({
     studioId: v.id("studioProfiles"),
     branchId: v.id("studioBranches"),
     zone: v.string(),
+    boundaryProvider: v.optional(v.string()),
+    boundaryId: v.optional(v.string()),
     sport: v.string(),
     startTime: v.number(),
     endTime: v.number(),
@@ -676,8 +735,16 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_status_startTime", ["status", "startTime"])
     .index("by_status_postedAt", ["status", "postedAt"])
+    .index("by_boundary_and_status", ["boundaryProvider", "boundaryId", "status"])
     .index("by_filledByInstructor_startTime", ["filledByInstructorId", "startTime"])
     .index("by_sport_and_status", ["sport", "status"])
+    .index("by_sport_boundary_status_postedAt", [
+      "sport",
+      "boundaryProvider",
+      "boundaryId",
+      "status",
+      "postedAt",
+    ])
     .index("by_sport_zone_status_postedAt", ["sport", "zone", "status", "postedAt"])
     .index("by_zone_and_status", ["zone", "status"]),
 
@@ -1206,7 +1273,7 @@ export default defineSchema({
     studioUserId: v.id("users"),
     instructorId: v.id("instructorProfiles"),
     instructorUserId: v.id("users"),
-    provider: v.literal("airwallex"),
+    provider: v.union(v.literal("airwallex"), v.literal("stripe")),
     status: v2PaymentOrderStatusValidator,
     providerCountry: v.string(),
     currency: v.string(),
@@ -1230,7 +1297,7 @@ export default defineSchema({
 
   paymentAttemptsV2: defineTable({
     paymentOrderId: v.id("paymentOrdersV2"),
-    provider: v.literal("airwallex"),
+    provider: v.union(v.literal("airwallex"), v.literal("stripe")),
     providerPaymentIntentId: v.string(),
     providerAttemptId: v.optional(v.string()),
     clientSecretRef: v.optional(v.string()),
@@ -1267,7 +1334,7 @@ export default defineSchema({
   connectedAccountsV2: defineTable({
     userId: v.id("users"),
     role: v.literal("instructor"),
-    provider: v.literal("airwallex"),
+    provider: v.union(v.literal("airwallex"), v.literal("stripe")),
     providerAccountId: v.string(),
     accountCapability: v.union(v.literal("ledger"), v.literal("withdrawal"), v.literal("full")),
     status: v2ConnectedAccountStatusValidator,
@@ -1304,18 +1371,14 @@ export default defineSchema({
     paymentOrderId: v.id("paymentOrdersV2"),
     paymentAttemptId: v.id("paymentAttemptsV2"),
     connectedAccountId: v.id("connectedAccountsV2"),
-    provider: v.literal("airwallex"),
+    provider: v.union(v.literal("airwallex"), v.literal("stripe")),
     providerFundsSplitId: v.optional(v.string()),
     sourcePaymentIntentId: v.string(),
     destinationAccountId: v.string(),
     amountAgorot: v.number(),
     currency: v.string(),
     autoRelease: v.boolean(),
-    releaseMode: v.union(
-      v.literal("automatic"),
-      v.literal("manual"),
-      v.literal("scheduled"),
-    ),
+    releaseMode: v.union(v.literal("automatic"), v.literal("manual"), v.literal("scheduled")),
     status: v2FundSplitStatusValidator,
     requestId: v.string(),
     idempotencyKey: v.string(),
@@ -1334,7 +1397,7 @@ export default defineSchema({
   payoutTransfersV2: defineTable({
     connectedAccountId: v.id("connectedAccountsV2"),
     fundSplitId: v.id("fundSplitsV2"),
-    provider: v.literal("airwallex"),
+    provider: v.union(v.literal("airwallex"), v.literal("stripe")),
     providerTransferId: v.optional(v.string()),
     amountAgorot: v.number(),
     currency: v.string(),

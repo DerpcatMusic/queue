@@ -83,140 +83,119 @@ export function HomeAgendaWidget({
   }, [todayItems, upcomingItems, maxItems]);
 
   if (visibleItems.length === 0) {
-    return (
-      <HomeSurface
-        style={{
-          padding: BrandSpacing.lg,
-          gap: BrandSpacing.sm,
-        }}
-      >
-        <HomeSectionHeading title={heading} />
-        <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
-          {emptyLabel ?? t("home.agenda.empty")}
-        </Text>
-      </HomeSurface>
-    );
+    return null;
   }
 
   return (
     <Box>
-      <HomeSurface
-        style={{
-          padding: BrandSpacing.lg,
-          gap: 0,
-        }}
+      <ScrollView
+        nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
+        style={maxHeight ? { maxHeight } : undefined}
+        contentContainerStyle={{ gap: 0 }}
       >
-        <HomeSectionHeading title={heading} />
+        {visibleItems.map((item, index) => {
+          const isToday = item.startTime <= todayEnd;
+          const relativeTime = getRelativeTimeLabel(item.startTime, now, locale);
 
-        <ScrollView
-          nestedScrollEnabled
-          showsVerticalScrollIndicator={false}
-          style={maxHeight ? { maxHeight } : undefined}
-          contentContainerStyle={{ gap: 0 }}
-        >
-          {visibleItems.map((item, index) => {
-            const isToday = item.startTime <= todayEnd;
-            const relativeTime = getRelativeTimeLabel(item.startTime, now, locale);
-
-            return (
-              <Box key={item.id}>
+          return (
+            <Box key={item.id}>
+              <Box
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: BrandSpacing.sm,
+                  gap: BrandSpacing.md,
+                  borderBottomWidth: index < visibleItems.length - 1 ? 1 : 0,
+                  borderBottomColor: palette.border,
+                }}
+              >
                 <Box
                   style={{
-                    flexDirection: "row",
+                    width: 56,
+                    alignItems: "flex-end",
+                  }}
+                >
+                  <Text
+                    style={{
+                      ...BrandType.body,
+                      fontWeight: "600",
+                      color: palette.text,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {formatTime(item.startTime, locale)}
+                  </Text>
+                  <Text
+                    style={{
+                      ...BrandType.micro,
+                      color: palette.textMuted,
+                    }}
+                  >
+                    {isToday ? relativeTime : formatGroupDate(item.startTime, locale)}
+                  </Text>
+                </Box>
+                <Box style={{ flex: 1, gap: 1 }}>
+                  <Text
+                    style={{
+                      ...BrandType.bodyStrong,
+                      color: palette.text,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {toSportLabel(item.sport as never)}
+                  </Text>
+                  <Text
+                    style={{
+                      ...BrandType.caption,
+                      color: palette.textMuted,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {item.name}
+                  </Text>
+                </Box>
+                <Box
+                  style={{
+                    width: 20,
                     alignItems: "center",
-                    paddingVertical: BrandSpacing.sm,
-                    gap: BrandSpacing.md,
-                    borderBottomWidth: index < visibleItems.length - 1 ? 1 : 0,
-                    borderBottomColor: palette.border,
                   }}
                 >
                   <Box
                     style={{
-                      width: 56,
-                      alignItems: "flex-end",
+                      width: BrandSpacing.statusDot,
+                      height: BrandSpacing.statusDot,
+                      borderRadius: BrandRadius.statusDot,
+                      backgroundColor: isToday ? palette.primary : palette.textMicro,
                     }}
-                  >
-                    <Text
-                      style={{
-                        ...BrandType.body,
-                        fontWeight: "600",
-                        color: palette.text,
-                        fontVariant: ["tabular-nums"],
-                      }}
-                    >
-                      {formatTime(item.startTime, locale)}
-                    </Text>
-                    <Text
-                      style={{
-                        ...BrandType.micro,
-                        color: palette.textMuted,
-                      }}
-                    >
-                      {isToday ? relativeTime : formatGroupDate(item.startTime, locale)}
-                    </Text>
-                  </Box>
-                  <Box style={{ flex: 1, gap: 1 }}>
-                    <Text
-                      style={{
-                        ...BrandType.bodyStrong,
-                        color: palette.text,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {toSportLabel(item.sport as never)}
-                    </Text>
-                    <Text
-                      style={{
-                        ...BrandType.caption,
-                        color: palette.textMuted,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {item.name}
-                    </Text>
-                  </Box>
-                  <Box
-                    style={{
-                      width: 20,
-                      alignItems: "center",
-                    }}
-                  >
-                    <Box
-                      style={{
-                        width: BrandSpacing.statusDot,
-                        height: BrandSpacing.statusDot,
-                        borderRadius: BrandRadius.statusDot,
-                        backgroundColor: isToday ? palette.primary : palette.textMicro,
-                      }}
-                    />
-                  </Box>
+                  />
                 </Box>
               </Box>
-            );
-          })}
-        </ScrollView>
+            </Box>
+          );
+        })}
+      </ScrollView>
 
-        {onPressAll ? (
-          <Box
+      {onPressAll ? (
+        <Box
+          style={{
+            marginTop: BrandSpacing.sm,
+            alignItems: "flex-end",
+          }}
+        >
+          <Text
+            accessibilityRole="button"
+            accessibilityLabel={t("home.agenda.viewAll")}
             style={{
-              marginTop: BrandSpacing.sm,
-              alignItems: "flex-end",
+              ...BrandType.caption,
+              color: palette.primary,
             }}
+            onPress={onPressAll}
           >
-            <Text
-              accessibilityRole="button"
-              accessibilityLabel={t("home.agenda.viewAll")}
-              style={{
-                ...BrandType.caption,
-                color: palette.primary,
-              }}
-              onPress={onPressAll}
-            >
-              {t("home.agenda.viewAll")}
-            </Text>
-          </Box>
-        ) : null}
-      </HomeSurface>
+            {t("home.agenda.viewAll")}
+          </Text>
+        </Box>
+      ) : null}
     </Box>
   );
 }

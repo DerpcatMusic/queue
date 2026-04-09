@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { normalizeBoundaryId, normalizeBoundaryProvider } from "./lib/boundaries";
 import { isKnownZoneId } from "./lib/domainValidation";
 import {
   DEFAULT_LESSON_REMINDER_MINUTES,
@@ -158,6 +159,8 @@ export const getJobAndEligibleInstructors = internalQuery({
       jobId: v.id("jobs"),
       sport: v.string(),
       zone: v.string(),
+      boundaryProvider: v.optional(v.string()),
+      boundaryId: v.optional(v.string()),
       startTime: v.number(),
       recipients: v.array(
         v.object({
@@ -172,32 +175,63 @@ export const getJobAndEligibleInstructors = internalQuery({
     if (!job || job.status !== "open") {
       return null;
     }
-    if (!isKnownZoneId(job.zone)) {
+    if (!job.boundaryProvider && !job.boundaryId && !isKnownZoneId(job.zone)) {
       return {
         jobId: job._id,
         sport: job.sport,
         zone: job.zone,
         startTime: job.startTime,
         recipients: [],
+        ...omitUndefined({
+          boundaryProvider: job.boundaryProvider,
+          boundaryId: job.boundaryId,
+        }),
       };
     }
 
-    const coverageRows = await ctx.db
-      .query("instructorCoverage")
-      .withIndex("by_sport_zone", (q) => q.eq("sport", job.sport).eq("zone", job.zone))
-      .collect();
-
     const recipients = [];
     const seen = new Set<string>();
-    for (const row of coverageRows) {
-      if (!row.notificationsEnabled || !row.expoPushToken) continue;
-      const profile = await ctx.db.get("instructorProfiles", row.instructorId);
+    const candidateInstructorIds = new Set<string>();
+
+    if (job.boundaryProvider && job.boundaryId) {
+      const boundaryProvider = normalizeBoundaryProvider(job.boundaryProvider);
+      const boundaryId = normalizeBoundaryId(job.boundaryId);
+      const boundaryRows = await ctx.db
+        .query("instructorBoundarySubscriptions")
+        .withIndex("by_provider_boundary", (q) =>
+          q.eq("provider", boundaryProvider).eq("boundaryId", boundaryId),
+        )
+        .collect();
+      for (const row of boundaryRows) {
+        candidateInstructorIds.add(String(row.instructorId));
+      }
+    }
+
+    if (isKnownZoneId(job.zone)) {
+      const coverageRows = await ctx.db
+        .query("instructorCoverage")
+        .withIndex("by_sport_zone", (q) => q.eq("sport", job.sport).eq("zone", job.zone))
+        .collect();
+      for (const row of coverageRows) {
+        candidateInstructorIds.add(String(row.instructorId));
+      }
+    }
+
+    for (const instructorId of candidateInstructorIds) {
+      const profile = await ctx.db.get("instructorProfiles", instructorId as Id<"instructorProfiles">);
       if (!profile) continue;
+      const sportLink = await ctx.db
+        .query("instructorSports")
+        .withIndex("by_instructor_and_sport", (q) =>
+          q.eq("instructorId", profile._id).eq("sport", job.sport),
+        )
+        .unique();
+      if (!sportLink) continue;
       const routing = await getPushRoutingForUser(ctx, profile.userId, "job_offer");
       if (!routing?.preferenceEnabled || !routing.globalPushEnabled || !routing.expoPushToken) {
         continue;
       }
-      const compliance = await loadInstructorComplianceSnapshot(ctx, row.instructorId, Date.now());
+      const compliance = await loadInstructorComplianceSnapshot(ctx, profile._id, Date.now());
       if (
         !canInstructorPerformJobActions({
           profile,
@@ -208,11 +242,11 @@ export const getJobAndEligibleInstructors = internalQuery({
       ) {
         continue;
       }
-      const key = `${row.instructorId}::${routing.expoPushToken}`;
+      const key = `${profile._id}::${routing.expoPushToken}`;
       if (seen.has(key)) continue;
       seen.add(key);
       recipients.push({
-        instructorId: row.instructorId,
+        instructorId: profile._id,
         expoPushToken: routing.expoPushToken,
       });
     }
@@ -223,6 +257,10 @@ export const getJobAndEligibleInstructors = internalQuery({
       zone: job.zone,
       startTime: job.startTime,
       recipients,
+      ...omitUndefined({
+        boundaryProvider: job.boundaryProvider,
+        boundaryId: job.boundaryId,
+      }),
     };
   },
 });

@@ -1,4 +1,4 @@
-import { OfflineManager } from "@maplibre/maplibre-react-native";
+import { OfflineManager } from "./native-map-sdk";
 
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import type { getMapBrandPalette } from "@/constants/brand";
@@ -14,7 +14,7 @@ export type AnyStyleSpec = {
   [key: string]: unknown;
 };
 
-const NO_MATCH_ZONE_FILTER: Expression = ["==", ["get", "id"], "__none__"];
+const NO_MATCH_FILTER: Expression = ["==", ["get", "id"], "__none__"];
 
 let offlinePackBootstrapPromise: Promise<void> | null = null;
 const MAP_STYLE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -28,9 +28,13 @@ export function sanitizeZoom(value: number, fallback: number) {
   return Math.max(0, Math.min(22, value));
 }
 
+export function createPropertyInFilter(ids: readonly string[], propertyName: string): Expression {
+  if (ids.length === 0) return NO_MATCH_FILTER;
+  return ["in", ["get", propertyName], ["literal", ids as string[]]] as Expression;
+}
+
 export function createZoneFilter(zoneIds: readonly string[], propertyName: string): Expression {
-  if (zoneIds.length === 0) return NO_MATCH_ZONE_FILTER;
-  return ["in", ["get", propertyName], ["literal", zoneIds as string[]]] as Expression;
+  return createPropertyInFilter(zoneIds, propertyName);
 }
 
 export function toCameraBounds(
@@ -50,8 +54,11 @@ export function toBounds(
 export function toOfflineBounds(
   sw: [number, number],
   ne: [number, number],
-): [number, number, number, number] {
-  return [sw[0], sw[1], ne[0], ne[1]];
+): [GeoJSON.Position, GeoJSON.Position] {
+  return [
+    [ne[0], ne[1]],
+    [sw[0], sw[1]],
+  ];
 }
 
 function isRoadNumberLayer(layer: AnyStyleLayer) {
@@ -263,6 +270,10 @@ export function createFallbackMapStyle(
 }
 
 export async function fetchMapStyleSpec(styleUrl: string): Promise<AnyStyleSpec | null> {
+  if (styleUrl.startsWith("mapbox://")) {
+    return null;
+  }
+
   const cachedEntry = mapStyleResponseCache.get(styleUrl);
   if (cachedEntry && Date.now() - cachedEntry.timestamp <= MAP_STYLE_CACHE_TTL_MS) {
     return cachedEntry.data;
@@ -305,6 +316,10 @@ export function getCachedMapStyleSpec(styleUrl: string) {
 }
 
 export function warmMapStyleSpec(styleUrl: string) {
+  if (styleUrl.startsWith("mapbox://")) {
+    return;
+  }
+
   const cachedEntry = mapStyleResponseCache.get(styleUrl);
   if (
     (cachedEntry && Date.now() - cachedEntry.timestamp <= MAP_STYLE_CACHE_TTL_MS) ||
@@ -340,7 +355,8 @@ export async function ensureVectorOfflinePack() {
       OfflineManager.setProgressEventThrottle(APPLE_MAP_THEME.offlinePack.progressThrottleMs);
       await OfflineManager.createPack(
         {
-          mapStyle: APPLE_MAP_THEME.mapStyleLightUrl,
+          name: APPLE_MAP_THEME.offlinePack.name,
+          styleURL: APPLE_MAP_THEME.mapStyleLightUrl,
           bounds: toOfflineBounds(
             ISRAEL_MAP_INTERACTION_BOUNDS.sw,
             ISRAEL_MAP_INTERACTION_BOUNDS.ne,

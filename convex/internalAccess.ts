@@ -250,3 +250,34 @@ export const setInternalAccessGrantWithAccessToken = mutation({
     return await applyInternalAccessGrant(ctx, args);
   },
 });
+
+export const setVerificationBypassForUser = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    email: v.optional(v.string()),
+    active: v.boolean(),
+    notes: v.optional(v.string()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    userId: v.optional(v.id("users")),
+    email: v.optional(v.string()),
+    role: v.optional(internalAccessRoleValidator),
+    verificationBypass: v.boolean(),
+    active: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const adminUser = await requireInternalAdmin(ctx);
+    return await applyInternalAccessGrant(ctx, {
+      role: "tester",
+      verificationBypass: true,
+      active: args.active,
+      grantedByUserId: adminUser._id,
+      ...omitUndefined({
+        userId: args.userId,
+        email: args.email,
+        notes: args.notes,
+      }),
+    });
+  },
+});

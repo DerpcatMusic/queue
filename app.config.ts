@@ -31,6 +31,11 @@ export default ({ config }: { config: ExpoConfig }) => {
       plugin === "@react-native-google-signin/google-signin" ||
       (Array.isArray(plugin) && plugin[0] === "@react-native-google-signin/google-signin"),
   );
+  const hasStripePlugin = plugins.some(
+    (plugin) =>
+      plugin === "@stripe/stripe-react-native" ||
+      (Array.isArray(plugin) && plugin[0] === "@stripe/stripe-react-native"),
+  );
 
   if (googleIosUrlScheme && !hasGoogleSigninPlugin) {
     plugins.push([
@@ -38,6 +43,13 @@ export default ({ config }: { config: ExpoConfig }) => {
       {
         iosUrlScheme: googleIosUrlScheme,
       },
+    ]);
+  }
+
+  if (!hasStripePlugin) {
+    plugins.push([
+      "@stripe/stripe-react-native",
+      {},
     ]);
   }
 

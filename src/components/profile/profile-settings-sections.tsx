@@ -1,74 +1,210 @@
 import type { ComponentProps, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, View } from "react-native";
+import { Pressable, type ViewStyle, View } from "react-native";
+import { StyleSheet, useUnistyles } from "react-native-unistyles";
+import type { AppTheme } from "@/theme/theme";
+
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth, FontFamily, LetterSpacing } from "@/lib/design-system";
 import { Box, Text } from "@/primitives";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
-const PROFILE_SECTION_HEADER_ICON_SIZE = 14;
-const PROFILE_SECTION_CARD_MARGIN_HORIZONTAL = BrandSpacing.inset;
-const PROFILE_SETTING_ROW_SECONDARY_GAP = BrandSpacing.xxs;
-const PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON = BrandSpacing.md;
-const PROFILE_SETTING_ROW_DIVIDER_RIGHT = BrandSpacing.md;
-const PROFILE_ICON_BUTTON_SIZE = 40;
-const BRIGHT_LIME = "#CCFF00";
+// ─── Section color coding ──────────────────────────────────────────────────
+// Each settings category gets a distinct semantic color for its icon.
 
-const URGENT_ORANGE = "#FF5E00";
+export type ProfileSectionTone =
+  | "account"
+  | "identity"
+  | "operations"
+  | "preferences"
+  | "support"
+  | "danger";
+
+// ─── Styles ─────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create((theme) => ({
+  // Section card
+  card: {
+    marginHorizontal: BrandSpacing.inset,
+    borderRadius: BrandRadius.card,
+    borderCurve: "continuous",
+    overflow: "hidden",
+  },
+
+  // Sticky section header
+  stickyHeader: {
+    backgroundColor: theme.color.appBg,
+    borderBottomWidth: BorderWidth.hairline,
+    borderBottomColor: theme.color.divider,
+    paddingTop: BrandSpacing.lg,
+    paddingBottom: BrandSpacing.sm,
+    paddingHorizontal: BrandSpacing.inset,
+  },
+
+  // Setting row
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.md,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.md,
+    minHeight: BrandSpacing.listItemMinHeight,
+  },
+  rowPressed: {
+    opacity: 0.85,
+  },
+  divider: {
+    height: BorderWidth.divider,
+    backgroundColor: theme.color.divider,
+  },
+  dividerWithIcon: {
+    marginLeft: BrandSpacing.md + 20 + BrandSpacing.md,
+    marginRight: BrandSpacing.md,
+  },
+  dividerWithoutIcon: {
+    marginLeft: BrandSpacing.md,
+    marginRight: BrandSpacing.md,
+  },
+
+  // Action card (support / sign-out)
+  actionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: BrandSpacing.sm,
+    borderRadius: BrandRadius.card,
+    borderCurve: "continuous",
+    overflow: "hidden",
+    paddingVertical: BrandSpacing.md,
+    paddingHorizontal: BrandSpacing.lg,
+    minHeight: 52,
+    backgroundColor: theme.color.surfaceElevated,
+    ...theme.shadow.subtle,
+  },
+  actionCardPressed: {
+    opacity: 0.8,
+  },
+}));
+
+// ─── Section color map (plain string values, not stylesheet entries) ─────────
+
+function getSectionColor(tone: ProfileSectionTone, theme: AppTheme): string {
+  const c = theme.color;
+  switch (tone) {
+    case "account":
+      return c.primary;
+    case "identity":
+      return c.success;
+    case "operations":
+      return c.secondary;
+    case "preferences":
+      return c.tertiary;
+    case "support":
+      return c.textMuted;
+    case "danger":
+      return c.danger;
+  }
+}
+
+// ─── Color resolver ─────────────────────────────────────────────────────────
+
+function useProfileColors() {
+  const { theme } = useUnistyles();
+  return {
+    iconDefault: theme.color.textMuted,
+    iconAccent: theme.color.primary,
+    iconDanger: theme.color.danger,
+    chevron: theme.color.textMicro,
+    dangerText: theme.color.danger,
+    headerIcon: theme.color.textMuted,
+    rolePillBg: theme.color.primary,
+    rolePillText: theme.color.onPrimary,
+  };
+}
+
+function useSectionColor(tone: ProfileSectionTone): string {
+  const { theme } = useUnistyles();
+  return getSectionColor(tone, theme);
+}
+
+// ─── Sticky Section Header ──────────────────────────────────────────────────
+
+export function ProfileStickyHeader({
+  label,
+  icon,
+  tone = "account",
+}: {
+  label: string;
+  icon?: ProfileSymbolName;
+  tone?: ProfileSectionTone;
+}) {
+  const sectionColor = useSectionColor(tone);
+
+  return (
+    <View style={styles.stickyHeader}>
+      <Box flexDirection="row" alignItems="center" gap="sm">
+        {icon ? <IconSymbol name={icon} size={16} color={sectionColor} /> : null}
+        <Text
+          variant="labelStrong"
+          style={{ color: sectionColor, letterSpacing: LetterSpacing.trackingWide }}
+        >
+          {label.toUpperCase()}
+        </Text>
+      </Box>
+    </View>
+  );
+}
+
+// ─── Legacy Section Header (for non-StickyList usage) ───────────────────────
 
 export function ProfileSectionHeader({
   label,
   description,
   icon,
   flush = false,
+  tone = "account",
 }: {
   label: string;
   description?: string;
   icon?: ProfileSymbolName;
   flush?: boolean;
+  tone?: ProfileSectionTone;
 }) {
-  const theme = useTheme();
   const { i18n } = useTranslation();
+  const sectionColor = useSectionColor(tone);
   const isHebrew = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he");
-  const headerFontFamily = isHebrew ? "Kanit_700Bold" : FontFamily.displayBold;
+  const headerFontFamily = isHebrew ? FontFamily.kanitBold : FontFamily.displayBold;
 
   return (
     <Box gap="xs" pt="xl" pb="sm" {...(!flush ? { px: "inset" } : {})}>
       <Box flexDirection="row" alignItems="center" gap="sm">
-        {icon ? (
-          <IconSymbol
-            name={icon}
-            size={PROFILE_SECTION_HEADER_ICON_SIZE}
-            color={theme.color.textMuted}
-          />
-        ) : null}
+        {icon ? <IconSymbol name={icon} size={16} color={sectionColor} /> : null}
         <Text
-          variant="radarLabel"
-          style={[
-            {
-              fontFamily: headerFontFamily,
-              fontStyle: isHebrew ? "normal" : "italic",
-              letterSpacing: LetterSpacing.trackingWide,
-              color: theme.color.textMuted,
-            },
-          ]}
+          variant="labelStrong"
+          style={{
+            fontFamily: headerFontFamily,
+            fontStyle: isHebrew ? "normal" : "italic",
+            letterSpacing: LetterSpacing.trackingWide,
+            color: sectionColor,
+          }}
         >
           {label}
         </Text>
       </Box>
       {description ? (
-        <Text variant="caption" style={{ maxWidth: 540, color: theme.color.textMuted }}>
+        <Text variant="caption" style={{ maxWidth: 540 }} color="textMuted">
           {description}
         </Text>
       ) : null}
     </Box>
   );
 }
+
+// ─── Profile Section Card ───────────────────────────────────────────────────
 
 export function ProfileSectionCard({
   children,
@@ -77,32 +213,14 @@ export function ProfileSectionCard({
   children: ReactNode;
   style?: ComponentProps<typeof View>["style"];
 }) {
-  const theme = useTheme();
   return (
-    <KitSurface
-      tone="base"
-      padding={0}
-      gap={0}
-      style={[
-        {
-          marginHorizontal: PROFILE_SECTION_CARD_MARGIN_HORIZONTAL,
-          overflow: "hidden",
-          borderRadius: BrandRadius.card,
-          borderCurve: "continuous",
-          backgroundColor: theme.scheme === "light" ? "#FFFFFF" : theme.color.surfaceElevated,
-          shadowColor: "#000000",
-          shadowOpacity: theme.scheme === "light" ? 0.05 : 0.06,
-          shadowRadius: theme.scheme === "light" ? 20 : 16,
-          shadowOffset: { width: 0, height: theme.scheme === "light" ? 10 : 8 },
-          elevation: theme.scheme === "light" ? 0 : 2,
-        },
-        style,
-      ]}
-    >
+    <KitSurface tone="elevated" padding={0} gap={0} style={[styles.card, style]}>
       {children}
     </KitSurface>
   );
 }
+
+// ─── Profile Icon Button ────────────────────────────────────────────────────
 
 export function ProfileIconButton({
   icon,
@@ -115,19 +233,26 @@ export function ProfileIconButton({
   onPress: () => void;
   tone?: "neutral" | "accent";
 }) {
-  const theme = useTheme();
-  const iconColor = tone === "accent" ? BRIGHT_LIME : theme.color.text;
+  const colors = useProfileColors();
 
   return (
     <IconButton
       accessibilityLabel={label}
-      icon={<IconSymbol name={icon} size={20} color={iconColor} />}
+      icon={
+        <IconSymbol
+          name={icon}
+          size={20}
+          color={tone === "accent" ? colors.iconAccent : colors.iconDefault}
+        />
+      }
       onPress={onPress}
       tone={tone === "accent" ? "primarySubtle" : "secondary"}
-      size={PROFILE_ICON_BUTTON_SIZE}
+      size={40}
     />
   );
 }
+
+// ─── Profile Setting Row ────────────────────────────────────────────────────
 
 export function ProfileSettingRow({
   title,
@@ -137,7 +262,7 @@ export function ProfileSettingRow({
   accessory,
   onPress,
   tone = "default",
-  accentColor,
+  sectionTone,
   showDivider = false,
 }: {
   title: string;
@@ -147,30 +272,28 @@ export function ProfileSettingRow({
   accessory?: ReactNode;
   onPress?: () => void;
   tone?: "default" | "danger" | "accent";
-  accentColor?: string;
+  sectionTone?: ProfileSectionTone;
   showDivider?: boolean;
 }) {
-  const theme = useTheme();
-  const resolvedAccentColor = accentColor ?? BRIGHT_LIME;
+  const colors = useProfileColors();
+  const { theme } = useUnistyles();
 
-  const secondaryColor =
-    tone === "danger"
-      ? URGENT_ORANGE
-      : tone === "accent"
-        ? BRIGHT_LIME
-        : theme.color.textMuted;
+  // Resolve icon color: explicit tone > section tone > default
+  let iconColor: string;
+  if (tone === "danger") {
+    iconColor = colors.iconDanger;
+  } else if (tone === "accent") {
+    iconColor = colors.iconAccent;
+  } else if (sectionTone) {
+    iconColor = getSectionColor(sectionTone, theme);
+  } else {
+    iconColor = colors.iconDefault;
+  }
 
-  const iconColor =
-    tone === "danger"
-      ? URGENT_ORANGE
-      : tone === "accent"
-        ? resolvedAccentColor
-        : BRIGHT_LIME;
-
-  const dividerColor = theme.scheme === "light" ? "transparent" : theme.color.divider;
+  const dividerStyle = icon ? styles.dividerWithIcon : styles.dividerWithoutIcon;
 
   const content = (
-    <Box>
+    <>
       <Box
         flexDirection="row"
         alignItems={subtitle && subtitle.length > 36 ? "flex-start" : "center"}
@@ -178,31 +301,10 @@ export function ProfileSettingRow({
         px="md"
         py="md"
         minHeight={BrandSpacing.listItemMinHeight}
-        style={{
-          backgroundColor: theme.scheme === "light" ? theme.color.surface : "transparent",
-        }}
       >
-        {icon ? (
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: BrandRadius.lg,
-              backgroundColor:
-                theme.scheme === "light" ? theme.color.surfaceAlt : theme.color.surfaceElevated,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <IconSymbol name={icon} size={20} color={iconColor} />
-          </View>
-        ) : null}
+        {icon ? <IconSymbol name={icon} size={20} color={iconColor} /> : null}
 
-        <Box
-          flex={1}
-          minWidth={0}
-          style={{ gap: subtitle ? PROFILE_SETTING_ROW_SECONDARY_GAP : 0 }}
-        >
+        <Box flex={1} minWidth={0} gap="xxs">
           <Text variant="bodyMedium" color="text">
             {title}
           </Text>
@@ -213,39 +315,17 @@ export function ProfileSettingRow({
           ) : null}
         </Box>
 
-        <Box
-          flexDirection="row"
-          alignItems="center"
-          justifyContent="flex-end"
-          gap="sm"
-          style={{ maxWidth: "48%" }}
-        >
-          {value ? (
-            <Text
-              variant="caption"
-              numberOfLines={1}
-              style={{ textAlign: "auto", color: theme.color.textMuted }}
-            >
-              {value}
-            </Text>
-          ) : null}
-          {accessory ??
-            (onPress ? <IconSymbol name="chevron.right" size={14} color={secondaryColor} /> : null)}
-        </Box>
+        {value ? (
+          <Text variant="caption" color="textMuted" numberOfLines={1}>
+            {value}
+          </Text>
+        ) : null}
+
+        {accessory ??
+          (onPress ? <IconSymbol name="chevron.right" size={14} color={colors.chevron} /> : null)}
       </Box>
-      {showDivider ? (
-        <View
-          style={{
-            height: BorderWidth.thin,
-            marginLeft: icon
-              ? BrandSpacing.md + 40 + BrandSpacing.md
-              : PROFILE_SETTING_ROW_DIVIDER_LEFT_WITHOUT_ICON,
-            marginRight: PROFILE_SETTING_ROW_DIVIDER_RIGHT,
-            backgroundColor: dividerColor,
-          }}
-        />
-      ) : null}
-    </Box>
+      {showDivider ? <View style={[styles.divider, dividerStyle]} /> : null}
+    </>
   );
 
   if (!onPress) {
@@ -261,14 +341,18 @@ export function ProfileSettingRow({
       accessibilityRole="button"
       accessibilityLabel={[title, subtitle, value].filter(Boolean).join(". ")}
       onPress={onPress}
-      style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
+      style={(state) => [
+        styles.row as ViewStyle,
+        state.pressed && (styles.rowPressed as ViewStyle),
+      ]}
     >
       {content}
     </Pressable>
   );
 }
 
-// Support grid card (Help Center, Terms) - matches mock's card style
+// ─── Action Cards ───────────────────────────────────────────────────────────
+
 export function ProfileSupportCard({
   icon,
   title,
@@ -280,35 +364,17 @@ export function ProfileSupportCard({
   onPress?: () => void;
   fullWidth?: boolean;
 }) {
-  const theme = useTheme();
-
-  const cardContent = (
-    <View
-      style={{
-        backgroundColor: theme.color.surfaceElevated,
-        borderRadius: BrandRadius.card,
-        padding: BrandSpacing.md,
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: BrandSpacing.xs,
-        minHeight: 80,
-        shadowColor: "#000000",
-        shadowOpacity: 0.05,
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 1,
-      }}
-    >
-      <IconSymbol name={icon} size={24} color={theme.color.textMuted} />
-      <Text variant="bodyMedium" color="text" style={{ fontSize: 14, fontWeight: "600" }}>
-        {title}
-      </Text>
-    </View>
-  );
+  const colors = useProfileColors();
 
   if (!onPress) {
-    return cardContent;
+    return (
+      <View style={[styles.actionCard as ViewStyle, fullWidth && { flex: 1 }]}>
+        <IconSymbol name={icon} size={24} color={colors.iconDefault} />
+        <Text variant="bodyMedium" color="text" style={{ fontWeight: "600" }}>
+          {title}
+        </Text>
+      </View>
+    );
   }
 
   return (
@@ -316,49 +382,32 @@ export function ProfileSupportCard({
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
-      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1, flex: fullWidth ? 1 : undefined }]}
+      style={(state) => [
+        styles.actionCard as ViewStyle,
+        fullWidth && { flex: 1 },
+        state.pressed && (styles.actionCardPressed as ViewStyle),
+      ]}
     >
-      {cardContent}
+      <IconSymbol name={icon} size={24} color={colors.iconDefault} />
+      <Text variant="bodyMedium" color="text" style={{ fontWeight: "600" }}>
+        {title}
+      </Text>
     </Pressable>
   );
 }
 
-// Sign Out button - matches mock's urgent-orange style
 export function ProfileSignOutButton({ title, onPress }: { title: string; onPress?: () => void }) {
-  const theme = useTheme();
-  const cardContent = (
-    <View
-      style={{
-        backgroundColor: theme.color.surfaceElevated,
-        borderRadius: BrandRadius.card,
-        padding: BrandSpacing.md,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: BrandSpacing.sm,
-        minHeight: 52,
-        shadowColor: "#000000",
-        shadowOpacity: 0.05,
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 1,
-      }}
-    >
-      <IconSymbol name="logout" size={20} color={theme.color.secondary} />
-      <Text
-        variant="bodyMedium"
-        style={{
-          color: theme.color.secondary,
-          fontWeight: "700",
-        }}
-      >
-        {title}
-      </Text>
-    </View>
-  );
+  const colors = useProfileColors();
 
   if (!onPress) {
-    return cardContent;
+    return (
+      <View style={styles.actionCard as ViewStyle}>
+        <IconSymbol name="logout" size={20} color={colors.iconDanger} />
+        <Text variant="bodyMedium" style={{ color: colors.dangerText, fontWeight: "700" }}>
+          {title}
+        </Text>
+      </View>
+    );
   }
 
   return (
@@ -366,9 +415,15 @@ export function ProfileSignOutButton({ title, onPress }: { title: string; onPres
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
-      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
+      style={(state) => [
+        styles.actionCard as ViewStyle,
+        state.pressed && (styles.actionCardPressed as ViewStyle),
+      ]}
     >
-      {cardContent}
+      <IconSymbol name="logout" size={20} color={colors.iconDanger} />
+      <Text variant="bodyMedium" style={{ color: colors.dangerText, fontWeight: "700" }}>
+        {title}
+      </Text>
     </Pressable>
   );
 }

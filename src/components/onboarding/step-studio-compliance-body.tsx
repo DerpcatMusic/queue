@@ -92,7 +92,6 @@ export function StepStudioComplianceBody({
   ROLE_TAB_ROUTE_NAMES,
   saveStudioBillingFromOnboarding,
   startStudioDiditFromOnboarding,
-  refreshStudioDiditFromOnboarding,
   styles,
 }: StepStudioComplianceBodyProps) {
   const { t } = useTranslation();
@@ -178,37 +177,27 @@ export function StepStudioComplianceBody({
                 status: getIdentityStatusLabel(studioDiditState.status),
               })}
         </ThemedText>
-        <ActionButton
-          label={
-            studioDiditState.isVerified
-              ? t("profile.studioCompliance.actions.refreshIdentity")
-              : t("profile.identityVerification.verifyNow")
-          }
-          fullWidth
-          native={false}
-          loading={isStartingStudioDidit}
-          disabled={isStartingStudioDidit}
-          {...(!studioDiditState.isVerified
-            ? {
-                colors: {
-                  backgroundColor: color.primary,
-                  pressedBackgroundColor: color.primary,
-                  disabledBackgroundColor: color.surfaceAlt,
-                  labelColor: color.onPrimary,
-                  disabledLabelColor: color.onPrimary,
-                  nativeTintColor: color.primary,
-                },
-              }
-            : {})}
-          labelStyle={{ textTransform: "uppercase", letterSpacing: 0.8, fontWeight: "700" }}
-          onPress={() => {
-            if (studioDiditState.isVerified) {
-              void refreshStudioDiditFromOnboarding();
-              return;
-            }
-            void startStudioDiditFromOnboarding();
-          }}
-        />
+        {!studioDiditState.isVerified ? (
+          <ActionButton
+            label={t("profile.identityVerification.verifyNow")}
+            fullWidth
+            native={false}
+            loading={isStartingStudioDidit}
+            disabled={isStartingStudioDidit}
+            colors={{
+              backgroundColor: color.primary,
+              pressedBackgroundColor: color.primary,
+              disabledBackgroundColor: color.surfaceAlt,
+              labelColor: color.onPrimary,
+              disabledLabelColor: color.onPrimary,
+              nativeTintColor: color.primary,
+            }}
+            labelStyle={{ textTransform: "uppercase", letterSpacing: 0.8, fontWeight: "700" }}
+            onPress={() => {
+              void startStudioDiditFromOnboarding();
+            }}
+          />
+        ) : null}
       </View>
       <View
         style={[

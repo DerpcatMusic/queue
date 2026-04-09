@@ -1,5 +1,5 @@
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
-
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import {
   DarkTheme,
   DefaultTheme,
@@ -17,9 +17,31 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppSafeRoot } from "@/components/layout/app-safe-root";
+import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
 import { AuthSessionControllerProvider } from "@/contexts/auth-session-context";
+import { SheetProvider, useSheetContext } from "@/contexts/sheet-context";
 import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
 import { UserProvider } from "@/contexts/user-context";
+
+// Sheet components - mounted at root level above all tabs
+import { InstructorPaymentsSheet } from "@/components/sheets/profile/instructor/instructor-payments-sheet";
+import { InstructorSportsSheet } from "@/components/sheets/profile/instructor/instructor-sports-sheet";
+import { InstructorLocationSheet } from "@/components/sheets/profile/instructor/instructor-location-sheet";
+import { InstructorComplianceSheet } from "@/components/sheets/profile/instructor/instructor-compliance-sheet";
+import { InstructorCalendarSheet } from "@/components/sheets/profile/instructor/instructor-calendar-sheet";
+import { InstructorEditSheet } from "@/components/sheets/profile/instructor/instructor-edit-sheet";
+import { InstructorNotificationsSheet } from "@/components/sheets/profile/instructor/instructor-notifications-sheet";
+import { InstructorAddAccountSheet } from "@/components/sheets/profile/instructor/instructor-add-account-sheet";
+import { InstructorIdentityVerificationSheet } from "@/components/sheets/profile/instructor/instructor-identity-verification-sheet";
+
+import { StudioPaymentsSheet } from "@/components/sheets/profile/studio/studio-payments-sheet";
+import { StudioComplianceSheet } from "@/components/sheets/profile/studio/studio-compliance-sheet";
+import { StudioBranchesSheet } from "@/components/sheets/profile/studio/studio-branches-sheet";
+import { StudioCalendarSheet } from "@/components/sheets/profile/studio/studio-calendar-sheet";
+import { StudioEditSheet } from "@/components/sheets/profile/studio/studio-edit-sheet";
+import { StudioNotificationsSheet } from "@/components/sheets/profile/studio/studio-notifications-sheet";
+import { StudioAddAccountSheet } from "@/components/sheets/profile/studio/studio-add-account-sheet";
+import { CalendarLessonDetailSheet } from "@/components/sheets/calendar/calendar-lesson-detail-sheet";
 import { ThemePreferenceProvider, useThemePreference } from "@/hooks/use-theme-preference";
 import i18n from "@/i18n";
 import { getConvexClient, isConvexUrlConfigured } from "@/lib/convex";
@@ -225,48 +247,146 @@ function RootLayoutContent() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthSessionControllerProvider value={authSessionController}>
-        <ConvexAuthProvider
-          key={`convex-auth:${authSessionVersion}`}
-          client={convex}
-          {...(nativeStorage ? { storage: nativeStorage } : {})}
-        >
-          <UserProvider>
-            <StartupNotificationsBootstrap />
-            <ThemeProvider value={navigationTheme}>
-              <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
-                <View style={{ flex: 1 }}>
-                  <Stack
-                    screenOptions={{
-                      headerTintColor: navColors.text,
-                      headerTitleStyle: { color: navColors.text },
-                    }}
-                  >
-                    <Stack.Screen
-                      name="index"
-                      options={{
-                        headerShown: false,
-                        animation: "none",
-                      }}
-                    />
-                    <Stack.Screen name="(app)" options={{ headerShown: false }} />
-                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                    <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                    <Stack.Screen
-                      name="modal"
-                      options={{
-                        presentation: "modal",
-                        title: i18n.t("modal.headerTitle"),
-                      }}
-                    />
-                  </Stack>
-                </View>
-                <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
-              </AppSafeRoot>
-            </ThemeProvider>
-          </UserProvider>
-        </ConvexAuthProvider>
-      </AuthSessionControllerProvider>
+      {/* ScrollSheetProvider must be ABOVE BottomSheetModalProvider because
+          BottomSheetModal portals render at the BottomSheetModalProvider level.
+          If ScrollSheetProvider is below, the portal content loses context. */}
+      <ScrollSheetProvider>
+        <BottomSheetModalProvider>
+          <AuthSessionControllerProvider value={authSessionController}>
+            <ConvexAuthProvider
+              key={`convex-auth:${authSessionVersion}`}
+              client={convex}
+              {...(nativeStorage ? { storage: nativeStorage } : {})}
+            >
+              <UserProvider>
+                <SheetProvider>
+                  {/* Sheets use BottomSheetModal portals — position absolute so they never
+                      take flex layout space alongside the main app. */}
+                  <View pointerEvents="box-none" style={{ position: "absolute", inset: 0 }}>
+                    <GlobalSheets />
+                  </View>
+                  <StartupNotificationsBootstrap />
+                  <ThemeProvider value={navigationTheme}>
+                    <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
+                      <View style={{ flex: 1 }}>
+                        <Stack
+                          screenOptions={{
+                            headerTintColor: navColors.text,
+                            headerTitleStyle: { color: navColors.text },
+                          }}
+                        >
+                          <Stack.Screen
+                            name="index"
+                            options={{
+                              headerShown: false,
+                              animation: "none",
+                            }}
+                          />
+                          <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                          <Stack.Screen
+                            name="modal"
+                            options={{
+                              presentation: "modal",
+                              title: i18n.t("modal.headerTitle"),
+                            }}
+                          />
+                        </Stack>
+                      </View>
+                      <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
+                    </AppSafeRoot>
+                  </ThemeProvider>
+                </SheetProvider>
+              </UserProvider>
+            </ConvexAuthProvider>
+          </AuthSessionControllerProvider>
+        </BottomSheetModalProvider>
+      </ScrollSheetProvider>
     </GestureHandlerRootView>
+  );
+}
+
+// Component that renders all sheets at the root level
+// Sheets get their onClose from SheetContext internally
+function GlobalSheets() {
+  const {
+    instructorActiveSheet,
+    studioActiveSheet,
+    closeInstructorSheet,
+    closeStudioSheet,
+    calendarLessonJobId,
+    calendarLessonRole,
+    closeCalendarLesson,
+  } = useSheetContext();
+
+  return (
+    <>
+      {/* Instructor sheets */}
+      <InstructorPaymentsSheet
+        visible={instructorActiveSheet === "payments"}
+        onClose={closeInstructorSheet}
+      />
+      <InstructorSportsSheet
+        visible={instructorActiveSheet === "sports"}
+        onClose={closeInstructorSheet}
+      />
+      <InstructorLocationSheet
+        visible={instructorActiveSheet === "location"}
+        onClose={closeInstructorSheet}
+      />
+      <InstructorComplianceSheet
+        visible={instructorActiveSheet === "compliance"}
+        onClose={closeInstructorSheet}
+      />
+      <InstructorCalendarSheet
+        visible={instructorActiveSheet === "calendar-settings"}
+        onClose={closeInstructorSheet}
+      />
+      <InstructorEditSheet
+        visible={instructorActiveSheet === "edit"}
+        onClose={closeInstructorSheet}
+      />
+      <InstructorNotificationsSheet
+        visible={instructorActiveSheet === "notifications"}
+        onClose={closeInstructorSheet}
+      />
+      <InstructorAddAccountSheet
+        visible={instructorActiveSheet === "add-account"}
+        onClose={closeInstructorSheet}
+      />
+      <InstructorIdentityVerificationSheet
+        visible={instructorActiveSheet === "identity-verification"}
+        onClose={closeInstructorSheet}
+      />
+      {/* Studio sheets */}
+      <StudioPaymentsSheet visible={studioActiveSheet === "payments"} onClose={closeStudioSheet} />
+      <StudioComplianceSheet
+        visible={studioActiveSheet === "compliance"}
+        onClose={closeStudioSheet}
+      />
+      <StudioBranchesSheet visible={studioActiveSheet === "branches"} onClose={closeStudioSheet} />
+      <StudioCalendarSheet
+        visible={studioActiveSheet === "calendar-settings"}
+        onClose={closeStudioSheet}
+      />
+      <StudioEditSheet visible={studioActiveSheet === "edit"} onClose={closeStudioSheet} />
+      <StudioNotificationsSheet
+        visible={studioActiveSheet === "notifications"}
+        onClose={closeStudioSheet}
+      />
+      <StudioAddAccountSheet
+        visible={studioActiveSheet === "add-account"}
+        onClose={closeStudioSheet}
+      />
+
+      {/* Calendar lesson detail sheet */}
+      <CalendarLessonDetailSheet
+        visible={calendarLessonJobId !== null}
+        jobId={calendarLessonJobId}
+        role={calendarLessonRole}
+        onClose={closeCalendarLesson}
+      />
+    </>
   );
 }

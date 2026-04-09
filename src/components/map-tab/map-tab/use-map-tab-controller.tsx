@@ -16,13 +16,21 @@ import { buildZoneCityGroups, buildZoneCityListItems } from "@/components/map-ta
 
 import type { QueueMapPin, StudioMapMarker } from "@/components/maps/queue-map.types";
 import { BrandSpacing, getMapBrandPalette } from "@/constants/brand";
-import { ZONE_OPTIONS } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
+import {
+  SELECTABLE_BOUNDARY_BY_ID,
+  SELECTABLE_BOUNDARY_OPTIONS,
+} from "@/features/maps/boundaries/catalog";
+import {
+  LONDON_BOROUGH_BOUNDS_BY_ID,
+} from "@/features/maps/boundaries/london-boroughs";
+import { ACTIVE_BOUNDARY_PROVIDER, DEFAULT_BOUNDARY_PROVIDER } from "@/features/maps/boundaries/providers";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
 
 import { useThemePreference } from "@/hooks/use-theme-preference";
+import { captureCurrentLocationSample } from "@/lib/location-zone";
 import {
   buildFilteredZones,
   countPendingZoneSelectionChanges,
@@ -32,8 +40,8 @@ import {
 const MAX_ZONES = 25;
 const MAP_CAMERA_TOP_OFFSET = BrandSpacing.xl;
 const MAP_CAMERA_BOTTOM_OFFSET = BrandSpacing.xl;
-const STATIC_ZONE_CITY_GROUPS = buildZoneCityGroups(ZONE_OPTIONS);
-const STATIC_ZONE_BY_ID = new Map(ZONE_OPTIONS.map((zone) => [zone.id, zone]));
+const STATIC_ZONE_CITY_GROUPS = buildZoneCityGroups(SELECTABLE_BOUNDARY_OPTIONS);
+const STATIC_ZONE_BY_ID = SELECTABLE_BOUNDARY_BY_ID;
 const STATIC_ZONE_CITY_BY_ZONE_ID = new Map<string, string>();
 const STATIC_ZONE_CITY_GROUP_BY_KEY = new Map(
   STATIC_ZONE_CITY_GROUPS.map((group) => [group.cityKey, group]),
@@ -58,16 +66,25 @@ export function useMapTabController() {
   const zoneLanguage: "en" | "he" = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he")
     ? "he"
     : "en";
+  const activeBoundaryProvider = ACTIVE_BOUNDARY_PROVIDER.id;
+  const usesLegacyZoneStorage = ACTIVE_BOUNDARY_PROVIDER.selectionStorage === "legacyZones";
   const { currentUser } = useUser();
   const remoteZones = useQuery(
     api.instructorZones.getMyInstructorZones,
-    currentUser?.role === "instructor" ? {} : "skip",
+    currentUser?.role === "instructor" && usesLegacyZoneStorage ? {} : "skip",
+  );
+  const remoteBoundaries = useQuery(
+    api.boundaries.getMyInstructorBoundaries,
+    currentUser?.role === "instructor" && !usesLegacyZoneStorage
+      ? { provider: activeBoundaryProvider }
+      : "skip",
   );
   const remoteStudios = useQuery(
     api.users.getInstructorMapStudios,
-    currentUser?.role === "instructor" ? {} : "skip",
+    currentUser?.role === "instructor" && usesLegacyZoneStorage ? {} : "skip",
   );
   const saveZones = useMutation(api.instructorZones.setMyInstructorZones);
+  const saveBoundaries = useMutation(api.boundaries.setMyInstructorBoundaries);
 
   type RemoteStudio = NonNullable<typeof remoteStudios>[number];
 
@@ -80,7 +97,8 @@ export function useMapTabController() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [focusZoneId, setFocusZoneId] = useState<string | null>(null);
   const [selectedStudioId, setSelectedStudioId] = useState<string | null>(null);
-  const [mapPin] = useState<QueueMapPin | null>(null);
+  const [mapPin, setMapPin] = useState<QueueMapPin | null>(null);
+  const [hasAttemptedMapPinBootstrap, setHasAttemptedMapPinBootstrap] = useState(false);
 
   const noopMapPress = useCallback(() => {}, []);
   const openSearchSheet = useCallback(() => {
@@ -94,9 +112,40 @@ export function useMapTabController() {
   }, [focusZoneId, remoteZones?.zoneIds, selectedZoneIds]);
 
   useEffect(() => {
+    if (!usesLegacyZoneStorage) {
+      if (!remoteBoundaries) return;
+      setSelectedZoneIds(remoteBoundaries.boundaryIds ?? []);
+      return;
+    }
+
     if (!remoteZones) return;
     setSelectedZoneIds(remoteZones.zoneIds ?? []);
-  }, [remoteZones]);
+  }, [remoteBoundaries, remoteZones, usesLegacyZoneStorage]);
+
+  useEffect(() => {
+    if (!isFocused || hasAttemptedMapPinBootstrap || !usesLegacyZoneStorage) {
+      return;
+    }
+
+    setHasAttemptedMapPinBootstrap(true);
+    let cancelled = false;
+
+    void captureCurrentLocationSample()
+      .then((sample) => {
+        if (cancelled) return;
+        setMapPin({
+          latitude: sample.latitude,
+          longitude: sample.longitude,
+        });
+      })
+      .catch(() => {
+        // Best-effort only. If location is unavailable, keep the default map center.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasAttemptedMapPinBootstrap, isFocused, usesLegacyZoneStorage]);
 
   const applySelectedZoneIds = useCallback(
     (
@@ -150,7 +199,8 @@ export function useMapTabController() {
     [applySelectedZoneIds, focusZoneId, selectedZoneIds],
   );
 
-  const persistedZoneIds = (remoteZones?.zoneIds ?? []) as string[];
+  const persistedZoneIds = (((usesLegacyZoneStorage ? remoteZones?.zoneIds : remoteBoundaries?.boundaryIds)) ??
+    []) as string[];
   const isSheetExpanded = sheetStep > 0;
 
   const hasChanges = useMemo(
@@ -160,7 +210,10 @@ export function useMapTabController() {
   const deferredSelectedZoneSet = useMemo(() => new Set(selectedZoneIds), [selectedZoneIds]);
   const expandedCityKeySet = useMemo(() => new Set(expandedCityKeys), [expandedCityKeys]);
   const filteredZones = useMemo(
-    () => (Platform.OS === "web" ? buildFilteredZones(ZONE_OPTIONS, zoneSearch, zoneLanguage) : []),
+    () =>
+      Platform.OS === "web"
+        ? buildFilteredZones(SELECTABLE_BOUNDARY_OPTIONS, zoneSearch, zoneLanguage)
+        : [],
     [zoneLanguage, zoneSearch],
   );
   const shouldBuildZoneCityItems =
@@ -201,12 +254,14 @@ export function useMapTabController() {
   );
   const visibleStudioMarkers = useMemo<StudioMapMarker[]>(
     () =>
-      allStudios.filter(
+      !usesLegacyZoneStorage
+        ? []
+        : allStudios.filter(
         (studio) =>
           !zoneModeActive &&
           (selectedZoneIds.length > 0 ? selectedZoneIds.includes(studio.zone) : true),
       ),
-    [allStudios, selectedZoneIds, zoneModeActive],
+    [allStudios, selectedZoneIds, usesLegacyZoneStorage, zoneModeActive],
   );
   const studioCountByZone = useMemo(() => {
     const counts = new Map<string, number>();
@@ -227,6 +282,13 @@ export function useMapTabController() {
     () => (focusZoneId ? (STATIC_ZONE_BY_ID.get(focusZoneId) ?? null) : null),
     [focusZoneId],
   );
+  const focusBoundaryBounds = useMemo(() => {
+    if (usesLegacyZoneStorage) return undefined;
+    if (focusZoneId) {
+      return LONDON_BOROUGH_BOUNDS_BY_ID.get(focusZoneId) ?? null;
+    }
+    return ACTIVE_BOUNDARY_PROVIDER.viewport?.bbox ?? null;
+  }, [focusZoneId, usesLegacyZoneStorage]);
   const focusedZoneLabel = focusedZone?.label[zoneLanguage] ?? null;
   const focusedZoneStudioCount = useMemo(
     () => (focusZoneId ? (studioCountByZone.get(focusZoneId) ?? 0) : 0),
@@ -325,7 +387,14 @@ export function useMapTabController() {
     setIsSaving(true);
     setSaveError(null);
     try {
-      await saveZones({ zoneIds: nextZoneIds });
+      if (!usesLegacyZoneStorage) {
+        await saveBoundaries({
+          provider: activeBoundaryProvider,
+          boundaryIds: nextZoneIds,
+        });
+      } else {
+        await saveZones({ zoneIds: nextZoneIds });
+      }
       setFocusZoneId(nextZoneIds[0] ?? null);
       return true;
     } catch (error) {
@@ -336,7 +405,16 @@ export function useMapTabController() {
     } finally {
       setIsSaving(false);
     }
-  }, [hasChanges, isSaving, saveZones, selectedZoneIds, t]);
+  }, [
+    activeBoundaryProvider,
+    hasChanges,
+    isSaving,
+    saveBoundaries,
+    saveZones,
+    selectedZoneIds,
+    t,
+    usesLegacyZoneStorage,
+  ]);
 
   const closeZoneEditor = useCallback(() => {
     setZoneModeActive(false);
@@ -511,6 +589,22 @@ export function useMapTabController() {
     mapCameraPadding,
     mapPalette,
     mapPin,
+    activeBoundaryProvider,
+    boundaryIdProperty:
+      DEFAULT_BOUNDARY_PROVIDER.geometry.kind === "geojson" ||
+      DEFAULT_BOUNDARY_PROVIDER.geometry.kind === "remoteGeojson"
+        ? DEFAULT_BOUNDARY_PROVIDER.geometry.idProperty
+        : DEFAULT_BOUNDARY_PROVIDER.geometry.promoteId ?? "id",
+    initialBoundaryViewport: !usesLegacyZoneStorage ? (DEFAULT_BOUNDARY_PROVIDER.viewport ?? null) : undefined,
+    boundaryLabelPropertyCandidates: DEFAULT_BOUNDARY_PROVIDER.labelPropertyCandidates ?? [
+      "name",
+      "id",
+    ],
+    boundarySource: !usesLegacyZoneStorage ? DEFAULT_BOUNDARY_PROVIDER.geometry : undefined,
+    boundaryInteractionBounds: !usesLegacyZoneStorage
+      ? (DEFAULT_BOUNDARY_PROVIDER.interactionBounds ?? DEFAULT_BOUNDARY_PROVIDER.viewport?.bbox ?? null)
+      : undefined,
+    focusBoundaryBounds,
     studios: visibleStudioMarkers,
     noopMapPress,
     overlayBottom,
@@ -521,6 +615,7 @@ export function useMapTabController() {
     selectedStudio,
     selectedStudioId,
     selectedZoneIds,
+    selectedBoundaryIds: selectedZoneIds,
     selectedZones,
     setFocusZoneId,
     t,

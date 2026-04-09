@@ -1,5 +1,4 @@
 import { Image as ExpoImage } from "expo-image";
-import { useRouter } from "expo-router";
 import { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, View } from "react-native";
@@ -9,6 +8,8 @@ import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { StyleSheet } from "react-native-unistyles";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { useSheetContext } from "@/contexts/sheet-context";
+import type { CalendarLessonSheetRole } from "@/contexts/sheet-context";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useTheme } from "@/hooks/use-theme";
 import { formatTime } from "@/lib/jobs-utils";
@@ -94,11 +95,11 @@ function getTimelineIndicator(
 }
 
 function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
-  const router = useRouter();
   const { t } = useTranslation();
   const theme = useTheme();
   const { color: palette } = theme;
   const { isSubmitting, submitCheckIn } = useLessonCheckIn();
+  const { openCalendarLesson } = useSheetContext();
   const isLightTheme = theme.scheme === "light";
   const lightCardBg = "#FFFFFF";
   const lightCardBorder = "#E1D8CE";
@@ -192,8 +193,7 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
     if (!canOpenDetails) {
       return;
     }
-    const basePath = item.roleView === "instructor" ? "/instructor/calendar/" : "/studio/calendar/";
-    router.push(`${basePath}${item.lessonId}` as never);
+    openCalendarLesson(item.lessonId, item.roleView as CalendarLessonSheetRole);
   };
 
   const handleCheckIn = () => {
@@ -226,7 +226,7 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
         accessibilityRole={canOpenDetails ? "button" : undefined}
         disabled={!canOpenDetails}
         onPress={handleOpenDetails}
-      style={({ pressed }) => [
+        style={({ pressed }) => [
           styles.card,
           {
             backgroundColor: isLightTheme ? lightCardBg : palette.surfaceElevated,
@@ -372,25 +372,18 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
               {sportLabel}
             </Text>
             <Text
-              style={[
-                styles.indicatorHint,
-                { color: isLightTheme ? lightTextMuted : "#D9D2C8" },
-              ]}
+              style={[styles.indicatorHint, { color: isLightTheme ? lightTextMuted : "#D9D2C8" }]}
               numberOfLines={2}
             >
               {indicator.hint}
             </Text>
           </View>
           <View style={styles.cardHeaderRight}>
-            <Text
-              style={[styles.timeStart, { color: isLightTheme ? lightText : "#FFFFFF" }]}
-            >
+            <Text style={[styles.timeStart, { color: isLightTheme ? lightText : "#FFFFFF" }]}>
               {timeStartLabel}
             </Text>
             {timeEndLabel ? (
-              <Text
-                style={[styles.timeEnd, { color: isLightTheme ? lightTextSubtle : "#CEC7BD" }]}
-              >
+              <Text style={[styles.timeEnd, { color: isLightTheme ? lightTextSubtle : "#CEC7BD" }]}>
                 {t("calendarTab.card.to")} {timeEndLabel}
               </Text>
             ) : null}
@@ -420,9 +413,7 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
               },
             ]}
           >
-            <Text
-              style={[styles.noteLabel, { color: isLightTheme ? lightTextSubtle : "#BEB5A8" }]}
-            >
+            <Text style={[styles.noteLabel, { color: isLightTheme ? lightTextSubtle : "#BEB5A8" }]}>
               {t("calendarTab.card.noteLabel")}
             </Text>
             <Text
@@ -450,9 +441,7 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
               size={16}
               color={isLightTheme ? lightButtonText : "#FFFFFF"}
             />
-            <Text
-              style={[styles.ctaText, { color: isLightTheme ? lightButtonText : "#FFFFFF" }]}
-            >
+            <Text style={[styles.ctaText, { color: isLightTheme ? lightButtonText : "#FFFFFF" }]}>
               {canOpenDetails ? t("calendarTab.card.viewDetails") : t("calendarTab.card.viewEvent")}
             </Text>
           </View>

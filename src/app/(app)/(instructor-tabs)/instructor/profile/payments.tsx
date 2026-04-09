@@ -32,7 +32,7 @@ import { Box, HStack, Spacer, VStack } from "@/primitives";
 import { Motion } from "@/theme/theme";
 
 const INSTRUCTOR_COMPLIANCE_ROUTE = "/instructor/profile/compliance" as const;
-const AIRWALLEX_ONBOARDING_ROUTE = "/instructor/profile/airwallex-onboarding" as const;
+const STRIPE_CONNECT_RETURN_URL = "queue://stripe-connect-return";
 
 type ConnectedAccountStatus = "pending" | "action_required" | "active" | "restricted" | "rejected" | "disabled";
 
@@ -92,11 +92,15 @@ function SkeletonProfile() {
   );
 }
 
-function statusCopy(t: ReturnType<typeof useTranslation>["t"], status?: ConnectedAccountStatus | null) {
+function statusCopy(
+  t: ReturnType<typeof useTranslation>["t"],
+  status?: ConnectedAccountStatus | null,
+  requirementsSummary?: string | null,
+) {
   if (!status) {
     return {
-      label: t("profile.payments.airwallexNotConnected"),
-      caption: t("profile.payments.airwallexDirectSplitNote"),
+      label: t("profile.payments.statusBankNeeded"),
+      caption: t("profile.payments.connectBank"),
       tone: "warning" as const,
     };
   }
@@ -104,23 +108,23 @@ function statusCopy(t: ReturnType<typeof useTranslation>["t"], status?: Connecte
   switch (status) {
     case "active":
       return {
-        label: t("profile.payments.airwallexActive"),
-        caption: t("profile.payments.airwallexActiveHint"),
+        label: t("profile.payments.statusAllSet"),
+        caption: t("profile.payments.successBody"),
         tone: "success" as const,
       };
     case "action_required":
     case "pending":
       return {
-        label: t("profile.payments.airwallexActionRequired"),
-        caption: t("profile.payments.airwallexActionRequiredHint"),
+        label: t("profile.payments.finalizingTitle"),
+        caption: requirementsSummary?.trim() || t("profile.payments.finalizingBody"),
         tone: "warning" as const,
       };
     case "restricted":
     case "rejected":
     case "disabled":
       return {
-        label: t("profile.payments.airwallexBlocked"),
-        caption: t("profile.payments.airwallexBlockedHint"),
+        label: t("profile.payments.onboardingFailed"),
+        caption: t("profile.payments.connectBank"),
         tone: "danger" as const,
       };
   }
@@ -150,7 +154,8 @@ export default function ProfilePaymentsScreen() {
     isInstructor ? {} : "skip",
   );
 
-  const requestAirwallexAccount = useAction(api.paymentsV2Actions.ensureMyInstructorConnectedAccountV2);
+  const createStripeAccountLink = useAction(api.paymentsV2Actions.createMyInstructorStripeAccountLinkV2);
+  const refreshStripeAccount = useAction(api.paymentsV2Actions.refreshMyInstructorStripeConnectedAccountV2);
 
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -166,14 +171,10 @@ export default function ProfilePaymentsScreen() {
 
   const rows = useMemo(() => paymentRows ?? [], [paymentRows]);
   const accountStatus = (connectedAccount?.status ?? null) as ConnectedAccountStatus | null;
-  const accountCopy = statusCopy(t, accountStatus);
+  const accountCopy = statusCopy(t, accountStatus, connectedAccount?.requirementsSummary ?? null);
   const accountTone = accountStatus ? STATUS_TONE[accountStatus] : accountCopy.tone;
   const primaryAccountActionLabel =
-    accountStatus === "active"
-      ? t("profile.payments.airwallexRefreshAccount")
-      : accountStatus
-        ? t("profile.payments.airwallexContinueOnboarding")
-        : t("profile.payments.airwallexConnectAccount");
+    accountStatus === "active" ? t("profile.payments.manageBank") : t("profile.payments.connectBank");
 
   const isLoading =
     currentUser === undefined ||
@@ -193,35 +194,45 @@ export default function ProfilePaymentsScreen() {
     setConnectError(null);
     setConnectInfo(null);
     try {
-      const result = await requestAirwallexAccount();
-      setConnectInfo(
-        result.status === "active"
-          ? t("profile.payments.airwallexConnected")
-          : t("profile.payments.airwallexConnectStarted"),
+      const session = await createStripeAccountLink();
+      setConnectInfo(t("profile.payments.opened"));
+      const result = await WebBrowser.openAuthSessionAsync(
+        session.onboardingUrl,
+        STRIPE_CONNECT_RETURN_URL,
       );
-      if (result.status !== "active") {
-        router.push(AIRWALLEX_ONBOARDING_ROUTE as Href);
+
+      if (result.type === "success") {
+        const refreshed = await refreshStripeAccount();
+        setConnectInfo(
+          refreshed.status === "active"
+            ? t("profile.payments.connectSuccess")
+            : t("profile.payments.finalizingBody"),
+        );
+      } else if (result.type === "cancel") {
+        setConnectInfo(t("profile.payments.cancelled"));
+      } else {
+        setConnectInfo(t("profile.payments.closed"));
       }
       if (Platform.OS === "ios") {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error) {
       setConnectError(
-        error instanceof Error ? error.message : t("profile.payments.airwallexConnectFailed"),
+        error instanceof Error ? error.message : t("profile.payments.openFailed"),
       );
     } finally {
       setConnectBusy(false);
     }
-  }, [requestAirwallexAccount, t]);
+  }, [createStripeAccountLink, refreshStripeAccount, t]);
 
   const confirmConnect = useCallback(() => {
     Alert.alert(
-      t("profile.payments.airwallexConnectTitle"),
-      t("profile.payments.airwallexConnectBody"),
+      t("profile.payments.connectBank"),
+      t("profile.payments.preferenceSubtitle"),
       [
         { text: t("common.cancel"), style: "cancel" },
         {
-          text: accountStatus ? t("profile.payments.airwallexRefreshAccount") : t("profile.payments.airwallexConnectAccount"),
+          text: accountStatus ? t("profile.payments.manageBank") : t("profile.payments.connectBank"),
           style: "default",
           onPress: () => {
             void handleConnect();

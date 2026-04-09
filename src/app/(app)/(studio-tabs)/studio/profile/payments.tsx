@@ -1,8 +1,8 @@
-import { useAction, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { Redirect } from "expo-router";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { Pressable } from "react-native";
+import { useTranslation } from "react-i18next";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
 import {
@@ -54,22 +54,12 @@ export default function ProfilePaymentsScreen() {
     api.paymentsV2.listMyPaymentsV2,
     isStudioPaymentsRole ? { limit: 40 } : "skip",
   );
-  const releaseFundSplit = useAction(api.paymentsV2Actions.releaseAirwallexFundSplitForPaymentOrderV2);
   const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrdersV2"> | null>(null);
-  const [releaseBusy, setReleaseBusy] = useState(false);
-  const [releaseError, setReleaseError] = useState<string | null>(null);
-  const [releaseInfo, setReleaseInfo] = useState<string | null>(null);
 
   const selectedPaymentDetail = useQuery(
     api.paymentsV2.getMyPaymentDetailV2,
     selectedPaymentId ? { paymentOrderId: selectedPaymentId } : "skip",
   );
-
-  useEffect(() => {
-    if (!releaseInfo) return;
-    const timeout = setTimeout(() => setReleaseInfo(null), 4000);
-    return () => clearTimeout(timeout);
-  }, [releaseInfo]);
 
   if (currentUser === undefined || (isStudioPaymentsRole && paymentRows === undefined)) {
     return <LoadingScreen label={t("jobsTab.loading")} />;
@@ -111,25 +101,6 @@ export default function ProfilePaymentsScreen() {
         <ThemedText type="caption" style={{ color: color.textMuted }}>
           {t("profile.payments.liveStatusHint")}
         </ThemedText>
-        {releaseError || releaseInfo ? (
-          <Box
-            style={{
-              backgroundColor: releaseError ? color.dangerSubtle : color.surfaceAlt,
-              borderRadius: BrandRadius.lg,
-              paddingHorizontal: BrandSpacing.component,
-              paddingVertical: BrandSpacing.stackDense,
-              borderWidth: BorderWidth.thin,
-              borderColor: releaseError ? (color.danger as string) : color.border,
-            }}
-          >
-            <ThemedText
-              type="caption"
-              style={{ color: releaseError ? color.danger : color.textMuted }}
-            >
-              {releaseError || releaseInfo}
-            </ThemedText>
-          </Box>
-        ) : null}
       </Box>
 
       <Box style={{ paddingHorizontal: BrandSpacing.sm }}>
@@ -317,67 +288,7 @@ export default function ProfilePaymentsScreen() {
                     </ThemedText>
                   }
                 />
-                {selectedPaymentDetail.fundSplit?.releasedAt ? (
-                  <KitListItem
-                    title={t("profile.payments.releaseInstructorFunds")}
-                    accessory={
-                      <ThemedText style={{ color: color.textMuted }}>
-                        {formatDateTime(selectedPaymentDetail.fundSplit.releasedAt, locale)}
-                      </ThemedText>
-                    }
-                  />
-                ) : null}
               </KitList>
-              {selectedPaymentDetail.fundSplit?.canRelease ? (
-                <Box style={{ paddingHorizontal: BrandSpacing.sm }}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t("profile.payments.releaseInstructorFunds")}
-                    disabled={releaseBusy}
-                    onPress={() => {
-                      if (!selectedPaymentId) return;
-                      setReleaseBusy(true);
-                      setReleaseError(null);
-                      setReleaseInfo(null);
-                      void releaseFundSplit({ paymentOrderId: selectedPaymentId })
-                        .then(() => {
-                          setReleaseInfo(t("profile.payments.releaseInstructorFundsSuccess"));
-                        })
-                        .catch((error: unknown) => {
-                          setReleaseError(
-                            error instanceof Error
-                              ? error.message
-                              : t("profile.payments.releaseInstructorFundsFailed"),
-                          );
-                        })
-                        .finally(() => {
-                          setReleaseBusy(false);
-                        });
-                    }}
-                    style={({ pressed }) => ({
-                      minHeight: BrandSpacing.buttonMinHeightXl,
-                      borderRadius: BrandRadius.medium,
-                      borderCurve: "continuous",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: releaseBusy
-                        ? color.surfaceAlt
-                        : pressed
-                          ? "#D9FF4D"
-                          : "#CCFF00",
-                    })}
-                  >
-                    <ThemedText
-                      type="labelStrong"
-                      style={{ color: releaseBusy ? color.textMuted : "#161E00" }}
-                    >
-                      {releaseBusy
-                        ? t("profile.payments.releasingInstructorFunds")
-                        : t("profile.payments.releaseInstructorFunds")}
-                    </ThemedText>
-                  </Pressable>
-                </Box>
-              ) : null}
               <KitList inset>
                 {selectedPaymentDetail.timeline.length === 0 ? (
                   <KitListItem>

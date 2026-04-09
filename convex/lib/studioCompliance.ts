@@ -1,19 +1,17 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { getAirwallexEnvPresence } from "../integrations/airwallex/config";
+import { getStripeEnvPresence } from "../integrations/stripe/config";
 import { resolveInternalAccessForUserId } from "./internalAccess";
 import { omitUndefined } from "./validation";
 
 type Ctx = QueryCtx | MutationCtx;
 
 export type StudioComplianceBlockReason =
-  | "owner_identity_required"
   | "business_profile_required"
   | "payment_method_required";
 
 export const studioComplianceBlockReasonValidator = v.union(
-  v.literal("owner_identity_required"),
   v.literal("business_profile_required"),
   v.literal("payment_method_required"),
 );
@@ -44,7 +42,7 @@ export const studioPaymentStatusValidator = v.union(
 
 export const studioPaymentReadinessSourceValidator = v.union(
   v.literal("payment_profile"),
-  v.literal("airwallex_env"),
+  v.literal("stripe_env"),
 );
 
 export const studioOwnerIdentityStatusValidator = v.union(
@@ -72,17 +70,8 @@ export const studioComplianceSummaryValidator = v.object({
 function getOwnerIdentityStatus(
   studio: Pick<Doc<"studioProfiles">, "diditVerificationStatus">,
 ): "approved" | "pending" | "missing" | "failed" {
-  const status = studio.diditVerificationStatus;
-  if (status === "approved") {
-    return "approved";
-  }
-  if (!status || status === "not_started") {
-    return "missing";
-  }
-  if (status === "declined" || status === "abandoned" || status === "expired") {
-    return "failed";
-  }
-  return "pending";
+  void studio;
+  return "approved";
 }
 
 function getBusinessProfileStatus(
@@ -115,7 +104,7 @@ export async function getStudioPaymentProfile(
 }
 
 function getLegacyPaymentStatus(): "missing" | "ready" {
-  return getAirwallexEnvPresence().readyForCheckout ? "ready" : "missing";
+  return getStripeEnvPresence().readyForCheckout ? "ready" : "missing";
 }
 
 async function getStudioPaymentReadiness(
@@ -133,8 +122,8 @@ async function getStudioPaymentReadiness(
 
   return {
     status: getLegacyPaymentStatus(),
-    source: "airwallex_env" as const,
-    provider: "airwallex",
+    source: "stripe_env" as const,
+    provider: "stripe",
   };
 }
 
@@ -161,7 +150,6 @@ export async function buildStudioComplianceSummary(
       businessProfileStatus: "complete" as const,
       paymentStatus: "ready" as const,
       ...omitUndefined({
-        diditStatus: args.studio.diditVerificationStatus,
         paymentProvider: paymentReadiness.provider,
       }),
       paymentReadinessSource: paymentReadiness.source,
@@ -173,9 +161,6 @@ export async function buildStudioComplianceSummary(
   const paymentStatus = paymentReadiness.status;
 
   const blockingReasons: StudioComplianceBlockReason[] = [];
-  if (ownerIdentityStatus !== "approved") {
-    blockingReasons.push("owner_identity_required");
-  }
   if (businessProfileStatus !== "complete") {
     blockingReasons.push("business_profile_required");
   }
@@ -194,7 +179,6 @@ export async function buildStudioComplianceSummary(
     businessProfileStatus,
     paymentStatus,
     ...omitUndefined({
-      diditStatus: args.studio.diditVerificationStatus,
       paymentProvider: paymentReadiness.provider,
     }),
     paymentReadinessSource: paymentReadiness.source,

@@ -1,13 +1,15 @@
 import { ConvexError, v } from "convex/values";
+import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireCurrentUser, requireUserRole } from "./lib/auth";
-import { getAirwallexEnvPresence } from "./integrations/airwallex/config";
+import { getStripeEnvPresence, getStripeMarketDefaults } from "./integrations/stripe/config";
 import { computePricingV2 } from "./paymentsPricingV2";
 import { omitUndefined } from "./lib/validation";
 
-const AIRWALLEX_COUNTRY = "IL";
-const AIRWALLEX_CURRENCY = "ILS";
+const DEFAULT_PROVIDER_COUNTRY = getStripeMarketDefaults().country;
+const DEFAULT_PROVIDER_CURRENCY = getStripeMarketDefaults().currency;
+const paymentProviderValidator = v.union(v.literal("airwallex"), v.literal("stripe"));
 
 const paymentOfferStatusValidator = v.union(
   v.literal("draft"),
@@ -40,6 +42,7 @@ const payoutTransferStatusValidator = v.union(
 
 const connectedAccountSummaryValidator = v.object({
   _id: v.id("connectedAccountsV2"),
+  provider: paymentProviderValidator,
   providerAccountId: v.string(),
   status: v.union(
     v.literal("pending"),
@@ -49,11 +52,12 @@ const connectedAccountSummaryValidator = v.object({
     v.literal("rejected"),
     v.literal("disabled"),
   ),
+  requirementsSummary: v.optional(v.string()),
 });
 
 const connectedAccountOnboardingSummaryValidator = v.object({
   _id: v.id("connectedAccountsV2"),
-  provider: v.literal("airwallex"),
+  provider: paymentProviderValidator,
   providerAccountId: v.string(),
   accountCapability: v.union(v.literal("ledger"), v.literal("withdrawal"), v.literal("full")),
   status: v.union(
@@ -69,6 +73,7 @@ const connectedAccountOnboardingSummaryValidator = v.object({
   createdAt: v.number(),
   updatedAt: v.number(),
   activatedAt: v.optional(v.number()),
+  requirementsSummary: v.optional(v.string()),
 });
 
 const paymentOfferSummaryValidator = v.object({
@@ -107,7 +112,7 @@ const paymentOrderSummaryValidator = v.object({
   studioUserId: v.id("users"),
   instructorId: v.id("instructorProfiles"),
   instructorUserId: v.id("users"),
-  provider: v.literal("airwallex"),
+  provider: paymentProviderValidator,
   status: paymentOrderStatusValidator,
   providerCountry: v.string(),
   currency: v.string(),
@@ -131,7 +136,7 @@ const paymentOrderSummaryValidator = v.object({
 const paymentAttemptSummaryValidator = v.object({
   _id: v.id("paymentAttemptsV2"),
   paymentOrderId: v.id("paymentOrdersV2"),
-  provider: v.literal("airwallex"),
+  provider: paymentProviderValidator,
   providerPaymentIntentId: v.string(),
   providerAttemptId: v.optional(v.string()),
   clientSecretRef: v.optional(v.string()),
@@ -139,6 +144,7 @@ const paymentAttemptSummaryValidator = v.object({
   statusRaw: v.optional(v.string()),
   requestId: v.string(),
   idempotencyKey: v.string(),
+  metadata: v.optional(v.record(v.string(), v.string())),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -146,9 +152,9 @@ const paymentAttemptSummaryValidator = v.object({
 const paymentCheckoutContextValidator = v.union(
   v.null(),
   v.object({
-    offer: paymentOfferSummaryValidator,
-    order: v.union(v.null(), paymentOrderSummaryValidator),
-    attempt: v.union(v.null(), paymentAttemptSummaryValidator),
+      offer: paymentOfferSummaryValidator,
+      order: v.union(v.null(), paymentOrderSummaryValidator),
+      attempt: v.union(v.null(), paymentAttemptSummaryValidator),
     connectedAccount: v.union(v.null(), connectedAccountSummaryValidator),
     instructorConnectedAccountRequired: v.boolean(),
   }),
@@ -159,7 +165,7 @@ const fundSplitSummaryValidator = v.object({
   paymentOrderId: v.id("paymentOrdersV2"),
   paymentAttemptId: v.id("paymentAttemptsV2"),
   connectedAccountId: v.id("connectedAccountsV2"),
-  provider: v.literal("airwallex"),
+  provider: paymentProviderValidator,
   sourcePaymentIntentId: v.string(),
   destinationAccountId: v.string(),
   amountAgorot: v.number(),
@@ -218,6 +224,13 @@ type CompatibilityInvoiceSummary = {
   externalInvoiceUrl?: string;
   issuedAt?: number;
 } | null;
+
+type CompatibilityReceiptSummary = {
+  status: "pending" | "ready";
+  issuedAt?: number;
+  documentUrl?: string;
+  receiptNumber?: string;
+};
 
 const mapV2OrderStatusToLegacy = (
   status: Doc<"paymentOrdersV2">["status"],
@@ -296,6 +309,25 @@ const mapV2SplitStatusToLegacy = (
       return "pending_provider";
     default:
       return "pending_provider";
+  }
+};
+
+const mapStripeStatusToLegacyIdentityStatus = (
+  status: Doc<"connectedAccountsV2">["status"],
+): Doc<"instructorProfiles">["diditVerificationStatus"] => {
+  switch (status) {
+    case "active":
+      return "approved";
+    case "pending":
+      return "in_progress";
+    case "action_required":
+    case "restricted":
+      return "pending";
+    case "rejected":
+    case "disabled":
+      return "declined";
+    default:
+      return "not_started";
   }
 };
 
@@ -500,6 +532,7 @@ const projectPaymentAttempt = (attempt: Doc<"paymentAttemptsV2">) => ({
     providerAttemptId: attempt.providerAttemptId,
     clientSecretRef: attempt.clientSecretRef,
     statusRaw: attempt.statusRaw,
+    metadata: attempt.metadata,
   }),
   status: attempt.status,
   requestId: attempt.requestId,
@@ -520,8 +553,25 @@ const projectConnectedAccount = (account: Doc<"connectedAccountsV2">) => ({
   updatedAt: account.updatedAt,
   ...omitUndefined({
     activatedAt: account.activatedAt,
+    requirementsSummary: account.metadata?.requirementsSummary,
   }),
 });
+
+function mapStripeProviderStatusToCanonical(
+  providerStatusRaw: string,
+): Doc<"connectedAccountsV2">["status"] {
+  switch (providerStatusRaw) {
+    case "active":
+      return "active";
+    case "restricted":
+      return "action_required";
+    case "unsupported":
+      return "disabled";
+    case "pending":
+    default:
+      return "pending";
+  }
+}
 
 const projectFundSplit = (split: Doc<"fundSplitsV2">) => ({
   _id: split._id,
@@ -547,6 +597,20 @@ const projectFundSplit = (split: Doc<"fundSplitsV2">) => ({
     settledAt: split.settledAt,
   }),
 });
+
+async function loadLatestConnectedAccountForUser(
+  ctx: Parameters<typeof requireCurrentUser>[0],
+  userId: Id<"users">,
+  provider?: Doc<"connectedAccountsV2">["provider"],
+) {
+  const accounts = await ctx.db
+    .query("connectedAccountsV2")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .order("desc")
+    .take(10);
+
+  return provider ? (accounts.find((account) => account.provider === provider) ?? null) : (accounts[0] ?? null);
+}
 
 async function loadCurrentStudio(ctx: Parameters<typeof requireUserRole>[0]) {
   const user = await requireUserRole(ctx, ["studio"]);
@@ -646,6 +710,9 @@ export const getMyPaymentDetailV2 = query({
     );
     const latestSplit = splits[0] ?? null;
     const latestTransfer = transfers[0] ?? null;
+    const latestAttempt = attempts[0] ?? null;
+    const receiptUrl = latestAttempt?.metadata?.receipt_url;
+    const receiptNumber = latestAttempt?.metadata?.receipt_number;
 
     const timeline = [
       {
@@ -711,16 +778,14 @@ export const getMyPaymentDetailV2 = query({
       fundSplit: latestSplit
         ? {
             _id: latestSplit._id,
+            provider: latestSplit.provider,
             status: latestSplit.status,
             payoutStatus: mapV2SplitStatusToLegacy(latestSplit.status),
             releaseMode: latestSplit.releaseMode,
             autoRelease: latestSplit.autoRelease,
             releasedAt: latestSplit.releasedAt,
             settledAt: latestSplit.settledAt,
-            canRelease:
-              user.role === "studio" &&
-              latestSplit.releaseMode === "manual" &&
-              latestSplit.status === "created",
+            canRelease: false,
           }
         : null,
       receipt: {
@@ -729,8 +794,9 @@ export const getMyPaymentDetailV2 = query({
             ? ("ready" as const)
             : ("pending" as const),
         issuedAt: order.succeededAt ?? order.createdAt,
-        documentUrl: undefined,
-      },
+        ...(receiptUrl ? { documentUrl: receiptUrl } : {}),
+        ...(receiptNumber ? { receiptNumber } : {}),
+      } satisfies CompatibilityReceiptSummary,
     };
   },
 });
@@ -744,13 +810,9 @@ export const getMyPayoutSummaryV2 = query({
       .withIndex("by_instructor_user", (q) => q.eq("instructorUserId", user._id))
       .order("desc")
       .collect();
-    const connectedAccount = await ctx.db
-      .query("connectedAccountsV2")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .first();
+    const connectedAccount = await loadLatestConnectedAccountForUser(ctx, user._id, "stripe");
 
-    let currency = orders[0]?.currency ?? AIRWALLEX_CURRENCY;
+    let currency = orders[0]?.currency ?? DEFAULT_PROVIDER_CURRENCY;
     let availableAmountAgorot = 0;
     let pendingAmountAgorot = 0;
     let paidAmountAgorot = 0;
@@ -812,8 +874,8 @@ export const getMyPayoutSummaryV2 = query({
       verifiedDestination: connectedAccount
         ? {
             _id: connectedAccount._id,
-            type: "airwallex_connected_account",
-            label: "Airwallex connected account",
+            type: "stripe_connected_account",
+            label: "Stripe connected account",
             country: connectedAccount.country,
             currency: connectedAccount.currency,
             last4: undefined,
@@ -841,19 +903,19 @@ export const getPaymentsPreflightV2 = query({
   args: {},
   handler: async (ctx) => {
     await requireCurrentUser(ctx);
-    const env = getAirwallexEnvPresence();
+    const env = getStripeEnvPresence();
     const invoice = {
       INVOICE_PROVIDER: Boolean(process.env.INVOICE_PROVIDER?.trim()),
     };
 
     return {
-      mode: env.environment,
+      mode: env.readyForCheckout ? "stripe" : "missing",
       payoutReleaseMode: "automatic",
-      currency: AIRWALLEX_CURRENCY,
+      currency: DEFAULT_PROVIDER_CURRENCY,
       webhookMaxSkewSeconds: 300,
-      airwallex: env.airwallex,
+      stripe: env.stripe,
       readyForOnboarding: env.readyForCheckout,
-      readyForPayouts: env.readyForPayouts,
+      readyForPayouts: env.readyForCheckout,
       invoice,
       readyForCheckout: env.readyForCheckout,
       readyForInvoicing: Object.values(invoice).every(Boolean),
@@ -895,18 +957,18 @@ export const getPaymentCheckoutContextV2 = query({
       .order("desc")
       .first();
 
-    const connectedAccount = await ctx.db
-      .query("connectedAccountsV2")
-      .withIndex("by_user", (q) => q.eq("userId", order.instructorUserId))
-      .order("desc")
-      .first();
+    const connectedAccount = await loadLatestConnectedAccountForUser(
+      ctx,
+      order.instructorUserId,
+      order.provider,
+    );
 
     return {
       offer: projectPaymentOffer(offer),
       order: projectPaymentOrder(order),
       attempt: attempt ? projectPaymentAttempt(attempt) : null,
       connectedAccount: connectedAccount ? projectConnectedAccount(connectedAccount) : null,
-      instructorConnectedAccountRequired: true,
+      instructorConnectedAccountRequired: order.provider === "stripe",
     };
   },
 });
@@ -916,11 +978,7 @@ export const getMyInstructorConnectedAccountV2 = query({
   returns: v.union(v.null(), connectedAccountOnboardingSummaryValidator),
   handler: async (ctx) => {
     const user = await requireUserRole(ctx, ["instructor"]);
-    const account = await ctx.db
-      .query("connectedAccountsV2")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .first();
+    const account = await loadLatestConnectedAccountForUser(ctx, user._id, "stripe");
     return account ? projectConnectedAccount(account) : null;
   },
 });
@@ -948,11 +1006,11 @@ export const getFundSplitCreationContextV2 = internalQuery({
       .withIndex("by_payment_order", (q) => q.eq("paymentOrderId", order._id))
       .order("desc")
       .first();
-    const connectedAccount = await ctx.db
-      .query("connectedAccountsV2")
-      .withIndex("by_user", (q) => q.eq("userId", order.instructorUserId))
-      .order("desc")
-      .first();
+    const connectedAccount = await loadLatestConnectedAccountForUser(
+      ctx,
+      order.instructorUserId,
+      order.provider,
+    );
     if (!attempt || !connectedAccount) {
       return null;
     }
@@ -1023,8 +1081,8 @@ export const createStudioPaymentOfferV2 = mutation({
       studioUserId: user._id,
       instructorId: instructor._id,
       instructorUserId,
-      providerCountry: AIRWALLEX_COUNTRY,
-      currency: AIRWALLEX_CURRENCY,
+      providerCountry: DEFAULT_PROVIDER_COUNTRY,
+      currency: DEFAULT_PROVIDER_CURRENCY,
       pricing,
       pricingSnapshot: {
         pricingRuleVersion: pricing.pricingRuleVersion,
@@ -1075,7 +1133,7 @@ export const createStudioPaymentOrderV2 = mutation({
       return projectPaymentOrder(existingOrder);
     }
 
-    const correlationKey = `airwallex:${offer._id}:${offer.jobId}:${crypto.randomUUID()}`;
+    const correlationKey = `stripe:${offer._id}:${offer.jobId}:${crypto.randomUUID()}`;
     const orderId = await ctx.db.insert("paymentOrdersV2", {
       offerId: offer._id,
       jobId: offer.jobId,
@@ -1083,7 +1141,7 @@ export const createStudioPaymentOrderV2 = mutation({
       studioUserId: offer.studioUserId,
       instructorId: offer.instructorId,
       instructorUserId: offer.instructorUserId,
-      provider: "airwallex",
+      provider: "stripe",
       status: "draft",
       providerCountry: offer.providerCountry,
       currency: offer.currency,
@@ -1105,8 +1163,16 @@ export const createStudioPaymentOrderV2 = mutation({
 
 export const upsertInstructorConnectedAccountFromProviderV2 = internalMutation({
   args: {
+    provider: paymentProviderValidator,
     providerAccountId: v.string(),
     providerStatusRaw: v.string(),
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    legalName: v.optional(v.string()),
+    legalFirstName: v.optional(v.string()),
+    legalMiddleName: v.optional(v.string()),
+    legalLastName: v.optional(v.string()),
+    metadata: v.optional(v.record(v.string(), v.string())),
   },
   returns: connectedAccountOnboardingSummaryValidator,
   handler: async (ctx, args) => {
@@ -1118,22 +1184,49 @@ export const upsertInstructorConnectedAccountFromProviderV2 = internalMutation({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .first();
+    const instructorProfile = await ctx.db
+      .query("instructorProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
 
-    const mappedStatus = mapAirwallexAccountStatusToCanonical(args.providerStatusRaw);
+    const mappedStatus =
+      args.provider === "stripe"
+        ? mapStripeProviderStatusToCanonical(args.providerStatusRaw)
+        : mapAirwallexAccountStatusToCanonical(args.providerStatusRaw);
 
     if (existing) {
       await ctx.db.patch(existing._id, {
+        provider: args.provider,
         providerAccountId: args.providerAccountId,
         status: mappedStatus,
         kycStatus: args.providerStatusRaw,
         metadata: {
           ...(existing.metadata ?? {}),
           providerStatusRaw: args.providerStatusRaw,
+          ...(args.metadata ?? {}),
         },
+        country: args.country ?? existing.country,
+        currency: args.currency ?? existing.currency,
         updatedAt: now,
         activatedAt:
           mappedStatus === "active" ? (existing.activatedAt ?? now) : existing.activatedAt,
       });
+      if (args.provider === "stripe" && instructorProfile) {
+        await ctx.db.patch(instructorProfile._id, {
+          diditSessionId: args.providerAccountId,
+          diditVerificationStatus: mapStripeStatusToLegacyIdentityStatus(mappedStatus),
+          diditStatusRaw: args.providerStatusRaw,
+          diditLastEventAt: now,
+          ...(mappedStatus === "active"
+            ? { diditVerifiedAt: instructorProfile.diditVerifiedAt ?? now }
+            : {}),
+          ...(args.legalName ? { diditLegalName: args.legalName } : {}),
+          ...(args.legalFirstName ? { diditLegalFirstName: args.legalFirstName } : {}),
+          ...(args.legalMiddleName ? { diditLegalMiddleName: args.legalMiddleName } : {}),
+          ...(args.legalLastName ? { diditLegalLastName: args.legalLastName } : {}),
+          updatedAt: now,
+        });
+      }
       const updated = await ctx.db.get(existing._id);
       if (!updated) {
         throw new ConvexError("Failed to update Airwallex connected account");
@@ -1144,15 +1237,16 @@ export const upsertInstructorConnectedAccountFromProviderV2 = internalMutation({
     const accountId = await ctx.db.insert("connectedAccountsV2", {
       userId: user._id,
       role: "instructor",
-      provider: "airwallex",
+      provider: args.provider,
       providerAccountId: args.providerAccountId,
       accountCapability: "withdrawal",
       status: mappedStatus,
       kycStatus: args.providerStatusRaw,
-      country: AIRWALLEX_COUNTRY,
-      currency: AIRWALLEX_CURRENCY,
+      country: args.country ?? DEFAULT_PROVIDER_COUNTRY,
+      currency: args.currency ?? DEFAULT_PROVIDER_CURRENCY,
       metadata: {
         providerStatusRaw: args.providerStatusRaw,
+        ...(args.metadata ?? {}),
       },
       createdAt: now,
       updatedAt: now,
@@ -1160,25 +1254,105 @@ export const upsertInstructorConnectedAccountFromProviderV2 = internalMutation({
         activatedAt: mappedStatus === "active" ? now : undefined,
       }),
     });
+    if (args.provider === "stripe" && instructorProfile) {
+      await ctx.db.patch(instructorProfile._id, {
+        diditSessionId: args.providerAccountId,
+        diditVerificationStatus: mapStripeStatusToLegacyIdentityStatus(mappedStatus),
+        diditStatusRaw: args.providerStatusRaw,
+        diditLastEventAt: now,
+        ...(mappedStatus === "active" ? { diditVerifiedAt: now } : {}),
+        ...(args.legalName ? { diditLegalName: args.legalName } : {}),
+        ...(args.legalFirstName ? { diditLegalFirstName: args.legalFirstName } : {}),
+        ...(args.legalMiddleName ? { diditLegalMiddleName: args.legalMiddleName } : {}),
+        ...(args.legalLastName ? { diditLegalLastName: args.legalLastName } : {}),
+        updatedAt: now,
+      });
+    }
 
     const account = await ctx.db.get("connectedAccountsV2", accountId);
     if (!account) {
-      throw new ConvexError("Failed to create Airwallex connected account");
+      throw new ConvexError("Failed to create Stripe connected account");
     }
     return projectConnectedAccount(account);
   },
 });
 
-export const recordAirwallexCheckoutAttemptV2 = internalMutation({
+export const syncStripeConnectedAccountWebhookV2 = internalMutation({
+  args: {
+    providerAccountId: v.string(),
+    providerStatusRaw: v.string(),
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    legalName: v.optional(v.string()),
+    legalFirstName: v.optional(v.string()),
+    legalMiddleName: v.optional(v.string()),
+    legalLastName: v.optional(v.string()),
+    metadata: v.optional(v.record(v.string(), v.string())),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("connectedAccountsV2")
+      .withIndex("by_provider_account", (q) =>
+        q.eq("provider", "stripe").eq("providerAccountId", args.providerAccountId),
+      )
+      .unique();
+
+    if (!existing) {
+      return null;
+    }
+
+    const mappedStatus = mapStripeProviderStatusToCanonical(args.providerStatusRaw);
+    await ctx.db.patch(existing._id, {
+      status: mappedStatus,
+      kycStatus: args.providerStatusRaw,
+      metadata: {
+        ...(existing.metadata ?? {}),
+        providerStatusRaw: args.providerStatusRaw,
+        ...(args.metadata ?? {}),
+      },
+      country: args.country ?? existing.country,
+      currency: args.currency ?? existing.currency,
+      updatedAt: now,
+      activatedAt: mappedStatus === "active" ? (existing.activatedAt ?? now) : existing.activatedAt,
+    });
+
+    const instructorProfile = await ctx.db
+      .query("instructorProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", existing.userId))
+      .unique();
+    if (instructorProfile) {
+      await ctx.db.patch(instructorProfile._id, {
+        diditSessionId: args.providerAccountId,
+        diditVerificationStatus: mapStripeStatusToLegacyIdentityStatus(mappedStatus),
+        diditStatusRaw: args.providerStatusRaw,
+        diditLastEventAt: now,
+        ...(mappedStatus === "active"
+          ? { diditVerifiedAt: instructorProfile.diditVerifiedAt ?? now }
+          : {}),
+        ...(args.legalName ? { diditLegalName: args.legalName } : {}),
+        ...(args.legalFirstName ? { diditLegalFirstName: args.legalFirstName } : {}),
+        ...(args.legalMiddleName ? { diditLegalMiddleName: args.legalMiddleName } : {}),
+        ...(args.legalLastName ? { diditLegalLastName: args.legalLastName } : {}),
+        updatedAt: now,
+      });
+    }
+
+    return null;
+  },
+});
+
+export const recordStripePaymentIntentAttemptV2 = internalMutation({
   args: {
     paymentOrderId: v.id("paymentOrdersV2"),
     providerPaymentIntentId: v.string(),
-    providerAttemptId: v.optional(v.string()),
     clientSecretRef: v.optional(v.string()),
     status: paymentOrderStatusValidator,
     statusRaw: v.optional(v.string()),
     requestId: v.string(),
     idempotencyKey: v.string(),
+    metadata: v.optional(v.record(v.string(), v.string())),
   },
   returns: v.id("paymentAttemptsV2"),
   handler: async (ctx, args) => {
@@ -1186,20 +1360,31 @@ export const recordAirwallexCheckoutAttemptV2 = internalMutation({
     const existing = await ctx.db
       .query("paymentAttemptsV2")
       .withIndex("by_provider_payment_intent", (q) =>
-        q.eq("provider", "airwallex").eq("providerPaymentIntentId", args.providerPaymentIntentId),
+        q.eq("provider", "stripe").eq("providerPaymentIntentId", args.providerPaymentIntentId),
       )
       .unique();
+
     if (existing) {
+      await ctx.db.patch(existing._id, {
+        ...omitUndefined({
+          clientSecretRef: args.clientSecretRef,
+          statusRaw: args.statusRaw,
+          metadata: args.metadata,
+        }),
+        status: args.status,
+        updatedAt: now,
+      });
       return existing._id;
     }
+
     const attemptId = await ctx.db.insert("paymentAttemptsV2", {
       paymentOrderId: args.paymentOrderId,
-      provider: "airwallex",
+      provider: "stripe",
       providerPaymentIntentId: args.providerPaymentIntentId,
       ...omitUndefined({
-        providerAttemptId: args.providerAttemptId,
         clientSecretRef: args.clientSecretRef,
         statusRaw: args.statusRaw,
+        metadata: args.metadata,
       }),
       status: args.status,
       requestId: args.requestId,
@@ -1218,11 +1403,287 @@ export const recordAirwallexCheckoutAttemptV2 = internalMutation({
   },
 });
 
+export const applyStripePaymentIntentWebhookV2 = internalMutation({
+  args: {
+    providerPaymentIntentId: v.string(),
+    status: paymentOrderStatusValidator,
+    statusRaw: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    metadata: v.optional(v.record(v.string(), v.string())),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const attempt = await ctx.db
+      .query("paymentAttemptsV2")
+      .withIndex("by_provider_payment_intent", (q) =>
+        q.eq("provider", "stripe").eq("providerPaymentIntentId", args.providerPaymentIntentId),
+      )
+      .unique();
+
+    if (!attempt) {
+      return null;
+    }
+
+    await ctx.db.patch(attempt._id, {
+      ...omitUndefined({
+        statusRaw: args.statusRaw,
+        lastError: args.errorMessage,
+        metadata: args.metadata
+          ? {
+              ...(attempt.metadata ?? {}),
+              ...args.metadata,
+            }
+          : undefined,
+      }),
+      status: args.status,
+      updatedAt: now,
+    });
+
+    const order = await ctx.db.get(attempt.paymentOrderId);
+    if (!order) {
+      return null;
+    }
+
+    await ctx.db.patch(order._id, {
+      status: args.status,
+      capturedAmountAgorot:
+        args.status === "succeeded" ? order.pricing.studioChargeAmountAgorot : order.capturedAmountAgorot,
+      latestError: args.errorMessage,
+      updatedAt: now,
+      ...omitUndefined({
+        succeededAt: args.status === "succeeded" ? now : undefined,
+        cancelledAt: args.status === "cancelled" ? now : undefined,
+      }),
+    });
+
+    return null;
+  },
+});
+
+export const syncStripeDestinationChargeFundSplitV2 = internalMutation({
+  args: {
+    providerPaymentIntentId: v.string(),
+    providerFundsSplitId: v.optional(v.string()),
+    destinationAccountId: v.string(),
+    settledAt: v.optional(v.number()),
+  },
+  returns: v.union(v.null(), fundSplitSummaryValidator),
+  handler: async (ctx, args): Promise<any> => {
+    const attempt = await ctx.db
+      .query("paymentAttemptsV2")
+      .withIndex("by_provider_payment_intent", (q) =>
+        q.eq("provider", "stripe").eq("providerPaymentIntentId", args.providerPaymentIntentId),
+      )
+      .unique();
+    if (!attempt) {
+      return null;
+    }
+
+    const order = await ctx.db.get(attempt.paymentOrderId);
+    if (!order) {
+      return null;
+    }
+
+    const connectedAccount = await loadLatestConnectedAccountForUser(
+      ctx,
+      order.instructorUserId,
+      "stripe",
+    );
+    if (!connectedAccount || connectedAccount.provider !== "stripe") {
+      return null;
+    }
+
+    return await ctx.runMutation(internal.paymentsV2.upsertFundSplitFromProviderV2, {
+      paymentOrderId: order._id,
+      paymentAttemptId: attempt._id,
+      connectedAccountId: connectedAccount._id,
+      provider: "stripe",
+      sourcePaymentIntentId: attempt.providerPaymentIntentId,
+      destinationAccountId: args.destinationAccountId,
+      amountAgorot: order.pricing.instructorOfferAmountAgorot,
+      currency: order.currency,
+      autoRelease: true,
+      releaseMode: "automatic",
+      status: "settled",
+      requestId: `stripe-fund-split:${args.providerPaymentIntentId}`,
+      idempotencyKey: `stripe-fund-split:${args.providerPaymentIntentId}`,
+      ...omitUndefined({
+        providerFundsSplitId: args.providerFundsSplitId,
+        settledAt: args.settledAt ?? Date.now(),
+        releasedAt: args.settledAt ?? Date.now(),
+      }),
+    });
+  },
+});
+
+export const ensureStripePendingPayoutTransferForFundSplitV2 = internalMutation({
+  args: {
+    fundSplitId: v.id("fundSplitsV2"),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("payoutTransfersV2"),
+      fundSplitId: v.id("fundSplitsV2"),
+      connectedAccountId: v.id("connectedAccountsV2"),
+      provider: paymentProviderValidator,
+      providerTransferId: v.optional(v.string()),
+      amountAgorot: v.number(),
+      currency: v.string(),
+      status: payoutTransferStatusValidator,
+      statusRaw: v.optional(v.string()),
+      requestId: v.string(),
+      idempotencyKey: v.string(),
+      failureReason: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      paidAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const split = await ctx.db.get(args.fundSplitId);
+    if (!split || split.provider !== "stripe") {
+      return null;
+    }
+
+    const existing = await ctx.db
+      .query("payoutTransfersV2")
+      .withIndex("by_fund_split", (q) => q.eq("fundSplitId", split._id))
+      .order("desc")
+      .first();
+    if (existing) {
+      return existing;
+    }
+
+    const now = Date.now();
+    const transferId = await ctx.db.insert("payoutTransfersV2", {
+      connectedAccountId: split.connectedAccountId,
+      fundSplitId: split._id,
+      provider: "stripe",
+      amountAgorot: split.amountAgorot,
+      currency: split.currency,
+      status: "pending",
+      statusRaw: "pending",
+      requestId: `stripe-payout-pending:${split._id}`,
+      idempotencyKey: `stripe-payout-pending:${split._id}`,
+      metadata: {
+        sourcePaymentIntentId: split.sourcePaymentIntentId,
+      },
+      createdAt: now,
+      updatedAt: now,
+    });
+    return await ctx.db.get(transferId);
+  },
+});
+
+export const reconcileStripePayoutWebhookV2 = internalMutation({
+  args: {
+    providerAccountId: v.string(),
+    providerPayoutId: v.string(),
+    amountAgorot: v.number(),
+    currency: v.string(),
+    status: payoutTransferStatusValidator,
+    statusRaw: v.optional(v.string()),
+    failureReason: v.optional(v.string()),
+    paidAt: v.optional(v.number()),
+    metadata: v.optional(v.record(v.string(), v.string())),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const connectedAccount = await ctx.db
+      .query("connectedAccountsV2")
+      .withIndex("by_provider_account", (q) =>
+        q.eq("provider", "stripe").eq("providerAccountId", args.providerAccountId),
+      )
+      .unique();
+    if (!connectedAccount) {
+      return null;
+    }
+
+    const direct = await ctx.db
+      .query("payoutTransfersV2")
+      .withIndex("by_provider_transfer", (q) =>
+        q.eq("provider", "stripe").eq("providerTransferId", args.providerPayoutId),
+      )
+      .unique();
+    if (direct) {
+      await ctx.db.patch(direct._id, {
+        status: args.status,
+        statusRaw: args.statusRaw,
+        updatedAt: now,
+        ...omitUndefined({
+          failureReason: args.failureReason,
+          paidAt: args.paidAt,
+          metadata: args.metadata
+            ? {
+                ...(direct.metadata ?? {}),
+                ...args.metadata,
+              }
+            : undefined,
+        }),
+      });
+      return null;
+    }
+
+    const openTransfers = (
+      await ctx.db
+        .query("payoutTransfersV2")
+        .withIndex("by_connected_account", (q) => q.eq("connectedAccountId", connectedAccount._id))
+        .order("asc")
+        .take(100)
+    ).filter(
+      (transfer) =>
+        transfer.provider === "stripe" &&
+        transfer.currency.toUpperCase() === args.currency.toUpperCase() &&
+        transfer.status !== "paid" &&
+        transfer.status !== "failed" &&
+        transfer.status !== "cancelled",
+    );
+
+    const exactMatches = openTransfers.filter((transfer) => transfer.amountAgorot === args.amountAgorot);
+    const firstOpenTransfer = openTransfers[0];
+    const candidate =
+      exactMatches.length === 1
+        ? exactMatches[0]
+        : openTransfers.length === 1 &&
+            firstOpenTransfer &&
+            firstOpenTransfer.amountAgorot <= args.amountAgorot
+          ? firstOpenTransfer
+          : null;
+
+    if (!candidate) {
+      return null;
+    }
+
+    await ctx.db.patch(candidate._id, {
+      providerTransferId: args.providerPayoutId,
+      status: args.status,
+      statusRaw: args.statusRaw,
+      updatedAt: now,
+      ...omitUndefined({
+        failureReason: args.failureReason,
+        paidAt: args.paidAt,
+        metadata: args.metadata
+          ? {
+              ...(candidate.metadata ?? {}),
+              ...args.metadata,
+            }
+          : undefined,
+      }),
+    });
+
+    return null;
+  },
+});
+
 export const upsertFundSplitFromProviderV2 = internalMutation({
   args: {
     paymentOrderId: v.id("paymentOrdersV2"),
     paymentAttemptId: v.id("paymentAttemptsV2"),
     connectedAccountId: v.id("connectedAccountsV2"),
+    provider: paymentProviderValidator,
     providerFundsSplitId: v.optional(v.string()),
     sourcePaymentIntentId: v.string(),
     destinationAccountId: v.string(),
@@ -1252,7 +1713,7 @@ export const upsertFundSplitFromProviderV2 = internalMutation({
         ? await ctx.db
             .query("fundSplitsV2")
             .withIndex("by_provider_split", (q) =>
-              q.eq("provider", "airwallex").eq("providerFundsSplitId", args.providerFundsSplitId),
+              q.eq("provider", args.provider).eq("providerFundsSplitId", args.providerFundsSplitId),
             )
             .unique()
         : null) ??
@@ -1294,7 +1755,7 @@ export const upsertFundSplitFromProviderV2 = internalMutation({
       paymentOrderId: args.paymentOrderId,
       paymentAttemptId: args.paymentAttemptId,
       connectedAccountId: args.connectedAccountId,
-      provider: "airwallex",
+      provider: args.provider,
       sourcePaymentIntentId: args.sourcePaymentIntentId,
       destinationAccountId: args.destinationAccountId,
       amountAgorot: args.amountAgorot,
@@ -1325,6 +1786,7 @@ export const upsertPayoutTransferFromProviderV2 = internalMutation({
   args: {
     fundSplitId: v.id("fundSplitsV2"),
     connectedAccountId: v.id("connectedAccountsV2"),
+    provider: paymentProviderValidator,
     providerTransferId: v.optional(v.string()),
     amountAgorot: v.number(),
     currency: v.string(),
@@ -1339,7 +1801,7 @@ export const upsertPayoutTransferFromProviderV2 = internalMutation({
     _id: v.id("payoutTransfersV2"),
     fundSplitId: v.id("fundSplitsV2"),
     connectedAccountId: v.id("connectedAccountsV2"),
-    provider: v.literal("airwallex"),
+    provider: paymentProviderValidator,
     providerTransferId: v.optional(v.string()),
     amountAgorot: v.number(),
     currency: v.string(),
@@ -1358,7 +1820,7 @@ export const upsertPayoutTransferFromProviderV2 = internalMutation({
       ? await ctx.db
           .query("payoutTransfersV2")
           .withIndex("by_provider_transfer", (q) =>
-            q.eq("provider", "airwallex").eq("providerTransferId", args.providerTransferId),
+            q.eq("provider", args.provider).eq("providerTransferId", args.providerTransferId),
           )
           .unique()
       : null;
@@ -1390,7 +1852,7 @@ export const upsertPayoutTransferFromProviderV2 = internalMutation({
     const transferId = await ctx.db.insert("payoutTransfersV2", {
       connectedAccountId: args.connectedAccountId,
       fundSplitId: args.fundSplitId,
-      provider: "airwallex",
+      provider: args.provider,
       amountAgorot: args.amountAgorot,
       currency: args.currency,
       status: args.status,
