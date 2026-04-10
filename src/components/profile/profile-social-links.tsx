@@ -1,13 +1,37 @@
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import * as ExpoLinking from "expo-linking";
 import { Pressable, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { useTheme } from "@/hooks/use-theme";
 import { IconSize } from "@/lib/design-system";
 import { Box } from "@/primitives";
-const BRIGHT_LIME = "#CCFF00";
+
+const DEFAULT_ICON_SIZE = BrandSpacing.iconContainer;
+
+const styles = StyleSheet.create((theme) => ({
+  circle: (active: boolean, size: number) => ({
+    width: size,
+    height: size,
+    borderRadius: BrandRadius.full,
+    borderCurve: "continuous",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: active ? theme.color.primary : theme.color.surfaceElevated,
+  }),
+  pressable: (active: boolean) => ({
+    borderRadius: BrandRadius.full,
+    backgroundColor: active ? theme.color.primary : theme.color.surfaceElevated,
+  }),
+  pressablePressed: (active: boolean) => ({
+    borderRadius: BrandRadius.full,
+    backgroundColor: active ? theme.color.primaryPressed : theme.color.surfaceAlt,
+  }),
+  tint: (active: boolean) => ({
+    color: active ? theme.color.onPrimary : theme.color.textMuted,
+  }),
+}));
 
 export const PROFILE_SOCIAL_FIELDS = [
   {
@@ -76,7 +100,7 @@ function SocialIconButton({
   icon,
   onPress,
   active = true,
-  size = BrandSpacing.iconContainer,
+  size = DEFAULT_ICON_SIZE,
 }: {
   accessibilityLabel: string;
   icon: BrandIconName | "website";
@@ -84,24 +108,12 @@ function SocialIconButton({
   active?: boolean;
   size?: number;
 }) {
-  const { color: palette } = useTheme();
   const iconSize = Math.max(IconSize.xs, Math.round(size * 0.44));
-  const backgroundColor = active ? BRIGHT_LIME : palette.surfaceElevated;
-  const pressedBackgroundColor = active ? "#D9FF4D" : palette.surfaceAlt;
-  const tintColor = active ? "#161E00" : palette.textMuted;
+  const tintStyle = styles.tint(active);
+  const tintColor = tintStyle.color;
 
   const circle = (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: BrandRadius.full,
-        borderCurve: "continuous",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor,
-      }}
-    >
+    <View style={styles.circle(active, size)}>
       {icon === "website" ? (
         <AppSymbol name="globe" size={iconSize} tintColor={tintColor} />
       ) : (
@@ -122,10 +134,9 @@ function SocialIconButton({
         triggerSelectionHaptic();
         onPress();
       }}
-      style={({ pressed }) => ({
-        borderRadius: BrandRadius.full,
-        backgroundColor: pressed ? pressedBackgroundColor : backgroundColor,
-      })}
+      style={({ pressed }) =>
+        pressed ? styles.pressablePressed(active) : styles.pressable(active)
+      }
     >
       {circle}
     </Pressable>

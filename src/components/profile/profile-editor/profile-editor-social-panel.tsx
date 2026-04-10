@@ -10,8 +10,6 @@ import { KitSurface, KitTextField } from "@/components/ui/kit";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { Text } from "@/primitives";
-const BRIGHT_LIME = "#CCFF00";
-
 type ProfileEditorSocialPanelProps = {
   socialLinksDraft: ProfileSocialLinks;
   onSocialLinkChange: (key: ProfileSocialKey, value: string) => void;
@@ -55,18 +53,18 @@ export function ProfileEditorSocialPanel({
           accessibilityLabel={showSocialFields ? t("profile.editor.hide") : t("common.edit")}
           onPress={() => setShowSocialFields((value) => !value)}
           style={({ pressed }) => ({
-            backgroundColor: pressed ? "#D9FF4D" : BRIGHT_LIME,
+            backgroundColor: pressed ? color.primaryPressed : color.primary,
             paddingHorizontal: 10,
             paddingVertical: 6,
             borderRadius: 999,
-            shadowColor: "#000000",
+            shadowColor: color.shadow,
             shadowOpacity: 0.08,
             shadowRadius: 10,
             shadowOffset: { width: 0, height: 4 },
             elevation: 1,
           })}
         >
-          <Text style={[BrandType.title, { color: "#161E00", includeFontPadding: false }]}>
+          <Text style={[BrandType.title, { color: color.onPrimary, includeFontPadding: false }]}>
             {showSocialFields ? t("profile.editor.hide") : t("common.edit")}
           </Text>
         </Pressable>

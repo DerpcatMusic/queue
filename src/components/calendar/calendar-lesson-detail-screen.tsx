@@ -1,6 +1,7 @@
 import { useQuery } from "convex/react";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { Pressable } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
@@ -9,6 +10,7 @@ import {
   useGlobalTopSheet,
 } from "@/components/layout/top-sheet-registry";
 import { LoadingScreen } from "@/components/loading-screen";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -40,6 +42,11 @@ export function CalendarLessonDetailScreen({ actorRole: role }: CalendarLessonDe
     api.jobs.getMyCalendarLessonDetail,
     jobId ? { jobId: jobId as Id<"jobs"> } : "skip",
   );
+
+  const handleStudioPress = useCallback(() => {
+    if (!detail?.studioId || role !== "instructor") return;
+    router.push(`/instructor/jobs/studios/${detail.studioId}`);
+  }, [detail?.studioId, role, router]);
 
   const title = detail ? toSportLabel(detail.sport as never) : t("calendarTab.detail.title");
   const topSheetBackgroundColor = theme.color.primary;
@@ -99,6 +106,11 @@ export function CalendarLessonDetailScreen({ actorRole: role }: CalendarLessonDe
   if (!detail) {
     return <LoadingScreen label={t("calendarTab.detail.unavailable")} />;
   }
+
+  const counterpartImageUrl =
+    role === "instructor"
+      ? detail.studioProfileImageUrl
+      : (detail as any).instructorProfileImageUrl;
 
   const counterpartTitle =
     role === "instructor"
@@ -202,22 +214,40 @@ export function CalendarLessonDetailScreen({ actorRole: role }: CalendarLessonDe
         </Box>
       </Box>
 
-      <Box
-        style={[
-          styles.sectionCard,
+      <Pressable
+        onPress={role === "instructor" ? handleStudioPress : undefined}
+        disabled={role !== "instructor"}
+        style={({ pressed }) => [
+          styles.counterpartCard,
           {
             backgroundColor: theme.color.surfaceElevated,
             borderColor: theme.color.outline,
+            transform: [{ scale: role === "instructor" && pressed ? 0.98 : 1 }],
           },
         ]}
       >
-        <ThemedText style={[styles.sectionLabel, { color: theme.color.textMuted }]}>
-          {counterpartLabel}
-        </ThemedText>
-        <ThemedText style={[styles.sectionTitle, { color: theme.color.text }]}>
-          {counterpartTitle}
-        </ThemedText>
-      </Box>
+        <ProfileAvatar
+          imageUrl={counterpartImageUrl}
+          fallbackName={counterpartTitle}
+          size={44}
+          roundedSquare={false}
+          fallbackIcon={role === "instructor" ? "building.2.fill" : "person.fill"}
+          accessibilityLabel={counterpartTitle}
+        />
+        <Box style={styles.counterpartInfo}>
+          <ThemedText style={[styles.sectionLabel, { color: theme.color.textMuted }]}>
+            {counterpartLabel}
+          </ThemedText>
+          <Box style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xxs }}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.color.text }]}>
+              {counterpartTitle}
+            </ThemedText>
+            {role === "instructor" ? (
+              <IconSymbol name="chevron.right" size={16} color={theme.color.textMicro} />
+            ) : null}
+          </Box>
+        </Box>
+      </Pressable>
 
       {detail.checkInStatus ? (
         <Box
@@ -323,10 +353,10 @@ const styles = StyleSheet.create(() => ({
     borderWidth: 1,
     padding: BrandSpacing.lg,
     gap: BrandSpacing.md,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 1,
-    shadowRadius: 24,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   heroTopRow: {
     flexDirection: "row",
@@ -368,6 +398,18 @@ const styles = StyleSheet.create(() => ({
     borderWidth: 1,
     padding: BrandSpacing.md,
     gap: BrandSpacing.xs,
+  },
+  counterpartCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.md,
+    borderRadius: BrandRadius.card,
+    borderWidth: 1,
+    padding: BrandSpacing.md,
+  },
+  counterpartInfo: {
+    flex: 1,
+    gap: BrandSpacing.xxs,
   },
   sectionLabel: {
     fontFamily: "Manrope_700Bold",

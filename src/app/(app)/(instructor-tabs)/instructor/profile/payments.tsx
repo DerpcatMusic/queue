@@ -1,10 +1,10 @@
 import { useAction, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
-import { type Href, Redirect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import { type Href, Redirect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Platform, Pressable } from "react-native";
+import { Platform, Pressable } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
@@ -12,6 +12,7 @@ import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
+import { StripeConnectEmbeddedModal } from "@/components/sheets/profile/instructor/stripe-connect-embedded";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitStatusBadge } from "@/components/ui/kit";
@@ -32,9 +33,14 @@ import { Box, HStack, Spacer, VStack } from "@/primitives";
 import { Motion } from "@/theme/theme";
 
 const INSTRUCTOR_COMPLIANCE_ROUTE = "/instructor/profile/compliance" as const;
-const STRIPE_CONNECT_RETURN_URL = "queue://stripe-connect-return";
 
-type ConnectedAccountStatus = "pending" | "action_required" | "active" | "restricted" | "rejected" | "disabled";
+type ConnectedAccountStatus =
+  | "pending"
+  | "action_required"
+  | "active"
+  | "restricted"
+  | "rejected"
+  | "disabled";
 
 const STATUS_TONE: Record<ConnectedAccountStatus, "neutral" | "warning" | "success" | "danger"> = {
   pending: "warning",
@@ -154,12 +160,20 @@ export default function ProfilePaymentsScreen() {
     isInstructor ? {} : "skip",
   );
 
-  const createStripeAccountLink = useAction(api.paymentsV2Actions.createMyInstructorStripeAccountLinkV2);
-  const refreshStripeAccount = useAction(api.paymentsV2Actions.refreshMyInstructorStripeConnectedAccountV2);
+  const refreshStripeAccount = useAction(
+    api.paymentsV2Actions.refreshMyInstructorStripeConnectedAccountV2,
+  );
+  const createStripeEmbeddedSession = useAction(
+    api.paymentsV2Actions.createMyInstructorStripeEmbeddedSessionV2,
+  );
+  const createStripeHostedAccountLink = useAction(
+    api.paymentsV2Actions.createMyInstructorStripeAccountLinkV2,
+  );
 
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [connectInfo, setConnectInfo] = useState<string | null>(null);
+  const [stripeConnectVisible, setStripeConnectVisible] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrdersV2"> | null>(null);
 
   const selectedPaymentDetail = useQuery(
@@ -174,7 +188,11 @@ export default function ProfilePaymentsScreen() {
   const accountCopy = statusCopy(t, accountStatus, connectedAccount?.requirementsSummary ?? null);
   const accountTone = accountStatus ? STATUS_TONE[accountStatus] : accountCopy.tone;
   const primaryAccountActionLabel =
-    accountStatus === "active" ? t("profile.payments.manageBank") : t("profile.payments.connectBank");
+    accountStatus === "active"
+      ? t("profile.payments.managePayouts")
+      : accountStatus
+        ? t("profile.payments.resumeOnboarding")
+        : t("profile.payments.startOnboarding");
 
   const isLoading =
     currentUser === undefined ||
@@ -189,58 +207,44 @@ export default function ProfilePaymentsScreen() {
     return () => clearTimeout(timeout);
   }, [connectInfo]);
 
-  const handleConnect = useCallback(async () => {
+  const openConnectFlow = useCallback(() => {
     setConnectBusy(true);
     setConnectError(null);
     setConnectInfo(null);
-    try {
-      const session = await createStripeAccountLink();
-      setConnectInfo(t("profile.payments.opened"));
-      const result = await WebBrowser.openAuthSessionAsync(
-        session.onboardingUrl,
-        STRIPE_CONNECT_RETURN_URL,
-      );
+    setStripeConnectVisible(true);
+  }, []);
 
-      if (result.type === "success") {
-        const refreshed = await refreshStripeAccount();
-        setConnectInfo(
-          refreshed.status === "active"
-            ? t("profile.payments.connectSuccess")
-            : t("profile.payments.finalizingBody"),
-        );
-      } else if (result.type === "cancel") {
-        setConnectInfo(t("profile.payments.cancelled"));
-      } else {
-        setConnectInfo(t("profile.payments.closed"));
+  const handleConnectFeedback = useCallback(
+    (feedback: { tone: "success" | "error"; message: string } | null) => {
+      if (!feedback) {
+        setConnectError(null);
+        setConnectInfo(null);
+        return;
       }
-      if (Platform.OS === "ios") {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (feedback.tone === "error") {
+        setConnectError(feedback.message);
+        setConnectInfo(null);
+        return;
       }
-    } catch (error) {
-      setConnectError(
-        error instanceof Error ? error.message : t("profile.payments.openFailed"),
-      );
-    } finally {
-      setConnectBusy(false);
-    }
-  }, [createStripeAccountLink, refreshStripeAccount, t]);
+      setConnectInfo(feedback.message);
+      setConnectError(null);
+    },
+    [],
+  );
 
-  const confirmConnect = useCallback(() => {
-    Alert.alert(
-      t("profile.payments.connectBank"),
-      t("profile.payments.preferenceSubtitle"),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: accountStatus ? t("profile.payments.manageBank") : t("profile.payments.connectBank"),
-          style: "default",
-          onPress: () => {
-            void handleConnect();
-          },
-        },
-      ],
+  const handleConnectCompleted = useCallback(async () => {
+    const refreshed = await refreshStripeAccount();
+    setConnectInfo(
+      refreshed.status === "active"
+        ? t("profile.payments.connectSuccess")
+        : t("profile.payments.finalizingBody"),
     );
-  }, [accountStatus, handleConnect, t]);
+    if (Platform.OS === "ios") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setConnectBusy(false);
+    setStripeConnectVisible(false);
+  }, [refreshStripeAccount, t]);
 
   if (isLoading) {
     return (
@@ -293,14 +297,10 @@ export default function ProfilePaymentsScreen() {
               </Box>
             ) : null}
 
-            <KitStatusBadge
-              label={accountCopy.label}
-              tone={accountTone}
-              showDot
-            />
+            <KitStatusBadge label={accountCopy.label} tone={accountTone} showDot />
 
             <ThemedText type="caption" style={{ color: color.textMuted, lineHeight: 20 }}>
-              {t("profile.payments.airwallexDirectSplitNote")}
+              {t("profile.payments.stripeDirectSplitNote")}
             </ThemedText>
             <ThemedText type="caption" style={{ color: color.textMuted }}>
               {t("profile.payments.liveStatusHint")}
@@ -314,11 +314,9 @@ export default function ProfilePaymentsScreen() {
             >
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={
-                  primaryAccountActionLabel
-                }
-                onPress={confirmConnect}
-                disabled={connectBusy}
+                accessibilityLabel={primaryAccountActionLabel}
+                onPress={openConnectFlow}
+                disabled={connectBusy || stripeConnectVisible}
                 style={({ pressed }) => ({
                   flex: 1,
                   borderRadius: BrandRadius.medium,
@@ -331,16 +329,19 @@ export default function ProfilePaymentsScreen() {
                   backgroundColor: connectBusy
                     ? color.surfaceAlt
                     : pressed
-                        ? "#D9FF4D"
-                      : "#CCFF00",
+                      ? color.primaryPressed
+                      : color.primary,
                 })}
               >
                 <IconSymbol
                   name="building.columns.fill"
                   size={BrandSpacing.iconSm}
-                  color={connectBusy ? color.textMuted : "#161E00"}
+                  color={connectBusy ? color.textMuted : color.onPrimary}
                 />
-                <ThemedText type="labelStrong" style={{ color: connectBusy ? color.textMuted : "#161E00" }}>
+                <ThemedText
+                  type="labelStrong"
+                  style={{ color: connectBusy ? color.textMuted : color.onPrimary }}
+                >
                   {primaryAccountActionLabel}
                 </ThemedText>
               </Pressable>
@@ -366,6 +367,19 @@ export default function ProfilePaymentsScreen() {
                 </ThemedText>
               </Pressable>
             </Box>
+
+            <StripeConnectEmbeddedModal
+              visible={stripeConnectVisible}
+              accountStatus={accountStatus}
+              createEmbeddedSession={async () => createStripeEmbeddedSession({})}
+              createHostedAccountLink={async () => createStripeHostedAccountLink({})}
+              onClose={() => {
+                setConnectBusy(false);
+                setStripeConnectVisible(false);
+              }}
+              onCompleted={handleConnectCompleted}
+              onFeedback={handleConnectFeedback}
+            />
 
             <ThemedText type="caption" style={{ color: color.textMuted }}>
               {accountCopy.caption}
@@ -600,13 +614,13 @@ export default function ProfilePaymentsScreen() {
                           backgroundColor: pressed ? color.surfaceAlt : color.surfaceElevated,
                         })}
                       >
-                        <ThemedText type="bodyStrong" style={{ color: "#CCFF00" }}>
+                        <ThemedText type="bodyStrong" style={{ color: color.primary }}>
                           {t("profile.payments.downloadInvoice")}
                         </ThemedText>
                         <IconSymbol
                           name="arrow.up.right"
                           size={BrandSpacing.iconSm}
-                          color="#CCFF00"
+                          color={color.primary}
                         />
                       </Pressable>
                     ) : null}

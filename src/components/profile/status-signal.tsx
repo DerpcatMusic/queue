@@ -3,7 +3,6 @@ import { memo } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { useTheme } from "@/hooks/use-theme";
 import { Text } from "@/primitives";
 
 type StatusSignalTone = "surface" | "accent";
@@ -26,18 +25,12 @@ export const StatusSignal = memo(function StatusSignal({
   tone = "surface",
   icon,
 }: StatusSignalProps) {
-  const { color: palette } = useTheme();
-  const backgroundColor = tone === "accent" ? "#CCFF00" : palette.surfaceElevated;
-  const labelColor = tone === "accent" ? "#161E00" : palette.textMuted;
-  const valueColor = palette.text;
-
   return (
     <View style={styles.container}>
       <View
         style={[
-          styles.inner,
+          styles.inner(tone),
           {
-            backgroundColor,
             borderRadius: BrandRadius.medium,
             borderCurve: "continuous",
           },
@@ -46,14 +39,13 @@ export const StatusSignal = memo(function StatusSignal({
         <View style={styles.content}>
           <Text
             style={[
-              styles.label,
+              styles.label(tone),
               {
                 fontFamily: "Manrope_500Medium",
                 fontSize: 12,
                 fontWeight: "500",
                 letterSpacing: 0.2,
                 lineHeight: 16,
-                color: labelColor,
                 textTransform: "uppercase",
               },
             ]}
@@ -69,7 +61,6 @@ export const StatusSignal = memo(function StatusSignal({
                 fontSize: 16,
                 fontWeight: "600",
                 lineHeight: 22,
-                color: valueColor,
               },
             ]}
           >
@@ -82,31 +73,32 @@ export const StatusSignal = memo(function StatusSignal({
   );
 });
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create((theme) => ({
   container: {
     flex: 1,
     minWidth: 0,
   },
-  inner: {
+  inner: (tone: StatusSignalTone) => ({
     flexDirection: "row",
     alignItems: "center",
     minHeight: STATUS_SIGNAL_MIN_HEIGHT,
     paddingHorizontal: STATUS_SIGNAL_HORIZONTAL_PADDING,
     paddingVertical: STATUS_SIGNAL_VERTICAL_PADDING,
     gap: BrandSpacing.sm,
-  },
+    backgroundColor: tone === "accent" ? theme.color.primary : theme.color.surfaceElevated,
+  }),
   content: {
     flex: 1,
     gap: STATUS_SIGNAL_CONTENT_GAP,
     minWidth: 0,
   },
-  label: {
-    // textTransform: uppercase and letterSpacing applied inline
-  },
+  label: (tone: StatusSignalTone) => ({
+    color: tone === "accent" ? theme.color.onPrimary : theme.color.textMuted,
+  }),
   value: {
-    // bodyStrong already has correct styling
+    color: theme.color.text,
   },
   iconSlot: {
     flexShrink: 0,
   },
-});
+}));

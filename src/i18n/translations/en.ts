@@ -15,7 +15,7 @@ const en = {
       "This tab will host your teaching calendar, availability blocks, and session sync.",
     today: "Today",
     hoursLabel: "Hours",
-    loading: "Loading calendar...",
+    loading: "Loading your schedule...",
     previewShift: "Preview {{delta}}d",
     mode: {
       day: "Day",
@@ -23,14 +23,14 @@ const en = {
       month: "Month",
     },
     month: {
-      emptyTitle: "No sessions in this month",
-      emptyBody: "Accepted sessions for this month will appear here automatically.",
+      emptyTitle: "No sessions this month",
+      emptyBody: "Accepted sessions will show up here automatically.",
     },
     empty: {
       nonInstructorTitle: "Instructor schedule only",
-      nonInstructorBody: "This calendar shows accepted teaching sessions for instructor accounts.",
-      noSessionsTitle: "No accepted sessions yet",
-      noSessionsBody: "Accept a job from the Jobs tab and it will appear here automatically.",
+      nonInstructorBody: "This calendar shows teaching sessions for instructor accounts.",
+      noSessionsTitle: "No sessions yet",
+      noSessionsBody: "Accept a job from the Jobs tab — it'll show up here.",
     },
     sync: {
       disabled: "Sync off",
@@ -38,11 +38,11 @@ const en = {
       synced: "Synced",
       syncedAt: "Synced {{time}}",
       permissionDenied: "Calendar permission needed",
-      failed: "Sync failed",
+      failed: "Sync failed — try again",
     },
     timeline: {
-      noLessons: "No events",
-      noLessonsHint: "Nothing is scheduled for this day yet.",
+      noLessons: "Nothing scheduled",
+      noLessonsHint: "This day is free.",
       allDay: "All day",
       googleBadge: "Google",
       lifecycle: {
@@ -57,44 +57,45 @@ const en = {
       viewEvent: "View event",
       checkIn: "Check in",
       checkedIn: "Checked in",
-      checkInVerifiedTitle: "Arrival verified",
-      checkInVerifiedBody: "Check-in verified {{distance}}m from the branch.",
+      checkInVerifiedTitle: "Arrival confirmed",
+      checkInVerifiedBody: "Checked in {{distance}}m from the location.",
       checkInRetryTitle: "Couldn't verify arrival",
       checkInErrorTitle: "Check-in failed",
       checkInReasons: {
-        outside_radius: "Move closer to the studio branch and try again.",
-        accuracy_too_low: "Your GPS fix is too weak right now. Step outside and try again.",
-        sample_too_old: "Your location sample is too old. Try again for a fresh fix.",
-        outside_check_in_window: "Check-in is only available near the lesson start time.",
-        branch_location_missing: "This branch does not have a verified location yet.",
-        unknown: "We couldn't verify your arrival right now.",
+        outside_radius: "Move closer to the location and try again.",
+        accuracy_too_low: "GPS signal is weak. Step outside and retry.",
+        sample_too_old: "Location data is stale. Tap check-in for a fresh reading.",
+        outside_check_in_window: "Check-in opens 1 hour before the session starts.",
+        branch_location_missing: "This location doesn't have a pin set yet.",
+        unknown: "Couldn't verify your location. Please try again.",
       },
-      noteLabel: "Instructor note",
-      to: "to",
+      noteLabel: "Note",
+      to: "–",
       indicators: {
-        goodToGo: "Good to go",
-        getReady: "Get ready",
-        arriveNow: "Arrive now",
-        complete: "Complete",
+        goodToGo: "Upcoming",
+        getReady: "Starting soon",
+        arriveNow: "Live now",
+        complete: "Done",
         cancelled: "Cancelled",
         checkedIn: "Checked in",
         checkInFailed: "Check-in failed",
       },
       hints: {
-        goodToGo: "Everything looks set for this lesson.",
-        getReady: "Your lesson window is close. Be ready to arrive and check in.",
-        arriveNow: "This lesson is live. Arrive and confirm you are there.",
-        complete: "This lesson has already passed.",
-        cancelled: "This lesson is no longer active.",
-        checkedIn: "Arrival was verified near the branch.",
-        checkInFailed: "We captured a failed arrival attempt. Move closer and try again.",
+        goodToGo: "Session confirmed — you're all set.",
+        getReady: "Heads up — this session starts within the hour.",
+        arriveNow: "Session is live. Get there and check in.",
+        complete: "",
+        cancelled: "This session was cancelled.",
+        checkedIn: "You're checked in and good to go.",
+        checkInFailed: "Check-in didn't go through. Move closer and retry.",
       },
     },
     detail: {
-      title: "Lesson",
-      unavailable: "Lesson details unavailable",
+      title: "Session",
+      unavailable: "Couldn't load session details",
       studioLabel: "Studio",
       instructorLabel: "Instructor",
+      viewStudioHint: "View studio profile",
     },
     filters: {
       button: "Filters",
@@ -108,17 +109,17 @@ const en = {
     },
     agenda: {
       title: "Agenda",
-      oneEvent: "1 event",
-      eventCount: "{{count}} events",
+      oneEvent: "1 session",
+      eventCount: "{{count}} sessions",
     },
     header: {
       chooseDate: "Choose date",
     },
     lessonRowAccessibility: "{{sport}} from {{start}} to {{end}}",
     lessonRowAccessibilityHint: "Select this day",
-    desktopSoon: "Desktop calendar board is temporarily unavailable in this merge.",
+    desktopSoon: "Calendar is available on mobile for now.",
     googleCalendar: "Google Calendar",
-    unassignedInstructor: "Unassigned instructor",
+    unassignedInstructor: "No instructor assigned",
     footerHint: "Calendar interactions are enabled. Session events appear for instructor accounts.",
   },
   tabsLayout: {
@@ -488,8 +489,7 @@ const en = {
       },
       sections: {
         identity: "Owner identity",
-        identityDescription:
-          "Identity approval is the hard requirement for studio job posting.",
+        identityDescription: "Identity approval is the hard requirement for studio job posting.",
         billing: "Billing profile",
         billingDescription:
           "Keep your legal business details internal so invoices, settlements, and tax handling stay aligned.",
@@ -500,17 +500,19 @@ const en = {
       identity: {
         title: "Studio owner verification",
         approvedBody: "Identity is approved for {{legalName}}.",
-        requiredBody: "Current status: {{status}}. Complete identity onboarding to unlock job posting.",
+        requiredBody:
+          "Current status: {{status}}. Complete identity onboarding to unlock job posting.",
       },
       billing: {
         entityIndividual: "Individual",
         entityCompany: "Company",
         legalBusinessName: "Legal business name",
         taxId: "Tax ID / company number",
-        billingEmail: "Billing email",
-        billingPhone: "Billing phone",
-        billingAddress: "Billing address",
-        vatReportingType: "VAT reporting type",
+      billingEmail: "Billing email",
+      billingPhone: "Billing phone",
+      billingAddress: "Billing address",
+      useStripeAddress: "Use Stripe address form",
+      vatReportingType: "VAT reporting type",
         vatOptions: {
           osek_patur: "Osek patur",
           osek_murshe: "Osek murshe",
@@ -897,7 +899,7 @@ const en = {
     },
     payments: {
       summarySubtitle: "Track amounts, payment processing, and payout delivery status.",
-      airwallexDirectSplitNote:
+      stripeDirectSplitNote:
         "Instructor funds route directly into the connected Stripe account for this lesson.",
       airwallexNotConnected: "Stripe account not connected",
       airwallexActive: "Stripe account active",
@@ -950,7 +952,8 @@ const en = {
       created: "Created",
       noProviderEvents: "No provider events recorded yet.",
       notCreated: "Not created",
-      liveStatusHint: "This screen updates automatically as Stripe payment and account events arrive.",
+      liveStatusHint:
+        "This screen updates automatically as Stripe payment and account events arrive.",
       releaseModeManual: "Manual release",
       releaseModeAutomatic: "Automatic release",
       releaseModeScheduled: "Scheduled release",
@@ -958,6 +961,8 @@ const en = {
       receiptPending: "Receipt will be generated after payment confirmation",
       openReceipt: "Open receipt",
       openHostedReceipt: "Open hosted receipt",
+      savedMethods: "Saved payment methods",
+      savedMethodsUpdated: "Saved payment methods updated.",
       receiptStudioTotal: "Studio total paid",
       receiptInstructorGross: "Instructor gross amount",
       receiptPlatformFee: "Platform fee",
@@ -996,6 +1001,9 @@ const en = {
       paid: "Paid",
       withdraw: "Withdraw",
       withdrawToBank: "Withdraw to bank",
+      startOnboarding: "Start onboarding",
+      resumeOnboarding: "Resume onboarding",
+      managePayouts: "Manage payouts",
       connectBank: "Connect bank",
       manageBank: "Manage bank",
       finalizingTitle: "Finalizing bank connection",
@@ -1069,8 +1077,7 @@ const en = {
       declinedInfo: "Stripe declined this attempt. Review your document details and try again.",
       finishedWithStatus: "Verification finished with status: {{status}}.",
       confirmFailed: "We could not confirm your latest verification status. Please try again.",
-      primaryHint:
-        "This opens Stripe Connect onboarding. Most people finish in 2 to 3 minutes.",
+      primaryHint: "This opens Stripe Connect onboarding. Most people finish in 2 to 3 minutes.",
       systemTitle: "How we verify you",
       systemBody:
         "Queue uses Stripe Connect onboarding to collect identity details, review documents, and return verification status to the app.",
@@ -1082,7 +1089,8 @@ const en = {
         documentBody:
           "Use a passport or national identity document that matches the legal name you use for payouts.",
         faceTitle: "Use good lighting for the selfie check",
-        faceBody: "Stripe may ask for extra confirmation steps to verify the document belongs to you.",
+        faceBody:
+          "Stripe may ask for extra confirmation steps to verify the document belongs to you.",
         timeTitle: "Set aside a couple of minutes",
         timeBody:
           "The flow is quickest when your document is clean, readable, and your camera is steady.",
@@ -1299,7 +1307,7 @@ const en = {
       body: "Complete Stripe identity onboarding, upload your insurance, and add sport certificates. You can keep browsing the app while documents are under review.",
       studioBody:
         "Complete owner identity and internal billing setup. Payment readiness is laid out here so we can swap providers without rebuilding the whole studio flow.",
-      verifyNow: "Verify now",
+      verifyNow: "Continue verification",
       later: "Later",
       reviewUpdatesEnabled:
         "Push is enabled on this device. We will notify you when insurance or certificates are approved or rejected.",
@@ -1775,6 +1783,7 @@ const en = {
       notStarted: "Not started",
       payout: "Payout: {{status}}",
       payNow: "Pay now",
+      customUi: "Custom UI",
       retryPayment: "Retry payment",
       starting: "Starting checkout...",
       completed: "Payment completed.",
@@ -1918,7 +1927,8 @@ const en = {
       noJobsAvailable: "No jobs available",
       noJobsHint: "Check back later for new openings.",
       boardSummaryTitle: "Keep the board warm",
-      boardSummaryBody: "{{jobs}} open matches and {{pending}} pending applications are on your board.",
+      boardSummaryBody:
+        "{{jobs}} open matches and {{pending}} pending applications are on your board.",
     },
     studio: {
       title: "Home",
@@ -1951,7 +1961,8 @@ const en = {
       emptyBoard: "Post a shift to start filling your schedule.",
       noReviewJobs: "Review queue is clear",
       noReviewJobsHint: "All applicants have been reviewed.",
-      boardSummaryBody: "{{open}} open jobs, {{pending}} pending applicants, and {{filled}} recently filled.",
+      boardSummaryBody:
+        "{{open}} open jobs, {{pending}} pending applicants, and {{filled}} recently filled.",
     },
     tasks: {
       done: "Completed",
@@ -1988,7 +1999,8 @@ const en = {
       verifiedDistance: "Arrival verified {{distance}}m from the branch.",
       sheetTitle: "You are checked in",
       sheetBody: "Keep this simple: head inside, get settled, and start the lesson on time.",
-      instructions: "If the studio has front-desk instructions or a QR step, complete that before you begin.",
+      instructions:
+        "If the studio has front-desk instructions or a QR step, complete that before you begin.",
       sheetCta: "Got it",
     },
   },

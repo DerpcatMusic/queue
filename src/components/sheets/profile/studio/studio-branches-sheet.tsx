@@ -369,11 +369,7 @@ export function StudioBranchesSheet({ visible, onClose }: StudioBranchesSheetPro
             />
           ) : null}
 
-          <ProfileSectionHeader
-            label={t("profile.sections.branches")}
-            description={t("profile.sections.branchesDesc")}
-            icon="building.2.fill"
-          />
+          <ProfileSectionHeader label={t("profile.sections.branches")} icon="building.2.fill" />
           <ProfileSectionCard>
             <ProfileSettingRow
               title={t("profile.settings.branches.primaryTitle")}
@@ -422,9 +418,6 @@ export function StudioBranchesSheet({ visible, onClose }: StudioBranchesSheetPro
                       {mode === "create"
                         ? t("profile.settings.branches.createTitle")
                         : t("profile.settings.branches.editTitle")}
-                    </ThemedText>
-                    <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                      {t("profile.settings.branches.editorHint")}
                     </ThemedText>
                   </Box>
                   <ActionButton label={t("common.cancel")} onPress={resetEditor} tone="secondary" />
@@ -479,9 +472,9 @@ export function StudioBranchesSheet({ visible, onClose }: StudioBranchesSheetPro
                           compact
                           onPress={() => setForm((current) => ({ ...current, zone: zone.id }))}
                           backgroundColor={palette.surfaceElevated}
-                          selectedBackgroundColor="#CCFF00"
+                          selectedBackgroundColor={palette.primary}
                           labelColor={palette.text}
-                          selectedLabelColor="#161E00"
+                          selectedLabelColor={palette.onPrimary}
                         />
                       );
                     })}
@@ -504,23 +497,18 @@ export function StudioBranchesSheet({ visible, onClose }: StudioBranchesSheetPro
                           }))
                         }
                         backgroundColor={palette.surfaceElevated}
-                        selectedBackgroundColor="#CCFF00"
+                        selectedBackgroundColor={palette.primary}
                         labelColor={palette.text}
-                        selectedLabelColor="#161E00"
+                        selectedLabelColor={palette.onPrimary}
                       />
                     ))}
                   </Box>
                 </Box>
 
                 <Box style={styles.switchRow}>
-                  <Box style={styles.flex1GapXs}>
-                    <ThemedText type="bodyStrong" style={{ color: palette.text }}>
-                      {t("profile.settings.autoAcceptJobs")}
-                    </ThemedText>
-                    <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                      {t("profile.settings.branches.autoAcceptHint")}
-                    </ThemedText>
-                  </Box>
+                  <ThemedText type="bodyStrong" style={{ color: palette.text }}>
+                    {t("profile.settings.autoAcceptJobs")}
+                  </ThemedText>
                   <KitSwitch
                     value={form.autoAcceptDefault}
                     onValueChange={(value) =>
@@ -549,21 +537,16 @@ export function StudioBranchesSheet({ visible, onClose }: StudioBranchesSheetPro
                           }))
                         }
                         backgroundColor={palette.surfaceElevated}
-                        selectedBackgroundColor="#CCFF00"
+                        selectedBackgroundColor={palette.primary}
                         labelColor={palette.text}
-                        selectedLabelColor="#161E00"
+                        selectedLabelColor={palette.onPrimary}
                       />
                     ))}
                   </Box>
                   <Box style={styles.switchRow}>
-                    <Box style={styles.flex1GapXs}>
-                      <ThemedText type="bodyStrong" style={{ color: palette.text }}>
-                        {t("profile.settings.calendar.autoSync")}
-                      </ThemedText>
-                      <ThemedText type="caption" style={{ color: palette.textMuted }}>
-                        {t("profile.settings.branches.calendarHint")}
-                      </ThemedText>
-                    </Box>
+                    <ThemedText type="bodyStrong" style={{ color: palette.text }}>
+                      {t("profile.settings.calendar.autoSync")}
+                    </ThemedText>
                     <KitSwitch
                       disabled={form.calendarProvider === "none"}
                       value={form.calendarSyncEnabled}
@@ -595,7 +578,6 @@ export function StudioBranchesSheet({ visible, onClose }: StudioBranchesSheetPro
 
           <ProfileSectionHeader
             label={t("profile.settings.branches.listTitle")}
-            description={t("profile.settings.branches.listBody")}
             icon="list.bullet.rectangle.portrait.fill"
           />
 

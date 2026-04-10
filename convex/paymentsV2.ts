@@ -1,11 +1,11 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { requireCurrentUser, requireUserRole } from "./lib/auth";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { getStripeEnvPresence, getStripeMarketDefaults } from "./integrations/stripe/config";
-import { computePricingV2 } from "./paymentsPricingV2";
+import { requireCurrentUser, requireUserRole } from "./lib/auth";
 import { omitUndefined } from "./lib/validation";
+import { computePricingV2 } from "./paymentsPricingV2";
 
 const DEFAULT_PROVIDER_COUNTRY = getStripeMarketDefaults().country;
 const DEFAULT_PROVIDER_CURRENCY = getStripeMarketDefaults().currency;
@@ -152,9 +152,9 @@ const paymentAttemptSummaryValidator = v.object({
 const paymentCheckoutContextValidator = v.union(
   v.null(),
   v.object({
-      offer: paymentOfferSummaryValidator,
-      order: v.union(v.null(), paymentOrderSummaryValidator),
-      attempt: v.union(v.null(), paymentAttemptSummaryValidator),
+    offer: paymentOfferSummaryValidator,
+    order: v.union(v.null(), paymentOrderSummaryValidator),
+    attempt: v.union(v.null(), paymentAttemptSummaryValidator),
     connectedAccount: v.union(v.null(), connectedAccountSummaryValidator),
     instructorConnectedAccountRequired: v.boolean(),
   }),
@@ -567,7 +567,6 @@ function mapStripeProviderStatusToCanonical(
       return "action_required";
     case "unsupported":
       return "disabled";
-    case "pending":
     default:
       return "pending";
   }
@@ -609,7 +608,9 @@ async function loadLatestConnectedAccountForUser(
     .order("desc")
     .take(10);
 
-  return provider ? (accounts.find((account) => account.provider === provider) ?? null) : (accounts[0] ?? null);
+  return provider
+    ? (accounts.find((account) => account.provider === provider) ?? null)
+    : (accounts[0] ?? null);
 }
 
 async function loadCurrentStudio(ctx: Parameters<typeof requireUserRole>[0]) {
@@ -813,11 +814,11 @@ export const getMyPayoutSummaryV2 = query({
     const connectedAccount = await loadLatestConnectedAccountForUser(ctx, user._id, "stripe");
 
     let currency = orders[0]?.currency ?? DEFAULT_PROVIDER_CURRENCY;
-    let availableAmountAgorot = 0;
+    const availableAmountAgorot = 0;
     let pendingAmountAgorot = 0;
     let paidAmountAgorot = 0;
     let attentionAmountAgorot = 0;
-    let availablePaymentsCount = 0;
+    const availablePaymentsCount = 0;
     let pendingPaymentsCount = 0;
     let paidPaymentsCount = 0;
     let attentionPaymentsCount = 0;
@@ -1047,6 +1048,8 @@ export const createStudioPaymentOfferV2 = mutation({
     const pricing = computePricingV2({
       baseLessonAmountAgorot,
       bonusAmountAgorot,
+      country: DEFAULT_PROVIDER_COUNTRY,
+      currency: DEFAULT_PROVIDER_CURRENCY,
     });
 
     const latestOffer = await ctx.db
@@ -1448,7 +1451,9 @@ export const applyStripePaymentIntentWebhookV2 = internalMutation({
     await ctx.db.patch(order._id, {
       status: args.status,
       capturedAmountAgorot:
-        args.status === "succeeded" ? order.pricing.studioChargeAmountAgorot : order.capturedAmountAgorot,
+        args.status === "succeeded"
+          ? order.pricing.studioChargeAmountAgorot
+          : order.capturedAmountAgorot,
       latestError: args.errorMessage,
       updatedAt: now,
       ...omitUndefined({
@@ -1642,7 +1647,9 @@ export const reconcileStripePayoutWebhookV2 = internalMutation({
         transfer.status !== "cancelled",
     );
 
-    const exactMatches = openTransfers.filter((transfer) => transfer.amountAgorot === args.amountAgorot);
+    const exactMatches = openTransfers.filter(
+      (transfer) => transfer.amountAgorot === args.amountAgorot,
+    );
     const firstOpenTransfer = openTransfers[0];
     const candidate =
       exactMatches.length === 1

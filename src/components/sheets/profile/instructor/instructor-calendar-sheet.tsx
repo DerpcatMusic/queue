@@ -612,11 +612,7 @@ export function InstructorCalendarSheet({ visible, onClose }: InstructorCalendar
                   }}
                 />
               }
-            >
-              <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
-                {t("profile.settings.calendar.futureNote")}
-              </ThemedText>
-            </KitListItem>
+            ></KitListItem>
           </KitList>
         ) : null}
 
@@ -663,7 +659,7 @@ export function InstructorCalendarSheet({ visible, onClose }: InstructorCalendar
                   }}
                   style={{
                     borderRadius: BrandRadius.pill,
-                    backgroundColor: selected ? "#CCFF00" : theme.color.surfaceElevated,
+                    backgroundColor: selected ? theme.color.primary : theme.color.surfaceElevated,
                     paddingHorizontal: BrandSpacing.controlX,
                     paddingVertical: BrandSpacing.controlY,
                     shadowColor: "#000000",
@@ -676,7 +672,7 @@ export function InstructorCalendarSheet({ visible, onClose }: InstructorCalendar
                 >
                   <Text
                     style={{
-                      color: selected ? "#161E00" : theme.color.text,
+                      color: selected ? theme.color.onPrimary : theme.color.text,
                       fontSize: BrandType.body.fontSize,
                       lineHeight: 20,
                     }}
@@ -689,15 +685,6 @@ export function InstructorCalendarSheet({ visible, onClose }: InstructorCalendar
               );
             })}
           </Box>
-          <Text
-            style={{
-              color: theme.color.textMuted,
-              fontSize: 14,
-              lineHeight: 20,
-            }}
-          >
-            {t("profile.settings.calendar.notifications.reminderDescription")}
-          </Text>
         </Box>
 
         {googleStatus?.lastError ? (
@@ -726,7 +713,7 @@ export function InstructorCalendarSheet({ visible, onClose }: InstructorCalendar
           </Box>
         ) : null}
 
-        {needsGoogleReconnect ? (
+        {needsGoogleReconnect || googleConfigError ? (
           <Box
             style={{
               borderRadius: BrandRadius.md,
@@ -747,33 +734,7 @@ export function InstructorCalendarSheet({ visible, onClose }: InstructorCalendar
                 color: theme.color.warning,
               }}
             >
-              {t("profile.settings.calendar.googleReconnectRequired")}
-            </Text>
-          </Box>
-        ) : null}
-
-        {googleConfigError ? (
-          <Box
-            style={{
-              borderRadius: BrandRadius.md,
-              paddingHorizontal: BrandSpacing.controlX,
-              paddingVertical: BrandSpacing.controlY,
-              borderWidth: BorderWidth.thin,
-              borderCurve: "continuous",
-              backgroundColor: theme.color.warningSubtle,
-              borderColor: theme.color.warning,
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: "Manrope_400Regular",
-                fontSize: 16,
-                fontWeight: "400",
-                lineHeight: 22,
-                color: theme.color.warning,
-              }}
-            >
-              {googleConfigError}
+              {googleConfigError ?? t("profile.settings.calendar.googleReconnectRequired")}
             </Text>
           </Box>
         ) : null}

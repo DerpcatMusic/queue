@@ -267,7 +267,10 @@ function RootLayoutContent() {
                   </View>
                   <StartupNotificationsBootstrap />
                   <ThemeProvider value={navigationTheme}>
-                    <AppSafeRoot topInsetBackgroundColor={statusInsetColor}>
+                    <AppSafeRoot
+                      topInsetBackgroundColor={statusInsetColor}
+                      rootBackgroundColor={navColors.background}
+                    >
                       <View style={{ flex: 1 }}>
                         <Stack
                           screenOptions={{

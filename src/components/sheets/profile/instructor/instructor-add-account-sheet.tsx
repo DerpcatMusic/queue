@@ -326,7 +326,6 @@ export function InstructorAddAccountSheet({ visible, onClose }: InstructorAddAcc
     <BaseProfileSheet visible={visible} onClose={onClose}>
       <ProfileSectionHeader
         label={t("profile.switcher.addAccountTitle")}
-        description={t("profile.switcher.addAccountBody")}
         icon="person.badge.plus"
       />
 
@@ -358,9 +357,6 @@ export function InstructorAddAccountSheet({ visible, onClose }: InstructorAddAcc
               includeFontPadding: false,
             }}
           />
-          <ThemedText type="caption" style={{ color: palette.textMuted }}>
-            {step === "code" ? normalizedEmail : t("profile.switcher.addAccountFieldHint")}
-          </ThemedText>
           {errorMessage ? (
             <ThemedText type="caption" style={{ color: palette.danger }}>
               {errorMessage}

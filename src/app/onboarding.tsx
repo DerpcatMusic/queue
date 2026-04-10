@@ -1,5 +1,5 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { lazy, Suspense, startTransition, useEffect, useRef, useState } from "react";
@@ -211,6 +211,12 @@ function OnboardingScreenContent() {
   const currentUser = useQuery(api.users.getCurrentUser);
   const completeInstructorOnboarding = useMutation(api.onboarding.completeInstructorOnboarding);
   const completeStudioOnboarding = useMutation(api.onboarding.completeStudioOnboarding);
+  const createStripeEmbeddedSession = useAction(
+    api.paymentsV2Actions.createMyInstructorStripeEmbeddedSessionV2,
+  );
+  const createStripeHostedAccountLink = useAction(
+    api.paymentsV2Actions.createMyInstructorStripeAccountLinkV2,
+  );
   const { isUploading, pickAndUploadComplianceDocument } = useComplianceDocumentUpload();
 
   const [step, setStep] = useState<OnboardingStep>(0);
@@ -1581,6 +1587,8 @@ function OnboardingScreenContent() {
             pushToken={pushToken}
             isRequestingPush={isRequestingPush}
             requestPushPermission={requestPushPermission}
+            createStripeEmbeddedSession={async () => createStripeEmbeddedSession({})}
+            createStripeHostedAccountLink={async () => createStripeHostedAccountLink({})}
             router={router}
             buildRoleTabRoute={buildRoleTabRoute}
             ROLE_TAB_ROUTE_NAMES={ROLE_TAB_ROUTE_NAMES}

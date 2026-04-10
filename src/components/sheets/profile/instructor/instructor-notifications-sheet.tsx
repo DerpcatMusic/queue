@@ -6,19 +6,17 @@ import { useMutation, useQuery } from "convex/react";
 import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Pressable, View } from "react-native";
+import { StyleSheet, useUnistyles } from "react-native-unistyles";
+
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { LoadingScreen } from "@/components/loading-screen";
-import {
-  ProfileSectionCard,
-  ProfileSectionHeader,
-  ProfileSettingRow,
-} from "@/components/profile/profile-settings-sections";
+import { ProfileSettingRow } from "@/components/profile/profile-settings-sections";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
-import { BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
-import { useTheme } from "@/hooks/use-theme";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 import {
   isPushRegistrationError,
@@ -65,37 +63,37 @@ function getPushErrorMessage(error: unknown, t: TFunction) {
 function getPreferenceCopy(
   key: NotificationPreferenceKey,
   t: TFunction,
-): { title: string; description: string } {
+): { title: string; icon: string } {
   switch (key) {
     case "job_offer":
       return {
         title: t("profile.notifications.preferences.jobOfferTitle"),
-        description: t("profile.notifications.preferences.jobOfferDescription"),
+        icon: "briefcase.fill",
       };
     case "insurance_renewal":
       return {
         title: t("profile.notifications.preferences.insuranceRenewalTitle"),
-        description: t("profile.notifications.preferences.insuranceRenewalDescription"),
+        icon: "shield.lefthalf.filled",
       };
     case "application_received":
       return {
         title: t("profile.notifications.preferences.applicationReceivedTitle"),
-        description: t("profile.notifications.preferences.applicationReceivedDescription"),
+        icon: "person.badge.plus",
       };
     case "application_updates":
       return {
         title: t("profile.notifications.preferences.applicationUpdatesTitle"),
-        description: t("profile.notifications.preferences.applicationUpdatesDescription"),
+        icon: "person.crop.circle.fill",
       };
     case "lesson_reminder":
       return {
         title: t("profile.notifications.preferences.lessonReminderTitle"),
-        description: t("profile.notifications.preferences.lessonReminderDescription"),
+        icon: "calendar.badge.clock",
       };
     case "lesson_updates":
       return {
         title: t("profile.notifications.preferences.lessonUpdatesTitle"),
-        description: t("profile.notifications.preferences.lessonUpdatesDescription"),
+        icon: "calendar.badge.plus",
       };
   }
 }
@@ -105,7 +103,7 @@ export function InstructorNotificationsSheet({
   onClose,
 }: InstructorNotificationsSheetProps) {
   const { t } = useTranslation();
-  const theme = useTheme();
+  const { theme } = useUnistyles();
   const { currentUser } = useUser();
 
   const settings = useQuery(
@@ -223,125 +221,189 @@ export function InstructorNotificationsSheet({
 
   return (
     <BaseProfileSheet visible={visible} onClose={onClose}>
-      <Box style={{ gap: BrandSpacing.stackRoomy }}>
-        <Box style={{ gap: BrandSpacing.stackTight }}>
-          <Text style={[BrandType.radarLabel, { color: theme.color.textMuted }]}>
-            {t("profile.navigation.notifications")}
-          </Text>
-          <Text style={[BrandType.heading, { color: theme.color.text }]}>
-            {t("profile.notifications.title")}
-          </Text>
-          <Text style={[BrandType.body, { color: theme.color.textMuted }]}>
-            {t("profile.notifications.instructorDescription")}
-          </Text>
-        </Box>
-
-        <ProfileSectionHeader label={t("profile.notifications.pushSection")} icon="bell.fill" />
-        <ProfileSectionCard>
-          <ProfileSettingRow
-            title={t("profile.notifications.pushToggleTitle")}
-            subtitle={
-              settings.notificationsEnabled
-                ? t("profile.notifications.pushToggleOn")
-                : t("profile.notifications.pushToggleOff")
-            }
-            icon="bell.fill"
-            accessory={
-              <KitSwitch
-                disabled={isSubmitting}
-                value={settings.notificationsEnabled}
-                onValueChange={(value) => {
-                  void togglePushNotifications(value);
-                }}
-              />
-            }
-            showDivider
-          />
-          <ProfileSettingRow
-            title={t("profile.notifications.deviceStatusTitle")}
-            subtitle={
-              settings.hasExpoPushToken
-                ? t("profile.notifications.deviceStatusReady")
-                : t("profile.notifications.deviceStatusMissing")
-            }
-            icon="iphone.gen3"
-          />
-        </ProfileSectionCard>
-
-        <ProfileSectionHeader
-          label={t("profile.notifications.alertsSection")}
-          icon="bell.badge.fill"
-        />
-        <ProfileSectionCard>
-          {settings.availablePreferenceKeys.map((key, index) => {
-            const copy = getPreferenceCopy(key, t);
-            return (
-              <ProfileSettingRow
-                key={key}
-                title={copy.title}
-                subtitle={copy.description}
-                icon={key === "lesson_reminder" ? "calendar.badge.clock" : "bell.badge.fill"}
-                accessory={
-                  <KitSwitch
-                    disabled={isSubmitting}
-                    value={settings.preferences[key]}
-                    onValueChange={(value) => {
-                      void togglePreference(key, value);
-                    }}
-                  />
-                }
-                showDivider={index < settings.availablePreferenceKeys.length - 1}
-              />
-            );
-          })}
-        </ProfileSectionCard>
-
-        <ProfileSectionHeader
-          label={t("profile.notifications.lessonReminderSection")}
-          icon="calendar.badge.clock"
-        />
-        <ProfileSectionCard>
-          {REMINDER_OPTIONS.map((minutes, index) => (
-            <ProfileSettingRow
-              key={minutes}
-              title={t("profile.notifications.reminderOption", { minutes })}
-              subtitle={t("profile.notifications.reminderOptionDescription", { minutes })}
-              icon="clock.fill"
-              accessory={
-                settings.lessonReminderMinutesBefore === minutes ? (
-                  <IconSymbol name="checkmark.circle.fill" size={20} color={theme.color.primary} />
-                ) : null
-              }
-              onPress={() => {
-                void selectReminderMinutes(minutes);
-              }}
-              showDivider={index < REMINDER_OPTIONS.length - 1}
-            />
-          ))}
-        </ProfileSectionCard>
-
-        <ProfileSectionHeader
-          label={t("profile.notifications.locationGroundworkTitle")}
-          icon="location.fill"
-        />
-        <ProfileSectionCard>
-          <Box style={{ gap: BrandSpacing.xs, padding: BrandSpacing.componentPadding }}>
-            <Text style={[BrandType.bodyMedium, { color: theme.color.text }]}>
-              {t("profile.notifications.locationGroundworkBody")}
-            </Text>
-            <Text style={[BrandType.body, { color: theme.color.textMuted }]}>
-              {t("profile.notifications.locationGroundworkFootnote")}
+      <Box style={s.root}>
+        {/* ── Sheet Header ── */}
+        <Box style={s.sheetHeader}>
+          <View style={[s.headerIcon, { backgroundColor: theme.color.tertiarySubtle }]}>
+            <IconSymbol name="bell.fill" size={20} color={theme.color.tertiary} />
+          </View>
+          <Box style={{ flex: 1 }}>
+            <Text variant="heading" color="text">
+              {t("profile.notifications.title")}
             </Text>
           </Box>
-        </ProfileSectionCard>
+        </Box>
 
+        {/* ── Push Master Toggle ── */}
+        <View style={s.sectionLabel}>
+          <IconSymbol name="bell.fill" size={14} color={theme.color.textMuted} />
+          <Text variant="labelStrong" color="textMuted">
+            {t("profile.notifications.pushSection")}
+          </Text>
+        </View>
+        <ProfileSettingRow
+          title={t("profile.notifications.pushToggleTitle")}
+          icon="bell.fill"
+          sectionTone="preferences"
+          accessory={
+            <KitSwitch
+              disabled={isSubmitting}
+              value={settings.notificationsEnabled}
+              onValueChange={(value) => {
+                void togglePushNotifications(value);
+              }}
+            />
+          }
+          showDivider
+        />
+        <ProfileSettingRow
+          title={t("profile.notifications.deviceStatusTitle")}
+          icon="iphone.gen3"
+          sectionTone="preferences"
+        />
+
+        {/* ── Alert Preferences ── */}
+        <View style={s.sectionLabel}>
+          <IconSymbol name="bell.badge.fill" size={14} color={theme.color.textMuted} />
+          <Text variant="labelStrong" color="textMuted">
+            {t("profile.notifications.alertsSection")}
+          </Text>
+        </View>
+        {settings.availablePreferenceKeys.map((key, index) => {
+          const copy = getPreferenceCopy(key, t);
+          return (
+            <ProfileSettingRow
+              key={key}
+              title={copy.title}
+              icon={copy.icon}
+              sectionTone="operations"
+              accessory={
+                <KitSwitch
+                  disabled={isSubmitting}
+                  value={settings.preferences[key]}
+                  onValueChange={(value) => {
+                    void togglePreference(key, value);
+                  }}
+                />
+              }
+              showDivider={index < settings.availablePreferenceKeys.length - 1}
+            />
+          );
+        })}
+
+        {/* ── Lesson Reminder ── */}
+        <View style={s.sectionLabel}>
+          <IconSymbol name="calendar.badge.clock" size={14} color={theme.color.textMuted} />
+          <Text variant="labelStrong" color="textMuted">
+            {t("profile.notifications.lessonReminderSection")}
+          </Text>
+        </View>
+        <Box style={s.reminderRow}>
+          {REMINDER_OPTIONS.map((minutes) => {
+            const selected = settings.lessonReminderMinutesBefore === minutes;
+            return (
+              <Pressable
+                key={minutes}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected }}
+                disabled={isSubmitting}
+                onPress={() => {
+                  void selectReminderMinutes(minutes);
+                }}
+                style={[
+                  s.reminderPill,
+                  {
+                    backgroundColor: selected ? theme.color.primary : theme.color.surfaceElevated,
+                    opacity: isSubmitting ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  variant="bodyMedium"
+                  style={{
+                    color: selected ? theme.color.onPrimary : theme.color.text,
+                  }}
+                >
+                  {t("profile.notifications.reminderOption", { minutes })}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </Box>
+
+        {/* ── Status Banners ── */}
         {statusMessage ? (
-          <Text style={[BrandType.body, { color: theme.color.success }]}>{statusMessage}</Text>
+          <View
+            style={[
+              s.statusBanner,
+              { backgroundColor: theme.color.successSubtle, borderLeftColor: theme.color.success },
+            ]}
+          >
+            <IconSymbol name="checkmark.circle.fill" size={18} color={theme.color.success} />
+            <Text variant="bodyMedium" style={{ color: theme.color.success, flex: 1 }}>
+              {statusMessage}
+            </Text>
+          </View>
         ) : null}
         {errorMessage ? (
-          <Text style={[BrandType.body, { color: theme.color.danger }]}>{errorMessage}</Text>
+          <View
+            style={[
+              s.statusBanner,
+              { backgroundColor: theme.color.dangerSubtle, borderLeftColor: theme.color.danger },
+            ]}
+          >
+            <IconSymbol name="exclamationmark.triangle.fill" size={18} color={theme.color.danger} />
+            <Text variant="bodyMedium" style={{ color: theme.color.danger, flex: 1 }}>
+              {errorMessage}
+            </Text>
+          </View>
         ) : null}
       </Box>
     </BaseProfileSheet>
   );
 }
+
+const s = StyleSheet.create(() => ({
+  root: {
+    gap: BrandSpacing.xl,
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: BrandSpacing.md,
+  },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.sm,
+  },
+  reminderRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: BrandSpacing.sm,
+  },
+  reminderPill: {
+    borderRadius: BrandRadius.pill,
+    paddingHorizontal: BrandSpacing.lg,
+    paddingVertical: BrandSpacing.sm,
+    borderCurve: "continuous",
+  },
+  statusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.md,
+    borderRadius: BrandRadius.md,
+    borderCurve: "continuous",
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.md,
+    borderLeftWidth: 3,
+  },
+}));

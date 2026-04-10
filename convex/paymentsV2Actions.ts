@@ -1,19 +1,23 @@
 "use node";
 
+import { StripeSubscriptions } from "@convex-dev/stripe";
 import { ConvexError, v } from "convex/values";
 import StripeSDK from "stripe";
-import { api, internal } from "./_generated/api";
+import { api, components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action } from "./_generated/server";
-import { getStripeMarketDefaults } from "./integrations/stripe/config";
+import { getStripeConnectReturnUrls, getStripeMarketDefaults } from "./integrations/stripe/config";
 import {
   createStripeAccountLinkV2,
+  createStripeAccountSessionV2,
   createStripeRecipientAccountV2,
   getStripeRepresentativeNameV2,
   retrieveStripeAccountV2,
   summarizeStripeRecipientAccountStatus,
   summarizeStripeRecipientRequirements,
 } from "./integrations/stripe/connectV2";
+
+const stripeCustomers = new StripeSubscriptions(components.stripe, {});
 
 const paymentOrderStatusValidator = v.union(
   v.literal("draft"),
@@ -50,6 +54,10 @@ const stripePaymentSheetSessionSummaryValidator = v.object({
   provider: v.literal("stripe"),
   providerPaymentIntentId: v.string(),
   clientSecret: v.string(),
+  customerId: v.optional(v.string()),
+  providerCountry: v.string(),
+  currency: v.string(),
+  amountAgorot: v.number(),
   status: paymentOrderStatusValidator,
 });
 
@@ -70,6 +78,10 @@ type StripePaymentSheetSessionSummary = {
   provider: "stripe";
   providerPaymentIntentId: string;
   clientSecret: string;
+  customerId?: string;
+  providerCountry: string;
+  currency: string;
+  amountAgorot: number;
   status:
     | "draft"
     | "requires_payment_method"
@@ -81,11 +93,31 @@ type StripePaymentSheetSessionSummary = {
     | "cancelled";
 };
 
+type StripeCustomerSheetSessionSummary = {
+  provider: "stripe";
+  customerId: string;
+  customerSessionClientSecret: string;
+  setupIntentClientSecret: string;
+};
+
 const stripeAccountLinkSummaryValidator = v.object({
   provider: v.literal("stripe"),
   accountId: v.string(),
   onboardingUrl: v.string(),
   expiresAt: v.optional(v.string()),
+});
+
+const stripeAccountSessionSummaryValidator = v.object({
+  provider: v.literal("stripe"),
+  accountId: v.string(),
+  clientSecret: v.string(),
+});
+
+const stripeCustomerSheetSessionSummaryValidator = v.object({
+  provider: v.literal("stripe"),
+  customerId: v.string(),
+  customerSessionClientSecret: v.string(),
+  setupIntentClientSecret: v.string(),
 });
 
 const mapStripePaymentIntentStatusToPaymentOrderStatus = (
@@ -106,9 +138,6 @@ const mapStripePaymentIntentStatusToPaymentOrderStatus = (
       return "failed";
   }
 };
-
-const STRIPE_CONNECT_RETURN_URL = "queue://stripe-connect-return";
-const STRIPE_CONNECT_REFRESH_URL = "queue://stripe-connect-refresh";
 
 async function buildStripeIdentitySync(accountId: string) {
   const representative = await getStripeRepresentativeNameV2(accountId);
@@ -140,19 +169,22 @@ async function ensureInstructorStripeConnectedAccount(
     const remote = await retrieveStripeAccountV2(existing.providerAccountId);
     const identity = await buildStripeIdentitySync(remote.id);
     const requirements = summarizeStripeRecipientRequirements(remote);
-    return await ctx.runMutation(internal.paymentsV2.upsertInstructorConnectedAccountFromProviderV2, {
-      provider: "stripe",
-      providerAccountId: remote.id,
-      providerStatusRaw: summarizeStripeRecipientAccountStatus(remote),
-      country: remote.identity?.country?.toUpperCase() || market.country,
-      currency: market.currency,
-      ...identity,
-      metadata: {
-        dashboard: "express",
-        ...(requirements.summary ? { requirementsSummary: requirements.summary } : {}),
-        blockingRequirementsCount: String(requirements.blockingCount),
+    return await ctx.runMutation(
+      internal.paymentsV2.upsertInstructorConnectedAccountFromProviderV2,
+      {
+        provider: "stripe",
+        providerAccountId: remote.id,
+        providerStatusRaw: summarizeStripeRecipientAccountStatus(remote),
+        country: remote.identity?.country?.toUpperCase() || market.country,
+        currency: market.currency,
+        ...identity,
+        metadata: {
+          dashboard: "express",
+          ...(requirements.summary ? { requirementsSummary: requirements.summary } : {}),
+          blockingRequirementsCount: String(requirements.blockingCount),
+        },
       },
-    });
+    );
   }
 
   const email = currentUser.email?.trim();
@@ -202,10 +234,11 @@ export const createMyInstructorStripeAccountLinkV2 = action({
       throw new ConvexError("Failed to initialize Stripe connected account");
     }
 
+    const connectUrls = getStripeConnectReturnUrls();
     const link = await createStripeAccountLinkV2({
       accountId: account.providerAccountId,
-      refreshUrl: STRIPE_CONNECT_REFRESH_URL,
-      returnUrl: STRIPE_CONNECT_RETURN_URL,
+      refreshUrl: connectUrls.refreshUrl,
+      returnUrl: connectUrls.returnUrl,
     });
 
     return {
@@ -213,6 +246,94 @@ export const createMyInstructorStripeAccountLinkV2 = action({
       accountId: account.providerAccountId,
       onboardingUrl: link.url,
       ...(link.expires_at ? { expiresAt: link.expires_at } : {}),
+    };
+  },
+});
+
+export const createMyInstructorStripeEmbeddedSessionV2 = action({
+  args: {},
+  returns: stripeAccountSessionSummaryValidator,
+  handler: async (ctx): Promise<any> => {
+    const account = await ensureInstructorStripeConnectedAccount(ctx);
+    if (account.provider !== "stripe") {
+      throw new ConvexError("Failed to initialize Stripe connected account");
+    }
+
+    const session = await createStripeAccountSessionV2({
+      accountId: account.providerAccountId,
+      enableOnboarding: true,
+      enablePayouts: true,
+    });
+
+    return {
+      provider: "stripe",
+      accountId: account.providerAccountId,
+      clientSecret: session.clientSecret,
+    };
+  },
+});
+
+export const createMyStudioStripeCustomerSheetSessionV2 = action({
+  args: {},
+  returns: stripeCustomerSheetSessionSummaryValidator,
+  handler: async (ctx): Promise<StripeCustomerSheetSessionSummary> => {
+    const currentUser = await ctx.runQuery(api.users.getCurrentUser, {});
+    if (!currentUser || currentUser.role !== "studio") {
+      throw new ConvexError("Unauthorized");
+    }
+
+    const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+    if (!secretKey) {
+      throw new ConvexError("STRIPE_SECRET_KEY is not configured");
+    }
+
+    const customerArgs: {
+      userId: string;
+      email?: string;
+      name?: string;
+    } = {
+      userId: String(currentUser._id),
+    };
+    const customerEmail = currentUser.email?.trim();
+    if (customerEmail) {
+      customerArgs.email = customerEmail;
+    }
+    const customerName = currentUser.name?.trim();
+    if (customerName) {
+      customerArgs.name = customerName;
+    }
+    const customer = await stripeCustomers.getOrCreateCustomer(ctx, customerArgs);
+    const stripe = new StripeSDK(secretKey);
+
+    const customerSession = await stripe.customerSessions.create({
+      customer: customer.customerId,
+      components: {
+        customer_sheet: {
+          enabled: true,
+          features: {
+            payment_method_remove: "enabled",
+            payment_method_allow_redisplay_filters: ["always", "limited", "unspecified"],
+          },
+        },
+      },
+    });
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customer.customerId,
+      usage: "off_session",
+    });
+
+    if (!customerSession.client_secret) {
+      throw new ConvexError("Stripe did not return a CustomerSession client secret");
+    }
+    if (!setupIntent.client_secret) {
+      throw new ConvexError("Stripe did not return a SetupIntent client secret");
+    }
+
+    return {
+      provider: "stripe",
+      customerId: customer.customerId,
+      customerSessionClientSecret: customerSession.client_secret,
+      setupIntentClientSecret: setupIntent.client_secret,
     };
   },
 });
@@ -235,19 +356,22 @@ export const refreshMyInstructorStripeConnectedAccountV2 = action({
     const remote = await retrieveStripeAccountV2(existing.providerAccountId);
     const identity = await buildStripeIdentitySync(remote.id);
     const requirements = summarizeStripeRecipientRequirements(remote);
-    return await ctx.runMutation(internal.paymentsV2.upsertInstructorConnectedAccountFromProviderV2, {
-      provider: "stripe",
-      providerAccountId: remote.id,
-      providerStatusRaw: summarizeStripeRecipientAccountStatus(remote),
-      country: remote.identity?.country?.toUpperCase() || market.country,
-      currency: market.currency,
-      ...identity,
-      metadata: {
-        dashboard: "express",
-        ...(requirements.summary ? { requirementsSummary: requirements.summary } : {}),
-        blockingRequirementsCount: String(requirements.blockingCount),
+    return await ctx.runMutation(
+      internal.paymentsV2.upsertInstructorConnectedAccountFromProviderV2,
+      {
+        provider: "stripe",
+        providerAccountId: remote.id,
+        providerStatusRaw: summarizeStripeRecipientAccountStatus(remote),
+        country: remote.identity?.country?.toUpperCase() || market.country,
+        currency: market.currency,
+        ...identity,
+        metadata: {
+          dashboard: "express",
+          ...(requirements.summary ? { requirementsSummary: requirements.summary } : {}),
+          blockingRequirementsCount: String(requirements.blockingCount),
+        },
       },
-    });
+    );
   },
 });
 
@@ -269,8 +393,9 @@ export const createStripePaymentSheetForPaymentOrderV2 = action({
     if (!currentUser || currentUser.role !== "studio") {
       throw new ConvexError("Unauthorized");
     }
-    const checkoutContext: Awaited<ReturnType<typeof ctx.runQuery<typeof api.paymentsV2.getPaymentCheckoutContextV2>>> =
-      await ctx.runQuery(api.paymentsV2.getPaymentCheckoutContextV2, {
+    const checkoutContext: Awaited<
+      ReturnType<typeof ctx.runQuery<typeof api.paymentsV2.getPaymentCheckoutContextV2>>
+    > = await ctx.runQuery(api.paymentsV2.getPaymentCheckoutContextV2, {
       paymentOrderId: args.paymentOrderId,
     });
     if (!checkoutContext?.order) {
@@ -288,11 +413,18 @@ export const createStripePaymentSheetForPaymentOrderV2 = action({
       throw new ConvexError("Instructor Stripe account is not ready to receive funds");
     }
 
-    if (attempt?.provider === "stripe" && attempt.providerPaymentIntentId && attempt.clientSecretRef) {
+    if (
+      attempt?.provider === "stripe" &&
+      attempt.providerPaymentIntentId &&
+      attempt.clientSecretRef
+    ) {
       return {
         provider: "stripe",
         providerPaymentIntentId: attempt.providerPaymentIntentId,
         clientSecret: attempt.clientSecretRef,
+        providerCountry: order.providerCountry,
+        currency: order.currency,
+        amountAgorot: order.pricing.studioChargeAmountAgorot,
         status: attempt.status,
       };
     }
@@ -302,6 +434,22 @@ export const createStripePaymentSheetForPaymentOrderV2 = action({
       throw new ConvexError("STRIPE_SECRET_KEY is not configured");
     }
 
+    const customerArgs: {
+      userId: string;
+      email?: string;
+      name?: string;
+    } = {
+      userId: String(currentUser._id),
+    };
+    const customerEmail = currentUser.email?.trim();
+    if (customerEmail) {
+      customerArgs.email = customerEmail;
+    }
+    const customerName = currentUser.name?.trim();
+    if (customerName) {
+      customerArgs.name = customerName;
+    }
+    const customer = await stripeCustomers.getOrCreateCustomer(ctx, customerArgs);
     const stripe = new StripeSDK(secretKey);
     const requestId = crypto.randomUUID();
     const idempotencyKey = `stripe:payment-intent:${order._id}`;
@@ -312,6 +460,7 @@ export const createStripePaymentSheetForPaymentOrderV2 = action({
         automatic_payment_methods: {
           enabled: true,
         },
+        customer: customer.customerId,
         application_fee_amount: order.pricing.platformServiceFeeAgorot,
         ...(currentUser.email?.trim() ? { receipt_email: currentUser.email.trim() } : {}),
         metadata: {
@@ -356,6 +505,10 @@ export const createStripePaymentSheetForPaymentOrderV2 = action({
       provider: "stripe",
       providerPaymentIntentId: paymentIntent.id,
       clientSecret: paymentIntent.client_secret,
+      customerId: customer.customerId,
+      providerCountry: order.providerCountry,
+      currency: order.currency,
+      amountAgorot: order.pricing.studioChargeAmountAgorot,
       status,
     };
   },

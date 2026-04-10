@@ -302,54 +302,103 @@ export function TopSheet({
         .activeOffsetY(GESTURE_ACTIVE_OFFSET_Y)
         .failOffsetX(GESTURE_FAIL_OFFSET_X)
         .onStart(() => {
-          // Record the height when drag starts
           dragStartHeight.value = sheetHeight.value;
           translateY.value = 0;
         })
         .onUpdate((event) => {
-          // Use translateY for immediate drag feedback (GPU-composited)
-          // Height only changes on release via snap
-          translateY.value = event.translationY;
+          if (expandMode === "overlay") {
+            // Overlay: directly adjust height. Sheet is absolutely positioned
+            // so height changes are cheap (no scene reflow).
+            // Dragging DOWN (translationY > 0) expands; UP collapses.
+            const startH = dragStartHeight.value ?? sheetHeight.value;
+            sheetHeight.value = Math.max(
+              resolvedBaseHeight,
+              Math.min(availableHeight, startH + event.translationY),
+            );
+          } else {
+            // Resize: translateY for GPU-composited feedback, height on snap only.
+            translateY.value = event.translationY;
+          }
         })
         .onEnd((event) => {
           const h = stepHeights;
           if (h.length === 0) return;
 
-          // Calculate target based on drag direction and velocity
           const startHeight = dragStartHeight.value ?? sheetHeight.value;
           dragStartHeight.value = null;
 
-          // Determine nearest step to the starting height
-          let nearestStepIdx = 0;
-          let minDistance = Math.abs(startHeight - h[0]!);
-          for (let index = 1; index < h.length; index++) {
-            const distance = Math.abs(startHeight - h[index]!);
-            if (distance < minDistance) {
-              nearestStepIdx = index;
-              minDistance = distance;
+          // Determine which step the sheet should snap to.
+          // For overlay mode the height was adjusted during drag so sheetHeight.value
+          // already reflects the user's drag position — snap to whichever step is
+          // closest to that *current* position, allowing multi-step jumps in a
+          // single fast gesture. For resize mode, only the nearest step to the
+          // *start* height is known (translateY is visual-only), so we still use
+          // the ±1 step approach.
+          const fastVelocity = Math.abs(event.velocityY) > VELOCITY_THRESHOLD;
+
+          let targetIdx: number;
+          if (expandMode === "overlay") {
+            // Overlay: snap to the step closest to where the user actually dragged.
+            // A strong velocity flick overrides in that direction.
+            const currentHeight = sheetHeight.value;
+            let closestIdx = 0;
+            let closestDist = Math.abs(currentHeight - h[0]!);
+            for (let i = 1; i < h.length; i++) {
+              const dist = Math.abs(currentHeight - h[i]!);
+              if (dist < closestDist) {
+                closestIdx = i;
+                closestDist = dist;
+              }
             }
+            // Velocity override: a fast flick guarantees at least ±1 step in
+            // that direction beyond whatever closest-step gravity gives.
+            if (fastVelocity) {
+              const velocityDir = event.velocityY > 0 ? 1 : -1; // positive velocity = drag down = expand
+              const velocityTarget = closestIdx + velocityDir;
+              if (velocityTarget >= 0 && velocityTarget < h.length) {
+                closestIdx = velocityTarget;
+              }
+            }
+            targetIdx = closestIdx;
+          } else {
+            // Resize: find nearest step to starting height, then move ±1.
+            let nearestStepIdx = 0;
+            let minDistance = Math.abs(startHeight - h[0]!);
+            for (let index = 1; index < h.length; index++) {
+              const distance = Math.abs(startHeight - h[index]!);
+              if (distance < minDistance) {
+                nearestStepIdx = index;
+                minDistance = distance;
+              }
+            }
+
+            // "down" = expand (higher step index), "up" = collapse (lower step index).
+            // Positive velocityY = finger moving down = expand; negative = collapse.
+            const direction = fastVelocity
+              ? event.velocityY > 0
+                ? "down"
+                : "up"
+              : translateY.value > 0
+                ? "down"
+                : "up";
+
+            targetIdx =
+              direction === "down"
+                ? Math.min(nearestStepIdx + 1, h.length - 1)
+                : Math.max(nearestStepIdx - 1, 0);
           }
 
-          // Determine direction: dragging UP (translateY < 0) = want larger height = higher step
-          // dragging DOWN (translateY > 0) = want smaller height = lower step
-          const direction =
-            Math.abs(event.velocityY) > VELOCITY_THRESHOLD
-              ? event.velocityY < 0
-                ? "up"
-                : "down"
-              : translateY.value < 0
-                ? "up"
-                : "down";
-
-          const targetIdx =
-            direction === "down"
-              ? Math.min(nearestStepIdx + 1, h.length - 1)
-              : Math.max(nearestStepIdx - 1, 0);
           const targetHeight = h[targetIdx] ?? h[0] ?? resolvedBaseHeight ?? 0;
 
-          // Reset translateY and animate height to target (single layout recalc)
-          translateY.value = withSpring(0, SHEET_SPRING);
-          sheetHeight.value = withSpring(targetHeight, SHEET_SPRING);
+          if (expandMode === "overlay") {
+            // Single spring — no competing translateY animation.
+            sheetHeight.value = withSpring(targetHeight, SHEET_SPRING);
+          } else {
+            // Reset translateY and animate height (single layout recalc on settle).
+            translateY.value = withSpring(0, SHEET_SPRING);
+            sheetHeight.value = withSpring(targetHeight, SHEET_SPRING);
+          }
+
           if (targetIdx !== currentStepIndex.value) {
             currentStepIndex.value = targetIdx;
             if (activeStep === undefined) {
@@ -362,8 +411,10 @@ export function TopSheet({
         }),
     [
       activeStep,
+      availableHeight,
       currentStepIndex,
       dragStartHeight,
+      expandMode,
       onStepChange,
       resolvedBaseHeight,
       sheetHeight,
@@ -372,22 +423,23 @@ export function TopSheet({
     ],
   );
 
-  // Keep layout commits and visual growth separate.
-  // In overlay mode the surrounding scene keeps the collapsed footprint while the sheet
-  // surface itself can still grow visually to the active step without relayouting the scene.
+  // Overlay vs resize use fundamentally different drag strategies:
+  //
+  // RESIZE mode:
+  //   translateY for GPU-composited drag feedback → single layout recalc on snap.
+  //   The sheet pushes scene content down, so avoiding layout-per-frame matters.
+  //
+  // OVERLAY mode:
+  //   Direct height adjustment — the sheet is absolutely positioned (no scene reflow),
+  //   so changing height every frame is cheap. The collapsed header stays PINNED;
+  //   only the bottom edge grows downward. No translateY → no "whole sheet slides" bug.
   const outerStyle = useAnimatedStyle(() => {
-    // For overlay mode: the visual surface grows to the animated sheet height, while
-    // onLayoutHeightChange continues to publish the fixed collapsed footprint.
     if (expandMode === "overlay") {
       return {
         height: sheetHeight.value,
-        transform: [{ translateY: translateY.value }],
         overflow: "hidden" as const,
       };
     }
-    // For resize mode: height affects layout, but use translateY for drag feedback
-    // translateY provides immediate visual response during drag (GPU-composited)
-    // Height only snaps to final value on release (single layout recalc)
     return {
       height: sheetHeight.value,
       transform: [{ translateY: translateY.value }],
@@ -420,14 +472,19 @@ export function TopSheet({
       },
     ],
   }));
-  const overlayRevealStyle = useAnimatedStyle(() => ({
-    opacity: expandedProgress.value,
-    transform: [
-      {
-        translateY: (1 - expandedProgress.value) * REVEAL_TRANSLATE_OFFSET,
-      },
-    ],
-  }));
+  // NOTE: overlay reveal is handled by shell overflow:hidden clipping —
+  // no opacity/translateY animation needed for overlay expanded content.
+
+  // Overlay content pointer events: driven by sheetHeight so content is tappable
+  // the moment the shell clips past it, not gated by the step-based isExpanded.
+  const overlayContentPointerStyle = useAnimatedStyle(() => {
+    // When collapsed (height ≈ minimumLayoutHeight), suppress touches.
+    // The 1px buffer prevents floating-point flicker at the boundary.
+    if (sheetHeight.value < minimumLayoutHeight + 1) {
+      return { opacity: 0 };
+    }
+    return { opacity: 1 };
+  });
 
   const mainContentFlex =
     hasExpandedContent && expandMode === "resize" ? 0 : hasBaseContent ? 1 : 0;
@@ -496,13 +553,17 @@ export function TopSheet({
           </View>
         ) : null}
 
-        {/* Overlay expansion renders below the collapsed footprint without changing layout. */}
+        {/* Overlay expansion: positioned absolutely below collapsed content.
+            Shell overflow:hidden provides a clip-reveal effect as height grows —
+            no opacity transform needed, the clip IS the animation.
+            pointerEvents driven by sheetHeight so content is tappable the moment
+            it's unclipped, not gated by the step-based isExpanded boolean. */}
         {revealedContent && expandMode === "overlay" ? (
           <Animated.View
-            pointerEvents={isExpanded ? "auto" : "none"}
+            pointerEvents="auto"
             style={[
               styles.overlayExpandedContent(minimumLayoutHeight, measuredFooterHeight),
-              overlayRevealStyle,
+              overlayContentPointerStyle,
             ]}
           >
             {revealedContent}

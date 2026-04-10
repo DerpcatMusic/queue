@@ -210,6 +210,7 @@ export const HomeRoleContent = memo(function HomeRoleContent({
         icon: "flame.fill",
         done: (instructorSettings?.sports?.length ?? 0) > 0,
         onPress: () => instructorSheetHandlers.openSports(),
+        sports: instructorSettings?.sports,
       },
     ];
     return (
@@ -281,6 +282,7 @@ export const HomeRoleContent = memo(function HomeRoleContent({
       icon: "flame.fill",
       done: (studioSettings?.sports?.length ?? 0) > 0,
       onPress: () => studioSheetHandlers.openEdit(),
+      sports: studioSettings?.sports,
     },
     {
       id: "branch",

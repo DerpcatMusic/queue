@@ -477,10 +477,11 @@ const he = {
         entityCompany: "חברה",
         legalBusinessName: "שם העסק החוקי",
         taxId: "ח.פ / תעודת זהות",
-        billingEmail: "אימייל לחיוב",
-        billingPhone: "טלפון לחיוב",
-        billingAddress: "כתובת לחיוב",
-        vatReportingType: "סוג דיווח מע״מ",
+      billingEmail: "אימייל לחיוב",
+      billingPhone: "טלפון לחיוב",
+      billingAddress: "כתובת לחיוב",
+      useStripeAddress: "שימוש בטופס הכתובת של Stripe",
+      vatReportingType: "סוג דיווח מע״מ",
         vatOptions: {
           osek_patur: "עוסק פטור",
           osek_murshe: "עוסק מורשה",
@@ -850,7 +851,7 @@ const he = {
     },
     payments: {
       summarySubtitle: "מעקב אחר סכומים, סטטוסי תשלום וסטטוס מסירת משיכות.",
-      airwallexDirectSplitNote:
+      stripeDirectSplitNote:
         "כספי המדריך/ה עוברים ישירות לחשבון Stripe המקושר. שום דבר לא עובר דרך ארנק משיכות של הפלטפורמה.",
       airwallexNotConnected: "חשבון Stripe לא מחובר",
       airwallexActive: "חשבון Stripe פעיל",
@@ -911,6 +912,8 @@ const he = {
       receiptPending: "הקבלה תיווצר אחרי אישור התשלום",
       openReceipt: "פתיחת קבלה",
       openHostedReceipt: "פתיחת קבלה של Stripe",
+      savedMethods: "אמצעי תשלום שמורים",
+      savedMethodsUpdated: "אמצעי התשלום השמורים עודכנו.",
       receiptStudioTotal: "סה״כ ששולם על ידי הסטודיו",
       receiptInstructorGross: "סכום ברוטו למדריך/ה",
       receiptPlatformFee: "עמלת הפלטפורמה",
@@ -947,6 +950,9 @@ const he = {
       paid: "שולם",
       withdraw: "משיכה",
       withdrawToBank: "משיכה לבנק",
+      startOnboarding: "התחלת אונבורדינג",
+      resumeOnboarding: "המשך אונבורדינג",
+      managePayouts: "ניהול משיכות",
       connectBank: "חיבור בנק",
       manageBank: "ניהול בנק",
       finalizingTitle: "מסיים את חיבור הבנק",
@@ -1237,7 +1243,7 @@ const he = {
       body: "השלימו אימות זהות ב-Stripe, העלו ביטוח והוסיפו תעודות תחום. אפשר להמשיך לגלוש באפליקציה בזמן שהמסמכים בבדיקה.",
       studioBody:
         "השלימו אימות בעלות והגדרת חיוב פנימית. שכבת התשלומים מסודרת כאן כך שנוכל להחליף ספק בלי לבנות מחדש את כל זרימת הסטודיו.",
-      verifyNow: "אמתו עכשיו",
+      verifyNow: "המשיכו לאימות",
       later: "אחר כך",
       reviewUpdatesEnabled:
         "Push מופעל במכשיר הזה. נשלח עדכון כשהביטוח או התעודות יאושרו או יידחו.",
@@ -1699,6 +1705,7 @@ const he = {
       notStarted: "טרם התחיל",
       payout: "תשלום למדריך: {{status}}",
       payNow: "לתשלום עכשיו",
+      customUi: "ממשק מותאם",
       retryPayment: "ניסיון תשלום חוזר",
       starting: "פותח תשלום...",
       completed: "התשלום הושלם.",

@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import { memo } from "react";
-import { Pressable } from "react-native";
+import { Pressable, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
@@ -8,6 +8,43 @@ import { useTheme } from "@/hooks/use-theme";
 import type { JobStatus } from "@/lib/status-tokens";
 import { getJobStatusTokens } from "@/lib/status-tokens";
 import { Box, Text } from "@/primitives";
+import { SPORT_GENRES } from "@/convex/constants";
+
+/** Maps sport genre keys to SF Symbol names for sport-specific icons */
+const SPORT_GENRE_ICONS: Record<string, ComponentProps<typeof IconSymbol>["name"]> = {
+  pilates: "figure.pilates",
+  yoga: "figure.yoga",
+  barre_flexibility: "figure.flexibility",
+  functional_strength: "dumbbell.fill",
+  crossfit: "figure.crossfit",
+  dance: "figure.dance",
+  tennis: "tennis.racket",
+  pickup_sports: "sportscourt",
+  swimming: "figure.pool.swim",
+  racket_sports: "tennis.racket",
+  climbing: "figure.climbing",
+  mindfulness: "brain.head.profile",
+};
+
+/** Returns the icon name for a sport genre key, falling back to a default */
+function getSportGenreIcon(
+  genreKey: string | undefined | null,
+): ComponentProps<typeof IconSymbol>["name"] {
+  if (!genreKey) return "flame.fill";
+  return SPORT_GENRE_ICONS[genreKey] ?? "flame.fill";
+}
+
+/** Returns the first sport's genre icon from a list of sports */
+function getFirstSportGenreIcon(
+  sports: string[] | undefined,
+): ComponentProps<typeof IconSymbol>["name"] {
+  if (!sports || sports.length === 0) return "flame.fill";
+  const firstSport = sports[0];
+  const genreKey = SPORT_GENRES.find((genre) =>
+    genre.sports.some((sport) => sport.key === firstSport),
+  )?.key;
+  return getSportGenreIcon(genreKey);
+}
 
 export const CONTENT_VERTICAL_PADDING = BrandSpacing.lg;
 
@@ -270,6 +307,8 @@ export type HomeChecklistItem = {
   icon: ComponentProps<typeof IconSymbol>["name"];
   done: boolean;
   onPress: () => void;
+  /** Optional sports list used to derive sport-specific icon when id === 'sports' */
+  sports?: string[];
 };
 
 export const HomeChecklistCard = memo(function HomeChecklistCard({
@@ -354,15 +393,30 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
                 : pressed
                   ? palette.surfaceElevated
                   : palette.surfaceAlt,
-              borderWidth: item.done ? 1 : 0,
-              borderColor: item.done ? palette.successSubtle : "transparent",
+              borderWidth: item.done ? 2 : 0,
+              borderColor: item.done ? palette.success : "transparent",
               opacity: pressed ? 0.92 : 1,
             })}
           >
             {item.done ? (
-              <IconSymbol name="checkmark.circle.fill" size={22} color={palette.success} />
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: palette.successSubtle,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <IconSymbol name="checkmark.circle.fill" size={22} color={palette.success} />
+              </View>
             ) : (
-              <IconSymbol name={item.icon} size={20} color={palette.primary} />
+              <IconSymbol
+                name={item.id === "sports" ? getFirstSportGenreIcon(item.sports) : item.icon}
+                size={20}
+                color={palette.primary}
+              />
             )}
             <Box style={{ flex: 1, minWidth: 0 }}>
               <Text

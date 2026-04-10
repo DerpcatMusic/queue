@@ -26,12 +26,12 @@ import {
   getPreferredInsurancePolicy as getSharedPreferredInsurancePolicy,
 } from "@/features/compliance/compliance-ui";
 import {
-  getDiditActionButtonColors,
-  getDiditPrimaryActionLabel,
-  getDiditVerificationStatusPresentation,
-  shouldAutoRefreshDiditStatus,
-  shouldOfferDiditManualRefresh,
-} from "@/features/compliance/didit-ui";
+  getIdentityActionButtonColors,
+  getIdentityPrimaryActionLabel,
+  getIdentityVerificationStatusPresentation,
+  shouldAutoRefreshIdentityStatus,
+  shouldOfferIdentityManualRefresh,
+} from "@/features/compliance/identity-verification-ui";
 import {
   isComplianceDocumentUploadError,
   useComplianceDocumentUpload,
@@ -175,10 +175,11 @@ function VerificationUploadPanel({
   subtitle: string;
   statusLabel: string;
   onPress: () => void;
-  accentColor: string;
+  accentColor?: string;
   disabled?: boolean;
 }) {
   const theme = useTheme();
+  const accent = accentColor ?? theme.color.primary;
 
   return (
     <Box gap="sm">
@@ -211,7 +212,7 @@ function VerificationUploadPanel({
               backgroundColor: theme.color.surfaceAlt,
             }}
           >
-            <IconSymbol name={icon} size={22} color={accentColor} />
+            <IconSymbol name={icon} size={22} color={accent} />
           </Box>
           <Box alignItems="center" gap="xxs">
             <Text variant="bodyStrong">{title}</Text>
@@ -221,7 +222,7 @@ function VerificationUploadPanel({
             <Text
               variant="caption"
               style={{
-                color: accentColor,
+                color: accent,
                 textTransform: "uppercase",
                 letterSpacing: LetterSpacing.trackingWide,
               }}
@@ -250,6 +251,7 @@ export default function InstructorComplianceScreen() {
     message: string;
   } | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const autoRefreshSessionIdRef = useRef<string | null>(null);
   const currentUser = useQuery(api.users.getCurrentUser);
   const complianceArgs =
     currentUser?.role === "instructor" ? (refreshNonce > 0 ? { now: Date.now() } : {}) : "skip";
@@ -345,14 +347,20 @@ export default function InstructorComplianceScreen() {
 
   useEffect(() => {
     if (
-      !shouldAutoRefreshDiditStatus(
+      !shouldAutoRefreshIdentityStatus(
         diditVerification?.status,
         diditVerification?.isVerified ?? false,
         diditVerification?.sessionId,
       )
     ) {
+      autoRefreshSessionIdRef.current = null;
       return;
     }
+
+    if (autoRefreshSessionIdRef.current === diditVerification?.sessionId) {
+      return;
+    }
+    autoRefreshSessionIdRef.current = diditVerification?.sessionId ?? null;
 
     void refreshDiditStatus({ silent: true });
 
@@ -554,14 +562,17 @@ export default function InstructorComplianceScreen() {
   }
 
   const isDiditBusy = isStartingDidit || isRefreshingDidit;
-  const diditActionLabel = getDiditPrimaryActionLabel(diditVerification.isVerified, t);
-  const diditButtonColors = getDiditActionButtonColors(diditVerification.isVerified, theme.color);
-  const diditStatusPresentation = getDiditVerificationStatusPresentation(
+  const diditActionLabel = getIdentityPrimaryActionLabel(diditVerification.isVerified, t);
+  const diditButtonColors = getIdentityActionButtonColors(
+    diditVerification.isVerified,
+    theme.color,
+  );
+  const diditStatusPresentation = getIdentityVerificationStatusPresentation(
     diditVerification.status,
     theme.color,
     t,
   );
-  const showDiditManualRefresh = shouldOfferDiditManualRefresh(
+  const showDiditManualRefresh = shouldOfferIdentityManualRefresh(
     diditVerification.status,
     diditVerification.isVerified,
   );
@@ -704,26 +715,24 @@ export default function InstructorComplianceScreen() {
             <Text variant="radarLabel" color="textMuted">
               {t("profile.compliance.documents.title")}
             </Text>
-              <VerificationUploadPanel
-                icon="checkmark.circle.fill"
-                label={t("profile.compliance.insurance.title")}
-                title={t("profile.compliance.documents.tapToUpload")}
-                subtitle={getInsuranceSubtitle(preferredInsurance ?? null, locale, t)}
-                statusLabel={getDocumentStatusLabel(preferredInsurance?.reviewStatus, t)}
-                onPress={onOpenInsuranceUpload}
-              accentColor="#CCFF00"
-                disabled={isUploading}
-              />
-              <VerificationUploadPanel
-                icon="sparkles"
-                label={t("profile.compliance.certificate.title")}
-                title={t("profile.compliance.documents.tapToUpload")}
-                subtitle={getCertificateSubtitle(latestCertificate ?? null, locale, t)}
-                statusLabel={getDocumentStatusLabel(latestCertificate?.reviewStatus, t)}
-                onPress={onOpenCertificateUpload}
-              accentColor="#CCFF00"
-                disabled={isUploading}
-              />
+            <VerificationUploadPanel
+              icon="checkmark.circle.fill"
+              label={t("profile.compliance.insurance.title")}
+              title={t("profile.compliance.documents.tapToUpload")}
+              subtitle={getInsuranceSubtitle(preferredInsurance ?? null, locale, t)}
+              statusLabel={getDocumentStatusLabel(preferredInsurance?.reviewStatus, t)}
+              onPress={onOpenInsuranceUpload}
+              disabled={isUploading}
+            />
+            <VerificationUploadPanel
+              icon="sparkles"
+              label={t("profile.compliance.certificate.title")}
+              title={t("profile.compliance.documents.tapToUpload")}
+              subtitle={getCertificateSubtitle(latestCertificate ?? null, locale, t)}
+              statusLabel={getDocumentStatusLabel(latestCertificate?.reviewStatus, t)}
+              onPress={onOpenCertificateUpload}
+              disabled={isUploading}
+            />
           </Box>
 
           <KitSurface

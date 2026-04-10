@@ -6,8 +6,6 @@ import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { Text } from "@/primitives";
-const BRIGHT_LIME = "#CCFF00";
-
 type ProfileEditorIdentityPanelProps = {
   profileName: string;
   roleLabel: string;
@@ -40,7 +38,7 @@ export function ProfileEditorIdentityPanel({
       style={
         isDesktopWeb
           ? {
-              backgroundColor: BRIGHT_LIME,
+              backgroundColor: color.primary,
             }
           : undefined
       }
@@ -80,7 +78,7 @@ export function ProfileEditorIdentityPanel({
               style={[
                 BrandType.micro,
                 {
-                  color: isDesktopWeb ? "#161E00" : color.textMuted,
+                  color: isDesktopWeb ? color.onPrimary : color.textMuted,
                   includeFontPadding: false,
                 },
               ]}

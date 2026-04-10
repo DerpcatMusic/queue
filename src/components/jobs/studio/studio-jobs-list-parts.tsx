@@ -1,6 +1,7 @@
+import { PlatformPay, PlatformPayButton } from "@stripe/stripe-react-native";
 import type { TFunction } from "i18next";
 import { type ComponentProps, memo } from "react";
-import { Pressable, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 import { DotStatusPill } from "@/components/home/home-shared";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -255,6 +256,8 @@ type StudioJobCardProps = {
   onInstructorPress?: (instructorId: Id<"instructorProfiles">) => void;
   onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
   onStartPayment: (jobId: Id<"jobs">) => void;
+  onStartNativeWalletPayment: (jobId: Id<"jobs">) => void;
+  onStartEmbeddedCheckout: (jobId: Id<"jobs">) => void;
   onJobPress: (jobId: Id<"jobs">) => void;
   t: TFunction;
 };
@@ -270,6 +273,8 @@ export const StudioJobCard = memo(function StudioJobCard({
   payingJobId,
   onReview,
   onStartPayment,
+  onStartNativeWalletPayment,
+  onStartEmbeddedCheckout,
   onJobPress,
   t,
 }: StudioJobCardProps) {
@@ -519,17 +524,40 @@ export const StudioJobCard = memo(function StudioJobCard({
               </View>
 
               {canPay ? (
-                <ActionButton
-                  label={
-                    payingJobId === job.jobId
-                      ? t("jobsTab.checkout.starting")
-                      : job.payment && ["failed", "cancelled"].includes(job.payment.status)
-                        ? t("jobsTab.checkout.retryPayment")
-                        : t("jobsTab.checkout.payNow")
-                  }
-                  onPress={() => onStartPayment(job.jobId)}
-                  loading={payingJobId === job.jobId}
-                />
+                <View style={{ gap: BrandSpacing.sm, alignItems: "stretch" }}>
+                  <ActionButton
+                    label={
+                      payingJobId === job.jobId
+                        ? t("jobsTab.checkout.starting")
+                        : job.payment && ["failed", "cancelled"].includes(job.payment.status)
+                          ? t("jobsTab.checkout.retryPayment")
+                          : t("jobsTab.checkout.payNow")
+                    }
+                    onPress={() => onStartPayment(job.jobId)}
+                    loading={payingJobId === job.jobId}
+                  />
+                  <View style={{ gap: BrandSpacing.sm }}>
+                    {Platform.OS !== "web" ? (
+                      <PlatformPayButton
+                        onPress={() => onStartNativeWalletPayment(job.jobId)}
+                        type={PlatformPay.ButtonType.Buy}
+                        appearance={PlatformPay.ButtonStyle.Automatic}
+                        borderRadius={BrandRadius.medium}
+                        style={{
+                          height: 44,
+                          alignSelf: "stretch",
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={Platform.OS === "ios" ? "Apple Pay" : "Google Pay"}
+                      />
+                    ) : null}
+                    <ActionButton
+                      label={t("jobsTab.checkout.customUi")}
+                      tone="secondary"
+                      onPress={() => onStartEmbeddedCheckout(job.jobId)}
+                    />
+                  </View>
+                </View>
               ) : null}
             </View>
           )}

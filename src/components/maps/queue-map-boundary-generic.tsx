@@ -1,9 +1,8 @@
-import Mapbox from "@rnmapbox/maps";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import type { getMapBrandPalette } from "@/constants/brand";
 import type { BoundaryGeometrySource } from "@/features/maps/boundaries/types";
+import { FillLayer, GeoJSONSource, LineLayer, SymbolLayer, VectorSource } from "./native-map-sdk";
 import type { QueueMapProps } from "./queue-map.types";
 
 type Expression = unknown;
@@ -67,7 +66,7 @@ export const QueueMapBoundaryGeneric = memo(function QueueMapBoundaryGeneric({
     [mode, isEditing, onPressBoundary, boundaryIdProperty],
   );
 
-  const showAllBoundaries = mode === "zoneSelect" && isEditing;
+  const showAll = mode === "zoneSelect" && isEditing;
 
   const [remoteFeatureCollection, setRemoteFeatureCollection] =
     useState<GeoJSON.FeatureCollection | null>(null);
@@ -116,7 +115,6 @@ export const QueueMapBoundaryGeneric = memo(function QueueMapBoundaryGeneric({
     return null;
   }, [boundarySource, remoteFeatureCollection]);
 
-  // Build the label expression from candidates
   const labelExpression = useMemo(() => {
     const candidates = boundaryLabelPropertyCandidates ?? ["name", "id"];
     if (candidates.length === 0) return "";
@@ -124,241 +122,270 @@ export const QueueMapBoundaryGeneric = memo(function QueueMapBoundaryGeneric({
     return ["coalesce", ...candidates.map((c) => ["get", c]), ""] as any;
   }, [boundaryLabelPropertyCandidates]);
 
-  // ─── Vector tiles source (raw @rnmapbox/maps) ───
+  // ── Shared style values ──
+  const baseFillColor = mapPalette.selectedOutline;
+  const outlineColor = mapPalette.selectedOutline;
+  const selectedFillColor = mapPalette.primary;
+
+  const baseFillOpacity = showAll ? 0.25 : 0;
+  const baseOutlineWidth = showAll
+    ? (["interpolate", ["linear"], ["zoom"], 4, 1.1, 7, 1.35, 10, 1.7, 14, 2.1] as any)
+    : 0;
+  const baseOutlineOpacity = showAll ? 0.96 : 0;
+  const selectedFillOpacity = [
+    "case",
+    ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
+    0.45,
+    0,
+  ] as any;
+  const selectedOutlineWidth = [
+    "case",
+    ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
+    3,
+    0,
+  ] as any;
+  const selectedOutlineOpacity = [
+    "case",
+    ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
+    1,
+    0,
+  ] as any;
+
+  // ─── Vector tiles source ───
   if (boundarySource.kind === "vectorTiles") {
     return (
-      <Mapbox.VectorSource
+      <VectorSource
         id="queue-boundary-generic-vector"
         {...(boundarySource.tilesetUrl ? { url: boundarySource.tilesetUrl } : {})}
         {...(boundarySource.tileUrlTemplates
           ? { tileUrlTemplates: boundarySource.tileUrlTemplates }
           : {})}
         onPress={handlePress as any}
-        hitbox={{ width: 28, height: 28 }}
       >
-        <Mapbox.FillLayer
+        <FillLayer
           id="queue-boundary-generic-base-fill"
-          sourceLayerID={boundarySource.sourceLayer}
-          style={{
-            fillColor: mapPalette.primary,
-            fillOpacity: showAllBoundaries ? 0.1 : 0,
+          sourceLayer={boundarySource.sourceLayer}
+          paint={{
+            "fill-color": baseFillColor,
+            "fill-opacity": baseFillOpacity,
           }}
         />
-        <Mapbox.LineLayer
+        <LineLayer
           id="queue-boundary-generic-base-outline"
-          sourceLayerID={boundarySource.sourceLayer}
-          style={{
-            lineColor: mapPalette.selectedOutline,
-            lineWidth: showAllBoundaries
-              ? ["interpolate", ["linear"], ["zoom"], 4, 1.1, 7, 1.35, 10, 1.7, 14, 2.1]
-              : 0,
-            lineOpacity: showAllBoundaries ? 0.96 : 0,
-            lineJoin: "round",
+          sourceLayer={boundarySource.sourceLayer}
+          paint={{
+            "line-color": outlineColor,
+            "line-width": baseOutlineWidth,
+            "line-opacity": baseOutlineOpacity,
+          }}
+          layout={{
+            "line-join": "round",
           }}
         />
-        <Mapbox.FillLayer
+        <FillLayer
           id="queue-boundary-generic-selected-fill"
-          sourceLayerID={boundarySource.sourceLayer}
-          style={{
-            fillColor: mapPalette.primary,
-            fillOpacity: [
-              "case",
-              ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
-              showAllBoundaries ? 0.28 : 0.24,
-              0,
-            ],
+          sourceLayer={boundarySource.sourceLayer}
+          paint={{
+            "fill-color": selectedFillColor,
+            "fill-opacity": selectedFillOpacity,
           }}
         />
-        <Mapbox.LineLayer
+        <LineLayer
           id="queue-boundary-generic-selected-outline"
-          sourceLayerID={boundarySource.sourceLayer}
-          style={{
-            lineColor: mapPalette.selectedOutline,
-            lineWidth: [
-              "case",
-              ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
-              showAllBoundaries ? 2.8 : 2.2,
-              0,
-            ],
-            lineOpacity: [
-              "case",
-              ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
-              APPLE_MAP_THEME.overlay.selectionOutlineOpacity,
-              0,
-            ],
-            lineJoin: "round",
+          sourceLayer={boundarySource.sourceLayer}
+          paint={{
+            "line-color": outlineColor,
+            "line-width": selectedOutlineWidth,
+            "line-opacity": selectedOutlineOpacity,
+          }}
+          layout={{
+            "line-join": "round",
           }}
         />
-        <Mapbox.SymbolLayer
-          id="queue-boundary-generic-labels"
-          sourceLayerID={boundarySource.sourceLayer}
-          filter={showAllBoundaries ? undefined : (selectedBoundaryFilter as any)}
-          minZoomLevel={5}
-          style={{
-            visibility: showLabelLayers ? "visible" : "none",
-            textField: labelExpression as any,
-            textSize: ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 11, 11, 12, 14, 13],
-            textAllowOverlap: showAllBoundaries,
-            textIgnorePlacement: showAllBoundaries,
-            textFont: ["Noto Sans Regular"],
-            textColor: mapPalette.text,
-            textHaloColor: mapPalette.surfaceAlt,
-            textHaloWidth: 1.2,
-            textOpacity: showAllBoundaries ? 1 : 0.86,
-          }}
-        />
-      </Mapbox.VectorSource>
+        {showLabelLayers ? (
+          <SymbolLayer
+            id="queue-boundary-generic-labels"
+            sourceLayer={boundarySource.sourceLayer}
+            filter={showAll ? undefined : (selectedBoundaryFilter as any)}
+            minzoom={5}
+            layout={{
+              "symbol-placement": "point",
+              "text-field": labelExpression as any,
+              "text-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                5,
+                10,
+                8,
+                11,
+                11,
+                12,
+                14,
+                13,
+              ] as any,
+              "text-allow-overlap": showAll,
+              "text-ignore-placement": showAll,
+              "text-font": ["literal", ["Noto Sans Regular"]] as any,
+            }}
+            paint={{
+              "text-color": mapPalette.text,
+              "text-halo-color": mapPalette.surfaceAlt,
+              "text-halo-width": 1.2,
+              "text-opacity": showAll ? 1 : 0.86,
+            }}
+          />
+        ) : null}
+      </VectorSource>
     );
   }
 
-  // ─── Remote GeoJSON source (fetched on mount, raw @rnmapbox/maps) ───
+  // ─── Remote GeoJSON source ───
   if (boundarySource.kind === "remoteGeojson") {
     if (!sourceData) return null;
     return (
-      <Mapbox.ShapeSource
+      <GeoJSONSource
         id="queue-boundary-generic-remote"
-        shape={sourceData}
+        data={sourceData}
         onPress={handlePress as any}
-        hitbox={{ width: 28, height: 28 }}
       >
-        <Mapbox.FillLayer
+        <FillLayer
           id="queue-boundary-generic-base-fill"
-          style={{ fillColor: mapPalette.primary, fillOpacity: showAllBoundaries ? 0.1 : 0 }}
+          paint={{
+            "fill-color": baseFillColor,
+            "fill-opacity": baseFillOpacity,
+          }}
         />
-        <Mapbox.LineLayer
+        <LineLayer
           id="queue-boundary-generic-base-outline"
-          style={{
-            lineColor: mapPalette.selectedOutline,
-            lineWidth: showAllBoundaries
-              ? ["interpolate", ["linear"], ["zoom"], 4, 1.1, 7, 1.35, 10, 1.7, 14, 2.1]
-              : 0,
-            lineOpacity: showAllBoundaries ? 0.96 : 0,
-            lineJoin: "round",
+          paint={{
+            "line-color": outlineColor,
+            "line-width": baseOutlineWidth,
+            "line-opacity": baseOutlineOpacity,
+          }}
+          layout={{
+            "line-join": "round",
           }}
         />
-        <Mapbox.FillLayer
+        <FillLayer
           id="queue-boundary-generic-selected-fill"
-          style={{
-            fillColor: mapPalette.primary,
-            fillOpacity: [
-              "case",
-              ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
-              showAllBoundaries ? 0.28 : 0.24,
-              0,
-            ],
+          paint={{
+            "fill-color": selectedFillColor,
+            "fill-opacity": selectedFillOpacity,
           }}
         />
-        <Mapbox.LineLayer
+        <LineLayer
           id="queue-boundary-generic-selected-outline"
-          style={{
-            lineColor: mapPalette.selectedOutline,
-            lineWidth: [
-              "case",
-              ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
-              showAllBoundaries ? 2.8 : 2.2,
-              0,
-            ],
-            lineOpacity: [
-              "case",
-              ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
-              APPLE_MAP_THEME.overlay.selectionOutlineOpacity,
-              0,
-            ],
-            lineJoin: "round",
+          paint={{
+            "line-color": outlineColor,
+            "line-width": selectedOutlineWidth,
+            "line-opacity": selectedOutlineOpacity,
+          }}
+          layout={{
+            "line-join": "round",
           }}
         />
-        <Mapbox.SymbolLayer
-          id="queue-boundary-generic-labels"
-          filter={showAllBoundaries ? undefined : (selectedBoundaryFilter as any)}
-          minZoomLevel={5}
-          style={{
-            visibility: showLabelLayers ? "visible" : "none",
-            textField: labelExpression as any,
-            textSize: ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 11, 11, 12, 14, 13],
-            textAllowOverlap: showAllBoundaries,
-            textIgnorePlacement: showAllBoundaries,
-            textFont: ["Noto Sans Regular"],
-            textColor: mapPalette.text,
-            textHaloColor: mapPalette.surfaceAlt,
-            textHaloWidth: 1.2,
-            textOpacity: showAllBoundaries ? 1 : 0.86,
-          }}
-        />
-      </Mapbox.ShapeSource>
+        {showLabelLayers ? (
+          <SymbolLayer
+            id="queue-boundary-generic-labels"
+            filter={showAll ? undefined : (selectedBoundaryFilter as any)}
+            minzoom={5}
+            layout={{
+              "symbol-placement": "point",
+              "text-field": labelExpression as any,
+              "text-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                5,
+                10,
+                8,
+                11,
+                11,
+                12,
+                14,
+                13,
+              ] as any,
+              "text-allow-overlap": showAll,
+              "text-ignore-placement": showAll,
+              "text-font": ["literal", ["Noto Sans Regular"]] as any,
+            }}
+            paint={{
+              "text-color": mapPalette.text,
+              "text-halo-color": mapPalette.surfaceAlt,
+              "text-halo-width": 1.2,
+              "text-opacity": showAll ? 1 : 0.86,
+            }}
+          />
+        ) : null}
+      </GeoJSONSource>
     );
   }
 
-  // ─── Inline GeoJSON source (bundled London data, raw @rnmapbox/maps) ───
+  // ─── Inline GeoJSON source (bundled data — London boroughs etc.) ───
   return (
-    <Mapbox.ShapeSource
+    <GeoJSONSource
       id="queue-boundary-generic-geojson"
-      shape={boundarySource.featureCollection}
+      data={boundarySource.featureCollection}
       onPress={handlePress as any}
-      hitbox={{ width: 28, height: 28 }}
     >
-      <Mapbox.FillLayer
+      <FillLayer
         id="queue-boundary-generic-base-fill"
-        style={{ fillColor: mapPalette.primary, fillOpacity: showAllBoundaries ? 0.1 : 0 }}
+        paint={{
+          "fill-color": baseFillColor,
+          "fill-opacity": baseFillOpacity,
+        }}
       />
-      <Mapbox.LineLayer
+      <LineLayer
         id="queue-boundary-generic-base-outline"
-        style={{
-          lineColor: mapPalette.selectedOutline,
-          lineWidth: showAllBoundaries
-            ? ["interpolate", ["linear"], ["zoom"], 4, 1.1, 7, 1.35, 10, 1.7, 14, 2.1]
-            : 0,
-          lineOpacity: showAllBoundaries ? 0.96 : 0,
-          lineJoin: "round",
+        paint={{
+          "line-color": outlineColor,
+          "line-width": baseOutlineWidth,
+          "line-opacity": baseOutlineOpacity,
+        }}
+        layout={{
+          "line-join": "round",
         }}
       />
-      <Mapbox.FillLayer
+      <FillLayer
         id="queue-boundary-generic-selected-fill"
-        style={{
-          fillColor: mapPalette.primary,
-          fillOpacity: [
-            "case",
-            ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
-            showAllBoundaries ? 0.28 : 0.24,
-            0,
-          ],
+        paint={{
+          "fill-color": selectedFillColor,
+          "fill-opacity": selectedFillOpacity,
         }}
       />
-      <Mapbox.LineLayer
+      <LineLayer
         id="queue-boundary-generic-selected-outline"
-        style={{
-          lineColor: mapPalette.selectedOutline,
-          lineWidth: [
-            "case",
-            ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
-            showAllBoundaries ? 2.8 : 2.2,
-            0,
-          ],
-          lineOpacity: [
-            "case",
-            ["in", ["get", boundaryIdProperty], ["literal", selectedBoundaryIds]],
-            APPLE_MAP_THEME.overlay.selectionOutlineOpacity,
-            0,
-          ],
-          lineJoin: "round",
+        paint={{
+          "line-color": outlineColor,
+          "line-width": selectedOutlineWidth,
+          "line-opacity": selectedOutlineOpacity,
+        }}
+        layout={{
+          "line-join": "round",
         }}
       />
-      <Mapbox.SymbolLayer
-        id="queue-boundary-generic-labels"
-        filter={showAllBoundaries ? undefined : (selectedBoundaryFilter as any)}
-        minZoomLevel={5}
-        style={{
-          visibility: showLabelLayers ? "visible" : "none",
-          textField: labelExpression as any,
-          textSize: ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 11, 11, 12, 14, 13],
-          textAllowOverlap: showAllBoundaries,
-          textIgnorePlacement: showAllBoundaries,
-          textFont: ["Noto Sans Regular"],
-          textColor: mapPalette.text,
-          textHaloColor: mapPalette.surfaceAlt,
-          textHaloWidth: 1.2,
-          textOpacity: showAllBoundaries ? 1 : 0.86,
-        }}
-      />
-    </Mapbox.ShapeSource>
+      {showLabelLayers ? (
+        <SymbolLayer
+          id="queue-boundary-generic-labels"
+          filter={showAll ? undefined : (selectedBoundaryFilter as any)}
+          minzoom={5}
+          layout={{
+            "symbol-placement": "point",
+            "text-field": labelExpression as any,
+            "text-size": ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 11, 11, 12, 14, 13] as any,
+            "text-allow-overlap": showAll,
+            "text-ignore-placement": showAll,
+            "text-font": ["literal", ["Noto Sans Regular"]] as any,
+          }}
+          paint={{
+            "text-color": mapPalette.text,
+            "text-halo-color": mapPalette.surfaceAlt,
+            "text-halo-width": 1.2,
+            "text-opacity": showAll ? 1 : 0.86,
+          }}
+        />
+      ) : null}
+    </GeoJSONSource>
   );
 });

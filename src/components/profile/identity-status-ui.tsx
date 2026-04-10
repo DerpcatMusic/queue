@@ -1,5 +1,4 @@
 import { KitStatusBadge } from "@/components/ui/kit";
-import { useTheme } from "@/hooks/use-theme";
 import i18n from "@/i18n";
 
 export type IdentityStatus =
@@ -32,7 +31,20 @@ export function getIdentityStatusLabel(status: string) {
 
 export function getIdentityStatusTone(
   status: string,
-  palette: ReturnType<typeof useTheme>["color"],
+  palette: {
+    success: string;
+    successSubtle: string;
+    danger: string;
+    dangerSubtle: string;
+    primary: string;
+    primarySubtle: string;
+    onPrimary: string;
+    warning: string;
+    warningSubtle: string;
+    borderStrong: string;
+    surface: string;
+    textMuted: string;
+  },
 ) {
   switch (status) {
     case "approved":
@@ -51,9 +63,9 @@ export function getIdentityStatusTone(
     case "in_progress":
     case "in_review":
       return {
-        accent: "#CCFF00",
-        background: "rgba(204, 255, 0, 0.18)",
-        text: "#161E00",
+        accent: palette.primary,
+        background: palette.primarySubtle,
+        text: palette.onPrimary,
       };
     case "abandoned":
     case "expired":
@@ -72,8 +84,6 @@ export function getIdentityStatusTone(
 }
 
 export function IdentityStatusBadge({ status }: { status: string }) {
-  const { color: palette } = useTheme();
-  const tone = getIdentityStatusTone(status, palette);
   const badgeTone =
     status === "approved"
       ? "success"
@@ -85,14 +95,5 @@ export function IdentityStatusBadge({ status }: { status: string }) {
             ? "accent"
             : "neutral";
 
-  return (
-    <KitStatusBadge
-      label={getIdentityStatusLabel(status)}
-      tone={badgeTone}
-      style={{
-        borderColor: tone.accent,
-        backgroundColor: tone.background,
-      }}
-    />
-  );
+  return <KitStatusBadge label={getIdentityStatusLabel(status)} tone={badgeTone} />;
 }

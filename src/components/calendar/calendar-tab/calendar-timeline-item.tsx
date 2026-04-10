@@ -7,7 +7,7 @@ import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "reac
 import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { StyleSheet } from "react-native-unistyles";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useSheetContext } from "@/contexts/sheet-context";
 import type { CalendarLessonSheetRole } from "@/contexts/sheet-context";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -15,6 +15,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { formatTime } from "@/lib/jobs-utils";
 import { toSportLabelI18n } from "@/lib/sport-i18n";
 import { Text } from "@/primitives";
+import { FontFamily, FontSize, LetterSpacing } from "@/theme/theme";
 import type { TimelineRow } from "../calendar-controller-helpers";
 import { useLessonCheckIn } from "../use-lesson-check-in";
 
@@ -33,67 +34,6 @@ const CALENDAR_CARD_NATIVE_FILTERS: Filters = [
   },
 ];
 
-function getTimelineIndicator(
-  item: TimelineRow,
-  isLive: boolean,
-  canCheckIn: boolean,
-  t: (key: string) => string,
-) {
-  if (item.checkInStatus === "verified") {
-    return {
-      tone: "good" as const,
-      label: t("calendarTab.card.indicators.checkedIn"),
-      hint: t("calendarTab.card.hints.checkedIn"),
-    };
-  }
-
-  if (item.checkInStatus === "rejected") {
-    return {
-      tone: "danger" as const,
-      label: t("calendarTab.card.indicators.checkInFailed"),
-      hint: t("calendarTab.card.hints.checkInFailed"),
-    };
-  }
-
-  if (item.status === "cancelled" || item.lifecycle === "cancelled") {
-    return {
-      tone: "danger" as const,
-      label: t("calendarTab.card.indicators.cancelled"),
-      hint: t("calendarTab.card.hints.cancelled"),
-    };
-  }
-
-  if (isLive) {
-    return {
-      tone: "secondary" as const,
-      label: t("calendarTab.card.indicators.arriveNow"),
-      hint: t("calendarTab.card.hints.arriveNow"),
-    };
-  }
-
-  if (canCheckIn) {
-    return {
-      tone: "warning" as const,
-      label: t("calendarTab.card.indicators.getReady"),
-      hint: t("calendarTab.card.hints.getReady"),
-    };
-  }
-
-  if (item.lifecycle === "past") {
-    return {
-      tone: "muted" as const,
-      label: t("calendarTab.card.indicators.complete"),
-      hint: t("calendarTab.card.hints.complete"),
-    };
-  }
-
-  return {
-    tone: "good" as const,
-    label: t("calendarTab.card.indicators.goodToGo"),
-    hint: t("calendarTab.card.hints.goodToGo"),
-  };
-}
-
 function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -101,18 +41,6 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
   const { isSubmitting, submitCheckIn } = useLessonCheckIn();
   const { openCalendarLesson } = useSheetContext();
   const isLightTheme = theme.scheme === "light";
-  const lightCardBg = "#FFFFFF";
-  const lightCardBorder = "#E1D8CE";
-  const lightText = "#1A1C1C";
-  const lightTextMuted = "#444933";
-  const lightTextSubtle = "#7A7A7A";
-  const lightButtonBg = "#EEEEEE";
-  const lightButtonBorder = "#D8CEC5";
-  const lightButtonText = "#1A1C1C";
-  const lightAccentContainer = "#CCFF00";
-  const lightAccentContainerText = "#161E00";
-  const lightPrimarySurface = "#F7FBE8";
-  const lightPrimaryTint = "#CCFF0022";
 
   const timeStartLabel = item.isAllDay
     ? t("calendarTab.timeline.allDay")
@@ -134,7 +62,6 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
         : item.instructorProfileImageUrl;
   const fallbackLabel = counterpart || item.sport;
   const imageFadeId = useMemo(() => `calendar-card-fade-${item.lessonId}`, [item.lessonId]);
-  const tintFadeId = useMemo(() => `calendar-card-tint-${item.lessonId}`, [item.lessonId]);
   const webFilterStyle = useMemo(
     () => ({
       filter: isLightTheme
@@ -157,69 +84,50 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
     item.lifecycle !== "past" &&
     item.lifecycle !== "cancelled" &&
     !isCheckedIn;
-  const indicator = useMemo(
-    () => getTimelineIndicator(item, isLive, canCheckInWindow, t),
-    [canCheckInWindow, isLive, item, t],
-  );
-  const indicatorColors = {
-    good: {
-      accentColor: isLightTheme ? lightAccentContainerText : palette.primary,
-      backgroundColor: isLightTheme ? lightAccentContainer : palette.primary,
-      labelColor: isLightTheme ? lightAccentContainerText : palette.onPrimary,
-    },
-    warning: {
-      accentColor: palette.warning,
-      backgroundColor: palette.warning,
-      labelColor: palette.text,
-    },
-    secondary: {
-      accentColor: palette.secondary,
-      backgroundColor: palette.secondary,
-      labelColor: "#FFFFFF",
-    },
-    danger: {
-      accentColor: palette.danger,
-      backgroundColor: palette.danger,
-      labelColor: "#FFFFFF",
-    },
-    muted: {
-      accentColor: palette.textMuted,
-      backgroundColor: isLightTheme ? lightPrimarySurface : palette.surfaceAlt,
-      labelColor: palette.textMuted,
-    },
-  }[indicator.tone];
+
+  const isPast = item.lifecycle === "past";
+  const isCancelled = item.status === "cancelled" || item.lifecycle === "cancelled";
+
+  // Determine status icon + color
+  const statusIcon = isCheckedIn
+    ? "checkmark.circle.fill"
+    : hasRejectedCheckIn
+      ? "xmark.circle.fill"
+      : isCancelled
+        ? "xmark.circle.fill"
+        : isLive
+          ? "bolt.circle.fill"
+          : isPast
+            ? "checkmark.circle"
+            : "clock.fill";
+
+  const statusColor = isCheckedIn
+    ? palette.primary
+    : hasRejectedCheckIn
+      ? palette.danger
+      : isCancelled
+        ? palette.danger
+        : isLive
+          ? palette.secondary
+          : isPast
+            ? palette.textMicro
+            : palette.primary;
 
   const handleOpenDetails = () => {
-    if (!canOpenDetails) {
-      return;
-    }
+    if (!canOpenDetails) return;
     openCalendarLesson(item.lessonId, item.roleView as CalendarLessonSheetRole);
   };
 
   const handleCheckIn = () => {
-    if (!canShowCheckIn) {
-      return;
-    }
+    if (!canShowCheckIn) return;
     void submitCheckIn(item.lessonId as Id<"jobs">);
   };
 
   return (
     <Animated.View entering={FadeInUp.duration(200)} style={styles.container}>
+      {/* Timeline rail dot */}
       <View style={styles.timelineRail}>
-        <View style={[styles.timelineDot, { backgroundColor: palette.surface }]}>
-          <View
-            style={[
-              styles.timelineDotInner,
-              {
-                backgroundColor: isCheckedIn
-                  ? palette.primary
-                  : hasRejectedCheckIn
-                    ? palette.danger
-                    : indicatorColors.accentColor,
-              },
-            ]}
-          />
-        </View>
+        <View style={[styles.timelineDot, { backgroundColor: statusColor }]} />
       </View>
 
       <Pressable
@@ -229,30 +137,16 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
         style={({ pressed }) => [
           styles.card,
           {
-            backgroundColor: isLightTheme ? lightCardBg : palette.surfaceElevated,
-            borderColor:
-              item.source === "job"
-                ? indicatorColors.accentColor
-                : isLightTheme
-                  ? lightCardBorder
-                  : palette.outline,
-            shadowColor: isLightTheme ? "#1A1C1C12" : palette.shadow,
-            transform: [{ scale: canOpenDetails && pressed ? 0.992 : 1 }],
+            backgroundColor: isLightTheme ? palette.surface : palette.surfaceElevated,
+            transform: [{ scale: canOpenDetails && pressed ? 0.98 : 1 }],
           },
         ]}
       >
+        {/* Left accent stripe */}
+        <View style={[styles.accentStripe, { backgroundColor: statusColor }]} />
+
+        {/* Background image layer */}
         <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-          {item.source === "job" ? (
-            <View
-              style={[
-                StyleSheet.absoluteFillObject,
-                {
-                  backgroundColor: isLightTheme ? lightPrimaryTint : palette.primarySubtle,
-                  opacity: isLightTheme ? 1 : 0.16,
-                },
-              ]}
-            />
-          ) : null}
           {counterpartImageUrl ? (
             Platform.select({
               web: (
@@ -276,18 +170,14 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
             <View
               style={[
                 StyleSheet.absoluteFillObject,
-                {
-                  backgroundColor: isLightTheme ? palette.surfaceAlt : palette.surface,
-                },
+                { backgroundColor: isLightTheme ? palette.surfaceAlt : palette.surface },
               ]}
             >
               <View style={styles.fallbackInitialWrap}>
                 <Text
                   style={[
                     styles.fallbackInitial,
-                    {
-                      color: isLightTheme ? palette.primaryPressed : palette.primary,
-                    },
+                    { color: isLightTheme ? palette.primaryPressed : palette.primary },
                   ]}
                 >
                   {fallbackLabel.slice(0, 1).toUpperCase()}
@@ -297,191 +187,101 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
           )}
           <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
             <Defs>
-              <SvgLinearGradient id={tintFadeId} x1="0%" y1="0%" x2="100%" y2="100%">
-                <Stop offset="0%" stopColor="#000000" stopOpacity={isLightTheme ? 0.22 : 0.24} />
-                <Stop offset="32%" stopColor="#000000" stopOpacity={isLightTheme ? 0.12 : 0.12} />
-                <Stop offset="100%" stopColor="#000000" stopOpacity={isLightTheme ? 0.01 : 0.02} />
-              </SvgLinearGradient>
               <SvgLinearGradient id={imageFadeId} x1="0%" y1="0%" x2="0%" y2="100%">
-                <Stop
-                  offset="0%"
-                  stopColor="#000000"
-                  stopOpacity={isLightTheme ? "0.68" : "0.72"}
-                />
-                <Stop
-                  offset="20%"
-                  stopColor="#000000"
-                  stopOpacity={isLightTheme ? "0.34" : "0.38"}
-                />
-                <Stop
-                  offset="48%"
-                  stopColor="#000000"
-                  stopOpacity={isLightTheme ? "0.12" : "0.14"}
-                />
-                <Stop
-                  offset="100%"
-                  stopColor="#000000"
-                  stopOpacity={isLightTheme ? "0.01" : "0.03"}
-                />
+                <Stop offset="0%" stopColor="#000000" stopOpacity="0.28" />
+                <Stop offset="100%" stopColor="#000000" stopOpacity="0" />
               </SvgLinearGradient>
             </Defs>
-            <Rect width="100%" height="100%" fill={`url(#${tintFadeId})`} />
             <Rect width="100%" height="100%" fill={`url(#${imageFadeId})`} />
           </Svg>
         </View>
 
-        <View style={styles.cardHeader}>
-          <View style={styles.cardHeaderLeft}>
-            <View style={styles.badgesRow}>
-              <View style={[styles.badge, { backgroundColor: indicatorColors.backgroundColor }]}>
-                <Text style={[styles.badgeText, { color: indicatorColors.labelColor }]}>
-                  {indicator.label}
-                </Text>
-              </View>
-              {item.source === "google" ? (
-                <View style={[styles.badge, { backgroundColor: palette.tertiarySubtle }]}>
-                  <Text style={[styles.badgeText, { color: palette.tertiary }]}>
-                    {t("calendarTab.timeline.googleBadge")}
-                  </Text>
-                </View>
-              ) : null}
-              {isCheckedIn ? (
-                <View
-                  style={[
-                    styles.badge,
-                    {
-                      backgroundColor: isLightTheme ? lightAccentContainer : palette.primarySubtle,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.badgeText,
-                      { color: isLightTheme ? lightAccentContainerText : palette.primary },
-                    ]}
-                  >
-                    {t("calendarTab.card.indicators.checkedIn")}
-                  </Text>
-                </View>
-              ) : null}
+        {/* Content layer */}
+        <View style={styles.topRow}>
+          {/* Left: Status icon + sport */}
+          <View style={styles.topLeft}>
+            <View style={styles.sportRow}>
+              <IconSymbol name={statusIcon} size={18} color={statusColor} />
+              <Text style={[styles.sportTitle, { color: palette.text }]} numberOfLines={1}>
+                {sportLabel}
+              </Text>
             </View>
-            <Text
-              style={[styles.cardTitle, { color: isLightTheme ? lightText : "#FFFFFF" }]}
-              numberOfLines={1}
-            >
-              {sportLabel}
-            </Text>
-            <Text
-              style={[styles.indicatorHint, { color: isLightTheme ? lightTextMuted : "#D9D2C8" }]}
-              numberOfLines={2}
-            >
-              {indicator.hint}
-            </Text>
+            <View style={styles.locationRow}>
+              <IconSymbol name="location_on" size={12} color={palette.textMuted} />
+              <Text style={[styles.locationText, { color: palette.textMuted }]} numberOfLines={1}>
+                {counterpart}
+              </Text>
+            </View>
           </View>
-          <View style={styles.cardHeaderRight}>
-            <Text style={[styles.timeStart, { color: isLightTheme ? lightText : "#FFFFFF" }]}>
-              {timeStartLabel}
-            </Text>
+
+          {/* Right: Time block */}
+          <View style={styles.timeBlock}>
+            <Text style={[styles.timePrimary, { color: palette.text }]}>{timeStartLabel}</Text>
             {timeEndLabel ? (
-              <Text style={[styles.timeEnd, { color: isLightTheme ? lightTextSubtle : "#CEC7BD" }]}>
-                {t("calendarTab.card.to")} {timeEndLabel}
+              <Text style={[styles.timeSecondary, { color: palette.textMuted }]}>
+                {timeEndLabel}
               </Text>
             ) : null}
           </View>
         </View>
 
-        <View style={styles.locationRow}>
-          <IconSymbol
-            name="location_on"
-            size={14}
-            color={isLightTheme ? lightTextMuted : "#D4CDC2"}
-          />
-          <Text
-            style={[styles.locationText, { color: isLightTheme ? lightTextMuted : "#D9D2C8" }]}
-            numberOfLines={1}
-          >
-            {counterpart}
-          </Text>
-        </View>
-
-        {item.note ? (
-          <View
-            style={[
-              styles.noteBox,
-              {
-                backgroundColor: isLightTheme ? lightPrimarySurface : palette.primarySubtle,
-              },
-            ]}
-          >
-            <Text style={[styles.noteLabel, { color: isLightTheme ? lightTextSubtle : "#BEB5A8" }]}>
-              {t("calendarTab.card.noteLabel")}
+        {/* Live / check-in banner */}
+        {isLive && !isCheckedIn ? (
+          <View style={[styles.liveBanner, { backgroundColor: palette.secondary }]}>
+            <IconSymbol name="bolt.fill" size={14} color="#FFFFFF" />
+            <Text style={[styles.liveBannerText, { color: "#FFFFFF" }]}>
+              {t("calendarTab.card.indicators.arriveNow")}
             </Text>
-            <Text
-              style={[styles.noteText, { color: isLightTheme ? lightText : "#FFFFFF" }]}
-              numberOfLines={2}
-            >
+          </View>
+        ) : null}
+
+        {isCheckedIn ? (
+          <View style={[styles.checkedBanner, { backgroundColor: palette.primary }]}>
+            <IconSymbol name="checkmark" size={14} color={palette.onPrimary} />
+            <Text style={[styles.liveBannerText, { color: palette.onPrimary }]}>
+              {t("calendarTab.card.indicators.checkedIn")}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Google source tag */}
+        {item.source === "google" ? (
+          <View style={styles.googleTag}>
+            <Text style={[styles.googleTagText, { color: palette.textMuted }]}>
+              {t("calendarTab.timeline.googleBadge")}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Note */}
+        {item.note ? (
+          <View style={[styles.noteBox, { backgroundColor: palette.primarySubtle }]}>
+            <Text style={[styles.noteText, { color: palette.text }]} numberOfLines={2}>
               {item.note}
             </Text>
           </View>
         ) : null}
 
-        <View style={styles.ctaRow}>
-          <View
-            style={[
-              styles.ctaButton,
+        {/* Check-in CTA */}
+        {canShowCheckIn ? (
+          <Pressable
+            onPress={handleCheckIn}
+            disabled={isSubmitting}
+            style={({ pressed }) => [
+              styles.checkInChip,
               {
-                backgroundColor: isLightTheme ? lightButtonBg : "#161616",
-                borderWidth: 1,
-                borderColor: isLightTheme ? lightButtonBorder : "#2B2B2B",
+                backgroundColor: palette.primary,
+                transform: [{ scale: pressed && !isSubmitting ? 0.97 : 1 }],
+                opacity: isSubmitting ? 0.7 : 1,
               },
             ]}
           >
-            <IconSymbol
-              name={canOpenDetails ? "arrow_outward" : "calendar_today"}
-              size={16}
-              color={isLightTheme ? lightButtonText : "#FFFFFF"}
-            />
-            <Text style={[styles.ctaText, { color: isLightTheme ? lightButtonText : "#FFFFFF" }]}>
-              {canOpenDetails ? t("calendarTab.card.viewDetails") : t("calendarTab.card.viewEvent")}
+            <IconSymbol name="checkmark" size={14} color={palette.onPrimary} />
+            <Text style={[styles.checkInChipText, { color: palette.onPrimary }]}>
+              {isSubmitting ? t("common.loading") : t("calendarTab.card.checkIn")}
             </Text>
-          </View>
-
-          {canShowCheckIn ? (
-            <Pressable
-              onPress={handleCheckIn}
-              disabled={isSubmitting}
-              style={({ pressed }) => [
-                styles.ctaButton,
-                {
-                  backgroundColor: isLightTheme
-                    ? lightAccentContainer
-                    : isCheckedIn
-                      ? palette.primaryPressed
-                      : palette.primary,
-                  transform: [{ scale: pressed && !isSubmitting ? 0.985 : 1 }],
-                },
-              ]}
-            >
-              <IconSymbol
-                name="checkmark"
-                size={16}
-                color={isLightTheme ? lightAccentContainerText : palette.onPrimary}
-              />
-              <Text
-                style={[
-                  styles.ctaText,
-                  { color: isLightTheme ? lightAccentContainerText : palette.onPrimary },
-                ]}
-              >
-                {isSubmitting
-                  ? t("common.loading")
-                  : isCheckedIn
-                    ? t("calendarTab.card.checkedIn")
-                    : t("calendarTab.card.checkIn")}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
+          </Pressable>
+        ) : null}
       </Pressable>
     </Animated.View>
   );
@@ -490,141 +290,142 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    marginBottom: BrandSpacing.lg,
+    marginBottom: BrandSpacing.sm,
   },
   timelineRail: {
-    width: 24,
+    width: 16,
     alignItems: "center",
+    paddingTop: BrandSpacing.md,
   },
   timelineDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  timelineDotInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   card: {
     flex: 1,
-    marginLeft: BrandSpacing.md,
-    borderRadius: BrandRadius.card,
+    marginLeft: BrandSpacing.sm,
+    borderRadius: BrandRadius.cardSubtle,
     padding: BrandSpacing.md,
     gap: BrandSpacing.sm,
     overflow: "hidden",
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 1,
-    shadowRadius: 24,
-    elevation: 10,
   },
-  cardHeader: {
+  accentStripe: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderRadius: 4,
+  },
+  topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: BrandSpacing.sm,
   },
-  cardHeaderLeft: {
+  topLeft: {
     flex: 1,
-    gap: BrandSpacing.xs,
+    gap: BrandSpacing.xxs,
+    marginRight: BrandSpacing.sm,
   },
-  cardHeaderRight: {
-    alignItems: "flex-end",
-  },
-  badgesRow: {
+  sportRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
     gap: BrandSpacing.xs,
   },
-  badge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: BrandSpacing.sm,
-    paddingVertical: 2,
-    borderRadius: BrandRadius.pill,
-  },
-  badgeText: {
-    fontFamily: "Manrope_800ExtraBold",
-    fontSize: 9,
+  sportTitle: {
+    fontFamily: FontFamily.displayBold,
+    fontSize: FontSize.body,
     fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 0.2,
-  },
-  cardTitle: {
-    fontFamily: "Lexend_700Bold",
-    fontSize: BrandType.titleLarge.fontSize,
-    fontWeight: "700",
-    letterSpacing: -0.24,
-  },
-  indicatorHint: {
-    fontFamily: "Manrope_600SemiBold",
-    fontSize: 12,
-    fontWeight: "600",
-    lineHeight: 16,
-  },
-  timeStart: {
-    fontFamily: "Lexend_800ExtraBold",
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  timeEnd: {
-    fontFamily: "Lexend_700Bold",
-    fontSize: 10,
-    fontWeight: "700",
-    textTransform: "uppercase",
+    letterSpacing: LetterSpacing.label,
   },
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: BrandSpacing.xs,
+    gap: 4,
   },
   locationText: {
     fontFamily: "Manrope_500Medium",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "500",
     flex: 1,
   },
-  noteBox: {
-    borderRadius: BrandRadius.lg,
-    paddingHorizontal: BrandSpacing.sm,
-    paddingVertical: BrandSpacing.sm,
-    gap: BrandSpacing.xxs,
+  timeBlock: {
+    alignItems: "flex-end",
+    gap: 2,
   },
-  noteLabel: {
-    fontFamily: "Manrope_700Bold",
+  timePrimary: {
+    fontFamily: FontFamily.displayBold,
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  timeSecondary: {
+    fontFamily: FontFamily.title,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  liveBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.xs,
+    alignSelf: "flex-start",
+    paddingHorizontal: BrandSpacing.sm,
+    paddingVertical: BrandSpacing.xs,
+    borderRadius: BrandRadius.pill,
+  },
+  checkedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.xs,
+    alignSelf: "flex-start",
+    paddingHorizontal: BrandSpacing.sm,
+    paddingVertical: BrandSpacing.xs,
+    borderRadius: BrandRadius.pill,
+  },
+  liveBannerText: {
+    fontFamily: "Manrope_800ExtraBold",
     fontSize: 10,
-    fontWeight: "700",
+    fontWeight: "800",
     textTransform: "uppercase",
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
+  },
+  googleTag: {
+    alignSelf: "flex-start",
+  },
+  googleTagText: {
+    fontFamily: "Manrope_600SemiBold",
+    fontSize: 10,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.2,
+  },
+  noteBox: {
+    borderRadius: BrandRadius.md,
+    paddingHorizontal: BrandSpacing.sm,
+    paddingVertical: BrandSpacing.xs,
   },
   noteText: {
     fontFamily: "Manrope_500Medium",
     fontSize: 12,
     fontWeight: "500",
-    lineHeight: 17,
+    lineHeight: 16,
   },
-  ctaRow: {
-    flexDirection: "row",
-    gap: BrandSpacing.sm,
-    marginTop: BrandSpacing.xs,
-  },
-  ctaButton: {
-    flex: 1,
+  checkInChip: {
+    alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: BrandSpacing.xs,
-    paddingVertical: BrandSpacing.sm + 2,
-    borderRadius: BrandRadius.button,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.sm,
+    borderRadius: BrandRadius.pill,
   },
-  ctaText: {
-    fontFamily: "Lexend_800ExtraBold",
-    fontSize: 11,
+  checkInChipText: {
+    fontFamily: "Manrope_800ExtraBold",
+    fontSize: 12,
     fontWeight: "800",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   fallbackInitialWrap: {
     flex: 1,
@@ -632,8 +433,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   fallbackInitial: {
-    fontFamily: "Lexend_800ExtraBold",
-    fontSize: 52,
+    fontFamily: FontFamily.displayBold,
+    fontSize: 44,
     fontWeight: "800",
   },
 });

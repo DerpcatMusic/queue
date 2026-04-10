@@ -61,8 +61,17 @@ const styles = StyleSheet.create((theme) => ({
     height: BorderWidth.divider,
     backgroundColor: theme.color.divider,
   },
+  // Tinted icon container (circle behind setting row icons)
+  iconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderCurve: "continuous",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   dividerWithIcon: {
-    marginLeft: BrandSpacing.md + 20 + BrandSpacing.md,
+    marginLeft: BrandSpacing.md + 32 + BrandSpacing.md,
     marginRight: BrandSpacing.md,
   },
   dividerWithoutIcon: {
@@ -107,6 +116,26 @@ function getSectionColor(tone: ProfileSectionTone, theme: AppTheme): string {
       return c.textMuted;
     case "danger":
       return c.danger;
+  }
+}
+
+function getSectionIconBg(tone: ProfileSectionTone | undefined, theme: AppTheme): string {
+  const c = theme.color;
+  switch (tone) {
+    case "account":
+      return c.primarySubtle;
+    case "identity":
+      return c.successSubtle;
+    case "operations":
+      return c.secondarySubtle;
+    case "preferences":
+      return c.tertiarySubtle;
+    case "support":
+      return c.surfaceAlt;
+    case "danger":
+      return c.dangerSubtle;
+    default:
+      return c.surfaceAlt;
   }
 }
 
@@ -280,14 +309,19 @@ export function ProfileSettingRow({
 
   // Resolve icon color: explicit tone > section tone > default
   let iconColor: string;
+  let iconBg: string;
   if (tone === "danger") {
     iconColor = colors.iconDanger;
+    iconBg = theme.color.dangerSubtle;
   } else if (tone === "accent") {
     iconColor = colors.iconAccent;
+    iconBg = theme.color.primarySubtle;
   } else if (sectionTone) {
     iconColor = getSectionColor(sectionTone, theme);
+    iconBg = getSectionIconBg(sectionTone, theme);
   } else {
     iconColor = colors.iconDefault;
+    iconBg = theme.color.surfaceAlt;
   }
 
   const dividerStyle = icon ? styles.dividerWithIcon : styles.dividerWithoutIcon;
@@ -302,7 +336,11 @@ export function ProfileSettingRow({
         py="md"
         minHeight={BrandSpacing.listItemMinHeight}
       >
-        {icon ? <IconSymbol name={icon} size={20} color={iconColor} /> : null}
+        {icon ? (
+          <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
+            <IconSymbol name={icon} size={18} color={iconColor} />
+          </View>
+        ) : null}
 
         <Box flex={1} minWidth={0} gap="xxs">
           <Text variant="bodyMedium" color="text">
@@ -364,12 +402,18 @@ export function ProfileSupportCard({
   onPress?: () => void;
   fullWidth?: boolean;
 }) {
-  const colors = useProfileColors();
+  const { theme } = useUnistyles();
+
+  const iconEl = (
+    <View style={[styles.iconContainer, { backgroundColor: theme.color.surfaceAlt }]}>
+      <IconSymbol name={icon} size={18} color={theme.color.textMuted} />
+    </View>
+  );
 
   if (!onPress) {
     return (
       <View style={[styles.actionCard as ViewStyle, fullWidth && { flex: 1 }]}>
-        <IconSymbol name={icon} size={24} color={colors.iconDefault} />
+        {iconEl}
         <Text variant="bodyMedium" color="text" style={{ fontWeight: "600" }}>
           {title}
         </Text>
@@ -388,7 +432,7 @@ export function ProfileSupportCard({
         state.pressed && (styles.actionCardPressed as ViewStyle),
       ]}
     >
-      <IconSymbol name={icon} size={24} color={colors.iconDefault} />
+      {iconEl}
       <Text variant="bodyMedium" color="text" style={{ fontWeight: "600" }}>
         {title}
       </Text>

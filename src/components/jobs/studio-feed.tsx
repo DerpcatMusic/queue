@@ -1,4 +1,5 @@
 import type BottomSheet from "@gorhom/bottom-sheet";
+import { useAction } from "convex/react";
 import { useIsFocused } from "@react-navigation/native";
 import { Redirect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -13,6 +14,7 @@ import { StudioJobsArchiveSheet } from "@/components/jobs/studio/studio-jobs-arc
 import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
 import { StudioJobsTopSheetHeader } from "@/components/jobs/studio/studio-jobs-top-sheet";
 import { useStudioFeedController } from "@/components/jobs/studio/use-studio-feed-controller";
+import { StripeEmbeddedCheckoutSheet } from "@/components/sheets/profile/studio/stripe-embedded-checkout-sheet";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
@@ -25,11 +27,12 @@ import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { SkeletonLine } from "@/components/ui/skeleton";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useTheme } from "@/hooks/use-theme";
-import { buildInstructorProfileRoute } from "@/navigation/public-profile-routes";
 import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
+import { buildInstructorProfileRoute } from "@/navigation/public-profile-routes";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import { Box, HStack, Text, VStack } from "@/primitives";
 import { Motion, Spring } from "@/theme/theme";
@@ -93,8 +96,19 @@ export function StudioFeed() {
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [isFabMenuOpen, setIsFabMenuOpen] = useState(false);
+  const [embeddedCheckoutDetails, setEmbeddedCheckoutDetails] = useState<null | {
+    clientSecret: string;
+    customerSessionClientSecret: string;
+    amountAgorot: number;
+    currency: string;
+    providerCountry: string;
+  }>(null);
+  const [embeddedCheckoutVisible, setEmbeddedCheckoutVisible] = useState(false);
   const detailSheetRef = useRef<BottomSheet>(null);
   const archiveSheetRef = useRef<BottomSheet>(null);
+  const createStudioCustomerSheetSession = useAction(
+    api.paymentsV2Actions.createMyStudioStripeCustomerSheetSessionV2,
+  );
 
   // Expand sheet when job is selected (handle render timing)
   useEffect(() => {
@@ -126,7 +140,9 @@ export function StudioFeed() {
     setErrorMessage,
     setJobsTimeFilter,
     setStatusMessage,
+    buildStripeCheckoutDetails,
     startStudioCheckout,
+    startStudioNativeWalletCheckout,
     statusMessage,
     studioBranches,
     studioJobs,
@@ -190,6 +206,40 @@ export function StudioFeed() {
     },
     [startStudioCheckout],
   );
+  const handleStartNativeWalletPayment = useCallback(
+    (jobId: Parameters<typeof startStudioNativeWalletCheckout>[0]) => {
+      void startStudioNativeWalletCheckout(jobId);
+    },
+    [startStudioNativeWalletCheckout],
+  );
+  const handleStartEmbeddedCheckout = useCallback(
+    async (jobId: Parameters<typeof buildStripeCheckoutDetails>[0]) => {
+      setErrorMessage(null);
+      setStatusMessage(null);
+
+      try {
+        const paymentDetails = await buildStripeCheckoutDetails(jobId);
+        if (!paymentDetails) return;
+
+        const customerSheetSession = await createStudioCustomerSheetSession();
+        setEmbeddedCheckoutDetails({
+          clientSecret: paymentDetails.checkout.clientSecret,
+          customerSessionClientSecret: customerSheetSession.customerSessionClientSecret,
+          amountAgorot: paymentDetails.checkout.amountAgorot,
+          currency: paymentDetails.checkout.currency,
+          providerCountry: paymentDetails.checkout.providerCountry,
+        });
+        setEmbeddedCheckoutVisible(true);
+      } catch (error) {
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : t("jobsTab.errors.failedToStartCheckout");
+        setErrorMessage(message);
+      }
+    },
+    [buildStripeCheckoutDetails, createStudioCustomerSheetSession, setErrorMessage, setStatusMessage, t],
+  );
   const handleJobPress = useCallback((jobId: string) => {
     setSelectedJobId(jobId);
   }, []);
@@ -202,44 +252,41 @@ export function StudioFeed() {
     [router],
   );
 
-  const jobsSheetConfig = useMemo(
-    () => {
-      const sheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
-      return createContentDrivenTopSheetConfig({
-        collapsedContent: (
-          <StudioJobsTopSheetHeader
-            currentFilter={jobsTimeFilter}
-            notificationsEnabled={Boolean(studioNotificationSettings?.notificationsEnabled)}
-            isTogglingNotifications={isEnablingStudioPush}
-            onToggleNotifications={toggleStudioPush}
-            isFilterExpanded={isFilterExpanded}
-            onToggleFilter={handleToggleJobsFilters}
-            onChangeFilter={handleChangeJobsFilter}
-            t={t}
-          />
-        ),
-        padding: {
-          vertical: BrandSpacing.sm,
-          horizontal: BrandSpacing.xl,
-        },
-        draggable: false,
-        expandable: false,
-        backgroundColor: sheetBackgroundColor,
-        topInsetColor: sheetBackgroundColor,
-      });
-    },
-    [
-      handleChangeJobsFilter,
-      handleToggleJobsFilters,
-      isEnablingStudioPush,
-      isFilterExpanded,
-      jobsTimeFilter,
-      studioNotificationSettings?.notificationsEnabled,
-      t,
-      theme,
-      toggleStudioPush,
-    ],
-  );
+  const jobsSheetConfig = useMemo(() => {
+    const sheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
+    return createContentDrivenTopSheetConfig({
+      collapsedContent: (
+        <StudioJobsTopSheetHeader
+          currentFilter={jobsTimeFilter}
+          notificationsEnabled={Boolean(studioNotificationSettings?.notificationsEnabled)}
+          isTogglingNotifications={isEnablingStudioPush}
+          onToggleNotifications={toggleStudioPush}
+          isFilterExpanded={isFilterExpanded}
+          onToggleFilter={handleToggleJobsFilters}
+          onChangeFilter={handleChangeJobsFilter}
+          t={t}
+        />
+      ),
+      padding: {
+        vertical: BrandSpacing.sm,
+        horizontal: BrandSpacing.xl,
+      },
+      draggable: false,
+      expandable: false,
+      backgroundColor: sheetBackgroundColor,
+      topInsetColor: sheetBackgroundColor,
+    });
+  }, [
+    handleChangeJobsFilter,
+    handleToggleJobsFilters,
+    isEnablingStudioPush,
+    isFilterExpanded,
+    jobsTimeFilter,
+    studioNotificationSettings?.notificationsEnabled,
+    t,
+    theme,
+    toggleStudioPush,
+  ]);
   useTabSceneDescriptor({
     tabId: "jobs",
     insetTone: "sheet",
@@ -305,9 +352,9 @@ export function StudioFeed() {
                   />
                 ) : null}
                 {studioJobs.length === 0 ? (
-                <View style={{ minHeight: 320, justifyContent: "center" }}>
-                  <EmptyState icon="bag" title={t("jobsTab.emptyStudio")} body="" />
-                </View>
+                  <View style={{ minHeight: 320, justifyContent: "center" }}>
+                    <EmptyState icon="bag" title={t("jobsTab.emptyStudio")} body="" />
+                  </View>
                 ) : filteredStudioJobs.length === 0 ? (
                   <View style={{ minHeight: 260, justifyContent: "center" }}>
                     <EmptyState
@@ -334,6 +381,8 @@ export function StudioFeed() {
                         onInstructorPress={handleInstructorPress}
                         onReview={handleReviewApplication}
                         onStartPayment={handleStartPayment}
+                        onStartNativeWalletPayment={handleStartNativeWalletPayment}
+                        onStartEmbeddedCheckout={handleStartEmbeddedCheckout}
                         onJobPress={handleJobPress}
                         t={t}
                       />
@@ -350,6 +399,8 @@ export function StudioFeed() {
                         onInstructorPress={handleInstructorPress}
                         onReview={handleReviewApplication}
                         onStartPayment={handleStartPayment}
+                        onStartNativeWalletPayment={handleStartNativeWalletPayment}
+                        onStartEmbeddedCheckout={handleStartEmbeddedCheckout}
                         onJobPress={handleJobPress}
                         t={t}
                       />
@@ -371,6 +422,8 @@ export function StudioFeed() {
                         onInstructorPress={handleInstructorPress}
                         onReview={handleReviewApplication}
                         onStartPayment={handleStartPayment}
+                        onStartNativeWalletPayment={handleStartNativeWalletPayment}
+                        onStartEmbeddedCheckout={handleStartEmbeddedCheckout}
                         onJobPress={handleJobPress}
                         t={t}
                       />
@@ -513,6 +566,22 @@ export function StudioFeed() {
                 jobs={pastJobs}
                 locale={locale}
                 zoneLanguage={zoneLanguage}
+              />
+            ) : null}
+
+            {embeddedCheckoutDetails ? (
+              <StripeEmbeddedCheckoutSheet
+                visible={embeddedCheckoutVisible}
+                checkout={embeddedCheckoutDetails}
+                onClose={() => {
+                  setEmbeddedCheckoutVisible(false);
+                  setEmbeddedCheckoutDetails(null);
+                }}
+                onCompleted={() => {
+                  setEmbeddedCheckoutVisible(false);
+                  setEmbeddedCheckoutDetails(null);
+                  setStatusMessage(t("jobsTab.checkout.completed"));
+                }}
               />
             ) : null}
           </Animated.View>

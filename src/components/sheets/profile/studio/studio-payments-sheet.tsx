@@ -2,11 +2,14 @@
  * Studio Payments Sheet - displays studio payment history and details.
  */
 
-import { useQuery } from "convex/react";
-import { useState } from "react";
+import { useAction, useQuery } from "convex/react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, StyleSheet } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet } from "react-native";
+import { CustomerSheet, PaymentSheet } from "@stripe/stripe-react-native";
+import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { LoadingScreen } from "@/components/loading-screen";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
 import { ThemedText } from "@/components/themed-text";
 import { KitList, KitListItem } from "@/components/ui/kit";
@@ -50,12 +53,25 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const isStudioPaymentsRole = currentUser?.role === "studio";
+  const createCustomerSheetSession = useAction(
+    api.paymentsV2Actions.createMyStudioStripeCustomerSheetSessionV2,
+  );
 
   const paymentRows = useQuery(
     api.paymentsV2.listMyPaymentsV2,
     isStudioPaymentsRole ? { limit: 40 } : "skip",
   );
   const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrdersV2"> | null>(null);
+  const [customerSheetVisible, setCustomerSheetVisible] = useState(false);
+  const customerSheetSessionPromiseRef = useRef<Promise<{
+    customerId: string;
+    customerSessionClientSecret: string;
+    setupIntentClientSecret: string;
+  }> | null>(null);
+  const [customerSheetFeedback, setCustomerSheetFeedback] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
 
   const selectedPaymentDetail = useQuery(
     api.paymentsV2.getMyPaymentDetailV2,
@@ -82,6 +98,13 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
   ).length;
   const paidOutCount = rows.filter((row) => row.payout?.status === "paid").length;
   const isDetailLoading = selectedPaymentId !== null && selectedPaymentDetail === undefined;
+  const canOpenCustomerSheet = currentUser.role === "studio";
+
+  const customerSheetDefaultBillingDetails = currentUser.email
+    ? {
+        email: currentUser.email,
+      }
+    : undefined;
 
   return (
     <BaseProfileSheet visible={visible} onClose={onClose}>
@@ -89,17 +112,43 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
         style={[styles.container, { backgroundColor: color.appBg }]}
         contentContainerStyle={styles.contentContainer}
       >
+        {customerSheetFeedback ? (
+          <NoticeBanner
+            tone={customerSheetFeedback.tone}
+            message={customerSheetFeedback.message}
+            onDismiss={() => setCustomerSheetFeedback(null)}
+          />
+        ) : null}
+
         <Box style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.xs }}>
-          <ThemedText type="caption" style={{ color: color.textMuted }}>
-            {t("profile.payments.summarySubtitle")}
-          </ThemedText>
-          <ThemedText type="caption" style={{ color: color.textMuted }}>
-            {t("profile.payments.liveStatusHint")}
-          </ThemedText>
+          <IconSymbol name="info.circle" size={14} color={color.textMuted} />
         </Box>
 
         <Box style={{ paddingHorizontal: BrandSpacing.sm }}>
           <KitList inset>
+            {canOpenCustomerSheet ? (
+              <KitListItem
+                title={t("profile.payments.savedMethods")}
+                accessory={
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("profile.payments.savedMethods")}
+                  onPress={() => {
+                    customerSheetSessionPromiseRef.current = null;
+                    setCustomerSheetFeedback(null);
+                    setCustomerSheetVisible(true);
+                  }}
+                    style={({ pressed }) => ({
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <ThemedText style={{ color: color.primary }}>
+                      {t("common.manage")}
+                    </ThemedText>
+                  </Pressable>
+                }
+              />
+            ) : null}
             <KitListItem
               title={t("profile.payments.processedPayments")}
               accessory={
@@ -132,6 +181,56 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
             setSelectedPaymentId(paymentId as Id<"paymentOrdersV2">)
           }
         />
+
+        {canOpenCustomerSheet ? (
+          <CustomerSheet
+            visible={customerSheetVisible}
+            onResult={(result) => {
+              setCustomerSheetVisible(false);
+              customerSheetSessionPromiseRef.current = null;
+              if (result.error) {
+                setCustomerSheetFeedback({
+                  tone: "error",
+                  message: result.error.localizedMessage ?? result.error.message,
+                });
+                return;
+              }
+              if (result.paymentMethod || result.paymentOption) {
+                setCustomerSheetFeedback({
+                  tone: "success",
+                  message: t("profile.payments.savedMethodsUpdated"),
+                });
+              }
+            }}
+            merchantDisplayName="Queue"
+            headerTextForSelectionScreen={t("profile.payments.savedMethods")}
+            intentConfiguration={{
+              paymentMethodTypes: ["card", "us_bank_account"],
+            }}
+            clientSecretProvider={{
+              provideCustomerSessionClientSecret: async () => {
+                customerSheetSessionPromiseRef.current ??= createCustomerSheetSession();
+                const session = await customerSheetSessionPromiseRef.current;
+                return { customerId: session.customerId, clientSecret: session.customerSessionClientSecret };
+              },
+              provideSetupIntentClientSecret: async () => {
+                customerSheetSessionPromiseRef.current ??= createCustomerSheetSession();
+                const session = await customerSheetSessionPromiseRef.current;
+                return session.setupIntentClientSecret;
+              },
+            }}
+            defaultBillingDetails={customerSheetDefaultBillingDetails}
+            billingDetailsCollectionConfiguration={{
+              name: PaymentSheet.CollectionMode.ALWAYS,
+              email: PaymentSheet.CollectionMode.AUTOMATIC,
+              address: PaymentSheet.AddressCollectionMode.AUTOMATIC,
+              attachDefaultsToPaymentMethod: true,
+            }}
+            applePayEnabled={Platform.OS === "ios"}
+            googlePayEnabled={Platform.OS === "android"}
+            returnURL="queue://stripe-redirect"
+          />
+        ) : null}
 
         {selectedPaymentId ? (
           <Box style={{ gap: BrandSpacing.sm, paddingHorizontal: BrandSpacing.sm }}>
@@ -329,12 +428,11 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
 
         <Box style={{ paddingHorizontal: BrandSpacing.sm }}>
           <KitList inset>
-            <KitListItem>
-              <ThemedText type="caption" style={{ color: color.textMuted }}>
-                Instructor payout onboarding and bank connection are managed from the instructor app
-                profile.
-              </ThemedText>
-            </KitListItem>
+            <KitListItem
+              accessory={
+                <IconSymbol name="questionmark.circle" size={18} color={color.textMuted} />
+              }
+            />
           </KitList>
         </Box>
       </ScrollView>

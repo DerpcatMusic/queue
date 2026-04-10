@@ -5,7 +5,12 @@ function trimEnv(value: string | undefined) {
 
 export const STRIPE_URL_SCHEME = "queue";
 export const STRIPE_RETURN_URL = `${STRIPE_URL_SCHEME}://stripe-redirect`;
-export const STRIPE_CONNECT_RETURN_URL = `${STRIPE_URL_SCHEME}://stripe-connect-return`;
+export const STRIPE_CONNECT_RETURN_URL =
+  trimEnv(process.env.EXPO_PUBLIC_STRIPE_CONNECT_RETURN_URL) ??
+  "https://curious-stingray-854.convex.site/stripe/connect-return";
+export const STRIPE_CONNECT_REFRESH_URL =
+  trimEnv(process.env.EXPO_PUBLIC_STRIPE_CONNECT_REFRESH_URL) ??
+  "https://curious-stingray-854.convex.site/stripe/connect-refresh";
 export const STRIPE_MERCHANT_DISPLAY_NAME = "Queue";
 
 export function getStripePublishableKey() {

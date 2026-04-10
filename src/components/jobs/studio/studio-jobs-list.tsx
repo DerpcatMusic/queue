@@ -17,6 +17,8 @@ export const StudioJobsList = memo(function StudioJobsList({
   onInstructorPress,
   onReview,
   onStartPayment,
+  onStartNativeWalletPayment,
+  onStartEmbeddedCheckout,
   onJobPress,
   t,
 }: StudioJobsListProps) {
@@ -35,6 +37,8 @@ export const StudioJobsList = memo(function StudioJobsList({
         {...(onInstructorPress ? { onInstructorPress } : {})}
         onReview={onReview}
         onStartPayment={onStartPayment}
+        onStartNativeWalletPayment={onStartNativeWalletPayment}
+        onStartEmbeddedCheckout={onStartEmbeddedCheckout}
         onJobPress={onJobPress}
         t={t}
       />
@@ -45,6 +49,8 @@ export const StudioJobsList = memo(function StudioJobsList({
       onInstructorPress,
       onReview,
       onStartPayment,
+      onStartNativeWalletPayment,
+      onStartEmbeddedCheckout,
       onJobPress,
       payingJobId,
       reviewingApplicationId,

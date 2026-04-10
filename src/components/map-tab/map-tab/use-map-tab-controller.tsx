@@ -22,10 +22,11 @@ import {
   SELECTABLE_BOUNDARY_BY_ID,
   SELECTABLE_BOUNDARY_OPTIONS,
 } from "@/features/maps/boundaries/catalog";
+import { LONDON_BOROUGH_BOUNDS_BY_ID } from "@/features/maps/boundaries/london-boroughs";
 import {
-  LONDON_BOROUGH_BOUNDS_BY_ID,
-} from "@/features/maps/boundaries/london-boroughs";
-import { ACTIVE_BOUNDARY_PROVIDER, DEFAULT_BOUNDARY_PROVIDER } from "@/features/maps/boundaries/providers";
+  DEFAULT_BOUNDARY_PROVIDER,
+  getBoundaryProviderForLocation,
+} from "@/features/maps/boundaries/providers";
 import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -63,11 +64,12 @@ export function useMapTabController() {
   // Deferred mount removed - map always ready once focused
   const isMapBodyReady = isFocused;
   const collapsedSheetHeight = useCollapsedSheetHeight();
+  const [activeProvider, setActiveProvider] = useState(DEFAULT_BOUNDARY_PROVIDER);
   const zoneLanguage: "en" | "he" = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he")
     ? "he"
     : "en";
-  const activeBoundaryProvider = ACTIVE_BOUNDARY_PROVIDER.id;
-  const usesLegacyZoneStorage = ACTIVE_BOUNDARY_PROVIDER.selectionStorage === "legacyZones";
+  const activeBoundaryProvider = activeProvider.id;
+  const usesLegacyZoneStorage = activeProvider.selectionStorage === "legacyZones";
   const { currentUser } = useUser();
   const remoteZones = useQuery(
     api.instructorZones.getMyInstructorZones,
@@ -147,6 +149,16 @@ export function useMapTabController() {
     };
   }, [hasAttemptedMapPinBootstrap, isFocused, usesLegacyZoneStorage]);
 
+  useEffect(() => {
+    if (usesLegacyZoneStorage) return; // Israel uses legacy
+    if (!mapPin) return; // Need GPS location
+
+    const detected = getBoundaryProviderForLocation(mapPin.longitude, mapPin.latitude);
+    if (detected && detected.id !== activeProvider.id) {
+      setActiveProvider(detected);
+    }
+  }, [mapPin, usesLegacyZoneStorage, activeProvider.id]);
+
   const applySelectedZoneIds = useCallback(
     (
       nextZoneIds: string[],
@@ -199,8 +211,9 @@ export function useMapTabController() {
     [applySelectedZoneIds, focusZoneId, selectedZoneIds],
   );
 
-  const persistedZoneIds = (((usesLegacyZoneStorage ? remoteZones?.zoneIds : remoteBoundaries?.boundaryIds)) ??
-    []) as string[];
+  const persistedZoneIds = ((usesLegacyZoneStorage
+    ? remoteZones?.zoneIds
+    : remoteBoundaries?.boundaryIds) ?? []) as string[];
   const isSheetExpanded = sheetStep > 0;
 
   const hasChanges = useMemo(
@@ -257,10 +270,10 @@ export function useMapTabController() {
       !usesLegacyZoneStorage
         ? []
         : allStudios.filter(
-        (studio) =>
-          !zoneModeActive &&
-          (selectedZoneIds.length > 0 ? selectedZoneIds.includes(studio.zone) : true),
-      ),
+            (studio) =>
+              !zoneModeActive &&
+              (selectedZoneIds.length > 0 ? selectedZoneIds.includes(studio.zone) : true),
+          ),
     [allStudios, selectedZoneIds, usesLegacyZoneStorage, zoneModeActive],
   );
   const studioCountByZone = useMemo(() => {
@@ -287,8 +300,8 @@ export function useMapTabController() {
     if (focusZoneId) {
       return LONDON_BOROUGH_BOUNDS_BY_ID.get(focusZoneId) ?? null;
     }
-    return ACTIVE_BOUNDARY_PROVIDER.viewport?.bbox ?? null;
-  }, [focusZoneId, usesLegacyZoneStorage]);
+    return activeProvider.viewport?.bbox ?? null;
+  }, [focusZoneId, usesLegacyZoneStorage, activeProvider]);
   const focusedZoneLabel = focusedZone?.label[zoneLanguage] ?? null;
   const focusedZoneStudioCount = useMemo(
     () => (focusZoneId ? (studioCountByZone.get(focusZoneId) ?? 0) : 0),
@@ -591,18 +604,14 @@ export function useMapTabController() {
     mapPin,
     activeBoundaryProvider,
     boundaryIdProperty:
-      DEFAULT_BOUNDARY_PROVIDER.geometry.kind === "geojson" ||
-      DEFAULT_BOUNDARY_PROVIDER.geometry.kind === "remoteGeojson"
-        ? DEFAULT_BOUNDARY_PROVIDER.geometry.idProperty
-        : DEFAULT_BOUNDARY_PROVIDER.geometry.promoteId ?? "id",
-    initialBoundaryViewport: !usesLegacyZoneStorage ? (DEFAULT_BOUNDARY_PROVIDER.viewport ?? null) : undefined,
-    boundaryLabelPropertyCandidates: DEFAULT_BOUNDARY_PROVIDER.labelPropertyCandidates ?? [
-      "name",
-      "id",
-    ],
-    boundarySource: !usesLegacyZoneStorage ? DEFAULT_BOUNDARY_PROVIDER.geometry : undefined,
+      activeProvider.geometry.kind === "geojson" || activeProvider.geometry.kind === "remoteGeojson"
+        ? activeProvider.geometry.idProperty
+        : (activeProvider.geometry.promoteId ?? "id"),
+    initialBoundaryViewport: !usesLegacyZoneStorage ? (activeProvider.viewport ?? null) : undefined,
+    boundaryLabelPropertyCandidates: activeProvider.labelPropertyCandidates ?? ["name", "id"],
+    boundarySource: !usesLegacyZoneStorage ? activeProvider.geometry : undefined,
     boundaryInteractionBounds: !usesLegacyZoneStorage
-      ? (DEFAULT_BOUNDARY_PROVIDER.interactionBounds ?? DEFAULT_BOUNDARY_PROVIDER.viewport?.bbox ?? null)
+      ? (activeProvider.interactionBounds ?? activeProvider.viewport?.bbox ?? null)
       : undefined,
     focusBoundaryBounds,
     studios: visibleStudioMarkers,

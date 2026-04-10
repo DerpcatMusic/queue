@@ -2,7 +2,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { BrandType } from "@/constants/brand";
+import { BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { Text } from "@/primitives";
 import type { TimelineListItem } from "../calendar-controller-helpers";
@@ -26,22 +26,24 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
       <Animated.View entering={FadeInUp.duration(180)} style={calendarTimelineStyles.timelineRow}>
         <View style={calendarTimelineStyles.dayHeaderContent}>
           <Text
-            style={[
-              calendarTimelineStyles.dayHeading,
-              {
-                ...BrandType.headingItalic,
-                color: isToday ? palette.primary : palette.text,
-                transform: [{ skewX: "-6deg" }],
-              },
-            ]}
+            style={{
+              fontFamily: "Lexend_700Bold",
+              fontSize: 15,
+              fontWeight: "700",
+              letterSpacing: -0.2,
+              lineHeight: 20,
+              color: isToday ? palette.primary : palette.text,
+            }}
           >
             {formatDayHeading(item.dayKey, i18n.language).toUpperCase()}
           </Text>
           <Text
-            style={[
-              calendarTimelineStyles.daySubtitle,
-              { ...BrandType.microItalic, color: palette.textMuted },
-            ]}
+            style={{
+              fontFamily: "Manrope_500Medium",
+              fontSize: 11,
+              fontWeight: "500",
+              color: palette.textMuted,
+            }}
           >
             {formatDaySubtitle(item.dayKey, i18n.language)}
           </Text>
@@ -54,12 +56,17 @@ function CalendarTimelineRow({ item, todayKey }: CalendarTimelineRowProps) {
     return (
       <Animated.View entering={FadeInUp.duration(160)} style={calendarTimelineStyles.timelineRow}>
         <View
-          style={[
-            calendarTimelineStyles.emptyStateCard,
-            { backgroundColor: palette.surfaceAlt },
-          ]}
+          style={{
+            paddingTop: BrandSpacing.md,
+            paddingBottom: BrandSpacing.sm,
+          }}
         >
-          <Text style={[calendarTimelineStyles.emptyStateTitle, { color: palette.textMuted }]}>
+          <Text
+            style={{
+              ...BrandType.caption,
+              color: palette.textMicro,
+            }}
+          >
             {t("calendarTab.timeline.noLessons")}
           </Text>
         </View>

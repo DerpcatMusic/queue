@@ -3,12 +3,16 @@ import { ConvexError } from "convex/values";
 export const PRICING_RULE_VERSION_V1 = "il_v1_2026_04_07";
 export const PLATFORM_SERVICE_FEE_STANDARD_AGOROT = 1200;
 export const PLATFORM_SERVICE_FEE_WITH_BONUS_AGOROT = 1500;
+export const PLATFORM_SERVICE_FEE_STANDARD_MAJOR = 4;
+export const PLATFORM_SERVICE_FEE_WITH_BONUS_MAJOR = 5;
 
 export type PricingFeeMode = "standard" | "bonus";
 
 export type PricingInput = {
   baseLessonAmountAgorot: number;
   bonusAmountAgorot?: number;
+  country?: string;
+  currency?: string;
 };
 
 export type PricingBreakdown = {
@@ -36,16 +40,83 @@ const requirePositiveAgorot = (amountAgorot: number, label: string): number => {
   return Math.round(amountAgorot);
 };
 
+type PricingRule = {
+  code: string;
+  country?: string;
+  currency: string;
+  basePlatformFeeAgorot: number;
+  bonusPlatformFeeAgorot: number;
+  version: string;
+};
+
+const PRICING_RULES: PricingRule[] = [
+  {
+    code: "market_usd",
+    country: "US",
+    currency: "USD",
+    basePlatformFeeAgorot: PLATFORM_SERVICE_FEE_STANDARD_MAJOR * 100,
+    bonusPlatformFeeAgorot: PLATFORM_SERVICE_FEE_WITH_BONUS_MAJOR * 100,
+    version: "usd_v1_2026_04_10",
+  },
+  {
+    code: "market_eur",
+    currency: "EUR",
+    basePlatformFeeAgorot: PLATFORM_SERVICE_FEE_STANDARD_MAJOR * 100,
+    bonusPlatformFeeAgorot: PLATFORM_SERVICE_FEE_WITH_BONUS_MAJOR * 100,
+    version: "eur_v1_2026_04_10",
+  },
+  {
+    code: "market_gbp",
+    country: "GB",
+    currency: "GBP",
+    basePlatformFeeAgorot: PLATFORM_SERVICE_FEE_STANDARD_MAJOR * 100,
+    bonusPlatformFeeAgorot: PLATFORM_SERVICE_FEE_WITH_BONUS_MAJOR * 100,
+    version: "gbp_v1_2026_04_10",
+  },
+];
+
+const normalizeCode = (value: string | undefined) => value?.trim().toUpperCase() ?? "";
+
+function resolvePricingRule(input: PricingInput): PricingRule {
+  const country = normalizeCode(input.country);
+  const currency = normalizeCode(input.currency);
+
+  const countryRule = PRICING_RULES.find(
+    (rule) => rule.country && rule.country === country && rule.currency === currency,
+  );
+  if (countryRule) {
+    return countryRule;
+  }
+
+  const currencyRule = PRICING_RULES.find((rule) => rule.currency === currency);
+  if (currencyRule) {
+    return currencyRule;
+  }
+
+  return {
+    code: "market_ils",
+    country: "IL",
+    currency: "ILS",
+    basePlatformFeeAgorot: PLATFORM_SERVICE_FEE_STANDARD_AGOROT,
+    bonusPlatformFeeAgorot: PLATFORM_SERVICE_FEE_WITH_BONUS_AGOROT,
+    version: PRICING_RULE_VERSION_V1,
+  };
+}
+
 export const computePricingV2 = (input: PricingInput): PricingBreakdown => {
   const baseLessonAmountAgorot = requirePositiveAgorot(
     input.baseLessonAmountAgorot,
     "baseLessonAmountAgorot",
   );
-  const bonusAmountAgorot = requireNonNegativeAgorot(input.bonusAmountAgorot ?? 0, "bonusAmountAgorot");
+  const bonusAmountAgorot = requireNonNegativeAgorot(
+    input.bonusAmountAgorot ?? 0,
+    "bonusAmountAgorot",
+  );
   const hasBonus = bonusAmountAgorot > 0;
+  const rule = resolvePricingRule(input);
   const platformServiceFeeAgorot = hasBonus
-    ? PLATFORM_SERVICE_FEE_WITH_BONUS_AGOROT
-    : PLATFORM_SERVICE_FEE_STANDARD_AGOROT;
+    ? rule.bonusPlatformFeeAgorot
+    : rule.basePlatformFeeAgorot;
   const instructorOfferAmountAgorot = baseLessonAmountAgorot + bonusAmountAgorot;
   const studioChargeAmountAgorot = instructorOfferAmountAgorot + platformServiceFeeAgorot;
 
@@ -55,7 +126,7 @@ export const computePricingV2 = (input: PricingInput): PricingBreakdown => {
     instructorOfferAmountAgorot,
     platformServiceFeeAgorot,
     studioChargeAmountAgorot,
-    pricingRuleVersion: PRICING_RULE_VERSION_V1,
+    pricingRuleVersion: rule.version,
     feeMode: hasBonus ? "bonus" : "standard",
     hasBonus,
   };

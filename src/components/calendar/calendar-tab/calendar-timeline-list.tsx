@@ -8,7 +8,7 @@ import { useAppInsets } from "@/hooks/use-app-insets";
 import { useTheme } from "@/hooks/use-theme";
 import { Box } from "@/primitives";
 import type { TimelineListItem } from "../calendar-controller-helpers";
-import { calendarTimelineStyles, RAIL_LEFT } from "./calendar-date-utils";
+import { calendarTimelineStyles, RAIL_CENTER } from "./calendar-date-utils";
 
 type CalendarTimelineListProps = {
   listRef: RefObject<FlashListRef<TimelineListItem> | null>;
@@ -58,7 +58,7 @@ function CalendarTimelineList({
           style={[
             styles.timelineLine,
             {
-              left: RAIL_LEFT + 11, // Center of the 24px timeline rail
+              left: RAIL_CENTER,
               backgroundColor: palette.border,
             },
           ]}

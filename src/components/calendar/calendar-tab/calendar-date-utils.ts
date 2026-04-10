@@ -1,8 +1,10 @@
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 
 export const RAIL_LEFT = BrandSpacing.xl;
-export const RAIL_DOT_DAY = 10;
-export const RAIL_DOT_LESSON = 6;
+export const RAIL_WIDTH = 16;
+export const RAIL_CENTER = RAIL_LEFT + RAIL_WIDTH / 2;
+export const RAIL_DOT_DAY = 6;
+export const RAIL_DOT_LESSON = 4;
 
 export function toDayKey(timestamp: number) {
   const d = new Date(timestamp);

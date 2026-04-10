@@ -10,7 +10,9 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
   ensureStripeNativeSdkInitialized,
+  presentStripeNativeBankPayment,
   presentStripeNativePaymentSheet,
+  presentStripeNativePlatformPayPayment,
 } from "@/features/payments/lib/stripe-native";
 import { DEVICE_TIME_ZONE, MINUTE_MS, type StudioDraft, trimOptional } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
@@ -21,6 +23,7 @@ import {
   isPushRegistrationError,
   registerForPushNotificationsAsync,
 } from "@/lib/push-notifications";
+import { STRIPE_MERCHANT_DISPLAY_NAME } from "@/lib/stripe";
 import {
   buildLatestPaymentByJobId,
   filterStudioJobsByTime,
@@ -34,6 +37,23 @@ const STUDIO_COMPLIANCE_ROUTE = "/studio/profile/compliance" as const;
 
 type UseStudioFeedControllerArgs = {
   t: TFunction;
+};
+
+type StripeCheckoutDetails = {
+  checkout: {
+    clientSecret: string;
+    providerCountry: string;
+    currency: string;
+    amountAgorot: number;
+  };
+  paymentSheetInput: {
+    clientSecret: string;
+    billingEmail?: string;
+    customerId?: string;
+    merchantCountryCode?: string;
+    currencyCode?: string;
+  };
+  billingName: string;
 };
 
 function getStudioComplianceBlockersLabel(reasons: string[], t: TFunction) {
@@ -369,43 +389,44 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     updateStudioNotificationSettings,
   ]);
 
-  const startStudioCheckout = async (jobId: Id<"jobs">) => {
+  const buildStripeCheckoutDetails = async (
+    jobId: Id<"jobs">,
+  ): Promise<StripeCheckoutDetails | undefined> => {
     if (currentUser?.role !== "studio") return;
     if (Platform.OS === "web") {
       setErrorMessage("Stripe native checkout is not available on web yet.");
       return;
     }
 
+    await ensureStripeNativeSdkInitialized();
+    const offer = await createStudioPaymentOfferV2({ jobId });
+    const order = await createStudioPaymentOrderV2({ offerId: offer._id });
+    const checkout = await createStripePaymentSheetForPaymentOrderV2({
+      paymentOrderId: order._id,
+    });
+    const billingName =
+      currentUser.fullName?.trim() ?? currentUser.name?.trim() ?? currentUser.email?.trim() ?? "";
+    const paymentSheetInput = {
+      clientSecret: checkout.clientSecret,
+      merchantCountryCode: checkout.providerCountry,
+      currencyCode: checkout.currency,
+      ...(checkout.customerId ? { customerId: checkout.customerId } : {}),
+      ...(currentUser.email ? { billingEmail: currentUser.email.trim() } : {}),
+    };
+
+    return { checkout, billingName, paymentSheetInput };
+  };
+
+  const startStudioCheckout = async (jobId: Id<"jobs">) => {
     setIsStartingCheckoutForJobId(jobId);
     setErrorMessage(null);
     setStatusMessage(null);
 
     try {
-      await ensureStripeNativeSdkInitialized();
-      const offer = await createStudioPaymentOfferV2({ jobId });
-      const order = await createStudioPaymentOrderV2({ offerId: offer._id });
-      const checkout = await createStripePaymentSheetForPaymentOrderV2({
-        paymentOrderId: order._id,
-      });
-      const paymentSheetInput: {
-        clientSecret: string;
-        billingEmail?: string;
-      } = {
-        clientSecret: checkout.clientSecret,
-      };
-      if (currentUser.email) {
-        paymentSheetInput.billingEmail = currentUser.email;
-      }
-      const result = await presentStripeNativePaymentSheet(paymentSheetInput);
-      if (result.status === "success") {
-        setStatusMessage(t("jobsTab.checkout.completed"));
-        return;
-      }
-      if (result.status === "canceled") {
-        setStatusMessage(t("jobsTab.checkout.cancelled"));
-        return;
-      }
-      throw new Error(result.error);
+      const paymentDetails = await buildStripeCheckoutDetails(jobId);
+      if (!paymentDetails) return;
+      const { checkout, paymentSheetInput, billingName } = paymentDetails;
+      await startStripeCheckoutWithFallback(checkout, paymentSheetInput, billingName);
     } catch (error) {
       const message =
         error instanceof Error && error.message
@@ -415,6 +436,93 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     } finally {
       setIsStartingCheckoutForJobId(null);
     }
+  };
+
+  const startStudioNativeWalletCheckout = async (jobId: Id<"jobs">) => {
+    setIsStartingCheckoutForJobId(jobId);
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    try {
+      const paymentDetails = await buildStripeCheckoutDetails(jobId);
+      if (!paymentDetails) return;
+      const { checkout, billingName } = paymentDetails;
+      await startStripeWalletCheckout(checkout, billingName);
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : t("jobsTab.errors.failedToStartCheckout");
+      setErrorMessage(message);
+    } finally {
+      setIsStartingCheckoutForJobId(null);
+    }
+  };
+
+  const startStripeCheckoutWithFallback = async (
+    checkout: StripeCheckoutDetails["checkout"],
+    paymentSheetInput: StripeCheckoutDetails["paymentSheetInput"],
+    billingName: string,
+  ) => {
+    const shouldPreferBankPayment =
+      checkout.currency === "USD" && billingName.length > 0 && Platform.OS !== "web";
+
+    const result = shouldPreferBankPayment
+      ? await presentStripeNativeBankPayment({
+          clientSecret: checkout.clientSecret,
+          billingName,
+          ...(paymentSheetInput.billingEmail
+            ? { billingEmail: paymentSheetInput.billingEmail }
+            : {}),
+        })
+      : await presentStripeNativePaymentSheet(paymentSheetInput);
+
+    if (result.status === "failed" && shouldPreferBankPayment) {
+      const fallbackResult = await presentStripeNativePaymentSheet(paymentSheetInput);
+      if (fallbackResult.status === "success") {
+        setStatusMessage(t("jobsTab.checkout.completed"));
+        return;
+      }
+      if (fallbackResult.status === "canceled") {
+        setStatusMessage(t("jobsTab.checkout.cancelled"));
+        return;
+      }
+      throw new Error(fallbackResult.error);
+    }
+
+    if (result.status === "success") {
+      setStatusMessage(t("jobsTab.checkout.completed"));
+      return;
+    }
+    if (result.status === "canceled") {
+      setStatusMessage(t("jobsTab.checkout.cancelled"));
+      return;
+    }
+    throw new Error(result.error);
+  };
+
+  const startStripeWalletCheckout = async (
+    checkout: StripeCheckoutDetails["checkout"],
+    billingName: string,
+  ) => {
+    const result = await presentStripeNativePlatformPayPayment({
+      clientSecret: checkout.clientSecret,
+      merchantCountryCode: checkout.providerCountry,
+      currencyCode: checkout.currency,
+      amountAgorot: checkout.amountAgorot,
+      merchantName: STRIPE_MERCHANT_DISPLAY_NAME,
+      label: billingName || STRIPE_MERCHANT_DISPLAY_NAME,
+    });
+
+    if (result.status === "success") {
+      setStatusMessage(t("jobsTab.checkout.completed"));
+      return;
+    }
+    if (result.status === "canceled") {
+      setStatusMessage(t("jobsTab.checkout.cancelled"));
+      return;
+    }
+    throw new Error(result.error);
   };
 
   return {
@@ -434,12 +542,14 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     setErrorMessage,
     setJobsTimeFilter,
     setStatusMessage,
+    buildStripeCheckoutDetails,
     startStudioCheckout,
     statusMessage,
     studioJobs,
     studioComplianceSummary,
     studioNotificationSettings,
     studioBranches,
+    startStudioNativeWalletCheckout,
     toggleStudioPush,
   };
 }

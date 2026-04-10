@@ -46,6 +46,8 @@ export type StudioJobsListProps = {
   onInstructorPress?: (instructorId: Id<"instructorProfiles">) => void;
   onReview: (applicationId: Id<"jobApplications">, status: "accepted" | "rejected") => void;
   onStartPayment: (jobId: Id<"jobs">) => void;
+  onStartNativeWalletPayment: (jobId: Id<"jobs">) => void;
+  onStartEmbeddedCheckout: (jobId: Id<"jobs">) => void;
   onJobPress: (jobId: Id<"jobs">) => void;
   t: TFunction;
 };

@@ -1,9 +1,8 @@
 import { useAuthActions } from "@convex-dev/auth/react";
-import type BottomSheet from "@gorhom/bottom-sheet";
 import { useQuery } from "convex/react";
 import { useLocalSearchParams } from "expo-router";
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Linking } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
@@ -73,7 +72,7 @@ export default function InstructorProfileScreen() {
   const { t, i18n } = useTranslation();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
-  const accountSwitcherSheetRef = useRef<BottomSheet>(null);
+  const [accountSwitcherVisible, setAccountSwitcherVisible] = useState(false);
   const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
 
@@ -143,11 +142,11 @@ export default function InstructorProfileScreen() {
   const handleOpenAccountSwitcher = useCallback(() => {
     void listRememberedDeviceAccounts().then((accounts) => {
       setRememberedAccounts(accounts);
-      accountSwitcherSheetRef.current?.snapToIndex(0);
+      setAccountSwitcherVisible(true);
     });
   }, []);
   const handleSignOut = useCallback(() => {
-    accountSwitcherSheetRef.current?.close();
+    setAccountSwitcherVisible(false);
     void (async () => {
       if (currentUser?._id) {
         await forgetRememberedDeviceAccount(String(currentUser._id));
@@ -156,12 +155,12 @@ export default function InstructorProfileScreen() {
     })();
   }, [currentUser?._id, signOut]);
   const handleUseAnotherAccount = useCallback(() => {
-    accountSwitcherSheetRef.current?.close();
+    setAccountSwitcherVisible(false);
     handleOpenAddAccount();
   }, [handleOpenAddAccount]);
   const handleSelectRememberedAccount = useCallback(
     (accountId: string) => {
-      accountSwitcherSheetRef.current?.close();
+      setAccountSwitcherVisible(false);
       setSwitchingAccountId(accountId);
       void (async () => {
         try {
@@ -382,6 +381,7 @@ export default function InstructorProfileScreen() {
                 <ProfileSectionHeader
                   label={t("profile.sections.professional")}
                   icon="person.crop.circle.fill"
+                  tone="account"
                   flush
                 />
                 <ProfileSectionCard style={styles.desktopCardGroup}>
@@ -389,6 +389,7 @@ export default function InstructorProfileScreen() {
                     title={t("profile.settings.publicProfile")}
                     subtitle={publicProfileSummary}
                     icon="person.crop.circle.fill"
+                    sectionTone="account"
                     onPress={handleRequestEdit}
                     showDivider
                   />
@@ -396,6 +397,7 @@ export default function InstructorProfileScreen() {
                     title={t("profile.settings.sports.title")}
                     subtitle={sportsSummary}
                     icon="gym.bag.fill"
+                    sectionTone="account"
                     onPress={() => handleOpenSports()}
                     showDivider
                   />
@@ -403,6 +405,7 @@ export default function InstructorProfileScreen() {
                     title={t("profile.settings.location.title")}
                     subtitle={locationSummary}
                     icon="mappin.and.ellipse"
+                    sectionTone="account"
                     onPress={() => handleOpenLocation()}
                     showDivider
                   />
@@ -413,6 +416,7 @@ export default function InstructorProfileScreen() {
                 <ProfileSectionHeader
                   label={t("profile.account.title")}
                   icon="person.crop.circle.fill"
+                  tone="account"
                   flush
                 />
                 <ProfileSectionCard style={styles.desktopCardGroup}>
@@ -420,6 +424,7 @@ export default function InstructorProfileScreen() {
                     title={t("profile.switcher.openAction")}
                     subtitle={t("profile.switcher.accountRowHint")}
                     icon="person.2.fill"
+                    sectionTone="account"
                     onPress={handleOpenAccountSwitcher}
                     showDivider
                   />
@@ -427,18 +432,21 @@ export default function InstructorProfileScreen() {
                     title={t("profile.account.nameLabel")}
                     value={currentUser?.fullName ?? nameValue}
                     icon="person.crop.circle.fill"
+                    sectionTone="account"
                     showDivider
                   />
                   <ProfileSettingRow
                     title={t("profile.account.emailLabel")}
                     value={emailValue}
                     icon="paperplane.fill"
+                    sectionTone="account"
                     showDivider
                   />
                   <ProfileSettingRow
                     title={t("profile.account.roleLabel")}
                     value={roleValue}
                     icon="checkmark.circle.fill"
+                    sectionTone="account"
                     showDivider
                   />
                   {memberSince ? (
@@ -446,6 +454,7 @@ export default function InstructorProfileScreen() {
                       title={t("profile.account.memberSince")}
                       value={memberSince}
                       icon="calendar.circle.fill"
+                      sectionTone="account"
                       showDivider
                     />
                   ) : null}
@@ -453,6 +462,7 @@ export default function InstructorProfileScreen() {
                     title={t("profile.navigation.notifications")}
                     subtitle={notificationsSummary}
                     icon="bell.fill"
+                    sectionTone="preferences"
                     onPress={() => handleOpenNotifications()}
                     showDivider
                   />
@@ -460,12 +470,14 @@ export default function InstructorProfileScreen() {
                     title={t("profile.language.title")}
                     value={language === "en" ? t("language.english") : t("language.hebrew")}
                     icon="globe"
+                    sectionTone="preferences"
                     onPress={() => void setLanguage(language === "en" ? "he" : "en")}
                     showDivider
                   />
                   <ProfileSettingRow
                     title={t("profile.appearance.systemTheme.title")}
                     icon="slider.horizontal.3"
+                    sectionTone="preferences"
                     showDivider
                     accessory={
                       <KitSwitch
@@ -479,6 +491,7 @@ export default function InstructorProfileScreen() {
                   <ProfileSettingRow
                     title={t("profile.appearance.darkMode.title")}
                     icon="moon.fill"
+                    sectionTone="preferences"
                     accessory={
                       <KitSwitch
                         accessibilityLabel={t("profile.appearance.darkMode.title")}
@@ -494,6 +507,7 @@ export default function InstructorProfileScreen() {
                 <ProfileSectionHeader
                   label={t("profile.sections.operations")}
                   icon="slider.horizontal.3"
+                  tone="operations"
                   flush
                 />
                 <ProfileSectionCard style={styles.desktopCardGroup}>
@@ -501,14 +515,15 @@ export default function InstructorProfileScreen() {
                     title={t("profile.navigation.compliance")}
                     subtitle={complianceNavigationSummary}
                     icon="checkmark.shield.fill"
+                    sectionTone="identity"
                     onPress={() => handleOpenCompliance()}
-                    tone="accent"
                     showDivider
                   />
                   <ProfileSettingRow
                     title={t("profile.settings.calendar.title")}
                     subtitle={calendarSummary}
                     icon="calendar.badge.clock"
+                    sectionTone="operations"
                     onPress={() => handleOpenCalendarSettings()}
                     showDivider
                   />
@@ -520,8 +535,8 @@ export default function InstructorProfileScreen() {
                         : t("profile.settings.payoutsNeeded")
                     }
                     icon="creditcard.fill"
+                    sectionTone="operations"
                     onPress={() => handleOpenPayments()}
-                    tone="accent"
                     showDivider
                   />
                   <ProfileSettingRow
@@ -549,12 +564,14 @@ export default function InstructorProfileScreen() {
             <ProfileSectionHeader
               label={t("profile.sections.account")}
               icon="person.crop.circle.fill"
+              tone="account"
             />
             <ProfileSectionCard>
               <ProfileSettingRow
                 title={t("profile.switcher.openAction")}
                 subtitle={t("profile.switcher.accountRowHint")}
                 icon="person.2.fill"
+                sectionTone="account"
                 onPress={handleOpenAccountSwitcher}
                 showDivider
               />
@@ -562,6 +579,7 @@ export default function InstructorProfileScreen() {
                 title={t("profile.settings.publicProfile")}
                 subtitle={publicProfileSummary}
                 icon="person.crop.circle.fill"
+                sectionTone="account"
                 onPress={handleRequestEdit}
                 showDivider
               />
@@ -569,6 +587,7 @@ export default function InstructorProfileScreen() {
                 title={t("profile.settings.sports.title")}
                 subtitle={sportsSummary}
                 icon="gym.bag.fill"
+                sectionTone="account"
                 onPress={() => handleOpenSports()}
                 showDivider
               />
@@ -576,6 +595,7 @@ export default function InstructorProfileScreen() {
                 title={t("profile.settings.location.title")}
                 subtitle={locationSummary}
                 icon="mappin.and.ellipse"
+                sectionTone="account"
                 onPress={() => handleOpenLocation()}
                 showDivider
               />
@@ -587,24 +607,24 @@ export default function InstructorProfileScreen() {
                     : t("profile.settings.payoutsNeeded")
                 }
                 icon="creditcard.fill"
+                sectionTone="operations"
                 onPress={() => handleOpenPayments()}
-                tone="accent"
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.navigation.compliance")}
                 subtitle={complianceNavigationSummary}
                 icon="checkmark.shield.fill"
+                sectionTone="identity"
                 onPress={() => handleOpenCompliance()}
-                tone="accent"
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.settings.calendar.title")}
                 subtitle={calendarSummary}
                 icon="calendar.badge.clock"
+                sectionTone="operations"
                 onPress={() => handleOpenCalendarSettings()}
-                showDivider
               />
             </ProfileSectionCard>
 
@@ -612,18 +632,21 @@ export default function InstructorProfileScreen() {
             <ProfileSectionHeader
               label={t("profile.sections.preferences")}
               icon="slider.horizontal.3"
+              tone="preferences"
             />
             <ProfileSectionCard>
               <ProfileSettingRow
                 title={t("profile.navigation.notifications")}
                 subtitle={notificationsSummary}
                 icon="bell.fill"
+                sectionTone="preferences"
                 onPress={() => handleOpenNotifications()}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.appearance.darkMode.title")}
                 icon="moon.fill"
+                sectionTone="preferences"
                 showDivider
                 accessory={
                   <KitSwitch
@@ -636,6 +659,7 @@ export default function InstructorProfileScreen() {
               <ProfileSettingRow
                 title={t("profile.appearance.systemTheme.title")}
                 icon="slider.horizontal.3"
+                sectionTone="preferences"
                 showDivider
                 accessory={
                   <KitSwitch
@@ -648,12 +672,17 @@ export default function InstructorProfileScreen() {
                 title={t("profile.language.title")}
                 value={language === "en" ? t("language.english") : t("language.hebrew")}
                 icon="globe"
+                sectionTone="preferences"
                 onPress={() => void setLanguage(language === "en" ? "he" : "en")}
               />
             </ProfileSectionCard>
 
             {/* Support Section */}
-            <ProfileSectionHeader label={t("profile.sections.support")} icon="help" />
+            <ProfileSectionHeader
+              label={t("profile.sections.support")}
+              icon="help"
+              tone="support"
+            />
             <Box style={{ paddingHorizontal: BrandSpacing.inset }}>
               <Box style={{ flexDirection: "row", gap: BrandSpacing.md }}>
                 <ProfileSupportCard
@@ -675,8 +704,8 @@ export default function InstructorProfileScreen() {
         </ProfileIndexScrollView>
       )}
       <ProfileAccountSwitcherSheet
-        innerRef={accountSwitcherSheetRef}
-        onDismissed={() => undefined}
+        visible={accountSwitcherVisible}
+        onClose={() => setAccountSwitcherVisible(false)}
         currentAccountId={currentUser?._id ? String(currentUser._id) : null}
         currentAccountName={nameValue}
         currentAccountEmail={currentUser?.email}

@@ -3,7 +3,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { ProfileVerifiedBadge } from "@/components/profile/profile-verified-badge";
 import { IconButton } from "@/components/ui/icon-button";
@@ -60,6 +60,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   isVerified = false,
 }: ProfileHeaderSheetProps) {
   const { t, i18n } = useTranslation();
+  const { theme } = useUnistyles();
   const resolvedPrimaryActionLabel = primaryActionLabel ?? t("profile.actions.edit");
   const isHebrew = (i18n.resolvedLanguage ?? "en").toLowerCase().startsWith("he");
   const profileNameFont = isHebrew ? "Kanit_800ExtraBold" : FontFamily.displayBold;
@@ -139,7 +140,7 @@ export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
               onPress={onRequestEdit}
               size={32}
               tone="secondary"
-              icon={<IconSymbol name="pencil" size={IconSize.sm} color="#CCFF00" />}
+              icon={<IconSymbol name="pencil" size={IconSize.sm} color={theme.color.primary} />}
             />
           </Box>
           <Box style={s.mobileMetaRow}>
@@ -186,6 +187,7 @@ function StudioFeatureHero({
   sports: string[];
   isVerified: boolean;
 }) {
+  const { theme } = useUnistyles();
   return (
     <View style={s.featureShell}>
       <View style={[s.featureHero, s.featureHeroShadow]}>
@@ -206,7 +208,11 @@ function StudioFeatureHero({
           </View>
         )}
 
-        <StudioHeroOverlays appBgHex="#FAF5EE" primaryHex="#CCFF00" hasImage={!!profileImageUrl} />
+        <StudioHeroOverlays
+          appBgHex={theme.color.appBg}
+          primaryHex={theme.color.primary}
+          hasImage={!!profileImageUrl}
+        />
 
         <View style={s.featureTopRail}>
           <View style={s.featureRolePill}>
@@ -220,7 +226,7 @@ function StudioFeatureHero({
             onPress={onRequestEdit}
             tone="secondary"
             size={BrandSpacing.controlLg}
-            icon={<IconSymbol name="pencil" size={IconSize.md + 1} color="#CCFF00" />}
+            icon={<IconSymbol name="pencil" size={IconSize.md + 1} color={theme.color.primary} />}
           />
         </View>
 

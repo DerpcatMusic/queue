@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 function readBooleanFlag(value: string | undefined, defaultValue: boolean): boolean {
   if (value === undefined) return defaultValue;
   const normalized = value.trim().toLowerCase();
@@ -16,7 +18,7 @@ export const FEATURE_FLAGS = {
   stripeTestMode: readBooleanFlag(process.env.EXPO_PUBLIC_STRIPE_TEST_MODE, true),
   stripeConnectEmbeddedPreviewEnabled: readBooleanFlag(
     process.env.EXPO_PUBLIC_STRIPE_CONNECT_EMBEDDED_PREVIEW,
-    false,
+    Platform.OS !== "web",
   ),
   generatedThemeEnabled: readBooleanFlag(process.env.EXPO_PUBLIC_THEME_GENERATED_ENABLED, true),
   generatedThemeAliasStrictMode: readBooleanFlag(

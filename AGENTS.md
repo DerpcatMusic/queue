@@ -226,34 +226,7 @@ See `sports.tsx` for cleaner structure:
 **Kit components**: `kit-switch.tsx`, `kit-list.tsx`
 **App routes**: `sports.tsx`, `instructor/profile/index.tsx`, `studio/index.tsx`, `sign-up.tsx`, `sign-in.tsx`
 **Components**: `profile-settings-sections.tsx`, `status-signal.tsx`, `profile-role-switcher-card.tsx`, `identity-status-ui.tsx`, `sports-multi-select.tsx`
-**Hooks/Lib**: Most files clean — only 5 issues total across all utility files
-
-### Files with Notable Issues
-
-| File | Key Issues |
-|------|------------|
-| `device-calendar-sync.ts` | Hardcoded `#2A6CF0` color |
-| `home-header-sheet.tsx` | Avatar size `68`, badge size `22` |
-| `action-button.tsx` | minHeight `54, 42`, minWidth `96` |
-| `address-autocomplete.tsx` | radius `12`, minHeight `46` |
-| `instructor-job-card.tsx` | width `44%`, complex radius calculations |
-| `loading-screen.tsx` | Multiple rgba colors, dimensions `236x236` |
-| `queue-map.web.tsx` | radius `28`, typography `38/36/-1` |
-| `map-web-command-panel.tsx` | width `360`, radius `34` |
-| `studio-jobs-list-parts.tsx` | Gap/spacing values, avatar `42x42` |
-
-### Design Tokens Missing (Need Addition to brand.ts)
-
-- `BrandSpacing.iconContainerLarge` (78px for Didit verification avatar)
-- `BrandSpacing.buttonMinHeight` (44, 48, 50, 54 — various button heights)
-- `BrandSpacing.haloSize` (180px for identity verification)
-- `BrandSpacing.mapMinHeight` (300px for onboarding map)
-- `BrandSpacing.multilineInputMinHeight` (96px)
-- `BrandSpacing.dividerHeight` (1px — or use border width)
-- `BrandSpacing.textShadowOffset`, `textShadowRadius` (for instructor job cards)
-- `BrandRadius.circle` (should be `999` or explicit `999` documented as "full circle")
-- `BrandType.display.fontSize` (42), `BrandType.hero.fontSize` (38) already exist but not used
-
+**Hooks/Lib**: Most files clean — only 5 issues total across all utility filesaa
 ### Recommended Fixes
 
 1. **Phase 1 (Quick Wins)**: Fix `rgba(...)` colors — these bypass the entire palette system
@@ -266,9 +239,8 @@ See `sports.tsx` for cleaner structure:
 ## Design Context
 
 ### Users
-- **Instructors**: Individual driving teachers managing schedules, zones, and earnings
-- **Studios**: Driving schools managing multiple instructors
-- **Students**: Mixed demographics seeking driving instruction (teens to adults) — may be stressed, need a trusted guide
+- **Instructors**: Individual sports teachers managing schedules, zones, and earnings
+- **Studios**: Sport Studios such as pilates etc. managing their sessions.
 
 ### Brand Personality
 - **Voice**: Calm, Clear, Supportive
@@ -277,12 +249,9 @@ See `sports.tsx` for cleaner structure:
 
 ### Aesthetic Direction
 - **References**: Uber/Wolt-inspired — fast scan hierarchy, strong contrast, large touch targets
-- **Light mode**: Purple `#8B5CF6` on light backgrounds `#F6F4FB`
-- **Dark mode**: Lighter purple `#8F6AFB` on dark backgrounds `#0B0910`
-- **What to AVOID**: Overly playful/cartoonish aesthetics, cluttered interfaces, generic corporate feel
 
 ### Design Principles
-1. **Calm clarity**: Every screen scannable within 2 seconds
+1. **Sporty clarity**: Every screen scannable within 2 seconds
 2. **Utility-first**: Every element must serve a clear purpose
 3. **Single primary action**: One dominant CTA per screen
 4. **Consistent spacing**: Follow the scale (`xs:4, sm:8, md:12, lg:16, xl:24, xxl:32`)

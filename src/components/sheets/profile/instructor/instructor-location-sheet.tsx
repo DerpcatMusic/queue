@@ -2,25 +2,30 @@
  * Instructor Location Sheet - allows instructors to set their address and coverage zone.
  */
 
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
+import { useUnistyles } from "react-native-unistyles";
 
+import { QueueMap } from "@/components/maps/queue-map";
+import type { QueueMapPin } from "@/components/maps/queue-map.types";
 import { LoadingScreen } from "@/components/loading-screen";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
-import { ProfileSectionHeader } from "@/components/profile/profile-settings-sections";
+import {
+  ProfileSectionCard,
+  ProfileSectionHeader,
+} from "@/components/profile/profile-settings-sections";
 import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
-import { useAppInsets } from "@/hooks/use-app-insets";
+
 import { useLocationResolution } from "@/hooks/use-location-resolution";
-import { useTheme } from "@/hooks/use-theme";
-import { BorderWidth, FontSize } from "@/lib/design-system";
-import { Box } from "@/primitives";
+import { FontSize } from "@/lib/design-system";
+import { Text } from "@/primitives";
 import {
   fetchPlaceByZipCode,
   type PlaceCoordinates,
@@ -28,7 +33,6 @@ import {
 } from "@/lib/google-places";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import type { ResolvedLocation } from "@/lib/location-zone";
-import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 
 interface InstructorLocationSheetProps {
   visible: boolean;
@@ -40,6 +44,7 @@ function hasContent(str: string | undefined | null) {
 }
 
 function FieldLabel({ children }: { children: string }) {
+  const { theme } = useUnistyles();
   return (
     <Text
       style={{
@@ -48,6 +53,7 @@ function FieldLabel({ children }: { children: string }) {
         fontSize: FontSize.micro,
         letterSpacing: 0.6,
         textTransform: "uppercase",
+        color: theme.color.textMuted,
       }}
     >
       {children}
@@ -61,25 +67,20 @@ function ManualField({
   placeholder,
   keyboardType = "default",
   autoCapitalize = "words",
-  textMuted,
-  surfaceElevated,
-  text,
 }: {
   value: string;
   onChangeText: (text: string) => void;
   placeholder: string;
   keyboardType?: "default" | "numeric" | "email-address";
   autoCapitalize?: "none" | "words" | "sentences";
-  textMuted: string;
-  surfaceElevated: string;
-  text: string;
 }) {
+  const { theme } = useUnistyles();
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={textMuted}
+      placeholderTextColor={theme.color.textMuted}
       keyboardType={keyboardType}
       autoCapitalize={autoCapitalize}
       style={{
@@ -88,28 +89,155 @@ function ManualField({
         borderRadius: BrandRadius.md,
         paddingHorizontal: BrandSpacing.md,
         paddingVertical: BrandSpacing.sm,
-        backgroundColor: surfaceElevated,
-        color: text,
+        backgroundColor: theme.color.surfaceElevated,
+        color: theme.color.text,
         fontSize: FontSize.body,
       }}
     />
   );
 }
 
+// ─── Banner Components ───────────────────────────────────────────────────────
+
+function StatusBanner({ message, type }: { message: string; type: "success" | "error" }) {
+  const { theme } = useUnistyles();
+  const isSuccess = type === "success";
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: BrandSpacing.sm,
+        paddingHorizontal: BrandSpacing.md,
+        paddingVertical: BrandSpacing.sm,
+        borderRadius: BrandRadius.md,
+        borderLeftWidth: 3,
+        borderLeftColor: isSuccess ? theme.color.success : theme.color.danger,
+        backgroundColor: isSuccess ? theme.color.successSubtle : theme.color.dangerSubtle,
+      }}
+    >
+      <IconSymbol
+        name={isSuccess ? "checkmark.circle.fill" : "exclamationmark.circle.fill"}
+        size={18}
+        color={isSuccess ? theme.color.success : theme.color.danger}
+      />
+      <Text
+        style={{
+          color: isSuccess ? theme.color.success : theme.color.danger,
+          fontSize: FontSize.caption,
+          flex: 1,
+        }}
+      >
+        {message}
+      </Text>
+    </View>
+  );
+}
+
+// ─── Address Card ─────────────────────────────────────────────────────────────
+
+function AddressCard({
+  city,
+  street,
+  streetNumber,
+  postalCode,
+}: {
+  city: string;
+  street: string;
+  streetNumber: string;
+  floor: string;
+  postalCode: string;
+}) {
+  const { theme } = useUnistyles();
+
+  const lines = [
+    hasContent(city) ? city : null,
+    hasContent(street) || hasContent(streetNumber)
+      ? [streetNumber, street].filter(Boolean).join(" ")
+      : null,
+    hasContent(postalCode) ? postalCode : null,
+  ].filter(Boolean);
+
+  if (lines.length === 0) return null;
+
+  return (
+    <ProfileSectionCard>
+      <View style={{ flexDirection: "row", gap: BrandSpacing.md }}>
+        <View
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: BrandRadius.md,
+            backgroundColor: theme.color.primarySubtle,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <IconSymbol name="mappin.and.ellipse" size={18} color={theme.color.primary} />
+        </View>
+        <View style={{ flex: 1, gap: BrandSpacing.xxs }}>
+          {lines.map((line) => (
+            <Text
+              key={line}
+              style={{
+                color: theme.color.text,
+                fontSize: lines.indexOf(line) === 0 ? FontSize.body : FontSize.caption,
+                fontWeight: lines.indexOf(line) === 0 ? "500" : "400",
+              }}
+            >
+              {line}
+            </Text>
+          ))}
+        </View>
+        <Pressable
+          onPress={() => {}}
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <IconSymbol name="pencil.circle.fill" size={22} color={theme.color.textMuted} />
+        </Pressable>
+      </View>
+    </ProfileSectionCard>
+  );
+}
+
+// ─── Manual Toggle Button ──────────────────────────────────────────────────────
+
+function ManualModeToggle({ manualMode, onToggle }: { manualMode: boolean; onToggle: () => void }) {
+  const { theme } = useUnistyles();
+
+  return (
+    <Pressable
+      onPress={onToggle}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: BrandSpacing.xxs,
+        opacity: pressed ? 0.7 : 1,
+        paddingVertical: BrandSpacing.xs,
+      })}
+    >
+      <IconSymbol
+        name={manualMode ? "magnifyingglass" : "square.and.pencil"}
+        size={16}
+        color={theme.color.primary}
+      />
+    </Pressable>
+  );
+}
+
 export function InstructorLocationSheet({ visible, onClose }: InstructorLocationSheetProps) {
   const { t } = useTranslation();
-  const theme = useTheme();
-  const { overlayBottom } = useAppInsets();
+  const { theme } = useUnistyles();
   const { currentUser } = useUser();
   const locationResolver = useLocationResolution();
-  const { color: palette } = theme;
 
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
   );
-  const saveInstructor = useMutation(api.users.updateMyInstructorSettings);
-
   // Address state
   const [addressInput, setAddressInput] = useState("");
   const [city, setCity] = useState("");
@@ -123,11 +251,10 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
   // Zone state
   const [detectedZone, setDetectedZone] = useState<string | null>(null);
   const [detectedZoneLabel, setDetectedZoneLabel] = useState<string | null>(null);
-  const [includeDetectedZone, setIncludeDetectedZone] = useState(false);
+  const [, setIncludeDetectedZone] = useState(false);
 
   // UI state
   const [manualMode, setManualMode] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [zipResults, setZipResults] = useState<ZipCodeResult[]>([]);
   const [showZipResults, setShowZipResults] = useState(false);
@@ -274,38 +401,20 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
     }
   }, [postalCode, t]);
 
-  const resolveByGps = useCallback(async () => {
-    const result = await locationResolver.resolveFromGps();
-    if (!result.ok) {
-      if (result.error.code === "permission_blocked") {
-        showOpenSettingsAlert({
-          title: t("common.permissionRequired"),
-          body: t("profile.settings.errors.locationPermissionBlocked"),
-          cancelLabel: t("common.cancel"),
-          settingsLabel: t("common.openSettings"),
-        });
+  // ─── Map Pin Drop Handler ───────────────────────────────────────────────────
+  const handleMapPinDrop = useCallback(
+    async (coord: { latitude: number; longitude: number }) => {
+      setLatitude(coord.latitude);
+      setLongitude(coord.longitude);
+      void resolveZoneFromCoordinates(coord);
+      // Also reverse-geocode the address
+      const result = await locationResolver.resolveFromCoordinates(coord);
+      if (result.ok) {
+        applyResolution(result.data.value);
       }
-      setErrorMessage(
-        getLocationResolveErrorMessage({
-          code: result.error.code,
-          fallbackMessage: result.error.message,
-          fallbackKey: "locationResolveFailed",
-          translationPrefix: "profile.settings.errors",
-          t,
-        }),
-      );
-      return;
-    }
-
-    applyResolution(result.data.value);
-    if (result.data.value.zoneId) {
-      setDetectedZone(result.data.value.zoneId);
-      setIncludeDetectedZone(true);
-      return;
-    }
-
-    clearDetectedZone();
-  }, [applyResolution, clearDetectedZone, locationResolver, t]);
+    },
+    [locationResolver, resolveZoneFromCoordinates, applyResolution],
+  );
 
   if (instructorSettings === undefined) {
     return (
@@ -322,215 +431,113 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
     );
   }
 
-  const trimmedAddressInput = addressInput.trim();
-  const initialAddress = instructorSettings.address?.trim() ?? "";
   const hasDetectedZone = Boolean(detectedZone);
 
   const showStructuredSummary =
     !manualMode &&
     (hasContent(city) || hasContent(street) || hasContent(streetNumber) || hasContent(postalCode));
 
-  const hasLocationChanges =
-    trimmedAddressInput !== initialAddress ||
-    latitude !== instructorSettings.latitude ||
-    longitude !== instructorSettings.longitude ||
-    city !== (instructorSettings.addressCity ?? "") ||
-    street !== (instructorSettings.addressStreet ?? "") ||
-    streetNumber !== (instructorSettings.addressNumber ?? "") ||
-    floor !== (instructorSettings.addressFloor ?? "") ||
-    postalCode !== (instructorSettings.addressPostalCode ?? "");
-  const hasZoneAssignment = hasDetectedZone && includeDetectedZone;
-  const hasChanges = hasLocationChanges || hasZoneAssignment;
-
   const zoneDisplayValue = detectedZone
     ? (detectedZoneLabel ?? detectedZone)
     : t("profile.settings.location.zoneNotDetected");
 
-  const onSave = async () => {
-    if (!hasChanges) {
-      onClose();
-      return;
-    }
-
-    setIsSaving(true);
-    setErrorMessage(null);
-
-    try {
-      await saveInstructor({
-        notificationsEnabled: instructorSettings.notificationsEnabled,
-        sports: instructorSettings.sports,
-        calendarProvider: instructorSettings.calendarProvider,
-        calendarSyncEnabled: instructorSettings.calendarSyncEnabled,
-        ...(instructorSettings.hourlyRateExpectation !== undefined
-          ? { hourlyRateExpectation: instructorSettings.hourlyRateExpectation }
-          : {}),
-        ...(trimmedAddressInput ? { address: trimmedAddressInput } : {}),
-        ...(city.trim() ? { addressCity: city.trim() } : {}),
-        ...(street.trim() ? { addressStreet: street.trim() } : {}),
-        ...(streetNumber.trim() ? { addressNumber: streetNumber.trim() } : {}),
-        ...(floor.trim() ? { addressFloor: floor.trim() } : {}),
-        ...(postalCode.trim() ? { addressPostalCode: postalCode.trim() } : {}),
-        ...(latitude !== undefined ? { latitude } : {}),
-        ...(longitude !== undefined ? { longitude } : {}),
-      });
-      onClose();
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : t("profile.settings.errors.saveFailed"),
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const renderStructuredRow = (label: string, value: string) => {
-    if (!hasContent(value)) return null;
-    return (
-      <Box style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
-        <Text style={{ color: palette.textMuted, fontSize: FontSize.caption }}>{label}</Text>
-        <Text style={{ color: palette.text, fontSize: FontSize.caption, flex: 1 }}>{value}</Text>
-      </Box>
-    );
-  };
+  const mapPin: QueueMapPin | null =
+    latitude !== undefined && longitude !== undefined ? { latitude, longitude } : null;
 
   return (
-    <BaseProfileSheet visible={visible} onClose={onClose}>
-      <Box style={{ flex: 1, position: "relative", backgroundColor: palette.appBg }}>
-        <View
-          style={{
-            flex: 1,
-            paddingHorizontal: BrandSpacing.inset,
-            paddingBottom: overlayBottom + 92,
-            gap: BrandSpacing.md,
-          }}
-        >
-          {/* ── Address section ── */}
-          <ProfileSectionHeader
-            label={t("profile.location.addressTitle")}
-            icon="mappin.and.ellipse"
-            flush
+    <BaseProfileSheet
+      visible={visible}
+      onClose={onClose}
+      headerContent={
+        <View style={{ height: 200, borderRadius: BrandRadius.soft, overflow: "hidden" }}>
+          <QueueMap
+            mode="pinDrop"
+            pin={mapPin}
+            selectedZoneIds={[]}
+            focusZoneId={null}
+            onPressMap={handleMapPinDrop}
+            showGpsButton={false}
+            showAttributionButton={false}
+            contentInset={{ top: 0, right: 0, bottom: 0, left: 0 }}
+            cameraPadding={{ top: 40, right: 40, bottom: 40, left: 40 }}
+          />
+        </View>
+      }
+    >
+      <View style={{ gap: BrandSpacing.lg }}>
+        {/* ── Address Section ── */}
+        <View style={{ gap: BrandSpacing.md }}>
+          <ProfileSectionHeader label={t("profile.location.addressTitle")} tone="account" />
+
+          <AddressAutocomplete
+            value={addressInput}
+            onChangeText={handleAddressChange}
+            onPlaceSelected={handlePlaceSelected}
+            placeholder={t("profile.settings.location.addressPlaceholder")}
+            placeholderTextColor={theme.color.textMuted}
+            borderColor={theme.color.border}
+            textColor={theme.color.text}
+            backgroundColor={theme.color.surfaceElevated}
+            surfaceColor={theme.color.surfaceElevated}
+            mutedTextColor={theme.color.textMuted}
           />
 
-          {/* Search bar */}
-          <Box style={{ gap: BrandSpacing.sm }}>
-            <AddressAutocomplete
-              value={addressInput}
-              onChangeText={handleAddressChange}
-              onPlaceSelected={handlePlaceSelected}
-              placeholder={t("profile.settings.location.addressPlaceholder")}
-              placeholderTextColor={palette.textMuted}
-              borderColor={palette.border}
-              textColor={palette.text}
-              backgroundColor={palette.surfaceElevated}
-              surfaceColor={palette.surfaceElevated}
-              mutedTextColor={palette.textMuted}
-            />
+          <ManualModeToggle manualMode={manualMode} onToggle={() => setManualMode(!manualMode)} />
 
-            {/* GPS secondary action */}
-            <ActionButton
-              label={
-                locationResolver.isResolving
-                  ? t("profile.settings.location.resolvingGps")
-                  : t("profile.settings.location.useGps")
-              }
-              onPress={() => {
-                void resolveByGps();
-              }}
-              disabled={locationResolver.isResolving}
-              tone="secondary"
-              fullWidth
-            />
-          </Box>
-
-          {/* Structured address summary */}
           {showStructuredSummary ? (
-            <Box
-              style={{
-                gap: BrandSpacing.xs,
-                paddingHorizontal: BrandSpacing.md,
-                paddingVertical: BrandSpacing.md,
-                borderRadius: BrandRadius.lg,
-                backgroundColor: palette.surfaceElevated as string,
-              }}
-            >
-              {renderStructuredRow(`${t("profile.location.fieldCity")}:`, city)}
-              {renderStructuredRow(
-                `${t("profile.location.fieldStreet")}:`,
-                street ? `${streetNumber ?? ""} ${street}`.trim() : "",
-              )}
-              {hasContent(floor)
-                ? renderStructuredRow(`${t("profile.location.fieldFloor")}:`, floor)
-                : null}
-              {hasContent(postalCode)
-                ? renderStructuredRow(`${t("profile.location.fieldZipCode")}:`, postalCode)
-                : null}
-            </Box>
+            <AddressCard
+              city={city}
+              street={street}
+              streetNumber={streetNumber}
+              floor={floor}
+              postalCode={postalCode}
+            />
           ) : null}
 
-          {/* Manual mode toggle */}
-          <Pressable onPress={() => setManualMode(!manualMode)}>
-            <Text style={{ color: palette.primary, fontSize: FontSize.body }}>
-              {manualMode ? t("profile.location.useSearch") : t("profile.location.enterManually")}
-            </Text>
-          </Pressable>
-
-          {/* Manual fields */}
           {manualMode && (
-            <Box style={{ gap: BrandSpacing.sm }}>
+            <View style={{ gap: BrandSpacing.sm }}>
               {/* Row: city + street */}
-              <Box style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
-                <Box style={{ flex: 1, gap: BrandSpacing.xs }}>
+              <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+                <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                   <FieldLabel>{t("profile.location.fieldCity")}</FieldLabel>
                   <ManualField
                     value={city}
                     onChangeText={setCity}
                     placeholder={t("profile.location.fieldCityPlaceholder")}
-                    textMuted={palette.textMuted}
-                    surfaceElevated={palette.surfaceElevated}
-                    text={palette.text}
                   />
-                </Box>
-                <Box style={{ flex: 1, gap: BrandSpacing.xs }}>
+                </View>
+                <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                   <FieldLabel>{t("profile.location.fieldStreet")}</FieldLabel>
                   <ManualField
                     value={street}
                     onChangeText={setStreet}
                     placeholder={t("profile.location.fieldStreetPlaceholder")}
-                    textMuted={palette.textMuted}
-                    surfaceElevated={palette.surfaceElevated}
-                    text={palette.text}
                   />
-                </Box>
-              </Box>
+                </View>
+              </View>
 
               {/* Row: number + floor */}
-              <Box style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
-                <Box style={{ flex: 1, gap: BrandSpacing.xs }}>
+              <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
+                <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                   <FieldLabel>{t("profile.location.fieldNumber")}</FieldLabel>
                   <ManualField
                     value={streetNumber}
                     onChangeText={setStreetNumber}
                     placeholder={t("profile.location.fieldNumberPlaceholder")}
-                    textMuted={palette.textMuted}
-                    surfaceElevated={palette.surfaceElevated}
-                    text={palette.text}
                   />
-                </Box>
-                <Box style={{ flex: 1, gap: BrandSpacing.xs }}>
+                </View>
+                <View style={{ flex: 1, gap: BrandSpacing.xs }}>
                   <FieldLabel>{t("profile.location.fieldFloor")}</FieldLabel>
                   <ManualField
                     value={floor}
                     onChangeText={setFloor}
                     placeholder={t("profile.location.fieldFloorPlaceholder")}
-                    textMuted={palette.textMuted}
-                    surfaceElevated={palette.surfaceElevated}
-                    text={palette.text}
                   />
-                </Box>
-              </Box>
+                </View>
+              </View>
 
               {/* Postal code with lookup */}
-              <Box style={{ gap: BrandSpacing.xs }}>
+              <View style={{ gap: BrandSpacing.xs }}>
                 <FieldLabel>{t("profile.location.fieldZipCode")}</FieldLabel>
                 <View style={{ flexDirection: "row", gap: BrandSpacing.sm }}>
                   <ManualField
@@ -538,136 +545,78 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
                     onChangeText={setPostalCode}
                     placeholder={t("profile.location.fieldZipCodePlaceholder")}
                     keyboardType="numeric"
-                    textMuted={palette.textMuted}
-                    surfaceElevated={palette.surfaceElevated}
-                    text={palette.text}
                   />
                   <ActionButton
                     label={t("profile.location.zipSearch")}
-                    onPress={() => {
-                      void handleZipCodeLookup();
-                    }}
+                    onPress={() => void handleZipCodeLookup()}
                     disabled={isSearchingZip || postalCode.trim().length < 5}
                     tone="secondary"
                   />
                 </View>
 
-                {/* Zip results */}
                 {showZipResults && zipResults.length > 0 && (
-                  <Box
+                  <View
                     style={{
-                      backgroundColor: palette.surfaceElevated,
+                      backgroundColor: theme.color.surfaceElevated,
                       borderRadius: BrandRadius.md,
-                      borderWidth: BorderWidth.thin,
-                      borderColor: palette.border,
+                      borderWidth: 1,
+                      borderColor: theme.color.border,
                     }}
                   >
                     {zipResults.map((result, index) => (
                       <Pressable
-                        key={index}
+                        key={result.postalCode || result.formattedAddress || index}
                         onPress={() => applyZipResult(result)}
                         style={({ pressed }) => ({
                           padding: BrandSpacing.md,
-                          borderBottomWidth: index < zipResults.length - 1 ? BorderWidth.thin : 0,
-                          borderBottomColor: palette.border,
-                          backgroundColor: pressed ? palette.surfaceAlt : "transparent",
+                          borderBottomWidth: index < zipResults.length - 1 ? 1 : 0,
+                          borderBottomColor: theme.color.border,
+                          backgroundColor: pressed ? theme.color.surfaceAlt : "transparent",
                         })}
                       >
-                        <Text style={{ color: palette.text, fontSize: FontSize.body }}>
-                          {result.formattedAddress}
-                        </Text>
+                        <Text style={{ color: theme.color.text }}>{result.formattedAddress}</Text>
                       </Pressable>
                     ))}
-                  </Box>
+                  </View>
                 )}
-              </Box>
-            </Box>
+              </View>
+            </View>
           )}
+        </View>
 
-          {/* ── Zone section ── */}
-          <ProfileSectionHeader
-            label={t("profile.location.zoneTitle")}
-            icon="mappin.circle.fill"
-            flush
-          />
+        {/* ── Zone Section ── */}
+        <View style={{ gap: BrandSpacing.md }}>
+          <ProfileSectionHeader label={t("profile.location.zoneTitle")} tone="account" />
 
-          <Box
+          <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
               padding: BrandSpacing.md,
               borderRadius: BrandRadius.soft,
-              backgroundColor: palette.surfaceElevated,
-              borderWidth: BorderWidth.thin,
-              borderColor: palette.border,
+              backgroundColor: theme.color.surfaceElevated,
+              borderWidth: 1,
+              borderColor: theme.color.border,
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={{ color: palette.text, fontSize: FontSize.body }}>
-                {t("profile.location.zoneLabel")}
-              </Text>
-              <Text style={{ color: palette.textMuted, fontSize: FontSize.caption }}>
-                {zoneDisplayValue}
-              </Text>
+              <Text style={{ color: theme.color.text }}>{t("profile.location.zoneLabel")}</Text>
+              <Text style={{ color: theme.color.textMuted, fontSize: 12 }}>{zoneDisplayValue}</Text>
             </View>
             {hasDetectedZone && (
-              <Box style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
-                <IconSymbol
-                  name="checkmark.circle.fill"
-                  size={20}
-                  color={palette.success as string}
-                />
-                <Text style={{ color: palette.success, fontSize: FontSize.caption }}>
-                  {t("profile.location.zoneDetected")}
-                </Text>
-              </Box>
+              <IconSymbol
+                name="checkmark.circle.fill"
+                size={20}
+                color={theme.color.success as string}
+              />
             )}
-          </Box>
-
-          {/* Error message */}
-          {errorMessage ? (
-            <Box
-              style={{
-                borderRadius: BrandRadius.md,
-                paddingHorizontal: BrandSpacing.md,
-                paddingVertical: BrandSpacing.sm,
-                borderWidth: BorderWidth.thin,
-                borderColor: palette.danger,
-                backgroundColor: palette.dangerSubtle,
-              }}
-            >
-              <Text style={{ color: palette.danger, fontSize: FontSize.caption }}>
-                {errorMessage}
-              </Text>
-            </Box>
-          ) : null}
+          </View>
         </View>
 
-        {/* Save/Cancel buttons */}
-        <Box
-          style={{
-            position: "absolute",
-            left: BrandSpacing.inset,
-            right: BrandSpacing.inset,
-            gap: BrandSpacing.stackTight,
-            backgroundColor: palette.appBg,
-            bottom: overlayBottom,
-          }}
-        >
-          <ActionButton
-            label={
-              isSaving ? t("profile.settings.actions.saving") : t("profile.settings.actions.save")
-            }
-            onPress={() => {
-              void onSave();
-            }}
-            disabled={isSaving || !hasChanges}
-            fullWidth
-          />
-          <ActionButton label={t("common.cancel")} onPress={onClose} tone="secondary" fullWidth />
-        </Box>
-      </Box>
+        {/* ── Error Banner ── */}
+        {errorMessage ? <StatusBanner message={errorMessage} type="error" /> : null}
+      </View>
     </BaseProfileSheet>
   );
 }

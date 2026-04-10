@@ -471,9 +471,7 @@ export default function StudioBranchesScreen() {
                         compact
                         onPress={() => setForm((current) => ({ ...current, zone: zone.id }))}
                         backgroundColor={palette.surfaceElevated}
-                        selectedBackgroundColor="#CCFF00"
                         labelColor={palette.text}
-                        selectedLabelColor="#161E00"
                       />
                     );
                   })}
@@ -496,9 +494,7 @@ export default function StudioBranchesScreen() {
                         }))
                       }
                       backgroundColor={palette.surfaceElevated}
-                      selectedBackgroundColor="#CCFF00"
                       labelColor={palette.text}
-                      selectedLabelColor="#161E00"
                     />
                   ))}
                 </Box>
@@ -541,9 +537,7 @@ export default function StudioBranchesScreen() {
                         }))
                       }
                       backgroundColor={palette.surfaceElevated}
-                      selectedBackgroundColor="#CCFF00"
                       labelColor={palette.text}
-                      selectedLabelColor="#161E00"
                     />
                   ))}
                 </Box>

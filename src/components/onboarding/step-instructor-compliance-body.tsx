@@ -1,8 +1,10 @@
 // Step 2 - Instructor compliance body
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, View } from "react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { IdentityStatusBadge } from "@/components/profile/identity-status-ui";
+import { StripeConnectEmbeddedModal } from "@/components/sheets/profile/instructor/stripe-connect-embedded";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import {
@@ -90,6 +92,8 @@ interface StepInstructorComplianceBodyProps {
   pushToken: string | null;
   isRequestingPush: boolean;
   requestPushPermission: () => Promise<void>;
+  createStripeEmbeddedSession: () => Promise<{ clientSecret: string }>;
+  createStripeHostedAccountLink: () => Promise<{ onboardingUrl: string }>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   router: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -166,6 +170,8 @@ export function StepInstructorComplianceBody({
   pushToken,
   isRequestingPush,
   requestPushPermission,
+  createStripeEmbeddedSession,
+  createStripeHostedAccountLink,
   router,
   buildRoleTabRoute,
   ROLE_TAB_ROUTE_NAMES,
@@ -173,6 +179,13 @@ export function StepInstructorComplianceBody({
 }: StepInstructorComplianceBodyProps) {
   const { t, i18n } = useTranslation();
   const { color } = useTheme();
+  const [stripeConnectVisible, setStripeConnectVisible] = useState(false);
+
+  useEffect(() => {
+    if (diditVerification?.isVerified === false) {
+      setStripeConnectVisible(true);
+    }
+  }, [diditVerification?.isVerified]);
 
   if (
     currentUser?.role !== "instructor" ||
@@ -205,16 +218,6 @@ export function StepInstructorComplianceBody({
     Date.now(),
   );
   const latestCertificate = getLatestCertificate(complianceDetails.certificates);
-  const diditButtonColors = diditState.isVerified
-    ? undefined
-    : {
-        backgroundColor: color.tertiary,
-        pressedBackgroundColor: color.tertiary,
-        disabledBackgroundColor: color.tertiarySubtle,
-        labelColor: color.onPrimary,
-        disabledLabelColor: color.onPrimary,
-        nativeTintColor: color.tertiary,
-      };
 
   return (
     <View
@@ -242,20 +245,6 @@ export function StepInstructorComplianceBody({
             : t("profile.compliance.hero.blockedBody", { blockers: blockersSummary })}
         </ThemedText>
       </View>
-      {!diditState.isVerified ? (
-        <ActionButton
-          label={t("profile.identityVerification.verifyNow")}
-          fullWidth
-          native={false}
-          {...(diditButtonColors ? { colors: diditButtonColors } : {})}
-          labelStyle={{
-            textTransform: "uppercase",
-            letterSpacing: 0.8,
-            fontWeight: "700",
-          }}
-          onPress={() => router.replace("/instructor/profile/compliance")}
-        />
-      ) : null}
       <View
         style={[
           styles.verificationCard,
@@ -271,25 +260,8 @@ export function StepInstructorComplianceBody({
         <ThemedText style={{ color: color.textMuted }}>
           {diditState.isVerified
             ? t("profile.compliance.identity.approved")
-            : t("profile.compliance.identity.required")}
+            : t("profile.compliance.headline.default")}
         </ThemedText>
-        <ActionButton
-          label={
-            diditState.isVerified
-              ? t("profile.navigation.identityVerification")
-              : t("profile.identityVerification.verifyNow")
-          }
-          fullWidth
-          native={false}
-          {...(diditButtonColors ? { colors: diditButtonColors } : {})}
-          {...(diditState.isVerified ? { tone: "secondary" as const } : {})}
-          labelStyle={{
-            textTransform: "uppercase",
-            letterSpacing: 0.8,
-            fontWeight: "700",
-          }}
-          onPress={() => router.replace("/instructor/profile/compliance")}
-        />
       </View>
       <View
         style={[
@@ -419,13 +391,25 @@ export function StepInstructorComplianceBody({
           fullWidth
           onPress={() => router.replace(buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs))}
         />
-        <ActionButton
-          label={t("onboarding.verification.openCompliance")}
-          tone="secondary"
-          fullWidth
-          onPress={() => router.replace("/instructor/profile/compliance")}
-        />
       </View>
+
+      <StripeConnectEmbeddedModal
+        visible={stripeConnectVisible}
+        accountStatus="action_required"
+        mode="onboarding"
+        createEmbeddedSession={createStripeEmbeddedSession}
+        createHostedAccountLink={createStripeHostedAccountLink}
+        onClose={() => {
+          setStripeConnectVisible(false);
+        }}
+        onCompleted={() => {
+          setVerificationFeedback({
+            tone: "success",
+            message: t("profile.compliance.headline.pending"),
+          });
+        }}
+        onFeedback={setVerificationFeedback}
+      />
     </View>
   );
 }

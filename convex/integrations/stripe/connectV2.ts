@@ -269,11 +269,53 @@ export async function createStripeAccountLinkV2(input: {
       use_case: {
         type: "account_onboarding",
         account_onboarding: {
-          configurations: ["recipient"],
+          configurations: ["merchant", "recipient"],
           refresh_url: input.refreshUrl,
           return_url: input.returnUrl,
         },
       },
     },
   });
+}
+
+export async function createStripeAccountSessionV2(input: {
+  accountId: string;
+  enableOnboarding?: boolean;
+  enablePayouts?: boolean;
+}) {
+  const secretKey = requireStripeSecretKey();
+  const form = new URLSearchParams();
+  form.set("account", input.accountId);
+
+  if (input.enableOnboarding !== false) {
+    form.set("components[account_onboarding][enabled]", "true");
+  }
+  if (input.enablePayouts !== false) {
+    form.set("components[payouts][enabled]", "true");
+    form.set("components[payouts][features][standard_payouts]", "true");
+    form.set("components[payouts][features][edit_payout_schedule]", "true");
+    form.set("components[payouts][features][external_account_collection]", "true");
+  }
+
+  const response = await fetch(`${STRIPE_API_BASE_URL}/v1/account_sessions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Stripe-Version": "2025-05-28.preview",
+    },
+    body: form.toString(),
+  });
+
+  const data = (await response.json()) as { client_secret?: string; error?: { message?: string } };
+  if (!response.ok) {
+    throw new Error(data.error?.message || `Stripe API request failed: ${response.status}`);
+  }
+  if (!data.client_secret) {
+    throw new Error("Stripe account session did not return a client secret");
+  }
+
+  return {
+    clientSecret: data.client_secret,
+  };
 }

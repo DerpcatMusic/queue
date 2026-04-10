@@ -1,8 +1,10 @@
+import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { RefreshControl, ScrollView } from "react-native";
+import { RefreshControl } from "react-native";
 import { useTranslation } from "react-i18next";
+import { AddressSheet } from "@stripe/stripe-react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
@@ -20,10 +22,7 @@ import { ChoicePill } from "@/components/ui/choice-pill";
 import { KitTextField } from "@/components/ui/kit";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
-import {
-  getStudioBlockingSummary,
-  getStudioPaymentSubtitle,
-} from "@/features/compliance/compliance-ui";
+import { getStudioPaymentSubtitle } from "@/features/compliance/compliance-ui";
 import { Box } from "@/primitives";
 import { useTheme } from "@/hooks/use-theme";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
@@ -78,6 +77,7 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
   const [billingEmail, setBillingEmail] = useState("");
   const [billingPhone, setBillingPhone] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
+  const [billingAddressSheetVisible, setBillingAddressSheetVisible] = useState(false);
 
   useEffect(() => {
     if (billingProfile) {
@@ -140,6 +140,32 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
     vatReportingType,
   ]);
 
+  const formatBillingAddress = useCallback(
+    (details: {
+      address?: {
+        line1?: string;
+        line2?: string;
+        city?: string;
+        state?: string;
+        postalCode?: string;
+        country?: string;
+      };
+    }) => {
+      const parts = [
+        details.address?.line1,
+        details.address?.line2,
+        details.address?.city,
+        details.address?.state,
+        details.address?.postalCode,
+        details.address?.country,
+      ]
+        .map((part) => part?.trim())
+        .filter((part): part is string => Boolean(part));
+      return parts.join(", ");
+    },
+    [],
+  );
+
   if (
     !currentUser ||
     (shouldLoad &&
@@ -182,7 +208,6 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
     );
   }
 
-  const blockersSummary = getStudioBlockingSummary(compliance.summary.blockingReasons, t);
   const paymentStatus =
     paymentsPreflight.readyForCheckout && compliance.summary.paymentStatus === "ready"
       ? "ready"
@@ -196,9 +221,8 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
   );
   return (
     <BaseProfileSheet visible={visible} onClose={onClose}>
-      <ScrollView
-        style={{ flex: 1, backgroundColor: theme.color.appBg }}
-        contentContainerStyle={{ gap: BrandSpacing.xl }}
+      <BottomSheetScrollView
+        contentContainerStyle={{ gap: BrandSpacing.xl, backgroundColor: theme.color.appBg }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => void refreshAll()} />
         }
@@ -217,13 +241,6 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
               {compliance.summary.canPublishJobs
                 ? t("profile.studioCompliance.hero.readyTitle")
                 : t("profile.studioCompliance.hero.blockedTitle")}
-            </ThemedText>
-            <ThemedText selectable type="caption" style={{ color: theme.color.textMuted }}>
-              {compliance.summary.canPublishJobs
-                ? t("profile.studioCompliance.hero.readyBody")
-                : t("profile.studioCompliance.hero.blockedBody", {
-                    blockers: blockersSummary,
-                  })}
             </ThemedText>
           </Box>
 
@@ -250,12 +267,7 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
                 </Box>
                 <ThemedText style={{ color: theme.color.textMuted }}>
                   {diditVerification.isVerified
-                    ? t("profile.studioCompliance.identity.approvedBody", {
-                        legalName:
-                          diditVerification.legalName ??
-                          currentUser.fullName ??
-                          t("profile.account.fallbackName"),
-                      })
+                    ? t("profile.studioCompliance.identity.approvedBody")
                     : t("profile.studioCompliance.identity.requiredBody", {
                         status: getIdentityStatusLabel(diditVerification.status),
                       })}
@@ -284,18 +296,18 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
                     selected={legalEntityType === "individual"}
                     onPress={() => setLegalEntityType("individual")}
                     backgroundColor={theme.color.surfaceElevated}
-                    selectedBackgroundColor="#CCFF00"
+                    selectedBackgroundColor={theme.color.primary}
                     labelColor={theme.color.text}
-                    selectedLabelColor="#161E00"
+                    selectedLabelColor={theme.color.onPrimary}
                   />
                   <ChoicePill
                     label={t("profile.studioCompliance.billing.entityCompany")}
                     selected={legalEntityType === "company"}
                     onPress={() => setLegalEntityType("company")}
                     backgroundColor={theme.color.surfaceElevated}
-                    selectedBackgroundColor="#CCFF00"
+                    selectedBackgroundColor={theme.color.primary}
                     labelColor={theme.color.text}
-                    selectedLabelColor="#161E00"
+                    selectedLabelColor={theme.color.onPrimary}
                   />
                 </Box>
 
@@ -327,11 +339,14 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
                   value={billingAddress}
                   onChangeText={setBillingAddress}
                 />
+                <ActionButton
+                  label={t("profile.studioCompliance.billing.useStripeAddress")}
+                  tone="secondary"
+                  fullWidth
+                  onPress={() => setBillingAddressSheetVisible(true)}
+                />
 
                 <Box style={{ gap: BrandSpacing.xs }}>
-                  <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
-                    {t("profile.studioCompliance.billing.vatReportingType")}
-                  </ThemedText>
                   <Box
                     style={{
                       flexDirection: "row",
@@ -346,9 +361,9 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
                         selected={vatReportingType === value}
                         onPress={() => setVatReportingType(value)}
                         backgroundColor={theme.color.surfaceElevated}
-                        selectedBackgroundColor="#CCFF00"
+                        selectedBackgroundColor={theme.color.primary}
                         labelColor={theme.color.text}
-                        selectedLabelColor="#161E00"
+                        selectedLabelColor={theme.color.onPrimary}
                       />
                     ))}
                   </Box>
@@ -388,7 +403,19 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
             </ProfileSectionCard>
           </Box>
         </Box>
-      </ScrollView>
+      </BottomSheetScrollView>
+      <AddressSheet
+        visible={billingAddressSheetVisible}
+        sheetTitle={t("profile.studioCompliance.billing.billingAddress")}
+        primaryButtonTitle={t("common.save")}
+        onSubmit={(result) => {
+          setBillingAddress(formatBillingAddress(result));
+          setBillingAddressSheetVisible(false);
+        }}
+        onError={() => {
+          setBillingAddressSheetVisible(false);
+        }}
+      />
     </BaseProfileSheet>
   );
 }

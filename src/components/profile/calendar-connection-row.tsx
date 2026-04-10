@@ -2,12 +2,10 @@ import { Image } from "expo-image";
 import { memo } from "react";
 import type { ImageSourcePropType } from "react-native";
 import { ActivityIndicator, Pressable, View } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
-import { useTheme } from "@/hooks/use-theme";
 import { Text } from "@/primitives";
-const BRIGHT_LIME = "#CCFF00";
 
 type CalendarConnectionRowProps = {
   iconSource: ImageSourcePropType;
@@ -28,7 +26,7 @@ export const CalendarConnectionRow = memo(function CalendarConnectionRow({
   onPress,
   showDivider = false,
 }: CalendarConnectionRowProps) {
-  const { color: palette } = useTheme();
+  const { theme } = useUnistyles();
 
   return (
     <Pressable
@@ -37,7 +35,7 @@ export const CalendarConnectionRow = memo(function CalendarConnectionRow({
       style={({ pressed }) => [
         styles.row,
         {
-          backgroundColor: pressed ? palette.surfaceAlt : palette.surfaceElevated,
+          backgroundColor: pressed ? theme.color.surfaceAlt : theme.color.surfaceElevated,
         },
       ]}
     >
@@ -47,26 +45,26 @@ export const CalendarConnectionRow = memo(function CalendarConnectionRow({
           showDivider
             ? {
                 borderBottomWidth: StyleSheet.hairlineWidth,
-                borderBottomColor: palette.border,
+                borderBottomColor: theme.color.border,
               }
             : null,
         ]}
       >
-          <Image source={iconSource as number} style={styles.icon} contentFit="cover" />
+        <Image source={iconSource as number} style={styles.icon} contentFit="cover" />
 
         <View style={styles.copy}>
-          <Text style={[styles.title, { color: BRIGHT_LIME }]}>{title}</Text>
-          <Text style={[styles.detail, { color: palette.textMuted }]}>{detail}</Text>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.detail}>{detail}</Text>
         </View>
 
         <View style={styles.trailing}>
           {loading ? (
-            <ActivityIndicator size="small" color={BRIGHT_LIME} />
+            <ActivityIndicator size="small" color={theme.color.primary} />
           ) : (
             <AppSymbol
               name={connected ? "checkmark.circle.fill" : "chevron.right"}
               size={BrandSpacing.iconMd - BrandSpacing.xs / 2}
-              tintColor={connected ? BRIGHT_LIME : palette.textMuted}
+              tintColor={connected ? theme.color.primary : theme.color.textMuted}
             />
           )}
         </View>
@@ -75,7 +73,7 @@ export const CalendarConnectionRow = memo(function CalendarConnectionRow({
   );
 });
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create((theme) => ({
   row: {
     minHeight: 92,
     borderRadius: BrandRadius.card,
@@ -104,12 +102,14 @@ const styles = StyleSheet.create({
     gap: BrandSpacing.xs,
   },
   title: {
+    color: theme.color.primary,
     fontFamily: "Manrope_600SemiBold",
     fontSize: 18,
     fontWeight: "600",
     lineHeight: 22,
   },
   detail: {
+    color: theme.color.textMuted,
     fontFamily: "Manrope_400Regular",
     fontSize: BrandType.body.fontSize,
     fontWeight: "400",
@@ -120,4 +120,4 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "center",
   },
-});
+}));

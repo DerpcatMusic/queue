@@ -92,6 +92,16 @@ async function syncStripeConnectedAccountFromWebhook(
 }
 
 auth.addHttpRoutes(http);
+http.route({
+  path: "/stripe/connect-return",
+  method: "GET",
+  handler: httpAction(async () => new Response("Stripe connect return", { status: 200 })),
+});
+http.route({
+  path: "/stripe/connect-refresh",
+  method: "GET",
+  handler: httpAction(async () => new Response("Stripe connect refresh", { status: 200 })),
+});
 registerStripeRoutes(http, components.stripe, {
   webhookPath: "/stripe/webhook",
   events: {

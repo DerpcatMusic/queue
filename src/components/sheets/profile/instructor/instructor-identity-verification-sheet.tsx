@@ -1,6 +1,6 @@
 /**
  * Instructor Identity Verification Sheet.
- * Contains Didit identity verification, insurance, and certificate management.
+ * Contains identity verification, insurance, and certificate management.
  */
 
 import { useAction, useQuery } from "convex/react";
@@ -26,12 +26,12 @@ import {
   getPreferredInsurancePolicy as getSharedPreferredInsurancePolicy,
 } from "@/features/compliance/compliance-ui";
 import {
-  getDiditActionButtonColors,
-  getDiditPrimaryActionLabel,
-  getDiditVerificationStatusPresentation,
-  shouldAutoRefreshDiditStatus,
-  shouldOfferDiditManualRefresh,
-} from "@/features/compliance/didit-ui";
+  getIdentityActionButtonColors,
+  getIdentityPrimaryActionLabel,
+  getIdentityVerificationStatusPresentation,
+  shouldAutoRefreshIdentityStatus,
+  shouldOfferIdentityManualRefresh,
+} from "@/features/compliance/identity-verification-ui";
 import {
   isComplianceDocumentUploadError,
   useComplianceDocumentUpload,
@@ -254,6 +254,7 @@ export function InstructorIdentityVerificationSheet({
     message: string;
   } | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const autoRefreshSessionIdRef = useRef<string | null>(null);
   const currentUser = useQuery(api.users.getCurrentUser);
   const complianceArgs =
     currentUser?.role === "instructor" ? (refreshNonce > 0 ? { now: Date.now() } : {}) : "skip";
@@ -353,18 +354,25 @@ export function InstructorIdentityVerificationSheet({
     // bumps refreshNonce → query re-fetches → diditVerification changes →
     // effect re-fires → infinite loop.
     if (!visible) {
+      autoRefreshSessionIdRef.current = null;
       return;
     }
 
     if (
-      !shouldAutoRefreshDiditStatus(
+      !shouldAutoRefreshIdentityStatus(
         diditVerification?.status,
         diditVerification?.isVerified ?? false,
         diditVerification?.sessionId,
       )
     ) {
+      autoRefreshSessionIdRef.current = null;
       return;
     }
+
+    if (autoRefreshSessionIdRef.current === diditVerification?.sessionId) {
+      return;
+    }
+    autoRefreshSessionIdRef.current = diditVerification?.sessionId ?? null;
 
     void refreshDiditStatus({ silent: true });
 
@@ -579,14 +587,17 @@ export function InstructorIdentityVerificationSheet({
   }
 
   const isDiditBusy = isStartingDidit || isRefreshingDidit;
-  const diditActionLabel = getDiditPrimaryActionLabel(diditVerification.isVerified, t);
-  const diditButtonColors = getDiditActionButtonColors(diditVerification.isVerified, theme.color);
-  const diditStatusPresentation = getDiditVerificationStatusPresentation(
+  const diditActionLabel = getIdentityPrimaryActionLabel(diditVerification.isVerified, t);
+  const diditButtonColors = getIdentityActionButtonColors(
+    diditVerification.isVerified,
+    theme.color,
+  );
+  const diditStatusPresentation = getIdentityVerificationStatusPresentation(
     diditVerification.status,
     theme.color,
     t,
   );
-  const showDiditManualRefresh = shouldOfferDiditManualRefresh(
+  const showDiditManualRefresh = shouldOfferIdentityManualRefresh(
     diditVerification.status,
     diditVerification.isVerified,
   );
@@ -679,11 +690,11 @@ export function InstructorIdentityVerificationSheet({
                   : t("profile.compliance.identity.required")}
               </Text>
               {!diditVerification.isVerified ? (
-                <Text variant="caption" color="textMuted">
-                  {t("profile.studioCompliance.identity.requiredBody", {
-                    status: diditStatusPresentation.label,
-                  })}
-                </Text>
+                <IconSymbol
+                  name="info.circle"
+                  size={BrandSpacing.iconSm}
+                  color={theme.color.textMuted}
+                />
               ) : null}
             </Box>
 
@@ -735,7 +746,7 @@ export function InstructorIdentityVerificationSheet({
               subtitle={getInsuranceSubtitle(preferredInsurance ?? null, locale, t)}
               statusLabel={getDocumentStatusLabel(preferredInsurance?.reviewStatus, t)}
               onPress={onOpenInsuranceUpload}
-              accentColor="#CCFF00"
+              accentColor={theme.color.primary}
               disabled={isUploading}
             />
             <VerificationUploadPanel
@@ -745,7 +756,7 @@ export function InstructorIdentityVerificationSheet({
               subtitle={getCertificateSubtitle(latestCertificate ?? null, locale, t)}
               statusLabel={getDocumentStatusLabel(latestCertificate?.reviewStatus, t)}
               onPress={onOpenCertificateUpload}
-              accentColor="#CCFF00"
+              accentColor={theme.color.primary}
               disabled={isUploading}
             />
           </Box>
@@ -761,11 +772,18 @@ export function InstructorIdentityVerificationSheet({
               backgroundColor: theme.color.surfaceElevated,
             }}
           >
-            <Text variant="caption" color="textMuted">
-              {latestCertificate?.reviewStatus === "approved"
-                ? t("profile.compliance.certificate.coverageTitle")
-                : t("profile.compliance.certificate.coveragePending")}
-            </Text>
+            <Box flexDirection="row" alignItems="center" gap="xs">
+              <Text variant="caption" color="textMuted">
+                {latestCertificate?.reviewStatus === "approved"
+                  ? t("profile.compliance.certificate.coverageTitle")
+                  : t("profile.compliance.certificate.coveragePending")}
+              </Text>
+              <IconSymbol
+                name="info.circle"
+                size={BrandSpacing.iconSm}
+                color={theme.color.textMuted}
+              />
+            </Box>
             {approvedCoverage.length > 0 ? (
               <Box gap="sm">
                 <Text variant="bodyMedium">
@@ -826,11 +844,7 @@ export function InstructorIdentityVerificationSheet({
               borderColor: theme.color.border,
               backgroundColor: theme.color.surfaceElevated,
             }}
-          >
-            <Text variant="caption" color="textMuted">
-              {t("profile.compliance.documents.reviewNote")}
-            </Text>
-          </KitSurface>
+          ></KitSurface>
         </VStack>
       </Animated.View>
     </BaseProfileSheet>

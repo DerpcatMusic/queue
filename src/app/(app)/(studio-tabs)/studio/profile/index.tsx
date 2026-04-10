@@ -1,9 +1,8 @@
 import { useAuthActions } from "@convex-dev/auth/react";
-import type BottomSheet from "@gorhom/bottom-sheet";
 import { useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams } from "expo-router";
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Linking, Text } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
@@ -113,7 +112,7 @@ export default function StudioProfileScreen() {
   const { t, i18n } = useTranslation();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
-  const accountSwitcherSheetRef = useRef<BottomSheet>(null);
+  const [accountSwitcherVisible, setAccountSwitcherVisible] = useState(false);
   const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
 
@@ -250,11 +249,11 @@ export default function StudioProfileScreen() {
   const handleOpenAccountSwitcher = useCallback(() => {
     void listRememberedDeviceAccounts().then((accounts) => {
       setRememberedAccounts(accounts);
-      accountSwitcherSheetRef.current?.snapToIndex(0);
+      setAccountSwitcherVisible(true);
     });
   }, []);
   const handleSignOut = useCallback(() => {
-    accountSwitcherSheetRef.current?.close();
+    setAccountSwitcherVisible(false);
     void (async () => {
       if (currentUser?._id) {
         await forgetRememberedDeviceAccount(String(currentUser._id));
@@ -263,12 +262,12 @@ export default function StudioProfileScreen() {
     })();
   }, [currentUser?._id, signOut]);
   const handleUseAnotherAccount = useCallback(() => {
-    accountSwitcherSheetRef.current?.close();
+    setAccountSwitcherVisible(false);
     handleOpenAddAccount();
   }, [handleOpenAddAccount]);
   const handleSelectRememberedAccount = useCallback(
     (accountId: string) => {
-      accountSwitcherSheetRef.current?.close();
+      setAccountSwitcherVisible(false);
       setSwitchingAccountId(accountId);
       void (async () => {
         try {
@@ -472,6 +471,7 @@ export default function StudioProfileScreen() {
                 <ProfileSectionHeader
                   label={t("profile.sections.studio")}
                   icon="building.2.fill"
+                  tone="account"
                   flush
                 />
                 <ProfileSectionCard style={styles.desktopCardGroup}>
@@ -479,6 +479,7 @@ export default function StudioProfileScreen() {
                     title={t("profile.settings.publicProfile")}
                     subtitle={publicProfileSummary}
                     icon="person.crop.circle.fill"
+                    sectionTone="account"
                     onPress={handleRequestEdit}
                     showDivider
                   />
@@ -488,6 +489,7 @@ export default function StudioProfileScreen() {
                       studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
                     }
                     icon="building.2.fill"
+                    sectionTone="account"
                     onPress={handleRequestEdit}
                     showDivider
                   />
@@ -495,6 +497,7 @@ export default function StudioProfileScreen() {
                     title={t("profile.settings.branches.title")}
                     subtitle={branchSummary}
                     icon="square.stack.3d.up.fill"
+                    sectionTone="account"
                     onPress={() => handleOpenBranches()}
                     showDivider
                   />
@@ -502,6 +505,7 @@ export default function StudioProfileScreen() {
                     title={t("profile.settings.coverageZone")}
                     subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
                     icon="mappin.and.ellipse"
+                    sectionTone="account"
                     onPress={handleRequestEdit}
                   />
                 </ProfileSectionCard>
@@ -511,6 +515,7 @@ export default function StudioProfileScreen() {
                 <ProfileSectionHeader
                   label={t("profile.account.title")}
                   icon="person.crop.circle.fill"
+                  tone="account"
                   flush
                 />
                 <ProfileSectionCard style={styles.desktopCardGroup}>
@@ -518,6 +523,7 @@ export default function StudioProfileScreen() {
                     title={t("profile.switcher.openAction")}
                     subtitle={t("profile.switcher.accountRowHint")}
                     icon="person.2.fill"
+                    sectionTone="account"
                     onPress={handleOpenAccountSwitcher}
                     showDivider
                   />
@@ -525,18 +531,21 @@ export default function StudioProfileScreen() {
                     title={t("profile.account.nameLabel")}
                     value={currentUser?.fullName ?? profileName}
                     icon="person.crop.circle.fill"
+                    sectionTone="account"
                     showDivider
                   />
                   <ProfileSettingRow
                     title={t("profile.account.emailLabel")}
                     value={emailValue}
                     icon="paperplane.fill"
+                    sectionTone="account"
                     showDivider
                   />
                   <ProfileSettingRow
                     title={t("profile.account.roleLabel")}
                     value={roleValue}
                     icon="checkmark.circle.fill"
+                    sectionTone="account"
                     showDivider
                   />
                   {memberSince ? (
@@ -544,6 +553,7 @@ export default function StudioProfileScreen() {
                       title={t("profile.account.memberSince")}
                       value={memberSince}
                       icon="calendar.circle.fill"
+                      sectionTone="account"
                       showDivider
                     />
                   ) : null}
@@ -551,12 +561,14 @@ export default function StudioProfileScreen() {
                     title={t("profile.language.title")}
                     value={language === "en" ? t("language.english") : t("language.hebrew")}
                     icon="globe"
+                    sectionTone="preferences"
                     onPress={() => void setLanguage(language === "en" ? "he" : "en")}
                     showDivider
                   />
                   <ProfileSettingRow
                     title={t("profile.appearance.systemTheme.title")}
                     icon="slider.horizontal.3"
+                    sectionTone="preferences"
                     showDivider
                     accessory={
                       <KitSwitch
@@ -568,6 +580,7 @@ export default function StudioProfileScreen() {
                   <ProfileSettingRow
                     title={t("profile.appearance.darkMode.title")}
                     icon="moon.fill"
+                    sectionTone="preferences"
                     accessory={
                       <KitSwitch
                         disabled={preference === "system"}
@@ -581,6 +594,7 @@ export default function StudioProfileScreen() {
                 <ProfileSectionHeader
                   label={t("profile.sections.operations")}
                   icon="slider.horizontal.3"
+                  tone="operations"
                   flush
                 />
                 <ProfileSectionCard style={styles.desktopCardGroup}>
@@ -655,6 +669,7 @@ export default function StudioProfileScreen() {
                     title={t("profile.settings.autoAcceptJobs")}
                     subtitle={t("profile.settings.autoAcceptJobsDescription")}
                     icon="checkmark.seal.fill"
+                    sectionTone="operations"
                     showDivider
                     accessory={
                       <KitSwitch
@@ -668,6 +683,7 @@ export default function StudioProfileScreen() {
                     title={t("profile.navigation.notifications")}
                     subtitle={notificationsSummary}
                     icon="bell.fill"
+                    sectionTone="preferences"
                     onPress={() => handleOpenNotifications()}
                     showDivider
                   />
@@ -675,6 +691,7 @@ export default function StudioProfileScreen() {
                     title={t("profile.settings.calendar.title")}
                     subtitle={calendarSummary}
                     icon="calendar.circle.fill"
+                    sectionTone="operations"
                     onPress={() => handleOpenCalendarSettings()}
                     showDivider
                   />
@@ -682,6 +699,7 @@ export default function StudioProfileScreen() {
                     title={t("profile.settings.paymentsPayouts")}
                     subtitle={t("profile.sections.paymentsDesc")}
                     icon="creditcard.fill"
+                    sectionTone="operations"
                     onPress={() => handleOpenPayments()}
                     showDivider
                   />
@@ -689,6 +707,7 @@ export default function StudioProfileScreen() {
                     title={t("profile.navigation.compliance")}
                     subtitle={complianceSummaryLabel}
                     icon="checkmark.shield.fill"
+                    sectionTone="identity"
                     onPress={() => handleOpenCompliance()}
                     showDivider
                   />
@@ -714,12 +733,17 @@ export default function StudioProfileScreen() {
           bottomSpacing={BrandSpacing.xl}
         >
           <Box style={styles.mobileContentPadding}>
-            <ProfileSectionHeader label={t("profile.sections.studio")} icon="building.2.fill" />
+            <ProfileSectionHeader
+              label={t("profile.sections.studio")}
+              icon="building.2.fill"
+              tone="account"
+            />
             <ProfileSectionCard>
               <ProfileSettingRow
                 title={t("profile.settings.publicProfile")}
                 subtitle={publicProfileSummary}
                 icon="person.crop.circle.fill"
+                sectionTone="account"
                 onPress={handleRequestEdit}
                 showDivider
               />
@@ -729,6 +753,7 @@ export default function StudioProfileScreen() {
                   studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
                 }
                 icon="building.2.fill"
+                sectionTone="account"
                 onPress={handleRequestEdit}
                 showDivider
               />
@@ -736,6 +761,7 @@ export default function StudioProfileScreen() {
                 title={t("profile.settings.branches.title")}
                 subtitle={branchSummary}
                 icon="square.stack.3d.up.fill"
+                sectionTone="account"
                 onPress={() => handleOpenBranches()}
                 showDivider
               />
@@ -743,6 +769,7 @@ export default function StudioProfileScreen() {
                 title={t("profile.settings.coverageZone")}
                 subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
                 icon="mappin.and.ellipse"
+                sectionTone="account"
                 onPress={handleRequestEdit}
               />
             </ProfileSectionCard>
@@ -750,12 +777,14 @@ export default function StudioProfileScreen() {
             <ProfileSectionHeader
               label={t("profile.account.title")}
               icon="person.crop.circle.fill"
+              tone="account"
             />
             <ProfileSectionCard>
               <ProfileSettingRow
                 title={t("profile.switcher.openAction")}
                 subtitle={t("profile.switcher.accountRowHint")}
                 icon="person.2.fill"
+                sectionTone="account"
                 onPress={handleOpenAccountSwitcher}
                 showDivider
               />
@@ -763,18 +792,21 @@ export default function StudioProfileScreen() {
                 title={t("profile.account.nameLabel")}
                 value={currentUser?.fullName ?? profileName}
                 icon="person.crop.circle.fill"
+                sectionTone="account"
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.account.emailLabel")}
                 value={emailValue}
                 icon="paperplane.fill"
+                sectionTone="account"
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.account.roleLabel")}
                 value={roleValue}
                 icon="checkmark.circle.fill"
+                sectionTone="account"
                 showDivider
               />
               {memberSince ? (
@@ -782,6 +814,7 @@ export default function StudioProfileScreen() {
                   title={t("profile.account.memberSince")}
                   value={memberSince}
                   icon="calendar.circle.fill"
+                  sectionTone="account"
                   showDivider
                 />
               ) : null}
@@ -789,12 +822,14 @@ export default function StudioProfileScreen() {
                 title={t("profile.language.title")}
                 value={language === "en" ? t("language.english") : t("language.hebrew")}
                 icon="globe"
+                sectionTone="preferences"
                 onPress={() => void setLanguage(language === "en" ? "he" : "en")}
                 showDivider
               />
               <ProfileSettingRow
                 title={t("profile.appearance.systemTheme.title")}
                 icon="slider.horizontal.3"
+                sectionTone="preferences"
                 showDivider
                 accessory={
                   <KitSwitch
@@ -806,6 +841,7 @@ export default function StudioProfileScreen() {
               <ProfileSettingRow
                 title={t("profile.appearance.darkMode.title")}
                 icon="moon.fill"
+                sectionTone="preferences"
                 accessory={
                   <KitSwitch
                     disabled={preference === "system"}
@@ -819,6 +855,7 @@ export default function StudioProfileScreen() {
             <ProfileSectionHeader
               label={t("profile.sections.operations")}
               icon="slider.horizontal.3"
+              tone="operations"
             />
             <ProfileSectionCard>
               <Box
@@ -860,9 +897,9 @@ export default function StudioProfileScreen() {
                       selected={autoExpireMinutesBefore === undefined}
                       compact
                       backgroundColor={color.surfaceElevated}
-                      selectedBackgroundColor="#CCFF00"
+                      selectedBackgroundColor={color.primary}
                       labelColor={color.text}
-                      selectedLabelColor="#161E00"
+                      selectedLabelColor={color.onPrimary}
                       onPress={() => handleAutoExpireMinutesBeforeChange(undefined)}
                     />
                     {EXPIRY_OVERRIDE_PRESETS.map((minutes) => (
@@ -893,6 +930,7 @@ export default function StudioProfileScreen() {
                 title={t("profile.settings.autoAcceptJobs")}
                 subtitle={t("profile.settings.autoAcceptJobsDescription")}
                 icon="checkmark.seal.fill"
+                sectionTone="operations"
                 showDivider
                 accessory={
                   <KitSwitch
@@ -906,6 +944,7 @@ export default function StudioProfileScreen() {
                 title={t("profile.navigation.notifications")}
                 subtitle={notificationsSummary}
                 icon="bell.fill"
+                sectionTone="preferences"
                 onPress={() => handleOpenNotifications()}
                 showDivider
               />
@@ -913,6 +952,7 @@ export default function StudioProfileScreen() {
                 title={t("profile.settings.calendar.title")}
                 subtitle={calendarSummary}
                 icon="calendar.circle.fill"
+                sectionTone="operations"
                 onPress={() => handleOpenCalendarSettings()}
                 showDivider
               />
@@ -920,6 +960,7 @@ export default function StudioProfileScreen() {
                 title={t("profile.navigation.compliance")}
                 subtitle={complianceSummaryLabel}
                 icon="checkmark.shield.fill"
+                sectionTone="identity"
                 onPress={() => handleOpenCompliance()}
                 showDivider
               />
@@ -927,6 +968,7 @@ export default function StudioProfileScreen() {
                 title={t("profile.settings.paymentsPayouts")}
                 subtitle={t("profile.sections.paymentsDesc")}
                 icon="creditcard.fill"
+                sectionTone="operations"
                 onPress={() => handleOpenPayments()}
                 showDivider
               />
@@ -936,7 +978,11 @@ export default function StudioProfileScreen() {
             </ProfileSectionCard>
 
             {/* Support Section */}
-            <ProfileSectionHeader label={t("profile.sections.support")} icon="help" />
+            <ProfileSectionHeader
+              label={t("profile.sections.support")}
+              icon="help"
+              tone="support"
+            />
             <Box style={{ paddingHorizontal: BrandSpacing.inset }}>
               <Box style={{ flexDirection: "row", gap: BrandSpacing.md }}>
                 <ProfileSupportCard
@@ -955,8 +1001,8 @@ export default function StudioProfileScreen() {
         </ProfileIndexScrollView>
       )}
       <ProfileAccountSwitcherSheet
-        innerRef={accountSwitcherSheetRef}
-        onDismissed={() => undefined}
+        visible={accountSwitcherVisible}
+        onClose={() => setAccountSwitcherVisible(false)}
         currentAccountId={currentUser?._id ? String(currentUser._id) : null}
         currentAccountName={profileName}
         currentAccountEmail={currentUser?.email}

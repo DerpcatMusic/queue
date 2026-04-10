@@ -55,19 +55,14 @@ export default function StudioComplianceScreen() {
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const shouldLoad = currentUser?.role === "studio";
-  const accessSnapshot = useQuery(
-    api.access.getMyStudioAccessSnapshot,
-    shouldLoad ? {} : "skip",
-  );
+  const accessSnapshot = useQuery(api.access.getMyStudioAccessSnapshot, shouldLoad ? {} : "skip");
   const compliance = accessSnapshot?.compliance;
   const diditVerification = accessSnapshot?.verification;
   const paymentsPreflight = useQuery(
     api.paymentsV2.getPaymentsPreflightV2,
     shouldLoad ? {} : "skip",
   );
-  const saveBillingProfile = useMutation(
-    api.complianceStudio.upsertMyStudioBillingProfile,
-  );
+  const saveBillingProfile = useMutation(api.complianceStudio.upsertMyStudioBillingProfile);
 
   const [refreshing, setRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -76,13 +71,8 @@ export default function StudioComplianceScreen() {
     message: string;
   } | null>(null);
 
-  const billingProfile = compliance?.billingProfile as
-    | BillingProfile
-    | null
-    | undefined;
-  const [legalEntityType, setLegalEntityType] = useState<
-    "individual" | "company"
-  >("individual");
+  const billingProfile = compliance?.billingProfile as BillingProfile | null | undefined;
+  const [legalEntityType, setLegalEntityType] = useState<"individual" | "company">("individual");
   const [vatReportingType, setVatReportingType] = useState<
     "osek_patur" | "osek_murshe" | "company" | "other" | null
   >(null);
@@ -99,9 +89,7 @@ export default function StudioComplianceScreen() {
       setLegalBusinessName(billingProfile.legalBusinessName ?? "");
       setTaxId(billingProfile.taxId ?? "");
       setBillingEmail(billingProfile.billingEmail ?? currentUser?.email ?? "");
-      setBillingPhone(
-        billingProfile.billingPhone ?? currentUser?.phoneE164 ?? "",
-      );
+      setBillingPhone(billingProfile.billingPhone ?? currentUser?.phoneE164 ?? "");
       setBillingAddress(billingProfile.billingAddress ?? "");
       return;
     }
@@ -170,19 +158,13 @@ export default function StudioComplianceScreen() {
   if (!currentUser.onboardingComplete || currentUser.role === "pending") {
     return <Redirect href="/onboarding" />;
   }
-  if (
-    currentUser.role !== "studio" ||
-    !compliance ||
-    !diditVerification ||
-    !paymentsPreflight
-  ) {
+  if (currentUser.role !== "studio" || !compliance || !diditVerification || !paymentsPreflight) {
     return <Redirect href="/" />;
   }
 
   const blockersSummary = getStudioBlockingSummary(compliance.summary.blockingReasons, t);
   const paymentStatus =
-    paymentsPreflight.readyForCheckout &&
-    compliance.summary.paymentStatus === "ready"
+    paymentsPreflight.readyForCheckout && compliance.summary.paymentStatus === "ready"
       ? "ready"
       : compliance.summary.paymentStatus;
   const paymentSubtitle = getStudioPaymentSubtitle(
@@ -200,15 +182,10 @@ export default function StudioComplianceScreen() {
       topSpacing={BrandSpacing.md}
       bottomSpacing={BrandSpacing.xxl}
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => void refreshAll()}
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={() => void refreshAll()} />
       }
     >
-      <Box
-        style={{ paddingHorizontal: BrandSpacing.inset, gap: BrandSpacing.xl }}
-      >
+      <Box style={{ paddingHorizontal: BrandSpacing.inset, gap: BrandSpacing.xl }}>
         {feedback ? (
           <NoticeBanner
             tone={feedback.tone}
@@ -223,11 +200,7 @@ export default function StudioComplianceScreen() {
               ? t("profile.studioCompliance.hero.readyTitle")
               : t("profile.studioCompliance.hero.blockedTitle")}
           </ThemedText>
-          <ThemedText
-            selectable
-            type="caption"
-            style={{ color: theme.color.textMuted }}
-          >
+          <ThemedText selectable type="caption" style={{ color: theme.color.textMuted }}>
             {compliance.summary.canPublishJobs
               ? t("profile.studioCompliance.hero.readyBody")
               : t("profile.studioCompliance.hero.blockedBody", {
@@ -239,9 +212,7 @@ export default function StudioComplianceScreen() {
         <Box>
           <ProfileSectionHeader
             label={t("profile.studioCompliance.sections.identity")}
-            description={t(
-              "profile.studioCompliance.sections.identityDescription",
-            )}
+            description={t("profile.studioCompliance.sections.identityDescription")}
             icon="person.text.rectangle.fill"
           />
           <ProfileSectionCard style={{ marginHorizontal: 0 }}>
@@ -278,9 +249,7 @@ export default function StudioComplianceScreen() {
         <Box>
           <ProfileSectionHeader
             label={t("profile.studioCompliance.sections.billing")}
-            description={t(
-              "profile.studioCompliance.sections.billingDescription",
-            )}
+            description={t("profile.studioCompliance.sections.billingDescription")}
             icon="doc.text.fill"
           />
           <ProfileSectionCard style={{ marginHorizontal: 0 }}>
@@ -297,18 +266,14 @@ export default function StudioComplianceScreen() {
                   selected={legalEntityType === "individual"}
                   onPress={() => setLegalEntityType("individual")}
                   backgroundColor={theme.color.surfaceElevated}
-                  selectedBackgroundColor="#CCFF00"
                   labelColor={theme.color.text}
-                  selectedLabelColor="#161E00"
                 />
                 <ChoicePill
                   label={t("profile.studioCompliance.billing.entityCompany")}
                   selected={legalEntityType === "company"}
                   onPress={() => setLegalEntityType("company")}
                   backgroundColor={theme.color.surfaceElevated}
-                  selectedBackgroundColor="#CCFF00"
                   labelColor={theme.color.text}
-                  selectedLabelColor="#161E00"
                 />
               </Box>
 
@@ -342,10 +307,7 @@ export default function StudioComplianceScreen() {
               />
 
               <Box style={{ gap: BrandSpacing.xs }}>
-                <ThemedText
-                  type="caption"
-                  style={{ color: theme.color.textMuted }}
-                >
+                <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
                   {t("profile.studioCompliance.billing.vatReportingType")}
                 </ThemedText>
                 <Box
@@ -355,20 +317,14 @@ export default function StudioComplianceScreen() {
                     gap: BrandSpacing.sm,
                   }}
                 >
-                  {(
-                    ["osek_patur", "osek_murshe", "company", "other"] as const
-                  ).map((value) => (
+                  {(["osek_patur", "osek_murshe", "company", "other"] as const).map((value) => (
                     <ChoicePill
                       key={value}
-                      label={t(
-                        `profile.studioCompliance.billing.vatOptions.${value}` as const,
-                      )}
+                      label={t(`profile.studioCompliance.billing.vatOptions.${value}` as const)}
                       selected={vatReportingType === value}
                       onPress={() => setVatReportingType(value)}
                       backgroundColor={theme.color.surfaceElevated}
-                      selectedBackgroundColor="#CCFF00"
                       labelColor={theme.color.text}
-                      selectedLabelColor="#161E00"
                     />
                   ))}
                 </Box>
@@ -390,9 +346,7 @@ export default function StudioComplianceScreen() {
         <Box>
           <ProfileSectionHeader
             label={t("profile.studioCompliance.sections.payment")}
-            description={t(
-              "profile.studioCompliance.sections.paymentDescription",
-            )}
+            description={t("profile.studioCompliance.sections.paymentDescription")}
             icon="creditcard.fill"
           />
           <ProfileSectionCard style={{ marginHorizontal: 0 }}>

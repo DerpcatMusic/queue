@@ -9,6 +9,17 @@ export function getStripeMarketDefaults() {
   return { country, currency };
 }
 
+export function getStripeConnectReturnUrls() {
+  return {
+    returnUrl:
+      trimEnv(process.env.STRIPE_CONNECT_RETURN_URL) ??
+      "https://curious-stingray-854.convex.site/stripe/connect-return",
+    refreshUrl:
+      trimEnv(process.env.STRIPE_CONNECT_REFRESH_URL) ??
+      "https://curious-stingray-854.convex.site/stripe/connect-refresh",
+  };
+}
+
 export function getStripeEnvPresence() {
   const required = {
     STRIPE_SECRET_KEY: Boolean(trimEnv(process.env.STRIPE_SECRET_KEY)),

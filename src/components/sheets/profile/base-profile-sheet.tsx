@@ -1,5 +1,5 @@
 /**
- * Base sheet wrapper with back arrow header.
+ * Base sheet wrapper with close button.
  * Used by all profile sub-page sheets.
  *
  * Uses BottomSheetModal (portal-based) so sheets render above all app content
@@ -11,26 +11,30 @@ import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from "@g
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
-import { useTheme } from "@/hooks/use-theme";
+import { useUnistyles } from "react-native-unistyles";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 
 interface BaseProfileSheetProps {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  headerContent?: React.ReactNode;
   snapPoints?: (string | number)[];
 }
+
+const DEFAULT_SNAP_POINTS: (string | number)[] = ["100%"];
 
 export function BaseProfileSheet({
   visible,
   onClose,
   children,
-  snapPoints = ["100%"] as (string | number)[],
+  headerContent,
+  snapPoints = DEFAULT_SNAP_POINTS,
 }: BaseProfileSheetProps) {
   const { t } = useTranslation();
-  const theme = useTheme();
+  const { theme } = useUnistyles();
   const ref = useRef<BottomSheetModal>(null);
 
   // Sync visible prop to imperative present/dismiss
@@ -63,25 +67,57 @@ export function BaseProfileSheet({
       enablePanDownToClose
       onDismiss={onClose}
       backdropComponent={renderBackdrop}
-      backgroundStyle={[styles.background, { backgroundColor: theme.color.surfaceElevated }]}
-      handleIndicatorStyle={[styles.handleIndicator, { backgroundColor: theme.color.borderStrong }]}
+      backgroundStyle={{
+        borderTopLeftRadius: BrandRadius.soft,
+        borderTopRightRadius: BrandRadius.soft,
+        borderCurve: "continuous",
+        backgroundColor: theme.color.surface,
+      }}
+      handleIndicatorStyle={{
+        width: 36,
+        height: 5,
+        borderRadius: 3,
+        backgroundColor: theme.color.borderStrong,
+      }}
       style={styles.sheet}
     >
-      {/* Header with back arrow */}
-      <View style={[styles.header, { borderBottomColor: theme.color.border }]}>
+      {/* Header with close button */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: BrandSpacing.inset,
+          paddingVertical: BrandSpacing.md,
+          minHeight: 52,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: theme.color.divider,
+        }}
+      >
         <IconButton
-          accessibilityLabel={t("common.back")}
+          accessibilityLabel={t("common.close")}
           onPress={onClose}
           tone="secondary"
           size={36}
-          icon={<IconSymbol name="chevron.left" size={18} color={theme.color.text} />}
+          icon={<IconSymbol name="xmark" size={18} color={theme.color.textMuted} />}
         />
         <View style={styles.titleSpacer} />
       </View>
 
+      {/* Fixed content above scroll (e.g., map) */}
+      {headerContent ? (
+        <View style={{ paddingHorizontal: BrandSpacing.lg, paddingTop: BrandSpacing.lg }}>
+          {headerContent}
+        </View>
+      ) : null}
+
       {/* Scrollable content */}
       <BottomSheetScrollView
-        contentContainerStyle={[styles.content, { backgroundColor: theme.color.appBg }]}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: BrandSpacing.lg,
+          paddingTop: headerContent ? BrandSpacing.md : BrandSpacing.lg,
+          paddingBottom: BrandSpacing.xxl * 2,
+        }}
         showsVerticalScrollIndicator={false}
       >
         {children}
@@ -94,34 +130,10 @@ const styles = StyleSheet.create({
   sheet: {
     marginHorizontal: 0,
   },
-  background: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderCurve: "continuous",
-  },
-  handleIndicator: {
-    width: 36,
-    height: 5,
-    borderRadius: 3,
-  },
   backdrop: {
-    backgroundColor: "#000",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: BrandSpacing.inset,
-    paddingVertical: BrandSpacing.md,
-    minHeight: 52,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    backgroundColor: "#000000",
   },
   titleSpacer: {
     flex: 1,
-  },
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: BrandSpacing.lg,
-    paddingTop: BrandSpacing.lg,
-    paddingBottom: BrandSpacing.xxl * 2,
   },
 });

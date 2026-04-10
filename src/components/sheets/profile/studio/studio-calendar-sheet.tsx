@@ -8,7 +8,6 @@ import appleCalendarIcon from "@/assets/images/calendar-apple-app-icon.jpg";
 import googleCalendarIcon from "@/assets/images/calendar-google-app-icon.jpg";
 import { LoadingScreen } from "@/components/loading-screen";
 import { CalendarConnectionRow } from "@/components/profile/calendar-connection-row";
-import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitList, KitListItem, KitSwitch } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -515,11 +514,7 @@ export function StudioCalendarSheet({ visible, onClose }: StudioCalendarSheetPro
                   }}
                 />
               }
-            >
-              <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
-                {t("profile.settings.calendar.futureNote")}
-              </ThemedText>
-            </KitListItem>
+            ></KitListItem>
           </KitList>
         ) : null}
 
@@ -540,7 +535,7 @@ export function StudioCalendarSheet({ visible, onClose }: StudioCalendarSheetPro
           </Box>
         ) : null}
 
-        {needsGoogleReconnect ? (
+        {needsGoogleReconnect || googleConfigError ? (
           <Box
             style={{
               paddingHorizontal: BrandSpacing.sm,
@@ -552,23 +547,8 @@ export function StudioCalendarSheet({ visible, onClose }: StudioCalendarSheetPro
             }}
           >
             <Text style={{ fontSize: 16, color: theme.color.warning }}>
-              {t("profile.settings.calendar.googleReconnectRequired")}
+              {googleConfigError ?? t("profile.settings.calendar.googleReconnectRequired")}
             </Text>
-          </Box>
-        ) : null}
-
-        {googleConfigError ? (
-          <Box
-            style={{
-              paddingHorizontal: BrandSpacing.sm,
-              paddingVertical: BrandSpacing.sm,
-              borderRadius: BrandRadius.buttonSubtle,
-              backgroundColor: theme.color.warningSubtle,
-              borderWidth: BorderWidth.thin,
-              borderColor: theme.color.warning,
-            }}
-          >
-            <Text style={{ fontSize: 16, color: theme.color.warning }}>{googleConfigError}</Text>
           </Box>
         ) : null}
 
