@@ -1,8 +1,8 @@
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import {
-  useEmbeddedPaymentElement,
   type EmbeddedPaymentElementConfiguration,
   type PaymentSheet,
+  useEmbeddedPaymentElement,
 } from "@stripe/stripe-react-native";
 import { useCallback, useMemo, useState } from "react";
 import { Platform } from "react-native";
@@ -41,10 +41,26 @@ export function StripeEmbeddedCheckoutSheet({
 
   const intentConfiguration = useMemo<PaymentSheet.IntentConfiguration>(
     () => ({
-      paymentIntentClientSecret: checkout.clientSecret,
+      mode: {
+        amount: checkout.amountAgorot,
+        currencyCode: checkout.currency,
+      },
+      confirmHandler: (_paymentMethod, _shouldSavePaymentMethod, intentCreationCallback) => {
+        intentCreationCallback({
+          clientSecret: checkout.clientSecret,
+        });
+      },
     }),
-    [checkout.clientSecret],
+    [checkout.amountAgorot, checkout.clientSecret, checkout.currency],
   );
+
+  const defaultBillingDetails = useMemo(() => {
+    return {
+      address: {
+        country: checkout.providerCountry,
+      },
+    };
+  }, [checkout.providerCountry]);
 
   const embeddedConfiguration = useMemo<EmbeddedPaymentElementConfiguration>(
     () => ({
@@ -79,16 +95,10 @@ export function StripeEmbeddedCheckoutSheet({
     ],
   );
 
-  const defaultBillingDetails = useMemo(() => {
-    return {
-      address: {
-        country: checkout.providerCountry,
-      },
-    };
-  }, [checkout.providerCountry]);
-
-  const { embeddedPaymentElementView, confirm, loadingError, isLoaded, paymentOption } =
-    useEmbeddedPaymentElement(intentConfiguration, embeddedConfiguration);
+  const { embeddedPaymentElementView, confirm, loadingError, isLoaded } = useEmbeddedPaymentElement(
+    intentConfiguration,
+    embeddedConfiguration,
+  );
 
   const handleConfirm = useCallback(async () => {
     try {
@@ -124,9 +134,6 @@ export function StripeEmbeddedCheckoutSheet({
     <BaseProfileSheet visible={visible} onClose={onClose}>
       <BottomSheetScrollView contentContainerStyle={{ gap: BrandSpacing.lg }}>
         <Box style={{ padding: BrandSpacing.inset, gap: BrandSpacing.md }}>
-          {paymentOption ? (
-            <NoticeBanner tone="success" message={paymentOption.label} />
-          ) : null}
           {feedback ? (
             <NoticeBanner
               tone={feedback.tone}

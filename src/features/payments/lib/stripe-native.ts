@@ -70,30 +70,11 @@ export async function presentStripeNativePaymentSheet(input: {
   const sdk = await loadStripeSdk();
   await ensureStripeNativeSdkInitialized();
 
-  const { error: initError } = await sdk.initPaymentSheet({
+  const initPaymentSheetParams: Parameters<typeof sdk.initPaymentSheet>[0] = {
     merchantDisplayName: input.merchantDisplayName ?? STRIPE_MERCHANT_DISPLAY_NAME,
     paymentIntentClientSecret: input.clientSecret,
     returnURL: STRIPE_RETURN_URL,
     allowsDelayedPaymentMethods: true,
-    ...(input.merchantCountryCode
-      ? {
-          applePay:
-            Platform.OS === "ios"
-              ? {
-                  merchantCountryCode: input.merchantCountryCode,
-                }
-              : undefined,
-          googlePay:
-            Platform.OS === "android" && input.currencyCode
-              ? {
-                  merchantCountryCode: input.merchantCountryCode,
-                  currencyCode: input.currencyCode,
-                  testEnv: __DEV__,
-                }
-              : undefined,
-        }
-      : {}),
-    ...(input.customerId ? { customerId: input.customerId } : {}),
     paymentMethodOrder: input.paymentMethodOrder ?? DEFAULT_PAYMENT_METHOD_ORDER,
     ...omitUndefined({
       defaultBillingDetails: input.billingEmail
@@ -102,7 +83,27 @@ export async function presentStripeNativePaymentSheet(input: {
           }
         : undefined,
     }),
-  });
+  };
+
+  if (input.merchantCountryCode && Platform.OS === "ios") {
+    initPaymentSheetParams.applePay = {
+      merchantCountryCode: input.merchantCountryCode,
+    };
+  }
+
+  if (input.merchantCountryCode && Platform.OS === "android" && input.currencyCode) {
+    initPaymentSheetParams.googlePay = {
+      merchantCountryCode: input.merchantCountryCode,
+      currencyCode: input.currencyCode,
+      testEnv: __DEV__,
+    };
+  }
+
+  if (input.customerId) {
+    initPaymentSheetParams.customerId = input.customerId;
+  }
+
+  const { error: initError } = await sdk.initPaymentSheet(initPaymentSheetParams);
 
   if (initError) {
     return {

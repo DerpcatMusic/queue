@@ -1,4 +1,3 @@
-import { PlatformPay, PlatformPayButton } from "@stripe/stripe-react-native";
 import type { TFunction } from "i18next";
 import { type ComponentProps, memo } from "react";
 import { Platform, Pressable, View } from "react-native";
@@ -20,6 +19,7 @@ import {
 } from "@/lib/jobs-utils";
 import type { PaymentStatus } from "@/lib/payments-utils";
 import { Text } from "@/primitives";
+import { StripePlatformPayButton } from "./stripe-platform-pay-button";
 import { appStatusDot, paymentDotColor } from "./studio-jobs-list.helpers";
 import type { StudioJob, StudioJobApplication } from "./studio-jobs-list.types";
 
@@ -538,17 +538,9 @@ export const StudioJobCard = memo(function StudioJobCard({
                   />
                   <View style={{ gap: BrandSpacing.sm }}>
                     {Platform.OS !== "web" ? (
-                      <PlatformPayButton
-                        onPress={() => onStartNativeWalletPayment(job.jobId)}
-                        type={PlatformPay.ButtonType.Buy}
-                        appearance={PlatformPay.ButtonStyle.Automatic}
-                        borderRadius={BrandRadius.medium}
-                        style={{
-                          height: 44,
-                          alignSelf: "stretch",
-                        }}
-                        accessibilityRole="button"
+                      <StripePlatformPayButton
                         accessibilityLabel={Platform.OS === "ios" ? "Apple Pay" : "Google Pay"}
+                        onPress={() => onStartNativeWalletPayment(job.jobId)}
                       />
                     ) : null}
                     <ActionButton

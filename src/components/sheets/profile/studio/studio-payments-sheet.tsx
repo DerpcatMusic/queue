@@ -6,14 +6,14 @@ import { useAction, useQuery } from "convex/react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, ScrollView, StyleSheet } from "react-native";
-import { CustomerSheet, PaymentSheet } from "@stripe/stripe-react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { LoadingScreen } from "@/components/loading-screen";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
-import { ThemedText } from "@/components/themed-text";
-import { KitList, KitListItem } from "@/components/ui/kit";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
+import { StripeCustomerSheet } from "@/components/sheets/profile/studio/stripe-customer-sheet";
+import { ThemedText } from "@/components/themed-text";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitList, KitListItem } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -98,7 +98,7 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
   ).length;
   const paidOutCount = rows.filter((row) => row.payout?.status === "paid").length;
   const isDetailLoading = selectedPaymentId !== null && selectedPaymentDetail === undefined;
-  const canOpenCustomerSheet = currentUser.role === "studio";
+  const canOpenCustomerSheet = currentUser.role === "studio" && Platform.OS !== "web";
 
   const customerSheetDefaultBillingDetails = currentUser.email
     ? {
@@ -130,21 +130,19 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
               <KitListItem
                 title={t("profile.payments.savedMethods")}
                 accessory={
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t("profile.payments.savedMethods")}
-                  onPress={() => {
-                    customerSheetSessionPromiseRef.current = null;
-                    setCustomerSheetFeedback(null);
-                    setCustomerSheetVisible(true);
-                  }}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t("profile.payments.savedMethods")}
+                    onPress={() => {
+                      customerSheetSessionPromiseRef.current = null;
+                      setCustomerSheetFeedback(null);
+                      setCustomerSheetVisible(true);
+                    }}
                     style={({ pressed }) => ({
                       opacity: pressed ? 0.7 : 1,
                     })}
                   >
-                    <ThemedText style={{ color: color.primary }}>
-                      {t("common.manage")}
-                    </ThemedText>
+                    <ThemedText style={{ color: color.primary }}>{t("common.manage")}</ThemedText>
                   </Pressable>
                 }
               />
@@ -183,7 +181,7 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
         />
 
         {canOpenCustomerSheet ? (
-          <CustomerSheet
+          <StripeCustomerSheet
             visible={customerSheetVisible}
             onResult={(result) => {
               setCustomerSheetVisible(false);
@@ -211,7 +209,10 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
               provideCustomerSessionClientSecret: async () => {
                 customerSheetSessionPromiseRef.current ??= createCustomerSheetSession();
                 const session = await customerSheetSessionPromiseRef.current;
-                return { customerId: session.customerId, clientSecret: session.customerSessionClientSecret };
+                return {
+                  customerId: session.customerId,
+                  clientSecret: session.customerSessionClientSecret,
+                };
               },
               provideSetupIntentClientSecret: async () => {
                 customerSheetSessionPromiseRef.current ??= createCustomerSheetSession();
@@ -221,13 +222,11 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
             }}
             defaultBillingDetails={customerSheetDefaultBillingDetails}
             billingDetailsCollectionConfiguration={{
-              name: PaymentSheet.CollectionMode.ALWAYS,
-              email: PaymentSheet.CollectionMode.AUTOMATIC,
-              address: PaymentSheet.AddressCollectionMode.AUTOMATIC,
+              name: "always",
+              email: "automatic",
+              address: "automatic",
               attachDefaultsToPaymentMethod: true,
             }}
-            applePayEnabled={Platform.OS === "ios"}
-            googlePayEnabled={Platform.OS === "android"}
             returnURL="queue://stripe-redirect"
           />
         ) : null}

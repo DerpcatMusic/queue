@@ -1,21 +1,22 @@
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useMutation, useQuery } from "convex/react";
-import { useRouter, type Href } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { RefreshControl } from "react-native";
 import { useTranslation } from "react-i18next";
-import { AddressSheet } from "@stripe/stripe-react-native";
+import { Platform, RefreshControl } from "react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { LoadingScreen } from "@/components/loading-screen";
 import {
-  IdentityStatusBadge,
   getIdentityStatusLabel,
+  IdentityStatusBadge,
 } from "@/components/profile/identity-status-ui";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
+import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
+import { StripeAddressSheet } from "@/components/sheets/profile/studio/stripe-address-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { ChoicePill } from "@/components/ui/choice-pill";
@@ -23,9 +24,8 @@ import { KitTextField } from "@/components/ui/kit";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import { getStudioPaymentSubtitle } from "@/features/compliance/compliance-ui";
-import { Box } from "@/primitives";
 import { useTheme } from "@/hooks/use-theme";
-import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
+import { Box } from "@/primitives";
 
 type BillingProfile = {
   legalEntityType: "individual" | "company";
@@ -344,6 +344,7 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
                   tone="secondary"
                   fullWidth
                   onPress={() => setBillingAddressSheetVisible(true)}
+                  disabled={Platform.OS === "web"}
                 />
 
                 <Box style={{ gap: BrandSpacing.xs }}>
@@ -404,7 +405,7 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
           </Box>
         </Box>
       </BottomSheetScrollView>
-      <AddressSheet
+      <StripeAddressSheet
         visible={billingAddressSheetVisible}
         sheetTitle={t("profile.studioCompliance.billing.billingAddress")}
         primaryButtonTitle={t("common.save")}

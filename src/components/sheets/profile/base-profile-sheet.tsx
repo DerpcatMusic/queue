@@ -8,8 +8,8 @@
  */
 
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, View } from "react-native";
 import { useUnistyles } from "react-native-unistyles";
 import { IconButton } from "@/components/ui/icon-button";

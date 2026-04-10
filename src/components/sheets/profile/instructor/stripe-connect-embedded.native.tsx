@@ -4,14 +4,13 @@ import {
   ConnectPayouts,
   loadConnectAndInitialize,
 } from "@stripe/stripe-react-native";
-import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal, Pressable, SafeAreaView, View } from "react-native";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth } from "@/lib/design-system";
-import { getStripePublishableKey, STRIPE_CONNECT_RETURN_URL } from "@/lib/stripe";
+import { getStripePublishableKey } from "@/lib/stripe";
 import { Box, HStack, Spacer, Text } from "@/primitives";
 
 type ConnectedAccountStatus =
@@ -38,17 +37,6 @@ export type StripeConnectEmbeddedModalProps = {
   createHostedAccountLink: () => Promise<{ onboardingUrl: string }>;
 };
 
-async function openHostedFallback(
-  createStripeAccountLink: () => Promise<{ onboardingUrl: string }>,
-) {
-  const session = await createStripeAccountLink();
-  const result = await WebBrowser.openAuthSessionAsync(
-    session.onboardingUrl,
-    STRIPE_CONNECT_RETURN_URL,
-  );
-  return result.type;
-}
-
 export function StripeConnectEmbeddedModal({
   visible,
   accountStatus,
@@ -57,39 +45,49 @@ export function StripeConnectEmbeddedModal({
   onCompleted,
   onFeedback,
   createEmbeddedSession,
-  createHostedAccountLink,
+  createHostedAccountLink: _createHostedAccountLink,
 }: StripeConnectEmbeddedModalProps) {
   const { i18n } = useTranslation();
   const theme = useTheme();
   const locale = i18n.resolvedLanguage ?? "en";
   const publishableKey = getStripePublishableKey();
 
-  const [browserFallbackInFlight, setBrowserFallbackInFlight] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchClientSecret = useCallback(async () => {
     const session = await createEmbeddedSession();
     return session.clientSecret;
   }, [createEmbeddedSession]);
 
+  const themeColors = theme.color;
   const appearance = useMemo(
     () => ({
       variables: {
-        colorPrimary: theme.color.primary,
-        colorBackground: theme.color.surfaceElevated,
-        colorText: theme.color.text,
-        colorSecondaryText: theme.color.textMuted,
-        colorDanger: theme.color.danger,
-        buttonPrimaryColorBackground: theme.color.primary,
-        buttonPrimaryColorBorder: theme.color.primary,
-        buttonPrimaryColorText: theme.color.onPrimary,
-        buttonSecondaryColorBackground: theme.color.surfaceAlt,
-        buttonSecondaryColorBorder: theme.color.border,
-        buttonSecondaryColorText: theme.color.text,
+        colorPrimary: themeColors.primary,
+        colorBackground: themeColors.surfaceElevated,
+        colorText: themeColors.text,
+        colorSecondaryText: themeColors.textMuted,
+        colorDanger: themeColors.danger,
+        buttonPrimaryColorBackground: themeColors.primary,
+        buttonPrimaryColorBorder: themeColors.primary,
+        buttonPrimaryColorText: themeColors.onPrimary,
+        buttonSecondaryColorBackground: themeColors.surfaceAlt,
+        buttonSecondaryColorBorder: themeColors.border,
+        buttonSecondaryColorText: themeColors.text,
         borderRadius: "18px",
         spacingUnit: "12px",
       },
     }),
-    [theme],
+    [
+      themeColors.border,
+      themeColors.danger,
+      themeColors.onPrimary,
+      themeColors.primary,
+      themeColors.surfaceAlt,
+      themeColors.surfaceElevated,
+      themeColors.text,
+      themeColors.textMuted,
+    ],
   );
 
   const connectInstance = useMemo(() => {
@@ -105,46 +103,58 @@ export function StripeConnectEmbeddedModal({
     });
   }, [appearance, fetchClientSecret, locale, publishableKey, visible]);
 
-  const openHostedFallbackSheet = useCallback(async () => {
-    if (browserFallbackInFlight) {
-      return;
-    }
-    setBrowserFallbackInFlight(true);
-    onFeedback(null);
-
-    try {
-      const result = await openHostedFallback(createHostedAccountLink);
-      if (result === "success") {
-        onFeedback({ tone: "success", message: "Stripe onboarding opened and completed." });
-        await onCompleted();
-      } else if (result === "cancel") {
-        onFeedback({ tone: "success", message: "Stripe onboarding was cancelled." });
-      } else {
-        onFeedback({ tone: "success", message: "Stripe onboarding was closed." });
-      }
-    } catch (error) {
-      onFeedback({
-        tone: "error",
-        message: error instanceof Error ? error.message : "Failed to open Stripe onboarding.",
-      });
-    } finally {
-      setBrowserFallbackInFlight(false);
-      onClose();
-    }
-  }, [browserFallbackInFlight, createHostedAccountLink, onClose, onCompleted, onFeedback]);
-
   useEffect(() => {
     if (!visible) {
       return;
     }
     if (publishableKey) {
+      setLoadError(null);
       return;
     }
-    void openHostedFallbackSheet();
-  }, [openHostedFallbackSheet, publishableKey, visible]);
+    setLoadError("Missing Stripe publishable key");
+    onFeedback({
+      tone: "error",
+      message: "Stripe onboarding is unavailable on this device.",
+    });
+  }, [onFeedback, publishableKey, visible]);
 
   if (!visible) {
     return null;
+  }
+
+  if (loadError) {
+    return (
+      <Modal visible animationType="slide" presentationStyle="fullScreen">
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.appBg }}>
+          <Box style={{ flex: 1, backgroundColor: theme.color.appBg, padding: BrandSpacing.lg }}>
+            <HStack align="center" justify="between" gap="md">
+              <Text variant="titleLarge">Verify identity</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close onboarding"
+                onPress={onClose}
+                style={({ pressed }) => ({
+                  minHeight: BrandSpacing.buttonMinHeightSm,
+                  paddingHorizontal: BrandSpacing.component,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: BrandRadius.pill,
+                  borderWidth: BorderWidth.thin,
+                  borderColor: theme.color.border,
+                  backgroundColor: pressed ? theme.color.surfaceElevated : theme.color.surfaceAlt,
+                })}
+              >
+                <Text variant="bodyStrong">Done</Text>
+              </Pressable>
+            </HStack>
+            <Spacer size="sm" />
+            <Text variant="caption" color="textMuted">
+              {loadError ?? "Stripe onboarding is unavailable on this device."}
+            </Text>
+          </Box>
+        </SafeAreaView>
+      </Modal>
+    );
   }
 
   if (!publishableKey || !connectInstance) {
@@ -167,11 +177,11 @@ export function StripeConnectEmbeddedModal({
             }
           }}
           onLoadError={({ error }) => {
+            setLoadError(error.message || error.type);
             onFeedback({
               tone: "error",
               message: error.message || error.type,
             });
-            void openHostedFallbackSheet();
           }}
         />
       </ConnectComponentsProvider>
@@ -219,11 +229,11 @@ export function StripeConnectEmbeddedModal({
             <ConnectComponentsProvider connectInstance={connectInstance}>
               <ConnectPayouts
                 onLoadError={({ error }) => {
+                  setLoadError(error.message || error.type);
                   onFeedback({
                     tone: "error",
                     message: error.message || error.type,
                   });
-                  void openHostedFallbackSheet();
                 }}
               />
             </ConnectComponentsProvider>
