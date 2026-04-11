@@ -1,5 +1,7 @@
 "use node";
 
+import StripeSDK from "stripe";
+
 const STRIPE_ACCOUNTS_V2_API_VERSION = "2026-02-25.preview";
 const STRIPE_API_BASE_URL = "https://api.stripe.com";
 
@@ -41,9 +43,7 @@ async function stripeV2Fetch<T>(input: StripeFetchOptions): Promise<T> {
   const data = (await response.json()) as T | { error?: { message?: string } };
   if (!response.ok) {
     const message =
-      typeof data === "object" && data && "error" in data
-        ? data.error?.message
-        : undefined;
+      typeof data === "object" && data && "error" in data ? data.error?.message : undefined;
     throw new Error(message || `Stripe API request failed: ${response.status}`);
   }
 
@@ -52,8 +52,14 @@ async function stripeV2Fetch<T>(input: StripeFetchOptions): Promise<T> {
 
 export type StripeAccountV2 = {
   id: string;
+  dashboard?: "express" | "full" | "none" | null;
   contact_email?: string | null;
   display_name?: string | null;
+  defaults?: {
+    responsibilities?: {
+      requirements_collector?: "application" | "stripe" | null;
+    } | null;
+  } | null;
   identity?: {
     business_details?: {
       registered_name?: string | null;
@@ -128,13 +134,19 @@ export function summarizeStripeRecipientAccountStatus(account: StripeAccountV2) 
     account.configuration?.merchant?.capabilities?.stripe_balance?.payouts?.status;
   const transferStatus =
     account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status;
-  const statuses = [merchantCardPaymentsStatus, merchantPayoutsStatus, transferStatus].filter(Boolean);
+  const statuses = [merchantCardPaymentsStatus, merchantPayoutsStatus, transferStatus].filter(
+    Boolean,
+  );
 
   if (statuses.includes("unsupported")) {
     return "unsupported" as const;
   }
   if (statuses.length > 0 && statuses.every((status) => status === "active")) {
     return "active" as const;
+  }
+  const requirements = summarizeStripeRecipientRequirements(account);
+  if (requirements.blockingCount > 0) {
+    return "restricted" as const;
   }
   if (statuses.includes("restricted")) {
     return "restricted" as const;
@@ -170,10 +182,11 @@ export async function createStripeRecipientAccountV2(input: {
   return await stripeV2Fetch<StripeAccountV2>({
     method: "POST",
     path: "/v2/core/accounts",
+    include: ["configuration.merchant", "configuration.recipient", "identity", "requirements"],
     body: {
       contact_email: input.email,
       display_name: input.displayName,
-      dashboard: "express",
+      dashboard: "none",
       identity: {
         country: input.country,
         entity_type: "individual",
@@ -199,12 +212,11 @@ export async function createStripeRecipientAccountV2(input: {
       defaults: {
         currency: input.defaultCurrency.toLowerCase(),
         responsibilities: {
-          fees_collector: "application",
+          fees_collector: "stripe",
           losses_collector: "application",
         },
         locales: ["en-US"],
       },
-      include: ["configuration.merchant", "configuration.recipient", "identity", "requirements"],
     },
   });
 }
@@ -284,38 +296,52 @@ export async function createStripeAccountSessionV2(input: {
   enablePayouts?: boolean;
 }) {
   const secretKey = requireStripeSecretKey();
-  const form = new URLSearchParams();
-  form.set("account", input.accountId);
-
-  if (input.enableOnboarding !== false) {
-    form.set("components[account_onboarding][enabled]", "true");
-  }
-  if (input.enablePayouts !== false) {
-    form.set("components[payouts][enabled]", "true");
-    form.set("components[payouts][features][standard_payouts]", "true");
-    form.set("components[payouts][features][edit_payout_schedule]", "true");
-    form.set("components[payouts][features][external_account_collection]", "true");
-  }
-
-  const response = await fetch(`${STRIPE_API_BASE_URL}/v1/account_sessions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secretKey}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Stripe-Version": "2025-05-28.preview",
+  const stripe = new StripeSDK(secretKey);
+  const account = await retrieveStripeAccountV2(input.accountId);
+  const disableStripeUserAuthentication =
+    account.dashboard === "none" &&
+    account.defaults?.responsibilities?.requirements_collector === "application";
+  const response = await stripe.accountSessions.create({
+    account: input.accountId,
+    components: {
+      ...(input.enableOnboarding !== false
+        ? {
+            account_onboarding: {
+              enabled: true,
+              ...(disableStripeUserAuthentication
+                ? {
+                    features: {
+                      disable_stripe_user_authentication: true,
+                    },
+                  }
+                : {}),
+            },
+          }
+        : {}),
+      ...(input.enablePayouts !== false
+        ? {
+            payouts: {
+              enabled: true,
+              features: {
+                ...(disableStripeUserAuthentication
+                  ? {
+                      disable_stripe_user_authentication: true,
+                    }
+                  : {}),
+                standard_payouts: true,
+                edit_payout_schedule: true,
+                external_account_collection: true,
+              },
+            },
+          }
+        : {}),
     },
-    body: form.toString(),
   });
-
-  const data = (await response.json()) as { client_secret?: string; error?: { message?: string } };
-  if (!response.ok) {
-    throw new Error(data.error?.message || `Stripe API request failed: ${response.status}`);
-  }
-  if (!data.client_secret) {
+  if (!response.client_secret) {
     throw new Error("Stripe account session did not return a client secret");
   }
 
   return {
-    clientSecret: data.client_secret,
+    clientSecret: response.client_secret,
   };
 }
