@@ -2,20 +2,28 @@
  * Instructor Payments Sheet.
  *
  * Two states:
- * - Not onboarded: Bottom sheet with status badge + onboarding CTA → opens full-screen Stripe onboarding
- * - Active: Full-screen Stripe dashboard modal with Earnings / Payouts tabs (no bottom sheet wrapper)
+ * - Not onboarded: Bottom sheet with status badge + onboarding CTA
+ * - Active: Expanding bottom sheet with native tab bar + Stripe embedded components
+ *   pre-warmed in the background for instant load.
  */
 
 import { useAction, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ConnectComponentsProvider,
+  ConnectPayments,
+  ConnectPayouts,
+  loadConnectAndInitialize,
+} from "@stripe/stripe-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Pressable } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { StripeConnectEmbeddedModal } from "@/components/sheets/profile/instructor/stripe-connect-embedded";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitSegmentedToggle } from "@/components/ui/kit";
 import { KitStatusBadge } from "@/components/ui/kit";
 import { SkeletonLine } from "@/components/ui/skeleton";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -23,6 +31,7 @@ import { api } from "@/convex/_generated/api";
 import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth } from "@/lib/design-system";
+import { getStripePublishableKey } from "@/lib/stripe";
 import { Box, VStack } from "@/primitives";
 import { Motion } from "@/theme/theme";
 
@@ -33,6 +42,8 @@ type ConnectedAccountStatus =
   | "restricted"
   | "rejected"
   | "disabled";
+
+type PaymentTab = "payments" | "payouts";
 
 const STATUS_TONE: Record<ConnectedAccountStatus, "neutral" | "warning" | "success" | "danger"> = {
   pending: "warning",
@@ -108,9 +119,11 @@ interface InstructorPaymentsSheetProps {
 }
 
 export function InstructorPaymentsSheet({ visible, onClose }: InstructorPaymentsSheetProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useTheme();
   const { color } = theme;
+  const locale = i18n.resolvedLanguage ?? "en";
+  const publishableKey = getStripePublishableKey();
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const isInstructor = currentUser?.role === "instructor";
@@ -134,10 +147,17 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
   const [connectError, setConnectError] = useState<string | null>(null);
   const [connectInfo, setConnectInfo] = useState<string | null>(null);
   const [onboardingVisible, setOnboardingVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<PaymentTab>("payments");
 
-  // Pre-fetched client secret — warmed when account is active so the
-  // dashboard modal opens instantly instead of waiting for a server round-trip.
+  // ─── Pre-warm everything ─────────────────────────────────────────────
+  //
+  // When the account is active, we pre-fetch the client secret AND
+  // pre-create the Stripe Connect instance AND pre-mount the webviews
+  // so everything is warm before the user opens the sheet.
+
   const prefetchedSecretRef = useRef<string | null>(null);
+  const connectInstanceRef = useRef<ReturnType<typeof loadConnectAndInitialize> | null>(null);
+  const [instanceReady, setInstanceReady] = useState(false);
 
   const accountStatus = (connectedAccount?.status ?? null) as ConnectedAccountStatus | null;
   const accountCopy = statusCopy(t, accountStatus, connectedAccount?.requirementsSummary ?? null);
@@ -147,15 +167,84 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
   const isLoading = !currentUser || (isInstructor && connectedAccount === undefined);
   const { animatedStyle } = useContentReveal(isLoading);
 
-  // Pre-fetch embedded session when account becomes active (before user opens sheet)
+  // Stripe appearance matching app theme exactly
+  const themeColors = color;
+  const appearance = useMemo(
+    () => ({
+      variables: {
+        colorPrimary: themeColors.primary,
+        colorBackground: themeColors.surface,
+        colorText: themeColors.text,
+        colorSecondaryText: themeColors.textMuted,
+        colorDanger: themeColors.danger,
+        buttonPrimaryColorBackground: themeColors.primary,
+        buttonPrimaryColorBorder: themeColors.primary,
+        buttonPrimaryColorText: themeColors.onPrimary,
+        buttonSecondaryColorBackground: themeColors.surfaceAlt,
+        buttonSecondaryColorBorder: themeColors.border,
+        buttonSecondaryColorText: themeColors.text,
+        borderRadius: "18px",
+        spacingUnit: "12px",
+      },
+    }),
+    [
+      themeColors.border,
+      themeColors.danger,
+      themeColors.onPrimary,
+      themeColors.primary,
+      themeColors.surface,
+      themeColors.surfaceAlt,
+      themeColors.text,
+      themeColors.textMuted,
+    ],
+  );
+
+  // Pre-fetch client secret as soon as account is active
   useEffect(() => {
     if (!isActive || prefetchedSecretRef.current) return;
     void createStripeEmbeddedSession({}).then((result) => {
       prefetchedSecretRef.current = result.clientSecret;
-    }).catch(() => {
-      // Pre-fetch is best-effort; the modal will create its own session if needed
-    });
+    }).catch(() => {});
   }, [isActive, createStripeEmbeddedSession]);
+
+  // Pre-create Stripe Connect instance as soon as we have a secret + key
+  useEffect(() => {
+    if (!isActive || !publishableKey || connectInstanceRef.current) return;
+    if (!prefetchedSecretRef.current) return;
+
+    const fetchClientSecret = async () => {
+      if (prefetchedSecretRef.current) {
+        return prefetchedSecretRef.current;
+      }
+      const session = await createStripeEmbeddedSession({});
+      prefetchedSecretRef.current = session.clientSecret;
+      return session.clientSecret;
+    };
+
+    connectInstanceRef.current = loadConnectAndInitialize({
+      publishableKey,
+      fetchClientSecret,
+      locale,
+      appearance,
+    });
+    setInstanceReady(true);
+  }, [isActive, publishableKey, appearance, locale, createStripeEmbeddedSession]);
+
+  const handleCreateStripeEmbeddedSession = useCallback(async () => {
+    const cached = prefetchedSecretRef.current;
+    if (cached) {
+      prefetchedSecretRef.current = null;
+      return { clientSecret: cached };
+    }
+    return createStripeEmbeddedSession({});
+  }, [createStripeEmbeddedSession]);
+
+  const handleCreateStripeHostedAccountLink = useCallback(
+    async () => createStripeHostedAccountLink({}),
+    [createStripeHostedAccountLink],
+  );
+
+  // ─── Effects ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!connectInfo) return;
@@ -219,21 +308,6 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
     setOnboardingVisible(false);
   }, [refreshStripeAccount, t]);
 
-  const handleCreateStripeEmbeddedSession = useCallback(async () => {
-    // Use pre-fetched secret if available, otherwise fetch fresh
-    const cached = prefetchedSecretRef.current;
-    if (cached) {
-      prefetchedSecretRef.current = null;
-      return { clientSecret: cached };
-    }
-    return createStripeEmbeddedSession({});
-  }, [createStripeEmbeddedSession]);
-
-  const handleCreateStripeHostedAccountLink = useCallback(
-    async () => createStripeHostedAccountLink({}),
-    [createStripeHostedAccountLink],
-  );
-
   // ─── Loading state ──────────────────────────────────────────────────
 
   if (isLoading) {
@@ -246,30 +320,63 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
     );
   }
 
-  // ─── Active: full-screen Stripe dashboard ────────────────────────────
-  //
-  // The dashboard modal is the primary UI for active accounts.
-  // We also render a thin bottom sheet so the sheet system stays in sync,
-  // but it immediately opens the full-screen modal on mount.
+  // ─── Active: expanding bottom sheet with pre-warmed Stripe ──────────
 
   if (isActive) {
+    const connectInstance = connectInstanceRef.current;
+
     return (
       <>
-        {/* Empty bottom sheet to keep sheet state valid — invisible behind the modal */}
-        <BaseProfileSheet visible={visible} onClose={onClose}>
-          <Box style={{ flex: 1, backgroundColor: color.appBg }} />
-        </BaseProfileSheet>
+        {/* Pre-mounted Stripe webviews — hidden until sheet opens.
+            These render off-screen so the webviews load their content
+            in the background. When the sheet opens, they're already warm. */}
+        {!visible && connectInstance && (
+          <View style={styles.prewarmContainer} pointerEvents="none">
+            <ConnectComponentsProvider connectInstance={connectInstance}>
+              <ConnectPayments />
+              <ConnectPayouts />
+            </ConnectComponentsProvider>
+          </View>
+        )}
 
-        <StripeConnectEmbeddedModal
+        <BaseProfileSheet
           visible={visible}
-          accountStatus={accountStatus}
-          mode="dashboard"
-          createEmbeddedSession={handleCreateStripeEmbeddedSession}
-          createHostedAccountLink={handleCreateStripeHostedAccountLink}
           onClose={onClose}
-          onCompleted={async () => { await refreshStripeAccount(); }}
-          onFeedback={handleConnectFeedback}
-        />
+          snapPoints={["50%", "95%"]}
+          headerContent={
+            <KitSegmentedToggle<PaymentTab>
+              value={activeTab}
+              onChange={setActiveTab}
+              options={[
+                { label: t("profile.payments.tabs.earnings"), value: "payments" },
+                { label: t("profile.payments.tabs.payouts"), value: "payouts" },
+              ]}
+            />
+          }
+        >
+          <View style={styles.stripeContainer}>
+            {connectInstance ? (
+              <ConnectComponentsProvider connectInstance={connectInstance}>
+                <View
+                  style={[styles.tabLayer, activeTab !== "payments" && styles.hiddenTab]}
+                  pointerEvents={activeTab === "payments" ? "auto" : "none"}
+                >
+                  <ConnectPayments />
+                </View>
+                <View
+                  style={[styles.tabLayer, activeTab !== "payouts" && styles.hiddenTab]}
+                  pointerEvents={activeTab === "payouts" ? "auto" : "none"}
+                >
+                  <ConnectPayouts />
+                </View>
+              </ConnectComponentsProvider>
+            ) : (
+              <Box style={{ padding: BrandSpacing.xl, alignItems: "center" }}>
+                <ThemedText style={{ color: color.textMuted }}>Loading...</ThemedText>
+              </Box>
+            )}
+          </View>
+        </BaseProfileSheet>
       </>
     );
   }
@@ -363,3 +470,27 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
     </BaseProfileSheet>
   );
 }
+
+const styles = StyleSheet.create({
+  // Off-screen pre-warm container — zero size, invisible, but webviews still mount + load
+  prewarmContainer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 0,
+    overflow: "hidden",
+    opacity: 0,
+  },
+  stripeContainer: {
+    flex: 1,
+    position: "relative",
+    marginHorizontal: -BrandSpacing.lg, // Fill edge-to-edge inside the ScrollView padding
+  },
+  tabLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  hiddenTab: {
+    opacity: 0,
+  },
+});

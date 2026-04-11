@@ -1,16 +1,12 @@
 import Constants from "expo-constants";
 import Mapbox from "@rnmapbox/maps";
-import {
-  forwardRef,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-} from "react";
+import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import { View } from "react-native";
 
 const mapboxPublicToken =
   (Constants.expoConfig?.extra?.mapboxPublicToken as string | undefined) ??
   (Constants.manifest2?.extra?.expoClient?.extra?.mapboxPublicToken as string | undefined) ??
+  (Constants.expoConfig?.extra?.EXPO_PUBLIC_MAPBOX_TOKEN as string | undefined) ??
   null;
 
 if (mapboxPublicToken) {
@@ -122,9 +118,7 @@ function normalizeStyleObject(
   style: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
   if (!style) return undefined;
-  return Object.fromEntries(
-    Object.entries(style).map(([key, value]) => [toCamelCase(key), value]),
-  );
+  return Object.fromEntries(Object.entries(style).map(([key, value]) => [toCamelCase(key), value]));
 }
 
 function toLayerStyle(
@@ -238,9 +232,9 @@ export const MapView = forwardRef<MapRef, MapViewProps>(function NativeMapView(
         : { styleURL: mapStyle }
       : mapStyle instanceof URL
         ? { styleURL: mapStyle.toString() }
-      : mapStyle
-        ? { styleJSON: JSON.stringify(mapStyle) }
-        : undefined;
+        : mapStyle
+          ? { styleJSON: JSON.stringify(mapStyle) }
+          : undefined;
 
   return (
     <Mapbox.MapView
@@ -345,9 +339,7 @@ export function VectorSource({
     <Mapbox.VectorSource
       id={id}
       {...(url ? { url } : {})}
-      {...(tiles || tileUrlTemplates
-        ? { tileUrlTemplates: tileUrlTemplates ?? tiles }
-        : {})}
+      {...(tiles || tileUrlTemplates ? { tileUrlTemplates: tileUrlTemplates ?? tiles } : {})}
       onPress={onPress as any}
       hitbox={{ width: 28, height: 28 }}
     >

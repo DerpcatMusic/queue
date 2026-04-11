@@ -5,15 +5,11 @@
  * Uses BottomSheetModal (portal-based) so sheets render above all app content
  * regardless of where GlobalSheets sits in the component tree.
  * Controlled via `visible` prop — synced to imperative present()/dismiss().
- *
- * Supports two modes:
- * - Multi-snap (default): drag up/down to resize, pan down to close
- * - Single-snap: fixed size, no drag-to-expand, pan down to close
  */
 
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import type { BottomSheetModal as BottomSheetModalRef } from "@gorhom/bottom-sheet";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, View } from "react-native";
 import { useUnistyles } from "react-native-unistyles";
@@ -28,26 +24,12 @@ interface BaseProfileSheetProps {
   headerContent?: React.ReactNode;
   /** Snap points array. Defaults to ["100%"] (full screen). */
   snapPoints?: (string | number)[];
-  /**
-   * When true, uses a single snap point with no drag-to-expand.
-   * The sheet opens to the only snap point and stays there — user can
-   * only pan down to close or drag within the same point.
-   * Useful for compact sheets like job cards.
-   */
-  singleSnapPoint?: boolean;
-  /** Haptic feedback on snap. Default true. */
-  enableHapticFeedback?: boolean;
+  /** When true, children render directly without ScrollView wrapper or padding.
+   *  Use for embedded webviews (e.g., Stripe) that need edge-to-edge layout. */
+  edgeToEdge?: boolean;
 }
 
 const DEFAULT_SNAP_POINTS: (string | number)[] = ["100%"];
-const SINGLE_SNAP_SPRING_CONFIG = {
-  damping: 85,
-  stiffness: 500,
-  mass: 1,
-  overshootClamping: true,
-  restDisplacementThreshold: 0.01,
-  restSpeedThreshold: 0.01,
-};
 
 export function BaseProfileSheet({
   visible,
@@ -55,19 +37,11 @@ export function BaseProfileSheet({
   children,
   headerContent,
   snapPoints = DEFAULT_SNAP_POINTS,
-  singleSnapPoint = false,
-  enableHapticFeedback = true,
 }: BaseProfileSheetProps) {
   const { t } = useTranslation();
   const { theme } = useUnistyles();
   const ref = useRef<BottomSheetModalRef>(null);
   const hasPresentedRef = useRef(false);
-
-  // Animation config for single-snap sheets — smoother, less bouncy
-  const animationConfig = useMemo(
-    () => (singleSnapPoint ? SINGLE_SNAP_SPRING_CONFIG : undefined),
-    [singleSnapPoint],
-  );
 
   useEffect(() => {
     if (!visible || hasPresentedRef.current) {
@@ -92,13 +66,13 @@ export function BaseProfileSheet({
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
-        appearsOnIndex={singleSnapPoint ? 0 : -1}
+        appearsOnIndex={0}
         style={[props.style, styles.backdrop]}
         opacity={0.4}
         pressBehavior="close"
       />
     ),
-    [singleSnapPoint],
+    [],
   );
 
   if (!visible) {
@@ -108,15 +82,11 @@ export function BaseProfileSheet({
   return (
     <BottomSheetModal
       ref={ref}
-      // For single snap point: index 0 is the only snap, so sheet stays fixed
-      // For multi-snap: index 0 = smallest, user can drag up
-      index={singleSnapPoint ? 0 : 0}
+      index={0}
       snapPoints={snapPoints}
       enablePanDownToClose={true}
-      enableHapticFeedback={enableHapticFeedback}
       onDismiss={handleDismiss}
       backdropComponent={renderBackdrop}
-      animationConfigs={animationConfig}
       backgroundStyle={{
         borderTopLeftRadius: BrandRadius.soft,
         borderTopRightRadius: BrandRadius.soft,

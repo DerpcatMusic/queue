@@ -105,12 +105,7 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
   };
 
   return (
-    <BaseProfileSheet
-      visible={visible}
-      onClose={onClose}
-      snapPoints={["70%"]}
-      singleSnapPoint={true}
-    >
+    <BaseProfileSheet visible={visible} onClose={onClose} snapPoints={["70%"]}>
       <BottomSheetScrollView contentContainerStyle={{ gap: BrandSpacing.lg }}>
         <Animated.View entering={FadeIn.duration(180)}>
           {/* ── Status Banner ── */}
