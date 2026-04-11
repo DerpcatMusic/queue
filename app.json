@@ -168,8 +168,7 @@
       "expo-web-browser"
     ],
     "extra": {
-      "supportsRTL": true,
-      "mapboxPublicToken": "MAPBOX_PUBLIC_TOKEN_REMOVED"
+      "supportsRTL": true
     },
     "experiments": {
       "typedRoutes": true,
