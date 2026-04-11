@@ -37,6 +37,7 @@ export function BaseProfileSheet({
   children,
   headerContent,
   snapPoints = DEFAULT_SNAP_POINTS,
+  edgeToEdge = false,
 }: BaseProfileSheetProps) {
   const { t } = useTranslation();
   const { theme } = useUnistyles();
@@ -130,18 +131,24 @@ export function BaseProfileSheet({
         </View>
       ) : null}
 
-      {/* Scrollable content */}
-      <BottomSheetScrollView
-        contentContainerStyle={{
-          flexGrow: 1,
-          paddingHorizontal: BrandSpacing.lg,
-          paddingTop: headerContent ? BrandSpacing.md : BrandSpacing.lg,
-          paddingBottom: BrandSpacing.xxl * 2,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        {children}
-      </BottomSheetScrollView>
+      {/* Scrollable content — or edge-to-edge for embedded webviews */}
+      {edgeToEdge ? (
+        <View style={{ flex: 1 }}>
+          {children}
+        </View>
+      ) : (
+        <BottomSheetScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: BrandSpacing.lg,
+            paddingTop: headerContent ? BrandSpacing.md : BrandSpacing.lg,
+            paddingBottom: BrandSpacing.xxl * 2,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          {children}
+        </BottomSheetScrollView>
+      )}
     </BottomSheetModal>
   );
 }
