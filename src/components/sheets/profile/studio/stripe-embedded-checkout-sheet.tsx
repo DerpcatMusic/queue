@@ -12,6 +12,7 @@ import { ActionButton } from "@/components/ui/action-button";
 import { BrandSpacing } from "@/constants/brand";
 import { STRIPE_MERCHANT_DISPLAY_NAME, STRIPE_RETURN_URL } from "@/lib/stripe";
 import { Box } from "@/primitives";
+import { getPaymentMethodOrder } from "@/features/payments/lib/get-payment-method-order";
 
 type StripeEmbeddedCheckoutDetails = {
   clientSecret: string;
@@ -69,7 +70,7 @@ export function StripeEmbeddedCheckoutSheet({
       returnURL: STRIPE_RETURN_URL,
       allowsDelayedPaymentMethods: true,
       defaultBillingDetails: defaultBillingDetails,
-      paymentMethodOrder: ["us_bank_account", "sepa_debit", "card"],
+      paymentMethodOrder: getPaymentMethodOrder(checkout.currency),
       ...(Platform.OS === "ios"
         ? {
             applePay: {
