@@ -155,6 +155,14 @@ registerStripeRoutes(http, components.stripe, {
         }
       }
     },
+    "payment_intent.processing": async (ctx, event: Stripe.PaymentIntentProcessingEvent) => {
+      const paymentIntent = event.data.object;
+      await ctx.runMutation(internal.paymentsV2.applyStripePaymentIntentWebhookV2, {
+        providerPaymentIntentId: paymentIntent.id,
+        status: "processing",
+        statusRaw: paymentIntent.status,
+      });
+    },
     "payment_intent.payment_failed": async (ctx, event: Stripe.PaymentIntentPaymentFailedEvent) => {
       const paymentIntent = event.data.object;
       const args: {
