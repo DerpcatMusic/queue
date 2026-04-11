@@ -229,6 +229,26 @@ export async function retrieveStripeAccountV2(accountId: string) {
   });
 }
 
+export async function updateStripeAccountV2(
+  accountId: string,
+  updates: {
+    feesCollector?: "stripe" | "application";
+  },
+) {
+  return await stripeV2Fetch<StripeAccountV2>({
+    method: "POST",
+    path: `/v2/core/accounts/${accountId}`,
+    include: ["configuration.merchant", "configuration.recipient", "identity", "requirements"],
+    body: {
+      defaults: {
+        responsibilities: {
+          ...(updates.feesCollector ? { fees_collector: updates.feesCollector } : {}),
+        },
+      },
+    },
+  });
+}
+
 export async function listStripeAccountPersonsV2(accountId: string) {
   return await stripeV2Fetch<{
     data?: StripeAccountPersonV2[] | null;
