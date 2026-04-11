@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { omitUndefined } from "@/lib/omit-undefined";
+import { getPaymentMethodOrder } from "./get-payment-method-order";
 import {
   getStripePublishableKey,
   STRIPE_MERCHANT_DISPLAY_NAME,
@@ -13,18 +14,6 @@ let sdkLoadPromise: Promise<StripeSdkModule> | null = null;
 let sdkInitialized = false;
 let initializedPublishableKey: string | null = null;
 
-const DEFAULT_PAYMENT_METHOD_ORDER = [
-  "us_bank_account",
-  "sepa_debit",
-  "bacs_debit",
-  "au_becs_debit",
-  "bancontact",
-  "ideal",
-  "eps",
-  "p24",
-  "fpx",
-  "card",
-];
 
 async function loadStripeSdk(): Promise<StripeSdkModule> {
   if (Platform.OS === "web") {
@@ -75,7 +64,7 @@ export async function presentStripeNativePaymentSheet(input: {
     paymentIntentClientSecret: input.clientSecret,
     returnURL: STRIPE_RETURN_URL,
     allowsDelayedPaymentMethods: true,
-    paymentMethodOrder: input.paymentMethodOrder ?? DEFAULT_PAYMENT_METHOD_ORDER,
+    paymentMethodOrder: input.paymentMethodOrder ?? getPaymentMethodOrder(input.currencyCode ?? "EUR"),
     ...omitUndefined({
       defaultBillingDetails: input.billingEmail
         ? {

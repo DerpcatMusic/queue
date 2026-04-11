@@ -41,3 +41,5 @@ export async function presentStripeNativePlatformPayPayment(_input?: {
     error: "Stripe native platform pay is not available on web",
   };
 }
+
+export { getPaymentMethodOrder } from "./get-payment-method-order";
