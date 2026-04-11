@@ -19,6 +19,8 @@ type QueueMapBoundaryIsraelProps = {
   boundarySource: Extract<BoundaryGeometrySource, { kind: "geojson" }>;
   boundaryIdProperty: string;
   boundaryLabelPropertyCandidates: string[];
+  /** Live map zoom level; not used by Israel renderer but accepted for interface consistency. */
+  currentZoom?: number | undefined;
   mapPalette: ReturnType<typeof getMapBrandPalette>;
   onPressBoundary: ((boundaryId: string) => void) | undefined;
 };
@@ -32,6 +34,7 @@ export const QueueMapBoundaryIsrael = memo(function QueueMapBoundaryIsrael({
   boundarySource,
   boundaryIdProperty,
   boundaryLabelPropertyCandidates,
+  currentZoom: _currentZoom,
   mapPalette,
   onPressBoundary,
 }: QueueMapBoundaryIsraelProps) {
@@ -56,7 +59,11 @@ export const QueueMapBoundaryIsrael = memo(function QueueMapBoundaryIsrael({
 
   if (showAllBoundaries) {
     return (
-      <GeoJSONSource id="queue-boundary-israel-edit-source" data={boundarySource.featureCollection} onPress={handlePress}>
+      <GeoJSONSource
+        id="queue-boundary-israel-edit-source"
+        data={boundarySource.featureCollection}
+        onPress={handlePress}
+      >
         <FillLayer
           id="queue-boundary-israel-edit-fill"
           paint={{
@@ -68,7 +75,19 @@ export const QueueMapBoundaryIsrael = memo(function QueueMapBoundaryIsrael({
           id="queue-boundary-israel-edit-outline"
           paint={{
             "line-color": mapPalette.selectedOutline,
-            "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.1, 7, 1.35, 10, 1.7, 14, 2.1] as any,
+            "line-width": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              4,
+              1.1,
+              7,
+              1.35,
+              10,
+              1.7,
+              14,
+              2.1,
+            ] as any,
             "line-opacity": 0.96,
           }}
           layout={{
@@ -116,7 +135,19 @@ export const QueueMapBoundaryIsrael = memo(function QueueMapBoundaryIsrael({
             layout={{
               "symbol-placement": "point",
               "text-field": textFieldExpression as any,
-              "text-size": ["interpolate", ["linear"], ["zoom"], 6, 10, 9.5, 11, 12, 13, 14, 14] as any,
+              "text-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                6,
+                10,
+                9.5,
+                11,
+                12,
+                13,
+                14,
+                14,
+              ] as any,
               "text-allow-overlap": true,
               "text-ignore-placement": true,
               "text-font": ["literal", ["Noto Sans Regular"]] as any,
@@ -179,4 +210,3 @@ export const QueueMapBoundaryIsrael = memo(function QueueMapBoundaryIsrael({
     </GeoJSONSource>
   );
 });
-

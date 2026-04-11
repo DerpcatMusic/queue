@@ -37,10 +37,12 @@ import type * as lib_boundaries from "../lib/boundaries.js";
 import type * as lib_calendarCrypto from "../lib/calendarCrypto.js";
 import type * as lib_calendarShared from "../lib/calendarShared.js";
 import type * as lib_domainValidation from "../lib/domainValidation.js";
+import type * as lib_geospatial from "../lib/geospatial.js";
 import type * as lib_instructorCompliance from "../lib/instructorCompliance.js";
 import type * as lib_instructorCoverage from "../lib/instructorCoverage.js";
 import type * as lib_instructorEligibility from "../lib/instructorEligibility.js";
 import type * as lib_internalAccess from "../lib/internalAccess.js";
+import type * as lib_locationRadius from "../lib/locationRadius.js";
 import type * as lib_marketplace from "../lib/marketplace.js";
 import type * as lib_notificationPreferences from "../lib/notificationPreferences.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
@@ -102,10 +104,12 @@ declare const fullApi: ApiFromModules<{
   "lib/calendarCrypto": typeof lib_calendarCrypto;
   "lib/calendarShared": typeof lib_calendarShared;
   "lib/domainValidation": typeof lib_domainValidation;
+  "lib/geospatial": typeof lib_geospatial;
   "lib/instructorCompliance": typeof lib_instructorCompliance;
   "lib/instructorCoverage": typeof lib_instructorCoverage;
   "lib/instructorEligibility": typeof lib_instructorEligibility;
   "lib/internalAccess": typeof lib_internalAccess;
+  "lib/locationRadius": typeof lib_locationRadius;
   "lib/marketplace": typeof lib_marketplace;
   "lib/notificationPreferences": typeof lib_notificationPreferences;
   "lib/rateLimit": typeof lib_rateLimit;
@@ -905,6 +909,151 @@ export declare const components: {
     };
     time: {
       getServerTime: FunctionReference<"mutation", "internal", {}, number>;
+    };
+  };
+  geospatial: {
+    document: {
+      get: FunctionReference<
+        "query",
+        "internal",
+        { key: string },
+        {
+          coordinates: { latitude: number; longitude: number };
+          filterKeys: Record<
+            string,
+            | string
+            | number
+            | boolean
+            | null
+            | bigint
+            | Array<string | number | boolean | null | bigint>
+          >;
+          key: string;
+          sortKey: number;
+        } | null
+      >;
+      insert: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          document: {
+            coordinates: { latitude: number; longitude: number };
+            filterKeys: Record<
+              string,
+              | string
+              | number
+              | boolean
+              | null
+              | bigint
+              | Array<string | number | boolean | null | bigint>
+            >;
+            key: string;
+            sortKey: number;
+          };
+          levelMod: number;
+          maxCells: number;
+          maxLevel: number;
+          minLevel: number;
+        },
+        null
+      >;
+      remove: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          key: string;
+          levelMod: number;
+          maxCells: number;
+          maxLevel: number;
+          minLevel: number;
+        },
+        boolean
+      >;
+    };
+    query: {
+      debugCells: FunctionReference<
+        "query",
+        "internal",
+        {
+          levelMod: number;
+          maxCells: number;
+          maxLevel: number;
+          minLevel: number;
+          rectangle: {
+            east: number;
+            north: number;
+            south: number;
+            west: number;
+          };
+        },
+        Array<{
+          token: string;
+          vertices: Array<{ latitude: number; longitude: number }>;
+        }>
+      >;
+      execute: FunctionReference<
+        "query",
+        "internal",
+        {
+          cursor?: string;
+          levelMod: number;
+          logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
+          maxCells: number;
+          maxLevel: number;
+          minLevel: number;
+          query: {
+            filtering: Array<{
+              filterKey: string;
+              filterValue: string | number | boolean | null | bigint;
+              occur: "should" | "must";
+            }>;
+            maxResults: number;
+            rectangle: {
+              east: number;
+              north: number;
+              south: number;
+              west: number;
+            };
+            sorting: {
+              interval: { endExclusive?: number; startInclusive?: number };
+            };
+          };
+        },
+        {
+          nextCursor?: string;
+          results: Array<{
+            coordinates: { latitude: number; longitude: number };
+            key: string;
+          }>;
+        }
+      >;
+      nearestPoints: FunctionReference<
+        "query",
+        "internal",
+        {
+          filtering: Array<{
+            filterKey: string;
+            filterValue: string | number | boolean | null | bigint;
+            occur: "should" | "must";
+          }>;
+          levelMod: number;
+          logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
+          maxDistance?: number;
+          maxLevel: number;
+          maxResults: number;
+          minLevel: number;
+          nextCursor?: string;
+          point: { latitude: number; longitude: number };
+          sorting: {
+            interval: { endExclusive?: number; startInclusive?: number };
+          };
+        },
+        Array<{
+          coordinates: { latitude: number; longitude: number };
+          distance: number;
+          key: string;
+        }>
+      >;
     };
   };
   stripe: {

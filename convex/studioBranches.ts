@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { type Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { syncStudioBranchGeospatialLocation } from "./lib/geospatial";
 import { normalizeZoneId } from "./lib/domainValidation";
 import { resolveBoundaryAssignment } from "./lib/boundaries";
 import {
@@ -263,6 +264,7 @@ export const createStudioBranch = mutation({
         autoAcceptDefault: normalized.autoAcceptDefault,
       }),
     });
+    await syncStudioBranchGeospatialLocation(ctx, branch);
     return { branchId: branch._id };
   },
 });
@@ -307,6 +309,7 @@ export const updateStudioBranch = mutation({
     if (updatedBranch.isPrimary) {
       await syncStudioProfileFromBranch(ctx, studio._id, updatedBranch, now);
     }
+    await syncStudioBranchGeospatialLocation(ctx, updatedBranch);
     return { ok: true, branchId: branch._id };
   },
 });
@@ -386,6 +389,11 @@ export const archiveStudioBranch = mutation({
       status: "archived",
       updatedAt: now,
     });
+    await syncStudioBranchGeospatialLocation(ctx, {
+      ...branch,
+      status: "archived",
+      updatedAt: now,
+    });
     return { ok: true, branchId: branch._id };
   },
 });
@@ -425,6 +433,7 @@ export const setPrimaryStudioBranch = mutation({
       throw new ConvexError("Studio branch not found");
     }
     await syncStudioProfileFromBranch(ctx, studio._id, updatedBranch, now);
+    await syncStudioBranchGeospatialLocation(ctx, updatedBranch);
     return { ok: true, branchId: branch._id };
   },
 });

@@ -250,7 +250,6 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
 
   // Zone state
   const [detectedZone, setDetectedZone] = useState<string | null>(null);
-  const [detectedZoneLabel, setDetectedZoneLabel] = useState<string | null>(null);
   const [, setIncludeDetectedZone] = useState(false);
 
   // UI state
@@ -274,23 +273,8 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
     }
   }, [instructorSettings]);
 
-  // Zone label resolution
-  useEffect(() => {
-    if (!detectedZone) {
-      setDetectedZoneLabel(null);
-      return;
-    }
-    const language = (t("common.language") === "he" ? "he" : "en") as "en" | "he";
-    import("@/constants/zones").then((module) => {
-      const zone = module.ZONE_OPTIONS.find((z) => z.id === detectedZone);
-      const label = zone ? (zone.label as Record<"en" | "he", string>)[language] : null;
-      setDetectedZoneLabel(label ?? null);
-    });
-  }, [detectedZone, t]);
-
   const clearDetectedZone = useCallback(() => {
     setDetectedZone(null);
-    setDetectedZoneLabel(null);
     setIncludeDetectedZone(false);
   }, []);
 
@@ -432,14 +416,11 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
   }
 
   const hasDetectedZone = Boolean(detectedZone);
+  const workRadiusKm = instructorSettings.workRadiusKm ?? 15;
 
   const showStructuredSummary =
     !manualMode &&
     (hasContent(city) || hasContent(street) || hasContent(streetNumber) || hasContent(postalCode));
-
-  const zoneDisplayValue = detectedZone
-    ? (detectedZoneLabel ?? detectedZone)
-    : t("profile.settings.location.zoneNotDetected");
 
   const mapPin: QueueMapPin | null =
     latitude !== undefined && longitude !== undefined ? { latitude, longitude } : null;
@@ -584,9 +565,9 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
           )}
         </View>
 
-        {/* ── Zone Section ── */}
+        {/* ── Radius Section ── */}
         <View style={{ gap: BrandSpacing.md }}>
-          <ProfileSectionHeader label={t("profile.location.zoneTitle")} tone="account" />
+          <ProfileSectionHeader label={t("profile.location.workRadiusTitle")} tone="account" />
 
           <View
             style={{
@@ -601,16 +582,23 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.color.text }}>{t("profile.location.zoneLabel")}</Text>
-              <Text style={{ color: theme.color.textMuted, fontSize: 12 }}>{zoneDisplayValue}</Text>
+              <Text style={{ color: theme.color.text }}>{t("profile.location.workRadiusTitle")}</Text>
+              <Text style={{ color: theme.color.textMuted, fontSize: 12 }}>
+                {t("profile.location.workRadiusDescription")}
+              </Text>
             </View>
-            {hasDetectedZone && (
-              <IconSymbol
-                name="checkmark.circle.fill"
-                size={20}
-                color={theme.color.success as string}
-              />
-            )}
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={{ color: theme.color.text, fontSize: 18, fontWeight: "600" }}>
+                {workRadiusKm} km
+              </Text>
+              {hasDetectedZone && (
+                <IconSymbol
+                  name="checkmark.circle.fill"
+                  size={20}
+                  color={theme.color.success as string}
+                />
+              )}
+            </View>
           </View>
         </View>
 

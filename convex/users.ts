@@ -10,6 +10,10 @@ import {
 } from "./lib/auth";
 import { resolveBoundaryAssignment } from "./lib/boundaries";
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
+import {
+  findNearbyStudioBranchIdsForInstructor,
+  syncInstructorGeospatialCoverage,
+} from "./lib/geospatial";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
 import { loadInstructorEligibility } from "./lib/instructorEligibility";
 import { resolveInternalAccessForUser } from "./lib/internalAccess";
@@ -36,6 +40,7 @@ import {
   omitUndefined,
   trimOptionalString,
 } from "./lib/validation";
+import { DEFAULT_WORK_RADIUS_KM, normalizeWorkRadiusKm } from "./lib/locationRadius";
 
 const MAX_SPORTS = 12;
 const MAX_ZONES = 25;
@@ -531,6 +536,7 @@ export const getMyInstructorSettings = query({
       addressPostalCode: v.optional(v.string()),
       latitude: v.optional(v.number()),
       longitude: v.optional(v.number()),
+      workRadiusKm: v.optional(v.number()),
       calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
       calendarSyncEnabled: v.boolean(),
       calendarConnectedAt: v.optional(v.number()),
@@ -579,6 +585,7 @@ export const getMyInstructorSettings = query({
       }),
       calendarProvider: profile.calendarProvider ?? "none",
       calendarSyncEnabled: profile.calendarSyncEnabled ?? false,
+      workRadiusKm: profile.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM,
       ...omitUndefined({ calendarConnectedAt: profile.calendarConnectedAt }),
     };
   },
@@ -599,6 +606,7 @@ export const updateMyInstructorSettings = mutation({
     addressPostalCode: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    workRadiusKm: v.optional(v.number()),
     includeDetectedZone: v.optional(v.boolean()),
     detectedZone: v.optional(v.string()),
     calendarProvider: v.union(v.literal("none"), v.literal("google"), v.literal("apple")),
@@ -650,6 +658,7 @@ export const updateMyInstructorSettings = mutation({
       20,
       "AddressPostalCode",
     );
+    const workRadiusKm = normalizeWorkRadiusKm(args.workRadiusKm ?? profile.workRadiusKm);
     const { latitude, longitude } = normalizeCoordinates(
       omitUndefined({
         latitude: args.latitude,
@@ -724,6 +733,7 @@ export const updateMyInstructorSettings = mutation({
         addressPostalCode,
         latitude,
         longitude,
+        workRadiusKm,
       }),
       calendarProvider,
       calendarSyncEnabled,
@@ -732,6 +742,7 @@ export const updateMyInstructorSettings = mutation({
     });
 
     await rebuildInstructorCoverage(ctx, profile._id);
+    await syncInstructorGeospatialCoverage(ctx, profile._id);
 
     return {
       ok: true,
@@ -843,6 +854,7 @@ export const updateMyInstructorProfileCard = mutation({
     });
 
     await rebuildInstructorCoverage(ctx, profile._id);
+    await syncInstructorGeospatialCoverage(ctx, profile._id);
 
     return {
       ok: true,
@@ -1007,7 +1019,9 @@ export const getMyStudioSettings = query({
 });
 
 export const getInstructorMapStudios = query({
-  args: {},
+  args: {
+    workRadiusKm: v.optional(v.number()),
+  },
   returns: v.array(
     v.object({
       studioId: v.id("studioProfiles"),
@@ -1020,7 +1034,7 @@ export const getInstructorMapStudios = query({
       mapMarkerColor: v.optional(v.string()),
     }),
   ),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const user = await getCurrentUserDoc(ctx);
     if (!user || !user.isActive || user.role !== "instructor") {
       return [];
@@ -1029,6 +1043,66 @@ export const getInstructorMapStudios = query({
     const instructor = await requireInstructorProfileByUserId(ctx, user._id);
     if (!instructor) {
       return [];
+    }
+
+    const hasGeospatialLocation =
+      Number.isFinite(instructor.latitude) &&
+      Number.isFinite(instructor.longitude) &&
+      Number.isFinite(instructor.workRadiusKm);
+
+    if (hasGeospatialLocation) {
+      const nearbyBranches = await findNearbyStudioBranchIdsForInstructor(ctx, {
+        instructorLatitude: instructor.latitude!,
+        instructorLongitude: instructor.longitude!,
+        workRadiusKm: args.workRadiusKm ?? instructor.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM,
+        limit: 1000,
+      });
+      if (nearbyBranches.length > 0) {
+        const uniqueBranchIds = [...new Set(nearbyBranches.map((row) => row.branchId))];
+        const branchRecords = await Promise.all(
+          uniqueBranchIds.map((branchId) => ctx.db.get("studioBranches", branchId)),
+        );
+        const branchByStudioId = new Map<string, Doc<"studioBranches">>();
+        for (const branch of branchRecords) {
+          if (!branch || branch.latitude === undefined || branch.longitude === undefined) {
+            continue;
+          }
+          const existing = branchByStudioId.get(String(branch.studioId));
+          if (!existing) {
+            branchByStudioId.set(String(branch.studioId), branch);
+          }
+        }
+
+        const studioIds = [...branchByStudioId.keys()];
+        const studios = await Promise.all(
+          studioIds.map((studioId) => ctx.db.get("studioProfiles", studioId as Doc<"studioProfiles">["_id"])),
+        );
+        const logoUrls = await Promise.all(
+          studios.map((studio) =>
+            studio?.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
+          ),
+        );
+
+        return studios
+          .map((studio, index) => {
+            if (!studio) return null;
+            const branch = branchByStudioId.get(String(studio._id));
+            if (!branch) return null;
+            return {
+              studioId: studio._id,
+              studioName: studio.studioName,
+              zone: branch.zone,
+              latitude: branch.latitude!,
+              longitude: branch.longitude!,
+              ...omitUndefined({
+                address: branch.address,
+                logoImageUrl: logoUrls[index] ?? undefined,
+                mapMarkerColor: studio.mapMarkerColor,
+              }),
+            };
+          })
+          .filter((studio): studio is NonNullable<typeof studio> => Boolean(studio));
+      }
     }
 
     const eligibility = await loadInstructorEligibility(ctx, instructor._id);

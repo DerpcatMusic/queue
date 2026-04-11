@@ -1,5 +1,8 @@
 import type { FeatureCollection } from "geojson";
-import type { BoundaryGeometrySource, BoundaryViewportTarget } from "@/features/maps/boundaries/types";
+import type {
+  BoundaryGeometrySource,
+  BoundaryViewportTarget,
+} from "@/features/maps/boundaries/types";
 
 export type QueueMapPin = {
   latitude: number;
@@ -50,6 +53,8 @@ export type QueueMapProps = {
   focusBoundaryBounds?: QueueMapBounds | null;
   initialBoundaryViewport?: BoundaryViewportTarget | null;
   visibleBounds?: QueueMapBounds | null;
+  /** Current map zoom level, updated on each map idle event. */
+  currentZoom?: number;
   onPressZone?: (zoneId: string) => void;
   onPressBoundary?: (boundaryId: string) => void;
   onPressMap?: (pin: QueueMapPin) => void;
@@ -64,4 +69,5 @@ export type QueueMapProps = {
     bottom: number;
     left: number;
   };
+  radiusKm?: number;
 };

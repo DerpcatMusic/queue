@@ -18,30 +18,28 @@ import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-rean
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppSafeRoot } from "@/components/layout/app-safe-root";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
+import { CalendarLessonDetailSheet } from "@/components/sheets/calendar/calendar-lesson-detail-sheet";
+import { InstructorAddAccountSheet } from "@/components/sheets/profile/instructor/instructor-add-account-sheet";
+import { InstructorCalendarSheet } from "@/components/sheets/profile/instructor/instructor-calendar-sheet";
+import { InstructorComplianceSheet } from "@/components/sheets/profile/instructor/instructor-compliance-sheet";
+import { InstructorEditSheet } from "@/components/sheets/profile/instructor/instructor-edit-sheet";
+import { InstructorLocationSheet } from "@/components/sheets/profile/instructor/instructor-location-sheet";
+import { InstructorNotificationsSheet } from "@/components/sheets/profile/instructor/instructor-notifications-sheet";
+// Sheet components - mounted at root level above all tabs
+import { InstructorPaymentsSheet } from "@/components/sheets/profile/instructor/instructor-payments-sheet";
+import { InstructorSportsSheet } from "@/components/sheets/profile/instructor/instructor-sports-sheet";
+import { StudioAddAccountSheet } from "@/components/sheets/profile/studio/studio-add-account-sheet";
+import { StudioBranchesSheet } from "@/components/sheets/profile/studio/studio-branches-sheet";
+import { StudioCalendarSheet } from "@/components/sheets/profile/studio/studio-calendar-sheet";
+import { StudioComplianceSheet } from "@/components/sheets/profile/studio/studio-compliance-sheet";
+import { StudioEditSheet } from "@/components/sheets/profile/studio/studio-edit-sheet";
+import { StudioNotificationsSheet } from "@/components/sheets/profile/studio/studio-notifications-sheet";
+import { StudioPaymentsSheet } from "@/components/sheets/profile/studio/studio-payments-sheet";
+import { StudioPublicProfileSheet } from "@/components/sheets/profile/studio/studio-public-profile-sheet";
 import { AuthSessionControllerProvider } from "@/contexts/auth-session-context";
 import { SheetProvider, useSheetContext } from "@/contexts/sheet-context";
 import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
 import { UserProvider } from "@/contexts/user-context";
-
-// Sheet components - mounted at root level above all tabs
-import { InstructorPaymentsSheet } from "@/components/sheets/profile/instructor/instructor-payments-sheet";
-import { InstructorSportsSheet } from "@/components/sheets/profile/instructor/instructor-sports-sheet";
-import { InstructorLocationSheet } from "@/components/sheets/profile/instructor/instructor-location-sheet";
-import { InstructorComplianceSheet } from "@/components/sheets/profile/instructor/instructor-compliance-sheet";
-import { InstructorCalendarSheet } from "@/components/sheets/profile/instructor/instructor-calendar-sheet";
-import { InstructorEditSheet } from "@/components/sheets/profile/instructor/instructor-edit-sheet";
-import { InstructorNotificationsSheet } from "@/components/sheets/profile/instructor/instructor-notifications-sheet";
-import { InstructorAddAccountSheet } from "@/components/sheets/profile/instructor/instructor-add-account-sheet";
-import { InstructorIdentityVerificationSheet } from "@/components/sheets/profile/instructor/instructor-identity-verification-sheet";
-
-import { StudioPaymentsSheet } from "@/components/sheets/profile/studio/studio-payments-sheet";
-import { StudioComplianceSheet } from "@/components/sheets/profile/studio/studio-compliance-sheet";
-import { StudioBranchesSheet } from "@/components/sheets/profile/studio/studio-branches-sheet";
-import { StudioCalendarSheet } from "@/components/sheets/profile/studio/studio-calendar-sheet";
-import { StudioEditSheet } from "@/components/sheets/profile/studio/studio-edit-sheet";
-import { StudioNotificationsSheet } from "@/components/sheets/profile/studio/studio-notifications-sheet";
-import { StudioAddAccountSheet } from "@/components/sheets/profile/studio/studio-add-account-sheet";
-import { CalendarLessonDetailSheet } from "@/components/sheets/calendar/calendar-lesson-detail-sheet";
 import { ThemePreferenceProvider, useThemePreference } from "@/hooks/use-theme-preference";
 import i18n from "@/i18n";
 import { getConvexClient, isConvexUrlConfigured } from "@/lib/convex";
@@ -87,7 +85,7 @@ export default function RootLayout() {
 }
 
 function RootLayoutContent() {
-  const { topInsetBackgroundColor, topInsetTone } = useSystemUi();
+  const { topInsetBackgroundColor, topInsetTone, topInsetVisible } = useSystemUi();
   const { resolvedScheme } = useThemePreference();
   const convex = getConvexClient();
   const [authSessionVersion, setAuthSessionVersion] = useState(0);
@@ -270,6 +268,7 @@ function RootLayoutContent() {
                     <AppSafeRoot
                       topInsetBackgroundColor={statusInsetColor}
                       rootBackgroundColor={navColors.background}
+                      topInsetVisible={topInsetVisible}
                     >
                       <View style={{ flex: 1 }}>
                         <Stack
@@ -321,6 +320,8 @@ function GlobalSheets() {
     calendarLessonJobId,
     calendarLessonRole,
     closeCalendarLesson,
+    studioPublicProfileSlug,
+    closeStudioPublicProfile,
   } = useSheetContext();
 
   return (
@@ -358,10 +359,6 @@ function GlobalSheets() {
         visible={instructorActiveSheet === "add-account"}
         onClose={closeInstructorSheet}
       />
-      <InstructorIdentityVerificationSheet
-        visible={instructorActiveSheet === "identity-verification"}
-        onClose={closeInstructorSheet}
-      />
       {/* Studio sheets */}
       <StudioPaymentsSheet visible={studioActiveSheet === "payments"} onClose={closeStudioSheet} />
       <StudioComplianceSheet
@@ -389,6 +386,13 @@ function GlobalSheets() {
         jobId={calendarLessonJobId}
         role={calendarLessonRole}
         onClose={closeCalendarLesson}
+      />
+
+      {/* Studio public profile sheet */}
+      <StudioPublicProfileSheet
+        visible={studioPublicProfileSlug !== null}
+        slug={studioPublicProfileSlug}
+        onClose={closeStudioPublicProfile}
       />
     </>
   );

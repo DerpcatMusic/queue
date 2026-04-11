@@ -1,12 +1,14 @@
 import { describe, expect, it } from "bun:test";
 
-import { SELECTABLE_BOUNDARY_OPTIONS } from "@/features/maps/boundaries/catalog";
+import { buildIsraelBoundaries } from "@/features/maps/boundaries/catalog";
 
 import { buildZoneCityGroups, buildZoneCityListItems } from "./zone-city-tree";
 
 describe("zone city tree", () => {
   it("groups zone variants under the same city", () => {
-    const groups = buildZoneCityGroups(SELECTABLE_BOUNDARY_OPTIONS);
+    // Explicitly build Israel boundaries for this test
+    const israelBoundaries = buildIsraelBoundaries();
+    const groups = buildZoneCityGroups(israelBoundaries);
     const rishonGroup = groups.find((group) => group.cityLabel.en === "Rishon LeZion");
 
     expect(rishonGroup).toBeDefined();
@@ -18,7 +20,9 @@ describe("zone city tree", () => {
   });
 
   it("expands matching city groups into city and child rows", () => {
-    const groups = buildZoneCityGroups(SELECTABLE_BOUNDARY_OPTIONS);
+    // Explicitly build Israel boundaries for this test
+    const israelBoundaries = buildIsraelBoundaries();
+    const groups = buildZoneCityGroups(israelBoundaries);
     const rishonGroup = groups.find((group) => group.cityLabel.en === "Rishon LeZion");
 
     expect(rishonGroup).toBeDefined();

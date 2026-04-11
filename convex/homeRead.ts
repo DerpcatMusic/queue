@@ -2,6 +2,7 @@ import { ConvexError } from "convex/values";
 
 import type { Doc } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
+import { findNearbyStudioBranchIdsForInstructor } from "./lib/geospatial";
 import { requireUserRole } from "./lib/auth";
 import { isKnownZoneId } from "./lib/domainValidation";
 import {
@@ -11,6 +12,7 @@ import {
   loadInstructorEligibility,
 } from "./lib/instructorEligibility";
 import { resolveInternalAccessForUserId } from "./lib/internalAccess";
+import { DEFAULT_WORK_RADIUS_KM } from "./lib/locationRadius";
 import { omitUndefined, trimOptionalString } from "./lib/validation";
 
 const HOME_MATCH_COUNT_CAP = 99;
@@ -215,7 +217,41 @@ export async function getMyInstructorHomeStatsRead(ctx: QueryCtx) {
   ]);
   let openMatches = 0;
 
-  if (eligibility.coverageCount > 0) {
+  const hasGeospatialLocation =
+    Number.isFinite(instructorProfile.latitude) &&
+    Number.isFinite(instructorProfile.longitude) &&
+    Number.isFinite(instructorProfile.workRadiusKm);
+
+  if (hasGeospatialLocation && eligibility.sports.size > 0) {
+    const nearbyBranches = await findNearbyStudioBranchIdsForInstructor(ctx, {
+      instructorLatitude: instructorProfile.latitude!,
+      instructorLongitude: instructorProfile.longitude!,
+      workRadiusKm: instructorProfile.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM,
+      limit: HOME_MATCH_COUNT_CAP,
+    });
+    const jobsByBranch = await Promise.all(
+      nearbyBranches.map(({ branchId }) =>
+        ctx.db
+          .query("jobs")
+          .withIndex("by_branch_postedAt", (q) => q.eq("branchId", branchId))
+          .order("desc")
+          .take(16),
+      ),
+    );
+    const matchingJobIds = new Set<string>();
+    for (const jobsForBranch of jobsByBranch) {
+      for (const job of jobsForBranch) {
+        if (job.status !== "open") continue;
+        if (!eligibility.sports.has(job.sport)) continue;
+        if (job.startTime <= now) continue;
+        if (job.applicationDeadline !== undefined && job.applicationDeadline < now) continue;
+        matchingJobIds.add(String(job._id));
+        if (matchingJobIds.size >= HOME_MATCH_COUNT_CAP) break;
+      }
+      if (matchingJobIds.size >= HOME_MATCH_COUNT_CAP) break;
+    }
+    openMatches = matchingJobIds.size;
+  } else if (eligibility.coverageCount > 0) {
     const fetchPerPair = Math.min(
       Math.max(Math.ceil((HOME_MATCH_COUNT_CAP * 2) / eligibility.coveragePairs.length), 8),
       80,

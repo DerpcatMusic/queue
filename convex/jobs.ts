@@ -16,6 +16,7 @@ import {
   normalizeSportType,
   normalizeZoneId,
 } from "./lib/domainValidation";
+import { findNearbyStudioBranchIdsForInstructor } from "./lib/geospatial";
 import {
   canInstructorPerformJobActions,
   getInstructorJobActionBlockReason,
@@ -40,6 +41,7 @@ import {
   omitUndefined,
   trimOptionalString,
 } from "./lib/validation";
+import { DEFAULT_WORK_RADIUS_KM } from "./lib/locationRadius";
 
 const APPLICATION_STATUS_SET = new Set<string>(APPLICATION_STATUSES);
 const REQUIRED_LEVEL_SET = new Set<string>(REQUIRED_LEVELS);
@@ -83,10 +85,7 @@ function assertPositiveNumber(value: number, fieldName: string) {
   }
 }
 
-function isOpenJobStillActionable(
-  job: Doc<"jobs">,
-  now: number,
-) {
+function isOpenJobStillActionable(job: Doc<"jobs">, now: number) {
   if (job.startTime <= now) return false;
   if (
     typeof job.applicationDeadline === "number" &&
@@ -424,7 +423,15 @@ export const getInstructorTabCounts = query({
     let jobsBadgeCount = 0;
     const matchingById = new Set<string>();
 
-    if (boundaryPairs.length > 0 && eligibility.sports.size > 0) {
+    if (
+      !(
+        Number.isFinite(instructor.latitude) &&
+        Number.isFinite(instructor.longitude) &&
+        Number.isFinite(instructor.workRadiusKm)
+      ) &&
+      boundaryPairs.length > 0 &&
+      eligibility.sports.size > 0
+    ) {
       const boundaryMatches = await collectOpenJobsByBoundaryCoverage(ctx, {
         sports: eligibility.sports,
         boundaryPairs,
@@ -507,7 +514,6 @@ export const getInstructorTabCounts = query({
         }
         if (matchingById.size >= BADGE_COUNT_CAP) break;
       }
-
     }
 
     jobsBadgeCount = matchingById.size;
@@ -961,7 +967,11 @@ export const getAvailableJobsForInstructor = query({
       loadInstructorEligibility(ctx, instructor._id),
       listInstructorBoundarySubscriptionPairs(ctx, { instructorId: instructor._id }),
     ]);
-    if (eligibility.coverageCount === 0 && eligibility.sports.size === 0 && boundaryPairs.length === 0) {
+    if (
+      eligibility.coverageCount === 0 &&
+      eligibility.sports.size === 0 &&
+      boundaryPairs.length === 0
+    ) {
       return [];
     }
 
@@ -969,7 +979,42 @@ export const getAvailableJobsForInstructor = query({
     assertPositiveInteger(rawLimit, "limit");
     const limit = Math.min(rawLimit, 200);
 
+    const hasGeospatialLocation =
+      Number.isFinite(instructor.latitude) &&
+      Number.isFinite(instructor.longitude) &&
+      Number.isFinite(instructor.workRadiusKm);
+
     const matchingById = new Map<Id<"jobs">, Doc<"jobs">>();
+    if (hasGeospatialLocation && eligibility.sports.size > 0) {
+      const nearbyBranches = await findNearbyStudioBranchIdsForInstructor(ctx, {
+        instructorLatitude: instructor.latitude!,
+        instructorLongitude: instructor.longitude!,
+        workRadiusKm: instructor.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM,
+        limit: Math.min(limit * 3, 120),
+      });
+      const branchJobBatches = await Promise.all(
+        nearbyBranches.map(({ branchId }) =>
+          ctx.db
+            .query("jobs")
+            .withIndex("by_branch_postedAt", (q) => q.eq("branchId", branchId))
+            .order("desc")
+            .take(Math.min(limit * 2, 40)),
+        ),
+      );
+
+      for (const jobsForBranch of branchJobBatches) {
+        for (const job of jobsForBranch) {
+          if (!eligibility.sports.has(job.sport)) {
+            continue;
+          }
+          if (!isOpenJobStillActionable(job, now) || job.status !== "open") {
+            continue;
+          }
+          matchingById.set(job._id, job);
+        }
+      }
+    }
+
     if (boundaryPairs.length > 0 && eligibility.sports.size > 0) {
       const boundaryMatches = await collectOpenJobsByBoundaryCoverage(ctx, {
         sports: eligibility.sports,
@@ -982,7 +1027,7 @@ export const getAvailableJobsForInstructor = query({
       }
     }
 
-    if (eligibility.coverageCount > 0) {
+    if (!hasGeospatialLocation && matchingById.size < limit && eligibility.coverageCount > 0) {
       const fetchPerPair = Math.min(
         Math.max(Math.ceil((limit * 2) / eligibility.coveragePairs.length), 8),
         80,
@@ -1016,7 +1061,7 @@ export const getAvailableJobsForInstructor = query({
           matchingById.set(job._id, job);
         }
       }
-    } else {
+    } else if (!hasGeospatialLocation && matchingById.size < limit) {
       const sports = [...eligibility.sports];
       const fetchPerSport = Math.min(Math.max(Math.ceil((limit * 2) / sports.length), 8), 80);
       const openJobsBySport = await Promise.all(
@@ -1179,1082 +1224,7 @@ export const getStudioProfileForInstructor = query({
     v.object({
       studioId: v.id("studioProfiles"),
       studioName: v.string(),
-      studioAddress: v.string(),
-      zone: v.string(),
-      boundaryProvider: v.optional(v.string()),
-      boundaryId: v.optional(v.string()),
-      bio: v.optional(v.string()),
-      studioImageUrl: v.optional(v.string()),
-      sports: v.array(v.string()),
-      jobs: v.array(
-        v.object({
-          jobId: v.id("jobs"),
-          studioId: v.id("studioProfiles"),
-          branchId: v.id("studioBranches"),
-          studioName: v.string(),
-          branchName: v.string(),
-          branchAddress: v.optional(v.string()),
-          studioImageUrl: v.optional(v.string()),
-          studioAddress: v.optional(v.string()),
-          sport: v.string(),
-          zone: v.string(),
-          boundaryProvider: v.optional(v.string()),
-          boundaryId: v.optional(v.string()),
-          startTime: v.number(),
-          endTime: v.number(),
-          timeZone: v.optional(v.string()),
-          pay: v.number(),
-          note: v.optional(v.string()),
-          status: v.union(
-            v.literal("open"),
-            v.literal("filled"),
-            v.literal("cancelled"),
-            v.literal("completed"),
-          ),
-          postedAt: v.number(),
-          requiredLevel: v.optional(
-            v.union(
-              v.literal("beginner_friendly"),
-              v.literal("all_levels"),
-              v.literal("intermediate"),
-              v.literal("advanced"),
-            ),
-          ),
-          maxParticipants: v.optional(v.number()),
-          equipmentProvided: v.optional(v.boolean()),
-          sessionLanguage: v.optional(
-            v.union(
-              v.literal("hebrew"),
-              v.literal("english"),
-              v.literal("arabic"),
-              v.literal("russian"),
-            ),
-          ),
-          isRecurring: v.optional(v.boolean()),
-          cancellationDeadlineHours: v.optional(v.number()),
-          applicationDeadline: v.optional(v.number()),
-          closureReason: v.optional(
-            v.union(v.literal("expired"), v.literal("studio_cancelled"), v.literal("filled")),
-          ),
-          boostPreset: v.optional(
-            v.union(v.literal("small"), v.literal("medium"), v.literal("large")),
-          ),
-          boostBonusAmount: v.optional(v.number()),
-          boostActive: v.optional(v.boolean()),
-          canApplyToJob: v.boolean(),
-          jobActionBlockedReason: v.optional(instructorJobActionBlockReasonValidator),
-          applicationId: v.optional(v.id("jobApplications")),
-          applicationStatus: v.optional(
-            v.union(
-              v.literal("pending"),
-              v.literal("accepted"),
-              v.literal("rejected"),
-              v.literal("withdrawn"),
-            ),
-          ),
-        }),
-      ),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const instructor = await requireInstructorProfile(ctx);
-    const now = args.now ?? Date.now();
-    const compliance = await loadInstructorComplianceSnapshot(ctx, instructor._id, now);
-    const studio = await ctx.db.get("studioProfiles", args.studioId);
-
-    if (!studio) {
-      return null;
-    }
-
-    const [sportsRows, jobsForStudio, studioImageUrl, primaryBranch] = await Promise.all([
-      ctx.db
-        .query("studioSports")
-        .withIndex("by_studio_id", (q) => q.eq("studioId", args.studioId))
-        .collect(),
-      ctx.db
-        .query("jobs")
-        .withIndex("by_studio_postedAt", (q) => q.eq("studioId", args.studioId))
-        .order("desc")
-        .take(40),
-      studio.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
-      getPrimaryStudioBranch(ctx, args.studioId),
-    ]);
-
-    const visibleJobs: Doc<"jobs">[] = jobsForStudio.filter((job: Doc<"jobs">) => {
-      if (job.status !== "open" || job.startTime <= now) {
-        return false;
-      }
-      if (
-        typeof job.applicationDeadline === "number" &&
-        Number.isFinite(job.applicationDeadline) &&
-        job.applicationDeadline <= now
-      ) {
-        return false;
-      }
-      return true;
-    });
-    const visibleJobIdSet = new Set(visibleJobs.map((job) => String(job._id)));
-
-    const instructorApplications = await ctx.db
-      .query("jobApplications")
-      .withIndex("by_instructor", (q) => q.eq("instructorId", instructor._id))
-      .collect();
-    const applicationByJobId = new Map<string, Doc<"jobApplications">>();
-    for (const application of instructorApplications) {
-      const jobId = String(application.jobId);
-      if (!visibleJobIdSet.has(jobId)) continue;
-      const existing = applicationByJobId.get(jobId);
-      if (!existing) {
-        applicationByJobId.set(jobId, application);
-        continue;
-      }
-      const existingUpdatedAt = existing.updatedAt ?? existing.appliedAt;
-      const nextUpdatedAt = application.updatedAt ?? application.appliedAt;
-      if (nextUpdatedAt > existingUpdatedAt) {
-        applicationByJobId.set(jobId, application);
-      }
-    }
-
-    const branchIds = [...new Set(visibleJobs.map((job) => job.branchId))];
-    const branches = await Promise.all(
-      branchIds.map((branchId) => ctx.db.get("studioBranches", branchId)),
-    );
-    const branchById = new Map<string, Doc<"studioBranches">>();
-    for (let index = 0; index < branchIds.length; index += 1) {
-      const branchId = branchIds[index];
-      const branch = branches[index];
-      if (branch) {
-        branchById.set(String(branchId), branch);
-      }
-    }
-
-    return {
-      studioId: studio._id,
-      studioName: studio.studioName,
-      studioAddress: primaryBranch?.address ?? studio.address,
-      zone: primaryBranch?.zone ?? studio.zone,
-      sports: [...new Set(sportsRows.map((row: Doc<"studioSports">) => row.sport))].sort(),
-      ...omitUndefined({
-        boundaryProvider: primaryBranch?.boundaryProvider ?? studio.boundaryProvider,
-        boundaryId: primaryBranch?.boundaryId ?? studio.boundaryId,
-        bio: studio.bio,
-        studioImageUrl: studioImageUrl ?? undefined,
-      }),
-      jobs: visibleJobs.map((job: Doc<"jobs">) => {
-        const application = applicationByJobId.get(String(job._id));
-        const branch = branchById.get(String(job.branchId));
-        const canApplyToJob = canInstructorPerformJobActions({
-          profile: instructor,
-          compliance,
-          sport: job.sport,
-          requiredCapabilityTags: job.requiredCapabilityTags,
-        });
-        const jobActionBlockedReason = getInstructorJobActionBlockReason({
-          profile: instructor,
-          compliance,
-          sport: job.sport,
-          requiredCapabilityTags: job.requiredCapabilityTags,
-        });
-        return {
-          jobId: job._id,
-          studioId: studio._id,
-          branchId: job.branchId,
-          studioName: studio.studioName,
-          branchName: job.branchNameSnapshot ?? branch?.name ?? "Main branch",
-          sport: job.sport,
-          zone: trimOptionalString(job.zone) ?? job.zone,
-          startTime: job.startTime,
-          endTime: job.endTime,
-          pay: job.pay,
-          status: job.status,
-          postedAt: job.postedAt,
-          canApplyToJob,
-          ...omitUndefined({
-            boundaryProvider: job.boundaryProvider,
-            boundaryId: job.boundaryId,
-            studioImageUrl: studioImageUrl ?? undefined,
-            branchAddress: job.branchAddressSnapshot ?? branch?.address,
-            studioAddress: job.branchAddressSnapshot ?? branch?.address ?? studio.address,
-            timeZone: job.timeZone,
-            note: job.note,
-            requiredLevel: job.requiredLevel,
-            maxParticipants: job.maxParticipants,
-            equipmentProvided: job.equipmentProvided,
-            sessionLanguage: job.sessionLanguage,
-            isRecurring: job.isRecurring,
-            cancellationDeadlineHours: job.cancellationDeadlineHours,
-            applicationDeadline: job.applicationDeadline,
-            closureReason: job.closureReason,
-            boostPreset: job.boostPreset,
-            boostBonusAmount: job.boostBonusAmount,
-            boostActive: job.boostActive,
-            jobActionBlockedReason,
-            applicationId: application?._id,
-            applicationStatus: application?.status,
-          }),
-        };
-      }),
-    };
-  },
-});
-
-export const getMyApplications = query({
-  args: { limit: v.optional(v.number()) },
-  returns: v.array(
-    v.object({
-      applicationId: v.id("jobApplications"),
-      jobId: v.id("jobs"),
-      instructorId: v.id("instructorProfiles"),
-      studioId: v.id("studioProfiles"),
-      branchId: v.id("studioBranches"),
-      status: v.union(
-        v.literal("pending"),
-        v.literal("accepted"),
-        v.literal("rejected"),
-        v.literal("withdrawn"),
-      ),
-      appliedAt: v.number(),
-      message: v.optional(v.string()),
-      studioName: v.string(),
-      branchName: v.string(),
-      studioImageUrl: v.optional(v.string()),
-      sport: v.string(),
-      zone: v.string(),
-      boundaryProvider: v.optional(v.string()),
-      boundaryId: v.optional(v.string()),
-      startTime: v.number(),
-      endTime: v.number(),
-      timeZone: v.optional(v.string()),
-      pay: v.number(),
-      note: v.optional(v.string()),
-      branchAddress: v.optional(v.string()),
-      paymentDetails: v.optional(
-        v.object({
-          status: v.string(),
-          payoutStatus: v.optional(v.string()),
-          externalInvoiceUrl: v.optional(v.string()),
-        }),
-      ),
-      jobStatus: v.union(
-        v.literal("open"),
-        v.literal("filled"),
-        v.literal("cancelled"),
-        v.literal("completed"),
-      ),
-      closureReason: v.optional(
-        v.union(v.literal("expired"), v.literal("studio_cancelled"), v.literal("filled")),
-      ),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const instructor = await requireInstructorProfile(ctx);
-
-    const rawLimit = args.limit ?? 100;
-    assertPositiveInteger(rawLimit, "limit");
-    const limit = Math.min(rawLimit, 250);
-
-    const applications = await ctx.db
-      .query("jobApplications")
-      .withIndex("by_instructor_appliedAt", (q) => q.eq("instructorId", instructor._id))
-      .order("desc")
-      .take(limit);
-
-    const applicationJobIds = getUniqueIdsInOrder(
-      applications.map((application) => application.jobId),
-    );
-    const jobs = await Promise.all(applicationJobIds.map((jobId) => ctx.db.get("jobs", jobId)));
-    const jobById = new Map<string, Doc<"jobs">>();
-    for (let index = 0; index < applicationJobIds.length; index += 1) {
-      const job = jobs[index];
-      if (job) {
-        jobById.set(String(applicationJobIds[index]), job);
-      }
-    }
-
-    const studioIds = [...new Set(jobs.filter(isPresent).map((job) => job.studioId))];
-    const branchIds = [...new Set(jobs.filter(isPresent).map((job) => job.branchId))];
-    const studios = await Promise.all(
-      studioIds.map((studioId) => ctx.db.get("studioProfiles", studioId)),
-    );
-    const branches = await Promise.all(
-      branchIds.map((branchId) => ctx.db.get("studioBranches", branchId)),
-    );
-    const studioImageUrls = await Promise.all(
-      studios.map((studio) =>
-        studio?.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
-      ),
-    );
-    const studioById = new Map<string, Doc<"studioProfiles">>();
-    const branchById = new Map<string, Doc<"studioBranches">>();
-    const studioImageUrlById = new Map<string, string>();
-    for (let i = 0; i < studioIds.length; i += 1) {
-      const studioId = studioIds[i];
-      const studio = studios[i];
-      if (studio) {
-        studioById.set(String(studioId), studio);
-      }
-      const studioImageUrl = studioImageUrls[i];
-      if (studioImageUrl) {
-        studioImageUrlById.set(String(studioId), studioImageUrl);
-      }
-    }
-    for (let i = 0; i < branchIds.length; i += 1) {
-      const branchId = branchIds[i];
-      const branch = branches[i];
-      if (branch) {
-        branchById.set(String(branchId), branch);
-      }
-    }
-
-    const paymentDetailsByJobId = await loadLatestPaymentDetailsByJobId(ctx, {
-      jobIds: applicationJobIds
-        .map((jobId) => jobById.get(String(jobId)))
-        .filter((job): job is Doc<"jobs"> =>
-          Boolean(job && (job.status === "completed" || job.status === "filled")),
-        )
-        .map((job) => job._id),
-      instructorUserId: instructor.userId,
-    });
-
-    const rows = [];
-    for (const application of applications) {
-      const job = jobById.get(String(application.jobId));
-      if (!job) continue;
-      const studio = studioById.get(String(job.studioId));
-      const branch = branchById.get(String(job.branchId));
-
-      rows.push({
-        applicationId: application._id,
-        jobId: application.jobId,
-        instructorId: application.instructorId,
-        studioId: job.studioId,
-        branchId: job.branchId,
-        status: application.status,
-        appliedAt: application.appliedAt,
-        studioName: studio?.studioName ?? "Unknown studio",
-        branchName: job.branchNameSnapshot ?? branch?.name ?? "Main branch",
-        sport: job.sport,
-        zone: job.zone,
-        startTime: job.startTime,
-        endTime: job.endTime,
-        pay: job.pay,
-        jobStatus: job.status,
-        ...omitUndefined({
-          boundaryProvider: job.boundaryProvider,
-          boundaryId: job.boundaryId,
-          message: application.message,
-          branchAddress: job.branchAddressSnapshot ?? branch?.address,
-          studioImageUrl: studioImageUrlById.get(String(job.studioId)),
-          timeZone: job.timeZone,
-          note: job.note,
-          paymentDetails: paymentDetailsByJobId.get(String(job._id)),
-          closureReason: job.closureReason,
-        }),
-      });
-    }
-
-    return rows;
-  },
-});
-
-export const applyToJob = mutation({
-  args: {
-    jobId: v.id("jobs"),
-    message: v.optional(v.string()),
-  },
-  returns: v.object({
-    applicationId: v.id("jobApplications"),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("accepted"),
-      v.literal("rejected"),
-      v.literal("withdrawn"),
-    ),
-  }),
-  handler: async (ctx, args) => {
-    const instructor = await requireInstructorProfile(ctx);
-
-    const [eligibility, job] = await Promise.all([
-      loadInstructorEligibility(ctx, instructor._id),
-      ctx.db.get("jobs", args.jobId),
-    ]);
-
-    if (!job) throw new ConvexError("Job not found");
-    const now = Date.now();
-    const compliance = await loadInstructorComplianceSnapshot(ctx, instructor._id, now);
-    assertInstructorCanPerformJobActions({
-      profile: instructor,
-      compliance,
-      sport: job.sport,
-      requiredCapabilityTags: job.requiredCapabilityTags,
-    });
-
-    const studio = await ctx.db.get("studioProfiles", job.studioId);
-    const studioAutoAcceptEnabled = (studio as any)?.autoAcceptEnabled;
-    const studioAutoAcceptDefault = studio?.autoAcceptDefault;
-    const autoAcceptEnabled =
-      job.autoAcceptEnabled ?? studioAutoAcceptEnabled ?? studioAutoAcceptDefault ?? false;
-    const hasBoundaryEligibility =
-      job.boundaryProvider && job.boundaryId
-        ? await hasInstructorBoundarySubscription(ctx, {
-            instructorId: instructor._id,
-            provider: job.boundaryProvider,
-            boundaryId: job.boundaryId,
-          })
-        : false;
-    const normalizedJobZone = trimOptionalString(job.zone);
-    const hasZoneEligibility =
-      normalizedJobZone && isKnownZoneId(normalizedJobZone)
-        ? isEligibleForJob(eligibility, job.sport, normalizedJobZone)
-        : false;
-    const canApplyByLocation = hasBoundaryEligibility || hasZoneEligibility;
-
-    if (!autoAcceptEnabled) {
-      if (job.status !== "open") throw new ConvexError("Job is not open");
-      if (job.applicationDeadline !== undefined && now > job.applicationDeadline) {
-        throw new ConvexError("Application deadline has passed");
-      }
-      if (now >= job.startTime) {
-        throw new ConvexError("Job has already started");
-      }
-      if (!canApplyByLocation) {
-        throw new ConvexError("You are not eligible for this job");
-      }
-
-      const existing = await ctx.db
-        .query("jobApplications")
-        .withIndex("by_job_and_instructor", (q) =>
-          q.eq("jobId", args.jobId).eq("instructorId", instructor._id),
-        )
-        .unique();
-
-      const message = trimOptionalString(args.message);
-
-      if (existing) {
-        if (existing.status === "accepted") {
-          throw new ConvexError("Application already accepted");
-        }
-
-        await ctx.db.patch("jobApplications", existing._id, {
-          studioId: job.studioId,
-          branchId: job.branchId,
-          status: "pending",
-          ...omitUndefined({ message }),
-          updatedAt: now,
-        });
-
-        if (studio) {
-          await enqueueUserNotification(ctx, {
-            recipientUserId: studio.userId,
-            actorUserId: instructor.userId,
-            kind: "application_received",
-            title: "New application received",
-            body: `${instructor.displayName} applied to teach ${toDisplayLabel(job.sport)}.`,
-            jobId: job._id,
-            applicationId: existing._id,
-          });
-        }
-
-        await recomputeJobApplicationStats(ctx, job);
-        return { applicationId: existing._id, status: "pending" as const };
-      }
-
-      const applicationId = await ctx.db.insert("jobApplications", {
-        jobId: args.jobId,
-        studioId: job.studioId,
-        branchId: job.branchId,
-        instructorId: instructor._id,
-        status: "pending",
-        appliedAt: now,
-        updatedAt: now,
-        ...omitUndefined({ message }),
-      });
-
-      if (studio) {
-        await enqueueUserNotification(ctx, {
-          recipientUserId: studio.userId,
-          actorUserId: instructor.userId,
-          kind: "application_received",
-          title: "New application received",
-          body: `${instructor.displayName} applied to teach ${toDisplayLabel(job.sport)}.`,
-          jobId: job._id,
-          applicationId,
-        });
-      }
-
-      await recomputeJobApplicationStats(ctx, job);
-      return { applicationId, status: "pending" as const };
-    }
-
-    const existing = await ctx.db
-      .query("jobApplications")
-      .withIndex("by_job_and_instructor", (q) =>
-        q.eq("jobId", args.jobId).eq("instructorId", instructor._id),
-      )
-      .unique();
-
-    if (job.status !== "open") {
-      const applicationId = await ctx.db.insert("jobApplications", {
-        jobId: args.jobId,
-        studioId: job.studioId,
-        branchId: job.branchId,
-        instructorId: instructor._id,
-        status: "rejected",
-        appliedAt: now,
-        updatedAt: now,
-      });
-      return { applicationId, status: "rejected" as const };
-    }
-
-    if (!canApplyByLocation) {
-      throw new ConvexError("You are not eligible for this job");
-    }
-    if (job.applicationDeadline !== undefined && now > job.applicationDeadline) {
-      throw new ConvexError("Application deadline has passed");
-    }
-    if (now >= job.startTime) {
-      throw new ConvexError("Job has already started");
-    }
-
-    const existingJobs = await ctx.db
-      .query("jobs")
-      .withIndex("by_filledByInstructor_startTime", (q) =>
-        q.eq("filledByInstructorId", instructor._id),
-      )
-      .collect();
-    const hasConflict = existingJobs.some(
-      (j) => j.status === "filled" && j.startTime < job.endTime && j.endTime > job.startTime,
-    );
-    if (hasConflict) {
-      throw new ConvexError("Instructor has a conflicting booking at this time");
-    }
-
-    const message = trimOptionalString(args.message);
-
-    if (existing) {
-      if (existing.status === "accepted") {
-        throw new ConvexError("Application already accepted");
-      }
-      await ctx.db.patch("jobApplications", existing._id, {
-        studioId: job.studioId,
-        branchId: job.branchId,
-        status: "rejected",
-        updatedAt: now,
-      });
-    }
-
-    const applicationId = await ctx.db.insert("jobApplications", {
-      jobId: args.jobId,
-      studioId: job.studioId,
-      branchId: job.branchId,
-      instructorId: instructor._id,
-      status: "accepted",
-      appliedAt: now,
-      updatedAt: now,
-      ...omitUndefined({ message }),
-    });
-
-    await ctx.db.patch("jobs", job._id, {
-      status: "filled",
-      filledByInstructorId: instructor._id,
-    });
-
-    const competingApplications = await ctx.db
-      .query("jobApplications")
-      .withIndex("by_job", (q) => q.eq("jobId", job._id))
-      .collect();
-
-    for (const row of competingApplications) {
-      if (row._id !== applicationId) {
-        await ctx.db.patch("jobApplications", row._id, {
-          studioId: job.studioId,
-          branchId: job.branchId,
-          status: "rejected",
-          updatedAt: now,
-        });
-      }
-    }
-
-    if (studio) {
-      await ctx.runMutation(internal.jobs.runAcceptedApplicationReviewWorkflow, {
-        jobId: job._id,
-        acceptedApplicationId: applicationId,
-        studioUserId: studio.userId,
-      });
-    }
-
-    await recomputeJobApplicationStats(ctx, job);
-    return { applicationId, status: "accepted" as const };
-  },
-});
-
-export const withdrawApplication = mutation({
-  args: {
-    applicationId: v.id("jobApplications"),
-  },
-  returns: v.object({
-    ok: v.boolean(),
-  }),
-  handler: async (ctx, args) => {
-    const instructor = await requireInstructorProfile(ctx);
-    const application = await ctx.db.get("jobApplications", args.applicationId);
-
-    if (!application) throw new ConvexError("Application not found");
-    if (application.instructorId !== instructor._id) {
-      throw new ConvexError("Not authorized to withdraw this application");
-    }
-    if (application.status !== "pending") {
-      throw new ConvexError("Can only withdraw pending applications");
-    }
-
-    const now = Date.now();
-    await ctx.db.patch("jobApplications", application._id, {
-      status: "withdrawn",
-      updatedAt: now,
-    });
-
-    const job = await ctx.db.get("jobs", application.jobId);
-    if (job) {
-      await recomputeJobApplicationStats(ctx, job);
-    }
-
-    return { ok: true };
-  },
-});
-
-export const getMyStudioJobs = query({
-  args: {
-    limit: v.optional(v.number()),
-    branchId: v.optional(v.id("studioBranches")),
-  },
-  returns: v.array(
-    v.object({
-      jobId: v.id("jobs"),
-      branchId: v.id("studioBranches"),
-      branchName: v.string(),
-      branchAddress: v.optional(v.string()),
-      sport: v.string(),
-      zone: v.string(),
-      startTime: v.number(),
-      endTime: v.number(),
-      timeZone: v.optional(v.string()),
-      pay: v.number(),
-      note: v.optional(v.string()),
-      status: v.union(
-        v.literal("open"),
-        v.literal("filled"),
-        v.literal("cancelled"),
-        v.literal("completed"),
-      ),
-      postedAt: v.number(),
-      applicationsCount: v.number(),
-      pendingApplicationsCount: v.number(),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const studio = await requireStudioProfile(ctx);
-    if (args.branchId) {
-      await requireAccessibleStudioBranch(ctx, {
-        studioId: studio._id,
-        branchId: args.branchId,
-        allowedRoles: ["owner"],
-      });
-    }
-
-    const rawLimit = args.limit ?? 50;
-    assertPositiveInteger(rawLimit, "limit");
-    const limit = Math.min(rawLimit, 200);
-
-    const jobs = args.branchId
-      ? await ctx.db
-          .query("jobs")
-          .withIndex("by_branch_postedAt", (q) => q.eq("branchId", args.branchId!))
-          .order("desc")
-          .take(limit)
-      : await ctx.db
-          .query("jobs")
-          .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
-          .order("desc")
-          .take(limit);
-    const branchIds = [...new Set(jobs.map((job) => job.branchId))];
-    const branches = await Promise.all(
-      branchIds.map((branchId) => ctx.db.get("studioBranches", branchId)),
-    );
-    const branchById = new Map<string, Doc<"studioBranches">>();
-    for (let index = 0; index < branchIds.length; index += 1) {
-      const branch = branches[index];
-      if (branch) {
-        branchById.set(String(branch._id), branch);
-      }
-    }
-    const jobIds = new Set(jobs.map((job) => String(job._id)));
-    const statsByJobId = new Map<string, Doc<"jobApplicationStats">>();
-    const fallbackApplicationsByJobId = new Map<string, Doc<"jobApplications">[]>();
-    if (USE_JOB_APPLICATION_STATS) {
-      const stats = await ctx.db
-        .query("jobApplicationStats")
-        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
-        .collect();
-      for (const stat of stats) {
-        const jobId = String(stat.jobId);
-        if (!jobIds.has(jobId)) continue;
-        statsByJobId.set(jobId, stat);
-      }
-    } else {
-      const applicationsByJob = await Promise.all(
-        jobs.map((job) =>
-          ctx.db
-            .query("jobApplications")
-            .withIndex("by_job", (q) => q.eq("jobId", job._id))
-            .collect(),
-        ),
-      );
-      for (let i = 0; i < jobs.length; i += 1) {
-        const job = jobs[i];
-        if (!job) continue;
-        fallbackApplicationsByJobId.set(String(job._id), applicationsByJob[i] ?? []);
-      }
-    }
-
-    const rows = [];
-    for (let i = 0; i < jobs.length; i += 1) {
-      const job = jobs[i];
-      if (!job) continue;
-      const stat = statsByJobId.get(String(job._id));
-
-      rows.push({
-        jobId: job._id,
-        branchId: job.branchId,
-        branchName:
-          job.branchNameSnapshot ?? branchById.get(String(job.branchId))?.name ?? "Main branch",
-        sport: job.sport,
-        zone: job.zone,
-        startTime: job.startTime,
-        endTime: job.endTime,
-        pay: job.pay,
-        status: job.status,
-        postedAt: job.postedAt,
-        applicationsCount:
-          stat?.applicationsCount ??
-          (fallbackApplicationsByJobId.get(String(job._id)) ?? []).length,
-        pendingApplicationsCount:
-          stat?.pendingApplicationsCount ??
-          (fallbackApplicationsByJobId.get(String(job._id)) ?? []).filter(
-            (application) => application.status === "pending",
-          ).length,
-        ...omitUndefined({
-          branchAddress: job.branchAddressSnapshot ?? branchById.get(String(job.branchId))?.address,
-          timeZone: job.timeZone,
-          note: job.note,
-        }),
-      });
-    }
-
-    return rows;
-  },
-});
-
-export const getMyStudioJobsWithApplications = query({
-  args: {
-    limit: v.optional(v.number()),
-    branchId: v.optional(v.id("studioBranches")),
-  },
-  returns: v.array(
-    v.object({
-      jobId: v.id("jobs"),
-      branchId: v.id("studioBranches"),
-      branchName: v.string(),
-      branchAddress: v.optional(v.string()),
-      sport: v.string(),
-      zone: v.string(),
-      startTime: v.number(),
-      endTime: v.number(),
-      timeZone: v.optional(v.string()),
-      pay: v.number(),
-      note: v.optional(v.string()),
-      status: v.union(
-        v.literal("open"),
-        v.literal("filled"),
-        v.literal("cancelled"),
-        v.literal("completed"),
-      ),
-      postedAt: v.number(),
-      applicationsCount: v.number(),
-      pendingApplicationsCount: v.number(),
-      applicationDeadline: v.optional(v.number()),
-      closureReason: v.optional(
-        v.union(v.literal("expired"), v.literal("studio_cancelled"), v.literal("filled")),
-      ),
-      boostPreset: v.optional(v.union(v.literal("small"), v.literal("medium"), v.literal("large"))),
-      boostBonusAmount: v.optional(v.number()),
-      boostActive: v.optional(v.boolean()),
-      boostTriggerMinutes: v.optional(v.number()),
-      applications: v.array(
-        v.object({
-          applicationId: v.id("jobApplications"),
-          instructorId: v.id("instructorProfiles"),
-          instructorName: v.string(),
-          profileImageUrl: v.optional(v.string()),
-          status: v.union(
-            v.literal("pending"),
-            v.literal("accepted"),
-            v.literal("rejected"),
-            v.literal("withdrawn"),
-          ),
-          appliedAt: v.number(),
-          message: v.optional(v.string()),
-        }),
-      ),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const studio = await requireStudioProfile(ctx);
-    if (args.branchId) {
-      await requireAccessibleStudioBranch(ctx, {
-        studioId: studio._id,
-        branchId: args.branchId,
-        allowedRoles: ["owner"],
-      });
-    }
-
-    const rawLimit = args.limit ?? 50;
-    assertPositiveInteger(rawLimit, "limit");
-    const limit = Math.min(rawLimit, 200);
-
-    const jobs = args.branchId
-      ? await ctx.db
-          .query("jobs")
-          .withIndex("by_branch_postedAt", (q) => q.eq("branchId", args.branchId!))
-          .order("desc")
-          .take(limit)
-      : await ctx.db
-          .query("jobs")
-          .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
-          .order("desc")
-          .take(limit);
-    const branchIds = [...new Set(jobs.map((job) => job.branchId))];
-    const branches = await Promise.all(
-      branchIds.map((branchId) => ctx.db.get("studioBranches", branchId)),
-    );
-    const branchById = new Map<string, Doc<"studioBranches">>();
-    for (let index = 0; index < branchIds.length; index += 1) {
-      const branch = branches[index];
-      if (branch) {
-        branchById.set(String(branch._id), branch);
-      }
-    }
-    const jobIds = new Set(jobs.map((job) => String(job._id)));
-    const statsByJobId = new Map<string, Doc<"jobApplicationStats">>();
-    if (USE_JOB_APPLICATION_STATS) {
-      const stats = await ctx.db
-        .query("jobApplicationStats")
-        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
-        .collect();
-      for (const stat of stats) {
-        const jobId = String(stat.jobId);
-        if (!jobIds.has(jobId)) continue;
-        statsByJobId.set(jobId, stat);
-      }
-    }
-
-    const studioApplications = USE_STUDIO_APPLICATIONS_BY_STUDIO
-      ? await ctx.db
-          .query("jobApplications")
-          .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
-          .collect()
-      : (
-          await Promise.all(
-            jobs.map((job) =>
-              ctx.db
-                .query("jobApplications")
-                .withIndex("by_job", (q) => q.eq("jobId", job._id))
-                .collect(),
-            ),
-          )
-        ).flat();
-    const applicationsByJobId = new Map<string, Doc<"jobApplications">[]>();
-    for (const application of studioApplications) {
-      const jobId = String(application.jobId);
-      if (!jobIds.has(jobId)) continue;
-      const existing = applicationsByJobId.get(jobId);
-      if (existing) {
-        existing.push(application);
-      } else {
-        applicationsByJobId.set(jobId, [application]);
-      }
-    }
-
-    const instructorIds = [
-      ...new Set(
-        studioApplications
-          .filter((application) => jobIds.has(String(application.jobId)))
-          .map((application) => application.instructorId),
-      ),
-    ];
-    const profiles = await Promise.all(
-      instructorIds.map((instructorId) => ctx.db.get("instructorProfiles", instructorId)),
-    );
-    const profileById = new Map<string, Doc<"instructorProfiles">>();
-    for (let i = 0; i < instructorIds.length; i += 1) {
-      const instructorId = instructorIds[i];
-      const profile = profiles[i];
-      if (profile) {
-        profileById.set(String(instructorId), profile);
-      }
-    }
-
-    // Fetch profile image URLs for each instructor
-    const profileImageUrlById = new Map<string, string | undefined>();
-    for (const profile of profiles) {
-      if (profile) {
-        const imageUrl = profile.profileImageStorageId
-          ? ((await ctx.storage.getUrl(profile.profileImageStorageId)) ?? undefined)
-          : undefined;
-        profileImageUrlById.set(String(profile._id), imageUrl);
-      }
-    }
-
-    const rows = [];
-    for (let i = 0; i < jobs.length; i += 1) {
-      const job = jobs[i];
-      if (!job) continue;
-      const applications =
-        applicationsByJobId.get(String(job._id)) ?? ([] as Doc<"jobApplications">[]);
-      const stat = statsByJobId.get(String(job._id));
-
-      const sortedApplications = [...applications].sort((a, b) => {
-        const statusRank: Record<Doc<"jobApplications">["status"], number> = {
-          pending: 0,
-          accepted: 1,
-          rejected: 2,
-          withdrawn: 3,
-        };
-        if (statusRank[a.status] !== statusRank[b.status]) {
-          return statusRank[a.status] - statusRank[b.status];
-        }
-        return b.appliedAt - a.appliedAt;
-      });
-
-      rows.push({
-        jobId: job._id,
-        branchId: job.branchId,
-        branchName:
-          job.branchNameSnapshot ?? branchById.get(String(job.branchId))?.name ?? "Main branch",
-        sport: job.sport,
-        zone: job.zone,
-        startTime: job.startTime,
-        endTime: job.endTime,
-        pay: job.pay,
-        status: job.status,
-        postedAt: job.postedAt,
-        applicationsCount: stat?.applicationsCount ?? applications.length,
-        pendingApplicationsCount:
-          stat?.pendingApplicationsCount ??
-          applications.filter((a) => a.status === "pending").length,
-        ...omitUndefined({
-          branchAddress: job.branchAddressSnapshot ?? branchById.get(String(job.branchId))?.address,
-          timeZone: job.timeZone,
-          note: job.note,
-          applicationDeadline: job.applicationDeadline,
-          closureReason: job.closureReason,
-          boostPreset: job.boostPreset,
-          boostBonusAmount: job.boostBonusAmount,
-          boostActive: job.boostActive,
-          boostTriggerMinutes: job.boostTriggerMinutes,
-        }),
-        applications: sortedApplications.map((application) => {
-          const profile = profileById.get(String(application.instructorId));
-          const profileImageUrl = profileImageUrlById.get(String(application.instructorId));
-          return {
-            applicationId: application._id,
-            instructorId: application.instructorId,
-            instructorName: profile?.displayName ?? "Unknown instructor",
-            status: application.status,
-            appliedAt: application.appliedAt,
-            ...omitUndefined({
-              profileImageUrl,
-              message: application.message,
-            }),
-          };
-        }),
-      });
-    }
-
-    return rows;
-  },
-});
-
-export const checkInstructorConflicts = query({
-  args: {
-    instructorId: v.id("instructorProfiles"),
-    startTime: v.number(),
-    endTime: v.number(),
-    excludeJobId: v.optional(v.id("jobs")),
-  },
-  returns: v.object({
-    hasConflict: v.boolean(),
-    conflictingJobs: v.array(
-      v.object({
-        jobId: v.id("jobs"),
-        sport: v.string(),
-        studioName: v.string(),
-        startTime: v.number(),
-        endTime: v.number(),
-      }),
-    ),
-  }),
-  handler: async (ctx, args) => {
-    const jobs = await ctx.db
-      .query("jobs")
-      .withIndex("by_filledByInstructor_startTime", (q) =>
-        q.eq("filledByInstructorId", args.instructorId),
-      )
-      .collect();
-
-    const conflictingJobs: {
-      jobId: Id<"jobs">;
-      sport: string;
-      studioName: string;
-      startTime: number;
-      endTime: number;
-    }[] = [];
-
-    for (const job of jobs) {
-      if (job.status !== "filled") continue;
-      if (args.excludeJobId && job._id === args.excludeJobId) continue;
-      // Overlap check: existing.startTime < newEndTime AND existing.endTime > newStartTime
-      if (job.startTime < args.endTime && job.endTime > args.startTime) {
-        const studio = await ctx.db.get("studioProfiles", job.studioId);
-        conflictingJobs.push({
-          jobId: job._id,
-          sport: job.sport,
-          studioName: studio?.studioName ?? "Unknown studio",
-          startTime: job.startTime,
-          endTime: job.endTime,
-        });
-      }
-    }
-
-    return {
-      hasConflict: conflictingJobs.length > 0,
-      conflictingJobs,
-    };
-  },
-});
-
-export const getMyCalendarTimeline = query({
-  args: {
-    startTime: v.number(),
-    endTime: v.number(),
-    limit: v.optional(v.number()),
-    now: v.optional(v.number()),
-  },
-  returns: v.array(
-    v.object({
-      lessonId: v.id("jobs"),
-      roleView: v.union(v.literal("instructor"), v.literal("studio")),
-      studioId: v.id("studioProfiles"),
-      studioName: v.string(),
+      studioSlug: v.optional(v.string()),
       studioProfileImageUrl: v.optional(v.string()),
       instructorId: v.optional(v.id("instructorProfiles")),
       instructorName: v.optional(v.string()),
@@ -2548,6 +1518,7 @@ export const getMyCalendarLessonDetail = query({
         pay: job.pay,
         studioId: studio._id,
         studioName: studio.studioName,
+        studioSlug: studio.slug,
         ...omitUndefined({
           studioProfileImageUrl,
           instructorId: instructor._id,
@@ -2564,17 +1535,14 @@ export const getMyCalendarLessonDetail = query({
       return null;
     }
 
-    const instructor = job.filledByInstructorId
-      ? await ctx.db.get(job.filledByInstructorId)
-      : null;
+    const instructor = job.filledByInstructorId ? await ctx.db.get(job.filledByInstructorId) : null;
     const latestCheckIn = await loadLatestLessonCheckInSummary(ctx, {
       jobId: job._id,
       instructorId: job.filledByInstructorId ?? undefined,
     });
-    const instructorProfileImageUrl =
-      instructor?.profileImageStorageId
-        ? ((await ctx.storage.getUrl(instructor.profileImageStorageId)) ?? undefined)
-        : undefined;
+    const instructorProfileImageUrl = instructor?.profileImageStorageId
+      ? ((await ctx.storage.getUrl(instructor.profileImageStorageId)) ?? undefined)
+      : undefined;
 
     return {
       lessonId: job._id,
@@ -2588,6 +1556,7 @@ export const getMyCalendarLessonDetail = query({
       pay: job.pay,
       studioId: studio._id,
       studioName: studio.studioName,
+      studioSlug: studio.slug,
       ...omitUndefined({
         studioProfileImageUrl,
         instructorId: job.filledByInstructorId,
@@ -2688,10 +1657,7 @@ export const checkIntoLesson = mutation({
     } else if (args.accuracyMeters > LESSON_CHECK_IN_MAX_ACCURACY_METERS) {
       verificationStatus = "rejected";
       verificationReason = "accuracy_too_low";
-    } else if (
-      !Number.isFinite(branch.latitude) ||
-      !Number.isFinite(branch.longitude)
-    ) {
+    } else if (!Number.isFinite(branch.latitude) || !Number.isFinite(branch.longitude)) {
       verificationStatus = "rejected";
       verificationReason = "branch_location_missing";
     } else {

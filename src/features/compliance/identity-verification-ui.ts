@@ -14,7 +14,9 @@ export type IdentityVerificationUiStatus =
 
 type ThemeColors = ReturnType<typeof useTheme>["color"];
 
-export function toIdentityVerificationUiStatus(status: string | undefined): IdentityVerificationUiStatus {
+export function toIdentityVerificationUiStatus(
+  status: string | undefined,
+): IdentityVerificationUiStatus {
   switch (status) {
     case "approved":
     case "declined":
@@ -65,7 +67,9 @@ export function getIdentityVerificationStatusPresentation(
 export function getIdentityPrimaryActionLabel(isVerified: boolean, t: TFunction) {
   return isVerified
     ? t("profile.compliance.actions.refreshIdentity")
-    : t("profile.identityVerification.verifyNow");
+    : t("profile.identityVerification.verifyNow", {
+        defaultValue: t("profile.compliance.identity.title"),
+      });
 }
 
 export function getIdentityActionButtonColors(

@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator } from "react-native";
-import { runOnJS, useAnimatedReaction } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  runOnJS,
+  useAnimatedReaction,
+} from "react-native-reanimated";
 import { memo, useContext } from "react";
 import type { TFunction } from "i18next";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
+import { MapRadiusControl } from "@/components/map-tab/map-radius-control";
 import { QueueMap } from "@/components/maps/queue-map";
 import type {
   QueueMapBounds,
@@ -12,7 +18,6 @@ import type {
 } from "@/components/maps/queue-map.types";
 import type { BoundaryGeometrySource, BoundaryViewportTarget } from "@/features/maps/boundaries/types";
 import { StudioMapDetailModal } from "@/components/maps/studio-map-detail-modal";
-import { ZoneStudioSummary } from "@/components/maps/zone-studio-summary";
 import { TabTransitionContext } from "@/modules/navigation/role-tabs-layout";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -33,8 +38,7 @@ type MapMobileStageProps = {
   initialBoundaryViewport?: BoundaryViewportTarget | null;
   selectedZoneIds: string[];
   focusZoneId: string | null;
-  zoneModeActive: boolean;
-  isSaving: boolean;
+  isRadiusSaving: boolean;
   overlayBottom: number;
   cameraPadding: {
     top: number;
@@ -45,15 +49,18 @@ type MapMobileStageProps = {
   studios: StudioMapMarker[];
   selectedStudio: StudioMapMarker | null;
   selectedStudioId: string | null;
-  focusedZoneLabel: string | null;
-  focusedZoneStudioCount: number;
   zoneLanguage: "en" | "he";
+  showRadiusControl: boolean;
+  workRadiusKm: number;
+  studioCount: number;
+  isRadiusPanelOpen: boolean;
   onPressStudio: (studioId: string) => void;
   onCloseStudio: () => void;
   onOpenStudioProfile: (studioId: string) => void;
-  onPressZone: (zoneId: string) => void;
   onPressMap: () => void;
-  onEditToggle: () => void;
+  onRadiusChange: (radiusKm: number) => void;
+  onRadiusCommit: (radiusKm: number) => void;
+  onRadiusPanelToggle: () => void;
 };
 
 export const MapMobileStage = memo(function MapMobileStage({
@@ -69,27 +76,28 @@ export const MapMobileStage = memo(function MapMobileStage({
   initialBoundaryViewport,
   selectedZoneIds: selectedZoneIdsProp,
   focusZoneId: focusZoneIdProp,
-  zoneModeActive,
-  isSaving,
+  isRadiusSaving,
   overlayBottom,
   cameraPadding,
   studios,
   selectedStudio,
   selectedStudioId,
-  focusedZoneLabel,
-  focusedZoneStudioCount,
   zoneLanguage,
+  showRadiusControl,
+  workRadiusKm,
+  studioCount,
+  isRadiusPanelOpen,
   onPressStudio,
   onCloseStudio,
   onOpenStudioProfile,
-  onPressZone,
   onPressMap,
-  onEditToggle,
+  onRadiusChange,
+  onRadiusCommit,
+  onRadiusPanelToggle,
 }: MapMobileStageProps) {
   const theme = useTheme();
-  const selectedZoneIds = selectedZoneIdsProp;
-  const focusZoneId = focusZoneIdProp;
-  const handleZonePress = onPressZone;
+  const selectedZoneIds = showRadiusControl ? [] : selectedZoneIdsProp;
+  const focusZoneId = showRadiusControl ? null : focusZoneIdProp;
   const { focusProgress } = useContext(TabTransitionContext)!;
 
   // Deferred map mount: QueueMap only renders after the tab transition animation
@@ -124,28 +132,31 @@ export const MapMobileStage = memo(function MapMobileStage({
     <Box style={{ flex: 1, backgroundColor: mapBackgroundColor }}>
       {isMapReady ? (
         <QueueMap
-          mode="zoneSelect"
+          mode={showRadiusControl ? "pinDrop" : "zoneSelect"}
           pin={mapPin}
           selectedZoneIds={selectedZoneIds}
           focusZoneId={focusZoneId}
-          selectedBoundaryIds={selectedZoneIds}
-          focusBoundaryId={focusZoneId}
-          isEditing={zoneModeActive}
+          selectedBoundaryIds={showRadiusControl ? [] : selectedZoneIds}
+          focusBoundaryId={showRadiusControl ? null : focusZoneId}
+          isEditing={false}
           cameraPadding={cameraPadding}
           studios={studios}
           selectedStudioId={selectedStudioId}
           onPressStudio={onPressStudio}
-          onPressBoundary={handleZonePress}
-          onPressZone={handleZonePress}
           onPressMap={onPressMap}
+          {...(showRadiusControl ? { radiusKm: workRadiusKm } : {})}
           showGpsButton={false}
           showAttributionButton={false}
-          {...(boundarySource ? { boundarySource } : {})}
-          {...(boundaryIdProperty ? { boundaryIdProperty } : {})}
-          {...(boundaryLabelPropertyCandidates ? { boundaryLabelPropertyCandidates } : {})}
-          {...(boundaryInteractionBounds ? { boundaryInteractionBounds } : {})}
-          {...(focusBoundaryBounds ? { focusBoundaryBounds } : {})}
-          {...(initialBoundaryViewport ? { initialBoundaryViewport } : {})}
+          {...(!showRadiusControl && boundarySource ? { boundarySource } : {})}
+          {...(!showRadiusControl && boundaryIdProperty ? { boundaryIdProperty } : {})}
+          {...(!showRadiusControl && boundaryLabelPropertyCandidates
+            ? { boundaryLabelPropertyCandidates }
+            : {})}
+          {...(!showRadiusControl && boundaryInteractionBounds
+            ? { boundaryInteractionBounds }
+            : {})}
+          {...(!showRadiusControl && focusBoundaryBounds ? { focusBoundaryBounds } : {})}
+          {...(!showRadiusControl && initialBoundaryViewport ? { initialBoundaryViewport } : {})}
         />
       ) : (
         // Skeleton shown during tab transition — MapLibre hasn't mounted yet.
@@ -168,38 +179,58 @@ export const MapMobileStage = memo(function MapMobileStage({
         </Box>
       )}
 
-      <TabOverlayAnchor
-        side="right"
-        offset={BrandSpacing.lg}
-        style={{ bottom: (overlayBottom ?? BrandSpacing.lg) + BrandSpacing.xs, zIndex: 60 }}
-      >
-        <IconButton
-          accessibilityLabel={
-            zoneModeActive ? t("mapTab.mobile.confirmCoverage") : t("mapTab.mobile.editCoverage")
-          }
-          onPress={onEditToggle}
-          tone={zoneModeActive ? "primary" : "secondary"}
-          size={58}
-          disabled={isSaving}
-          icon={
-            <IconSymbol
-              name={zoneModeActive ? "checkmark.circle.fill" : "pencil"}
-              size={22}
-              color={zoneModeActive ? theme.color.onPrimary : theme.color.primary}
-            />
-          }
-        />
-      </TabOverlayAnchor>
-
-      {zoneModeActive && focusedZoneLabel ? (
-        <TabOverlayAnchor
-          side="left"
-          offset={BrandSpacing.lg}
+      {isMapReady && showRadiusControl && isRadiusPanelOpen ? (
+        <Animated.View
+          entering={FadeIn.duration(160)}
+          exiting={FadeOut.duration(120)}
+          pointerEvents="box-none"
           style={{
-            bottom: (overlayBottom ?? BrandSpacing.lg) + BrandSpacing.xxl + BrandSpacing.lg,
+            position: "absolute",
+            top: BrandSpacing.lg,
+            left: BrandSpacing.lg,
+            right: BrandSpacing.lg,
+            zIndex: 70,
           }}
         >
-          <ZoneStudioSummary zoneLabel={focusedZoneLabel} count={focusedZoneStudioCount} />
+          <MapRadiusControl
+            radiusKm={workRadiusKm}
+            studiosCount={studioCount}
+            isSaving={isRadiusSaving}
+            onRadiusChange={onRadiusChange}
+            onRadiusCommit={onRadiusCommit}
+          />
+        </Animated.View>
+      ) : null}
+
+      {showRadiusControl ? (
+        <TabOverlayAnchor
+          side="right"
+          offset={BrandSpacing.lg}
+          style={{ bottom: (overlayBottom ?? BrandSpacing.lg) + BrandSpacing.xs, zIndex: 60 }}
+        >
+          <IconButton
+            accessibilityLabel={
+              isRadiusPanelOpen ? t("common.save") : t("mapTab.mobile.openRadius")
+            }
+            onPress={() => {
+              if (isRadiusPanelOpen) {
+                onRadiusCommit(workRadiusKm);
+                onRadiusPanelToggle();
+                return;
+              }
+              onRadiusPanelToggle();
+            }}
+            tone={isRadiusPanelOpen ? "primary" : "secondary"}
+            size={58}
+            disabled={isRadiusSaving}
+            icon={
+              <IconSymbol
+                name={isRadiusPanelOpen ? "checkmark.circle.fill" : "pencil"}
+                size={22}
+                color={isRadiusPanelOpen ? theme.color.onPrimary : theme.color.primary}
+              />
+            }
+          />
         </TabOverlayAnchor>
       ) : null}
 

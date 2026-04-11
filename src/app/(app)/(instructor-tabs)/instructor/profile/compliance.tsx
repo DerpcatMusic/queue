@@ -1,6 +1,6 @@
 import { useAction, useQuery } from "convex/react";
-import * as WebBrowser from "expo-web-browser";
 import { Redirect } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, AppState, type AppStateStatus, Platform, Pressable } from "react-native";
@@ -243,7 +243,7 @@ export default function InstructorComplianceScreen() {
     title: t("profile.navigation.compliance"),
     routeMatchPath: "/profile/compliance",
   });
-  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [refreshAt, setRefreshAt] = useState<number | null>(null);
   const [isStartingDidit, setIsStartingDidit] = useState(false);
   const [isRefreshingDidit, setIsRefreshingDidit] = useState(false);
   const [feedback, setFeedback] = useState<{
@@ -253,8 +253,10 @@ export default function InstructorComplianceScreen() {
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const autoRefreshSessionIdRef = useRef<string | null>(null);
   const currentUser = useQuery(api.users.getCurrentUser);
-  const complianceArgs =
-    currentUser?.role === "instructor" ? (refreshNonce > 0 ? { now: Date.now() } : {}) : "skip";
+  const complianceArgs = useMemo(
+    () => (currentUser?.role === "instructor" ? (refreshAt ? { now: refreshAt } : {}) : "skip"),
+    [currentUser?.role, refreshAt],
+  );
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
@@ -327,7 +329,7 @@ export default function InstructorComplianceScreen() {
               : t("profile.compliance.feedback.identityRefreshStarted"),
           });
         }
-        setRefreshNonce((value) => value + 1);
+        setRefreshAt(Date.now());
       } catch (error) {
         if (!options?.silent) {
           setFeedback({
@@ -405,7 +407,7 @@ export default function InstructorComplianceScreen() {
         });
       }
       if (Platform.OS === "ios") {
-        setRefreshNonce((value) => value + 1);
+        setRefreshAt(Date.now());
       }
     } catch (error) {
       setFeedback({
@@ -440,7 +442,7 @@ export default function InstructorComplianceScreen() {
           tone: "success",
           message: t("profile.compliance.feedback.insuranceUploaded"),
         });
-        setRefreshNonce((value) => value + 1);
+        setRefreshAt(Date.now());
       } catch (error) {
         const message = isComplianceDocumentUploadError(error)
           ? error.message
@@ -465,7 +467,7 @@ export default function InstructorComplianceScreen() {
           tone: "success",
           message: t("profile.compliance.feedback.certificateUploaded"),
         });
-        setRefreshNonce((value) => value + 1);
+        setRefreshAt(Date.now());
       } catch (error) {
         const message = isComplianceDocumentUploadError(error)
           ? error.message

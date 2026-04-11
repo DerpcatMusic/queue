@@ -608,9 +608,9 @@ const he = {
       payoutsNeeded: "הוסיפו חשבון בנק מאומת למשיכות.",
       signOutDesc: "סיום הסשן במכשיר הזה.",
       location: {
-        title: "מיקום ואזור",
+        title: "מיקום ורדיוס",
         instructorDescription:
-          "הגדירו כתובת או השתמשו ב-GPS, ואז בחרו אם להוסיף את האזור שזוהה לאזורי השירות שלכם.",
+          "הגדירו כתובת או השתמשו ב-GPS, ואז הגדירו כמה רחוק אתם מוכנים לנסוע לשיעור.",
         studioDescription: "הגדירו את פרטי הסטודיו ואז חשבו את אזור השירות הרשמי לפי כתובת או GPS.",
         addressPlaceholder: "כתובת",
         findByAddress: "איתור לפי כתובת",
@@ -621,6 +621,10 @@ const he = {
         zoneNotDetected: "האזור עדיין לא זוהה.",
         includeDetectedZone: "הוספת האזור שזוהה",
         includeDetectedZoneDescription: "בעת השמירה, האזור שזוהה יתווסף לאזורי השירות של המדריך/ה.",
+        workRadiusTitle: "רדיוס עבודה",
+        workRadiusDescription:
+          "קבעו את מספר הקילומטרים המקסימלי שאתם מוכנים לנסוע לשיעור. סטודיואים בתוך הרדיוס הזה יופיעו בפיד.",
+        workRadiusPlaceholder: "למשל 12",
       },
       calendar: {
         title: "סנכרון יומן",
@@ -953,6 +957,12 @@ const he = {
       startOnboarding: "התחלת אונבורדינג",
       resumeOnboarding: "המשך אונבורדינג",
       managePayouts: "ניהול משיכות",
+      tabs: {
+        wallet: "ארנק",
+        earnings: "הכנסות",
+        payouts: "משיכות",
+      },
+      openCompliance: "אימות זהות והעלאת מסמכים",
       connectBank: "חיבור בנק",
       manageBank: "ניהול בנק",
       finalizingTitle: "מסיים את חיבור הבנק",
@@ -1370,6 +1380,13 @@ const he = {
     mobile: {
       editingEyebrow: "עריכת כיסוי",
       overviewEyebrow: "סקירת כיסוי",
+      radiusTitle: "רדיוס עבודה",
+      radiusHint: "החליקו בקפיצות של 250 מ׳ כדי לראות סטודיואים בתוך טווח הנסיעה.",
+      radiusCount: "{{count}} סטודיואים נראים",
+      radiusSaving: "שומר רדיוס",
+      radiusLive: "תצוגה חיה",
+      openRadius: "עריכת רדיוס",
+      closeRadius: "סגירת רדיוס",
       activeZones: "{{count}} אזורים פעילים",
       stagedReady: "{{count}} שינויים מוכנים לשמירה.",
       stagedConfirm: "{{count}} שינויים מוכנים לאישור.",

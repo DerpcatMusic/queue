@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { useTheme } from "@/hooks/use-theme";
 import { Motion } from "@/theme/theme";
 import { ANIMATION_DURATION_TAB_CONTENT } from "./top-sheet-constants";
 
@@ -63,7 +64,14 @@ export function TabSceneTransition({
   children,
   style,
 }: PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) {
+  const theme = useTheme();
   const transitionStyle = useTabSceneTransitionStyle();
 
-  return <Animated.View style={[{ flex: 1 }, transitionStyle, style]}>{children}</Animated.View>;
+  return (
+    <Animated.View
+      style={[{ flex: 1, backgroundColor: theme.color.appBg }, transitionStyle, style]}
+    >
+      {children}
+    </Animated.View>
+  );
 }

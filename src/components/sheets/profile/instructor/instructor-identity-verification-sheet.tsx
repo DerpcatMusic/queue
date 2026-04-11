@@ -246,7 +246,7 @@ export function InstructorIdentityVerificationSheet({
 }: InstructorIdentityVerificationSheetProps) {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
-  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [refreshAt, setRefreshAt] = useState<number | null>(null);
   const [isStartingDidit, setIsStartingDidit] = useState(false);
   const [isRefreshingDidit, setIsRefreshingDidit] = useState(false);
   const [feedback, setFeedback] = useState<{
@@ -256,8 +256,10 @@ export function InstructorIdentityVerificationSheet({
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const autoRefreshSessionIdRef = useRef<string | null>(null);
   const currentUser = useQuery(api.users.getCurrentUser);
-  const complianceArgs =
-    currentUser?.role === "instructor" ? (refreshNonce > 0 ? { now: Date.now() } : {}) : "skip";
+  const complianceArgs = useMemo(
+    () => (currentUser?.role === "instructor" ? (refreshAt ? { now: refreshAt } : {}) : "skip"),
+    [currentUser?.role, refreshAt],
+  );
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
@@ -330,7 +332,7 @@ export function InstructorIdentityVerificationSheet({
               : t("profile.compliance.feedback.identityRefreshStarted"),
           });
         }
-        setRefreshNonce((value) => value + 1);
+        setRefreshAt(Date.now());
       } catch (error) {
         if (!options?.silent) {
           setFeedback({
@@ -351,7 +353,7 @@ export function InstructorIdentityVerificationSheet({
   useEffect(() => {
     // Only auto-refresh when the sheet is actually visible.
     // Without this guard, the effect fires on mount (even when hidden),
-    // bumps refreshNonce → query re-fetches → diditVerification changes →
+    // bumps refreshAt → query re-fetches → diditVerification changes →
     // effect re-fires → infinite loop.
     if (!visible) {
       autoRefreshSessionIdRef.current = null;
@@ -418,7 +420,7 @@ export function InstructorIdentityVerificationSheet({
         });
       }
       if (Platform.OS === "ios") {
-        setRefreshNonce((value) => value + 1);
+        setRefreshAt(Date.now());
       }
     } catch (error) {
       setFeedback({
@@ -453,7 +455,7 @@ export function InstructorIdentityVerificationSheet({
           tone: "success",
           message: t("profile.compliance.feedback.insuranceUploaded"),
         });
-        setRefreshNonce((value) => value + 1);
+        setRefreshAt(Date.now());
       } catch (error) {
         const message = isComplianceDocumentUploadError(error)
           ? error.message
@@ -478,7 +480,7 @@ export function InstructorIdentityVerificationSheet({
           tone: "success",
           message: t("profile.compliance.feedback.certificateUploaded"),
         });
-        setRefreshNonce((value) => value + 1);
+        setRefreshAt(Date.now());
       } catch (error) {
         const message = isComplianceDocumentUploadError(error)
           ? error.message

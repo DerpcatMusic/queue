@@ -55,6 +55,7 @@ type SceneDescriptor = {
   body?: ReactNode;
   sheetConfig?: TopSheetDescriptorConfig | null;
   insetTone?: InsetTone;
+  backgroundColor?: string;
   isLoading?: boolean;
 };
 
@@ -159,6 +160,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
         existing &&
         existing.sheetConfig === descriptor.sheetConfig &&
         existing.insetTone === descriptor.insetTone &&
+        existing.backgroundColor === descriptor.backgroundColor &&
         existing.isLoading === descriptor.isLoading
       ) {
         return;
@@ -241,14 +243,18 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
     surface,
     surfaceAlt,
   } = color;
+  const activeDescriptor = sceneDescriptorsRef.current.get(activeTabId);
+  const activeSceneBackgroundColor = activeDescriptor?.backgroundColor ?? appBg;
 
   const navbarBg = surfaceAlt;
 
   const layoutShell = useMemo(
     () => (
       <ScrollSheetProvider>
-        <View style={{ flex: 1, backgroundColor: appBg }}>
-          <View style={{ flex: 1, minHeight: 0, zIndex: 2, backgroundColor: appBg }}>
+        <View style={{ flex: 1, backgroundColor: activeSceneBackgroundColor }}>
+          <View
+            style={{ flex: 1, minHeight: 0, zIndex: 2, backgroundColor: activeSceneBackgroundColor }}
+          >
             <NativeTabs
               tintColor={onPrimaryContainer}
               iconColor={{
@@ -267,7 +273,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                 <NativeTabs.Trigger
                   key={tab.id}
                   name={tab.routeName}
-                  contentStyle={{ backgroundColor: appBg }}
+                  contentStyle={{ backgroundColor: activeSceneBackgroundColor }}
                 >
                   <NativeTabs.Trigger.Icon
                     md={tab.icon.md}
@@ -286,6 +292,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
     ),
     [
       appBg,
+      activeSceneBackgroundColor,
       navbarBg,
       onPrimaryContainer,
       textMicro,
@@ -307,7 +314,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
           </ScrollSheetProvider>
           {layoutShell}
           <TabTransitionVeil
-            tintColor={color.surface}
+            tintColor={activeSceneBackgroundColor}
             focusProgress={focusProgress}
             transitionKey={activeTabId}
           />

@@ -51,6 +51,11 @@ interface SheetContextValue {
   calendarLessonRole: CalendarLessonSheetRole | null;
   openCalendarLesson: (jobId: string, role: CalendarLessonSheetRole) => void;
   closeCalendarLesson: () => void;
+
+  // Studio public profile sheet (opened from calendar lesson detail)
+  studioPublicProfileSlug: string | null;
+  openStudioPublicProfile: (slug: string) => void;
+  closeStudioPublicProfile: () => void;
 }
 
 const SheetContext = createContext<SheetContextValue | null>(null);
@@ -66,9 +71,10 @@ export function SheetProvider({ children }: { children: React.ReactNode }) {
   const [calendarLessonRole, setCalendarLessonRole] = useState<CalendarLessonSheetRole | null>(
     null,
   );
+  const [studioPublicProfileSlug, setStudioPublicProfileSlug] = useState<string | null>(null);
 
   const openInstructorSheet = useCallback((sheet: InstructorSubpage): boolean => {
-    setInstructorActiveSheet(sheet);
+    setInstructorActiveSheet(sheet === "identity-verification" ? "compliance" : sheet);
     return true;
   }, []);
 
@@ -95,6 +101,14 @@ export function SheetProvider({ children }: { children: React.ReactNode }) {
     setCalendarLessonRole(null);
   }, []);
 
+  const openStudioPublicProfile = useCallback((slug: string) => {
+    setStudioPublicProfileSlug(slug);
+  }, []);
+
+  const closeStudioPublicProfile = useCallback(() => {
+    setStudioPublicProfileSlug(null);
+  }, []);
+
   return (
     <SheetContext.Provider
       value={{
@@ -108,6 +122,9 @@ export function SheetProvider({ children }: { children: React.ReactNode }) {
         calendarLessonRole,
         openCalendarLesson,
         closeCalendarLesson,
+        studioPublicProfileSlug,
+        openStudioPublicProfile,
+        closeStudioPublicProfile,
       }}
     >
       {children}

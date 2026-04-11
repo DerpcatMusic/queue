@@ -2,7 +2,8 @@ import { ZONE_OPTIONS, type ZoneOption } from "@/constants/zones";
 import { getZoneCityMeta, getZoneIdsForCity } from "@/constants/zones-city";
 
 import { LONDON_OVERTURE_BOROUGH_GEOJSON, LONDON_BOROUGH_PROVIDER_ID } from "./london-boroughs";
-import { ACTIVE_BOUNDARY_PROVIDER } from "./providers";
+import { ENGLAND_BOUNDARY_PROVIDER, LONDON_BOROUGH_BOUNDARY_PROVIDER } from "./providers";
+import type { BoundaryProviderDefinition } from "./types";
 
 export type BoundaryLanguage = "en" | "he";
 
@@ -82,7 +83,34 @@ const LONDON_CITY_BOUNDARY: SelectableBoundary = {
   source: LONDON_BOROUGH_PROVIDER_ID,
 };
 
-function buildLondonBoundaries(): SelectableBoundary[] {
+/**
+ * Builds selectable boundaries for the England provider.
+ * Currently returns a single "England" city node; real sub-national boundaries
+ * require Overture/OSM data download (see scripts/data/download-england-boundaries.py).
+ */
+function buildEnglandBoundaries(): SelectableBoundary[] {
+  const englandCity: SelectableBoundary = {
+    id: "england",
+    label: { en: "England", he: "England" },
+    parentCityKey: "england",
+    parentCityLabel: { en: "England", he: "England" },
+    countryCode: "GB",
+    kind: "city",
+    depth: 0,
+    source: ENGLAND_BOUNDARY_PROVIDER.id,
+  };
+  return [englandCity];
+}
+
+/** Israel boundaries (static - only one provider for IL) */
+export function buildIsraelBoundaries(): SelectableBoundary[] {
+  return ZONE_OPTIONS.map(toSelectableIsraelBoundary);
+}
+
+/** London borough boundaries */
+export function buildLondonBoundariesWithCity(
+  cityBoundary: SelectableBoundary,
+): SelectableBoundary[] {
   const boundaries = (LONDON_OVERTURE_BOROUGH_GEOJSON.features ?? [])
     .map((feature): SelectableBoundary | null => {
       const id = String(feature.properties?.id ?? "").trim();
@@ -91,7 +119,7 @@ function buildLondonBoundaries(): SelectableBoundary[] {
       return {
         id,
         label: { en: name, he: name },
-        parentBoundaryId: LONDON_CITY_BOUNDARY.id,
+        parentBoundaryId: cityBoundary.id,
         parentCityKey: "london",
         parentCityLabel: { en: "London", he: "London" },
         countryCode: "GB",
@@ -102,34 +130,78 @@ function buildLondonBoundaries(): SelectableBoundary[] {
     })
     .filter((boundary): boundary is SelectableBoundary => boundary !== null);
 
-  return [LONDON_CITY_BOUNDARY, ...boundaries.sort((a, b) => a.label.en.localeCompare(b.label.en))];
+  return [cityBoundary, ...boundaries.sort((a, b) => a.label.en.localeCompare(b.label.en))];
 }
 
-const ISRAEL_BOUNDARIES = ZONE_OPTIONS.map(toSelectableIsraelBoundary);
-const LONDON_BOUNDARIES = buildLondonBoundaries();
+/** Build boundaries for a given provider */
+export function buildBoundariesForProvider(
+  provider: BoundaryProviderDefinition,
+): SelectableBoundary[] {
+  switch (provider.id) {
+    case "israel-pikud":
+      return buildIsraelBoundaries();
+    case LONDON_BOROUGH_PROVIDER_ID:
+      return buildLondonBoundariesWithCity(LONDON_CITY_BOUNDARY);
+    case ENGLAND_BOUNDARY_PROVIDER.id:
+      return buildEnglandBoundaries();
+    default:
+      // For any other provider (e.g. eu-* providers), return empty for now
+      // Real implementations would load from geometry source
+      return [];
+  }
+}
 
-export const SELECTABLE_BOUNDARY_OPTIONS =
-  ACTIVE_BOUNDARY_PROVIDER.id === "israel-pikud" ? ISRAEL_BOUNDARIES : LONDON_BOUNDARIES;
-
-export const SELECTABLE_BOUNDARY_BY_ID = new Map(
-  SELECTABLE_BOUNDARY_OPTIONS.map((boundary) => [boundary.id, boundary]),
-);
-
-export const CITY_META_BY_KEY =
-  ACTIVE_BOUNDARY_PROVIDER.id === "israel-pikud"
-    ? buildIsraelCityMeta(SELECTABLE_BOUNDARY_OPTIONS)
-    : new Map<string, BoundaryCityMeta>([
+/** Build city metadata for a given provider's boundaries */
+export function buildCityMetaForProvider(
+  provider: BoundaryProviderDefinition,
+  boundaries: SelectableBoundary[],
+): Map<string, BoundaryCityMeta> {
+  switch (provider.id) {
+    case "israel-pikud":
+      return buildIsraelCityMeta(boundaries);
+    case LONDON_BOROUGH_PROVIDER_ID:
+      return new Map<string, BoundaryCityMeta>([
         [
           "london",
           {
             cityKey: "london",
             cityLabel: { en: "London", he: "London" },
-            boundaryIds: SELECTABLE_BOUNDARY_OPTIONS
-              .filter((boundary) => boundary.kind !== "city")
-              .map((boundary) => boundary.id),
+            boundaryIds: boundaries.filter((b) => b.kind !== "city").map((b) => b.id),
           },
         ],
       ]);
+    case ENGLAND_BOUNDARY_PROVIDER.id:
+      return new Map<string, BoundaryCityMeta>([
+        [
+          "england",
+          {
+            cityKey: "england",
+            cityLabel: { en: "England", he: "England" },
+            boundaryIds: boundaries.filter((b) => b.kind !== "city").map((b) => b.id),
+          },
+        ],
+      ]);
+    default:
+      return new Map();
+  }
+}
+
+// Legacy static exports for backward compatibility (defaults to London)
+const ISRAEL_BOUNDARIES = buildIsraelBoundaries();
+const LONDON_BOUNDARIES = buildLondonBoundariesWithCity(LONDON_CITY_BOUNDARY);
+
+export { ISRAEL_BOUNDARIES, LONDON_BOUNDARIES };
+
+export const SELECTABLE_BOUNDARY_OPTIONS = LONDON_BOUNDARIES;
+
+export const SELECTABLE_BOUNDARY_BY_ID = new Map(
+  SELECTABLE_BOUNDARY_OPTIONS.map((boundary) => [boundary.id, boundary]),
+);
+
+export const CITY_META_BY_KEY = buildCityMetaForProvider(
+  LONDON_BOROUGH_BOUNDARY_PROVIDER,
+  SELECTABLE_BOUNDARY_OPTIONS,
+);
 
 export function getSelectableBoundary(boundaryId: string) {
   return SELECTABLE_BOUNDARY_BY_ID.get(boundaryId);

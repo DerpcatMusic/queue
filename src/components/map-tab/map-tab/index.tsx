@@ -1,7 +1,6 @@
 import { Redirect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Platform, View } from "react-native";
-import { TabScreenRoot } from "@/components/layout/tab-screen-root";
 import { MapMobileStage } from "@/components/map-tab/map-tab/map-mobile-stage";
 import { MapWebWorkbench } from "@/components/map-tab/map-tab/map-web-workbench";
 import type { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
@@ -18,18 +17,20 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     filteredZones,
     focusZoneId,
     focusedZoneLabel,
-    focusedZoneStudioCount,
     handleDiscardChanges,
     handleCloseStudio,
-    handleEditButtonPress,
     handleFocusSelection,
     handleMapSheetSearchChange,
     handleSaveZones,
+    handleRadiusChange,
+    handleRadiusCommit,
     handleSelectStudio,
     hasChanges,
     isFocused,
     isMapBodyReady,
     isSaving,
+    isRadiusSaving,
+    isRadiusPanelOpen,
     mapCameraPadding,
     mapPalette,
     mapPin,
@@ -45,6 +46,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     pendingChangeCount,
     persistedZoneIds,
     saveError,
+    studioCount,
     selectedStudio,
     selectedStudioId,
     selectedZoneIds,
@@ -52,9 +54,11 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     setFocusZoneId,
     t,
     toggleZone,
+    showRadiusControl,
+    workRadiusKm,
     zoneLanguage,
     zoneSearch,
-    zoneModeActive,
+    handleRadiusPanelToggle,
   } = controller;
   const [isMapLoading, setIsMapLoading] = useState(true);
   useEffect(() => {
@@ -73,15 +77,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
   );
 
   if (currentUser === undefined) {
-    return (
-      <TabScreenRoot
-        mode="static"
-        topInsetTone="card"
-        style={{ backgroundColor: mapPalette.styleBackground }}
-      >
-        <View style={{ flex: 1, backgroundColor: mapPalette.styleBackground }} />
-      </TabScreenRoot>
-    );
+    return <View style={{ flex: 1, backgroundColor: mapPalette.styleBackground }} />;
   }
 
   if (!currentUser) {
@@ -93,42 +89,32 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
   }
 
   if (isMapLoading) {
-    return (
-      <TabScreenRoot
-        mode="static"
-        topInsetTone="card"
-        style={{ backgroundColor: mapPalette.styleBackground }}
-      >
-        <View style={{ flex: 1, backgroundColor: mapPalette.styleBackground }} />
-      </TabScreenRoot>
-    );
+    return <View style={{ flex: 1, backgroundColor: mapPalette.styleBackground }} />;
   }
 
   if (Platform.OS === "web") {
     return (
-      <TabScreenRoot mode="static" topInsetTone="card">
-        <MapWebWorkbench
-          t={t}
-          zoneLanguage={zoneLanguage}
-          zoneSearch={zoneSearch}
-          selectedZones={selectedZones}
-          filteredZones={filteredZones}
-          focusZoneId={focusZoneId}
-          focusedZoneLabel={focusedZoneLabel}
-          mapPin={mapPin}
-          hasChanges={hasChanges}
-          pendingChangeCount={pendingChangeCount}
-          persistedZoneCount={persistedZoneIds.length}
-          isSaving={isSaving}
-          saveError={saveError}
-          onToggleZone={toggleZone}
-          onSetFocusZone={setFocusZoneId}
-          onHandleFocusSelection={handleFocusSelection}
-          onHandleSaveZones={handleSaveZones}
-          onHandleDiscardChanges={handleDiscardChanges}
-          onSearchChange={handleMapSheetSearchChange}
-        />
-      </TabScreenRoot>
+      <MapWebWorkbench
+        t={t}
+        zoneLanguage={zoneLanguage}
+        zoneSearch={zoneSearch}
+        selectedZones={selectedZones}
+        filteredZones={filteredZones}
+        focusZoneId={focusZoneId}
+        focusedZoneLabel={focusedZoneLabel}
+        mapPin={mapPin}
+        hasChanges={hasChanges}
+        pendingChangeCount={pendingChangeCount}
+        persistedZoneCount={persistedZoneIds.length}
+        isSaving={isSaving}
+        saveError={saveError}
+        onToggleZone={toggleZone}
+        onSetFocusZone={setFocusZoneId}
+        onHandleFocusSelection={handleFocusSelection}
+        onHandleSaveZones={handleSaveZones}
+        onHandleDiscardChanges={handleDiscardChanges}
+        onSearchChange={handleMapSheetSearchChange}
+      />
     );
   }
 
@@ -141,21 +127,23 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
       studios={studios}
       selectedZoneIds={selectedZoneIds}
       focusZoneId={focusZoneId}
-      zoneModeActive={zoneModeActive}
-      isSaving={isSaving}
       overlayBottom={overlayBottom}
       cameraPadding={mapCameraPadding}
       selectedStudio={selectedStudio}
       selectedStudioId={selectedStudioId}
-      focusedZoneLabel={focusedZoneLabel}
-      focusedZoneStudioCount={focusedZoneStudioCount}
       zoneLanguage={zoneLanguage}
-      onPressZone={toggleZone}
+      showRadiusControl={showRadiusControl}
+      workRadiusKm={workRadiusKm}
+      studioCount={studioCount}
+      isRadiusPanelOpen={isRadiusPanelOpen}
       onPressMap={noopMapPress}
       onPressStudio={handleSelectStudio}
       onCloseStudio={handleCloseStudio}
       onOpenStudioProfile={handleOpenStudioProfile}
-      onEditToggle={handleEditButtonPress}
+      onRadiusChange={handleRadiusChange}
+      onRadiusCommit={handleRadiusCommit}
+      onRadiusPanelToggle={handleRadiusPanelToggle}
+      isRadiusSaving={isRadiusSaving}
       {...(boundarySource ? { boundarySource } : {})}
       {...(boundaryIdProperty ? { boundaryIdProperty } : {})}
       {...(boundaryLabelPropertyCandidates ? { boundaryLabelPropertyCandidates } : {})}

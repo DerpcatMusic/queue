@@ -46,6 +46,7 @@ export const Camera = createNoopComponent<Record<string, unknown>>();
 export const GeoJSONSource = createNoopComponent<Record<string, unknown>>();
 export const VectorSource = createNoopComponent<Record<string, unknown>>();
 export const Marker = createNoopComponent<Record<string, unknown>>();
+export const Images = createNoopComponent<Record<string, unknown>>();
 export const StyleImport = createNoopComponent<Record<string, unknown>>();
 export const FillLayer = createNoopComponent<GenericLayerProps>();
 export const LineLayer = createNoopComponent<GenericLayerProps>();

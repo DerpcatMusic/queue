@@ -35,6 +35,7 @@ import type { ResolvedLocation } from "@/lib/location-zone";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 
 let zoneLabelByIdPromise: Promise<Map<string, { en: string; he: string }>> | null = null;
+const DEFAULT_WORK_RADIUS_KM = 15;
 
 async function getZoneLabelById(zoneId: string, language: "en" | "he"): Promise<string> {
   if (!zoneLabelByIdPromise) {
@@ -153,6 +154,7 @@ export default function LocationScreen() {
   // Shared location state
   const [latitude, setLatitude] = useState<number>();
   const [longitude, setLongitude] = useState<number>();
+  const [workRadiusKm, setWorkRadiusKm] = useState(String(DEFAULT_WORK_RADIUS_KM));
   const [detectedZone, setDetectedZone] = useState<string | null>(null);
   const [detectedZoneLabel, setDetectedZoneLabel] = useState<string | null>(null);
   const [includeDetectedZone, setIncludeDetectedZone] = useState(false);
@@ -175,6 +177,7 @@ export default function LocationScreen() {
       setPostalCode(instructorSettings.addressPostalCode ?? "");
       setLatitude(instructorSettings.latitude);
       setLongitude(instructorSettings.longitude);
+      setWorkRadiusKm(String(instructorSettings.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM));
       setSeeded(true);
     }
   }, [instructorSettings, seeded]);
@@ -362,6 +365,7 @@ export default function LocationScreen() {
     trimmedAddressInput !== initialAddress ||
     latitude !== instructorSettings.latitude ||
     longitude !== instructorSettings.longitude ||
+    Number.parseFloat(workRadiusKm) !== (instructorSettings.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM) ||
     city !== (instructorSettings.addressCity ?? "") ||
     street !== (instructorSettings.addressStreet ?? "") ||
     streetNumber !== (instructorSettings.addressNumber ?? "") ||
@@ -384,11 +388,17 @@ export default function LocationScreen() {
     setErrorMessage(null);
 
     try {
+      const parsedWorkRadiusKm = Number.parseFloat(workRadiusKm);
+      if (!Number.isFinite(parsedWorkRadiusKm) || parsedWorkRadiusKm <= 0) {
+        throw new Error(t("profile.settings.errors.saveFailed"));
+      }
+
       await saveInstructor({
         notificationsEnabled: instructorSettings.notificationsEnabled,
         sports: instructorSettings.sports,
         calendarProvider: instructorSettings.calendarProvider,
         calendarSyncEnabled: instructorSettings.calendarSyncEnabled,
+        workRadiusKm: parsedWorkRadiusKm,
         ...(instructorSettings.hourlyRateExpectation !== undefined
           ? { hourlyRateExpectation: instructorSettings.hourlyRateExpectation }
           : {}),
@@ -513,8 +523,39 @@ export default function LocationScreen() {
             {hasContent(postalCode)
               ? renderStructuredRow(`${t("profile.location.fieldZipCode")}:`, postalCode)
               : null}
-          </Box>
+            </Box>
         ) : null}
+
+        <ProfileSectionHeader
+          label={t("profile.location.workRadiusTitle")}
+          icon="location"
+          flush
+        />
+        <Box style={{ gap: BrandSpacing.sm }}>
+          <Text
+            style={{
+              fontFamily: "Manrope_400Regular",
+              fontSize: 14,
+              fontWeight: "400",
+              lineHeight: 19,
+              color: palette.textMuted,
+            }}
+          >
+            {t("profile.location.workRadiusDescription")}
+          </Text>
+          <ManualField
+            value={workRadiusKm}
+            onChangeText={setWorkRadiusKm}
+            placeholder={t("profile.location.workRadiusPlaceholder")}
+            keyboardType="numeric"
+            autoCapitalize="none"
+            textMuted={palette.textMuted}
+            primary={palette.primary}
+            border={palette.border}
+            surfaceElevated={palette.surfaceElevated}
+            text={palette.text}
+          />
+        </Box>
 
         {/* Structured fields — editable in manual mode */}
         {manualMode ? (

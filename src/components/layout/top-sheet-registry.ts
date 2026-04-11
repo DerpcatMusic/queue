@@ -57,6 +57,7 @@ export type TopSheetTabConfig = {
   stickyHeader?: React.ReactNode;
   stickyFooter?: React.ReactNode;
   revealOnExpand?: React.ReactNode;
+  sheetVisible?: boolean;
   routeMatchPath?: string;
   routeMatchExact?: boolean;
 };
@@ -178,10 +179,9 @@ const DEFAULT_TOP_SHEET_CONFIGS: Record<string, TopSheetTabConfig> = {
   }),
   map: createContentDrivenTopSheetConfig({
     tabId: "map",
-    draggable: true,
-    expandable: true,
-    steps: [0, 0.52],
-    expandMode: "overlay",
+    render: () => null,
+    steps: [0],
+    sheetVisible: false,
   }),
   index: createContentDrivenTopSheetConfig({
     tabId: "index",

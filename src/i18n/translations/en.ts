@@ -641,9 +641,9 @@ const en = {
       payoutsNeeded: "Add a verified bank destination.",
       signOutDesc: "End session on this device.",
       location: {
-        title: "Location and zone",
+        title: "Location and radius",
         instructorDescription:
-          "Set your address or use GPS, then optionally add the detected zone to your service zones.",
+          "Set your address or use GPS, then choose how far you're willing to travel for a class.",
         studioDescription:
           "Set studio details, then resolve your official service zone from address or GPS.",
         addressPlaceholder: "Address",
@@ -656,6 +656,10 @@ const en = {
         includeDetectedZone: "Include detected zone",
         includeDetectedZoneDescription:
           "Add the detected zone to your instructor service zones on save.",
+        workRadiusTitle: "Working radius",
+        workRadiusDescription:
+          "Set the maximum number of kilometers you want to travel for a class. Studios inside this radius appear in your feed.",
+        workRadiusPlaceholder: "e.g. 12",
       },
       calendar: {
         title: "Calendar sync",
@@ -1004,6 +1008,12 @@ const en = {
       startOnboarding: "Start onboarding",
       resumeOnboarding: "Resume onboarding",
       managePayouts: "Manage payouts",
+      tabs: {
+        wallet: "Wallet",
+        earnings: "Earnings",
+        payouts: "Payouts",
+      },
+      openCompliance: "Verify identity & upload documents",
       connectBank: "Connect bank",
       manageBank: "Manage bank",
       finalizingTitle: "Finalizing bank connection",
@@ -1438,6 +1448,13 @@ const en = {
     mobile: {
       editingEyebrow: "Editing coverage",
       overviewEyebrow: "Coverage overview",
+      radiusTitle: "Working radius",
+      radiusHint: "Slide in 250 m steps to preview studios inside your commute range.",
+      radiusCount: "{{count}} studios visible",
+      radiusSaving: "Saving radius",
+      radiusLive: "Live preview",
+      openRadius: "Adjust radius",
+      closeRadius: "Close radius",
       activeZones: "{{count}} active zones",
       stagedReady: "{{count}} staged edits ready to save.",
       stagedConfirm: "{{count}} staged changes ready to confirm.",

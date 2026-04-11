@@ -1,4 +1,86 @@
 import type { BoundaryProviderDefinition } from "./types";
+import type { BoundaryGeometrySource } from "./types";
+
+function isBoundaryZoomTier(value: unknown): value is import("./types").BoundaryZoomTier {
+  if (!value || typeof value !== "object") return false;
+  const tier = value as Record<string, unknown>;
+  return (
+    typeof tier.tierId === "string" &&
+    Number.isFinite(tier.minZoom as number) &&
+    Number.isFinite(tier.maxZoom as number) &&
+    (tier.sourceLayer === undefined || typeof tier.sourceLayer === "string")
+  );
+}
+
+function parseZoomTiers(raw: string): import("./types").BoundaryZoomTier[] | undefined {
+  if (!raw.trim()) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return undefined;
+    const tiers = parsed
+      .filter(isBoundaryZoomTier)
+      .sort((left, right) => left.minZoom - right.minZoom);
+    return tiers.length > 0 ? tiers : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Optional env-driven vector-tile overrides for Europe country providers.
+ * When the corresponding env vars are set the provider geometry switches
+ * from the stub geojson to vectorTiles kind.
+ *
+ * Env vars (all optional):
+ *   EXPO_PUBLIC_EU_{CC}_VECTOR_TILES_URL_TEMPLATE – tile URL template string,
+ *       e.g. "https://tiles.example.com/eu/{cc}/{z}/{x}/{y}.mvt"
+ *   EXPO_PUBLIC_EU_{CC}_SOURCE_LAYER              – source layer name inside
+ *       the tileset (default: "boundaries")
+ *   EXPO_PUBLIC_EU_{CC}_ZOOM_TIERS                – JSON-encoded array of
+ *       BoundaryZoomTier objects describing zoom-aware rendering tiers.
+ *       Example: '[{"tierId":"coarse","minZoom":0,"maxZoom":8},{"tierId":"fine","minZoom":9,"maxZoom":20}]'
+ *       When omitted the source renders at all zoom levels.
+ */
+function getEuropeVectorTilesGeometry(countryCode: string): {
+  kind: "vectorTiles";
+  sourceId: string;
+  sourceLayer: string;
+  tileUrlTemplates: string[];
+  promoteId: string;
+  zoomTiers?: import("./types").BoundaryZoomTier[];
+} | null {
+  const cc = countryCode.toUpperCase();
+  const urlTemplate = (process.env[`EXPO_PUBLIC_EU_${cc}_VECTOR_TILES_URL_TEMPLATE`] ?? "").trim();
+  if (!urlTemplate) return null;
+
+  const sourceLayer = (process.env[`EXPO_PUBLIC_EU_${cc}_SOURCE_LAYER`] ?? "boundaries").trim();
+
+  // Parse optional zoom tiers from env var
+  const zoomTiersRaw = (process.env[`EXPO_PUBLIC_EU_${cc}_ZOOM_TIERS`] ?? "").trim();
+  const zoomTiers = parseZoomTiers(zoomTiersRaw);
+
+  return {
+    kind: "vectorTiles",
+    sourceId: `eu-${cc.toLowerCase()}-vector`,
+    sourceLayer,
+    tileUrlTemplates: [urlTemplate],
+    promoteId: "id",
+    ...(zoomTiers ? { zoomTiers } : {}),
+  };
+}
+
+function buildEuropeProviderGeometry(countryCode: string): BoundaryGeometrySource {
+  const vectorTilesGeometry = getEuropeVectorTilesGeometry(countryCode);
+  if (vectorTilesGeometry) return vectorTilesGeometry;
+
+  // Fallback: stub GeoJSON (kept for build sanity; real data must be loaded via
+  // either zoom tiers with a vector tile backend or a remoteGeojson source).
+  return {
+    kind: "geojson",
+    featureCollection: { type: "FeatureCollection" as const, features: [] },
+    idProperty: "id",
+  };
+}
 
 export type EuropeCountryConfig = {
   countryCode: string;
@@ -196,24 +278,12 @@ export const EUROPE_COUNTRY_CONFIGS: Map<string, EuropeCountryConfig> = new Map(
   ],
 ]);
 
-const EMPTY_FEATURE_COLLECTION = { type: "FeatureCollection" as const, features: [] };
-
 function createEuropeProvider(countryCode: string, name: string): BoundaryProviderDefinition {
   return {
     id: `eu-${countryCode.toLowerCase()}-localities`,
     label: `${name} localities`,
     countryCode,
-    geometry: {
-      kind: "geojson",
-      featureCollection: EMPTY_FEATURE_COLLECTION,
-      idProperty: "id",
-    },
-    // When PMTiles are hosted, use vectorTiles instead:
-    // geometry: {
-    //   kind: "vectorTiles",
-    //   sourceId: `overture-${countryCode.toLowerCase()}`,
-    //   sourceLayer: "localities",
-    // },
+    geometry: buildEuropeProviderGeometry(countryCode),
     capabilities: {
       supportsPolygonSelection: true,
       supportsPostcodeSelection: false,

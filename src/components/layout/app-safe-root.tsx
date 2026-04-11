@@ -8,9 +8,11 @@ export function AppSafeRoot({
   children,
   topInsetBackgroundColor,
   rootBackgroundColor,
+  topInsetVisible = true,
 }: PropsWithChildren<{
   topInsetBackgroundColor: ColorValue;
   rootBackgroundColor: ColorValue;
+  topInsetVisible?: boolean;
 }>) {
   const insets = useSafeAreaInsets();
 
@@ -38,20 +40,22 @@ export function AppSafeRoot({
   return (
     <Animated.View style={[{ flex: 1 }, animatedRootStyle]}>
       {/* Status bar background - always on top with zIndex */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          {
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-            height: insets.top,
-          },
-          animatedInsetStyle,
-        ]}
-      />
+      {topInsetVisible ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            {
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 9999,
+              height: insets.top,
+            },
+            animatedInsetStyle,
+          ]}
+        />
+      ) : null}
       <Box style={{ flex: 1 }}>{children}</Box>
     </Animated.View>
   );

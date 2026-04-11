@@ -1,5 +1,6 @@
 "use node";
 
+import { GeospatialIndex } from "@convex-dev/geospatial";
 import { MINUTE, RateLimiter, SECOND } from "@convex-dev/rate-limiter";
 import { WorkflowManager } from "@convex-dev/workflow";
 import { Workpool } from "@convex-dev/workpool";
@@ -72,3 +73,5 @@ export const geminiReviewRateLimiter = new RateLimiter(components.rateLimiter, {
     capacity: GEMINI_REVIEW_GLOBAL_MAX + 20,
   },
 });
+
+export const geospatial = new GeospatialIndex(components.geospatial);

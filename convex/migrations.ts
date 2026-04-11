@@ -14,6 +14,10 @@ import {
 } from "./_generated/server";
 import { dedupeUsersByEmail, normalizeEmail, resolveCanonicalUserByEmail } from "./lib/authDedupe";
 import { isKnownZoneId } from "./lib/domainValidation";
+import {
+  syncInstructorGeospatialCoverage,
+  syncStudioBranchGeospatialLocation,
+} from "./lib/geospatial";
 import { diditVerificationStatusValidator } from "./lib/instructorCompliance";
 import { mapLegacyPaymentStatusToOrderStatus, summarizeLedgerBalances } from "./lib/marketplace";
 import { ensureStudioInfrastructure } from "./lib/studioBranches";
@@ -193,6 +197,7 @@ const DEVELOPMENT_RESET_TABLES = [
   "calendarIntegrations",
   "diditEvents",
   "instructorCoverage",
+  "instructorGeoCoverage",
   "instructorProfiles",
   "instructorSports",
   "instructorZones",
@@ -2673,6 +2678,74 @@ export const backfillStudioBranchInfrastructure = mutation({
       updatedCalendarIntegrations,
       hasMore: !page.isDone,
       continueCursor: page.continueCursor,
+    };
+  },
+});
+
+export const backfillInstructorGeospatialCoverage = internalMutation({
+  args: {
+    cursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
+  },
+  returns: v.object({
+    scanned: v.number(),
+    synced: v.number(),
+    hasMore: v.boolean(),
+    continueCursor: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const batchSize = Math.min(Math.max(args.batchSize ?? DEFAULT_BATCH_SIZE, 1), MAX_BATCH_SIZE);
+    const page = await ctx.db
+      .query("instructorProfiles")
+      .paginate({ cursor: args.cursor ?? null, numItems: batchSize });
+
+    let synced = 0;
+    for (const profile of page.page) {
+      await syncInstructorGeospatialCoverage(ctx, profile._id);
+      synced += 1;
+    }
+
+    return {
+      scanned: page.page.length,
+      synced,
+      hasMore: !page.isDone,
+      ...omitUndefined({
+        continueCursor: page.isDone ? undefined : page.continueCursor,
+      }),
+    };
+  },
+});
+
+export const backfillStudioBranchGeospatialCoverage = internalMutation({
+  args: {
+    cursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
+  },
+  returns: v.object({
+    scanned: v.number(),
+    synced: v.number(),
+    hasMore: v.boolean(),
+    continueCursor: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const batchSize = Math.min(Math.max(args.batchSize ?? DEFAULT_BATCH_SIZE, 1), MAX_BATCH_SIZE);
+    const page = await ctx.db
+      .query("studioBranches")
+      .paginate({ cursor: args.cursor ?? null, numItems: batchSize });
+
+    let synced = 0;
+    for (const branch of page.page) {
+      await syncStudioBranchGeospatialLocation(ctx, branch);
+      synced += 1;
+    }
+
+    return {
+      scanned: page.page.length,
+      synced,
+      hasMore: !page.isDone,
+      ...omitUndefined({
+        continueCursor: page.isDone ? undefined : page.continueCursor,
+      }),
     };
   },
 });

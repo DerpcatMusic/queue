@@ -45,10 +45,6 @@ export default function ProfileLayout() {
             title: t("profile.navigation.wallet"),
           },
           {
-            routeMatchPath: "/profile/identity-verification",
-            title: t("profile.navigation.identityVerification"),
-          },
-          {
             routeMatchPath: "/profile/compliance",
             title: t("profile.navigation.compliance"),
           },
@@ -78,10 +74,6 @@ export default function ProfileLayout() {
             options={{ title: t("profile.navigation.calendar") }}
           />
           <Stack.Screen name="payments" options={{ title: t("profile.navigation.wallet") }} />
-          <Stack.Screen
-            name="identity-verification"
-            options={{ title: t("profile.navigation.identityVerification") }}
-          />
           <Stack.Screen name="compliance" options={{ title: t("profile.navigation.compliance") }} />
         </TabSubrouteStack>
       </ProfileSubpageSheetProvider>

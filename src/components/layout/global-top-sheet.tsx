@@ -94,6 +94,7 @@ export function GlobalTopSheet() {
     transitionKey,
     routeDepth,
   } = resolveTopSheetRouteIdentity(pathname, activeTabId, activeConfig);
+  const shouldRenderSheet = activeConfig?.sheetVisible !== false;
 
   // ── ScrollY from provider (for custom animated sheets) ─────────────
   const { setCollapsedSheetHeight, setLayoutSheetHeight } = useScrollSheetLayout();
@@ -109,6 +110,7 @@ export function GlobalTopSheet() {
   const baseSheetProps = buildBaseSheetProps(activeConfig);
   const hasRenderableContent = Boolean(
     activeConfig &&
+      shouldRenderSheet &&
       (activeConfig.render ||
         activeConfig.content ||
         activeConfig.collapsedContent ||
@@ -303,6 +305,7 @@ export function GlobalTopSheet() {
 
   // ── Render nothing if no config ─────────────────────────────────────
   if (!activeConfig) return null;
+  if (!shouldRenderSheet) return null;
 
   // ── Render function mode ────────────────────────────────────────────
   if (activeConfig.render) {

@@ -13,8 +13,10 @@ export type InsetTone = "app" | "sheet" | "card";
 type SystemUiContextValue = {
   topInsetTone: InsetTone;
   topInsetBackgroundColor: ColorValue | null;
+  topInsetVisible: boolean;
   setTopInsetTone: (tone: InsetTone) => void;
   setTopInsetBackgroundColor: (color: ColorValue | null) => void;
+  setTopInsetVisible: (visible: boolean) => void;
 };
 
 const SystemUiContext = createContext<SystemUiContextValue | null>(null);
@@ -24,6 +26,7 @@ export function SystemUiProvider({ children }: PropsWithChildren) {
   const [topInsetBackgroundColor, setTopInsetBackgroundColorState] = useState<ColorValue | null>(
     null,
   );
+  const [topInsetVisible, setTopInsetVisibleState] = useState(true);
 
   const setTopInsetTone = useCallback((tone: InsetTone) => {
     setTopInsetToneState(tone);
@@ -33,14 +36,27 @@ export function SystemUiProvider({ children }: PropsWithChildren) {
     setTopInsetBackgroundColorState(color);
   }, []);
 
+  const setTopInsetVisible = useCallback((visible: boolean) => {
+    setTopInsetVisibleState(visible);
+  }, []);
+
   const value = useMemo<SystemUiContextValue>(
     () => ({
       topInsetTone,
       topInsetBackgroundColor,
+      topInsetVisible,
       setTopInsetTone,
       setTopInsetBackgroundColor,
+      setTopInsetVisible,
     }),
-    [topInsetBackgroundColor, topInsetTone, setTopInsetBackgroundColor, setTopInsetTone],
+    [
+      topInsetBackgroundColor,
+      topInsetTone,
+      topInsetVisible,
+      setTopInsetBackgroundColor,
+      setTopInsetTone,
+      setTopInsetVisible,
+    ],
   );
 
   return <SystemUiContext.Provider value={value}>{children}</SystemUiContext.Provider>;

@@ -332,6 +332,7 @@ export function GeoJSONSource({ id, data, onPress, children }: GeoJSONSourceProp
   );
 }
 
+export const Images = Mapbox.Images;
 export function VectorSource({
   id,
   url,

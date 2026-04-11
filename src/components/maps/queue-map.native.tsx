@@ -18,10 +18,13 @@ import { useThemePreference } from "@/hooks/use-theme-preference";
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
+import studioPinShellSdf from "@/assets/images/map/studio-pin-shell-sdf.png";
 import {
-  createPinShape,
   createPropertyInFilter,
+  createStudioMarkersGeoJson,
+  createRadiusCircleFeatureCollection,
   ensureVectorOfflinePack,
+  getStudioMarkerImageEntries,
   sanitizeZoom,
   selectRenderableStudioMarkers,
   toBounds,
@@ -30,13 +33,16 @@ import {
   Camera,
   CircleLayer,
   GeoJSONSource,
+  Images,
   MapView,
   Marker,
+  FillLayer,
+  LineLayer,
+  SymbolLayer,
   StyleImport,
   type MapRef,
 } from "./native-map-sdk";
 import type { QueueMapProps } from "./queue-map.types";
-import { STUDIO_MAP_MARKER_OUTER_SIZE, StudioMapMarkerView } from "./studio-map-marker-view";
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 80;
@@ -60,7 +66,7 @@ export const QueueMap = memo(function QueueMap({
   initialBoundaryViewport,
   studios,
   selectedStudioId,
-  onPressStudio,
+  onPressStudio: _onPressStudio,
   onPressZone,
   onPressBoundary,
   onPressMap,
@@ -69,11 +75,14 @@ export const QueueMap = memo(function QueueMap({
   showAttributionButton = false,
   contentInset,
   cameraPadding,
+  radiusKm,
 }: QueueMapProps) {
   const { t } = useTranslation();
   const { resolvedScheme } = useThemePreference();
   const { color } = useTheme();
   const mapPalette = getMapBrandPalette(resolvedScheme);
+  const accentColor = color.primary;
+  const studioAccentColor = color.primary;
   const [mapLoadState, setMapLoadState] = useState<MapLoadState>("loading");
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   const [mapErrorMessage, setMapErrorMessage] = useState<string | null>(null);
@@ -169,8 +178,19 @@ export const QueueMap = memo(function QueueMap({
     () => createPropertyInFilter(activeBoundaryIds, activeBoundaryIdProperty),
     [activeBoundaryIdProperty, activeBoundaryIds],
   );
-  const pinShape = useMemo(() => createPinShape(pin), [pin]);
+  const radiusShape = useMemo(() => {
+    if (!pin || !Number.isFinite(radiusKm ?? Number.NaN)) {
+      return null;
+    }
+    const km = Math.max(0, radiusKm ?? 0);
+    if (km <= 0) {
+      return null;
+    }
+    return createRadiusCircleFeatureCollection(pin, km * 1000);
+  }, [pin, radiusKm]);
   const [markerZoomLevel, setMarkerZoomLevel] = useState<number | null>(null);
+  /** Live zoom level fed into boundary polygons for zoom-tier selection. */
+  const [currentZoom, setCurrentZoom] = useState<number | undefined>(undefined);
   const [markerBounds, setMarkerBounds] = useState<{
     sw: [number, number];
     ne: [number, number];
@@ -183,6 +203,20 @@ export const QueueMap = memo(function QueueMap({
         selectedStudioId: selectedStudioId ?? null,
       }),
     [markerBounds, markerZoomLevel, selectedStudioId, studios],
+  );
+  const studioMarkerImages = useMemo(
+    () => ({
+      ...getStudioMarkerImageEntries(renderableStudios),
+      "studio-pin-shell": {
+        image: studioPinShellSdf,
+        sdf: true,
+      },
+    }),
+    [renderableStudios],
+  );
+  const studioMarkersGeoJson = useMemo(
+    () => createStudioMarkersGeoJson(renderableStudios, selectedStudioId ?? null),
+    [renderableStudios, selectedStudioId],
   );
   const handleMapPress = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -226,6 +260,7 @@ export const QueueMap = memo(function QueueMap({
 
       if (typeof zoom === "number") {
         setMarkerZoomLevel((current) => (current === zoom ? current : zoom));
+        setCurrentZoom(zoom);
       }
     } catch {
       // Ignore transient native errors while the map settles.
@@ -469,43 +504,165 @@ export const QueueMap = memo(function QueueMap({
         />
 
         {mapLoadState === "ready" ? (
-          <QueueMapBoundaryPolygons
-            mode={mode}
-            isEditing={isEditing}
-            showLabelLayers
-            selectedBoundaryIds={activeBoundaryIds}
-            selectedBoundaryFilter={selectedBoundaryFilter}
-            boundarySource={activeBoundarySource}
-            boundaryIdProperty={activeBoundaryIdProperty}
-            boundaryLabelPropertyCandidates={activeBoundaryLabelPropertyCandidates}
-            visibleBounds={markerBounds}
-            mapPalette={mapPalette}
-            onPressBoundary={activeBoundaryPressHandler}
-          />
+          <>
+            {radiusShape ? (
+              <GeoJSONSource id="queue-radius-source" data={radiusShape}>
+                <FillLayer
+                  id="queue-radius-fill"
+                  paint={{
+                    "fill-color": accentColor,
+                    "fill-opacity": 0.22,
+                  }}
+                />
+                <LineLayer
+                  id="queue-radius-line"
+                  paint={{
+                    "line-color": accentColor,
+                    "line-width": 3,
+                    "line-opacity": 0.9,
+                  }}
+                />
+              </GeoJSONSource>
+            ) : null}
+            {renderableStudios.length > 0 ? (
+              <>
+                <Images images={studioMarkerImages} />
+                <GeoJSONSource id="queue-studios-source" data={studioMarkersGeoJson}>
+                  <CircleLayer
+                    id="queue-studios-circle-layer"
+                    paint={{
+                      "circle-color": [
+                        "coalesce",
+                        ["get", "accentColor"],
+                        accentColor,
+                      ],
+                      "circle-opacity": 1,
+                      "circle-stroke-color": [
+                        "coalesce",
+                        ["get", "accentColor"],
+                        accentColor,
+                      ],
+                      "circle-stroke-width": [
+                        "case",
+                        ["boolean", ["get", "selected"], false],
+                        3,
+                        2,
+                      ],
+                      "circle-radius": [
+                        "case",
+                        ["boolean", ["get", "selected"], false],
+                        17,
+                        14,
+                      ],
+                    }}
+                  />
+                  <SymbolLayer
+                    id="queue-studios-logo-layer"
+                    filter={["==", ["get", "hasLogo"], true]}
+                    layout={{
+                      "icon-image": ["get", "iconKey"],
+                      "icon-allow-overlap": true,
+                      "icon-ignore-placement": true,
+                      "icon-anchor": "center",
+                      "icon-size": [
+                        "case",
+                        ["boolean", ["get", "selected"], false],
+                        0.96,
+                        0.9,
+                      ],
+                      "symbol-sort-key": [
+                        "case",
+                        ["boolean", ["get", "selected"], false],
+                        1,
+                        0,
+                      ],
+                    }}
+                    paint={{
+                      "icon-opacity": 1,
+                    }}
+                  />
+                  <SymbolLayer
+                    id="queue-studios-fallback-layer"
+                    filter={["==", ["get", "hasLogo"], false]}
+                    layout={{
+                      "icon-image": "studio-pin-shell",
+                      "icon-allow-overlap": true,
+                      "icon-ignore-placement": true,
+                      "icon-anchor": "center",
+                      "icon-size": [
+                        "case",
+                        ["boolean", ["get", "selected"], false],
+                        1,
+                        0.92,
+                      ],
+                      "symbol-sort-key": [
+                        "case",
+                        ["boolean", ["get", "selected"], false],
+                        1,
+                        0,
+                      ],
+                      "text-field": ["get", "label"],
+                      "text-font": ["Noto Sans Regular"],
+                      "text-size": 13,
+                      "text-allow-overlap": true,
+                      "text-ignore-placement": true,
+                      "text-anchor": "center",
+                      "text-offset": [0, 0.02],
+                    }}
+                    paint={{
+                      "icon-color": [
+                        "coalesce",
+                        ["get", "accentColor"],
+                        accentColor,
+                      ],
+                      "text-color": color.text,
+                      "text-halo-color": color.surface,
+                      "text-halo-width": 1.1,
+                    }}
+                  />
+                </GeoJSONSource>
+              </>
+            ) : null}
+            {mode === "zoneSelect" || activeBoundarySource ? (
+              <QueueMapBoundaryPolygons
+                mode={mode}
+                isEditing={isEditing}
+                showLabelLayers
+                selectedBoundaryIds={activeBoundaryIds}
+                selectedBoundaryFilter={selectedBoundaryFilter}
+                boundarySource={activeBoundarySource}
+                boundaryIdProperty={activeBoundaryIdProperty}
+                boundaryLabelPropertyCandidates={activeBoundaryLabelPropertyCandidates}
+                visibleBounds={markerBounds}
+                currentZoom={currentZoom}
+                mapPalette={mapPalette}
+                onPressBoundary={activeBoundaryPressHandler}
+              />
+            ) : null}
+          </>
         ) : null}
 
-        <GeoJSONSource id="queue-pin-source" data={pinShape}>
-          <CircleLayer
-            id="queue-pin-dot"
-            paint={{
-              "circle-radius": APPLE_MAP_THEME.overlay.pinRadius,
-              "circle-color": mapPalette.primary,
-              "circle-stroke-color": mapPalette.text,
-              "circle-stroke-width": APPLE_MAP_THEME.overlay.pinStrokeWidth,
-            }}
-          />
-        </GeoJSONSource>
+        {pin ? (
+          <Marker
+            id="queue-pin-marker"
+            lngLat={[pin.longitude, pin.latitude]}
+            anchor="bottom"
+            offset={[-APPLE_MAP_THEME.overlay.pinRadius, -APPLE_MAP_THEME.overlay.pinRadius]}
+          >
+            <View
+              style={{
+                width: APPLE_MAP_THEME.overlay.pinRadius * 2,
+                height: APPLE_MAP_THEME.overlay.pinRadius * 2,
+                borderRadius: APPLE_MAP_THEME.overlay.pinRadius,
+                borderCurve: "continuous",
+                backgroundColor: studioAccentColor,
+                borderWidth: APPLE_MAP_THEME.overlay.pinStrokeWidth,
+                borderColor: mapPalette.text,
+              }}
+            />
+          </Marker>
+        ) : null}
 
-        <StudioMarkerList
-          studios={renderableStudios}
-          selectedStudioId={selectedStudioId}
-          onPressStudio={
-            onPressStudio ??
-            (() => {
-              /* intentionally empty — tab switches can trigger a brief render before the callback is set */
-            })
-          }
-        />
       </MapView>
 
       {mapLoadState === "loading" && showLoadingOverlay ? (
@@ -616,65 +773,6 @@ export const QueueMap = memo(function QueueMap({
     </View>
   );
 });
-
-// ─── Studio Marker List ────────────────────────────────────────────────────────
-// Extracted to prevent MapLibre native marker churn on every pan event.
-// Only re-renders when renderableStudios or selectedStudioId actually change.
-type StudioMarkerListProps = {
-  studios: readonly import("./queue-map.types").StudioMapMarker[];
-  selectedStudioId: string | null | undefined;
-  onPressStudio: (studioId: string) => void;
-};
-
-const StudioMarkerList = memo(
-  function StudioMarkerList({ studios, selectedStudioId, onPressStudio }: StudioMarkerListProps) {
-    return (
-      <>
-        {studios.map((studio) => (
-          <Marker
-            key={studio.studioId}
-            id={`studio-marker:${studio.studioId}`}
-            lngLat={[studio.longitude, studio.latitude]}
-            anchor="top-left"
-            offset={[-STUDIO_MAP_MARKER_OUTER_SIZE / 2, -STUDIO_MAP_MARKER_OUTER_SIZE / 2]}
-          >
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={studio.studioName}
-              onPress={() => onPressStudio(studio.studioId)}
-              style={{ width: STUDIO_MAP_MARKER_OUTER_SIZE, height: STUDIO_MAP_MARKER_OUTER_SIZE }}
-            >
-              <StudioMapMarkerView
-                studio={studio}
-                selected={selectedStudioId === studio.studioId}
-              />
-            </Pressable>
-          </Marker>
-        ))}
-      </>
-    );
-  },
-  (prev, next) => {
-    // Custom comparison: only re-render if studio list or selection actually changed
-    if (prev.selectedStudioId !== next.selectedStudioId) return false;
-    if (prev.studios.length !== next.studios.length) return false;
-    for (let i = 0; i < prev.studios.length; i++) {
-      const a = prev.studios[i]!;
-      const b = next.studios[i]!;
-      if (
-        a.studioId !== b.studioId ||
-        a.studioName !== b.studioName ||
-        a.logoImageUrl !== b.logoImageUrl ||
-        a.mapMarkerColor !== b.mapMarkerColor ||
-        a.latitude !== b.latitude ||
-        a.longitude !== b.longitude
-      ) {
-        return false;
-      }
-    }
-    return true;
-  },
-);
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },

@@ -1,27 +1,21 @@
 /**
- * Instructor Payments Sheet - tabbed bottom sheet with Stripe embedded components.
+ * Instructor Payments Sheet.
  *
- * When active: shows Payments / Payouts tabs with native Stripe UI rendered inline.
- * When not onboarded: shows status + onboarding button (opens full-screen Stripe modal).
+ * Two states:
+ * - Not onboarded: Bottom sheet with status badge + onboarding CTA → opens full-screen Stripe onboarding
+ * - Active: Full-screen Stripe dashboard modal with Earnings / Payouts tabs (no bottom sheet wrapper)
  */
 
 import { useAction, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
-import {
-  ConnectComponentsProvider,
-  ConnectPayments,
-  ConnectPayouts,
-  loadConnectAndInitialize,
-} from "@stripe/stripe-react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { Platform, Pressable } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { StripeConnectEmbeddedModal } from "@/components/sheets/profile/instructor/stripe-connect-embedded";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { KitSegmentedToggle } from "@/components/ui/kit";
 import { KitStatusBadge } from "@/components/ui/kit";
 import { SkeletonLine } from "@/components/ui/skeleton";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -29,7 +23,6 @@ import { api } from "@/convex/_generated/api";
 import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth } from "@/lib/design-system";
-import { getStripePublishableKey } from "@/lib/stripe";
 import { Box, VStack } from "@/primitives";
 import { Motion } from "@/theme/theme";
 
@@ -49,8 +42,6 @@ const STATUS_TONE: Record<ConnectedAccountStatus, "neutral" | "warning" | "succe
   rejected: "danger",
   disabled: "danger",
 };
-
-type PaymentTab = "payments" | "payouts";
 
 function SkeletonProfile() {
   const { color } = useTheme();
@@ -111,88 +102,6 @@ function statusCopy(
   }
 }
 
-/** Inline Stripe component that renders ConnectPayments or ConnectPayouts directly (no modal). */
-function StripeInlineDashboard({
-  activeTab,
-  createEmbeddedSession,
-}: {
-  activeTab: PaymentTab;
-  createEmbeddedSession: () => Promise<{ clientSecret: string }>;
-}) {
-  const { i18n } = useTranslation();
-  const theme = useTheme();
-  const locale = i18n.resolvedLanguage ?? "en";
-  const publishableKey = getStripePublishableKey();
-
-  const fetchClientSecret = useCallback(async () => {
-    const session = await createEmbeddedSession();
-    return session.clientSecret;
-  }, [createEmbeddedSession]);
-
-  const themeColors = theme.color;
-  const appearance = useMemo(
-    () => ({
-      variables: {
-        colorPrimary: themeColors.primary,
-        colorBackground: themeColors.surfaceElevated,
-        colorText: themeColors.text,
-        colorSecondaryText: themeColors.textMuted,
-        colorDanger: themeColors.danger,
-        buttonPrimaryColorBackground: themeColors.primary,
-        buttonPrimaryColorBorder: themeColors.primary,
-        buttonPrimaryColorText: themeColors.onPrimary,
-        buttonSecondaryColorBackground: themeColors.surfaceAlt,
-        buttonSecondaryColorBorder: themeColors.border,
-        buttonSecondaryColorText: themeColors.text,
-        borderRadius: "18px",
-        spacingUnit: "12px",
-      },
-    }),
-    [
-      themeColors.border,
-      themeColors.danger,
-      themeColors.onPrimary,
-      themeColors.primary,
-      themeColors.surfaceAlt,
-      themeColors.surfaceElevated,
-      themeColors.text,
-      themeColors.textMuted,
-    ],
-  );
-
-  const [connectInstance, setConnectInstance] = useState<ReturnType<
-    typeof loadConnectAndInitialize
-  > | null>(null);
-
-  useEffect(() => {
-    if (!publishableKey) return;
-    setConnectInstance(
-      loadConnectAndInitialize({
-        publishableKey,
-        fetchClientSecret,
-        locale,
-        appearance,
-      }),
-    );
-  }, [appearance, fetchClientSecret, locale, publishableKey]);
-
-  if (!publishableKey || !connectInstance) {
-    return (
-      <Box style={{ padding: BrandSpacing.xl, alignItems: "center" }}>
-        <ThemedText style={{ color: theme.color.textMuted }}>Loading...</ThemedText>
-      </Box>
-    );
-  }
-
-  return (
-    <View style={{ flex: 1 }}>
-      <ConnectComponentsProvider connectInstance={connectInstance}>
-        {activeTab === "payments" ? <ConnectPayments /> : <ConnectPayouts />}
-      </ConnectComponentsProvider>
-    </View>
-  );
-}
-
 interface InstructorPaymentsSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -225,7 +134,10 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
   const [connectError, setConnectError] = useState<string | null>(null);
   const [connectInfo, setConnectInfo] = useState<string | null>(null);
   const [onboardingVisible, setOnboardingVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<PaymentTab>("payments");
+
+  // Pre-fetched client secret — warmed when account is active so the
+  // dashboard modal opens instantly instead of waiting for a server round-trip.
+  const prefetchedSecretRef = useRef<string | null>(null);
 
   const accountStatus = (connectedAccount?.status ?? null) as ConnectedAccountStatus | null;
   const accountCopy = statusCopy(t, accountStatus, connectedAccount?.requirementsSummary ?? null);
@@ -234,6 +146,16 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
 
   const isLoading = !currentUser || (isInstructor && connectedAccount === undefined);
   const { animatedStyle } = useContentReveal(isLoading);
+
+  // Pre-fetch embedded session when account becomes active (before user opens sheet)
+  useEffect(() => {
+    if (!isActive || prefetchedSecretRef.current) return;
+    void createStripeEmbeddedSession({}).then((result) => {
+      prefetchedSecretRef.current = result.clientSecret;
+    }).catch(() => {
+      // Pre-fetch is best-effort; the modal will create its own session if needed
+    });
+  }, [isActive, createStripeEmbeddedSession]);
 
   useEffect(() => {
     if (!connectInfo) return;
@@ -297,15 +219,22 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
     setOnboardingVisible(false);
   }, [refreshStripeAccount, t]);
 
-  const handleCreateStripeEmbeddedSession = useCallback(
-    async () => createStripeEmbeddedSession({}),
-    [createStripeEmbeddedSession],
-  );
+  const handleCreateStripeEmbeddedSession = useCallback(async () => {
+    // Use pre-fetched secret if available, otherwise fetch fresh
+    const cached = prefetchedSecretRef.current;
+    if (cached) {
+      prefetchedSecretRef.current = null;
+      return { clientSecret: cached };
+    }
+    return createStripeEmbeddedSession({});
+  }, [createStripeEmbeddedSession]);
 
   const handleCreateStripeHostedAccountLink = useCallback(
     async () => createStripeHostedAccountLink({}),
     [createStripeHostedAccountLink],
   );
+
+  // ─── Loading state ──────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -317,101 +246,40 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
     );
   }
 
-  // Not onboarded yet — show status + onboarding button
-  if (!isActive) {
+  // ─── Active: full-screen Stripe dashboard ────────────────────────────
+  //
+  // The dashboard modal is the primary UI for active accounts.
+  // We also render a thin bottom sheet so the sheet system stays in sync,
+  // but it immediately opens the full-screen modal on mount.
+
+  if (isActive) {
     return (
-      <BaseProfileSheet visible={visible} onClose={onClose}>
-        <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-          <Box style={{ padding: BrandSpacing.lg, gap: BrandSpacing.lg }}>
-            {connectError || connectInfo ? (
-              <Box
-                style={{
-                  backgroundColor: connectError ? color.dangerSubtle : color.surfaceAlt,
-                  borderRadius: BrandRadius.lg,
-                  paddingHorizontal: BrandSpacing.component,
-                  paddingVertical: BrandSpacing.stackDense,
-                  borderWidth: BorderWidth.thin,
-                  borderColor: connectError ? (color.danger as string) : color.border,
-                }}
-              >
-                <ThemedText
-                  type="caption"
-                  style={{ color: connectError ? color.danger : color.textMuted }}
-                >
-                  {connectError || connectInfo}
-                </ThemedText>
-              </Box>
-            ) : null}
-
-            <KitStatusBadge label={accountCopy.label} tone={accountTone} showDot />
-
-            <ThemedText type="body" style={{ color: color.textMuted }}>
-              {accountCopy.caption}
-            </ThemedText>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                accountStatus
-                  ? t("profile.payments.resumeOnboarding")
-                  : t("profile.payments.startOnboarding")
-              }
-              onPress={openOnboarding}
-              disabled={connectBusy}
-              style={({ pressed }) => ({
-                borderRadius: BrandRadius.medium,
-                borderCurve: "continuous",
-                minHeight: BrandSpacing.buttonMinHeightXl,
-                alignItems: "center",
-                justifyContent: "center",
-                flexDirection: "row",
-                gap: BrandSpacing.sm,
-                backgroundColor: connectBusy
-                  ? color.surfaceAlt
-                  : pressed
-                    ? color.primaryPressed
-                    : color.primary,
-              })}
-            >
-              <IconSymbol
-                name="building.columns.fill"
-                size={BrandSpacing.iconSm}
-                color={connectBusy ? color.textMuted : color.onPrimary}
-              />
-              <ThemedText
-                type="labelStrong"
-                style={{ color: connectBusy ? color.textMuted : color.onPrimary }}
-              >
-                {accountStatus
-                  ? t("profile.payments.resumeOnboarding")
-                  : t("profile.payments.startOnboarding")}
-              </ThemedText>
-            </Pressable>
-          </Box>
-        </Animated.View>
+      <>
+        {/* Empty bottom sheet to keep sheet state valid — invisible behind the modal */}
+        <BaseProfileSheet visible={visible} onClose={onClose}>
+          <Box style={{ flex: 1, backgroundColor: color.appBg }} />
+        </BaseProfileSheet>
 
         <StripeConnectEmbeddedModal
-          visible={onboardingVisible}
+          visible={visible}
           accountStatus={accountStatus}
-          mode="onboarding"
+          mode="dashboard"
           createEmbeddedSession={handleCreateStripeEmbeddedSession}
           createHostedAccountLink={handleCreateStripeHostedAccountLink}
-          onClose={() => {
-            setConnectBusy(false);
-            setOnboardingVisible(false);
-          }}
-          onCompleted={handleConnectCompleted}
+          onClose={onClose}
+          onCompleted={async () => { await refreshStripeAccount(); }}
           onFeedback={handleConnectFeedback}
         />
-      </BaseProfileSheet>
+      </>
     );
   }
 
-  // Active — show tabbed Stripe UI inline
+  // ─── Not onboarded: bottom sheet with status + CTA ──────────────────
+
   return (
     <BaseProfileSheet visible={visible} onClose={onClose}>
-      <Animated.View style={[styles.container, { backgroundColor: color.appBg }, animatedStyle]}>
-        <Box style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.md }}>
+      <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+        <Box style={{ padding: BrandSpacing.lg, gap: BrandSpacing.lg }}>
           {connectError || connectInfo ? (
             <Box
               style={{
@@ -432,29 +300,66 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
             </Box>
           ) : null}
 
-          <KitSegmentedToggle<PaymentTab>
-            value={activeTab}
-            onChange={setActiveTab}
-            options={[
-              { label: "Payments", value: "payments" },
-              { label: "Payouts", value: "payouts" },
-            ]}
-          />
-        </Box>
+          <KitStatusBadge label={accountCopy.label} tone={accountTone} showDot />
 
-        <Box style={{ flex: 1, minHeight: 400, marginTop: BrandSpacing.md }}>
-          <StripeInlineDashboard
-            activeTab={activeTab}
-            createEmbeddedSession={handleCreateStripeEmbeddedSession}
-          />
+          <ThemedText type="body" style={{ color: color.textMuted }}>
+            {accountCopy.caption}
+          </ThemedText>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              accountStatus
+                ? t("profile.payments.resumeOnboarding")
+                : t("profile.payments.startOnboarding")
+            }
+            onPress={openOnboarding}
+            disabled={connectBusy}
+            style={({ pressed }) => ({
+              borderRadius: BrandRadius.medium,
+              borderCurve: "Continuous" as const,
+              minHeight: BrandSpacing.buttonMinHeightXl,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              gap: BrandSpacing.sm,
+              backgroundColor: connectBusy
+                ? color.surfaceAlt
+                : pressed
+                  ? color.primaryPressed
+                  : color.primary,
+            })}
+          >
+            <IconSymbol
+              name="building.columns.fill"
+              size={BrandSpacing.iconSm}
+              color={connectBusy ? color.textMuted : color.onPrimary}
+            />
+            <ThemedText
+              type="labelStrong"
+              style={{ color: connectBusy ? color.textMuted : color.onPrimary }}
+            >
+              {accountStatus
+                ? t("profile.payments.resumeOnboarding")
+                : t("profile.payments.startOnboarding")}
+            </ThemedText>
+          </Pressable>
         </Box>
       </Animated.View>
+
+      <StripeConnectEmbeddedModal
+        visible={onboardingVisible}
+        accountStatus={accountStatus}
+        mode="onboarding"
+        createEmbeddedSession={handleCreateStripeEmbeddedSession}
+        createHostedAccountLink={handleCreateStripeHostedAccountLink}
+        onClose={() => {
+          setConnectBusy(false);
+          setOnboardingVisible(false);
+        }}
+        onCompleted={handleConnectCompleted}
+        onFeedback={handleConnectFeedback}
+      />
     </BaseProfileSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});

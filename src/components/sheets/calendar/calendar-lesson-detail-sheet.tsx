@@ -1,13 +1,12 @@
 /**
  * Calendar Lesson Detail Sheet — bottom sheet version of the lesson detail.
  *
- * Sporty, bold, in-your-face design. Tapping studio name navigates to
- * the studio's public profile page. Back returns to this sheet.
+ * Sporty, bold, in-your-face design. Tapping studio name opens the studio's
+ * public profile as a bottom sheet.
  */
 
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useQuery } from "convex/react";
-import { useRouter } from "expo-router";
 import { memo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
@@ -28,6 +27,7 @@ import { formatTime } from "@/lib/jobs-utils";
 import { toSportLabelI18n } from "@/lib/sport-i18n";
 import { Box, Text } from "@/primitives";
 import { useLessonCheckIn } from "@/components/calendar/use-lesson-check-in";
+import { useSheetContext } from "@/contexts/sheet-context";
 
 interface CalendarLessonDetailSheetProps {
   visible: boolean;
@@ -46,7 +46,7 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
 }: CalendarLessonDetailSheetProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const router = useRouter();
+  const { openStudioPublicProfile } = useSheetContext();
   const { isSubmitting, submitCheckIn } = useLessonCheckIn();
 
   const detail = useQuery(
@@ -56,10 +56,9 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
 
   // Hooks must be called before any early returns
   const handleStudioPress = useCallback(() => {
-    if (!detail?.studioId) return;
-    onClose();
-    router.push(`/instructor/jobs/studios/${detail.studioId}`);
-  }, [onClose, router, detail?.studioId]);
+    if (!detail?.studioSlug) return;
+    openStudioPublicProfile(detail.studioSlug);
+  }, [openStudioPublicProfile, detail?.studioSlug]);
 
   if (!jobId || !role || detail === undefined) {
     return (
@@ -106,7 +105,12 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
   };
 
   return (
-    <BaseProfileSheet visible={visible} onClose={onClose}>
+    <BaseProfileSheet
+      visible={visible}
+      onClose={onClose}
+      snapPoints={["70%"]}
+      singleSnapPoint={true}
+    >
       <BottomSheetScrollView contentContainerStyle={{ gap: BrandSpacing.lg }}>
         <Animated.View entering={FadeIn.duration(180)}>
           {/* ── Status Banner ── */}

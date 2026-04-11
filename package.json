@@ -51,6 +51,7 @@
   "dependencies": {
     "@auth/core": "^0.37.0",
     "@convex-dev/auth": "^0.0.91",
+    "@convex-dev/geospatial": "0.2.1",
     "@convex-dev/rate-limiter": "^0.3.2",
     "@convex-dev/stripe": "^0.1.4",
     "@convex-dev/workflow": "^0.3.9",
@@ -106,6 +107,7 @@
     "expo-updates": "~55.0.15",
     "expo-web-browser": "~55.0.10",
     "geojson": "^0.5.0",
+    "h3-js": "^4.4.0",
     "i18next": "^25.10.9",
     "jose": "^6.2.2",
     "react": "19.2.0",

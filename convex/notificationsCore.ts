@@ -19,6 +19,9 @@ import {
   canInstructorPerformJobActions,
   loadInstructorComplianceSnapshot,
 } from "./lib/instructorCompliance";
+import {
+  findNearbyInstructorsForBranch,
+} from "./lib/geospatial";
 import { omitUndefined, trimOptionalString } from "./lib/validation";
 
 const LOCAL_DEVICE_OWNED_REMINDER_REASON = "local_device_owned";
@@ -192,8 +195,39 @@ export const getJobAndEligibleInstructors = internalQuery({
     const recipients = [];
     const seen = new Set<string>();
     const candidateInstructorIds = new Set<string>();
+    let usedGeospatialSearch = false;
 
-    if (job.boundaryProvider && job.boundaryId) {
+    const branch = await ctx.db.get("studioBranches", job.branchId);
+    if (
+      branch &&
+      Number.isFinite(branch.latitude) &&
+      Number.isFinite(branch.longitude)
+    ) {
+      const nearbyInstructors = await findNearbyInstructorsForBranch(ctx, {
+        branchLatitude: branch.latitude!,
+        branchLongitude: branch.longitude!,
+        sport: job.sport,
+        limit: 1000,
+      });
+      for (const candidate of nearbyInstructors) {
+        const coverageRow = await ctx.db
+          .query("instructorGeoCoverage")
+          .withIndex("by_instructor_and_sport", (q) =>
+            q.eq("instructorId", candidate.instructorId).eq("sport", job.sport),
+          )
+          .unique();
+        if (!coverageRow) {
+          continue;
+        }
+        if (candidate.distanceMeters > coverageRow.workRadiusKm * 1000) {
+          continue;
+        }
+        candidateInstructorIds.add(String(candidate.instructorId));
+        usedGeospatialSearch = true;
+      }
+    }
+
+    if (!usedGeospatialSearch && job.boundaryProvider && job.boundaryId) {
       const boundaryProvider = normalizeBoundaryProvider(job.boundaryProvider);
       const boundaryId = normalizeBoundaryId(job.boundaryId);
       const boundaryRows = await ctx.db
@@ -207,7 +241,7 @@ export const getJobAndEligibleInstructors = internalQuery({
       }
     }
 
-    if (isKnownZoneId(job.zone)) {
+    if (!usedGeospatialSearch && candidateInstructorIds.size === 0 && isKnownZoneId(job.zone)) {
       const coverageRows = await ctx.db
         .query("instructorCoverage")
         .withIndex("by_sport_zone", (q) => q.eq("sport", job.sport).eq("zone", job.zone))

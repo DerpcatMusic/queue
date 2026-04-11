@@ -37,6 +37,56 @@ export function createZoneFilter(zoneIds: readonly string[], propertyName: strin
   return createPropertyInFilter(zoneIds, propertyName);
 }
 
+export function createRadiusCircleFeatureCollection(
+  center: QueueMapPin,
+  radiusMeters: number,
+  steps = 72,
+): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
+  const latitudeRadians = (center.latitude * Math.PI) / 180;
+  const longitudeRadians = (center.longitude * Math.PI) / 180;
+  const earthRadiusMeters = 6378137;
+  const angularDistance = radiusMeters / earthRadiusMeters;
+  const coordinates: [number, number][] = [];
+
+  for (let stepIndex = 0; stepIndex <= steps; stepIndex += 1) {
+    const bearing = (stepIndex / steps) * Math.PI * 2;
+    const sinLatitude = Math.sin(latitudeRadians);
+    const cosLatitude = Math.cos(latitudeRadians);
+    const sinAngularDistance = Math.sin(angularDistance);
+    const cosAngularDistance = Math.cos(angularDistance);
+
+    const targetLatitude = Math.asin(
+      sinLatitude * cosAngularDistance +
+        cosLatitude * sinAngularDistance * Math.cos(bearing),
+    );
+    const targetLongitude =
+      longitudeRadians +
+      Math.atan2(
+        Math.sin(bearing) * sinAngularDistance * cosLatitude,
+        cosAngularDistance - sinLatitude * Math.sin(targetLatitude),
+      );
+
+    coordinates.push([
+      (targetLongitude * 180) / Math.PI,
+      (targetLatitude * 180) / Math.PI,
+    ]);
+  }
+
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'Polygon',
+          coordinates: [coordinates],
+        },
+      },
+    ],
+  };
+}
+
 export function toCameraBounds(
   sw: [number, number],
   ne: [number, number],
@@ -412,30 +462,27 @@ export function getStudioMarkerImageEntries(studios: readonly StudioMapMarker[])
 
 export function createStudioMarkersGeoJson(
   studios: readonly StudioMapMarker[],
-  variant: "logo" | "fallback",
+  selectedStudioId: string | null | undefined,
 ): GeoJSON.FeatureCollection {
   return {
     type: "FeatureCollection",
-    features: studios
-      .filter((studio) =>
-        variant === "logo" ? Boolean(studio.logoImageUrl) : !studio.logoImageUrl,
-      )
-      .map((studio) => ({
-        type: "Feature" as const,
-        properties: {
-          studioId: studio.studioId,
-          studioName: studio.studioName,
-          zone: studio.zone,
-          label: studio.studioName.slice(0, 1).toUpperCase(),
-          ...(variant === "logo"
-            ? { iconKey: `${STUDIO_MARKER_IMAGE_PREFIX}${studio.studioId}` }
-            : {}),
-        },
-        geometry: {
-          type: "Point" as const,
-          coordinates: [studio.longitude, studio.latitude],
-        },
-      })),
+    features: studios.map((studio) => ({
+      type: "Feature" as const,
+      properties: {
+        studioId: studio.studioId,
+        studioName: studio.studioName,
+        zone: studio.zone,
+        label: studio.studioName.slice(0, 1).toUpperCase(),
+        iconKey: studio.logoImageUrl ? `${STUDIO_MARKER_IMAGE_PREFIX}${studio.studioId}` : null,
+        hasLogo: Boolean(studio.logoImageUrl),
+        selected: selectedStudioId === studio.studioId,
+        accentColor: studio.mapMarkerColor ?? null,
+      },
+      geometry: {
+        type: "Point" as const,
+        coordinates: [studio.longitude, studio.latitude],
+      },
+    })),
   };
 }
 
@@ -504,11 +551,7 @@ export function selectRenderableStudioMarkers(
   },
 ) {
   const zoomLevel = options.zoomLevel ?? null;
-  if (zoomLevel === null) {
-    return [];
-  }
-
-  const renderLimit = getStudioMarkerRenderLimit(zoomLevel);
+  const renderLimit = zoomLevel === null ? studios.length : getStudioMarkerRenderLimit(zoomLevel);
   if (renderLimit <= 0) {
     return [];
   }

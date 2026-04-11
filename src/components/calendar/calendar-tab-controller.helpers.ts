@@ -1,5 +1,4 @@
 import {
-  addDays,
   buildTimelineRowsSignature,
   type CalendarVisibilityFilters,
   compareDayKey,
@@ -148,12 +147,7 @@ export function buildTimelineListData(
 
   const items: TimelineListItem[] = [];
   const dayIndexMap = new Map<string, number>();
-  const guaranteedDays = new Set([
-    addDays(todayKey, -1),
-    todayKey,
-    addDays(todayKey, 1),
-    selectedDay,
-  ]);
+  const guaranteedDays = new Set([todayKey, selectedDay]);
   const days = [...new Set([...rowsByDay.keys(), ...guaranteedDays])]
     .filter(
       (dayKey) =>

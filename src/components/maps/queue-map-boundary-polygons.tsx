@@ -18,6 +18,8 @@ type QueueMapBoundaryPolygonsProps = {
   boundaryIdProperty: string;
   boundaryLabelPropertyCandidates: string[];
   visibleBounds?: QueueMapProps["visibleBounds"];
+  /** Live map zoom level used for zoom-tier selection. */
+  currentZoom?: number | undefined;
   mapPalette: ReturnType<typeof getMapBrandPalette>;
   onPressBoundary: ((boundaryId: string) => void) | undefined;
 };
@@ -53,5 +55,11 @@ export const QueueMapBoundaryPolygons = memo(function QueueMapBoundaryPolygons(
     );
   }
 
-  return <QueueMapBoundaryGeneric {...props} boundarySource={boundarySource} />;
+  return (
+    <QueueMapBoundaryGeneric
+      {...props}
+      boundarySource={boundarySource}
+      currentZoom={props.currentZoom}
+    />
+  );
 });

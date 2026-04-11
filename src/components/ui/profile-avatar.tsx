@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import { useMemo, useState } from "react";
+import type { ColorValue } from "react-native";
 import { View, type ViewProps } from "react-native";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { BrandType } from "@/constants/brand";
@@ -13,6 +14,7 @@ type ProfileAvatarProps = {
   size?: number;
   roundedSquare?: boolean;
   fallbackIcon?: string;
+  backgroundColor?: ColorValue;
 } & Pick<ViewProps, "accessibilityLabel">;
 
 function toInitials(name: string | null | undefined) {
@@ -34,6 +36,7 @@ export function ProfileAvatar({
   size = 56,
   roundedSquare = true,
   fallbackIcon = "person.fill",
+  backgroundColor,
   accessibilityLabel,
 }: ProfileAvatarProps) {
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
@@ -55,7 +58,7 @@ export function ProfileAvatar({
         overflow: "hidden",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: color.surfaceAlt,
+        backgroundColor: backgroundColor ?? color.surfaceAlt,
       }}
     >
       {canRenderImage && normalizedImageUrl ? (

@@ -280,6 +280,7 @@ export default defineSchema({
     addressPostalCode: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    workRadiusKm: v.optional(v.number()),
     expoPushToken: v.optional(v.string()),
     notificationsEnabled: v.boolean(),
     lessonReminderMinutesBefore: v.optional(v.number()),
@@ -498,6 +499,19 @@ export default defineSchema({
   })
     .index("by_sport_zone", ["sport", "zone"])
     .index("by_instructor_id", ["instructorId"]),
+
+  instructorGeoCoverage: defineTable({
+    instructorId: v.id("instructorProfiles"),
+    sport: v.string(),
+    geospatialKey: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    workRadiusKm: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_instructor_id", ["instructorId"])
+    .index("by_instructor_and_sport", ["instructorId", "sport"])
+    .index("by_sport", ["sport"]),
 
   studioSports: defineTable({
     studioId: v.id("studioProfiles"),

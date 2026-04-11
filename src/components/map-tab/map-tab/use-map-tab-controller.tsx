@@ -1,26 +1,21 @@
 import { useIsFocused } from "@react-navigation/native";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
-import {
-  createContentDrivenTopSheetConfig,
-  getMainTabSheetBackgroundColor,
-} from "@/components/layout/top-sheet-registry";
-import { MapSheetResults } from "@/components/map-tab/map/map-sheet-results";
-import { MapSheetHeader } from "@/components/map-tab/map-tab/map-sheet-header";
-import { buildZoneCityGroups, buildZoneCityListItems } from "@/components/map-tab/zone-city-tree";
+import { buildZoneCityGroups } from "@/components/map-tab/zone-city-tree";
 
 import type { QueueMapPin, StudioMapMarker } from "@/components/maps/queue-map.types";
 import { BrandSpacing, getMapBrandPalette } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import {
-  SELECTABLE_BOUNDARY_BY_ID,
-  SELECTABLE_BOUNDARY_OPTIONS,
+  buildBoundariesForProvider,
+  buildCityMetaForProvider,
+  type SelectableBoundary,
 } from "@/features/maps/boundaries/catalog";
 import { LONDON_BOROUGH_BOUNDS_BY_ID } from "@/features/maps/boundaries/london-boroughs";
 import {
@@ -28,7 +23,6 @@ import {
   getBoundaryProviderForLocation,
 } from "@/features/maps/boundaries/providers";
 import { useAppInsets } from "@/hooks/use-app-insets";
-import { useTheme } from "@/hooks/use-theme";
 
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { captureCurrentLocationSample } from "@/lib/location-zone";
@@ -39,24 +33,67 @@ import {
 } from "./use-map-tab-controller.helpers";
 
 const MAX_ZONES = 25;
+const DEFAULT_WORK_RADIUS_KM = 15;
+const MAX_MAP_RADIUS_KM = 50;
 const MAP_CAMERA_TOP_OFFSET = BrandSpacing.xl;
 const MAP_CAMERA_BOTTOM_OFFSET = BrandSpacing.xl;
-const STATIC_ZONE_CITY_GROUPS = buildZoneCityGroups(SELECTABLE_BOUNDARY_OPTIONS);
-const STATIC_ZONE_BY_ID = SELECTABLE_BOUNDARY_BY_ID;
-const STATIC_ZONE_CITY_BY_ZONE_ID = new Map<string, string>();
-const STATIC_ZONE_CITY_GROUP_BY_KEY = new Map(
-  STATIC_ZONE_CITY_GROUPS.map((group) => [group.cityKey, group]),
-);
 
-for (const group of STATIC_ZONE_CITY_GROUPS) {
-  for (const zone of group.zones) {
-    STATIC_ZONE_CITY_BY_ZONE_ID.set(zone.id, group.cityKey);
+// Build boundary data from the active provider (derived inside component to avoid stale closures)
+function buildProviderState(provider: typeof DEFAULT_BOUNDARY_PROVIDER) {
+  const boundaryOptions = buildBoundariesForProvider(provider);
+  const boundaryById = new Map<string, SelectableBoundary>(boundaryOptions.map((b) => [b.id, b]));
+  const cityGroups = buildZoneCityGroups(boundaryOptions);
+  const cityByZoneId = new Map<string, string>();
+  const cityGroupByKey = new Map<string, (typeof cityGroups)[number]>();
+  for (const group of cityGroups) {
+    cityGroupByKey.set(group.cityKey, group);
+    for (const zone of group.zones) {
+      cityByZoneId.set(zone.id, group.cityKey);
+    }
   }
+  const cityMetaByKey = buildCityMetaForProvider(provider, boundaryOptions);
+  return { boundaryOptions, boundaryById, cityGroups, cityByZoneId, cityGroupByKey, cityMetaByKey };
+}
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+function getDistanceMeters(
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number },
+) {
+  const earthRadiusMeters = 6371000;
+  const latitudeDelta = toRadians(to.latitude - from.latitude);
+  const longitudeDelta = toRadians(to.longitude - from.longitude);
+  const fromLatitude = toRadians(from.latitude);
+  const toLatitude = toRadians(to.latitude);
+
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(fromLatitude) * Math.cos(toLatitude) * Math.sin(longitudeDelta / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function filterStudiosWithinRadius(
+  studios: readonly StudioMapMarker[],
+  center: QueueMapPin | null,
+  radiusKm: number,
+) {
+  if (!center) {
+    return [...studios];
+  }
+
+  const maxDistanceMeters = Math.max(0, radiusKm) * 1000;
+  return studios.filter((studio) => {
+    const distanceMeters = getDistanceMeters(center, studio);
+    return distanceMeters <= maxDistanceMeters;
+  });
 }
 
 export function useMapTabController() {
   const { t, i18n } = useTranslation();
-  const theme = useTheme();
   const { resolvedScheme } = useThemePreference();
   const mapPalette = getMapBrandPalette(resolvedScheme);
   const { overlayBottom } = useAppInsets();
@@ -71,10 +108,21 @@ export function useMapTabController() {
   const activeBoundaryProvider = activeProvider.id;
   const usesLegacyZoneStorage = activeProvider.selectionStorage === "legacyZones";
   const { currentUser } = useUser();
+  const [draftWorkRadiusKm, setDraftWorkRadiusKm] = useState(DEFAULT_WORK_RADIUS_KM);
+  const [committedWorkRadiusKm, setCommittedWorkRadiusKm] = useState(DEFAULT_WORK_RADIUS_KM);
+  const [hasSeededWorkRadius, setHasSeededWorkRadius] = useState(false);
+  const [hasUserAdjustedWorkRadius, setHasUserAdjustedWorkRadius] = useState(false);
+  const [isRadiusSaving, setIsRadiusSaving] = useState(false);
+  const radiusSaveQueueRef = useRef<number | null>(null);
   const remoteZones = useQuery(
     api.instructorZones.getMyInstructorZones,
     currentUser?.role === "instructor" && usesLegacyZoneStorage ? {} : "skip",
   );
+  const instructorSettings = useQuery(
+    api.users.getMyInstructorSettings,
+    currentUser?.role === "instructor" ? {} : "skip",
+  );
+  const saveInstructorSettings = useMutation(api.users.updateMyInstructorSettings);
   const remoteBoundaries = useQuery(
     api.boundaries.getMyInstructorBoundaries,
     currentUser?.role === "instructor" && !usesLegacyZoneStorage
@@ -83,29 +131,31 @@ export function useMapTabController() {
   );
   const remoteStudios = useQuery(
     api.users.getInstructorMapStudios,
-    currentUser?.role === "instructor" && usesLegacyZoneStorage ? {} : "skip",
+    currentUser?.role === "instructor" ? { workRadiusKm: MAX_MAP_RADIUS_KM } : "skip",
   );
   const saveZones = useMutation(api.instructorZones.setMyInstructorZones);
   const saveBoundaries = useMutation(api.boundaries.setMyInstructorBoundaries);
 
   type RemoteStudio = NonNullable<typeof remoteStudios>[number];
 
+  // Derive boundary data from active provider (dynamic based on provider)
+  const { boundaryOptions, boundaryById } = useMemo(
+    () => buildProviderState(activeProvider),
+    [activeProvider],
+  );
+
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>([]);
   const [zoneModeActive, setZoneModeActive] = useState(false);
-  const [sheetStep, setSheetStep] = useState(0);
   const [zoneSearch, setZoneSearch] = useState("");
-  const [expandedCityKeys, setExpandedCityKeys] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [focusZoneId, setFocusZoneId] = useState<string | null>(null);
   const [selectedStudioId, setSelectedStudioId] = useState<string | null>(null);
   const [mapPin, setMapPin] = useState<QueueMapPin | null>(null);
   const [hasAttemptedMapPinBootstrap, setHasAttemptedMapPinBootstrap] = useState(false);
+  const [isRadiusPanelOpen, setIsRadiusPanelOpen] = useState(true);
 
   const noopMapPress = useCallback(() => {}, []);
-  const openSearchSheet = useCallback(() => {
-    setSheetStep(2);
-  }, []);
 
   const handleFocusSelection = useCallback(() => {
     const nextFocusZoneId = focusZoneId ?? selectedZoneIds[0] ?? remoteZones?.zoneIds?.[0] ?? null;
@@ -125,7 +175,32 @@ export function useMapTabController() {
   }, [remoteBoundaries, remoteZones, usesLegacyZoneStorage]);
 
   useEffect(() => {
-    if (!isFocused || hasAttemptedMapPinBootstrap || !usesLegacyZoneStorage) {
+    if (hasSeededWorkRadius || hasUserAdjustedWorkRadius) {
+      return;
+    }
+    if (!instructorSettings) {
+      return;
+    }
+    const nextRadiusKm = instructorSettings.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM;
+    setDraftWorkRadiusKm(nextRadiusKm);
+    setCommittedWorkRadiusKm(nextRadiusKm);
+    setHasSeededWorkRadius(true);
+  }, [hasSeededWorkRadius, hasUserAdjustedWorkRadius, instructorSettings]);
+
+  useEffect(() => {
+    if (instructorSettings?.latitude == null || instructorSettings?.longitude == null) {
+      return;
+    }
+    setMapPin((current) =>
+      current ?? {
+        latitude: instructorSettings.latitude!,
+        longitude: instructorSettings.longitude!,
+      },
+    );
+  }, [instructorSettings?.latitude, instructorSettings?.longitude]);
+
+  useEffect(() => {
+    if (!isFocused || hasAttemptedMapPinBootstrap || mapPin) {
       return;
     }
 
@@ -147,17 +222,16 @@ export function useMapTabController() {
     return () => {
       cancelled = true;
     };
-  }, [hasAttemptedMapPinBootstrap, isFocused, usesLegacyZoneStorage]);
+  }, [hasAttemptedMapPinBootstrap, isFocused, mapPin]);
 
   useEffect(() => {
-    if (usesLegacyZoneStorage) return; // Israel uses legacy
     if (!mapPin) return; // Need GPS location
 
     const detected = getBoundaryProviderForLocation(mapPin.longitude, mapPin.latitude);
     if (detected && detected.id !== activeProvider.id) {
       setActiveProvider(detected);
     }
-  }, [mapPin, usesLegacyZoneStorage, activeProvider.id]);
+  }, [mapPin, activeProvider.id]);
 
   const applySelectedZoneIds = useCallback(
     (
@@ -214,41 +288,15 @@ export function useMapTabController() {
   const persistedZoneIds = ((usesLegacyZoneStorage
     ? remoteZones?.zoneIds
     : remoteBoundaries?.boundaryIds) ?? []) as string[];
-  const isSheetExpanded = sheetStep > 0;
 
   const hasChanges = useMemo(
     () => hasZoneSelectionChanges(persistedZoneIds, selectedZoneIds),
     [persistedZoneIds, selectedZoneIds],
   );
-  const deferredSelectedZoneSet = useMemo(() => new Set(selectedZoneIds), [selectedZoneIds]);
-  const expandedCityKeySet = useMemo(() => new Set(expandedCityKeys), [expandedCityKeys]);
   const filteredZones = useMemo(
     () =>
-      Platform.OS === "web"
-        ? buildFilteredZones(SELECTABLE_BOUNDARY_OPTIONS, zoneSearch, zoneLanguage)
-        : [],
-    [zoneLanguage, zoneSearch],
-  );
-  const shouldBuildZoneCityItems =
-    isSheetExpanded || zoneModeActive || zoneSearch.trim().length > 0;
-  const zoneCityItems = useMemo(
-    () =>
-      shouldBuildZoneCityItems
-        ? buildZoneCityListItems({
-            groups: STATIC_ZONE_CITY_GROUPS,
-            language: zoneLanguage,
-            query: zoneSearch,
-            expandedCityKeys: expandedCityKeySet,
-            selectedZoneIds: deferredSelectedZoneSet,
-          })
-        : [],
-    [
-      deferredSelectedZoneSet,
-      expandedCityKeySet,
-      shouldBuildZoneCityItems,
-      zoneLanguage,
-      zoneSearch,
-    ],
+      Platform.OS === "web" ? buildFilteredZones(boundaryOptions, zoneSearch, zoneLanguage) : [],
+    [boundaryOptions, zoneLanguage, zoneSearch],
   );
   const allStudios = useMemo<StudioMapMarker[]>(
     () =>
@@ -261,28 +309,18 @@ export function useMapTabController() {
   const selectedZones = useMemo(
     () =>
       selectedZoneIds
-        .map((zoneId) => STATIC_ZONE_BY_ID.get(zoneId))
+        .map((zoneId) => boundaryById.get(zoneId))
         .filter((zone): zone is NonNullable<typeof zone> => Boolean(zone)),
-    [selectedZoneIds],
+    [boundaryById, selectedZoneIds],
   );
   const visibleStudioMarkers = useMemo<StudioMapMarker[]>(
-    () =>
-      !usesLegacyZoneStorage
-        ? []
-        : allStudios.filter(
-            (studio) =>
-              !zoneModeActive &&
-              (selectedZoneIds.length > 0 ? selectedZoneIds.includes(studio.zone) : true),
-          ),
-    [allStudios, selectedZoneIds, usesLegacyZoneStorage, zoneModeActive],
+    () => filterStudiosWithinRadius(allStudios, mapPin, committedWorkRadiusKm),
+    [allStudios, committedWorkRadiusKm, mapPin],
   );
-  const studioCountByZone = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const studio of allStudios) {
-      counts.set(studio.zone, (counts.get(studio.zone) ?? 0) + 1);
-    }
-    return counts;
-  }, [allStudios]);
+  const previewStudioMarkers = useMemo<StudioMapMarker[]>(
+    () => filterStudiosWithinRadius(allStudios, mapPin, draftWorkRadiusKm),
+    [allStudios, draftWorkRadiusKm, mapPin],
+  );
   const studioById = useMemo(
     () => new Map<string, StudioMapMarker>(allStudios.map((studio) => [studio.studioId, studio])),
     [allStudios],
@@ -292,8 +330,8 @@ export function useMapTabController() {
     [selectedStudioId, studioById],
   );
   const focusedZone = useMemo(
-    () => (focusZoneId ? (STATIC_ZONE_BY_ID.get(focusZoneId) ?? null) : null),
-    [focusZoneId],
+    () => (focusZoneId ? (boundaryById.get(focusZoneId) ?? null) : null),
+    [boundaryById, focusZoneId],
   );
   const focusBoundaryBounds = useMemo(() => {
     if (usesLegacyZoneStorage) return undefined;
@@ -303,37 +341,10 @@ export function useMapTabController() {
     return activeProvider.viewport?.bbox ?? null;
   }, [focusZoneId, usesLegacyZoneStorage, activeProvider]);
   const focusedZoneLabel = focusedZone?.label[zoneLanguage] ?? null;
-  const focusedZoneStudioCount = useMemo(
-    () => (focusZoneId ? (studioCountByZone.get(focusZoneId) ?? 0) : 0),
-    [focusZoneId, studioCountByZone],
-  );
   const pendingChangeCount = useMemo(
     () => countPendingZoneSelectionChanges(persistedZoneIds, selectedZoneIds),
     [persistedZoneIds, selectedZoneIds],
   );
-
-  useEffect(() => {
-    if (!zoneModeActive) {
-      return;
-    }
-    setSelectedStudioId(null);
-    setExpandedCityKeys((current) => {
-      const next = new Set(current);
-      for (const zoneId of selectedZoneIds) {
-        const cityKey = STATIC_ZONE_CITY_BY_ZONE_ID.get(zoneId);
-        if (cityKey) {
-          next.add(cityKey);
-        }
-      }
-      if (focusZoneId) {
-        const cityKey = STATIC_ZONE_CITY_BY_ZONE_ID.get(focusZoneId);
-        if (cityKey) {
-          next.add(cityKey);
-        }
-      }
-      return next.size === current.length ? current : [...next];
-    });
-  }, [focusZoneId, selectedZoneIds, zoneModeActive]);
 
   useEffect(() => {
     if (!selectedStudioId) {
@@ -344,49 +355,83 @@ export function useMapTabController() {
     }
   }, [selectedStudioId, visibleStudioMarkers]);
 
-  const toggleCityExpanded = useCallback((cityKey: string) => {
-    setExpandedCityKeys((current) =>
-      current.includes(cityKey)
-        ? current.filter((entry) => entry !== cityKey)
-        : [...current, cityKey],
-    );
-  }, []);
-
-  const toggleCity = useCallback(
-    (cityKey: string) => {
-      const group = STATIC_ZONE_CITY_GROUP_BY_KEY.get(cityKey);
-      if (!group) return;
-      if (Platform.OS === "ios") {
-        void Haptics.selectionAsync();
+  const saveRadiusToProfile = useCallback(
+    async (radiusKm: number) => {
+      if (usesLegacyZoneStorage || !instructorSettings) {
+        return;
+      }
+      const currentRadiusKm = instructorSettings.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM;
+      if (Math.abs(currentRadiusKm - radiusKm) < 0.001) {
+        return;
       }
 
-      const cityZoneIds = group.zones.map((zone) => zone.id);
-      const isFullySelected = cityZoneIds.every((zoneId) => selectedZoneIds.includes(zoneId));
-      const nextZoneIds = isFullySelected
-        ? selectedZoneIds.filter((zoneId) => !cityZoneIds.includes(zoneId))
-        : [...selectedZoneIds, ...cityZoneIds];
-      const preferredFocusZoneId = isFullySelected ? null : (cityZoneIds[0] ?? null);
+      if (isRadiusSaving) {
+        radiusSaveQueueRef.current = radiusKm;
+        return;
+      }
 
-      if (applySelectedZoneIds(nextZoneIds, preferredFocusZoneId) && !isFullySelected) {
-        setExpandedCityKeys((current) =>
-          current.includes(cityKey) ? current : [...current, cityKey],
-        );
+      setIsRadiusSaving(true);
+      try {
+        await saveInstructorSettings({
+          notificationsEnabled: instructorSettings.notificationsEnabled,
+          sports: instructorSettings.sports,
+          workRadiusKm: radiusKm,
+          calendarProvider: instructorSettings.calendarProvider,
+          calendarSyncEnabled: instructorSettings.calendarSyncEnabled,
+          ...(instructorSettings.lessonReminderMinutesBefore !== undefined
+            ? { lessonReminderMinutesBefore: instructorSettings.lessonReminderMinutesBefore }
+            : {}),
+          ...(instructorSettings.hourlyRateExpectation !== undefined
+            ? { hourlyRateExpectation: instructorSettings.hourlyRateExpectation }
+            : {}),
+          ...(instructorSettings.address !== undefined ? { address: instructorSettings.address } : {}),
+          ...(instructorSettings.addressCity !== undefined
+            ? { addressCity: instructorSettings.addressCity }
+            : {}),
+          ...(instructorSettings.addressStreet !== undefined
+            ? { addressStreet: instructorSettings.addressStreet }
+            : {}),
+          ...(instructorSettings.addressNumber !== undefined
+            ? { addressNumber: instructorSettings.addressNumber }
+            : {}),
+          ...(instructorSettings.addressFloor !== undefined
+            ? { addressFloor: instructorSettings.addressFloor }
+            : {}),
+          ...(instructorSettings.addressPostalCode !== undefined
+            ? { addressPostalCode: instructorSettings.addressPostalCode }
+            : {}),
+          ...(instructorSettings.latitude !== undefined ? { latitude: instructorSettings.latitude } : {}),
+          ...(instructorSettings.longitude !== undefined
+            ? { longitude: instructorSettings.longitude }
+            : {}),
+        });
+      } catch (error) {
+        console.warn("Failed to save map radius", error);
+      } finally {
+        setIsRadiusSaving(false);
+        const queuedRadius = radiusSaveQueueRef.current;
+        radiusSaveQueueRef.current = null;
+        if (queuedRadius !== null && Math.abs(queuedRadius - radiusKm) >= 0.001) {
+          void saveRadiusToProfile(queuedRadius);
+        }
       }
     },
-    [applySelectedZoneIds, selectedZoneIds],
+    [instructorSettings, isRadiusSaving, saveInstructorSettings, usesLegacyZoneStorage],
   );
 
-  const openZoneEditor = useCallback(() => {
-    setSaveError(null);
-    setZoneModeActive(true);
+  const handleRadiusChange = useCallback((radiusKm: number) => {
+    setHasUserAdjustedWorkRadius(true);
+    setDraftWorkRadiusKm(radiusKm);
   }, []);
 
-  const handleMapSheetSearchChange = useCallback((text: string) => {
-    setZoneSearch(text);
-    if (text.trim().length > 0) {
-      setSheetStep(2);
-    }
-  }, []);
+  const handleRadiusCommit = useCallback(
+    (radiusKm: number) => {
+      setDraftWorkRadiusKm(radiusKm);
+      setCommittedWorkRadiusKm(radiusKm);
+      void saveRadiusToProfile(radiusKm);
+    },
+    [saveRadiusToProfile],
+  );
 
   const persistZoneSelection = useCallback(async () => {
     const nextZoneIds = [...selectedZoneIds];
@@ -429,6 +474,10 @@ export function useMapTabController() {
     usesLegacyZoneStorage,
   ]);
 
+  const handleMapSheetSearchChange = useCallback((text: string) => {
+    setZoneSearch(text);
+  }, []);
+
   const closeZoneEditor = useCallback(() => {
     setZoneModeActive(false);
   }, []);
@@ -454,21 +503,6 @@ export function useMapTabController() {
     await confirmZoneSelection();
   }, [confirmZoneSelection]);
 
-  const handleEditButtonPress = useCallback(() => {
-    if (isSaving) {
-      return;
-    }
-    if (zoneModeActive) {
-      void confirmZoneSelection();
-      return;
-    }
-    openZoneEditor();
-  }, [confirmZoneSelection, isSaving, openZoneEditor, zoneModeActive]);
-
-  const handleSheetStepChange = useCallback((step: number) => {
-    setSheetStep(step);
-  }, []);
-
   const handleSelectStudio = useCallback(
     (studioId: string) => {
       if (zoneModeActive) {
@@ -483,20 +517,6 @@ export function useMapTabController() {
     setSelectedStudioId(null);
   }, []);
 
-  const handleZoneResultPress = useCallback(
-    (zoneId: string) => {
-      toggleZone(zoneId);
-    },
-    [toggleZone],
-  );
-
-  const handleCityResultPress = useCallback(
-    (cityKey: string) => {
-      toggleCity(cityKey);
-    },
-    [toggleCity],
-  );
-
   const mapCameraPadding = useMemo(
     () => ({
       top: collapsedSheetHeight + MAP_CAMERA_TOP_OFFSET,
@@ -506,92 +526,18 @@ export function useMapTabController() {
     }),
     [collapsedSheetHeight, overlayBottom],
   );
-  const mapExpandedResults = useMemo(
-    () => (
-      <MapSheetResults
-        isVisible={isSheetExpanded}
-        saveError={saveError}
-        zoneCityItems={zoneCityItems}
-        zoneLanguage={zoneLanguage}
-        zoneModeActive={zoneModeActive}
-        onPressZone={handleZoneResultPress}
-        onPressCity={handleCityResultPress}
-        onToggleCityExpanded={toggleCityExpanded}
-      />
-    ),
-    [
-      handleCityResultPress,
-      handleZoneResultPress,
-      isSheetExpanded,
-      saveError,
-      toggleCityExpanded,
-      zoneCityItems,
-      zoneLanguage,
-      zoneModeActive,
-    ],
-  );
-
-  const mapSheetConfig = useMemo(() => {
-    const mapSheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
-    return createContentDrivenTopSheetConfig({
-      stickyHeader: (
-        <MapSheetHeader
-          focusZoneId={focusZoneId}
-          onChangeSearch={handleMapSheetSearchChange}
-          onFocusSearch={openSearchSheet}
-          mapPalette={mapPalette}
-          selectedZones={selectedZones}
-          onPressZone={setFocusZoneId}
-          t={t}
-          zoneLanguage={zoneLanguage}
-          zoneSearch={zoneSearch}
-        />
-      ),
-      expandedContent: mapExpandedResults,
-      activeStep: sheetStep,
-      onStepChange: handleSheetStepChange,
-      backgroundColor: mapSheetBackgroundColor,
-      topInsetColor: mapSheetBackgroundColor,
-      padding: {
-        vertical: 2,
-        horizontal: BrandSpacing.lg,
-      },
-      draggable: true,
-      expandable: true,
-      steps: [0, 0.5, 0.9],
-      expandMode: "overlay",
-      style: {
-        borderColor: mapSheetBackgroundColor,
-        borderBottomColor: mapSheetBackgroundColor,
-        borderLeftColor: mapSheetBackgroundColor,
-        borderRightColor: mapSheetBackgroundColor,
-      },
-    });
-  }, [
-    focusZoneId,
-    handleMapSheetSearchChange,
-    handleSheetStepChange,
-    mapExpandedResults,
-    theme,
-    openSearchSheet,
-    selectedZones,
-    sheetStep,
-    t,
-    zoneLanguage,
-    zoneSearch,
-    mapPalette,
-  ]);
+  const handleRadiusPanelToggle = useCallback(() => {
+    setIsRadiusPanelOpen((current) => !current);
+  }, []);
 
   return {
     currentUser,
     filteredZones,
     focusZoneId,
     focusedZoneLabel,
-    focusedZoneStudioCount,
-    handleDiscardChanges,
     handleCloseStudio,
-    handleEditButtonPress,
     handleFocusSelection,
+    handleDiscardChanges,
     handleMapSheetSearchChange,
     handleSaveZones,
     handleSelectStudio,
@@ -599,6 +545,7 @@ export function useMapTabController() {
     isFocused,
     isMapBodyReady,
     isSaving,
+    isRadiusPanelOpen,
     mapCameraPadding,
     mapPalette,
     mapPin,
@@ -615,6 +562,7 @@ export function useMapTabController() {
       : undefined,
     focusBoundaryBounds,
     studios: visibleStudioMarkers,
+    studioCount: previewStudioMarkers.length,
     noopMapPress,
     overlayBottom,
     pendingChangeCount,
@@ -626,10 +574,16 @@ export function useMapTabController() {
     selectedZoneIds,
     selectedBoundaryIds: selectedZoneIds,
     selectedZones,
+    workRadiusKm: draftWorkRadiusKm,
+    committedWorkRadiusKm,
+    showRadiusControl: true,
+    isRadiusSaving,
+    handleRadiusChange,
+    handleRadiusCommit,
+    handleRadiusPanelToggle,
     setFocusZoneId,
     t,
     toggleZone,
-    mapSheetConfig,
     zoneLanguage,
     zoneSearch,
     zoneModeActive,

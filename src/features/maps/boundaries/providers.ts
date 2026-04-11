@@ -11,7 +11,7 @@ import {
   getProviderForCoordinates,
   getProviderForCountry,
 } from "./europe-countries";
-import type { BoundaryProviderDefinition } from "./types";
+import type { BoundaryGeometrySource, BoundaryProviderDefinition, BoundaryZoomTier } from "./types";
 
 const configuredLondonBoundaryTilesUrl = (
   process.env.EXPO_PUBLIC_LONDON_BOUNDARY_TILES_URL_TEMPLATE ?? ""
@@ -19,6 +19,33 @@ const configuredLondonBoundaryTilesUrl = (
 const configuredLondonBoundarySourceLayer = (
   process.env.EXPO_PUBLIC_LONDON_BOUNDARY_SOURCE_LAYER ?? "boundaries"
 ).trim();
+
+const configuredEnglandBoundaryTilesUrl = (
+  process.env.EXPO_PUBLIC_ENGLAND_BOUNDARY_TILES_URL_TEMPLATE ?? ""
+).trim();
+const configuredEnglandBoundarySourceLayer = (
+  process.env.EXPO_PUBLIC_ENGLAND_BOUNDARY_SOURCE_LAYER ?? "boundaries"
+).trim();
+
+// Optional zoom tiers for England vector tiles (env-driven)
+function parseEnglandZoomTiers(): BoundaryZoomTier[] | undefined {
+  const raw = (process.env.EXPO_PUBLIC_ENGLAND_ZOOM_TIERS ?? "").trim();
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as unknown[];
+    if (!Array.isArray(parsed)) return undefined;
+    return parsed.filter(
+      (t): t is BoundaryZoomTier =>
+        typeof t === "object" &&
+        t !== null &&
+        typeof (t as Record<string, unknown>).tierId === "string" &&
+        typeof (t as Record<string, unknown>).minZoom === "number" &&
+        typeof (t as Record<string, unknown>).maxZoom === "number",
+    );
+  } catch {
+    return undefined;
+  }
+}
 
 export const ISRAEL_PIKUD_BOUNDARY_PROVIDER: BoundaryProviderDefinition = {
   id: "israel-pikud",
@@ -88,6 +115,66 @@ export const LONDON_BOROUGH_BOUNDARY_PROVIDER: BoundaryProviderDefinition = {
   labelPropertyCandidates: ["name", "postcode", "id"],
 };
 
+// England-specific boundary provider (GB sub-national, detected before broader UK fallback)
+const ENGLAND_ZOOM_TIERS = parseEnglandZoomTiers();
+
+function buildEnglandGeometry(): BoundaryGeometrySource {
+  if (configuredEnglandBoundaryTilesUrl) {
+    const geo: BoundaryGeometrySource = {
+      kind: "vectorTiles",
+      sourceId: "england-boundaries-vector",
+      sourceLayer: configuredEnglandBoundarySourceLayer,
+      tileUrlTemplates: [configuredEnglandBoundaryTilesUrl],
+      promoteId: "id",
+    };
+    if (ENGLAND_ZOOM_TIERS) {
+      (geo as typeof geo & { zoomTiers: typeof ENGLAND_ZOOM_TIERS }).zoomTiers = ENGLAND_ZOOM_TIERS;
+    }
+    return geo;
+  }
+  const geo: BoundaryGeometrySource = {
+    kind: "geojson",
+    // Placeholder: real data requires download from Overture/OSM
+    featureCollection: { type: "FeatureCollection" as const, features: [] },
+    idProperty: "id",
+  };
+  if (ENGLAND_ZOOM_TIERS) {
+    (geo as typeof geo & { zoomTiers: typeof ENGLAND_ZOOM_TIERS }).zoomTiers = ENGLAND_ZOOM_TIERS;
+  }
+  return geo;
+}
+
+export const ENGLAND_BOUNDARY_PROVIDER: BoundaryProviderDefinition = {
+  id: "gb-england-boroughs",
+  label: "England localities",
+  countryCode: "GB",
+  geometry: buildEnglandGeometry(),
+  capabilities: {
+    supportsPolygonSelection: true,
+    supportsPostcodeSelection: false,
+    supportsSearch: true,
+    supportsGpsResolution: true,
+    supportsVectorTiles: true,
+    supportsOffline: false,
+  },
+  selectionMode: "polygon",
+  selectionStorage: "boundaries",
+  viewport: {
+    countryCode: "GB",
+    // Tighter England bbox (excludes Scotland, Wales, Northern Ireland, Isle of Man, Channel Islands)
+    bbox: {
+      sw: [-5.75, 49.86],
+      ne: [1.87, 55.81],
+    },
+    zoom: 6,
+  },
+  interactionBounds: {
+    sw: [-5.75, 49.86],
+    ne: [1.87, 55.81],
+  },
+  labelPropertyCandidates: ["name", "id"],
+};
+
 const EUROPE_BOUNDARY_PROVIDERS: BoundaryProviderDefinition[] = [];
 for (const config of EUROPE_COUNTRY_CONFIGS.values()) {
   const provider = getProviderForCountry(config.countryCode);
@@ -99,6 +186,7 @@ for (const config of EUROPE_COUNTRY_CONFIGS.values()) {
 export const BOUNDARY_PROVIDERS = [
   ISRAEL_PIKUD_BOUNDARY_PROVIDER,
   LONDON_BOROUGH_BOUNDARY_PROVIDER,
+  ENGLAND_BOUNDARY_PROVIDER,
   ...EUROPE_BOUNDARY_PROVIDERS,
 ] as const;
 
@@ -127,7 +215,14 @@ export function getBoundaryProviderForLocation(
     return ISRAEL_PIKUD_BOUNDARY_PROVIDER;
   }
 
-  // Try European country providers
+  // Check England bounds (tighter than full UK)
+  const engSw = ENGLAND_BOUNDARY_PROVIDER.interactionBounds!.sw;
+  const engNe = ENGLAND_BOUNDARY_PROVIDER.interactionBounds!.ne;
+  if (lng >= engSw[0] && lng <= engNe[0] && lat >= engSw[1] && lat <= engNe[1]) {
+    return ENGLAND_BOUNDARY_PROVIDER;
+  }
+
+  // Try European country providers (includes generic GB provider with full UK bbox)
   const europeProvider = getProviderForCoordinates(lng, lat);
   if (europeProvider) {
     return europeProvider;

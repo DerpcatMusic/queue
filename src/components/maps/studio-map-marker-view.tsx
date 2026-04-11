@@ -19,7 +19,7 @@ const StudioMapMarkerViewBase = ({ studio, selected = false }: StudioMapMarkerVi
   const { color } = useTheme();
   const markerSize = STUDIO_MAP_MARKER_SIZE;
   const outerSize = STUDIO_MAP_MARKER_OUTER_SIZE;
-  const borderColor = studio.mapMarkerColor ?? color.secondary;
+  const borderColor = studio.mapMarkerColor ?? color.primary;
 
   return (
     <Box
@@ -30,7 +30,7 @@ const StudioMapMarkerViewBase = ({ studio, selected = false }: StudioMapMarkerVi
         borderCurve: "continuous",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: color.surfaceElevated,
+        backgroundColor: color.primarySubtle,
         borderWidth: selected ? BorderWidth.heavy : BorderWidth.medium,
         borderColor,
       }}
@@ -41,6 +41,7 @@ const StudioMapMarkerViewBase = ({ studio, selected = false }: StudioMapMarkerVi
         size={markerSize}
         roundedSquare={false}
         fallbackIcon="building.2.fill"
+        backgroundColor={color.surface}
       />
     </Box>
   );

@@ -7,13 +7,14 @@ import {
 } from "@stripe/stripe-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal, Pressable, View } from "react-native";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth } from "@/lib/design-system";
 import { getStripePublishableKey } from "@/lib/stripe";
 import { Box, HStack, Spacer, Text } from "@/primitives";
+import { KitSegmentedToggle } from "@/components/ui/kit";
 
 type ConnectedAccountStatus =
   | "pending"
@@ -28,10 +29,12 @@ type EmbeddedFeedback = {
   message: string;
 } | null;
 
+type DashboardTab = "payments" | "payouts";
+
 export type StripeConnectEmbeddedModalProps = {
   visible: boolean;
   accountStatus: ConnectedAccountStatus | null;
-  mode?: "auto" | "onboarding" | "payouts" | "payments";
+  mode?: "auto" | "onboarding" | "payouts" | "payments" | "dashboard";
   onClose: () => void;
   onCompleted: () => Promise<void> | void;
   onFeedback: (feedback: EmbeddedFeedback) => void;
@@ -49,7 +52,7 @@ export function StripeConnectEmbeddedModal({
   createEmbeddedSession,
   createHostedAccountLink: _createHostedAccountLink,
 }: StripeConnectEmbeddedModalProps) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useTheme();
   const locale = i18n.resolvedLanguage ?? "en";
   const publishableKey = getStripePublishableKey();
@@ -59,6 +62,7 @@ export function StripeConnectEmbeddedModal({
   > | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>("payments");
 
   const fetchClientSecret = useCallback(async () => {
     const session = await createEmbeddedSession();
@@ -135,6 +139,8 @@ export function StripeConnectEmbeddedModal({
     return null;
   }
 
+  // ─── Error state ──────────────────────────────────────────────────────
+
   if (loadError) {
     return (
       <Modal visible animationType="slide" presentationStyle="fullScreen">
@@ -170,6 +176,8 @@ export function StripeConnectEmbeddedModal({
     );
   }
 
+  // ─── Loading state ────────────────────────────────────────────────────
+
   if (!publishableKey || !connectInstance) {
     return (
       <Modal visible animationType="slide" presentationStyle="fullScreen">
@@ -188,13 +196,18 @@ export function StripeConnectEmbeddedModal({
     );
   }
 
+  // ─── Mode resolution ──────────────────────────────────────────────────
+
+  const isDashboard = mode === "dashboard";
   const onboardingMode =
     mode === "onboarding"
       ? true
-      : mode === "payouts" || mode === "payments"
+      : mode === "payouts" || mode === "payments" || mode === "dashboard"
         ? false
         : accountStatus !== "active";
   const isPaymentsMode = mode === "payments";
+
+  // ─── Onboarding (full-screen native Stripe) ───────────────────────────
 
   if (onboardingMode) {
     return (
@@ -227,6 +240,116 @@ export function StripeConnectEmbeddedModal({
     );
   }
 
+  // ─── Dashboard mode (tabbed full-screen) ──────────────────────────────
+
+  if (isDashboard) {
+    return (
+      <Modal visible animationType="slide" presentationStyle="fullScreen">
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.appBg }}>
+          <Box style={{ flex: 1, backgroundColor: theme.color.appBg }}>
+            {/* Native header */}
+            <Box style={{ paddingHorizontal: BrandSpacing.lg, paddingTop: BrandSpacing.sm, paddingBottom: BrandSpacing.md }}>
+              <HStack align="center" justify="between" gap="md">
+                <Text variant="titleLarge">{t("profile.payments.tabs.wallet")}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Done"
+                  onPress={() => {
+                    void (async () => {
+                      try {
+                        await onCompleted();
+                      } finally {
+                        onClose();
+                      }
+                    })();
+                  }}
+                  style={({ pressed }) => ({
+                    minHeight: BrandSpacing.buttonMinHeightSm,
+                    paddingHorizontal: BrandSpacing.component,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: BrandRadius.pill,
+                    borderWidth: BorderWidth.thin,
+                    borderColor: theme.color.border,
+                    backgroundColor: pressed ? theme.color.surfaceElevated : theme.color.surfaceAlt,
+                  })}
+                >
+                  <Text variant="bodyStrong">Done</Text>
+                </Pressable>
+              </HStack>
+            </Box>
+
+            {/* Native tab bar */}
+            <Box style={{ paddingHorizontal: BrandSpacing.lg, paddingBottom: BrandSpacing.md }}>
+              <KitSegmentedToggle<DashboardTab>
+                value={dashboardTab}
+                onChange={setDashboardTab}
+                options={[
+                  { label: t("profile.payments.tabs.earnings"), value: "payments" },
+                  { label: t("profile.payments.tabs.payouts"), value: "payouts" },
+                ]}
+              />
+            </Box>
+
+            {/* Stripe components — both mounted, active one visible */}
+            <View style={styles.stripeContainer}>
+              <ConnectComponentsProvider connectInstance={connectInstance}>
+                <View
+                  style={[styles.tabLayer, dashboardTab !== "payments" && styles.hiddenTab]}
+                  pointerEvents={dashboardTab === "payments" ? "auto" : "none"}
+                >
+                  <ConnectPayments
+                    onLoaderStart={() => setIsLoading(true)}
+                    onPageDidLoad={() => setIsLoading(false)}
+                    onLoadError={({ error }) => {
+                      setIsLoading(false);
+                      setLoadError(error.message || error.type);
+                      onFeedback({ tone: "error", message: error.message || error.type });
+                    }}
+                  />
+                </View>
+                <View
+                  style={[styles.tabLayer, dashboardTab !== "payouts" && styles.hiddenTab]}
+                  pointerEvents={dashboardTab === "payouts" ? "auto" : "none"}
+                >
+                  <ConnectPayouts
+                    onLoaderStart={() => setIsLoading(true)}
+                    onPageDidLoad={() => setIsLoading(false)}
+                    onLoadError={({ error }) => {
+                      setIsLoading(false);
+                      setLoadError(error.message || error.type);
+                      onFeedback({ tone: "error", message: error.message || error.type });
+                    }}
+                  />
+                </View>
+              </ConnectComponentsProvider>
+            </View>
+
+            {/* Loading overlay */}
+            {isLoading ? (
+              <Box
+                alignItems="center"
+                justifyContent="center"
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  backgroundColor: `${theme.color.appBg}E6`,
+                }}
+              >
+                <Text variant="bodyStrong">Loading...</Text>
+              </Box>
+            ) : null}
+          </Box>
+        </SafeAreaView>
+      </Modal>
+    );
+  }
+
+  // ─── Single-mode (payments or payouts) full-screen ────────────────────
+
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen">
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.appBg }}>
@@ -235,7 +358,7 @@ export function StripeConnectEmbeddedModal({
             <Text variant="titleLarge">{isPaymentsMode ? "Payments" : "Payout settings"}</Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close payouts"
+              accessibilityLabel="Close"
               onPress={() => {
                 void (async () => {
                   try {
@@ -266,40 +389,26 @@ export function StripeConnectEmbeddedModal({
               : "Review payout schedule, linked bank details, and withdrawal settings."}
           </Text>
           <Spacer size="lg" />
-          <View style={{ flex: 1, borderRadius: BrandRadius.soft, overflow: "hidden" }}>
+          <View style={{ flex: 1 }}>
             <ConnectComponentsProvider connectInstance={connectInstance}>
               {isPaymentsMode ? (
                 <ConnectPayments
-                  onLoaderStart={() => {
-                    setIsLoading(true);
-                  }}
-                  onPageDidLoad={() => {
-                    setIsLoading(false);
-                  }}
+                  onLoaderStart={() => setIsLoading(true)}
+                  onPageDidLoad={() => setIsLoading(false)}
                   onLoadError={({ error }) => {
                     setIsLoading(false);
                     setLoadError(error.message || error.type);
-                    onFeedback({
-                      tone: "error",
-                      message: error.message || error.type,
-                    });
+                    onFeedback({ tone: "error", message: error.message || error.type });
                   }}
                 />
               ) : (
                 <ConnectPayouts
-                  onLoaderStart={() => {
-                    setIsLoading(true);
-                  }}
-                  onPageDidLoad={() => {
-                    setIsLoading(false);
-                  }}
+                  onLoaderStart={() => setIsLoading(true)}
+                  onPageDidLoad={() => setIsLoading(false)}
                   onLoadError={({ error }) => {
                     setIsLoading(false);
                     setLoadError(error.message || error.type);
-                    onFeedback({
-                      tone: "error",
-                      message: error.message || error.type,
-                    });
+                    onFeedback({ tone: "error", message: error.message || error.type });
                   }}
                 />
               )}
@@ -326,3 +435,16 @@ export function StripeConnectEmbeddedModal({
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  stripeContainer: {
+    flex: 1,
+    position: "relative",
+  },
+  tabLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  hiddenTab: {
+    opacity: 0,
+  },
+});
