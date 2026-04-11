@@ -1,36 +1,36 @@
 /**
- * Instructor Payments Sheet - wraps the payments content in a BottomSheet.
+ * Instructor Payments Sheet - tabbed bottom sheet with Stripe embedded components.
  *
- * This sheet is mounted at the profile layout level and controlled via SheetContext.
+ * When active: shows Payments / Payouts tabs with native Stripe UI rendered inline.
+ * When not onboarded: shows status + onboarding button (opens full-screen Stripe modal).
  */
 
 import { useAction, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
-import * as WebBrowser from "expo-web-browser";
+import {
+  ConnectComponentsProvider,
+  ConnectPayments,
+  ConnectPayouts,
+  loadConnectAndInitialize,
+} from "@stripe/stripe-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Pressable, ScrollView, StyleSheet } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { PaymentActivityList } from "@/components/payments/payment-activity-list";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { StripeConnectEmbeddedModal } from "@/components/sheets/profile/instructor/stripe-connect-embedded";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { KitSegmentedToggle } from "@/components/ui/kit";
 import { KitStatusBadge } from "@/components/ui/kit";
 import { SkeletonLine } from "@/components/ui/skeleton";
-import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth } from "@/lib/design-system";
-import { formatDateTime } from "@/lib/jobs-utils";
-import {
-  formatAgorotCurrency,
-  getPaymentStatusLabel,
-  getPayoutStatusLabel,
-} from "@/lib/payments-utils";
-import { Box, HStack, Spacer, VStack } from "@/primitives";
+import { getStripePublishableKey } from "@/lib/stripe";
+import { Box, VStack } from "@/primitives";
 import { Motion } from "@/theme/theme";
 
 type ConnectedAccountStatus =
@@ -50,19 +50,7 @@ const STATUS_TONE: Record<ConnectedAccountStatus, "neutral" | "warning" | "succe
   disabled: "danger",
 };
 
-function getReleaseModeLabel(
-  t: ReturnType<typeof useTranslation>["t"],
-  releaseMode: "automatic" | "manual" | "scheduled",
-) {
-  switch (releaseMode) {
-    case "automatic":
-      return t("profile.payments.releaseModeAutomatic");
-    case "scheduled":
-      return t("profile.payments.releaseModeScheduled");
-    default:
-      return t("profile.payments.releaseModeManual");
-  }
-}
+type PaymentTab = "payments" | "payouts";
 
 function SkeletonProfile() {
   const { color } = useTheme();
@@ -78,19 +66,7 @@ function SkeletonProfile() {
             <SkeletonLine width={120} height={14} />
             <SkeletonLine width="72%" height={36} />
             <SkeletonLine width="88%" height={14} />
-            <HStack gap="md">
-              <SkeletonLine width="48%" height={44} radius={BrandRadius.medium} />
-              <SkeletonLine width="48%" height={44} radius={BrandRadius.medium} />
-            </HStack>
           </VStack>
-        </Box>
-        <Box
-          p="lg"
-          style={{ backgroundColor: color.surfaceElevated, borderRadius: BrandRadius.soft }}
-        >
-          <SkeletonLine width={120} height={16} />
-          <Spacer size="md" />
-          <SkeletonLine width="100%" height={56} radius={BrandRadius.soft} />
         </Box>
       </Box>
     </Animated.View>
@@ -135,24 +111,101 @@ function statusCopy(
   }
 }
 
+/** Inline Stripe component that renders ConnectPayments or ConnectPayouts directly (no modal). */
+function StripeInlineDashboard({
+  activeTab,
+  createEmbeddedSession,
+}: {
+  activeTab: PaymentTab;
+  createEmbeddedSession: () => Promise<{ clientSecret: string }>;
+}) {
+  const { i18n } = useTranslation();
+  const theme = useTheme();
+  const locale = i18n.resolvedLanguage ?? "en";
+  const publishableKey = getStripePublishableKey();
+
+  const fetchClientSecret = useCallback(async () => {
+    const session = await createEmbeddedSession();
+    return session.clientSecret;
+  }, [createEmbeddedSession]);
+
+  const themeColors = theme.color;
+  const appearance = useMemo(
+    () => ({
+      variables: {
+        colorPrimary: themeColors.primary,
+        colorBackground: themeColors.surfaceElevated,
+        colorText: themeColors.text,
+        colorSecondaryText: themeColors.textMuted,
+        colorDanger: themeColors.danger,
+        buttonPrimaryColorBackground: themeColors.primary,
+        buttonPrimaryColorBorder: themeColors.primary,
+        buttonPrimaryColorText: themeColors.onPrimary,
+        buttonSecondaryColorBackground: themeColors.surfaceAlt,
+        buttonSecondaryColorBorder: themeColors.border,
+        buttonSecondaryColorText: themeColors.text,
+        borderRadius: "18px",
+        spacingUnit: "12px",
+      },
+    }),
+    [
+      themeColors.border,
+      themeColors.danger,
+      themeColors.onPrimary,
+      themeColors.primary,
+      themeColors.surfaceAlt,
+      themeColors.surfaceElevated,
+      themeColors.text,
+      themeColors.textMuted,
+    ],
+  );
+
+  const [connectInstance, setConnectInstance] = useState<ReturnType<
+    typeof loadConnectAndInitialize
+  > | null>(null);
+
+  useEffect(() => {
+    if (!publishableKey) return;
+    setConnectInstance(
+      loadConnectAndInitialize({
+        publishableKey,
+        fetchClientSecret,
+        locale,
+        appearance,
+      }),
+    );
+  }, [appearance, fetchClientSecret, locale, publishableKey]);
+
+  if (!publishableKey || !connectInstance) {
+    return (
+      <Box style={{ padding: BrandSpacing.xl, alignItems: "center" }}>
+        <ThemedText style={{ color: theme.color.textMuted }}>Loading...</ThemedText>
+      </Box>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <ConnectComponentsProvider connectInstance={connectInstance}>
+        {activeTab === "payments" ? <ConnectPayments /> : <ConnectPayouts />}
+      </ConnectComponentsProvider>
+    </View>
+  );
+}
+
 interface InstructorPaymentsSheetProps {
   visible: boolean;
   onClose: () => void;
 }
 
 export function InstructorPaymentsSheet({ visible, onClose }: InstructorPaymentsSheetProps) {
-  const { t, i18n } = useTranslation();
-  const locale = i18n.resolvedLanguage ?? "en";
+  const { t } = useTranslation();
   const theme = useTheme();
   const { color } = theme;
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const isInstructor = currentUser?.role === "instructor";
 
-  const paymentRows = useQuery(
-    api.paymentsV2.listMyPaymentsV2,
-    isInstructor ? { limit: 20 } : "skip",
-  );
   const connectedAccount = useQuery(
     api.paymentsV2.getMyInstructorConnectedAccountV2,
     isInstructor ? {} : "skip",
@@ -171,32 +224,15 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [connectInfo, setConnectInfo] = useState<string | null>(null);
-  const [stripeConnectVisible, setStripeConnectVisible] = useState(false);
-  const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrdersV2"> | null>(null);
+  const [onboardingVisible, setOnboardingVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<PaymentTab>("payments");
 
-  const selectedPaymentDetail = useQuery(
-    api.paymentsV2.getMyPaymentDetailV2,
-    selectedPaymentId ? { paymentOrderId: selectedPaymentId } : "skip",
-  );
-
-  const isDetailLoading = selectedPaymentId !== null && selectedPaymentDetail === undefined;
-
-  const rows = useMemo(() => paymentRows ?? [], [paymentRows]);
   const accountStatus = (connectedAccount?.status ?? null) as ConnectedAccountStatus | null;
   const accountCopy = statusCopy(t, accountStatus, connectedAccount?.requirementsSummary ?? null);
   const accountTone = accountStatus ? STATUS_TONE[accountStatus] : accountCopy.tone;
-  const primaryAccountActionLabel =
-    accountStatus === "active"
-      ? t("profile.payments.managePayouts")
-      : accountStatus
-        ? t("profile.payments.resumeOnboarding")
-        : t("profile.payments.startOnboarding");
+  const isActive = accountStatus === "active";
 
-  const isLoading =
-    !currentUser ||
-    (isInstructor && paymentRows === undefined) ||
-    (isInstructor && connectedAccount === undefined);
-
+  const isLoading = !currentUser || (isInstructor && connectedAccount === undefined);
   const { animatedStyle } = useContentReveal(isLoading);
 
   useEffect(() => {
@@ -205,11 +241,28 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
     return () => clearTimeout(timeout);
   }, [connectInfo]);
 
-  const openConnectFlow = useCallback(() => {
+  useEffect(() => {
+    if (!visible) {
+      setOnboardingVisible(false);
+      setConnectBusy(false);
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    if (!onboardingVisible || accountStatus !== "active") {
+      return;
+    }
+    setConnectInfo(t("profile.payments.connectSuccess"));
+    setConnectError(null);
+    setConnectBusy(false);
+    setOnboardingVisible(false);
+  }, [accountStatus, onboardingVisible, t]);
+
+  const openOnboarding = useCallback(() => {
     setConnectBusy(true);
     setConnectError(null);
     setConnectInfo(null);
-    setStripeConnectVisible(true);
+    setOnboardingVisible(true);
   }, []);
 
   const handleConnectFeedback = useCallback(
@@ -241,8 +294,18 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     setConnectBusy(false);
-    setStripeConnectVisible(false);
+    setOnboardingVisible(false);
   }, [refreshStripeAccount, t]);
+
+  const handleCreateStripeEmbeddedSession = useCallback(
+    async () => createStripeEmbeddedSession({}),
+    [createStripeEmbeddedSession],
+  );
+
+  const handleCreateStripeHostedAccountLink = useCallback(
+    async () => createStripeHostedAccountLink({}),
+    [createStripeHostedAccountLink],
+  );
 
   if (isLoading) {
     return (
@@ -254,14 +317,12 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
     );
   }
 
-  return (
-    <BaseProfileSheet visible={visible} onClose={onClose}>
-      <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-        <ScrollView
-          style={[styles.container, { backgroundColor: color.appBg }]}
-          contentContainerStyle={styles.contentContainer}
-        >
-          <Box style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.sm }}>
+  // Not onboarded yet — show status + onboarding button
+  if (!isActive) {
+    return (
+      <BaseProfileSheet visible={visible} onClose={onClose}>
+        <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+          <Box style={{ padding: BrandSpacing.lg, gap: BrandSpacing.lg }}>
             {connectError || connectInfo ? (
               <Box
                 style={{
@@ -284,299 +345,109 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
 
             <KitStatusBadge label={accountCopy.label} tone={accountTone} showDot />
 
-            <IconSymbol name="info.circle" size={BrandSpacing.iconSm} color={color.textMuted} />
+            <ThemedText type="body" style={{ color: color.textMuted }}>
+              {accountCopy.caption}
+            </ThemedText>
 
-            <Box
-              style={{
-                flexDirection: "row",
-                gap: BrandSpacing.md,
-              }}
-            >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={primaryAccountActionLabel}
-                onPress={openConnectFlow}
-                disabled={connectBusy || stripeConnectVisible}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  borderRadius: BrandRadius.medium,
-                  borderCurve: "continuous",
-                  minHeight: BrandSpacing.buttonMinHeightXl,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexDirection: "row",
-                  gap: BrandSpacing.sm,
-                  backgroundColor: connectBusy
-                    ? color.surfaceAlt
-                    : pressed
-                      ? color.primaryPressed
-                      : color.primary,
-                })}
-              >
-                <IconSymbol
-                  name="building.columns.fill"
-                  size={BrandSpacing.iconSm}
-                  color={connectBusy ? color.textMuted : color.onPrimary}
-                />
-                <ThemedText
-                  type="labelStrong"
-                  style={{ color: connectBusy ? color.textMuted : color.onPrimary }}
-                >
-                  {primaryAccountActionLabel}
-                </ThemedText>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("profile.compliance.openCompliance")}
-                onPress={() => {
-                  // Navigation handled by parent
-                }}
-                style={({ pressed }) => ({
-                  paddingHorizontal: BrandSpacing.component,
-                  minHeight: BrandSpacing.buttonMinHeightXl,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: BrandRadius.medium,
-                  borderCurve: "continuous",
-                  borderWidth: BorderWidth.thin,
-                  borderColor: color.border,
-                  backgroundColor: pressed ? color.surfaceElevated : color.surfaceAlt,
-                })}
-              >
-                <ThemedText type="caption" style={{ color: color.text }}>
-                  {t("profile.compliance.openCompliance")}
-                </ThemedText>
-              </Pressable>
-            </Box>
-
-            <StripeConnectEmbeddedModal
-              visible={stripeConnectVisible}
-              accountStatus={accountStatus}
-              createEmbeddedSession={async () => createStripeEmbeddedSession({})}
-              createHostedAccountLink={async () => createStripeHostedAccountLink({})}
-              onClose={() => {
-                setConnectBusy(false);
-                setStripeConnectVisible(false);
-              }}
-              onCompleted={handleConnectCompleted}
-              onFeedback={handleConnectFeedback}
-            />
-          </Box>
-
-          <Box style={{ paddingHorizontal: BrandSpacing.md }}>
-            <PaymentActivityList
-              viewerRole="instructor"
-              items={rows}
-              locale={locale}
-              title={t("profile.payments.recentTransactions")}
-              emptyLabel={t("profile.payments.noTransactions")}
-              onSelectPaymentId={(paymentId) =>
-                setSelectedPaymentId(paymentId as Id<"paymentOrdersV2">)
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                accountStatus
+                  ? t("profile.payments.resumeOnboarding")
+                  : t("profile.payments.startOnboarding")
               }
-            />
+              onPress={openOnboarding}
+              disabled={connectBusy}
+              style={({ pressed }) => ({
+                borderRadius: BrandRadius.medium,
+                borderCurve: "continuous",
+                minHeight: BrandSpacing.buttonMinHeightXl,
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                gap: BrandSpacing.sm,
+                backgroundColor: connectBusy
+                  ? color.surfaceAlt
+                  : pressed
+                    ? color.primaryPressed
+                    : color.primary,
+              })}
+            >
+              <IconSymbol
+                name="building.columns.fill"
+                size={BrandSpacing.iconSm}
+                color={connectBusy ? color.textMuted : color.onPrimary}
+              />
+              <ThemedText
+                type="labelStrong"
+                style={{ color: connectBusy ? color.textMuted : color.onPrimary }}
+              >
+                {accountStatus
+                  ? t("profile.payments.resumeOnboarding")
+                  : t("profile.payments.startOnboarding")}
+              </ThemedText>
+            </Pressable>
           </Box>
+        </Animated.View>
 
-          {selectedPaymentId ? (
+        <StripeConnectEmbeddedModal
+          visible={onboardingVisible}
+          accountStatus={accountStatus}
+          mode="onboarding"
+          createEmbeddedSession={handleCreateStripeEmbeddedSession}
+          createHostedAccountLink={handleCreateStripeHostedAccountLink}
+          onClose={() => {
+            setConnectBusy(false);
+            setOnboardingVisible(false);
+          }}
+          onCompleted={handleConnectCompleted}
+          onFeedback={handleConnectFeedback}
+        />
+      </BaseProfileSheet>
+    );
+  }
+
+  // Active — show tabbed Stripe UI inline
+  return (
+    <BaseProfileSheet visible={visible} onClose={onClose}>
+      <Animated.View style={[styles.container, { backgroundColor: color.appBg }, animatedStyle]}>
+        <Box style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.md }}>
+          {connectError || connectInfo ? (
             <Box
               style={{
-                paddingHorizontal: BrandSpacing.md,
-                gap: BrandSpacing.md,
-                marginTop: BrandSpacing.sm,
+                backgroundColor: connectError ? color.dangerSubtle : color.surfaceAlt,
+                borderRadius: BrandRadius.lg,
+                paddingHorizontal: BrandSpacing.component,
+                paddingVertical: BrandSpacing.stackDense,
+                borderWidth: BorderWidth.thin,
+                borderColor: connectError ? (color.danger as string) : color.border,
               }}
             >
-              <Box
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
+              <ThemedText
+                type="caption"
+                style={{ color: connectError ? color.danger : color.textMuted }}
               >
-                <ThemedText type="title">{t("profile.payments.receipt")}</ThemedText>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t("profile.payments.close")}
-                  onPress={() => setSelectedPaymentId(null)}
-                  style={({ pressed }) => ({
-                    backgroundColor: pressed ? color.surfaceElevated : color.surfaceAlt,
-                    paddingHorizontal: BrandSpacing.md,
-                    paddingVertical: BrandSpacing.stackMicro,
-                    borderRadius: BrandRadius.pill,
-                    borderCurve: "continuous",
-                    borderWidth: BorderWidth.thin,
-                    borderColor: color.border,
-                  })}
-                >
-                  <IconSymbol name="xmark" size={18} color={color.text} />
-                </Pressable>
-              </Box>
-              {isDetailLoading ? (
-                <Box
-                  style={{
-                    backgroundColor: color.surfaceAlt,
-                    padding: BrandSpacing.xl,
-                    borderRadius: BrandRadius.soft,
-                    alignItems: "center",
-                  }}
-                >
-                  <ThemedText style={{ color: color.textMuted }}>
-                    {t("profile.payments.loadingReceipt")}
-                  </ThemedText>
-                </Box>
-              ) : !selectedPaymentDetail ? (
-                <Box
-                  style={{
-                    backgroundColor: color.surfaceAlt,
-                    padding: BrandSpacing.xl,
-                    borderRadius: BrandRadius.soft,
-                    alignItems: "center",
-                  }}
-                >
-                  <ThemedText style={{ color: color.textMuted }}>
-                    {t("profile.payments.paymentNotFound")}
-                  </ThemedText>
-                </Box>
-              ) : (
-                <Box
-                  style={{
-                    backgroundColor: color.surfaceAlt,
-                    borderRadius: BrandRadius.soft,
-                    borderCurve: "continuous",
-                    overflow: "hidden",
-                  }}
-                >
-                  <Box
-                    style={{
-                      padding: BrandSpacing.insetComfort,
-                      borderBottomWidth: BorderWidth.thin,
-                      borderBottomColor: color.border,
-                      borderStyle: "dashed",
-                      alignItems: "center",
-                      gap: BrandSpacing.sm,
-                    }}
-                  >
-                    <Box
-                      style={{
-                        width: BrandSpacing.avatarMd,
-                        height: BrandSpacing.avatarMd,
-                        borderRadius: BrandRadius.soft,
-                        backgroundColor: color.successSubtle,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginBottom: BrandSpacing.xs,
-                      }}
-                    >
-                      <IconSymbol
-                        name="checkmark"
-                        size={BrandSpacing.iconMd}
-                        color={color.success as import("react-native").ColorValue}
-                      />
-                    </Box>
-                    <ThemedText
-                      type="title"
-                      style={{
-                        fontVariant: ["tabular-nums"],
-                        ...BrandType.titleLarge,
-                      }}
-                    >
-                      {formatAgorotCurrency(
-                        selectedPaymentDetail.payment.instructorBaseAmountAgorot,
-                        locale,
-                        selectedPaymentDetail.payment.currency,
-                      )}
-                    </ThemedText>
-                    <ThemedText type="caption" style={{ color: color.textMuted }}>
-                      {formatDateTime(selectedPaymentDetail.payment.createdAt, locale)}
-                    </ThemedText>
-                  </Box>
-                  <Box
-                    style={{
-                      padding: BrandSpacing.insetComfort,
-                      gap: BrandSpacing.inset,
-                    }}
-                  >
-                    <Box
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <ThemedText type="bodyStrong">
-                        {getPaymentStatusLabel(selectedPaymentDetail.payment.status)}
-                      </ThemedText>
-                    </Box>
-                    <Box
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <ThemedText type="bodyStrong">
-                        {selectedPaymentDetail.payout
-                          ? getPayoutStatusLabel(selectedPaymentDetail.payout.status)
-                          : t("profile.payments.pending")}
-                      </ThemedText>
-                    </Box>
-                    <Box
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <ThemedText type="bodyStrong">
-                        {selectedPaymentDetail.fundSplit
-                          ? getPayoutStatusLabel(selectedPaymentDetail.fundSplit.payoutStatus)
-                          : t("profile.payments.notCreated")}
-                      </ThemedText>
-                    </Box>
-                    {selectedPaymentDetail.fundSplit ? (
-                      <ThemedText type="bodyStrong">
-                        {getReleaseModeLabel(t, selectedPaymentDetail.fundSplit.releaseMode)}
-                      </ThemedText>
-                    ) : null}
-                    <ThemedText type="bodyStrong">
-                      {selectedPaymentDetail.receipt.status === "ready"
-                        ? t("profile.payments.receiptReady")
-                        : t("profile.payments.receiptPending")}
-                    </ThemedText>
-                    {selectedPaymentDetail.invoice?.externalInvoiceUrl ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={t("profile.payments.downloadInvoice")}
-                        onPress={() => {
-                          void WebBrowser.openBrowserAsync(
-                            selectedPaymentDetail.invoice!.externalInvoiceUrl!,
-                          );
-                        }}
-                        style={({ pressed }) => ({
-                          flexDirection: "row",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          paddingVertical: BrandSpacing.sm,
-                          paddingHorizontal: BrandSpacing.md,
-                          borderRadius: BrandRadius.lg,
-                          borderCurve: "continuous",
-                          borderWidth: BorderWidth.thin,
-                          borderColor: color.border,
-                          backgroundColor: pressed ? color.surfaceAlt : color.surfaceElevated,
-                        })}
-                      >
-                        <ThemedText type="bodyStrong" style={{ color: color.primary }}>
-                          {t("profile.payments.downloadInvoice")}
-                        </ThemedText>
-                        <IconSymbol
-                          name="arrow.up.right"
-                          size={BrandSpacing.iconSm}
-                          color={color.primary}
-                        />
-                      </Pressable>
-                    ) : null}
-                  </Box>
-                </Box>
-              )}
+                {connectError || connectInfo}
+              </ThemedText>
             </Box>
           ) : null}
-        </ScrollView>
+
+          <KitSegmentedToggle<PaymentTab>
+            value={activeTab}
+            onChange={setActiveTab}
+            options={[
+              { label: "Payments", value: "payments" },
+              { label: "Payouts", value: "payouts" },
+            ]}
+          />
+        </Box>
+
+        <Box style={{ flex: 1, minHeight: 400, marginTop: BrandSpacing.md }}>
+          <StripeInlineDashboard
+            activeTab={activeTab}
+            createEmbeddedSession={handleCreateStripeEmbeddedSession}
+          />
+        </Box>
       </Animated.View>
     </BaseProfileSheet>
   );
@@ -585,9 +456,5 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  contentContainer: {
-    gap: BrandSpacing.xl,
-    paddingBottom: BrandSpacing.xxl,
   },
 });

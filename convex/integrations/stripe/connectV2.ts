@@ -314,6 +314,7 @@ export async function createStripeAccountSessionV2(input: {
   accountId: string;
   enableOnboarding?: boolean;
   enablePayouts?: boolean;
+  enablePayments?: boolean;
 }) {
   const secretKey = requireStripeSecretKey();
   const stripe = new StripeSDK(secretKey);
@@ -352,6 +353,13 @@ export async function createStripeAccountSessionV2(input: {
                 edit_payout_schedule: true,
                 external_account_collection: true,
               },
+            },
+          }
+        : {}),
+      ...(input.enablePayments !== false
+        ? {
+            payments: {
+              enabled: true,
             },
           }
         : {}),
