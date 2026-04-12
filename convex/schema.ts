@@ -281,6 +281,7 @@ export default defineSchema({
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     workRadiusKm: v.optional(v.number()),
+    h3Index: v.optional(v.string()),
     expoPushToken: v.optional(v.string()),
     notificationsEnabled: v.boolean(),
     lessonReminderMinutesBefore: v.optional(v.number()),
@@ -317,7 +318,8 @@ export default defineSchema({
   })
     .index("by_user_id", ["userId"])
     .index("by_didit_session_id", ["diditSessionId"])
-    .index("by_slug", ["slug"]),
+    .index("by_slug", ["slug"])
+    .index("by_h3_index", ["h3Index"]),
 
   instructorCertificates: defineTable({
     instructorId: v.id("instructorProfiles"),
@@ -539,6 +541,7 @@ export default defineSchema({
     boundaryId: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    h3Index: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     mapMarkerColor: v.optional(v.string()),
     expoPushToken: v.optional(v.string()),
@@ -646,6 +649,7 @@ export default defineSchema({
     boundaryId: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    h3Index: v.optional(v.string()),
     arrivalRadiusMeters: v.optional(v.number()),
     contactPhone: v.optional(v.string()),
     expoPushToken: v.optional(v.string()),
@@ -703,6 +707,7 @@ export default defineSchema({
     studioId: v.id("studioProfiles"),
     branchId: v.id("studioBranches"),
     zone: v.string(),
+    h3Index: v.optional(v.string()),
     boundaryProvider: v.optional(v.string()),
     boundaryId: v.optional(v.string()),
     sport: v.string(),
@@ -774,7 +779,8 @@ export default defineSchema({
       "postedAt",
     ])
     .index("by_sport_zone_status_postedAt", ["sport", "zone", "status", "postedAt"])
-    .index("by_zone_and_status", ["zone", "status"]),
+    .index("by_zone_and_status", ["zone", "status"])
+    .index("by_sport_h3_status_postedAt", ["sport", "h3Index", "status", "postedAt"]),
 
   lessonCheckIns: defineTable({
     jobId: v.id("jobs"),
