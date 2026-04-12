@@ -4,12 +4,8 @@ import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { mutation } from "./_generated/server";
 import { requireCurrentUser } from "./lib/auth";
-import {
-  DEFAULT_BOUNDARY_PROVIDER,
-  replaceInstructorBoundarySubscriptions,
-  resolveBoundaryAssignment,
-} from "./lib/boundaries";
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
+import { safeH3Index } from "./lib/h3";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
 import { generateUniqueInstructorSlug, generateUniqueStudioSlug } from "./lib/slug";
 import { ensureStudioInfrastructure } from "./lib/studioBranches";
@@ -170,14 +166,6 @@ export const completeInstructorOnboarding = mutation({
       throw new ConvexError("Too many sports selected");
     }
 
-    const zones = [...new Set(args.zones.map((zone) => normalizeZoneId(zone)))];
-    if (zones.length === 0) {
-      throw new ConvexError("At least one zone is required");
-    }
-    if (zones.length > MAX_ZONES) {
-      throw new ConvexError("Too many zones selected");
-    }
-
     const notificationsEnabled = args.notificationsEnabled && Boolean(pushToken);
 
     // Generate unique slug for public profile URL
@@ -199,6 +187,7 @@ export const completeInstructorOnboarding = mutation({
             latitude,
             longitude,
             hourlyRateExpectation: args.hourlyRateExpectation,
+            h3Index: safeH3Index(latitude, longitude),
           }),
           notificationsEnabled,
           lessonReminderMinutesBefore: DEFAULT_LESSON_REMINDER_MINUTES_BEFORE,
@@ -226,6 +215,7 @@ export const completeInstructorOnboarding = mutation({
           latitude,
           longitude,
           hourlyRateExpectation: args.hourlyRateExpectation,
+          h3Index: safeH3Index(latitude, longitude),
         }),
         notificationsEnabled,
         lessonReminderMinutesBefore:
@@ -238,44 +228,22 @@ export const completeInstructorOnboarding = mutation({
       });
     }
 
-    const [existingSports, existingZones] = await Promise.all([
-      ctx.db
-        .query("instructorSports")
-        .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructorId))
-        .collect(),
-      ctx.db
-        .query("instructorZones")
-        .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructorId))
-        .collect(),
-    ]);
+    const existingSports = await ctx.db
+      .query("instructorSports")
+      .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructorId))
+      .collect();
 
-    await Promise.all([
-      ...existingSports.map((row) => ctx.db.delete("instructorSports", row._id)),
-      ...existingZones.map((row) => ctx.db.delete("instructorZones", row._id)),
-    ]);
+    await Promise.all(existingSports.map((row) => ctx.db.delete("instructorSports", row._id)));
 
-    await Promise.all([
-      ...sports.map((sport) =>
+    await Promise.all(
+      sports.map((sport) =>
         ctx.db.insert("instructorSports", {
           instructorId,
           sport,
           createdAt: now,
         }),
       ),
-      ...zones.map((zone) =>
-        ctx.db.insert("instructorZones", {
-          instructorId,
-          zone,
-          createdAt: now,
-        }),
-      ),
-    ]);
-
-    await replaceInstructorBoundarySubscriptions(ctx, {
-      instructorId,
-      provider: DEFAULT_BOUNDARY_PROVIDER,
-      boundaryIds: zones,
-    });
+    );
 
     await ctx.db.patch("users", user._id, {
       role: "instructor",
@@ -287,7 +255,7 @@ export const completeInstructorOnboarding = mutation({
 
     await rebuildInstructorCoverage(ctx, instructorId);
 
-    return { instructorId, slug, sportsCount: sports.length, zonesCount: zones.length };
+    return { instructorId, slug, sportsCount: sports.length, zonesCount: 0 };
   },
 });
 
@@ -323,13 +291,6 @@ export const completeStudioOnboarding = mutation({
     );
     const address = normalizeRequiredString(args.address, MAX_ADDRESS_LENGTH, "Address");
     const zone = normalizeZoneId(args.zone);
-    const boundaryAssignment = resolveBoundaryAssignment(
-      omitUndefined({
-        provider: args.boundaryProvider,
-        boundaryId: args.boundaryId,
-        legacyZone: zone,
-      }),
-    );
     const contactPhone = normalizeOptionalString(
       args.contactPhone,
       MAX_PHONE_LENGTH,
@@ -364,12 +325,12 @@ export const completeStudioOnboarding = mutation({
           slug,
           address,
           zone,
-          ...boundaryAssignment,
           ...omitUndefined({
             contactPhone,
             latitude,
             longitude,
             expoPushToken,
+            h3Index: safeH3Index(latitude, longitude),
           }),
           notificationsEnabled,
           calendarProvider: "none",
@@ -385,12 +346,12 @@ export const completeStudioOnboarding = mutation({
         studioName,
         address,
         zone,
-        ...boundaryAssignment,
         ...omitUndefined({
           contactPhone,
           latitude,
           longitude,
           expoPushToken,
+          h3Index: safeH3Index(latitude, longitude),
         }),
         notificationsEnabled,
         calendarProvider: profileResolution.profile.calendarProvider ?? "none",
