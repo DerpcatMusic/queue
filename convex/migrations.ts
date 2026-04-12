@@ -18,6 +18,7 @@ import {
   syncInstructorGeospatialCoverage,
   syncStudioBranchGeospatialLocation,
 } from "./lib/geospatial";
+import { safeH3Index } from "./lib/h3";
 import { diditVerificationStatusValidator } from "./lib/instructorCompliance";
 import { mapLegacyPaymentStatusToOrderStatus, summarizeLedgerBalances } from "./lib/marketplace";
 import { ensureStudioInfrastructure } from "./lib/studioBranches";
@@ -2808,6 +2809,96 @@ export const backfillPublicProfileSlugs = internalMutation({
       ...omitUndefined({
         nextCursor: instructorPage.isDone ? undefined : instructorPage.continueCursor,
       }),
+    };
+  },
+});
+
+export const backfillBranchH3Index = mutation({
+  args: { cursor: v.optional(v.string()), batchSize: v.optional(v.number()) },
+  returns: v.object({
+    processed: v.number(),
+    hasMore: v.boolean(),
+    cursor: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const batchSize = Math.min(Math.max(args.batchSize ?? DEFAULT_BATCH_SIZE, 1), MAX_BATCH_SIZE);
+    const result = await ctx.db
+      .query("studioBranches")
+      .paginate({ cursor: args.cursor ?? null, numItems: batchSize });
+
+    let processed = 0;
+    for (const branch of result.page) {
+      if (branch.h3Index !== undefined) continue;
+      const h3 = safeH3Index(branch.latitude, branch.longitude);
+      if (h3 === undefined) continue;
+      await ctx.db.patch(branch._id, { h3Index: h3 });
+      processed += 1;
+    }
+
+    return {
+      processed,
+      hasMore: !result.isDone,
+      ...omitUndefined({ cursor: result.isDone ? undefined : result.continueCursor }),
+    };
+  },
+});
+
+export const backfillInstructorH3Index = mutation({
+  args: { cursor: v.optional(v.string()), batchSize: v.optional(v.number()) },
+  returns: v.object({
+    processed: v.number(),
+    hasMore: v.boolean(),
+    cursor: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const batchSize = Math.min(Math.max(args.batchSize ?? DEFAULT_BATCH_SIZE, 1), MAX_BATCH_SIZE);
+    const result = await ctx.db
+      .query("instructorProfiles")
+      .paginate({ cursor: args.cursor ?? null, numItems: batchSize });
+
+    let processed = 0;
+    for (const profile of result.page) {
+      if (profile.h3Index !== undefined) continue;
+      const h3 = safeH3Index(profile.latitude, profile.longitude);
+      if (h3 === undefined) continue;
+      await ctx.db.patch(profile._id, { h3Index: h3 });
+      processed += 1;
+    }
+
+    return {
+      processed,
+      hasMore: !result.isDone,
+      ...omitUndefined({ cursor: result.isDone ? undefined : result.continueCursor }),
+    };
+  },
+});
+
+export const backfillJobH3Index = mutation({
+  args: { cursor: v.optional(v.string()), batchSize: v.optional(v.number()) },
+  returns: v.object({
+    processed: v.number(),
+    hasMore: v.boolean(),
+    cursor: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const batchSize = Math.min(Math.max(args.batchSize ?? DEFAULT_BATCH_SIZE, 1), MAX_BATCH_SIZE);
+    const result = await ctx.db
+      .query("jobs")
+      .paginate({ cursor: args.cursor ?? null, numItems: batchSize });
+
+    let processed = 0;
+    for (const job of result.page) {
+      if (job.h3Index !== undefined) continue;
+      const branch = await ctx.db.get(job.branchId);
+      if (!branch?.h3Index) continue;
+      await ctx.db.patch(job._id, { h3Index: branch.h3Index });
+      processed += 1;
+    }
+
+    return {
+      processed,
+      hasMore: !result.isDone,
+      ...omitUndefined({ cursor: result.isDone ? undefined : result.continueCursor }),
     };
   },
 });
