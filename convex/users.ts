@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import {
@@ -10,13 +10,9 @@ import {
 } from "./lib/auth";
 import { resolveBoundaryAssignment } from "./lib/boundaries";
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
-import { safeH3Index } from "./lib/h3";
-import {
-  findNearbyStudioBranchIdsForInstructor,
-  syncInstructorGeospatialCoverage,
-} from "./lib/geospatial";
+import { getWatchZoneCells, safeH3Index } from "./lib/h3";
+import { syncInstructorGeospatialCoverage } from "./lib/geospatial";
 import { rebuildInstructorCoverage } from "./lib/instructorCoverage";
-import { loadInstructorEligibility } from "./lib/instructorEligibility";
 import { resolveInternalAccessForUser } from "./lib/internalAccess";
 import { isStripeIdentityVerified } from "./lib/stripeIdentity";
 import {
@@ -51,7 +47,6 @@ const MAX_PHONE_LENGTH = 20;
 const MAX_PROFILE_BIO_LENGTH = 280;
 const MAX_SOCIAL_LINK_LENGTH = 220;
 const PROFILE_IMAGE_UPLOAD_SESSION_TTL_MS = 10 * 60 * 1000;
-const DEFAULT_WORK_RADIUS_KM = 15;
 const LESSON_REMINDER_MINUTES_OPTIONS = [15, 30, 45, 60] as const;
 const SOCIAL_LINK_KEYS = [
   "instagram",
@@ -1048,102 +1043,74 @@ export const getInstructorMapStudios = query({
       return [];
     }
 
-    const hasGeospatialLocation =
+    const hasLocation =
       Number.isFinite(instructor.latitude) &&
-      Number.isFinite(instructor.longitude) &&
-      Number.isFinite(instructor.workRadiusKm);
+      Number.isFinite(instructor.longitude);
 
-    if (hasGeospatialLocation) {
-      const nearbyBranches = await findNearbyStudioBranchIdsForInstructor(ctx, {
-        instructorLatitude: instructor.latitude!,
-        instructorLongitude: instructor.longitude!,
-        workRadiusKm: args.workRadiusKm ?? instructor.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM,
-        limit: 1000,
-      });
-      if (nearbyBranches.length > 0) {
-        const uniqueBranchIds = [...new Set(nearbyBranches.map((row) => row.branchId))];
-        const branchRecords = await Promise.all(
-          uniqueBranchIds.map((branchId) => ctx.db.get("studioBranches", branchId)),
-        );
-        const branchByStudioId = new Map<string, Doc<"studioBranches">>();
-        for (const branch of branchRecords) {
-          if (!branch || branch.latitude === undefined || branch.longitude === undefined) {
-            continue;
-          }
-          const existing = branchByStudioId.get(String(branch.studioId));
-          if (!existing) {
+    if (!hasLocation) return [];
+
+    const workRadiusKm = normalizeWorkRadiusKm(
+      args.workRadiusKm ?? instructor.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM,
+    );
+    const hexCells = getWatchZoneCells(
+      instructor.latitude!,
+      instructor.longitude!,
+      workRadiusKm,
+    );
+
+    // Query studioBranches by h3Index for each cell
+    const branchByStudioId = new Map<string, Doc<"studioBranches">>();
+    const CHUNK_SIZE = 200;
+    for (let i = 0; i < hexCells.length; i += CHUNK_SIZE) {
+      const chunk = hexCells.slice(i, i + CHUNK_SIZE);
+      const branchesByCell = await Promise.all(
+        chunk.map((hex) =>
+          ctx.db
+            .query("studioBranches")
+            .withIndex("by_h3_index", (q) => q.eq("h3Index", hex))
+            .collect()
+        )
+      );
+      for (const branches of branchesByCell) {
+        for (const branch of branches) {
+          if (!branchByStudioId.has(String(branch.studioId))) {
             branchByStudioId.set(String(branch.studioId), branch);
           }
         }
-
-        const studioIds = [...branchByStudioId.keys()];
-        const studios = await Promise.all(
-          studioIds.map((studioId) => ctx.db.get("studioProfiles", studioId as Doc<"studioProfiles">["_id"])),
-        );
-        const logoUrls = await Promise.all(
-          studios.map((studio) =>
-            studio?.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
-          ),
-        );
-
-        return studios
-          .map((studio, index) => {
-            if (!studio) return null;
-            const branch = branchByStudioId.get(String(studio._id));
-            if (!branch) return null;
-            return {
-              studioId: studio._id,
-              studioName: studio.studioName,
-              zone: branch.zone,
-              latitude: branch.latitude!,
-              longitude: branch.longitude!,
-              ...omitUndefined({
-                address: branch.address,
-                logoImageUrl: logoUrls[index] ?? undefined,
-                mapMarkerColor: studio.mapMarkerColor,
-              }),
-            };
-          })
-          .filter((studio): studio is NonNullable<typeof studio> => Boolean(studio));
       }
     }
 
-    const eligibility = await loadInstructorEligibility(ctx, instructor._id);
-    if (eligibility.coverageCount === 0) {
-      return [];
-    }
+    if (branchByStudioId.size === 0) return [];
 
-    const zoneIds = [...new Set(eligibility.coveragePairs.map((pair) => pair.zone))];
-    const studioGroups = await Promise.all(
-      zoneIds.map((zoneId) =>
-        ctx.db
-          .query("studioProfiles")
-          .withIndex("by_zone", (q) => q.eq("zone", zoneId))
-          .collect(),
-      ),
+    const studioIds = [...branchByStudioId.keys()];
+    const studios = await Promise.all(
+      studioIds.map((studioId) => ctx.db.get("studioProfiles", studioId as Id<"studioProfiles">)),
     );
-    const studios = [
-      ...new Map(studioGroups.flat().map((studio) => [String(studio._id), studio])).values(),
-    ].filter((studio) => studio.latitude !== undefined && studio.longitude !== undefined);
-
     const logoUrls = await Promise.all(
       studios.map((studio) =>
-        studio.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
+        studio?.logoStorageId ? ctx.storage.getUrl(studio.logoStorageId) : null,
       ),
     );
 
-    return studios.map((studio, index) => ({
-      studioId: studio._id,
-      studioName: studio.studioName,
-      zone: studio.zone,
-      latitude: studio.latitude!,
-      longitude: studio.longitude!,
-      ...omitUndefined({
-        address: studio.address,
-        logoImageUrl: logoUrls[index] ?? undefined,
-        mapMarkerColor: studio.mapMarkerColor,
-      }),
-    }));
+    return studios
+      .map((studio, index) => {
+        if (!studio) return null;
+        const branch = branchByStudioId.get(String(studio._id));
+        if (!branch || branch.latitude === undefined || branch.longitude === undefined) return null;
+        return {
+          studioId: studio._id,
+          studioName: studio.studioName,
+          zone: branch.zone ?? studio.zone ?? "",
+          latitude: branch.latitude!,
+          longitude: branch.longitude!,
+          ...omitUndefined({
+            address: branch.address,
+            logoImageUrl: logoUrls[index] ?? undefined,
+            mapMarkerColor: studio.mapMarkerColor,
+          }),
+        };
+      })
+      .filter((s): s is NonNullable<typeof s> => s !== null);
   },
 });
 
