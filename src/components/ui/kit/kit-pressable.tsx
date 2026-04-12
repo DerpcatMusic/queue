@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import {
   type AccessibilityState,
-  I18nManager,
   Pressable,
   type PressableStateCallbackType,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { triggerSelectionHaptic } from "./native-interaction";
@@ -120,6 +120,8 @@ export function KitPressable({
   testID,
 }: KitPressableProps) {
   const theme = useTheme();
+  const { i18n } = useTranslation();
+  const isRtl = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he");
 
   const {
     tone = "primary",
@@ -228,7 +230,7 @@ export function KitPressable({
             backgroundColor: resolvedBg,
             alignItems: "center",
             justifyContent: "center",
-            flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
+            flexDirection: isRtl ? "row-reverse" : "row",
           } satisfies ViewStyle,
           containerStyle,
         ];

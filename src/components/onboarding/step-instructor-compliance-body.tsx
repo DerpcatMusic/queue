@@ -18,6 +18,7 @@ import {
   toComplianceDisplayLabel,
 } from "@/features/compliance/compliance-ui";
 import { useTheme } from "@/hooks/use-theme";
+import { getStripeMarketDefaults } from "@/lib/stripe";
 
 type OnboardingComplianceCertificateRow = {
   sport?: string;
@@ -132,8 +133,13 @@ function getInsuranceSubtitle(
   row: OnboardingComplianceInsuranceRow | null,
   _locale: string,
   t: ReturnType<typeof useTranslation>["t"],
+  options?: {
+    countryCode?: string;
+  },
 ): string {
-  return getSharedInsuranceSubtitle(row, _locale, t);
+  return getSharedInsuranceSubtitle(row, _locale, t, options ?? {
+    countryCode: getStripeMarketDefaults().country,
+  });
 }
 
 function getCertificateSubtitle(

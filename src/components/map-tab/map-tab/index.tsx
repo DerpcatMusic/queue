@@ -33,16 +33,15 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     isSaving,
     isRadiusSaving,
     isRadiusPanelOpen,
+    focusFrameKey,
     mapCameraPadding,
     mapPalette,
     mapPin,
     studios,
     noopMapPress,
-    overlayBottom,
     pendingChangeCount,
     persistedZoneIds,
     saveError,
-    studioCount,
     selectedStudio,
     selectedStudioId,
     selectedZoneIds,
@@ -124,14 +123,12 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
       studios={studios}
       selectedZoneIds={selectedZoneIds}
       focusZoneId={focusZoneId}
-      overlayBottom={overlayBottom}
       cameraPadding={mapCameraPadding}
       selectedStudio={selectedStudio}
       selectedStudioId={selectedStudioId}
       zoneLanguage={zoneLanguage}
       showRadiusControl={showRadiusControl}
       workRadiusKm={workRadiusKm}
-      studioCount={studioCount}
       isRadiusPanelOpen={isRadiusPanelOpen}
       onPressMap={noopMapPress}
       onPressStudio={handleSelectStudio}
@@ -141,6 +138,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
       onRadiusCommit={handleRadiusCommit}
       onRadiusPanelToggle={handleRadiusPanelToggle}
       isRadiusSaving={isRadiusSaving}
+      focusFrameKey={focusFrameKey}
     />
   );
 }

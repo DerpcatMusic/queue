@@ -46,6 +46,11 @@ interface SheetContextValue {
   openStudioSheet: (sheet: StudioSubpage) => boolean; // returns false if wrong role
   closeStudioSheet: () => void;
 
+  // Language picker sheet (shared across all roles)
+  languagePickerVisible: boolean;
+  openLanguagePicker: () => void;
+  closeLanguagePicker: () => void;
+
   // Calendar lesson detail sheet (shared by both roles)
   calendarLessonJobId: string | null;
   calendarLessonRole: CalendarLessonSheetRole | null;
@@ -82,6 +87,15 @@ export function SheetProvider({ children }: { children: React.ReactNode }) {
   const [studioPublicProfileSlug, setStudioPublicProfileSlug] = useState<string | null>(null);
   const [instructorPublicProfileId, setInstructorPublicProfileId] = useState<string | null>(null);
   const [studioPublicProfileId, setStudioPublicProfileId] = useState<string | null>(null);
+  const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
+
+  const openLanguagePicker = useCallback(() => {
+    setLanguagePickerVisible(true);
+  }, []);
+
+  const closeLanguagePicker = useCallback(() => {
+    setLanguagePickerVisible(false);
+  }, []);
 
   const openInstructorSheet = useCallback((sheet: InstructorSubpage): boolean => {
     setInstructorActiveSheet(sheet === "identity-verification" ? "compliance" : sheet);
@@ -157,6 +171,9 @@ export function SheetProvider({ children }: { children: React.ReactNode }) {
         studioPublicProfileId,
         openStudioPublicProfileById,
         closeStudioPublicProfileById,
+        languagePickerVisible,
+        openLanguagePicker,
+        closeLanguagePicker,
       }}
     >
       {children}
@@ -182,7 +199,7 @@ export function useSheetContext(): SheetContextValue {
  */
 export function useOpenInstructorSheet() {
   const { currentUser } = useUser();
-  const { openInstructorSheet } = useSheetContext();
+  const { openInstructorSheet, openLanguagePicker } = useSheetContext();
 
   return {
     openPayments: () => {
@@ -221,6 +238,10 @@ export function useOpenInstructorSheet() {
       if (currentUser?.role !== "instructor") return false;
       return openInstructorSheet("identity-verification");
     },
+    openLanguagePicker: () => {
+      if (!currentUser) return false;
+      return openLanguagePicker();
+    },
   };
 }
 
@@ -230,7 +251,7 @@ export function useOpenInstructorSheet() {
  */
 export function useOpenStudioSheet() {
   const { currentUser } = useUser();
-  const { openStudioSheet } = useSheetContext();
+  const { openStudioSheet, openLanguagePicker } = useSheetContext();
 
   return {
     openPayments: () => {
@@ -260,6 +281,10 @@ export function useOpenStudioSheet() {
     openAddAccount: () => {
       if (currentUser?.role !== "studio") return false;
       return openStudioSheet("add-account");
+    },
+    openLanguagePicker: () => {
+      if (!currentUser) return false;
+      return openLanguagePicker();
     },
   };
 }

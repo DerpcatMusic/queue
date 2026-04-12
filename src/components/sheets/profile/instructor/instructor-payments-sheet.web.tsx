@@ -2,17 +2,14 @@
  * Web stub for InstructorPaymentsSheet.
  *
  * Stripe embedded components are native-only. On web, we render a simple
- * redirect sheet that opens the Stripe hosted onboarding/dashboard link.
+ * status view inside the bottom sheet.
  */
 
-import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, StyleSheet, View } from "react-native";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { ThemedText } from "@/components/themed-text";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitStatusBadge } from "@/components/ui/kit";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { Box } from "@/primitives";
 

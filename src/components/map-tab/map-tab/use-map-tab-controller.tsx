@@ -99,7 +99,8 @@ export function useMapTabController() {
   const [selectedStudioId, setSelectedStudioId] = useState<string | null>(null);
   const [mapPin, setMapPin] = useState<QueueMapPin | null>(null);
   const [hasAttemptedMapPinBootstrap, setHasAttemptedMapPinBootstrap] = useState(false);
-  const [isRadiusPanelOpen, setIsRadiusPanelOpen] = useState(true);
+  const [isRadiusPanelOpen, setIsRadiusPanelOpen] = useState(false);
+  const [focusFrameKey, setFocusFrameKey] = useState(0);
   const remoteZones = useQuery(
     api.instructorZones.getMyInstructorZones,
     currentUser?.role === "instructor" ? {} : "skip",
@@ -190,6 +191,13 @@ export function useMapTabController() {
       cancelled = true;
     };
   }, [hasAttemptedMapPinBootstrap, isFocused, mapPin]);
+
+  useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+    setFocusFrameKey((current) => current + 1);
+  }, [isFocused]);
 
   const applySelectedZoneIds = useCallback(
     (
@@ -513,6 +521,7 @@ export function useMapTabController() {
     handleRadiusChange,
     handleRadiusCommit,
     handleRadiusPanelToggle,
+    focusFrameKey,
     setFocusZoneId,
     t,
     toggleZone,

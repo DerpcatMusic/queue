@@ -1,6 +1,6 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +12,7 @@ import {
   getMainTabSheetBackgroundColor,
 } from "@/components/layout/top-sheet-registry";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
+import { LanguagePickerSheet } from "@/components/sheets/profile/language-picker-sheet";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
@@ -72,6 +73,9 @@ function getStudioComplianceSummaryLabel(
     | {
         canPublishJobs: boolean;
         blockingReasons: string[];
+        ownerIdentityStatus: "approved" | "pending" | "missing" | "failed";
+        businessProfileStatus: "incomplete" | "complete";
+        paymentStatus: "missing" | "pending" | "ready" | "failed";
       }
     | null
     | undefined,
@@ -81,38 +85,47 @@ function getStudioComplianceSummaryLabel(
     return t("profile.studioCompliance.status.loading");
   }
   if (summary.canPublishJobs) {
-    return t("profile.studioCompliance.status.ready");
+    return [
+      `✓ ${t("profile.studioCompliance.sections.identity")}`,
+      `✓ ${t("profile.studioCompliance.sections.billing")}`,
+      `✓ ${t("profile.studioCompliance.sections.payment")}`,
+    ].join(" · ");
   }
 
-  const blockers = summary.blockingReasons
-    .map((reason) => {
-      switch (reason) {
-        case "owner_identity_required":
-          return t("profile.studioCompliance.blockers.identity");
-        case "business_profile_required":
-          return t("profile.studioCompliance.blockers.billing");
-        case "payment_method_required":
-          return t("profile.studioCompliance.blockers.payment");
-        default:
-          return reason;
-      }
-    })
-    .join(" · ");
+  const toSymbol = (status: string) => {
+    switch (status) {
+      case "approved":
+      case "complete":
+      case "ready":
+        return "✓";
+      case "pending":
+      case "incomplete":
+      case "missing":
+        return "•";
+      default:
+        return "!";
+    }
+  };
 
-  return t("profile.studioCompliance.status.blocked", { blockers });
+  return [
+    `${toSymbol(summary.ownerIdentityStatus)} ${t("profile.studioCompliance.sections.identity")}`,
+    `${toSymbol(summary.businessProfileStatus)} ${t("profile.studioCompliance.sections.billing")}`,
+    `${toSymbol(summary.paymentStatus)} ${t("profile.studioCompliance.sections.payment")}`,
+  ].join(" · ");
 }
 
 export default function StudioProfileScreen() {
   const { signOut } = useAuthActions();
   const { currentUser } = useUser();
   const { reloadAuthSession } = useAuthSession();
-  const { language, setLanguage } = useAppLanguage();
+  const { language } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
   const { color } = useTheme();
   const { t, i18n } = useTranslation();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const [accountSwitcherVisible, setAccountSwitcherVisible] = useState(false);
+  const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
 
@@ -121,12 +134,12 @@ export default function StudioProfileScreen() {
 
   // Sheet openers - using BottomSheets instead of routes
   const handleOpenPayments = useCallback(() => {
-    openStudioSheet("payments");
-  }, [openStudioSheet]);
+    router.push("/studio/profile/compliance");
+  }, []);
 
   const handleOpenCompliance = useCallback(() => {
-    openStudioSheet("compliance");
-  }, [openStudioSheet]);
+    router.push("/studio/profile/compliance");
+  }, []);
 
   const handleOpenBranches = useCallback(() => {
     openStudioSheet("branches");
@@ -559,10 +572,10 @@ export default function StudioProfileScreen() {
                   ) : null}
                   <ProfileSettingRow
                     title={t("profile.language.title")}
-                    value={language === "en" ? t("language.english") : t("language.hebrew")}
+                    value={t(`language.${language}`)}
                     icon="globe"
                     sectionTone="preferences"
-                    onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                    onPress={() => setLanguagePickerVisible(true)}
                     showDivider
                   />
                   <ProfileSettingRow
@@ -820,10 +833,10 @@ export default function StudioProfileScreen() {
               ) : null}
               <ProfileSettingRow
                 title={t("profile.language.title")}
-                value={language === "en" ? t("language.english") : t("language.hebrew")}
+                value={t(`language.${language}`)}
                 icon="globe"
                 sectionTone="preferences"
-                onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                onPress={() => setLanguagePickerVisible(true)}
                 showDivider
               />
               <ProfileSettingRow
@@ -1013,6 +1026,10 @@ export default function StudioProfileScreen() {
         onSignOut={handleSignOut}
         onUseAnotherAccount={handleUseAnotherAccount}
         profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
+      />
+      <LanguagePickerSheet
+        visible={languagePickerVisible}
+        onClose={() => setLanguagePickerVisible(false)}
       />
     </>
   );

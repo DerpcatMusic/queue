@@ -2,10 +2,16 @@ import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
-import Animated, { FadeInUp } from "react-native-reanimated";
+import Animated, {
+  Easing,
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useCollapsedSheetHeight } from "@/components/layout/scroll-sheet-provider";
 import { ThemedText } from "@/components/themed-text";
 import { AppSymbol } from "@/components/ui/app-symbol";
@@ -28,6 +34,8 @@ import {
   type JobClosureReason,
 } from "@/lib/jobs-utils";
 import { Motion, Spring } from "@/theme/theme";
+
+const EXPAND_ANIMATION_DURATION = 220;
 
 export type InstructorArchiveRow = InstructorMarketplaceJob & {
   applicationId: Id<"jobApplications">;
@@ -107,23 +115,24 @@ function ArchiveStatusChip({
   label,
   icon,
   tone,
+  theme,
 }: {
   label: string;
   icon: React.ComponentProps<typeof IconSymbol>["name"];
   tone: "success" | "amber" | "muted";
+  theme: ReturnType<typeof useTheme>;
 }) {
-  const theme = useTheme();
   const backgroundColor =
     tone === "success"
-      ? theme.archive.paidSubtle
+      ? theme.color.successSubtle
       : tone === "amber"
-        ? theme.archive.pendingSubtle
+        ? theme.color.warningSubtle
         : theme.color.surfaceMuted;
   const color =
     tone === "success"
-      ? theme.archive.paid
+      ? theme.color.success
       : tone === "amber"
-        ? theme.archive.pending
+        ? theme.color.warning
         : theme.color.textMuted;
 
   return (
@@ -190,16 +199,38 @@ function ArchiveRow({
     ? t("jobsTab.checkout.paymentStatus.captured")
     : t("jobsTab.checkout.paymentStatus.pending");
 
-  // Detail section background uses archive surface
-  const detailBg = theme.archive.surfaceElevated;
-
-  // Left accent color based on outcome
-  const accentColor =
+  // Status tone
+  const statusColor =
     archiveOutcome.tone === "success"
-      ? theme.archive.paid
+      ? theme.color.success
       : archiveOutcome.tone === "amber"
-        ? theme.archive.pending
+        ? theme.color.warning
         : theme.color.textMuted;
+
+  // Animated expand
+  const expandProgress = useSharedValue(expanded ? 1 : 0);
+  const contentStyle = useAnimatedStyle(() => ({
+    height: withTiming(expandProgress.value * 100, {
+      duration: EXPAND_ANIMATION_DURATION,
+      easing: Easing.out(Easing.cubic),
+    }),
+    opacity: withTiming(expandProgress.value, {
+      duration: EXPAND_ANIMATION_DURATION * 0.7,
+      easing: Easing.out(Easing.cubic),
+    }),
+  }));
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        rotate: `${withTiming(expandProgress.value * 180, { duration: EXPAND_ANIMATION_DURATION })}deg`,
+      },
+    ],
+  }));
+
+  // Update animation when expanded changes
+  useEffect(() => {
+    expandProgress.value = expanded ? 1 : 0;
+  }, [expanded, expandProgress]);
 
   return (
     <Animated.View
@@ -207,101 +238,87 @@ function ArchiveRow({
         .springify()
         .damping(Spring.standard.damping)}
     >
-      <View
-        style={{
-          borderRadius: BrandRadius.lg,
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${row.studioName} ${sportLabel}`}
+        accessibilityState={{ expanded }}
+        onPress={onToggle}
+        style={({ pressed }) => ({
+          borderRadius: BrandRadius.medium,
           borderCurve: "continuous",
-          backgroundColor: theme.archive.surface,
+          backgroundColor: pressed ? theme.color.surfaceElevated : theme.color.surfaceMuted,
           overflow: "hidden",
-        }}
+        })}
       >
-        {/* Left accent stripe — color based on outcome */}
         <View
           style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 3,
-            backgroundColor: accentColor,
-            borderRadius: BrandRadius.pill,
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: BrandSpacing.md,
+            paddingHorizontal: BrandSpacing.md,
+            paddingVertical: BrandSpacing.md,
           }}
-        />
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${row.studioName} ${sportLabel}`}
-          accessibilityState={{ expanded }}
-          onPress={onToggle}
-          style={({ pressed }) => ({
-            backgroundColor: pressed ? theme.color.surfaceMuted : theme.archive.surface,
-          })}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              gap: BrandSpacing.md,
-              paddingHorizontal: BrandSpacing.lg,
-              paddingVertical: BrandSpacing.md,
-              paddingLeft: BrandSpacing.lg + 3, // account for accent stripe
-            }}
-          >
-            {/* Left: sport + meta */}
-            <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xs }}>
-              {/* Sport — prominent with archive accent color */}
-              <ThemedText type="title" style={{ color: theme.archive.accent }} numberOfLines={1}>
-                {sportLabel}
-              </ThemedText>
-
-              {/* Studio · schedule */}
-              <ThemedText type="caption" style={{ color: theme.color.textMuted }} numberOfLines={1}>
-                {row.studioName} · {scheduleLabel}
-              </ThemedText>
-
-              {/* Status chip */}
+          {/* Left: sport + meta */}
+          <View style={{ flex: 1, minWidth: 0, gap: BrandSpacing.xs }}>
+            {/* Sport + status dot */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xs }}>
               <View
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: BrandSpacing.sm,
-                  paddingTop: BrandSpacing.xxs,
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: statusColor,
                 }}
-              >
-                <ArchiveStatusChip
-                  label={archiveOutcome.label}
-                  tone={archiveOutcome.tone}
-                  icon={archiveOutcome.icon}
-                />
-              </View>
+              />
+              <ThemedText type="title" numberOfLines={1}>
+                {sportLabel}
+              </ThemedText>
             </View>
 
-            {/* Right: pay + chevron */}
-            <View style={{ alignItems: "flex-end", gap: BrandSpacing.sm }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xxs }}>
-                <IconSymbol name="banknote" size={14} color={theme.archive.pay} />
-                <ThemedText type="bodyStrong" style={{ color: theme.archive.pay }}>
-                  {payLabel}
-                </ThemedText>
-              </View>
-              <IconSymbol
-                name={expanded ? "chevron.down" : "chevron.right"}
-                size={16}
-                color={theme.color.textMuted}
+            {/* Studio · schedule */}
+            <ThemedText type="caption" style={{ color: theme.color.textMuted }} numberOfLines={1}>
+              {row.studioName} · {scheduleLabel}
+            </ThemedText>
+
+            {/* Status chip */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: BrandSpacing.sm,
+                paddingTop: BrandSpacing.xxs,
+              }}
+            >
+              <ArchiveStatusChip
+                label={archiveOutcome.label}
+                tone={archiveOutcome.tone}
+                icon={archiveOutcome.icon}
+                theme={theme}
               />
             </View>
           </View>
-        </Pressable>
 
-        {/* Expanded details */}
-        {expanded ? (
+          {/* Right: pay + chevron */}
+          <View style={{ alignItems: "flex-end", gap: BrandSpacing.sm }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xxs }}>
+              <IconSymbol name="banknote" size={14} color={theme.color.textMuted} />
+              <ThemedText type="bodyStrong">{payLabel}</ThemedText>
+            </View>
+            <Animated.View style={chevronStyle}>
+              <IconSymbol name="chevron.down" size={16} color={theme.color.textMuted} />
+            </Animated.View>
+          </View>
+        </View>
+
+        {/* Expanded details — animated with translateY */}
+        <Animated.View style={[{ overflow: "hidden" }, contentStyle]}>
           <View
             style={{
               gap: BrandSpacing.sm,
-              backgroundColor: detailBg,
-              paddingHorizontal: BrandSpacing.lg,
-              paddingLeft: BrandSpacing.lg + 3,
-              paddingBottom: BrandSpacing.lg,
+              backgroundColor: theme.color.surfaceMuted,
+              paddingHorizontal: BrandSpacing.md,
+              paddingBottom: BrandSpacing.md,
               paddingTop: BrandSpacing.sm,
               borderTopWidth: 1,
               borderTopColor: theme.color.border,
@@ -312,7 +329,7 @@ function ArchiveRow({
               icon={isPaid ? "checkmark.circle.fill" : "clock.fill"}
               label={t("jobsTab.checkout.payment")}
               value={paymentLabel}
-              valueColor={isPaid ? theme.archive.paid : theme.archive.pending}
+              valueColor={isPaid ? theme.color.success : theme.color.warning}
               theme={theme}
             />
 
@@ -321,7 +338,7 @@ function ArchiveRow({
               icon="sparkles"
               label={t("jobsTab.archive.bonusEarned")}
               value={hasBonus ? `+₪${boost.bonusAmount}` : t("jobsTab.archive.noBonus")}
-              valueColor={hasBonus ? theme.archive.accent : theme.color.textMuted}
+              valueColor={hasBonus ? theme.color.primary : theme.color.textMuted}
               theme={theme}
             />
 
@@ -375,7 +392,7 @@ function ArchiveRow({
                   borderCurve: "continuous",
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: theme.color.surfaceMuted,
+                  backgroundColor: theme.color.surfaceElevated,
                 }}
               >
                 <IconSymbol name="doc.text" size={16} color={theme.color.textMuted} />
@@ -386,7 +403,7 @@ function ArchiveRow({
                 </ThemedText>
                 <ThemedText
                   type="bodyMedium"
-                  style={{ color: onOpenReceipt ? theme.archive.accent : theme.color.textMuted }}
+                  style={{ color: onOpenReceipt ? theme.color.primary : theme.color.textMuted }}
                 >
                   {onOpenReceipt
                     ? t("profile.payments.openReceipt")
@@ -395,8 +412,8 @@ function ArchiveRow({
               </View>
             </Pressable>
           </View>
-        ) : null}
-      </View>
+        </Animated.View>
+      </Pressable>
     </Animated.View>
   );
 }
@@ -580,17 +597,7 @@ function EmptyArchiveState({
         paddingHorizontal: BrandSpacing.xl,
       }}
     >
-      {/* Warm amber accent strip */}
-      <View
-        style={{
-          width: 48,
-          height: 3,
-          borderRadius: BrandRadius.pill,
-          backgroundColor: theme.archive.accent,
-          marginBottom: BrandSpacing.sm,
-        }}
-      />
-      <IconSymbol name="archivebox" size={48} color={theme.archive.accent} />
+      <IconSymbol name="archivebox" size={48} color={theme.color.textMuted} />
       <ThemedText type="bodyMedium" style={{ color: theme.color.textMuted, textAlign: "center" }}>
         {t("jobsTab.instructorFeed.archiveEmpty")}
       </ThemedText>

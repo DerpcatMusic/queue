@@ -1,7 +1,7 @@
 import DateTimePicker from "@expo/ui/datetimepicker";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager, Platform, Pressable, ScrollView, View } from "react-native";
+import { Platform, Pressable, ScrollView, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   FadeIn,
@@ -14,7 +14,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { AppSymbol } from "@/components/ui/app-symbol";
 import { ChoicePill } from "@/components/ui/choice-pill";
-import { KitSwitch } from "@/components/ui/kit/kit-switch";
+import { KitSwitch } from "@/components/ui/kit";
 import { KitTextField } from "@/components/ui/kit/kit-text-field";
 import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
@@ -62,6 +62,8 @@ export function SportPickerSection({
   selectSport,
 }: SportPickerSectionProps) {
   const { t } = useTranslation();
+  const { i18n } = useTranslation();
+  const isRtl = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he");
   const { color: palette } = useTheme();
   const selectedSportLabel = draft.sport
     ? toSportLabelI18n(draft.sport, t)
@@ -225,7 +227,7 @@ export function ScheduleSection({
           }}
         >
           <AppSymbol
-            name={I18nManager.isRTL ? "arrow.left" : "arrow.right"}
+            name={isRtl ? "arrow.left" : "arrow.right"}
             size={12}
             tintColor={palette.textMuted}
           />

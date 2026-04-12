@@ -29,6 +29,8 @@ import {
   GlobalTopSheetProvider,
   type TopSheetDescriptorConfig,
 } from "@/components/layout/top-sheet-registry";
+import { useAnimatedThemeColors } from "@/hooks/use-animated-theme-colors";
+import { useThemePreference } from "@/hooks/use-theme-preference";
 import { useTheme } from "@/hooks/use-theme";
 import { type RoleTabRouteName, resolveRoleTabRouteName } from "@/navigation/role-routes";
 import { getTabsForRole } from "@/navigation/tab-registry";
@@ -129,7 +131,11 @@ function TabTransitionVeil({
 
 export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutProps) {
   const pathname = usePathname();
+  const { resolvedScheme } = useThemePreference();
   const { color } = useTheme();
+
+  // Animated theme colors — transitions smoothly on theme change via native driver
+  const animatedColors = useAnimatedThemeColors(resolvedScheme);
 
   // Stable: getTabsForRole() returns a new array each call, so memoize by appRole
   const tabs = useMemo(() => getTabsForRole(appRole), [appRole]);
@@ -212,6 +218,14 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
     [registerDescriptor, unregisterDescriptor, getDescriptor],
   );
 
+  // ── Animated background styles ─────────────────────────────────────────────
+  // These animate on the UI thread when the theme changes, giving a smooth
+  // cross-fade even though the scheme update is deferred for Unistyles sync.
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- animated style derived from shared values, called every render
+  const animatedShellBgStyle = useAnimatedStyle(() => ({
+    backgroundColor: animatedColors.appBg.value,
+  }));
+
   // ── Memoized layout shell ──────────────────────────────────────────────────
   // Wrapping the tab content in useMemo breaks the re-render cascade:
   // when pathname changes, RoleTabsLayout re-renders BUT the JSX tree
@@ -219,12 +233,12 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   // re-evaluating NativeTabs and the tab content.
   //
   // GlobalTopSheet is rendered OUTSIDE this memo so it CAN re-render on
-  // tab switch — it needs to fire useEffect hooks for the sheet animation.
+  // tab switch and can animate its content.
   // TabTransitionContext.Provider exposes focusProgress (SharedValue) and
   // activeTabId to GlobalTopSheet without it calling usePathname().
   //
   // Dependencies must ALL be stable across pathname changes:
-  //   - color strings: primitives (destructured below), stable when theme scheme is stable
+  //   - animatedShellBgStyle: SharedValue-based, always new object but animated values drive UI thread
   //   - tabs: useMemo([appRole]) — stable reference
   //   - badgeCountByRoute: stable (memoized in parent InstructorTabsLayout)
   //   - descriptorContext: stable (useMemo with stable callback deps)
@@ -232,45 +246,36 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
   // TabTransitionVeil is rendered outside the memo (like GlobalTopSheet)
   // because it needs activeTabId which changes on tab switch.
   //
-  // Destructuring ensures deps are primitive strings, not the color object reference.
-  const {
-    appBg,
-    onPrimaryContainer,
-    textMicro,
-    primary,
-    onPrimary,
-    primaryContainer,
-    surface,
-    surfaceMuted,
-  } = color;
-  const activeDescriptor = sceneDescriptorsRef.current.get(activeTabId);
-  const activeSceneBackgroundColor = activeDescriptor?.backgroundColor ?? appBg;
-
-  const navbarBg = surfaceMuted;
-
+  // For NativeTabs props that need animated values, we pass the
+  // SharedValue-derived animated style directly. Non-animated props still
+  // use the current resolved theme values from useTheme().
   const layoutShell = useMemo(
     () => (
       <ScrollSheetProvider>
-        <View style={{ flex: 1, backgroundColor: activeSceneBackgroundColor }}>
+        {/* Animated.View drives the smooth background cross-fade on theme change */}
+        <Animated.View style={[{ flex: 1 }, animatedShellBgStyle]}>
           <View
             style={{
               flex: 1,
               minHeight: 0,
               zIndex: 2,
-              backgroundColor: activeSceneBackgroundColor,
             }}
           >
+            {/* NativeTabs uses plain styles (not animated) — its internal colors
+                update when Unistyles syncs after the 300ms animation completes.
+                The Animated.View above still gives a smooth cross-fade on the
+                shell background during the transition. */}
             <NativeTabs
-              tintColor={onPrimaryContainer}
+              tintColor={color.onPrimary}
               iconColor={{
-                default: textMicro,
-                selected: onPrimaryContainer,
+                default: color.textMicro,
+                selected: color.onPrimary,
               }}
-              backgroundColor={navbarBg}
-              badgeBackgroundColor={primary}
-              badgeTextColor={onPrimary}
-              indicatorColor={primaryContainer}
-              shadowColor={surface}
+              backgroundColor={color.surface}
+              badgeBackgroundColor={color.primary}
+              badgeTextColor={color.onPrimary}
+              indicatorColor={color.primary}
+              shadowColor={color.surface}
               labelVisibilityMode="unlabeled"
               disableTransparentOnScrollEdge
             >
@@ -278,7 +283,7 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
                 <NativeTabs.Trigger
                   key={tab.id}
                   name={tab.routeName}
-                  contentStyle={{ backgroundColor: activeSceneBackgroundColor }}
+                  contentStyle={{ backgroundColor: color.appBg }}
                 >
                   <NativeTabs.Trigger.Icon
                     md={tab.icon.md}
@@ -292,23 +297,17 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
               ))}
             </NativeTabs>
           </View>
-        </View>
+        </Animated.View>
       </ScrollSheetProvider>
     ),
-    [
-      appBg,
-      activeSceneBackgroundColor,
-      navbarBg,
-      onPrimaryContainer,
-      textMicro,
-      primary,
-      onPrimary,
-      primaryContainer,
-      surface,
-      tabs,
-      badgeCountByRoute,
-    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tabs, badgeCountByRoute, color, animatedShellBgStyle],
   );
+
+  // TabTransitionVeil uses the current scene background (not animated during theme
+  // transitions — it only animates on tab switch, not theme switch).
+  const activeDescriptor = sceneDescriptorsRef.current.get(activeTabId);
+  const activeSceneBackgroundColor = activeDescriptor?.backgroundColor ?? color.appBg;
 
   return (
     <TabSceneDescriptorContext.Provider value={descriptorContext}>

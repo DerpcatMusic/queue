@@ -1,12 +1,12 @@
 import {
   type ColorValue,
-  I18nManager,
   Pressable,
   type StyleProp,
   Text,
   View,
   type ViewStyle,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
@@ -41,6 +41,8 @@ export function ChoicePill({
   selectedLabelColor,
 }: ChoicePillProps) {
   const { color: palette } = useTheme();
+  const { i18n } = useTranslation();
+  const isRtl = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he");
   const resolvedBackgroundColor = selected
     ? (selectedBackgroundColor ?? palette.primary)
     : (backgroundColor ?? palette.surfaceMuted);
@@ -82,7 +84,7 @@ export function ChoicePill({
           paddingVertical: compact ? BrandSpacing.sm : BrandSpacing.md,
           alignItems: "center",
           justifyContent: "flex-start",
-          flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
+          flexDirection: isRtl ? "row-reverse" : "row",
           gap: icon ? (compact ? BrandSpacing.sm : BrandSpacing.md) : 0,
           overflow: "hidden",
         },

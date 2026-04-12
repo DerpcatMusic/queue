@@ -179,33 +179,45 @@ export const getMyStudioAccessSnapshot = query({
   handler: async (ctx) => {
     const user = await requireUserRole(ctx, ["studio"]);
     const internalAccess = await resolveInternalAccessForUser(ctx, user);
-    const studio = await ctx.db
-      .query("studioProfiles")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .unique();
+
+    const [studio, stripeAccount] = await Promise.all([
+      ctx.db
+        .query("studioProfiles")
+        .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+        .unique(),
+      getLatestStripeConnectedAccount(ctx, user._id),
+    ]);
     if (!studio) {
       return null;
     }
+
     const compliance = await getStudioComplianceDetailsRead(ctx, { studioId: studio._id });
     if (!compliance) {
       return null;
     }
+
+    // Derive identity status from Stripe connected account (same as instructor flow)
+    const stripeIdentityStatus =
+      isStripeIdentityVerified(stripeAccount)
+        ? "approved"
+        : mapStripeConnectedAccountStatusToIdentityStatus(stripeAccount?.status) ??
+          toStudioVerificationStatus(compliance.summary.ownerIdentityStatus);
 
     return {
       internalAccess,
       compliance,
       verification: buildDiditVerificationPayload(
         {
-          identityStatus: toStudioVerificationStatus(compliance.summary.ownerIdentityStatus),
-          sessionId: undefined,
-          legalName: undefined,
-          legalFirstName: undefined,
-          legalMiddleName: undefined,
-          legalLastName: undefined,
-          statusRaw: undefined,
-          lastEventAt: undefined,
-          verifiedAt: undefined,
-          decision: undefined,
+          identityStatus: stripeIdentityStatus,
+          sessionId: stripeAccount?.providerAccountId,
+          legalName: studio.diditLegalName ?? user.fullName ?? studio.studioName,
+          legalFirstName: studio.diditLegalFirstName,
+          legalMiddleName: studio.diditLegalMiddleName,
+          legalLastName: studio.diditLegalLastName,
+          statusRaw: stripeAccount?.status,
+          lastEventAt: stripeAccount?.updatedAt ?? studio.diditLastEventAt,
+          verifiedAt: stripeAccount?.activatedAt ?? studio.diditVerifiedAt,
+          decision: stripeAccount?.metadata,
         },
         internalAccess.verificationBypass,
       ),

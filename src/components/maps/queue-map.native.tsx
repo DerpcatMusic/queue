@@ -94,7 +94,9 @@ export const QueueMap = memo(function QueueMap({
   showGpsButton = true,
   showAttributionButton = false,
   contentInset,
+  cameraPadding,
   radiusKm,
+  focusFrameKey,
 }: QueueMapProps) {
   const { t } = useTranslation();
   const { resolvedScheme } = useThemePreference();
@@ -147,6 +149,31 @@ export const QueueMap = memo(function QueueMap({
     flyTo: (coordinates: [number, number], animationDuration?: number) => void;
     zoomTo: (zoomLevel: number, animationDuration?: number) => void;
   } | null>(null);
+  const focusRadiusBounds = useMemo(() => {
+    if (!pin || !Number.isFinite(radiusKm ?? Number.NaN)) {
+      return null;
+    }
+
+    const km = Math.max(0, radiusKm ?? 0) * 1.14;
+    if (km <= 0) {
+      return null;
+    }
+
+    const earthRadiusMeters = 6378137;
+    const latitudeRadians = (pin.latitude * Math.PI) / 180;
+    const deltaLat = (km * 1000 / earthRadiusMeters) * (180 / Math.PI);
+    const safeCosLatitude = Math.max(0.15, Math.cos(latitudeRadians));
+    const deltaLng = deltaLat / safeCosLatitude;
+
+    return {
+      sw: [pin.longitude - deltaLng, pin.latitude - deltaLat] as [number, number],
+      ne: [pin.longitude + deltaLng, pin.latitude + deltaLat] as [number, number],
+    };
+  }, [pin, radiusKm]);
+  const focusRadiusBoundsRef = useRef(focusRadiusBounds);
+  useEffect(() => {
+    focusRadiusBoundsRef.current = focusRadiusBounds;
+  }, [focusRadiusBounds]);
   const radiusShape = useMemo(() => {
     if (!pin || !Number.isFinite(radiusKm ?? Number.NaN)) {
       return null;
@@ -352,6 +379,41 @@ export const QueueMap = memo(function QueueMap({
       }
     };
   }, [mapLoadState, syncMarkerViewport]);
+
+  useEffect(() => {
+    if (mapLoadState !== "ready" || !cameraRef.current) {
+      return;
+    }
+
+    const nextBounds = focusRadiusBoundsRef.current;
+    if (!nextBounds) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      cameraRef.current?.fitBounds(
+        [
+          nextBounds.sw[0],
+          nextBounds.sw[1],
+          nextBounds.ne[0],
+          nextBounds.ne[1],
+        ],
+        {
+          padding: {
+            top: (cameraPadding?.top ?? 0) + 32,
+            right: (cameraPadding?.right ?? 0) + 32,
+            bottom: (cameraPadding?.bottom ?? 0) + 32,
+            left: (cameraPadding?.left ?? 0) + 32,
+          },
+          duration: 420,
+        },
+      );
+    }, 24);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [cameraPadding?.bottom, cameraPadding?.left, cameraPadding?.right, cameraPadding?.top, focusFrameKey, mapLoadState]);
 
   if (Constants.appOwnership === "expo") {
     return (

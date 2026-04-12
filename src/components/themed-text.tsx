@@ -1,6 +1,7 @@
 // Deprecated during primitive-first migration.
 // Prefer src/primitives/text.tsx for new code.
-import { I18nManager, Text, type TextProps, type TextStyle } from "react-native";
+import { Text, type TextProps, type TextStyle } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/hooks/use-theme";
 import { BrandType } from "@/theme/theme";
 
@@ -67,8 +68,10 @@ const LEGACY_MAP: Record<string, ThemedTextType> = {
 
 export function ThemedText({ style, type = "body", ...rest }: ThemedTextProps) {
   const { color } = useTheme();
+  const { i18n } = useTranslation();
   const resolved = LEGACY_MAP[type] ?? type;
   const textStyle = TYPE_STYLES[resolved] ?? TYPE_STYLES.body;
+  const isRtl = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he");
 
   return (
     <Text
@@ -76,7 +79,7 @@ export function ThemedText({ style, type = "body", ...rest }: ThemedTextProps) {
         textStyle,
         {
           color: color.text,
-          writingDirection: I18nManager.isRTL ? "rtl" : "ltr",
+          writingDirection: isRtl ? "rtl" : "ltr",
         },
         style,
       ]}

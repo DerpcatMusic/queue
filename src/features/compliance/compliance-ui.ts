@@ -1,5 +1,6 @@
 import type { TFunction } from "i18next";
 import { isSportType, toSportLabel } from "@/convex/constants";
+import { getStripeMarketDefaults } from "@/lib/stripe";
 
 type CertificateStatus =
   | "uploaded"
@@ -40,6 +41,20 @@ type InsuranceRowLike = {
   uploadedAt: number;
   reviewedAt?: number;
 };
+
+function getCountryDisplayName(countryCode: string | undefined, locale: string) {
+  const code = countryCode?.trim().toUpperCase();
+  if (!code) {
+    return null;
+  }
+
+  try {
+    const displayNames = new Intl.DisplayNames([locale], { type: "region" });
+    return displayNames.of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
 
 export function toComplianceDisplayLabel(value: string): string {
   if (isSportType(value)) {
@@ -167,9 +182,15 @@ export function getInsuranceSubtitle(
   row: InsuranceRowLike | null,
   locale: string,
   t: TFunction,
+  options?: {
+    countryCode?: string;
+  },
 ): string {
   if (!row) {
-    return t("profile.compliance.insurance.missingBody");
+    const country = getCountryDisplayName(options?.countryCode ?? getStripeMarketDefaults().country, locale);
+    return country
+      ? t("profile.compliance.insurance.missingBodyCountry", { country })
+      : t("profile.compliance.insurance.missingBody");
   }
 
   const expiresLabel = formatDate(row.expiresAt, locale);

@@ -1,51 +1,27 @@
-import { useMutation, useQuery } from "convex/react";
-import { Redirect, useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "convex/react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshControl } from "react-native";
-import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { LoadingScreen } from "@/components/loading-screen";
-import {
-  IdentityStatusBadge,
-  getIdentityStatusLabel,
-} from "@/components/profile/identity-status-ui";
-import {
-  ProfileSectionCard,
-  ProfileSectionHeader,
-  ProfileSettingRow,
-} from "@/components/profile/profile-settings-sections";
 import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
-import { ChoicePill } from "@/components/ui/choice-pill";
-import { KitTextField } from "@/components/ui/kit";
 import { BrandSpacing, BrandType } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
-import {
-  getStudioBlockingSummary,
-  getStudioPaymentSubtitle,
-} from "@/features/compliance/compliance-ui";
 import { Box } from "@/primitives";
 import { useTheme } from "@/hooks/use-theme";
+import { ComplianceCard, type CardStatus } from "@/components/compliance/compliance-card";
+import { ComplianceProgress } from "@/components/compliance/compliance-progress";
+import { StudioBusinessInfoSheet } from "@/components/compliance/studio-business-info-sheet";
+import { Redirect } from "expo-router";
 
-type BillingProfile = {
-  legalEntityType: "individual" | "company";
-  status: "incomplete" | "complete";
-  legalBusinessName?: string;
-  taxId?: string;
-  vatReportingType?: "osek_patur" | "osek_murshe" | "company" | "other";
-  billingEmail?: string;
-  billingPhone?: string;
-  billingAddress?: string;
-  completedAt?: number;
-};
+type ExpandedSection = "identity" | "business" | "payment" | null;
 
 export default function StudioComplianceScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
   const theme = useTheme();
 
   useProfileSubpageSheet({
@@ -56,100 +32,56 @@ export default function StudioComplianceScreen() {
   const currentUser = useQuery(api.users.getCurrentUser);
   const shouldLoad = currentUser?.role === "studio";
   const accessSnapshot = useQuery(api.access.getMyStudioAccessSnapshot, shouldLoad ? {} : "skip");
-  const compliance = accessSnapshot?.compliance;
-  const diditVerification = accessSnapshot?.verification;
-  const paymentsPreflight = useQuery(
-    api.paymentsV2.getPaymentsPreflightV2,
+  const connectedAccount = useQuery(
+    api.paymentsV2.getMyStudioConnectedAccountV2,
     shouldLoad ? {} : "skip",
   );
-  const saveBillingProfile = useMutation(api.complianceStudio.upsertMyStudioBillingProfile);
 
+  const compliance = accessSnapshot?.compliance;
+  const verification = accessSnapshot?.verification;
+
+  const [expanded, setExpanded] = useState<ExpandedSection>(null);
+  const [businessSheetVisible, setBusinessSheetVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    tone: "success" | "error";
-    message: string;
-  } | null>(null);
 
-  const billingProfile = compliance?.billingProfile as BillingProfile | null | undefined;
-  const [legalEntityType, setLegalEntityType] = useState<"individual" | "company">("individual");
-  const [vatReportingType, setVatReportingType] = useState<
-    "osek_patur" | "osek_murshe" | "company" | "other" | null
-  >(null);
-  const [legalBusinessName, setLegalBusinessName] = useState("");
-  const [taxId, setTaxId] = useState("");
-  const [billingEmail, setBillingEmail] = useState("");
-  const [billingPhone, setBillingPhone] = useState("");
-  const [billingAddress, setBillingAddress] = useState("");
+  const toggle = useCallback(
+    (section: ExpandedSection) => {
+      setExpanded((prev) => (prev === section ? null : section));
+    },
+    [],
+  );
 
-  useEffect(() => {
-    if (billingProfile) {
-      setLegalEntityType(billingProfile.legalEntityType);
-      setVatReportingType(billingProfile.vatReportingType ?? null);
-      setLegalBusinessName(billingProfile.legalBusinessName ?? "");
-      setTaxId(billingProfile.taxId ?? "");
-      setBillingEmail(billingProfile.billingEmail ?? currentUser?.email ?? "");
-      setBillingPhone(billingProfile.billingPhone ?? currentUser?.phoneE164 ?? "");
-      setBillingAddress(billingProfile.billingAddress ?? "");
-      return;
-    }
+  // ── Card statuses ──────────────────────────────────────────────
+  const identityStatus: CardStatus = !verification
+    ? "action_required"
+    : verification.isVerified
+      ? "complete"
+      : verification.status === "pending"
+        ? "in_progress"
+        : "action_required";
 
-    setBillingEmail(currentUser?.email ?? "");
-    setBillingPhone(currentUser?.phoneE164 ?? "");
-  }, [billingProfile, currentUser?.email, currentUser?.phoneE164]);
+  const businessStatus: CardStatus =
+    !compliance?.billingProfile
+      ? "action_required"
+      : compliance.billingProfile.status === "complete"
+        ? "complete"
+        : "action_required";
 
-  const refreshAll = useCallback(async () => {
-    setRefreshing(true);
-    setRefreshing(false);
-  }, []);
+  const paymentStatus: CardStatus = !connectedAccount
+    ? "action_required"
+    : connectedAccount.status === "active"
+      ? "complete"
+      : connectedAccount.status === "pending"
+        ? "in_progress"
+        : "action_required";
 
-  const saveBilling = useCallback(async () => {
-    setIsSaving(true);
-    setFeedback(null);
-    try {
-      await saveBillingProfile({
-        legalEntityType,
-        legalBusinessName,
-        taxId,
-        billingEmail,
-        ...(vatReportingType ? { vatReportingType } : {}),
-        ...(billingPhone.trim() ? { billingPhone } : {}),
-        ...(billingAddress.trim() ? { billingAddress } : {}),
-      });
-      setFeedback({
-        tone: "success",
-        message: t("profile.studioCompliance.feedback.billingSaved"),
-      });
-    } catch (error) {
-      setFeedback({
-        tone: "error",
-        message:
-          error instanceof Error && error.message
-            ? error.message
-            : t("profile.studioCompliance.errors.billingSaveFailed"),
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
-    billingAddress,
-    billingEmail,
-    billingPhone,
-    legalBusinessName,
-    legalEntityType,
-    saveBillingProfile,
-    t,
-    taxId,
-    vatReportingType,
-  ]);
+  const allComplete =
+    identityStatus === "complete" &&
+    businessStatus === "complete" &&
+    paymentStatus === "complete";
 
-  if (
-    currentUser === undefined ||
-    (shouldLoad &&
-      (compliance === undefined ||
-        diditVerification === undefined ||
-        paymentsPreflight === undefined))
-  ) {
+  // ── Guards ─────────────────────────────────────────────────────
+  if (currentUser === undefined) {
     return <LoadingScreen label={t("profile.studioCompliance.loading")} />;
   }
   if (currentUser === null) {
@@ -158,22 +90,31 @@ export default function StudioComplianceScreen() {
   if (!currentUser.onboardingComplete || currentUser.role === "pending") {
     return <Redirect href="/onboarding" />;
   }
-  if (currentUser.role !== "studio" || !compliance || !diditVerification || !paymentsPreflight) {
+  if (currentUser.role !== "studio") {
     return <Redirect href="/" />;
   }
+  if (accessSnapshot === undefined || connectedAccount === undefined) {
+    return <LoadingScreen label={t("profile.studioCompliance.loading")} />;
+  }
 
-  const blockersSummary = getStudioBlockingSummary(compliance.summary.blockingReasons, t);
-  const paymentStatus =
-    paymentsPreflight.readyForCheckout && compliance.summary.paymentStatus === "ready"
-      ? "ready"
-      : compliance.summary.paymentStatus;
-  const paymentSubtitle = getStudioPaymentSubtitle(
+  const steps = [
     {
-      status: paymentStatus,
-      paymentReadinessSource: compliance.summary.paymentReadinessSource,
+      label: t("profile.studioCompliance.sections.identity"),
+      status: identityStatus,
+      onPress: () => toggle("identity"),
     },
-    t,
-  );
+    {
+      label: t("profile.studioCompliance.sections.billing"),
+      status: businessStatus,
+      onPress: () => toggle("business"),
+    },
+    {
+      label: t("profile.studioCompliance.sections.payment"),
+      status: paymentStatus,
+      onPress: () => toggle("payment"),
+    },
+  ];
+
   return (
     <ProfileSubpageScrollView
       routeKey="studio/profile/compliance"
@@ -182,188 +123,151 @@ export default function StudioComplianceScreen() {
       topSpacing={BrandSpacing.md}
       bottomSpacing={BrandSpacing.xxl}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={() => void refreshAll()} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => setRefreshing(false)}
+        />
       }
     >
       <Box style={{ paddingHorizontal: BrandSpacing.inset, gap: BrandSpacing.xl }}>
-        {feedback ? (
-          <NoticeBanner
-            tone={feedback.tone}
-            message={feedback.message}
-            onDismiss={() => setFeedback(null)}
-          />
-        ) : null}
-
+        {/* Hero */}
         <Box style={{ gap: BrandSpacing.sm }}>
           <ThemedText selectable style={BrandType.title}>
-            {compliance.summary.canPublishJobs
+            {allComplete
               ? t("profile.studioCompliance.hero.readyTitle")
               : t("profile.studioCompliance.hero.blockedTitle")}
           </ThemedText>
-          <ThemedText selectable type="caption" style={{ color: theme.color.textMuted }}>
-            {compliance.summary.canPublishJobs
-              ? t("profile.studioCompliance.hero.readyBody")
-              : t("profile.studioCompliance.hero.blockedBody", {
-                  blockers: blockersSummary,
-                })}
-          </ThemedText>
+          {!allComplete && (
+            <ThemedText
+              selectable
+              type="caption"
+              style={{ color: theme.color.textMuted }}
+            >
+              {t("profile.studioCompliance.hero.blockedBody", {
+                blockers: countIncomplete(identityStatus, businessStatus, paymentStatus),
+              })}
+            </ThemedText>
+          )}
         </Box>
 
-        <Box>
-          <ProfileSectionHeader
-            label={t("profile.studioCompliance.sections.identity")}
-            description={t("profile.studioCompliance.sections.identityDescription")}
-            icon="person.text.rectangle.fill"
-          />
-          <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-            <Box style={{ gap: BrandSpacing.md, padding: BrandSpacing.md }}>
-              <Box
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: BrandSpacing.sm,
-                }}
-              >
-                <ThemedText type="defaultSemiBold">
-                  {t("profile.studioCompliance.identity.title")}
-                </ThemedText>
-                <IdentityStatusBadge status={diditVerification.status} />
-              </Box>
+        {/* Progress bar */}
+        <ComplianceProgress steps={steps} />
+
+        {/* Card 1: Identity */}
+        <ComplianceCard
+          title={t("profile.studioCompliance.sections.identity")}
+          status={identityStatus}
+          isExpanded={expanded === "identity"}
+          onToggle={() => toggle("identity")}
+        >
+          <Box style={{ gap: BrandSpacing.md }}>
+            {verification?.isVerified ? (
               <ThemedText style={{ color: theme.color.textMuted }}>
-                {diditVerification.isVerified
-                  ? t("profile.studioCompliance.identity.approvedBody", {
-                      legalName:
-                        diditVerification.legalName ??
-                        currentUser.fullName ??
-                        t("profile.account.fallbackName"),
-                    })
-                  : t("profile.studioCompliance.identity.requiredBody", {
-                      status: getIdentityStatusLabel(diditVerification.status),
-                    })}
+                {t("profile.studioCompliance.identity.approvedBody", {
+                  legalName:
+                    verification.legalName ??
+                    currentUser.fullName ??
+                    t("profile.account.fallbackName"),
+                })}
               </ThemedText>
-            </Box>
-          </ProfileSectionCard>
-        </Box>
-
-        <Box>
-          <ProfileSectionHeader
-            label={t("profile.studioCompliance.sections.billing")}
-            description={t("profile.studioCompliance.sections.billingDescription")}
-            icon="doc.text.fill"
-          />
-          <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-            <Box style={{ gap: BrandSpacing.md, padding: BrandSpacing.md }}>
-              <Box
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  gap: BrandSpacing.sm,
-                }}
-              >
-                <ChoicePill
-                  label={t("profile.studioCompliance.billing.entityIndividual")}
-                  selected={legalEntityType === "individual"}
-                  onPress={() => setLegalEntityType("individual")}
-                  backgroundColor={theme.color.surfaceElevated}
-                  labelColor={theme.color.text}
-                />
-                <ChoicePill
-                  label={t("profile.studioCompliance.billing.entityCompany")}
-                  selected={legalEntityType === "company"}
-                  onPress={() => setLegalEntityType("company")}
-                  backgroundColor={theme.color.surfaceElevated}
-                  labelColor={theme.color.text}
-                />
-              </Box>
-
-              <KitTextField
-                label={t("profile.studioCompliance.billing.legalBusinessName")}
-                value={legalBusinessName}
-                onChangeText={setLegalBusinessName}
-              />
-              <KitTextField
-                label={t("profile.studioCompliance.billing.taxId")}
-                value={taxId}
-                onChangeText={setTaxId}
-              />
-              <KitTextField
-                label={t("profile.studioCompliance.billing.billingEmail")}
-                value={billingEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                onChangeText={setBillingEmail}
-              />
-              <KitTextField
-                label={t("profile.studioCompliance.billing.billingPhone")}
-                value={billingPhone}
-                keyboardType="phone-pad"
-                onChangeText={setBillingPhone}
-              />
-              <KitTextField
-                label={t("profile.studioCompliance.billing.billingAddress")}
-                value={billingAddress}
-                onChangeText={setBillingAddress}
-              />
-
-              <Box style={{ gap: BrandSpacing.xs }}>
-                <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
-                  {t("profile.studioCompliance.billing.vatReportingType")}
+            ) : (
+              <>
+                <ThemedText style={{ color: theme.color.textMuted }}>
+                  {t("profile.studioCompliance.identity.requiredBody")}
                 </ThemedText>
-                <Box
-                  style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    gap: BrandSpacing.sm,
+                <ActionButton
+                  label={t("profile.studioCompliance.identity.startVerification")}
+                  onPress={() => {
+                    // TODO: Launch Stripe Connect onboarding modal
                   }}
-                >
-                  {(["osek_patur", "osek_murshe", "company", "other"] as const).map((value) => (
-                    <ChoicePill
-                      key={value}
-                      label={t(`profile.studioCompliance.billing.vatOptions.${value}` as const)}
-                      selected={vatReportingType === value}
-                      onPress={() => setVatReportingType(value)}
-                      backgroundColor={theme.color.surfaceElevated}
-                      labelColor={theme.color.text}
-                    />
-                  ))}
-                </Box>
-              </Box>
+                />
+              </>
+            )}
+          </Box>
+        </ComplianceCard>
 
-              <ActionButton
-                label={t("profile.studioCompliance.actions.saveBilling")}
-                fullWidth
-                loading={isSaving}
-                disabled={isSaving}
-                onPress={() => {
-                  void saveBilling();
-                }}
-              />
-            </Box>
-          </ProfileSectionCard>
-        </Box>
-
-        <Box>
-          <ProfileSectionHeader
-            label={t("profile.studioCompliance.sections.payment")}
-            description={t("profile.studioCompliance.sections.paymentDescription")}
-            icon="creditcard.fill"
-          />
-          <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-            <ProfileSettingRow
-              title={t("profile.studioCompliance.payment.title")}
-              subtitle={paymentSubtitle}
-              value={
-                paymentStatus === "ready"
-                  ? t("profile.compliance.values.approved")
-                  : t("profile.compliance.values.actionRequired")
+        {/* Card 2: Business Info */}
+        <ComplianceCard
+          title={t("profile.studioCompliance.sections.billing")}
+          status={businessStatus}
+          isExpanded={expanded === "business"}
+          onToggle={() => toggle("business")}
+        >
+          <Box style={{ gap: BrandSpacing.md }}>
+            {compliance?.billingProfile?.status === "complete" ? (
+              <ThemedText style={{ color: theme.color.textMuted }}>
+                {t("profile.studioCompliance.billing.completeSummary", {
+                  name: compliance.billingProfile.legalBusinessName ?? "",
+                })}
+              </ThemedText>
+            ) : (
+              <ThemedText style={{ color: theme.color.textMuted }}>
+                {t("profile.studioCompliance.billing.incompleteSummary")}
+              </ThemedText>
+            )}
+            <ActionButton
+              label={
+                businessStatus === "complete"
+                  ? t("profile.studioCompliance.billing.editBilling")
+                  : t("profile.studioCompliance.billing.startBilling")
               }
-              icon="creditcard.fill"
-              onPress={() => router.push("/studio/profile/payments" as Href)}
+              {...(businessStatus === "complete" ? { tone: "secondary" as const } : {})}
+              onPress={() => setBusinessSheetVisible(true)}
             />
-          </ProfileSectionCard>
-        </Box>
+          </Box>
+        </ComplianceCard>
+
+        {/* Card 3: Payment Setup */}
+        <ComplianceCard
+          title={t("profile.studioCompliance.sections.payment")}
+          status={paymentStatus}
+          isExpanded={expanded === "payment"}
+          onToggle={() => toggle("payment")}
+        >
+          <Box style={{ gap: BrandSpacing.md }}>
+            {paymentStatus === "complete" ? (
+              <ThemedText style={{ color: theme.color.textMuted }}>
+                {t("profile.studioCompliance.payment.readySummary")}
+              </ThemedText>
+            ) : (
+              <ThemedText style={{ color: theme.color.textMuted }}>
+                {t("profile.studioCompliance.payment.setupSummary")}
+              </ThemedText>
+            )}
+            <ActionButton
+              label={
+                paymentStatus === "complete"
+                  ? t("profile.studioCompliance.payment.managePayments")
+                  : t("profile.studioCompliance.payment.startSetup")
+              }
+              {...(paymentStatus === "complete" ? { tone: "secondary" as const } : {})}
+              onPress={() => {
+                // TODO: Launch Stripe Connect onboarding for payment setup
+              }}
+            />
+          </Box>
+        </ComplianceCard>
       </Box>
+
+      {/* Business Info Sheet */}
+      <StudioBusinessInfoSheet
+        visible={businessSheetVisible}
+        onClose={() => setBusinessSheetVisible(false)}
+        billingProfile={compliance?.billingProfile ?? null}
+        currentUserEmail={currentUser.email ?? ""}
+        currentUserPhone={currentUser.phoneE164 ?? ""}
+      />
     </ProfileSubpageScrollView>
   );
+}
+
+function countIncomplete(
+  identity: CardStatus,
+  business: CardStatus,
+  payment: CardStatus,
+): string {
+  const incomplete = [identity, business, payment].filter(
+    (s) => s !== "complete",
+  ).length;
+  return `${incomplete} step${incomplete !== 1 ? "s" : ""}`;
 }

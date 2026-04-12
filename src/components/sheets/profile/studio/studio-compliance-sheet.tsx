@@ -51,6 +51,10 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const shouldLoad = currentUser?.role === "studio";
+  const studioSettings = useQuery(
+    api.users.getMyStudioSettings,
+    shouldLoad ? {} : "skip",
+  );
   const accessSnapshot = useQuery(api.access.getMyStudioAccessSnapshot, shouldLoad ? {} : "skip");
   const compliance = accessSnapshot?.compliance;
   const diditVerification = accessSnapshot?.verification;
@@ -166,10 +170,35 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
     [],
   );
 
+  const studioDetailsSummary = studioSettings
+    ? [
+        studioSettings.address,
+        studioSettings.zone,
+        studioSettings.contactPhone,
+      ]
+        .filter((part): part is string => Boolean(part?.trim()))
+        .join(" · ")
+    : t("profile.settings.completeOnboardingAddress");
+  const branchSummary = studioSettings
+    ? studioSettings.entitlement.branchesFeatureEnabled
+      ? t("profile.settings.branches.summary", {
+          primary: studioSettings.primaryBranch?.name ?? t("profile.settings.branches.none"),
+          active: studioSettings.entitlement.activeBranchCount,
+          max: studioSettings.entitlement.maxBranches,
+        })
+      : t("profile.settings.branches.singleBranchSummary", {
+          primary:
+            studioSettings.primaryBranch?.name ??
+            studioSettings.studioName ??
+            t("profile.settings.branches.none"),
+        })
+    : t("profile.settings.branches.none");
+
   if (
     !currentUser ||
     (shouldLoad &&
       (compliance === undefined ||
+        studioSettings === undefined ||
         diditVerification === undefined ||
         paymentsPreflight === undefined))
   ) {
@@ -184,6 +213,7 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
     !currentUser ||
     currentUser.role !== "studio" ||
     !compliance ||
+    !studioSettings ||
     !diditVerification ||
     !paymentsPreflight
   ) {
@@ -242,6 +272,44 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
                 ? t("profile.studioCompliance.hero.readyTitle")
                 : t("profile.studioCompliance.hero.blockedTitle")}
             </ThemedText>
+          </Box>
+
+          <Box>
+            <ProfileSectionHeader
+              label={t("profile.studioCompliance.sections.overview")}
+              description={t("profile.studioCompliance.sections.overviewDescription")}
+              icon="slider.horizontal.3"
+            />
+            <ProfileSectionCard style={{ marginHorizontal: 0 }}>
+              <ProfileSettingRow
+                title={t("profile.settings.studioDetails")}
+                subtitle={studioDetailsSummary}
+                icon="building.2.fill"
+                sectionTone="account"
+                onPress={() => studioSheetHandlers.openEdit()}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.settings.branches.title")}
+                subtitle={branchSummary}
+                icon="square.stack.3d.up.fill"
+                sectionTone="account"
+                onPress={() => studioSheetHandlers.openBranches()}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.studioCompliance.sections.payment")}
+                subtitle={paymentSubtitle}
+                value={
+                  paymentStatus === "ready"
+                    ? t("profile.compliance.values.approved")
+                    : t("profile.compliance.values.actionRequired")
+                }
+                icon="creditcard.fill"
+                sectionTone="operations"
+                onPress={() => studioSheetHandlers.openPayments()}
+              />
+            </ProfileSectionCard>
           </Box>
 
           <Box>

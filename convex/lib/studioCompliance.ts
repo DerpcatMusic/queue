@@ -3,15 +3,22 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { getStripeEnvPresence } from "../integrations/stripe/config";
 import { resolveInternalAccessForUserId } from "./internalAccess";
+import {
+  getLatestStripeConnectedAccount,
+  isStripeIdentityVerified,
+  mapStripeConnectedAccountStatusToIdentityStatus,
+} from "./stripeIdentity";
 import { omitUndefined } from "./validation";
 
 type Ctx = QueryCtx | MutationCtx;
 
 export type StudioComplianceBlockReason =
+  | "owner_identity_required"
   | "business_profile_required"
   | "payment_method_required";
 
 export const studioComplianceBlockReasonValidator = v.union(
+  v.literal("owner_identity_required"),
   v.literal("business_profile_required"),
   v.literal("payment_method_required"),
 );
@@ -32,6 +39,8 @@ export const studioVatReportingTypeValidator = v.union(
   v.literal("company"),
   v.literal("other"),
 );
+
+export const studioTaxClassificationValidator = v.string();
 
 export const studioPaymentStatusValidator = v.union(
   v.literal("missing"),
@@ -67,11 +76,24 @@ export const studioComplianceSummaryValidator = v.object({
   paymentReadinessSource: studioPaymentReadinessSourceValidator,
 });
 
-function getOwnerIdentityStatus(
-  studio: Pick<Doc<"studioProfiles">, "diditVerificationStatus">,
+function getOwnerIdentityStatusFromStripe(
+  stripeAccount: Doc<"connectedAccountsV2"> | null,
 ): "approved" | "pending" | "missing" | "failed" {
-  void studio;
-  return "approved";
+  if (!stripeAccount) return "missing";
+  if (isStripeIdentityVerified(stripeAccount)) return "approved";
+  const mapped = mapStripeConnectedAccountStatusToIdentityStatus(stripeAccount.status);
+  switch (mapped) {
+    case "approved":
+      return "approved";
+    case "in_progress":
+    case "pending":
+    case "in_review":
+      return "pending";
+    case "declined":
+      return "failed";
+    default:
+      return "missing";
+  }
 }
 
 function getBusinessProfileStatus(
@@ -133,9 +155,10 @@ export async function buildStudioComplianceSummary(
     studio: Doc<"studioProfiles">;
   },
 ) {
-  const [billingProfile, paymentReadiness] = await Promise.all([
+  const [billingProfile, paymentReadiness, stripeAccount] = await Promise.all([
     getStudioBillingProfile(ctx, args.studio._id),
     getStudioPaymentReadiness(ctx, args.studio._id),
+    getLatestStripeConnectedAccount(ctx, args.studio.userId),
   ]);
   const access = await resolveInternalAccessForUserId(ctx, args.studio.userId);
   if (access.verificationBypass) {
@@ -156,11 +179,14 @@ export async function buildStudioComplianceSummary(
     };
   }
 
-  const ownerIdentityStatus = getOwnerIdentityStatus(args.studio);
+  const ownerIdentityStatus = getOwnerIdentityStatusFromStripe(stripeAccount);
   const businessProfileStatus = getBusinessProfileStatus(billingProfile);
   const paymentStatus = paymentReadiness.status;
 
   const blockingReasons: StudioComplianceBlockReason[] = [];
+  if (ownerIdentityStatus !== "approved") {
+    blockingReasons.push("owner_identity_required");
+  }
   if (businessProfileStatus !== "complete") {
     blockingReasons.push("business_profile_required");
   }

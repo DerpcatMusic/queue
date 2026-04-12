@@ -10,17 +10,19 @@ import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
 export default function MapTabRoute() {
   const controller = useMapTabController();
   const { color } = useTheme();
-  const { setTopInsetBackgroundColor, setTopInsetTone } = useSystemUi();
+  const { setTopInsetBackgroundColor, setTopInsetTone, setTopInsetVisible } = useSystemUi();
   const mapBackgroundColor = controller.mapPalette?.styleBackground ?? color.appBg;
 
   useLayoutEffect(() => {
     setTopInsetTone("app");
     setTopInsetBackgroundColor(mapBackgroundColor);
+    setTopInsetVisible(false);
     return () => {
       setTopInsetTone("app");
       setTopInsetBackgroundColor(null);
+      setTopInsetVisible(true);
     };
-  }, [mapBackgroundColor, setTopInsetBackgroundColor, setTopInsetTone]);
+  }, [mapBackgroundColor, setTopInsetBackgroundColor, setTopInsetTone, setTopInsetVisible]);
 
   const descriptorBody = !isFeatureEnabled("instructor", "map.zoneEditor") ? (
     <Redirect href="/instructor" />

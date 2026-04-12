@@ -38,6 +38,7 @@ import { StudioEditSheet } from "@/components/sheets/profile/studio/studio-edit-
 import { StudioNotificationsSheet } from "@/components/sheets/profile/studio/studio-notifications-sheet";
 import { StudioPaymentsSheet } from "@/components/sheets/profile/studio/studio-payments-sheet";
 import { StudioPublicProfileSheet as StudioPublicProfileSlugSheet } from "@/components/sheets/profile/studio/studio-public-profile-sheet";
+import { LanguagePickerSheet } from "@/components/sheets/profile/language-picker-sheet";
 import { AuthSessionControllerProvider } from "@/contexts/auth-session-context";
 import { SheetProvider, useSheetContext } from "@/contexts/sheet-context";
 import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
@@ -298,7 +299,13 @@ function RootLayoutContent() {
                           />
                         </Stack>
                       </View>
-                      <StatusBar style={resolvedScheme === "dark" ? "light" : "dark"} animated />
+                      <StatusBar
+                        style={resolvedScheme === "dark" ? "light" : "dark"}
+                        animated
+                        {...(Platform.OS === "android" && !topInsetVisible
+                          ? { translucent: true, backgroundColor: "transparent" }
+                          : {})}
+                      />
                     </AppSafeRoot>
                   </ThemeProvider>
                 </SheetProvider>
@@ -328,6 +335,8 @@ function GlobalSheets() {
     closeInstructorPublicProfile,
     studioPublicProfileId,
     closeStudioPublicProfileById,
+    languagePickerVisible,
+    closeLanguagePicker,
   } = useSheetContext();
 
   const closeInstructorSheetIfActive = useCallback(
@@ -437,6 +446,7 @@ function GlobalSheets() {
         studioId={studioPublicProfileId}
         onClose={closeStudioPublicProfileById}
       />
+      <LanguagePickerSheet visible={languagePickerVisible} onClose={closeLanguagePicker} />
     </>
   );
 }

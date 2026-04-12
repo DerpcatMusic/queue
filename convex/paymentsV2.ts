@@ -984,6 +984,16 @@ export const getMyInstructorConnectedAccountV2 = query({
   },
 });
 
+export const getMyStudioConnectedAccountV2 = query({
+  args: {},
+  returns: v.union(v.null(), connectedAccountOnboardingSummaryValidator),
+  handler: async (ctx) => {
+    const user = await requireUserRole(ctx, ["studio"]);
+    const account = await loadLatestConnectedAccountForUser(ctx, user._id, "stripe");
+    return account ? projectConnectedAccount(account) : null;
+  },
+});
+
 export const getFundSplitCreationContextV2 = internalQuery({
   args: {
     paymentOrderId: v.id("paymentOrdersV2"),
@@ -1275,6 +1285,123 @@ export const upsertInstructorConnectedAccountFromProviderV2 = internalMutation({
     const account = await ctx.db.get("connectedAccountsV2", accountId);
     if (!account) {
       throw new ConvexError("Failed to create Stripe connected account");
+    }
+    return projectConnectedAccount(account);
+  },
+});
+
+export const upsertStudioConnectedAccountFromProviderV2 = internalMutation({
+  args: {
+    provider: paymentProviderValidator,
+    providerAccountId: v.string(),
+    providerStatusRaw: v.string(),
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    legalName: v.optional(v.string()),
+    legalFirstName: v.optional(v.string()),
+    legalMiddleName: v.optional(v.string()),
+    legalLastName: v.optional(v.string()),
+    metadata: v.optional(v.record(v.string(), v.string())),
+  },
+  returns: connectedAccountOnboardingSummaryValidator,
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const user = await requireUserRole(ctx, ["studio"]);
+
+    const existing = await ctx.db
+      .query("connectedAccountsV2")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .first();
+
+    const mappedStatus =
+      args.provider === "stripe"
+        ? mapStripeProviderStatusToCanonical(args.providerStatusRaw)
+        : mapAirwallexAccountStatusToCanonical(args.providerStatusRaw);
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        provider: args.provider,
+        providerAccountId: args.providerAccountId,
+        status: mappedStatus,
+        kycStatus: args.providerStatusRaw,
+        metadata: {
+          ...(existing.metadata ?? {}),
+          providerStatusRaw: args.providerStatusRaw,
+          ...(args.metadata ?? {}),
+        },
+        country: args.country ?? existing.country,
+        currency: args.currency ?? existing.currency,
+        updatedAt: now,
+        activatedAt:
+          mappedStatus === "active" ? (existing.activatedAt ?? now) : existing.activatedAt,
+      });
+
+      // Sync verification status to studio profile
+      const studioProfile = await ctx.db
+        .query("studioProfiles")
+        .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+        .unique();
+      if (studioProfile && args.provider === "stripe") {
+        await ctx.db.patch(studioProfile._id, {
+          diditVerificationStatus: mapStripeStatusToLegacyIdentityStatus(mappedStatus),
+          diditStatusRaw: args.providerStatusRaw,
+          diditLastEventAt: now,
+          ...(mappedStatus === "active"
+            ? { diditVerifiedAt: studioProfile.diditVerifiedAt ?? now }
+            : {}),
+          ...(args.legalName ? { diditLegalName: args.legalName } : {}),
+          updatedAt: now,
+        });
+      }
+
+      const updated = await ctx.db.get(existing._id);
+      if (!updated) {
+        throw new ConvexError("Failed to update studio connected account");
+      }
+      return projectConnectedAccount(updated);
+    }
+
+    const accountId = await ctx.db.insert("connectedAccountsV2", {
+      userId: user._id,
+      role: "studio",
+      provider: args.provider,
+      providerAccountId: args.providerAccountId,
+      accountCapability: "withdrawal",
+      status: mappedStatus,
+      kycStatus: args.providerStatusRaw,
+      country: args.country ?? DEFAULT_PROVIDER_COUNTRY,
+      currency: args.currency ?? DEFAULT_PROVIDER_CURRENCY,
+      metadata: {
+        providerStatusRaw: args.providerStatusRaw,
+        ...(args.metadata ?? {}),
+      },
+      createdAt: now,
+      updatedAt: now,
+      ...omitUndefined({
+        activatedAt: mappedStatus === "active" ? now : undefined,
+      }),
+    });
+
+    // Sync verification status to studio profile
+    const studioProfile = await ctx.db
+      .query("studioProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .unique();
+    if (studioProfile && args.provider === "stripe") {
+      await ctx.db.patch(studioProfile._id, {
+        diditVerificationStatus: mapStripeStatusToLegacyIdentityStatus(mappedStatus),
+        diditStatusRaw: args.providerStatusRaw,
+        diditLastEventAt: now,
+        ...(mappedStatus === "active" ? { diditVerifiedAt: now } : {}),
+        ...(args.legalName ? { diditLegalName: args.legalName } : {}),
+        updatedAt: now,
+      });
+    }
+
+    const account = await ctx.db.get(accountId);
+    if (!account) {
+      throw new ConvexError("Failed to create studio connected account");
     }
     return projectConnectedAccount(account);
   },

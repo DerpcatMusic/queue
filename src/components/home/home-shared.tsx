@@ -384,55 +384,50 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
               alignItems: "center",
               gap: BrandSpacing.md,
               minWidth: 0,
-              borderRadius: item.done ? BrandRadius.lg : BrandRadius.medium,
+              borderRadius: BrandRadius.medium,
               borderCurve: "continuous",
               paddingHorizontal: BrandSpacing.md,
               paddingVertical: BrandSpacing.sm,
-              backgroundColor: item.done
-                ? palette.surface
-                : pressed
-                  ? palette.surfaceElevated
-                  : palette.surfaceMuted,
-              borderWidth: item.done ? 2 : 0,
-              borderColor: item.done ? palette.success : "transparent",
+              backgroundColor: pressed ? palette.surfaceElevated : palette.surfaceMuted,
               opacity: pressed ? 0.92 : 1,
             })}
           >
-            {item.done ? (
-              <View
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  backgroundColor: palette.successSubtle,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <IconSymbol name="checkmark.circle.fill" size={22} color={palette.success} />
-              </View>
-            ) : (
+            <View style={{ position: "relative" }}>
               <IconSymbol
                 name={item.id === "sports" ? getFirstSportGenreIcon(item.sports) : item.icon}
-                size={20}
+                size={22}
                 color={palette.primary}
               />
-            )}
+              {item.done && (
+                <View
+                  style={{
+                    position: "absolute",
+                    bottom: -3,
+                    right: -3,
+                    width: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    backgroundColor: palette.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <IconSymbol name="checkmark" size={10} color={palette.surface} />
+                </View>
+              )}
+            </View>
             <Box style={{ flex: 1, minWidth: 0 }}>
               <Text
                 numberOfLines={1}
                 style={{
                   ...BrandType.bodyStrong,
                   color: item.done ? palette.textMuted : palette.text,
-                  ...(item.done ? { textDecorationLine: "none" } : {}),
                 }}
               >
                 {item.label}
               </Text>
             </Box>
-            {item.done ? null : (
-              <IconSymbol name="chevron.right" size={16} color={palette.textMuted} />
-            )}
+            <IconSymbol name="chevron.right" size={16} color={palette.textMuted} />
           </Pressable>
         ))}
       </Box>

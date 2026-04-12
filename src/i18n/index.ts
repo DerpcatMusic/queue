@@ -6,8 +6,12 @@ import { I18nManager, Platform } from "react-native";
 
 import en from "@/i18n/translations/en";
 import he from "@/i18n/translations/he";
+import fr from "@/i18n/translations/fr";
+import de from "@/i18n/translations/de";
+import es from "@/i18n/translations/es";
+import da from "@/i18n/translations/da";
 
-export const SUPPORTED_LANGUAGES = ["en", "he"] as const;
+export const SUPPORTED_LANGUAGES = ["en", "he", "fr", "de", "es", "da"] as const;
 export type AppLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 const RTL_LANGUAGES = new Set<AppLanguage>(["he"]);
@@ -45,10 +49,8 @@ function syncRtlPreference(language: AppLanguage): boolean {
     return false;
   }
 
-  const changed = I18nManager.isRTL !== shouldRtl;
   I18nManager.allowRTL(shouldRtl);
-  I18nManager.forceRTL(shouldRtl);
-  return changed;
+  return false;
 }
 
 void i18n.use(initReactI18next).init({
@@ -56,6 +58,10 @@ void i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },
     he: { translation: he },
+    fr: { translation: fr },
+    de: { translation: de },
+    es: { translation: es },
+    da: { translation: da },
   },
   lng: getDeviceLanguage(),
   fallbackLng: "en",
@@ -80,9 +86,7 @@ export function bootstrapLocalization(): {
   return { directionChanged };
 }
 
-export function setAppLanguage(
-  language: AppLanguage,
-): { directionChanged: boolean } {
+export function setAppLanguage(language: AppLanguage): { directionChanged: boolean } {
   const normalized = normalizeLanguage(language);
   const directionChanged = syncRtlPreference(normalized);
   try {

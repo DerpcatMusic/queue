@@ -383,6 +383,128 @@ export const ensureMyInstructorConnectedAccountV2 = action({
   },
 });
 
+// ── Studio Stripe Connected Account ──────────────────────────────────
+
+async function ensureStudioStripeConnectedAccount(
+  ctx: any,
+): Promise<ConnectedAccountOnboardingSummary> {
+  const market = getStripeMarketDefaults();
+  const currentUser = await ctx.runQuery(api.users.getCurrentUser, {});
+  if (!currentUser || currentUser.role !== "studio") {
+    throw new ConvexError("Unauthorized");
+  }
+
+  const existing: ConnectedAccountOnboardingSummary | null = await ctx.runQuery(
+    api.paymentsV2.getMyStudioConnectedAccountV2,
+    {},
+  );
+
+  if (existing?.provider === "stripe") {
+    const remote = await retrieveStripeAccountV2(existing.providerAccountId);
+    const identity = await buildStripeIdentitySync(remote.id);
+    const requirements = summarizeStripeRecipientRequirements(remote);
+    return await ctx.runMutation(
+      internal.paymentsV2.upsertStudioConnectedAccountFromProviderV2,
+      {
+        provider: "stripe",
+        providerAccountId: remote.id,
+        providerStatusRaw: summarizeStripeRecipientAccountStatus(remote),
+        country: remote.identity?.country?.toUpperCase() || market.country,
+        currency: market.currency,
+        ...identity,
+        metadata: {
+          dashboard: "express",
+          ...(requirements.summary ? { requirementsSummary: requirements.summary } : {}),
+          blockingRequirementsCount: String(requirements.blockingCount),
+        },
+      },
+    );
+  }
+
+  const account = await createStripeRecipientAccountV2({
+    country: market.country,
+    email: currentUser.email?.trim() || undefined,
+    displayName: currentUser.name?.trim() || STRIPE_MERCHANT_DISPLAY_NAME,
+    defaultCurrency: market.currency,
+  });
+
+  const identity = await buildStripeIdentitySync(account.id);
+  const requirements = summarizeStripeRecipientRequirements(account);
+
+  return await ctx.runMutation(
+    internal.paymentsV2.upsertStudioConnectedAccountFromProviderV2,
+    {
+      provider: "stripe",
+      providerAccountId: account.id,
+      providerStatusRaw: summarizeStripeRecipientAccountStatus(account),
+      country: market.country,
+      currency: market.currency,
+      ...identity,
+      metadata: {
+        dashboard: "express",
+        ...(requirements.summary ? { requirementsSummary: requirements.summary } : {}),
+        blockingRequirementsCount: String(requirements.blockingCount),
+      },
+    },
+  );
+}
+
+export const ensureMyStudioConnectedAccountV2 = action({
+  args: {},
+  returns: connectedAccountOnboardingSummaryValidator,
+  handler: async (ctx): Promise<any> => {
+    return await ensureStudioStripeConnectedAccount(ctx);
+  },
+});
+
+export const createMyStudioStripeEmbeddedSessionV2 = action({
+  args: {},
+  returns: stripeAccountSessionSummaryValidator,
+  handler: async (ctx): Promise<any> => {
+    const account = await ensureStudioStripeConnectedAccount(ctx);
+    if (account.provider !== "stripe") {
+      throw new ConvexError("Failed to initialize Stripe connected account");
+    }
+
+    const session = await createStripeAccountSessionV2({
+      accountId: account.providerAccountId,
+      enableOnboarding: true,
+      enablePayouts: true,
+    });
+
+    return {
+      provider: "stripe",
+      accountId: account.providerAccountId,
+      clientSecret: session.clientSecret,
+    };
+  },
+});
+
+export const createMyStudioStripeAccountLinkV2 = action({
+  args: {},
+  returns: stripeAccountLinkSummaryValidator,
+  handler: async (ctx): Promise<any> => {
+    const account = await ensureStudioStripeConnectedAccount(ctx);
+    if (account.provider !== "stripe") {
+      throw new ConvexError("Failed to initialize Stripe connected account");
+    }
+
+    const connectUrls = getStripeConnectReturnUrls();
+    const link = await createStripeAccountLinkV2({
+      accountId: account.providerAccountId,
+      refreshUrl: connectUrls.refreshUrl,
+      returnUrl: connectUrls.returnUrl,
+    });
+
+    return {
+      provider: "stripe",
+      accountId: account.providerAccountId,
+      onboardingUrl: link.url,
+      ...(link.expires_at ? { expiresAt: link.expires_at } : {}),
+    };
+  },
+});
+
 export const createStripePaymentSheetForPaymentOrderV2 = action({
   args: {
     paymentOrderId: v.id("paymentOrdersV2"),

@@ -12,6 +12,7 @@ import {
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
 import { ActionButton } from "@/components/ui/action-button";
+import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import { SkeletonLine } from "@/components/ui/skeleton";
@@ -30,7 +31,6 @@ import {
   getIdentityPrimaryActionLabel,
   getIdentityVerificationStatusPresentation,
   shouldAutoRefreshIdentityStatus,
-  shouldOfferIdentityManualRefresh,
 } from "@/features/compliance/identity-verification-ui";
 import {
   isComplianceDocumentUploadError,
@@ -38,7 +38,7 @@ import {
 } from "@/hooks/use-compliance-document-upload";
 import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useTheme } from "@/hooks/use-theme";
-import { STRIPE_CONNECT_RETURN_URL } from "@/lib/stripe";
+import { STRIPE_CONNECT_RETURN_URL, getStripeMarketDefaults } from "@/lib/stripe";
 import { Box, HStack, Spacer, Text, VStack } from "@/primitives";
 import { BorderWidth, LetterSpacing, Motion, Radius } from "@/theme/theme";
 
@@ -98,8 +98,11 @@ function getInsuranceSubtitle(
   row: ComplianceInsuranceRow | null,
   locale: string,
   t: ReturnType<typeof useTranslation>["t"],
+  options?: {
+    countryCode?: string;
+  },
 ) {
-  return getSharedInsuranceSubtitle(row, locale, t);
+  return getSharedInsuranceSubtitle(row, locale, t, options);
 }
 
 function getDocumentStatusLabel(
@@ -162,7 +165,6 @@ function SkeletonProfile() {
 function VerificationUploadPanel({
   icon,
   label,
-  title,
   subtitle,
   statusLabel,
   onPress,
@@ -171,7 +173,6 @@ function VerificationUploadPanel({
 }: {
   icon: "checkmark.circle.fill" | "sparkles";
   label: string;
-  title: string;
   subtitle: string;
   statusLabel: string;
   onPress: () => void;
@@ -186,7 +187,7 @@ function VerificationUploadPanel({
       <Text variant="bodyStrong">{label}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={[label, title, subtitle].join(". ")}
+        accessibilityLabel={[label, subtitle, statusLabel].join(". ")}
         onPress={onPress}
         disabled={disabled}
         style={({ pressed }) => [
@@ -201,7 +202,7 @@ function VerificationUploadPanel({
           },
         ]}
       >
-        <Box alignItems="center" gap="md">
+        <Box flexDirection="row" alignItems="center" gap="md">
           <Box
             width={48}
             height={48}
@@ -214,9 +215,8 @@ function VerificationUploadPanel({
           >
             <IconSymbol name={icon} size={22} color={accent} />
           </Box>
-          <Box alignItems="center" gap="xxs">
-            <Text variant="bodyStrong">{title}</Text>
-            <Text variant="caption" color="textMuted" style={{ textAlign: "center" }}>
+          <Box flex={1} minWidth={0} gap="xxs">
+            <Text variant="caption" color="textMuted">
               {subtitle}
             </Text>
             <Text
@@ -230,6 +230,7 @@ function VerificationUploadPanel({
               {statusLabel}
             </Text>
           </Box>
+          <IconSymbol name="chevron.right" size={18} color={theme.color.textMuted} />
         </Box>
       </Pressable>
     </Box>
@@ -574,10 +575,7 @@ export default function InstructorComplianceScreen() {
     theme.color,
     t,
   );
-  const showDiditManualRefresh = shouldOfferIdentityManualRefresh(
-    diditVerification.status,
-    diditVerification.isVerified,
-  );
+  const marketCountry = getStripeMarketDefaults().country;
   const handleDiditAction = () => {
     if (diditVerification.isVerified) {
       void refreshDiditStatus();
@@ -667,49 +665,43 @@ export default function InstructorComplianceScreen() {
                   ? t("profile.compliance.identity.approved")
                   : t("profile.compliance.identity.required")}
               </Text>
-              {!diditVerification.isVerified ? (
-                <Text variant="caption" color="textMuted">
-                  {t("profile.studioCompliance.identity.requiredBody", {
-                    status: diditStatusPresentation.label,
-                  })}
-                </Text>
-              ) : null}
             </Box>
 
             <Box gap="sm">
-              <ActionButton
-                label={diditActionLabel}
-                onPress={handleDiditAction}
-                fullWidth
-                loading={isStartingDidit}
-                disabled={isDiditBusy}
-                native={false}
-                {...(diditButtonColors ? { colors: diditButtonColors } : {})}
-                {...(diditVerification.isVerified ? { tone: "secondary" as const } : {})}
-                labelStyle={{
-                  textTransform: "uppercase",
-                  letterSpacing: LetterSpacing.trackingWide,
-                  fontWeight: "700",
-                }}
-              />
-              {showDiditManualRefresh ? (
+              {diditVerification.isVerified ? (
+                <HStack justify="end">
+                  <IconButton
+                    accessibilityLabel={t("profile.identityVerification.refreshStatus")}
+                    icon={
+                      <IconSymbol
+                        name="arrow.clockwise"
+                        size={18}
+                        color={theme.color.primary}
+                      />
+                    }
+                    disabled={isDiditBusy}
+                    onPress={() => {
+                      void refreshDiditStatus();
+                    }}
+                    size={BrandSpacing.iconButtonSize}
+                  />
+                </HStack>
+              ) : (
                 <ActionButton
-                  label={t("profile.identityVerification.checkStatus")}
-                  onPress={() => {
-                    void refreshDiditStatus();
-                  }}
+                  label={diditActionLabel}
+                  onPress={handleDiditAction}
                   fullWidth
-                  tone="secondary"
-                  loading={isRefreshingDidit}
+                  loading={isStartingDidit}
                   disabled={isDiditBusy}
                   native={false}
+                  {...(diditButtonColors ? { colors: diditButtonColors } : {})}
                   labelStyle={{
                     textTransform: "uppercase",
                     letterSpacing: LetterSpacing.trackingWide,
                     fontWeight: "700",
                   }}
                 />
-              ) : null}
+              )}
             </Box>
           </KitSurface>
 
@@ -720,19 +712,21 @@ export default function InstructorComplianceScreen() {
             <VerificationUploadPanel
               icon="checkmark.circle.fill"
               label={t("profile.compliance.insurance.title")}
-              title={t("profile.compliance.documents.tapToUpload")}
-              subtitle={getInsuranceSubtitle(preferredInsurance ?? null, locale, t)}
+              subtitle={getInsuranceSubtitle(preferredInsurance ?? null, locale, t, {
+                countryCode: marketCountry,
+              })}
               statusLabel={getDocumentStatusLabel(preferredInsurance?.reviewStatus, t)}
               onPress={onOpenInsuranceUpload}
+              accentColor={theme.color.primary}
               disabled={isUploading}
             />
             <VerificationUploadPanel
               icon="sparkles"
               label={t("profile.compliance.certificate.title")}
-              title={t("profile.compliance.documents.tapToUpload")}
               subtitle={getCertificateSubtitle(latestCertificate ?? null, locale, t)}
               statusLabel={getDocumentStatusLabel(latestCertificate?.reviewStatus, t)}
               onPress={onOpenCertificateUpload}
+              accentColor={theme.color.primary}
               disabled={isUploading}
             />
           </Box>

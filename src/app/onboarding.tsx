@@ -7,7 +7,6 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
-  I18nManager,
   ScrollView,
   Text,
   useWindowDimensions,
@@ -278,7 +277,7 @@ function OnboardingScreenContent() {
 
   const nextArrowIcon = (
     <MaterialIcons
-      name={I18nManager.isRTL ? "arrow-back" : "arrow-forward"}
+      name={(i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he") ? "arrow-back" : "arrow-forward"}
       size={IconSize.lg}
       color={color.onPrimary}
     />

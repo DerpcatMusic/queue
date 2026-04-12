@@ -1,5 +1,6 @@
 import { memo } from "react";
-import { I18nManager, Text as RNText, type StyleProp, type TextStyle } from "react-native";
+import { Text as RNText, type StyleProp, type TextStyle } from "react-native";
+import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
 
 import type { TypographyToken } from "@/theme/theme";
@@ -81,10 +82,12 @@ export const Text = memo(function Text({
   children,
   ...rest
 }: TextProps) {
+  const { i18n } = useTranslation();
   const variantStyle = (styles as Record<string, TextStyle>)[variantMap[variant] ?? "variant_body"];
   const colorStyle = color
     ? (styles as Record<string, TextStyle>)[colorMap[color] ?? `color_${color}`]
     : undefined;
+  const isRtl = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he");
 
   return (
     <RNText
@@ -95,7 +98,7 @@ export const Text = memo(function Text({
           colorStyle,
           {
             includeFontPadding: false,
-            writingDirection: I18nManager.isRTL ? ("rtl" as const) : ("ltr" as const),
+            writingDirection: isRtl ? ("rtl" as const) : ("ltr" as const),
             textAlign: "auto" as const,
           },
           style,

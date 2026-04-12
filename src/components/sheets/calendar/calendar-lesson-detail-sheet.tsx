@@ -1,8 +1,13 @@
 /**
- * Calendar Lesson Detail Sheet — bottom sheet version of the lesson detail.
+ * Calendar Lesson Detail Sheet — shows job details when tapping calendar item.
  *
- * Sporty, bold, in-your-face design. Tapping studio name opens the studio's
- * public profile as a bottom sheet.
+ * Design principles:
+ * - Single snap point, no jumping
+ * - Icon + color coding for quick status recognition
+ * - Material symbols for semantic meaning
+ * - Zone name (not zip code)
+ * - Studio name is tappable to open public profile
+ * - Past jobs show payout info
  */
 
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
@@ -18,6 +23,7 @@ import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { getZoneLabel } from "@/constants/zones";
 import type { CalendarLessonSheetRole } from "@/contexts/sheet-context";
 import { useSheetContext } from "@/contexts/sheet-context";
 import { api } from "@/convex/_generated/api";
@@ -25,9 +31,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useTheme } from "@/hooks/use-theme";
 import { formatTime } from "@/lib/jobs-utils";
 import { toSportLabelI18n } from "@/lib/sport-i18n";
-import { Box, Text } from "@/primitives";
-import type { ThemeColors } from "@/theme/theme";
-import { FontFamily, FontSize, LetterSpacing } from "@/theme/theme";
+import { Text } from "@/primitives";
+import { FontFamily, FontSize } from "@/theme/theme";
 
 interface CalendarLessonDetailSheetProps {
   visible: boolean;
@@ -44,7 +49,7 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
   jobId,
   role,
 }: CalendarLessonDetailSheetProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useTheme();
   const { openStudioPublicProfile } = useSheetContext();
   const { isSubmitting, submitCheckIn } = useLessonCheckIn();
@@ -54,7 +59,7 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
     jobId ? { jobId: jobId as Id<"jobs"> } : "skip",
   );
 
-  // Hooks must be called before any early returns
+  // Hooks before early returns
   const handleStudioPress = useCallback(() => {
     if (!detail?.studioSlug) return;
     openStudioPublicProfile(detail.studioSlug);
@@ -76,28 +81,59 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
     );
   }
 
-  const isStudio = detail.roleView === "instructor";
-  const counterpartName = isStudio
-    ? detail.studioName
-    : (detail.instructorName ?? t("calendarTab.unassignedInstructor"));
-  const counterpartImageUrl = isStudio
-    ? detail.studioProfileImageUrl
-    : detail.instructorProfileImageUrl;
+  const isInstructor = role === "instructor";
+  const sportLabel = toSportLabelI18n(detail.sport, t);
+  const timeLabel = `${formatTime(detail.startTime, "en-US")} – ${formatTime(detail.endTime, "en-US")}`;
 
+  // Zone label - use readable name instead of zip
+  const zoneLanguage = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
+  const zoneLabel = getZoneLabel(detail.zone, zoneLanguage);
+
+  // Status computation
   const now = Date.now();
   const isCheckedIn = detail.checkInStatus === "verified";
   const hasRejectedCheckIn = detail.checkInStatus === "rejected";
+  const isPast = detail.lifecycle === "past";
+  const isLive = detail.lifecycle === "live";
+  const isCancelled = detail.lifecycle === "cancelled";
   const canCheckInWindow = detail.startTime - now <= ONE_HOUR_MS && detail.endTime >= now;
-  const canCheckIn =
-    role === "instructor" &&
-    canCheckInWindow &&
-    detail.lifecycle !== "past" &&
-    detail.lifecycle !== "cancelled" &&
-    !isCheckedIn;
+  const canCheckIn = isInstructor && canCheckInWindow && !isPast && !isCancelled && !isCheckedIn;
 
-  const statusDef = getStatusDef(detail, isCheckedIn, hasRejectedCheckIn, t);
-  const sportLabel = toSportLabelI18n(detail.sport, t);
-  const timeLabel = `${formatTime(detail.startTime, "en-US")} – ${formatTime(detail.endTime, "en-US")}`;
+  // Status icon and color
+  const statusIcon = isCheckedIn
+    ? "checkmark.circle.fill"
+    : hasRejectedCheckIn
+      ? "xmark.circle.fill"
+      : isCancelled
+        ? "xmark.circle.fill"
+        : isLive
+          ? "bolt.fill"
+          : isPast
+            ? "clock.fill"
+            : "calendar";
+  const statusColor = isCheckedIn
+    ? theme.color.primary
+    : hasRejectedCheckIn
+      ? theme.color.danger
+      : isCancelled
+        ? theme.color.danger
+        : isLive
+          ? theme.color.secondary
+          : isPast
+            ? theme.color.textMuted
+            : theme.color.primary;
+
+  const statusLabel = isCheckedIn
+    ? t("calendarTab.card.indicators.checkedIn")
+    : hasRejectedCheckIn
+      ? t("calendarTab.card.indicators.checkInFailed")
+      : isCancelled
+        ? t("calendarTab.card.indicators.cancelled")
+        : isLive
+          ? t("calendarTab.card.indicators.arriveNow")
+          : isPast
+            ? t("calendarTab.card.indicators.complete")
+            : t("calendarTab.card.indicators.goodToGo");
 
   const handleCheckIn = () => {
     if (!canCheckIn) return;
@@ -105,102 +141,105 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
   };
 
   return (
-    <BaseProfileSheet visible={visible} onClose={onClose} snapPoints={["70%"]} scrollable={false}>
-      <BottomSheetScrollView contentContainerStyle={{ gap: BrandSpacing.lg }}>
-        <Animated.View entering={FadeIn.duration(180)}>
-          {/* ── Status Banner ── */}
-          <Box style={[styles.statusBanner, { backgroundColor: statusDef.bg(theme.color) }]}>
-            <Box style={styles.statusBannerInner}>
-              <View style={[styles.statusDot, { backgroundColor: statusDef.dot(theme.color) }]} />
-              <Text variant="labelStrong" style={{ color: statusDef.fg(theme.color) }}>
-                {statusDef.label}
-              </Text>
-            </Box>
-            <Text variant="micro" style={{ color: statusDef.fg(theme.color) }}>
-              {statusDef.hint}
+    <BaseProfileSheet visible={visible} onClose={onClose} snapPoints={["70%"]}>
+      <BottomSheetScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View entering={FadeIn.duration(180)} style={styles.content}>
+          {/* ── Status Row (icon + label + color) ── */}
+          <View style={styles.statusRow}>
+            <View style={[styles.statusIconWrap, { backgroundColor: statusColor + "20" }]}>
+              <IconSymbol name={statusIcon} size={18} color={statusColor} />
+            </View>
+            <Text variant="labelStrong" style={{ color: statusColor }}>
+              {statusLabel}
             </Text>
-          </Box>
+          </View>
 
-          {/* ── Sport + Pay Hero ── */}
-          <Box style={styles.heroRow}>
-            <Box style={styles.heroLeft}>
+          {/* ── Sport + Pay ── */}
+          <View style={styles.heroSection}>
+            <View style={styles.heroLeft}>
               <Text variant="titleLarge" color="text" numberOfLines={1}>
                 {sportLabel}
               </Text>
-              <Box style={styles.timeRow}>
+              <View style={styles.timeRow}>
                 <IconSymbol name="schedule" size={14} color={theme.color.textMuted} />
                 <Text variant="caption" color="textMuted">
                   {timeLabel}
                 </Text>
-              </Box>
-            </Box>
-            <Box style={styles.payBadge}>
+              </View>
+            </View>
+            <View style={styles.paySection}>
               <Text style={styles.payAmount}>₪{Math.round(detail.pay)}</Text>
-            </Box>
-          </Box>
+              {isPast && (
+                <Text variant="micro" color="textMuted">
+                  {t("calendarTab.detail.paidOut", { defaultValue: "Paid" })}
+                </Text>
+              )}
+            </View>
+          </View>
 
-          {/* ── Location ── */}
-          <Box style={styles.locationRow}>
+          {/* ── Location (icon + name) ── */}
+          <View style={styles.locationRow}>
             <IconSymbol name="location_on" size={16} color={theme.color.textMuted} />
             <Text variant="bodyMedium" color="textMuted" numberOfLines={1}>
-              {detail.zone}
+              {zoneLabel}
             </Text>
-          </Box>
+          </View>
 
-          {/* ── Counterpart (Studio / Instructor) ── */}
+          {/* ── Studio/Instructor (tappable) ── */}
           <Pressable
-            onPress={isStudio ? handleStudioPress : undefined}
-            disabled={!isStudio}
-            accessibilityRole={isStudio ? "button" : undefined}
-            accessibilityHint={isStudio ? t("calendarTab.detail.viewStudioHint") : undefined}
+            onPress={isInstructor ? handleStudioPress : undefined}
+            disabled={!isInstructor}
+            accessibilityRole={isInstructor ? "button" : undefined}
+            accessibilityHint={isInstructor ? t("calendarTab.detail.viewStudioHint") : undefined}
             style={({ pressed }) => [
-              styles.counterpartCard,
-              {
-                backgroundColor: theme.color.surfaceElevated,
-                borderColor: theme.color.border,
-                transform: [{ scale: isStudio && pressed ? 0.98 : 1 }],
-              },
+              styles.counterpartRow,
+              pressed && isInstructor && styles.pressed,
             ]}
           >
             <ProfileAvatar
-              imageUrl={counterpartImageUrl}
-              fallbackName={counterpartName}
-              size={44}
+              imageUrl={
+                isInstructor ? detail.studioProfileImageUrl : detail.instructorProfileImageUrl
+              }
+              fallbackName={isInstructor ? detail.studioName : (detail.instructorName ?? "")}
+              size={40}
               roundedSquare={false}
-              fallbackIcon={isStudio ? "building.2.fill" : "person.fill"}
-              accessibilityLabel={counterpartName}
+              fallbackIcon={isInstructor ? "building.2.fill" : "person.fill"}
             />
-            <Box style={styles.counterpartInfo}>
-              <Text variant="micro" color="textMuted" style={styles.counterpartLabel}>
-                {isStudio
+            <View style={styles.counterpartInfo}>
+              <Text variant="micro" color="textMuted">
+                {isInstructor
                   ? t("calendarTab.detail.studioLabel")
                   : t("calendarTab.detail.instructorLabel")}
               </Text>
-              <Box style={styles.counterpartNameRow}>
+              <View style={styles.counterpartNameRow}>
                 <Text variant="bodyStrong" color="text" numberOfLines={1}>
-                  {counterpartName}
+                  {isInstructor
+                    ? detail.studioName
+                    : (detail.instructorName ?? t("calendarTab.unassignedInstructor"))}
                 </Text>
-                {isStudio ? (
+                {isInstructor && (
                   <IconSymbol name="chevron.right" size={16} color={theme.color.textMicro} />
-                ) : null}
-              </Box>
-            </Box>
+                )}
+              </View>
+            </View>
           </Pressable>
 
           {/* ── Check-in Result ── */}
           {detail.checkInStatus ? (
-            <Box
+            <View
               style={[
-                styles.checkInCard,
+                styles.resultCard,
                 {
                   backgroundColor: isCheckedIn
                     ? theme.color.primarySubtle
                     : theme.color.dangerSubtle,
-                  borderColor: isCheckedIn ? theme.color.primary : theme.color.danger,
                 },
               ]}
             >
-              <Box style={styles.checkInHeader}>
+              <View style={styles.resultHeader}>
                 <IconSymbol
                   name={isCheckedIn ? "checkmark.circle.fill" : "exclamationmark.circle.fill"}
                   size={20}
@@ -214,8 +253,8 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
                     ? t("calendarTab.card.checkInVerifiedTitle")
                     : t("calendarTab.card.checkInRetryTitle")}
                 </Text>
-              </Box>
-              <Text variant="caption" color="textMuted" style={styles.checkInBody}>
+              </View>
+              <Text variant="caption" color="textMuted">
                 {isCheckedIn
                   ? t("calendarTab.card.checkInVerifiedBody", {
                       distance: Math.max(0, Math.round(detail.checkInDistanceMeters ?? 0)),
@@ -224,41 +263,33 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
                     ? t(`calendarTab.card.checkInReasons.${detail.checkInReason}` as never)
                     : t("calendarTab.card.checkInReasons.unknown")}
               </Text>
-            </Box>
+            </View>
           ) : null}
 
-          {/* ── Instructor Note ── */}
+          {/* ── Note ── */}
           {detail.note ? (
-            <Box
-              style={[
-                styles.noteCard,
-                {
-                  backgroundColor: theme.color.surfaceMuted,
-                  borderColor: theme.color.border,
-                },
-              ]}
-            >
-              <Text variant="micro" color="textMicro" style={styles.noteLabel}>
-                {t("calendarTab.card.noteLabel")}
-              </Text>
-              <Text variant="body" color="text" style={styles.noteBody}>
+            <View style={styles.noteCard}>
+              <View style={styles.noteHeader}>
+                <IconSymbol name="note.text" size={14} color={theme.color.textMuted} />
+                <Text variant="micro" color="textMuted">
+                  {t("calendarTab.card.noteLabel")}
+                </Text>
+              </View>
+              <Text variant="body" color="text">
                 {detail.note}
               </Text>
-            </Box>
+            </View>
           ) : null}
 
-          {/* ── Check-in CTA ── */}
+          {/* ── Check-in Button ── */}
           {canCheckIn ? (
             <Pressable
               onPress={handleCheckIn}
               disabled={isSubmitting}
               style={({ pressed }) => [
                 styles.checkInButton,
-                {
-                  backgroundColor: theme.color.primary,
-                  transform: [{ scale: pressed && !isSubmitting ? 0.97 : 1 }],
-                  opacity: isSubmitting ? 0.7 : 1,
-                },
+                pressed && styles.checkInButtonPressed,
+                isSubmitting && styles.checkInButtonDisabled,
               ]}
             >
               <IconSymbol name="checkmark" size={20} color={theme.color.onPrimary} />
@@ -273,107 +304,35 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
   );
 });
 
-// ── Status helpers ──────────────────────────────────────────────────────────
-
-type ColorAccessor = (c: ThemeColors) => string;
-
-type StatusDef = {
-  label: string;
-  hint: string;
-  dot: ColorAccessor;
-  fg: ColorAccessor;
-  bg: ColorAccessor;
-};
-
-function getStatusDef(
-  detail: {
-    lifecycle: string;
-    checkInStatus?: string;
-  },
-  isCheckedIn: boolean,
-  hasRejectedCheckIn: boolean,
-  t: (k: string) => string,
-): StatusDef {
-  if (isCheckedIn) {
-    return {
-      label: t("calendarTab.card.indicators.checkedIn"),
-      hint: t("calendarTab.card.hints.checkedIn"),
-      dot: (c) => c.primary,
-      fg: (c) => c.primary,
-      bg: (c) => c.primarySubtle,
-    };
-  }
-  if (hasRejectedCheckIn) {
-    return {
-      label: t("calendarTab.card.indicators.checkInFailed"),
-      hint: t("calendarTab.card.hints.checkInFailed"),
-      dot: (c) => c.danger,
-      fg: (c) => c.danger,
-      bg: (c) => c.dangerSubtle,
-    };
-  }
-  if (detail.lifecycle === "cancelled") {
-    return {
-      label: t("calendarTab.card.indicators.cancelled"),
-      hint: t("calendarTab.card.hints.cancelled"),
-      dot: (c) => c.danger,
-      fg: (c) => c.danger,
-      bg: (c) => c.dangerSubtle,
-    };
-  }
-  if (detail.lifecycle === "live") {
-    return {
-      label: t("calendarTab.card.indicators.arriveNow"),
-      hint: t("calendarTab.card.hints.arriveNow"),
-      dot: (c) => c.secondary,
-      fg: (c) => c.secondary,
-      bg: (c) => c.secondarySubtle,
-    };
-  }
-  if (detail.lifecycle === "past") {
-    return {
-      label: t("calendarTab.card.indicators.complete"),
-      hint: t("calendarTab.card.hints.complete"),
-      dot: (c) => c.textMuted,
-      fg: (c) => c.textMuted,
-      bg: (c) => c.surfaceMuted,
-    };
-  }
-  return {
-    label: t("calendarTab.card.indicators.goodToGo"),
-    hint: t("calendarTab.card.hints.goodToGo"),
-    dot: (c) => c.primary,
-    fg: (c) => c.primary,
-    bg: (c) => c.primarySubtle,
-  };
-}
-
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create((theme) => ({
-  statusBanner: {
-    borderRadius: BrandRadius.card,
-    paddingHorizontal: BrandSpacing.md,
-    paddingVertical: BrandSpacing.sm,
-    gap: BrandSpacing.xxs,
-    marginBottom: BrandSpacing.md,
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: BrandSpacing.lg,
+    paddingTop: BrandSpacing.lg,
+    paddingBottom: BrandSpacing.xxl * 2,
   },
-  statusBannerInner: {
+  content: {
+    gap: BrandSpacing.lg,
+  },
+  statusRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: BrandSpacing.xs,
+    gap: BrandSpacing.sm,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  statusIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  heroRow: {
+  heroSection: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: BrandSpacing.md,
-    marginBottom: BrandSpacing.sm,
   },
   heroLeft: {
     flex: 1,
@@ -384,77 +343,57 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: "center",
     gap: BrandSpacing.xs,
   },
-  payBadge: {
-    backgroundColor: theme.color.primary,
-    borderRadius: BrandRadius.buttonSubtle,
-    paddingHorizontal: BrandSpacing.md,
-    paddingVertical: BrandSpacing.sm,
-    alignItems: "center",
-    justifyContent: "center",
+  paySection: {
+    alignItems: "flex-end",
+    gap: 2,
   },
   payAmount: {
     fontFamily: FontFamily.displayBold,
-    fontSize: FontSize.title,
+    fontSize: FontSize.heading,
     fontWeight: "800",
-    color: theme.color.onPrimary,
-    letterSpacing: LetterSpacing.title,
+    color: theme.color.primary,
   },
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: BrandSpacing.xs,
-    marginBottom: BrandSpacing.md,
-    paddingBottom: BrandSpacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.color.border,
   },
-  counterpartCard: {
+  counterpartRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: BrandSpacing.md,
+    padding: BrandSpacing.sm,
     borderRadius: BrandRadius.card,
-    borderWidth: 1,
-    padding: BrandSpacing.md,
-    marginBottom: BrandSpacing.md,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   counterpartInfo: {
     flex: 1,
-    gap: BrandSpacing.xxs,
-  },
-  counterpartLabel: {
-    textTransform: "uppercase" as const,
-    letterSpacing: 0.4,
+    gap: 2,
   },
   counterpartNameRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: BrandSpacing.xxs,
   },
-  checkInCard: {
+  resultCard: {
     borderRadius: BrandRadius.card,
-    borderWidth: 1,
     padding: BrandSpacing.md,
     gap: BrandSpacing.xs,
-    marginBottom: BrandSpacing.md,
   },
-  checkInHeader: {
+  resultHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: BrandSpacing.xs,
   },
-  checkInBody: {
-    lineHeight: 18,
-  },
   noteCard: {
-    borderRadius: BrandRadius.card,
-    borderWidth: 1,
-    padding: BrandSpacing.md,
     gap: BrandSpacing.xs,
-    marginBottom: BrandSpacing.md,
   },
-  noteLabel: {
-    textTransform: "uppercase" as const,
-    letterSpacing: 0.4,
+  noteHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: BrandSpacing.xs,
   },
   noteBody: {
     lineHeight: 20,
@@ -466,7 +405,12 @@ const styles = StyleSheet.create((theme) => ({
     gap: BrandSpacing.sm,
     borderRadius: BrandRadius.button,
     paddingVertical: BrandSpacing.md + 2,
-    marginTop: BrandSpacing.xs,
-    marginBottom: BrandSpacing.xxl,
+    backgroundColor: theme.color.primary,
+  },
+  checkInButtonPressed: {
+    opacity: 0.8,
+  },
+  checkInButtonDisabled: {
+    opacity: 0.5,
   },
 }));

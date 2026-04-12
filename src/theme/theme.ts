@@ -410,10 +410,10 @@ const lightColors = {
 } as const;
 
 const darkColors = {
-  // Brand — full electric blue on dark, burnt orange complements
-  primary: "#66AAFF",
-  primarySubtle: "#66AAFF35",
-  primaryPressed: "#4488EE",
+  // Brand — vibrant saturated blue on dark, burnt orange complements
+  primary: "#0055CC",
+  primarySubtle: "#0055CC30",
+  primaryPressed: "#0044AA",
   onPrimary: "#FFFFFF",
   secondary: "#CC5522",
   secondarySubtle: "#CC552220",

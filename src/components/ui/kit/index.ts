@@ -17,7 +17,7 @@ export { KitStatusBadge } from "./kit-status-badge";
 export { KitSuccessBurst } from "./kit-success-burst";
 export type { KitSurfaceProps, KitSurfaceTone } from "./kit-surface";
 export { KitSurface } from "./kit-surface";
-export { KitSwitch } from "./kit-switch";
+export { NativeSwitch as KitSwitch } from "../native-switch";
 export { KitTextField } from "./kit-text-field";
 export { KitTonalSurface } from "./kit-tonal-surface";
 export type {

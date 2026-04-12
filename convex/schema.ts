@@ -575,9 +575,11 @@ export default defineSchema({
   studioBillingProfiles: defineTable({
     studioId: v.id("studioProfiles"),
     ownerUserId: v.id("users"),
+    country: v.optional(v.string()),
     legalEntityType: v.union(v.literal("individual"), v.literal("company")),
     legalBusinessName: v.optional(v.string()),
     taxId: v.optional(v.string()),
+    taxClassification: v.optional(v.string()),
     vatReportingType: v.optional(
       v.union(
         v.literal("osek_patur"),
@@ -586,9 +588,21 @@ export default defineSchema({
         v.literal("other"),
       ),
     ),
+    companyRegNumber: v.optional(v.string()),
+    legalForm: v.optional(v.string()),
     billingEmail: v.optional(v.string()),
     billingPhone: v.optional(v.string()),
     billingAddress: v.optional(v.string()),
+    billingAddressStructured: v.optional(
+      v.object({
+        line1: v.string(),
+        line2: v.optional(v.string()),
+        city: v.string(),
+        state: v.optional(v.string()),
+        postalCode: v.string(),
+        country: v.optional(v.string()),
+      }),
+    ),
     status: v.union(v.literal("incomplete"), v.literal("complete")),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -1347,7 +1361,7 @@ export default defineSchema({
 
   connectedAccountsV2: defineTable({
     userId: v.id("users"),
-    role: v.literal("instructor"),
+    role: v.union(v.literal("instructor"), v.literal("studio")),
     provider: v.union(v.literal("airwallex"), v.literal("stripe")),
     providerAccountId: v.string(),
     accountCapability: v.union(v.literal("ledger"), v.literal("withdrawal"), v.literal("full")),

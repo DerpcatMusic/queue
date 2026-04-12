@@ -13,6 +13,7 @@ import {
   getMainTabSheetBackgroundColor,
 } from "@/components/layout/top-sheet-registry";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
+import { LanguagePickerSheet } from "@/components/sheets/profile/language-picker-sheet";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
@@ -66,13 +67,14 @@ export default function InstructorProfileScreen() {
   const { signOut } = useAuthActions();
   const { currentUser } = useUser();
   const { reloadAuthSession } = useAuthSession();
-  const { language, setLanguage } = useAppLanguage();
+  const { language } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
   const theme = useTheme();
   const { t, i18n } = useTranslation();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const [accountSwitcherVisible, setAccountSwitcherVisible] = useState(false);
+  const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
 
@@ -468,10 +470,10 @@ export default function InstructorProfileScreen() {
                   />
                   <ProfileSettingRow
                     title={t("profile.language.title")}
-                    value={language === "en" ? t("language.english") : t("language.hebrew")}
+                    value={t(`language.${language}`)}
                     icon="globe"
                     sectionTone="preferences"
-                    onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                    onPress={() => setLanguagePickerVisible(true)}
                     showDivider
                   />
                   <ProfileSettingRow
@@ -670,10 +672,10 @@ export default function InstructorProfileScreen() {
               />
               <ProfileSettingRow
                 title={t("profile.language.title")}
-                value={language === "en" ? t("language.english") : t("language.hebrew")}
+                value={t(`language.${language}`)}
                 icon="globe"
                 sectionTone="preferences"
-                onPress={() => void setLanguage(language === "en" ? "he" : "en")}
+                onPress={() => setLanguagePickerVisible(true)}
               />
             </ProfileSectionCard>
 
@@ -716,6 +718,10 @@ export default function InstructorProfileScreen() {
         onSignOut={handleSignOut}
         onUseAnotherAccount={handleUseAnotherAccount}
         profileImageUrl={instructorSettings?.profileImageUrl ?? currentUser?.image}
+      />
+      <LanguagePickerSheet
+        visible={languagePickerVisible}
+        onClose={() => setLanguagePickerVisible(false)}
       />
     </>
   );

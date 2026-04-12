@@ -11,7 +11,7 @@ export type ConnectedAccountStatus =
 export type StripeConnectEmbeddedModalProps = {
   visible: boolean;
   accountStatus: ConnectedAccountStatus | null;
-  mode?: "auto" | "onboarding" | "payouts";
+  mode?: "auto" | "onboarding" | "payouts" | "payments" | "dashboard";
   onClose: () => void;
   onCompleted: () => Promise<void> | void;
   onFeedback: (feedback: { tone: "success" | "error"; message: string } | null) => void;

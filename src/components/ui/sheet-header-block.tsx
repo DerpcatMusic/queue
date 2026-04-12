@@ -1,4 +1,5 @@
-import { I18nManager, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -28,6 +29,8 @@ export function SheetHeaderBlock({
   trailingTone = "default",
 }: SheetHeaderBlockProps) {
   const theme = useTheme();
+  const { i18n } = useTranslation();
+  const isRtl = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he");
   const foregroundColor = tone === "primary" ? theme.color.onPrimary : theme.color.text;
   const inactiveProgress =
     tone === "primary" ? theme.color.primaryPressed : theme.color.surfaceMuted;
@@ -55,7 +58,7 @@ export function SheetHeaderBlock({
     <View style={{ gap: BrandSpacing.md }}>
       <View
         style={{
-          flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
+          flexDirection: isRtl ? "row-reverse" : "row",
           alignItems: "center",
           justifyContent: "space-between",
           gap: BrandSpacing.md,
@@ -64,7 +67,7 @@ export function SheetHeaderBlock({
         {progressCount && progressIndex ? (
           <View
             style={{
-              flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
+              flexDirection: isRtl ? "row-reverse" : "row",
               alignItems: "center",
               gap: BrandSpacing.sm,
             }}
@@ -107,7 +110,7 @@ export function SheetHeaderBlock({
           >
             <View
               style={{
-                flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
+                flexDirection: isRtl ? "row-reverse" : "row",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: BrandSpacing.xs,

@@ -11,6 +11,7 @@ import {
   studioComplianceSummaryValidator,
   studioLegalEntityTypeValidator,
   studioPaymentStatusValidator,
+  studioTaxClassificationValidator,
   studioVatReportingTypeValidator,
 } from "./lib/studioCompliance";
 import {
@@ -35,9 +36,23 @@ export const studioComplianceDetailsValidator = v.object({
       legalBusinessName: v.optional(v.string()),
       taxId: v.optional(v.string()),
       vatReportingType: v.optional(studioVatReportingTypeValidator),
+      taxClassification: v.optional(v.string()),
+      country: v.optional(v.string()),
+      companyRegNumber: v.optional(v.string()),
+      legalForm: v.optional(v.string()),
       billingEmail: v.optional(v.string()),
       billingPhone: v.optional(v.string()),
       billingAddress: v.optional(v.string()),
+      billingAddressStructured: v.optional(
+        v.object({
+          line1: v.string(),
+          line2: v.optional(v.string()),
+          city: v.string(),
+          state: v.optional(v.string()),
+          postalCode: v.string(),
+          country: v.optional(v.string()),
+        }),
+      ),
       completedAt: v.optional(v.number()),
     }),
   ),
@@ -108,9 +123,14 @@ export async function getStudioComplianceDetailsRead(
             legalBusinessName: billingProfile.legalBusinessName,
             taxId: billingProfile.taxId,
             vatReportingType: billingProfile.vatReportingType,
+            taxClassification: billingProfile.taxClassification,
+            country: billingProfile.country,
+            companyRegNumber: billingProfile.companyRegNumber,
+            legalForm: billingProfile.legalForm,
             billingEmail: billingProfile.billingEmail,
             billingPhone: billingProfile.billingPhone,
             billingAddress: billingProfile.billingAddress,
+            billingAddressStructured: billingProfile.billingAddressStructured,
             completedAt: billingProfile.completedAt,
           }),
         }
@@ -147,13 +167,26 @@ export const getMyStudioComplianceDetails = query({
 
 export const upsertMyStudioBillingProfile = mutation({
   args: {
+    country: v.optional(v.string()),
     legalEntityType: studioLegalEntityTypeValidator,
     legalBusinessName: v.string(),
     taxId: v.string(),
+    taxClassification: v.optional(studioTaxClassificationValidator),
+    companyRegNumber: v.optional(v.string()),
+    legalForm: v.optional(v.string()),
     billingEmail: v.string(),
-    vatReportingType: v.optional(studioVatReportingTypeValidator),
     billingPhone: v.optional(v.string()),
     billingAddress: v.optional(v.string()),
+    billingAddressStructured: v.optional(
+      v.object({
+        line1: v.string(),
+        line2: v.optional(v.string()),
+        city: v.string(),
+        state: v.optional(v.string()),
+        postalCode: v.string(),
+        country: v.optional(v.string()),
+      }),
+    ),
   },
   returns: v.object({
     ok: v.boolean(),
@@ -184,41 +217,61 @@ export const upsertMyStudioBillingProfile = mutation({
       MAX_BILLING_ADDRESS_LENGTH,
       "Billing address",
     );
+    const companyRegNumber = normalizeOptionalString(
+      args.companyRegNumber,
+      40,
+      "Company registration number",
+    );
+    const country = args.country?.trim() || undefined;
+
+    // Status is "complete" only when all required fields are present
+    const hasRequiredFields =
+      legalBusinessName.length > 0 &&
+      taxId.length > 0 &&
+      billingEmail.length > 0;
+    const status = hasRequiredFields ? ("complete" as const) : ("incomplete" as const);
 
     const existing = await getStudioBillingProfile(ctx, studio._id);
-    const status = "complete" as const;
 
     if (existing) {
       await ctx.db.patch(existing._id, {
+        ...omitUndefined({ country }),
         legalEntityType: args.legalEntityType,
         legalBusinessName,
         taxId,
         billingEmail,
         status,
         updatedAt: now,
-        completedAt: now,
+        ...(status === "complete" ? { completedAt: now } : {}),
         ...omitUndefined({
-          vatReportingType: args.vatReportingType,
+          taxClassification: args.taxClassification,
+          companyRegNumber,
+          legalForm: args.legalForm,
           billingPhone,
           billingAddress,
+          billingAddressStructured: args.billingAddressStructured,
         }),
       });
     } else {
       await ctx.db.insert("studioBillingProfiles", {
         studioId: studio._id,
         ownerUserId: user._id,
+        ...omitUndefined({ country }),
         legalEntityType: args.legalEntityType,
         legalBusinessName,
         taxId,
         billingEmail,
         status,
-        completedAt: now,
+        ...(status === "complete" ? { completedAt: now } : {}),
         createdAt: now,
         updatedAt: now,
         ...omitUndefined({
-          vatReportingType: args.vatReportingType,
+          taxClassification: args.taxClassification,
+          companyRegNumber,
+          legalForm: args.legalForm,
           billingPhone,
           billingAddress,
+          billingAddressStructured: args.billingAddressStructured,
         }),
       });
     }

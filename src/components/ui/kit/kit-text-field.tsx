@@ -1,5 +1,5 @@
 import { Text, TextInput, View } from "react-native";
-import { I18nManager } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
@@ -17,6 +17,8 @@ export function KitTextField({
   ...inputProps
 }: KitTextFieldProps) {
   const theme = useTheme();
+  const { i18n } = useTranslation();
+  const isRtl = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he");
   const hasError = Boolean(errorText);
   const isMultiline = Boolean(inputProps.multiline);
 
@@ -54,7 +56,7 @@ export function KitTextField({
           {...inputProps}
           accessibilityLabel={inputProps.accessibilityLabel ?? label}
           accessibilityHint={inputProps.accessibilityHint ?? helperText ?? errorText ?? undefined}
-          textAlign={inputProps.textAlign ?? (I18nManager.isRTL ? "right" : "left")}
+          textAlign={inputProps.textAlign ?? (isRtl ? "right" : "left")}
           placeholderTextColor={placeholderTextColor ?? theme.color.textMuted}
           selectionColor={theme.color.primary}
           cursorColor={theme.color.primary}

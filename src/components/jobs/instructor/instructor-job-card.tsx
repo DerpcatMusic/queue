@@ -2,7 +2,7 @@ import { Image as ExpoImage } from "expo-image";
 import type { TFunction } from "i18next";
 import type React from "react";
 import { memo } from "react";
-import { I18nManager, Platform, Pressable, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
 import { FilterImage, type Filters } from "react-native-svg/filter-image";
 import { ActionButton } from "@/components/ui/action-button";
@@ -60,6 +60,7 @@ const StudioImageBackground = memo(function StudioImageBackground({
 }) {
   // Grayscale: CSS filter on web; true SVG feColorMatrix desaturation on native
   const webFilterStyle = { filter: "grayscale(100%) contrast(112%) brightness(54%)" };
+  const isRtl = zoneLanguage === "he";
 
   return (
     <View
@@ -327,7 +328,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                       lineHeight: LineHeight.heroSmall,
                       letterSpacing: LetterSpacing.heroSmall,
                       color: metaAccent,
-                      textAlign: I18nManager.isRTL ? "left" : "right",
+                      textAlign: isRtl ? "left" : "right",
                       fontWeight: "900",
                       includeFontPadding: false,
                     }}

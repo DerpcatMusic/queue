@@ -1,4 +1,5 @@
-import { ActivityIndicator, I18nManager, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { Text } from "@/primitives";
@@ -68,6 +69,8 @@ export function AppButtonFallback({
   labelStyle,
 }: AppButtonProps) {
   const theme = useTheme();
+  const { i18n } = useTranslation();
+  const isRtl = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he");
 
   if (!label && !icon) {
     throw new Error("AppButton requires a label, an icon, or both.");
@@ -149,7 +152,7 @@ export function AppButtonFallback({
                 ...theme.typography.bodyMedium,
                 color: textColor,
                 includeFontPadding: false,
-                textAlign: isIconOnly ? "center" : I18nManager.isRTL ? "right" : "left",
+                textAlign: isIconOnly ? "center" : isRtl ? "right" : "left",
                 flexShrink: 1,
                 ...labelStyle,
               }}

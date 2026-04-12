@@ -7,7 +7,7 @@ import {
 } from "@stripe/stripe-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { KitSegmentedToggle } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -60,7 +60,6 @@ export function StripeConnectEmbeddedModal({
   const [connectInstance, setConnectInstance] = useState<ReturnType<
     typeof loadConnectAndInitialize
   > | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>("payments");
 
@@ -103,12 +102,10 @@ export function StripeConnectEmbeddedModal({
   useEffect(() => {
     if (!visible || !publishableKey) {
       setConnectInstance(null);
-      setIsLoading(false);
       return;
     }
 
     setLoadError(null);
-    setIsLoading(true);
     setConnectInstance(
       loadConnectAndInitialize({
         publishableKey,
@@ -185,10 +182,11 @@ export function StripeConnectEmbeddedModal({
           <Box
             alignItems="center"
             justifyContent="center"
-            style={{ flex: 1, backgroundColor: theme.color.appBg, padding: BrandSpacing.lg }}
+            style={{ flex: 1, backgroundColor: theme.color.appBg, padding: BrandSpacing.lg, gap: BrandSpacing.md }}
           >
-            <Text variant="bodyStrong">
-              {loadError ? "Stripe unavailable" : "Loading Stripe..."}
+            <ActivityIndicator size="large" color={theme.color.primary} />
+            <Text variant="caption" color="textMuted">
+              {loadError ? "Stripe unavailable" : "Connecting to Stripe..."}
             </Text>
           </Box>
         </SafeAreaView>
@@ -221,14 +219,7 @@ export function StripeConnectEmbeddedModal({
               onClose();
             }
           }}
-          onLoaderStart={() => {
-            setIsLoading(true);
-          }}
-          onPageDidLoad={() => {
-            setIsLoading(false);
-          }}
           onLoadError={(error) => {
-            setIsLoading(false);
             setLoadError(error.message);
             onFeedback({
               tone: "error",
@@ -299,32 +290,24 @@ export function StripeConnectEmbeddedModal({
               />
             </Box>
 
-            {/* Stripe components — both mounted, active one visible */}
+            {/* Stripe components — both mounted, zIndex controls visibility */}
             <View style={styles.stripeContainer}>
               <ConnectComponentsProvider connectInstance={connectInstance}>
                 <View
-                  style={[styles.tabLayer, dashboardTab !== "payments" && styles.hiddenTab]}
-                  pointerEvents={dashboardTab === "payments" ? "auto" : "none"}
+                  style={[styles.tabLayer, dashboardTab === "payments" && styles.activeTab]}
                 >
                   <ConnectPayments
-                    onLoaderStart={() => setIsLoading(true)}
-                    onPageDidLoad={() => setIsLoading(false)}
                     onLoadError={(error) => {
-                      setIsLoading(false);
                       setLoadError(error.message);
                       onFeedback({ tone: "error", message: error.message });
                     }}
                   />
                 </View>
                 <View
-                  style={[styles.tabLayer, dashboardTab !== "payouts" && styles.hiddenTab]}
-                  pointerEvents={dashboardTab === "payouts" ? "auto" : "none"}
+                  style={[styles.tabLayer, dashboardTab === "payouts" && styles.activeTab]}
                 >
                   <ConnectPayouts
-                    onLoaderStart={() => setIsLoading(true)}
-                    onPageDidLoad={() => setIsLoading(false)}
                     onLoadError={(error) => {
-                      setIsLoading(false);
                       setLoadError(error.message);
                       onFeedback({ tone: "error", message: error.message });
                     }}
@@ -332,24 +315,6 @@ export function StripeConnectEmbeddedModal({
                 </View>
               </ConnectComponentsProvider>
             </View>
-
-            {/* Loading overlay */}
-            {isLoading ? (
-              <Box
-                alignItems="center"
-                justifyContent="center"
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  backgroundColor: `${theme.color.appBg}E6`,
-                }}
-              >
-                <Text variant="bodyStrong">Loading...</Text>
-              </Box>
-            ) : null}
           </Box>
         </SafeAreaView>
       </Modal>
@@ -401,20 +366,14 @@ export function StripeConnectEmbeddedModal({
             <ConnectComponentsProvider connectInstance={connectInstance}>
               {isPaymentsMode ? (
                 <ConnectPayments
-                  onLoaderStart={() => setIsLoading(true)}
-                  onPageDidLoad={() => setIsLoading(false)}
                   onLoadError={(error) => {
-                    setIsLoading(false);
                     setLoadError(error.message);
                     onFeedback({ tone: "error", message: error.message });
                   }}
                 />
               ) : (
                 <ConnectPayouts
-                  onLoaderStart={() => setIsLoading(true)}
-                  onPageDidLoad={() => setIsLoading(false)}
                   onLoadError={(error) => {
-                    setIsLoading(false);
                     setLoadError(error.message);
                     onFeedback({ tone: "error", message: error.message });
                   }}
@@ -422,22 +381,6 @@ export function StripeConnectEmbeddedModal({
               )}
             </ConnectComponentsProvider>
           </View>
-          {isLoading ? (
-            <Box
-              alignItems="center"
-              justifyContent="center"
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 0,
-                backgroundColor: `${theme.color.appBg}E6`,
-              }}
-            >
-              <Text variant="bodyStrong">Loading Stripe...</Text>
-            </Box>
-          ) : null}
         </Box>
       </SafeAreaView>
     </Modal>
@@ -451,8 +394,9 @@ const styles = StyleSheet.create({
   },
   tabLayer: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
   },
-  hiddenTab: {
-    opacity: 0,
+  activeTab: {
+    zIndex: 1,
   },
 });
