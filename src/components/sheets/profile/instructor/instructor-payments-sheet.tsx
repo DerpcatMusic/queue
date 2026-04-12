@@ -3,8 +3,7 @@
  *
  * Two states:
  * - Not onboarded: Bottom sheet with status badge + onboarding CTA
- * - Active: Expanding bottom sheet with native tab bar + Stripe embedded components
- *   pre-warmed in the background for instant load.
+ * - Active: Expanding bottom sheet with tab bar + Stripe embedded components
  */
 
 import { useAction, useQuery } from "convex/react";
@@ -149,15 +148,11 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
   const [onboardingVisible, setOnboardingVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<PaymentTab>("payments");
 
-  // ─── Pre-warm everything ─────────────────────────────────────────────
-  //
-  // When the account is active, we pre-fetch the client secret AND
-  // pre-create the Stripe Connect instance AND pre-mount the webviews
-  // so everything is warm before the user opens the sheet.
+  // ─── Stripe Connect instance ──────────────────────────────────────────
 
-  const prefetchedSecretRef = useRef<string | null>(null);
   const connectInstanceRef = useRef<ReturnType<typeof loadConnectAndInitialize> | null>(null);
-  const [instanceReady, setInstanceReady] = useState(false);
+  // State counter to force re-render when instance is ready
+  const [, setInstanceReady] = useState(0);
 
   const accountStatus = (connectedAccount?.status ?? null) as ConnectedAccountStatus | null;
   const accountCopy = statusCopy(t, accountStatus, connectedAccount?.requirementsSummary ?? null);
@@ -167,57 +162,46 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
   const isLoading = !currentUser || (isInstructor && connectedAccount === undefined);
   const { animatedStyle } = useContentReveal(isLoading);
 
-  // Stripe appearance matching app theme exactly
-  const themeColors = color;
+  // Stripe appearance matching app theme
   const appearance = useMemo(
     () => ({
       variables: {
-        colorPrimary: themeColors.primary,
-        colorBackground: themeColors.surface,
-        colorText: themeColors.text,
-        colorSecondaryText: themeColors.textMuted,
-        colorDanger: themeColors.danger,
-        buttonPrimaryColorBackground: themeColors.primary,
-        buttonPrimaryColorBorder: themeColors.primary,
-        buttonPrimaryColorText: themeColors.onPrimary,
-        buttonSecondaryColorBackground: themeColors.surfaceAlt,
-        buttonSecondaryColorBorder: themeColors.border,
-        buttonSecondaryColorText: themeColors.text,
+        colorPrimary: color.primary,
+        colorBackground: color.surface,
+        colorText: color.text,
+        colorSecondaryText: color.textMuted,
+        colorDanger: color.danger,
+        buttonPrimaryColorBackground: color.primary,
+        buttonPrimaryColorBorder: color.primary,
+        buttonPrimaryColorText: color.onPrimary,
+        buttonSecondaryColorBackground: color.surfaceMuted,
+        buttonSecondaryColorBorder: color.border,
+        buttonSecondaryColorText: color.text,
         borderRadius: "18px",
         spacingUnit: "12px",
       },
     }),
     [
-      themeColors.border,
-      themeColors.danger,
-      themeColors.onPrimary,
-      themeColors.primary,
-      themeColors.surface,
-      themeColors.surfaceAlt,
-      themeColors.text,
-      themeColors.textMuted,
+      color.border,
+      color.danger,
+      color.onPrimary,
+      color.primary,
+      color.surface,
+      color.surfaceMuted,
+      color.text,
+      color.textMuted,
     ],
   );
 
-  // Pre-fetch client secret as soon as account is active
-  useEffect(() => {
-    if (!isActive || prefetchedSecretRef.current) return;
-    void createStripeEmbeddedSession({}).then((result) => {
-      prefetchedSecretRef.current = result.clientSecret;
-    }).catch(() => {});
-  }, [isActive, createStripeEmbeddedSession]);
-
-  // Pre-create Stripe Connect instance as soon as we have a secret + key
+  // Create the Stripe Connect instance once we have everything we need.
+  // Uses a simple polling approach via instanceReady counter.
   useEffect(() => {
     if (!isActive || !publishableKey || connectInstanceRef.current) return;
-    if (!prefetchedSecretRef.current) return;
 
+    // We need a client secret — fetch it fresh each time the instance is created.
+    // The SDK will call this lazily when components mount.
     const fetchClientSecret = async () => {
-      if (prefetchedSecretRef.current) {
-        return prefetchedSecretRef.current;
-      }
       const session = await createStripeEmbeddedSession({});
-      prefetchedSecretRef.current = session.clientSecret;
       return session.clientSecret;
     };
 
@@ -227,15 +211,10 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
       locale,
       appearance,
     });
-    setInstanceReady(true);
+    setInstanceReady((v) => v + 1);
   }, [isActive, publishableKey, appearance, locale, createStripeEmbeddedSession]);
 
   const handleCreateStripeEmbeddedSession = useCallback(async () => {
-    const cached = prefetchedSecretRef.current;
-    if (cached) {
-      prefetchedSecretRef.current = null;
-      return { clientSecret: cached };
-    }
     return createStripeEmbeddedSession({});
   }, [createStripeEmbeddedSession]);
 
@@ -320,64 +299,51 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
     );
   }
 
-  // ─── Active: expanding bottom sheet with pre-warmed Stripe ──────────
+  // ─── Active: expanding bottom sheet with Stripe embedded ────────────
 
   if (isActive) {
     const connectInstance = connectInstanceRef.current;
 
     return (
-      <>
-        {/* Pre-mounted Stripe webviews — hidden until sheet opens.
-            These render off-screen so the webviews load their content
-            in the background. When the sheet opens, they're already warm. */}
-        {!visible && connectInstance && (
-          <View style={styles.prewarmContainer} pointerEvents="none">
+      <BaseProfileSheet
+        visible={visible}
+        onClose={onClose}
+        snapPoints={["50%", "95%"]}
+        edgeToEdge
+        headerContent={
+          <KitSegmentedToggle<PaymentTab>
+            value={activeTab}
+            onChange={setActiveTab}
+            options={[
+              { label: t("profile.payments.tabs.earnings"), value: "payments" },
+              { label: t("profile.payments.tabs.payouts"), value: "payouts" },
+            ]}
+          />
+        }
+      >
+        <View style={styles.stripeContainer}>
+          {connectInstance ? (
             <ConnectComponentsProvider connectInstance={connectInstance}>
-              <ConnectPayments />
-              <ConnectPayouts />
+              <View
+                style={activeTab === "payments" ? styles.activeTabLayer : styles.hiddenTabLayer}
+                pointerEvents={activeTab === "payments" ? "auto" : "none"}
+              >
+                <ConnectPayments />
+              </View>
+              <View
+                style={activeTab === "payouts" ? styles.activeTabLayer : styles.hiddenTabLayer}
+                pointerEvents={activeTab === "payouts" ? "auto" : "none"}
+              >
+                <ConnectPayouts />
+              </View>
             </ConnectComponentsProvider>
-          </View>
-        )}
-
-        <BaseProfileSheet
-          visible={visible}
-          onClose={onClose}
-          snapPoints={["50%", "95%"]}
-          headerContent={
-            <KitSegmentedToggle<PaymentTab>
-              value={activeTab}
-              onChange={setActiveTab}
-              options={[
-                { label: t("profile.payments.tabs.earnings"), value: "payments" },
-                { label: t("profile.payments.tabs.payouts"), value: "payouts" },
-              ]}
-            />
-          }
-        >
-          <View style={styles.stripeContainer}>
-            {connectInstance ? (
-              <ConnectComponentsProvider connectInstance={connectInstance}>
-                <View
-                  style={[styles.tabLayer, activeTab !== "payments" && styles.hiddenTab]}
-                  pointerEvents={activeTab === "payments" ? "auto" : "none"}
-                >
-                  <ConnectPayments />
-                </View>
-                <View
-                  style={[styles.tabLayer, activeTab !== "payouts" && styles.hiddenTab]}
-                  pointerEvents={activeTab === "payouts" ? "auto" : "none"}
-                >
-                  <ConnectPayouts />
-                </View>
-              </ConnectComponentsProvider>
-            ) : (
-              <Box style={{ padding: BrandSpacing.xl, alignItems: "center" }}>
-                <ThemedText style={{ color: color.textMuted }}>Loading...</ThemedText>
-              </Box>
-            )}
-          </View>
-        </BaseProfileSheet>
-      </>
+          ) : (
+            <Box style={{ padding: BrandSpacing.xl, alignItems: "center" }}>
+              <ThemedText style={{ color: color.textMuted }}>Loading...</ThemedText>
+            </Box>
+          )}
+        </View>
+      </BaseProfileSheet>
     );
   }
 
@@ -390,7 +356,7 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
           {connectError || connectInfo ? (
             <Box
               style={{
-                backgroundColor: connectError ? color.dangerSubtle : color.surfaceAlt,
+                backgroundColor: connectError ? color.dangerSubtle : color.surfaceMuted,
                 borderRadius: BrandRadius.lg,
                 paddingHorizontal: BrandSpacing.component,
                 paddingVertical: BrandSpacing.stackDense,
@@ -424,14 +390,14 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
             disabled={connectBusy}
             style={({ pressed }) => ({
               borderRadius: BrandRadius.medium,
-              borderCurve: "Continuous" as const,
+              borderCurve: "continuous" as const,
               minHeight: BrandSpacing.buttonMinHeightXl,
               alignItems: "center",
               justifyContent: "center",
               flexDirection: "row",
               gap: BrandSpacing.sm,
               backgroundColor: connectBusy
-                ? color.surfaceAlt
+                ? color.surfaceMuted
                 : pressed
                   ? color.primaryPressed
                   : color.primary,
@@ -472,25 +438,15 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
 }
 
 const styles = StyleSheet.create({
-  // Off-screen pre-warm container — zero size, invisible, but webviews still mount + load
-  prewarmContainer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 0,
-    overflow: "hidden",
-    opacity: 0,
-  },
   stripeContainer: {
     flex: 1,
-    position: "relative",
-    marginHorizontal: -BrandSpacing.lg, // Fill edge-to-edge inside the ScrollView padding
   },
-  tabLayer: {
-    ...StyleSheet.absoluteFillObject,
+  activeTabLayer: {
+    flex: 1,
   },
-  hiddenTab: {
-    opacity: 0,
+  hiddenTabLayer: {
+    height: 0,
+    overflow: "hidden",
+    flex: 0,
   },
 });

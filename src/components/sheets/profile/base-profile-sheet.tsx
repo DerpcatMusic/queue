@@ -4,7 +4,9 @@
  *
  * Uses BottomSheetModal (portal-based) so sheets render above all app content
  * regardless of where GlobalSheets sits in the component tree.
- * Controlled via `visible` prop — synced to imperative present()/dismiss().
+ *
+ * The modal is always mounted (gorham pattern). Visibility is controlled
+ * via imperative present()/dismiss() calls synced to the `visible` prop.
  */
 
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
@@ -42,23 +44,29 @@ export function BaseProfileSheet({
   const { t } = useTranslation();
   const { theme } = useUnistyles();
   const ref = useRef<BottomSheetModalRef>(null);
-  const hasPresentedRef = useRef(false);
 
+  // Track whether we've presented — prevents onDismiss→onClose cycle
+  // when dismiss() is called on an already-dismissed modal.
+  const presentedRef = useRef(false);
+
+  // Sync visible prop to imperative present/dismiss.
+  // Modal stays mounted — gorham handles visibility via portal.
   useEffect(() => {
-    if (!visible || hasPresentedRef.current) {
-      return;
+    if (visible) {
+      presentedRef.current = true;
+      ref.current?.present();
+    } else if (presentedRef.current) {
+      ref.current?.dismiss();
     }
-
-    hasPresentedRef.current = true;
-    ref.current?.present();
   }, [visible]);
 
   const handleCloseRequest = useCallback(() => {
     ref.current?.dismiss();
   }, []);
 
+  // Fires when the sheet finishes its dismiss animation (user swipe, backdrop tap, etc.)
   const handleDismiss = useCallback(() => {
-    hasPresentedRef.current = false;
+    presentedRef.current = false;
     onClose();
   }, [onClose]);
 
@@ -75,10 +83,6 @@ export function BaseProfileSheet({
     ),
     [],
   );
-
-  if (!visible) {
-    return null;
-  }
 
   return (
     <BottomSheetModal
@@ -124,7 +128,7 @@ export function BaseProfileSheet({
         <View style={styles.titleSpacer} />
       </View>
 
-      {/* Fixed content above scroll (e.g., map) */}
+      {/* Fixed content above scroll (e.g., segmented toggle) */}
       {headerContent ? (
         <View style={{ paddingHorizontal: BrandSpacing.lg, paddingTop: BrandSpacing.lg }}>
           {headerContent}
