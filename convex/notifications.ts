@@ -42,7 +42,7 @@ export const sendJobNotifications = internalAction({
     failed: v.number(),
   }),
   handler: async (ctx, args) => {
-    const payload = await ctx.runQuery(internal.notificationsCore.getJobAndEligibleInstructors, {
+    const payload = await ctx.runAction(internal.notificationsCore.getJobAndEligibleInstructors, {
       jobId: args.jobId,
     });
 

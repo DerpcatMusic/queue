@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "../_generated/server";
+import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server";
 import { getSportGenreKey } from "../constants";
 import { normalizeCapabilityTagArray, normalizeSportType } from "./domainValidation";
 import { resolveInternalAccessForUserId } from "./internalAccess";
@@ -11,7 +11,7 @@ import {
 } from "./stripeIdentity";
 import { omitUndefined } from "./validation";
 
-type Ctx = QueryCtx | MutationCtx;
+type Ctx = QueryCtx | MutationCtx | ActionCtx;
 type InstructorJobActionBlockReason =
   | "identity_verification_required"
   | "insurance_verification_required"

@@ -1,11 +1,16 @@
 import { ConvexError, v } from "convex/values";
+import { gridDisk } from "h3-js";
 
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { internalMutation, internalQuery } from "./_generated/server";
-import { normalizeBoundaryId, normalizeBoundaryProvider } from "./lib/boundaries";
-import { isKnownZoneId } from "./lib/domainValidation";
+import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery } from "./_generated/server";
+import { radiusToK } from "./lib/h3";
+import {
+  canInstructorPerformJobActions,
+  loadInstructorComplianceSnapshot,
+} from "./lib/instructorCompliance";
+import { MAX_WORK_RADIUS_KM } from "./lib/locationRadius";
 import {
   DEFAULT_LESSON_REMINDER_MINUTES,
   getDefaultNotificationPreferencesForRole,
@@ -15,13 +20,6 @@ import {
   type NotificationInboxKind,
   type NotificationPreferenceKey,
 } from "./lib/notificationPreferences";
-import {
-  canInstructorPerformJobActions,
-  loadInstructorComplianceSnapshot,
-} from "./lib/instructorCompliance";
-import {
-  findNearbyInstructorsForBranch,
-} from "./lib/geospatial";
 import { omitUndefined, trimOptionalString } from "./lib/validation";
 
 const LOCAL_DEVICE_OWNED_REMINDER_REASON = "local_device_owned";
@@ -37,7 +35,7 @@ type PushRouting = {
 };
 
 async function getPushRoutingForUser(
-  ctx: QueryCtx | MutationCtx,
+  ctx: QueryCtx | MutationCtx | ActionCtx,
   userId: Id<"users">,
   preferenceKey: NotificationPreferenceKey,
 ): Promise<PushRouting | null> {
@@ -154,7 +152,7 @@ async function deliverNotificationEventInternal(
   return { stored: true, pushScheduled: canSendPush };
 }
 
-export const getJobAndEligibleInstructors = internalQuery({
+export const getJobAndEligibleInstructors = internalAction({
   args: { jobId: v.id("jobs") },
   returns: v.union(
     v.null(),
@@ -178,7 +176,9 @@ export const getJobAndEligibleInstructors = internalQuery({
     if (!job || job.status !== "open") {
       return null;
     }
-    if (!job.boundaryProvider && !job.boundaryId && !isKnownZoneId(job.zone)) {
+
+    const branch = await ctx.db.get("studioBranches", job.branchId);
+    if (!branch?.h3Index) {
       return {
         jobId: job._id,
         sport: job.sport,
@@ -192,97 +192,66 @@ export const getJobAndEligibleInstructors = internalQuery({
       };
     }
 
-    const recipients = [];
+    const kMax = radiusToK(MAX_WORK_RADIUS_KM);
+    const allCells = gridDisk(branch.h3Index, kMax);
+
+    const CHUNK_SIZE = 500;
     const seen = new Set<string>();
-    const candidateInstructorIds = new Set<string>();
-    let usedGeospatialSearch = false;
+    const recipients: {
+      instructorId: Id<"instructorProfiles">;
+      expoPushToken: string;
+    }[] = [];
 
-    const branch = await ctx.db.get("studioBranches", job.branchId);
-    if (
-      branch &&
-      Number.isFinite(branch.latitude) &&
-      Number.isFinite(branch.longitude)
-    ) {
-      const nearbyInstructors = await findNearbyInstructorsForBranch(ctx, {
-        branchLatitude: branch.latitude!,
-        branchLongitude: branch.longitude!,
-        sport: job.sport,
-        limit: 1000,
-      });
-      for (const candidate of nearbyInstructors) {
-        const coverageRow = await ctx.db
-          .query("instructorGeoCoverage")
-          .withIndex("by_instructor_and_sport", (q) =>
-            q.eq("instructorId", candidate.instructorId).eq("sport", job.sport),
-          )
-          .unique();
-        if (!coverageRow) {
-          continue;
-        }
-        if (candidate.distanceMeters > coverageRow.workRadiusKm * 1000) {
-          continue;
-        }
-        candidateInstructorIds.add(String(candidate.instructorId));
-        usedGeospatialSearch = true;
-      }
-    }
+    for (let i = 0; i < allCells.length; i += CHUNK_SIZE) {
+      const chunk = allCells.slice(i, i + CHUNK_SIZE);
 
-    if (!usedGeospatialSearch && job.boundaryProvider && job.boundaryId) {
-      const boundaryProvider = normalizeBoundaryProvider(job.boundaryProvider);
-      const boundaryId = normalizeBoundaryId(job.boundaryId);
-      const boundaryRows = await ctx.db
-        .query("instructorBoundarySubscriptions")
-        .withIndex("by_provider_boundary", (q) =>
-          q.eq("provider", boundaryProvider).eq("boundaryId", boundaryId),
+      const profilesByCell = await Promise.all(
+        chunk.map((hex) =>
+          ctx.db
+            .query("instructorProfiles")
+            .withIndex("by_h3_index", (q) => q.eq("h3Index", hex))
+            .collect()
         )
-        .collect();
-      for (const row of boundaryRows) {
-        candidateInstructorIds.add(String(row.instructorId));
-      }
-    }
+      );
 
-    if (!usedGeospatialSearch && candidateInstructorIds.size === 0 && isKnownZoneId(job.zone)) {
-      const coverageRows = await ctx.db
-        .query("instructorCoverage")
-        .withIndex("by_sport_zone", (q) => q.eq("sport", job.sport).eq("zone", job.zone))
-        .collect();
-      for (const row of coverageRows) {
-        candidateInstructorIds.add(String(row.instructorId));
-      }
-    }
+      for (const profiles of profilesByCell) {
+        for (const profile of profiles) {
+          if (seen.has(String(profile._id))) continue;
+          seen.add(String(profile._id));
 
-    for (const instructorId of candidateInstructorIds) {
-      const profile = await ctx.db.get("instructorProfiles", instructorId as Id<"instructorProfiles">);
-      if (!profile) continue;
-      const sportLink = await ctx.db
-        .query("instructorSports")
-        .withIndex("by_instructor_and_sport", (q) =>
-          q.eq("instructorId", profile._id).eq("sport", job.sport),
-        )
-        .unique();
-      if (!sportLink) continue;
-      const routing = await getPushRoutingForUser(ctx, profile.userId, "job_offer");
-      if (!routing?.preferenceEnabled || !routing.globalPushEnabled || !routing.expoPushToken) {
-        continue;
+          if (!profile.notificationsEnabled || !profile.expoPushToken) continue;
+
+          const sportLink = await ctx.db
+            .query("instructorSports")
+            .withIndex("by_instructor_and_sport", (q) =>
+              q.eq("instructorId", profile._id).eq("sport", job.sport),
+            )
+            .unique();
+          if (!sportLink) continue;
+
+          const routing = await getPushRoutingForUser(ctx, profile.userId, "job_offer");
+          if (!routing?.preferenceEnabled || !routing.globalPushEnabled || !routing.expoPushToken) {
+            continue;
+          }
+
+          const compliance = await loadInstructorComplianceSnapshot(ctx, profile._id, Date.now());
+          if (
+            !canInstructorPerformJobActions({
+              profile,
+              compliance,
+              sport: job.sport,
+              requiredCapabilityTags: job.requiredCapabilityTags,
+            })
+          ) {
+            continue;
+          }
+
+          recipients.push({
+            instructorId: profile._id,
+            expoPushToken: routing.expoPushToken,
+          });
+        }
       }
-      const compliance = await loadInstructorComplianceSnapshot(ctx, profile._id, Date.now());
-      if (
-        !canInstructorPerformJobActions({
-          profile,
-          compliance,
-          sport: job.sport,
-          requiredCapabilityTags: job.requiredCapabilityTags,
-        })
-      ) {
-        continue;
-      }
-      const key = `${profile._id}::${routing.expoPushToken}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      recipients.push({
-        instructorId: profile._id,
-        expoPushToken: routing.expoPushToken,
-      });
     }
 
     return {
