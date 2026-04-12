@@ -5,28 +5,20 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { APPLICATION_STATUSES, REQUIRED_LEVELS, SESSION_LANGUAGES } from "./constants";
 import { requireUserRole } from "./lib/auth";
+import { buildLegacyZoneBoundary } from "./lib/boundaries";
 import {
-  buildLegacyZoneBoundary,
-  hasInstructorBoundarySubscription,
-  listInstructorBoundarySubscriptionPairs,
-} from "./lib/boundaries";
-import {
-  isKnownZoneId,
   normalizeCapabilityTagArray,
   normalizeSportType,
   normalizeZoneId,
 } from "./lib/domainValidation";
+import { getWatchZoneCells, queryJobsByH3Cells } from "./lib/h3";
 import {
   canInstructorPerformJobActions,
   getInstructorJobActionBlockReason,
   instructorJobActionBlockReasonValidator,
   loadInstructorComplianceSnapshot,
 } from "./lib/instructorCompliance";
-import {
-  hasCoverageKey,
-  isEligibleForJob,
-  loadInstructorEligibility,
-} from "./lib/instructorEligibility";
+import { normalizeWorkRadiusKm } from "./lib/locationRadius";
 import {
   ensureStudioInfrastructure,
   getPrimaryStudioBranch,
@@ -81,76 +73,6 @@ function assertPositiveNumber(value: number, fieldName: string) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new ConvexError(`${fieldName} must be greater than 0`);
   }
-}
-
-function isOpenJobStillActionable(
-  job: Doc<"jobs">,
-  now: number,
-) {
-  if (job.startTime <= now) return false;
-  if (
-    typeof job.applicationDeadline === "number" &&
-    Number.isFinite(job.applicationDeadline) &&
-    job.applicationDeadline <= now
-  ) {
-    return false;
-  }
-  return true;
-}
-
-async function collectOpenJobsByBoundaryCoverage(
-  ctx: QueryCtx,
-  args: {
-    sports: ReadonlySet<string>;
-    boundaryPairs: ReadonlyArray<{ provider: string; boundaryId: string }>;
-    now: number;
-    limit: number;
-  },
-) {
-  if (args.sports.size === 0 || args.boundaryPairs.length === 0) {
-    return new Map<Id<"jobs">, Doc<"jobs">>();
-  }
-
-  const coveragePairs = [...args.sports].flatMap((sport) =>
-    args.boundaryPairs.map(({ provider, boundaryId }) => ({
-      sport,
-      provider,
-      boundaryId,
-    })),
-  );
-
-  const fetchPerPair = Math.min(
-    Math.max(Math.ceil((args.limit * 2) / coveragePairs.length), 8),
-    80,
-  );
-
-  const jobsByPair = await Promise.all(
-    coveragePairs.map(({ sport, provider, boundaryId }) =>
-      ctx.db
-        .query("jobs")
-        .withIndex("by_sport_boundary_status_postedAt", (q) =>
-          q
-            .eq("sport", sport)
-            .eq("boundaryProvider", provider)
-            .eq("boundaryId", boundaryId)
-            .eq("status", "open"),
-        )
-        .order("desc")
-        .take(fetchPerPair),
-    ),
-  );
-
-  const matchingById = new Map<Id<"jobs">, Doc<"jobs">>();
-  for (const jobsForPair of jobsByPair) {
-    for (const job of jobsForPair) {
-      if (!isOpenJobStillActionable(job, args.now)) {
-        continue;
-      }
-      matchingById.set(job._id, job);
-    }
-  }
-
-  return matchingById;
 }
 
 function normalizeRequired(value: string | undefined, fieldName: string) {
@@ -417,100 +339,42 @@ export const getInstructorTabCounts = query({
     }
     const now = args.now ?? Date.now();
 
-    const [eligibility, boundaryPairs] = await Promise.all([
-      loadInstructorEligibility(ctx, instructor._id),
-      listInstructorBoundarySubscriptionPairs(ctx, { instructorId: instructor._id }),
-    ]);
+    const sportRows = await ctx.db
+      .query("instructorSports")
+      .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructor._id))
+      .collect();
+    const sports = new Set(sportRows.map((r) => r.sport));
+
     let jobsBadgeCount = 0;
-    const matchingById = new Set<string>();
 
-    if (boundaryPairs.length > 0 && eligibility.sports.size > 0) {
-      const boundaryMatches = await collectOpenJobsByBoundaryCoverage(ctx, {
-        sports: eligibility.sports,
-        boundaryPairs,
-        now,
-        limit: BADGE_COUNT_CAP,
-      });
-      for (const job of boundaryMatches.values()) {
-        matchingById.add(String(job._id));
-        if (matchingById.size >= BADGE_COUNT_CAP) break;
+    if (sports.size > 0) {
+      const hasLocation =
+        Number.isFinite(instructor.latitude) &&
+        Number.isFinite(instructor.longitude);
+
+      if (hasLocation) {
+        const workRadiusKm = normalizeWorkRadiusKm(instructor.workRadiusKm);
+        const hexCells = getWatchZoneCells(
+          instructor.latitude!,
+          instructor.longitude!,
+          workRadiusKm,
+        );
+
+        const matchingJobs = await queryJobsByH3Cells(ctx, {
+          hexCells,
+          sports,
+          status: "open",
+          limit: BADGE_COUNT_CAP,
+        });
+
+        for (const job of matchingJobs) {
+          if (job.startTime <= now) continue;
+          if (typeof job.applicationDeadline === "number" && job.applicationDeadline < now) continue;
+          jobsBadgeCount++;
+          if (jobsBadgeCount >= BADGE_COUNT_CAP) break;
+        }
       }
     }
-
-    if (matchingById.size < BADGE_COUNT_CAP && eligibility.coverageCount > 0) {
-      const fetchPerPair = Math.min(
-        Math.max(Math.ceil((BADGE_COUNT_CAP * 2) / eligibility.coveragePairs.length), 8),
-        60,
-      );
-      const openJobsByCoveragePair = await Promise.all(
-        eligibility.coveragePairs.map(({ sport, zone }) =>
-          ctx.db
-            .query("jobs")
-            .withIndex("by_sport_zone_status_postedAt", (q) =>
-              q.eq("sport", sport).eq("zone", zone).eq("status", "open"),
-            )
-            .order("desc")
-            .take(fetchPerPair),
-        ),
-      );
-
-      for (const jobsForPair of openJobsByCoveragePair) {
-        for (const job of jobsForPair) {
-          const normalizedJobZone = trimOptionalString(job.zone);
-          if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
-            continue;
-          }
-          if (!hasCoverageKey(eligibility, job.sport, normalizedJobZone)) {
-            continue;
-          }
-          if (!isOpenJobStillActionable(job, now)) {
-            continue;
-          }
-
-          matchingById.add(String(job._id));
-          if (matchingById.size >= BADGE_COUNT_CAP) break;
-        }
-        if (matchingById.size >= BADGE_COUNT_CAP) break;
-      }
-    } else if (matchingById.size < BADGE_COUNT_CAP && eligibility.sports.size > 0) {
-      const sports = [...eligibility.sports];
-      const fetchPerSport = Math.min(
-        Math.max(Math.ceil((BADGE_COUNT_CAP * 2) / sports.length), 8),
-        60,
-      );
-      const openJobsBySport = await Promise.all(
-        sports.map((sport) =>
-          ctx.db
-            .query("jobs")
-            .withIndex("by_sport_and_status", (q) => q.eq("sport", sport).eq("status", "open"))
-            .order("desc")
-            .take(fetchPerSport),
-        ),
-      );
-
-      const matchingById = new Set<string>();
-      for (const jobsForSport of openJobsBySport) {
-        for (const job of jobsForSport) {
-          const normalizedJobZone = trimOptionalString(job.zone);
-          if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
-            continue;
-          }
-          if (!isEligibleForJob(eligibility, job.sport, normalizedJobZone)) {
-            continue;
-          }
-          if (!isOpenJobStillActionable(job, now)) {
-            continue;
-          }
-
-          matchingById.add(String(job._id));
-          if (matchingById.size >= BADGE_COUNT_CAP) break;
-        }
-        if (matchingById.size >= BADGE_COUNT_CAP) break;
-      }
-
-    }
-
-    jobsBadgeCount = matchingById.size;
 
     const applications = await ctx.db
       .query("jobApplications")
@@ -963,105 +827,56 @@ export const getAvailableJobsForInstructor = query({
     const now = args.now ?? Date.now();
     const compliance = await loadInstructorComplianceSnapshot(ctx, instructor._id, now);
 
-    const [eligibility, boundaryPairs] = await Promise.all([
-      loadInstructorEligibility(ctx, instructor._id),
-      listInstructorBoundarySubscriptionPairs(ctx, { instructorId: instructor._id }),
-    ]);
-    if (eligibility.coverageCount === 0 && eligibility.sports.size === 0 && boundaryPairs.length === 0) {
-      return [];
-    }
+    // Load instructor's sports
+    const sportRows = await ctx.db
+      .query("instructorSports")
+      .withIndex("by_instructor_id", (q) => q.eq("instructorId", instructor._id))
+      .collect();
+    const sports = new Set(sportRows.map((r) => r.sport));
+
+    if (sports.size === 0) return [];
+
+    const hasLocation =
+      Number.isFinite(instructor.latitude) &&
+      Number.isFinite(instructor.longitude);
+
+    if (!hasLocation) return [];
+
+    const workRadiusKm = normalizeWorkRadiusKm(instructor.workRadiusKm);
+    const hexCells = getWatchZoneCells(
+      instructor.latitude!,
+      instructor.longitude!,
+      workRadiusKm,
+    );
 
     const rawLimit = args.limit ?? 50;
     assertPositiveInteger(rawLimit, "limit");
     const limit = Math.min(rawLimit, 200);
 
-    const matchingById = new Map<Id<"jobs">, Doc<"jobs">>();
-    if (boundaryPairs.length > 0 && eligibility.sports.size > 0) {
-      const boundaryMatches = await collectOpenJobsByBoundaryCoverage(ctx, {
-        sports: eligibility.sports,
-        boundaryPairs,
-        now,
-        limit,
-      });
-      for (const [jobId, job] of boundaryMatches.entries()) {
-        matchingById.set(jobId, job);
+    const matchingJobs = await queryJobsByH3Cells(ctx, {
+      hexCells,
+      sports,
+      status: "open",
+      limit,
+    });
+
+    // Filter out jobs that have started or passed application deadline
+    const actionableJobs = matchingJobs.filter((job) => {
+      if (job.startTime <= now) return false;
+      if (
+        typeof job.applicationDeadline === "number" &&
+        Number.isFinite(job.applicationDeadline) &&
+        job.applicationDeadline <= now
+      ) {
+        return false;
       }
-    }
+      return true;
+    });
 
-    if (eligibility.coverageCount > 0) {
-      const fetchPerPair = Math.min(
-        Math.max(Math.ceil((limit * 2) / eligibility.coveragePairs.length), 8),
-        80,
-      );
-
-      const openJobsByCoveragePair = await Promise.all(
-        eligibility.coveragePairs.map(({ sport, zone }) =>
-          ctx.db
-            .query("jobs")
-            .withIndex("by_sport_zone_status_postedAt", (q) =>
-              q.eq("sport", sport).eq("zone", zone).eq("status", "open"),
-            )
-            .order("desc")
-            .take(fetchPerPair),
-        ),
-      );
-
-      for (const jobsForPair of openJobsByCoveragePair) {
-        for (const job of jobsForPair) {
-          const normalizedJobZone = trimOptionalString(job.zone);
-          if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
-            continue;
-          }
-          const zoneSetForSport = eligibility.coverageBySport.get(job.sport);
-          if (!zoneSetForSport?.has(normalizedJobZone)) {
-            continue;
-          }
-          if (!isOpenJobStillActionable(job, now)) {
-            continue;
-          }
-          matchingById.set(job._id, job);
-        }
-      }
-    } else {
-      const sports = [...eligibility.sports];
-      const fetchPerSport = Math.min(Math.max(Math.ceil((limit * 2) / sports.length), 8), 80);
-      const openJobsBySport = await Promise.all(
-        sports.map((sport) =>
-          ctx.db
-            .query("jobs")
-            .withIndex("by_sport_and_status", (q) => q.eq("sport", sport).eq("status", "open"))
-            .order("desc")
-            .take(fetchPerSport),
-        ),
-      );
-
-      for (const jobsForSport of openJobsBySport) {
-        for (const job of jobsForSport) {
-          const normalizedJobZone = trimOptionalString(job.zone);
-          if (!normalizedJobZone || !isKnownZoneId(normalizedJobZone)) {
-            continue;
-          }
-          if (!isEligibleForJob(eligibility, job.sport, normalizedJobZone)) {
-            continue;
-          }
-          if (!isOpenJobStillActionable(job, now)) {
-            continue;
-          }
-          matchingById.set(job._id, job);
-        }
-      }
-    }
-
-    const matchingJobs = [...matchingById.values()]
-      .sort((a, b) => b.postedAt - a.postedAt)
-      .slice(0, limit);
-
-    if (matchingJobs.length === 0) {
-      return [];
-    }
+    if (actionableJobs.length === 0) return [];
 
     const applicationByJobId = new Map<string, Doc<"jobApplications">>();
-    const matchingJobIdSet = new Set(matchingJobs.map((job) => String(job._id)));
+    const matchingJobIdSet = new Set(actionableJobs.map((job) => String(job._id)));
     const instructorApplications = await ctx.db
       .query("jobApplications")
       .withIndex("by_instructor", (q) => q.eq("instructorId", instructor._id))
@@ -1082,8 +897,8 @@ export const getAvailableJobsForInstructor = query({
       }
     }
 
-    const studioIds = [...new Set(matchingJobs.map((job) => job.studioId))];
-    const branchIds = [...new Set(matchingJobs.map((job) => job.branchId))];
+    const studioIds = [...new Set(actionableJobs.map((job) => job.studioId))];
+    const branchIds = [...new Set(actionableJobs.map((job) => job.branchId))];
     const studioById = new Map<string, Doc<"studioProfiles">>();
     const branchById = new Map<string, Doc<"studioBranches">>();
     const studios = await Promise.all(
@@ -1117,7 +932,7 @@ export const getAvailableJobsForInstructor = query({
       }
     }
 
-    return matchingJobs.map((job) => {
+    return actionableJobs.map((job) => {
       const studio = studioById.get(String(job.studioId));
       const branch = branchById.get(String(job.branchId));
       const application = applicationByJobId.get(String(job._id));
@@ -1580,10 +1395,7 @@ export const applyToJob = mutation({
   handler: async (ctx, args) => {
     const instructor = await requireInstructorProfile(ctx);
 
-    const [eligibility, job] = await Promise.all([
-      loadInstructorEligibility(ctx, instructor._id),
-      ctx.db.get("jobs", args.jobId),
-    ]);
+    const job = await ctx.db.get("jobs", args.jobId);
 
     if (!job) throw new ConvexError("Job not found");
     const now = Date.now();
@@ -1600,20 +1412,18 @@ export const applyToJob = mutation({
     const studioAutoAcceptDefault = studio?.autoAcceptDefault;
     const autoAcceptEnabled =
       job.autoAcceptEnabled ?? studioAutoAcceptEnabled ?? studioAutoAcceptDefault ?? false;
-    const hasBoundaryEligibility =
-      job.boundaryProvider && job.boundaryId
-        ? await hasInstructorBoundarySubscription(ctx, {
-            instructorId: instructor._id,
-            provider: job.boundaryProvider,
-            boundaryId: job.boundaryId,
-          })
-        : false;
-    const normalizedJobZone = trimOptionalString(job.zone);
-    const hasZoneEligibility =
-      normalizedJobZone && isKnownZoneId(normalizedJobZone)
-        ? isEligibleForJob(eligibility, job.sport, normalizedJobZone)
-        : false;
-    const canApplyByLocation = hasBoundaryEligibility || hasZoneEligibility;
+
+    // Check H3 proximity instead of zone/boundary eligibility
+    let canApplyByLocation = false;
+    if (job.h3Index && Number.isFinite(instructor.latitude) && Number.isFinite(instructor.longitude)) {
+      const workRadiusKm = normalizeWorkRadiusKm(instructor.workRadiusKm);
+      const hexCells = getWatchZoneCells(
+        instructor.latitude!,
+        instructor.longitude!,
+        workRadiusKm,
+      );
+      canApplyByLocation = hexCells.includes(job.h3Index);
+    }
 
     if (!autoAcceptEnabled) {
       if (job.status !== "open") throw new ConvexError("Job is not open");
