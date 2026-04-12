@@ -736,6 +736,11 @@ export const postJob = mutation({
       branchId: args.branchId,
       allowedRoles: ["owner"],
     });
+
+    if (!branch.h3Index) {
+      throw new ConvexError("Branch must have a location before posting jobs");
+    }
+
     await ensureStudioInfrastructure(ctx, studio, now);
 
     const sport = normalizeSportType(args.sport);
@@ -814,6 +819,7 @@ export const postJob = mutation({
       studioId: studio._id,
       branchId: branch._id,
       zone: branchZone,
+      h3Index: branch.h3Index,
       ...buildLegacyZoneBoundary(branch.boundaryId ?? branchZone, branch.boundaryProvider),
       sport,
       startTime: args.startTime,
