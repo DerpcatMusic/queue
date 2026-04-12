@@ -10,6 +10,7 @@ import {
 } from "./lib/auth";
 import { resolveBoundaryAssignment } from "./lib/boundaries";
 import { normalizeSportType, normalizeZoneId } from "./lib/domainValidation";
+import { safeH3Index } from "./lib/h3";
 import {
   findNearbyStudioBranchIdsForInstructor,
   syncInstructorGeospatialCoverage,
@@ -735,6 +736,7 @@ export const updateMyInstructorSettings = mutation({
         latitude,
         longitude,
         workRadiusKm,
+        h3Index: safeH3Index(latitude, longitude),
       }),
       calendarProvider,
       calendarSyncEnabled,
@@ -1583,6 +1585,7 @@ export const updateMyStudioSettings = mutation({
         addressNumber,
         addressFloor,
         addressPostalCode,
+        h3Index: safeH3Index(latitude, longitude),
       }),
       updatedAt: now,
     });
@@ -1596,6 +1599,7 @@ export const updateMyStudioSettings = mutation({
         longitude,
         autoExpireMinutesBefore,
         autoAcceptDefault: args.autoAcceptDefault,
+        h3Index: safeH3Index(latitude, longitude),
       }),
       updatedAt: now,
     });

@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server";
 import { syncStudioBranchGeospatialLocation } from "./lib/geospatial";
 import { normalizeZoneId } from "./lib/domainValidation";
 import { resolveBoundaryAssignment } from "./lib/boundaries";
+import { safeH3Index } from "./lib/h3";
 import {
   assertStudioCanCreateAnotherBranch,
   createStudioBranch as createStudioBranchRecord,
@@ -264,6 +265,11 @@ export const createStudioBranch = mutation({
         autoAcceptDefault: normalized.autoAcceptDefault,
       }),
     });
+    // Phase 1: compute H3 index alongside existing geospatial code
+    const h3Index = safeH3Index(normalized.latitude, normalized.longitude);
+    if (h3Index) {
+      await ctx.db.patch(branch._id, { h3Index });
+    }
     await syncStudioBranchGeospatialLocation(ctx, branch);
     return { branchId: branch._id };
   },
@@ -297,9 +303,12 @@ export const updateStudioBranch = mutation({
     });
     const normalized = normalizeBranchUpdateArgs(args);
     const slug = await resolveUniqueStudioBranchSlug(ctx, studio._id, normalized.name, branch._id);
+    // Phase 1: compute H3 index when coordinates are updated
+    const h3Index = safeH3Index(normalized.latitude, normalized.longitude);
     await ctx.db.patch(branch._id, {
       ...normalized,
       slug,
+      ...omitUndefined({ h3Index }),
       updatedAt: now,
     });
     const updatedBranch = await ctx.db.get(branch._id);
@@ -431,6 +440,11 @@ export const setPrimaryStudioBranch = mutation({
     const updatedBranch = await ctx.db.get(branch._id);
     if (!updatedBranch) {
       throw new ConvexError("Studio branch not found");
+    }
+    // Phase 1: propagate H3 index to studio profile when branch becomes primary
+    const branchH3 = safeH3Index(updatedBranch.latitude, updatedBranch.longitude);
+    if (branchH3) {
+      await ctx.db.patch(studio._id, { h3Index: branchH3 });
     }
     await syncStudioProfileFromBranch(ctx, studio._id, updatedBranch, now);
     await syncStudioBranchGeospatialLocation(ctx, updatedBranch);
