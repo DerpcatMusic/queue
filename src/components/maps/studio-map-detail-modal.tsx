@@ -76,7 +76,7 @@ export function StudioMapDetailModal({
               borderCurve: "continuous",
               paddingHorizontal: BrandSpacing.md,
               paddingVertical: BrandSpacing.sm,
-              backgroundColor: color.surfaceAlt,
+              backgroundColor: color.surfaceMuted,
               gap: BrandSpacing.xs,
             }}
           >

@@ -58,7 +58,8 @@ export function AppButton(props: AppButtonProps) {
   const ButtonComponent = tone === "primary" ? Button : FilledTonalButton;
   const resolvedRadius = radius ?? BrandRadius.button;
   const containerColor =
-    colors?.backgroundColor ?? (tone === "primary" ? theme.color.primary : theme.color.surfaceAlt);
+    colors?.backgroundColor ??
+    (tone === "primary" ? theme.color.primary : theme.color.surfaceMuted);
   const contentColor =
     colors?.labelColor ?? (tone === "primary" ? theme.color.onPrimary : theme.color.text);
   const disabledContainerColor =

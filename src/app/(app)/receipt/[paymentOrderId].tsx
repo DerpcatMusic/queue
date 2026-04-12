@@ -53,13 +53,19 @@ export default function ReceiptScreen() {
       <Box style={{ gap: BrandSpacing.xs }}>
         <ThemedText type="title">{t("profile.payments.receipt")}</ThemedText>
         <ThemedText type="caption" style={{ color: color.textMuted }}>
-          {detail.job ? `${detail.job.sport} · ${formatDateTime(detail.job.startTime, locale)}` : ""}
+          {detail.job
+            ? `${detail.job.sport} · ${formatDateTime(detail.job.startTime, locale)}`
+            : ""}
         </ThemedText>
       </Box>
 
       <KitList inset>
         <KitListItem
-          title={isStudio ? t("profile.payments.receiptStudioTotal") : t("profile.payments.receiptInstructorGross")}
+          title={
+            isStudio
+              ? t("profile.payments.receiptStudioTotal")
+              : t("profile.payments.receiptInstructorGross")
+          }
           accessory={
             <ThemedText style={{ color: color.text }}>
               {formatAgorotCurrency(
@@ -96,7 +102,9 @@ export default function ReceiptScreen() {
           title={t("profile.payments.payoutStatus")}
           accessory={
             <ThemedText style={{ color: color.textMuted }}>
-              {detail.payout ? getPayoutStatusLabel(detail.payout.status) : t("profile.payments.notCreated")}
+              {detail.payout
+                ? getPayoutStatusLabel(detail.payout.status)
+                : t("profile.payments.notCreated")}
             </ThemedText>
           }
         />
@@ -104,7 +112,9 @@ export default function ReceiptScreen() {
           <KitListItem
             title={t("profile.payments.receiptNumber")}
             accessory={
-              <ThemedText style={{ color: color.textMuted }}>{detail.receipt.receiptNumber}</ThemedText>
+              <ThemedText style={{ color: color.textMuted }}>
+                {detail.receipt.receiptNumber}
+              </ThemedText>
             }
           />
         ) : null}
@@ -142,7 +152,7 @@ export default function ReceiptScreen() {
             borderCurve: "continuous",
             borderWidth: BorderWidth.thin,
             borderColor: color.borderStrong,
-            backgroundColor: pressed ? color.surfaceAlt : color.surfaceElevated,
+            backgroundColor: pressed ? color.surfaceMuted : color.surfaceElevated,
             paddingHorizontal: BrandSpacing.lg,
             paddingVertical: BrandSpacing.md,
           })}

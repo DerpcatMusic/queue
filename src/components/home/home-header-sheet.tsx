@@ -182,7 +182,7 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
               height: 10,
               width: "100%",
               borderRadius: BrandRadius.pill,
-              backgroundColor: palette.surfaceAlt,
+              backgroundColor: palette.surfaceMuted,
               overflow: "hidden",
             }}
           >
@@ -236,7 +236,7 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
             style={{
               height: 10,
               width: "100%",
-              backgroundColor: palette.surfaceAlt,
+              backgroundColor: palette.surfaceMuted,
               borderRadius: BrandRadius.pill,
               overflow: "hidden",
             }}

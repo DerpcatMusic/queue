@@ -69,7 +69,7 @@ const SIZE_PRESET: Record<
 // Tone presets resolved from theme
 const TONE_PRESETS = {
   surface: {
-    groupBgKey: "surfaceAlt",
+    groupBgKey: "surfaceMuted",
     selectedBgKey: "surfaceElevated",
     labelKey: "textMuted",
     selectedLabelKey: "text",

@@ -43,7 +43,7 @@ export function ChoicePill({
   const { color: palette } = useTheme();
   const resolvedBackgroundColor = selected
     ? (selectedBackgroundColor ?? palette.primary)
-    : (backgroundColor ?? palette.surfaceAlt);
+    : (backgroundColor ?? palette.surfaceMuted);
   const resolvedLabelColor = selected
     ? (selectedLabelColor ?? palette.onPrimary)
     : (labelColor ?? palette.text);

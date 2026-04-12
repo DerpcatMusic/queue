@@ -74,7 +74,7 @@ export function SkeletonLine({
         width,
         height,
         borderRadius: radius,
-        backgroundColor: color.surfaceAlt,
+        backgroundColor: color.surfaceMuted,
       }}
     />
   );

@@ -47,7 +47,7 @@ const styles = StyleSheet.create((theme) => ({
     overflow: "hidden" as const,
   },
   tone_base: {
-    backgroundColor: theme.color.surfaceAlt,
+    backgroundColor: theme.color.surfaceMuted,
   },
   tone_elevated: {
     backgroundColor: theme.color.surfaceElevated,
@@ -59,7 +59,7 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.color.surface,
   },
   tone_sunken: {
-    backgroundColor: theme.color.surfaceAlt,
+    backgroundColor: theme.color.surfaceMuted,
   },
 }));
 

@@ -317,7 +317,7 @@ export const QueueMapBoundaryGeneric = memo(function QueueMapBoundaryGeneric({
             }}
             paint={{
               "text-color": mapPalette.text,
-              "text-halo-color": mapPalette.surfaceAlt,
+              "text-halo-color": mapPalette.surfaceMuted,
               "text-halo-width": 1.2,
               "text-opacity": showAll ? 1 : 0.86,
             }}
@@ -400,7 +400,7 @@ export const QueueMapBoundaryGeneric = memo(function QueueMapBoundaryGeneric({
             }}
             paint={{
               "text-color": mapPalette.text,
-              "text-halo-color": mapPalette.surfaceAlt,
+              "text-halo-color": mapPalette.surfaceMuted,
               "text-halo-width": 1.2,
               "text-opacity": showAll ? 1 : 0.86,
             }}
@@ -469,7 +469,7 @@ export const QueueMapBoundaryGeneric = memo(function QueueMapBoundaryGeneric({
           }}
           paint={{
             "text-color": mapPalette.text,
-            "text-halo-color": mapPalette.surfaceAlt,
+            "text-halo-color": mapPalette.surfaceMuted,
             "text-halo-width": 1.2,
             "text-opacity": showAll ? 1 : 0.86,
           }}

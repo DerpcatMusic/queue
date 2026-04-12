@@ -12,22 +12,22 @@ import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";
-import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
+import { useLessonCheckIn } from "@/components/calendar/use-lesson-check-in";
 import { LoadingScreen } from "@/components/loading-screen";
+import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { FontFamily, FontSize, LetterSpacing } from "@/theme/theme";
+import type { CalendarLessonSheetRole } from "@/contexts/sheet-context";
+import { useSheetContext } from "@/contexts/sheet-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { CalendarLessonSheetRole } from "@/contexts/sheet-context";
 import { useTheme } from "@/hooks/use-theme";
-import type { ThemeColors } from "@/theme/theme";
 import { formatTime } from "@/lib/jobs-utils";
 import { toSportLabelI18n } from "@/lib/sport-i18n";
 import { Box, Text } from "@/primitives";
-import { useLessonCheckIn } from "@/components/calendar/use-lesson-check-in";
-import { useSheetContext } from "@/contexts/sheet-context";
+import type { ThemeColors } from "@/theme/theme";
+import { FontFamily, FontSize, LetterSpacing } from "@/theme/theme";
 
 interface CalendarLessonDetailSheetProps {
   visible: boolean;
@@ -105,7 +105,7 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
   };
 
   return (
-    <BaseProfileSheet visible={visible} onClose={onClose} snapPoints={["70%"]}>
+    <BaseProfileSheet visible={visible} onClose={onClose} snapPoints={["70%"]} scrollable={false}>
       <BottomSheetScrollView contentContainerStyle={{ gap: BrandSpacing.lg }}>
         <Animated.View entering={FadeIn.duration(180)}>
           {/* ── Status Banner ── */}
@@ -233,7 +233,7 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
               style={[
                 styles.noteCard,
                 {
-                  backgroundColor: theme.color.surfaceAlt,
+                  backgroundColor: theme.color.surfaceMuted,
                   borderColor: theme.color.border,
                 },
               ]}
@@ -336,7 +336,7 @@ function getStatusDef(
       hint: t("calendarTab.card.hints.complete"),
       dot: (c) => c.textMuted,
       fg: (c) => c.textMuted,
-      bg: (c) => c.surfaceAlt,
+      bg: (c) => c.surfaceMuted,
     };
   }
   return {

@@ -10,6 +10,7 @@ import {
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
+import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 
 import { ThemedText } from "@/components/themed-text";
 import { KitPressable } from "@/components/ui/kit/kit-pressable";
@@ -104,15 +105,33 @@ export function PublicStudioProfileScreen() {
   const studioRouteOwner = useMemo(() => resolveStudioProfileOwner(pathname), [pathname]);
 
   if (profile === undefined || jobsProfile === undefined) {
-    return <LoadingScreen />;
+    return (
+      <BaseProfileSheet
+        visible
+        onClose={() => router.back()}
+        snapPoints={["85%"]}
+        scrollable={false}
+      >
+        <LoadingScreen />
+      </BaseProfileSheet>
+    );
   }
 
   if (!profile) {
-    return <LoadingScreen label={t("common.notFound", { defaultValue: "Not found" })} />;
+    return (
+      <BaseProfileSheet
+        visible
+        onClose={() => router.back()}
+        snapPoints={["85%"]}
+        scrollable={false}
+      >
+        <LoadingScreen label={t("common.notFound", { defaultValue: "Not found" })} />
+      </BaseProfileSheet>
+    );
   }
 
   return (
-    <>
+    <BaseProfileSheet visible onClose={() => router.back()} snapPoints={["85%"]} scrollable={false}>
       <Stack.Screen options={{ headerShown: false }} />
       <TabScreenScrollView contentContainerStyle={{ paddingBottom: BrandSpacing.section }}>
         <StudioHeader
@@ -278,6 +297,6 @@ export function PublicStudioProfileScreen() {
           </ThemedText>
         </Box>
       </TabScreenScrollView>
-    </>
+    </BaseProfileSheet>
   );
 }

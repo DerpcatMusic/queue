@@ -25,11 +25,11 @@ export function getJobStatusToneColors(
     return { color: theme.jobs.accentHeat, backgroundColor: theme.jobs.accentHeatSubtle };
   }
   if (tone === "gray") {
-    return { color: theme.color.textMuted, backgroundColor: theme.color.surfaceAlt };
+    return { color: theme.color.textMuted, backgroundColor: theme.color.surfaceMuted };
   }
   return {
     color: theme.color.textMuted,
-    backgroundColor: theme.color.surfaceAlt,
+    backgroundColor: theme.color.surfaceMuted,
   };
 }
 

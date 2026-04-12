@@ -606,7 +606,7 @@ export function StudioBranchesSheet({ visible, onClose }: StudioBranchesSheetPro
                                 backgroundColor:
                                   branch.status === "active"
                                     ? palette.successSubtle
-                                    : palette.surfaceAlt,
+                                    : palette.surfaceMuted,
                               },
                             ]}
                           >

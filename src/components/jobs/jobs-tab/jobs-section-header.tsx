@@ -23,7 +23,7 @@ export function JobsSectionHeader({ title, subtitle }: JobsSectionHeaderProps) {
           paddingHorizontal: BrandSpacing.sm,
           paddingVertical: BrandSpacing.xs,
           borderRadius: BrandRadius.pill,
-          backgroundColor: theme.color.surfaceAlt,
+          backgroundColor: theme.color.surfaceMuted,
           borderWidth: 1,
           borderColor: theme.color.border,
         }}

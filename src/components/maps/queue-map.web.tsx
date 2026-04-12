@@ -36,7 +36,7 @@ export function QueueMap(props: QueueMapProps) {
     <View
       style={{
         flex: 1,
-        backgroundColor: palette.surfaceAlt,
+        backgroundColor: palette.surfaceMuted,
         padding: BrandSpacing.insetComfort,
       }}
     >
@@ -54,7 +54,7 @@ export function QueueMap(props: QueueMapProps) {
             flex: 1,
             justifyContent: "space-between",
             padding: BrandSpacing.insetRoomy,
-            backgroundColor: palette.surfaceAlt,
+            backgroundColor: palette.surfaceMuted,
           }}
         >
           <View style={{ gap: 18 }}>
@@ -274,7 +274,7 @@ export function QueueMap(props: QueueMapProps) {
                   : palette.surface;
               const titleColor = node.focused || node.selected ? palette.onPrimary : palette.text;
               const metaColor =
-                node.focused || node.selected ? palette.surfaceAlt : palette.textMuted;
+                node.focused || node.selected ? palette.surfaceMuted : palette.textMuted;
 
               return (
                 <Pressable
@@ -300,7 +300,7 @@ export function QueueMap(props: QueueMapProps) {
                       ? palette.primaryPressed
                       : node.selected
                         ? palette.successSubtle
-                        : palette.surfaceAlt,
+                        : palette.surfaceMuted,
                   })}
                 >
                   <Text
@@ -413,7 +413,9 @@ export function QueueMap(props: QueueMapProps) {
                       style={{
                         borderRadius: BrandRadius.pill,
                         borderCurve: "continuous",
-                        backgroundColor: node.focused ? palette.primaryPressed : palette.surfaceAlt,
+                        backgroundColor: node.focused
+                          ? palette.primaryPressed
+                          : palette.surfaceMuted,
                         paddingHorizontal: BrandSpacing.sm,
                         paddingVertical: BrandSpacing.stackMicro,
                       }}

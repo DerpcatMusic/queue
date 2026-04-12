@@ -35,7 +35,7 @@ export const CalendarConnectionRow = memo(function CalendarConnectionRow({
       style={({ pressed }) => [
         styles.row,
         {
-          backgroundColor: pressed ? theme.color.surfaceAlt : theme.color.surfaceElevated,
+          backgroundColor: pressed ? theme.color.surfaceMuted : theme.color.surfaceElevated,
         },
       ]}
     >

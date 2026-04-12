@@ -63,14 +63,7 @@ export function AppButton(props: AppButtonProps) {
     return <AppButtonFallback {...props} />;
   }
 
-  const {
-    onPress,
-    tone = "primary",
-    disabled = false,
-    size = "md",
-    colors,
-    radius,
-  } = props;
+  const { onPress, tone = "primary", disabled = false, size = "md", colors, radius } = props;
   const label = props.label!;
   const hasCustomStyling = Boolean(
     radius != null ||
@@ -81,7 +74,8 @@ export function AppButton(props: AppButtonProps) {
       colors?.disabledLabelColor,
   );
   const resolvedBackgroundColor =
-    colors?.backgroundColor ?? (tone === "primary" ? theme.color.primary : theme.color.surfaceAlt);
+    colors?.backgroundColor ??
+    (tone === "primary" ? theme.color.primary : theme.color.surfaceMuted);
   const resolvedDisabledBackgroundColor =
     colors?.disabledBackgroundColor ??
     (tone === "primary" ? theme.color.primaryPressed : theme.color.surface);
@@ -90,9 +84,7 @@ export function AppButton(props: AppButtonProps) {
       (tone === "primary" ? theme.color.onPrimary : theme.color.textMuted))
     : (colors?.labelColor ?? (tone === "primary" ? theme.color.onPrimary : theme.color.text));
   const buttonShape =
-    radius != null
-      ? shapes.roundedRectangle({ cornerRadius: radius })
-      : shapes.capsule();
+    radius != null ? shapes.roundedRectangle({ cornerRadius: radius }) : shapes.capsule();
 
   return (
     <Host
@@ -109,7 +101,10 @@ export function AppButton(props: AppButtonProps) {
           ...(hasCustomStyling
             ? [
                 buttonStyle("plain"),
-                background(disabled ? resolvedDisabledBackgroundColor : resolvedBackgroundColor, buttonShape),
+                background(
+                  disabled ? resolvedDisabledBackgroundColor : resolvedBackgroundColor,
+                  buttonShape,
+                ),
                 foregroundColor(resolvedLabelColor),
               ]
             : [

@@ -34,7 +34,7 @@ const surfaceStyles = StyleSheet.create((theme) => ({
     ...theme.shadow.card,
   },
   tone_alt: {
-    backgroundColor: theme.color.surfaceAlt,
+    backgroundColor: theme.color.surfaceMuted,
     ...theme.shadow.card,
   },
   tone_primary: {

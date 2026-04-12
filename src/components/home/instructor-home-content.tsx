@@ -225,7 +225,7 @@ function InstructorCheckInCard({
         style={{
           borderRadius: BrandRadius.medium,
           borderCurve: "continuous",
-          backgroundColor: palette.surfaceAlt,
+          backgroundColor: palette.surfaceMuted,
           padding: BrandSpacing.controlX,
           gap: BrandSpacing.xs,
         }}

@@ -193,7 +193,7 @@ export default function CalendarTabScreen() {
                 {
                   backgroundColor: active
                     ? (palette.primarySubtle as string)
-                    : (palette.surfaceAlt as string),
+                    : (palette.surfaceMuted as string),
                   borderColor: active
                     ? (palette.primary as string)
                     : (palette.border as string),

@@ -56,6 +56,14 @@ interface SheetContextValue {
   studioPublicProfileSlug: string | null;
   openStudioPublicProfile: (slug: string) => void;
   closeStudioPublicProfile: () => void;
+
+  // Public profile sheets opened from in-app taps
+  instructorPublicProfileId: string | null;
+  openInstructorPublicProfile: (instructorId: string) => void;
+  closeInstructorPublicProfile: () => void;
+  studioPublicProfileId: string | null;
+  openStudioPublicProfileById: (studioId: string) => void;
+  closeStudioPublicProfileById: () => void;
 }
 
 const SheetContext = createContext<SheetContextValue | null>(null);
@@ -72,6 +80,8 @@ export function SheetProvider({ children }: { children: React.ReactNode }) {
     null,
   );
   const [studioPublicProfileSlug, setStudioPublicProfileSlug] = useState<string | null>(null);
+  const [instructorPublicProfileId, setInstructorPublicProfileId] = useState<string | null>(null);
+  const [studioPublicProfileId, setStudioPublicProfileId] = useState<string | null>(null);
 
   const openInstructorSheet = useCallback((sheet: InstructorSubpage): boolean => {
     setInstructorActiveSheet(sheet === "identity-verification" ? "compliance" : sheet);
@@ -109,6 +119,22 @@ export function SheetProvider({ children }: { children: React.ReactNode }) {
     setStudioPublicProfileSlug(null);
   }, []);
 
+  const openInstructorPublicProfile = useCallback((instructorId: string) => {
+    setInstructorPublicProfileId(instructorId);
+  }, []);
+
+  const closeInstructorPublicProfile = useCallback(() => {
+    setInstructorPublicProfileId(null);
+  }, []);
+
+  const openStudioPublicProfileById = useCallback((studioId: string) => {
+    setStudioPublicProfileId(studioId);
+  }, []);
+
+  const closeStudioPublicProfileById = useCallback(() => {
+    setStudioPublicProfileId(null);
+  }, []);
+
   return (
     <SheetContext.Provider
       value={{
@@ -125,6 +151,12 @@ export function SheetProvider({ children }: { children: React.ReactNode }) {
         studioPublicProfileSlug,
         openStudioPublicProfile,
         closeStudioPublicProfile,
+        instructorPublicProfileId,
+        openInstructorPublicProfile,
+        closeInstructorPublicProfile,
+        studioPublicProfileId,
+        openStudioPublicProfileById,
+        closeStudioPublicProfileById,
       }}
     >
       {children}
@@ -229,5 +261,17 @@ export function useOpenStudioSheet() {
       if (currentUser?.role !== "studio") return false;
       return openStudioSheet("add-account");
     },
+  };
+}
+
+/**
+ * Hook to open public profile sheets from anywhere.
+ */
+export function useOpenPublicProfileSheet() {
+  const { openInstructorPublicProfile, openStudioPublicProfileById } = useSheetContext();
+
+  return {
+    openInstructorProfile: (instructorId: string) => openInstructorPublicProfile(instructorId),
+    openStudioProfile: (studioId: string) => openStudioPublicProfileById(studioId),
   };
 }

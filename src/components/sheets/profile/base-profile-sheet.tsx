@@ -9,8 +9,13 @@
  * via imperative present()/dismiss() calls synced to the `visible` prop.
  */
 
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import type { BottomSheetModal as BottomSheetModalRef } from "@gorhom/bottom-sheet";
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, View } from "react-native";
@@ -24,6 +29,8 @@ interface BaseProfileSheetProps {
   onClose: () => void;
   children: React.ReactNode;
   headerContent?: React.ReactNode;
+  /** When false, children are rendered in a static BottomSheetView instead of a scrollable sheet wrapper. */
+  scrollable?: boolean;
   /** Snap points array. Defaults to ["100%"] (full screen). */
   snapPoints?: (string | number)[];
   /** When true, children render directly without ScrollView wrapper or padding.
@@ -38,6 +45,7 @@ export function BaseProfileSheet({
   onClose,
   children,
   headerContent,
+  scrollable = true,
   snapPoints = DEFAULT_SNAP_POINTS,
   edgeToEdge = false,
 }: BaseProfileSheetProps) {
@@ -136,10 +144,8 @@ export function BaseProfileSheet({
       ) : null}
 
       {/* Scrollable content — or edge-to-edge for embedded webviews */}
-      {edgeToEdge ? (
-        <View style={{ flex: 1 }}>
-          {children}
-        </View>
+      {edgeToEdge || !scrollable ? (
+        <BottomSheetView style={{ flex: 1 }}>{children}</BottomSheetView>
       ) : (
         <BottomSheetScrollView
           contentContainerStyle={{

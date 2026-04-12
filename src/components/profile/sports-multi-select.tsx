@@ -205,7 +205,7 @@ export function SportsMultiSelect({
           style={[
             styles.headerBadge,
             {
-              backgroundColor: isOpen ? theme.color.primary : theme.color.surfaceAlt,
+              backgroundColor: isOpen ? theme.color.primary : theme.color.surfaceMuted,
             },
           ]}
         >

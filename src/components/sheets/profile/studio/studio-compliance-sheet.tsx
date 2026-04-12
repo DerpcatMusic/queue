@@ -1,6 +1,5 @@
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useMutation, useQuery } from "convex/react";
-import { type Href, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, RefreshControl } from "react-native";
@@ -22,6 +21,7 @@ import { ActionButton } from "@/components/ui/action-button";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { KitTextField } from "@/components/ui/kit";
 import { BrandSpacing, BrandType } from "@/constants/brand";
+import { useOpenStudioSheet } from "@/contexts/sheet-context";
 import { api } from "@/convex/_generated/api";
 import { getStudioPaymentSubtitle } from "@/features/compliance/compliance-ui";
 import { useTheme } from "@/hooks/use-theme";
@@ -46,8 +46,8 @@ interface StudioComplianceSheetProps {
 
 export function StudioComplianceSheet({ visible, onClose }: StudioComplianceSheetProps) {
   const { t } = useTranslation();
-  const router = useRouter();
   const theme = useTheme();
+  const studioSheetHandlers = useOpenStudioSheet();
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const shouldLoad = currentUser?.role === "studio";
@@ -174,7 +174,7 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
         paymentsPreflight === undefined))
   ) {
     return (
-      <BaseProfileSheet visible={visible} onClose={onClose}>
+      <BaseProfileSheet visible={visible} onClose={onClose} scrollable={false}>
         <LoadingScreen label={t("profile.studioCompliance.loading")} />
       </BaseProfileSheet>
     );
@@ -188,7 +188,7 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
     !paymentsPreflight
   ) {
     return (
-      <BaseProfileSheet visible={visible} onClose={onClose}>
+      <BaseProfileSheet visible={visible} onClose={onClose} scrollable={false}>
         <Box
           style={{
             flex: 1,
@@ -220,7 +220,7 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
     t,
   );
   return (
-    <BaseProfileSheet visible={visible} onClose={onClose}>
+    <BaseProfileSheet visible={visible} onClose={onClose} scrollable={false}>
       <BottomSheetScrollView
         contentContainerStyle={{ gap: BrandSpacing.xl, backgroundColor: theme.color.appBg }}
         refreshControl={
@@ -399,7 +399,7 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
                     : t("profile.compliance.values.actionRequired")
                 }
                 icon="creditcard.fill"
-                onPress={() => router.push("/studio/profile/payments" as Href)}
+                onPress={() => studioSheetHandlers.openPayments()}
               />
             </ProfileSectionCard>
           </Box>

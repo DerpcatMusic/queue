@@ -1,10 +1,10 @@
-import { Redirect, useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Platform, View } from "react-native";
 import { MapMobileStage } from "@/components/map-tab/map-tab/map-mobile-stage";
 import { MapWebWorkbench } from "@/components/map-tab/map-tab/map-web-workbench";
 import type { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
-import { buildStudioProfileRoute } from "@/navigation/public-profile-routes";
+import { useOpenPublicProfileSheet } from "@/contexts/sheet-context";
 import { useTheme } from "@/hooks/use-theme";
 
 type MapTabScreenProps = {
@@ -12,8 +12,8 @@ type MapTabScreenProps = {
 };
 
 export default function MapTabScreen({ controller }: MapTabScreenProps) {
-  const router = useRouter();
   const { color } = useTheme();
+  const publicProfileHandlers = useOpenPublicProfileSheet();
   const {
     currentUser,
     filteredZones,
@@ -67,10 +67,10 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     (studioId: string) => {
       handleCloseStudio();
       requestAnimationFrame(() => {
-        router.push(buildStudioProfileRoute({ owner: "map", studioId }));
+        publicProfileHandlers.openStudioProfile(studioId);
       });
     },
-    [handleCloseStudio, router],
+    [handleCloseStudio, publicProfileHandlers],
   );
 
   if (currentUser === undefined) {

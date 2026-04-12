@@ -179,7 +179,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
     : hasBoost
       ? theme.color.secondary
       : theme.color.primary;
-  const cardBorderColor = isExpired ? theme.color.outline : accentColor;
+  const cardBorderColor = isExpired ? theme.color.surfaceMuted : accentColor;
 
   if (variant === "default") {
     const metaAccent = hasBoost ? theme.color.secondary : accentColor;
@@ -210,7 +210,7 @@ export const InstructorJobCard = memo(function InstructorJobCard({
           <View
             style={{
               height: BorderWidth.strong,
-              backgroundColor: isExpired ? theme.color.outline : accentColor,
+              backgroundColor: isExpired ? theme.color.surfaceMuted : accentColor,
             }}
           />
           <StudioImageBackground
@@ -520,11 +520,11 @@ export const InstructorJobCard = memo(function InstructorJobCard({
         transform: [{ scale: isPressable && pressed ? 0.992 : 1 }],
       })}
     >
-        <View
-          style={{
-            borderRadius: BrandRadius.card,
-            borderCurve: "continuous",
-            backgroundColor: theme.jobs.surface,
+      <View
+        style={{
+          borderRadius: BrandRadius.card,
+          borderCurve: "continuous",
+          backgroundColor: theme.jobs.surface,
           borderWidth: BorderWidth.thin,
           borderColor: cardBorderColor,
           overflow: "hidden",

@@ -29,13 +29,14 @@ export function SheetHeaderBlock({
 }: SheetHeaderBlockProps) {
   const theme = useTheme();
   const foregroundColor = tone === "primary" ? theme.color.onPrimary : theme.color.text;
-  const inactiveProgress = tone === "primary" ? theme.color.primaryPressed : theme.color.surfaceAlt;
+  const inactiveProgress =
+    tone === "primary" ? theme.color.primaryPressed : theme.color.surfaceMuted;
   const trailingBackgroundColor =
     trailingTone === "danger"
       ? theme.color.dangerSubtle
       : tone === "primary"
         ? theme.color.primaryPressed
-        : theme.color.surfaceAlt;
+        : theme.color.surfaceMuted;
   const trailingForegroundColor =
     trailingTone === "danger"
       ? theme.color.danger

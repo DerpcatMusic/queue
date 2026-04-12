@@ -81,7 +81,7 @@ export function MapWebWorkbench({
             borderRadius: BrandRadius.soft,
             borderCurve: "continuous",
             overflow: "hidden",
-            backgroundColor: palette.surfaceAlt,
+            backgroundColor: palette.surfaceMuted,
           }}
         >
           <QueueMap

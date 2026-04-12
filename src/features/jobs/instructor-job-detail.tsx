@@ -33,7 +33,7 @@ function DetailBadge({ label, tone }: { label: string; tone: keyof typeof BADGE_
       color: palette.secondary,
     },
     muted: {
-      backgroundColor: palette.surfaceAlt,
+      backgroundColor: palette.surfaceMuted,
       color: palette.textMuted,
     },
     success: {
@@ -180,7 +180,7 @@ export function InstructorJobDetailBanner({
             accessibilityLabel={t("common.close")}
             onPress={onBack}
             size={36}
-            backgroundColorOverride={palette.surfaceAlt}
+            backgroundColorOverride={palette.surfaceMuted}
             icon={<IconSymbol name="chevron.left" size={18} color={palette.text} />}
           />
         </Box>

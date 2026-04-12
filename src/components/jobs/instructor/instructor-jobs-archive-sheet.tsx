@@ -118,7 +118,7 @@ function ArchiveStatusChip({
       ? theme.archive.paidSubtle
       : tone === "amber"
         ? theme.archive.pendingSubtle
-        : theme.color.surfaceAlt;
+        : theme.color.surfaceMuted;
   const color =
     tone === "success"
       ? theme.archive.paid
@@ -234,7 +234,7 @@ function ArchiveRow({
           accessibilityState={{ expanded }}
           onPress={onToggle}
           style={({ pressed }) => ({
-            backgroundColor: pressed ? theme.color.surfaceAlt : theme.archive.surface,
+            backgroundColor: pressed ? theme.color.surfaceMuted : theme.archive.surface,
           })}
         >
           <View
@@ -375,7 +375,7 @@ function ArchiveRow({
                   borderCurve: "continuous",
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: theme.color.surfaceAlt,
+                  backgroundColor: theme.color.surfaceMuted,
                 }}
               >
                 <IconSymbol name="doc.text" size={16} color={theme.color.textMuted} />
@@ -388,7 +388,9 @@ function ArchiveRow({
                   type="bodyMedium"
                   style={{ color: onOpenReceipt ? theme.archive.accent : theme.color.textMuted }}
                 >
-                  {onOpenReceipt ? t("profile.payments.openReceipt") : t("jobsTab.archive.receiptComingSoon")}
+                  {onOpenReceipt
+                    ? t("profile.payments.openReceipt")
+                    : t("jobsTab.archive.receiptComingSoon")}
                 </ThemedText>
               </View>
             </Pressable>
@@ -422,7 +424,7 @@ function DetailRow({
           borderCurve: "continuous",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: theme.color.surfaceAlt,
+          backgroundColor: theme.color.surfaceMuted,
         }}
       >
         <IconSymbol name={icon} size={16} color={theme.archive.accent} />

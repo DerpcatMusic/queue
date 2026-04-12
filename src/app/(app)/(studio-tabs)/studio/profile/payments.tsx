@@ -136,7 +136,14 @@ export default function ProfilePaymentsScreen() {
 
       {selectedPaymentId ? (
         <Box style={{ gap: BrandSpacing.sm, paddingHorizontal: BrandSpacing.sm }}>
-          <Box style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: BrandSpacing.xs }}>
+          <Box
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: BrandSpacing.xs,
+            }}
+          >
             <ThemedText type="title">{t("profile.payments.detailTitle")}</ThemedText>
             <Pressable
               accessibilityRole="button"
@@ -149,7 +156,7 @@ export default function ProfilePaymentsScreen() {
                 borderCurve: "continuous",
                 borderWidth: BorderWidth.thin,
                 borderColor: pressed ? color.borderStrong : color.border,
-                backgroundColor: pressed ? color.surfaceElevated : color.surfaceAlt,
+                backgroundColor: pressed ? color.surfaceElevated : color.surfaceMuted,
               })}
             >
               <ThemedText type="caption" style={{ color: color.textMuted }}>

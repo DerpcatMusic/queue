@@ -321,9 +321,7 @@ export function resolveTabSheetConfig(
 }
 
 export function getMainTabSheetBackgroundColor(theme: AppTheme) {
-  return "surfaceContainerHigh" in theme.color
-    ? theme.color.surfaceContainerHigh
-    : theme.color.surfaceContainer;
+  return theme.color.surfaceElevated;
 }
 
 export function getDefaultSheetColors(_tabId: string, theme: AppTheme) {

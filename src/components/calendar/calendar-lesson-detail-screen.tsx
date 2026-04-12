@@ -161,7 +161,7 @@ export function CalendarLessonDetailScreen({ actorRole: role }: CalendarLessonDe
         : detail.lifecycle === "cancelled"
           ? theme.color.dangerSubtle
           : detail.lifecycle === "past"
-            ? theme.color.surfaceAlt
+            ? theme.color.surfaceMuted
             : theme.color.primarySubtle;
 
   const handleCheckIn = () => {
@@ -182,7 +182,7 @@ export function CalendarLessonDetailScreen({ actorRole: role }: CalendarLessonDe
           styles.heroCard,
           {
             backgroundColor: theme.color.surfaceElevated,
-            borderColor: theme.color.outline,
+            borderColor: theme.color.border,
             shadowColor: theme.color.shadow,
           },
         ]}
@@ -221,7 +221,7 @@ export function CalendarLessonDetailScreen({ actorRole: role }: CalendarLessonDe
           styles.counterpartCard,
           {
             backgroundColor: theme.color.surfaceElevated,
-            borderColor: theme.color.outline,
+            borderColor: theme.color.border,
             transform: [{ scale: role === "instructor" && pressed ? 0.98 : 1 }],
           },
         ]}
@@ -255,7 +255,7 @@ export function CalendarLessonDetailScreen({ actorRole: role }: CalendarLessonDe
             styles.sectionCard,
             {
               backgroundColor: theme.color.surfaceElevated,
-              borderColor: isCheckedIn ? theme.color.primary : theme.color.outline,
+              borderColor: isCheckedIn ? theme.color.primary : theme.color.surfaceMuted,
             },
           ]}
         >
@@ -292,7 +292,7 @@ export function CalendarLessonDetailScreen({ actorRole: role }: CalendarLessonDe
             styles.sectionCard,
             {
               backgroundColor: theme.color.surfaceElevated,
-              borderColor: theme.color.outline,
+              borderColor: theme.color.border,
             },
           ]}
         >

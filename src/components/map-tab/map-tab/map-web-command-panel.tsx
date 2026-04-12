@@ -43,7 +43,7 @@ export function MapWebCommandPanel({
         width: BrandSpacing.shellCommandPanel,
         borderRadius: BrandRadius.mapOverlay,
         borderCurve: "continuous",
-        backgroundColor: palette.surfaceAlt,
+        backgroundColor: palette.surfaceMuted,
         paddingHorizontal: 16,
         paddingVertical: 16,
         gap: 14,
@@ -91,7 +91,7 @@ export function MapWebCommandPanel({
               flex: 1,
               borderRadius: 18,
               borderCurve: "continuous",
-              backgroundColor: palette.surfaceAlt,
+              backgroundColor: palette.surfaceMuted,
               paddingHorizontal: 12,
               paddingVertical: 10,
               gap: 2,
@@ -128,7 +128,7 @@ export function MapWebCommandPanel({
               flex: 1,
               borderRadius: 18,
               borderCurve: "continuous",
-              backgroundColor: palette.surfaceAlt,
+              backgroundColor: palette.surfaceMuted,
               paddingHorizontal: 12,
               paddingVertical: 10,
               gap: 2,
@@ -310,7 +310,7 @@ export function MapWebCommandPanel({
                         fontWeight: "500",
                         letterSpacing: 0.2,
                         lineHeight: 16,
-                        color: focusZoneId === zone.id ? palette.surfaceAlt : palette.textMuted,
+                        color: focusZoneId === zone.id ? palette.surfaceMuted : palette.textMuted,
                       }}
                     >
                       {focusZoneId === zone.id
@@ -332,7 +332,7 @@ export function MapWebCommandPanel({
                     paddingHorizontal: 14,
                     paddingVertical: 14,
                     backgroundColor:
-                      focusZoneId === zone.id ? palette.primaryPressed : palette.surfaceAlt,
+                      focusZoneId === zone.id ? palette.primaryPressed : palette.surfaceMuted,
                     transform: [{ scale: pressed ? 0.99 : 1 }],
                   })}
                 >
@@ -408,7 +408,7 @@ export function MapWebCommandPanel({
                       fontWeight: "500",
                       letterSpacing: 0.2,
                       lineHeight: 16,
-                      color: selected ? palette.surfaceAlt : palette.textMuted,
+                      color: selected ? palette.surfaceMuted : palette.textMuted,
                     }}
                   >
                     {selected ? t("mapTab.web.live") : t("mapTab.web.add")}

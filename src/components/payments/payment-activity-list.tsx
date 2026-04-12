@@ -105,8 +105,7 @@ const PaymentActivityRow = memo(function PaymentActivityRow({
         justifyContent: "space-between",
         paddingHorizontal: BrandSpacing.md,
         paddingVertical: BrandSpacing.md,
-        backgroundColor:
-          pressed && onSelectPaymentId ? palette.surfaceAlt : palette.surface,
+        backgroundColor: pressed && onSelectPaymentId ? palette.surfaceMuted : palette.surface,
         borderBottomWidth: isLast ? 0 : 1,
         borderBottomColor: palette.border,
       })}
@@ -166,17 +165,27 @@ export function PaymentActivityList({
   const { t } = useTranslation();
   const { color: palette } = useTheme();
 
-  const statusColors = useMemo<Record<StatusTone, string>>(() => ({
-    success: palette.success,
-    warning: palette.warning,
-    danger: palette.danger,
-    primary: palette.primary,
-    muted: palette.textMuted,
-  }), [palette.success, palette.warning, palette.danger, palette.primary, palette.textMuted]);
+  const statusColors = useMemo<Record<StatusTone, string>>(
+    () => ({
+      success: palette.success,
+      warning: palette.warning,
+      danger: palette.danger,
+      primary: palette.primary,
+      muted: palette.textMuted,
+    }),
+    [palette.success, palette.warning, palette.danger, palette.primary, palette.textMuted],
+  );
 
   return (
     <View style={{ gap: BrandSpacing.sm }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: BrandSpacing.md }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: BrandSpacing.md,
+        }}
+      >
         <View style={{ gap: BrandSpacing.stackTight }}>
           <ThemedText type="bodyStrong">{title}</ThemedText>
           {subtitle ? (

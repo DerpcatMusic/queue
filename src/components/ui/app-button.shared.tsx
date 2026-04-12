@@ -79,7 +79,8 @@ export function AppButtonFallback({
   const minWidth = shape === "square" ? minHeight : BUTTON_MIN_WIDTH;
   const resolvedRadius = radius ?? BrandRadius.button;
   const backgroundColor =
-    colors?.backgroundColor ?? (tone === "primary" ? theme.color.primary : theme.color.surfaceAlt);
+    colors?.backgroundColor ??
+    (tone === "primary" ? theme.color.primary : theme.color.surfaceMuted);
   const pressedBackgroundColor =
     colors?.pressedBackgroundColor ??
     (colors?.backgroundColor

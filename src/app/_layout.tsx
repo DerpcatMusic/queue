@@ -11,7 +11,7 @@ import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogBox, Platform, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
@@ -28,6 +28,8 @@ import { InstructorNotificationsSheet } from "@/components/sheets/profile/instru
 // Sheet components - mounted at root level above all tabs
 import { InstructorPaymentsSheet } from "@/components/sheets/profile/instructor/instructor-payments-sheet";
 import { InstructorSportsSheet } from "@/components/sheets/profile/instructor/instructor-sports-sheet";
+import { PublicInstructorProfileSheet } from "@/components/sheets/profile/public-instructor-profile-sheet";
+import { PublicStudioProfileSheet } from "@/components/sheets/profile/public-studio-profile-sheet";
 import { StudioAddAccountSheet } from "@/components/sheets/profile/studio/studio-add-account-sheet";
 import { StudioBranchesSheet } from "@/components/sheets/profile/studio/studio-branches-sheet";
 import { StudioCalendarSheet } from "@/components/sheets/profile/studio/studio-calendar-sheet";
@@ -35,7 +37,7 @@ import { StudioComplianceSheet } from "@/components/sheets/profile/studio/studio
 import { StudioEditSheet } from "@/components/sheets/profile/studio/studio-edit-sheet";
 import { StudioNotificationsSheet } from "@/components/sheets/profile/studio/studio-notifications-sheet";
 import { StudioPaymentsSheet } from "@/components/sheets/profile/studio/studio-payments-sheet";
-import { StudioPublicProfileSheet } from "@/components/sheets/profile/studio/studio-public-profile-sheet";
+import { StudioPublicProfileSheet as StudioPublicProfileSlugSheet } from "@/components/sheets/profile/studio/studio-public-profile-sheet";
 import { AuthSessionControllerProvider } from "@/contexts/auth-session-context";
 import { SheetProvider, useSheetContext } from "@/contexts/sheet-context";
 import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
@@ -322,62 +324,93 @@ function GlobalSheets() {
     closeCalendarLesson,
     studioPublicProfileSlug,
     closeStudioPublicProfile,
+    instructorPublicProfileId,
+    closeInstructorPublicProfile,
+    studioPublicProfileId,
+    closeStudioPublicProfileById,
   } = useSheetContext();
+
+  const closeInstructorSheetIfActive = useCallback(
+    (sheet: NonNullable<typeof instructorActiveSheet>) => () => {
+      if (instructorActiveSheet === sheet) {
+        closeInstructorSheet();
+      }
+    },
+    [closeInstructorSheet, instructorActiveSheet],
+  );
+
+  const closeStudioSheetIfActive = useCallback(
+    (sheet: NonNullable<typeof studioActiveSheet>) => () => {
+      if (studioActiveSheet === sheet) {
+        closeStudioSheet();
+      }
+    },
+    [closeStudioSheet, studioActiveSheet],
+  );
 
   return (
     <>
       {/* Instructor sheets */}
       <InstructorPaymentsSheet
         visible={instructorActiveSheet === "payments"}
-        onClose={closeInstructorSheet}
+        onClose={closeInstructorSheetIfActive("payments")}
       />
       <InstructorSportsSheet
         visible={instructorActiveSheet === "sports"}
-        onClose={closeInstructorSheet}
+        onClose={closeInstructorSheetIfActive("sports")}
       />
       <InstructorLocationSheet
         visible={instructorActiveSheet === "location"}
-        onClose={closeInstructorSheet}
+        onClose={closeInstructorSheetIfActive("location")}
       />
       <InstructorComplianceSheet
         visible={instructorActiveSheet === "compliance"}
-        onClose={closeInstructorSheet}
+        onClose={closeInstructorSheetIfActive("compliance")}
       />
       <InstructorCalendarSheet
         visible={instructorActiveSheet === "calendar-settings"}
-        onClose={closeInstructorSheet}
+        onClose={closeInstructorSheetIfActive("calendar-settings")}
       />
       <InstructorEditSheet
         visible={instructorActiveSheet === "edit"}
-        onClose={closeInstructorSheet}
+        onClose={closeInstructorSheetIfActive("edit")}
       />
       <InstructorNotificationsSheet
         visible={instructorActiveSheet === "notifications"}
-        onClose={closeInstructorSheet}
+        onClose={closeInstructorSheetIfActive("notifications")}
       />
       <InstructorAddAccountSheet
         visible={instructorActiveSheet === "add-account"}
-        onClose={closeInstructorSheet}
+        onClose={closeInstructorSheetIfActive("add-account")}
       />
       {/* Studio sheets */}
-      <StudioPaymentsSheet visible={studioActiveSheet === "payments"} onClose={closeStudioSheet} />
+      <StudioPaymentsSheet
+        visible={studioActiveSheet === "payments"}
+        onClose={closeStudioSheetIfActive("payments")}
+      />
       <StudioComplianceSheet
         visible={studioActiveSheet === "compliance"}
-        onClose={closeStudioSheet}
+        onClose={closeStudioSheetIfActive("compliance")}
       />
-      <StudioBranchesSheet visible={studioActiveSheet === "branches"} onClose={closeStudioSheet} />
+      <StudioBranchesSheet
+        visible={studioActiveSheet === "branches"}
+        onClose={closeStudioSheetIfActive("branches")}
+      />
       <StudioCalendarSheet
         visible={studioActiveSheet === "calendar-settings"}
-        onClose={closeStudioSheet}
+        onClose={closeStudioSheetIfActive("calendar-settings")}
       />
-      <StudioEditSheet visible={studioActiveSheet === "edit"} onClose={closeStudioSheet} />
+      <StudioEditSheet
+        visible={studioActiveSheet === "edit"}
+        onClose={closeStudioSheetIfActive("edit")}
+      />
       <StudioNotificationsSheet
         visible={studioActiveSheet === "notifications"}
-        onClose={closeStudioSheet}
+        onClose={closeStudioSheetIfActive("notifications")}
       />
       <StudioAddAccountSheet
         visible={studioActiveSheet === "add-account"}
-        onClose={closeStudioSheet}
+        onClose={closeStudioSheetIfActive("add-account")}
       />
 
       {/* Calendar lesson detail sheet */}
@@ -389,10 +422,20 @@ function GlobalSheets() {
       />
 
       {/* Studio public profile sheet */}
-      <StudioPublicProfileSheet
+      <StudioPublicProfileSlugSheet
         visible={studioPublicProfileSlug !== null}
         slug={studioPublicProfileSlug}
         onClose={closeStudioPublicProfile}
+      />
+      <PublicInstructorProfileSheet
+        visible={instructorPublicProfileId !== null}
+        instructorId={instructorPublicProfileId}
+        onClose={closeInstructorPublicProfile}
+      />
+      <PublicStudioProfileSheet
+        visible={studioPublicProfileId !== null}
+        studioId={studioPublicProfileId}
+        onClose={closeStudioPublicProfileById}
       />
     </>
   );

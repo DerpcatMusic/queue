@@ -280,7 +280,7 @@ export default function ProfilePaymentsScreen() {
             {connectError || connectInfo ? (
               <Box
                 style={{
-                  backgroundColor: connectError ? color.dangerSubtle : color.surfaceAlt,
+                  backgroundColor: connectError ? color.dangerSubtle : color.surfaceMuted,
                   borderRadius: BrandRadius.lg,
                   paddingHorizontal: BrandSpacing.component,
                   paddingVertical: BrandSpacing.stackDense,
@@ -327,7 +327,7 @@ export default function ProfilePaymentsScreen() {
                   flexDirection: "row",
                   gap: BrandSpacing.sm,
                   backgroundColor: connectBusy
-                    ? color.surfaceAlt
+                    ? color.surfaceMuted
                     : pressed
                       ? color.primaryPressed
                       : color.primary,
@@ -359,7 +359,7 @@ export default function ProfilePaymentsScreen() {
                   borderCurve: "continuous",
                   borderWidth: BorderWidth.thin,
                   borderColor: color.border,
-                  backgroundColor: pressed ? color.surfaceElevated : color.surfaceAlt,
+                  backgroundColor: pressed ? color.surfaceElevated : color.surfaceMuted,
                 })}
               >
                 <ThemedText type="caption" style={{ color: color.text }}>
@@ -420,7 +420,7 @@ export default function ProfilePaymentsScreen() {
                   accessibilityLabel={t("profile.payments.close")}
                   onPress={() => setSelectedPaymentId(null)}
                   style={({ pressed }) => ({
-                    backgroundColor: pressed ? color.surfaceElevated : color.surfaceAlt,
+                    backgroundColor: pressed ? color.surfaceElevated : color.surfaceMuted,
                     paddingHorizontal: BrandSpacing.md,
                     paddingVertical: BrandSpacing.stackMicro,
                     borderRadius: BrandRadius.pill,
@@ -437,7 +437,7 @@ export default function ProfilePaymentsScreen() {
               {isDetailLoading ? (
                 <Box
                   style={{
-                    backgroundColor: color.surfaceAlt,
+                    backgroundColor: color.surfaceMuted,
                     padding: BrandSpacing.xl,
                     borderRadius: BrandRadius.soft,
                     alignItems: "center",
@@ -450,7 +450,7 @@ export default function ProfilePaymentsScreen() {
               ) : !selectedPaymentDetail ? (
                 <Box
                   style={{
-                    backgroundColor: color.surfaceAlt,
+                    backgroundColor: color.surfaceMuted,
                     padding: BrandSpacing.xl,
                     borderRadius: BrandRadius.soft,
                     alignItems: "center",
@@ -463,7 +463,7 @@ export default function ProfilePaymentsScreen() {
               ) : (
                 <Box
                   style={{
-                    backgroundColor: color.surfaceAlt,
+                    backgroundColor: color.surfaceMuted,
                     borderRadius: BrandRadius.soft,
                     borderCurve: "continuous",
                     overflow: "hidden",
@@ -611,7 +611,7 @@ export default function ProfilePaymentsScreen() {
                           borderCurve: "continuous",
                           borderWidth: BorderWidth.thin,
                           borderColor: color.border,
-                          backgroundColor: pressed ? color.surfaceAlt : color.surfaceElevated,
+                          backgroundColor: pressed ? color.surfaceMuted : color.surfaceElevated,
                         })}
                       >
                         <ThemedText type="bodyStrong" style={{ color: color.primary }}>

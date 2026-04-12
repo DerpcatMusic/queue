@@ -102,7 +102,9 @@ export function StudioJobDetailSheet({
                 style={({ pressed }) => [
                   styles.closeButton,
                   {
-                    backgroundColor: pressed ? theme.color.surfaceElevated : theme.color.surfaceAlt,
+                    backgroundColor: pressed
+                      ? theme.color.surfaceElevated
+                      : theme.color.surfaceMuted,
                   },
                 ]}
               >
@@ -146,7 +148,7 @@ export function StudioJobDetailSheet({
                 <HStack justify="between" align="center">
                   <Text variant="bodyStrong">{t("jobsTab.card.reviewQueue")}</Text>
                   <Box
-                    backgroundColor="surfaceAlt"
+                    backgroundColor="surfaceMuted"
                     style={{ borderRadius: BrandRadius.pill }}
                     px="xs"
                     py="xs"
@@ -237,7 +239,7 @@ export function StudioJobDetailSheet({
                                     backgroundColor: theme.color.danger,
                                     labelColor: theme.color.onPrimary,
                                     pressedBackgroundColor: theme.color.dangerSubtle,
-                                    disabledBackgroundColor: theme.color.surfaceAlt,
+                                    disabledBackgroundColor: theme.color.surfaceMuted,
                                     disabledLabelColor: theme.color.textMuted,
                                   }}
                                 />
@@ -258,7 +260,7 @@ export function StudioJobDetailSheet({
                         {/* Message at bottom if exists */}
                         {application.message && (
                           <Box
-                            backgroundColor="surfaceAlt"
+                            backgroundColor="surfaceMuted"
                             p="md"
                             style={{
                               borderTopWidth: BorderWidth.thin,

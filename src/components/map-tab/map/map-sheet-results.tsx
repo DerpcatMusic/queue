@@ -83,7 +83,7 @@ export function MapSheetResults({
               paddingHorizontal: BrandSpacing.insetSoft,
               paddingVertical: BrandSpacing.lg,
               gap: BrandSpacing.xs,
-              backgroundColor: palette.surfaceAlt,
+              backgroundColor: palette.surfaceMuted,
             }}
           >
             <Text

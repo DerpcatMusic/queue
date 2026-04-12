@@ -24,9 +24,7 @@ const CONTAINER_HEIGHT = 46;
 const STEP_MARK_INTERVAL_KM = 5;
 
 function formatRadiusKm(value: number) {
-  return Number.isInteger(value)
-    ? `${value} km`
-    : `${value.toFixed(2).replace(/\.?0+$/, "")} km`;
+  return Number.isInteger(value) ? `${value} km` : `${value.toFixed(2).replace(/\.?0+$/, "")} km`;
 }
 
 type MapRadiusControlProps = {
@@ -68,8 +66,9 @@ export function MapRadiusControl({
       "worklet";
       const rawProgress = Math.max(0, Math.min(1, event.x / trackWidth));
       const nextRadiusKm =
-        Math.round((RADIUS_MIN_KM + rawProgress * (RADIUS_MAX_KM - RADIUS_MIN_KM)) / RADIUS_STEP_KM) *
-        RADIUS_STEP_KM;
+        Math.round(
+          (RADIUS_MIN_KM + rawProgress * (RADIUS_MAX_KM - RADIUS_MIN_KM)) / RADIUS_STEP_KM,
+        ) * RADIUS_STEP_KM;
       lastRadiusKm.value = nextRadiusKm;
       progress.value = (nextRadiusKm - RADIUS_MIN_KM) / (RADIUS_MAX_KM - RADIUS_MIN_KM);
       runOnJS(onRadiusChange)(nextRadiusKm);
@@ -86,10 +85,10 @@ export function MapRadiusControl({
     const nextRadiusKm =
       Math.round((RADIUS_MIN_KM + rawProgress * (RADIUS_MAX_KM - RADIUS_MIN_KM)) / RADIUS_STEP_KM) *
       RADIUS_STEP_KM;
-    progress.value = withSpring(
-      (nextRadiusKm - RADIUS_MIN_KM) / (RADIUS_MAX_KM - RADIUS_MIN_KM),
-      { damping: 16, stiffness: 200 },
-    );
+    progress.value = withSpring((nextRadiusKm - RADIUS_MIN_KM) / (RADIUS_MAX_KM - RADIUS_MIN_KM), {
+      damping: 16,
+      stiffness: 200,
+    });
     lastRadiusKm.value = nextRadiusKm;
     runOnJS(onRadiusChange)(nextRadiusKm);
     runOnJS(commitRadius)(nextRadiusKm);
@@ -104,19 +103,15 @@ export function MapRadiusControl({
   }));
   const stepMarks = useMemo(
     () =>
-      Array.from({ length: Math.floor(RADIUS_MAX_KM / STEP_MARK_INTERVAL_KM) + 1 }, (_, index) =>
-        index * STEP_MARK_INTERVAL_KM,
+      Array.from(
+        { length: Math.floor(RADIUS_MAX_KM / STEP_MARK_INTERVAL_KM) + 1 },
+        (_, index) => index * STEP_MARK_INTERVAL_KM,
       ),
     [],
   );
 
   return (
-    <KitSurface
-      tone="sheet"
-      padding={BrandSpacing.lg}
-      gap={BrandSpacing.md}
-      style={styles.root}
-    >
+    <KitSurface tone="sheet" padding={BrandSpacing.lg} gap={BrandSpacing.md} style={styles.root}>
       <Box style={styles.header}>
         <Box style={styles.headerRow}>
           <Text
@@ -166,7 +161,7 @@ export function MapRadiusControl({
               style={{
                 height: TRACK_HEIGHT,
                 borderRadius: TRACK_HEIGHT / 2,
-                backgroundColor: themeColor.surfaceAlt,
+                backgroundColor: themeColor.surfaceMuted,
                 overflow: "hidden",
               }}
             >
@@ -253,8 +248,7 @@ export function MapRadiusControl({
           color: themeColor.textMuted,
         }}
       >
-        {RADIUS_STEP_KM * 1000}
-        m steps
+        {RADIUS_STEP_KM * 1000}m steps
       </Text>
     </KitSurface>
   );

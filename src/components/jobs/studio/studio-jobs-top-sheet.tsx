@@ -76,7 +76,7 @@ export const StudioJobsTopSheetHeader = memo(function StudioJobsTopSheetHeader({
         }
         size="sm"
         railColor={theme.color.border}
-        selectedColor={theme.color.surfaceAlt}
+        selectedColor={theme.color.surfaceMuted}
         labelColor={theme.color.text}
         selectedLabelColor={theme.color.text}
         dividerColor={theme.color.border}

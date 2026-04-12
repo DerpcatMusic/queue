@@ -552,7 +552,7 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
                           padding: BrandSpacing.md,
                           borderBottomWidth: index < zipResults.length - 1 ? 1 : 0,
                           borderBottomColor: theme.color.border,
-                          backgroundColor: pressed ? theme.color.surfaceAlt : "transparent",
+                          backgroundColor: pressed ? theme.color.surfaceMuted : "transparent",
                         })}
                       >
                         <Text style={{ color: theme.color.text }}>{result.formattedAddress}</Text>
@@ -582,7 +582,9 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.color.text }}>{t("profile.location.workRadiusTitle")}</Text>
+              <Text style={{ color: theme.color.text }}>
+                {t("profile.location.workRadiusTitle")}
+              </Text>
               <Text style={{ color: theme.color.textMuted, fontSize: 12 }}>
                 {t("profile.location.workRadiusDescription")}
               </Text>

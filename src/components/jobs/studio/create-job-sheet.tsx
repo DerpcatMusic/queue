@@ -200,7 +200,7 @@ export function CreateJobSheet({
             style={({ pressed }) => [
               styles.closeButton,
               {
-                backgroundColor: pressed ? palette.surfaceElevated : palette.surfaceAlt,
+                backgroundColor: pressed ? palette.surfaceElevated : palette.surfaceMuted,
               },
             ]}
           >

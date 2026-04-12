@@ -113,7 +113,7 @@ function StudioArchiveRow({
           accessibilityState={{ expanded }}
           onPress={onToggle}
           style={({ pressed }) => ({
-            backgroundColor: pressed ? theme.color.surfaceAlt : theme.archive.surface,
+            backgroundColor: pressed ? theme.color.surfaceMuted : theme.archive.surface,
           })}
         >
           <Box p="lg" gap="sm">
@@ -268,7 +268,7 @@ function StudioArchiveRow({
                   borderCurve: "continuous",
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: theme.color.surfaceAlt,
+                  backgroundColor: theme.color.surfaceMuted,
                 }}
               >
                 <IconSymbol name="doc.text" size={16} color={theme.color.textMuted} />
@@ -281,7 +281,9 @@ function StudioArchiveRow({
                   type="bodyMedium"
                   style={{ color: onOpenReceipt ? theme.archive.accent : theme.color.textMuted }}
                 >
-                  {onOpenReceipt ? t("profile.payments.openReceipt") : t("jobsTab.archive.receiptComingSoon")}
+                  {onOpenReceipt
+                    ? t("profile.payments.openReceipt")
+                    : t("jobsTab.archive.receiptComingSoon")}
                 </ThemedText>
               </View>
             </Pressable>
@@ -361,7 +363,7 @@ function StudioDetailRow({
           borderCurve: "continuous",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: theme.color.surfaceAlt,
+          backgroundColor: theme.color.surfaceMuted,
         }}
       >
         <IconSymbol name={icon} size={16} color={theme.archive.accent} />

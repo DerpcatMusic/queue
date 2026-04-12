@@ -241,19 +241,24 @@ export function RoleTabsLayout({ appRole, badgeCountByRoute }: RoleTabsLayoutPro
     onPrimary,
     primaryContainer,
     surface,
-    surfaceAlt,
+    surfaceMuted,
   } = color;
   const activeDescriptor = sceneDescriptorsRef.current.get(activeTabId);
   const activeSceneBackgroundColor = activeDescriptor?.backgroundColor ?? appBg;
 
-  const navbarBg = surfaceAlt;
+  const navbarBg = surfaceMuted;
 
   const layoutShell = useMemo(
     () => (
       <ScrollSheetProvider>
         <View style={{ flex: 1, backgroundColor: activeSceneBackgroundColor }}>
           <View
-            style={{ flex: 1, minHeight: 0, zIndex: 2, backgroundColor: activeSceneBackgroundColor }}
+            style={{
+              flex: 1,
+              minHeight: 0,
+              zIndex: 2,
+              backgroundColor: activeSceneBackgroundColor,
+            }}
           >
             <NativeTabs
               tintColor={onPrimaryContainer}

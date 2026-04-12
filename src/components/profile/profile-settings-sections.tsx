@@ -1,7 +1,7 @@
 import { TouchableOpacity } from "@gorhom/bottom-sheet";
 import type { ComponentProps, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { View, type ViewStyle } from "react-native";
+import { Pressable, View, type ViewStyle } from "react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -131,11 +131,11 @@ function getSectionIconBg(tone: ProfileSectionTone | undefined, theme: AppTheme)
     case "preferences":
       return c.tertiarySubtle;
     case "support":
-      return c.surfaceAlt;
+      return c.surfaceMuted;
     case "danger":
       return c.dangerSubtle;
     default:
-      return c.surfaceAlt;
+      return c.surfaceMuted;
   }
 }
 
@@ -321,7 +321,7 @@ export function ProfileSettingRow({
     iconBg = getSectionIconBg(sectionTone, theme);
   } else {
     iconColor = colors.iconDefault;
-    iconBg = theme.color.surfaceAlt;
+    iconBg = theme.color.surfaceMuted;
   }
 
   const dividerStyle = icon ? styles.dividerWithIcon : styles.dividerWithoutIcon;
@@ -405,7 +405,7 @@ export function ProfileSupportCard({
   const { theme } = useUnistyles();
 
   const iconEl = (
-    <View style={[styles.iconContainer, { backgroundColor: theme.color.surfaceAlt }]}>
+    <View style={[styles.iconContainer, { backgroundColor: theme.color.surfaceMuted }]}>
       <IconSymbol name={icon} size={18} color={theme.color.textMuted} />
     </View>
   );
@@ -422,7 +422,7 @@ export function ProfileSupportCard({
   }
 
   return (
-    <TouchableOpacity
+    <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
@@ -436,7 +436,7 @@ export function ProfileSupportCard({
       <Text variant="bodyMedium" color="text" style={{ fontWeight: "600" }}>
         {title}
       </Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -455,7 +455,7 @@ export function ProfileSignOutButton({ title, onPress }: { title: string; onPres
   }
 
   return (
-    <TouchableOpacity
+    <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
@@ -468,6 +468,6 @@ export function ProfileSignOutButton({ title, onPress }: { title: string; onPres
       <Text variant="bodyMedium" style={{ color: colors.dangerText, fontWeight: "700" }}>
         {title}
       </Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }

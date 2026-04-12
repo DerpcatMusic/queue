@@ -26,7 +26,7 @@ const styles = StyleSheet.create((theme) => ({
   }),
   pressablePressed: (active: boolean) => ({
     borderRadius: BrandRadius.full,
-    backgroundColor: active ? theme.color.primaryPressed : theme.color.surfaceAlt,
+    backgroundColor: active ? theme.color.primaryPressed : theme.color.surfaceMuted,
   }),
   tint: (active: boolean) => ({
     color: active ? theme.color.onPrimary : theme.color.textMuted,

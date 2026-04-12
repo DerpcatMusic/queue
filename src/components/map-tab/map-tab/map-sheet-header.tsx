@@ -45,7 +45,7 @@ export function MapSheetHeader({
           placeholder={tProp("mapTab.searchPlaceholder")}
           clearAccessibilityLabel={tProp("common.clear")}
           size="sm"
-          containerStyle={{ backgroundColor: palette.surfaceAlt }}
+          containerStyle={{ backgroundColor: palette.surfaceMuted }}
         />
       )}
       <MapSelectedZonesStrip

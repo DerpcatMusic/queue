@@ -1,18 +1,18 @@
-import { memo } from "react";
 import { useMutation } from "convex/react";
 import { Redirect, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
+import { memo } from "react";
+import type { HomeChecklistItem } from "@/components/home/home-shared";
 import { InstructorHomeContent } from "@/components/home/instructor-home-content";
 import { StudioHomeContent } from "@/components/home/studio-home-content";
-import type { HomeChecklistItem } from "@/components/home/home-shared";
-import { useOpenInstructorSheet, useOpenStudioSheet } from "@/contexts/sheet-context";
+import {
+  useOpenInstructorSheet,
+  useOpenPublicProfileSheet,
+  useOpenStudioSheet,
+} from "@/contexts/sheet-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
-import {
-  buildInstructorProfileRoute,
-  buildStudioProfileRoute,
-} from "@/navigation/public-profile-routes";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
@@ -159,20 +159,13 @@ export const HomeRoleContent = memo(function HomeRoleContent({
 
   // Sheet openers for studio profile sub-pages
   const studioSheetHandlers = useOpenStudioSheet();
+  const publicProfileHandlers = useOpenPublicProfileSheet();
 
-  const openInstructorStudio = (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => {
-    router.push(
-      buildStudioProfileRoute({
-        owner: "global",
-        studioId: String(studioId),
-        jobId: String(jobId),
-      }),
-    );
+  const openInstructorStudio = (studioId: Id<"studioProfiles">, _jobId: Id<"jobs">) => {
+    publicProfileHandlers.openStudioProfile(String(studioId));
   };
   const openPublicInstructor = (instructorId: Id<"instructorProfiles">) => {
-    router.push(
-      buildInstructorProfileRoute({ owner: "global", instructorId: String(instructorId) }),
-    );
+    publicProfileHandlers.openInstructorProfile(String(instructorId));
   };
 
   if (activeRole === "instructor") {
@@ -267,7 +260,7 @@ export const HomeRoleContent = memo(function HomeRoleContent({
       label: t("profile.setup.connectPayouts"),
       icon: "creditcard.fill",
       done: studioComplianceSummary?.paymentStatus === "ready",
-      onPress: () => studioSheetHandlers.openCompliance(),
+      onPress: () => studioSheetHandlers.openPayments(),
     },
     {
       id: "profile",

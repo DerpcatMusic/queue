@@ -646,7 +646,7 @@ export default function SignInScreen() {
               <MessageBanner
                 tone="info"
                 message={infoMessage}
-                surface={theme.color.surfaceAlt}
+                surface={theme.color.surfaceMuted}
                 textColor={theme.color.textMuted}
               />
             ) : null}

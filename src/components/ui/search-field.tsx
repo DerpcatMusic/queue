@@ -75,11 +75,11 @@ const styles = StyleSheet.create((theme) => ({
       borderRadius: metrics.radius,
       borderCurve: "continuous",
       borderColor: isFocused
-        ? (colors?.focusedBorderColor as string) ?? theme.color.primary
-        : (colors?.borderColor as string) ?? theme.color.borderStrong,
+        ? ((colors?.focusedBorderColor as string) ?? theme.color.primary)
+        : ((colors?.borderColor as string) ?? theme.color.borderStrong),
       backgroundColor: pressed
-        ? (colors?.pressedBackgroundColor as string) ?? theme.color.surface
-        : (colors?.backgroundColor as string) ?? theme.color.surfaceAlt,
+        ? ((colors?.pressedBackgroundColor as string) ?? theme.color.surface)
+        : ((colors?.backgroundColor as string) ?? theme.color.surfaceMuted),
     } satisfies ViewStyle;
   },
   input: (size: SearchFieldSize, colors: SearchFieldColors | undefined) => ({
@@ -96,7 +96,7 @@ const styles = StyleSheet.create((theme) => ({
     borderRadius: Radius.pill,
     padding: Spacing.xxs,
     backgroundColor: pressed
-      ? (colors?.clearPressedBackgroundColor as string) ?? theme.color.surface
+      ? ((colors?.clearPressedBackgroundColor as string) ?? theme.color.surface)
       : "transparent",
   }),
 }));

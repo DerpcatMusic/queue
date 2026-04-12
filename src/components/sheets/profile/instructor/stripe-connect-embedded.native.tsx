@@ -9,12 +9,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KitSegmentedToggle } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth } from "@/lib/design-system";
 import { getStripePublishableKey } from "@/lib/stripe";
 import { Box, HStack, Spacer, Text } from "@/primitives";
-import { KitSegmentedToggle } from "@/components/ui/kit";
 
 type ConnectedAccountStatus =
   | "pending"
@@ -81,7 +81,7 @@ export function StripeConnectEmbeddedModal({
         buttonPrimaryColorBackground: themeColors.primary,
         buttonPrimaryColorBorder: themeColors.primary,
         buttonPrimaryColorText: themeColors.onPrimary,
-        buttonSecondaryColorBackground: themeColors.surfaceAlt,
+        buttonSecondaryColorBackground: themeColors.surfaceMuted,
         buttonSecondaryColorBorder: themeColors.border,
         buttonSecondaryColorText: themeColors.text,
         borderRadius: "18px",
@@ -93,7 +93,7 @@ export function StripeConnectEmbeddedModal({
       themeColors.danger,
       themeColors.onPrimary,
       themeColors.primary,
-      themeColors.surfaceAlt,
+      themeColors.surfaceMuted,
       themeColors.surfaceElevated,
       themeColors.text,
       themeColors.textMuted,
@@ -160,7 +160,7 @@ export function StripeConnectEmbeddedModal({
                   borderRadius: BrandRadius.pill,
                   borderWidth: BorderWidth.thin,
                   borderColor: theme.color.border,
-                  backgroundColor: pressed ? theme.color.surfaceElevated : theme.color.surfaceAlt,
+                  backgroundColor: pressed ? theme.color.surfaceElevated : theme.color.surfaceMuted,
                 })}
               >
                 <Text variant="bodyStrong">Done</Text>
@@ -227,12 +227,12 @@ export function StripeConnectEmbeddedModal({
           onPageDidLoad={() => {
             setIsLoading(false);
           }}
-          onLoadError={({ error }) => {
+          onLoadError={(error) => {
             setIsLoading(false);
-            setLoadError(error.message || error.type);
+            setLoadError(error.message);
             onFeedback({
               tone: "error",
-              message: error.message || error.type,
+              message: error.message,
             });
           }}
         />
@@ -248,7 +248,13 @@ export function StripeConnectEmbeddedModal({
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.appBg }}>
           <Box style={{ flex: 1, backgroundColor: theme.color.appBg }}>
             {/* Native header */}
-            <Box style={{ paddingHorizontal: BrandSpacing.lg, paddingTop: BrandSpacing.sm, paddingBottom: BrandSpacing.md }}>
+            <Box
+              style={{
+                paddingHorizontal: BrandSpacing.lg,
+                paddingTop: BrandSpacing.sm,
+                paddingBottom: BrandSpacing.md,
+              }}
+            >
               <HStack align="center" justify="between" gap="md">
                 <Text variant="titleLarge">{t("profile.payments.tabs.wallet")}</Text>
                 <Pressable
@@ -271,7 +277,9 @@ export function StripeConnectEmbeddedModal({
                     borderRadius: BrandRadius.pill,
                     borderWidth: BorderWidth.thin,
                     borderColor: theme.color.border,
-                    backgroundColor: pressed ? theme.color.surfaceElevated : theme.color.surfaceAlt,
+                    backgroundColor: pressed
+                      ? theme.color.surfaceElevated
+                      : theme.color.surfaceMuted,
                   })}
                 >
                   <Text variant="bodyStrong">Done</Text>
@@ -301,10 +309,10 @@ export function StripeConnectEmbeddedModal({
                   <ConnectPayments
                     onLoaderStart={() => setIsLoading(true)}
                     onPageDidLoad={() => setIsLoading(false)}
-                    onLoadError={({ error }) => {
+                    onLoadError={(error) => {
                       setIsLoading(false);
-                      setLoadError(error.message || error.type);
-                      onFeedback({ tone: "error", message: error.message || error.type });
+                      setLoadError(error.message);
+                      onFeedback({ tone: "error", message: error.message });
                     }}
                   />
                 </View>
@@ -315,10 +323,10 @@ export function StripeConnectEmbeddedModal({
                   <ConnectPayouts
                     onLoaderStart={() => setIsLoading(true)}
                     onPageDidLoad={() => setIsLoading(false)}
-                    onLoadError={({ error }) => {
+                    onLoadError={(error) => {
                       setIsLoading(false);
-                      setLoadError(error.message || error.type);
-                      onFeedback({ tone: "error", message: error.message || error.type });
+                      setLoadError(error.message);
+                      onFeedback({ tone: "error", message: error.message });
                     }}
                   />
                 </View>
@@ -376,7 +384,7 @@ export function StripeConnectEmbeddedModal({
                 borderRadius: BrandRadius.pill,
                 borderWidth: BorderWidth.thin,
                 borderColor: theme.color.border,
-                backgroundColor: pressed ? theme.color.surfaceElevated : theme.color.surfaceAlt,
+                backgroundColor: pressed ? theme.color.surfaceElevated : theme.color.surfaceMuted,
               })}
             >
               <Text variant="bodyStrong">Done</Text>
@@ -395,20 +403,20 @@ export function StripeConnectEmbeddedModal({
                 <ConnectPayments
                   onLoaderStart={() => setIsLoading(true)}
                   onPageDidLoad={() => setIsLoading(false)}
-                  onLoadError={({ error }) => {
+                  onLoadError={(error) => {
                     setIsLoading(false);
-                    setLoadError(error.message || error.type);
-                    onFeedback({ tone: "error", message: error.message || error.type });
+                    setLoadError(error.message);
+                    onFeedback({ tone: "error", message: error.message });
                   }}
                 />
               ) : (
                 <ConnectPayouts
                   onLoaderStart={() => setIsLoading(true)}
                   onPageDidLoad={() => setIsLoading(false)}
-                  onLoadError={({ error }) => {
+                  onLoadError={(error) => {
                     setIsLoading(false);
-                    setLoadError(error.message || error.type);
-                    onFeedback({ tone: "error", message: error.message || error.type });
+                    setLoadError(error.message);
+                    onFeedback({ tone: "error", message: error.message });
                   }}
                 />
               )}

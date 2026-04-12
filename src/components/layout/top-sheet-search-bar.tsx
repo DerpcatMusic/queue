@@ -8,7 +8,7 @@ export type TopSheetSearchBarProps = {
   palette?: {
     appBg?: ColorValue;
     surface?: ColorValue;
-    surfaceAlt: ColorValue;
+    surfaceMuted: ColorValue;
     text: ColorValue;
     textMuted: ColorValue;
     primary: ColorValue;
@@ -46,15 +46,15 @@ export function TopSheetSearchBar({
 
   const colorOverrides = palette
     ? {
-        backgroundColor: palette.appBg ?? palette.surfaceAlt,
-        pressedBackgroundColor: palette.surface ?? palette.surfaceAlt,
-        borderColor: palette.borderStrong ?? palette.surfaceAlt,
+        backgroundColor: palette.appBg ?? palette.surfaceMuted,
+        pressedBackgroundColor: palette.surface ?? palette.surfaceMuted,
+        borderColor: palette.borderStrong ?? palette.surfaceMuted,
         focusedBorderColor: palette.primary,
         textColor: palette.text,
         placeholderColor: palette.textMuted,
         iconColor: palette.textMuted,
         clearTintColor: palette.primary,
-        clearPressedBackgroundColor: palette.surface ?? palette.surfaceAlt,
+        clearPressedBackgroundColor: palette.surface ?? palette.surfaceMuted,
       }
     : null;
 

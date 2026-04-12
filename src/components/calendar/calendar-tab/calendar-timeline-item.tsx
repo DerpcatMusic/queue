@@ -170,7 +170,7 @@ function CalendarTimelineItem({ item, isLive }: CalendarTimelineItemProps) {
             <View
               style={[
                 StyleSheet.absoluteFillObject,
-                { backgroundColor: isLightTheme ? palette.surfaceAlt : palette.surface },
+                { backgroundColor: isLightTheme ? palette.surfaceMuted : palette.surface },
               ]}
             >
               <View style={styles.fallbackInitialWrap}>

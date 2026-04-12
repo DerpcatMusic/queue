@@ -10,9 +10,9 @@ import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { ActionButton } from "@/components/ui/action-button";
 import { BrandSpacing } from "@/constants/brand";
+import { getPaymentMethodOrder } from "@/features/payments/lib/get-payment-method-order";
 import { STRIPE_MERCHANT_DISPLAY_NAME, STRIPE_RETURN_URL } from "@/lib/stripe";
 import { Box } from "@/primitives";
-import { getPaymentMethodOrder } from "@/features/payments/lib/get-payment-method-order";
 
 type StripeEmbeddedCheckoutDetails = {
   clientSecret: string;
@@ -132,7 +132,7 @@ export function StripeEmbeddedCheckoutSheet({
   }, [confirm, onCompleted]);
 
   return (
-    <BaseProfileSheet visible={visible} onClose={onClose}>
+    <BaseProfileSheet visible={visible} onClose={onClose} scrollable={false}>
       <BottomSheetScrollView contentContainerStyle={{ gap: BrandSpacing.lg }}>
         <Box style={{ padding: BrandSpacing.inset, gap: BrandSpacing.md }}>
           {feedback ? (

@@ -28,6 +28,7 @@ import { NativeSearchField } from "@/components/ui/native-search-field";
 import { SkeletonLine } from "@/components/ui/skeleton";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
+import { useOpenPublicProfileSheet } from "@/contexts/sheet-context";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -43,7 +44,6 @@ import { useTheme } from "@/hooks/use-theme";
 import { getBoostPresentation } from "@/lib/jobs-utils";
 import { openInstructorVerificationGate } from "@/lib/open-instructor-verification-gate";
 import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
-import { buildStudioProfileRoute } from "@/navigation/public-profile-routes";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import { Box, HStack, VStack } from "@/primitives";
 import { Motion } from "@/theme/theme";
@@ -90,6 +90,7 @@ export function InstructorFeed() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const theme = useTheme();
+  const publicProfileHandlers = useOpenPublicProfileSheet();
   const locale = i18n.resolvedLanguage ?? "en";
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
   const liveNow = useMinuteNow();
@@ -284,101 +285,94 @@ export function InstructorFeed() {
     return `Sorted by: Time ${sortDirection === "asc" ? "↑" : "↓"}`;
   }, [sortDirection, sortMode]);
 
-  const jobsSheetConfig = useMemo(
-    () => {
-      const sheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
-      return createContentDrivenTopSheetConfig({
-        collapsedContent: (
-          <Animated.View layout={jobsHeaderLayoutTransition} style={styles.jobsTopSheetContent}>
-            <Animated.View layout={jobsHeaderLayoutTransition} style={styles.jobsControlsRow}>
-              <Animated.View
-                layout={jobsHeaderLayoutTransition}
-                style={styles.jobsSearchWrap}
-              >
-                <NativeSearchField
-                  value={jobsSearchQuery}
-                  onChangeText={setJobsSearchQuery}
-                  placeholder={t("jobsTab.searchPlaceholder")}
-                  clearAccessibilityLabel={t("common.clear")}
-                  size="sm"
-                  animateLayout
-                  containerStyle={{ backgroundColor: theme.color.surface }}
-                />
-              </Animated.View>
-              <Animated.View layout={jobsHeaderLayoutTransition} style={styles.jobsFilterWrap}>
-                <KitDisclosureButtonGroup
-                  accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
-                  expanded={showJobsFilters}
-                  onToggleExpanded={() => setShowJobsFilters((current) => !current)}
-                  options={jobsFilterOptions}
-                  value={sortMode}
-                  onChange={(value) => {
-                    setSortMode(value);
-                    if (value === "pay") setSortDirection("desc");
-                    if (value === "time") setSortDirection("asc");
-                    if (value === "bonus" || value === "none") setSortDirection("desc");
-                  }}
-                  triggerIcon={
-                    <IconSymbol
-                      name="line.3.horizontal.decrease.circle"
-                      size={18}
-                      color={theme.color.text}
-                    />
-                  }
-                  size="sm"
-                  railColor={theme.color.surface}
-                  selectedColor={theme.color.primarySubtle}
-                  labelColor={theme.color.text}
-                  selectedLabelColor={theme.color.primary}
-                  dividerColor={theme.color.border}
-                />
-              </Animated.View>
+  const jobsSheetConfig = useMemo(() => {
+    const sheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
+    return createContentDrivenTopSheetConfig({
+      collapsedContent: (
+        <Animated.View layout={jobsHeaderLayoutTransition} style={styles.jobsTopSheetContent}>
+          <Animated.View layout={jobsHeaderLayoutTransition} style={styles.jobsControlsRow}>
+            <Animated.View layout={jobsHeaderLayoutTransition} style={styles.jobsSearchWrap}>
+              <NativeSearchField
+                value={jobsSearchQuery}
+                onChangeText={setJobsSearchQuery}
+                placeholder={t("jobsTab.searchPlaceholder")}
+                clearAccessibilityLabel={t("common.clear")}
+                size="sm"
+                animateLayout
+                containerStyle={{ backgroundColor: theme.color.surface }}
+              />
             </Animated.View>
-            <Animated.View layout={jobsHeaderLayoutTransition}>
-              <ThemedText
-                style={[
-                  BrandType.caption,
-                  { color: theme.color.textMuted, paddingHorizontal: BrandSpacing.xs },
-                ]}
-                onPress={() => {
-                  if (sortMode === "pay" || sortMode === "time") {
-                    setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-                  }
+            <Animated.View layout={jobsHeaderLayoutTransition} style={styles.jobsFilterWrap}>
+              <KitDisclosureButtonGroup
+                accessibilityLabel={t("jobsTab.instructorFeed.openFilters")}
+                expanded={showJobsFilters}
+                onToggleExpanded={() => setShowJobsFilters((current) => !current)}
+                options={jobsFilterOptions}
+                value={sortMode}
+                onChange={(value) => {
+                  setSortMode(value);
+                  if (value === "pay") setSortDirection("desc");
+                  if (value === "time") setSortDirection("asc");
+                  if (value === "bonus" || value === "none") setSortDirection("desc");
                 }}
-              >
-                {jobsSortSummaryLabel}
-              </ThemedText>
+                triggerIcon={
+                  <IconSymbol
+                    name="line.3.horizontal.decrease.circle"
+                    size={18}
+                    color={theme.color.text}
+                  />
+                }
+                size="sm"
+                railColor={theme.color.surface}
+                selectedColor={theme.color.primarySubtle}
+                labelColor={theme.color.text}
+                selectedLabelColor={theme.color.primary}
+                dividerColor={theme.color.border}
+              />
             </Animated.View>
           </Animated.View>
-        ),
-        padding: {
-          vertical: BrandSpacing.md,
-          horizontal: BrandSpacing.lg,
-        },
-        draggable: false,
-        expandable: false,
-        backgroundColor: sheetBackgroundColor,
-        topInsetColor: sheetBackgroundColor,
-      });
-    },
-    [
-      jobsFilterOptions,
-      jobsHeaderLayoutTransition,
-      jobsSearchQuery,
-      jobsSortSummaryLabel,
-      setJobsSearchQuery,
-      showJobsFilters,
-      sortMode,
-      t,
-      theme.color.border,
-      theme.color.primary,
-      theme.color.primarySubtle,
-      theme.color.surfaceElevated,
-      theme,
-      theme.color.text,
-      theme.color.textMuted,
-    ],
-  );
+          <Animated.View layout={jobsHeaderLayoutTransition}>
+            <ThemedText
+              style={[
+                BrandType.caption,
+                { color: theme.color.textMuted, paddingHorizontal: BrandSpacing.xs },
+              ]}
+              onPress={() => {
+                if (sortMode === "pay" || sortMode === "time") {
+                  setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+                }
+              }}
+            >
+              {jobsSortSummaryLabel}
+            </ThemedText>
+          </Animated.View>
+        </Animated.View>
+      ),
+      padding: {
+        vertical: BrandSpacing.md,
+        horizontal: BrandSpacing.lg,
+      },
+      draggable: false,
+      expandable: false,
+      backgroundColor: sheetBackgroundColor,
+      topInsetColor: sheetBackgroundColor,
+    });
+  }, [
+    jobsFilterOptions,
+    jobsHeaderLayoutTransition,
+    jobsSearchQuery,
+    jobsSortSummaryLabel,
+    showJobsFilters,
+    sortMode,
+    t,
+    theme.color.border,
+    theme.color.primary,
+    theme.color.primarySubtle,
+    theme.color.surfaceElevated,
+    theme,
+    theme.color.text,
+    theme.color.textMuted,
+  ]);
 
   const onApply = useCallback(
     async (job: InstructorMarketplaceJob) => {
@@ -419,16 +413,10 @@ export function InstructorFeed() {
   );
 
   const onOpenStudio = useCallback(
-    (studioId: Id<"studioProfiles">, jobId: Id<"jobs">) => {
-      router.push(
-        buildStudioProfileRoute({
-          owner: "jobs",
-          studioId: String(studioId),
-          jobId: String(jobId),
-        }),
-      );
+    (studioId: Id<"studioProfiles">) => {
+      publicProfileHandlers.openStudioProfile(String(studioId));
     },
-    [router],
+    [publicProfileHandlers],
   );
 
   useTabSceneDescriptor({

@@ -156,7 +156,7 @@ export function StepStudioComplianceBody({
       <View
         style={[
           styles.verificationCard,
-          { backgroundColor: color.surfaceAlt, borderColor: color.borderStrong },
+          { backgroundColor: color.surfaceMuted, borderColor: color.borderStrong },
         ]}
       >
         <View style={styles.verificationCardHeader}>
@@ -187,7 +187,7 @@ export function StepStudioComplianceBody({
             colors={{
               backgroundColor: color.primary,
               pressedBackgroundColor: color.primary,
-              disabledBackgroundColor: color.surfaceAlt,
+              disabledBackgroundColor: color.surfaceMuted,
               labelColor: color.onPrimary,
               disabledLabelColor: color.onPrimary,
               nativeTintColor: color.primary,
@@ -202,7 +202,7 @@ export function StepStudioComplianceBody({
       <View
         style={[
           styles.verificationCard,
-          { backgroundColor: color.surfaceAlt, borderColor: color.borderStrong },
+          { backgroundColor: color.surfaceMuted, borderColor: color.borderStrong },
         ]}
       >
         <View style={styles.sectionBlock}>
@@ -272,7 +272,7 @@ export function StepStudioComplianceBody({
       <View
         style={[
           styles.verificationCard,
-          { backgroundColor: color.surfaceAlt, borderColor: color.borderStrong },
+          { backgroundColor: color.surfaceMuted, borderColor: color.borderStrong },
         ]}
       >
         <View style={styles.verificationCardHeader}>

@@ -9,17 +9,16 @@ import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useQuery } from "convex/react";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { Text } from "@/primitives";
 import { StyleSheet } from "react-native-unistyles";
-import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { LoadingScreen } from "@/components/loading-screen";
+import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
 import { api } from "@/convex/_generated/api";
 import { toSportLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
-import { Box } from "@/primitives";
+import { Box, Text } from "@/primitives";
 
 interface StudioPublicProfileSheetProps {
   visible: boolean;
@@ -66,7 +65,7 @@ export const StudioPublicProfileSheet = memo(function StudioPublicProfileSheet({
   const sports = (profile.sports ?? []).map((sport: string) => toSportLabel(sport as never));
 
   return (
-    <BaseProfileSheet visible={visible} onClose={onClose} snapPoints={["85%"]}>
+    <BaseProfileSheet visible={visible} onClose={onClose} snapPoints={["85%"]} scrollable={false}>
       <BottomSheetScrollView contentContainerStyle={styles.scrollContent}>
         {/* Hero Card */}
         <Box style={styles.heroCard}>

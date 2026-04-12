@@ -248,7 +248,7 @@ export function StepInstructorComplianceBody({
       <View
         style={[
           styles.verificationCard,
-          { backgroundColor: color.surfaceAlt, borderColor: color.borderStrong },
+          { backgroundColor: color.surfaceMuted, borderColor: color.borderStrong },
         ]}
       >
         <View style={styles.verificationCardHeader}>
@@ -266,7 +266,7 @@ export function StepInstructorComplianceBody({
       <View
         style={[
           styles.verificationCard,
-          { backgroundColor: color.surfaceAlt, borderColor: color.borderStrong },
+          { backgroundColor: color.surfaceMuted, borderColor: color.borderStrong },
         ]}
       >
         <View style={styles.verificationCardHeader}>
@@ -301,7 +301,7 @@ export function StepInstructorComplianceBody({
         <View
           style={[
             styles.verificationCard,
-            { backgroundColor: color.surfaceAlt, borderColor: color.borderStrong },
+            { backgroundColor: color.surfaceMuted, borderColor: color.borderStrong },
           ]}
         >
           <View style={styles.verificationCardHeader}>
@@ -333,7 +333,7 @@ export function StepInstructorComplianceBody({
               key={sport}
               style={[
                 styles.verificationCard,
-                { backgroundColor: color.surfaceAlt, borderColor: color.borderStrong },
+                { backgroundColor: color.surfaceMuted, borderColor: color.borderStrong },
               ]}
             >
               <View style={styles.verificationCardHeader}>
@@ -352,7 +352,7 @@ export function StepInstructorComplianceBody({
       <View
         style={[
           styles.verificationCard,
-          { backgroundColor: color.surfaceAlt, borderColor: color.borderStrong },
+          { backgroundColor: color.surfaceMuted, borderColor: color.borderStrong },
         ]}
       >
         <View style={styles.verificationCardHeader}>

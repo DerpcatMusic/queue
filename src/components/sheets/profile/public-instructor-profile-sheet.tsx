@@ -1,5 +1,4 @@
 import { useQuery } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Text } from "react-native";
@@ -8,13 +7,10 @@ import { LoadingScreen } from "@/components/loading-screen";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
-  ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
-
 import { ThemedText } from "@/components/themed-text";
 import { KitPressable } from "@/components/ui/kit/kit-pressable";
-import { triggerSelectionHaptic } from "@/components/ui/kit/native-interaction";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { getZoneLabel } from "@/constants/zones";
@@ -24,11 +20,19 @@ import { toSportLabel } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
 import { Box } from "@/primitives";
 
-export function PublicInstructorProfileScreen() {
-  const { instructorId } = useLocalSearchParams<{ instructorId: string }>();
+interface PublicInstructorProfileSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  instructorId: string | null;
+}
+
+export function PublicInstructorProfileSheet({
+  visible,
+  onClose,
+  instructorId,
+}: PublicInstructorProfileSheetProps) {
   const { t, i18n } = useTranslation();
   const { color } = useTheme();
-  const router = useRouter();
   const profile = useQuery(
     api.users.getInstructorPublicProfileForInstructor,
     instructorId ? { instructorId: instructorId as Id<"instructorProfiles"> } : "skip",
@@ -39,14 +43,9 @@ export function PublicInstructorProfileScreen() {
     [profile?.sports],
   );
 
-  if (profile === undefined) {
+  if (!instructorId || profile === undefined) {
     return (
-      <BaseProfileSheet
-        visible
-        onClose={() => router.back()}
-        snapPoints={["85%"]}
-        scrollable={false}
-      >
+      <BaseProfileSheet visible={visible} onClose={onClose} snapPoints={["85%"]} scrollable={false}>
         <LoadingScreen />
       </BaseProfileSheet>
     );
@@ -54,20 +53,14 @@ export function PublicInstructorProfileScreen() {
 
   if (!profile) {
     return (
-      <BaseProfileSheet
-        visible
-        onClose={() => router.back()}
-        snapPoints={["85%"]}
-        scrollable={false}
-      >
+      <BaseProfileSheet visible={visible} onClose={onClose} snapPoints={["85%"]} scrollable={false}>
         <LoadingScreen label={t("common.notFound", { defaultValue: "Not found" })} />
       </BaseProfileSheet>
     );
   }
 
   return (
-    <BaseProfileSheet visible onClose={() => router.back()} snapPoints={["85%"]} scrollable={false}>
-      <Stack.Screen options={{ headerShown: false }} />
+    <BaseProfileSheet visible={visible} onClose={onClose} snapPoints={["85%"]} scrollable={false}>
       <TabScreenScrollView contentContainerStyle={{ paddingBottom: BrandSpacing.section }}>
         <Box
           style={{
@@ -97,13 +90,31 @@ export function PublicInstructorProfileScreen() {
               </ThemedText>
             </Box>
           </Box>
+
           {profile.bio ? <ThemedText>{profile.bio}</ThemedText> : null}
+
+          {profile.hourlyRateExpectation ? (
+            <Box
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: BrandSpacing.sm,
+                paddingVertical: BrandSpacing.xs,
+              }}
+            >
+              <Text style={{ fontSize: 14 }}>💰</Text>
+              <ThemedText type="bodyMedium">
+                {t("publicProfile.instructor.rate", { defaultValue: "Hourly rate" })}: ₪
+                {profile.hourlyRateExpectation}
+              </ThemedText>
+            </Box>
+          ) : null}
         </Box>
 
         {sports.length > 0 ? (
           <>
             <ProfileSectionHeader
-              label={t("publicProfile.instructor.sports", { defaultValue: "Sports" })}
+              label={t("publicProfile.instructor.sports", { defaultValue: "Sports I teach" })}
             />
             <Box
               style={{
@@ -113,68 +124,58 @@ export function PublicInstructorProfileScreen() {
                 paddingHorizontal: BrandSpacing.inset,
               }}
             >
-              {sports.map((sport) => {
-                const bgColor = color.surface;
-                const pressedBgColor = color.surface;
-                const textColor = color.textMuted;
-                return (
-                  <KitPressable
-                    key={sport}
-                    accessibilityRole="none"
-                    accessibilityHint={t("publicProfile.instructor.sportChipHint", {
-                      defaultValue: "Sport offered by this instructor",
-                    })}
-                    disabled
-                    haptic={false}
-                    onPress={() => {
-                      triggerSelectionHaptic();
-                    }}
-                    style={{
-                      tone: "surface",
-                      variant: "solid",
-                      size: {
-                        minHeight: BrandSpacing.controlSm,
-                        borderRadius: BrandRadius.buttonSubtle,
-                      },
-                      padding: {
-                        horizontal: BrandSpacing.controlX,
-                        vertical: BrandSpacing.sm,
-                      },
-                      backgroundColor: bgColor,
-                      pressedBackgroundColor: pressedBgColor,
-                    }}
+              {sports.map((sport: string) => (
+                <KitPressable
+                  key={sport}
+                  disabled
+                  haptic={false}
+                  onPress={() => {}}
+                  style={{
+                    tone: "surface",
+                    variant: "solid",
+                    size: {
+                      minHeight: BrandSpacing.controlSm,
+                      borderRadius: BrandRadius.buttonSubtle,
+                    },
+                    padding: {
+                      horizontal: BrandSpacing.controlX,
+                      vertical: BrandSpacing.sm,
+                    },
+                    backgroundColor: color.surface,
+                    pressedBackgroundColor: color.surface,
+                  }}
+                >
+                  <Text
+                    style={[BrandType.micro, { color: color.textMuted, includeFontPadding: false }]}
                   >
-                    <Text
-                      style={[BrandType.micro, { color: textColor, includeFontPadding: false }]}
-                    >
-                      {sport}
-                    </Text>
-                  </KitPressable>
-                );
-              })}
+                    {sport}
+                  </Text>
+                </KitPressable>
+              ))}
             </Box>
           </>
         ) : null}
 
         <ProfileSectionHeader
-          label={t("publicProfile.instructor.coverage", { defaultValue: "Coverage" })}
+          label={t("publicProfile.instructor.coverage", { defaultValue: "Coverage areas" })}
         />
         <ProfileSectionCard>
-          {profile.zones.map((zone, index) => (
-            <ProfileSettingRow
+          {profile.zones.map((zone: string, index: number) => (
+            <Box
               key={zone}
-              title={getZoneLabel(zone, zoneLanguage)}
-              icon="mappin.and.ellipse"
-              showDivider={index < profile.zones.length - 1}
-            />
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: BrandSpacing.md,
+                paddingVertical: BrandSpacing.sm,
+                borderBottomWidth: index < profile.zones.length - 1 ? 1 : 0,
+                borderBottomColor: color.divider,
+              }}
+            >
+              <Text style={{ fontSize: 16 }}>📍</Text>
+              <ThemedText type="bodyMedium">{getZoneLabel(zone, zoneLanguage)}</ThemedText>
+            </Box>
           ))}
-          {profile.hourlyRateExpectation ? (
-            <ProfileSettingRow
-              title={t("publicProfile.instructor.rate", { defaultValue: "Hourly expectation" })}
-              value={`₪${String(profile.hourlyRateExpectation)}`}
-              icon="shekelsign.circle"
-            />
-          ) : null}
         </ProfileSectionCard>
       </TabScreenScrollView>
     </BaseProfileSheet>

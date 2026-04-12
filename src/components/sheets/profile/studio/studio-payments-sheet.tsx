@@ -1,18 +1,13 @@
-/**
- * Studio Payments Sheet - displays studio payment history and details.
- */
-
+import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useAction, useQuery } from "convex/react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Pressable, ScrollView, StyleSheet } from "react-native";
-import { NoticeBanner } from "@/components/jobs/notice-banner";
+import { Platform, Pressable } from "react-native";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { StripeCustomerSheet } from "@/components/sheets/profile/studio/stripe-customer-sheet";
 import { ThemedText } from "@/components/themed-text";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitList, KitListItem } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
@@ -27,20 +22,6 @@ import {
 } from "@/lib/payments-utils";
 import { Box } from "@/primitives";
 
-function getReleaseModeLabel(
-  t: ReturnType<typeof useTranslation>["t"],
-  releaseMode: "automatic" | "manual" | "scheduled",
-) {
-  switch (releaseMode) {
-    case "automatic":
-      return t("profile.payments.releaseModeAutomatic");
-    case "scheduled":
-      return t("profile.payments.releaseModeScheduled");
-    default:
-      return t("profile.payments.releaseModeManual");
-  }
-}
-
 interface StudioPaymentsSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -52,15 +33,12 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
   const locale = i18n.resolvedLanguage ?? "en";
 
   const currentUser = useQuery(api.users.getCurrentUser);
-  const isStudioPaymentsRole = currentUser?.role === "studio";
+  const isStudio = currentUser?.role === "studio";
+  const paymentRows = useQuery(api.paymentsV2.listMyPaymentsV2, isStudio ? { limit: 40 } : "skip");
   const createCustomerSheetSession = useAction(
     api.paymentsV2Actions.createMyStudioStripeCustomerSheetSessionV2,
   );
 
-  const paymentRows = useQuery(
-    api.paymentsV2.listMyPaymentsV2,
-    isStudioPaymentsRole ? { limit: 40 } : "skip",
-  );
   const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrdersV2"> | null>(null);
   const [customerSheetVisible, setCustomerSheetVisible] = useState(false);
   const customerSheetSessionPromiseRef = useRef<Promise<{
@@ -68,18 +46,16 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
     customerSessionClientSecret: string;
     setupIntentClientSecret: string;
   }> | null>(null);
-  const [customerSheetFeedback, setCustomerSheetFeedback] = useState<{
-    tone: "success" | "error";
-    message: string;
-  } | null>(null);
+  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(
+    null,
+  );
 
   const selectedPaymentDetail = useQuery(
     api.paymentsV2.getMyPaymentDetailV2,
     selectedPaymentId ? { paymentOrderId: selectedPaymentId } : "skip",
   );
 
-  // Loading or not logged in — show skeleton
-  if (!currentUser || (isStudioPaymentsRole && paymentRows === undefined)) {
+  if (!currentUser || (isStudio && paymentRows === undefined)) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose}>
         <LoadingScreen label={t("jobsTab.loading")} />
@@ -107,21 +83,39 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
     : undefined;
 
   return (
-    <BaseProfileSheet visible={visible} onClose={onClose}>
-      <ScrollView
-        style={[styles.container, { backgroundColor: color.appBg }]}
-        contentContainerStyle={styles.contentContainer}
+    <BaseProfileSheet visible={visible} onClose={onClose} scrollable={false}>
+      <BottomSheetScrollView
+        style={{ flex: 1, backgroundColor: color.appBg }}
+        contentContainerStyle={{
+          gap: BrandSpacing.lg,
+          paddingTop: BrandSpacing.md,
+          paddingBottom: BrandSpacing.xxl,
+        }}
       >
-        {customerSheetFeedback ? (
-          <NoticeBanner
-            tone={customerSheetFeedback.tone}
-            message={customerSheetFeedback.message}
-            onDismiss={() => setCustomerSheetFeedback(null)}
-          />
+        {feedback ? (
+          <Box
+            style={{
+              marginHorizontal: BrandSpacing.lg,
+              padding: BrandSpacing.component,
+              borderRadius: BrandRadius.lg,
+              borderWidth: BorderWidth.thin,
+              borderColor: color.border,
+              backgroundColor: feedback.tone === "error" ? color.dangerSubtle : color.surfaceMuted,
+            }}
+          >
+            <ThemedText type="caption" style={{ color: color.textMuted }}>
+              {feedback.message}
+            </ThemedText>
+          </Box>
         ) : null}
 
         <Box style={{ paddingHorizontal: BrandSpacing.lg, gap: BrandSpacing.xs }}>
-          <IconSymbol name="info.circle" size={14} color={color.textMuted} />
+          <ThemedText type="caption" style={{ color: color.textMuted }}>
+            {t("profile.payments.summarySubtitle")}
+          </ThemedText>
+          <ThemedText type="caption" style={{ color: color.textMuted }}>
+            {t("profile.payments.liveStatusHint")}
+          </ThemedText>
         </Box>
 
         <Box style={{ paddingHorizontal: BrandSpacing.sm }}>
@@ -135,7 +129,7 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
                     accessibilityLabel={t("profile.payments.savedMethods")}
                     onPress={() => {
                       customerSheetSessionPromiseRef.current = null;
-                      setCustomerSheetFeedback(null);
+                      setFeedback(null);
                       setCustomerSheetVisible(true);
                     }}
                     style={({ pressed }) => ({
@@ -187,14 +181,14 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
               setCustomerSheetVisible(false);
               customerSheetSessionPromiseRef.current = null;
               if (result.error) {
-                setCustomerSheetFeedback({
+                setFeedback({
                   tone: "error",
                   message: result.error.localizedMessage ?? result.error.message,
                 });
                 return;
               }
               if (result.paymentMethod || result.paymentOption) {
-                setCustomerSheetFeedback({
+                setFeedback({
                   tone: "success",
                   message: t("profile.payments.savedMethodsUpdated"),
                 });
@@ -253,7 +247,7 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
                   borderCurve: "continuous",
                   borderWidth: BorderWidth.thin,
                   borderColor: pressed ? color.borderStrong : color.border,
-                  backgroundColor: pressed ? color.surfaceElevated : color.surfaceAlt,
+                  backgroundColor: pressed ? color.surfaceElevated : color.surfaceMuted,
                 })}
               >
                 <ThemedText type="caption" style={{ color: color.textMuted }}>
@@ -299,92 +293,6 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
                     }
                   />
                   <KitListItem
-                    title={t("profile.payments.splitStatus")}
-                    accessory={
-                      <ThemedText style={{ color: color.textMuted }}>
-                        {selectedPaymentDetail.fundSplit
-                          ? getPayoutStatusLabel(selectedPaymentDetail.fundSplit.payoutStatus)
-                          : t("profile.payments.notCreated")}
-                      </ThemedText>
-                    }
-                  />
-                  {selectedPaymentDetail.fundSplit ? (
-                    <KitListItem
-                      title={t("profile.payments.releaseMode")}
-                      accessory={
-                        <ThemedText style={{ color: color.textMuted }}>
-                          {getReleaseModeLabel(t, selectedPaymentDetail.fundSplit.releaseMode)}
-                        </ThemedText>
-                      }
-                    />
-                  ) : null}
-                  <KitListItem
-                    title={t("profile.payments.receiptStatus")}
-                    accessory={
-                      <ThemedText style={{ color: color.textMuted }}>
-                        {selectedPaymentDetail.receipt.status === "ready"
-                          ? t("profile.payments.receiptReady")
-                          : t("profile.payments.receiptPending")}
-                      </ThemedText>
-                    }
-                  />
-                  <KitListItem
-                    title={t("profile.payments.invoiceStatus")}
-                    accessory={
-                      <ThemedText
-                        style={
-                          selectedPaymentDetail.invoice?.status === "failed"
-                            ? { color: color.danger }
-                            : { color: color.textMuted }
-                        }
-                      >
-                        {selectedPaymentDetail.invoice
-                          ? selectedPaymentDetail.invoice.status
-                          : t("profile.payments.notIssued")}
-                      </ThemedText>
-                    }
-                  />
-                  {selectedPaymentDetail.invoice?.externalInvoiceId ? (
-                    <KitListItem
-                      title={t("profile.payments.invoiceId")}
-                      accessory={
-                        <ThemedText style={{ color: color.textMuted }}>
-                          {selectedPaymentDetail.invoice.externalInvoiceId}
-                        </ThemedText>
-                      }
-                    />
-                  ) : null}
-                  <KitListItem
-                    title={
-                      role === "studio"
-                        ? t("profile.payments.studioCharged")
-                        : t("profile.payments.instructorAmount")
-                    }
-                    accessory={
-                      <ThemedText style={{ color: color.textMuted }}>
-                        {formatAgorotCurrency(
-                          role === "studio"
-                            ? selectedPaymentDetail.payment.studioChargeAmountAgorot
-                            : selectedPaymentDetail.payment.instructorBaseAmountAgorot,
-                          locale,
-                          selectedPaymentDetail.payment.currency,
-                        )}
-                      </ThemedText>
-                    }
-                  />
-                  <KitListItem
-                    title={t("profile.payments.platformMarkup")}
-                    accessory={
-                      <ThemedText style={{ color: color.textMuted }}>
-                        {formatAgorotCurrency(
-                          selectedPaymentDetail.payment.platformMarkupAmountAgorot,
-                          locale,
-                          selectedPaymentDetail.payment.currency,
-                        )}
-                      </ThemedText>
-                    }
-                  />
-                  <KitListItem
                     title={t("profile.payments.created")}
                     accessory={
                       <ThemedText style={{ color: color.textMuted }}>
@@ -413,12 +321,24 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
                       >
                         <ThemedText type="caption" style={{ color: color.textMuted }}>
                           {event.description}
-                          {event.signatureValid ? "" : " | signature_invalid"}
-                          {event.processed ? "" : " | not_processed"}
                         </ThemedText>
                       </KitListItem>
                     ))
                   )}
+                </KitList>
+                <KitList inset>
+                  <KitListItem
+                    accessory={
+                      <ThemedText style={{ color: color.textMuted }}>
+                        {formatAgorotCurrency(
+                          selectedPaymentDetail.payment.studioChargeAmountAgorot,
+                          locale,
+                          selectedPaymentDetail.payment.currency,
+                        )}
+                      </ThemedText>
+                    }
+                    title={t("profile.payments.studioCharged")}
+                  />
                 </KitList>
               </Box>
             )}
@@ -428,24 +348,11 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
         <Box style={{ paddingHorizontal: BrandSpacing.sm }}>
           <KitList inset>
             <KitListItem
-              accessory={
-                <IconSymbol name="questionmark.circle" size={18} color={color.textMuted} />
-              }
+              accessory={<ThemedText style={{ color: color.textMuted }}>Stripe</ThemedText>}
             />
           </KitList>
         </Box>
-      </ScrollView>
+      </BottomSheetScrollView>
     </BaseProfileSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    gap: BrandSpacing.lg,
-    paddingTop: BrandSpacing.md,
-    paddingBottom: BrandSpacing.xxl,
-  },
-});

@@ -123,7 +123,7 @@ function SkeletonProfile() {
     <Animated.View entering={FadeIn.duration(Motion.skeletonFade)}>
       <VStack gap="xl" style={{ padding: BrandSpacing.lg }}>
         {/* Identity verification card */}
-        <Box p="lg" style={{ backgroundColor: theme.surfaceAlt, borderRadius: BrandRadius.soft }}>
+        <Box p="lg" style={{ backgroundColor: theme.surfaceMuted, borderRadius: BrandRadius.soft }}>
           <HStack gap="md" align="center">
             <SkeletonLine width={48} height={48} radius={BrandRadius.lg} />
             <VStack gap="xs" style={{ flex: 1 }}>
@@ -209,7 +209,7 @@ function VerificationUploadPanel({
             justifyContent="center"
             style={{
               borderRadius: Radius.full,
-              backgroundColor: theme.color.surfaceAlt,
+              backgroundColor: theme.color.surfaceMuted,
             }}
           >
             <IconSymbol name={icon} size={22} color={accent} />
@@ -624,7 +624,7 @@ export default function InstructorComplianceScreen() {
                 justifyContent="center"
                 style={{
                   borderRadius: Radius.lg,
-                  backgroundColor: theme.color.surfaceAlt,
+                  backgroundColor: theme.color.surfaceMuted,
                   borderWidth: BorderWidth.medium,
                   borderColor: theme.color.border,
                 }}
@@ -788,7 +788,7 @@ export default function InstructorComplianceScreen() {
                       key={label}
                       px="md"
                       py="xs"
-                      backgroundColor="surfaceAlt"
+                      backgroundColor="surfaceMuted"
                       borderColor="border"
                       borderRadius={Radius.pill}
                       borderWidth={BorderWidth.thin}

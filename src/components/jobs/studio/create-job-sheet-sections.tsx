@@ -80,8 +80,8 @@ export function SportPickerSection({
             tintColor={palette.textMuted}
           />
         }
-        backgroundColor={palette.surfaceAlt}
-        selectedBackgroundColor={palette.surfaceAlt}
+        backgroundColor={palette.surfaceMuted}
+        selectedBackgroundColor={palette.surfaceMuted}
         labelColor={palette.text}
         selectedLabelColor={palette.text}
         onPress={() => {
@@ -143,7 +143,7 @@ export function SportPickerSection({
                       label={toSportLabelI18n(sport, t)}
                       selected={isSelected}
                       compact
-                      backgroundColor={palette.surfaceAlt}
+                      backgroundColor={palette.surfaceMuted}
                       selectedBackgroundColor={palette.primary}
                       labelColor={palette.text}
                       selectedLabelColor={palette.onPrimary}
@@ -196,8 +196,8 @@ export function ScheduleSection({
         compact
         fullWidth
         icon={<AppSymbol name="calendar" size={15} tintColor={palette.primary} />}
-        backgroundColor={palette.surfaceAlt}
-        selectedBackgroundColor={palette.surfaceAlt}
+        backgroundColor={palette.surfaceMuted}
+        selectedBackgroundColor={palette.surfaceMuted}
         labelColor={palette.text}
         selectedLabelColor={palette.text}
         onPress={onOpenDate}
@@ -208,8 +208,8 @@ export function ScheduleSection({
           label={formatTime(draft.startTime, locale)}
           compact
           icon={<AppSymbol name="clock" size={15} tintColor={palette.primary} />}
-          backgroundColor={palette.surfaceAlt}
-          selectedBackgroundColor={palette.surfaceAlt}
+          backgroundColor={palette.surfaceMuted}
+          selectedBackgroundColor={palette.surfaceMuted}
           labelColor={palette.text}
           selectedLabelColor={palette.text}
           onPress={onOpenStartTime}
@@ -235,8 +235,8 @@ export function ScheduleSection({
           label={formatTime(draft.endTime, locale)}
           compact
           icon={<AppSymbol name="clock" size={15} tintColor={palette.primary} />}
-          backgroundColor={palette.surfaceAlt}
-          selectedBackgroundColor={palette.surfaceAlt}
+          backgroundColor={palette.surfaceMuted}
+          selectedBackgroundColor={palette.surfaceMuted}
           labelColor={palette.text}
           selectedLabelColor={palette.text}
           onPress={onOpenEndTime}
@@ -321,7 +321,7 @@ export function PostingOptionsSection({
                     label={toCapabilityTagLabel(tag)}
                     selected={selected}
                     compact
-                    backgroundColor={palette.surfaceAlt}
+                    backgroundColor={palette.surfaceMuted}
                     selectedBackgroundColor={palette.primary}
                     labelColor={palette.text}
                     selectedLabelColor={palette.onPrimary}
@@ -359,7 +359,7 @@ export function PostingOptionsSection({
                     label={toCapabilityTagLabel(tag)}
                     selected={selected}
                     compact
-                    backgroundColor={palette.surfaceAlt}
+                    backgroundColor={palette.surfaceMuted}
                     selectedBackgroundColor={palette.secondary}
                     labelColor={palette.text}
                     selectedLabelColor={palette.onPrimary}
@@ -393,7 +393,7 @@ export function PostingOptionsSection({
             label={t("jobsTab.form.useStudioDefault")}
             selected={draft.expiryOverrideMinutes === undefined}
             compact
-            backgroundColor={palette.surfaceAlt}
+            backgroundColor={palette.surfaceMuted}
             selectedBackgroundColor={palette.primary}
             labelColor={palette.text}
             selectedLabelColor={palette.onPrimary}
@@ -410,7 +410,7 @@ export function PostingOptionsSection({
               label={t("jobsTab.form.minutes", { value: minutes })}
               selected={draft.expiryOverrideMinutes === minutes}
               compact
-              backgroundColor={palette.surfaceAlt}
+              backgroundColor={palette.surfaceMuted}
               selectedBackgroundColor={palette.primary}
               labelColor={palette.text}
               selectedLabelColor={palette.onPrimary}
@@ -535,7 +535,7 @@ function BoostSliderRow({
               style={{
                 height: TRACK_HEIGHT,
                 borderRadius: TRACK_HEIGHT / 2,
-                backgroundColor: palette.surfaceAlt,
+                backgroundColor: palette.surfaceMuted,
               }}
             >
               <Animated.View
@@ -651,7 +651,7 @@ export function BoostBonusSection({ draft, setDraft }: BoostBonusSectionProps) {
                 label="Auto"
                 selected={draft.boostTriggerMinutes === undefined}
                 compact
-                backgroundColor={palette.surfaceAlt}
+                backgroundColor={palette.surfaceMuted}
                 selectedBackgroundColor={accentColor}
                 labelColor={palette.text}
                 selectedLabelColor={palette.onPrimary}
@@ -663,7 +663,7 @@ export function BoostBonusSection({ draft, setDraft }: BoostBonusSectionProps) {
                   label={`${minutes}m`}
                   selected={draft.boostTriggerMinutes === minutes}
                   compact
-                  backgroundColor={palette.surfaceAlt}
+                  backgroundColor={palette.surfaceMuted}
                   selectedBackgroundColor={accentColor}
                   labelColor={palette.text}
                   selectedLabelColor={palette.onPrimary}

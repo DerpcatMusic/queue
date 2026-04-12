@@ -272,10 +272,7 @@ function SkeletonStudioHome() {
   const { color: palette } = useTheme();
 
   return (
-    <Animated.View
-      entering={FadeIn.duration(200)}
-      style={{ flex: 1 }}
-    >
+    <Animated.View entering={FadeIn.duration(200)} style={{ flex: 1 }}>
       <Box style={{ padding: BrandSpacing.lg, gap: BrandSpacing.xl }}>
         {/* Hero card skeleton */}
         <Box
@@ -318,7 +315,7 @@ function SkeletonStudioHome() {
                 flex: 1,
                 height: 44,
                 borderRadius: BrandRadius.button,
-                backgroundColor: palette.surfaceAlt,
+                backgroundColor: palette.surfaceMuted,
               }}
             />
             <Box
@@ -326,7 +323,7 @@ function SkeletonStudioHome() {
                 flex: 1,
                 height: 44,
                 borderRadius: BrandRadius.button,
-                backgroundColor: palette.surfaceAlt,
+                backgroundColor: palette.surfaceMuted,
               }}
             />
           </Box>
@@ -368,7 +365,7 @@ function SkeletonStudioHome() {
                       flex: 1,
                       height: 36,
                       borderRadius: BrandRadius.button,
-                      backgroundColor: palette.surfaceAlt,
+                      backgroundColor: palette.surfaceMuted,
                     }}
                   />
                   <Box
@@ -376,7 +373,7 @@ function SkeletonStudioHome() {
                       flex: 1,
                       height: 36,
                       borderRadius: BrandRadius.button,
-                      backgroundColor: palette.surfaceAlt,
+                      backgroundColor: palette.surfaceMuted,
                     }}
                   />
                 </Box>

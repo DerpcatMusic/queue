@@ -109,7 +109,7 @@ export const ApplicationRow = memo(function ApplicationRow({
         ? theme.color.dangerSubtle
         : application.status === "pending"
           ? theme.jobs.accentHeatSubtle
-          : theme.color.surfaceAlt;
+          : theme.color.surfaceMuted;
   const metaText = `${t("jobsTab.card.applied")} · ${formatDateWithWeekday(application.appliedAt, locale)} · ${formatTime(application.appliedAt, locale)}`;
 
   return (
@@ -210,7 +210,7 @@ export const ApplicationRow = memo(function ApplicationRow({
           }}
         >
           <DotStatusPill
-            backgroundColor={theme.color.surfaceAlt}
+            backgroundColor={theme.color.surfaceMuted}
             color={appDot}
             label={t(getApplicationStatusTranslationKey(application.status))}
           />

@@ -148,7 +148,7 @@ export function KitPressable({
         case "primarySubtle":
           return theme.color.primarySubtle;
         case "secondary":
-          return theme.color.surfaceAlt;
+          return theme.color.surfaceMuted;
         case "surface":
           return theme.color.surface;
         default:

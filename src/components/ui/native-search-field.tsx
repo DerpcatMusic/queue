@@ -51,7 +51,7 @@ export function NativeSearchField({
 }: NativeSearchFieldProps) {
   const theme = useTheme();
   const surfaceColor =
-    theme.scheme === "dark" ? theme.color.surfaceElevated : theme.color.surfaceAlt;
+    theme.scheme === "dark" ? theme.color.surfaceElevated : theme.color.surfaceMuted;
   const metrics = size === "sm" ? SEARCH_SIZE_SM : SEARCH_SIZE_MD;
   const pressedBackgroundColor =
     theme.scheme === "dark" ? theme.color.surface : theme.color.surfaceElevated;

@@ -1114,7 +1114,7 @@ function OnboardingScreenContent() {
               style={[
                 styles.mapLoadingState,
                 {
-                  backgroundColor: color.surfaceAlt,
+                  backgroundColor: color.surfaceMuted,
                 },
               ]}
             >
@@ -1131,7 +1131,7 @@ function OnboardingScreenContent() {
       style={[
         styles.formPanel,
         {
-          backgroundColor: color.surfaceAlt,
+          backgroundColor: color.surfaceMuted,
         },
       ]}
     >
@@ -1173,7 +1173,7 @@ function OnboardingScreenContent() {
         <View style={styles.chipGrid}>
           {SPORT_TYPES.map((sport) => {
             const isSelected = selectedSports.includes(sport);
-            const bgColor = isSelected ? color.primary : color.surfaceAlt;
+            const bgColor = isSelected ? color.primary : color.surfaceMuted;
             const pressedBgColor = isSelected ? color.primaryPressed : color.surfaceElevated;
             const textColor = isSelected ? color.onPrimary : color.text;
             return (
@@ -1316,7 +1316,7 @@ function OnboardingScreenContent() {
       style={[
         styles.formPanel,
         {
-          backgroundColor: color.surfaceAlt,
+          backgroundColor: color.surfaceMuted,
         },
       ]}
     >

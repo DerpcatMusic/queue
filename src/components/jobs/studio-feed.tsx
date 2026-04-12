@@ -1,7 +1,7 @@
 import type BottomSheet from "@gorhom/bottom-sheet";
-import { useAction } from "convex/react";
 import { useIsFocused } from "@react-navigation/native";
-import { Redirect, useRouter } from "expo-router";
+import { useAction } from "convex/react";
+import { Redirect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, View } from "react-native";
@@ -14,7 +14,6 @@ import { StudioJobsArchiveSheet } from "@/components/jobs/studio/studio-jobs-arc
 import { StudioJobsList } from "@/components/jobs/studio/studio-jobs-list";
 import { StudioJobsTopSheetHeader } from "@/components/jobs/studio/studio-jobs-top-sheet";
 import { useStudioFeedController } from "@/components/jobs/studio/use-studio-feed-controller";
-import { StripeEmbeddedCheckoutSheet } from "@/components/sheets/profile/studio/stripe-embedded-checkout-sheet";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
@@ -22,17 +21,18 @@ import {
   createContentDrivenTopSheetConfig,
   getMainTabSheetBackgroundColor,
 } from "@/components/layout/top-sheet-registry";
+import { StripeEmbeddedCheckoutSheet } from "@/components/sheets/profile/studio/stripe-embedded-checkout-sheet";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { SkeletonLine } from "@/components/ui/skeleton";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { useOpenPublicProfileSheet } from "@/contexts/sheet-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useTheme } from "@/hooks/use-theme";
 import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
-import { buildInstructorProfileRoute } from "@/navigation/public-profile-routes";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 import { Box, HStack, Text, VStack } from "@/primitives";
 import { Motion, Spring } from "@/theme/theme";
@@ -83,8 +83,8 @@ function SkeletonJobCard() {
 }
 
 export function StudioFeed() {
-  const router = useRouter();
   const theme = useTheme();
+  const publicProfileHandlers = useOpenPublicProfileSheet();
   const { t, i18n } = useTranslation();
   const isFocused = useIsFocused();
   const locale = i18n.resolvedLanguage ?? "en";
@@ -238,18 +238,22 @@ export function StudioFeed() {
         setErrorMessage(message);
       }
     },
-    [buildStripeCheckoutDetails, createStudioCustomerSheetSession, setErrorMessage, setStatusMessage, t],
+    [
+      buildStripeCheckoutDetails,
+      createStudioCustomerSheetSession,
+      setErrorMessage,
+      setStatusMessage,
+      t,
+    ],
   );
   const handleJobPress = useCallback((jobId: string) => {
     setSelectedJobId(jobId);
   }, []);
   const handleInstructorPress = useCallback(
     (instructorId: Id<"instructorProfiles">) => {
-      router.push(
-        buildInstructorProfileRoute({ owner: "jobs", instructorId: String(instructorId) }),
-      );
+      publicProfileHandlers.openInstructorProfile(String(instructorId));
     },
-    [router],
+    [publicProfileHandlers],
   );
 
   const jobsSheetConfig = useMemo(() => {

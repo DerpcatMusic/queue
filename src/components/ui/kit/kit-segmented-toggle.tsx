@@ -63,7 +63,7 @@ export function KitSegmentedToggle<T extends string>({
                     : theme.color.surfaceElevated
                   : selected
                     ? theme.color.primary
-                    : theme.color.surfaceAlt,
+                    : theme.color.surfaceMuted,
               alignItems: "center",
               justifyContent: "center",
             })}

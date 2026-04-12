@@ -34,7 +34,7 @@ export function MapWebHeaderPanels({
           flex: 1,
           borderRadius: 30,
           borderCurve: "continuous",
-          backgroundColor: palette.surfaceAlt,
+          backgroundColor: palette.surfaceMuted,
           paddingHorizontal: 18,
           paddingVertical: 18,
           gap: BrandSpacing.sm,

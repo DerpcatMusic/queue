@@ -610,7 +610,7 @@ export default function StudioBranchesScreen() {
                               backgroundColor:
                                 branch.status === "active"
                                   ? palette.successSubtle
-                                  : palette.surfaceAlt,
+                                  : palette.surfaceMuted,
                             },
                           ]}
                         >

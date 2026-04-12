@@ -1,7 +1,6 @@
-import { TouchableOpacity } from "@gorhom/bottom-sheet";
 import type { ComponentProps } from "react";
 import { memo } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
@@ -238,7 +237,7 @@ export const HomeSignalTile = memo(function HomeSignalTile({
           ? palette.warningSubtle
           : tone === "danger"
             ? palette.dangerSubtle
-            : palette.surfaceAlt;
+            : palette.surfaceMuted;
   const labelColor =
     tone === "accent"
       ? palette.primary
@@ -375,7 +374,7 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
 
       <Box style={{ gap: BrandSpacing.sm }}>
         {orderedItems.map((item) => (
-          <TouchableOpacity
+          <Pressable
             key={item.id}
             accessibilityRole="button"
             accessibilityLabel={item.label}
@@ -393,7 +392,7 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
                 ? palette.surface
                 : pressed
                   ? palette.surfaceElevated
-                  : palette.surfaceAlt,
+                  : palette.surfaceMuted,
               borderWidth: item.done ? 2 : 0,
               borderColor: item.done ? palette.success : "transparent",
               opacity: pressed ? 0.92 : 1,
@@ -434,7 +433,7 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
             {item.done ? null : (
               <IconSymbol name="chevron.right" size={16} color={palette.textMuted} />
             )}
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </Box>
     </Box>
