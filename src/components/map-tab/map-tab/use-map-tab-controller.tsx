@@ -23,7 +23,7 @@ import {
 
 const MAX_ZONES = 25;
 const DEFAULT_WORK_RADIUS_KM = 15;
-const MAX_MAP_RADIUS_KM = 50;
+const MAX_MAP_RADIUS_KM = 40;
 const MAP_CAMERA_TOP_OFFSET = BrandSpacing.xl;
 const MAP_CAMERA_BOTTOM_OFFSET = BrandSpacing.xl;
 

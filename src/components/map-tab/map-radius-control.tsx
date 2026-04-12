@@ -6,7 +6,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { Box, Text } from "@/primitives";
 
 const RADIUS_MIN_KM = 1;
-const RADIUS_MAX_KM = 50;
+const RADIUS_MAX_KM = 40;
 const RADIUS_STEP_KM = 0.25;
 
 function formatRadiusKm(value: number) {
