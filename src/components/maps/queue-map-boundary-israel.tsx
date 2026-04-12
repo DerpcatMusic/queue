@@ -201,7 +201,7 @@ export const QueueMapBoundaryIsrael = memo(function QueueMapBoundaryIsrael({
           }}
           paint={{
             "text-color": mapPalette.text,
-            "text-halo-color": mapPalette.surfaceMuted,
+            "text-halo-color": mapPalette.surface,
             "text-halo-width": 1.1,
             "text-opacity": 0.86,
           }}

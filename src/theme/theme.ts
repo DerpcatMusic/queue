@@ -753,6 +753,7 @@ const NativeMapBrandPalette = {
     primary: "#506600",
     markerAccent: "#5B6D7A",
     text: "#1E1B19",
+    textHalo: "#F8F6F3",
   },
   dark: {
     // Base canvas — warm charcoal
@@ -779,6 +780,7 @@ const NativeMapBrandPalette = {
     primary: "#A5CF5A",
     markerAccent: "#4AAAE8",
     text: "#EDE9E4",
+    textHalo: "#0A0A0A",
   },
 } as const;
 

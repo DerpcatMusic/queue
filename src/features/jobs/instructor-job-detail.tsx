@@ -86,7 +86,7 @@ function DetailSection({
         borderRadius: 22,
         backgroundColor: palette.surfaceElevated,
         borderWidth: 1,
-        borderColor: palette.outline,
+        borderColor: palette.surfaceMuted,
         padding: BrandSpacing.lg,
         gap: BrandSpacing.md,
       }}
@@ -245,7 +245,7 @@ export function InstructorJobDetailContent({
           borderRadius: BrandRadius.card,
           backgroundColor: palette.surface,
           borderWidth: 1,
-          borderColor: palette.outline,
+          borderColor: palette.surfaceMuted,
           padding: BrandSpacing.xl,
           gap: BrandSpacing.lg,
         }}
@@ -284,7 +284,7 @@ export function InstructorJobDetailContent({
               borderRadius: 22,
               backgroundColor: palette.surfaceElevated,
               borderWidth: 1,
-              borderColor: palette.outline,
+              borderColor: palette.surfaceMuted,
               padding: BrandSpacing.lg,
               gap: BrandSpacing.xs,
             }}
