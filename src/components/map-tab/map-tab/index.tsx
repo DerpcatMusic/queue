@@ -5,6 +5,7 @@ import { MapMobileStage } from "@/components/map-tab/map-tab/map-mobile-stage";
 import { MapWebWorkbench } from "@/components/map-tab/map-tab/map-web-workbench";
 import type { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
 import { buildStudioProfileRoute } from "@/navigation/public-profile-routes";
+import { useTheme } from "@/hooks/use-theme";
 
 type MapTabScreenProps = {
   controller: ReturnType<typeof useMapTabController>;
@@ -12,6 +13,7 @@ type MapTabScreenProps = {
 
 export default function MapTabScreen({ controller }: MapTabScreenProps) {
   const router = useRouter();
+  const { color } = useTheme();
   const {
     currentUser,
     filteredZones,
@@ -60,6 +62,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     zoneSearch,
     handleRadiusPanelToggle,
   } = controller;
+  const mapBackgroundColor = mapPalette?.styleBackground ?? color.appBg;
   const [isMapLoading, setIsMapLoading] = useState(true);
   useEffect(() => {
     if (isMapBodyReady) {
@@ -77,7 +80,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
   );
 
   if (currentUser === undefined) {
-    return <View style={{ flex: 1, backgroundColor: mapPalette.styleBackground }} />;
+    return <View style={{ flex: 1, backgroundColor: mapBackgroundColor }} />;
   }
 
   if (!currentUser) {
@@ -89,7 +92,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
   }
 
   if (isMapLoading) {
-    return <View style={{ flex: 1, backgroundColor: mapPalette.styleBackground }} />;
+    return <View style={{ flex: 1, backgroundColor: mapBackgroundColor }} />;
   }
 
   if (Platform.OS === "web") {
@@ -121,7 +124,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
   return (
     <MapMobileStage
       t={t}
-      mapBackgroundColor={mapPalette.styleBackground}
+      mapBackgroundColor={mapBackgroundColor}
       isFocused={isFocused}
       mapPin={mapPin}
       studios={studios}

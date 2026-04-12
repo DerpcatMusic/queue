@@ -15,6 +15,7 @@ type ProfileAvatarProps = {
   roundedSquare?: boolean;
   fallbackIcon?: string;
   backgroundColor?: ColorValue;
+  onImageLoad?: () => void;
 } & Pick<ViewProps, "accessibilityLabel">;
 
 function toInitials(name: string | null | undefined) {
@@ -37,6 +38,7 @@ export function ProfileAvatar({
   roundedSquare = true,
   fallbackIcon = "person.fill",
   backgroundColor,
+  onImageLoad,
   accessibilityLabel,
 }: ProfileAvatarProps) {
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
@@ -50,26 +52,28 @@ export function ProfileAvatar({
   return (
     <View
       accessibilityLabel={accessibilityLabel}
-      style={{
-        width: size,
-        height: size,
-        borderRadius,
-        borderCurve: "continuous",
-        overflow: "hidden",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: backgroundColor ?? color.surfaceAlt,
-      }}
-    >
+        style={{
+          width: size,
+          height: size,
+          borderRadius,
+          borderCurve: "continuous",
+          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: backgroundColor ?? color.surface,
+        }}
+      >
       {canRenderImage && normalizedImageUrl ? (
-        <Image
-          source={{ uri: normalizedImageUrl }}
-          onError={() => {
-            setFailedImageUrl(normalizedImageUrl);
-          }}
-          style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
-        />
+      <Image
+        source={{ uri: normalizedImageUrl }}
+        {...(onImageLoad ? { onLoad: onImageLoad } : {})}
+        onError={() => {
+          setFailedImageUrl(normalizedImageUrl);
+        }}
+        style={{ width: "100%", height: "100%" }}
+        contentFit="cover"
+        transition={0}
+      />
       ) : initials ? (
         <Text
           style={{

@@ -56,8 +56,7 @@ export function createRadiusCircleFeatureCollection(
     const cosAngularDistance = Math.cos(angularDistance);
 
     const targetLatitude = Math.asin(
-      sinLatitude * cosAngularDistance +
-        cosLatitude * sinAngularDistance * Math.cos(bearing),
+      sinLatitude * cosAngularDistance + cosLatitude * sinAngularDistance * Math.cos(bearing),
     );
     const targetLongitude =
       longitudeRadians +
@@ -66,20 +65,17 @@ export function createRadiusCircleFeatureCollection(
         cosAngularDistance - sinLatitude * Math.sin(targetLatitude),
       );
 
-    coordinates.push([
-      (targetLongitude * 180) / Math.PI,
-      (targetLatitude * 180) / Math.PI,
-    ]);
+    coordinates.push([(targetLongitude * 180) / Math.PI, (targetLatitude * 180) / Math.PI]);
   }
 
   return {
-    type: 'FeatureCollection',
+    type: "FeatureCollection",
     features: [
       {
-        type: 'Feature',
+        type: "Feature",
         properties: {},
         geometry: {
-          type: 'Polygon',
+          type: "Polygon",
           coordinates: [coordinates],
         },
       },
@@ -287,7 +283,7 @@ export function withMapPersonality(
       if (layerType === "symbol") {
         layout["text-font"] = ["Noto Sans Regular"];
         paint["text-color"] = palette.text;
-        paint["text-halo-color"] = palette.textHalo;
+        paint["text-halo-color"] = palette.surface;
         paint["text-halo-width"] = 1.0;
         paint["text-opacity"] = 1;
       }
@@ -473,7 +469,7 @@ export function createStudioMarkersGeoJson(
         studioName: studio.studioName,
         zone: studio.zone,
         label: studio.studioName.slice(0, 1).toUpperCase(),
-        iconKey: studio.logoImageUrl ? `${STUDIO_MARKER_IMAGE_PREFIX}${studio.studioId}` : null,
+        iconKey: `${STUDIO_MARKER_IMAGE_PREFIX}${studio.studioId}`,
         hasLogo: Boolean(studio.logoImageUrl),
         selected: selectedStudioId === studio.studioId,
         accentColor: studio.mapMarkerColor ?? null,

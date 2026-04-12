@@ -3,16 +3,19 @@ import { useLayoutEffect } from "react";
 import MapTabScreen from "@/components/map-tab";
 import { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
 import { useSystemUi } from "@/contexts/system-ui-context";
+import { useTheme } from "@/hooks/use-theme";
 import { isFeatureEnabled } from "@/navigation/tab-registry";
 import { useTabSceneDescriptor } from "@/modules/navigation/role-tabs-layout";
 
 export default function MapTabRoute() {
   const controller = useMapTabController();
+  const { color } = useTheme();
   const { setTopInsetBackgroundColor, setTopInsetTone, setTopInsetVisible } = useSystemUi();
+  const mapBackgroundColor = controller.mapPalette?.styleBackground ?? color.appBg;
 
   useLayoutEffect(() => {
     setTopInsetTone("app");
-    setTopInsetBackgroundColor(controller.mapPalette.styleBackground);
+    setTopInsetBackgroundColor(mapBackgroundColor);
     setTopInsetVisible(false);
     return () => {
       setTopInsetTone("app");
@@ -20,7 +23,7 @@ export default function MapTabRoute() {
       setTopInsetVisible(true);
     };
   }, [
-    controller.mapPalette.styleBackground,
+    mapBackgroundColor,
     setTopInsetBackgroundColor,
     setTopInsetTone,
     setTopInsetVisible,
@@ -35,7 +38,7 @@ export default function MapTabRoute() {
     tabId: "map",
     body: descriptorBody,
     insetTone: "app",
-    backgroundColor: controller.mapPalette.styleBackground,
+    backgroundColor: mapBackgroundColor,
   });
 
   return descriptorBody;

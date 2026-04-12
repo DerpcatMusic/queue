@@ -18,35 +18,79 @@ import { useThemePreference } from "@/hooks/use-theme-preference";
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
-import studioPinShellSdf from "@/assets/images/map/studio-pin-shell-sdf.png";
 import {
   createPropertyInFilter,
-  createStudioMarkersGeoJson,
   createRadiusCircleFeatureCollection,
   ensureVectorOfflinePack,
-  getStudioMarkerImageEntries,
   sanitizeZoom,
   selectRenderableStudioMarkers,
   toBounds,
 } from "./queue-map.native.helpers";
 import {
   Camera,
-  CircleLayer,
   GeoJSONSource,
-  Images,
   MapView,
   Marker,
   FillLayer,
   LineLayer,
-  SymbolLayer,
+  PointAnnotation,
   StyleImport,
   type MapRef,
 } from "./native-map-sdk";
 import type { QueueMapProps } from "./queue-map.types";
+import { StudioMapMarkerView } from "./studio-map-marker-view";
 
 type MapLoadState = "loading" | "ready" | "error";
 const MAP_LOADING_OVERLAY_DELAY_MS = 80;
 const MAP_LOADING_HARD_TIMEOUT_MS = 12000;
+
+const StudioMarkerAnnotation = memo(function StudioMarkerAnnotation({
+  studio,
+  selected,
+  onPressStudio,
+  zoomLevel,
+}: {
+  studio: NonNullable<QueueMapProps["studios"]>[number];
+  selected: boolean;
+  onPressStudio: ((studioId: string) => void) | undefined;
+  zoomLevel: number | undefined;
+}) {
+  const pointAnnotationRef = useRef<{ refresh?: () => void } | null>(null);
+  const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
+  const zoomScale = useMemo(() => {
+    const zoom = zoomLevel ?? 0;
+    const normalized = Math.max(0, Math.min(1, (zoom - 14.2) / 1.8));
+    return 1 + normalized * 0.12;
+  }, [zoomLevel]);
+  const handleAvatarLoad = useCallback(() => {
+    pointAnnotationRef.current?.refresh?.();
+    setAvatarRefreshKey((current) => current + 1);
+  }, []);
+
+  const outerSize = Math.round((BrandSpacing.avatarSm + BrandSpacing.xs * 2) * zoomScale);
+
+  return (
+    <PointAnnotation
+      ref={pointAnnotationRef as any}
+      id={`queue-studio-${studio.studioId}`}
+      coordinate={[studio.longitude, studio.latitude]}
+      anchor={{ x: 0.5, y: 0.5 }}
+      selected={selected}
+      style={{ width: outerSize, height: outerSize }}
+      onSelected={() => {
+        onPressStudio?.(studio.studioId);
+      }}
+    >
+      <StudioMapMarkerView
+        key={`${studio.studioId}:${avatarRefreshKey}`}
+        studio={studio}
+        selected={selected}
+        onAvatarLoad={handleAvatarLoad}
+        scale={zoomScale}
+      />
+    </PointAnnotation>
+  );
+});
 
 export const QueueMap = memo(function QueueMap({
   mode,
@@ -203,20 +247,6 @@ export const QueueMap = memo(function QueueMap({
         selectedStudioId: selectedStudioId ?? null,
       }),
     [markerBounds, markerZoomLevel, selectedStudioId, studios],
-  );
-  const studioMarkerImages = useMemo(
-    () => ({
-      ...getStudioMarkerImageEntries(renderableStudios),
-      "studio-pin-shell": {
-        image: studioPinShellSdf,
-        sdf: true,
-      },
-    }),
-    [renderableStudios],
-  );
-  const studioMarkersGeoJson = useMemo(
-    () => createStudioMarkersGeoJson(renderableStudios, selectedStudioId ?? null),
-    [renderableStudios, selectedStudioId],
   );
   const handleMapPress = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -434,12 +464,12 @@ export const QueueMap = memo(function QueueMap({
 
   if (Constants.appOwnership === "expo") {
     return (
-      <KitSurface
+          <KitSurface
         tone="base"
         style={[
           styles.fallback,
           {
-            backgroundColor: color.surfaceAlt,
+            backgroundColor: color.surfaceElevated,
             borderRadius: BrandRadius.soft,
             borderCurve: "continuous",
             margin: BrandSpacing.inset,
@@ -524,105 +554,17 @@ export const QueueMap = memo(function QueueMap({
                 />
               </GeoJSONSource>
             ) : null}
-            {renderableStudios.length > 0 ? (
-              <>
-                <Images images={studioMarkerImages} />
-                <GeoJSONSource id="queue-studios-source" data={studioMarkersGeoJson}>
-                  <CircleLayer
-                    id="queue-studios-circle-layer"
-                    paint={{
-                      "circle-color": [
-                        "coalesce",
-                        ["get", "accentColor"],
-                        accentColor,
-                      ],
-                      "circle-opacity": 1,
-                      "circle-stroke-color": [
-                        "coalesce",
-                        ["get", "accentColor"],
-                        accentColor,
-                      ],
-                      "circle-stroke-width": [
-                        "case",
-                        ["boolean", ["get", "selected"], false],
-                        3,
-                        2,
-                      ],
-                      "circle-radius": [
-                        "case",
-                        ["boolean", ["get", "selected"], false],
-                        17,
-                        14,
-                      ],
-                    }}
+            {renderableStudios.length > 0
+              ? renderableStudios.map((studio) => (
+                  <StudioMarkerAnnotation
+                    key={studio.studioId}
+                    studio={studio}
+                    selected={selectedStudioId === studio.studioId}
+                    onPressStudio={_onPressStudio}
+                    zoomLevel={currentZoom}
                   />
-                  <SymbolLayer
-                    id="queue-studios-logo-layer"
-                    filter={["==", ["get", "hasLogo"], true]}
-                    layout={{
-                      "icon-image": ["get", "iconKey"],
-                      "icon-allow-overlap": true,
-                      "icon-ignore-placement": true,
-                      "icon-anchor": "center",
-                      "icon-size": [
-                        "case",
-                        ["boolean", ["get", "selected"], false],
-                        0.96,
-                        0.9,
-                      ],
-                      "symbol-sort-key": [
-                        "case",
-                        ["boolean", ["get", "selected"], false],
-                        1,
-                        0,
-                      ],
-                    }}
-                    paint={{
-                      "icon-opacity": 1,
-                    }}
-                  />
-                  <SymbolLayer
-                    id="queue-studios-fallback-layer"
-                    filter={["==", ["get", "hasLogo"], false]}
-                    layout={{
-                      "icon-image": "studio-pin-shell",
-                      "icon-allow-overlap": true,
-                      "icon-ignore-placement": true,
-                      "icon-anchor": "center",
-                      "icon-size": [
-                        "case",
-                        ["boolean", ["get", "selected"], false],
-                        1,
-                        0.92,
-                      ],
-                      "symbol-sort-key": [
-                        "case",
-                        ["boolean", ["get", "selected"], false],
-                        1,
-                        0,
-                      ],
-                      "text-field": ["get", "label"],
-                      "text-font": ["Noto Sans Regular"],
-                      "text-size": 13,
-                      "text-allow-overlap": true,
-                      "text-ignore-placement": true,
-                      "text-anchor": "center",
-                      "text-offset": [0, 0.02],
-                    }}
-                    paint={{
-                      "icon-color": [
-                        "coalesce",
-                        ["get", "accentColor"],
-                        accentColor,
-                      ],
-                      "text-color": color.text,
-                      "text-halo-color": color.surface,
-                      "text-halo-width": 1.1,
-                    }}
-                  />
-                </GeoJSONSource>
-              </>
-            ) : null}
+                ))
+              : null}
             {mode === "zoneSelect" || activeBoundarySource ? (
               <QueueMapBoundaryPolygons
                 mode={mode}
@@ -646,8 +588,7 @@ export const QueueMap = memo(function QueueMap({
           <Marker
             id="queue-pin-marker"
             lngLat={[pin.longitude, pin.latitude]}
-            anchor="bottom"
-            offset={[-APPLE_MAP_THEME.overlay.pinRadius, -APPLE_MAP_THEME.overlay.pinRadius]}
+            anchor="center"
           >
             <View
               style={{
@@ -739,7 +680,7 @@ export const QueueMap = memo(function QueueMap({
               borderWidth: 1.2,
               borderRadius: BrandRadius.button,
               borderCurve: "continuous",
-              backgroundColor: pressed ? color.surfaceAlt : color.surface,
+              backgroundColor: pressed ? color.surfaceElevated : color.surface,
               borderColor: color.borderStrong,
               overflow: "hidden",
               transform: [{ scale: pressed ? 0.98 : 1 }],
@@ -760,7 +701,7 @@ export const QueueMap = memo(function QueueMap({
           style={({ pressed }) => [
             styles.attributionButton,
             {
-              backgroundColor: pressed ? color.surfaceAlt : color.surfaceElevated,
+              backgroundColor: pressed ? color.surface : color.surfaceElevated,
               borderColor: color.borderStrong,
               borderWidth: 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],

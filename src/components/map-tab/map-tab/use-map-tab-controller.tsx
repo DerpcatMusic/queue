@@ -114,6 +114,7 @@ export function useMapTabController() {
   const [hasUserAdjustedWorkRadius, setHasUserAdjustedWorkRadius] = useState(false);
   const [isRadiusSaving, setIsRadiusSaving] = useState(false);
   const radiusSaveQueueRef = useRef<number | null>(null);
+  const pendingRadiusSaveRef = useRef<number | null>(null);
   const remoteZones = useQuery(
     api.instructorZones.getMyInstructorZones,
     currentUser?.role === "instructor" && usesLegacyZoneStorage ? {} : "skip",
@@ -198,6 +199,15 @@ export function useMapTabController() {
       },
     );
   }, [instructorSettings?.latitude, instructorSettings?.longitude]);
+
+  useEffect(() => {
+    const pendingRadiusKm = pendingRadiusSaveRef.current;
+    if (pendingRadiusKm === null || !instructorSettings || isRadiusSaving) {
+      return;
+    }
+    pendingRadiusSaveRef.current = null;
+    void saveRadiusToProfile(pendingRadiusKm);
+  }, [instructorSettings, isRadiusSaving]);
 
   useEffect(() => {
     if (!isFocused || hasAttemptedMapPinBootstrap || mapPin) {
@@ -357,7 +367,11 @@ export function useMapTabController() {
 
   const saveRadiusToProfile = useCallback(
     async (radiusKm: number) => {
-      if (usesLegacyZoneStorage || !instructorSettings) {
+      if (usesLegacyZoneStorage) {
+        return;
+      }
+      if (!instructorSettings) {
+        pendingRadiusSaveRef.current = radiusKm;
         return;
       }
       const currentRadiusKm = instructorSettings.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM;
@@ -413,6 +427,12 @@ export function useMapTabController() {
         radiusSaveQueueRef.current = null;
         if (queuedRadius !== null && Math.abs(queuedRadius - radiusKm) >= 0.001) {
           void saveRadiusToProfile(queuedRadius);
+          return;
+        }
+        const pendingRadiusKm = pendingRadiusSaveRef.current;
+        if (pendingRadiusKm !== null) {
+          pendingRadiusSaveRef.current = null;
+          void saveRadiusToProfile(pendingRadiusKm);
         }
       }
     },

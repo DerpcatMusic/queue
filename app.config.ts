@@ -7,6 +7,14 @@ function trimEnv(value: string | undefined) {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 }
 
+function resolveMapboxPublicToken() {
+  return (
+    trimEnv(process.env.EXPO_PUBLIC_MAPBOX_TOKEN) ??
+    trimEnv(process.env.MAPBOX_PUBLIC_TOKEN) ??
+    trimEnv(process.env.MAPBOX_TOKEN)
+  );
+}
+
 function resolveGoogleIosClientId() {
   return trimEnv(process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID_IOS);
 }
@@ -25,6 +33,7 @@ const googleIosUrlScheme = buildGoogleIosUrlScheme(resolveGoogleIosClientId());
 export default ({ config }: { config: ExpoConfig }) => {
   const easProjectId =
     trimEnv(process.env.EXPO_PUBLIC_EAS_PROJECT_ID) ?? trimEnv(process.env.EAS_PROJECT_ID);
+  const mapboxPublicToken = resolveMapboxPublicToken();
   const plugins = [...(config.plugins ?? [])];
   const hasGoogleSigninPlugin = plugins.some(
     (plugin) =>
@@ -58,6 +67,12 @@ export default ({ config }: { config: ExpoConfig }) => {
     plugins,
     extra: {
       ...(config.extra ?? {}),
+      ...(mapboxPublicToken
+        ? {
+            mapboxPublicToken,
+            EXPO_PUBLIC_MAPBOX_TOKEN: mapboxPublicToken,
+          }
+        : {}),
       ...(easProjectId
         ? {
             eas: {

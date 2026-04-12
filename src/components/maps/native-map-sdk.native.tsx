@@ -4,6 +4,9 @@ import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import { View } from "react-native";
 
 const mapboxPublicToken =
+  (process.env.EXPO_PUBLIC_MAPBOX_TOKEN as string | undefined) ??
+  (process.env.MAPBOX_PUBLIC_TOKEN as string | undefined) ??
+  (process.env.MAPBOX_TOKEN as string | undefined) ??
   (Constants.expoConfig?.extra?.mapboxPublicToken as string | undefined) ??
   (Constants.manifest2?.extra?.expoClient?.extra?.mapboxPublicToken as string | undefined) ??
   (Constants.expoConfig?.extra?.EXPO_PUBLIC_MAPBOX_TOKEN as string | undefined) ??
@@ -327,6 +330,8 @@ export function GeoJSONSource({ id, data, onPress, children }: GeoJSONSourceProp
 }
 
 export const Images = Mapbox.Images;
+export const Image = Mapbox.Image;
+export const PointAnnotation = Mapbox.PointAnnotation;
 export function VectorSource({
   id,
   url,
