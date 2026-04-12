@@ -62,6 +62,7 @@ export type QueueMapProps = {
   onUseGps?: () => void;
   showGpsButton?: boolean;
   showAttributionButton?: boolean;
+  radiusKm?: number;
   contentInset?: QueueMapViewPadding;
   cameraPadding?: {
     top: number;

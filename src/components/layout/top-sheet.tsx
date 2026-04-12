@@ -634,12 +634,7 @@ const styles = StyleSheet.create(() => ({
     overflow: "hidden" as const,
     zIndex: 100,
   },
-  sheetChrome: (borderColor: ColorValue) => ({
-    borderBottomWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor,
-  }),
+  sheetChrome: (_borderColor: ColorValue) => ({}),
   dragHandleZone: {
     position: "absolute" as const,
     bottom: 0,
@@ -647,10 +642,7 @@ const styles = StyleSheet.create(() => ({
     right: 0,
     height: HANDLE_HEIGHT,
   },
-  dragHandleBorder: (borderColor: ColorValue) => ({
-    borderTopWidth: 1,
-    borderTopColor: borderColor,
-  }),
+  dragHandleBorder: (_borderColor: ColorValue) => ({}),
 }));
 
 // ─── SearchBar Widget ─────────────────────────────────────────────────────────

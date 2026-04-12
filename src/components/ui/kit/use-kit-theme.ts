@@ -71,7 +71,7 @@ export function useKitTheme() {
       app: theme.color.appBg,
       sheet: theme.color.surface,
       surface: theme.color.surface,
-      surfaceSecondary: theme.color.surfaceAlt,
+      surfaceSecondary: theme.color.surfaceMuted,
       surfaceElevated: theme.color.surfaceElevated,
       panel: theme.color.surface,
       glass: theme.color.surface,

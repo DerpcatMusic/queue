@@ -38,8 +38,6 @@ const styles = StyleSheet.create((theme) => ({
   color_text: { color: theme.color.text },
   color_textMuted: { color: theme.color.textMuted },
   color_textMicro: { color: theme.color.textMicro },
-  color_onPrimary: { color: theme.color.onPrimary },
-  color_onSurface: { color: theme.color.onSurface },
 }));
 
 const variantMap: Record<TypographyToken, string> = {
@@ -74,8 +72,6 @@ const colorMap: Record<string, string> = {
   text: "color_text",
   textMuted: "color_textMuted",
   textMicro: "color_textMicro",
-  onPrimary: "color_onPrimary",
-  onSurface: "color_onSurface",
 };
 
 export const Text = memo(function Text({

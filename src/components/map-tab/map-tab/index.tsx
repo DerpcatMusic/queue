@@ -36,12 +36,6 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     mapCameraPadding,
     mapPalette,
     mapPin,
-    boundaryIdProperty,
-    boundaryInteractionBounds,
-    boundaryLabelPropertyCandidates,
-    boundarySource,
-    focusBoundaryBounds,
-    initialBoundaryViewport,
     studios,
     noopMapPress,
     overlayBottom,
@@ -53,10 +47,10 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     selectedStudioId,
     selectedZoneIds,
     selectedZones,
+    showRadiusControl,
     setFocusZoneId,
     t,
     toggleZone,
-    showRadiusControl,
     workRadiusKm,
     zoneLanguage,
     zoneSearch,
@@ -147,12 +141,6 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
       onRadiusCommit={handleRadiusCommit}
       onRadiusPanelToggle={handleRadiusPanelToggle}
       isRadiusSaving={isRadiusSaving}
-      {...(boundarySource ? { boundarySource } : {})}
-      {...(boundaryIdProperty ? { boundaryIdProperty } : {})}
-      {...(boundaryLabelPropertyCandidates ? { boundaryLabelPropertyCandidates } : {})}
-      {...(boundaryInteractionBounds ? { boundaryInteractionBounds } : {})}
-      {...(focusBoundaryBounds ? { focusBoundaryBounds } : {})}
-      {...(initialBoundaryViewport ? { initialBoundaryViewport } : {})}
     />
   );
 }

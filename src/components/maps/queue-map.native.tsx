@@ -4,27 +4,18 @@ import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
-import { QueueMapBoundaryPolygons } from "@/components/maps/queue-map-boundary-polygons";
 import { ThemedText } from "@/components/themed-text";
 import { BrandRadius, BrandSpacing, getMapBrandPalette } from "@/constants/brand";
-import {
-  buildZoneFeatureCollection,
-  getZoneIndexEntry,
-  ISRAEL_MAP_INTERACTION_BOUNDS,
-  PIKUD_ZONE_GEOJSON,
-} from "@/constants/zones-map";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
 import {
-  createPropertyInFilter,
   createRadiusCircleFeatureCollection,
   ensureVectorOfflinePack,
   sanitizeZoom,
   selectRenderableStudioMarkers,
-  toBounds,
 } from "./queue-map.native.helpers";
 import {
   Camera,
@@ -95,30 +86,14 @@ const StudioMarkerAnnotation = memo(function StudioMarkerAnnotation({
 export const QueueMap = memo(function QueueMap({
   mode,
   pin,
-  selectedZoneIds,
-  focusZoneId,
-  selectedBoundaryIds,
-  focusBoundaryId,
-  isEditing = mode === "zoneSelect",
-  zoneGeoJson,
-  zoneIdProperty = "id",
-  boundarySource,
-  boundaryIdProperty,
-  boundaryLabelPropertyCandidates,
-  boundaryInteractionBounds,
-  focusBoundaryBounds,
-  initialBoundaryViewport,
   studios,
   selectedStudioId,
   onPressStudio: _onPressStudio,
-  onPressZone,
-  onPressBoundary,
   onPressMap,
   onUseGps,
   showGpsButton = true,
   showAttributionButton = false,
   contentInset,
-  cameraPadding,
   radiusKm,
 }: QueueMapProps) {
   const { t } = useTranslation();
@@ -150,59 +125,13 @@ export const QueueMap = memo(function QueueMap({
     [resolvedScheme],
   );
   const mapKey = resolvedScheme;
-  const activeBoundaryIds = selectedBoundaryIds ?? selectedZoneIds;
-  const activeFocusBoundaryId = focusBoundaryId ?? focusZoneId;
-  const activeBoundaryIdProperty = boundaryIdProperty ?? zoneIdProperty;
-  const defaultBoundarySource = useMemo(() => {
-    const defaultGeoJson =
-      zoneGeoJson ??
-      (mode === "zoneSelect"
-        ? isEditing
-          ? PIKUD_ZONE_GEOJSON
-          : selectedZoneIds.length > 0
-            ? buildZoneFeatureCollection(selectedZoneIds)
-            : PIKUD_ZONE_GEOJSON
-        : null);
-
-    if (!defaultGeoJson) {
-      return undefined;
-    }
-
-    return {
-      kind: "geojson" as const,
-      featureCollection: defaultGeoJson,
-      idProperty: zoneIdProperty,
-    };
-  }, [isEditing, mode, selectedZoneIds, zoneGeoJson, zoneIdProperty]);
-  const activeBoundarySource = boundarySource ?? defaultBoundarySource;
-  const activeBoundaryPressHandler = onPressBoundary ?? onPressZone;
-  const activeBoundaryInteractionBounds =
-    boundaryInteractionBounds ??
-    (boundarySource ? null : zoneGeoJson ? ISRAEL_MAP_INTERACTION_BOUNDS : null);
-  const activeBoundaryLabelPropertyCandidates = boundaryLabelPropertyCandidates ?? [
-    "engName",
-    "hebName",
-    "name",
-    "postcode",
-    "postal_code",
-    "id",
-  ];
   const initialCenter = useMemo<[number, number]>(() => {
     if (pin) {
       return [pin.longitude, pin.latitude];
     }
-    const viewportBounds = initialBoundaryViewport?.bbox;
-    if (viewportBounds) {
-      return [
-        (viewportBounds.sw[0] + viewportBounds.ne[0]) / 2,
-        (viewportBounds.sw[1] + viewportBounds.ne[1]) / 2,
-      ];
-    }
     return APPLE_MAP_THEME.defaultCenter;
-  }, [initialBoundaryViewport?.bbox, pin]);
-  const initialZoom = pin
-    ? APPLE_MAP_THEME.defaultZoomWithPin
-    : (initialBoundaryViewport?.zoom ?? APPLE_MAP_THEME.defaultZoomWithoutPin);
+  }, [pin]);
+  const initialZoom = pin ? APPLE_MAP_THEME.defaultZoomWithPin : APPLE_MAP_THEME.defaultZoomWithoutPin;
 
   const mapRef = useRef<MapRef | null>(null);
   const mapLoadStateRef = useRef<MapLoadState>("loading");
@@ -218,10 +147,6 @@ export const QueueMap = memo(function QueueMap({
     flyTo: (coordinates: [number, number], animationDuration?: number) => void;
     zoomTo: (zoomLevel: number, animationDuration?: number) => void;
   } | null>(null);
-  const selectedBoundaryFilter = useMemo(
-    () => createPropertyInFilter(activeBoundaryIds, activeBoundaryIdProperty),
-    [activeBoundaryIdProperty, activeBoundaryIds],
-  );
   const radiusShape = useMemo(() => {
     if (!pin || !Number.isFinite(radiusKm ?? Number.NaN)) {
       return null;
@@ -233,7 +158,7 @@ export const QueueMap = memo(function QueueMap({
     return createRadiusCircleFeatureCollection(pin, km * 1000);
   }, [pin, radiusKm]);
   const [markerZoomLevel, setMarkerZoomLevel] = useState<number | null>(null);
-  /** Live zoom level fed into boundary polygons for zoom-tier selection. */
+  /** Live zoom level fed into studio marker scaling. */
   const [currentZoom, setCurrentZoom] = useState<number | undefined>(undefined);
   const [markerBounds, setMarkerBounds] = useState<{
     sw: [number, number];
@@ -428,40 +353,6 @@ export const QueueMap = memo(function QueueMap({
     };
   }, [mapLoadState, syncMarkerViewport]);
 
-  useEffect(() => {
-    const padding = cameraPadding ?? {
-      top: APPLE_MAP_THEME.focusPadding.top,
-      right: APPLE_MAP_THEME.focusPadding.right,
-      bottom: APPLE_MAP_THEME.focusPadding.bottom,
-      left: APPLE_MAP_THEME.focusPadding.left,
-    };
-
-    const nextBounds: [number, number, number, number] | null = focusBoundaryBounds
-      ? [
-          focusBoundaryBounds.sw[0],
-          focusBoundaryBounds.sw[1],
-          focusBoundaryBounds.ne[0],
-          focusBoundaryBounds.ne[1],
-        ]
-      : activeFocusBoundaryId
-        ? (getZoneIndexEntry(activeFocusBoundaryId)?.bbox ?? null)
-        : null;
-
-    if (!nextBounds) return;
-
-    cameraRef.current?.fitBounds(nextBounds, {
-      padding,
-      duration: 350,
-      easing: "ease",
-    });
-  }, [activeFocusBoundaryId, cameraPadding, focusBoundaryBounds]);
-
-  useEffect(() => {
-    if (!pin) return;
-    cameraRef.current?.flyTo([pin.longitude, pin.latitude], 800);
-    cameraRef.current?.zoomTo(APPLE_MAP_THEME.defaultZoomWithPin, 800);
-  }, [pin]);
-
   if (Constants.appOwnership === "expo") {
     return (
           <KitSurface
@@ -517,14 +408,6 @@ export const QueueMap = memo(function QueueMap({
 
         <Camera
           ref={cameraRef as any}
-          {...(activeBoundaryInteractionBounds
-            ? {
-                maxBounds: toBounds(
-                  activeBoundaryInteractionBounds.sw,
-                  activeBoundaryInteractionBounds.ne,
-                ),
-              }
-            : {})}
           minZoom={sanitizeZoom(APPLE_MAP_THEME.minZoom, 7.5)}
           maxZoom={sanitizeZoom(APPLE_MAP_THEME.maxZoom, 16)}
           initialViewState={{
@@ -565,22 +448,6 @@ export const QueueMap = memo(function QueueMap({
                   />
                 ))
               : null}
-            {mode === "zoneSelect" || activeBoundarySource ? (
-              <QueueMapBoundaryPolygons
-                mode={mode}
-                isEditing={isEditing}
-                showLabelLayers
-                selectedBoundaryIds={activeBoundaryIds}
-                selectedBoundaryFilter={selectedBoundaryFilter}
-                boundarySource={activeBoundarySource}
-                boundaryIdProperty={activeBoundaryIdProperty}
-                boundaryLabelPropertyCandidates={activeBoundaryLabelPropertyCandidates}
-                visibleBounds={markerBounds}
-                currentZoom={currentZoom}
-                mapPalette={mapPalette}
-                onPressBoundary={activeBoundaryPressHandler}
-              />
-            ) : null}
           </>
         ) : null}
 

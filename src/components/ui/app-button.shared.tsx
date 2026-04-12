@@ -93,7 +93,12 @@ export function AppButtonFallback({
   const textColor = isDisabled
     ? (colors?.disabledLabelColor ??
       (tone === "primary" ? theme.color.onPrimary : theme.color.textMuted))
-    : (colors?.labelColor ?? (tone === "primary" ? theme.color.onPrimary : theme.color.text));
+    : (colors?.labelColor ??
+      (tone === "primary"
+        ? theme.color.onPrimary
+        : tone === "primarySubtle"
+          ? theme.color.primary
+          : theme.color.text));
 
   return (
     <KitPressable
@@ -103,7 +108,8 @@ export function AppButtonFallback({
       haptic={haptic}
       onPress={onPress}
       style={{
-        tone: tone === "primary" ? "primary" : "surface",
+        tone:
+          tone === "primary" ? "primary" : tone === "primarySubtle" ? "primarySubtle" : "surface",
         variant: "solid",
         size: {
           minHeight,

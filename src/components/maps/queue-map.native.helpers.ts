@@ -283,7 +283,7 @@ export function withMapPersonality(
       if (layerType === "symbol") {
         layout["text-font"] = ["Noto Sans Regular"];
         paint["text-color"] = palette.text;
-        paint["text-halo-color"] = palette.surface;
+        paint["text-halo-color"] = palette.textHalo;
         paint["text-halo-width"] = 1.0;
         paint["text-opacity"] = 1;
       }

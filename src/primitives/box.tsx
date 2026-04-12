@@ -190,13 +190,9 @@ const styles = StyleSheet.create((theme) => ({
   bg_warning: { backgroundColor: theme.color.warning },
   bg_warningSubtle: { backgroundColor: theme.color.warningSubtle },
   bg_surface: { backgroundColor: theme.color.surface },
-  bg_surfaceAlt: { backgroundColor: theme.color.surfaceAlt },
+  bg_surfaceMuted: { backgroundColor: theme.color.surfaceMuted },
   bg_surfaceElevated: { backgroundColor: theme.color.surfaceElevated },
   bg_appBg: { backgroundColor: theme.color.appBg },
-  bg_jobsCanvas: { backgroundColor: theme.color.jobsCanvas },
-  bg_jobsSurface: { backgroundColor: theme.color.jobsSurface },
-  bg_jobsSurfaceRaised: { backgroundColor: theme.color.jobsSurfaceRaised },
-  bg_jobsSurfaceMuted: { backgroundColor: theme.color.jobsSurfaceMuted },
   bg_tertiary: { backgroundColor: theme.color.tertiary },
   bg_tertiarySubtle: { backgroundColor: theme.color.tertiarySubtle },
 
@@ -205,8 +201,6 @@ const styles = StyleSheet.create((theme) => ({
   border_default: { borderColor: theme.color.border },
   border_strong: { borderColor: theme.color.borderStrong },
   border_divider: { borderColor: theme.color.divider },
-  border_outline: { borderColor: theme.color.outline },
-  border_outlineStrong: { borderColor: theme.color.outlineStrong },
 
   // ─── Layout variants ─────────────────────────────────────────────────────────
   display_flex: { display: "flex" as const },
@@ -405,13 +399,9 @@ const bgVariantMap: Record<string, string> = {
   warning: "bg_warning",
   warningSubtle: "bg_warningSubtle",
   surface: "bg_surface",
-  surfaceAlt: "bg_surfaceAlt",
+  surfaceMuted: "bg_surfaceMuted",
   surfaceElevated: "bg_surfaceElevated",
   appBg: "bg_appBg",
-  jobsCanvas: "bg_jobsCanvas",
-  jobsSurface: "bg_jobsSurface",
-  jobsSurfaceRaised: "bg_jobsSurfaceRaised",
-  jobsSurfaceMuted: "bg_jobsSurfaceMuted",
   tertiary: "bg_tertiary",
   tertiarySubtle: "bg_tertiarySubtle",
 };
@@ -421,8 +411,6 @@ const borderVariantMap: Record<string, string> = {
   border: "border_default",
   borderStrong: "border_strong",
   divider: "border_divider",
-  outline: "border_outline",
-  outlineStrong: "border_outlineStrong",
 };
 
 const flexDirVariantMap: Record<string, string> = {

@@ -36,15 +36,19 @@ export function IconButton({
       ? theme.color.primary
       : tone === "primarySubtle"
         ? theme.color.primarySubtle
-        : theme.color.surfaceAlt);
+        : theme.color.surfaceMuted);
 
   const pressedBackgroundColor =
-    tone === "primary" ? theme.color.primaryPressed : theme.color.surfaceElevated;
+    tone === "primary"
+      ? theme.color.primaryPressed
+      : tone === "primarySubtle"
+        ? theme.color.primary
+        : theme.color.surfaceElevated;
 
   const disabledBackgroundColor =
     tone === "primary" || tone === "primarySubtle"
       ? theme.color.primarySubtle
-      : theme.color.surface;
+      : theme.color.surfaceMuted;
 
   return (
     <Box style={raisedStyle}>

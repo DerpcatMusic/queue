@@ -1,15 +1,15 @@
+import { TouchableOpacity } from "@gorhom/bottom-sheet";
 import type { ComponentProps, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, type ViewStyle, View } from "react-native";
+import { View, type ViewStyle } from "react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
-import type { AppTheme } from "@/theme/theme";
-
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSurface } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { BorderWidth, FontFamily, LetterSpacing } from "@/lib/design-system";
 import { Box, Text } from "@/primitives";
+import type { AppTheme } from "@/theme/theme";
 
 type ProfileSymbolName = ComponentProps<typeof IconSymbol>["name"];
 
@@ -375,7 +375,7 @@ export function ProfileSettingRow({
   }
 
   return (
-    <Pressable
+    <TouchableOpacity
       accessibilityRole="button"
       accessibilityLabel={[title, subtitle, value].filter(Boolean).join(". ")}
       onPress={onPress}
@@ -385,7 +385,7 @@ export function ProfileSettingRow({
       ]}
     >
       {content}
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 
@@ -422,7 +422,7 @@ export function ProfileSupportCard({
   }
 
   return (
-    <Pressable
+    <TouchableOpacity
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
@@ -436,7 +436,7 @@ export function ProfileSupportCard({
       <Text variant="bodyMedium" color="text" style={{ fontWeight: "600" }}>
         {title}
       </Text>
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 
@@ -455,7 +455,7 @@ export function ProfileSignOutButton({ title, onPress }: { title: string; onPres
   }
 
   return (
-    <Pressable
+    <TouchableOpacity
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
@@ -468,6 +468,6 @@ export function ProfileSignOutButton({ title, onPress }: { title: string; onPres
       <Text variant="bodyMedium" style={{ color: colors.dangerText, fontWeight: "700" }}>
         {title}
       </Text>
-    </Pressable>
+    </TouchableOpacity>
   );
 }

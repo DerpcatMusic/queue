@@ -1,14 +1,15 @@
+import { TouchableOpacity } from "@gorhom/bottom-sheet";
 import type { ComponentProps } from "react";
 import { memo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { SPORT_GENRES } from "@/convex/constants";
 import { useTheme } from "@/hooks/use-theme";
 import type { JobStatus } from "@/lib/status-tokens";
 import { getJobStatusTokens } from "@/lib/status-tokens";
 import { Box, Text } from "@/primitives";
-import { SPORT_GENRES } from "@/convex/constants";
 
 /** Maps sport genre keys to SF Symbol names for sport-specific icons */
 const SPORT_GENRE_ICONS: Record<string, ComponentProps<typeof IconSymbol>["name"]> = {
@@ -374,7 +375,7 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
 
       <Box style={{ gap: BrandSpacing.sm }}>
         {orderedItems.map((item) => (
-          <Pressable
+          <TouchableOpacity
             key={item.id}
             accessibilityRole="button"
             accessibilityLabel={item.label}
@@ -433,7 +434,7 @@ export const HomeChecklistCard = memo(function HomeChecklistCard({
             {item.done ? null : (
               <IconSymbol name="chevron.right" size={16} color={palette.textMuted} />
             )}
-          </Pressable>
+          </TouchableOpacity>
         ))}
       </Box>
     </Box>
