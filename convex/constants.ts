@@ -1,8 +1,3 @@
-import { PIKUD_HAOREF_ZONE_IDS, type PikudHaorefZoneId } from "./pikud-zones.generated";
-
-export const PIKUD_HAOREF_ZONES = PIKUD_HAOREF_ZONE_IDS;
-export type PikudHaorefZone = PikudHaorefZoneId;
-
 export const CAPABILITY_TAGS = [
   { key: "tower", label: "Tower" },
   { key: "cadillac", label: "Cadillac" },
