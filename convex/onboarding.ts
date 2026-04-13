@@ -23,7 +23,6 @@ const MAX_STUDIO_NAME_LENGTH = 120;
 const MAX_ADDRESS_LENGTH = 220;
 const MAX_PHONE_LENGTH = 20;
 const MAX_SPORTS = 12;
-const MAX_ZONES = 25;
 const DEFAULT_LESSON_REMINDER_MINUTES_BEFORE = 30;
 type AppRole = "instructor" | "studio";
 

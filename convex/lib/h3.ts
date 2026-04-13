@@ -14,7 +14,7 @@ export function safeH3Index(
   lng: number | undefined,
 ): string | undefined {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return undefined;
-  return latLngToCell(lat, lng, H3_RESOLUTION);
+  return latLngToCell(lat!, lng!, H3_RESOLUTION);
 }
 
 /**
@@ -46,7 +46,7 @@ export async function queryJobsByH3Cells(
   args: {
     hexCells: string[];
     sports: Set<string>;
-    status: string;
+    status: Doc<"jobs">["status"];
     limit: number;
   },
 ): Promise<Doc<"jobs">[]> {

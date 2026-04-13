@@ -3,7 +3,7 @@ import { gridDisk } from "h3-js";
 
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { radiusToK } from "./lib/h3";
 import {
@@ -35,7 +35,7 @@ type PushRouting = {
 };
 
 async function getPushRoutingForUser(
-  ctx: QueryCtx | MutationCtx | ActionCtx,
+  ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
   preferenceKey: NotificationPreferenceKey,
 ): Promise<PushRouting | null> {
@@ -229,12 +229,12 @@ export const getJobAndEligibleInstructors = internalAction({
             .unique();
           if (!sportLink) continue;
 
-          const routing = await getPushRoutingForUser(ctx, profile.userId, "job_offer");
+          const routing = await getPushRoutingForUser(ctx as unknown as QueryCtx, profile.userId, "job_offer");
           if (!routing?.preferenceEnabled || !routing.globalPushEnabled || !routing.expoPushToken) {
             continue;
           }
 
-          const compliance = await loadInstructorComplianceSnapshot(ctx, profile._id, Date.now());
+          const compliance = await loadInstructorComplianceSnapshot(ctx as unknown as QueryCtx, profile._id, Date.now());
           if (
             !canInstructorPerformJobActions({
               profile,
