@@ -7,10 +7,8 @@ import {
   HomeRoleContent,
   type HomeRoleContentProps,
 } from "@/components/home/home-tab/home-role-content";
-import {
-  createContentDrivenTopSheetConfig,
-  getMainTabSheetBackgroundColor,
-} from "@/components/layout/top-sheet-registry";
+import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
+import { MeshGradientBackground } from "@/components/ui/mesh-gradient-background";
 import { LoadingScreen } from "@/components/loading-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
@@ -27,7 +25,6 @@ export default function HomeScreen() {
   const liveNow = useMinuteNow();
   const queryNow = Math.floor(liveNow / (60 * 1000)) * 60 * 1000;
   const theme = useTheme();
-  const mainTabSheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
 
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
   const canQueryInstructor =
@@ -149,6 +146,7 @@ export default function HomeScreen() {
               : (myStudioJobs?.length ?? 0)
           }
           role={activeRole}
+          transparent
           {...(homeSubtitle ? { subtitle: homeSubtitle } : {})}
         />
       ) : null,
@@ -181,11 +179,13 @@ export default function HomeScreen() {
               vertical: 0,
               horizontal: 0,
             },
-            backgroundColor: mainTabSheetBackgroundColor,
-            topInsetColor: mainTabSheetBackgroundColor,
+            backgroundColor: theme.color.surfaceElevated,
+            topInsetColor: theme.color.surfaceElevated,
+            gradientBackground: <MeshGradientBackground />,
+            shadow: "none",
           })
         : null,
-    [activeRole, homeSheetContent, mainTabSheetBackgroundColor],
+    [activeRole, homeSheetContent, theme.color.surfaceElevated],
   );
 
   const descriptor = useMemo(

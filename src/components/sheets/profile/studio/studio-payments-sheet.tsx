@@ -12,6 +12,7 @@ import { KitList, KitListItem } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { getPaymentMethodOrder } from "@/features/payments/lib/get-payment-method-order";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth } from "@/lib/design-system";
 import { formatDateTime } from "@/lib/jobs-utils";
@@ -20,6 +21,7 @@ import {
   getPaymentStatusLabel,
   getPayoutStatusLabel,
 } from "@/lib/payments-utils";
+import { getStripeMarketDefaults } from "@/lib/stripe";
 import { Box } from "@/primitives";
 
 interface StudioPaymentsSheetProps {
@@ -75,6 +77,7 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
   const paidOutCount = rows.filter((row) => row.payout?.status === "paid").length;
   const isDetailLoading = selectedPaymentId !== null && selectedPaymentDetail === undefined;
   const canOpenCustomerSheet = currentUser.role === "studio" && Platform.OS !== "web";
+  const paymentMethodTypes = getPaymentMethodOrder(getStripeMarketDefaults().currency);
 
   const customerSheetDefaultBillingDetails = currentUser.email
     ? {
@@ -197,7 +200,7 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
             merchantDisplayName="Queue"
             headerTextForSelectionScreen={t("profile.payments.savedMethods")}
             intentConfiguration={{
-              paymentMethodTypes: ["card", "us_bank_account"],
+              paymentMethodTypes,
             }}
             clientSecretProvider={{
               provideCustomerSessionClientSecret: async () => {

@@ -1,8 +1,7 @@
 import { Image } from "expo-image";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { ProfileVerifiedBadge } from "@/components/profile/profile-verified-badge";
@@ -10,6 +9,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
+import { useAppInsets } from "@/hooks/use-app-insets";
 import { FontFamily, IconSize, Opacity } from "@/lib/design-system";
 import { Box, Text } from "@/primitives";
 import {
@@ -36,13 +36,6 @@ type ProfileHeaderSheetProps = {
 };
 
 const STUDIO_HERO_HEIGHT = 236;
-
-function hexToRgba(hex: string, alpha: number) {
-  const r = Number.parseInt(hex.slice(1, 3), 16);
-  const g = Number.parseInt(hex.slice(3, 5), 16);
-  const b = Number.parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 export const ProfileHeaderSheet = memo(function ProfileHeaderSheet({
   profileName,
@@ -188,6 +181,11 @@ function StudioFeatureHero({
   isVerified: boolean;
 }) {
   const { theme } = useUnistyles();
+  const { safeTop } = useAppInsets();
+  const featureTopRailStyle = useMemo(
+    () => [s.featureTopRail, { paddingTop: safeTop + BrandSpacing.lg }],
+    [safeTop],
+  );
   return (
     <View style={s.featureShell}>
       <View style={[s.featureHero, s.featureHeroShadow]}>
@@ -197,24 +195,9 @@ function StudioFeatureHero({
             contentFit="cover"
             style={StyleSheet.absoluteFillObject}
           />
-        ) : (
-          <View style={[StyleSheet.absoluteFillObject, s.featureFallback]}>
-            <ProfileAvatar
-              fallbackName={profileName}
-              imageUrl={null}
-              roundedSquare
-              size={BrandSpacing.iconContainerLarge + BrandSpacing.xl}
-            />
-          </View>
-        )}
+        ) : null}
 
-        <StudioHeroOverlays
-          appBgHex={theme.color.appBg}
-          primaryHex={theme.color.primary}
-          hasImage={!!profileImageUrl}
-        />
-
-        <View style={s.featureTopRail}>
+        <View style={featureTopRailStyle}>
           <View style={s.featureRolePill}>
             <Text numberOfLines={1} style={[BrandType.micro, s.rolePillText]}>
               {roleLabel}
@@ -277,47 +260,6 @@ function StudioFeatureHero({
   );
 }
 
-// ─── SVG gradient overlays (separated to keep render clean) ─────────────────
-
-function StudioHeroOverlays({
-  appBgHex,
-  primaryHex,
-  hasImage,
-}: {
-  appBgHex: string;
-  primaryHex: string;
-  hasImage: boolean;
-}) {
-  return (
-    <>
-      <View
-        pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFillObject,
-          { backgroundColor: hexToRgba(appBgHex, hasImage ? 0.1 : 0) },
-        ]}
-      />
-      <Svg pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-        <Defs>
-          <SvgLinearGradient id="studioProfileHeroTopScrim" x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor={hexToRgba(primaryHex, 0.3)} />
-            <Stop offset="36%" stopColor={hexToRgba(primaryHex, 0.1)} />
-            <Stop offset="100%" stopColor={hexToRgba(primaryHex, 0)} />
-          </SvgLinearGradient>
-          <SvgLinearGradient id="studioProfileHeroBottomScrim" x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor={hexToRgba(appBgHex, 0)} />
-            <Stop offset="56%" stopColor={hexToRgba(appBgHex, 0.18)} />
-            <Stop offset="78%" stopColor={hexToRgba(appBgHex, 0.92)} />
-            <Stop offset="100%" stopColor={appBgHex} />
-          </SvgLinearGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#studioProfileHeroTopScrim)" />
-        <Rect width="100%" height="100%" fill="url(#studioProfileHeroBottomScrim)" />
-      </Svg>
-    </>
-  );
-}
-
 // ─── Styles (theme-reactive via Unistyles) ──────────────────────────────────
 
 const s = StyleSheet.create((theme) => ({
@@ -334,10 +276,6 @@ const s = StyleSheet.create((theme) => ({
   },
   featureHeroShadow: {
     ...theme.shadow.hero,
-  },
-  featureFallback: {
-    alignItems: "center",
-    justifyContent: "center",
   },
   featureTopRail: {
     flexDirection: "row",

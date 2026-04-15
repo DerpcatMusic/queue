@@ -34,7 +34,7 @@ export default function ProfileLayout() {
           },
           {
             routeMatchPath: "/profile/compliance",
-            title: t("profile.navigation.compliance"),
+            title: t("profile.navigation.studioCompliance"),
           },
           {
             routeMatchPath: "/profile/edit",
@@ -42,7 +42,7 @@ export default function ProfileLayout() {
           },
           {
             routeMatchPath: "/profile/payments",
-            title: t("profile.navigation.paymentsPayouts"),
+            title: t("profile.navigation.studioChargeActivity"),
           },
         ]}
       >
@@ -61,7 +61,10 @@ export default function ProfileLayout() {
             name="calendar-settings"
             options={{ title: t("profile.navigation.calendar") }}
           />
-          <Stack.Screen name="compliance" options={{ title: t("profile.navigation.compliance") }} />
+          <Stack.Screen
+            name="compliance"
+            options={{ title: t("profile.navigation.studioCompliance") }}
+          />
           <Stack.Screen
             name="edit"
             options={{
@@ -71,7 +74,7 @@ export default function ProfileLayout() {
           />
           <Stack.Screen
             name="payments"
-            options={{ title: t("profile.navigation.paymentsPayouts") }}
+            options={{ title: t("profile.navigation.studioChargeActivity") }}
           />
         </TabSubrouteStack>
       </ProfileSubpageSheetProvider>

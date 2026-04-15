@@ -12,6 +12,7 @@ export type KitSurfaceProps = ViewProps & {
   tone?: KitSurfaceTone;
   padding?: number;
   gap?: number;
+  radius?: number;
   children?: ReactNode;
 };
 
@@ -67,6 +68,7 @@ const KitSurface = memo(function KitSurface({
   tone = "base",
   padding = BrandSpacing.lg,
   gap = BrandSpacing.stackTight,
+  radius = BrandRadius.card,
   children,
   style,
   ...rest
@@ -82,7 +84,7 @@ const KitSurface = memo(function KitSurface({
       <GlassView
         glassEffectStyle="regular"
         colorScheme={scheme === "dark" ? "dark" : "light"}
-        style={[styles.base, styles[`tone_${tone}`], { padding, gap }, style]}
+        style={[styles.base, styles[`tone_${tone}`], { padding, gap, borderRadius: radius }, style]}
         {...rest}
       >
         {children}
@@ -91,7 +93,10 @@ const KitSurface = memo(function KitSurface({
   }
 
   return (
-    <View style={[styles.base, styles[`tone_${tone}`], { padding, gap }, style]} {...rest}>
+    <View
+      style={[styles.base, styles[`tone_${tone}`], { padding, gap, borderRadius: radius }, style]}
+      {...rest}
+    >
       {children}
     </View>
   );

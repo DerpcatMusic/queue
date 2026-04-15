@@ -216,6 +216,12 @@ function OnboardingScreenContent() {
   const createStripeHostedAccountLink = useAction(
     api.paymentsV2Actions.createMyInstructorStripeAccountLinkV2,
   );
+  const createStudioIdentityVerificationSession = useAction(
+    api.paymentsV2Actions.createMyStudioDiditVerificationSessionV2,
+  );
+  const refreshStudioIdentityVerification = useAction(
+    api.paymentsV2Actions.refreshMyStudioDiditVerificationV2,
+  );
   const { isUploading, pickAndUploadComplianceDocument } = useComplianceDocumentUpload();
 
   const [step, setStep] = useState<OnboardingStep>(0);
@@ -277,7 +283,11 @@ function OnboardingScreenContent() {
 
   const nextArrowIcon = (
     <MaterialIcons
-      name={(i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he") ? "arrow-back" : "arrow-forward"}
+      name={
+        (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he")
+          ? "arrow-back"
+          : "arrow-forward"
+      }
       size={IconSize.lg}
       color={color.onPrimary}
     />
@@ -541,28 +551,19 @@ function OnboardingScreenContent() {
     setIsStartingStudioDidit(true);
     setVerificationFeedback(null);
     try {
+      let latestStatus: string | undefined;
+      if (studioDiditVerification?.sessionId) {
+        const latest = await refreshStudioIdentityVerification({
+          sessionId: studioDiditVerification.sessionId,
+        });
+        latestStatus = latest.status;
+      }
       setVerificationFeedback({
         tone: "success",
-        message: t("profile.studioCompliance.feedback.identityApproved"),
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : t("profile.studioCompliance.errors.identityStartFailed");
-      setVerificationFeedback({ tone: "error", message });
-    } finally {
-      setIsStartingStudioDidit(false);
-    }
-  };
-
-  const startStudioDiditFromOnboarding = async () => {
-    setIsStartingStudioDidit(true);
-    setVerificationFeedback(null);
-    try {
-      setVerificationFeedback({
-        tone: "success",
-        message: t("profile.studioCompliance.feedback.identityApproved"),
+        message:
+          latestStatus === "approved"
+            ? t("profile.studioCompliance.feedback.identityApproved")
+            : t("profile.compliance.headline.pending"),
       });
     } catch (error) {
       const message =
@@ -1641,8 +1642,13 @@ function OnboardingScreenContent() {
             buildRoleTabRoute={buildRoleTabRoute}
             ROLE_TAB_ROUTE_NAMES={ROLE_TAB_ROUTE_NAMES}
             saveStudioBillingFromOnboarding={saveStudioBillingFromOnboarding}
-            startStudioDiditFromOnboarding={startStudioDiditFromOnboarding}
             refreshStudioDiditFromOnboarding={refreshStudioDiditFromOnboarding}
+            createStudioIdentityVerificationSession={async () =>
+              createStudioIdentityVerificationSession({})
+            }
+            refreshStudioIdentityVerification={async (args) =>
+              refreshStudioIdentityVerification(args)
+            }
             styles={styles}
           />
         </Suspense>

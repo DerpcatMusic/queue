@@ -8,39 +8,49 @@
  * @module
  */
 
-import type * as access from "../access.js";
+import type * as access_snapshots from "../access/snapshots.js";
 import type * as auth from "../auth.js";
-import type * as boundaries from "../boundaries.js";
-import type * as calendar from "../calendar.js";
-import type * as calendarNode from "../calendarNode.js";
-import type * as compliance from "../compliance.js";
-import type * as complianceReview from "../complianceReview.js";
-import type * as complianceStudio from "../complianceStudio.js";
+import type * as auth_magicLink from "../auth/magicLink.js";
+import type * as auth_otp from "../auth/otp.js";
+import type * as calendar_googleCalendar from "../calendar/googleCalendar.js";
+import type * as calendar_googleCalendarNode from "../calendar/googleCalendarNode.js";
+import type * as compliance_instructor from "../compliance/instructor.js";
+import type * as compliance_instructorReview from "../compliance/instructorReview.js";
+import type * as compliance_studio from "../compliance/studio.js";
 import type * as components_ from "../components.js";
 import type * as constants from "../constants.js";
 import type * as crons from "../crons.js";
-import type * as home from "../home.js";
-import type * as homeRead from "../homeRead.js";
+import type * as home_instructorStats from "../home/instructorStats.js";
 import type * as http from "../http.js";
-import type * as inbox from "../inbox.js";
-import type * as instructorZones from "../instructorZones.js";
+import type * as instructors_mapDiscovery from "../instructors/mapDiscovery.js";
+import type * as instructors_publicProfiles from "../instructors/publicProfiles.js";
+import type * as instructors_settings from "../instructors/settings.js";
+import type * as instructors_zones from "../instructors/zones.js";
 import type * as integrations_payment_provider from "../integrations/payment_provider.js";
 import type * as integrations_providerAdapterV2 from "../integrations/providerAdapterV2.js";
 import type * as integrations_stripe_config from "../integrations/stripe/config.js";
 import type * as integrations_stripe_connectV2 from "../integrations/stripe/connectV2.js";
-import type * as internalAccess from "../internalAccess.js";
-import type * as invoicing from "../invoicing.js";
-import type * as jobs from "../jobs.js";
+import type * as internal_access from "../internal/access.js";
+import type * as jobs__helpers from "../jobs/_helpers.js";
+import type * as jobs_applications from "../jobs/applications.js";
+import type * as jobs_browse from "../jobs/browse.js";
+import type * as jobs_calendar from "../jobs/calendar.js";
+import type * as jobs_cancellation from "../jobs/cancellation.js";
+import type * as jobs_checkIn from "../jobs/checkIn.js";
+import type * as jobs_instructorTabs from "../jobs/instructorTabs.js";
+import type * as jobs_lessonCompletion from "../jobs/lessonCompletion.js";
+import type * as jobs_postJob from "../jobs/postJob.js";
+import type * as jobs_review from "../jobs/review.js";
+import type * as jobs_studioManagement from "../jobs/studioManagement.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_authDedupe from "../lib/authDedupe.js";
-import type * as lib_boundaries from "../lib/boundaries.js";
 import type * as lib_calendarCrypto from "../lib/calendarCrypto.js";
 import type * as lib_calendarShared from "../lib/calendarShared.js";
 import type * as lib_domainValidation from "../lib/domainValidation.js";
-import type * as lib_geospatial from "../lib/geospatial.js";
+import type * as lib_h3 from "../lib/h3.js";
 import type * as lib_instructorCompliance from "../lib/instructorCompliance.js";
-import type * as lib_instructorCoverage from "../lib/instructorCoverage.js";
 import type * as lib_instructorEligibility from "../lib/instructorEligibility.js";
+import type * as lib_instructorGeoCoverage from "../lib/instructorGeoCoverage.js";
 import type * as lib_internalAccess from "../lib/internalAccess.js";
 import type * as lib_locationRadius from "../lib/locationRadius.js";
 import type * as lib_marketplace from "../lib/marketplace.js";
@@ -52,21 +62,30 @@ import type * as lib_stripeIdentity from "../lib/stripeIdentity.js";
 import type * as lib_studioBranches from "../lib/studioBranches.js";
 import type * as lib_studioCompliance from "../lib/studioCompliance.js";
 import type * as lib_validation from "../lib/validation.js";
-import type * as migrations from "../migrations.js";
-import type * as notifications from "../notifications.js";
-import type * as notificationsCore from "../notificationsCore.js";
-import type * as onboarding from "../onboarding.js";
-import type * as paymentsPricingV2 from "../paymentsPricingV2.js";
-import type * as paymentsV2 from "../paymentsV2.js";
-import type * as paymentsV2Actions from "../paymentsV2Actions.js";
-import type * as resendMagicLink from "../resendMagicLink.js";
-import type * as resendOtp from "../resendOtp.js";
-import type * as security from "../security.js";
-import type * as stripe from "../stripe.js";
-import type * as studioBranches from "../studioBranches.js";
-import type * as userPushNotifications from "../userPushNotifications.js";
-import type * as users from "../users.js";
-import type * as webhookSecurity from "../webhookSecurity.js";
+import type * as migrations_index from "../migrations/index.js";
+import type * as notifications_broadcast from "../notifications/broadcast.js";
+import type * as notifications_core from "../notifications/core.js";
+import type * as notifications_inbox from "../notifications/inbox.js";
+import type * as notifications_pushDelivery from "../notifications/pushDelivery.js";
+import type * as notifications_settings from "../notifications/settings.js";
+import type * as onboarding__shared from "../onboarding/_shared.js";
+import type * as onboarding_instructor from "../onboarding/instructor.js";
+import type * as onboarding_studio from "../onboarding/studio.js";
+import type * as payments_actions from "../payments/actions.js";
+import type * as payments_core from "../payments/core.js";
+import type * as payments_invoicing from "../payments/invoicing.js";
+import type * as payments_pricing from "../payments/pricing.js";
+import type * as payments_stripeCheckout from "../payments/stripeCheckout.js";
+import type * as security_rateLimits from "../security/rateLimits.js";
+import type * as security_webhookSecurity from "../security/webhookSecurity.js";
+import type * as studios_branches from "../studios/branches.js";
+import type * as studios_publicProfiles from "../studios/publicProfiles.js";
+import type * as studios_settings from "../studios/settings.js";
+import type * as users__shared from "../users/_shared.js";
+import type * as users_getCurrent from "../users/getCurrent.js";
+import type * as users_profileImage from "../users/profileImage.js";
+import type * as users_roleManagement from "../users/roleManagement.js";
+import type * as users_syncUser from "../users/syncUser.js";
 
 import type {
   ApiFromModules,
@@ -75,39 +94,49 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  access: typeof access;
+  "access/snapshots": typeof access_snapshots;
   auth: typeof auth;
-  boundaries: typeof boundaries;
-  calendar: typeof calendar;
-  calendarNode: typeof calendarNode;
-  compliance: typeof compliance;
-  complianceReview: typeof complianceReview;
-  complianceStudio: typeof complianceStudio;
+  "auth/magicLink": typeof auth_magicLink;
+  "auth/otp": typeof auth_otp;
+  "calendar/googleCalendar": typeof calendar_googleCalendar;
+  "calendar/googleCalendarNode": typeof calendar_googleCalendarNode;
+  "compliance/instructor": typeof compliance_instructor;
+  "compliance/instructorReview": typeof compliance_instructorReview;
+  "compliance/studio": typeof compliance_studio;
   components: typeof components_;
   constants: typeof constants;
   crons: typeof crons;
-  home: typeof home;
-  homeRead: typeof homeRead;
+  "home/instructorStats": typeof home_instructorStats;
   http: typeof http;
-  inbox: typeof inbox;
-  instructorZones: typeof instructorZones;
+  "instructors/mapDiscovery": typeof instructors_mapDiscovery;
+  "instructors/publicProfiles": typeof instructors_publicProfiles;
+  "instructors/settings": typeof instructors_settings;
+  "instructors/zones": typeof instructors_zones;
   "integrations/payment_provider": typeof integrations_payment_provider;
   "integrations/providerAdapterV2": typeof integrations_providerAdapterV2;
   "integrations/stripe/config": typeof integrations_stripe_config;
   "integrations/stripe/connectV2": typeof integrations_stripe_connectV2;
-  internalAccess: typeof internalAccess;
-  invoicing: typeof invoicing;
-  jobs: typeof jobs;
+  "internal/access": typeof internal_access;
+  "jobs/_helpers": typeof jobs__helpers;
+  "jobs/applications": typeof jobs_applications;
+  "jobs/browse": typeof jobs_browse;
+  "jobs/calendar": typeof jobs_calendar;
+  "jobs/cancellation": typeof jobs_cancellation;
+  "jobs/checkIn": typeof jobs_checkIn;
+  "jobs/instructorTabs": typeof jobs_instructorTabs;
+  "jobs/lessonCompletion": typeof jobs_lessonCompletion;
+  "jobs/postJob": typeof jobs_postJob;
+  "jobs/review": typeof jobs_review;
+  "jobs/studioManagement": typeof jobs_studioManagement;
   "lib/auth": typeof lib_auth;
   "lib/authDedupe": typeof lib_authDedupe;
-  "lib/boundaries": typeof lib_boundaries;
   "lib/calendarCrypto": typeof lib_calendarCrypto;
   "lib/calendarShared": typeof lib_calendarShared;
   "lib/domainValidation": typeof lib_domainValidation;
-  "lib/geospatial": typeof lib_geospatial;
+  "lib/h3": typeof lib_h3;
   "lib/instructorCompliance": typeof lib_instructorCompliance;
-  "lib/instructorCoverage": typeof lib_instructorCoverage;
   "lib/instructorEligibility": typeof lib_instructorEligibility;
+  "lib/instructorGeoCoverage": typeof lib_instructorGeoCoverage;
   "lib/internalAccess": typeof lib_internalAccess;
   "lib/locationRadius": typeof lib_locationRadius;
   "lib/marketplace": typeof lib_marketplace;
@@ -119,21 +148,30 @@ declare const fullApi: ApiFromModules<{
   "lib/studioBranches": typeof lib_studioBranches;
   "lib/studioCompliance": typeof lib_studioCompliance;
   "lib/validation": typeof lib_validation;
-  migrations: typeof migrations;
-  notifications: typeof notifications;
-  notificationsCore: typeof notificationsCore;
-  onboarding: typeof onboarding;
-  paymentsPricingV2: typeof paymentsPricingV2;
-  paymentsV2: typeof paymentsV2;
-  paymentsV2Actions: typeof paymentsV2Actions;
-  resendMagicLink: typeof resendMagicLink;
-  resendOtp: typeof resendOtp;
-  security: typeof security;
-  stripe: typeof stripe;
-  studioBranches: typeof studioBranches;
-  userPushNotifications: typeof userPushNotifications;
-  users: typeof users;
-  webhookSecurity: typeof webhookSecurity;
+  "migrations/index": typeof migrations_index;
+  "notifications/broadcast": typeof notifications_broadcast;
+  "notifications/core": typeof notifications_core;
+  "notifications/inbox": typeof notifications_inbox;
+  "notifications/pushDelivery": typeof notifications_pushDelivery;
+  "notifications/settings": typeof notifications_settings;
+  "onboarding/_shared": typeof onboarding__shared;
+  "onboarding/instructor": typeof onboarding_instructor;
+  "onboarding/studio": typeof onboarding_studio;
+  "payments/actions": typeof payments_actions;
+  "payments/core": typeof payments_core;
+  "payments/invoicing": typeof payments_invoicing;
+  "payments/pricing": typeof payments_pricing;
+  "payments/stripeCheckout": typeof payments_stripeCheckout;
+  "security/rateLimits": typeof security_rateLimits;
+  "security/webhookSecurity": typeof security_webhookSecurity;
+  "studios/branches": typeof studios_branches;
+  "studios/publicProfiles": typeof studios_publicProfiles;
+  "studios/settings": typeof studios_settings;
+  "users/_shared": typeof users__shared;
+  "users/getCurrent": typeof users_getCurrent;
+  "users/profileImage": typeof users_profileImage;
+  "users/roleManagement": typeof users_roleManagement;
+  "users/syncUser": typeof users_syncUser;
 }>;
 
 /**
@@ -909,151 +947,6 @@ export declare const components: {
     };
     time: {
       getServerTime: FunctionReference<"mutation", "internal", {}, number>;
-    };
-  };
-  geospatial: {
-    document: {
-      get: FunctionReference<
-        "query",
-        "internal",
-        { key: string },
-        {
-          coordinates: { latitude: number; longitude: number };
-          filterKeys: Record<
-            string,
-            | string
-            | number
-            | boolean
-            | null
-            | bigint
-            | Array<string | number | boolean | null | bigint>
-          >;
-          key: string;
-          sortKey: number;
-        } | null
-      >;
-      insert: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          document: {
-            coordinates: { latitude: number; longitude: number };
-            filterKeys: Record<
-              string,
-              | string
-              | number
-              | boolean
-              | null
-              | bigint
-              | Array<string | number | boolean | null | bigint>
-            >;
-            key: string;
-            sortKey: number;
-          };
-          levelMod: number;
-          maxCells: number;
-          maxLevel: number;
-          minLevel: number;
-        },
-        null
-      >;
-      remove: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          key: string;
-          levelMod: number;
-          maxCells: number;
-          maxLevel: number;
-          minLevel: number;
-        },
-        boolean
-      >;
-    };
-    query: {
-      debugCells: FunctionReference<
-        "query",
-        "internal",
-        {
-          levelMod: number;
-          maxCells: number;
-          maxLevel: number;
-          minLevel: number;
-          rectangle: {
-            east: number;
-            north: number;
-            south: number;
-            west: number;
-          };
-        },
-        Array<{
-          token: string;
-          vertices: Array<{ latitude: number; longitude: number }>;
-        }>
-      >;
-      execute: FunctionReference<
-        "query",
-        "internal",
-        {
-          cursor?: string;
-          levelMod: number;
-          logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
-          maxCells: number;
-          maxLevel: number;
-          minLevel: number;
-          query: {
-            filtering: Array<{
-              filterKey: string;
-              filterValue: string | number | boolean | null | bigint;
-              occur: "should" | "must";
-            }>;
-            maxResults: number;
-            rectangle: {
-              east: number;
-              north: number;
-              south: number;
-              west: number;
-            };
-            sorting: {
-              interval: { endExclusive?: number; startInclusive?: number };
-            };
-          };
-        },
-        {
-          nextCursor?: string;
-          results: Array<{
-            coordinates: { latitude: number; longitude: number };
-            key: string;
-          }>;
-        }
-      >;
-      nearestPoints: FunctionReference<
-        "query",
-        "internal",
-        {
-          filtering: Array<{
-            filterKey: string;
-            filterValue: string | number | boolean | null | bigint;
-            occur: "should" | "must";
-          }>;
-          levelMod: number;
-          logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
-          maxDistance?: number;
-          maxLevel: number;
-          maxResults: number;
-          minLevel: number;
-          nextCursor?: string;
-          point: { latitude: number; longitude: number };
-          sorting: {
-            interval: { endExclusive?: number; startInclusive?: number };
-          };
-        },
-        Array<{
-          coordinates: { latitude: number; longitude: number };
-          distance: number;
-          key: string;
-        }>
-      >;
     };
   };
   stripe: {

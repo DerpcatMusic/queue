@@ -62,8 +62,6 @@ export function SportPickerSection({
   selectSport,
 }: SportPickerSectionProps) {
   const { t } = useTranslation();
-  const { i18n } = useTranslation();
-  const isRtl = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he");
   const { color: palette } = useTheme();
   const selectedSportLabel = draft.sport
     ? toSportLabelI18n(draft.sport, t)
@@ -185,7 +183,9 @@ export function ScheduleSection({
   onOpenEndTime,
 }: ScheduleSectionProps) {
   const { t } = useTranslation();
+  const { i18n } = useTranslation();
   const { color: palette } = useTheme();
+  const isRtl = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase().startsWith("he");
 
   return (
     <View style={{ gap: BrandSpacing.md }}>

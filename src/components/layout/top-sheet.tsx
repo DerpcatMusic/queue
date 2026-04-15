@@ -54,6 +54,17 @@ export type TopSheetPadding = {
 export type TopSheetExpandMode = "resize" | "overlay";
 export type TopSheetCollapsedHeightMode = "step" | "content";
 
+/**
+ * Shadow intensity for the top sheet.
+ *   - `"none"`    — no shadow
+ *   - `"sm"`      — subtle lift
+ *   - `"md"`      — medium depth (default)
+ *   - `"lg"`      — prominent elevation
+ *   - `"xl"`      — heavy drop
+ *   - `number`    — custom shadow radius in points (iOS) or elevation (Android)
+ */
+export type TopSheetShadow = "none" | "sm" | "md" | "lg" | "xl" | number;
+
 export type TopSheetProps = PropsWithChildren<{
   /** Show drag handle and enable pan gestures. @default false */
   draggable?: boolean;
@@ -73,6 +84,8 @@ export type TopSheetProps = PropsWithChildren<{
   backgroundColor?: ColorValue;
   /** Color for the top status bar inset. Defaults to primary (purple). */
   topInsetColor?: ColorValue;
+  /** Optional gradient background to render inside the sheet shell. */
+  gradientBackground?: React.ReactNode;
   /** Extra style for the outer animated container. */
   style?: StyleProp<ViewStyle>;
   /** Called when the sheet settles on a new step. */
@@ -101,6 +114,10 @@ export type TopSheetProps = PropsWithChildren<{
   expandMode?: TopSheetExpandMode;
   /** Internal callback for publishing the resolved collapsed height. */
   onMinHeightChange?: (height: number) => void;
+  /** When true, the sheet does NOT add safeTop to its inner paddingTop. Content is responsible for its own safe-area spacing. @default false */
+  disableSafeTopPadding?: boolean;
+  /** Shadow beneath the sheet. Controls depth/elevation feel. @default 'md' */
+  shadow?: TopSheetShadow;
 }>;
 
 // ─── Drag Handle ──────────────────────────────────────────────────────────────
@@ -110,6 +127,86 @@ function DragHandle({ borderColor }: { borderColor: ColorValue }) {
     <View style={styles.dragHandleContainer}>
       <View style={styles.dragHandlePill(borderColor)} />
     </View>
+  );
+}
+
+// ─── Shadow resolution ─────────────────────────────────────────────────────
+
+function resolveShadowStyle(shadow: TopSheetShadow): ViewStyle {
+  if (shadow === "none") return {};
+
+  // Numeric = custom shadow radius (iOS) / elevation (Android)
+  if (typeof shadow === "number") {
+    return {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: shadow * 0.4 },
+      shadowRadius: shadow,
+      shadowOpacity: 0.18,
+      elevation: shadow,
+    };
+  }
+
+  const presets: Record<string, ViewStyle> = {
+    sm: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowRadius: 6,
+      shadowOpacity: 0.1,
+      elevation: 3,
+    },
+    md: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowRadius: 12,
+      shadowOpacity: 0.14,
+      elevation: 6,
+    },
+    lg: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 8 },
+      shadowRadius: 20,
+      shadowOpacity: 0.18,
+      elevation: 10,
+    },
+    xl: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 12 },
+      shadowRadius: 28,
+      shadowOpacity: 0.22,
+      elevation: 16,
+    },
+  };
+
+  return presets[shadow] ?? presets.md!;
+}
+
+// ─── Gradient cross-fade wrapper ────────────────────────────────────────────
+// When the sheet swaps gradient backgrounds (e.g. tab switch), this wrapper
+// fades the new gradient in smoothly instead of an instant swap.
+// Uses Reanimated's enter animation for a clean 280ms cross-fade.
+function GradientCrossFade({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  // Fade in on mount (each new stateKey remounts this component)
+  const fadeAnim = useSharedValue(0);
+
+  useEffect(() => {
+    fadeAnim.value = 0;
+    fadeAnim.value = withTiming(1, { duration: 280 });
+  }, [fadeAnim]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: fadeAnim.value,
+  }));
+
+  return (
+    <Animated.View style={[style, animatedStyle]} pointerEvents="none">
+      {children}
+    </Animated.View>
   );
 }
 
@@ -127,6 +224,7 @@ export function TopSheet({
   padding,
   backgroundColor,
   topInsetColor,
+  gradientBackground,
   style,
   onStepChange,
   stateKey,
@@ -140,6 +238,8 @@ export function TopSheet({
   revealOnExpand,
   expandMode = "resize",
   onMinHeightChange,
+  disableSafeTopPadding = false,
+  shadow = "md",
 }: TopSheetProps) {
   const theme = useTheme();
   const { setTopInsetTone, setTopInsetBackgroundColor } = useSystemUi();
@@ -149,8 +249,17 @@ export function TopSheet({
   const { height: screenHeight } = useWindowDimensions();
   const resolvedBackground = backgroundColor ?? theme.color.surfaceElevated;
   const resolvedInsetColor = topInsetColor ?? resolvedBackground;
-  const backgroundColorValue =
-    typeof resolvedBackground === "string" ? resolvedBackground : theme.color.surfaceElevated;
+  // When a gradient fills the shell the opaque solid background would hide it,
+  // so we force transparency on every layer the gradient sits behind.
+  const hasGradient = gradientBackground !== undefined && gradientBackground !== null;
+  const backgroundColorValue = hasGradient
+    ? "transparent"
+    : typeof resolvedBackground === "string"
+      ? resolvedBackground
+      : theme.color.surfaceElevated;
+
+  // ── Shadow resolution ────────────────────────────────────────────────
+  const shadowStyle = useMemo(() => resolveShadowStyle(shadow), [shadow]);
 
   const [internalStepIndex, setInternalStepIndex] = useState(initialStep);
   const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState(0);
@@ -199,15 +308,19 @@ export function TopSheet({
     });
   }, [expandedProgress, isExpanded]);
 
+  // When a gradient background is provided the inset colour is transparent so
+  // the gradient bleeds seamlessly through the status-bar area.
+  const effectiveInsetColor = gradientBackground ? "transparent" : resolvedInsetColor;
+
   // Inset coloring
   useLayoutEffect(() => {
     setTopInsetTone("sheet");
-    setTopInsetBackgroundColor(resolvedInsetColor);
+    setTopInsetBackgroundColor(effectiveInsetColor);
     return () => {
       setTopInsetTone("app");
       setTopInsetBackgroundColor(null);
     };
-  }, [resolvedInsetColor, setTopInsetBackgroundColor, setTopInsetTone]);
+  }, [effectiveInsetColor, setTopInsetBackgroundColor, setTopInsetTone]);
 
   const availableHeight =
     sceneViewportHeight > 0
@@ -226,7 +339,10 @@ export function TopSheet({
     () => computeIntrinsicMinHeight(measuredHeaderHeight, measuredFooterHeight, measuredBodyHeight),
     [measuredBodyHeight, measuredFooterHeight, measuredHeaderHeight],
   );
-  const chromeHeight = safeTop + resolvedPadding.vertical * 2 + (draggable ? HANDLE_HEIGHT : 0);
+  const chromeHeight =
+    (disableSafeTopPadding ? 0 : safeTop) +
+    resolvedPadding.vertical * 2 +
+    (draggable ? HANDLE_HEIGHT : 0);
   const resolvedBaseHeight = useMemo(
     () => computeCollapsedHeight(chromeHeight + intrinsicContentHeight, availableHeight),
     [availableHeight, chromeHeight, intrinsicContentHeight],
@@ -450,7 +566,7 @@ export function TopSheet({
   // Animated inner content uses translateY for reveal (GPU-composited, no layout thrash)
   const innerStyle = useAnimatedStyle(() => ({
     flex: 1,
-    paddingTop: safeTop + resolvedPadding.vertical,
+    paddingTop: (disableSafeTopPadding ? 0 : safeTop) + resolvedPadding.vertical,
     paddingHorizontal: resolvedPadding.horizontal,
     paddingBottom: resolvedPadding.vertical,
     backgroundColor: animatedBackground.value,
@@ -507,10 +623,16 @@ export function TopSheet({
         styles.sheetShell,
         styles.sheetChrome(theme.color.border),
         shellBackgroundStyle,
+        shadowStyle,
         outerStyle,
         style,
       ]}
     >
+      {gradientBackground ? (
+        <GradientCrossFade key={stateKey ?? "default"} style={StyleSheet.absoluteFill}>
+          {gradientBackground}
+        </GradientCrossFade>
+      ) : null}
       <Animated.View style={innerStyle}>
         {/* Sticky Header - always visible at top */}
         {stickyHeader ? (

@@ -11,11 +11,12 @@
       "newArchEnabled": true,
       "userInterfaceStyle": "automatic",
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "associatedDomains": ["applinks:join-queue.com"],
       "infoPlist": {
         "ExpoLocalization_supportsRTL": true,
         "CFBundleLocalizations": ["en", "he", "en", "he"],
-        "NSCameraUsageDescription": "Camera access is required to scan identity documents and complete Stripe identity onboarding.",
+        "NSCameraUsageDescription": "Camera access is required to scan identity documents during verification.",
         "NFCReaderUsageDescription": "NFC is used to read passport and identity document chips during verification.",
         "com.apple.developer.nfc.readersession.iso7816.select-identifiers": ["A0000002471001"]
       },
@@ -127,6 +128,7 @@
           }
         }
       ],
+      "expo-apple-authentication",
       [
         "expo-location",
         {

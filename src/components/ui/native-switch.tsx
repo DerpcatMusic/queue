@@ -57,9 +57,9 @@ export function NativeSwitch({
         onCheckedChange={handleChange}
         enabled={!disabled}
         colors={{
-          // ON: primary thumb with muted track
-          checkedThumbColor: isDark ? theme.color.onPrimary : theme.color.primary,
-          checkedTrackColor: isDark ? theme.color.primary : theme.color.primarySubtle,
+          // ON: primary thumb with visible track
+          checkedThumbColor: isDark ? theme.color.onPrimary : theme.color.onPrimary,
+          checkedTrackColor: isDark ? theme.color.primary : theme.color.primary,
           // OFF: darker thumb so it's visible against light track
           uncheckedThumbColor: isDark ? "#BDBDBD" : "#616161",
           uncheckedTrackColor: isDark ? "#424242" : "#E0E0E0",

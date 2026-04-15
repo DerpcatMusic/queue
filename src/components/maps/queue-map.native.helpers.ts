@@ -3,7 +3,12 @@ import { OfflineManager } from "./native-map-sdk";
 import { APPLE_MAP_THEME } from "@/components/maps/queue-map-apple-theme";
 import type { getMapBrandPalette } from "@/constants/brand";
 import { ISRAEL_MAP_INTERACTION_BOUNDS } from "@/constants/zones-map";
-import type { QueueMapBounds, QueueMapPin, StudioMapMarker } from "./queue-map.types";
+import type {
+  MapCoveragePolygon,
+  QueueMapBounds,
+  QueueMapPin,
+  StudioMapMarker,
+} from "./queue-map.types";
 
 export type Expression = unknown;
 export type AnyStyleLayer = Record<string, any>;
@@ -13,8 +18,6 @@ export type AnyStyleSpec = {
   layers: AnyStyleLayer[];
   [key: string]: unknown;
 };
-
-const NO_MATCH_FILTER: Expression = ["==", ["get", "id"], "__none__"];
 
 let offlinePackBootstrapPromise: Promise<void> | null = null;
 const MAP_STYLE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -28,58 +31,66 @@ export function sanitizeZoom(value: number, fallback: number) {
   return Math.max(0, Math.min(22, value));
 }
 
-export function createPropertyInFilter(ids: readonly string[], propertyName: string): Expression {
-  if (ids.length === 0) return NO_MATCH_FILTER;
-  return ["in", ["get", propertyName], ["literal", ids as string[]]] as Expression;
-}
-
-export function createZoneFilter(zoneIds: readonly string[], propertyName: string): Expression {
-  return createPropertyInFilter(zoneIds, propertyName);
-}
-
-export function createRadiusCircleFeatureCollection(
-  center: QueueMapPin,
-  radiusMeters: number,
-  steps = 72,
+export function createCoverageFeatureCollection(
+  polygons: readonly MapCoveragePolygon[],
 ): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
-  const latitudeRadians = (center.latitude * Math.PI) / 180;
-  const longitudeRadians = (center.longitude * Math.PI) / 180;
-  const earthRadiusMeters = 6378137;
-  const angularDistance = radiusMeters / earthRadiusMeters;
-  const coordinates: [number, number][] = [];
+  return {
+    type: "FeatureCollection",
+    features: polygons.map((polygon) => {
+      const coordinates = polygon.boundary.map(({ longitude, latitude }) => [longitude, latitude]);
+      const closedRing =
+        coordinates.length > 0 &&
+        (coordinates[0]?.[0] !== coordinates[coordinates.length - 1]?.[0] ||
+          coordinates[0]?.[1] !== coordinates[coordinates.length - 1]?.[1])
+          ? [...coordinates, coordinates[0]!]
+          : coordinates;
+      return {
+        type: "Feature",
+        properties: { cell: polygon.cell, resolution: polygon.resolution },
+        geometry: {
+          type: "Polygon",
+          coordinates: [closedRing as [number, number][]],
+        },
+      };
+    }),
+  };
+}
 
-  for (let stepIndex = 0; stepIndex <= steps; stepIndex += 1) {
-    const bearing = (stepIndex / steps) * Math.PI * 2;
-    const sinLatitude = Math.sin(latitudeRadians);
-    const cosLatitude = Math.cos(latitudeRadians);
-    const sinAngularDistance = Math.sin(angularDistance);
-    const cosAngularDistance = Math.cos(angularDistance);
+export function getFeatureCollectionBounds(
+  featureCollection: GeoJSON.FeatureCollection<GeoJSON.Polygon>,
+): { sw: [number, number]; ne: [number, number] } | null {
+  let minLng = Number.POSITIVE_INFINITY;
+  let minLat = Number.POSITIVE_INFINITY;
+  let maxLng = Number.NEGATIVE_INFINITY;
+  let maxLat = Number.NEGATIVE_INFINITY;
 
-    const targetLatitude = Math.asin(
-      sinLatitude * cosAngularDistance + cosLatitude * sinAngularDistance * Math.cos(bearing),
-    );
-    const targetLongitude =
-      longitudeRadians +
-      Math.atan2(
-        Math.sin(bearing) * sinAngularDistance * cosLatitude,
-        cosAngularDistance - sinLatitude * Math.sin(targetLatitude),
-      );
+  for (const feature of featureCollection.features) {
+    for (const ring of feature.geometry.coordinates) {
+      for (const coordinate of ring) {
+        const [lng, lat] = coordinate;
+        if (lng == null || lat == null) {
+          continue;
+        }
+        minLng = Math.min(minLng, lng);
+        minLat = Math.min(minLat, lat);
+        maxLng = Math.max(maxLng, lng);
+        maxLat = Math.max(maxLat, lat);
+      }
+    }
+  }
 
-    coordinates.push([(targetLongitude * 180) / Math.PI, (targetLatitude * 180) / Math.PI]);
+  if (
+    !Number.isFinite(minLng) ||
+    !Number.isFinite(minLat) ||
+    !Number.isFinite(maxLng) ||
+    !Number.isFinite(maxLat)
+  ) {
+    return null;
   }
 
   return {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        properties: {},
-        geometry: {
-          type: "Polygon",
-          coordinates: [coordinates],
-        },
-      },
-    ],
+    sw: [minLng, minLat],
+    ne: [maxLng, maxLat],
   };
 }
 

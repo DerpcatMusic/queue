@@ -178,20 +178,18 @@ export async function createStripeRecipientAccountV2(input: {
   displayName: string;
   country: string;
   defaultCurrency: string;
+  entityType?: "individual" | "company";
+  registeredName?: string;
+  dashboard?: "none" | "express" | "full";
+  configurations?: Array<"merchant" | "recipient">;
+  responsibilities?: {
+    feesCollector?: "stripe" | "application";
+    lossesCollector?: "stripe" | "application";
+  };
 }) {
-  return await stripeV2Fetch<StripeAccountV2>({
-    method: "POST",
-    path: "/v2/core/accounts",
-    include: ["configuration.merchant", "configuration.recipient", "identity", "requirements"],
-    body: {
-      contact_email: input.email,
-      display_name: input.displayName,
-      dashboard: "none",
-      identity: {
-        country: input.country,
-        entity_type: "individual",
-      },
-      configuration: {
+  const configurations = input.configurations ?? ["recipient"];
+  const merchantConfiguration = configurations.includes("merchant")
+    ? {
         merchant: {
           capabilities: {
             card_payments: {
@@ -199,6 +197,10 @@ export async function createStripeRecipientAccountV2(input: {
             },
           },
         },
+      }
+    : {};
+  const recipientConfiguration = configurations.includes("recipient")
+    ? {
         recipient: {
           capabilities: {
             stripe_balance: {
@@ -208,12 +210,36 @@ export async function createStripeRecipientAccountV2(input: {
             },
           },
         },
+      }
+    : {};
+  return await stripeV2Fetch<StripeAccountV2>({
+    method: "POST",
+    path: "/v2/core/accounts",
+    include: ["configuration.merchant", "configuration.recipient", "identity", "requirements"],
+    body: {
+      contact_email: input.email,
+      display_name: input.displayName,
+      dashboard: input.dashboard ?? "none",
+      identity: {
+        country: input.country,
+        entity_type: input.entityType ?? "individual",
+        ...(input.registeredName
+          ? {
+              business_details: {
+                registered_name: input.registeredName,
+              },
+            }
+          : {}),
+      },
+      configuration: {
+        ...merchantConfiguration,
+        ...recipientConfiguration,
       },
       defaults: {
         currency: input.defaultCurrency.toLowerCase(),
         responsibilities: {
-          fees_collector: "stripe",
-          losses_collector: "application",
+          fees_collector: input.responsibilities?.feesCollector ?? "stripe",
+          losses_collector: input.responsibilities?.lossesCollector ?? "application",
         },
         locales: ["en-US"],
       },
@@ -289,6 +315,7 @@ export async function createStripeAccountLinkV2(input: {
   accountId: string;
   refreshUrl: string;
   returnUrl: string;
+  configurations: Array<"merchant" | "recipient">;
 }) {
   return await stripeV2Fetch<{
     url: string;
@@ -301,7 +328,7 @@ export async function createStripeAccountLinkV2(input: {
       use_case: {
         type: "account_onboarding",
         account_onboarding: {
-          configurations: ["merchant", "recipient"],
+          configurations: input.configurations,
           refresh_url: input.refreshUrl,
           return_url: input.returnUrl,
         },

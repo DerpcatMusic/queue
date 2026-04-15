@@ -1,17 +1,17 @@
-import { httpRouter } from "convex/server";
 import { registerRoutes as registerStripeRoutes } from "@convex-dev/stripe";
+import { httpRouter } from "convex/server";
 import type Stripe from "stripe";
 import StripeSDK from "stripe";
 import { components, internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
+import { getStripeMarketDefaults } from "./integrations/stripe/config";
 import {
   getStripeRepresentativeNameV2,
   retrieveStripeAccountV2,
   summarizeStripeRecipientAccountStatus,
   summarizeStripeRecipientRequirements,
 } from "./integrations/stripe/connectV2";
-import { getStripeMarketDefaults } from "./integrations/stripe/config";
 
 const http = httpRouter();
 
@@ -29,6 +29,61 @@ function getStripeConnectWebhookSecret() {
     throw new Error("STRIPE_CONNECT_WEBHOOK_SECRET is not configured");
   }
   return webhookSecret;
+}
+
+function getDiditWebhookSecret() {
+  const webhookSecret = process.env.DIDIT_WEBHOOK_SECRET?.trim();
+  if (!webhookSecret) {
+    throw new Error("DIDIT_WEBHOOK_SECRET is not configured");
+  }
+  return webhookSecret;
+}
+
+function getWebCrypto() {
+  const webCrypto = globalThis.crypto;
+  if (!webCrypto?.subtle) {
+    throw new Error("Web Crypto is not available");
+  }
+  return webCrypto;
+}
+
+function normalizeHexSignature(signature: string) {
+  return signature
+    .trim()
+    .replace(/^sha256=/i, "")
+    .toLowerCase();
+}
+
+async function hmacSha256Hex(secret: string, body: string) {
+  const encoder = new TextEncoder();
+  const key = await getWebCrypto().subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await getWebCrypto().subtle.sign("HMAC", key, encoder.encode(body));
+  return Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function verifyDiditWebhookSignature(body: string, signature: string, timestamp: string) {
+  const timestampSeconds = Number.parseInt(timestamp.trim(), 10);
+  if (!Number.isFinite(timestampSeconds)) {
+    return false;
+  }
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (Math.abs(nowSeconds - timestampSeconds) > 300) {
+    return false;
+  }
+  const expected = await hmacSha256Hex(getDiditWebhookSecret(), body);
+  const received = normalizeHexSignature(signature);
+  if (expected.length !== received.length) {
+    return false;
+  }
+  return expected === received;
 }
 
 function mapStripePayoutStatus(
@@ -74,7 +129,7 @@ async function syncStripeConnectedAccountFromWebhook(
   ]);
   const market = getStripeMarketDefaults();
   const requirements = summarizeStripeRecipientRequirements(account);
-  await ctx.runMutation(internal.paymentsV2.syncStripeConnectedAccountWebhookV2, {
+  await ctx.runMutation(internal.payments.core.syncStripeConnectedAccountWebhookV2, {
     providerAccountId: account.id,
     providerStatusRaw: summarizeStripeRecipientAccountStatus(account),
     country: account.identity?.country?.toUpperCase() || market.country,
@@ -102,6 +157,94 @@ http.route({
   method: "GET",
   handler: httpAction(async () => new Response("Stripe connect refresh", { status: 200 })),
 });
+http.route({
+  path: "/didit/webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const signature = req.headers.get("x-signature-v2");
+    const timestamp = req.headers.get("x-timestamp");
+    if (!signature || !timestamp) {
+      return new Response("Missing signature headers", { status: 400 });
+    }
+
+    const body = await req.text();
+    const signatureValid = await verifyDiditWebhookSignature(body, signature, timestamp);
+    if (!signatureValid) {
+      const fingerprint = Array.from(
+        new Uint8Array(
+          await getWebCrypto().subtle.digest("SHA-256", new TextEncoder().encode(body)),
+        ),
+      )
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+      await ctx.runMutation(internal.security.webhookSecurity.recordInvalidSignatureAttempt, {
+        provider: "didit",
+        fingerprint,
+      });
+      return new Response("Invalid signature", { status: 401 });
+    }
+
+    const payload = JSON.parse(body) as Record<string, unknown>;
+    const sessionId =
+      (typeof payload.session_id === "string" && payload.session_id.trim()) ||
+      (typeof payload.sessionId === "string" && payload.sessionId.trim());
+    const statusRaw =
+      (typeof payload.status === "string" && payload.status.trim()) || "not_started";
+    const vendorData =
+      typeof payload.vendor_data === "string"
+        ? payload.vendor_data.trim()
+        : typeof payload.vendorData === "string"
+          ? payload.vendorData.trim()
+          : undefined;
+    const webhookType =
+      typeof payload.webhook_type === "string"
+        ? payload.webhook_type.trim()
+        : typeof payload.webhookType === "string"
+          ? payload.webhookType.trim()
+          : undefined;
+    const decision =
+      payload.decision && typeof payload.decision === "object" ? payload.decision : undefined;
+    const payloadHash = Array.from(
+      new Uint8Array(await getWebCrypto().subtle.digest("SHA-256", new TextEncoder().encode(body))),
+    )
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+    const providerEventId = `didit:${payloadHash}`;
+
+    if (!sessionId) {
+      return new Response("Missing session id", { status: 400 });
+    }
+
+    try {
+      await ctx.runMutation(
+        internal.payments.core.applyDiditStudioWebhookV2 as any,
+        {
+          providerEventId,
+          sessionId,
+          statusRaw,
+          vendorData,
+          webhookType,
+          payload,
+          payloadHash,
+          signatureValid: true,
+          ...(decision ? { decision } : {}),
+        } as any,
+      );
+      await ctx.runMutation(internal.security.webhookSecurity.clearInvalidSignatureThrottle, {
+        provider: "didit",
+        fingerprint: payloadHash,
+      });
+    } catch (error) {
+      console.error("❌ Error processing Didit webhook:", error);
+      return new Response("Error processing webhook", { status: 500 });
+    }
+
+    return new Response(JSON.stringify({ received: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
 registerStripeRoutes(http, components.stripe, {
   webhookPath: "/stripe/webhook",
   events: {
@@ -112,7 +255,7 @@ registerStripeRoutes(http, components.stripe, {
         typeof paymentIntent.latest_charge === "string"
           ? await stripe.charges.retrieve(paymentIntent.latest_charge)
           : null;
-      await ctx.runMutation(internal.paymentsV2.applyStripePaymentIntentWebhookV2, {
+      await ctx.runMutation(internal.payments.core.applyStripePaymentIntentWebhookV2, {
         providerPaymentIntentId: paymentIntent.id,
         status: "succeeded",
         statusRaw: paymentIntent.status,
@@ -145,19 +288,22 @@ registerStripeRoutes(http, components.stripe, {
             : {}),
         };
         const fundSplit = await ctx.runMutation(
-          internal.paymentsV2.syncStripeDestinationChargeFundSplitV2,
+          internal.payments.core.syncStripeDestinationChargeFundSplitV2,
           fundSplitArgs,
         );
         if (fundSplit?._id) {
-          await ctx.runMutation(internal.paymentsV2.ensureStripePendingPayoutTransferForFundSplitV2, {
-            fundSplitId: fundSplit._id,
-          });
+          await ctx.runMutation(
+            internal.payments.core.ensureStripePendingPayoutTransferForFundSplitV2,
+            {
+              fundSplitId: fundSplit._id,
+            },
+          );
         }
       }
     },
     "payment_intent.processing": async (ctx, event: Stripe.PaymentIntentProcessingEvent) => {
       const paymentIntent = event.data.object;
-      await ctx.runMutation(internal.paymentsV2.applyStripePaymentIntentWebhookV2, {
+      await ctx.runMutation(internal.payments.core.applyStripePaymentIntentWebhookV2, {
         providerPaymentIntentId: paymentIntent.id,
         status: "processing",
         statusRaw: paymentIntent.status,
@@ -178,7 +324,7 @@ registerStripeRoutes(http, components.stripe, {
           ? { errorMessage: paymentIntent.last_payment_error.message }
           : {}),
       };
-      await ctx.runMutation(internal.paymentsV2.applyStripePaymentIntentWebhookV2, args);
+      await ctx.runMutation(internal.payments.core.applyStripePaymentIntentWebhookV2, args);
     },
   },
 });
@@ -225,7 +371,7 @@ http.route({
           const payout = event.data.object as Stripe.Payout;
           const accountId = getConnectedAccountIdForConnectEvent(event);
           if (accountId) {
-            await ctx.runMutation(internal.paymentsV2.reconcileStripePayoutWebhookV2, {
+            await ctx.runMutation(internal.payments.core.reconcileStripePayoutWebhookV2, {
               providerAccountId: accountId,
               providerPayoutId: payout.id,
               amountAgorot: payout.amount,

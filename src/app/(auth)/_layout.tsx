@@ -5,7 +5,6 @@ import { View } from "react-native";
 import { GlobalTopSheet } from "@/components/layout/global-top-sheet";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
 import { GlobalTopSheetProvider } from "@/components/layout/top-sheet-registry";
-import { useTheme } from "@/hooks/use-theme";
 import { useSessionGate } from "@/modules/session/session-gate";
 
 function readParam(value: string | string[] | undefined) {
@@ -14,7 +13,6 @@ function readParam(value: string | string[] | undefined) {
 }
 
 export default function AuthLayout() {
-  const theme = useTheme();
   const { isAuthenticated } = useConvexAuth();
   const { t } = useTranslation();
   const gate = useSessionGate("index");
@@ -33,13 +31,13 @@ export default function AuthLayout() {
   return (
     <ScrollSheetProvider>
       <GlobalTopSheetProvider>
-        <View style={{ flex: 1, backgroundColor: theme.color.appBg }}>
+        <View style={{ flex: 1, backgroundColor: "transparent" }}>
           <GlobalTopSheet />
           <Stack
             screenOptions={{
               headerShown: false,
               contentStyle: {
-                backgroundColor: theme.color.appBg,
+                backgroundColor: "transparent",
               },
             }}
           >

@@ -1,6 +1,12 @@
+import {
+  startVerification as startDiditVerification,
+  VerificationStatus,
+} from "@didit-protocol/sdk-react-native";
+import * as WebBrowser from "expo-web-browser";
 // Step 2 - Studio compliance body
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import {
   getIdentityStatusLabel,
@@ -54,8 +60,22 @@ interface StepStudioComplianceBodyProps {
   buildRoleTabRoute: any;
   ROLE_TAB_ROUTE_NAMES: { jobs: string };
   saveStudioBillingFromOnboarding: () => Promise<void>;
-  startStudioDiditFromOnboarding: () => Promise<void>;
   refreshStudioDiditFromOnboarding: () => Promise<void>;
+  createStudioIdentityVerificationSession: () => Promise<{
+    sessionId: string;
+    sessionToken: string;
+    verificationUrl: string;
+    status:
+      | "not_started"
+      | "in_progress"
+      | "pending"
+      | "in_review"
+      | "approved"
+      | "declined"
+      | "abandoned"
+      | "expired";
+  }>;
+  refreshStudioIdentityVerification: (args: { sessionId: string }) => Promise<{ status: string }>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   styles: OnboardingStyles;
 }
@@ -91,11 +111,103 @@ export function StepStudioComplianceBody({
   buildRoleTabRoute,
   ROLE_TAB_ROUTE_NAMES,
   saveStudioBillingFromOnboarding,
-  startStudioDiditFromOnboarding,
+  refreshStudioDiditFromOnboarding,
+  createStudioIdentityVerificationSession,
+  refreshStudioIdentityVerification,
   styles,
 }: StepStudioComplianceBodyProps) {
   const { t } = useTranslation();
   const { color } = useTheme();
+  const sessionPromiseRef = useRef<Promise<{
+    sessionId: string;
+    sessionToken: string;
+    verificationUrl: string;
+    status:
+      | "not_started"
+      | "in_progress"
+      | "pending"
+      | "in_review"
+      | "approved"
+      | "declined"
+      | "abandoned"
+      | "expired";
+  }> | null>(null);
+  const [identityError, setIdentityError] = useState<string | null>(null);
+  const [isPresentingIdentity, setIsPresentingIdentity] = useState(false);
+
+  const ensureIdentitySession = useCallback(
+    async (forceNewSession = false) => {
+      if (forceNewSession) {
+        sessionPromiseRef.current = null;
+      }
+      sessionPromiseRef.current ??= createStudioIdentityVerificationSession().then((session) => {
+        return session;
+      });
+      return await sessionPromiseRef.current;
+    },
+    [createStudioIdentityVerificationSession],
+  );
+
+  const startIdentityVerification = useCallback(
+    async (forceNewSession = false) => {
+      if (isPresentingIdentity) {
+        return;
+      }
+
+      setIdentityError(null);
+      setIsPresentingIdentity(true);
+      try {
+        const session = await ensureIdentitySession(forceNewSession);
+        if (Platform.OS === "web") {
+          await WebBrowser.openBrowserAsync(session.verificationUrl);
+          return;
+        }
+        const result = await startDiditVerification(session.sessionToken, {
+          loggingEnabled: __DEV__,
+        });
+
+        if (result.type === "completed") {
+          await refreshStudioIdentityVerification({ sessionId: result.session.sessionId });
+          if (result.session.status === VerificationStatus.Approved) {
+            await refreshStudioDiditFromOnboarding();
+            return;
+          }
+          if (result.session.status === VerificationStatus.Pending) {
+            setIdentityError("Verification submitted and pending review.");
+            return;
+          }
+          setIdentityError("Verification was declined. Try again or contact support.");
+          return;
+        }
+
+        if (result.type === "cancelled") {
+          setIdentityError("Verification was cancelled.");
+          return;
+        }
+
+        if (result.type === "failed") {
+          setIdentityError(
+            result.error.message ?? t("profile.compliance.errors.identityStartFailed"),
+          );
+        }
+      } catch (error) {
+        setIdentityError(
+          error instanceof Error
+            ? error.message
+            : t("profile.compliance.errors.identityStartFailed"),
+        );
+      } finally {
+        setIsPresentingIdentity(false);
+      }
+    },
+    [
+      ensureIdentitySession,
+      isPresentingIdentity,
+      refreshStudioDiditFromOnboarding,
+      refreshStudioIdentityVerification,
+      t,
+    ],
+  );
 
   if (
     currentUser?.role !== "studio" ||
@@ -177,25 +289,22 @@ export function StepStudioComplianceBody({
                 status: getIdentityStatusLabel(studioDiditState.status),
               })}
         </ThemedText>
+        {identityError ? (
+          <NoticeBanner
+            tone="error"
+            message={identityError}
+            onDismiss={() => setIdentityError(null)}
+          />
+        ) : null}
         {!studioDiditState.isVerified ? (
           <ActionButton
-            label={t("profile.identityVerification.verifyNow")}
+            label={t("profile.studioCompliance.identity.startVerification")}
             fullWidth
-            native={false}
-            loading={isStartingStudioDidit}
-            disabled={isStartingStudioDidit}
-            colors={{
-              backgroundColor: color.primary,
-              pressedBackgroundColor: color.primary,
-              disabledBackgroundColor: color.surfaceMuted,
-              labelColor: color.onPrimary,
-              disabledLabelColor: color.onPrimary,
-              nativeTintColor: color.primary,
-            }}
-            labelStyle={{ textTransform: "uppercase", letterSpacing: 0.8, fontWeight: "700" }}
             onPress={() => {
-              void startStudioDiditFromOnboarding();
+              void startIdentityVerification(false);
             }}
+            loading={isPresentingIdentity || isStartingStudioDidit}
+            disabled={isPresentingIdentity || isStartingStudioDidit}
           />
         ) : null}
       </View>
@@ -295,10 +404,13 @@ export function StepStudioComplianceBody({
           )}
         </ThemedText>
         <ActionButton
-          label={t("onboarding.verification.openCompliance")}
-          tone="secondary"
+          label={t("profile.studioCompliance.payment.startSetup")}
           fullWidth
-          onPress={() => router.replace("/studio/profile/compliance")}
+          loading={isStartingStudioDidit}
+          disabled={isStartingStudioDidit}
+          onPress={() => {
+            router.replace("/studio/profile/payments?setup=1");
+          }}
         />
       </View>
       <View style={styles.verifyActions}>

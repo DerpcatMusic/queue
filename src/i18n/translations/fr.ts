@@ -1355,6 +1355,8 @@ const fr = {
       "overviewEyebrow": "Aperçu de la couverture",
       "radiusTitle": "Rayon de travail",
       "radiusHint": "Faites des pas de 250 m pour prévisualiser les studios situés à proximité de votre trajet domicile-travail.",
+      "activeResolution": "Res {{resolution}}",
+      "savedCoordinates": "Enregistré {{latitude}}, {{longitude}}",
       "radiusCount": "{{count}} studios visibles",
       "radiusSaving": "Rayon d'économie",
       "radiusLive": "Aperçu en direct",

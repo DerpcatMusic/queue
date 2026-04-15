@@ -8,6 +8,7 @@
  * Role gating is enforced by checking currentUser.role before opening.
  */
 
+import { router } from "expo-router";
 import { createContext, useCallback, useContext, useState } from "react";
 import { useUser } from "@/contexts/user-context";
 
@@ -252,15 +253,19 @@ export function useOpenInstructorSheet() {
 export function useOpenStudioSheet() {
   const { currentUser } = useUser();
   const { openStudioSheet, openLanguagePicker } = useSheetContext();
+  const openStudioComplianceRoute = () => {
+    router.push("/studio/profile/compliance");
+    return true;
+  };
 
   return {
     openPayments: () => {
       if (currentUser?.role !== "studio") return false;
-      return openStudioSheet("payments");
+      return openStudioComplianceRoute();
     },
     openCompliance: () => {
       if (currentUser?.role !== "studio") return false;
-      return openStudioSheet("compliance");
+      return openStudioComplianceRoute();
     },
     openBranches: () => {
       if (currentUser?.role !== "studio") return false;

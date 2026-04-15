@@ -1,7 +1,7 @@
 import { useIsFocused } from "@react-navigation/native";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 
@@ -11,8 +11,11 @@ import { BrandSpacing, getMapBrandPalette } from "@/constants/brand";
 import { ZONE_OPTIONS, type ZoneOption } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
+import type { SelectableBoundary } from "@/features/maps/boundaries/catalog";
 import { useAppInsets } from "@/hooks/use-app-insets";
 
+import { estimateAverageCommuteMinutes } from "@/lib/commute-estimate";
+import { getApproxCoverageResolution } from "@/lib/radius-scale";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { captureCurrentLocationSample } from "@/lib/location-zone";
 import {
@@ -23,46 +26,8 @@ import {
 
 const MAX_ZONES = 25;
 const DEFAULT_WORK_RADIUS_KM = 15;
-const MAX_MAP_RADIUS_KM = 40;
 const MAP_CAMERA_TOP_OFFSET = BrandSpacing.xl;
 const MAP_CAMERA_BOTTOM_OFFSET = BrandSpacing.xl;
-
-function toRadians(value: number) {
-  return (value * Math.PI) / 180;
-}
-
-function getDistanceMeters(
-  from: { latitude: number; longitude: number },
-  to: { latitude: number; longitude: number },
-) {
-  const earthRadiusMeters = 6371000;
-  const latitudeDelta = toRadians(to.latitude - from.latitude);
-  const longitudeDelta = toRadians(to.longitude - from.longitude);
-  const fromLatitude = toRadians(from.latitude);
-  const toLatitude = toRadians(to.latitude);
-
-  const haversine =
-    Math.sin(latitudeDelta / 2) ** 2 +
-    Math.cos(fromLatitude) * Math.cos(toLatitude) * Math.sin(longitudeDelta / 2) ** 2;
-
-  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
-}
-
-function filterStudiosWithinRadius(
-  studios: readonly StudioMapMarker[],
-  center: QueueMapPin | null,
-  radiusKm: number,
-) {
-  if (!center) {
-    return [...studios];
-  }
-
-  const maxDistanceMeters = Math.max(0, radiusKm) * 1000;
-  return studios.filter((studio) => {
-    const distanceMeters = getDistanceMeters(center, studio);
-    return distanceMeters <= maxDistanceMeters;
-  });
-}
 
 export function useMapTabController() {
   const { t, i18n } = useTranslation();
@@ -78,7 +43,6 @@ export function useMapTabController() {
     : "en";
   const { currentUser } = useUser();
   const [draftWorkRadiusKm, setDraftWorkRadiusKm] = useState(DEFAULT_WORK_RADIUS_KM);
-  const [committedWorkRadiusKm, setCommittedWorkRadiusKm] = useState(DEFAULT_WORK_RADIUS_KM);
   const [hasSeededWorkRadius, setHasSeededWorkRadius] = useState(false);
   const [hasUserAdjustedWorkRadius, setHasUserAdjustedWorkRadius] = useState(false);
   const [isRadiusSaving, setIsRadiusSaving] = useState(false);
@@ -101,9 +65,21 @@ export function useMapTabController() {
   const [hasAttemptedMapPinBootstrap, setHasAttemptedMapPinBootstrap] = useState(false);
   const [isRadiusPanelOpen, setIsRadiusPanelOpen] = useState(false);
   const [focusFrameKey, setFocusFrameKey] = useState(0);
+  const deferredWorkRadiusKm = useDeferredValue(draftWorkRadiusKm);
+  const commuteEstimateLabel = useMemo(() => {
+    const estimatedMinutes = estimateAverageCommuteMinutes(deferredWorkRadiusKm);
+    if (estimatedMinutes === null) {
+      return null;
+    }
+    return t("mapTab.mobile.commuteEstimate", { minutes: estimatedMinutes });
+  }, [deferredWorkRadiusKm, t]);
+  const activeResolutionLabel = useMemo(() => {
+    const resolution = getApproxCoverageResolution(deferredWorkRadiusKm);
+    return t("mapTab.mobile.activeResolution", { resolution });
+  }, [deferredWorkRadiusKm, t]);
   const remoteZones = useQuery(
     api.instructorZones.getMyInstructorZones,
-    currentUser?.role === "instructor" ? {} : "skip",
+    currentUser?.role === "instructor" && Platform.OS === "web" ? {} : "skip",
   );
   const instructorSettings = useQuery(
     api.users.getMyInstructorSettings,
@@ -112,11 +88,39 @@ export function useMapTabController() {
   const saveInstructorSettings = useMutation(api.users.updateMyInstructorSettings);
   const remoteStudios = useQuery(
     api.users.getInstructorMapStudios,
-    currentUser?.role === "instructor" ? { workRadiusKm: MAX_MAP_RADIUS_KM } : "skip",
+    currentUser?.role === "instructor" && mapPin
+      ? {
+          workRadiusKm: deferredWorkRadiusKm,
+          latitude: mapPin.latitude,
+          longitude: mapPin.longitude,
+        }
+      : "skip",
   );
+  const remoteCoveragePolygons = useQuery(
+    api.users.getInstructorMapCoverage,
+    currentUser?.role === "instructor" && mapPin
+      ? {
+          workRadiusKm: deferredWorkRadiusKm,
+          latitude: mapPin.latitude,
+          longitude: mapPin.longitude,
+        }
+      : "skip",
+  );
+  const savedCoordinatesLabel = useMemo(() => {
+    const latitude = mapPin?.latitude ?? instructorSettings?.latitude;
+    const longitude = mapPin?.longitude ?? instructorSettings?.longitude;
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      return null;
+    }
+    return t("mapTab.mobile.savedCoordinates", {
+      latitude: latitude.toFixed(5),
+      longitude: longitude.toFixed(5),
+    });
+  }, [instructorSettings?.latitude, instructorSettings?.longitude, mapPin?.latitude, mapPin?.longitude, t]);
   const saveZones = useMutation(api.instructorZones.setMyInstructorZones);
 
   type RemoteStudio = NonNullable<typeof remoteStudios>[number];
+  type RemoteCoveragePolygon = NonNullable<typeof remoteCoveragePolygons>[number];
 
   const noopMapPress = useCallback(() => {}, []);
 
@@ -142,7 +146,6 @@ export function useMapTabController() {
     }
     const nextRadiusKm = instructorSettings.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM;
     setDraftWorkRadiusKm(nextRadiusKm);
-    setCommittedWorkRadiusKm(nextRadiusKm);
     setHasSeededWorkRadius(true);
   }, [hasSeededWorkRadius, hasUserAdjustedWorkRadius, instructorSettings]);
 
@@ -150,11 +153,12 @@ export function useMapTabController() {
     if (instructorSettings?.latitude == null || instructorSettings?.longitude == null) {
       return;
     }
-    setMapPin((current) =>
-      current ?? {
-        latitude: instructorSettings.latitude!,
-        longitude: instructorSettings.longitude!,
-      },
+    setMapPin(
+      (current) =>
+        current ?? {
+          latitude: instructorSettings.latitude!,
+          longitude: instructorSettings.longitude!,
+        },
     );
   }, [instructorSettings?.latitude, instructorSettings?.longitude]);
 
@@ -257,7 +261,13 @@ export function useMapTabController() {
   );
   const filteredZones = useMemo(
     () =>
-      Platform.OS === "web" ? buildFilteredZones(boundaryOptions, zoneSearch, zoneLanguage) : [],
+      Platform.OS === "web"
+        ? buildFilteredZones(
+            boundaryOptions as readonly SelectableBoundary[],
+            zoneSearch,
+            zoneLanguage,
+          )
+        : [],
     [boundaryOptions, zoneLanguage, zoneSearch],
   );
   const allStudios = useMemo<StudioMapMarker[]>(
@@ -275,13 +285,11 @@ export function useMapTabController() {
         .filter((zone): zone is NonNullable<typeof zone> => Boolean(zone)),
     [boundaryById, selectedZoneIds],
   );
-  const visibleStudioMarkers = useMemo<StudioMapMarker[]>(
-    () => filterStudiosWithinRadius(allStudios, mapPin, committedWorkRadiusKm),
-    [allStudios, committedWorkRadiusKm, mapPin],
-  );
-  const previewStudioMarkers = useMemo<StudioMapMarker[]>(
-    () => filterStudiosWithinRadius(allStudios, mapPin, draftWorkRadiusKm),
-    [allStudios, draftWorkRadiusKm, mapPin],
+  const visibleStudioMarkers = useMemo<StudioMapMarker[]>(() => allStudios, [allStudios]);
+  const previewStudioMarkers = visibleStudioMarkers;
+  const coveragePolygons = useMemo(
+    () => (remoteCoveragePolygons ?? []) as RemoteCoveragePolygon[],
+    [remoteCoveragePolygons],
   );
   const studioById = useMemo(
     () => new Map<string, StudioMapMarker>(allStudios.map((studio) => [studio.studioId, studio])),
@@ -340,7 +348,9 @@ export function useMapTabController() {
           ...(instructorSettings.hourlyRateExpectation !== undefined
             ? { hourlyRateExpectation: instructorSettings.hourlyRateExpectation }
             : {}),
-          ...(instructorSettings.address !== undefined ? { address: instructorSettings.address } : {}),
+          ...(instructorSettings.address !== undefined
+            ? { address: instructorSettings.address }
+            : {}),
           ...(instructorSettings.addressCity !== undefined
             ? { addressCity: instructorSettings.addressCity }
             : {}),
@@ -356,7 +366,9 @@ export function useMapTabController() {
           ...(instructorSettings.addressPostalCode !== undefined
             ? { addressPostalCode: instructorSettings.addressPostalCode }
             : {}),
-          ...(instructorSettings.latitude !== undefined ? { latitude: instructorSettings.latitude } : {}),
+          ...(instructorSettings.latitude !== undefined
+            ? { latitude: instructorSettings.latitude }
+            : {}),
           ...(instructorSettings.longitude !== undefined
             ? { longitude: instructorSettings.longitude }
             : {}),
@@ -389,7 +401,6 @@ export function useMapTabController() {
   const handleRadiusCommit = useCallback(
     (radiusKm: number) => {
       setDraftWorkRadiusKm(radiusKm);
-      setCommittedWorkRadiusKm(radiusKm);
       void saveRadiusToProfile(radiusKm);
     },
     [saveRadiusToProfile],
@@ -419,13 +430,7 @@ export function useMapTabController() {
     } finally {
       setIsSaving(false);
     }
-  }, [
-    hasChanges,
-    isSaving,
-    saveZones,
-    selectedZoneIds,
-    t,
-  ]);
+  }, [hasChanges, isSaving, saveZones, selectedZoneIds, t]);
 
   const handleMapSheetSearchChange = useCallback((text: string) => {
     setZoneSearch(text);
@@ -502,22 +507,24 @@ export function useMapTabController() {
     mapCameraPadding,
     mapPalette,
     mapPin,
+    coveragePolygons,
     studios: visibleStudioMarkers,
     studioCount: previewStudioMarkers.length,
     noopMapPress,
     overlayBottom,
     pendingChangeCount,
     persistedZoneIds,
-    remoteZones,
     saveError,
     selectedStudio,
     selectedStudioId,
     selectedZoneIds,
     selectedZones,
     workRadiusKm: draftWorkRadiusKm,
-    committedWorkRadiusKm,
     showRadiusControl: true,
     isRadiusSaving,
+    commuteEstimateLabel,
+    activeResolutionLabel,
+    savedCoordinatesLabel,
     handleRadiusChange,
     handleRadiusCommit,
     handleRadiusPanelToggle,

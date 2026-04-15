@@ -389,7 +389,7 @@ const lightColors = {
   // Surfaces — 4 levels only
   appBg: "#F8F6F3",
   surface: "#FFFFFF",
-  surfaceElevated: "#FFFFFF",
+  surfaceElevated: "#F5F3F0",
   surfaceMuted: "#E5E2DE",
   // Borders & dividers
   border: "#D4D0CB",
@@ -452,6 +452,18 @@ const darkColors = {
 } as const;
 
 export type ThemeColors = typeof lightColors | typeof darkColors;
+export type SportsGenreTokens = {
+  pilates: { surface: string; border: string; text: string };
+  yoga: { surface: string; border: string; text: string };
+  barre_flexibility: { surface: string; border: string; text: string };
+  functional_strength: { surface: string; border: string; text: string };
+  crossfit: { surface: string; border: string; text: string };
+  performance: { surface: string; border: string; text: string };
+  cycling: { surface: string; border: string; text: string };
+  dance_fitness: { surface: string; border: string; text: string };
+  combat_fitness: { surface: string; border: string; text: string };
+  court_club: { surface: string; border: string; text: string };
+};
 export type SpaceToken = keyof typeof Spacing;
 export type RadiusToken = keyof typeof Radius;
 export type BorderWidthToken = keyof typeof BorderWidth;
@@ -463,6 +475,19 @@ export type ColorToken = keyof ThemeColors;
 export function getThemeColors(scheme: ThemeScheme): ThemeColors {
   return scheme === "dark" ? darkColors : lightColors;
 }
+
+const sportsGenreTokens = {
+  pilates: { surface: "#F3BFD7", border: "#DF9FBD", text: "#8F4E69" },
+  yoga: { surface: "#D4C9FF", border: "#B19EF0", text: "#6050A9" },
+  barre_flexibility: { surface: "#FFD3A2", border: "#E8B273", text: "#935317" },
+  functional_strength: { surface: "#CFE8B8", border: "#A9CB8D", text: "#486F31" },
+  crossfit: { surface: "#FFE08A", border: "#E2C057", text: "#816100" },
+  performance: { surface: "#BED7F4", border: "#8FB7E4", text: "#296184" },
+  cycling: { surface: "#BFE8DE", border: "#89CDBD", text: "#256D63" },
+  dance_fitness: { surface: "#F0B7D8", border: "#DA8CB8", text: "#924875" },
+  combat_fitness: { surface: "#F2B3A9", border: "#DE8E82", text: "#943E36" },
+  court_club: { surface: "#BEDFDC", border: "#86C8C1", text: "#23655E" },
+} as const satisfies SportsGenreTokens;
 
 export function createTheme(scheme: ThemeScheme) {
   const color = getThemeColors(scheme);
@@ -492,6 +517,7 @@ export function createTheme(scheme: ThemeScheme) {
       signal: color.jobsSignal,
       idle: color.jobsIdle,
     },
+    sportsGenre: sportsGenreTokens,
     archive: {
       // Warm amber accent for archive-specific highlights and status
       accent: color.warning,

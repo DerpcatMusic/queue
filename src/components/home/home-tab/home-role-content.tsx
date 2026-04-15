@@ -18,6 +18,7 @@ import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-route
 const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
 const STUDIO_JOBS_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.jobs);
 const STUDIO_CALENDAR_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.calendar);
+const STUDIO_COMPLIANCE_ROUTE = "/studio/profile/compliance" as const;
 
 export type Application = {
   applicationId: Id<"jobApplications">;
@@ -102,6 +103,7 @@ export type HomeRoleContentProps = {
   studioSettings:
     | {
         studioName: string;
+        address?: string;
         bio?: string;
         sports: string[];
         primaryBranch?: {
@@ -115,6 +117,7 @@ export type HomeRoleContentProps = {
         ownerIdentityStatus: "approved" | "pending" | "missing" | "failed";
         businessProfileStatus: "incomplete" | "complete";
         paymentStatus: "missing" | "pending" | "ready" | "failed";
+        canPublishJobs: boolean;
       }
     | null
     | undefined;
@@ -203,7 +206,7 @@ export const HomeRoleContent = memo(function HomeRoleContent({
         icon: "flame.fill",
         done: (instructorSettings?.sports?.length ?? 0) > 0,
         onPress: () => instructorSheetHandlers.openSports(),
-        sports: instructorSettings?.sports,
+        ...(instructorSettings?.sports ? { sports: instructorSettings.sports } : {}),
       },
     ];
     return (
@@ -242,40 +245,22 @@ export const HomeRoleContent = memo(function HomeRoleContent({
     studioComplianceSummary === undefined;
   const studioSetupItems: HomeChecklistItem[] = [
     {
-      id: "owner",
-      label: t("home.tasks.studio.ownerTitle"),
-      icon: "person.crop.circle.fill",
-      done: studioComplianceSummary?.ownerIdentityStatus === "approved",
-      onPress: () => studioSheetHandlers.openCompliance(),
-    },
-    {
-      id: "business",
-      label: t("home.tasks.studio.businessTitle"),
-      icon: "building.2.fill",
-      done: studioComplianceSummary?.businessProfileStatus === "complete",
-      onPress: () => studioSheetHandlers.openCompliance(),
-    },
-    {
-      id: "payments",
-      label: t("profile.setup.connectPayouts"),
-      icon: "creditcard.fill",
-      done: studioComplianceSummary?.paymentStatus === "ready",
-      onPress: () => studioSheetHandlers.openPayments(),
+      id: "publishing",
+      label: t("home.tasks.studio.readinessTitle"),
+      icon: "checkmark.shield.fill",
+      done: studioComplianceSummary?.canPublishJobs ?? false,
+      onPress: () => router.push(STUDIO_COMPLIANCE_ROUTE),
     },
     {
       id: "profile",
       label: t("home.tasks.studio.profileTitle"),
       icon: "building.columns.fill",
-      done: Boolean(studioSettings?.studioName?.trim() && studioSettings?.bio?.trim()),
+      done: Boolean(
+        studioSettings?.studioName?.trim() &&
+          studioSettings?.address?.trim() &&
+          (studioSettings?.sports?.length ?? 0) > 0,
+      ),
       onPress: () => studioSheetHandlers.openEdit(),
-    },
-    {
-      id: "sports",
-      label: t("profile.setup.chooseSports"),
-      icon: "flame.fill",
-      done: (studioSettings?.sports?.length ?? 0) > 0,
-      onPress: () => studioSheetHandlers.openEdit(),
-      sports: studioSettings?.sports,
     },
     {
       id: "branch",

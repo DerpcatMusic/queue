@@ -1,5 +1,6 @@
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useMutation, useQuery } from "convex/react";
+import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, RefreshControl } from "react-native";
@@ -51,17 +52,10 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
 
   const currentUser = useQuery(api.users.getCurrentUser);
   const shouldLoad = currentUser?.role === "studio";
-  const studioSettings = useQuery(
-    api.users.getMyStudioSettings,
-    shouldLoad ? {} : "skip",
-  );
+  const studioSettings = useQuery(api.users.getMyStudioSettings, shouldLoad ? {} : "skip");
   const accessSnapshot = useQuery(api.access.getMyStudioAccessSnapshot, shouldLoad ? {} : "skip");
   const compliance = accessSnapshot?.compliance;
   const diditVerification = accessSnapshot?.verification;
-  const paymentsPreflight = useQuery(
-    api.paymentsV2.getPaymentsPreflightV2,
-    shouldLoad ? {} : "skip",
-  );
   const saveBillingProfile = useMutation(api.complianceStudio.upsertMyStudioBillingProfile);
 
   const [refreshing, setRefreshing] = useState(false);
@@ -171,11 +165,7 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
   );
 
   const studioDetailsSummary = studioSettings
-    ? [
-        studioSettings.address,
-        studioSettings.zone,
-        studioSettings.contactPhone,
-      ]
+    ? [studioSettings.address, studioSettings.zone, studioSettings.contactPhone]
         .filter((part): part is string => Boolean(part?.trim()))
         .join(" · ")
     : t("profile.settings.completeOnboardingAddress");
@@ -193,14 +183,10 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
             t("profile.settings.branches.none"),
         })
     : t("profile.settings.branches.none");
-
   if (
     !currentUser ||
     (shouldLoad &&
-      (compliance === undefined ||
-        studioSettings === undefined ||
-        diditVerification === undefined ||
-        paymentsPreflight === undefined))
+      (compliance === undefined || studioSettings === undefined || diditVerification === undefined))
   ) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose} scrollable={false}>
@@ -214,8 +200,7 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
     currentUser.role !== "studio" ||
     !compliance ||
     !studioSettings ||
-    !diditVerification ||
-    !paymentsPreflight
+    !diditVerification
   ) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose} scrollable={false}>
@@ -238,17 +223,14 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
     );
   }
 
-  const paymentStatus =
-    paymentsPreflight.readyForCheckout && compliance.summary.paymentStatus === "ready"
-      ? "ready"
-      : compliance.summary.paymentStatus;
   const paymentSubtitle = getStudioPaymentSubtitle(
     {
-      status: paymentStatus,
+      status: compliance.summary.paymentStatus,
       paymentReadinessSource: compliance.summary.paymentReadinessSource,
     },
     t,
   );
+
   return (
     <BaseProfileSheet visible={visible} onClose={onClose} scrollable={false}>
       <BottomSheetScrollView
@@ -301,13 +283,13 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
                 title={t("profile.studioCompliance.sections.payment")}
                 subtitle={paymentSubtitle}
                 value={
-                  paymentStatus === "ready"
+                  compliance.summary.paymentStatus === "ready"
                     ? t("profile.compliance.values.approved")
                     : t("profile.compliance.values.actionRequired")
                 }
                 icon="creditcard.fill"
                 sectionTone="operations"
-                onPress={() => studioSheetHandlers.openPayments()}
+                onPress={() => router.push("/studio/profile/payments")}
               />
             </ProfileSectionCard>
           </Box>
@@ -448,27 +430,6 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
                   }}
                 />
               </Box>
-            </ProfileSectionCard>
-          </Box>
-
-          <Box>
-            <ProfileSectionHeader
-              label={t("profile.studioCompliance.sections.payment")}
-              description={t("profile.studioCompliance.sections.paymentDescription")}
-              icon="creditcard.fill"
-            />
-            <ProfileSectionCard style={{ marginHorizontal: 0 }}>
-              <ProfileSettingRow
-                title={t("profile.studioCompliance.payment.title")}
-                subtitle={paymentSubtitle}
-                value={
-                  paymentStatus === "ready"
-                    ? t("profile.compliance.values.approved")
-                    : t("profile.compliance.values.actionRequired")
-                }
-                icon="creditcard.fill"
-                onPress={() => studioSheetHandlers.openPayments()}
-              />
             </ProfileSectionCard>
           </Box>
         </Box>

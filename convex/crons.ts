@@ -11,7 +11,7 @@ const crons = cronJobs();
 crons.interval(
   "cleanup cancelled jobs",
   { hours: 1 },
-  internal.jobs.cleanupCancelledJobs,
+  internal.jobs.cancellation.cleanupCancelledJobs,
   { minAgeMs: 7 * 24 * 60 * 60 * 1000 }, // 7 days retention
 );
 
@@ -23,7 +23,7 @@ crons.interval(
 crons.interval(
   "cleanup expired rate limits",
   { minutes: 15 },
-  internal.security.cleanupExpiredRateLimits,
+  internal.security.rateLimits.cleanupExpiredRateLimits,
   {},
 );
 
@@ -35,21 +35,21 @@ crons.interval(
 crons.cron(
   "cleanup old webhook payloads",
   "0 1 * * *", // Every day at 1 AM UTC
-  internal.webhookSecurity.cleanupStaleWebhookArtifacts,
+  internal.security.webhookSecurity.cleanupStaleWebhookArtifacts,
   { olderThanMs: 30 * 24 * 60 * 60 * 1000 }, // 30 days retention
 );
 
 crons.cron(
   "process instructor insurance renewals",
   "0 7 * * *", // Every day at 7 AM UTC
-  internal.complianceReview.processInsuranceRenewalChecks,
+  internal.compliance.instructorReview.processInsuranceRenewalChecks,
   {},
 );
 
 crons.interval(
   "process due notification schedules",
   { minutes: 5 },
-  internal.notificationsCore.processDueNotificationSchedules,
+  internal.notifications.core.processDueNotificationSchedules,
   {},
 );
 

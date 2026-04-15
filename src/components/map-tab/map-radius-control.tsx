@@ -1,26 +1,31 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, type StyleProp, type ViewStyle } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
-import { BrandSpacing } from "@/constants/brand";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { Box, Text } from "@/primitives";
+import {
+  radiusKmToSliderValue,
+  roundRadiusKm,
+  sliderValueToRadiusKm,
+} from "@/lib/radius-scale";
 
-const RADIUS_MIN_KM = 1;
+const RADIUS_MIN_KM = 0.25;
 const RADIUS_MAX_KM = 40;
-const RADIUS_STEP_KM = 0.25;
 
 function formatRadiusKm(value: number) {
+  if (value < 1) {
+    return `${Math.round(value * 1000)} m`;
+  }
   return Number.isInteger(value) ? `${value} km` : `${value.toFixed(2).replace(/\.?0+$/, "")} km`;
-}
-
-function roundRadiusKm(value: number) {
-  const clamped = Math.min(RADIUS_MAX_KM, Math.max(RADIUS_MIN_KM, value));
-  return Math.round(clamped / RADIUS_STEP_KM) * RADIUS_STEP_KM;
 }
 
 type MapRadiusControlProps = {
   radiusKm: number;
   isSaving?: boolean;
+  commuteEstimateLabel?: string | null | undefined;
+  activeResolutionLabel?: string | null | undefined;
+  savedCoordinatesLabel?: string | null | undefined;
   style?: StyleProp<ViewStyle>;
   onRadiusChange: (radiusKm: number) => void;
   onRadiusCommit?: (radiusKm: number) => void;
@@ -29,6 +34,9 @@ type MapRadiusControlProps = {
 export function MapRadiusControl({
   radiusKm,
   isSaving = false,
+  commuteEstimateLabel,
+  activeResolutionLabel,
+  savedCoordinatesLabel,
   style,
   onRadiusChange,
   onRadiusCommit,
@@ -36,6 +44,7 @@ export function MapRadiusControl({
   const { color: themeColor, scheme } = useTheme();
   const commitRadius = onRadiusCommit ?? onRadiusChange;
   const lastRadiusKm = useRef(radiusKm);
+  const [liveRadiusKm, setLiveRadiusKm] = useState(radiusKm);
   const nativeSlider = useMemo(() => {
     if (Platform.OS === "android") {
       try {
@@ -71,12 +80,14 @@ export function MapRadiusControl({
 
   useEffect(() => {
     lastRadiusKm.current = radiusKm;
+    setLiveRadiusKm(radiusKm);
   }, [radiusKm]);
 
-  const sliderValue = useMemo(() => roundRadiusKm(radiusKm), [radiusKm]);
+  const sliderValue = useMemo(() => radiusKmToSliderValue(liveRadiusKm), [liveRadiusKm]);
   const handleChange = (value: number) => {
-    const nextRadiusKm = roundRadiusKm(value);
+    const nextRadiusKm = roundRadiusKm(sliderValueToRadiusKm(value));
     lastRadiusKm.current = nextRadiusKm;
+    setLiveRadiusKm(nextRadiusKm);
     onRadiusChange(nextRadiusKm);
   };
 
@@ -99,8 +110,8 @@ export function MapRadiusControl({
       >
         <NativeSlider
           value={sliderValue}
-          min={RADIUS_MIN_KM}
-          max={RADIUS_MAX_KM}
+          min={0}
+          max={1}
           enabled={!isSaving}
           colors={{
             thumbColor: themeColor.primary,
@@ -109,12 +120,10 @@ export function MapRadiusControl({
           }}
           onValueChange={handleChange}
           onValueChangeFinished={handleCommit}
-          modifiers={
-            [
-              nativeFillMaxWidth ? nativeFillMaxWidth() : null,
-              nativeHeight ? nativeHeight(BrandSpacing.controlLg) : null,
-            ].filter(Boolean)
-          }
+          modifiers={[
+            nativeFillMaxWidth ? nativeFillMaxWidth() : null,
+            nativeHeight ? nativeHeight(BrandSpacing.controlLg) : null,
+          ].filter(Boolean)}
         />
       </NativeHost>
     ) : NativeHost && NativeSlider ? (
@@ -125,9 +134,9 @@ export function MapRadiusControl({
       >
         <NativeSlider
           value={sliderValue}
-          step={RADIUS_STEP_KM}
-          min={RADIUS_MIN_KM}
-          max={RADIUS_MAX_KM}
+          step={0.001}
+          min={0}
+          max={1}
           modifiers={
             nativeFrame
               ? [
@@ -156,12 +165,74 @@ export function MapRadiusControl({
           {formatRadiusKm(RADIUS_MIN_KM)}
         </Text>
 
-        <Box style={styles.sliderShell}>{sliderNode}</Box>
+        <Box style={styles.sliderShell}>
+          <Box
+            pointerEvents="none"
+            style={[
+              styles.sliderBubble,
+              {
+                left: `${Math.min(100, Math.max(0, sliderValue * 100))}%`,
+                backgroundColor: themeColor.surface,
+                borderColor: themeColor.primary,
+              },
+            ]}
+          >
+            <Text
+              style={{
+                color: themeColor.text,
+                fontSize: 12,
+                lineHeight: 16,
+                fontWeight: "600",
+              }}
+            >
+              {formatRadiusKm(liveRadiusKm)}
+            </Text>
+          </Box>
+          <Box style={styles.sliderTrack}>{sliderNode}</Box>
+        </Box>
 
         <Text style={{ color: themeColor.textMuted, fontSize: 14, lineHeight: 19 }}>
           {formatRadiusKm(RADIUS_MAX_KM)}
         </Text>
       </Box>
+      {commuteEstimateLabel ? (
+        <Text
+          style={{
+            color: themeColor.textMuted,
+            fontSize: 12,
+            lineHeight: 16,
+            textAlign: "center",
+          }}
+        >
+          {commuteEstimateLabel}
+        </Text>
+      ) : null}
+      {activeResolutionLabel ? (
+        <Text
+          style={{
+            color: themeColor.textMuted,
+            fontSize: 12,
+            lineHeight: 16,
+            textAlign: "center",
+            fontFamily: "monospace",
+          }}
+        >
+          {activeResolutionLabel}
+        </Text>
+      ) : null}
+      {savedCoordinatesLabel ? (
+        <Text
+          style={{
+            color: themeColor.textMuted,
+            fontSize: 12,
+            lineHeight: 16,
+            textAlign: "center",
+            fontFamily: "monospace",
+          }}
+        >
+          {savedCoordinatesLabel}
+        </Text>
+      ) : null}
     </Box>
   );
 }
@@ -181,5 +252,26 @@ const styles = StyleSheet.create(() => ({
   sliderShell: {
     flex: 1,
     minWidth: 0,
+    position: "relative",
+    paddingTop: BrandSpacing.lg,
+  },
+  sliderTrack: {
+    marginTop: BrandSpacing.xs,
+  },
+  sliderBubble: {
+    position: "absolute",
+    top: 0,
+    minWidth: 60,
+    paddingHorizontal: BrandSpacing.xs,
+    paddingVertical: 4,
+    borderRadius: BrandRadius.pill,
+    borderWidth: 1,
+    alignItems: "center",
+    transform: [{ translateX: -30 }],
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
 }));

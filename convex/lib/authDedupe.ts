@@ -1,7 +1,6 @@
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { rebuildInstructorCoverage } from "./instructorCoverage";
 
 type Ctx = MutationCtx | QueryCtx;
 
@@ -245,20 +244,12 @@ async function mergeInstructorProfiles(args: {
   })[0]!;
 
   const sports = new Set<string>();
-  const zones = new Set<string>();
   for (const profile of profiles) {
-    const [profileSports, profileZones] = await Promise.all([
-      args.ctx.db
-        .query("instructorSports")
-        .withIndex("by_instructor_id", (q) => q.eq("instructorId", profile._id))
-        .collect(),
-      args.ctx.db
-        .query("instructorZones")
-        .withIndex("by_instructor_id", (q) => q.eq("instructorId", profile._id))
-        .collect(),
-    ]);
+    const profileSports = await args.ctx.db
+      .query("instructorSports")
+      .withIndex("by_instructor_id", (q) => q.eq("instructorId", profile._id))
+      .collect();
     for (const row of profileSports) sports.add(row.sport);
-    for (const row of profileZones) zones.add(row.zone);
   }
 
   await args.ctx.db.patch("instructorProfiles", canonicalProfile._id, {
@@ -355,30 +346,11 @@ async function mergeInstructorProfiles(args: {
     .collect()) {
     await args.ctx.db.delete("instructorSports", row._id);
   }
-  for (const row of await args.ctx.db
-    .query("instructorZones")
-    .withIndex("by_instructor_id", (q) => q.eq("instructorId", canonicalProfile._id))
-    .collect()) {
-    await args.ctx.db.delete("instructorZones", row._id);
-  }
-  for (const row of await args.ctx.db
-    .query("instructorCoverage")
-    .withIndex("by_instructor_id", (q) => q.eq("instructorId", canonicalProfile._id))
-    .collect()) {
-    await args.ctx.db.delete("instructorCoverage", row._id);
-  }
 
   for (const sport of sports) {
     await args.ctx.db.insert("instructorSports", {
       instructorId: canonicalProfile._id,
       sport,
-      createdAt: args.now,
-    });
-  }
-  for (const zone of zones) {
-    await args.ctx.db.insert("instructorZones", {
-      instructorId: canonicalProfile._id,
-      zone,
       createdAt: args.now,
     });
   }
@@ -464,22 +436,8 @@ async function mergeInstructorProfiles(args: {
       .collect()) {
       await args.ctx.db.delete("instructorSports", row._id);
     }
-    for (const row of await args.ctx.db
-      .query("instructorZones")
-      .withIndex("by_instructor_id", (q) => q.eq("instructorId", duplicateProfile._id))
-      .collect()) {
-      await args.ctx.db.delete("instructorZones", row._id);
-    }
-    for (const row of await args.ctx.db
-      .query("instructorCoverage")
-      .withIndex("by_instructor_id", (q) => q.eq("instructorId", duplicateProfile._id))
-      .collect()) {
-      await args.ctx.db.delete("instructorCoverage", row._id);
-    }
     await args.ctx.db.delete("instructorProfiles", duplicateProfile._id);
   }
-
-  await rebuildInstructorCoverage(args.ctx, canonicalProfile._id);
 }
 
 async function mergeStudioProfiles(args: {
@@ -543,9 +501,6 @@ async function mergeStudioProfiles(args: {
     address:
       pickFirstDefined(canonicalProfile.address, ...profiles.map((profile) => profile.address)) ??
       canonicalProfile.address,
-    zone:
-      pickFirstDefined(canonicalProfile.zone, ...profiles.map((profile) => profile.zone)) ??
-      canonicalProfile.zone,
     latitude: pickFirstDefined(
       canonicalProfile.latitude,
       ...profiles.map((profile) => profile.latitude),

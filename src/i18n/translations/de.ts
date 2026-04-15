@@ -1425,6 +1425,8 @@ const de = {
       "overviewEyebrow": "Abdeckungsübersicht",
       "radiusTitle": "Arbeitsradius",
       "radiusHint": "Gleiten Sie in 250-m-Schritten, um eine Vorschau der Studios in Ihrer Pendelreichweite zu erhalten.",
+      "activeResolution": "Res {{resolution}}",
+      "savedCoordinates": "Gespeichert {{latitude}}, {{longitude}}",
       "radiusCount": "{{count}} Studios sichtbar",
       "radiusSaving": "Sparradius",
       "radiusLive": "Live-Vorschau",

@@ -99,26 +99,7 @@ export function InstructorSportsSheet({ visible, onClose }: InstructorSportsShee
   };
 
   return (
-    <BaseProfileSheet visible={visible} onClose={onClose}>
-      {/* Minimal header — icon + count + unsaved badge */}
-      <View style={s.header}>
-        <View style={[s.headerIcon, { backgroundColor: theme.color.primarySubtle }]}>
-          <IconSymbol name="sparkles" size={20} color={theme.color.primary} />
-        </View>
-        <Text style={[BrandType.heading, { color: theme.color.text, flex: 1 }]}>
-          {sports.length > 0
-            ? t("profile.sports.heroReady", { count: sports.length })
-            : t("profile.sports.heroEmpty")}
-        </Text>
-        {hasChanges && (
-          <View style={[s.badge, { backgroundColor: theme.color.primarySubtle }]}>
-            <Text style={[BrandType.caption, { color: theme.color.primary }]}>
-              {t("profile.sports.stateUnsaved")}
-            </Text>
-          </View>
-        )}
-      </View>
-
+    <BaseProfileSheet visible={visible} onClose={onClose} scrollable={true}>
       {/* Error banner */}
       {errorMessage && (
         <View
@@ -146,6 +127,7 @@ export function InstructorSportsSheet({ visible, onClose }: InstructorSportsShee
         emptyHint={t("profile.settings.sports.none")}
         defaultOpen
         variant="content"
+        hasUnsavedChanges={hasChanges}
       />
 
       {/* Sticky save bar */}
@@ -164,25 +146,6 @@ export function InstructorSportsSheet({ visible, onClose }: InstructorSportsShee
 }
 
 const s = StyleSheet.create(() => ({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: BrandSpacing.md,
-    paddingBottom: BrandSpacing.sm,
-  },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    borderCurve: "continuous",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badge: {
-    borderRadius: BrandRadius.pill,
-    paddingHorizontal: BrandSpacing.md,
-    paddingVertical: BrandSpacing.xs,
-  },
   errorBanner: {
     borderRadius: BrandRadius.md,
     paddingHorizontal: BrandSpacing.md,

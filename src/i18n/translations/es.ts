@@ -1355,6 +1355,8 @@ const es = {
       "overviewEyebrow": "Resumen de cobertura",
       "radiusTitle": "Radio de trabajo",
       "radiusHint": "Deslícese en pasos de 250 m para obtener una vista previa de los estudios dentro de su alcance de viaje.",
+      "activeResolution": "Res {{resolution}}",
+      "savedCoordinates": "Guardado {{latitude}}, {{longitude}}",
       "radiusCount": "{{count}} estudios visibles",
       "radiusSaving": "Radio de ahorro",
       "radiusLive": "Vista previa en vivo",

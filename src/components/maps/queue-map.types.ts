@@ -13,11 +13,21 @@ export type StudioMapMarker = {
   studioId: string;
   studioName: string;
   zone: string;
+  h3Index?: string;
   latitude: number;
   longitude: number;
   address?: string;
   logoImageUrl?: string;
   mapMarkerColor?: string;
+};
+
+export type MapCoveragePolygon = {
+  cell: string;
+  resolution: number;
+  boundary: Array<{
+    latitude: number;
+    longitude: number;
+  }>;
 };
 
 export type QueueMapBounds = {
@@ -71,4 +81,5 @@ export type QueueMapProps = {
   };
   focusFrameKey?: number;
   radiusKm?: number;
+  coveragePolygons?: MapCoveragePolygon[];
 };

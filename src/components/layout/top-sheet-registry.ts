@@ -20,6 +20,7 @@ import type {
   TopSheetExpandMode,
   TopSheetPadding,
   TopSheetProps,
+  TopSheetShadow,
 } from "./top-sheet";
 
 export type TopSheetRenderProps = {
@@ -53,6 +54,7 @@ export type TopSheetTabConfig = {
   padding?: TopSheetPadding;
   backgroundColor?: ColorValue;
   topInsetColor?: ColorValue;
+  gradientBackground?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   stickyHeader?: React.ReactNode;
   stickyFooter?: React.ReactNode;
@@ -60,6 +62,8 @@ export type TopSheetTabConfig = {
   sheetVisible?: boolean;
   routeMatchPath?: string;
   routeMatchExact?: boolean;
+  disableSafeTopPadding?: boolean;
+  shadow?: TopSheetShadow;
 };
 
 export type ResolvedTopSheetTabConfig = TopSheetTabConfig & {

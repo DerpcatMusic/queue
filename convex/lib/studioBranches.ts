@@ -2,7 +2,7 @@ import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { requireCurrentUser, requireUserRole } from "./auth";
-import { buildLegacyZoneBoundary } from "./boundaries";
+import { safeH3Hierarchy } from "./h3";
 import { omitUndefined, trimOptionalString } from "./validation";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -97,10 +97,7 @@ export async function requireStudioOwnerMembership(
   });
 }
 
-export async function getPrimaryStudioBranch(
-  ctx: Ctx,
-  studioId: Id<"studioProfiles">,
-) {
+export async function getPrimaryStudioBranch(ctx: Ctx, studioId: Id<"studioProfiles">) {
   const primary = await ctx.db
     .query("studioBranches")
     .withIndex("by_studio_primary", (q) => q.eq("studioId", studioId).eq("isPrimary", true))
@@ -112,10 +109,7 @@ export async function getPrimaryStudioBranch(
     .first();
 }
 
-export async function requirePrimaryStudioBranch(
-  ctx: Ctx,
-  studioId: Id<"studioProfiles">,
-) {
+export async function requirePrimaryStudioBranch(ctx: Ctx, studioId: Id<"studioProfiles">) {
   const branch = await getPrimaryStudioBranch(ctx, studioId);
   if (!branch) {
     throw new ConvexError("Primary studio branch not found");
@@ -214,9 +208,6 @@ export async function createStudioBranch(
     studioId: Id<"studioProfiles">;
     name: string;
     address: string;
-    zone: string;
-    boundaryProvider?: string;
-    boundaryId?: string;
     latitude?: number;
     longitude?: number;
     contactPhone?: string;
@@ -234,13 +225,12 @@ export async function createStudioBranch(
 ) {
   const now = args.now ?? Date.now();
   const slug = await resolveUniqueStudioBranchSlug(ctx, args.studioId, args.name);
+  const h3Hierarchy = safeH3Hierarchy(args.latitude, args.longitude);
   const branchId = await ctx.db.insert("studioBranches", {
     studioId: args.studioId,
     name: args.name,
     slug,
     address: args.address,
-    zone: args.zone,
-    ...buildLegacyZoneBoundary(args.boundaryId ?? args.zone, args.boundaryProvider),
     isPrimary: args.isPrimary ?? false,
     status: args.status ?? DEFAULT_BRANCH_STATUS,
     createdAt: now,
@@ -248,6 +238,12 @@ export async function createStudioBranch(
     ...omitUndefined({
       latitude: args.latitude,
       longitude: args.longitude,
+      h3Index: h3Hierarchy?.h3Index,
+      h3Res8: h3Hierarchy?.h3Res8,
+      h3Res7: h3Hierarchy?.h3Res7,
+      h3Res4: h3Hierarchy?.h3Res4,
+      h3Res5: h3Hierarchy?.h3Res5,
+      h3Res6: h3Hierarchy?.h3Res6,
       contactPhone: args.contactPhone,
       expoPushToken: args.expoPushToken,
       notificationsEnabled: args.notificationsEnabled,
@@ -272,11 +268,14 @@ export async function ensurePrimaryStudioBranch(
     | "_id"
     | "studioName"
     | "address"
-    | "zone"
-    | "boundaryProvider"
-    | "boundaryId"
     | "latitude"
     | "longitude"
+    | "h3Index"
+    | "h3Res8"
+    | "h3Res7"
+    | "h3Res4"
+    | "h3Res5"
+    | "h3Res6"
     | "contactPhone"
     | "expoPushToken"
     | "notificationsEnabled"
@@ -296,17 +295,20 @@ export async function ensurePrimaryStudioBranch(
     studioId: studio._id,
     name: buildDefaultBranchName(studio),
     address: studio.address,
-    zone: studio.zone,
     isPrimary: true,
     status: "active",
     calendarProvider: studio.calendarProvider ?? "none",
     calendarSyncEnabled: studio.calendarSyncEnabled ?? false,
     now,
     ...omitUndefined({
-      boundaryProvider: studio.boundaryProvider,
-      boundaryId: studio.boundaryId ?? studio.zone,
       latitude: studio.latitude,
       longitude: studio.longitude,
+      h3Index: studio.h3Index,
+      h3Res8: studio.h3Res8,
+      h3Res7: studio.h3Res7,
+      h3Res4: studio.h3Res4,
+      h3Res5: studio.h3Res5,
+      h3Res6: studio.h3Res6,
       contactPhone: studio.contactPhone,
       expoPushToken: studio.expoPushToken,
       notificationsEnabled: studio.notificationsEnabled,
@@ -325,11 +327,14 @@ export async function ensureStudioInfrastructure(
     | "userId"
     | "studioName"
     | "address"
-    | "zone"
-    | "boundaryProvider"
-    | "boundaryId"
     | "latitude"
     | "longitude"
+    | "h3Index"
+    | "h3Res8"
+    | "h3Res7"
+    | "h3Res4"
+    | "h3Res5"
+    | "h3Res6"
     | "contactPhone"
     | "expoPushToken"
     | "notificationsEnabled"
@@ -355,11 +360,14 @@ export async function syncStudioProfileFromBranch(
   branch: Pick<
     Doc<"studioBranches">,
     | "address"
-    | "zone"
-    | "boundaryProvider"
-    | "boundaryId"
     | "latitude"
     | "longitude"
+    | "h3Index"
+    | "h3Res8"
+    | "h3Res7"
+    | "h3Res4"
+    | "h3Res5"
+    | "h3Res6"
     | "contactPhone"
     | "expoPushToken"
     | "notificationsEnabled"
@@ -373,12 +381,16 @@ export async function syncStudioProfileFromBranch(
 ) {
   await ctx.db.patch(studioId, {
     address: branch.address,
-    zone: branch.zone,
-    ...buildLegacyZoneBoundary(branch.boundaryId ?? branch.zone, branch.boundaryProvider),
     updatedAt: now,
     ...omitUndefined({
       latitude: branch.latitude,
       longitude: branch.longitude,
+      h3Index: branch.h3Index,
+      h3Res8: branch.h3Res8,
+      h3Res7: branch.h3Res7,
+      h3Res4: branch.h3Res4,
+      h3Res5: branch.h3Res5,
+      h3Res6: branch.h3Res6,
       contactPhone: branch.contactPhone,
       expoPushToken: branch.expoPushToken,
       notificationsEnabled: branch.notificationsEnabled,
@@ -391,10 +403,7 @@ export async function syncStudioProfileFromBranch(
   });
 }
 
-export async function assertStudioCanCreateAnotherBranch(
-  ctx: Ctx,
-  studioId: Id<"studioProfiles">,
-) {
+export async function assertStudioCanCreateAnotherBranch(ctx: Ctx, studioId: Id<"studioProfiles">) {
   const entitlement = await getStudioEntitlement(ctx, studioId);
   const activeBranches = await ctx.db
     .query("studioBranches")

@@ -282,6 +282,11 @@ export default defineSchema({
     longitude: v.optional(v.number()),
     workRadiusKm: v.optional(v.number()),
     h3Index: v.optional(v.string()),
+    h3Res8: v.optional(v.string()),
+    h3Res7: v.optional(v.string()),
+    h3Res4: v.optional(v.string()),
+    h3Res5: v.optional(v.string()),
+    h3Res6: v.optional(v.string()),
     expoPushToken: v.optional(v.string()),
     notificationsEnabled: v.boolean(),
     lessonReminderMinutesBefore: v.optional(v.number()),
@@ -319,7 +324,20 @@ export default defineSchema({
     .index("by_user_id", ["userId"])
     .index("by_didit_session_id", ["diditSessionId"])
     .index("by_slug", ["slug"])
-    .index("by_h3_index", ["h3Index"]),
+    .index("by_h3_index", ["h3Index"])
+    .index("by_h3_res8", ["h3Res8"])
+    .index("by_h3_res7", ["h3Res7"]),
+
+  instructorHexCoverage: defineTable({
+    instructorId: v.id("instructorProfiles"),
+    sport: v.string(),
+    cell: v.string(),
+    resolution: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_instructor", ["instructorId"])
+    .index("by_instructor_sport", ["instructorId", "sport"])
+    .index("by_sport_cell", ["sport", "cell"]),
 
   instructorCertificates: defineTable({
     instructorId: v.id("instructorProfiles"),
@@ -444,77 +462,6 @@ export default defineSchema({
     .index("by_sport", ["sport"])
     .index("by_instructor_and_sport", ["instructorId", "sport"]),
 
-  instructorZones: defineTable({
-    instructorId: v.id("instructorProfiles"),
-    zone: v.string(),
-    createdAt: v.number(),
-  })
-    .index("by_instructor_id", ["instructorId"])
-    .index("by_zone", ["zone"])
-    .index("by_zone_and_instructor", ["zone", "instructorId"]),
-
-  boundaries: defineTable({
-    provider: v.string(),
-    boundaryId: v.string(),
-    kind: v.string(),
-    countryCode: v.string(),
-    name: v.string(),
-    parentBoundaryId: v.optional(v.string()),
-    cityKey: v.optional(v.string()),
-    postcode: v.optional(v.string()),
-    centroidLatitude: v.optional(v.number()),
-    centroidLongitude: v.optional(v.number()),
-    bbox: v.optional(
-      v.object({
-        swLng: v.number(),
-        swLat: v.number(),
-        neLng: v.number(),
-        neLat: v.number(),
-      }),
-    ),
-    metadata: v.optional(v.any()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_provider_boundary", ["provider", "boundaryId"])
-    .index("by_provider_country_kind", ["provider", "countryCode", "kind"])
-    .index("by_provider_parent", ["provider", "parentBoundaryId"])
-    .index("by_provider_city", ["provider", "cityKey"]),
-
-  instructorBoundarySubscriptions: defineTable({
-    instructorId: v.id("instructorProfiles"),
-    provider: v.string(),
-    boundaryId: v.string(),
-    createdAt: v.number(),
-  })
-    .index("by_instructor_provider", ["instructorId", "provider"])
-    .index("by_provider_boundary", ["provider", "boundaryId"])
-    .index("by_provider_boundary_instructor", ["provider", "boundaryId", "instructorId"]),
-
-  instructorCoverage: defineTable({
-    instructorId: v.id("instructorProfiles"),
-    sport: v.string(),
-    zone: v.string(),
-    notificationsEnabled: v.boolean(),
-    expoPushToken: v.optional(v.string()),
-    updatedAt: v.number(),
-  })
-    .index("by_sport_zone", ["sport", "zone"])
-    .index("by_instructor_id", ["instructorId"]),
-
-  instructorGeoCoverage: defineTable({
-    instructorId: v.id("instructorProfiles"),
-    sport: v.string(),
-    geospatialKey: v.string(),
-    latitude: v.number(),
-    longitude: v.number(),
-    workRadiusKm: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_instructor_id", ["instructorId"])
-    .index("by_instructor_and_sport", ["instructorId", "sport"])
-    .index("by_sport", ["sport"]),
-
   studioSports: defineTable({
     studioId: v.id("studioProfiles"),
     sport: v.string(),
@@ -536,12 +483,17 @@ export default defineSchema({
     addressNumber: v.optional(v.string()),
     addressFloor: v.optional(v.string()),
     addressPostalCode: v.optional(v.string()),
-    zone: v.string(),
+    zone: v.optional(v.string()),
     boundaryProvider: v.optional(v.string()),
     boundaryId: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     h3Index: v.optional(v.string()),
+    h3Res8: v.optional(v.string()),
+    h3Res7: v.optional(v.string()),
+    h3Res4: v.optional(v.string()),
+    h3Res5: v.optional(v.string()),
+    h3Res6: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     mapMarkerColor: v.optional(v.string()),
     expoPushToken: v.optional(v.string()),
@@ -571,8 +523,6 @@ export default defineSchema({
   })
     .index("by_user_id", ["userId"])
     .index("by_didit_session_id", ["diditSessionId"])
-    .index("by_zone", ["zone"])
-    .index("by_boundary", ["boundaryProvider", "boundaryId"])
     .index("by_slug", ["slug"]),
 
   studioBillingProfiles: defineTable({
@@ -644,12 +594,17 @@ export default defineSchema({
     name: v.string(),
     slug: v.string(),
     address: v.string(),
-    zone: v.string(),
+    zone: v.optional(v.string()),
     boundaryProvider: v.optional(v.string()),
     boundaryId: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     h3Index: v.optional(v.string()),
+    h3Res8: v.optional(v.string()),
+    h3Res7: v.optional(v.string()),
+    h3Res4: v.optional(v.string()),
+    h3Res5: v.optional(v.string()),
+    h3Res6: v.optional(v.string()),
     arrivalRadiusMeters: v.optional(v.number()),
     contactPhone: v.optional(v.string()),
     expoPushToken: v.optional(v.string()),
@@ -671,8 +626,12 @@ export default defineSchema({
     .index("by_studio_active", ["studioId", "status"])
     .index("by_studio_slug", ["studioId", "slug"])
     .index("by_studio_primary", ["studioId", "isPrimary"])
-    .index("by_zone", ["zone"])
-    .index("by_boundary", ["boundaryProvider", "boundaryId"]),
+    .index("by_h3_index", ["h3Index"])
+    .index("by_h3_res8", ["h3Res8"])
+    .index("by_h3_res7", ["h3Res7"])
+    .index("by_h3_res6", ["h3Res6"])
+    .index("by_h3_res5", ["h3Res5"])
+    .index("by_h3_res4", ["h3Res4"]),
 
   studioMemberships: defineTable({
     studioId: v.id("studioProfiles"),
@@ -706,10 +665,15 @@ export default defineSchema({
   jobs: defineTable({
     studioId: v.id("studioProfiles"),
     branchId: v.id("studioBranches"),
-    zone: v.string(),
-    h3Index: v.optional(v.string()),
+    zone: v.optional(v.string()),
     boundaryProvider: v.optional(v.string()),
     boundaryId: v.optional(v.string()),
+    h3Index: v.optional(v.string()),
+    h3Res8: v.optional(v.string()),
+    h3Res7: v.optional(v.string()),
+    h3Res4: v.optional(v.string()),
+    h3Res5: v.optional(v.string()),
+    h3Res6: v.optional(v.string()),
     sport: v.string(),
     startTime: v.number(),
     endTime: v.number(),
@@ -768,19 +732,14 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_status_startTime", ["status", "startTime"])
     .index("by_status_postedAt", ["status", "postedAt"])
-    .index("by_boundary_and_status", ["boundaryProvider", "boundaryId", "status"])
     .index("by_filledByInstructor_startTime", ["filledByInstructorId", "startTime"])
     .index("by_sport_and_status", ["sport", "status"])
-    .index("by_sport_boundary_status_postedAt", [
-      "sport",
-      "boundaryProvider",
-      "boundaryId",
-      "status",
-      "postedAt",
-    ])
-    .index("by_sport_zone_status_postedAt", ["sport", "zone", "status", "postedAt"])
-    .index("by_zone_and_status", ["zone", "status"])
-    .index("by_sport_h3_status_postedAt", ["sport", "h3Index", "status", "postedAt"]),
+    .index("by_sport_h3_status_postedAt", ["sport", "h3Index", "status", "postedAt"])
+    .index("by_sport_h3_res8_status_postedAt", ["sport", "h3Res8", "status", "postedAt"])
+    .index("by_sport_h3_res7_status_postedAt", ["sport", "h3Res7", "status", "postedAt"])
+    .index("by_sport_h3_res6_status_postedAt", ["sport", "h3Res6", "status", "postedAt"])
+    .index("by_sport_h3_res5_status_postedAt", ["sport", "h3Res5", "status", "postedAt"])
+    .index("by_sport_h3_res4_status_postedAt", ["sport", "h3Res4", "status", "postedAt"]),
 
   lessonCheckIns: defineTable({
     jobId: v.id("jobs"),

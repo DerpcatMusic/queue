@@ -1,6 +1,6 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
-import { useLocalSearchParams, router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,7 +12,6 @@ import {
   getMainTabSheetBackgroundColor,
 } from "@/components/layout/top-sheet-registry";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
-import { LanguagePickerSheet } from "@/components/sheets/profile/language-picker-sheet";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
@@ -22,6 +21,7 @@ import {
 } from "@/components/profile/profile-settings-sections";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
 import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
+import { LanguagePickerSheet } from "@/components/sheets/profile/language-picker-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { ChoicePill } from "@/components/ui/choice-pill";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -47,7 +47,6 @@ import {
   type RememberedDeviceAccount,
   switchToRememberedDeviceAccount,
   toDeviceAccountIdentity,
-  validateSessionAfterSwitch,
 } from "@/modules/session/device-account-store";
 import { Box } from "@/primitives";
 
@@ -85,39 +84,17 @@ function getStudioComplianceSummaryLabel(
     return t("profile.studioCompliance.status.loading");
   }
   if (summary.canPublishJobs) {
-    return [
-      `✓ ${t("profile.studioCompliance.sections.identity")}`,
-      `✓ ${t("profile.studioCompliance.sections.billing")}`,
-      `✓ ${t("profile.studioCompliance.sections.payment")}`,
-    ].join(" · ");
+    return t("profile.studioCompliance.status.ready");
   }
-
-  const toSymbol = (status: string) => {
-    switch (status) {
-      case "approved":
-      case "complete":
-      case "ready":
-        return "✓";
-      case "pending":
-      case "incomplete":
-      case "missing":
-        return "•";
-      default:
-        return "!";
-    }
-  };
-
-  return [
-    `${toSymbol(summary.ownerIdentityStatus)} ${t("profile.studioCompliance.sections.identity")}`,
-    `${toSymbol(summary.businessProfileStatus)} ${t("profile.studioCompliance.sections.billing")}`,
-    `${toSymbol(summary.paymentStatus)} ${t("profile.studioCompliance.sections.payment")}`,
-  ].join(" · ");
+  return t("profile.studioCompliance.status.pendingCount", {
+    count: summary.blockingReasons.length || 1,
+  });
 }
 
 export default function StudioProfileScreen() {
   const { signOut } = useAuthActions();
   const { currentUser } = useUser();
-  const { reloadAuthSession } = useAuthSession();
+  const { restartAppSession } = useAuthSession();
   const { language } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
   const { color } = useTheme();
@@ -128,15 +105,12 @@ export default function StudioProfileScreen() {
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [rememberedAccounts, setRememberedAccounts] = useState<RememberedDeviceAccount[]>([]);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
+  const studioSetupTitle = t("profile.navigation.studioCompliance");
 
   // Sheet context for opening BottomSheets instead of routes
   const { openStudioSheet } = useSheetContext();
 
   // Sheet openers - using BottomSheets instead of routes
-  const handleOpenPayments = useCallback(() => {
-    router.push("/studio/profile/compliance");
-  }, []);
-
   const handleOpenCompliance = useCallback(() => {
     router.push("/studio/profile/compliance");
   }, []);
@@ -288,25 +262,14 @@ export default function StudioProfileScreen() {
             accountId,
             ...(currentUser ? { currentAccount: toDeviceAccountIdentity(currentUser) } : {}),
           });
-          reloadAuthSession();
-
-          // Validate that the new session actually works by checking if currentUser loads.
-          // This prevents the race where isAuthenticated=true but currentUser=null,
-          // which would cause sessionGate to redirect to sign-in unnecessarily.
-          const sessionValid = await validateSessionAfterSwitch(() => currentUser);
-
-          if (!sessionValid) {
-            // Stored session is invalid - backend rejected it
-            // Throw to trigger error handling, user stays on this profile
-            throw new Error("Stored session is no longer valid. Please sign in again.");
-          }
+          restartAppSession({ immediate: true, reloadAuth: true, transitionMs: 7000 });
         } catch (_error) {
           setSwitchingAccountId(null);
           // Error is already logged by the catch - user stays on profile screen
         }
       })();
     },
-    [currentUser, reloadAuthSession],
+    [currentUser, restartAppSession],
   );
   const profileName =
     studioSettings?.studioName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
@@ -358,23 +321,9 @@ export default function StudioProfileScreen() {
           icon: "sparkles" as const,
         }
       : null,
-    !studioSettings?.zone
-      ? {
-          label: t("profile.setup.setCoverageZone"),
-          onPress: handleRequestEdit,
-          icon: "mappin.and.ellipse" as const,
-        }
-      : null,
     sportsCount === 0
       ? {
           label: t("profile.setup.chooseSports"),
-          onPress: handleRequestEdit,
-          icon: "sparkles" as const,
-        }
-      : null,
-    socialCount === 0
-      ? {
-          label: t("profile.setup.addContactLinks"),
           onPress: handleRequestEdit,
           icon: "sparkles" as const,
         }
@@ -385,7 +334,7 @@ export default function StudioProfileScreen() {
     ): item is {
       label: string;
       onPress: () => void;
-      icon: "sparkles" | "mappin.and.ellipse";
+      icon: "sparkles";
     } => item !== null,
   );
   const profileStatus = setupActions.length === 0 ? "ready" : "pending";
@@ -436,8 +385,9 @@ export default function StudioProfileScreen() {
         vertical: 0,
         horizontal: 0,
       },
+      disableSafeTopPadding: true,
       backgroundColor: sheetBackgroundColor,
-      topInsetColor: sheetBackgroundColor,
+      topInsetColor: "rgba(255, 255, 255, 0.32)",
     });
   }, [color, profileSheetContent]);
 
@@ -513,13 +463,6 @@ export default function StudioProfileScreen() {
                     sectionTone="account"
                     onPress={() => handleOpenBranches()}
                     showDivider
-                  />
-                  <ProfileSettingRow
-                    title={t("profile.settings.coverageZone")}
-                    subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
-                    icon="mappin.and.ellipse"
-                    sectionTone="account"
-                    onPress={handleRequestEdit}
                   />
                 </ProfileSectionCard>
               </Box>
@@ -709,15 +652,7 @@ export default function StudioProfileScreen() {
                     showDivider
                   />
                   <ProfileSettingRow
-                    title={t("profile.settings.paymentsPayouts")}
-                    subtitle={t("profile.sections.paymentsDesc")}
-                    icon="creditcard.fill"
-                    sectionTone="operations"
-                    onPress={() => handleOpenPayments()}
-                    showDivider
-                  />
-                  <ProfileSettingRow
-                    title={t("profile.navigation.compliance")}
+                    title={studioSetupTitle}
                     subtitle={complianceSummaryLabel}
                     icon="checkmark.shield.fill"
                     sectionTone="identity"
@@ -739,7 +674,7 @@ export default function StudioProfileScreen() {
       ) : (
         <ProfileIndexScrollView
           routeKey="studio/profile"
-          style={styles.screen}
+          style={[styles.screen, { backgroundColor: color.appBg }]}
           contentContainerStyle={{
             gap: BrandSpacing.xl,
           }}
@@ -777,13 +712,6 @@ export default function StudioProfileScreen() {
                 sectionTone="account"
                 onPress={() => handleOpenBranches()}
                 showDivider
-              />
-              <ProfileSettingRow
-                title={t("profile.settings.coverageZone")}
-                subtitle={studioSettings?.zone ?? t("profile.settings.noZone")}
-                icon="mappin.and.ellipse"
-                sectionTone="account"
-                onPress={handleRequestEdit}
               />
             </ProfileSectionCard>
 
@@ -970,19 +898,11 @@ export default function StudioProfileScreen() {
                 showDivider
               />
               <ProfileSettingRow
-                title={t("profile.navigation.compliance")}
+                title={studioSetupTitle}
                 subtitle={complianceSummaryLabel}
                 icon="checkmark.shield.fill"
                 sectionTone="identity"
                 onPress={() => handleOpenCompliance()}
-                showDivider
-              />
-              <ProfileSettingRow
-                title={t("profile.settings.paymentsPayouts")}
-                subtitle={t("profile.sections.paymentsDesc")}
-                icon="creditcard.fill"
-                sectionTone="operations"
-                onPress={() => handleOpenPayments()}
                 showDivider
               />
               <Box style={{ padding: BrandSpacing.md }}>

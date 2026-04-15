@@ -61,6 +61,13 @@ export function buildBaseSheetProps(
     ...(config.collapsedContent ? { collapsedContent: config.collapsedContent } : {}),
     ...(config.expandedContent ? { expandedContent: config.expandedContent } : {}),
     ...(config.revealOnExpand ? { revealOnExpand: config.revealOnExpand } : {}),
+    ...(config.disableSafeTopPadding !== undefined
+      ? { disableSafeTopPadding: config.disableSafeTopPadding }
+      : {}),
+    ...(config.gradientBackground !== undefined
+      ? { gradientBackground: config.gradientBackground }
+      : {}),
+    ...(config.shadow !== undefined ? { shadow: config.shadow } : {}),
     backgroundColor: config.backgroundColor,
     topInsetColor: config.topInsetColor,
   };
@@ -109,16 +116,9 @@ export function resolveTopSheetRouteIdentity(
   const fallbackKey = activeConfig?.tabId ?? activeTabId ?? "global-top-sheet";
 
   // Route-scoped sheets own their own measurement/state. Parent tab sheets keep tab-level state.
-  const stateKey =
-    activeConfig?.routeMatchPath ??
-    activeTabId ??
-    fallbackKey;
+  const stateKey = activeConfig?.routeMatchPath ?? activeTabId ?? fallbackKey;
 
-  const transitionKey =
-    activeConfig?.routeMatchPath ??
-    pathname ??
-    activeTabId ??
-    fallbackKey;
+  const transitionKey = activeConfig?.routeMatchPath ?? pathname ?? activeTabId ?? fallbackKey;
 
   return {
     stateKey,

@@ -1,8 +1,8 @@
 import { useMutation } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getStripeMarketDefaults } from "@/lib/stripe";
 import { api } from "@/convex/_generated/api";
-import { getCountryConfig, type CountryFieldConfig } from "./country-field-config";
+import { getStripeMarketDefaults } from "@/lib/stripe";
+import { type CountryFieldConfig, getCountryConfig } from "./country-field-config";
 
 export interface BillingAddressStructured {
   line1: string;
@@ -53,6 +53,8 @@ export function useStudioBillingForm(
   billingProfile: BillingProfileSnapshot | null | undefined,
   currentUserEmail?: string,
   currentUserPhone?: string,
+  defaultBusinessName?: string,
+  autoSave = true,
 ) {
   const saveBillingProfile = useMutation(api.complianceStudio.upsertMyStudioBillingProfile);
 
@@ -62,15 +64,13 @@ export function useStudioBillingForm(
     billingProfile?.legalEntityType ?? "individual",
   );
   const [legalBusinessName, setLegalBusinessName] = useState(
-    billingProfile?.legalBusinessName ?? "",
+    billingProfile?.legalBusinessName ?? defaultBusinessName ?? "",
   );
   const [taxId, setTaxId] = useState(billingProfile?.taxId ?? "");
   const [taxClassification, setTaxClassification] = useState(
     billingProfile?.taxClassification ?? billingProfile?.vatReportingType ?? "",
   );
-  const [companyRegNumber, setCompanyRegNumber] = useState(
-    billingProfile?.companyRegNumber ?? "",
-  );
+  const [companyRegNumber, setCompanyRegNumber] = useState(billingProfile?.companyRegNumber ?? "");
   const [legalForm, setLegalForm] = useState(billingProfile?.legalForm ?? "");
   const [billingEmail, setBillingEmail] = useState(
     billingProfile?.billingEmail ?? currentUserEmail ?? "",
@@ -78,13 +78,9 @@ export function useStudioBillingForm(
   const [billingPhone, setBillingPhone] = useState(
     billingProfile?.billingPhone ?? currentUserPhone ?? "",
   );
-  const [billingAddress, setBillingAddress] = useState(
-    billingProfile?.billingAddress ?? "",
-  );
+  const [billingAddress, setBillingAddress] = useState(billingProfile?.billingAddress ?? "");
   const [billingAddressStructured, setBillingAddressStructured] =
-    useState<BillingAddressStructured | null>(
-      billingProfile?.billingAddressStructured ?? null,
-    );
+    useState<BillingAddressStructured | null>(billingProfile?.billingAddressStructured ?? null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<BillingFeedback>(null);
@@ -97,41 +93,59 @@ export function useStudioBillingForm(
   // Hydrate from billing profile
   useEffect(() => {
     if (!billingProfile) {
-      setBillingEmail(currentUserEmail ?? "");
-      setBillingPhone(currentUserPhone ?? "");
+      const fallbackFields = {
+        country: defaultCountry,
+        legalEntityType: "individual" as const,
+        legalBusinessName: defaultBusinessName ?? "",
+        taxId: "",
+        taxClassification: "",
+        companyRegNumber: "",
+        legalForm: "",
+        billingEmail: currentUserEmail ?? "",
+        billingPhone: currentUserPhone ?? "",
+        billingAddress: "",
+        billingAddressStructured: null,
+      } satisfies BillingFormFields;
+      setCountry(fallbackFields.country);
+      setLegalEntityType(fallbackFields.legalEntityType);
+      setLegalBusinessName(fallbackFields.legalBusinessName);
+      setTaxId(fallbackFields.taxId);
+      setTaxClassification(fallbackFields.taxClassification);
+      setCompanyRegNumber(fallbackFields.companyRegNumber);
+      setLegalForm(fallbackFields.legalForm);
+      setBillingEmail(fallbackFields.billingEmail);
+      setBillingPhone(fallbackFields.billingPhone);
+      setBillingAddress(fallbackFields.billingAddress);
+      setBillingAddressStructured(fallbackFields.billingAddressStructured);
+      originalRef.current = fallbackFields;
       return;
     }
-    setCountry(billingProfile.country ?? defaultCountry);
-    setLegalEntityType(billingProfile.legalEntityType);
-    setLegalBusinessName(billingProfile.legalBusinessName ?? "");
-    setTaxId(billingProfile.taxId ?? "");
-    setTaxClassification(billingProfile.taxClassification ?? billingProfile.vatReportingType ?? "");
-    setCompanyRegNumber(billingProfile.companyRegNumber ?? "");
-    setLegalForm(billingProfile.legalForm ?? "");
-    setBillingEmail(billingProfile.billingEmail ?? currentUserEmail ?? "");
-    setBillingPhone(billingProfile.billingPhone ?? currentUserPhone ?? "");
-    setBillingAddress(billingProfile.billingAddress ?? "");
-    setBillingAddressStructured(billingProfile.billingAddressStructured ?? null);
-  }, [billingProfile, currentUserEmail, currentUserPhone, defaultCountry]);
-
-  // Set original after hydration
-  useEffect(() => {
-    originalRef.current = {
-      country,
-      legalEntityType,
-      legalBusinessName,
-      taxId,
-      taxClassification,
-      companyRegNumber,
-      legalForm,
-      billingEmail,
-      billingPhone,
-      billingAddress,
-      billingAddressStructured,
-    };
-    // Only run once after initial hydration
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [billingProfile]);
+    const hydratedFields = {
+      country: billingProfile.country ?? defaultCountry,
+      legalEntityType: billingProfile.legalEntityType,
+      legalBusinessName: billingProfile.legalBusinessName ?? "",
+      taxId: billingProfile.taxId ?? "",
+      taxClassification: billingProfile.taxClassification ?? billingProfile.vatReportingType ?? "",
+      companyRegNumber: billingProfile.companyRegNumber ?? "",
+      legalForm: billingProfile.legalForm ?? "",
+      billingEmail: billingProfile.billingEmail ?? currentUserEmail ?? "",
+      billingPhone: billingProfile.billingPhone ?? currentUserPhone ?? "",
+      billingAddress: billingProfile.billingAddress ?? "",
+      billingAddressStructured: billingProfile.billingAddressStructured ?? null,
+    } satisfies BillingFormFields;
+    setCountry(hydratedFields.country);
+    setLegalEntityType(hydratedFields.legalEntityType);
+    setLegalBusinessName(hydratedFields.legalBusinessName);
+    setTaxId(hydratedFields.taxId);
+    setTaxClassification(hydratedFields.taxClassification);
+    setCompanyRegNumber(hydratedFields.companyRegNumber);
+    setLegalForm(hydratedFields.legalForm);
+    setBillingEmail(hydratedFields.billingEmail);
+    setBillingPhone(hydratedFields.billingPhone);
+    setBillingAddress(hydratedFields.billingAddress);
+    setBillingAddressStructured(hydratedFields.billingAddressStructured);
+    originalRef.current = hydratedFields;
+  }, [billingProfile, currentUserEmail, currentUserPhone, defaultBusinessName, defaultCountry]);
 
   const isDirty = useCallback(() => {
     const orig = originalRef.current;
@@ -150,8 +164,16 @@ export function useStudioBillingForm(
       JSON.stringify(orig.billingAddressStructured) !== JSON.stringify(billingAddressStructured)
     );
   }, [
-    country, legalEntityType, legalBusinessName, taxId, taxClassification,
-    companyRegNumber, legalForm, billingEmail, billingPhone, billingAddress,
+    country,
+    legalEntityType,
+    legalBusinessName,
+    taxId,
+    taxClassification,
+    companyRegNumber,
+    legalForm,
+    billingEmail,
+    billingPhone,
+    billingAddress,
     billingAddressStructured,
   ]);
 
@@ -175,9 +197,17 @@ export function useStudioBillingForm(
       setFeedback({ tone: "success", message: "Billing profile saved" });
       // Update original to prevent false dirty
       originalRef.current = {
-        country, legalEntityType, legalBusinessName, taxId, taxClassification,
-        companyRegNumber, legalForm, billingEmail, billingPhone,
-        billingAddress, billingAddressStructured,
+        country,
+        legalEntityType,
+        legalBusinessName,
+        taxId,
+        taxClassification,
+        companyRegNumber,
+        legalForm,
+        billingEmail,
+        billingPhone,
+        billingAddress,
+        billingAddressStructured,
       };
       return result;
     } catch (error) {
@@ -190,36 +220,70 @@ export function useStudioBillingForm(
       setIsSaving(false);
     }
   }, [
-    saveBillingProfile, country, legalEntityType, legalBusinessName, taxId,
-    taxClassification, companyRegNumber, legalForm, billingEmail, billingPhone,
-    billingAddress, billingAddressStructured,
+    saveBillingProfile,
+    country,
+    legalEntityType,
+    legalBusinessName,
+    taxId,
+    taxClassification,
+    companyRegNumber,
+    legalForm,
+    billingEmail,
+    billingPhone,
+    billingAddress,
+    billingAddressStructured,
   ]);
 
   // Auto-save with debounce
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debouncedSave = useCallback(() => {
+    if (!autoSave) {
+      return;
+    }
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       if (isDirty()) {
         void save();
       }
     }, 600);
-  }, [isDirty, save]);
+  }, [autoSave, isDirty, save]);
 
   const updateField = useCallback(
     <K extends keyof BillingFormFields>(key: K, value: BillingFormFields[K]) => {
       switch (key) {
-        case "country": setCountry(value as string); break;
-        case "legalEntityType": setLegalEntityType(value as "individual" | "company"); break;
-        case "legalBusinessName": setLegalBusinessName(value as string); break;
-        case "taxId": setTaxId(value as string); break;
-        case "taxClassification": setTaxClassification(value as string); break;
-        case "companyRegNumber": setCompanyRegNumber(value as string); break;
-        case "legalForm": setLegalForm(value as string); break;
-        case "billingEmail": setBillingEmail(value as string); break;
-        case "billingPhone": setBillingPhone(value as string); break;
-        case "billingAddress": setBillingAddress(value as string); break;
-        case "billingAddressStructured": setBillingAddressStructured(value as BillingAddressStructured | null); break;
+        case "country":
+          setCountry(value as string);
+          break;
+        case "legalEntityType":
+          setLegalEntityType(value as "individual" | "company");
+          break;
+        case "legalBusinessName":
+          setLegalBusinessName(value as string);
+          break;
+        case "taxId":
+          setTaxId(value as string);
+          break;
+        case "taxClassification":
+          setTaxClassification(value as string);
+          break;
+        case "companyRegNumber":
+          setCompanyRegNumber(value as string);
+          break;
+        case "legalForm":
+          setLegalForm(value as string);
+          break;
+        case "billingEmail":
+          setBillingEmail(value as string);
+          break;
+        case "billingPhone":
+          setBillingPhone(value as string);
+          break;
+        case "billingAddress":
+          setBillingAddress(value as string);
+          break;
+        case "billingAddressStructured":
+          setBillingAddressStructured(value as BillingAddressStructured | null);
+          break;
       }
       debouncedSave();
     },

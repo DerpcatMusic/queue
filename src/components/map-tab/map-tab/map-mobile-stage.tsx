@@ -13,11 +13,15 @@ import type { TFunction } from "i18next";
 import { MapRadiusControl } from "@/components/map-tab/map-radius-control";
 import { QueueMap } from "@/components/maps/queue-map";
 import type {
+  MapCoveragePolygon,
   QueueMapBounds,
   QueueMapPin,
   StudioMapMarker,
 } from "@/components/maps/queue-map.types";
-import type { BoundaryGeometrySource, BoundaryViewportTarget } from "@/features/maps/boundaries/types";
+import type {
+  BoundaryGeometrySource,
+  BoundaryViewportTarget,
+} from "@/features/maps/boundaries/types";
 import { StudioMapDetailModal } from "@/components/maps/studio-map-detail-modal";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabTransitionContext } from "@/modules/navigation/role-tabs-layout";
@@ -51,10 +55,14 @@ type MapMobileStageProps = {
     left: number;
   };
   studios: StudioMapMarker[];
+  coveragePolygons?: MapCoveragePolygon[];
   selectedStudio: StudioMapMarker | null;
   selectedStudioId: string | null;
   zoneLanguage: "en" | "he";
   showRadiusControl: boolean;
+  commuteEstimateLabel?: string | null | undefined;
+  activeResolutionLabel?: string | null | undefined;
+  savedCoordinatesLabel?: string | null | undefined;
   workRadiusKm: number;
   isRadiusPanelOpen: boolean;
   focusFrameKey: number;
@@ -83,10 +91,14 @@ export const MapMobileStage = memo(function MapMobileStage({
   isRadiusSaving,
   cameraPadding,
   studios,
+  coveragePolygons,
   selectedStudio,
   selectedStudioId,
   zoneLanguage,
   showRadiusControl,
+  commuteEstimateLabel,
+  activeResolutionLabel,
+  savedCoordinatesLabel,
   workRadiusKm,
   isRadiusPanelOpen,
   focusFrameKey,
@@ -213,6 +225,7 @@ export const MapMobileStage = memo(function MapMobileStage({
           onPressStudio={onPressStudio}
           onPressMap={onPressMap}
           {...(showRadiusControl ? { radiusKm: workRadiusKm } : {})}
+          {...(showRadiusControl && coveragePolygons ? { coveragePolygons } : {})}
           showGpsButton={false}
           showAttributionButton={false}
           {...(!showRadiusControl && boundarySource ? { boundarySource } : {})}
@@ -280,6 +293,9 @@ export const MapMobileStage = memo(function MapMobileStage({
                       <MapRadiusControl
                         radiusKm={workRadiusKm}
                         isSaving={isRadiusSaving}
+                        commuteEstimateLabel={commuteEstimateLabel}
+                        activeResolutionLabel={activeResolutionLabel}
+                        savedCoordinatesLabel={savedCoordinatesLabel}
                         style={{ flex: 1 }}
                         onRadiusChange={onRadiusChange}
                         onRadiusCommit={onRadiusCommit}

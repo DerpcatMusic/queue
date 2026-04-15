@@ -6,8 +6,8 @@ import { ConvexError } from "convex/values";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Id } from "./_generated/dataModel";
 import { dedupeUsersByEmail, normalizeEmail, resolveCanonicalUserByEmail } from "./lib/authDedupe";
-import { ResendMagicLink } from "./resendMagicLink";
-import { ResendOTP } from "./resendOtp";
+import { ResendMagicLink } from "./auth/magicLink";
+import { ResendOTP } from "./auth/otp";
 
 function trimEnv(value: string | undefined) {
   const trimmed = value?.trim();
@@ -23,6 +23,12 @@ const googleNativeTokenAudiences = [googleNativeWebClientId, googleOauthWebClien
   (value): value is string => Boolean(value),
 );
 const googleJwks = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
+const appleNativeClientId =
+  trimEnv(process.env.EXPO_PUBLIC_APPLE_NATIVE_CLIENT_ID) ?? "com.derpcat.queue";
+const appleNativeTokenAudiences = [appleNativeClientId].filter((value): value is string =>
+  Boolean(value),
+);
+const appleJwks = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
 const EMAIL_ACCOUNT_PROVIDER_IDS = ["resend", "resend-otp"] as const;
 
 export function resolveLinkedUserId(args: {
@@ -355,6 +361,55 @@ if (googleNativeWebClientId && googleNativeTokenAudiences.length > 0) {
           },
           profile,
           shouldLinkViaEmail: true,
+        });
+
+        return { userId: created.user._id };
+      },
+    }),
+  );
+}
+
+if (appleNativeClientId && appleNativeTokenAudiences.length > 0) {
+  providers.push(
+    ConvexCredentials({
+      id: "apple-native",
+      authorize: async (credentials, ctx) => {
+        const idToken = typeof credentials.idToken === "string" ? credentials.idToken : undefined;
+        if (!idToken) {
+          throw new ConvexError("Missing Apple identity token.");
+        }
+
+        const verified = await jwtVerify(idToken, appleJwks, {
+          audience: appleNativeTokenAudiences,
+          issuer: ["https://appleid.apple.com"],
+        });
+        const payload = verified.payload;
+        const accountId = payload.sub ?? payload.email;
+        if (!accountId) {
+          throw new ConvexError("Apple sign-in succeeded but no user identifier was returned.");
+        }
+
+        const profile = {
+          role: "pending" as const,
+          roles: [] as Array<"instructor" | "studio">,
+          onboardingComplete: false,
+          isActive: true,
+          ...(typeof payload.email === "string" ? { email: payload.email } : {}),
+          ...(payload.email_verified === true || payload.email_verified === "true"
+            ? { emailVerified: true }
+            : {}),
+          ...(typeof payload.name === "string" ? { name: payload.name } : {}),
+          providerAccountIdHint: String(accountId),
+          providerAccountProviders: ["apple", "apple-native"],
+        } as any;
+
+        const created = await createAccount(ctx, {
+          provider: "apple-native",
+          account: {
+            id: String(accountId),
+          },
+          profile,
+          shouldLinkViaEmail: Boolean(payload.email),
         });
 
         return { userId: created.user._id };

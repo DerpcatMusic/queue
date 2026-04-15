@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 
 export const DEFAULT_WORK_RADIUS_KM = 15;
-export const MIN_WORK_RADIUS_KM = 1;
+export const MIN_WORK_RADIUS_KM = 0.25;
 export const MAX_WORK_RADIUS_KM = 40;
 
 export function normalizeWorkRadiusKm(value: number | undefined) {

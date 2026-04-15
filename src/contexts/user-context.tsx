@@ -3,6 +3,7 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef } from "react";
 
 import { api } from "@/convex/_generated/api";
+import { useAuthSession } from "@/contexts/auth-session-context";
 import {
   rememberCurrentDeviceAccount,
   toDeviceAccountIdentity,
@@ -53,11 +54,12 @@ const UserContext = createContext<UserContextValue>(DEFAULT_USER_CONTEXT);
 export function UserProvider({ children }: { children: ReactNode }) {
   const { signOut } = useAuthActions();
   const { isLoading: isConvexAuthLoading, isAuthenticated } = useConvexAuth();
+  const { isSessionTransitioning } = useAuthSession();
   const currentUser = useQuery(api.users.getCurrentUser);
   const forcedSignOutForMissingUserRef = useRef(false);
 
   useEffect(() => {
-    if (isConvexAuthLoading || currentUser === undefined) {
+    if (isConvexAuthLoading || isSessionTransitioning || currentUser === undefined) {
       return;
     }
 
@@ -72,7 +74,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     forcedSignOutForMissingUserRef.current = true;
     void signOut();
-  }, [currentUser, isAuthenticated, isConvexAuthLoading, signOut]);
+  }, [currentUser, isAuthenticated, isConvexAuthLoading, isSessionTransitioning, signOut]);
 
   useEffect(() => {
     if (isConvexAuthLoading || !isAuthenticated || !currentUser) {

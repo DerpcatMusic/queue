@@ -30,7 +30,7 @@ const styles = StyleSheet.create((theme) => ({
   // Section card
   card: {
     marginHorizontal: BrandSpacing.inset,
-    borderRadius: BrandRadius.card,
+    borderRadius: BrandRadius.soft,
     borderCurve: "continuous",
     overflow: "hidden",
   },
@@ -243,7 +243,13 @@ export function ProfileSectionCard({
   style?: ComponentProps<typeof View>["style"];
 }) {
   return (
-    <KitSurface tone="elevated" padding={0} gap={0} style={[styles.card, style]}>
+    <KitSurface
+      tone="base"
+      padding={0}
+      gap={0}
+      radius={BrandRadius.soft}
+      style={[styles.card, style]}
+    >
       {children}
     </KitSurface>
   );

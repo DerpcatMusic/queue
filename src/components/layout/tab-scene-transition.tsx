@@ -8,7 +8,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { View } from "react-native";
 
-import { useTheme } from "@/hooks/use-theme";
 import { TabTransitionContext } from "@/modules/navigation/role-tabs-layout";
 
 // Coordinated fade + scale with TabTransitionVeil
@@ -21,7 +20,6 @@ export function TabSceneTransition({
   children,
   style,
 }: PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) {
-  const theme = useTheme();
   const tabTransition = useContext(TabTransitionContext);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -41,7 +39,7 @@ export function TabSceneTransition({
   });
 
   return (
-    <View style={[{ flex: 1, backgroundColor: theme.color.appBg }, style]}>
+    <View style={[{ flex: 1 }, style]} pointerEvents="box-none">
       <Animated.View style={[{ flex: 1 }, animatedStyle]}>{children}</Animated.View>
     </View>
   );

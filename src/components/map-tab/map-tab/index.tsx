@@ -6,6 +6,7 @@ import { MapWebWorkbench } from "@/components/map-tab/map-tab/map-web-workbench"
 import type { useMapTabController } from "@/components/map-tab/map-tab/use-map-tab-controller";
 import { useOpenPublicProfileSheet } from "@/contexts/sheet-context";
 import { useTheme } from "@/hooks/use-theme";
+import type { SelectableBoundary } from "@/features/maps/boundaries/catalog";
 
 type MapTabScreenProps = {
   controller: ReturnType<typeof useMapTabController>;
@@ -37,6 +38,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     mapCameraPadding,
     mapPalette,
     mapPin,
+    coveragePolygons,
     studios,
     noopMapPress,
     pendingChangeCount,
@@ -47,6 +49,9 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
     selectedZoneIds,
     selectedZones,
     showRadiusControl,
+    commuteEstimateLabel,
+    activeResolutionLabel,
+    savedCoordinatesLabel,
     setFocusZoneId,
     t,
     toggleZone,
@@ -94,7 +99,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
         t={t}
         zoneLanguage={zoneLanguage}
         zoneSearch={zoneSearch}
-        selectedZones={selectedZones}
+        selectedZones={selectedZones as unknown as SelectableBoundary[]}
         filteredZones={filteredZones}
         focusZoneId={focusZoneId}
         focusedZoneLabel={focusedZoneLabel}
@@ -121,6 +126,7 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
       isFocused={isFocused}
       mapPin={mapPin}
       studios={studios}
+      coveragePolygons={coveragePolygons}
       selectedZoneIds={selectedZoneIds}
       focusZoneId={focusZoneId}
       cameraPadding={mapCameraPadding}
@@ -128,6 +134,9 @@ export default function MapTabScreen({ controller }: MapTabScreenProps) {
       selectedStudioId={selectedStudioId}
       zoneLanguage={zoneLanguage}
       showRadiusControl={showRadiusControl}
+      commuteEstimateLabel={commuteEstimateLabel}
+      activeResolutionLabel={activeResolutionLabel}
+      savedCoordinatesLabel={savedCoordinatesLabel}
       workRadiusKm={workRadiusKm}
       isRadiusPanelOpen={isRadiusPanelOpen}
       onPressMap={noopMapPress}

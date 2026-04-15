@@ -96,6 +96,25 @@ function getOwnerIdentityStatusFromStripe(
   }
 }
 
+function getOwnerIdentityStatusFromStudioProfile(
+  studio: Doc<"studioProfiles">,
+): "approved" | "pending" | "missing" | "failed" | null {
+  switch (studio.diditVerificationStatus) {
+    case "approved":
+      return "approved";
+    case "pending":
+    case "in_progress":
+    case "in_review":
+    case "abandoned":
+    case "expired":
+      return "pending";
+    case "declined":
+      return "failed";
+    default:
+      return null;
+  }
+}
+
 function getBusinessProfileStatus(
   billingProfile: Doc<"studioBillingProfiles"> | null,
 ): "incomplete" | "complete" {
@@ -105,20 +124,14 @@ function getBusinessProfileStatus(
   return billingProfile.status;
 }
 
-export async function getStudioBillingProfile(
-  ctx: Ctx,
-  studioId: Id<"studioProfiles">,
-) {
+export async function getStudioBillingProfile(ctx: Ctx, studioId: Id<"studioProfiles">) {
   return await ctx.db
     .query("studioBillingProfiles")
     .withIndex("by_studio", (q) => q.eq("studioId", studioId))
     .unique();
 }
 
-export async function getStudioPaymentProfile(
-  ctx: Ctx,
-  studioId: Id<"studioProfiles">,
-) {
+export async function getStudioPaymentProfile(ctx: Ctx, studioId: Id<"studioProfiles">) {
   return await ctx.db
     .query("studioPaymentProfiles")
     .withIndex("by_studio", (q) => q.eq("studioId", studioId))
@@ -129,10 +142,7 @@ function getLegacyPaymentStatus(): "missing" | "ready" {
   return getStripeEnvPresence().readyForCheckout ? "ready" : "missing";
 }
 
-async function getStudioPaymentReadiness(
-  ctx: Ctx,
-  studioId: Id<"studioProfiles">,
-) {
+async function getStudioPaymentReadiness(ctx: Ctx, studioId: Id<"studioProfiles">) {
   const paymentProfile = await getStudioPaymentProfile(ctx, studioId);
   if (paymentProfile) {
     return {
@@ -179,7 +189,9 @@ export async function buildStudioComplianceSummary(
     };
   }
 
-  const ownerIdentityStatus = getOwnerIdentityStatusFromStripe(stripeAccount);
+  const ownerIdentityStatus =
+    getOwnerIdentityStatusFromStudioProfile(args.studio) ??
+    getOwnerIdentityStatusFromStripe(stripeAccount);
   const businessProfileStatus = getBusinessProfileStatus(billingProfile);
   const paymentStatus = paymentReadiness.status;
 
@@ -211,10 +223,7 @@ export async function buildStudioComplianceSummary(
   };
 }
 
-export async function assertStudioCanPublishJobs(
-  ctx: Ctx,
-  studio: Doc<"studioProfiles">,
-) {
+export async function assertStudioCanPublishJobs(ctx: Ctx, studio: Doc<"studioProfiles">) {
   const summary = await buildStudioComplianceSummary(ctx, { studio });
   if (summary.canPublishJobs) {
     return summary;

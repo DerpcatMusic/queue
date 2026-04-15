@@ -8,6 +8,7 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import { useLessonCheckIn } from "@/components/calendar/use-lesson-check-in";
+
 import { HomeAgendaWidget } from "@/components/home/home-agenda-widget";
 import { HomeSurface, useHomeDashboardLayout } from "@/components/home/home-dashboard-layout";
 import {
@@ -384,201 +385,206 @@ export function InstructorHomeContent({
   );
 
   return (
-    <TabSceneTransition>
-      <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-        {isLoading ? (
-          <SkeletonInstructorHome />
-        ) : (
-          <Box collapsable={false} style={{ flex: 1 }}>
-            <TabScreenScrollView
-              animatedRef={scrollRef}
-              onScroll={onScroll}
-              routeKey="instructor/index"
-              style={{ flex: 1 }}
-              topInsetTone="sheet"
-              sheetInsets={{
-                topSpacing: BrandSpacing.xl,
-                bottomSpacing: BrandSpacing.section,
-                horizontalPadding: BrandSpacing.insetRoomy,
-              }}
-            >
-              <Box
-                style={{
-                  flexDirection: layout.isWideWeb ? "row" : "column",
-                  gap: layout.topRowGap,
-                  alignItems: "stretch",
+    <>
+      <TabSceneTransition>
+        <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+          {isLoading ? (
+            <SkeletonInstructorHome />
+          ) : (
+            <Box collapsable={false} style={{ flex: 1 }}>
+              <TabScreenScrollView
+                animatedRef={scrollRef}
+                onScroll={onScroll}
+                routeKey="instructor/index"
+                style={{ flex: 1 }}
+                topInsetTone="sheet"
+                sheetInsets={{
+                  topSpacing: BrandSpacing.xl,
+                  bottomSpacing: BrandSpacing.section,
+                  horizontalPadding: BrandSpacing.insetRoomy,
                 }}
               >
-                {/* Jobs section — carousel or empty state */}
-                <Box style={{ flex: layout.heroFlex }}>
-                  {hasJobs ? (
-                    <Animated.View style={{ gap: BrandSpacing.stackTight }}>
-                      {/* Dot indicators */}
-                      <JobCarouselDots
-                        count={visibleAvailableJobs.length}
-                        scrollX={scrollX}
-                        cardWidth={cardWidth}
-                      />
+                <Box
+                  style={{
+                    flexDirection: layout.isWideWeb ? "row" : "column",
+                    gap: layout.topRowGap,
+                    alignItems: "stretch",
+                  }}
+                >
+                  {/* Jobs section — carousel or empty state */}
+                  <Box style={{ flex: layout.heroFlex }}>
+                    {hasJobs ? (
+                      <Animated.View style={{ gap: BrandSpacing.stackTight }}>
+                        {/* Dot indicators */}
+                        <JobCarouselDots
+                          count={visibleAvailableJobs.length}
+                          scrollX={scrollX}
+                          cardWidth={cardWidth}
+                        />
 
-                      {/* Horizontal carousel */}
-                      <Animated.ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        snapToInterval={cardWidth}
-                        decelerationRate="fast"
-                        onScroll={scrollHandler}
-                        scrollEventThrottle={16}
-                        scrollEnabled={visibleAvailableJobs.length > 1}
-                      >
-                        {visibleAvailableJobs.map((job) => (
-                          <Box
-                            key={job.jobId}
-                            style={{
-                              width: cardWidth,
-                            }}
-                          >
-                            <InstructorJobCard
-                              job={job}
-                              locale={locale}
-                              zoneLanguage={zoneLanguage}
-                              now={now}
-                              {...(withdrawingApplicationId !== undefined
-                                ? { withdrawingApplicationId }
-                                : {})}
-                              {...(onWithdrawApplication ? { onWithdrawApplication } : {})}
-                              onApply={() => onOpenStudio(job.studioId, job.jobId)}
-                              onOpenStudio={onOpenStudio}
-                              t={t}
-                            />
-                          </Box>
-                        ))}
-                      </Animated.ScrollView>
-                    </Animated.View>
-                  ) : null}
-                </Box>
+                        {/* Horizontal carousel */}
+                        <Animated.ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          snapToInterval={cardWidth}
+                          decelerationRate="fast"
+                          onScroll={scrollHandler}
+                          scrollEventThrottle={16}
+                          scrollEnabled={visibleAvailableJobs.length > 1}
+                        >
+                          {visibleAvailableJobs.map((job) => (
+                            <Box
+                              key={job.jobId}
+                              style={{
+                                width: cardWidth,
+                              }}
+                            >
+                              <InstructorJobCard
+                                job={job}
+                                locale={locale}
+                                zoneLanguage={zoneLanguage}
+                                now={now}
+                                {...(withdrawingApplicationId !== undefined
+                                  ? { withdrawingApplicationId }
+                                  : {})}
+                                {...(onWithdrawApplication ? { onWithdrawApplication } : {})}
+                                onApply={() => onOpenStudio(job.studioId, job.jobId)}
+                                onOpenStudio={onOpenStudio}
+                                t={t}
+                              />
+                            </Box>
+                          ))}
+                        </Animated.ScrollView>
+                      </Animated.View>
+                    ) : null}
+                  </Box>
 
-                <Box style={{ flex: layout.chartFlex, gap: BrandSpacing.stackTight }}>
-                  <HomeChecklistCard title={t("home.tasks.instructor.title")} items={setupItems} />
-                  {nextCheckInSession ? (
-                    <InstructorCheckInCard
-                      session={
-                        checkInSheetSession &&
-                        checkInSheetSession.jobId === nextCheckInSession.jobId
-                          ? checkInSheetSession
-                          : nextCheckInSession
-                      }
-                      locale={locale}
-                      now={now}
-                      t={t}
-                      isSubmitting={isCheckingIn}
-                      feedback={checkInFeedback}
-                      onCheckIn={handleCheckIn}
+                  <Box style={{ flex: layout.chartFlex, gap: BrandSpacing.stackTight }}>
+                    <HomeChecklistCard
+                      title={t("home.tasks.instructor.title")}
+                      items={setupItems}
                     />
-                  ) : null}
+                    {nextCheckInSession ? (
+                      <InstructorCheckInCard
+                        session={
+                          checkInSheetSession &&
+                          checkInSheetSession.jobId === nextCheckInSession.jobId
+                            ? checkInSheetSession
+                            : nextCheckInSession
+                        }
+                        locale={locale}
+                        now={now}
+                        t={t}
+                        isSubmitting={isCheckingIn}
+                        feedback={checkInFeedback}
+                        onCheckIn={handleCheckIn}
+                      />
+                    ) : null}
+                  </Box>
                 </Box>
-              </Box>
 
-              <Box
-                style={{
-                  flexDirection: layout.isWideWeb ? "row" : "column",
-                  gap: layout.topRowGap,
-                  alignItems: "stretch",
-                }}
-              >
-                <HomeAgendaWidget
-                  items={upcomingSessions.map((session) => ({
-                    id: session.applicationId,
-                    sport: session.sport,
-                    name: session.studioName,
-                    startTime: session.startTime,
-                    zone: session.zone,
-                  }))}
-                  t={t}
-                  locale={locale}
-                  maxItems={layout.isWideWeb ? 8 : 5}
-                  maxHeight={layout.isWideWeb ? 360 : 280}
-                  heading={t("home.instructor.nextTitle")}
-                  emptyLabel={t("home.instructor.noUpcoming")}
-                  onPressAll={onOpenJobs}
-                />
-              </Box>
-            </TabScreenScrollView>
-          </Box>
-        )}
-      </Animated.View>
-      <BottomSheet
-        ref={checkInSheetRef}
-        index={-1}
-        snapPoints={["46%"]}
-        topInset={collapsedSheetHeight}
-        enablePanDownToClose
-        backdropComponent={renderCheckInBackdrop}
-        handleIndicatorStyle={{ backgroundColor: palette.borderStrong }}
-        backgroundStyle={{ backgroundColor: palette.surface }}
-      >
-        <BottomSheetView
-          style={{
-            paddingHorizontal: BrandSpacing.lg,
-            paddingTop: BrandSpacing.lg,
-            paddingBottom: BrandSpacing.xxl,
-            gap: BrandSpacing.md,
-          }}
+                <Box
+                  style={{
+                    flexDirection: layout.isWideWeb ? "row" : "column",
+                    gap: layout.topRowGap,
+                    alignItems: "stretch",
+                  }}
+                >
+                  <HomeAgendaWidget
+                    items={upcomingSessions.map((session) => ({
+                      id: session.applicationId,
+                      sport: session.sport,
+                      name: session.studioName,
+                      startTime: session.startTime,
+                      zone: session.zone,
+                    }))}
+                    t={t}
+                    locale={locale}
+                    maxItems={layout.isWideWeb ? 8 : 5}
+                    maxHeight={layout.isWideWeb ? 360 : 280}
+                    heading={t("home.instructor.nextTitle")}
+                    emptyLabel={t("home.instructor.noUpcoming")}
+                    onPressAll={onOpenJobs}
+                  />
+                </Box>
+              </TabScreenScrollView>
+            </Box>
+          )}
+        </Animated.View>
+        <BottomSheet
+          ref={checkInSheetRef}
+          index={-1}
+          snapPoints={["46%"]}
+          topInset={collapsedSheetHeight}
+          enablePanDownToClose
+          backdropComponent={renderCheckInBackdrop}
+          handleIndicatorStyle={{ backgroundColor: palette.borderStrong }}
+          backgroundStyle={{ backgroundColor: palette.surface }}
         >
-          <Box style={{ gap: BrandSpacing.xs }}>
-            <Text style={{ ...BrandType.heading, color: palette.text }}>
-              {t("home.checkIn.sheetTitle")}
-            </Text>
-            <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
-              {t("home.checkIn.sheetBody")}
-            </Text>
-          </Box>
-
-          {checkInSheetSession ? (
-            <Box
-              style={{
-                borderRadius: BrandRadius.card,
-                borderCurve: "continuous",
-                backgroundColor: palette.surface,
-                padding: BrandSpacing.inset,
-                gap: BrandSpacing.sm,
-              }}
-            >
-              <Text style={{ ...BrandType.bodyStrong, color: palette.text }}>
-                {checkInSheetSession.studioName}
+          <BottomSheetView
+            style={{
+              paddingHorizontal: BrandSpacing.lg,
+              paddingTop: BrandSpacing.lg,
+              paddingBottom: BrandSpacing.xxl,
+              gap: BrandSpacing.md,
+            }}
+          >
+            <Box style={{ gap: BrandSpacing.xs }}>
+              <Text style={{ ...BrandType.heading, color: palette.text }}>
+                {t("home.checkIn.sheetTitle")}
               </Text>
               <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
-                {`${checkInSheetSession.sport} · ${checkInSheetSession.branchName}`}
-              </Text>
-              {checkInSheetSession.branchAddress ? (
-                <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
-                  {checkInSheetSession.branchAddress}
-                </Text>
-              ) : null}
-              <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
-                {t("home.checkIn.instructions")}
+                {t("home.checkIn.sheetBody")}
               </Text>
             </Box>
-          ) : null}
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("common.done")}
-            onPress={() => checkInSheetRef.current?.close()}
-            style={({ pressed }) => ({
-              minHeight: BrandSpacing.buttonMinHeightXl,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: BrandRadius.button,
-              borderCurve: "continuous",
-              backgroundColor: pressed ? palette.primaryPressed : palette.primary,
-            })}
-          >
-            <Text style={{ ...BrandType.bodyStrong, color: palette.onPrimary }}>
-              {t("home.checkIn.sheetCta")}
-            </Text>
-          </Pressable>
-        </BottomSheetView>
-      </BottomSheet>
-    </TabSceneTransition>
+            {checkInSheetSession ? (
+              <Box
+                style={{
+                  borderRadius: BrandRadius.card,
+                  borderCurve: "continuous",
+                  backgroundColor: palette.surface,
+                  padding: BrandSpacing.inset,
+                  gap: BrandSpacing.sm,
+                }}
+              >
+                <Text style={{ ...BrandType.bodyStrong, color: palette.text }}>
+                  {checkInSheetSession.studioName}
+                </Text>
+                <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
+                  {`${checkInSheetSession.sport} · ${checkInSheetSession.branchName}`}
+                </Text>
+                {checkInSheetSession.branchAddress ? (
+                  <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
+                    {checkInSheetSession.branchAddress}
+                  </Text>
+                ) : null}
+                <Text style={{ ...BrandType.caption, color: palette.textMuted }}>
+                  {t("home.checkIn.instructions")}
+                </Text>
+              </Box>
+            ) : null}
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("common.done")}
+              onPress={() => checkInSheetRef.current?.close()}
+              style={({ pressed }) => ({
+                minHeight: BrandSpacing.buttonMinHeightXl,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: BrandRadius.button,
+                borderCurve: "continuous",
+                backgroundColor: pressed ? palette.primaryPressed : palette.primary,
+              })}
+            >
+              <Text style={{ ...BrandType.bodyStrong, color: palette.onPrimary }}>
+                {t("home.checkIn.sheetCta")}
+              </Text>
+            </Pressable>
+          </BottomSheetView>
+        </BottomSheet>
+      </TabSceneTransition>
+    </>
   );
 }

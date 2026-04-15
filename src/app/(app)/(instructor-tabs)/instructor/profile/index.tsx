@@ -42,7 +42,6 @@ import {
   type RememberedDeviceAccount,
   switchToRememberedDeviceAccount,
   toDeviceAccountIdentity,
-  validateSessionAfterSwitch,
 } from "@/modules/session/device-account-store";
 import { Box } from "@/primitives";
 
@@ -66,7 +65,7 @@ function getSportsSummary(sports: string[], t: TFunction) {
 export default function InstructorProfileScreen() {
   const { signOut } = useAuthActions();
   const { currentUser } = useUser();
-  const { reloadAuthSession } = useAuthSession();
+  const { restartAppSession } = useAuthSession();
   const { language } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
   const theme = useTheme();
@@ -170,25 +169,14 @@ export default function InstructorProfileScreen() {
             accountId,
             ...(currentUser ? { currentAccount: toDeviceAccountIdentity(currentUser) } : {}),
           });
-          reloadAuthSession();
-
-          // Validate that the new session actually works by checking if currentUser loads.
-          // This prevents the race where isAuthenticated=true but currentUser=null,
-          // which would cause sessionGate to redirect to sign-in unnecessarily.
-          const sessionValid = await validateSessionAfterSwitch(() => currentUser);
-
-          if (!sessionValid) {
-            // Stored session is invalid - backend rejected it
-            // Throw to trigger error handling, user stays on this profile
-            throw new Error("Stored session is no longer valid. Please sign in again.");
-          }
+          restartAppSession({ immediate: true, reloadAuth: true, transitionMs: 7000 });
         } catch (_error) {
           setSwitchingAccountId(null);
           // Error is already logged by the catch - user stays on profile screen
         }
       })();
     },
-    [currentUser, reloadAuthSession],
+    [currentUser, restartAppSession],
   );
   const nameValue =
     instructorSettings?.displayName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
@@ -555,7 +543,7 @@ export default function InstructorProfileScreen() {
       ) : (
         <ProfileIndexScrollView
           routeKey="instructor/profile"
-          style={styles.screen}
+          style={[styles.screen, { backgroundColor: theme.color.appBg }]}
           contentContainerStyle={{
             gap: BrandSpacing.xl,
           }}

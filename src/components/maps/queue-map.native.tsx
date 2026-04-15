@@ -12,8 +12,9 @@ import { ActionButton } from "../ui/action-button";
 import { IconSymbol } from "../ui/icon-symbol";
 import { KitSurface } from "../ui/kit";
 import {
-  createRadiusCircleFeatureCollection,
+  createCoverageFeatureCollection,
   ensureVectorOfflinePack,
+  getFeatureCollectionBounds,
   sanitizeZoom,
   selectRenderableStudioMarkers,
 } from "./queue-map.native.helpers";
@@ -95,7 +96,8 @@ export const QueueMap = memo(function QueueMap({
   showAttributionButton = false,
   contentInset,
   cameraPadding,
-  radiusKm,
+  radiusKm: _radiusKm,
+  coveragePolygons,
   focusFrameKey,
 }: QueueMapProps) {
   const { t } = useTranslation();
@@ -133,7 +135,9 @@ export const QueueMap = memo(function QueueMap({
     }
     return APPLE_MAP_THEME.defaultCenter;
   }, [pin]);
-  const initialZoom = pin ? APPLE_MAP_THEME.defaultZoomWithPin : APPLE_MAP_THEME.defaultZoomWithoutPin;
+  const initialZoom = pin
+    ? APPLE_MAP_THEME.defaultZoomWithPin
+    : APPLE_MAP_THEME.defaultZoomWithoutPin;
 
   const mapRef = useRef<MapRef | null>(null);
   const mapLoadStateRef = useRef<MapLoadState>("loading");
@@ -150,40 +154,21 @@ export const QueueMap = memo(function QueueMap({
     zoomTo: (zoomLevel: number, animationDuration?: number) => void;
   } | null>(null);
   const focusRadiusBounds = useMemo(() => {
-    if (!pin || !Number.isFinite(radiusKm ?? Number.NaN)) {
+    if (!coveragePolygons || coveragePolygons.length === 0) {
       return null;
     }
-
-    const km = Math.max(0, radiusKm ?? 0) * 1.14;
-    if (km <= 0) {
-      return null;
-    }
-
-    const earthRadiusMeters = 6378137;
-    const latitudeRadians = (pin.latitude * Math.PI) / 180;
-    const deltaLat = (km * 1000 / earthRadiusMeters) * (180 / Math.PI);
-    const safeCosLatitude = Math.max(0.15, Math.cos(latitudeRadians));
-    const deltaLng = deltaLat / safeCosLatitude;
-
-    return {
-      sw: [pin.longitude - deltaLng, pin.latitude - deltaLat] as [number, number],
-      ne: [pin.longitude + deltaLng, pin.latitude + deltaLat] as [number, number],
-    };
-  }, [pin, radiusKm]);
+    return getFeatureCollectionBounds(createCoverageFeatureCollection(coveragePolygons));
+  }, [coveragePolygons]);
   const focusRadiusBoundsRef = useRef(focusRadiusBounds);
   useEffect(() => {
     focusRadiusBoundsRef.current = focusRadiusBounds;
   }, [focusRadiusBounds]);
   const radiusShape = useMemo(() => {
-    if (!pin || !Number.isFinite(radiusKm ?? Number.NaN)) {
+    if (!coveragePolygons || coveragePolygons.length === 0) {
       return null;
     }
-    const km = Math.max(0, radiusKm ?? 0);
-    if (km <= 0) {
-      return null;
-    }
-    return createRadiusCircleFeatureCollection(pin, km * 1000);
-  }, [pin, radiusKm]);
+    return createCoverageFeatureCollection(coveragePolygons);
+  }, [coveragePolygons]);
   const [markerZoomLevel, setMarkerZoomLevel] = useState<number | null>(null);
   /** Live zoom level fed into studio marker scaling. */
   const [currentZoom, setCurrentZoom] = useState<number | undefined>(undefined);
@@ -392,12 +377,7 @@ export const QueueMap = memo(function QueueMap({
 
     const timeout = setTimeout(() => {
       cameraRef.current?.fitBounds(
-        [
-          nextBounds.sw[0],
-          nextBounds.sw[1],
-          nextBounds.ne[0],
-          nextBounds.ne[1],
-        ],
+        [nextBounds.sw[0], nextBounds.sw[1], nextBounds.ne[0], nextBounds.ne[1]],
         {
           padding: {
             top: (cameraPadding?.top ?? 0) + 32,
@@ -413,11 +393,18 @@ export const QueueMap = memo(function QueueMap({
     return () => {
       clearTimeout(timeout);
     };
-  }, [cameraPadding?.bottom, cameraPadding?.left, cameraPadding?.right, cameraPadding?.top, focusFrameKey, mapLoadState]);
+  }, [
+    cameraPadding?.bottom,
+    cameraPadding?.left,
+    cameraPadding?.right,
+    cameraPadding?.top,
+    focusFrameKey,
+    mapLoadState,
+  ]);
 
   if (Constants.appOwnership === "expo") {
     return (
-          <KitSurface
+      <KitSurface
         tone="base"
         style={[
           styles.fallback,
@@ -486,15 +473,15 @@ export const QueueMap = memo(function QueueMap({
                   id="queue-radius-fill"
                   paint={{
                     "fill-color": accentColor,
-                    "fill-opacity": 0.22,
+                    "fill-opacity": 0.12,
                   }}
                 />
                 <LineLayer
                   id="queue-radius-line"
                   paint={{
                     "line-color": accentColor,
-                    "line-width": 3,
-                    "line-opacity": 0.9,
+                    "line-width": 1.15,
+                    "line-opacity": 0.78,
                   }}
                 />
               </GeoJSONSource>
@@ -514,11 +501,7 @@ export const QueueMap = memo(function QueueMap({
         ) : null}
 
         {pin ? (
-          <Marker
-            id="queue-pin-marker"
-            lngLat={[pin.longitude, pin.latitude]}
-            anchor="center"
-          >
+          <Marker id="queue-pin-marker" lngLat={[pin.longitude, pin.latitude]} anchor="center">
             <View
               style={{
                 width: APPLE_MAP_THEME.overlay.pinRadius * 2,
@@ -532,7 +515,6 @@ export const QueueMap = memo(function QueueMap({
             />
           </Marker>
         ) : null}
-
       </MapView>
 
       {mapLoadState === "loading" && showLoadingOverlay ? (

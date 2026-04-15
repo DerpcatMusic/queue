@@ -16,6 +16,10 @@ import { BorderWidth } from "@/lib/design-system";
 import { getStripePublishableKey } from "@/lib/stripe";
 import { Box, HStack, Spacer, Text } from "@/primitives";
 
+function getConnectLoadErrorMessage(error: { error: { message?: string; type?: string } }) {
+  return error.error.message ?? error.error.type ?? "Stripe embedded component failed";
+}
+
 type ConnectedAccountStatus =
   | "pending"
   | "action_required"
@@ -182,7 +186,12 @@ export function StripeConnectEmbeddedModal({
           <Box
             alignItems="center"
             justifyContent="center"
-            style={{ flex: 1, backgroundColor: theme.color.appBg, padding: BrandSpacing.lg, gap: BrandSpacing.md }}
+            style={{
+              flex: 1,
+              backgroundColor: theme.color.appBg,
+              padding: BrandSpacing.lg,
+              gap: BrandSpacing.md,
+            }}
           >
             <ActivityIndicator size="large" color={theme.color.primary} />
             <Text variant="caption" color="textMuted">
@@ -220,10 +229,10 @@ export function StripeConnectEmbeddedModal({
             }
           }}
           onLoadError={(error) => {
-            setLoadError(error.message);
+            setLoadError(getConnectLoadErrorMessage(error));
             onFeedback({
               tone: "error",
-              message: error.message,
+              message: getConnectLoadErrorMessage(error),
             });
           }}
         />
@@ -293,23 +302,21 @@ export function StripeConnectEmbeddedModal({
             {/* Stripe components — both mounted, zIndex controls visibility */}
             <View style={styles.stripeContainer}>
               <ConnectComponentsProvider connectInstance={connectInstance}>
-                <View
-                  style={[styles.tabLayer, dashboardTab === "payments" && styles.activeTab]}
-                >
+                <View style={[styles.tabLayer, dashboardTab === "payments" && styles.activeTab]}>
                   <ConnectPayments
                     onLoadError={(error) => {
-                      setLoadError(error.message);
-                      onFeedback({ tone: "error", message: error.message });
+                      const message = getConnectLoadErrorMessage(error);
+                      setLoadError(message);
+                      onFeedback({ tone: "error", message });
                     }}
                   />
                 </View>
-                <View
-                  style={[styles.tabLayer, dashboardTab === "payouts" && styles.activeTab]}
-                >
+                <View style={[styles.tabLayer, dashboardTab === "payouts" && styles.activeTab]}>
                   <ConnectPayouts
                     onLoadError={(error) => {
-                      setLoadError(error.message);
-                      onFeedback({ tone: "error", message: error.message });
+                      const message = getConnectLoadErrorMessage(error);
+                      setLoadError(message);
+                      onFeedback({ tone: "error", message });
                     }}
                   />
                 </View>
@@ -367,15 +374,17 @@ export function StripeConnectEmbeddedModal({
               {isPaymentsMode ? (
                 <ConnectPayments
                   onLoadError={(error) => {
-                    setLoadError(error.message);
-                    onFeedback({ tone: "error", message: error.message });
+                    const message = getConnectLoadErrorMessage(error);
+                    setLoadError(message);
+                    onFeedback({ tone: "error", message });
                   }}
                 />
               ) : (
                 <ConnectPayouts
                   onLoadError={(error) => {
-                    setLoadError(error.message);
-                    onFeedback({ tone: "error", message: error.message });
+                    const message = getConnectLoadErrorMessage(error);
+                    setLoadError(message);
+                    onFeedback({ tone: "error", message });
                   }}
                 />
               )}

@@ -18,6 +18,7 @@ import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-rean
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppSafeRoot } from "@/components/layout/app-safe-root";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
+import { BottomSheetStackProvider } from "@/components";
 import { CalendarLessonDetailSheet } from "@/components/sheets/calendar/calendar-lesson-detail-sheet";
 import { InstructorAddAccountSheet } from "@/components/sheets/profile/instructor/instructor-add-account-sheet";
 import { InstructorCalendarSheet } from "@/components/sheets/profile/instructor/instructor-calendar-sheet";
@@ -91,8 +92,10 @@ function RootLayoutContent() {
   const { topInsetBackgroundColor, topInsetTone, topInsetVisible } = useSystemUi();
   const { resolvedScheme } = useThemePreference();
   const convex = getConvexClient();
+  const [appSessionVersion, setAppSessionVersion] = useState(0);
   const [authSessionVersion, setAuthSessionVersion] = useState(0);
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [sessionTransitionCount, setSessionTransitionCount] = useState(0);
 
   // Load Google Fonts asynchronously to avoid blocking app startup.
   // Using loadAsync with dynamic imports instead of useFonts with
@@ -163,10 +166,20 @@ function RootLayoutContent() {
   // succession. Each remount triggers a token refresh from the server, which is
   // wasteful and can cause the app to feel sluggish even when idle.
   const reloadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionTransitionTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const authSessionController = useMemo(
     () => ({
-      reloadAuthSession: () => {
+      isSessionTransitioning: sessionTransitionCount > 0,
+      reloadAuthSession: (immediate = false) => {
+        if (immediate) {
+          if (reloadDebounceRef.current !== null) {
+            clearTimeout(reloadDebounceRef.current);
+            reloadDebounceRef.current = null;
+          }
+          setAuthSessionVersion((v) => v + 1);
+          return;
+        }
         if (reloadDebounceRef.current !== null) {
           return; // Already scheduled — skip
         }
@@ -175,9 +188,64 @@ function RootLayoutContent() {
           setAuthSessionVersion((v) => v + 1);
         }, 500);
       },
+      startSessionTransition: (durationMs = 6000) => {
+        setSessionTransitionCount((value) => value + 1);
+        const timer = setTimeout(() => {
+          sessionTransitionTimersRef.current.delete(timer);
+          setSessionTransitionCount((value) => Math.max(0, value - 1));
+        }, durationMs);
+        sessionTransitionTimersRef.current.add(timer);
+      },
+      restartAppSession: ({
+        immediate = true,
+        reloadAuth = true,
+        transitionMs = 6000,
+      }: {
+        immediate?: boolean;
+        reloadAuth?: boolean;
+        transitionMs?: number;
+      } = {}) => {
+        setSessionTransitionCount((value) => value + 1);
+        const timer = setTimeout(() => {
+          sessionTransitionTimersRef.current.delete(timer);
+          setSessionTransitionCount((value) => Math.max(0, value - 1));
+        }, transitionMs);
+        sessionTransitionTimersRef.current.add(timer);
+        setAppSessionVersion((value) => value + 1);
+        if (!reloadAuth) {
+          return;
+        }
+        if (immediate) {
+          if (reloadDebounceRef.current !== null) {
+            clearTimeout(reloadDebounceRef.current);
+            reloadDebounceRef.current = null;
+          }
+          setAuthSessionVersion((value) => value + 1);
+          return;
+        }
+        if (reloadDebounceRef.current !== null) {
+          return;
+        }
+        reloadDebounceRef.current = setTimeout(() => {
+          reloadDebounceRef.current = null;
+          setAuthSessionVersion((value) => value + 1);
+        }, 500);
+      },
     }),
-    [],
+    [sessionTransitionCount],
   );
+
+  useEffect(() => {
+    return () => {
+      if (reloadDebounceRef.current !== null) {
+        clearTimeout(reloadDebounceRef.current);
+      }
+      for (const timer of sessionTransitionTimersRef.current) {
+        clearTimeout(timer);
+      }
+      sessionTransitionTimersRef.current.clear();
+    };
+  }, []);
 
   const themeColors = getTheme(resolvedScheme).color;
   const navColors = useMemo(
@@ -259,56 +327,58 @@ function RootLayoutContent() {
               client={convex}
               {...(nativeStorage ? { storage: nativeStorage } : {})}
             >
-              <UserProvider>
-                <SheetProvider>
-                  {/* Sheets use BottomSheetModal portals — position absolute so they never
-                      take flex layout space alongside the main app. */}
-                  <View pointerEvents="box-none" style={{ position: "absolute", inset: 0 }}>
-                    <GlobalSheets />
-                  </View>
-                  <StartupNotificationsBootstrap />
-                  <ThemeProvider value={navigationTheme}>
-                    <AppSafeRoot
-                      topInsetBackgroundColor={statusInsetColor}
-                      rootBackgroundColor={navColors.background}
-                      topInsetVisible={topInsetVisible}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Stack
-                          screenOptions={{
-                            headerTintColor: navColors.text,
-                            headerTitleStyle: { color: navColors.text },
-                          }}
-                        >
-                          <Stack.Screen
-                            name="index"
-                            options={{
-                              headerShown: false,
-                              animation: "none",
+              <UserProvider key={`user-session:${appSessionVersion}`}>
+                <BottomSheetStackProvider>
+                  <SheetProvider key={`sheet-session:${appSessionVersion}`}>
+                    {/* Sheets use BottomSheetModal portals — position absolute so they never
+                        take flex layout space alongside the main app. */}
+                    <View pointerEvents="box-none" style={{ position: "absolute", inset: 0 }}>
+                      <GlobalSheets />
+                    </View>
+                    <StartupNotificationsBootstrap />
+                    <ThemeProvider value={navigationTheme}>
+                      <AppSafeRoot
+                        topInsetBackgroundColor={statusInsetColor}
+                        rootBackgroundColor={navColors.background}
+                        topInsetVisible={topInsetVisible}
+                      >
+                        <View key={`app-session:${appSessionVersion}`} style={{ flex: 1 }}>
+                          <Stack
+                            screenOptions={{
+                              headerTintColor: navColors.text,
+                              headerTitleStyle: { color: navColors.text },
                             }}
-                          />
-                          <Stack.Screen name="(app)" options={{ headerShown: false }} />
-                          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                          <Stack.Screen
-                            name="modal"
-                            options={{
-                              presentation: "modal",
-                              title: i18n.t("modal.headerTitle"),
-                            }}
-                          />
-                        </Stack>
-                      </View>
-                      <StatusBar
-                        style={resolvedScheme === "dark" ? "light" : "dark"}
-                        animated
-                        {...(Platform.OS === "android" && !topInsetVisible
-                          ? { translucent: true, backgroundColor: "transparent" }
-                          : {})}
-                      />
-                    </AppSafeRoot>
-                  </ThemeProvider>
-                </SheetProvider>
+                          >
+                            <Stack.Screen
+                              name="index"
+                              options={{
+                                headerShown: false,
+                                animation: "none",
+                              }}
+                            />
+                            <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                            <Stack.Screen
+                              name="modal"
+                              options={{
+                                presentation: "modal",
+                                title: i18n.t("modal.headerTitle"),
+                              }}
+                            />
+                          </Stack>
+                        </View>
+                        <StatusBar
+                          style={resolvedScheme === "dark" ? "light" : "dark"}
+                          animated
+                          {...(Platform.OS === "android" && !topInsetVisible
+                            ? { translucent: true, backgroundColor: "transparent" }
+                            : {})}
+                        />
+                      </AppSafeRoot>
+                    </ThemeProvider>
+                  </SheetProvider>
+                </BottomSheetStackProvider>
               </UserProvider>
             </ConvexAuthProvider>
           </AuthSessionControllerProvider>

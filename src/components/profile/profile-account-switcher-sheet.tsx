@@ -84,7 +84,7 @@ export function ProfileAccountSwitcherSheet({
         style={{
           borderRadius: BrandRadius.soft,
           borderCurve: "continuous",
-          backgroundColor: theme.color.surfaceElevated,
+          backgroundColor: theme.color.surfaceMuted,
           padding: BrandSpacing.lg,
           gap: BrandSpacing.sm,
         }}
@@ -214,22 +214,27 @@ export function ProfileAccountSwitcherSheet({
         icon="person.2.fill"
         flush
       />
-      <ProfileSectionCard>
+      <View
+        style={{
+          borderRadius: BrandRadius.soft,
+          borderCurve: "continuous",
+          backgroundColor: theme.color.surfaceMuted,
+          overflow: "hidden",
+        }}
+      >
         <ProfileSettingRow
           title={t("profile.switcher.useAnotherAccountTitle")}
-          subtitle={t("profile.switcher.useAnotherAccountHint")}
           icon="person.crop.circle.badge.plus"
           onPress={onUseAnotherAccount}
           showDivider
         />
         <ProfileSettingRow
           title={t("tabsLayout.actions.signOut")}
-          subtitle={t("profile.settings.signOutDesc")}
           icon="rectangle.portrait.and.arrow.right"
           onPress={onSignOut}
           tone="danger"
         />
-      </ProfileSectionCard>
+      </View>
     </BaseProfileSheet>
   );
 }

@@ -24,6 +24,7 @@ import { BrandSpacing } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
 import { useTheme } from "@/hooks/use-theme";
+import { signInWithAppleNative } from "@/lib/apple-auth-native";
 import {
   canUseNativeGoogleAuth,
   resolveGoogleNativeAuthConfig,
@@ -63,7 +64,7 @@ export function ProfileAddAccountScreen({
   const { isAuthenticated } = useConvexAuth();
   const { signIn } = useAuthActions();
   const { currentUser } = useUser();
-  const { reloadAuthSession } = useAuthSession();
+  const { restartAppSession } = useAuthSession();
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useTranslation();
@@ -129,10 +130,10 @@ export function ProfileAddAccountScreen({
       await snapshotAndClearCurrentDeviceAccount(
         currentUser ? toDeviceAccountIdentity(currentUser) : null,
       );
-      reloadAuthSession();
+      restartAppSession({ immediate: true, reloadAuth: true, transitionMs: 7000 });
       return false;
     },
-    [currentUser, isAuthenticated, normalizedEmail, pathname, reloadAuthSession],
+    [currentUser, isAuthenticated, normalizedEmail, pathname, restartAppSession],
   );
 
   const handleCancel = useCallback(() => {
@@ -142,7 +143,7 @@ export function ProfileAddAccountScreen({
       void switchToRememberedDeviceAccount({ accountId: restoreAccountId })
         .then(() => {
           clearPendingPostSignOutAuthIntent();
-          reloadAuthSession();
+          restartAppSession({ immediate: true, reloadAuth: true, transitionMs: 7000 });
           router.replace(profileRoute);
         })
         .catch((error) => {
@@ -161,7 +162,7 @@ export function ProfileAddAccountScreen({
     }
 
     router.replace("/sign-in" as Href);
-  }, [isAuthenticated, profileRoute, reloadAuthSession, restoreAccountId, router, t]);
+  }, [isAuthenticated, profileRoute, restartAppSession, restoreAccountId, router, t]);
 
   const handleBackToMethods = useCallback(() => {
     setStep("email");
@@ -243,7 +244,25 @@ export function ProfileAddAccountScreen({
           }
 
           await signIn("google-native", { idToken: nativeResult.idToken });
+          restartAppSession({ immediate: true, reloadAuth: true, transitionMs: 7000 });
+          router.replace(profileRoute);
           return;
+        }
+
+        if (provider === "apple") {
+          const nativeResult = await signInWithAppleNative();
+
+          if (nativeResult.type === "success") {
+            await signIn("apple-native", { idToken: nativeResult.identityToken });
+            restartAppSession({ immediate: true, reloadAuth: true, transitionMs: 7000 });
+            router.replace(profileRoute);
+            return;
+          }
+
+          if (nativeResult.type === "cancelled") {
+            setErrorMessage(t("auth.oauthCancelled"));
+            return;
+          }
         }
 
         const started = await signIn(provider, {
@@ -281,6 +300,7 @@ export function ProfileAddAccountScreen({
         }
 
         await signIn(provider, { code: oauthCode });
+        restartAppSession({ immediate: true, reloadAuth: true, transitionMs: 7000 });
       } catch (error) {
         setErrorMessage(getErrorMessage(error, t("auth.unexpectedError")));
       } finally {
@@ -288,11 +308,15 @@ export function ProfileAddAccountScreen({
       }
     },
     [
+      currentUser,
       googleNativeAuthConfig,
       isSubmitting,
       normalizedEmail,
       oauthRedirectTo,
       prepareForAccountSwitch,
+      profileRoute,
+      restartAppSession,
+      router,
       signIn,
       t,
     ],

@@ -45,6 +45,16 @@ export default ({ config }: { config: ExpoConfig }) => {
       plugin === "@stripe/stripe-react-native" ||
       (Array.isArray(plugin) && plugin[0] === "@stripe/stripe-react-native"),
   );
+  const hasAppleAuthPlugin = plugins.some(
+    (plugin) =>
+      plugin === "expo-apple-authentication" ||
+      (Array.isArray(plugin) && plugin[0] === "expo-apple-authentication"),
+  );
+  const hasDiditPlugin = plugins.some(
+    (plugin) =>
+      plugin === "@didit-protocol/sdk-react-native" ||
+      (Array.isArray(plugin) && plugin[0] === "@didit-protocol/sdk-react-native"),
+  );
 
   if (googleIosUrlScheme && !hasGoogleSigninPlugin) {
     plugins.push([
@@ -62,8 +72,23 @@ export default ({ config }: { config: ExpoConfig }) => {
     ]);
   }
 
+  if (!hasAppleAuthPlugin) {
+    plugins.push("expo-apple-authentication");
+  }
+
+  if (!hasDiditPlugin) {
+    plugins.push([
+      "@didit-protocol/sdk-react-native",
+      {},
+    ]);
+  }
+
   return {
     ...config,
+    ios: {
+      ...(config.ios ?? {}),
+      usesAppleSignIn: true,
+    },
     plugins,
     extra: {
       ...(config.extra ?? {}),

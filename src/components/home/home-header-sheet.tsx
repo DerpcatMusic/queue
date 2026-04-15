@@ -21,6 +21,8 @@ type HomeHeaderSheetProps = {
   openJobs?: number;
   missionsCount?: number;
   role?: "instructor" | "studio";
+  /** When true the sheet body background is transparent so a parent gradient shows through. */
+  transparent?: boolean;
 };
 
 export const HomeHeaderSheet = memo(function HomeHeaderSheet({
@@ -35,6 +37,7 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
   openJobs,
   missionsCount = 0,
   role = "instructor",
+  transparent = false,
 }: HomeHeaderSheetProps) {
   const theme = useTheme();
   const { color: palette } = theme;
@@ -86,7 +89,7 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
         paddingTop: BrandSpacing.lg,
         paddingBottom: BrandSpacing.xl,
         gap: BrandSpacing.md,
-        backgroundColor: mainTabSheetBackgroundColor,
+        backgroundColor: transparent ? "transparent" : mainTabSheetBackgroundColor,
       }}
     >
       <Box flexDirection="row" alignItems="center" justifyContent="space-between" gap="md">

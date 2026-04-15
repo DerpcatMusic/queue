@@ -1,15 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, View } from "react-native";
-import { ScrollView } from "react-native-gesture-handler";
+import { Pressable, ScrollView, View } from "react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
-import { ThemedText } from "@/components/themed-text";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { NativeSearchField } from "@/components/ui/native-search-field";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
+
+import { Text } from "@/primitives";
+import { BrandRadius, BrandSpacing, BrandType, FontFamily } from "@/constants/brand";
 import { getSportGenreKey, SPORT_GENRES, SPORT_TYPES } from "@/convex/constants";
 import { toSportLabelI18n } from "@/lib/sport-i18n";
-import { Text } from "@/primitives";
+import { NativeSearchField } from "@/components/ui/native-search-field";
 
 type SportsMultiSelectProps = {
   selectedSports: string[];
@@ -19,24 +17,14 @@ type SportsMultiSelectProps = {
   emptyHint: string;
   defaultOpen?: boolean;
   variant?: "card" | "content";
+  hasUnsavedChanges?: boolean;
 };
 
-const SPORTS_HEADER_HORIZONTAL_PADDING = BrandSpacing.lg;
-const SPORTS_HEADER_VERTICAL_PADDING = BrandSpacing.componentPadding;
-const SPORTS_HEADER_BADGE_HORIZONTAL_PADDING = BrandSpacing.sm;
-const SPORTS_HEADER_BADGE_VERTICAL_PADDING = BrandSpacing.xs;
-const SPORTS_PANEL_HORIZONTAL_PADDING = BrandSpacing.componentPadding;
-const SPORTS_PANEL_BOTTOM_PADDING = BrandSpacing.componentPadding;
-const SPORTS_PANEL_GAP = BrandSpacing.md;
-const SPORTS_SECTION_GAP = BrandSpacing.sm;
-const SPORTS_RESULT_ROW_MIN_HEIGHT = BrandSpacing.controlLg + BrandSpacing.xs;
-const SPORTS_RESULT_ROW_PADDING_HORIZONTAL = BrandSpacing.md;
-const SPORTS_RESULT_ROW_PADDING_VERTICAL = BrandSpacing.md;
-const SPORTS_RESULT_ROW_GAP = BrandSpacing.md;
-const SPORTS_RESULT_EMPTY_GAP = BrandSpacing.xs;
-const SPORTS_SELECTED_SPORT_GAP = BrandSpacing.xs / 2;
-const SPORTS_RESULTS_MAX_HEIGHT = 260;
-const SPORTS_GENRE_GROUP_GAP = BrandSpacing.md;
+type GenrePalette = {
+  surface: string;
+  border: string;
+  text: string;
+};
 
 export function SportsMultiSelect({
   selectedSports,
@@ -46,6 +34,7 @@ export function SportsMultiSelect({
   emptyHint,
   defaultOpen = false,
   variant = "card",
+  hasUnsavedChanges = false,
 }: SportsMultiSelectProps) {
   const { t } = useTranslation();
   const { theme } = useUnistyles();
@@ -53,25 +42,18 @@ export function SportsMultiSelect({
   const [query, setQuery] = useState("");
   const isCardVariant = variant === "card";
 
-  const filteredSports = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) {
-      return SPORT_TYPES;
-    }
-    return SPORT_TYPES.filter((sport) =>
-      toSportLabelI18n(sport, t).toLowerCase().includes(normalized),
-    );
-  }, [query, t]);
-
   const selectedSportsList = useMemo(
     () => SPORT_TYPES.filter((sport) => selectedSports.includes(sport)),
     [selectedSports],
   );
 
-  const availableSportsList = useMemo(
-    () => filteredSports.filter((sport) => !selectedSports.includes(sport)),
-    [filteredSports, selectedSports],
-  );
+  const availableSportsList = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    const filtered = normalized
+      ? SPORT_TYPES.filter((sport) => toSportLabelI18n(sport, t).toLowerCase().includes(normalized))
+      : SPORT_TYPES;
+    return filtered.filter((sport) => !selectedSports.includes(sport));
+  }, [query, selectedSports, t]);
 
   const availableSportGroups = useMemo(
     () =>
@@ -83,108 +65,179 @@ export function SportsMultiSelect({
     [availableSportsList],
   );
 
-  const panel = (
-    <View style={[styles.panel, isCardVariant ? null : styles.panelContentOnly]}>
-      <NativeSearchField value={query} onChangeText={setQuery} placeholder={searchPlaceholder} />
+  const stickySections = useMemo(() => {
+    const nodes: Array<{ key: string; sticky?: boolean; node: ReactNode }> = [];
 
-      {selectedSportsList.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: theme.color.textMuted }]}>
-            {t("profile.sports.selectedLabel")}
-          </Text>
-          <View style={styles.resultsList}>
-            {selectedSportsList.map((sport) => (
-              <Pressable
-                key={`selected-${sport}`}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: true }}
-                onPress={() => onToggleSport(sport)}
-                style={({ pressed }) => [
-                  styles.resultRow,
-                  {
-                    backgroundColor: theme.color.primary,
-                    transform: [{ scale: pressed ? 0.992 : 1 }],
-                  },
-                ]}
-              >
-                <View style={{ flex: 1, gap: SPORTS_SELECTED_SPORT_GAP }}>
-                  <Text style={[styles.resultTitle, { color: theme.color.onPrimary }]}>
-                    {toSportLabelI18n(sport, t)}
-                  </Text>
-                  <Text style={[styles.resultMeta, { color: theme.color.onPrimary }]}>
-                    {t("profile.sports.selectedBody")}
-                  </Text>
-                </View>
-                <IconSymbol name="checkmark.circle.fill" size={18} color={theme.color.onPrimary} />
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      ) : null}
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: theme.color.textMuted }]}>
-          {query.trim().length > 0
-            ? t("profile.sports.matchingLabel")
-            : t("profile.sports.allLabel")}
-        </Text>
-        <ScrollView
-          nestedScrollEnabled
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.genreGroupList}
-          style={styles.resultsViewport}
-        >
-          {availableSportGroups.length > 0 ? (
-            availableSportGroups.map((group) => (
-              <View key={group.key} style={styles.genreGroup}>
-                <Text style={[styles.genreLabel, { color: theme.color.textMuted }]}>
-                  {t(`sports.${group.key}`, { defaultValue: group.label })}
-                </Text>
-                <View style={styles.resultsList}>
-                  {group.sports.map((sport) => (
-                    <Pressable
-                      key={sport}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: false }}
-                      onPress={() => onToggleSport(sport)}
-                      style={({ pressed }) => [
-                        styles.resultRow,
-                        {
-                          backgroundColor: theme.color.surfaceElevated,
-                          transform: [{ scale: pressed ? 0.992 : 1 }],
-                        },
-                      ]}
-                    >
-                      <Text style={[styles.resultTitle, { color: theme.color.text }]}>
-                        {toSportLabelI18n(sport, t)}
-                      </Text>
-                      <IconSymbol name="plus.circle.fill" size={18} color={theme.color.textMuted} />
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            ))
-          ) : (
-            <View style={[styles.emptyState, { backgroundColor: theme.color.surfaceElevated }]}>
-              <Text style={[styles.resultTitle, { color: theme.color.text }]}>
-                {t("profile.sports.emptyTitle")}
-              </Text>
-              <Text style={[styles.resultMeta, { color: theme.color.textMuted }]}>
-                {t("profile.sports.emptyBody")}
+    nodes.push({
+      key: "search",
+      sticky: true,
+      node: (
+        <View style={[styles.stickyBlock, { backgroundColor: theme.color.surface }]}>
+          <NativeSearchField
+            value={query}
+            onChangeText={setQuery}
+            placeholder={searchPlaceholder}
+          />
+          {hasUnsavedChanges ? (
+            <View style={[styles.unsavedBadge, { backgroundColor: theme.color.primarySubtle }]}>
+              <Text style={[styles.unsavedBadgeText, { color: theme.color.primary }]}>
+                {t("profile.sports.stateUnsaved")}
               </Text>
             </View>
-          )}
-        </ScrollView>
-      </View>
+          ) : null}
+        </View>
+      ),
+    });
+
+    if (selectedSportsList.length > 0) {
+      nodes.push({
+        key: "selected",
+        sticky: true,
+        node: (
+          <View style={[styles.stickyBlock, { backgroundColor: theme.color.surface }]}>
+            <Text style={[styles.sectionLabel, { color: theme.color.textMuted }]}>
+              {t("profile.sports.selectedLabel")}
+            </Text>
+            <View style={styles.chipGrid}>
+              {selectedSportsList.map((sport) => {
+                const palette = getPaletteForSport(sport, theme);
+                return (
+                  <Pressable
+                    key={`selected-${sport}`}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: true }}
+                    onPress={() => onToggleSport(sport)}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      {
+                        backgroundColor: palette.surface,
+                        borderColor: palette.border,
+                        transform: [{ scale: pressed ? 0.992 : 1 }],
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.chipText, { color: theme.color.text }]}>
+                      {toSportLabelI18n(sport, t)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ),
+      });
+    }
+
+    if (availableSportGroups.length === 0) {
+      nodes.push({
+        key: "empty",
+        node: (
+          <View
+            style={[
+              styles.emptyState,
+              theme.shadow.subtle,
+              { backgroundColor: theme.color.surfaceElevated },
+            ]}
+          >
+            <Text style={[styles.emptyTitle, { color: theme.color.text }]}>
+              {t("profile.sports.emptyTitle")}
+            </Text>
+            <Text style={[styles.emptyBody, { color: theme.color.textMuted }]}>
+              {t("profile.sports.emptyBody")}
+            </Text>
+          </View>
+        ),
+      });
+    } else {
+      for (const group of availableSportGroups) {
+        const palette = getPaletteForGenreKey(group.key, theme);
+        nodes.push({
+          key: `header-${group.key}`,
+          sticky: true,
+          node: (
+            <View style={[styles.genreHeader, { backgroundColor: theme.color.surface }]}>
+              <Text
+                style={[BrandType.headingItalic, styles.genreHeaderText, { color: palette.text }]}
+              >
+                {t(`sports.${group.key}`, { defaultValue: group.label })}
+              </Text>
+            </View>
+          ),
+        });
+
+        nodes.push({
+          key: `grid-${group.key}`,
+          node: (
+            <View style={styles.chipGrid}>
+              {group.sports.map((sport) => {
+                const sportPalette = getPaletteForSport(sport, theme);
+                return (
+                  <Pressable
+                    key={sport}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: false }}
+                    onPress={() => onToggleSport(sport)}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      {
+                        backgroundColor: sportPalette.surface,
+                        borderColor: sportPalette.border,
+                        transform: [{ scale: pressed ? 0.992 : 1 }],
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.chipText, { color: theme.color.text }]}>
+                      {toSportLabelI18n(sport, t)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ),
+        });
+      }
+    }
+
+    const stickyIndices = nodes.flatMap((node, index) => (node.sticky ? [index] : []));
+
+    return {
+      children: nodes.map((node) => <View key={node.key}>{node.node}</View>),
+      stickyIndices,
+    };
+  }, [
+    availableSportGroups,
+    hasUnsavedChanges,
+    onToggleSport,
+    query,
+    searchPlaceholder,
+    selectedSportsList,
+    t,
+    theme,
+  ]);
+
+  const content = (
+    <View style={styles.panel}>
+      <ScrollView
+        nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        style={styles.scrollViewport}
+      >
+        {stickySections.children}
+      </ScrollView>
     </View>
   );
 
   if (!isCardVariant) {
-    return panel;
+    return (
+      <View style={[styles.contentRoot, { backgroundColor: theme.color.surface }]}>{content}</View>
+    );
   }
 
   return (
-    <View style={[styles.shell, { backgroundColor: theme.color.surfaceElevated }]}>
+    <View
+      style={[styles.shell, theme.shadow.subtle, { backgroundColor: theme.color.surfaceElevated }]}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={title}
@@ -192,41 +245,48 @@ export function SportsMultiSelect({
         style={({ pressed }) => [styles.header, { transform: [{ scale: pressed ? 0.992 : 1 }] }]}
       >
         <View style={styles.headerTextBlock}>
-          <ThemedText type="defaultSemiBold">{title}</ThemedText>
-          <ThemedText type="caption" style={{ color: theme.color.textMuted }}>
+          <Text style={[styles.headerTitle, { color: theme.color.text }]}>{title}</Text>
+          <Text style={[styles.headerSubtitle, { color: theme.color.textMuted }]}>
             {selectedSports.length > 0
-              ? t("profile.settings.sports.selected", {
-                  count: selectedSports.length,
-                })
+              ? t("profile.settings.sports.selected", { count: selectedSports.length })
               : emptyHint}
-          </ThemedText>
+          </Text>
         </View>
         <View
           style={[
             styles.headerBadge,
-            {
-              backgroundColor: isOpen ? theme.color.primary : theme.color.surfaceMuted,
-            },
+            { backgroundColor: isOpen ? theme.color.primary : theme.color.surfaceMuted },
           ]}
         >
           <Text
-            style={{
-              fontFamily: "Manrope_500Medium",
-              fontSize: 16,
-              fontWeight: "500",
-              lineHeight: 22,
-              color: isOpen ? theme.color.onPrimary : theme.color.textMuted,
-              includeFontPadding: false,
-            }}
+            style={[
+              styles.headerBadgeText,
+              { color: isOpen ? theme.color.onPrimary : theme.color.textMuted },
+            ]}
           >
             {isOpen ? t("profile.sports.done") : t("profile.sports.edit")}
           </Text>
         </View>
       </Pressable>
 
-      {isOpen ? panel : null}
+      {isOpen ? content : null}
     </View>
   );
+}
+
+function getPaletteForGenreKey(
+  genreKey: string,
+  theme: { sportsGenre: Record<string, GenrePalette> },
+) {
+  return theme.sportsGenre[genreKey] ?? theme.sportsGenre.performance;
+}
+
+function getPaletteForSport(
+  sport: string,
+  theme: { sportsGenre: Record<string, GenrePalette> },
+): GenrePalette {
+  const genreKey = getSportGenreKey(sport);
+  return genreKey ? getPaletteForGenreKey(genreKey, theme) : theme.sportsGenre.performance;
 }
 
 const styles = StyleSheet.create({
@@ -234,15 +294,10 @@ const styles = StyleSheet.create({
     borderRadius: BrandRadius.soft,
     borderCurve: "continuous",
     overflow: "hidden",
-    shadowColor: "#000000",
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 1,
   },
   header: {
-    paddingHorizontal: SPORTS_HEADER_HORIZONTAL_PADDING,
-    paddingVertical: SPORTS_HEADER_VERTICAL_PADDING,
+    paddingHorizontal: BrandSpacing.lg,
+    paddingVertical: BrandSpacing.componentPadding,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -252,85 +307,128 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: BrandSpacing.xs,
   },
+  headerTitle: {
+    fontFamily: FontFamily.heading,
+    fontSize: 18,
+    fontWeight: "700",
+    fontStyle: "italic",
+    letterSpacing: -0.3,
+    lineHeight: 22,
+  },
+  headerSubtitle: {
+    fontFamily: FontFamily.bodyMedium,
+    fontSize: 13,
+    fontWeight: "500",
+    letterSpacing: 0.1,
+    lineHeight: 18,
+  },
   headerBadge: {
     borderRadius: BrandRadius.pill,
     borderCurve: "continuous",
-    paddingHorizontal: SPORTS_HEADER_BADGE_HORIZONTAL_PADDING,
-    paddingVertical: SPORTS_HEADER_BADGE_VERTICAL_PADDING,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.xs,
+  },
+  headerBadgeText: {
+    fontFamily: FontFamily.bodyMedium,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+    lineHeight: 16,
+  },
+  contentRoot: {
+    flex: 1,
   },
   panel: {
-    paddingHorizontal: SPORTS_PANEL_HORIZONTAL_PADDING,
-    paddingBottom: SPORTS_PANEL_BOTTOM_PADDING,
-    gap: SPORTS_PANEL_GAP,
+    flex: 1,
+    paddingBottom: BrandSpacing.lg,
+    minHeight: 0,
   },
-  panelContentOnly: {
-    paddingHorizontal: 0,
-    paddingBottom: 0,
+  scrollViewport: {
+    flex: 1,
+    minHeight: 0,
   },
-  section: {
-    gap: SPORTS_SECTION_GAP,
+  scrollContent: {
+    flexGrow: 1,
+    gap: BrandSpacing.md,
+    paddingBottom: BrandSpacing.xxl * 2,
+  },
+  stickyBlock: {
+    gap: BrandSpacing.sm,
+    paddingBottom: BrandSpacing.sm,
+    paddingTop: BrandSpacing.xs,
+  },
+  unsavedBadge: {
+    alignSelf: "flex-start",
+    borderRadius: BrandRadius.pill,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.xs,
+  },
+  unsavedBadgeText: {
+    fontFamily: FontFamily.bodyMedium,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+    lineHeight: 16,
   },
   sectionLabel: {
-    fontFamily: "Manrope_500Medium",
+    fontFamily: FontFamily.bodyMedium,
     fontSize: 12,
-    fontWeight: "500",
+    fontWeight: "600",
     letterSpacing: 0.2,
     lineHeight: 16,
     textTransform: "uppercase",
   },
-  resultsViewport: {
-    maxHeight: SPORTS_RESULTS_MAX_HEIGHT,
+  genreHeader: {
+    paddingTop: BrandSpacing.xs,
+    paddingBottom: BrandSpacing.xs,
   },
-  resultsList: {
-    gap: SPORTS_SECTION_GAP,
+  genreHeaderText: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "800",
+    letterSpacing: -0.25,
   },
-  genreGroupList: {
-    gap: SPORTS_GENRE_GROUP_GAP,
+  chipGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: BrandSpacing.sm,
   },
-  genreGroup: {
-    gap: SPORTS_SECTION_GAP,
-  },
-  genreLabel: {
-    fontFamily: "Manrope_700Bold",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.24,
-    lineHeight: 16,
-    textTransform: "uppercase",
-  },
-  resultRow: {
-    minHeight: SPORTS_RESULT_ROW_MIN_HEIGHT,
+  chip: {
+    width: "48%",
+    minHeight: 58,
     borderRadius: BrandRadius.medium,
     borderCurve: "continuous",
-    paddingHorizontal: SPORTS_RESULT_ROW_PADDING_HORIZONTAL,
-    paddingVertical: SPORTS_RESULT_ROW_PADDING_VERTICAL,
+    borderWidth: 1,
+    paddingHorizontal: BrandSpacing.lg,
+    paddingVertical: BrandSpacing.md,
     flexDirection: "row",
     alignItems: "center",
-    gap: SPORTS_RESULT_ROW_GAP,
+    justifyContent: "center",
   },
-  resultTitle: {
-    fontFamily: "Manrope_600SemiBold",
-    fontSize: 16,
-    fontWeight: "600",
-    lineHeight: 22,
-  },
-  resultMeta: {
-    fontFamily: "Manrope_500Medium",
+  chipText: {
+    fontFamily: FontFamily.body,
     fontSize: 12,
     fontWeight: "500",
-    letterSpacing: 0.2,
     lineHeight: 16,
+    textAlign: "center",
   },
   emptyState: {
     borderRadius: BrandRadius.medium,
     borderCurve: "continuous",
-    paddingHorizontal: SPORTS_RESULT_ROW_PADDING_HORIZONTAL,
-    paddingVertical: SPORTS_RESULT_ROW_PADDING_VERTICAL,
-    gap: SPORTS_RESULT_EMPTY_GAP,
-    shadowColor: "#000000",
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 1,
+    paddingHorizontal: BrandSpacing.md,
+    paddingVertical: BrandSpacing.md,
+    gap: BrandSpacing.xs,
+  },
+  emptyTitle: {
+    fontFamily: FontFamily.bodyStrong,
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+  emptyBody: {
+    fontFamily: FontFamily.bodyMedium,
+    fontSize: 12,
+    fontWeight: "500",
+    lineHeight: 16,
   },
 });

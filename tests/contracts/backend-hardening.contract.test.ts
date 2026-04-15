@@ -379,7 +379,7 @@ describe("migration operator access", () => {
     try {
       process.env.MIGRATIONS_ACCESS_TOKEN = "secret-token";
       await expect(
-        (require("../../convex/migrations").getZoneDataQualityReport as any)._handler(
+        (require("../../convex/migrations").getMarketplaceFinanceBackfillReport as any)._handler(
           {
             db: new InMemoryConvexDb(),
           },

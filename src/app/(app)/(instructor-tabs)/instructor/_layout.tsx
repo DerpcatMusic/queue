@@ -39,10 +39,6 @@ export default function InstructorTabsLayout() {
     currentUser?.role === "instructor" ? emptyArgs : "skip",
   );
   useQuery(
-    api.instructorZones.getMyInstructorZones,
-    currentUser?.role === "instructor" ? emptyArgs : "skip",
-  );
-  useQuery(
     api.users.getInstructorMapStudios,
     currentUser?.role === "instructor" ? emptyArgs : "skip",
   );
