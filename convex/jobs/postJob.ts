@@ -20,7 +20,7 @@ import {
   requireAccessibleStudioBranch,
   requireStudioOwnerContext,
 } from "../lib/studioBranches";
-import { getH3HierarchyFromCell } from "../lib/h3";
+import { getH3HierarchyFromCell, safeH3Hierarchy } from "../lib/h3";
 import {
   assertPositiveInteger,
   assertValidJobApplicationDeadline,
@@ -164,7 +164,14 @@ export const postJob = mutation({
       }
     }
 
-    const branchH3 = getH3HierarchyFromCell(branch.h3Index);
+    const branchH3 = branch.h3Index
+      ? getH3HierarchyFromCell(branch.h3Index)
+      : safeH3Hierarchy(branch.latitude, branch.longitude);
+    if (!branchH3) {
+      throw new ConvexError(
+        "Branch location is missing. Please update the branch with a valid address.",
+      );
+    }
     const jobId = await ctx.db.insert("jobs", {
       studioId: studio._id,
       branchId: branch._id,

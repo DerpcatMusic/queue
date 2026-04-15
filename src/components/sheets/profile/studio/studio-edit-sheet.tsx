@@ -5,7 +5,8 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert } from "react-native";
+import { Alert, Text, TextInput, View } from "react-native";
+import { useUnistyles } from "react-native-unistyles";
 
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -15,6 +16,8 @@ import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isProfileImageUploadError, useProfileImageUpload } from "@/hooks/use-profile-image-upload";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
+import { FontSize } from "@/lib/design-system";
 
 interface StudioEditSheetProps {
   visible: boolean;
@@ -49,16 +52,19 @@ function areSocialLinksEqual(a: ProfileSocialLinks, b: ProfileSocialLinks) {
 export function StudioEditSheet({ visible, onClose }: StudioEditSheetProps) {
   const { t } = useTranslation();
   const { currentUser } = useUser();
+  const { theme } = useUnistyles();
   const studioSettings = useQuery(
     api.studios.settings.getMyStudioSettings,
     currentUser?.role === "studio" ? {} : "skip",
   );
   const saveProfileCard = useMutation(api.studios.settings.updateMyStudioProfileCard);
+  const saveSettings = useMutation(api.studios.settings.updateMyStudioSettings);
   const [nameDraft, setNameDraft] = useState("");
   const [bioDraft, setBioDraft] = useState("");
   const [contactPhoneDraft, setContactPhoneDraft] = useState("");
   const [sportsDraft, setSportsDraft] = useState<string[]>([]);
   const [socialLinksDraft, setSocialLinksDraft] = useState<ProfileSocialLinks>({});
+  const [addressDraft, setAddressDraft] = useState("");
   const [feedbackLabel, setFeedbackLabel] = useState<string | null>(null);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null | undefined>(undefined);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -76,6 +82,7 @@ export function StudioEditSheet({ visible, onClose }: StudioEditSheetProps) {
     setSportsDraft(studioSettings.sports);
     setSocialLinksDraft(toSocialLinksDraft(studioSettings.socialLinks));
     setProfilePhotoUrl(studioSettings.profileImageUrl ?? currentUser?.image);
+    setAddressDraft(studioSettings.address ?? "");
   }, [currentUser?.image, studioSettings]);
 
   const hasUnsavedProfileChanges = useMemo(() => {
@@ -85,9 +92,18 @@ export function StudioEditSheet({ visible, onClose }: StudioEditSheetProps) {
       bioDraft.trim() !== (studioSettings.bio ?? "") ||
       contactPhoneDraft.trim() !== (studioSettings.contactPhone ?? "") ||
       !areStringArraysEqual(sportsDraft, studioSettings.sports) ||
-      !areSocialLinksEqual(socialLinksDraft, toSocialLinksDraft(studioSettings.socialLinks))
+      !areSocialLinksEqual(socialLinksDraft, toSocialLinksDraft(studioSettings.socialLinks)) ||
+      addressDraft.trim() !== (studioSettings.address ?? "")
     );
-  }, [bioDraft, contactPhoneDraft, nameDraft, socialLinksDraft, sportsDraft, studioSettings]);
+  }, [
+    bioDraft,
+    contactPhoneDraft,
+    nameDraft,
+    socialLinksDraft,
+    sportsDraft,
+    studioSettings,
+    addressDraft,
+  ]);
 
   if (currentUser?.role !== "studio" || !studioSettings) {
     return (
@@ -125,6 +141,7 @@ export function StudioEditSheet({ visible, onClose }: StudioEditSheetProps) {
     setFeedbackLabel(null);
     setIsSavingProfile(true);
     try {
+      // Save profile card (name, bio, phone, sports, social links)
       await saveProfileCard({
         studioName: nameDraft.trim() || studioSettings!.studioName,
         bio: bioDraft.trim(),
@@ -132,6 +149,15 @@ export function StudioEditSheet({ visible, onClose }: StudioEditSheetProps) {
         socialLinks: socialLinksDraft,
         sports: sportsDraft,
       });
+
+      // Save address if changed
+      if (addressDraft.trim() !== (studioSettings!.address ?? "")) {
+        await saveSettings({
+          studioName: nameDraft.trim() || studioSettings!.studioName,
+          address: addressDraft.trim() || studioSettings!.address,
+        });
+      }
+
       onClose();
     } catch (error) {
       setFeedbackLabel(error instanceof Error ? error.message : t("profile.editor.saveFailed"));
@@ -213,6 +239,39 @@ export function StudioEditSheet({ visible, onClose }: StudioEditSheetProps) {
           keyboardType: "phone-pad",
         }}
       />
+      <View style={{ paddingHorizontal: BrandSpacing.md, paddingTop: BrandSpacing.sm }}>
+        <Text
+          style={{
+            marginBottom: BrandSpacing.xs,
+            fontFamily: "Rubik_500Medium",
+            fontSize: FontSize.micro,
+            letterSpacing: 0.6,
+            textTransform: "uppercase",
+            color: theme.color.textMuted,
+          }}
+        >
+          {t("profile.editor.addressLabel")}
+        </Text>
+        <TextInput
+          value={addressDraft}
+          onChangeText={(value) => {
+            setFeedbackLabel(null);
+            setAddressDraft(value);
+          }}
+          placeholder={t("profile.editor.addressPlaceholder")}
+          placeholderTextColor={theme.color.textMuted}
+          style={{
+            flex: 1,
+            minHeight: 46,
+            borderRadius: BrandRadius.md,
+            paddingHorizontal: BrandSpacing.md,
+            paddingVertical: BrandSpacing.sm,
+            backgroundColor: theme.color.surfaceElevated,
+            color: theme.color.text,
+            fontSize: FontSize.body,
+          }}
+        />
+      </View>
     </BaseProfileSheet>
   );
 }
