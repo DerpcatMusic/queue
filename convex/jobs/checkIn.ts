@@ -13,6 +13,10 @@ import {
   toRadians,
 } from "./_helpers";
 import { omitUndefined } from "../lib/validation";
+import {
+  loadInstructorComplianceSnapshot,
+  getInstructorJobActionBlockReason,
+} from "../lib/instructorCompliance";
 
 export const checkIntoLesson = mutation({
   args: {
@@ -57,6 +61,17 @@ export const checkIntoLesson = mutation({
     }
     if (job.status !== "filled") {
       throw new ConvexError("Only active filled lessons can be checked into");
+    }
+
+    // Verify instructor is still compliant before allowing check-in
+    const complianceSnapshot = await loadInstructorComplianceSnapshot(ctx, instructor._id);
+    const blockReason = getInstructorJobActionBlockReason(complianceSnapshot, job.sport);
+    if (blockReason) {
+      throw new ConvexError({
+        code: "VERIFICATION_REQUIRED",
+        message: `Check-in blocked: ${blockReason}`,
+        blockReason,
+      });
     }
 
     const latestCheckIn = await ctx.db

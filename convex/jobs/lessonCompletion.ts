@@ -9,6 +9,10 @@ import {
   requireStudioProfile,
   scheduleGoogleCalendarSyncForUser,
 } from "./_helpers";
+import {
+  loadInstructorComplianceSnapshot,
+  getInstructorJobActionBlockReason,
+} from "../lib/instructorCompliance";
 
 export const markLessonCompleted = mutation({
   args: { jobId: v.id("jobs") },
@@ -32,6 +36,17 @@ export const markLessonCompleted = mutation({
     const now = Date.now();
     if (now + FIVE_MINUTES_MS < job.endTime) {
       throw new ConvexError("Lesson can be completed near or after end time");
+    }
+
+    // Verify instructor is still compliant before completing lesson
+    const complianceSnapshot = await loadInstructorComplianceSnapshot(ctx, instructor._id);
+    const blockReason = getInstructorJobActionBlockReason(complianceSnapshot, job.sport);
+    if (blockReason) {
+      throw new ConvexError({
+        code: "VERIFICATION_REQUIRED",
+        message: `Lesson completion blocked: ${blockReason}`,
+        blockReason,
+      });
     }
 
     await ctx.db.patch("jobs", job._id, { status: "completed" });
