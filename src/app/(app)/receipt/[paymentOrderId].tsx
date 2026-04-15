@@ -21,9 +21,9 @@ export default function ReceiptScreen() {
   const { color } = useTheme();
   const locale = i18n.resolvedLanguage ?? "en";
 
-  const currentUser = useQuery(api.users.getCurrentUser);
+  const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const detail = useQuery(
-    api.paymentsV2.getMyPaymentDetailV2,
+    api.payments.core.getMyPaymentDetailV2,
     paymentOrderId ? { paymentOrderId: paymentOrderId as Id<"paymentOrdersV2"> } : "skip",
   );
 

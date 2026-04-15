@@ -170,8 +170,8 @@ function resolveFileSystemLegacyModule(): FileSystemLegacyModule | null {
 
 export function useProfileImageUpload() {
   const { t } = useTranslation();
-  const createUploadSession = useMutation(api.users.createMyProfileImageUploadSession);
-  const completeUpload = useMutation(api.users.completeMyProfileImageUpload);
+  const createUploadSession = useMutation(api.users.profileImage.createMyProfileImageUploadSession);
+  const completeUpload = useMutation(api.users.profileImage.completeMyProfileImageUpload);
   const [uploadPhase, setUploadPhase] = useState<ProfileImageUploadPhase>("idle");
   const isUploading = uploadPhase !== "idle";
 

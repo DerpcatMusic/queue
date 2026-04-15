@@ -316,10 +316,10 @@ async function uploadNativeFile(
 export function useComplianceDocumentUpload() {
   const { t } = useTranslation();
   const createUploadSession = useMutation(
-    api.compliance.createMyComplianceDocumentUploadSession,
+    api.compliance.instructor.createMyComplianceDocumentUploadSession,
   );
   const completeUpload = useMutation(
-    api.compliance.completeMyComplianceDocumentUpload,
+    api.compliance.instructor.completeMyComplianceDocumentUpload,
   );
   const [uploadPhase, setUploadPhase] = useState<ComplianceUploadPhase>("idle");
   const isUploading = uploadPhase !== "idle";

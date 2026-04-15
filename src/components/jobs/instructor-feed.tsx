@@ -117,8 +117,8 @@ export function InstructorFeed() {
   };
 
   const { currentUser } = useUser();
-  const applyToJob = useMutation(api.jobs.applyToJob);
-  const withdrawApplication = useMutation(api.jobs.withdrawApplication);
+  const applyToJob = useMutation(api.jobs.applications.applyToJob);
+  const withdrawApplication = useMutation(api.jobs.applications.withdrawApplication);
   const studioHomeRoute = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.home);
 
   // Stable time ref: only recomputes when queryMinuteBucket changes (once/minute)
@@ -126,11 +126,11 @@ export function InstructorFeed() {
   const queryNow = Math.floor(liveNow / (60 * 1000)) * 60 * 1000;
 
   const availableJobs = useQuery(
-    api.jobs.getAvailableJobsForInstructor,
+    api.jobs.browse.getAvailableJobsForInstructor,
     currentUser?.role === "instructor" ? { limit: 60, now: queryNow } : "skip",
   );
   const myApplications = useQuery(
-    api.jobs.getMyApplications,
+    api.jobs.applications.getMyApplications,
     currentUser?.role === "instructor" ? { limit: 120 } : "skip",
   );
 

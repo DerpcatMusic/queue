@@ -59,7 +59,7 @@ type UseLessonCheckInOptions = {
 
 export function useLessonCheckIn(options?: UseLessonCheckInOptions) {
   const { t } = useTranslation();
-  const checkIntoLesson = useMutation(api.jobs.checkIntoLesson);
+  const checkIntoLesson = useMutation(api.jobs.checkIn.checkIntoLesson);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitCheckIn = useCallback(

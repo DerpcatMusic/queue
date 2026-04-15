@@ -14,7 +14,7 @@ export default function StudioProfileRedirectRoute() {
   const router = useRouter();
 
   const redirect = useQuery(
-    api.users.getStudioProfileRedirect,
+    api.studios.publicProfiles.getStudioProfileRedirect,
     studioId ? { studioId: studioId as Id<"studioProfiles"> } : "skip",
   );
 

@@ -39,10 +39,10 @@ export default function SportsScreen() {
   });
 
   const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
   );
-  const saveSettings = useMutation(api.users.updateMyInstructorSettings);
+  const saveSettings = useMutation(api.instructors.settings.updateMyInstructorSettings);
 
   const [draft, setDraft] = useState<string[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);

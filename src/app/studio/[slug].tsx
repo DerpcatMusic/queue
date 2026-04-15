@@ -24,7 +24,7 @@ export default function PublicStudioProfileBySlugScreen() {
   const { t, i18n } = useTranslation();
   const { color } = useTheme();
 
-  const profile = useQuery(api.users.getStudioPublicProfileBySlug, slug ? { slug } : "skip");
+  const profile = useQuery(api.studios.publicProfiles.getStudioPublicProfileBySlug, slug ? { slug } : "skip");
 
   const zoneLanguage = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
   const sports = useMemo(

@@ -203,7 +203,9 @@ export const postJob = mutation({
       }),
     });
 
-    await ctx.scheduler.runAfter(0, internal.notifications.sendJobNotifications, { jobId });
+    await ctx.scheduler.runAfter(0, internal.notifications.broadcast.sendJobNotifications, {
+      jobId,
+    });
     await ctx.scheduler.runAfter(
       Math.max(args.endTime - now, 0),
       internal.jobs.cancellation.closeJobIfStillOpen,

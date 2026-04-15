@@ -348,7 +348,7 @@ export async function validateStoredSessionWithConvex(
   try {
     // Attempt a query with timeout - if it returns null or throws, session is invalid
     await Promise.race([
-      convex.query(api.users.getCurrentUser, {}),
+      convex.query(api.users.getCurrent.getCurrentUser, {}),
       new Promise<null>((_, reject) =>
         setTimeout(() => reject(new Error("validate-timeout")), timeoutMs),
       ),

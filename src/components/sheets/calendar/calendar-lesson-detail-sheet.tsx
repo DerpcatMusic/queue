@@ -55,7 +55,7 @@ export const CalendarLessonDetailSheet = memo(function CalendarLessonDetailSheet
   const { isSubmitting, submitCheckIn } = useLessonCheckIn();
 
   const detail = useQuery(
-    api.jobs.getMyCalendarLessonDetail,
+    api.jobs.calendar.getMyCalendarLessonDetail,
     jobId ? { jobId: jobId as Id<"jobs"> } : "skip",
   );
 

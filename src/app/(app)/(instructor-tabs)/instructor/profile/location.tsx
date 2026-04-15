@@ -132,10 +132,10 @@ export default function LocationScreen() {
   });
 
   const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
   );
-  const saveInstructor = useMutation(api.users.updateMyInstructorSettings);
+  const saveInstructor = useMutation(api.instructors.settings.updateMyInstructorSettings);
   const locationResolver = useLocationResolution();
 
   // Search address bar

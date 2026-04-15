@@ -244,15 +244,15 @@ export default function StudioComplianceScreen() {
     routeMatchPath: "/profile/compliance",
   });
 
-  const currentUser = useQuery(api.users.getCurrentUser);
+  const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const shouldLoad = currentUser?.role === "studio";
-  const studioSettings = useQuery(api.users.getMyStudioSettings, shouldLoad ? {} : "skip");
-  const accessSnapshot = useQuery(api.access.getMyStudioAccessSnapshot, shouldLoad ? {} : "skip");
+  const studioSettings = useQuery(api.studios.settings.getMyStudioSettings, shouldLoad ? {} : "skip");
+  const accessSnapshot = useQuery(api.access.snapshots.getMyStudioAccessSnapshot, shouldLoad ? {} : "skip");
   const createStudioIdentityVerificationSession = useAction(
-    api.paymentsV2Actions.createMyStudioDiditVerificationSessionV2,
+    api.payments.actions.createMyStudioDiditVerificationSessionV2,
   );
   const refreshStudioIdentityVerification = useAction(
-    api.paymentsV2Actions.refreshMyStudioDiditVerificationV2,
+    api.payments.actions.refreshMyStudioDiditVerificationV2,
   );
 
   const compliance = accessSnapshot?.compliance;

@@ -34,7 +34,7 @@ export function PublicInstructorProfileSheet({
   const { t, i18n } = useTranslation();
   const { color } = useTheme();
   const profile = useQuery(
-    api.users.getInstructorPublicProfileForInstructor,
+    api.instructors.publicProfiles.getInstructorPublicProfileForInstructor,
     instructorId ? { instructorId: instructorId as Id<"instructorProfiles"> } : "skip",
   );
   const zoneLanguage = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";

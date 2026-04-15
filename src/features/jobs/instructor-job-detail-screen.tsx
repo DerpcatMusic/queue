@@ -60,13 +60,13 @@ export function InstructorJobDetailScreen({
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
 
   const queryNow = Math.floor(now / (60 * 1000)) * 60 * 1000;
-  const applyToJob = useMutation(api.jobs.applyToJob);
-  const withdrawApplication = useMutation(api.jobs.withdrawApplication);
+  const applyToJob = useMutation(api.jobs.applications.applyToJob);
+  const withdrawApplication = useMutation(api.jobs.applications.withdrawApplication);
   const studioProfile = useQuery(
-    api.jobs.getStudioProfileForInstructor,
+    api.jobs.browse.getStudioProfileForInstructor,
     studioId ? { studioId: studioId as Id<"studioProfiles">, now: queryNow } : "skip",
   );
-  const myApplications = useQuery(api.jobs.getMyApplications, { limit: 120 });
+  const myApplications = useQuery(api.jobs.applications.getMyApplications, { limit: 120 });
 
   const onApply = useCallback(
     async (job: InstructorMarketplaceJob) => {

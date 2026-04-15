@@ -78,16 +78,16 @@ export function useMapTabController() {
     return t("mapTab.mobile.activeResolution", { resolution });
   }, [deferredWorkRadiusKm, t]);
   const remoteZones = useQuery(
-    api.instructorZones.getMyInstructorZones,
+    api.instructors.zones.getMyInstructorZones,
     currentUser?.role === "instructor" && Platform.OS === "web" ? {} : "skip",
   );
   const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
   );
-  const saveInstructorSettings = useMutation(api.users.updateMyInstructorSettings);
+  const saveInstructorSettings = useMutation(api.instructors.settings.updateMyInstructorSettings);
   const remoteStudios = useQuery(
-    api.users.getInstructorMapStudios,
+    api.instructors.mapDiscovery.getInstructorMapStudios,
     currentUser?.role === "instructor" && mapPin
       ? {
           workRadiusKm: deferredWorkRadiusKm,
@@ -97,7 +97,7 @@ export function useMapTabController() {
       : "skip",
   );
   const remoteCoveragePolygons = useQuery(
-    api.users.getInstructorMapCoverage,
+    api.instructors.mapDiscovery.getInstructorMapCoverage,
     currentUser?.role === "instructor" && mapPin
       ? {
           workRadiusKm: deferredWorkRadiusKm,
@@ -117,7 +117,7 @@ export function useMapTabController() {
       longitude: longitude.toFixed(5),
     });
   }, [instructorSettings?.latitude, instructorSettings?.longitude, mapPin?.latitude, mapPin?.longitude, t]);
-  const saveZones = useMutation(api.instructorZones.setMyInstructorZones);
+  const saveZones = useMutation(api.instructors.zones.setMyInstructorZones);
 
   type RemoteStudio = NonNullable<typeof remoteStudios>[number];
   type RemoteCoveragePolygon = NonNullable<typeof remoteCoveragePolygons>[number];

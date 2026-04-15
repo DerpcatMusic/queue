@@ -85,11 +85,11 @@ export function PublicStudioProfileScreen() {
   const router = useRouter();
   const now = useMinuteNow();
   const profile = useQuery(
-    api.users.getStudioPublicProfileForInstructor,
+    api.studios.publicProfiles.getStudioPublicProfileForInstructor,
     studioId ? { studioId: studioId as Id<"studioProfiles"> } : "skip",
   );
   const jobsProfile = useQuery(
-    api.jobs.getStudioProfileForInstructor,
+    api.jobs.browse.getStudioProfileForInstructor,
     studioId ? { studioId: studioId as Id<"studioProfiles">, now } : "skip",
   );
   const zoneLanguage = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";

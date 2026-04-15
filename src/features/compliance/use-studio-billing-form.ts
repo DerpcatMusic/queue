@@ -56,7 +56,7 @@ export function useStudioBillingForm(
   defaultBusinessName?: string,
   autoSave = true,
 ) {
-  const saveBillingProfile = useMutation(api.complianceStudio.upsertMyStudioBillingProfile);
+  const saveBillingProfile = useMutation(api.compliance.studio.upsertMyStudioBillingProfile);
 
   const defaultCountry = getStripeMarketDefaults().country;
   const [country, setCountry] = useState(billingProfile?.country ?? defaultCountry);

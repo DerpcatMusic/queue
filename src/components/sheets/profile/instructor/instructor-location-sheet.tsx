@@ -235,7 +235,7 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
   const locationResolver = useLocationResolution();
 
   const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
   );
   // Address state

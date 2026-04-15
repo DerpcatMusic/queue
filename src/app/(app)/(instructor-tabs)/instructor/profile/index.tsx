@@ -122,15 +122,15 @@ export default function InstructorProfileScreen() {
   const shouldLoadSettings = currentUser?.role === "instructor";
 
   const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const payoutSummary = useQuery(
-    api.paymentsV2.getMyPayoutSummaryV2,
+    api.payments.core.getMyPayoutSummaryV2,
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const instructorAccessSnapshot = useQuery(
-    api.access.getMyInstructorAccessSnapshot,
+    api.access.snapshots.getMyInstructorAccessSnapshot,
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const diditVerification = instructorAccessSnapshot?.verification;

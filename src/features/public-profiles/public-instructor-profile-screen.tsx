@@ -30,7 +30,7 @@ export function PublicInstructorProfileScreen() {
   const { color } = useTheme();
   const router = useRouter();
   const profile = useQuery(
-    api.users.getInstructorPublicProfileForInstructor,
+    api.instructors.publicProfiles.getInstructorPublicProfileForInstructor,
     instructorId ? { instructorId: instructorId as Id<"instructorProfiles"> } : "skip",
   );
   const zoneLanguage = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";

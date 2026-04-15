@@ -91,7 +91,7 @@ export function InstructorCalendarSheet({ visible, onClose }: InstructorCalendar
   }, [visible]);
 
   const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
   );
   const googleStatus = useQuery(
@@ -99,7 +99,7 @@ export function InstructorCalendarSheet({ visible, onClose }: InstructorCalendar
     currentUser?.role === "instructor" ? {} : "skip",
   ) as GoogleCalendarStatus | undefined;
 
-  const saveSettings = useMutation(api.users.updateMyInstructorSettings);
+  const saveSettings = useMutation(api.instructors.settings.updateMyInstructorSettings);
   const disconnectGoogleCalendar = useAction(calendarApi.disconnectGoogleCalendar as any) as (
     args: Record<string, never>,
   ) => Promise<DisconnectGoogleCalendarResult>;

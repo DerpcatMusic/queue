@@ -51,7 +51,7 @@ const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).ca
 };
 
 export function useCalendarTabController() {
-  const currentUser = useQuery(api.users.getCurrentUser);
+  const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const todayKey = useMemo(() => toDayKey(Date.now()), []);
   const [selectedDay, setSelectedDay] = useState(todayKey);
   const selectedDayRef = useRef(todayKey);
@@ -79,18 +79,18 @@ export function useCalendarTabController() {
   const endTime = useMemo(() => dayKeyToTimestamp(windowRange.end) + DAY_MS - 1, [windowRange.end]);
   const timelineArgs = useMemo(() => ({ startTime, endTime, limit: 1000 }), [endTime, startTime]);
 
-  const remoteRows = useQuery(api.jobs.getMyCalendarTimeline, role ? timelineArgs : "skip");
+  const remoteRows = useQuery(api.jobs.calendar.getMyCalendarTimeline, role ? timelineArgs : "skip");
   const googleStatus = useQuery(calendarApi.getMyGoogleCalendarStatus as any, role ? {} : "skip") as
     | GoogleCalendarStatus
     | undefined;
 
   const emptyArgs = useMemo(() => ({}), []);
   const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     currentUser?.role === "instructor" ? emptyArgs : "skip",
   );
   const studioSettings = useQuery(
-    api.users.getMyStudioSettings,
+    api.studios.settings.getMyStudioSettings,
     currentUser?.role === "studio" ? emptyArgs : "skip",
   );
   const calendarSettings = role === "instructor" ? instructorSettings : studioSettings;

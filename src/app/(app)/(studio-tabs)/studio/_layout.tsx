@@ -28,11 +28,11 @@ export default function StudioTabsLayout() {
   const emptyArgs = useMemo(() => ({}), []);
 
   const studioTabCounts = useQuery(
-    api.jobs.getStudioTabCounts,
+    api.jobs.studioManagement.getStudioTabCounts,
     currentUser?.role === "studio" ? tabCountsArgsRef.current : "skip",
   );
   const unreadNotificationCount = useQuery(
-    api.inbox.getMyUnreadNotificationCount,
+    api.notifications.inbox.getMyUnreadNotificationCount,
     currentUser?.role === "studio" ? emptyArgs : "skip",
   );
 

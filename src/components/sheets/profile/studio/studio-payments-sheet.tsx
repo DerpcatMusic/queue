@@ -34,11 +34,11 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
   const { color } = useTheme();
   const locale = i18n.resolvedLanguage ?? "en";
 
-  const currentUser = useQuery(api.users.getCurrentUser);
+  const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const isStudio = currentUser?.role === "studio";
-  const paymentRows = useQuery(api.paymentsV2.listMyPaymentsV2, isStudio ? { limit: 40 } : "skip");
+  const paymentRows = useQuery(api.payments.core.listMyPaymentsV2, isStudio ? { limit: 40 } : "skip");
   const createCustomerSheetSession = useAction(
-    api.paymentsV2Actions.createMyStudioStripeCustomerSheetSessionV2,
+    api.payments.actions.createMyStudioStripeCustomerSheetSessionV2,
   );
 
   const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrdersV2"> | null>(null);
@@ -53,7 +53,7 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
   );
 
   const selectedPaymentDetail = useQuery(
-    api.paymentsV2.getMyPaymentDetailV2,
+    api.payments.core.getMyPaymentDetailV2,
     selectedPaymentId ? { paymentOrderId: selectedPaymentId } : "skip",
   );
 

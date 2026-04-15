@@ -100,20 +100,20 @@ export function StudioBranchesSheet({ visible, onClose }: StudioBranchesSheetPro
   const zoneLanguage = locale.toLowerCase().startsWith("he") ? "he" : "en";
 
   const branches = useQuery(
-    api.studioBranches.getMyStudioBranches,
+    api.studios.branches.getMyStudioBranches,
     currentUser?.role === "studio" ? { includeArchived: true } : "skip",
   ) as StudioBranchRecord[] | undefined;
   const entitlement = useQuery(
-    api.studioBranches.getStudioBranchEntitlementStatus,
+    api.studios.branches.getStudioBranchEntitlementStatus,
     currentUser?.role === "studio" ? {} : "skip",
   ) as BranchEntitlementStatus | undefined;
-  const createBranch = useMutation(api.studioBranches.createStudioBranch);
-  const updateBranch = useMutation(api.studioBranches.updateStudioBranch);
+  const createBranch = useMutation(api.studios.branches.createStudioBranch);
+  const updateBranch = useMutation(api.studios.branches.updateStudioBranch);
   const updateBranchCalendarSettings = useMutation(
-    api.studioBranches.updateStudioBranchCalendarSettings,
+    api.studios.branches.updateStudioBranchCalendarSettings,
   );
-  const archiveBranch = useMutation(api.studioBranches.archiveStudioBranch);
-  const setPrimaryBranch = useMutation(api.studioBranches.setPrimaryStudioBranch);
+  const archiveBranch = useMutation(api.studios.branches.archiveStudioBranch);
+  const setPrimaryBranch = useMutation(api.studios.branches.setPrimaryStudioBranch);
 
   const [mode, setMode] = useState<"create" | "edit" | null>(null);
   const [editingBranchId, setEditingBranchId] = useState<Id<"studioBranches"> | null>(null);

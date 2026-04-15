@@ -34,7 +34,7 @@ export function PublicStudioProfileSheet({
   const { color } = useTheme();
 
   const profile = useQuery(
-    api.users.getStudioPublicProfileForInstructor,
+    api.studios.publicProfiles.getStudioPublicProfileForInstructor,
     studioId ? { studioId } : "skip",
   );
   const zoneLanguage = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";

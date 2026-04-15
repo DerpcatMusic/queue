@@ -18,7 +18,7 @@ function isKnownRole(value: string): value is KnownRole {
 
 interface UserContextValue {
   /** Current user document from Convex, undefined while loading, null if not found */
-  currentUser: ReturnType<typeof useQuery<typeof api.users.getCurrentUser>>;
+  currentUser: ReturnType<typeof useQuery<typeof api.users.getCurrent.getCurrentUser>>;
   /** Role from currentUser; kept for backward compatibility with existing consumers */
   effectiveRole: KnownRole | null;
   /** All profile roles currently available on this account */
@@ -55,7 +55,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const { signOut } = useAuthActions();
   const { isLoading: isConvexAuthLoading, isAuthenticated } = useConvexAuth();
   const { isSessionTransitioning } = useAuthSession();
-  const currentUser = useQuery(api.users.getCurrentUser);
+  const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const forcedSignOutForMissingUserRef = useRef(false);
 
   useEffect(() => {

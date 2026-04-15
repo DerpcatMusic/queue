@@ -113,10 +113,10 @@ export function NotificationSettingsScreen({
   });
 
   const settings = useQuery(
-    api.users.getMyNotificationSettings,
+    api.notifications.settings.getMyNotificationSettings,
     currentUser?.role === actorRole ? {} : "skip",
   );
-  const updateSettings = useMutation(api.users.updateMyNotificationSettings);
+  const updateSettings = useMutation(api.notifications.settings.updateMyNotificationSettings);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

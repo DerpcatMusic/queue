@@ -90,38 +90,38 @@ function parseStudioComplianceReasons(message: string): string[] | null {
 
 export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
   const router = useRouter();
-  const currentUser = useQuery(api.users.getCurrentUser);
+  const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
 
-  const postJob = useMutation(api.jobs.postJob);
-  const reviewApplication = useMutation(api.jobs.reviewApplication);
+  const postJob = useMutation(api.jobs.postJob.postJob);
+  const reviewApplication = useMutation(api.jobs.review.reviewApplication);
   const updateStudioNotificationSettings = useMutation(
-    api.users.updateMyStudioNotificationSettings,
+    api.studios.settings.updateMyStudioNotificationSettings,
   );
-  const createStudioPaymentOfferV2 = useMutation(api.paymentsV2.createStudioPaymentOfferV2);
-  const createStudioPaymentOrderV2 = useMutation(api.paymentsV2.createStudioPaymentOrderV2);
+  const createStudioPaymentOfferV2 = useMutation(api.payments.core.createStudioPaymentOfferV2);
+  const createStudioPaymentOrderV2 = useMutation(api.payments.core.createStudioPaymentOrderV2);
   const createStripePaymentSheetForPaymentOrderV2 = useAction(
-    api.paymentsV2Actions.createStripePaymentSheetForPaymentOrderV2,
+    api.payments.actions.createStripePaymentSheetForPaymentOrderV2,
   );
 
   const studioJobs = useQuery(
-    api.jobs.getMyStudioJobsWithApplications,
+    api.jobs.studioManagement.getMyStudioJobsWithApplications,
     currentUser?.role === "studio" ? { limit: 80 } : "skip",
   );
 
   const studioNotificationSettings = useQuery(
-    api.users.getMyStudioNotificationSettings,
+    api.studios.settings.getMyStudioNotificationSettings,
     currentUser?.role === "studio" ? {} : "skip",
   );
   const studioPayments = useQuery(
-    api.paymentsV2.listMyPaymentsV2,
+    api.payments.core.listMyPaymentsV2,
     currentUser?.role === "studio" ? { limit: 200 } : "skip",
   );
   const studioBranches = useQuery(
-    api.studioBranches.getMyStudioBranches,
+    api.studios.branches.getMyStudioBranches,
     currentUser?.role === "studio" ? {} : "skip",
   );
   const studioComplianceSummary = useQuery(
-    api.complianceStudio.getMyStudioComplianceSummary,
+    api.compliance.studio.getMyStudioComplianceSummary,
     currentUser?.role === "studio" ? {} : "skip",
   );
 

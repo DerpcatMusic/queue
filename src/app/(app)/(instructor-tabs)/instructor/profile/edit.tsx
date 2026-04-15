@@ -112,10 +112,10 @@ export default function InstructorProfileEditScreen() {
     routeMatchPath: "/profile/edit",
   });
   const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
   );
-  const saveProfileCard = useMutation(api.users.updateMyInstructorProfileCard);
+  const saveProfileCard = useMutation(api.instructors.settings.updateMyInstructorProfileCard);
   const [nameDraft, setNameDraft] = useState("");
   const [bioDraft, setBioDraft] = useState("");
   const [sportsDraft, setSportsDraft] = useState<string[]>([]);

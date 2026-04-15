@@ -114,10 +114,10 @@ export function InstructorEditSheet({ visible, onClose }: InstructorEditSheetPro
   const { currentUser } = useUser();
   const theme = useTheme();
   const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
   );
-  const saveProfileCard = useMutation(api.users.updateMyInstructorProfileCard);
+  const saveProfileCard = useMutation(api.instructors.settings.updateMyInstructorProfileCard);
   const [nameDraft, setNameDraft] = useState("");
   const [bioDraft, setBioDraft] = useState("");
   const [sportsDraft, setSportsDraft] = useState<string[]>([]);

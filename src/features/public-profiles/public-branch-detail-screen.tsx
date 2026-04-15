@@ -20,7 +20,7 @@ export function PublicBranchDetailScreen() {
   const zoneLanguage = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
 
   const profile = useQuery(
-    api.users.getStudioPublicProfileForInstructor,
+    api.studios.publicProfiles.getStudioPublicProfileForInstructor,
     studioId ? { studioId: studioId as Id<"studioProfiles"> } : "skip",
   );
 

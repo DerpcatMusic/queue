@@ -52,14 +52,14 @@ export default function ProfilePaymentsScreen() {
     routeMatchPath: "/profile/payments",
   });
 
-  const currentUser = useQuery(api.users.getCurrentUser);
+  const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const isStudioPaymentsRole = currentUser?.role === "studio";
   const createCustomerSheetSession = useAction(
-    api.paymentsV2Actions.createMyStudioStripeCustomerSheetSessionV2,
+    api.payments.actions.createMyStudioStripeCustomerSheetSessionV2,
   );
 
   const paymentRows = useQuery(
-    api.paymentsV2.listMyPaymentsV2,
+    api.payments.core.listMyPaymentsV2,
     isStudioPaymentsRole ? { limit: 40 } : "skip",
   );
   const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrdersV2"> | null>(null);
@@ -74,7 +74,7 @@ export default function ProfilePaymentsScreen() {
   );
 
   const selectedPaymentDetail = useQuery(
-    api.paymentsV2.getMyPaymentDetailV2,
+    api.payments.core.getMyPaymentDetailV2,
     selectedPaymentId ? { paymentOrderId: selectedPaymentId } : "skip",
   );
   const canOpenCustomerSheet = currentUser?.role === "studio" && Platform.OS !== "web";

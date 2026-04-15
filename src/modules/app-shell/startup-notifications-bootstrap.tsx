@@ -28,11 +28,11 @@ export function StartupNotificationsBootstrap() {
   const localReminderSyncKeyRef = useRef<string | null>(null);
 
   const notificationSettings = useQuery(
-    api.users.getMyNotificationSettings,
+    api.notifications.settings.getMyNotificationSettings,
     currentUser?.role === "instructor" || currentUser?.role === "studio" ? {} : "skip",
   );
   const timeline = useQuery(
-    api.jobs.getMyCalendarTimeline,
+    api.jobs.calendar.getMyCalendarTimeline,
     currentUser?.role === "instructor" || currentUser?.role === "studio"
       ? {
           startTime: windowAnchor,
@@ -43,8 +43,8 @@ export function StartupNotificationsBootstrap() {
       : "skip",
   );
 
-  const updateNotificationSettings = useMutation(api.users.updateMyNotificationSettings);
-  const touchNotificationClientState = useMutation(api.users.touchMyNotificationClientState);
+  const updateNotificationSettings = useMutation(api.notifications.settings.updateMyNotificationSettings);
+  const touchNotificationClientState = useMutation(api.notifications.settings.touchMyNotificationClientState);
 
   useEffect(() => {
     if (Platform.OS === "web") {

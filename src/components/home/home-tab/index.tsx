@@ -32,38 +32,38 @@ export default function HomeScreen() {
   const canQueryStudio = !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
 
   const myStudioJobs = useQuery(
-    api.jobs.getMyStudioJobsWithApplications,
+    api.jobs.studioManagement.getMyStudioJobsWithApplications,
     canQueryStudio ? { limit: HOME_STUDIO_JOBS_LIMIT } : "skip",
   );
   const availableInstructorJobs = useQuery(
-    api.jobs.getAvailableJobsForInstructor,
+    api.jobs.browse.getAvailableJobsForInstructor,
     canQueryInstructor ? { limit: 4, now: queryNow } : "skip",
   );
   const instructorHomeStats = useQuery(
-    api.home.getMyInstructorHomeStats,
+    api.home.instructorStats.getMyInstructorHomeStats,
     canQueryInstructor ? {} : "skip",
   );
   const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     canQueryInstructor ? {} : "skip",
   );
   const instructorComplianceSummary = useQuery(
-    api.compliance.getMyInstructorComplianceSummary,
+    api.compliance.instructor.getMyInstructorComplianceSummary,
     canQueryInstructor ? { now: queryNow } : "skip",
   );
   const instructorPayoutSummary = useQuery(
-    api.paymentsV2.getMyPayoutSummaryV2,
+    api.payments.core.getMyPayoutSummaryV2,
     canQueryInstructor ? {} : "skip",
   );
-  const studioSettings = useQuery(api.users.getMyStudioSettings, canQueryStudio ? {} : "skip");
+  const studioSettings = useQuery(api.studios.settings.getMyStudioSettings, canQueryStudio ? {} : "skip");
   const studioComplianceSummary = useQuery(
-    api.complianceStudio.getMyStudioComplianceSummary,
+    api.compliance.studio.getMyStudioComplianceSummary,
     canQueryStudio ? {} : "skip",
   );
 
   const [withdrawingApplicationId, setWithdrawingApplicationId] =
     useState<Id<"jobApplications"> | null>(null);
-  const withdrawApplication = useMutation(api.jobs.withdrawApplication);
+  const withdrawApplication = useMutation(api.jobs.applications.withdrawApplication);
 
   const handleWithdrawApplication = useCallback(
     (applicationId: Id<"jobApplications">) => {

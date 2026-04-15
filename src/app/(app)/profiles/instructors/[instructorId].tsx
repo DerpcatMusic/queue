@@ -17,7 +17,7 @@ export default function InstructorProfileRedirectRoute() {
   const router = useRouter();
 
   const redirect = useQuery(
-    api.users.getInstructorProfileRedirect,
+    api.instructors.publicProfiles.getInstructorProfileRedirect,
     instructorId ? { instructorId: instructorId as Id<"instructorProfiles"> } : "skip",
   );
 

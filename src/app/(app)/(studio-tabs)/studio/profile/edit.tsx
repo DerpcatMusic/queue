@@ -50,10 +50,10 @@ export default function StudioProfileEditScreen() {
     routeMatchPath: "/profile/edit",
   });
   const studioSettings = useQuery(
-    api.users.getMyStudioSettings,
+    api.studios.settings.getMyStudioSettings,
     currentUser?.role === "studio" ? {} : "skip",
   );
-  const saveProfileCard = useMutation(api.users.updateMyStudioProfileCard);
+  const saveProfileCard = useMutation(api.studios.settings.updateMyStudioProfileCard);
   const [nameDraft, setNameDraft] = useState("");
   const [bioDraft, setBioDraft] = useState("");
   const [contactPhoneDraft, setContactPhoneDraft] = useState("");

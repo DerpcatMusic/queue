@@ -469,7 +469,7 @@ export function InstructorJobsArchiveSheet({
   const router = useRouter();
   const { t } = useTranslation();
   const theme = useTheme();
-  const payments = useQuery(api.paymentsV2.listMyPaymentsV2, { limit: 200 });
+  const payments = useQuery(api.payments.core.listMyPaymentsV2, { limit: 200 });
   const collapsedSheetHeight = useCollapsedSheetHeight();
   const [expandedApplicationId, setExpandedApplicationId] = useState<string | null>(null);
   const snapPoints = ["88%"];

@@ -31,15 +31,15 @@ export default function InstructorTabsLayout() {
   const emptyArgs = useMemo(() => ({}), []);
 
   const instructorTabCounts = useQuery(
-    api.jobs.getInstructorTabCounts,
+    api.jobs.instructorTabs.getInstructorTabCounts,
     currentUser?.role === "instructor" ? tabCountsArgsRef.current : "skip",
   );
   const unreadNotificationCount = useQuery(
-    api.inbox.getMyUnreadNotificationCount,
+    api.notifications.inbox.getMyUnreadNotificationCount,
     currentUser?.role === "instructor" ? emptyArgs : "skip",
   );
   useQuery(
-    api.users.getInstructorMapStudios,
+    api.instructors.mapDiscovery.getInstructorMapStudios,
     currentUser?.role === "instructor" ? emptyArgs : "skip",
   );
 

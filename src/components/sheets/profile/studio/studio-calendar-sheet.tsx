@@ -84,7 +84,7 @@ export function StudioCalendarSheet({ visible, onClose }: StudioCalendarSheetPro
   }, []);
 
   const studioSettings = useQuery(
-    api.users.getMyStudioSettings,
+    api.studios.settings.getMyStudioSettings,
     currentUser?.role === "studio" ? {} : "skip",
   ) as StudioSettings | null | undefined;
   const googleStatus = useQuery(
@@ -92,7 +92,7 @@ export function StudioCalendarSheet({ visible, onClose }: StudioCalendarSheetPro
     currentUser?.role === "studio" ? {} : "skip",
   ) as GoogleCalendarStatus | undefined;
 
-  const saveSettings = useMutation(api.users.updateMyStudioCalendarSettings);
+  const saveSettings = useMutation(api.studios.settings.updateMyStudioCalendarSettings);
   const disconnectGoogleCalendar = useAction(calendarApi.disconnectGoogleCalendar as any) as (
     args: Record<string, never>,
   ) => Promise<DisconnectGoogleCalendarResult>;

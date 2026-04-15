@@ -253,29 +253,29 @@ export function InstructorComplianceSheet({ visible, onClose }: InstructorCompli
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const autoRefreshSessionIdRef = useRef<string | null>(null);
   const didAutoCloseStripeRef = useRef(false);
-  const currentUser = useQuery(api.users.getCurrentUser);
+  const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const complianceArgs = useMemo(
     () => (currentUser?.role === "instructor" ? (refreshAt ? { now: refreshAt } : {}) : "skip"),
     [currentUser?.role, refreshAt],
   );
   const instructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     currentUser?.role === "instructor" ? {} : "skip",
   );
   const accessSnapshot = useQuery(
-    api.access.getMyInstructorAccessSnapshot,
+    api.access.snapshots.getMyInstructorAccessSnapshot,
     currentUser?.role === "instructor" ? complianceArgs : "skip",
   );
   const diditVerification = accessSnapshot?.verification;
   const compliance = accessSnapshot?.compliance;
   const refreshMyDiditVerification = useAction(
-    api.paymentsV2Actions.refreshMyInstructorStripeConnectedAccountV2,
+    api.payments.actions.refreshMyInstructorStripeConnectedAccountV2,
   );
   const createStripeEmbeddedSession = useAction(
-    api.paymentsV2Actions.createMyInstructorStripeEmbeddedSessionV2,
+    api.payments.actions.createMyInstructorStripeEmbeddedSessionV2,
   );
   const createStripeHostedAccountLink = useAction(
-    api.paymentsV2Actions.createMyInstructorStripeAccountLinkV2,
+    api.payments.actions.createMyInstructorStripeAccountLinkV2,
   );
   const { isUploading, pickAndUploadComplianceDocument } = useComplianceDocumentUpload();
 

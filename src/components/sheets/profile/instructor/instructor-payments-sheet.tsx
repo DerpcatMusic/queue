@@ -57,20 +57,20 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
   const { t } = useTranslation();
   const theme = useTheme();
 
-  const currentUser = useQuery(api.users.getCurrentUser);
+  const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const isInstructor = currentUser?.role === "instructor";
   const connectedAccount = useQuery(
-    api.paymentsV2.getMyInstructorConnectedAccountV2,
+    api.payments.core.getMyInstructorConnectedAccountV2,
     isInstructor ? {} : "skip",
   );
   const refreshStripeAccount = useAction(
-    api.paymentsV2Actions.refreshMyInstructorStripeConnectedAccountV2,
+    api.payments.actions.refreshMyInstructorStripeConnectedAccountV2,
   );
   const createStripeEmbeddedSession = useAction(
-    api.paymentsV2Actions.createMyInstructorStripeEmbeddedSessionV2,
+    api.payments.actions.createMyInstructorStripeEmbeddedSessionV2,
   );
   const createStripeHostedAccountLink = useAction(
-    api.paymentsV2Actions.createMyInstructorStripeAccountLinkV2,
+    api.payments.actions.createMyInstructorStripeAccountLinkV2,
   );
 
   const [connectBusy, setConnectBusy] = useState(false);

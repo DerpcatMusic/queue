@@ -207,20 +207,20 @@ function OnboardingScreenContent() {
   const isDesktop = width >= 980;
   const language = i18n.resolvedLanguage?.startsWith("he") ? "he" : "en";
 
-  const currentUser = useQuery(api.users.getCurrentUser);
-  const completeInstructorOnboarding = useMutation(api.onboarding.completeInstructorOnboarding);
-  const completeStudioOnboarding = useMutation(api.onboarding.completeStudioOnboarding);
+  const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
+  const completeInstructorOnboarding = useMutation(api.onboarding.instructor.completeInstructorOnboarding);
+  const completeStudioOnboarding = useMutation(api.onboarding.studio.completeStudioOnboarding);
   const createStripeEmbeddedSession = useAction(
-    api.paymentsV2Actions.createMyInstructorStripeEmbeddedSessionV2,
+    api.payments.actions.createMyInstructorStripeEmbeddedSessionV2,
   );
   const createStripeHostedAccountLink = useAction(
-    api.paymentsV2Actions.createMyInstructorStripeAccountLinkV2,
+    api.payments.actions.createMyInstructorStripeAccountLinkV2,
   );
   const createStudioIdentityVerificationSession = useAction(
-    api.paymentsV2Actions.createMyStudioDiditVerificationSessionV2,
+    api.payments.actions.createMyStudioDiditVerificationSessionV2,
   );
   const refreshStudioIdentityVerification = useAction(
-    api.paymentsV2Actions.refreshMyStudioDiditVerificationV2,
+    api.payments.actions.refreshMyStudioDiditVerificationV2,
   );
   const { isUploading, pickAndUploadComplianceDocument } = useComplianceDocumentUpload();
 
@@ -366,24 +366,24 @@ function OnboardingScreenContent() {
     role === "instructor" && step === 2 && currentUser?.role === "instructor";
   const verificationQueryArgs = verificationRefreshAt ? { now: verificationRefreshAt } : {};
   const instructorAccessSnapshot = useQuery(
-    api.access.getMyInstructorAccessSnapshot,
+    api.access.snapshots.getMyInstructorAccessSnapshot,
     shouldLoadInstructorVerification ? verificationQueryArgs : "skip",
   );
   const shouldLoadStudioVerification =
     role === "studio" && step === 2 && currentUser?.role === "studio";
   const onboardingInstructorSettings = useQuery(
-    api.users.getMyInstructorSettings,
+    api.instructors.settings.getMyInstructorSettings,
     shouldLoadInstructorVerification ? {} : "skip",
   );
   const studioAccessSnapshot = useQuery(
-    api.access.getMyStudioAccessSnapshot,
+    api.access.snapshots.getMyStudioAccessSnapshot,
     shouldLoadStudioVerification ? {} : "skip",
   );
   const diditVerification = instructorAccessSnapshot?.verification;
   const onboardingCompliance = instructorAccessSnapshot?.compliance;
   const studioDiditVerification = studioAccessSnapshot?.verification;
   const onboardingStudioCompliance = studioAccessSnapshot?.compliance;
-  const saveStudioBillingProfile = useMutation(api.complianceStudio.upsertMyStudioBillingProfile);
+  const saveStudioBillingProfile = useMutation(api.compliance.studio.upsertMyStudioBillingProfile);
   useEffect(() => {
     if (!shouldLoadStudioVerification) {
       return;

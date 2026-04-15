@@ -155,7 +155,7 @@ export const HomeRoleContent = memo(function HomeRoleContent({
   onWithdrawApplication,
 }: HomeRoleContentProps) {
   const router = useRouter();
-  const reviewApplication = useMutation(api.jobs.reviewApplication);
+  const reviewApplication = useMutation(api.jobs.review.reviewApplication);
 
   // Sheet openers for instructor profile sub-pages
   const instructorSheetHandlers = useOpenInstructorSheet();

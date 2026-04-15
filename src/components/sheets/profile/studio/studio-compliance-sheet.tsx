@@ -50,13 +50,13 @@ export function StudioComplianceSheet({ visible, onClose }: StudioComplianceShee
   const theme = useTheme();
   const studioSheetHandlers = useOpenStudioSheet();
 
-  const currentUser = useQuery(api.users.getCurrentUser);
+  const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const shouldLoad = currentUser?.role === "studio";
-  const studioSettings = useQuery(api.users.getMyStudioSettings, shouldLoad ? {} : "skip");
-  const accessSnapshot = useQuery(api.access.getMyStudioAccessSnapshot, shouldLoad ? {} : "skip");
+  const studioSettings = useQuery(api.studios.settings.getMyStudioSettings, shouldLoad ? {} : "skip");
+  const accessSnapshot = useQuery(api.access.snapshots.getMyStudioAccessSnapshot, shouldLoad ? {} : "skip");
   const compliance = accessSnapshot?.compliance;
   const diditVerification = accessSnapshot?.verification;
-  const saveBillingProfile = useMutation(api.complianceStudio.upsertMyStudioBillingProfile);
+  const saveBillingProfile = useMutation(api.compliance.studio.upsertMyStudioBillingProfile);
 
   const [refreshing, setRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

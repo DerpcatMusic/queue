@@ -144,16 +144,16 @@ export default function StudioProfileScreen() {
   const shouldLoadSettings = currentUser?.role === "studio";
 
   const studioSettings = useQuery(
-    api.users.getMyStudioSettings,
+    api.studios.settings.getMyStudioSettings,
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const studioAccessSnapshot = useQuery(
-    api.access.getMyStudioAccessSnapshot,
+    api.access.snapshots.getMyStudioAccessSnapshot,
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const studioComplianceSummary = studioAccessSnapshot?.compliance.summary;
   const studioDiditVerification = studioAccessSnapshot?.verification;
-  const updateMyStudioSettings = useMutation(api.users.updateMyStudioSettings);
+  const updateMyStudioSettings = useMutation(api.studios.settings.updateMyStudioSettings);
   const [autoAcceptDefault, setAutoAcceptDefault] = useState(false);
   const [isSavingAutoAcceptDefault, setIsSavingAutoAcceptDefault] = useState(false);
   const [autoExpireMinutesBefore, setAutoExpireMinutesBefore] = useState<number | undefined>(
