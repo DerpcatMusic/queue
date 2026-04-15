@@ -40,7 +40,7 @@ const GOOGLE_DISCOVERY: AuthSession.DiscoveryDocument = {
   revocationEndpoint: "https://oauth2.googleapis.com/revoke",
 };
 
-const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).calendar as {
+const calendarApi = (api as unknown as { calendar: { googleCalendar: Record<string, unknown> } }).calendar.googleCalendar as {
   getMyGoogleCalendarStatus: unknown;
   disconnectGoogleCalendar: unknown;
   connectGoogleCalendarWithCode: unknown;

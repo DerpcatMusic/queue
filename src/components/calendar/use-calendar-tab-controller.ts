@@ -44,7 +44,7 @@ import {
   mergeVisibilityFilters,
 } from "./calendar-tab-controller.helpers";
 
-const calendarApi = (api as unknown as { calendar: Record<string, unknown> }).calendar as {
+const calendarApi = (api as unknown as { calendar: { googleCalendar: Record<string, unknown> } }).calendar.googleCalendar as {
   getMyGoogleCalendarAgenda: unknown;
   getMyGoogleCalendarStatus: unknown;
   syncMyGoogleCalendarEvents: unknown;
