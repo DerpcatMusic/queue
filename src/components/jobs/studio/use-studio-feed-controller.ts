@@ -33,7 +33,7 @@ import {
 
 export type StudioJobsTimeFilter = "all" | "active" | "past";
 
-const STUDIO_COMPLIANCE_ROUTE = "/studio/profile/compliance" as const;
+const STUDIO_COMPLIANCE_ROUTE = "/onboarding/verification?role=studio" as const;
 
 type UseStudioFeedControllerArgs = {
   t: TFunction;
@@ -66,6 +66,8 @@ function getStudioComplianceBlockersLabel(reasons: string[], t: TFunction) {
           return t("profile.studioCompliance.blockers.billing");
         case "payment_method_required":
           return t("profile.studioCompliance.blockers.payment");
+        case "account_suspended":
+          return "Overdue payments are blocking new jobs";
         default:
           return reason;
       }
@@ -97,10 +99,10 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
   const updateStudioNotificationSettings = useMutation(
     api.studios.settings.updateMyStudioNotificationSettings,
   );
-  const createStudioPaymentOfferV2 = useMutation(api.payments.core.createStudioPaymentOfferV2);
-  const createStudioPaymentOrderV2 = useMutation(api.payments.core.createStudioPaymentOrderV2);
-  const createStripePaymentSheetForPaymentOrderV2 = useAction(
-    api.payments.actions.createStripePaymentSheetForPaymentOrderV2,
+  const createStudioPaymentOffer = useMutation(api.payments.core.createPaymentOffer);
+  const createStudioPaymentOrder = useMutation(api.payments.core.createPaymentOrder);
+  const createStripePaymentSheetForPaymentOrder = useAction(
+    api.payments.actions.createStripePaymentSheetForPaymentOrder,
   );
 
   const studioJobs = useQuery(
@@ -113,7 +115,7 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     currentUser?.role === "studio" ? {} : "skip",
   );
   const studioPayments = useQuery(
-    api.payments.core.listMyPaymentsV2,
+    api.payments.core.listMyPaymentOrders,
     currentUser?.role === "studio" ? { limit: 200 } : "skip",
   );
   const studioBranches = useQuery(
@@ -257,6 +259,8 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
         pay,
         maxParticipants: draft.maxParticipants,
         cancellationDeadlineHours: draft.cancellationDeadlineHours,
+        paymentTiming: draft.paymentTiming,
+        paymentGraceDays: draft.paymentGraceDays,
         applicationDeadline: finalApplicationDeadline,
         ...omitUndefined({
           note,
@@ -399,9 +403,9 @@ export function useStudioFeedController({ t }: UseStudioFeedControllerArgs) {
     }
 
     await ensureStripeNativeSdkInitialized();
-    const offer = await createStudioPaymentOfferV2({ jobId });
-    const order = await createStudioPaymentOrderV2({ offerId: offer._id });
-    const checkout = await createStripePaymentSheetForPaymentOrderV2({
+    const offer = await createStudioPaymentOffer({ jobId });
+    const order = await createStudioPaymentOrder({ offerId: offer._id });
+    const checkout = await createStripePaymentSheetForPaymentOrder({
       paymentOrderId: order._id,
     });
     const billingName =

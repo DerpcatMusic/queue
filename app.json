@@ -8,7 +8,6 @@
     "scheme": "queue",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "newArchEnabled": true,
       "userInterfaceStyle": "automatic",
       "supportsTablet": true,
       "usesAppleSignIn": true,
@@ -31,7 +30,6 @@
       }
     },
     "android": {
-      "newArchEnabled": true,
       "package": "com.derpcat.queue",
       "softwareKeyboardLayoutMode": "resize",
       "userInterfaceStyle": "automatic",

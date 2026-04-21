@@ -76,6 +76,10 @@ export function getInstructorBlockingSummary(reasons: string[], t: TFunction): s
           return t("profile.compliance.blockers.insurance");
         case "sport_certificate_required":
           return t("profile.compliance.blockers.certificate");
+        case "professional_registry_required":
+          return t("profile.compliance.blockers.professionalRegistry", {
+            defaultValue: "Professional registry verification",
+          });
         default:
           return reason;
       }
@@ -93,6 +97,8 @@ export function getStudioBlockingSummary(reasons: string[], t: TFunction): strin
           return t("profile.studioCompliance.blockers.billing");
         case "payment_method_required":
           return t("profile.studioCompliance.blockers.payment");
+        case "account_suspended":
+          return "Overdue payments are blocking new jobs";
         default:
           return reason;
       }
@@ -121,9 +127,12 @@ export function getLatestCertificate<T extends CertificateRowLike>(rows: T[]): T
   if (rows.length === 0) {
     return null;
   }
-  return [...rows].sort(
-    (left, right) => (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt),
-  )[0] ?? null;
+  return (
+    [...rows].sort(
+      (left, right) =>
+        (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt),
+    )[0] ?? null
+  );
 }
 
 export function getLatestCertificateForSport<T extends CertificateRowLike>(
@@ -140,31 +149,38 @@ export function getLatestCertificateForSport<T extends CertificateRowLike>(
     return null;
   }
 
-  return [...matchingRows].sort((left, right) => {
-    const leftPriority = left.reviewStatus === "approved" ? 1 : 0;
-    const rightPriority = right.reviewStatus === "approved" ? 1 : 0;
-    if (leftPriority !== rightPriority) {
-      return rightPriority - leftPriority;
-    }
-    return (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt);
-  })[0] ?? null;
+  return (
+    [...matchingRows].sort((left, right) => {
+      const leftPriority = left.reviewStatus === "approved" ? 1 : 0;
+      const rightPriority = right.reviewStatus === "approved" ? 1 : 0;
+      if (leftPriority !== rightPriority) {
+        return rightPriority - leftPriority;
+      }
+      return (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt);
+    })[0] ?? null
+  );
 }
 
-export function getPreferredInsurancePolicy<T extends InsuranceRowLike>(rows: T[], now: number): T | null {
+export function getPreferredInsurancePolicy<T extends InsuranceRowLike>(
+  rows: T[],
+  now: number,
+): T | null {
   if (rows.length === 0) {
     return null;
   }
 
-  return [...rows].sort((left, right) => {
-    const leftActiveApproved =
-      left.reviewStatus === "approved" && (!left.expiresAt || left.expiresAt > now) ? 1 : 0;
-    const rightActiveApproved =
-      right.reviewStatus === "approved" && (!right.expiresAt || right.expiresAt > now) ? 1 : 0;
-    if (leftActiveApproved !== rightActiveApproved) {
-      return rightActiveApproved - leftActiveApproved;
-    }
-    return (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt);
-  })[0] ?? null;
+  return (
+    [...rows].sort((left, right) => {
+      const leftActiveApproved =
+        left.reviewStatus === "approved" && (!left.expiresAt || left.expiresAt > now) ? 1 : 0;
+      const rightActiveApproved =
+        right.reviewStatus === "approved" && (!right.expiresAt || right.expiresAt > now) ? 1 : 0;
+      if (leftActiveApproved !== rightActiveApproved) {
+        return rightActiveApproved - leftActiveApproved;
+      }
+      return (right.reviewedAt ?? right.uploadedAt) - (left.reviewedAt ?? left.uploadedAt);
+    })[0] ?? null
+  );
 }
 
 function formatDate(value: number | undefined, locale: string) {
@@ -187,7 +203,10 @@ export function getInsuranceSubtitle(
   },
 ): string {
   if (!row) {
-    const country = getCountryDisplayName(options?.countryCode ?? getStripeMarketDefaults().country, locale);
+    const country = getCountryDisplayName(
+      options?.countryCode ?? getStripeMarketDefaults().country,
+      locale,
+    );
     return country
       ? t("profile.compliance.insurance.missingBodyCountry", { country })
       : t("profile.compliance.insurance.missingBody");

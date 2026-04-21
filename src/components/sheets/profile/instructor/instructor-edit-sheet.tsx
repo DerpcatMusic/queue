@@ -7,8 +7,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
+import { LoadingScreen } from "@/components/loading-screen";
 import { ProfileEditorForm } from "@/components/profile/profile-editor";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
+import { SettingsUnavailableScreen } from "@/components/profile/settings-unavailable-screen";
 import { SkeletonLine } from "@/components/ui/skeleton";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
@@ -150,7 +152,7 @@ export function InstructorEditSheet({ visible, onClose }: InstructorEditSheetPro
     );
   }, [bioDraft, instructorSettings, nameDraft, socialLinksDraft, sportsDraft]);
 
-  const isLoading = currentUser?.role !== "instructor" || !instructorSettings;
+  const isLoading = currentUser === undefined;
 
   const { animatedStyle } = useContentReveal(isLoading);
 
@@ -161,6 +163,22 @@ export function InstructorEditSheet({ visible, onClose }: InstructorEditSheetPro
         <Box style={{ flex: 1, backgroundColor: theme.color.appBg }}>
           <SkeletonProfile />
         </Box>
+      </BaseProfileSheet>
+    );
+  }
+
+  if (currentUser === null || instructorSettings === null) {
+    return (
+      <BaseProfileSheet visible={visible} onClose={onClose}>
+        <SettingsUnavailableScreen label={t("profile.settings.unavailable")} />
+      </BaseProfileSheet>
+    );
+  }
+
+  if (instructorSettings === undefined) {
+    return (
+      <BaseProfileSheet visible={visible} onClose={onClose}>
+        <LoadingScreen label={t("profile.settings.loading")} />
       </BaseProfileSheet>
     );
   }

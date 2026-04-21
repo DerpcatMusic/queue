@@ -28,7 +28,7 @@ export type StudioControllerJob = {
   pendingApplicationsCount: number;
   pay: number;
   payment?: {
-    paymentId: Id<"paymentOrdersV2">;
+    paymentId: Id<"paymentOrders">;
     payoutStatus: PayoutStatus | null;
     status: PaymentStatus;
   } | null;
@@ -86,7 +86,7 @@ export function buildLatestPaymentByJobId(
   studioPayments:
     | Array<{
         payment: {
-          _id: Id<"paymentOrdersV2">;
+          _id: Id<"paymentOrders">;
           jobId: Id<"jobs">;
           status:
             | "created"
@@ -113,7 +113,7 @@ export function buildLatestPaymentByJobId(
   const map = new Map<
     string,
     {
-      paymentId: Id<"paymentOrdersV2">;
+      paymentId: Id<"paymentOrders">;
       status:
         | "created"
         | "pending"

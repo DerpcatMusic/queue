@@ -7,17 +7,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Text, TextInput, View } from "react-native";
 import { useUnistyles } from "react-native-unistyles";
-
-import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ProfileEditorForm } from "@/components/profile/profile-editor";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
+import { SettingsUnavailableScreen } from "@/components/profile/settings-unavailable-screen";
+import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
+import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isProfileImageUploadError, useProfileImageUpload } from "@/hooks/use-profile-image-upload";
-import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { FontSize } from "@/lib/design-system";
+import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 
 interface StudioEditSheetProps {
   visible: boolean;
@@ -105,7 +105,21 @@ export function StudioEditSheet({ visible, onClose }: StudioEditSheetProps) {
     addressDraft,
   ]);
 
-  if (currentUser?.role !== "studio" || !studioSettings) {
+  if (currentUser === undefined) {
+    return (
+      <BaseProfileSheet visible={visible} onClose={onClose}>
+        <LoadingScreen label={t("profile.settings.loading")} />
+      </BaseProfileSheet>
+    );
+  }
+  if (currentUser === null || studioSettings === null) {
+    return (
+      <BaseProfileSheet visible={visible} onClose={onClose}>
+        <SettingsUnavailableScreen label={t("profile.settings.unavailable")} />
+      </BaseProfileSheet>
+    );
+  }
+  if (studioSettings === undefined) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose}>
         <LoadingScreen label={t("profile.settings.loading")} />

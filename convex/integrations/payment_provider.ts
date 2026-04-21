@@ -5,8 +5,6 @@
  * Use this to add new providers (Stripe, Payme, etc.) without changing core logic.
  */
 
-import type { Id } from "../_generated/dataModel";
-
 // =============================================================================
 // Provider Identity
 // =============================================================================
@@ -97,7 +95,7 @@ export interface PayoutMethod {
 export interface CreatePayoutParams {
   amountAgorot: number;
   currency: string;
-  destinationId: Id<"payoutDestinations">;
+  destinationId: string;
   idempotencyKey: string;
   metadata?: Record<string, string>;
 }

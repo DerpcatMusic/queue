@@ -8,10 +8,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
-
-import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ProfileSettingRow } from "@/components/profile/profile-settings-sections";
+import { SettingsUnavailableScreen } from "@/components/profile/settings-unavailable-screen";
+import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -116,17 +116,24 @@ export function InstructorNotificationsSheet({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  if (settings === undefined) {
+  if (currentUser === undefined) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose}>
         <LoadingScreen label={t("profile.settings.loading")} />
       </BaseProfileSheet>
     );
   }
-  if (settings === null) {
+  if (currentUser === null || settings === null) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose}>
-        <LoadingScreen label={t("profile.settings.unavailable")} />
+        <SettingsUnavailableScreen label={t("profile.settings.unavailable")} />
+      </BaseProfileSheet>
+    );
+  }
+  if (settings === undefined) {
+    return (
+      <BaseProfileSheet visible={visible} onClose={onClose}>
+        <LoadingScreen label={t("profile.settings.loading")} />
       </BaseProfileSheet>
     );
   }

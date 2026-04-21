@@ -17,7 +17,7 @@ app.use(workflow);
 // Rate limiter: protects Gemini API quota from abuse
 app.use(rateLimiter);
 
-// Stripe: checkout, billing, and webhook sync foundation for payments migration
+// Stripe: checkout, billing, and webhook sync foundation for provider-neutral payments
 app.use(stripe);
 
 export default app;

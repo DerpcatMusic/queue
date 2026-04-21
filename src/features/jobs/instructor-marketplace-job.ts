@@ -38,6 +38,9 @@ export type InstructorMarketplaceJob = {
     | "identity_verification_required"
     | "insurance_verification_required"
     | "sport_certificate_required";
+  // For max 3 concurrent applicants feature
+  pendingApplicationsCount?: number;
+  isNearCapacity?: boolean; // true when 2+ applicants (2/3 or 3/3)
 };
 
 export type InstructorJobApplicationOverlay = {

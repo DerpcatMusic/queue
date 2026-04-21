@@ -16,9 +16,9 @@ import { LogBox, Platform, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { BottomSheetStackProvider } from "@/components";
 import { AppSafeRoot } from "@/components/layout/app-safe-root";
 import { ScrollSheetProvider } from "@/components/layout/scroll-sheet-provider";
-import { BottomSheetStackProvider } from "@/components";
 import { CalendarLessonDetailSheet } from "@/components/sheets/calendar/calendar-lesson-detail-sheet";
 import { InstructorAddAccountSheet } from "@/components/sheets/profile/instructor/instructor-add-account-sheet";
 import { InstructorCalendarSheet } from "@/components/sheets/profile/instructor/instructor-calendar-sheet";
@@ -29,17 +29,16 @@ import { InstructorNotificationsSheet } from "@/components/sheets/profile/instru
 // Sheet components - mounted at root level above all tabs
 import { InstructorPaymentsSheet } from "@/components/sheets/profile/instructor/instructor-payments-sheet";
 import { InstructorSportsSheet } from "@/components/sheets/profile/instructor/instructor-sports-sheet";
+import { LanguagePickerSheet } from "@/components/sheets/profile/language-picker-sheet";
 import { PublicInstructorProfileSheet } from "@/components/sheets/profile/public-instructor-profile-sheet";
 import { PublicStudioProfileSheet } from "@/components/sheets/profile/public-studio-profile-sheet";
 import { StudioAddAccountSheet } from "@/components/sheets/profile/studio/studio-add-account-sheet";
 import { StudioBranchesSheet } from "@/components/sheets/profile/studio/studio-branches-sheet";
 import { StudioCalendarSheet } from "@/components/sheets/profile/studio/studio-calendar-sheet";
-import { StudioComplianceSheet } from "@/components/sheets/profile/studio/studio-compliance-sheet";
 import { StudioEditSheet } from "@/components/sheets/profile/studio/studio-edit-sheet";
 import { StudioNotificationsSheet } from "@/components/sheets/profile/studio/studio-notifications-sheet";
 import { StudioPaymentsSheet } from "@/components/sheets/profile/studio/studio-payments-sheet";
 import { StudioPublicProfileSheet as StudioPublicProfileSlugSheet } from "@/components/sheets/profile/studio/studio-public-profile-sheet";
-import { LanguagePickerSheet } from "@/components/sheets/profile/language-picker-sheet";
 import { AuthSessionControllerProvider } from "@/contexts/auth-session-context";
 import { SheetProvider, useSheetContext } from "@/contexts/sheet-context";
 import { SystemUiProvider, useSystemUi } from "@/contexts/system-ui-context";
@@ -320,21 +319,16 @@ function RootLayoutContent() {
           BottomSheetModal portals render at the BottomSheetModalProvider level.
           If ScrollSheetProvider is below, the portal content loses context. */}
       <ScrollSheetProvider>
-        <BottomSheetModalProvider>
-          <AuthSessionControllerProvider value={authSessionController}>
-            <ConvexAuthProvider
-              key={`convex-auth:${authSessionVersion}`}
-              client={convex}
-              {...(nativeStorage ? { storage: nativeStorage } : {})}
-            >
-              <UserProvider key={`user-session:${appSessionVersion}`}>
-                <BottomSheetStackProvider>
-                  <SheetProvider key={`sheet-session:${appSessionVersion}`}>
-                    {/* Sheets use BottomSheetModal portals — position absolute so they never
-                        take flex layout space alongside the main app. */}
-                    <View pointerEvents="box-none" style={{ position: "absolute", inset: 0 }}>
-                      <GlobalSheets />
-                    </View>
+        <AuthSessionControllerProvider value={authSessionController}>
+          <ConvexAuthProvider
+            key={`convex-auth:${authSessionVersion}`}
+            client={convex}
+            {...(nativeStorage ? { storage: nativeStorage } : {})}
+          >
+            <UserProvider key={`user-session:${appSessionVersion}`}>
+              <BottomSheetStackProvider>
+                <SheetProvider key={`sheet-session:${appSessionVersion}`}>
+                  <BottomSheetModalProvider>
                     <StartupNotificationsBootstrap />
                     <ThemeProvider value={navigationTheme}>
                       <AppSafeRoot
@@ -377,12 +371,17 @@ function RootLayoutContent() {
                         />
                       </AppSafeRoot>
                     </ThemeProvider>
-                  </SheetProvider>
-                </BottomSheetStackProvider>
-              </UserProvider>
-            </ConvexAuthProvider>
-          </AuthSessionControllerProvider>
-        </BottomSheetModalProvider>
+                    {/* Sheets use BottomSheetModal portals — position absolute so they never
+                        take flex layout space alongside the main app. */}
+                    <View pointerEvents="box-none" style={{ position: "absolute", inset: 0 }}>
+                      <GlobalSheets />
+                    </View>
+                  </BottomSheetModalProvider>
+                </SheetProvider>
+              </BottomSheetStackProvider>
+            </UserProvider>
+          </ConvexAuthProvider>
+        </AuthSessionControllerProvider>
       </ScrollSheetProvider>
     </GestureHandlerRootView>
   );
@@ -430,93 +429,89 @@ function GlobalSheets() {
   return (
     <>
       {/* Instructor sheets */}
-      <InstructorPaymentsSheet
-        visible={instructorActiveSheet === "payments"}
-        onClose={closeInstructorSheetIfActive("payments")}
-      />
-      <InstructorSportsSheet
-        visible={instructorActiveSheet === "sports"}
-        onClose={closeInstructorSheetIfActive("sports")}
-      />
-      <InstructorLocationSheet
-        visible={instructorActiveSheet === "location"}
-        onClose={closeInstructorSheetIfActive("location")}
-      />
-      <InstructorComplianceSheet
-        visible={instructorActiveSheet === "compliance"}
-        onClose={closeInstructorSheetIfActive("compliance")}
-      />
-      <InstructorCalendarSheet
-        visible={instructorActiveSheet === "calendar-settings"}
-        onClose={closeInstructorSheetIfActive("calendar-settings")}
-      />
-      <InstructorEditSheet
-        visible={instructorActiveSheet === "edit"}
-        onClose={closeInstructorSheetIfActive("edit")}
-      />
-      <InstructorNotificationsSheet
-        visible={instructorActiveSheet === "notifications"}
-        onClose={closeInstructorSheetIfActive("notifications")}
-      />
-      <InstructorAddAccountSheet
-        visible={instructorActiveSheet === "add-account"}
-        onClose={closeInstructorSheetIfActive("add-account")}
-      />
+      {instructorActiveSheet === "payments" ? (
+        <InstructorPaymentsSheet visible onClose={closeInstructorSheetIfActive("payments")} />
+      ) : null}
+      {instructorActiveSheet === "sports" ? (
+        <InstructorSportsSheet visible onClose={closeInstructorSheetIfActive("sports")} />
+      ) : null}
+      {instructorActiveSheet === "location" ? (
+        <InstructorLocationSheet visible onClose={closeInstructorSheetIfActive("location")} />
+      ) : null}
+      {instructorActiveSheet === "compliance" ? (
+        <InstructorComplianceSheet visible onClose={closeInstructorSheetIfActive("compliance")} />
+      ) : null}
+      {instructorActiveSheet === "calendar-settings" ? (
+        <InstructorCalendarSheet
+          visible
+          onClose={closeInstructorSheetIfActive("calendar-settings")}
+        />
+      ) : null}
+      {instructorActiveSheet === "edit" ? (
+        <InstructorEditSheet visible onClose={closeInstructorSheetIfActive("edit")} />
+      ) : null}
+      {instructorActiveSheet === "notifications" ? (
+        <InstructorNotificationsSheet
+          visible
+          onClose={closeInstructorSheetIfActive("notifications")}
+        />
+      ) : null}
+      {instructorActiveSheet === "add-account" ? (
+        <InstructorAddAccountSheet visible onClose={closeInstructorSheetIfActive("add-account")} />
+      ) : null}
       {/* Studio sheets */}
-      <StudioPaymentsSheet
-        visible={studioActiveSheet === "payments"}
-        onClose={closeStudioSheetIfActive("payments")}
-      />
-      <StudioComplianceSheet
-        visible={studioActiveSheet === "compliance"}
-        onClose={closeStudioSheetIfActive("compliance")}
-      />
-      <StudioBranchesSheet
-        visible={studioActiveSheet === "branches"}
-        onClose={closeStudioSheetIfActive("branches")}
-      />
-      <StudioCalendarSheet
-        visible={studioActiveSheet === "calendar-settings"}
-        onClose={closeStudioSheetIfActive("calendar-settings")}
-      />
-      <StudioEditSheet
-        visible={studioActiveSheet === "edit"}
-        onClose={closeStudioSheetIfActive("edit")}
-      />
-      <StudioNotificationsSheet
-        visible={studioActiveSheet === "notifications"}
-        onClose={closeStudioSheetIfActive("notifications")}
-      />
-      <StudioAddAccountSheet
-        visible={studioActiveSheet === "add-account"}
-        onClose={closeStudioSheetIfActive("add-account")}
-      />
+      {studioActiveSheet === "payments" ? (
+        <StudioPaymentsSheet visible onClose={closeStudioSheetIfActive("payments")} />
+      ) : null}
+      {studioActiveSheet === "branches" ? (
+        <StudioBranchesSheet visible onClose={closeStudioSheetIfActive("branches")} />
+      ) : null}
+      {studioActiveSheet === "calendar-settings" ? (
+        <StudioCalendarSheet visible onClose={closeStudioSheetIfActive("calendar-settings")} />
+      ) : null}
+      {studioActiveSheet === "edit" ? (
+        <StudioEditSheet visible onClose={closeStudioSheetIfActive("edit")} />
+      ) : null}
+      {studioActiveSheet === "notifications" ? (
+        <StudioNotificationsSheet visible onClose={closeStudioSheetIfActive("notifications")} />
+      ) : null}
+      {studioActiveSheet === "add-account" ? (
+        <StudioAddAccountSheet visible onClose={closeStudioSheetIfActive("add-account")} />
+      ) : null}
 
       {/* Calendar lesson detail sheet */}
-      <CalendarLessonDetailSheet
-        visible={calendarLessonJobId !== null}
-        jobId={calendarLessonJobId}
-        role={calendarLessonRole}
-        onClose={closeCalendarLesson}
-      />
+      {calendarLessonJobId !== null ? (
+        <CalendarLessonDetailSheet
+          visible
+          jobId={calendarLessonJobId}
+          role={calendarLessonRole}
+          onClose={closeCalendarLesson}
+        />
+      ) : null}
 
       {/* Studio public profile sheet */}
-      <StudioPublicProfileSlugSheet
-        visible={studioPublicProfileSlug !== null}
-        slug={studioPublicProfileSlug}
-        onClose={closeStudioPublicProfile}
-      />
-      <PublicInstructorProfileSheet
-        visible={instructorPublicProfileId !== null}
-        instructorId={instructorPublicProfileId}
-        onClose={closeInstructorPublicProfile}
-      />
-      <PublicStudioProfileSheet
-        visible={studioPublicProfileId !== null}
-        studioId={studioPublicProfileId}
-        onClose={closeStudioPublicProfileById}
-      />
-      <LanguagePickerSheet visible={languagePickerVisible} onClose={closeLanguagePicker} />
+      {studioPublicProfileSlug !== null ? (
+        <StudioPublicProfileSlugSheet
+          visible
+          slug={studioPublicProfileSlug}
+          onClose={closeStudioPublicProfile}
+        />
+      ) : null}
+      {instructorPublicProfileId !== null ? (
+        <PublicInstructorProfileSheet
+          visible
+          instructorId={instructorPublicProfileId}
+          onClose={closeInstructorPublicProfile}
+        />
+      ) : null}
+      {studioPublicProfileId !== null ? (
+        <PublicStudioProfileSheet
+          visible
+          studioId={studioPublicProfileId}
+          onClose={closeStudioPublicProfileById}
+        />
+      ) : null}
+      {languagePickerVisible ? <LanguagePickerSheet visible onClose={closeLanguagePicker} /> : null}
     </>
   );
 }

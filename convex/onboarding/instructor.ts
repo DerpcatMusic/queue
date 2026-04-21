@@ -15,7 +15,11 @@ import {
   omitUndefined,
   trimOptionalString,
 } from "../lib/validation";
-import { assertRoleCanCompleteOnboarding, resolveGetOrCreateProfileAction, AppRole } from "./_shared";
+import {
+  type AppRole,
+  assertRoleCanCompleteOnboarding,
+  resolveGetOrCreateProfileAction,
+} from "./_shared";
 
 const MAX_BIO_LENGTH = 1200;
 const MAX_DISPLAY_NAME_LENGTH = 80;
@@ -62,10 +66,12 @@ export const completeInstructorOnboarding = mutation({
     bio: v.optional(v.string()),
     sports: v.array(v.string()),
     address: v.optional(v.string()),
+    addressCountry: v.optional(v.string()),
+    addressCountryCode: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     expoPushToken: v.optional(v.string()),
-    notificationsEnabled: v.boolean(),
+    notificationsEnabled: v.optional(v.boolean()),
     hourlyRateExpectation: v.optional(v.number()),
   },
   returns: v.object({
@@ -85,6 +91,12 @@ export const completeInstructorOnboarding = mutation({
       "Display name",
     );
     const address = normalizeOptionalString(args.address, MAX_ADDRESS_LENGTH, "Address");
+    const addressCountry = normalizeOptionalString(args.addressCountry, 120, "Address country");
+    const addressCountryCode = normalizeOptionalString(
+      args.addressCountryCode?.toUpperCase(),
+      2,
+      "Address country code",
+    );
     const { latitude, longitude } = normalizeCoordinates(
       omitUndefined({
         latitude: args.latitude,
@@ -102,14 +114,11 @@ export const completeInstructorOnboarding = mutation({
     }
 
     const sports = [...new Set(args.sports.map((sport) => normalizeSportType(sport)))];
-    if (sports.length === 0) {
-      throw new ConvexError("At least one sport is required");
-    }
     if (sports.length > MAX_SPORTS) {
       throw new ConvexError("Too many sports selected");
     }
 
-    const notificationsEnabled = args.notificationsEnabled && Boolean(pushToken);
+    const notificationsEnabled = Boolean(args.notificationsEnabled && pushToken);
     const h3Hierarchy = safeH3Hierarchy(latitude, longitude);
 
     // Generate unique slug for public profile URL
@@ -128,6 +137,8 @@ export const completeInstructorOnboarding = mutation({
             bio,
             expoPushToken: pushToken,
             address,
+            addressCountry,
+            addressCountryCode,
             latitude,
             longitude,
             hourlyRateExpectation: args.hourlyRateExpectation,
@@ -161,6 +172,8 @@ export const completeInstructorOnboarding = mutation({
           bio,
           expoPushToken: pushToken,
           address,
+          addressCountry,
+          addressCountryCode,
           latitude,
           longitude,
           hourlyRateExpectation: args.hourlyRateExpectation,

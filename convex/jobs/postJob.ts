@@ -1,7 +1,25 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
-import { query, mutation } from "../_generated/server";
+import { mutation, query } from "../_generated/server";
+import { normalizeCapabilityTagArray, normalizeSportType } from "../lib/domainValidation";
+import { getH3HierarchyFromCell, safeH3Hierarchy } from "../lib/h3";
 import {
+  ensureStudioInfrastructure,
+  requireAccessibleStudioBranch,
+  requireStudioOwnerContext,
+} from "../lib/studioBranches";
+import {
+  assertPositiveInteger,
+  assertValidJobApplicationDeadline,
+  omitUndefined,
+  trimOptionalString,
+} from "../lib/validation";
+import {
+  enforceStudioJobPostingPolicy,
+  initializeJobMarketplacePolicy,
+} from "../policy/marketplace";
+import {
+  assertPositiveNumber,
   BOOST_CUSTOM_MAX,
   BOOST_CUSTOM_MIN,
   BOOST_CUSTOM_STEP,
@@ -9,26 +27,16 @@ import {
   BOOST_TRIGGER_MINUTES_OPTIONS,
   DEFAULT_AUTO_EXPIRE_MINUTES,
   ensureOneOf,
-  assertPositiveNumber,
   normalizeTimeZone,
-  scheduleGoogleCalendarSyncForUser,
-  SESSION_LANGUAGE_SET,
   REQUIRED_LEVEL_SET,
+  SESSION_LANGUAGE_SET,
+  scheduleGoogleCalendarSyncForUser,
 } from "./_helpers";
 import {
-  ensureStudioInfrastructure,
-  requireAccessibleStudioBranch,
-  requireStudioOwnerContext,
-} from "../lib/studioBranches";
-import { getH3HierarchyFromCell, safeH3Hierarchy } from "../lib/h3";
-import {
-  assertPositiveInteger,
-  assertValidJobApplicationDeadline,
-  omitUndefined,
-  trimOptionalString,
-} from "../lib/validation";
-import { normalizeCapabilityTagArray, normalizeSportType } from "../lib/domainValidation";
-import { assertStudioCanPublishJobs } from "../lib/studioCompliance";
+  DEFAULT_JOB_APPLICATION_LIMIT,
+  DEFAULT_JOB_PAYMENT_GRACE_DAYS,
+  DEFAULT_JOB_PAYMENT_TIMING,
+} from "./lifecycle";
 
 export const getServerNow = query({
   args: {
@@ -53,6 +61,16 @@ export const postJob = mutation({
     timeZone: v.optional(v.string()),
     pay: v.number(),
     note: v.optional(v.string()),
+    paymentTiming: v.optional(
+      v.union(
+        v.literal("before_lesson"),
+        v.literal("after_start"),
+        v.literal("after_end"),
+        v.literal("net_terms"),
+      ),
+    ),
+    paymentGraceDays: v.optional(v.number()),
+    applicationLimit: v.optional(v.number()),
     requiredLevel: v.optional(
       v.union(
         v.literal("beginner_friendly"),
@@ -80,7 +98,7 @@ export const postJob = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const { studio } = await requireStudioOwnerContext(ctx);
-    await assertStudioCanPublishJobs(ctx, studio);
+    await enforceStudioJobPostingPolicy(ctx, studio);
     const { branch } = await requireAccessibleStudioBranch(ctx, {
       studioId: studio._id,
       branchId: args.branchId,
@@ -117,6 +135,11 @@ export const postJob = mutation({
     }
     if (args.cancellationDeadlineHours !== undefined) {
       assertPositiveInteger(args.cancellationDeadlineHours, "cancellationDeadlineHours");
+    }
+    if (args.paymentGraceDays !== undefined) {
+      if (!Number.isFinite(args.paymentGraceDays) || args.paymentGraceDays < 0) {
+        throw new ConvexError("paymentGraceDays must be a valid non-negative number");
+      }
     }
     assertValidJobApplicationDeadline({
       now,
@@ -185,6 +208,9 @@ export const postJob = mutation({
       startTime: args.startTime,
       endTime: args.endTime,
       pay: args.pay,
+      paymentTiming: args.paymentTiming ?? DEFAULT_JOB_PAYMENT_TIMING,
+      paymentGraceDays: args.paymentGraceDays ?? DEFAULT_JOB_PAYMENT_GRACE_DAYS,
+      applicationLimit: args.applicationLimit ?? DEFAULT_JOB_APPLICATION_LIMIT,
       status: "open",
       postedAt: now,
       ...omitUndefined({
@@ -209,6 +235,10 @@ export const postJob = mutation({
         autoAcceptEnabled: branch.autoAcceptDefault ?? studio.autoAcceptDefault,
       }),
     });
+    const createdJob = await ctx.db.get("jobs", jobId);
+    if (createdJob) {
+      await initializeJobMarketplacePolicy(ctx, createdJob);
+    }
 
     await ctx.scheduler.runAfter(0, internal.notifications.broadcast.sendJobNotifications, {
       jobId,

@@ -55,6 +55,9 @@ export default ({ config }: { config: ExpoConfig }) => {
       plugin === "@didit-protocol/sdk-react-native" ||
       (Array.isArray(plugin) && plugin[0] === "@didit-protocol/sdk-react-native"),
   );
+  const hasExpoImagePlugin = plugins.some(
+    (plugin) => plugin === "expo-image" || (Array.isArray(plugin) && plugin[0] === "expo-image"),
+  );
 
   if (googleIosUrlScheme && !hasGoogleSigninPlugin) {
     plugins.push([
@@ -81,6 +84,10 @@ export default ({ config }: { config: ExpoConfig }) => {
       "@didit-protocol/sdk-react-native",
       {},
     ]);
+  }
+
+  if (!hasExpoImagePlugin) {
+    plugins.push("expo-image");
   }
 
   return {

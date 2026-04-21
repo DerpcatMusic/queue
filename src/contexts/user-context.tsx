@@ -9,11 +9,19 @@ import {
   toDeviceAccountIdentity,
 } from "@/modules/session/device-account-store";
 
-type KnownRole = "pending" | "instructor" | "studio" | "admin";
+type KnownRole = "pending" | "instructor" | "studio";
 type AppRole = "instructor" | "studio";
 
+// Internal access types
+type InternalAccessInfo = {
+  role?: "tester";
+  verificationBypass: boolean;
+  canManageInternalAccess: boolean;
+  source: "none" | "table" | "env" | "table+env";
+};
+
 function isKnownRole(value: string): value is KnownRole {
-  return value === "pending" || value === "instructor" || value === "studio" || value === "admin";
+  return value === "pending" || value === "instructor" || value === "studio";
 }
 
 interface UserContextValue {
@@ -23,6 +31,8 @@ interface UserContextValue {
   effectiveRole: KnownRole | null;
   /** All profile roles currently available on this account */
   availableRoles: AppRole[];
+  /** Internal testing access info (tester role, verification bypass) */
+  internalAccess: InternalAccessInfo | null;
   /** Is auth state still loading? */
   isAuthLoading: boolean;
   /** Is user authenticated? */
@@ -41,6 +51,7 @@ const DEFAULT_USER_CONTEXT: UserContextValue = {
   currentUser: undefined,
   effectiveRole: null,
   availableRoles: [],
+  internalAccess: null,
   isAuthLoading: true,
   isAuthenticated: false,
   isSyncing: false,
@@ -56,6 +67,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const { isLoading: isConvexAuthLoading, isAuthenticated } = useConvexAuth();
   const { isSessionTransitioning } = useAuthSession();
   const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
+  const internalAccess = useQuery(api.internal.access.getMyInternalAccess);
   const forcedSignOutForMissingUserRef = useRef(false);
 
   useEffect(() => {
@@ -89,6 +101,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       currentUser,
       effectiveRole: isKnownRole(currentUser?.role ?? "") ? (currentUser?.role ?? null) : null,
       availableRoles: currentUser?.roles ?? [],
+      internalAccess: internalAccess ?? null,
       isAuthLoading: isConvexAuthLoading,
       isAuthenticated,
       isSyncing: false,
@@ -96,7 +109,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       hasAttemptedSync: true,
       retrySync: () => undefined,
     }),
-    [currentUser, isConvexAuthLoading, isAuthenticated],
+    [currentUser, internalAccess, isConvexAuthLoading, isAuthenticated],
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

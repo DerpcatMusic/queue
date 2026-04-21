@@ -1,4 +1,5 @@
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import type { AddressCollectionMode, CollectionMode } from "@stripe/stripe-react-native";
 import { useAction, useQuery } from "convex/react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,13 +7,13 @@ import { Platform, Pressable } from "react-native";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PaymentActivityList } from "@/components/payments/payment-activity-list";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
-import { StripeCustomerSheet } from "@/components/sheets/profile/studio/stripe-customer-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { KitList, KitListItem } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getPaymentMethodOrder } from "@/features/payments/lib/get-payment-method-order";
+import { presentStripeNativeSetupSheet } from "@/features/payments/lib/stripe-native";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth } from "@/lib/design-system";
 import { formatDateTime } from "@/lib/jobs-utils";
@@ -21,7 +22,7 @@ import {
   getPaymentStatusLabel,
   getPayoutStatusLabel,
 } from "@/lib/payments-utils";
-import { getStripeMarketDefaults } from "@/lib/stripe";
+import { getStripeMarketDefaults, getStripeSetupCountry } from "@/lib/stripe";
 import { Box } from "@/primitives";
 
 interface StudioPaymentsSheetProps {
@@ -36,13 +37,20 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
 
   const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const isStudio = currentUser?.role === "studio";
-  const paymentRows = useQuery(api.payments.core.listMyPaymentsV2, isStudio ? { limit: 40 } : "skip");
-  const createCustomerSheetSession = useAction(
-    api.payments.actions.createMyStudioStripeCustomerSheetSessionV2,
+  const studioComplianceDetails = useQuery(
+    api.compliance.studio.getMyStudioComplianceDetails,
+    isStudio ? {} : "skip",
   );
+  const paymentRows = useQuery(
+    api.payments.core.listMyPaymentOrders,
+    isStudio ? { limit: 40 } : "skip",
+  );
+  const createCustomerSheetSession = useAction(
+    api.payments.actions.createMyStudioStripeCustomerSheetSession,
+  );
+  const syncStudioPaymentProfile = useAction(api.payments.actions.syncMyStudioStripePaymentProfile);
 
-  const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrdersV2"> | null>(null);
-  const [customerSheetVisible, setCustomerSheetVisible] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrders"> | null>(null);
   const customerSheetSessionPromiseRef = useRef<Promise<{
     customerId: string;
     customerSessionClientSecret: string;
@@ -53,7 +61,7 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
   );
 
   const selectedPaymentDetail = useQuery(
-    api.payments.core.getMyPaymentDetailV2,
+    api.payments.core.getMyPaymentOrderDetail,
     selectedPaymentId ? { paymentOrderId: selectedPaymentId } : "skip",
   );
 
@@ -78,12 +86,9 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
   const isDetailLoading = selectedPaymentId !== null && selectedPaymentDetail === undefined;
   const canOpenCustomerSheet = currentUser.role === "studio" && Platform.OS !== "web";
   const paymentMethodTypes = getPaymentMethodOrder(getStripeMarketDefaults().currency);
-
-  const customerSheetDefaultBillingDetails = currentUser.email
-    ? {
-        email: currentUser.email,
-      }
-    : undefined;
+  const stripeSetupCountry = getStripeSetupCountry(
+    studioComplianceDetails?.billingProfile?.country,
+  );
 
   return (
     <BaseProfileSheet visible={visible} onClose={onClose} scrollable={false}>
@@ -130,10 +135,59 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={t("profile.payments.savedMethods")}
-                    onPress={() => {
+                    onPress={async () => {
                       customerSheetSessionPromiseRef.current = null;
                       setFeedback(null);
-                      setCustomerSheetVisible(true);
+                      try {
+                        customerSheetSessionPromiseRef.current ??= createCustomerSheetSession();
+                        const session = await customerSheetSessionPromiseRef.current;
+                        const result = await presentStripeNativeSetupSheet({
+                          setupIntentClientSecret: session.setupIntentClientSecret,
+                          customerSessionClientSecret: session.customerSessionClientSecret,
+                          customerId: session.customerId,
+                          merchantDisplayName: "Queue",
+                          billingName: currentUser.name ?? "Studio",
+                          paymentMethodOrder: paymentMethodTypes,
+                          defaultBillingDetails: {
+                            ...(currentUser.name ? { name: currentUser.name } : {}),
+                            ...(currentUser.email ? { email: currentUser.email } : {}),
+                            ...(stripeSetupCountry
+                              ? { address: { country: stripeSetupCountry } }
+                              : {}),
+                          },
+                          billingDetailsCollectionConfiguration: {
+                            name: "always" as CollectionMode,
+                            email: "automatic" as CollectionMode,
+                            address: "automatic" as AddressCollectionMode,
+                            attachDefaultsToPaymentMethod: true,
+                          },
+                        });
+
+                        if (result.status === "canceled") {
+                          return;
+                        }
+                        if (result.status === "failed") {
+                          setFeedback({
+                            tone: "error",
+                            message: result.error,
+                          });
+                          return;
+                        }
+
+                        await syncStudioPaymentProfile();
+                        setFeedback({
+                          tone: "success",
+                          message: t("profile.payments.savedMethodsUpdated"),
+                        });
+                      } catch (error) {
+                        setFeedback({
+                          tone: "error",
+                          message:
+                            error instanceof Error
+                              ? error.message
+                              : t("jobsTab.errors.failedToLoad"),
+                        });
+                      }
                     }}
                     style={({ pressed }) => ({
                       opacity: pressed ? 0.7 : 1,
@@ -172,61 +226,8 @@ export function StudioPaymentsSheet({ visible, onClose }: StudioPaymentsSheetPro
               : t("profile.payments.instructorSubtitle")
           }
           emptyLabel={t("profile.payments.empty")}
-          onSelectPaymentId={(paymentId) =>
-            setSelectedPaymentId(paymentId as Id<"paymentOrdersV2">)
-          }
+          onSelectPaymentId={(paymentId) => setSelectedPaymentId(paymentId as Id<"paymentOrders">)}
         />
-
-        {canOpenCustomerSheet ? (
-          <StripeCustomerSheet
-            visible={customerSheetVisible}
-            onResult={(result) => {
-              setCustomerSheetVisible(false);
-              customerSheetSessionPromiseRef.current = null;
-              if (result.error) {
-                setFeedback({
-                  tone: "error",
-                  message: result.error.localizedMessage ?? result.error.message,
-                });
-                return;
-              }
-              if (result.paymentMethod || result.paymentOption) {
-                setFeedback({
-                  tone: "success",
-                  message: t("profile.payments.savedMethodsUpdated"),
-                });
-              }
-            }}
-            merchantDisplayName="Queue"
-            headerTextForSelectionScreen={t("profile.payments.savedMethods")}
-            intentConfiguration={{
-              paymentMethodTypes,
-            }}
-            clientSecretProvider={{
-              provideCustomerSessionClientSecret: async () => {
-                customerSheetSessionPromiseRef.current ??= createCustomerSheetSession();
-                const session = await customerSheetSessionPromiseRef.current;
-                return {
-                  customerId: session.customerId,
-                  clientSecret: session.customerSessionClientSecret,
-                };
-              },
-              provideSetupIntentClientSecret: async () => {
-                customerSheetSessionPromiseRef.current ??= createCustomerSheetSession();
-                const session = await customerSheetSessionPromiseRef.current;
-                return session.setupIntentClientSecret;
-              },
-            }}
-            defaultBillingDetails={customerSheetDefaultBillingDetails}
-            billingDetailsCollectionConfiguration={{
-              name: "always",
-              email: "automatic",
-              address: "automatic",
-              attachDefaultsToPaymentMethod: true,
-            }}
-            returnURL="queue://stripe-redirect"
-          />
-        ) : null}
 
         {selectedPaymentId ? (
           <Box style={{ gap: BrandSpacing.sm, paddingHorizontal: BrandSpacing.sm }}>

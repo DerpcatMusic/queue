@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { getPrimaryStudioBranch, getStudioMembership } from "../lib/studioBranchAccess";
 
 // ============ Constants ============
 export const MAX_SPORTS = 12;
@@ -75,7 +76,10 @@ export async function getUniqueInstructorProfileByUserId(
   return profiles[0] ?? null;
 }
 
-export async function getUniqueStudioProfileByUserId(ctx: UserProfileCtx, userId: Doc<"users">["_id"]) {
+export async function getUniqueStudioProfileByUserId(
+  ctx: UserProfileCtx,
+  userId: Doc<"users">["_id"],
+) {
   const profiles = await ctx.db
     .query("studioProfiles")
     .withIndex("by_user_id", (q) => q.eq("userId", userId))
@@ -87,17 +91,27 @@ export async function getUniqueStudioProfileByUserId(ctx: UserProfileCtx, userId
 }
 
 export async function resolveOwnedRoles(ctx: UserProfileCtx, user: Doc<"users">) {
-  const seededRoles = (user.roles ?? []).filter(
-    (role): role is AppRole => role === "instructor" || role === "studio",
-  );
-
   const [instructorProfile, studioProfile] = await Promise.all([
     getUniqueInstructorProfileByUserId(ctx, user._id),
     getUniqueStudioProfileByUserId(ctx, user._id),
   ]);
 
-  return mergeOwnedRoles(seededRoles, user.role, {
-    instructor: instructorProfile !== null,
-    studio: studioProfile !== null,
+  let hasStudioRole = false;
+
+  if (studioProfile) {
+    const [membership, primaryBranch] = await Promise.all([
+      getStudioMembership(ctx, studioProfile._id, user._id),
+      getPrimaryStudioBranch(ctx, studioProfile._id),
+    ]);
+    hasStudioRole = Boolean(
+      membership && membership.status === "active" && membership.role === "owner" && primaryBranch,
+    );
+  }
+
+  return (["instructor", "studio"] as const).filter((role) => {
+    if (role === "instructor") {
+      return instructorProfile !== null;
+    }
+    return hasStudioRole;
   });
 }

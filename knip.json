@@ -30,7 +30,7 @@
     "interface": true,
     "type": true
   },
-  "ignoreBinaries": ["powershell"],
+  "ignoreBinaries": ["powershell", "python3"],
   "ignoreDependencies": ["babel-preset-expo", "expo-navigation-bar", "react-native-svg"],
   "ignore": [
     "src/components/maps/queue-map-apple-theme.ts",

@@ -254,14 +254,18 @@ export function useOpenStudioSheet() {
   const { currentUser } = useUser();
   const { openStudioSheet, openLanguagePicker } = useSheetContext();
   const openStudioComplianceRoute = () => {
-    router.push("/studio/profile/compliance");
+    router.push("/onboarding/verification?role=studio");
+    return true;
+  };
+  const openStudioPaymentsRoute = () => {
+    router.push("/studio/profile/payments");
     return true;
   };
 
   return {
     openPayments: () => {
       if (currentUser?.role !== "studio") return false;
-      return openStudioComplianceRoute();
+      return openStudioPaymentsRoute();
     },
     openCompliance: () => {
       if (currentUser?.role !== "studio") return false;

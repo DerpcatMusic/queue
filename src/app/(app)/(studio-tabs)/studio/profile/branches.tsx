@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
+import { Redirect } from "expo-router";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
@@ -14,6 +15,7 @@ import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
+import { SettingsUnavailableScreen } from "@/components/profile/settings-unavailable-screen";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { ChoicePill } from "@/components/ui/choice-pill";
@@ -24,10 +26,10 @@ import { getZoneLabel, ZONE_OPTIONS } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { Box } from "@/primitives";
 import { useTheme } from "@/hooks/use-theme";
 import { EXPIRY_OVERRIDE_PRESETS } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
+import { Box } from "@/primitives";
 
 type CalendarProvider = "none" | "google" | "apple";
 
@@ -317,16 +319,28 @@ export default function StudioBranchesScreen() {
     );
   };
 
-  if (currentUser === undefined || (currentUser?.role === "studio" && branches === undefined)) {
+  if (currentUser === undefined) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
 
-  if (currentUser?.role !== "studio") {
-    return <LoadingScreen label={t("profile.settings.unavailable")} />;
+  if (currentUser === null) {
+    return <Redirect href="/sign-in" />;
+  }
+
+  if (currentUser.role !== "studio") {
+    return <Redirect href="/" />;
+  }
+
+  if (branches === undefined) {
+    return <LoadingScreen label={t("profile.settings.loading")} />;
   }
 
   if (entitlement === undefined) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
+  }
+
+  if (entitlement === null) {
+    return <SettingsUnavailableScreen label={t("profile.settings.unavailable")} />;
   }
 
   return (

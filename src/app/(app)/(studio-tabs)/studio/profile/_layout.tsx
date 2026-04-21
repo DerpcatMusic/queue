@@ -1,8 +1,10 @@
 import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
 import { View } from "react-native";
 import { TabSubrouteStack } from "@/components/layout/tab-subroute-stack";
 import { ProfileSubpageSheetProvider } from "@/components/profile/profile-subpage-sheet";
+import { useSystemUi } from "@/contexts/system-ui-context";
 
 /**
  * Profile section for Studio.
@@ -11,6 +13,19 @@ import { ProfileSubpageSheetProvider } from "@/components/profile/profile-subpag
  */
 export default function ProfileLayout() {
   const { t } = useTranslation();
+  const { setTopInsetBackgroundColor, setTopInsetTone, setTopInsetVisible } = useSystemUi();
+
+  useEffect(() => {
+    setTopInsetVisible(false);
+    setTopInsetBackgroundColor("transparent");
+    setTopInsetTone("app");
+
+    return () => {
+      setTopInsetVisible(true);
+      setTopInsetBackgroundColor(null);
+      setTopInsetTone("app");
+    };
+  }, [setTopInsetBackgroundColor, setTopInsetTone, setTopInsetVisible]);
 
   return (
     <View style={{ flex: 1 }}>

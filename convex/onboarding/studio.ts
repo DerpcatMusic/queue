@@ -59,6 +59,8 @@ export const completeStudioOnboarding = mutation({
     studioName: v.string(),
     address: v.string(),
     contactPhone: v.optional(v.string()),
+    addressCountry: v.optional(v.string()),
+    addressCountryCode: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     expoPushToken: v.optional(v.string()),
@@ -87,6 +89,8 @@ export const completeStudioOnboarding = mutation({
       MAX_PHONE_LENGTH,
       "Contact phone",
     );
+    const addressCountry = trimOptionalString(args.addressCountry);
+    const addressCountryCode = trimOptionalString(args.addressCountryCode)?.toUpperCase();
     const { latitude, longitude } = normalizeCoordinates(
       omitUndefined({
         latitude: args.latitude,
@@ -118,6 +122,8 @@ export const completeStudioOnboarding = mutation({
           address,
           ...omitUndefined({
             contactPhone,
+            addressCountry,
+            addressCountryCode,
             latitude,
             longitude,
             expoPushToken,
@@ -143,6 +149,8 @@ export const completeStudioOnboarding = mutation({
         address,
         ...omitUndefined({
           contactPhone,
+          addressCountry,
+          addressCountryCode,
           latitude,
           longitude,
           expoPushToken,
@@ -168,6 +176,8 @@ export const completeStudioOnboarding = mutation({
           notificationsEnabled,
           ...omitUndefined({
             contactPhone,
+            addressCountry,
+            addressCountryCode,
             latitude,
             longitude,
             expoPushToken,

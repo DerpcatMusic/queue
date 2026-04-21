@@ -1,6 +1,4 @@
-import { useMutation } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/convex/_generated/api";
 import { getStripeMarketDefaults } from "@/lib/stripe";
 import { type CountryFieldConfig, getCountryConfig } from "./country-field-config";
 
@@ -51,14 +49,27 @@ export type BillingFeedback = {
 
 export function useStudioBillingForm(
   billingProfile: BillingProfileSnapshot | null | undefined,
+  saveBillingProfile: (payload: {
+    country: string;
+    legalEntityType: "individual" | "company";
+    legalBusinessName: string;
+    taxId: string;
+    taxClassification?: string;
+    companyRegNumber?: string;
+    legalForm?: string;
+    billingEmail: string;
+    billingPhone?: string;
+    billingAddress?: string;
+    billingAddressStructured?: BillingAddressStructured;
+  }) => Promise<unknown>,
   currentUserEmail?: string,
   currentUserPhone?: string,
   defaultBusinessName?: string,
   autoSave = true,
+  defaultCountryOverride?: string,
 ) {
-  const saveBillingProfile = useMutation(api.compliance.studio.upsertMyStudioBillingProfile);
-
-  const defaultCountry = getStripeMarketDefaults().country;
+  const defaultCountry =
+    defaultCountryOverride?.trim().toUpperCase() || getStripeMarketDefaults().country;
   const [country, setCountry] = useState(billingProfile?.country ?? defaultCountry);
   const [legalEntityType, setLegalEntityType] = useState<"individual" | "company">(
     billingProfile?.legalEntityType ?? "individual",
@@ -253,7 +264,7 @@ export function useStudioBillingForm(
       switch (key) {
         case "country":
           setCountry(value as string);
-          break;
+          return;
         case "legalEntityType":
           setLegalEntityType(value as "individual" | "company");
           break;

@@ -1,13 +1,10 @@
 import { useMutation } from "convex/react";
 import { useCallback, useState } from "react";
-import { Alert } from "react-native";
 import { useTranslation } from "react-i18next";
+import { Alert } from "react-native";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import {
-  captureCurrentLocationSample,
-  isLocationResolveError,
-} from "@/lib/location-zone";
+import { captureCurrentLocationSample, isLocationResolveError } from "@/lib/location-zone";
 
 type LessonCheckInResult =
   | {
@@ -101,12 +98,11 @@ export function useLessonCheckIn(options?: UseLessonCheckInOptions) {
 
         return result;
       } catch (error) {
-        const message =
-          isLocationResolveError(error)
+        const message = isLocationResolveError(error)
+          ? error.message
+          : error instanceof Error
             ? error.message
-            : error instanceof Error
-              ? error.message
-              : t("calendarTab.card.checkInReasons.unknown");
+            : t("calendarTab.card.checkInReasons.unknown");
         options?.onError?.(message);
         if (!options?.suppressAlerts) {
           Alert.alert(t("calendarTab.card.checkInErrorTitle"), message);

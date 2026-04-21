@@ -1,6 +1,6 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,8 +12,9 @@ import {
   createContentDrivenTopSheetConfig,
   getMainTabSheetBackgroundColor,
 } from "@/components/layout/top-sheet-registry";
+import { LoadingScreen } from "@/components/loading-screen";
+import { DeleteAccountButton } from "@/components/profile/delete-account-button";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
-import { LanguagePickerSheet } from "@/components/sheets/profile/language-picker-sheet";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
@@ -23,6 +24,7 @@ import {
 } from "@/components/profile/profile-settings-sections";
 import { ProfileIndexScrollView } from "@/components/profile/profile-subpage-sheet";
 import { ProfileDesktopHeroPanel, ProfileHeaderSheet } from "@/components/profile/profile-tab";
+import { LanguagePickerSheet } from "@/components/sheets/profile/language-picker-sheet";
 import { KitSwitch } from "@/components/ui/kit";
 import { BrandSpacing } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
@@ -32,6 +34,7 @@ import { api } from "@/convex/_generated/api";
 
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { useInstructorProfileStorage, useLocationStorage } from "@/hooks/use-onboarding-storage";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { toSportLabelI18n } from "@/lib/sport-i18n";
@@ -43,13 +46,13 @@ import {
   switchToRememberedDeviceAccount,
   toDeviceAccountIdentity,
 } from "@/modules/session/device-account-store";
+import { clearPendingPostSignOutAuthIntent } from "@/modules/session/post-signout-auth-intent";
 import { Box } from "@/primitives";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
   instructor: "profile.roles.instructor",
   studio: "profile.roles.studio",
-  admin: "profile.roles.admin",
 } as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
@@ -64,11 +67,13 @@ function getSportsSummary(sports: string[], t: TFunction) {
 
 export default function InstructorProfileScreen() {
   const { signOut } = useAuthActions();
-  const { currentUser } = useUser();
-  const { restartAppSession } = useAuthSession();
+  const { currentUser, isAuthLoading } = useUser();
+  const { restartAppSession, startSessionTransition, isSessionTransitioning } = useAuthSession();
   const { language } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
   const theme = useTheme();
+  const { save: saveInstructorOnboarding } = useInstructorProfileStorage();
+  const { save: saveOnboardingLocation } = useLocationStorage();
   const { t, i18n } = useTranslation();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
@@ -126,7 +131,7 @@ export default function InstructorProfileScreen() {
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const payoutSummary = useQuery(
-    api.payments.core.getMyPayoutSummaryV2,
+    api.payments.core.getMyPayoutSummary,
     shouldLoadSettings ? emptyArgs : "skip",
   );
   const instructorAccessSnapshot = useQuery(
@@ -148,17 +153,47 @@ export default function InstructorProfileScreen() {
   }, []);
   const handleSignOut = useCallback(() => {
     setAccountSwitcherVisible(false);
+    startSessionTransition(2500);
+    clearPendingPostSignOutAuthIntent();
+    router.replace("/sign-in");
     void (async () => {
       if (currentUser?._id) {
         await forgetRememberedDeviceAccount(String(currentUser._id));
       }
       await signOut();
     })();
-  }, [currentUser?._id, signOut]);
+  }, [currentUser?._id, signOut, startSessionTransition]);
   const handleUseAnotherAccount = useCallback(() => {
     setAccountSwitcherVisible(false);
     handleOpenAddAccount();
   }, [handleOpenAddAccount]);
+  const handleRedoOnboarding = useCallback(() => {
+    saveInstructorOnboarding({
+      displayName: instructorSettings?.displayName ?? currentUser?.fullName ?? "",
+      bio: instructorSettings?.bio ?? "",
+      sports: instructorSettings?.sports ?? [],
+    });
+    saveOnboardingLocation({
+      address: instructorSettings?.address ?? "",
+      latitude: instructorSettings?.latitude ?? null,
+      longitude: instructorSettings?.longitude ?? null,
+      country: instructorSettings?.addressCountry ?? null,
+      countryCode: instructorSettings?.addressCountryCode ?? null,
+    });
+    router.push("/onboarding/instructor/profile");
+  }, [
+    currentUser?.fullName,
+    instructorSettings?.address,
+    instructorSettings?.addressCountry,
+    instructorSettings?.addressCountryCode,
+    instructorSettings?.bio,
+    instructorSettings?.displayName,
+    instructorSettings?.latitude,
+    instructorSettings?.longitude,
+    instructorSettings?.sports,
+    saveInstructorOnboarding,
+    saveOnboardingLocation,
+  ]);
   const handleSelectRememberedAccount = useCallback(
     (accountId: string) => {
       setAccountSwitcherVisible(false);
@@ -178,13 +213,12 @@ export default function InstructorProfileScreen() {
     },
     [currentUser, restartAppSession],
   );
-  const nameValue =
-    instructorSettings?.displayName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
-  const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
   const roleValue = t(
     ROLE_TRANSLATION_KEYS[currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS] ??
       "profile.roles.pending",
   );
+  const nameValue = instructorSettings?.displayName ?? currentUser?.fullName ?? roleValue;
+  const emailValue = currentUser?.email ?? roleValue;
   const memberSince = currentUser?.createdAt
     ? new Date(currentUser.createdAt).toLocaleDateString(i18n.resolvedLanguage ?? "en", {
         month: "short",
@@ -530,6 +564,18 @@ export default function InstructorProfileScreen() {
                     showDivider
                   />
                   <ProfileSettingRow
+                    title={t("profile.settings.redoOnboardingTitle", {
+                      defaultValue: "Redo onboarding",
+                    })}
+                    subtitle={t("profile.settings.redoOnboardingInstructorHint", {
+                      defaultValue: "Revisit your profile, location, and verification setup flow.",
+                    })}
+                    icon="arrow.clockwise"
+                    sectionTone="operations"
+                    onPress={handleRedoOnboarding}
+                    showDivider
+                  />
+                  <ProfileSettingRow
                     title={t("auth.signOutButton")}
                     icon="arrow.right.square"
                     onPress={handleSignOut}
@@ -599,6 +645,18 @@ export default function InstructorProfileScreen() {
                 icon="creditcard.fill"
                 sectionTone="operations"
                 onPress={() => handleOpenPayments()}
+                showDivider
+              />
+              <ProfileSettingRow
+                title={t("profile.settings.redoOnboardingTitle", {
+                  defaultValue: "Redo onboarding",
+                })}
+                subtitle={t("profile.settings.redoOnboardingInstructorHint", {
+                  defaultValue: "Revisit your profile, location, and verification setup flow.",
+                })}
+                icon="arrow.clockwise"
+                sectionTone="operations"
+                onPress={handleRedoOnboarding}
                 showDivider
               />
               <ProfileSettingRow
@@ -687,6 +745,9 @@ export default function InstructorProfileScreen() {
                 />
               </Box>
               <Box style={{ marginTop: BrandSpacing.md }}>
+                <DeleteAccountButton accountRole="instructor" />
+              </Box>
+              <Box style={{ marginTop: BrandSpacing.sm }}>
                 <ProfileSignOutButton title={t("auth.signOutButton")} onPress={handleSignOut} />
               </Box>
             </Box>
@@ -726,6 +787,21 @@ export default function InstructorProfileScreen() {
   );
 
   useTabSceneDescriptor(descriptor);
+
+  if (
+    isAuthLoading ||
+    isSessionTransitioning ||
+    currentUser === undefined ||
+    currentUser === null
+  ) {
+    return (
+      <LoadingScreen
+        variant="launch"
+        title={t("launch.title")}
+        label={t("launch.loadingAccount")}
+      />
+    );
+  }
 
   return descriptorBody;
 }

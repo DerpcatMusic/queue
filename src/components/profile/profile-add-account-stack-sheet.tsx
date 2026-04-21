@@ -6,7 +6,13 @@ import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { ProfileSectionCard, ProfileSectionHeader } from "@/components/profile/profile-settings-sections";
+import { useBottomSheetStack } from "@/components";
+import { LoadingScreen } from "@/components/loading-screen";
+import {
+  ProfileSectionCard,
+  ProfileSectionHeader,
+} from "@/components/profile/profile-settings-sections";
+import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -32,8 +38,6 @@ import {
   peekPendingPostSignOutAuthHandoff,
   setPendingPostSignOutAuthHandoff,
 } from "@/modules/session/post-signout-auth-intent";
-import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
-import { useBottomSheetStack } from "@/components";
 
 type Step = "root" | "email" | "code" | "google" | "apple";
 
@@ -60,7 +64,7 @@ function AddAccountFlowSheet({
   const { isAuthenticated } = useConvexAuth();
   const { signIn } = useAuthActions();
   const { currentUser } = useUser();
-  const { restartAppSession } = useAuthSession();
+  const { restartAppSession, isSessionTransitioning } = useAuthSession();
   const { t } = useTranslation();
   const { color: palette } = useTheme();
   const googleNativeAuthConfig = useMemo(resolveGoogleNativeAuthConfig, []);
@@ -379,6 +383,16 @@ function AddAccountFlowSheet({
         ? t("auth.signInWithApple")
         : null;
 
+  if (isSessionTransitioning) {
+    return (
+      <LoadingScreen
+        variant="launch"
+        title={t("launch.title")}
+        label={t("launch.loadingAccount")}
+      />
+    );
+  }
+
   return (
     <>
       <BaseProfileSheet visible={visible} onClose={handleCancel} snapPoints={["46%"]}>
@@ -447,7 +461,9 @@ function AddAccountFlowSheet({
         <ProfileSectionHeader
           label={t("auth.emailLabel")}
           description={
-            step === "code" ? t("auth.codeSheetSubtitle") : t("profile.switcher.addAccountFieldHint")
+            step === "code"
+              ? t("auth.codeSheetSubtitle")
+              : t("profile.switcher.addAccountFieldHint")
           }
           icon="envelope.fill"
         />

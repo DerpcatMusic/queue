@@ -1,7 +1,7 @@
 import { useAction, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
-import * as WebBrowser from "expo-web-browser";
 import { type Href, Redirect, useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable } from "react-native";
@@ -152,32 +152,32 @@ export default function ProfilePaymentsScreen() {
   const isInstructor = currentUser?.role === "instructor";
 
   const paymentRows = useQuery(
-    api.payments.core.listMyPaymentsV2,
+    api.payments.core.listMyPaymentOrders,
     isInstructor ? { limit: 20 } : "skip",
   );
   const connectedAccount = useQuery(
-    api.payments.core.getMyInstructorConnectedAccountV2,
+    api.payments.core.getMyInstructorConnectedAccount,
     isInstructor ? {} : "skip",
   );
 
   const refreshStripeAccount = useAction(
-    api.payments.actions.refreshMyInstructorStripeConnectedAccountV2,
+    api.payments.actions.refreshMyInstructorStripeConnectedAccount,
   );
   const createStripeEmbeddedSession = useAction(
-    api.payments.actions.createMyInstructorStripeEmbeddedSessionV2,
+    api.payments.actions.createMyInstructorStripeEmbeddedSession,
   );
   const createStripeHostedAccountLink = useAction(
-    api.payments.actions.createMyInstructorStripeAccountLinkV2,
+    api.payments.actions.createMyInstructorStripeAccountLink,
   );
 
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [connectInfo, setConnectInfo] = useState<string | null>(null);
   const [stripeConnectVisible, setStripeConnectVisible] = useState(false);
-  const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrdersV2"> | null>(null);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"paymentOrders"> | null>(null);
 
   const selectedPaymentDetail = useQuery(
-    api.payments.core.getMyPaymentDetailV2,
+    api.payments.core.getMyPaymentOrderDetail,
     selectedPaymentId ? { paymentOrderId: selectedPaymentId } : "skip",
   );
 
@@ -393,9 +393,7 @@ export default function ProfilePaymentsScreen() {
               locale={locale}
               title={t("profile.payments.recentTransactions")}
               emptyLabel={t("profile.payments.noTransactions")}
-              onSelectPaymentId={(paymentId) =>
-                setSelectedPaymentId(paymentId as Id<"paymentOrdersV2">)
-              }
+              onSelectPaymentId={setSelectedPaymentId}
             />
           </Box>
 
@@ -592,13 +590,13 @@ export default function ProfilePaymentsScreen() {
                           : t("profile.payments.receiptPending")}
                       </ThemedText>
                     </Box>
-                    {selectedPaymentDetail.invoice?.externalInvoiceUrl ? (
+                    {selectedPaymentDetail.receipt.documentUrl ? (
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel={t("profile.payments.downloadInvoice")}
+                        accessibilityLabel={t("profile.payments.downloadReceipt")}
                         onPress={() => {
                           void WebBrowser.openBrowserAsync(
-                            selectedPaymentDetail.invoice!.externalInvoiceUrl!,
+                            selectedPaymentDetail.receipt.documentUrl!,
                           );
                         }}
                         style={({ pressed }) => ({
@@ -615,7 +613,7 @@ export default function ProfilePaymentsScreen() {
                         })}
                       >
                         <ThemedText type="bodyStrong" style={{ color: color.primary }}>
-                          {t("profile.payments.downloadInvoice")}
+                          {t("profile.payments.downloadReceipt")}
                         </ThemedText>
                         <IconSymbol
                           name="arrow.up.right"

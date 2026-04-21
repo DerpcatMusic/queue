@@ -296,6 +296,9 @@ export const MapMobileStage = memo(function MapMobileStage({
                         commuteEstimateLabel={commuteEstimateLabel}
                         activeResolutionLabel={activeResolutionLabel}
                         savedCoordinatesLabel={savedCoordinatesLabel}
+                        supportingText={t("mapTab.mobile.radiusSportHint", {
+                          defaultValue: "Only affects your selected sports.",
+                        })}
                         style={{ flex: 1 }}
                         onRadiusChange={onRadiusChange}
                         onRadiusCommit={onRadiusCommit}

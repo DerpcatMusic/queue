@@ -67,8 +67,8 @@ export function getIdentityVerificationStatusPresentation(
 export function getIdentityPrimaryActionLabel(isVerified: boolean, t: TFunction) {
   return isVerified
     ? t("profile.compliance.actions.refreshIdentity")
-    : t("profile.identityVerification.verifyNow", {
-        defaultValue: t("profile.compliance.identity.title"),
+    : t("profile.compliance.actions.startIdentity", {
+        defaultValue: "Verify",
       });
 }
 

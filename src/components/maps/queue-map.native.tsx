@@ -99,6 +99,7 @@ export const QueueMap = memo(function QueueMap({
   radiusKm: _radiusKm,
   coveragePolygons,
   focusFrameKey,
+  flyToCoordinate,
 }: QueueMapProps) {
   const { t } = useTranslation();
   const { resolvedScheme } = useThemePreference();
@@ -299,6 +300,20 @@ export const QueueMap = memo(function QueueMap({
   const handleDidFailLoadingMap = useCallback(() => {
     updateMapLoadState("error", t("mapTab.native.unavailableBody"));
   }, [updateMapLoadState, t]);
+
+  // Handle flyToCoordinate prop — fly to given coordinates when GPS updates them
+  const lastFlyTargetRef = useRef<[number, number] | null>(null);
+  useEffect(() => {
+    if (mapLoadState !== "ready" || !cameraRef.current || flyToCoordinate === undefined) return;
+    const target: [number, number] = flyToCoordinate;
+    if (
+      lastFlyTargetRef.current &&
+      lastFlyTargetRef.current[0] === target[0] &&
+      lastFlyTargetRef.current[1] === target[1]
+    ) return;
+    lastFlyTargetRef.current = target;
+    cameraRef.current?.flyTo(target, 800);
+  }, [flyToCoordinate, mapLoadState]);
 
   useEffect(() => {
     if (mapLoadState !== "loading") {

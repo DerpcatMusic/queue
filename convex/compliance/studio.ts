@@ -14,11 +14,7 @@ import {
   studioTaxClassificationValidator,
   studioVatReportingTypeValidator,
 } from "../lib/studioCompliance";
-import {
-  normalizeOptionalString,
-  normalizeRequiredString,
-  omitUndefined,
-} from "../lib/validation";
+import { normalizeOptionalString, normalizeRequiredString, omitUndefined } from "../lib/validation";
 
 const MAX_LEGAL_NAME_LENGTH = 160;
 const MAX_TAX_ID_LENGTH = 40;
@@ -68,32 +64,34 @@ export const studioComplianceDetailsValidator = v.object({
       requirementsSummary: v.optional(v.string()),
       chargesEnabled: v.optional(v.boolean()),
       payoutsEnabled: v.optional(v.boolean()),
+      savedPaymentMethodCount: v.optional(v.number()),
+      defaultPaymentMethodType: v.optional(v.string()),
+      supportedPaymentMethodTypes: v.optional(v.array(v.string())),
       readyForChargesAt: v.optional(v.number()),
       readyForPayoutsAt: v.optional(v.number()),
+      lastPaymentMethodSyncedAt: v.optional(v.number()),
       lastSyncedAt: v.optional(v.number()),
     }),
   ),
 });
 
 function normalizeEmail(value: string) {
-  const normalized = normalizeRequiredString(
-    value,
-    MAX_BILLING_EMAIL_LENGTH,
-    "Billing email",
-  );
+  const normalized = normalizeRequiredString(value, MAX_BILLING_EMAIL_LENGTH, "Billing email");
   if (!normalized.includes("@")) {
     throw new ConvexError("Billing email must be valid");
   }
   return normalized.toLowerCase();
 }
 
+const getMyStudioComplianceSummaryHandler = async (ctx: any) => {
+  const { studio } = await requireStudioOwnerContext(ctx);
+  return await buildStudioComplianceSummary(ctx, { studio });
+};
+
 export const getMyStudioComplianceSummary = query({
   args: {},
   returns: v.union(v.null(), studioComplianceSummaryValidator),
-  handler: async (ctx) => {
-    const { studio } = await requireStudioOwnerContext(ctx);
-    return await buildStudioComplianceSummary(ctx, { studio });
-  },
+  handler: getMyStudioComplianceSummaryHandler as any,
 });
 
 export async function getStudioComplianceDetailsRead(
@@ -147,8 +145,12 @@ export async function getStudioComplianceDetailsRead(
             requirementsSummary: paymentProfile.requirementsSummary,
             chargesEnabled: paymentProfile.chargesEnabled,
             payoutsEnabled: paymentProfile.payoutsEnabled,
+            savedPaymentMethodCount: paymentProfile.savedPaymentMethodCount,
+            defaultPaymentMethodType: paymentProfile.defaultPaymentMethodType,
+            supportedPaymentMethodTypes: paymentProfile.supportedPaymentMethodTypes,
             readyForChargesAt: paymentProfile.readyForChargesAt,
             readyForPayoutsAt: paymentProfile.readyForPayoutsAt,
+            lastPaymentMethodSyncedAt: paymentProfile.lastPaymentMethodSyncedAt,
             lastSyncedAt: paymentProfile.lastSyncedAt,
           }),
         }
@@ -156,13 +158,15 @@ export async function getStudioComplianceDetailsRead(
   };
 }
 
+const getMyStudioComplianceDetailsHandler = async (ctx: any) => {
+  const { studio } = await requireStudioOwnerContext(ctx);
+  return await getStudioComplianceDetailsRead(ctx, { studioId: studio._id });
+};
+
 export const getMyStudioComplianceDetails = query({
   args: {},
   returns: v.union(v.null(), studioComplianceDetailsValidator),
-  handler: async (ctx) => {
-    const { studio } = await requireStudioOwnerContext(ctx);
-    return await getStudioComplianceDetailsRead(ctx, { studioId: studio._id });
-  },
+  handler: getMyStudioComplianceDetailsHandler as any,
 });
 
 export const upsertMyStudioBillingProfile = mutation({
@@ -201,11 +205,7 @@ export const upsertMyStudioBillingProfile = mutation({
       MAX_LEGAL_NAME_LENGTH,
       "Legal business name",
     );
-    const taxId = normalizeRequiredString(
-      args.taxId,
-      MAX_TAX_ID_LENGTH,
-      "Tax ID",
-    );
+    const taxId = normalizeRequiredString(args.taxId, MAX_TAX_ID_LENGTH, "Tax ID");
     const billingEmail = normalizeEmail(args.billingEmail);
     const billingPhone = normalizeOptionalString(
       args.billingPhone,
@@ -224,11 +224,14 @@ export const upsertMyStudioBillingProfile = mutation({
     );
     const country = args.country?.trim() || undefined;
 
-    // Status is "complete" only when all required fields are present
+    // Status is "complete" only when the business identity is materially usable.
     const hasRequiredFields =
       legalBusinessName.length > 0 &&
       taxId.length > 0 &&
-      billingEmail.length > 0;
+      billingEmail.length > 0 &&
+      Boolean(country) &&
+      Boolean(billingAddress) &&
+      (args.legalEntityType === "individual" || Boolean(companyRegNumber));
     const status = hasRequiredFields ? ("complete" as const) : ("incomplete" as const);
 
     const existing = await getStudioBillingProfile(ctx, studio._id);
@@ -295,8 +298,12 @@ export const applyStudioPaymentProfileSnapshot = internalMutation({
     requirementsSummary: v.optional(v.string()),
     chargesEnabled: v.optional(v.boolean()),
     payoutsEnabled: v.optional(v.boolean()),
+    savedPaymentMethodCount: v.optional(v.number()),
+    defaultPaymentMethodType: v.optional(v.string()),
+    supportedPaymentMethodTypes: v.optional(v.array(v.string())),
     readyForChargesAt: v.optional(v.number()),
     readyForPayoutsAt: v.optional(v.number()),
+    lastPaymentMethodSyncedAt: v.optional(v.number()),
     lastSyncedAt: v.optional(v.number()),
   },
   returns: v.object({
@@ -319,8 +326,12 @@ export const applyStudioPaymentProfileSnapshot = internalMutation({
         requirementsSummary: args.requirementsSummary?.trim(),
         chargesEnabled: args.chargesEnabled,
         payoutsEnabled: args.payoutsEnabled,
+        savedPaymentMethodCount: args.savedPaymentMethodCount,
+        defaultPaymentMethodType: args.defaultPaymentMethodType?.trim(),
+        supportedPaymentMethodTypes: args.supportedPaymentMethodTypes?.map((value) => value.trim()),
         readyForChargesAt: args.readyForChargesAt,
         readyForPayoutsAt: args.readyForPayoutsAt,
+        lastPaymentMethodSyncedAt: args.lastPaymentMethodSyncedAt,
         lastSyncedAt: args.lastSyncedAt ?? now,
       }),
     };

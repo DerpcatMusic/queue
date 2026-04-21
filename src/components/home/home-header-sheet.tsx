@@ -1,11 +1,13 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable } from "react-native";
+
 import { getMainTabSheetBackgroundColor } from "@/components/layout/top-sheet-registry";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { BrandRadius, BrandSpacing, BrandType, FontFamily } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
 import { Box, Text } from "@/primitives";
+
 type HomeHeaderSheetProps = {
   displayName: string;
   profileImageUrl?: string | null | undefined;
@@ -21,6 +23,8 @@ type HomeHeaderSheetProps = {
   openJobs?: number;
   missionsCount?: number;
   role?: "instructor" | "studio";
+  /** Test account badge (bypasses KYC, enables full testing) */
+  isTestAccount?: boolean | undefined;
   /** When true the sheet body background is transparent so a parent gradient shows through. */
   transparent?: boolean;
 };
@@ -33,10 +37,9 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
   totalEarningsAgorot,
   paidOutAmountAgorot,
   outstandingAmountAgorot,
-  pendingApplications,
-  openJobs,
   missionsCount = 0,
   role = "instructor",
+  isTestAccount,
   transparent = false,
 }: HomeHeaderSheetProps) {
   const theme = useTheme();
@@ -44,19 +47,18 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
   const mainTabSheetBackgroundColor = getMainTabSheetBackgroundColor(theme);
   const { t, i18n } = useTranslation();
 
+  const isInstructor = role === "instructor";
+  const showTestBadge = Boolean(isTestAccount && isInstructor);
+
   const compactCurrencySpacing = (value: string) =>
     value
       .replace(/[\u00A0\u202F\s]*₪[\u00A0\u202F\s]*/g, "₪")
       .replace(/[\u200E\u200F]/g, "")
       .trim();
 
-  const isInstructor = role === "instructor";
   const monthlyValue = compactCurrencySpacing(thisMonthEarningsLabel ?? "0");
-  const jobsValue = String(openJobs ?? 0);
-  const headlineValue = isInstructor ? monthlyValue : jobsValue;
-  const headlineMinor = isInstructor ? undefined : t("home.actions.jobsTitle");
+  const headlineValue = isInstructor ? monthlyValue : displayName;
 
-  // Multi-color progress bar logic
   const totalAmount = Math.max(0, Number(totalEarningsAgorot ?? 0));
   const paidAmount = Math.max(0, Number(paidOutAmountAgorot ?? 0));
   const processingAmount = Math.max(0, Number(outstandingAmountAgorot ?? 0));
@@ -64,16 +66,6 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
 
   const paidPercent = Math.max(0, Math.min(100, (paidAmount / scaleTotal) * 100));
   const processingPercent = Math.max(0, Math.min(100, (processingAmount / scaleTotal) * 100));
-
-  const progressPercent = Math.max(
-    0,
-    Math.min(
-      100,
-      Math.round(
-        ((openJobs ?? 0) / Math.max((openJobs ?? 0) + (pendingApplications ?? 0), 1)) * 100,
-      ),
-    ),
-  );
 
   const today = new Date();
   const monthLabel = new Intl.DateTimeFormat(i18n.resolvedLanguage ?? "en", {
@@ -85,35 +77,42 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
     <Box
       pointerEvents="box-none"
       style={{
-        paddingHorizontal: BrandSpacing.xl,
-        paddingTop: BrandSpacing.lg,
-        paddingBottom: BrandSpacing.xl,
-        gap: BrandSpacing.md,
-        backgroundColor: transparent ? "transparent" : mainTabSheetBackgroundColor,
+        paddingHorizontal: role === "studio" ? BrandSpacing.lg : BrandSpacing.xl,
+        paddingTop: role === "studio" ? BrandSpacing.xs : BrandSpacing.lg,
+        paddingBottom: role === "studio" ? BrandSpacing.sm : BrandSpacing.xl,
+        gap: role === "studio" ? BrandSpacing.xs : BrandSpacing.md,
+        backgroundColor: transparent
+          ? "transparent"
+          : role === "studio"
+            ? palette.primarySubtle
+            : mainTabSheetBackgroundColor,
       }}
     >
       <Box flexDirection="row" alignItems="center" justifyContent="space-between" gap="md">
         <Box flex={1} gap="xxs">
-          <Text
-            style={{
-              ...BrandType.microItalic,
-              color: palette.textMuted,
-            }}
-          >
-            {isInstructor ? t("home.instructor.thisMonthLabel") : "QUEUE PERFORMANCE"}
-          </Text>
-          <Box flexDirection="row" alignItems="baseline" gap="xs">
+          {isInstructor ? (
             <Text
-              numberOfLines={1}
               style={{
-                ...BrandType.displayItalic,
-                color: palette.primary,
-                transform: [{ skewX: "-6deg" }],
+                ...BrandType.micro,
+                color: palette.textMuted,
               }}
             >
-              {headlineValue}
+              {t("home.instructor.thisMonthLabel")}
             </Text>
-            {isInstructor ? (
+          ) : null}
+
+          {isInstructor ? (
+            <Box flexDirection="row" alignItems="baseline" gap="xs">
+              <Text
+                numberOfLines={1}
+                style={{
+                  ...BrandType.displayItalic,
+                  color: palette.primary,
+                  transform: [{ skewX: "-6deg" }],
+                }}
+              >
+                {headlineValue}
+              </Text>
               <Text
                 style={{
                   ...BrandType.title,
@@ -124,19 +123,19 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
               >
                 {`${missionsCount} ${t("home.instructor.missions")}`}
               </Text>
-            ) : headlineMinor ? (
-              <Text
-                style={{
-                  ...BrandType.title,
-                  fontFamily: FontFamily.display,
-                  color: palette.primary,
-                  transform: [{ skewX: "-6deg" }],
-                }}
-              >
-                {` ${headlineMinor}`}
-              </Text>
-            ) : null}
-          </Box>
+            </Box>
+          ) : (
+            <Text
+              numberOfLines={1}
+              style={{
+                ...BrandType.titleLarge,
+                fontFamily: FontFamily.displayBold,
+                color: palette.text,
+              }}
+            >
+              {displayName}
+            </Text>
+          )}
         </Box>
 
         <Pressable
@@ -154,11 +153,44 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
           <ProfileAvatar
             imageUrl={profileImageUrl}
             fallbackName={displayName}
-            size={48}
+            size={role === "studio" ? 56 : 48}
             roundedSquare
           />
         </Pressable>
       </Box>
+
+      {showTestBadge ? (
+        <Box
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: BrandSpacing.xxs,
+          }}
+        >
+          <Box
+            style={{
+              backgroundColor: palette.secondary,
+              paddingHorizontal: BrandSpacing.xs,
+              paddingVertical: BrandSpacing.xxs,
+              borderRadius: BrandRadius.sm,
+              borderWidth: 1,
+              borderColor: palette.secondarySubtle,
+            }}
+          >
+            <Text
+              style={{
+                ...BrandType.micro,
+                fontSize: 9,
+                color: palette.onSecondary,
+                textTransform: "uppercase",
+                fontWeight: "700",
+              }}
+            >
+              {t("home.internal.testBadge")}
+            </Text>
+          </Box>
+        </Box>
+      ) : null}
 
       {isInstructor ? (
         <Box gap="xs">
@@ -189,7 +221,6 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
               overflow: "hidden",
             }}
           >
-            {/* Paid Amount */}
             <Box
               style={{
                 position: "absolute",
@@ -201,7 +232,6 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
                 borderRadius: BrandRadius.pill,
               }}
             />
-            {/* Processing Amount */}
             <Box
               style={{
                 position: "absolute",
@@ -215,46 +245,7 @@ export const HomeHeaderSheet = memo(function HomeHeaderSheet({
             />
           </Box>
         </Box>
-      ) : (
-        <Box gap="xs">
-          <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-            <Text
-              style={{
-                ...BrandType.microItalic,
-                color: palette.textMuted,
-              }}
-            >
-              PENDING REVIEW
-            </Text>
-            <Text
-              style={{
-                ...BrandType.microItalic,
-                color: palette.primary,
-              }}
-            >
-              {t("home.studio.waitingCount", { count: pendingApplications ?? 0 })}
-            </Text>
-          </Box>
-          <Box
-            style={{
-              height: 10,
-              width: "100%",
-              backgroundColor: palette.surfaceMuted,
-              borderRadius: BrandRadius.pill,
-              overflow: "hidden",
-            }}
-          >
-            <Box
-              style={{
-                height: "100%",
-                width: `${progressPercent}%`,
-                backgroundColor: palette.primary,
-                borderRadius: BrandRadius.pill,
-              }}
-            />
-          </Box>
-        </Box>
-      )}
+      ) : null}
     </Box>
   );
 });

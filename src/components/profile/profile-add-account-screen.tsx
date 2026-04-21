@@ -8,6 +8,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
+import { LoadingScreen } from "@/components/loading-screen";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
@@ -64,7 +65,7 @@ export function ProfileAddAccountScreen({
   const { isAuthenticated } = useConvexAuth();
   const { signIn } = useAuthActions();
   const { currentUser } = useUser();
-  const { restartAppSession } = useAuthSession();
+  const { restartAppSession, isSessionTransitioning } = useAuthSession();
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useTranslation();
@@ -308,7 +309,6 @@ export function ProfileAddAccountScreen({
       }
     },
     [
-      currentUser,
       googleNativeAuthConfig,
       isSubmitting,
       normalizedEmail,
@@ -361,6 +361,16 @@ export function ProfileAddAccountScreen({
     normalizedEmail,
     pendingAuthMethod,
   ]);
+
+  if (isSessionTransitioning) {
+    return (
+      <LoadingScreen
+        variant="launch"
+        title={t("launch.title")}
+        label={t("launch.loadingAccount")}
+      />
+    );
+  }
 
   return (
     <ProfileSubpageScrollView

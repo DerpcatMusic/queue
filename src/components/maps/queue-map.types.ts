@@ -80,6 +80,8 @@ export type QueueMapProps = {
     left: number;
   };
   focusFrameKey?: number;
+  /** When set, the map camera will fly to this [lng, lat] coordinate. */
+  flyToCoordinate?: [number, number] | null;
   radiusKm?: number;
   coveragePolygons?: MapCoveragePolygon[];
 };

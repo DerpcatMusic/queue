@@ -7,15 +7,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, TextInput, View } from "react-native";
 import { useUnistyles } from "react-native-unistyles";
-
+import { LoadingScreen } from "@/components/loading-screen";
 import { QueueMap } from "@/components/maps/queue-map";
 import type { QueueMapPin } from "@/components/maps/queue-map.types";
-import { LoadingScreen } from "@/components/loading-screen";
-import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import {
   ProfileSectionCard,
   ProfileSectionHeader,
 } from "@/components/profile/profile-settings-sections";
+import { SettingsUnavailableScreen } from "@/components/profile/settings-unavailable-screen";
+import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -25,7 +25,6 @@ import { api } from "@/convex/_generated/api";
 
 import { useLocationResolution } from "@/hooks/use-location-resolution";
 import { FontSize } from "@/lib/design-system";
-import { Text } from "@/primitives";
 import {
   fetchPlaceByZipCode,
   type PlaceCoordinates,
@@ -33,6 +32,7 @@ import {
 } from "@/lib/google-places";
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import type { ResolvedLocation } from "@/lib/location-zone";
+import { Text } from "@/primitives";
 
 interface InstructorLocationSheetProps {
   visible: boolean;
@@ -400,17 +400,24 @@ export function InstructorLocationSheet({ visible, onClose }: InstructorLocation
     [locationResolver, resolveZoneFromCoordinates, applyResolution],
   );
 
-  if (instructorSettings === undefined) {
+  if (currentUser === undefined) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose}>
         <LoadingScreen label={t("profile.settings.loading")} />
       </BaseProfileSheet>
     );
   }
-  if (instructorSettings === null) {
+  if (currentUser === null || instructorSettings === null) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose}>
-        <LoadingScreen label={t("profile.settings.unavailable")} />
+        <SettingsUnavailableScreen label={t("profile.settings.unavailable")} />
+      </BaseProfileSheet>
+    );
+  }
+  if (instructorSettings === undefined) {
+    return (
+      <BaseProfileSheet visible={visible} onClose={onClose}>
+        <LoadingScreen label={t("profile.settings.loading")} />
       </BaseProfileSheet>
     );
   }

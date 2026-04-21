@@ -12,6 +12,7 @@ import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
+import { SettingsUnavailableScreen } from "@/components/profile/settings-unavailable-screen";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { KitSwitch } from "@/components/ui/kit";
 import { BrandSpacing, BrandType } from "@/constants/brand";
@@ -126,7 +127,7 @@ export function NotificationSettingsScreen({
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
   if (settings === null) {
-    return <LoadingScreen label={t("profile.settings.unavailable")} />;
+    return <SettingsUnavailableScreen label={t("profile.settings.unavailable")} />;
   }
 
   const saveSettings = async (args: {

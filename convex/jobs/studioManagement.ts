@@ -1,16 +1,17 @@
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { query } from "../_generated/server";
-import { requireAccessibleStudioBranch } from "../lib/studioBranches";
-import {
-  requireStudioProfile,
-  USE_JOB_APPLICATION_STATS,
-  USE_STUDIO_APPLICATIONS_BY_STUDIO,
-  BADGE_COUNT_CAP,
-  clampBadgeCount,
-  recomputeJobApplicationStats,
-} from "./_helpers";
 import { assertPositiveInteger, omitUndefined } from "../lib/validation";
+import { requireAccessibleStudioBranch } from "../lib/studioBranches";
+import { BADGE_COUNT_CAP, clampBadgeCount, requireStudioProfile } from "./_helpers";
+import {
+  loadApplicationsByJobId,
+  loadBranchByIdForJobs,
+  loadFallbackApplicationsByJobId,
+  loadInstructorTrustAssets,
+  loadStatsByJobId,
+  loadStudioJobsBase,
+} from "./studioManagementShared";
 
 export const getMyStudioJobs = query({
   args: {
@@ -54,56 +55,19 @@ export const getMyStudioJobs = query({
     assertPositiveInteger(rawLimit, "limit");
     const limit = Math.min(rawLimit, 200);
 
-    const jobs = args.branchId
-      ? await ctx.db
-          .query("jobs")
-          .withIndex("by_branch_postedAt", (q) => q.eq("branchId", args.branchId!))
-          .order("desc")
-          .take(limit)
-      : await ctx.db
-          .query("jobs")
-          .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
-          .order("desc")
-          .take(limit);
-    const branchIds = [...new Set(jobs.map((job: any) => job.branchId))];
-    const branches = await Promise.all(
-      branchIds.map((branchId: any) => ctx.db.get("studioBranches", branchId)),
-    );
-    const branchById = new Map<string, any>();
-    for (let index = 0; index < branchIds.length; index += 1) {
-      const branch = branches[index];
-      if (branch) {
-        branchById.set(String(branch._id), branch);
-      }
-    }
-    const jobIds = new Set(jobs.map((job: any) => String(job._id)));
-    const statsByJobId = new Map<string, any>();
-    const fallbackApplicationsByJobId = new Map<string, any[]>();
-    if (USE_JOB_APPLICATION_STATS) {
-      const stats = await ctx.db
-        .query("jobApplicationStats")
-        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
-        .collect();
-      for (const stat of stats) {
-        const jobId = String(stat.jobId);
-        if (!jobIds.has(jobId)) continue;
-        statsByJobId.set(jobId, stat);
-      }
-    } else {
-      const applicationsByJob = await Promise.all(
-        jobs.map((job: any) =>
-          ctx.db
-            .query("jobApplications")
-            .withIndex("by_job", (q) => q.eq("jobId", job._id))
-            .collect(),
-        ),
-      );
-      for (let i = 0; i < jobs.length; i += 1) {
-        const job = jobs[i];
-        if (!job) continue;
-        fallbackApplicationsByJobId.set(String(job._id), applicationsByJob[i] ?? []);
-      }
-    }
+    const jobs = await loadStudioJobsBase(ctx, {
+      studioId: String(studio._id),
+      branchId: args.branchId ? String(args.branchId) : undefined,
+      limit,
+    });
+    const [branchById, statsByJobId, fallbackApplicationsByJobId] = await Promise.all([
+      loadBranchByIdForJobs(ctx, jobs),
+      loadStatsByJobId(ctx, {
+        studioId: String(studio._id),
+        jobs,
+      }),
+      loadFallbackApplicationsByJobId(ctx, jobs),
+    ]);
 
     const rows = [];
     for (let i = 0; i < jobs.length; i += 1) {
@@ -190,6 +154,23 @@ export const getMyStudioJobsWithApplications = query({
           ),
           appliedAt: v.number(),
           message: v.optional(v.string()),
+          trust: v.object({
+            identityVerified: v.boolean(),
+            insuranceVerified: v.boolean(),
+            certificates: v.array(
+              v.object({
+                specialties: v.array(
+                  v.object({
+                    sport: v.string(),
+                    capabilityTags: v.optional(v.array(v.string())),
+                  }),
+                ),
+                issuerName: v.optional(v.string()),
+                certificateTitle: v.optional(v.string()),
+                verifiedAt: v.optional(v.number()),
+              }),
+            ),
+          }),
         }),
       ),
     }),
@@ -208,98 +189,29 @@ export const getMyStudioJobsWithApplications = query({
     assertPositiveInteger(rawLimit, "limit");
     const limit = Math.min(rawLimit, 200);
 
-    const jobs = args.branchId
-      ? await ctx.db
-          .query("jobs")
-          .withIndex("by_branch_postedAt", (q) => q.eq("branchId", args.branchId!))
-          .order("desc")
-          .take(limit)
-      : await ctx.db
-          .query("jobs")
-          .withIndex("by_studio_postedAt", (q) => q.eq("studioId", studio._id))
-          .order("desc")
-          .take(limit);
-    const branchIds = [...new Set(jobs.map((job: any) => job.branchId))];
-    const branches = await Promise.all(
-      branchIds.map((branchId: any) => ctx.db.get("studioBranches", branchId)),
-    );
-    const branchById = new Map<string, any>();
-    for (let index = 0; index < branchIds.length; index += 1) {
-      const branch = branches[index];
-      if (branch) {
-        branchById.set(String(branch._id), branch);
-      }
-    }
+    const jobs = await loadStudioJobsBase(ctx, {
+      studioId: String(studio._id),
+      branchId: args.branchId ? String(args.branchId) : undefined,
+      limit,
+    });
     const jobIds = new Set(jobs.map((job: any) => String(job._id)));
-    const statsByJobId = new Map<string, any>();
-    if (USE_JOB_APPLICATION_STATS) {
-      const stats = await ctx.db
-        .query("jobApplicationStats")
-        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
-        .collect();
-      for (const stat of stats) {
-        const jobId = String(stat.jobId);
-        if (!jobIds.has(jobId)) continue;
-        statsByJobId.set(jobId, stat);
-      }
-    }
-
-    const studioApplications = USE_STUDIO_APPLICATIONS_BY_STUDIO
-      ? await ctx.db
-          .query("jobApplications")
-          .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
-          .collect()
-      : (
-          await Promise.all(
-            jobs.map((job: any) =>
-              ctx.db
-                .query("jobApplications")
-                .withIndex("by_job", (q) => q.eq("jobId", job._id))
-                .collect(),
-            ),
-          )
-        ).flat();
-    const applicationsByJobId = new Map<string, any[]>();
-    for (const application of studioApplications) {
-      const jobId = String(application.jobId);
-      if (!jobIds.has(jobId)) continue;
-      const existing = applicationsByJobId.get(jobId);
-      if (existing) {
-        existing.push(application);
-      } else {
-        applicationsByJobId.set(jobId, [application]);
-      }
-    }
-
-    const instructorIds = [
-      ...new Set(
-        studioApplications
-          .filter((application: any) => jobIds.has(String(application.jobId)))
-          .map((application: any) => application.instructorId),
-      ),
-    ];
-    const profiles = await Promise.all(
-      instructorIds.map((instructorId: any) => ctx.db.get("instructorProfiles", instructorId)),
+    const [branchById, statsByJobId, applicationContext] = await Promise.all([
+      loadBranchByIdForJobs(ctx, jobs),
+      loadStatsByJobId(ctx, {
+        studioId: String(studio._id),
+        jobs,
+      }),
+      loadApplicationsByJobId(ctx, {
+        studioId: String(studio._id),
+        jobs,
+      }),
+    ]);
+    const scopedApplications = applicationContext.studioApplications.filter((application: any) =>
+      jobIds.has(String(application.jobId)),
     );
-    const profileById = new Map<string, any>();
-    for (let i = 0; i < instructorIds.length; i += 1) {
-      const instructorId = instructorIds[i];
-      const profile = profiles[i];
-      if (profile) {
-        profileById.set(String(instructorId), profile);
-      }
-    }
-
-    // Fetch profile image URLs for each instructor
-    const profileImageUrlById = new Map<string, string | undefined>();
-    for (const profile of profiles) {
-      if (profile) {
-        const imageUrl = profile.profileImageStorageId
-          ? ((await ctx.storage.getUrl(profile.profileImageStorageId)) ?? undefined)
-          : undefined;
-        profileImageUrlById.set(String(profile._id), imageUrl);
-      }
-    }
+    const { profileById, profileImageUrlById, trustByInstructorId } =
+      await loadInstructorTrustAssets(ctx, scopedApplications);
+    const applicationsByJobId = applicationContext.applicationsByJobId;
 
     const rows = [];
     for (let i = 0; i < jobs.length; i += 1) {
@@ -315,8 +227,10 @@ export const getMyStudioJobsWithApplications = query({
           rejected: 2,
           withdrawn: 3,
         };
-        if (statusRank[a.status] !== statusRank[b.status]) {
-          return statusRank[a.status] - statusRank[b.status];
+        const leftRank = statusRank[a.status] ?? 99;
+        const rightRank = statusRank[b.status] ?? 99;
+        if (leftRank !== rightRank) {
+          return leftRank - rightRank;
         }
         return b.appliedAt - a.appliedAt;
       });
@@ -356,6 +270,11 @@ export const getMyStudioJobsWithApplications = query({
             instructorName: profile?.displayName ?? "Unknown instructor",
             status: application.status,
             appliedAt: application.appliedAt,
+            trust: trustByInstructorId.get(String(application.instructorId)) ?? {
+              identityVerified: false,
+              insuranceVerified: false,
+              certificates: [],
+            },
             ...omitUndefined({
               profileImageUrl,
               message: application.message,
@@ -400,28 +319,15 @@ export const getStudioTabCounts = query({
 
     let jobsBadgeCount = 0;
     if (activeJobIdSet.size > 0) {
-      if (USE_JOB_APPLICATION_STATS) {
-        const stats = await ctx.db
-          .query("jobApplicationStats")
-          .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
-          .collect();
-
-        for (const stat of stats) {
-          if (!activeJobIdSet.has(String(stat.jobId))) continue;
-          jobsBadgeCount += stat.pendingApplicationsCount;
-          if (jobsBadgeCount >= BADGE_COUNT_CAP) break;
-        }
-      } else {
-        const applications = await ctx.db
-          .query("jobApplications")
-          .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
-          .collect();
-        for (const application of applications) {
-          if (!activeJobIdSet.has(String(application.jobId))) continue;
-          if (application.status !== "pending") continue;
-          jobsBadgeCount += 1;
-          if (jobsBadgeCount >= BADGE_COUNT_CAP) break;
-        }
+      const applications = await ctx.db
+        .query("jobApplications")
+        .withIndex("by_studio", (q) => q.eq("studioId", studio._id))
+        .collect();
+      for (const application of applications) {
+        if (!activeJobIdSet.has(String(application.jobId))) continue;
+        if (application.status !== "pending") continue;
+        jobsBadgeCount += 1;
+        if (jobsBadgeCount >= BADGE_COUNT_CAP) break;
       }
     }
 

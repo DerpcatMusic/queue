@@ -1,13 +1,14 @@
 import { v } from "convex/values";
+import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { query } from "../_generated/server";
-import {
-  getCurrentUser as getCurrentUserDoc,
-} from "../lib/auth";
+import { getDistanceMeters } from "../jobs/jobConstants";
+import { getCurrentUser as getCurrentUserDoc } from "../lib/auth";
 import { getCompactedCoverageCells, getCoveragePreviewPolygons } from "../lib/h3";
 import { DEFAULT_WORK_RADIUS_KM, normalizeWorkRadiusKm } from "../lib/locationRadius";
 import { omitUndefined } from "../lib/validation";
+import { ErrorCode } from "../lib/errors";
 
 async function requireInstructorProfileByUserId(ctx: QueryCtx, userId: Doc<"users">["_id"]) {
   const profiles = await ctx.db
@@ -15,11 +16,17 @@ async function requireInstructorProfileByUserId(ctx: QueryCtx, userId: Doc<"user
     .withIndex("by_user_id", (q) => q.eq("userId", userId))
     .take(2);
   if (profiles.length > 1) {
-    throw new Error("Multiple instructor profiles found for this account");
+    throw new ConvexError({
+      code: ErrorCode.MULTIPLE_PROFILES_FOUND,
+      message: "Multiple instructor profiles found for this account",
+    });
   }
   const profile = profiles[0] ?? null;
   if (!profile) {
-    throw new Error("Instructor profile not found");
+    throw new ConvexError({
+      code: ErrorCode.INSTRUCTOR_PROFILE_NOT_FOUND,
+      message: "Instructor profile not found",
+    });
   }
   return profile;
 }
@@ -38,6 +45,7 @@ export const getInstructorMapStudios = query({
       h3Index: v.optional(v.string()),
       latitude: v.number(),
       longitude: v.number(),
+      distanceMeters: v.optional(v.number()),
       address: v.optional(v.string()),
       logoImageUrl: v.optional(v.string()),
       mapMarkerColor: v.optional(v.string()),
@@ -45,7 +53,7 @@ export const getInstructorMapStudios = query({
   ),
   handler: async (ctx, args) => {
     const user = await getCurrentUserDoc(ctx);
-    if (!user || !user.isActive || user.role !== "instructor") {
+    if (!user?.isActive || user.role !== "instructor") {
       return [];
     }
 
@@ -61,6 +69,7 @@ export const getInstructorMapStudios = query({
     const workRadiusKm = normalizeWorkRadiusKm(
       args.workRadiusKm ?? instructor.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM,
     );
+    const maxDistanceMeters = workRadiusKm * 1000;
     const coverageCells = getCompactedCoverageCells(latitude!, longitude!, workRadiusKm);
 
     const branchByStudioId = new Map<string, Doc<"studioBranches">>();
@@ -128,12 +137,18 @@ export const getInstructorMapStudios = query({
         if (!studio) return null;
         const branch = branchByStudioId.get(String(studio._id));
         if (!branch || branch.latitude === undefined || branch.longitude === undefined) return null;
+        const distanceMeters = getDistanceMeters(
+          { latitude: latitude!, longitude: longitude! },
+          { latitude: branch.latitude, longitude: branch.longitude },
+        );
+        if (distanceMeters > maxDistanceMeters) return null;
         return {
           studioId: studio._id,
           studioName: studio.studioName,
           zone: branch.zone ?? studio.zone ?? branch.address,
           latitude: branch.latitude!,
           longitude: branch.longitude!,
+          distanceMeters,
           ...omitUndefined({
             h3Index: branch.h3Index,
             address: branch.address,
@@ -166,7 +181,7 @@ export const getInstructorMapCoverage = query({
   ),
   handler: async (ctx, args) => {
     const user = await getCurrentUserDoc(ctx);
-    if (!user || !user.isActive || user.role !== "instructor") {
+    if (!user?.isActive || user.role !== "instructor") {
       return [];
     }
 

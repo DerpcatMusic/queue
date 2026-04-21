@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
@@ -8,6 +8,7 @@ import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
 import { ProfileEditorForm } from "@/components/profile/profile-editor";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { useProfileSubpageSheet } from "@/components/profile/profile-subpage-sheet";
+import { SettingsUnavailableScreen } from "@/components/profile/settings-unavailable-screen";
 import { SkeletonLine } from "@/components/ui/skeleton";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useUser } from "@/contexts/user-context";
@@ -148,7 +149,7 @@ export default function InstructorProfileEditScreen() {
     );
   }, [bioDraft, instructorSettings, nameDraft, socialLinksDraft, sportsDraft]);
 
-  const isLoading = currentUser?.role !== "instructor" || !instructorSettings;
+  const isLoading = currentUser === undefined;
 
   const { animatedStyle } = useContentReveal(isLoading);
 
@@ -161,6 +162,22 @@ export default function InstructorProfileEditScreen() {
         </Box>
       </TabSceneTransition>
     );
+  }
+
+  if (currentUser === null) {
+    return <Redirect href="/sign-in" />;
+  }
+
+  if (currentUser.role !== "instructor") {
+    return <Redirect href="/" />;
+  }
+
+  if (instructorSettings === null) {
+    return <SettingsUnavailableScreen label={t("profile.settings.unavailable")} />;
+  }
+
+  if (instructorSettings === undefined) {
+    return <LoadingScreen label={t("profile.settings.loading")} />;
   }
 
   const uploadProfilePhoto = async () => {

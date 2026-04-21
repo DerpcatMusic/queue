@@ -1,22 +1,20 @@
 import { ConvexError, v } from "convex/values";
 import { mutation } from "../_generated/server";
+import { omitUndefined } from "../lib/validation";
 import {
-  requireInstructorProfile,
+  enforceInstructorMarketplaceActionPolicy,
+  transitionLessonCheckInPolicy,
+} from "../policy/marketplace";
+import {
   getAllowedCheckInDistanceMeters,
   getDistanceMeters,
-  getLessonLifecycle,
   LESSON_CHECK_IN_MAX_ACCURACY_METERS,
   LESSON_CHECK_IN_MAX_SAMPLE_AGE_MS,
   LESSON_CHECK_IN_WINDOW_AFTER_MS,
   LESSON_CHECK_IN_WINDOW_BEFORE_MS,
-  LessonCheckInReason,
-  toRadians,
+  type LessonCheckInReason,
+  requireInstructorProfile,
 } from "./_helpers";
-import { omitUndefined } from "../lib/validation";
-import {
-  loadInstructorComplianceSnapshot,
-  getInstructorJobActionBlockReason,
-} from "../lib/instructorCompliance";
 
 export const checkIntoLesson = mutation({
   args: {
@@ -64,15 +62,11 @@ export const checkIntoLesson = mutation({
     }
 
     // Verify instructor is still compliant before allowing check-in
-    const complianceSnapshot = await loadInstructorComplianceSnapshot(ctx, instructor._id);
-    const blockReason = getInstructorJobActionBlockReason(complianceSnapshot, job.sport);
-    if (blockReason) {
-      throw new ConvexError({
-        code: "VERIFICATION_REQUIRED",
-        message: `Check-in blocked: ${blockReason}`,
-        blockReason,
-      });
-    }
+    await enforceInstructorMarketplaceActionPolicy(ctx, {
+      instructor,
+      job,
+      actionLabel: "Check-in",
+    });
 
     const latestCheckIn = await ctx.db
       .query("lessonCheckIns")
@@ -133,6 +127,14 @@ export const checkIntoLesson = mutation({
     }
 
     const checkedInAt = now;
+    const assignmentRows = await ctx.db
+      .query("jobAssignments")
+      .withIndex("by_job", (q) => q.eq("jobId", job._id))
+      .collect();
+    const assignment =
+      assignmentRows.find(
+        (row) => row.instructorId === instructor._id && row.status === "accepted",
+      ) ?? null;
     await ctx.db.insert("lessonCheckIns", {
       jobId: job._id,
       branchId: branch._id,
@@ -151,6 +153,41 @@ export const checkIntoLesson = mutation({
         allowedDistanceMeters,
       }),
     });
+    await ctx.db.insert("lessonPresenceEvents", {
+      jobId: job._id,
+      branchId: branch._id,
+      studioId: job.studioId,
+      instructorId: instructor._id,
+      actorUserId: instructor.userId,
+      eventType: "check_in",
+      verificationStatus,
+      verificationReason,
+      latitude: args.latitude,
+      longitude: args.longitude,
+      accuracyMeters: args.accuracyMeters,
+      sampledAt: args.sampledAt,
+      occurredAt: checkedInAt,
+      createdAt: checkedInAt,
+      ...omitUndefined({
+        assignmentId: assignment?._id,
+      }),
+      ...omitUndefined({
+        distanceToBranchMeters,
+        allowedDistanceMeters,
+      }),
+    });
+    if (verificationStatus === "verified") {
+      await transitionLessonCheckInPolicy(ctx, {
+        job,
+        instructorId: instructor._id,
+        instructorUserId: instructor.userId,
+        lessonStatus: "checked_in",
+        settlementStatus: job.paymentTiming === "before_lesson" ? "pending" : "awaiting_lesson",
+        ...omitUndefined({
+          assignmentId: assignment?._id,
+        }),
+      });
+    }
 
     return {
       status: verificationStatus,

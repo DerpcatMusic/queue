@@ -26,6 +26,8 @@ export type PlaceCoordinates = {
   street?: string;
   streetNumber?: string;
   postalCode?: string;
+  country?: string;
+  countryCode?: string;
 };
 
 let sessionToken: string | null = null;
@@ -74,13 +76,15 @@ async function fetchOsmAutocomplete(input: string): Promise<PlacePrediction[]> {
         town?: string;
         village?: string;
         postcode?: string;
+        country?: string;
+        country_code?: string;
       };
     }>
   >(
-    `${OSM_AUTOCOMPLETE_URL}?format=jsonv2&limit=6&addressdetails=1&countrycodes=il&q=${encodeURIComponent(input)}`,
+    `${OSM_AUTOCOMPLETE_URL}?format=jsonv2&limit=6&addressdetails=1&q=${encodeURIComponent(input)}`,
     {
       headers: {
-        "Accept-Language": "he,en",
+        "Accept-Language": "en",
       },
     },
     { timeoutMs: OSM_AUTOCOMPLETE_TIMEOUT_MS, retries: 1 },
@@ -101,6 +105,8 @@ async function fetchOsmAutocomplete(input: string): Promise<PlacePrediction[]> {
       const street = addr?.road ?? addr?.footway ?? addr?.path ?? undefined;
       const streetNumber = addr?.house_number ?? undefined;
       const postalCode = addr?.postcode ?? undefined;
+      const country = addr?.country ?? undefined;
+      const countryCode = addr?.country_code?.toUpperCase() ?? undefined;
 
       const placeId = `osm:${item.place_id ?? display}`;
 
@@ -124,6 +130,8 @@ async function fetchOsmAutocomplete(input: string): Promise<PlacePrediction[]> {
         ...(street !== undefined ? { street } : {}),
         ...(streetNumber !== undefined ? { streetNumber } : {}),
         ...(postalCode !== undefined ? { postalCode } : {}),
+        ...(country !== undefined ? { country } : {}),
+        ...(countryCode !== undefined ? { countryCode } : {}),
       };
       fallbackPlaceCache.set(placeId, cacheEntry);
 
@@ -177,7 +185,6 @@ export async function fetchPlaceAutocomplete(input: string): Promise<PlacePredic
         body: JSON.stringify({
           input: trimmed,
           sessionToken: token,
-          includedRegionCodes: ["il"],
           languageCode: Platform.OS === "web" ? "en" : undefined,
         }),
       },
@@ -231,13 +238,18 @@ export async function fetchPlaceCoordinates(placeId: string): Promise<PlaceCoord
     const data = await fetchJsonWithPolicy<{
       location?: { latitude: number; longitude: number };
       formattedAddress?: string;
+      addressComponents?: Array<{
+        longText?: string;
+        shortText?: string;
+        types?: string[];
+      }>;
     }>(
       url,
       {
         method: "GET",
         headers: {
           "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-          "X-Goog-FieldMask": "location,formattedAddress",
+          "X-Goog-FieldMask": "location,formattedAddress,addressComponents",
           ...(token ? { "X-Goog-Session-Token": token } : {}),
         },
       },
@@ -248,10 +260,30 @@ export async function fetchPlaceCoordinates(placeId: string): Promise<PlaceCoord
       return null;
     }
 
+    const addressComponents = data.addressComponents ?? [];
+    const findComponent = (type: string) =>
+      addressComponents.find((component) => component.types?.includes(type));
+
+    const city =
+      findComponent("locality")?.longText ??
+      findComponent("postal_town")?.longText ??
+      findComponent("administrative_area_level_2")?.longText;
+    const street = findComponent("route")?.longText;
+    const streetNumber = findComponent("street_number")?.longText;
+    const postalCode = findComponent("postal_code")?.longText;
+    const country = findComponent("country")?.longText;
+    const countryCode = findComponent("country")?.shortText?.toUpperCase();
+
     return {
       latitude: data.location.latitude,
       longitude: data.location.longitude,
       formattedAddress: data.formattedAddress ?? "",
+      ...(city ? { city } : {}),
+      ...(street ? { street } : {}),
+      ...(streetNumber ? { streetNumber } : {}),
+      ...(postalCode ? { postalCode } : {}),
+      ...(country ? { country } : {}),
+      ...(countryCode ? { countryCode } : {}),
     };
   } catch {
     return null;

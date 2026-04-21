@@ -1,15 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type ColorValue, Pressable, TextInput, View } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
+import { type ColorValue, Pressable, TextInput, View, StyleSheet, Platform } from "react-native";
 import { ThemedText } from "@/components/themed-text";
-import { BrandRadius, BrandSpacing } from "@/constants/brand";
 import { useTheme } from "@/hooks/use-theme";
-import { BorderWidth } from "@/lib/design-system";
 import {
   fetchPlaceAutocomplete,
   fetchPlaceCoordinates,
-  isGooglePlacesConfigured,
   type PlaceCoordinates,
   type PlacePrediction,
   resetPlacesSession,
@@ -45,13 +41,20 @@ export function AddressAutocomplete({
   mutedTextColor,
 }: AddressAutocompleteProps) {
   const { t } = useTranslation();
-  const { color: palette } = useTheme();
+  const { color } = useTheme();
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressRef = useRef(false);
-  const placesAvailable = isGooglePlacesConfigured();
+  const placesAvailable = true;
+
+  // Resolve color strings with fallbacks
+  const finalBg = backgroundColor ?? color.surface;
+  const finalBorder = borderColor ?? color.border;
+  const finalText = textColor ?? color.text;
+  const finalPlaceholder = placeholderTextColor ?? color.textMuted;
+  const finalDropdownBg = surfaceColor ?? color.surfaceElevated;
 
   const fetchPredictions = useCallback(
     async (query: string) => {
@@ -126,42 +129,52 @@ export function AddressAutocomplete({
 
   return (
     <View style={styles.container}>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder ?? t("common.address")}
-        placeholderTextColor={placeholderTextColor ?? palette.textMuted}
+      <View 
         style={[
-          styles.input,
-          {
-            borderColor: borderColor ?? palette.border,
-            color: textColor ?? palette.text,
-            backgroundColor: backgroundColor ?? palette.surface,
-          },
+          styles.inputWrapper, 
+          { 
+            borderColor: finalBorder as string, 
+            backgroundColor: finalBg as string,
+          }
         ]}
-        autoCorrect={false}
-        autoCapitalize="words"
-        autoComplete="street-address"
-        textContentType="fullStreetAddress"
-        returnKeyType="search"
-        clearButtonMode="while-editing"
-        selectionColor={palette.primary}
-        cursorColor={palette.primary}
-      />
-      {isLoading ? (
-        <View style={[styles.loadingBar, { backgroundColor: palette.primarySubtle }]}>
-          <ThemedText type="micro" style={{ color: mutedTextColor ?? palette.textMuted }}>
+      >
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder ?? t("common.address")}
+          placeholderTextColor={finalPlaceholder as string}
+          style={[
+            styles.input,
+            {
+              color: finalText as string,
+            },
+          ]}
+          autoCorrect={false}
+          autoCapitalize="words"
+          autoComplete="street-address"
+          textContentType="fullStreetAddress"
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+          selectionColor={color.primary}
+          cursorColor={color.primary}
+        />
+      </View>
+      
+      {isLoading && (
+        <View style={[styles.loadingBar, { backgroundColor: color.primarySubtle }]}>
+          <ThemedText type="micro" style={{ color: mutedTextColor ?? color.textMuted }}>
             {t("common.searching")}
           </ThemedText>
         </View>
-      ) : null}
-      {isOpen && predictions.length > 0 ? (
+      )}
+      
+      {isOpen && predictions.length > 0 && (
         <View
           style={[
             styles.dropdown,
             {
-              borderColor: borderColor ?? palette.border,
-              backgroundColor: surfaceColor ?? palette.surface,
+              borderColor: finalBorder as string,
+              backgroundColor: finalDropdownBg as string,
             },
           ]}
         >
@@ -171,23 +184,21 @@ export function AddressAutocomplete({
               style={({ pressed }) => [
                 styles.suggestion,
                 {
-                  backgroundColor: pressed ? palette.primarySubtle : palette.surface,
+                  backgroundColor: pressed ? color.primarySubtle : (finalDropdownBg as string),
                 },
               ]}
               onPress={() => {
                 void handleSelect(prediction);
               }}
             >
-              <ThemedText type="defaultSemiBold" numberOfLines={1}>
+              <ThemedText type="defaultSemiBold" numberOfLines={1} style={{ color: finalText as string }}>
                 {prediction.mainText}
               </ThemedText>
               {prediction.secondaryText ? (
                 <ThemedText
                   type="caption"
                   numberOfLines={1}
-                  style={{
-                    color: mutedTextColor ?? palette.textMuted,
-                  }}
+                  style={{ color: mutedTextColor ?? color.textMuted }}
                 >
                   {prediction.secondaryText}
                 </ThemedText>
@@ -195,7 +206,7 @@ export function AddressAutocomplete({
             </Pressable>
           ))}
         </View>
-      ) : null}
+      )}
     </View>
   );
 }
@@ -203,32 +214,46 @@ export function AddressAutocomplete({
 const styles = StyleSheet.create({
   container: {
     position: "relative",
-    zIndex: 10,
+    zIndex: 100,
+  },
+  inputWrapper: {
+    borderWidth: 1.5,
+    borderRadius: 16,
+    borderCurve: "continuous",
+    paddingHorizontal: 16,
+    minHeight: 64,
+    justifyContent: "center",
   },
   input: {
-    borderWidth: BorderWidth.thin,
-    borderRadius: BrandRadius.input,
-    borderCurve: "continuous",
-    minHeight: BrandSpacing.iconContainer + BrandSpacing.xs,
-    paddingHorizontal: BrandSpacing.md,
-    paddingVertical: BrandSpacing.sm,
+    fontFamily: Platform.OS === "ios" ? "System" : "sans-serif",
+    fontSize: 18,
+    lineHeight: 26,
+    width: "100%",
   },
   loadingBar: {
-    paddingHorizontal: BrandSpacing.md,
-    paddingVertical: BrandSpacing.xs,
-    borderRadius: BrandRadius.cardSubtle,
-    marginTop: BrandSpacing.xs,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 8,
   },
   dropdown: {
-    borderWidth: BorderWidth.thin,
-    borderRadius: BrandRadius.input,
+    position: "absolute",
+    top: 68,
+    left: 0,
+    right: 0,
+    borderWidth: 1.5,
+    borderRadius: 16,
     borderCurve: "continuous",
-    marginTop: BrandSpacing.xs,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
     overflow: "hidden",
   },
   suggestion: {
-    paddingHorizontal: BrandSpacing.md,
-    paddingVertical: BrandSpacing.sm,
-    gap: BrandSpacing.xs,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 4,
   },
 });

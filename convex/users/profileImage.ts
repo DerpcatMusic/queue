@@ -6,11 +6,11 @@ import type { Doc } from "../_generated/dataModel";
 import { requireUserRole } from "../lib/auth";
 import { omitUndefined, trimOptionalString } from "../lib/validation";
 import { getUniqueInstructorProfileByUserId, getUniqueStudioProfileByUserId } from "./_shared";
+import { createSecureUploadToken } from "../lib/secureToken";
 
-// Private helper
+// Private helper - uses crypto for secure token generation
 function createUploadSessionToken(userId: Doc<"users">["_id"], now: number) {
-  const entropy = Math.random().toString(36).slice(2, 12);
-  return `${String(userId)}:${now}:${entropy}`;
+  return createSecureUploadToken(String(userId), now);
 }
 
 // Private helper to require instructor profile

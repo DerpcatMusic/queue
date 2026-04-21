@@ -58,13 +58,14 @@ export async function requireUserRole(ctx: Ctx, roles: UserRole[]): Promise<Doc<
   return user;
 }
 
-export async function requireInternalAdmin(ctx: Ctx): Promise<Doc<"users">> {
+export async function requireInternalTester(ctx: Ctx): Promise<Doc<"users">> {
   const user = await requireCurrentUser(ctx);
   const access = await resolveInternalAccessForUser(ctx, user);
 
   if (!access.canManageInternalAccess) {
-    throw new ConvexError("Internal admin access required");
+    throw new ConvexError("Internal tester access required");
   }
 
   return user;
 }
+

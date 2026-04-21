@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Redirect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useUser } from "@/contexts/user-context";
 import { HomeHeaderSheet } from "@/components/home/home-header-sheet";
 import {
   HomeRoleContent,
@@ -10,7 +11,6 @@ import {
 import { createContentDrivenTopSheetConfig } from "@/components/layout/top-sheet-registry";
 import { MeshGradientBackground } from "@/components/ui/mesh-gradient-background";
 import { LoadingScreen } from "@/components/loading-screen";
-import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useMinuteNow } from "@/hooks/use-minute-now";
@@ -26,7 +26,7 @@ export default function HomeScreen() {
   const queryNow = Math.floor(liveNow / (60 * 1000)) * 60 * 1000;
   const theme = useTheme();
 
-  const { currentUser, isAuthLoading, isAuthenticated } = useUser();
+  const { currentUser, internalAccess, isAuthLoading, isAuthenticated } = useUser();
   const canQueryInstructor =
     !isAuthLoading && isAuthenticated && currentUser?.role === "instructor";
   const canQueryStudio = !isAuthLoading && isAuthenticated && currentUser?.role === "studio";
@@ -52,7 +52,7 @@ export default function HomeScreen() {
     canQueryInstructor ? { now: queryNow } : "skip",
   );
   const instructorPayoutSummary = useQuery(
-    api.payments.core.getMyPayoutSummaryV2,
+    api.payments.core.getMyPayoutSummary,
     canQueryInstructor ? {} : "skip",
   );
   const studioSettings = useQuery(api.studios.settings.getMyStudioSettings, canQueryStudio ? {} : "skip");
@@ -88,13 +88,6 @@ export default function HomeScreen() {
     [displayCurrency, locale],
   );
 
-  const studioHomeCounts = useMemo(() => {
-    const jobs: NonNullable<HomeRoleContentProps["myStudioJobs"]> = myStudioJobs ?? [];
-    const openJobs = jobs.filter((job) => job.status === "open").length;
-    const pendingApplicants = jobs.reduce((total, job) => total + job.pendingApplicationsCount, 0);
-    const jobsFilled = jobs.filter((job) => job.status === "filled").length;
-    return { openJobs, pendingApplicants, jobsFilled };
-  }, [myStudioJobs]);
   const fallbackDisplayName =
     currentUser?.fullName?.trim().split(/\s+/)[0] || t("home.shared.unknownName");
   const homeDisplayName =
@@ -110,44 +103,38 @@ export default function HomeScreen() {
         ? (studioSettings?.profileImageUrl ?? currentUser?.image)
         : currentUser?.image;
   const homeSubtitle =
-    activeRole === "instructor"
-      ? instructorHomeStats?.isVerified
-        ? t("home.instructor.verified")
-        : undefined
-      : activeRole === "studio"
-        ? t("home.studio.role")
-        : undefined;
+    activeRole === "instructor" && instructorHomeStats?.isVerified
+      ? t("home.instructor.verified")
+      : undefined;
   const instructorPendingApplications = instructorHomeStats?.pendingApplications ?? 0;
   const instructorThisMonthEarningsAgorot = instructorHomeStats?.thisMonthEarningsAgorot ?? 0;
   const instructorOpenJobs = availableInstructorJobs?.length ?? 0;
   const homeSheetContent = useMemo(
     () =>
-      activeRole === "instructor" || activeRole === "studio" ? (
+      activeRole === "instructor" ? (
         <HomeHeaderSheet
           displayName={homeDisplayName}
           profileImageUrl={homeProfileImageUrl}
-          isVerified={
-            activeRole === "instructor" ? (instructorHomeStats?.isVerified ?? false) : false
-          }
+          isVerified={instructorHomeStats?.isVerified ?? false}
           thisMonthEarningsLabel={currencyFormatter.format(instructorThisMonthEarningsAgorot / 100)}
           thisMonthEarningsAgorot={instructorThisMonthEarningsAgorot}
           totalEarningsAgorot={instructorHomeStats?.totalEarningsAgorot ?? 0}
           paidOutAmountAgorot={instructorHomeStats?.paidOutAmountAgorot ?? 0}
           outstandingAmountAgorot={instructorHomeStats?.outstandingAmountAgorot ?? 0}
-          pendingApplications={
-            activeRole === "instructor"
-              ? instructorPendingApplications
-              : studioHomeCounts.pendingApplicants
-          }
-          openJobs={activeRole === "instructor" ? instructorOpenJobs : studioHomeCounts.openJobs}
-          missionsCount={
-            activeRole === "instructor"
-              ? (instructorHomeStats?.lessonEvents?.length ?? 0)
-              : (myStudioJobs?.length ?? 0)
-          }
-          role={activeRole}
+          pendingApplications={instructorPendingApplications}
+          openJobs={instructorOpenJobs}
+          missionsCount={instructorHomeStats?.lessonEvents?.length ?? 0}
+          role="instructor"
+          isTestAccount={Boolean(internalAccess?.canManageInternalAccess)}
           transparent
           {...(homeSubtitle ? { subtitle: homeSubtitle } : {})}
+        />
+      ) : activeRole === "studio" ? (
+        <HomeHeaderSheet
+          displayName={homeDisplayName}
+          profileImageUrl={homeProfileImageUrl}
+          role="studio"
+          transparent
         />
       ) : null,
     [
@@ -164,9 +151,7 @@ export default function HomeScreen() {
       instructorHomeStats?.paidOutAmountAgorot,
       instructorHomeStats?.outstandingAmountAgorot,
       instructorHomeStats?.lessonEvents?.length,
-      myStudioJobs?.length,
-      studioHomeCounts.openJobs,
-      studioHomeCounts.pendingApplicants,
+      internalAccess?.canManageInternalAccess,
     ],
   );
 
@@ -195,7 +180,6 @@ export default function HomeScreen() {
         <HomeRoleContent
           activeRole={activeRole as "instructor" | "studio"}
           locale={locale}
-          currencyFormatter={currencyFormatter}
           t={t}
           instructorHomeStats={instructorHomeStats}
           instructorSettings={instructorSettings}
@@ -268,7 +252,6 @@ export default function HomeScreen() {
     <HomeRoleContent
       activeRole={activeRole}
       locale={locale}
-      currencyFormatter={currencyFormatter}
       t={t}
       instructorHomeStats={instructorHomeStats}
       instructorSettings={instructorSettings}

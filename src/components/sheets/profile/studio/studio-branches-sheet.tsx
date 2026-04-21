@@ -1,8 +1,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { useMemo, useState } from "react";
-import { ScrollView } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Alert } from "react-native";
+import { Alert, ScrollView } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -11,6 +10,7 @@ import {
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
+import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { ChoicePill } from "@/components/ui/choice-pill";
@@ -21,11 +21,10 @@ import { getZoneLabel, ZONE_OPTIONS } from "@/constants/zones";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { Box } from "@/primitives";
 import { useTheme } from "@/hooks/use-theme";
 import { EXPIRY_OVERRIDE_PRESETS } from "@/lib/jobs-utils";
 import { omitUndefined } from "@/lib/omit-undefined";
-import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
+import { Box } from "@/primitives";
 
 type CalendarProvider = "none" | "google" | "apple";
 
@@ -315,7 +314,7 @@ export function StudioBranchesSheet({ visible, onClose }: StudioBranchesSheetPro
     );
   };
 
-  if (!currentUser || (currentUser?.role === "studio" && branches === undefined)) {
+  if (currentUser === undefined) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose}>
         <LoadingScreen label={t("profile.settings.loading")} />
@@ -323,10 +322,14 @@ export function StudioBranchesSheet({ visible, onClose }: StudioBranchesSheetPro
     );
   }
 
-  if (currentUser?.role !== "studio") {
+  if (currentUser === null || currentUser.role !== "studio") {
+    return null;
+  }
+
+  if (branches === undefined) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose}>
-        <LoadingScreen label={t("profile.settings.unavailable")} />
+        <LoadingScreen label={t("profile.settings.loading")} />
       </BaseProfileSheet>
     );
   }

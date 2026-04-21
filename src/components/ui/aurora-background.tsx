@@ -51,45 +51,112 @@ float snoise(float2 v) {
   return 130.0 * dot(m, g);
 }
 
-float auroraBand(float2 uv, float seed, float amplitude, float thickness, float drift, float phase) {
-  float x = uv.x * 1.45;
-  float y = uv.y * 1.2;
-  float driftTime = time * (0.34 + seed * 0.05);
-  float base = 0.15 + seed * 0.055;
+// Blob of light at top - creates bright spot that fades downward
+float topBlob(float2 uv, float time) {
+  // Multiple drifting bright spots
+  float blob1 = snoise(float2(uv.x * 3.0 + sin(time * 0.3) * 0.5, time * 0.2)) * 0.5 + 0.5;
+  float blob2 = snoise(float2(uv.x * 2.0 + cos(time * 0.25) * 0.3, time * 0.15 + 1.5)) * 0.5 + 0.5;
+  float blob3 = snoise(float2(uv.x * 4.0 + sin(time * 0.4) * 0.2, time * 0.1 + 3.0)) * 0.5 + 0.5;
+  
+  // Combine blobs
+  float combined = blob1 * 0.4 + blob2 * 0.35 + blob3 * 0.25;
+  
+  // Vertical falloff - bright at top, fades going down
+  float verticalFall = pow(max(1.0 - uv.y * 1.1, 0.0), 1.5);
+  
+  // Horizontal spread
+  float horizontal = exp(-pow((uv.x - 0.5) * 2.5, 2.0));
+  
+  return combined * verticalFall * horizontal * 1.8;
+}
+
+float auroraBand(float2 uv, float seed, float amplitude, float thickness, float drift, float phase, float speed) {
+  float x = uv.x * 1.6;
+  float y = uv.y;
+  float driftTime = time * speed;
+  float base = 0.12 + seed * 0.04;
   float wave =
     base +
-    sin(x * waveDirection.x * 0.072 + driftTime + phase) * amplitude +
-    sin(x * waveDirection.y * 0.045 - driftTime * 0.8 + phase * 1.6) * amplitude * 0.48 +
-    snoise(float2(x * 0.95 + seed * 4.6, y * 2.2 - driftTime * drift)) * 0.028;
+    sin(x * waveDirection.x * 0.08 + driftTime + phase) * amplitude +
+    sin(x * waveDirection.y * 0.05 - driftTime * 0.6 + phase * 1.4) * amplitude * 0.55 +
+    snoise(float2(x * 1.1 + seed * 3.2, y * 1.8 - driftTime * drift * 0.5)) * 0.035 +
+    snoise(float2(x * 2.5 + seed * 5.0, y * 0.8 + driftTime * 0.3)) * 0.02;
   float band = smoothstep(thickness, 0.0, abs(uv.y - wave));
-  return pow(band, 1.15);
+  return pow(band, 1.1);
+}
+
+// Extra noise layer for color variation
+float colorNoise(float2 uv, float time) {
+  float n1 = snoise(float2(uv.x * 3.0 + time * 0.1, uv.y * 4.0)) * 0.5 + 0.5;
+  float n2 = snoise(float2(uv.x * 5.0 - time * 0.15, uv.y * 3.0 + time * 0.05)) * 0.5 + 0.5;
+  return n1 * n2;
 }
 
 half4 main(float2 fragCoord) {
   float2 uv = fragCoord / resolution;
-  float3 base = mix(skyTop.rgb, skyBottom.rgb, smoothstep(0.0, 1.0, pow(uv.y, 1.16)));
+  float3 base = mix(skyTop.rgb, skyBottom.rgb, smoothstep(0.0, 1.0, pow(uv.y, 0.9)));
 
-  float horizontalFade = smoothstep(0.0, 0.05, uv.x) * smoothstep(0.0, 0.08, 1.0 - uv.x);
-  float verticalFade = 1.0 - smoothstep(0.1, 0.76, uv.y);
-  float radial = 1.0 - smoothstep(0.18, 0.94, distance(uv, float2(0.5, -0.02)));
-  float envelope = horizontalFade * max(verticalFade, radial * 0.88);
-
-  float band1 = auroraBand(uv, 0.0, 0.11, 0.28, 0.75, 0.0);
-  float band2 = auroraBand(uv, 1.0, 0.095, 0.31, 0.88, 1.9);
-  float band3 = auroraBand(uv, 2.0, 0.085, 0.34, 0.68, 3.8);
-
-  float haze = 0.58 + 0.42 * snoise(float2(uv.x * 2.0 + time * 0.18, uv.y * 2.8 - time * 0.09));
-  float glow = (band1 * 0.95 + band2 * 0.75 + band3 * 0.56) * envelope * haze;
-
+  // Horizontal fade at edges
+  float horizontalFade = smoothstep(0.0, 0.08, uv.x) * smoothstep(0.0, 0.1, 1.0 - uv.x);
+  
+  // Vertical fade - extends further down, more present at top
+  float verticalFade = pow(max(1.0 - uv.y * 0.85, 0.0), 0.7);
+  
+  // Top blob - bright light source at top
+  float blob = topBlob(uv, time);
+  
+  // Radial glow from top center
+  float radial = 1.0 - smoothstep(0.0, 1.2, distance(uv, float2(0.5, -0.15)));
+  radial = pow(radial, 2.0);
+  
+  // Multiple aurora bands with different speeds and phases
+  float band1 = auroraBand(uv, 0.0, 0.13, 0.22, 0.7, 0.0, 0.38);
+  float band2 = auroraBand(uv, 1.0, 0.11, 0.26, 0.85, 1.9, 0.32);
+  float band3 = auroraBand(uv, 2.0, 0.10, 0.30, 0.65, 3.8, 0.28);
+  float band4 = auroraBand(uv, 3.0, 0.08, 0.35, 0.9, 5.2, 0.25);
+  
+  // Color variation noise
+  float colorVar = colorNoise(uv, time);
+  
+  // Create glowing envelope
+  float envelope = horizontalFade * verticalFade;
+  float blobEnvelope = envelope * radial;
+  
+  // Haze for atmosphere
+  float haze = 0.5 + 0.5 * snoise(float2(uv.x * 1.8 + time * 0.12, uv.y * 2.5 - time * 0.08));
+  float haze2 = 0.5 + 0.5 * snoise(float2(uv.x * 3.5 - time * 0.08, uv.y * 1.8 + time * 0.06));
+  
+  // Combine bands with varied weights
+  float glow = (band1 * 1.0 + band2 * 0.85 + band3 * 0.7 + band4 * 0.5) * envelope;
+  glow *= haze * 1.2;
+  
+  // Bright blob contribution
+  glow += blob * blobEnvelope * 0.8;
+  
+  // Aurora colors with more variation
   float3 aurora =
-    color1.rgb * band1 * 0.62 +
-    color2.rgb * band2 * 0.92 +
-    color3.rgb * band3 * 0.54;
+    color1.rgb * band1 * 0.8 +
+    color2.rgb * band2 * 1.0 +
+    color3.rgb * band3 * 0.7;
+  
+  // Add color variation to aurora
+  aurora = mix(aurora, aurora * color1.rgb, colorVar * 0.3);
+  aurora = mix(aurora, aurora * color2.rgb, haze2 * 0.2);
+  
   aurora *= glow * intensity;
-
-  float3 topGlow = mix(color2.rgb, color1.rgb, 0.4) * radial * 0.15;
+  
+  // Top glow - the bright blobs at top
+  float3 topGlow = mix(color2.rgb, color1.rgb, 0.5) * radial * blob * 0.6;
+  topGlow += color1.rgb * blob * blobEnvelope * 0.5;
+  
+  // Combine everything
   float3 finalColor = base + aurora + topGlow;
-  finalColor = mix(finalColor, base, smoothstep(0.58, 1.0, uv.y));
+  
+  // Fade at bottom - aurora extends far down but eventually fades
+  finalColor = mix(finalColor, base, smoothstep(0.7, 1.0, uv.y));
+  
+  // Extra bright at very top
+  finalColor += color2.rgb * blob * radial * 0.3 * intensity;
 
   return half4(clamp(finalColor, 0.0, 1.0), 1.0);
 }
@@ -183,4 +250,84 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     overflow: "hidden",
   },
+});
+
+type AuroraRgb = [number, number, number];
+type SharedAuroraRgb = { value: AuroraRgb };
+type SharedNumber = { value: number };
+
+type AuroraRgbInput = AuroraRgb | SharedAuroraRgb | undefined;
+
+// Animated version that accepts shared value RGB arrays for smooth color transitions
+interface AnimatedAuroraBackgroundProps {
+  style?: StyleProp<ViewStyle>;
+  width: number;
+  height: number;
+  skyTopShared: AuroraRgbInput;
+  aur1Shared: AuroraRgbInput;
+  aur2Shared: AuroraRgbInput;
+  aur3Shared: AuroraRgbInput;
+  skyBottom?: AuroraRgb;
+  intensity?: number;
+  baseSpeed?: number;
+  speedBoost?: SharedNumber;
+}
+
+export const AnimatedAuroraBackground = memo(function AnimatedAuroraBackground({
+  style,
+  width,
+  height,
+  skyTopShared,
+  aur1Shared,
+  aur2Shared,
+  aur3Shared,
+  skyBottom = [0.016, 0.027, 0.051],
+  intensity = 0.78,
+  baseSpeed = 0.74,
+  speedBoost,
+}: AnimatedAuroraBackgroundProps) {
+  const time = useSharedValue(0);
+
+  useFrameCallback((frameInfo: FrameInfo) => {
+    if (frameInfo.timeSincePreviousFrame != null) {
+      const boost = speedBoost?.value ?? 1;
+      time.value += (frameInfo.timeSincePreviousFrame / 1000) * baseSpeed * boost;
+    }
+  });
+
+  const uniforms = useDerivedValue(
+    () => {
+      const aur1 = Array.isArray(aur1Shared) ? aur1Shared : aur1Shared?.value ?? [0.188, 0.478, 0.784];
+      const aur2 = Array.isArray(aur2Shared) ? aur2Shared : aur2Shared?.value ?? [0.122, 0.553, 1];
+      const aur3 = Array.isArray(aur3Shared) ? aur3Shared : aur3Shared?.value ?? [0.31, 0.471, 0.847];
+      const skyTopResolved = Array.isArray(skyTopShared) ? skyTopShared : skyTopShared?.value ?? [0.071, 0.173, 0.337];
+
+      return {
+        resolution: [width, height],
+        time: time.value,
+        intensity,
+        waveDirection: [8, -6] as [number, number],
+        color1: [...aur1, 1],
+        color2: [...aur2, 1],
+        color3: [...aur3, 1],
+        skyTop: [...skyTopResolved, 1],
+        skyBottom: [...skyBottom, 1],
+      };
+    },
+    [aur1Shared, aur2Shared, aur3Shared, skyTopShared, width, height, time, speedBoost, skyBottom, intensity],
+  );
+
+  if (!AURORA_SHADER) {
+    return null;
+  }
+
+  return (
+    <View pointerEvents="none" style={[styles.container, style]}>
+      <Canvas style={StyleSheet.absoluteFill}>
+        <Fill>
+          <Shader source={AURORA_SHADER} uniforms={uniforms} />
+        </Fill>
+      </Canvas>
+    </View>
+  );
 });

@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, TextInput } from "react-native";
@@ -13,6 +13,7 @@ import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
+import { SettingsUnavailableScreen } from "@/components/profile/settings-unavailable-screen";
 import { ActionButton } from "@/components/ui/action-button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -24,7 +25,6 @@ import { useAppInsets } from "@/hooks/use-app-insets";
 import { useLocationResolution } from "@/hooks/use-location-resolution";
 import { useTheme } from "@/hooks/use-theme";
 import { BorderWidth, FontSize } from "@/lib/design-system";
-import { Box } from "@/primitives";
 import {
   fetchPlaceByZipCode,
   type PlaceCoordinates,
@@ -33,6 +33,7 @@ import {
 import { getLocationResolveErrorMessage } from "@/lib/location-error-message";
 import type { ResolvedLocation } from "@/lib/location-zone";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
+import { Box } from "@/primitives";
 
 let zoneLabelByIdPromise: Promise<Map<string, { en: string; he: string }>> | null = null;
 const DEFAULT_WORK_RADIUS_KM = 15;
@@ -345,11 +346,23 @@ export default function LocationScreen() {
     clearDetectedZone();
   }, [applyResolution, clearDetectedZone, locationResolver, t]);
 
+  if (currentUser === undefined) {
+    return <LoadingScreen label={t("profile.settings.loading")} />;
+  }
+
+  if (currentUser === null) {
+    return <Redirect href="/sign-in" />;
+  }
+
+  if (currentUser.role !== "instructor") {
+    return <Redirect href="/" />;
+  }
+
   if (instructorSettings === undefined) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
   if (instructorSettings === null) {
-    return <LoadingScreen label={t("profile.settings.unavailable")} />;
+    return <SettingsUnavailableScreen label={t("profile.settings.unavailable")} />;
   }
 
   const trimmedAddressInput = addressInput.trim();
@@ -365,7 +378,8 @@ export default function LocationScreen() {
     trimmedAddressInput !== initialAddress ||
     latitude !== instructorSettings.latitude ||
     longitude !== instructorSettings.longitude ||
-    Number.parseFloat(workRadiusKm) !== (instructorSettings.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM) ||
+    Number.parseFloat(workRadiusKm) !==
+      (instructorSettings.workRadiusKm ?? DEFAULT_WORK_RADIUS_KM) ||
     city !== (instructorSettings.addressCity ?? "") ||
     street !== (instructorSettings.addressStreet ?? "") ||
     streetNumber !== (instructorSettings.addressNumber ?? "") ||
@@ -503,15 +517,15 @@ export default function LocationScreen() {
 
         {/* Structured address summary — auto-filled from search/GPS */}
         {showStructuredSummary ? (
-            <Box
-              style={{
-                gap: BrandSpacing.xs,
-                paddingHorizontal: BrandSpacing.md,
-                paddingVertical: BrandSpacing.md,
-                borderRadius: BrandRadius.lg,
-                backgroundColor: palette.surfaceElevated as string,
-              }}
-            >
+          <Box
+            style={{
+              gap: BrandSpacing.xs,
+              paddingHorizontal: BrandSpacing.md,
+              paddingVertical: BrandSpacing.md,
+              borderRadius: BrandRadius.lg,
+              backgroundColor: palette.surfaceElevated as string,
+            }}
+          >
             {renderStructuredRow(`${t("profile.location.fieldCity")}:`, city)}
             {renderStructuredRow(
               `${t("profile.location.fieldStreet")}:`,
@@ -523,14 +537,10 @@ export default function LocationScreen() {
             {hasContent(postalCode)
               ? renderStructuredRow(`${t("profile.location.fieldZipCode")}:`, postalCode)
               : null}
-            </Box>
+          </Box>
         ) : null}
 
-        <ProfileSectionHeader
-          label={t("profile.location.workRadiusTitle")}
-          icon="location"
-          flush
-        />
+        <ProfileSectionHeader label={t("profile.location.workRadiusTitle")} icon="location" flush />
         <Box style={{ gap: BrandSpacing.sm }}>
           <Text
             style={{
@@ -680,7 +690,11 @@ export default function LocationScreen() {
           {manualMode && (
             <>
               <Box
-                style={{ height: 12, width: BorderWidth.thin, backgroundColor: palette.border as string }}
+                style={{
+                  height: 12,
+                  width: BorderWidth.thin,
+                  backgroundColor: palette.border as string,
+                }}
               />
               <Pressable
                 onPress={() => {
@@ -784,7 +798,13 @@ export default function LocationScreen() {
             }}
           >
             {/* Zone status row */}
-            <Box style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Box
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
               <Box style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.sm }}>
                 <Box
                   style={{

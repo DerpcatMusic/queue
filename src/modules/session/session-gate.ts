@@ -1,3 +1,4 @@
+import { useAuthSession } from "@/contexts/auth-session-context";
 import { useUser } from "@/contexts/user-context";
 import { peekPendingPostSignOutAuthHandoff } from "@/modules/session/post-signout-auth-intent";
 import type { getRoleTabBasePath } from "@/navigation/role-routes";
@@ -5,7 +6,8 @@ import { buildRoleTabRoute, isRolePath, ROLE_TAB_ROUTE_NAMES } from "@/navigatio
 import type { AppRole } from "@/navigation/types";
 
 type UserLike = {
-  role?: "pending" | "instructor" | "studio" | "admin" | null;
+  role?: "pending" | "instructor" | "studio" | null;
+  roles?: AppRole[] | null;
   onboardingComplete?: boolean | null;
 };
 
@@ -32,9 +34,14 @@ type SessionGateDecisionMap = {
 export function resolveSessionState(input: {
   isAuthLoading: boolean;
   isAuthenticated: boolean;
+  isSessionTransitioning?: boolean;
   currentUser: UserLike | null | undefined;
 }): SessionState {
   if (input.isAuthLoading) {
+    return { status: "loading" };
+  }
+
+  if (input.isSessionTransitioning) {
     return { status: "loading" };
   }
 
@@ -47,16 +54,22 @@ export function resolveSessionState(input: {
     return { status: "loading" };
   }
 
-  const role = input.currentUser.role;
-  if (role !== "instructor" && role !== "studio") {
+  const directRole = input.currentUser.role;
+  const availableRoles = input.currentUser.roles ?? [];
+  const resolvedRole =
+    directRole === "instructor" || directRole === "studio"
+      ? directRole
+      : availableRoles[0];
+
+  if (!resolvedRole) {
     return { status: "onboarding" };
   }
 
-  if (!input.currentUser.onboardingComplete) {
+  if (!input.currentUser.onboardingComplete && availableRoles.length === 0) {
     return { status: "onboarding" };
   }
 
-  return { status: "ready", role };
+  return { status: "ready", role: resolvedRole };
 }
 
 export function resolveSessionGateDecision<T extends SessionGateEntryPoint>(input: {
@@ -107,6 +120,7 @@ export function useSessionGate<T extends SessionGateEntryPoint>(
   pathname?: string,
 ): SessionGateDecisionMap[T] {
   const { currentUser, isAuthLoading, isAuthenticated } = useUser();
+  const { isSessionTransitioning } = useAuthSession();
   const pendingAuthHandoff = peekPendingPostSignOutAuthHandoff();
 
   // Only auth initialization itself should block routing.
@@ -119,6 +133,7 @@ export function useSessionGate<T extends SessionGateEntryPoint>(
   const session = resolveSessionState({
     isAuthLoading,
     isAuthenticated,
+    isSessionTransitioning,
     currentUser,
   });
 

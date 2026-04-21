@@ -1,24 +1,39 @@
 import { v } from "convex/values";
-import { query } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
+import { query } from "../_generated/server";
 import { getCurrentUser as getCurrentUserDoc } from "../lib/auth";
 import { resolveInternalAccessForUser } from "../lib/internalAccess";
 import { omitUndefined } from "../lib/validation";
-import type { Doc } from "../_generated/dataModel";
 import type { UserProfileCtx } from "./_shared";
-import { mergeOwnedRoles, resolveOwnedRoles, getUniqueInstructorProfileByUserId, getUniqueStudioProfileByUserId } from "./_shared";
-import { appRoleValidator } from "./_shared";
+import { appRoleValidator, resolveOwnedRoles } from "./_shared";
+
+function resolveEffectiveRole(
+  user: Doc<"users">,
+  roles: Array<"instructor" | "studio">,
+): "pending" | "instructor" | "studio" {
+  if ((user.role === "instructor" || user.role === "studio") && roles.includes(user.role)) {
+    return user.role;
+  }
+  return roles[0] ?? "pending";
+}
 
 // Private helpers needed by getCurrentUser query
-async function toCurrentUserPayload(ctx: UserProfileCtx, user: Doc<"users">, roles: Array<"instructor" | "studio">) {
+async function toCurrentUserPayload(
+  ctx: UserProfileCtx,
+  user: Doc<"users">,
+  roles: Array<"instructor" | "studio">,
+) {
   const internalAccess = await resolveInternalAccessForUser(ctx, user);
+  const effectiveRole = resolveEffectiveRole(user, roles);
+  const onboardingComplete = user.onboardingComplete || roles.length > 0;
 
   return {
     _id: user._id,
     _creationTime: user._creationTime,
-    role: user.role,
+    role: effectiveRole,
     roles,
-    onboardingComplete: user.onboardingComplete,
+    onboardingComplete,
     isActive: user.isActive,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
@@ -57,7 +72,7 @@ export const getCurrentUser = query({
       phoneVerificationTime: v.optional(v.number()),
       isAnonymous: v.optional(v.boolean()),
       isActive: v.boolean(),
-      internalRole: v.optional(v.union(v.literal("tester"), v.literal("admin"))),
+      internalRole: v.optional(v.literal("tester")),
       hasVerificationBypass: v.boolean(),
       createdAt: v.number(),
       updatedAt: v.number(),
@@ -67,7 +82,7 @@ export const getCurrentUser = query({
   handler: async (ctx: QueryCtx) => {
     const user = await getCurrentUserDoc(ctx);
 
-    if (!user || !user.isActive) {
+    if (!user?.isActive) {
       return null;
     }
 

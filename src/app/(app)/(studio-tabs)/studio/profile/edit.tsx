@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
@@ -8,6 +8,7 @@ import { LoadingScreen } from "@/components/loading-screen";
 import { ProfileEditorForm } from "@/components/profile/profile-editor";
 import type { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { useProfileSubpageSheet } from "@/components/profile/profile-subpage-sheet";
+import { SettingsUnavailableScreen } from "@/components/profile/settings-unavailable-screen";
 import { useUser } from "@/contexts/user-context";
 import { api } from "@/convex/_generated/api";
 import { isProfileImageUploadError, useProfileImageUpload } from "@/hooks/use-profile-image-upload";
@@ -89,7 +90,23 @@ export default function StudioProfileEditScreen() {
     );
   }, [bioDraft, contactPhoneDraft, nameDraft, socialLinksDraft, sportsDraft, studioSettings]);
 
-  if (currentUser?.role !== "studio" || !studioSettings) {
+  if (currentUser === undefined) {
+    return <LoadingScreen label={t("profile.settings.loading")} />;
+  }
+
+  if (currentUser === null) {
+    return <Redirect href="/sign-in" />;
+  }
+
+  if (currentUser.role !== "studio") {
+    return <Redirect href="/" />;
+  }
+
+  if (studioSettings === null) {
+    return <SettingsUnavailableScreen label={t("profile.settings.unavailable")} />;
+  }
+
+  if (studioSettings === undefined) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
 

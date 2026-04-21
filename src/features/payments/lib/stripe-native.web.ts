@@ -17,6 +17,37 @@ export async function presentStripeNativePaymentSheet(_input?: {
   };
 }
 
+export async function presentStripeNativeCardSetup(_input?: {
+  setupIntentClientSecret: string;
+  billingName: string;
+  billingEmail?: string;
+}): Promise<{ status: "success" } | { status: "canceled" } | { status: "failed"; error: string }> {
+  return {
+    status: "failed",
+    error: "Stripe native card setup is not available on web",
+  };
+}
+
+export async function presentStripeNativeSetupSheet(_input?: {
+  setupIntentClientSecret: string;
+  customerSessionClientSecret?: string;
+  customerId?: string;
+  merchantDisplayName?: string;
+  billingName?: string;
+  billingEmail?: string;
+  paymentMethodOrder?: string[];
+  currencyCode?: string;
+  appearance?: unknown;
+  style?: unknown;
+  billingDetailsCollectionConfiguration?: unknown;
+  defaultBillingDetails?: unknown;
+}): Promise<{ status: "success" } | { status: "canceled" } | { status: "failed"; error: string }> {
+  return {
+    status: "failed",
+    error: "Stripe native setup sheets are not available on web",
+  };
+}
+
 export async function presentStripeNativeBankPayment(_input?: {
   clientSecret: string;
   billingName: string;

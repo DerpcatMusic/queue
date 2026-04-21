@@ -1,14 +1,11 @@
-import type React from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
 import { useUnistyles } from "react-native-unistyles";
-
-import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import {
-  ProfileSectionCard,
   ProfileSectionHeader,
   ProfileSettingRow,
 } from "@/components/profile/profile-settings-sections";
+import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
@@ -19,7 +16,6 @@ const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
   instructor: "profile.roles.instructor",
   studio: "profile.roles.studio",
-  admin: "profile.roles.admin",
 } as const;
 type ProfileAccountSwitcherSheetProps = {
   currentAccountEmail?: string | null | undefined;
@@ -141,10 +137,7 @@ export function ProfileAccountSwitcherSheet({
                 "profile.roles.pending";
               const isSwitching = switchingAccountId === account.id;
               const accountName =
-                account.fullName ??
-                account.name ??
-                account.email ??
-                t("profile.account.fallbackName");
+                account.fullName ?? account.name ?? account.email ?? t("profile.roles.pending");
 
               return (
                 <View key={account.id}>

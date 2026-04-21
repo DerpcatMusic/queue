@@ -79,10 +79,26 @@ export function InstructorJobDetailScreen({
       setActionErrorMessage(null);
       setApplyingJobId(job.jobId);
       try {
-        await applyToJob({ jobId: job.jobId });
-      } catch (error) {
+        const result = await applyToJob({ jobId: job.jobId });
+        // Show success message with reason if available
+        if (result.reason) {
+          setActionErrorMessage(result.reason);
+        }
+      } catch (error: any) {
         console.error("[instructor-job-detail] apply failed", error);
-        setActionErrorMessage(t("jobsTab.errors.applyError"));
+        // Extract specific error message from ConvexError if available
+        const convexError = error?.data?.data;
+        if (convexError?.code === "MAX_APPLICATIONS_REACHED") {
+          setActionErrorMessage(t("jobsTab.errors.maxApplicationsReached"));
+        } else if (convexError?.code === "JOB_NOT_OPEN") {
+          setActionErrorMessage(t("jobsTab.errors.jobNotOpen"));
+        } else if (convexError?.code === "BOOKING_CONFLICT") {
+          setActionErrorMessage(t("jobsTab.errors.bookingConflict"));
+        } else if (convexError?.code === "APPLICATION_DEADLINE_PASSED") {
+          setActionErrorMessage(t("jobsTab.errors.applicationDeadlinePassed"));
+        } else {
+          setActionErrorMessage(t("jobsTab.errors.applyError"));
+        }
       } finally {
         setApplyingJobId(null);
       }

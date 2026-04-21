@@ -3,11 +3,13 @@ import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Platform, Text } from "react-native";
+import { Alert, Platform, ScrollView, Text } from "react-native";
 import appleCalendarIcon from "@/assets/images/calendar-apple-app-icon.jpg";
 import googleCalendarIcon from "@/assets/images/calendar-google-app-icon.jpg";
 import { LoadingScreen } from "@/components/loading-screen";
 import { CalendarConnectionRow } from "@/components/profile/calendar-connection-row";
+import { SettingsUnavailableScreen } from "@/components/profile/settings-unavailable-screen";
+import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitList, KitListItem, KitSwitch } from "@/components/ui/kit";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
@@ -23,8 +25,6 @@ import {
 } from "@/lib/google-calendar-native-auth";
 import { showOpenSettingsAlert } from "@/lib/open-settings-alert";
 import { Box } from "@/primitives";
-import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
-import { ScrollView } from "react-native";
 
 type CalendarProvider = "none" | "google" | "apple";
 
@@ -36,7 +36,8 @@ const GOOGLE_DISCOVERY: AuthSession.DiscoveryDocument = {
   revocationEndpoint: "https://oauth2.googleapis.com/revoke",
 };
 
-const calendarApi = (api as unknown as { calendar: { googleCalendar: Record<string, unknown> } }).calendar.googleCalendar as {
+const calendarApi = (api as unknown as { calendar: { googleCalendar: Record<string, unknown> } })
+  .calendar.googleCalendar as {
   getMyGoogleCalendarStatus: unknown;
   disconnectGoogleCalendar: unknown;
   connectGoogleCalendarWithCode: unknown;
@@ -149,17 +150,24 @@ export function StudioCalendarSheet({ visible, onClose }: StudioCalendarSheetPro
     }
   }, [seeded, studioSettings]);
 
-  if (studioSettings === undefined) {
+  if (currentUser === undefined) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose}>
         <LoadingScreen label={t("profile.settings.loading")} />
       </BaseProfileSheet>
     );
   }
-  if (studioSettings === null) {
+  if (currentUser === null || studioSettings === null) {
     return (
       <BaseProfileSheet visible={visible} onClose={onClose}>
-        <LoadingScreen label={t("profile.settings.unavailable")} />
+        <SettingsUnavailableScreen label={t("profile.settings.unavailable")} />
+      </BaseProfileSheet>
+    );
+  }
+  if (studioSettings === undefined || googleStatus === undefined) {
+    return (
+      <BaseProfileSheet visible={visible} onClose={onClose}>
+        <LoadingScreen label={t("profile.settings.loading")} />
       </BaseProfileSheet>
     );
   }

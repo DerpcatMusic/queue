@@ -11,6 +11,8 @@ import {
   createContentDrivenTopSheetConfig,
   getMainTabSheetBackgroundColor,
 } from "@/components/layout/top-sheet-registry";
+import { LoadingScreen } from "@/components/loading-screen";
+import { DeleteAccountButton } from "@/components/profile/delete-account-button";
 import { ProfileAccountSwitcherSheet } from "@/components/profile/profile-account-switcher-sheet";
 import {
   ProfileSectionCard,
@@ -34,6 +36,7 @@ import { api } from "@/convex/_generated/api";
 
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useLayoutBreakpoint } from "@/hooks/use-layout-breakpoint";
+import { useLocationStorage, useStudioProfileStorage } from "@/hooks/use-onboarding-storage";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { BorderWidth } from "@/lib/design-system";
@@ -48,13 +51,13 @@ import {
   switchToRememberedDeviceAccount,
   toDeviceAccountIdentity,
 } from "@/modules/session/device-account-store";
+import { clearPendingPostSignOutAuthIntent } from "@/modules/session/post-signout-auth-intent";
 import { Box } from "@/primitives";
 
 const ROLE_TRANSLATION_KEYS = {
   pending: "profile.roles.pending",
   instructor: "profile.roles.instructor",
   studio: "profile.roles.studio",
-  admin: "profile.roles.admin",
 } as const;
 
 function getSportsSummary(sports: string[], t: TFunction) {
@@ -84,20 +87,25 @@ function getStudioComplianceSummaryLabel(
     return t("profile.studioCompliance.status.loading");
   }
   if (summary.canPublishJobs) {
-    return t("profile.studioCompliance.status.ready");
+    return t("profile.studioCompliance.status.ready", {
+      defaultValue: "Ready to publish jobs",
+    });
   }
   return t("profile.studioCompliance.status.pendingCount", {
     count: summary.blockingReasons.length || 1,
+    defaultValue: `Publishing locked · ${summary.blockingReasons.length || 1} step(s) left`,
   });
 }
 
 export default function StudioProfileScreen() {
   const { signOut } = useAuthActions();
-  const { currentUser } = useUser();
-  const { restartAppSession } = useAuthSession();
+  const { currentUser, isAuthLoading } = useUser();
+  const { restartAppSession, startSessionTransition, isSessionTransitioning } = useAuthSession();
   const { language } = useAppLanguage();
   const { preference, setPreference } = useThemePreference();
   const { color } = useTheme();
+  const { save: saveStudioOnboarding } = useStudioProfileStorage();
+  const { save: saveOnboardingLocation } = useLocationStorage();
   const { t, i18n } = useTranslation();
   const { isDesktopWeb } = useLayoutBreakpoint();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
@@ -112,7 +120,7 @@ export default function StudioProfileScreen() {
 
   // Sheet openers - using BottomSheets instead of routes
   const handleOpenCompliance = useCallback(() => {
-    router.push("/studio/profile/compliance");
+    router.push("/onboarding/verification?role=studio");
   }, []);
 
   const handleOpenBranches = useCallback(() => {
@@ -126,6 +134,10 @@ export default function StudioProfileScreen() {
   const handleOpenEdit = useCallback(() => {
     openStudioSheet("edit");
   }, [openStudioSheet]);
+
+  const handleOpenBusinessDetails = useCallback(() => {
+    router.push("/onboarding/verification?role=studio&focus=business");
+  }, []);
 
   const handleOpenNotifications = useCallback(() => {
     openStudioSheet("notifications");
@@ -183,7 +195,6 @@ export default function StudioProfileScreen() {
       void updateMyStudioSettings({
         studioName: studioSettings.studioName ?? "",
         address: studioSettings.address ?? "",
-        zone: studioSettings.zone ?? "",
         ...omitUndefined({
           autoAcceptDefault: value,
           autoExpireMinutesBefore: autoExpireMinutesBefore,
@@ -213,7 +224,6 @@ export default function StudioProfileScreen() {
       void updateMyStudioSettings({
         studioName: studioSettings.studioName ?? "",
         address: studioSettings.address ?? "",
-        zone: studioSettings.zone ?? "",
         ...omitUndefined({
           autoAcceptDefault: studioSettings.autoAcceptDefault,
           autoExpireMinutesBefore: minutes,
@@ -241,17 +251,45 @@ export default function StudioProfileScreen() {
   }, []);
   const handleSignOut = useCallback(() => {
     setAccountSwitcherVisible(false);
+    startSessionTransition(2500);
+    clearPendingPostSignOutAuthIntent();
+    router.replace("/sign-in");
     void (async () => {
       if (currentUser?._id) {
         await forgetRememberedDeviceAccount(String(currentUser._id));
       }
       await signOut();
     })();
-  }, [currentUser?._id, signOut]);
+  }, [currentUser?._id, signOut, startSessionTransition]);
   const handleUseAnotherAccount = useCallback(() => {
     setAccountSwitcherVisible(false);
     handleOpenAddAccount();
   }, [handleOpenAddAccount]);
+  const handleRedoOnboarding = useCallback(() => {
+    saveStudioOnboarding({
+      studioName: studioSettings?.studioName ?? currentUser?.fullName ?? "",
+      sports: studioSettings?.sports ?? [],
+    });
+    saveOnboardingLocation({
+      address: studioSettings?.address ?? "",
+      latitude: studioSettings?.latitude ?? null,
+      longitude: studioSettings?.longitude ?? null,
+      country: studioSettings?.addressCountry ?? null,
+      countryCode: studioSettings?.addressCountryCode ?? null,
+    });
+    router.push("/onboarding/studio/profile");
+  }, [
+    currentUser?.fullName,
+    saveOnboardingLocation,
+    saveStudioOnboarding,
+    studioSettings?.address,
+    studioSettings?.addressCountry,
+    studioSettings?.addressCountryCode,
+    studioSettings?.latitude,
+    studioSettings?.longitude,
+    studioSettings?.sports,
+    studioSettings?.studioName,
+  ]);
   const handleSelectRememberedAccount = useCallback(
     (accountId: string) => {
       setAccountSwitcherVisible(false);
@@ -271,13 +309,12 @@ export default function StudioProfileScreen() {
     },
     [currentUser, restartAppSession],
   );
-  const profileName =
-    studioSettings?.studioName ?? currentUser?.fullName ?? t("profile.account.fallbackName");
-  const emailValue = currentUser?.email ?? t("profile.account.fallbackEmail");
   const roleValue = t(
     ROLE_TRANSLATION_KEYS[currentUser?.role as keyof typeof ROLE_TRANSLATION_KEYS] ??
       "profile.roles.pending",
   );
+  const profileName = studioSettings?.studioName ?? currentUser?.fullName ?? roleValue;
+  const emailValue = currentUser?.email ?? roleValue;
   const memberSince = currentUser?.createdAt
     ? new Date(currentUser.createdAt).toLocaleDateString(i18n.resolvedLanguage ?? "en", {
         month: "short",
@@ -311,39 +348,23 @@ export default function StudioProfileScreen() {
       : provider === "google"
         ? t("profile.settings.calendar.provider.google")
         : t("profile.settings.calendar.provider.apple");
+  const studioDetailsSummary =
+    studioSettings?.addressCountryCode && studioSettings?.address
+      ? `${studioSettings.addressCountryCode} · ${studioSettings.address}`
+      : studioSettings?.addressCountryCode
+        ? `${studioSettings.addressCountryCode} business details`
+        : t("profile.settings.completeOnboardingAddress");
   const socialCount = Object.keys(studioSettings?.socialLinks ?? {}).length;
-  const sportsCount = studioSettings?.sports?.length ?? 0;
-  const setupActions = [
-    !studioSettings?.address
-      ? {
-          label: t("profile.setup.addStudioDetails"),
-          onPress: handleRequestEdit,
-          icon: "sparkles" as const,
-        }
-      : null,
-    sportsCount === 0
-      ? {
-          label: t("profile.setup.chooseSports"),
-          onPress: handleRequestEdit,
-          icon: "sparkles" as const,
-        }
-      : null,
-  ].filter(
-    (
-      item,
-    ): item is {
-      label: string;
-      onPress: () => void;
-      icon: "sparkles";
-    } => item !== null,
-  );
-  const profileStatus = setupActions.length === 0 ? "ready" : "pending";
   const publicProfileSummary =
     studioSettings?.bio?.trim() ||
     (socialCount > 0
       ? t("profile.settings.publicProfileActive", { count: socialCount })
       : t("profile.settings.publicProfilePrompt"));
   const complianceSummaryLabel = getStudioComplianceSummaryLabel(studioComplianceSummary, t);
+  const studioPublishingStatus = studioComplianceSummary?.canPublishJobs ? "ready" : "pending";
+  const studioPublishingStatusTone = studioComplianceSummary?.canPublishJobs
+    ? "success"
+    : "warning";
   const isStudioVerified = studioDiditVerification?.isVerified ?? false;
   const profileSheetContent = useMemo(
     () => (
@@ -355,7 +376,7 @@ export default function StudioProfileScreen() {
           visualVariant="studioFeature"
           onRequestEdit={handleRequestEdit}
           primaryActionLabel={t("profile.actions.edit")}
-          status={profileStatus}
+          status={studioPublishingStatus}
           bio={studioSettings?.bio}
           socialLinks={studioSettings?.socialLinks}
           sports={studioSettings?.sports ?? []}
@@ -367,7 +388,7 @@ export default function StudioProfileScreen() {
       currentUser?.image,
       handleRequestEdit,
       profileName,
-      profileStatus,
+      studioPublishingStatus,
       studioSettings?.bio,
       studioSettings?.profileImageUrl,
       studioSettings?.socialLinks,
@@ -406,12 +427,8 @@ export default function StudioProfileScreen() {
                 roleLabel={t("profile.hero.studioProfile")}
                 profileImageUrl={studioSettings?.profileImageUrl ?? currentUser?.image}
                 summary={publicProfileSummary}
-                statusLabel={
-                  profileStatus === "ready"
-                    ? t("profile.hero.statusReady")
-                    : t("profile.hero.statusPending")
-                }
-                statusTone={profileStatus === "ready" ? "success" : "warning"}
+                statusLabel={complianceSummaryLabel}
+                statusTone={studioPublishingStatusTone}
                 metaLabel={
                   memberSince
                     ? t("profile.account.memberSinceValue", {
@@ -448,12 +465,10 @@ export default function StudioProfileScreen() {
                   />
                   <ProfileSettingRow
                     title={t("profile.settings.studioDetails")}
-                    subtitle={
-                      studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
-                    }
+                    subtitle={studioDetailsSummary}
                     icon="building.2.fill"
                     sectionTone="account"
-                    onPress={handleRequestEdit}
+                    onPress={handleOpenBusinessDetails}
                     showDivider
                   />
                   <ProfileSettingRow
@@ -660,6 +675,18 @@ export default function StudioProfileScreen() {
                     showDivider
                   />
                   <ProfileSettingRow
+                    title={t("profile.settings.redoOnboardingTitle", {
+                      defaultValue: "Redo onboarding",
+                    })}
+                    subtitle={t("profile.settings.redoOnboardingStudioHint", {
+                      defaultValue: "Revisit studio details, location, and verification setup.",
+                    })}
+                    icon="arrow.clockwise"
+                    sectionTone="operations"
+                    onPress={handleRedoOnboarding}
+                    showDivider
+                  />
+                  <ProfileSettingRow
                     title={t("auth.signOutButton")}
                     subtitle={t("profile.settings.signOutDesc")}
                     icon="arrow.right.square"
@@ -697,12 +724,10 @@ export default function StudioProfileScreen() {
               />
               <ProfileSettingRow
                 title={t("profile.settings.studioDetails")}
-                subtitle={
-                  studioSettings?.address ?? t("profile.settings.completeOnboardingAddress")
-                }
+                subtitle={studioDetailsSummary}
                 icon="building.2.fill"
                 sectionTone="account"
-                onPress={handleRequestEdit}
+                onPress={handleOpenBusinessDetails}
                 showDivider
               />
               <ProfileSettingRow
@@ -905,6 +930,21 @@ export default function StudioProfileScreen() {
                 onPress={() => handleOpenCompliance()}
                 showDivider
               />
+              <ProfileSettingRow
+                title={t("profile.settings.redoOnboardingTitle", {
+                  defaultValue: "Redo onboarding",
+                })}
+                subtitle={t("profile.settings.redoOnboardingStudioHint", {
+                  defaultValue: "Revisit studio details, location, and verification setup.",
+                })}
+                icon="arrow.clockwise"
+                sectionTone="operations"
+                onPress={handleRedoOnboarding}
+                showDivider
+              />
+              <Box style={{ padding: BrandSpacing.md }}>
+                <DeleteAccountButton accountRole="studio" />
+              </Box>
               <Box style={{ padding: BrandSpacing.md }}>
                 <ProfileSignOutButton title={t("auth.signOutButton")} onPress={handleSignOut} />
               </Box>
@@ -966,6 +1006,21 @@ export default function StudioProfileScreen() {
   );
 
   useTabSceneDescriptor(descriptor);
+
+  if (
+    isAuthLoading ||
+    isSessionTransitioning ||
+    currentUser === undefined ||
+    currentUser === null
+  ) {
+    return (
+      <LoadingScreen
+        variant="launch"
+        title={t("launch.title")}
+        label={t("launch.loadingAccount")}
+      />
+    );
+  }
 
   return descriptorBody;
 }

@@ -3,7 +3,7 @@ import { Redirect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, AppState, type AppStateStatus, Platform, Pressable } from "react-native";
+import { ActivityIndicator, Alert, AppState, type AppStateStatus, Platform, Pressable, TextInput } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
@@ -38,7 +38,7 @@ import {
 } from "@/hooks/use-compliance-document-upload";
 import { useContentReveal } from "@/hooks/use-content-reveal";
 import { useTheme } from "@/hooks/use-theme";
-import { STRIPE_CONNECT_RETURN_URL, getStripeMarketDefaults } from "@/lib/stripe";
+import { getStripeMarketDefaults, STRIPE_CONNECT_RETURN_URL } from "@/lib/stripe";
 import { Box, HStack, Spacer, Text, VStack } from "@/primitives";
 import { BorderWidth, LetterSpacing, Motion, Radius } from "@/theme/theme";
 
@@ -167,6 +167,7 @@ function VerificationUploadPanel({
   label,
   subtitle,
   statusLabel,
+  reviewStatus,
   onPress,
   accentColor,
   disabled = false,
@@ -175,19 +176,27 @@ function VerificationUploadPanel({
   label: string;
   subtitle: string;
   statusLabel: string;
+  reviewStatus: ComplianceCertificateRow["reviewStatus"] | ComplianceInsuranceRow["reviewStatus"] | undefined;
   onPress: () => void;
   accentColor?: string;
   disabled?: boolean;
 }) {
   const theme = useTheme();
   const accent = accentColor ?? theme.color.primary;
+  const isReviewing =
+    reviewStatus === "uploaded" || reviewStatus === "ai_pending" || reviewStatus === "ai_reviewing";
+  const isFailed =
+    reviewStatus === "rejected" || reviewStatus === "needs_resubmission" || reviewStatus === "expired";
+  const isMissing = reviewStatus === undefined;
+  const displayStatusLabel = isReviewing ? "Verifying…" : statusLabel;
+  const statusTone = reviewStatus === "approved" ? theme.color.success : isFailed || isMissing ? theme.color.danger : accent;
 
   return (
     <Box gap="sm">
       <Text variant="bodyStrong">{label}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={[label, subtitle, statusLabel].join(". ")}
+        accessibilityLabel={[label, subtitle, displayStatusLabel].join(". ")}
         onPress={onPress}
         disabled={disabled}
         style={({ pressed }) => [
@@ -222,15 +231,23 @@ function VerificationUploadPanel({
             <Text
               variant="caption"
               style={{
-                color: accent,
+                color: statusTone,
                 textTransform: "uppercase",
                 letterSpacing: LetterSpacing.trackingWide,
               }}
             >
-              {statusLabel}
+              {displayStatusLabel}
             </Text>
           </Box>
-          <IconSymbol name="chevron.right" size={18} color={theme.color.textMuted} />
+          {isReviewing ? (
+            <ActivityIndicator size="small" color={statusTone} />
+          ) : isFailed ? (
+            <IconSymbol name="exclamationmark.triangle.fill" size={18} color={theme.color.danger} />
+          ) : reviewStatus === "approved" ? (
+            <IconSymbol name="checkmark.circle.fill" size={18} color={theme.color.success} />
+          ) : (
+            <IconSymbol name="chevron.right" size={18} color={theme.color.textMuted} />
+          )}
         </Box>
       </Pressable>
     </Box>
@@ -251,6 +268,8 @@ export default function InstructorComplianceScreen() {
     tone: "success" | "error";
     message: string;
   } | null>(null);
+  const [franceCardNumber, setFranceCardNumber] = useState("");
+  const [isRefreshingFranceRegistry, setIsRefreshingFranceRegistry] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const autoRefreshSessionIdRef = useRef<string | null>(null);
   const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
@@ -269,15 +288,23 @@ export default function InstructorComplianceScreen() {
   const diditVerification = accessSnapshot?.verification;
   const compliance = accessSnapshot?.compliance;
   const createSessionForCurrentInstructor = useAction(
-    api.payments.actions.createMyInstructorStripeAccountLinkV2,
+    api.payments.actions.createMyInstructorStripeAccountLink,
+  );
+  const saveMyFranceProfessionalCardNumber = useMutation(
+    api.compliance.instructor.saveMyFranceProfessionalCardNumber,
+  );
+  const refreshMyFranceProfessionalCardVerification = useAction(
+    api.compliance.instructor.refreshMyFranceProfessionalCardVerification,
   );
   const refreshMyDiditVerification = useAction(
-    api.payments.actions.refreshMyInstructorStripeConnectedAccountV2,
+    api.payments.actions.refreshMyInstructorStripeConnectedAccount,
   );
   const { isUploading, pickAndUploadComplianceDocument } = useComplianceDocumentUpload();
 
   const locale = i18n.resolvedLanguage ?? "en";
   const now = Date.now();
+  const franceRegistry = compliance?.professionalRegistry ?? null;
+  const isFranceInstructor = instructorSettings?.addressCountryCode?.toUpperCase() === "FR";
 
   const preferredInsurance = useMemo(
     () => getPreferredInsurancePolicy(compliance?.insurancePolicies ?? [], now),
@@ -316,6 +343,12 @@ export default function InstructorComplianceScreen() {
         : [],
     [latestCertificate],
   );
+
+  useEffect(() => {
+    if (isFranceInstructor) {
+      setFranceCardNumber(franceRegistry?.identifier ?? "");
+    }
+  }, [franceRegistry?.identifier, isFranceInstructor]);
 
   const refreshDiditStatus = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -529,6 +562,48 @@ export default function InstructorComplianceScreen() {
     );
   }, [t, uploadCertificate]);
 
+  const verifyFranceProfessionalCard = useCallback(async () => {
+    if (!isFranceInstructor) {
+      return;
+    }
+    setIsRefreshingFranceRegistry(true);
+    try {
+      await saveMyFranceProfessionalCardNumber({ cardNumber: franceCardNumber });
+      const result = await refreshMyFranceProfessionalCardVerification({});
+      setFeedback({
+        tone: result.status === "found" && result.hasValidRegistration ? "success" : "error",
+        message:
+          result.status === "found" && result.hasValidRegistration
+            ? t("profile.compliance.feedback.franceRegistryVerified", {
+                defaultValue: "France professional card verified.",
+              })
+            : result.errorMessage ??
+              t("profile.compliance.feedback.franceRegistryNeedsAttention", {
+                defaultValue: "France professional card could not be verified.",
+              }),
+      });
+      setRefreshAt(Date.now());
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : t("profile.compliance.feedback.franceRegistryNeedsAttention", {
+                defaultValue: "France professional card could not be verified.",
+              }),
+      });
+    } finally {
+      setIsRefreshingFranceRegistry(false);
+    }
+  }, [
+    franceCardNumber,
+    isFranceInstructor,
+    refreshMyFranceProfessionalCardVerification,
+    saveMyFranceProfessionalCardNumber,
+    t,
+  ]);
+
   const isLoading =
     currentUser === undefined ||
     (currentUser?.role === "instructor" &&
@@ -631,7 +706,7 @@ export default function InstructorComplianceScreen() {
               </Box>
               <Box flex={1} minWidth={0} gap="xxs">
                 <Text variant="titleLarge">
-                  {currentUser.fullName ?? t("profile.account.fallbackName")}
+                  {currentUser.fullName ?? currentUser.email ?? t("profile.roles.instructor")}
                 </Text>
                 <Box
                   alignSelf="flex-start"
@@ -658,14 +733,11 @@ export default function InstructorComplianceScreen() {
               </Box>
             </Box>
 
-            <Box gap="xs">
-              <Text variant="bodyStrong">{t("profile.compliance.identity.title")}</Text>
-              <Text variant="caption" color="textMuted">
-                {diditVerification.isVerified
-                  ? t("profile.compliance.identity.approved")
-                  : t("profile.compliance.identity.required")}
-              </Text>
-            </Box>
+            <Text variant="caption" color="textMuted">
+              {diditVerification.isVerified
+                ? t("profile.compliance.identity.approved")
+                : t("profile.compliance.identity.required")}
+            </Text>
 
             <Box gap="sm">
               {diditVerification.isVerified ? (
@@ -673,11 +745,7 @@ export default function InstructorComplianceScreen() {
                   <IconButton
                     accessibilityLabel={t("profile.identityVerification.refreshStatus")}
                     icon={
-                      <IconSymbol
-                        name="arrow.clockwise"
-                        size={18}
-                        color={theme.color.primary}
-                      />
+                      <IconSymbol name="arrow.clockwise" size={18} color={theme.color.primary} />
                     }
                     disabled={isDiditBusy}
                     onPress={() => {
@@ -689,6 +757,13 @@ export default function InstructorComplianceScreen() {
               ) : (
                 <ActionButton
                   label={diditActionLabel}
+                  icon={
+                    <IconSymbol
+                      name={diditVerification.isVerified ? "arrow.clockwise" : "checkmark.circle.fill"}
+                      size={18}
+                      color={diditVerification.isVerified ? theme.color.primary : theme.color.onPrimary}
+                    />
+                  }
                   onPress={handleDiditAction}
                   fullWidth
                   loading={isStartingDidit}
@@ -705,6 +780,83 @@ export default function InstructorComplianceScreen() {
             </Box>
           </KitSurface>
 
+          {isFranceInstructor ? (
+            <KitSurface
+              tone="sunken"
+              padding={BrandSpacing.lg}
+              gap={BrandSpacing.sm}
+              style={{
+                borderRadius: Radius.cardSubtle,
+                borderWidth: BorderWidth.thin,
+                borderColor: theme.color.border,
+                backgroundColor: theme.color.surfaceElevated,
+              }}
+            >
+              <Text variant="caption" color="textMuted">
+                {t("profile.compliance.professionalRegistry.title", {
+                  defaultValue: "France professional card",
+                })}
+              </Text>
+              <Text variant="bodyMedium" color="textMuted">
+                {t("profile.compliance.professionalRegistry.body", {
+                  defaultValue:
+                    "Enter your carte professionnelle number to verify your legal right to teach in France.",
+                })}
+              </Text>
+              <TextInput
+                value={franceCardNumber}
+                onChangeText={setFranceCardNumber}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                placeholder="00410ED0012"
+                placeholderTextColor={theme.color.textMuted}
+                style={{
+                  borderWidth: BorderWidth.thin,
+                  borderColor: theme.color.border,
+                  borderRadius: Radius.md,
+                  paddingHorizontal: BrandSpacing.md,
+                  paddingVertical: BrandSpacing.sm,
+                  color: theme.color.text,
+                  backgroundColor: theme.color.surface,
+                }}
+              />
+              {franceRegistry ? (
+                <Box gap="xs">
+                  <Text variant="caption" color="textMuted">
+                    {franceRegistry.status === "found"
+                      ? franceRegistry.holderName ?? t("profile.compliance.values.approved")
+                      : franceRegistry.errorMessage ?? "Not found"}
+                  </Text>
+                  {franceRegistry.expiresOn ? (
+                    <Text variant="caption" color="textMuted">
+                      {t("profile.compliance.professionalRegistry.expiry", {
+                        defaultValue: `Expires ${franceRegistry.expiresOn}`,
+                        date: franceRegistry.expiresOn,
+                      })}
+                    </Text>
+                  ) : null}
+                  {franceRegistry.issuingAuthority ? (
+                    <Text variant="caption" color="textMuted">
+                      {franceRegistry.issuingAuthority}
+                    </Text>
+                  ) : null}
+                </Box>
+              ) : null}
+              <ActionButton
+                label={t("profile.compliance.professionalRegistry.verifyAction", {
+                  defaultValue: "Verify France card",
+                })}
+                onPress={() => {
+                  void verifyFranceProfessionalCard();
+                }}
+                fullWidth
+                loading={isRefreshingFranceRegistry}
+                disabled={isRefreshingFranceRegistry || franceCardNumber.trim().length === 0}
+                native={false}
+              />
+            </KitSurface>
+          ) : null}
+
           <Box gap="sm">
             <Text variant="radarLabel" color="textMuted">
               {t("profile.compliance.documents.title")}
@@ -716,6 +868,7 @@ export default function InstructorComplianceScreen() {
                 countryCode: marketCountry,
               })}
               statusLabel={getDocumentStatusLabel(preferredInsurance?.reviewStatus, t)}
+              reviewStatus={preferredInsurance?.reviewStatus}
               onPress={onOpenInsuranceUpload}
               accentColor={theme.color.primary}
               disabled={isUploading}
@@ -725,6 +878,7 @@ export default function InstructorComplianceScreen() {
               label={t("profile.compliance.certificate.title")}
               subtitle={getCertificateSubtitle(latestCertificate ?? null, locale, t)}
               statusLabel={getDocumentStatusLabel(latestCertificate?.reviewStatus, t)}
+              reviewStatus={latestCertificate?.reviewStatus}
               onPress={onOpenCertificateUpload}
               accentColor={theme.color.primary}
               disabled={isUploading}

@@ -107,7 +107,7 @@ export function StudioFeed() {
   const detailSheetRef = useRef<BottomSheet>(null);
   const archiveSheetRef = useRef<BottomSheet>(null);
   const createStudioCustomerSheetSession = useAction(
-    api.payments.actions.createMyStudioStripeCustomerSheetSessionV2,
+    api.payments.actions.createMyStudioStripeCustomerSheetSession,
   );
 
   // Expand sheet when job is selected (handle render timing)

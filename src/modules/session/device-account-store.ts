@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
-type KnownRole = "pending" | "instructor" | "studio" | "admin";
+type KnownRole = "pending" | "instructor" | "studio";
 type AppRole = "instructor" | "studio";
 
 export type DeviceAccountIdentity = {

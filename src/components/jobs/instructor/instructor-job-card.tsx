@@ -299,6 +299,45 @@ export const InstructorJobCard = memo(function InstructorJobCard({
                     {expiry.isExpired ? t("jobsTab.form.expiryExpired") : expiry.relativeText}
                   </Text>
                 ) : null}
+                {/* Slot availability indicator for max 3 concurrent applicants */}
+                {job.pendingApplicationsCount !== undefined && job.pendingApplicationsCount > 0 ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: BrandSpacing.xxs, paddingTop: BrandSpacing.xxs }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: 2,
+                      }}
+                    >
+                      {[0, 1, 2].map((slot) => (
+                        <View
+                          key={slot}
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 3,
+                            backgroundColor:
+                              slot < job.pendingApplicationsCount!
+                                ? theme.color.tertiary
+                                : theme.color.surfaceMuted,
+                          }}
+                        />
+                      ))}
+                    </View>
+                    <Text
+                      style={{
+                        fontFamily: FontFamily.bodyMedium,
+                        fontSize: FontSize.micro,
+                        lineHeight: LineHeight.micro,
+                        color: job.isNearCapacity ? theme.color.warning : theme.color.textMuted,
+                        includeFontPadding: false,
+                      }}
+                    >
+                      {job.isNearCapacity
+                        ? t("jobsTab.jobs.nearCapacity")
+                        : t("jobsTab.jobs.slotsAvailable", { count: 3 - job.pendingApplicationsCount! })}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
               <View style={{ alignItems: "flex-end", gap: BrandSpacing.xs, maxWidth: "42%" }}>

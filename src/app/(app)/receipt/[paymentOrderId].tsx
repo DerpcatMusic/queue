@@ -1,8 +1,8 @@
 import { useQuery } from "convex/react";
 import { Redirect, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { Pressable } from "react-native";
 import { useTranslation } from "react-i18next";
+import { Pressable } from "react-native";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ThemedText } from "@/components/themed-text";
 import { KitList, KitListItem } from "@/components/ui/kit";
@@ -23,8 +23,8 @@ export default function ReceiptScreen() {
 
   const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const detail = useQuery(
-    api.payments.core.getMyPaymentDetailV2,
-    paymentOrderId ? { paymentOrderId: paymentOrderId as Id<"paymentOrdersV2"> } : "skip",
+    api.payments.core.getMyPaymentOrderDetail,
+    paymentOrderId ? { paymentOrderId: paymentOrderId as Id<"paymentOrders"> } : "skip",
   );
 
   if (currentUser === undefined || detail === undefined) {

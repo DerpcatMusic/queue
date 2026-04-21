@@ -18,8 +18,8 @@ import { AppSymbol } from "@/components/ui/app-symbol";
 import { IconButton } from "@/components/ui/icon-button";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BrandRadius, BrandSpacing } from "@/constants/brand";
-import { api } from "@/convex/_generated/api";
 import { getZoneLabel } from "@/constants/zones";
+import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toSportLabel } from "@/convex/constants";
 import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
@@ -469,14 +469,14 @@ export function InstructorJobsArchiveSheet({
   const router = useRouter();
   const { t } = useTranslation();
   const theme = useTheme();
-  const payments = useQuery(api.payments.core.listMyPaymentsV2, { limit: 200 });
+  const payments = useQuery(api.payments.core.listMyPaymentOrders, { limit: 200 });
   const collapsedSheetHeight = useCollapsedSheetHeight();
   const [expandedApplicationId, setExpandedApplicationId] = useState<string | null>(null);
   const snapPoints = ["88%"];
   const paymentIdByJobId = useMemo(() => {
-    const map = new Map<string, Id<"paymentOrdersV2">>();
+    const map = new Map<string, Id<"paymentOrders">>();
     for (const row of payments ?? []) {
-      map.set(String(row.payment.jobId), row.payment._id as Id<"paymentOrdersV2">);
+      map.set(String(row.payment.jobId), row.payment._id as Id<"paymentOrders">);
     }
     return map;
   }, [payments]);

@@ -46,7 +46,7 @@ describe("resolveSessionState edge cases", () => {
   it("routes unsupported and missing roles to onboarding", () => {
     const samples = [
       { role: "pending" as const, onboardingComplete: true },
-      { role: "admin" as const, onboardingComplete: true },
+      { role: "ghost" as never, onboardingComplete: true },
       { role: null, onboardingComplete: true },
       { onboardingComplete: true },
     ];
@@ -80,7 +80,7 @@ describe("resolveSessionState edge cases", () => {
     }
   });
 
-  it("returns ready only for instructor/studio users with onboardingComplete true", () => {
+  it("returns ready for instructor/studio users with onboardingComplete true", () => {
     expect(
       resolveSessionState({
         isAuthLoading: false,
@@ -94,6 +94,24 @@ describe("resolveSessionState edge cases", () => {
         isAuthLoading: false,
         isAuthenticated: true,
         currentUser: { role: "studio", onboardingComplete: true },
+      }),
+    ).toEqual({ status: "ready", role: "studio" });
+  });
+
+  it("treats legacy pending users with attached roles as ready", () => {
+    expect(
+      resolveSessionState({
+        isAuthLoading: false,
+        isAuthenticated: true,
+        currentUser: { role: "pending", roles: ["instructor"], onboardingComplete: false },
+      }),
+    ).toEqual({ status: "ready", role: "instructor" });
+
+    expect(
+      resolveSessionState({
+        isAuthLoading: false,
+        isAuthenticated: true,
+        currentUser: { role: "pending", roles: ["studio"], onboardingComplete: false },
       }),
     ).toEqual({ status: "ready", role: "studio" });
   });
@@ -196,12 +214,24 @@ describe("resolveSessionState role/onboarding matrix", () => {
         expected: { status: "onboarding" },
       },
       {
-        role: "admin",
+        role: "pending",
+        roles: ["instructor"],
+        onboardingComplete: false,
+        expected: { status: "ready", role: "instructor" },
+      },
+      {
+        role: "pending",
+        roles: ["studio"],
+        onboardingComplete: false,
+        expected: { status: "ready", role: "studio" },
+      },
+      {
+        role: "ghost" as never,
         onboardingComplete: true,
         expected: { status: "onboarding" },
       },
       {
-        role: "admin",
+        role: "ghost" as never,
         onboardingComplete: false,
         expected: { status: "onboarding" },
       },
@@ -225,7 +255,7 @@ describe("resolveSessionState role/onboarding matrix", () => {
         resolveSessionState({
           isAuthLoading: false,
           isAuthenticated: true,
-          currentUser,
+          currentUser: currentUser as never,
         }),
       ).toEqual(expected);
     }

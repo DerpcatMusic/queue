@@ -103,7 +103,7 @@ function resolvePricingRule(input: PricingInput): PricingRule {
   };
 }
 
-export const computePricingV2 = (input: PricingInput): PricingBreakdown => {
+export const computePricing = (input: PricingInput): PricingBreakdown => {
   const baseLessonAmountAgorot = requirePositiveAgorot(
     input.baseLessonAmountAgorot,
     "baseLessonAmountAgorot",
@@ -132,7 +132,7 @@ export const computePricingV2 = (input: PricingInput): PricingBreakdown => {
   };
 };
 
-export const pricingRuleRecordV2 = {
+export const pricingRuleRecord = {
   code: "default_il_marketplace",
   country: "IL",
   currency: "ILS",

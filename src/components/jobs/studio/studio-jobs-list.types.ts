@@ -11,6 +11,19 @@ export type StudioJobApplication = {
   status: "pending" | "accepted" | "rejected" | "withdrawn";
   appliedAt: number;
   message?: string | null;
+  trust: {
+    identityVerified: boolean;
+    insuranceVerified: boolean;
+    certificates: Array<{
+      specialties: Array<{
+        sport: string;
+        capabilityTags?: string[];
+      }>;
+      issuerName?: string;
+      certificateTitle?: string;
+      verifiedAt?: number;
+    }>;
+  };
 };
 
 export type StudioJob = {
@@ -31,7 +44,7 @@ export type StudioJob = {
   pendingApplicationsCount: number;
   applications: StudioJobApplication[];
   payment: {
-    paymentId: Id<"paymentOrdersV2">;
+    paymentId: Id<"paymentOrders">;
     status: PaymentStatus;
     payoutStatus: PayoutStatus | null;
   } | null;

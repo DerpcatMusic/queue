@@ -19,6 +19,13 @@ export const BOOST_CUSTOM_DEFAULT = 20;
 export const BOOST_TRIGGER_MINUTES_OPTIONS = [15, 30, 45, 60, 90] as const;
 export const MAX_PARTICIPANTS_MIN = 1;
 export const MAX_PARTICIPANTS_MAX = 40;
+export const PAYMENT_TIMING_OPTIONS = [
+  "before_lesson",
+  "after_start",
+  "after_end",
+  "net_terms",
+] as const;
+export const DEFAULT_PAYMENT_TIMING = "after_end" as const;
 
 export const JOB_STATUS_TRANSLATION_KEYS = {
   open: "jobsTab.status.job.open",
@@ -46,6 +53,7 @@ export function getApplicationStatusTranslationKey(status: string) {
 export type PickerTarget = "start" | "end";
 export type LessonLifecycle = "live" | "upcoming" | "needs_done" | "completed";
 export type BoostPreset = keyof typeof BOOST_PRESET_VALUES;
+export type PaymentTiming = (typeof PAYMENT_TIMING_OPTIONS)[number];
 
 type ExpiryPresentation = {
   isExpired: boolean;
@@ -76,6 +84,8 @@ export type StudioDraft = {
   maxParticipants: number;
   cancellationDeadlineHours: number;
   applicationLeadMinutes: number;
+  paymentTiming: PaymentTiming;
+  paymentGraceDays: number;
   expiryOverrideMinutes: number | undefined;
   boostPreset: BoostPreset | undefined;
   // New: custom boost fields (supersede boostPreset when set)
@@ -118,6 +128,8 @@ export function createDefaultStudioDraft(branchId: StudioDraft["branchId"] = nul
     maxParticipants: 12,
     cancellationDeadlineHours: 24,
     applicationLeadMinutes: 60,
+    paymentTiming: DEFAULT_PAYMENT_TIMING,
+    paymentGraceDays: 3,
     expiryOverrideMinutes: undefined,
     boostPreset: undefined,
     boostCustomAmount: undefined,

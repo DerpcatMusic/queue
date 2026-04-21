@@ -2,12 +2,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { useConvexAuth } from "convex/react";
 import * as AuthSession from "expo-auth-session";
-import {
-  type Href,
-  Redirect,
-  useLocalSearchParams,
-  useRouter,
-} from "expo-router";
+import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -17,15 +12,15 @@ import {
   Pressable,
   Text,
   TextInput,
-  View,
   useWindowDimensions,
+  View,
 } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
-
 import { TabScreenScrollView } from "@/components/layout/tab-screen-scroll-view";
+import { LoadingScreen } from "@/components/loading-screen";
 import { ActionButton } from "@/components/ui/action-button";
-import { KitSurface } from "@/components/ui/kit/kit-surface";
 import { AuroraBackground } from "@/components/ui/aurora-background";
+import { KitSurface } from "@/components/ui/kit/kit-surface";
 import { BrandRadius, BrandSpacing, BrandType } from "@/constants/brand";
 import { useAuthSession } from "@/contexts/auth-session-context";
 import { useSystemUi } from "@/contexts/system-ui-context";
@@ -47,8 +42,9 @@ import {
   type PostSignOutAuthMethod,
   setPendingPostSignOutAuthHandoff,
 } from "@/modules/session/post-signout-auth-intent";
+import { useSessionGate } from "@/modules/session/session-gate";
 
-import { FontSize, LetterSpacing, getTheme } from "@/theme/theme";
+import { FontSize, getTheme, LetterSpacing } from "@/theme/theme";
 
 type Step = "email" | "code";
 
@@ -94,9 +90,7 @@ function readParam(value: string | string[] | undefined) {
   return value;
 }
 
-function readAuthIntent(
-  value: string | string[] | undefined,
-): PostSignOutAuthIntent | null {
+function readAuthIntent(value: string | string[] | undefined): PostSignOutAuthIntent | null {
   const param = readParam(value);
   if (param === "sign-in" || param === "sign-up") {
     return param;
@@ -104,16 +98,9 @@ function readAuthIntent(
   return null;
 }
 
-function readAuthMethod(
-  value: string | string[] | undefined,
-): PostSignOutAuthMethod | null {
+function readAuthMethod(value: string | string[] | undefined): PostSignOutAuthMethod | null {
   const param = readParam(value);
-  if (
-    param === "apple" ||
-    param === "code" ||
-    param === "magic-link" ||
-    param === "google"
-  ) {
+  if (param === "apple" || param === "code" || param === "magic-link" || param === "google") {
     return param;
   }
   return null;
@@ -164,8 +151,7 @@ export default function SignInScreen() {
   const { width, height } = useWindowDimensions();
   const { t } = useTranslation();
   const router = useRouter();
-  const { setTopInsetBackgroundColor, setTopInsetTone, setTopInsetVisible } =
-    useSystemUi();
+  const { setTopInsetBackgroundColor, setTopInsetTone, setTopInsetVisible } = useSystemUi();
   const searchParams = useLocalSearchParams<{
     authFlow?: string | string[];
     code?: string | string[];
@@ -178,10 +164,12 @@ export default function SignInScreen() {
   const { currentUser } = useUser();
   const { restartAppSession } = useAuthSession();
   const { isAuthenticated } = useConvexAuth();
+  const gate = useSessionGate("index");
   const { signIn } = useAuthActions();
   const googleNativeAuthConfig = useMemo(resolveGoogleNativeAuthConfig, []);
   const autoStartedMethodRef = useRef<string | null>(null);
   const handledMagicCodeRef = useRef<string | null>(null);
+  const lastAutoSubmittedCodeRef = useRef<string | null>(null);
   const pendingAuthHandoffRef = useRef(consumePendingPostSignOutAuthHandoff());
   const [hasStartedSwitchFlow, setHasStartedSwitchFlow] = useState(false);
   const isSwitchAccountFlow = readBooleanParam(searchParams.switchAccount);
@@ -233,24 +221,15 @@ export default function SignInScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const authIntent =
-    readAuthIntent(searchParams.intent) ??
-    pendingAuthHandoffRef.current?.intent ??
-    "sign-in";
+    readAuthIntent(searchParams.intent) ?? pendingAuthHandoffRef.current?.intent ?? "sign-in";
   const pendingAuthMethod =
-    readAuthMethod(searchParams.method) ??
-    pendingAuthHandoffRef.current?.method ??
-    null;
-  const restoreAccountId =
-    pendingAuthHandoffRef.current?.restoreAccountId ?? null;
+    readAuthMethod(searchParams.method) ?? pendingAuthHandoffRef.current?.method ?? null;
+  const restoreAccountId = pendingAuthHandoffRef.current?.restoreAccountId ?? null;
 
   useEffect(() => {
     const authFlow = readParam(searchParams.authFlow);
     const magicCode = readParam(searchParams.code);
-    if (
-      authFlow !== "magic" ||
-      !magicCode ||
-      handledMagicCodeRef.current === magicCode
-    ) {
+    if (authFlow !== "magic" || !magicCode || handledMagicCodeRef.current === magicCode) {
       return;
     }
 
@@ -290,9 +269,7 @@ export default function SignInScreen() {
         ...(normalizedEmail ? { email: normalizedEmail } : {}),
         intent: authIntent,
         method,
-        ...(currentUser?._id
-          ? { restoreAccountId: String(currentUser._id) }
-          : {}),
+        ...(currentUser?._id ? { restoreAccountId: String(currentUser._id) } : {}),
       });
       setHasStartedSwitchFlow(true);
       setInfoMessage(t("auth.switchingAccounts"));
@@ -380,14 +357,7 @@ export default function SignInScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [
-    isEmailReady,
-    isSubmitting,
-    normalizedEmail,
-    prepareSwitchAccountFlow,
-    signIn,
-    t,
-  ]);
+  }, [isEmailReady, isSubmitting, normalizedEmail, prepareSwitchAccountFlow, signIn, t]);
 
   const handleVerifyCode = useCallback(async () => {
     if (isSubmitting || !isEmailReady) return;
@@ -419,6 +389,28 @@ export default function SignInScreen() {
     signIn,
     t,
   ]);
+
+  useEffect(() => {
+    if (step !== "code") {
+      lastAutoSubmittedCodeRef.current = null;
+      return;
+    }
+
+    const trimmedCode = code.trim();
+    if (trimmedCode.length !== OTP_LENGTH || isSubmitting) {
+      if (trimmedCode.length < OTP_LENGTH) {
+        lastAutoSubmittedCodeRef.current = null;
+      }
+      return;
+    }
+
+    if (lastAutoSubmittedCodeRef.current === trimmedCode) {
+      return;
+    }
+
+    lastAutoSubmittedCodeRef.current = trimmedCode;
+    void handleVerifyCode();
+  }, [code, handleVerifyCode, isSubmitting, step]);
 
   const handleSendMagicLink = useCallback(async () => {
     if (isSubmitting || !isEmailReady) return;
@@ -460,10 +452,7 @@ export default function SignInScreen() {
           return;
         }
 
-        if (
-          provider === "google" &&
-          canUseNativeGoogleAuth(googleNativeAuthConfig)
-        ) {
+        if (provider === "google" && canUseNativeGoogleAuth(googleNativeAuthConfig)) {
           const nativeGoogleConfig = googleNativeAuthConfig;
           const nativeResult = await signInWithGoogleNative({
             config: nativeGoogleConfig,
@@ -503,8 +492,7 @@ export default function SignInScreen() {
 
         const started = await signIn(provider, {
           redirectTo: oauthRedirectTo,
-          ...(provider === "google" &&
-          (isSwitchAccountFlow || normalizedEmail.length > 0)
+          ...(provider === "google" && (isSwitchAccountFlow || normalizedEmail.length > 0)
             ? {
                 prompt: "select_account",
                 ...(normalizedEmail ? { login_hint: normalizedEmail } : {}),
@@ -542,7 +530,6 @@ export default function SignInScreen() {
       }
     },
     [
-      currentUser,
       googleNativeAuthConfig,
       isSubmitting,
       isSwitchAccountFlow,
@@ -590,22 +577,25 @@ export default function SignInScreen() {
     pendingAuthMethod,
   ]);
 
-  const heroTitle = isSwitchAccountFlow
-    ? t("auth.switchAccountTitle")
-    : t("auth.signInTitle");
+  const heroTitle = isSwitchAccountFlow ? t("auth.switchAccountTitle") : t("auth.signInTitle");
   const auroraHeight = Math.max(380, height * 0.58);
   const socialBorderColor = withAlpha(authPalette.text, "12");
   const socialSurfaceColor = withAlpha("#0b0e14", "A8");
   const fieldSurfaceColor = withAlpha("#0b0e14", "98");
   const fieldPlaceholderColor = withAlpha(authPalette.text, "66");
 
-  if (
+  const shouldResolveAuthenticatedRoute =
     isAuthenticated &&
-    (!isSwitchAccountFlow ||
-      hasStartedSwitchFlow ||
-      pendingAuthHandoffRef.current !== null)
-  ) {
-    return <Redirect href="/" />;
+    (!isSwitchAccountFlow || hasStartedSwitchFlow || pendingAuthHandoffRef.current !== null);
+
+  if (shouldResolveAuthenticatedRoute) {
+    if (gate.status === "loading") {
+      return <LoadingScreen variant="launch" label={t("launch.loadingAccount")} />;
+    }
+
+    if (gate.status === "redirect") {
+      return <Redirect href={gate.href} />;
+    }
   }
 
   return (
@@ -648,9 +638,7 @@ export default function SignInScreen() {
       >
         <View style={styles.shell}>
           <View style={styles.heroBlock}>
-            <Text style={[styles.heroTitle, { color: authPalette.text }]}>
-              {heroTitle}
-            </Text>
+            <Text style={[styles.heroTitle, { color: authPalette.text }]}>{heroTitle}</Text>
           </View>
 
           <View style={styles.formBlock}>
@@ -681,17 +669,8 @@ export default function SignInScreen() {
                         },
                       ]}
                     >
-                      <FontAwesome5
-                        name="google"
-                        size={20}
-                        color={authPalette.text}
-                      />
-                      <Text
-                        style={[
-                          styles.socialCompactLabel,
-                          { color: authPalette.text },
-                        ]}
-                      >
+                      <FontAwesome5 name="google" size={20} color={authPalette.text} />
+                      <Text style={[styles.socialCompactLabel, { color: authPalette.text }]}>
                         Google
                       </Text>
                     </KitSurface>
@@ -720,17 +699,8 @@ export default function SignInScreen() {
                         },
                       ]}
                     >
-                      <FontAwesome5
-                        name="apple"
-                        size={22}
-                        color={authPalette.text}
-                      />
-                      <Text
-                        style={[
-                          styles.socialCompactLabel,
-                          { color: authPalette.text },
-                        ]}
-                      >
+                      <FontAwesome5 name="apple" size={22} color={authPalette.text} />
+                      <Text style={[styles.socialCompactLabel, { color: authPalette.text }]}>
                         Apple
                       </Text>
                     </KitSurface>
@@ -744,12 +714,7 @@ export default function SignInScreen() {
                       { backgroundColor: withAlpha(authPalette.text, "08") },
                     ]}
                   />
-                  <Text
-                    style={[
-                      styles.dividerLabel,
-                      { color: authPalette.textMuted },
-                    ]}
-                  >
+                  <Text style={[styles.dividerLabel, { color: authPalette.textMuted }]}>
                     {t("auth.or").toUpperCase()}
                   </Text>
                   <View
@@ -761,9 +726,7 @@ export default function SignInScreen() {
                 </View>
 
                 <View style={styles.inputContainerBox}>
-                  <Text
-                    style={[styles.inputLabel, { color: authPalette.text }]}
-                  >
+                  <Text style={[styles.inputLabel, { color: authPalette.text }]}>
                     {t("auth.emailLabel")}
                   </Text>
                   <KitSurface
@@ -786,11 +749,16 @@ export default function SignInScreen() {
                     <TextInput
                       value={email}
                       onChangeText={setEmail}
+                      onSubmitEditing={() => {
+                        void handleSendCode();
+                      }}
                       autoFocus
                       autoCapitalize="none"
                       autoCorrect={false}
                       autoComplete="email"
                       keyboardType="email-address"
+                      returnKeyType="send"
+                      enablesReturnKeyAutomatically
                       textContentType="emailAddress"
                       inputMode="email"
                       placeholder={t("auth.emailPlaceholder")}
@@ -803,43 +771,39 @@ export default function SignInScreen() {
                   </KitSurface>
                 </View>
 
-                <ActionButton
-                  label={
-                    isSubmitting
-                      ? t("auth.signingIn")
-                      : t("auth.sendCodeButton")
-                  }
-                  onPress={() => {
-                    void handleSendCode();
-                  }}
-                  disabled={isSubmitting || !isEmailReady}
-                  fullWidth
-                  size="lg"
-                />
-
-                <ActionButton
-                  label={t("auth.sendMagicLinkButton")}
-                  onPress={() => {
-                    void handleSendMagicLink();
-                  }}
-                  disabled={isSubmitting || !isEmailReady}
-                  tone="secondary"
-                  fullWidth
-                  size="lg"
-                />
-
-                {isSwitchAccountFlow &&
-                isAuthenticated &&
-                !hasStartedSwitchFlow ? (
+                <View style={styles.primaryActions}>
                   <ActionButton
-                    label={t("auth.keepCurrentAccount")}
-                    onPress={handleCancelSwitch}
-                    disabled={isSubmitting}
+                    label={isSubmitting ? t("auth.signingIn") : t("auth.sendCodeButton")}
+                    onPress={() => {
+                      void handleSendCode();
+                    }}
+                    disabled={isSubmitting || !isEmailReady}
+                    fullWidth
+                    size="lg"
+                  />
+
+                  <ActionButton
+                    label={t("auth.sendMagicLinkButton")}
+                    onPress={() => {
+                      void handleSendMagicLink();
+                    }}
+                    disabled={isSubmitting || !isEmailReady}
                     tone="secondary"
                     fullWidth
                     size="lg"
                   />
-                ) : null}
+
+                  {isSwitchAccountFlow && isAuthenticated && !hasStartedSwitchFlow ? (
+                    <ActionButton
+                      label={t("auth.keepCurrentAccount")}
+                      onPress={handleCancelSwitch}
+                      disabled={isSubmitting}
+                      tone="secondary"
+                      fullWidth
+                      size="lg"
+                    />
+                  ) : null}
+                </View>
               </>
             ) : (
               <View style={styles.codeBlock}>
@@ -852,19 +816,12 @@ export default function SignInScreen() {
                     },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.codeEmailText,
-                      { color: authPalette.textMuted },
-                    ]}
-                  >
+                  <Text style={[styles.codeEmailText, { color: authPalette.textMuted }]}>
                     {normalizedEmail}
                   </Text>
                 </View>
                 <View style={styles.inputContainerBox}>
-                  <Text
-                    style={[styles.inputLabel, { color: authPalette.text }]}
-                  >
+                  <Text style={[styles.inputLabel, { color: authPalette.text }]}>
                     {t("auth.codeLabel")}
                   </Text>
                   <KitSurface
@@ -880,14 +837,17 @@ export default function SignInScreen() {
                   >
                     <TextInput
                       value={code}
-                      onChangeText={(value) =>
-                        setCode(value.replace(/\D/g, "").slice(0, OTP_LENGTH))
-                      }
+                      onChangeText={(value) => {
+                        setErrorMessage(null);
+                        setInfoMessage(null);
+                        setCode(value.replace(/\D/g, "").slice(0, OTP_LENGTH));
+                      }}
                       autoFocus
                       autoComplete="one-time-code"
                       inputMode="numeric"
                       keyboardType="number-pad"
                       maxLength={OTP_LENGTH}
+                      returnKeyType="done"
                       textContentType="oneTimeCode"
                       placeholder="123456"
                       placeholderTextColor={fieldPlaceholderColor}
@@ -898,11 +858,7 @@ export default function SignInScreen() {
                   </KitSurface>
                 </View>
                 <ActionButton
-                  label={
-                    isSubmitting
-                      ? t("auth.verifyingCode")
-                      : t("auth.verifyCodeButton")
-                  }
+                  label={isSubmitting ? t("auth.verifyingCode") : t("auth.verifyCodeButton")}
                   onPress={() => {
                     void handleVerifyCode();
                   }}
@@ -946,9 +902,7 @@ export default function SignInScreen() {
             </View>
 
             {!isSwitchAccountFlow ? (
-              <Text
-                style={[styles.footerText, { color: authPalette.textMuted }]}
-              >
+              <Text style={[styles.footerText, { color: authPalette.textMuted }]}>
                 {"No account? Input your email and let's get started."}
               </Text>
             ) : null}

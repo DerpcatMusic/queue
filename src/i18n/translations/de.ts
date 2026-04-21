@@ -222,7 +222,6 @@ const de = {
       "pending": "Ausstehend",
       "instructor": "Lehrer",
       "studio": "Studio",
-      "admin": "Admin",
       "unknown": "Unbekannt"
     },
     "navigation": {
@@ -394,11 +393,11 @@ const de = {
         "certificatesDescription": "Genehmigte Zertifikate bleiben nach Aussteller und Titel öffentlich zugänglich."
       },
       "identity": {
-        "title": "Streifenidentität",
-        "approved": "Das Onboarding der Stripe-Identität ist abgeschlossen und Ihre Identität ist aktiv.",
-        "required": "Schließen Sie das Stripe-Identitäts-Onboarding ab, um Aktionen für Dozentenjobs freizuschalten.",
+        "title": "Identität",
+        "approved": "Identität verifiziert.",
+        "required": "Verifizieren Sie Ihre Identität, um die Instruktor-Aktionen freizuschalten.",
         "unverified": "Nicht bestätigt",
-        "cardTitle": "Überprüfung der Stripe-Identität",
+        "cardTitle": "Identität verifizieren",
         "cardBody": "Dokumenten- und Identitäts-Onboarding für den Zugang und die Auszahlungen für Lehrer.",
         "cardHint": "Erfordert einen amtlichen Ausweis und Kamerazugriff."
       },
@@ -435,7 +434,7 @@ const de = {
         "replaceInsurance": "Versicherung ersetzen",
         "uploadCertificate": "Zertifikat hochladen",
         "chooseSports": "Wählen Sie Sport",
-        "startIdentity": "Überprüfen Sie mit Stripe",
+        "startIdentity": "Verifizieren",
         "refreshIdentity": "Identität auffrischen",
         "usePhoto": "Foto verwenden",
         "useFile": "Verwenden Sie eine Datei oder ein PDF"
@@ -978,6 +977,7 @@ const de = {
       "releaseModeScheduled": "Geplante Veröffentlichung",
       "receiptReady": "Zahlungsbestätigung bereit",
       "receiptPending": "Nach der Zahlungsbestätigung wird eine Quittung erstellt",
+      "downloadReceipt": "Beleg herunterladen",
       "openReceipt": "Quittung öffnen",
       "openHostedReceipt": "Gehostete Quittung öffnen",
       "savedMethods": "Gespeicherte Zahlungsarten",
@@ -1710,7 +1710,11 @@ const de = {
       "filterNeedsReview": "Muss überprüft werden",
       "filterOpen": "Aktiv",
       "filterFilled": "Gefüllt",
-      "filterCompleted": "Abgeschlossen"
+      "filterCompleted": "Abgeschlossen",
+      "currentLessonsTitle": "Aktuelle Lektionen",
+      "currentLessonsSubtitle": "Nach Kursende mit GPS auschecken.",
+      "readyToComplete": "Bereit zum Abschließen",
+      "completeNearEnd": "Nahe der Endzeit abschließen"
     },
     "applicationsCount": "{{total}} Gesamtanträge • {{pending}} ausstehend",
     "status": {

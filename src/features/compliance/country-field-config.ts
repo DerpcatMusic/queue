@@ -1,3 +1,5 @@
+import { getStripeMarketDefaults } from "@/lib/stripe";
+
 export interface VatClassification {
   value: string;
   labelKey: string;
@@ -20,6 +22,18 @@ export interface CountryFieldConfig {
   showBeneficialOwners: boolean;
 }
 
+function createGenericEuCountryConfig(countryCode: string): CountryFieldConfig {
+  return {
+    countryCode,
+    taxIdLabelKey: "profile.studioCompliance.billing.taxId",
+    vatClassifications: [],
+    showCompanyRegNumber: true,
+    companyRegLabelKey: "profile.studioCompliance.billing.companyReg",
+    showLegalForm: false,
+    showBeneficialOwners: true,
+  };
+}
+
 export const COUNTRY_CONFIGS: Record<string, CountryFieldConfig> = {
   IL: {
     countryCode: "IL",
@@ -33,13 +47,28 @@ export const COUNTRY_CONFIGS: Record<string, CountryFieldConfig> = {
     showLegalForm: false,
     showBeneficialOwners: false,
   },
+  UK: {
+    countryCode: "UK",
+    taxIdLabelKey: "profile.studioCompliance.billing.taxId",
+    vatClassifications: [],
+    showCompanyRegNumber: true,
+    companyRegLabelKey: "profile.studioCompliance.billing.companyReg",
+    showLegalForm: false,
+    showBeneficialOwners: true,
+  },
   DE: {
     countryCode: "DE",
     taxIdLabelKey: "profile.studioCompliance.billing.taxIdDE",
     taxIdPlaceholderKey: "profile.studioCompliance.billing.taxIdPlaceholderDE",
     vatClassifications: [
-      { value: "kleinunternehmer", labelKey: "profile.studioCompliance.billing.vatOptionsDE.kleinunternehmer" },
-      { value: "regelbesteuerung", labelKey: "profile.studioCompliance.billing.vatOptionsDE.regelbesteuerung" },
+      {
+        value: "kleinunternehmer",
+        labelKey: "profile.studioCompliance.billing.vatOptionsDE.kleinunternehmer",
+      },
+      {
+        value: "regelbesteuerung",
+        labelKey: "profile.studioCompliance.billing.vatOptionsDE.regelbesteuerung",
+      },
     ],
     showCompanyRegNumber: true,
     companyRegLabelKey: "profile.studioCompliance.billing.companyRegDE",
@@ -61,8 +90,14 @@ export const COUNTRY_CONFIGS: Record<string, CountryFieldConfig> = {
     taxIdLabelKey: "profile.studioCompliance.billing.taxIdFR",
     taxIdPlaceholderKey: "profile.studioCompliance.billing.taxIdPlaceholderFR",
     vatClassifications: [
-      { value: "franchise_tva", labelKey: "profile.studioCompliance.billing.vatOptionsFR.franchise" },
-      { value: "assujetti_tva", labelKey: "profile.studioCompliance.billing.vatOptionsFR.assujetti" },
+      {
+        value: "franchise_tva",
+        labelKey: "profile.studioCompliance.billing.vatOptionsFR.franchise",
+      },
+      {
+        value: "assujetti_tva",
+        labelKey: "profile.studioCompliance.billing.vatOptionsFR.assujetti",
+      },
     ],
     showCompanyRegNumber: true,
     companyRegLabelKey: "profile.studioCompliance.billing.companyRegFR",
@@ -72,7 +107,10 @@ export const COUNTRY_CONFIGS: Record<string, CountryFieldConfig> = {
       { value: "sa", labelKey: "profile.studioCompliance.billing.legalFormFR.sa" },
       { value: "sas", labelKey: "profile.studioCompliance.billing.legalFormFR.sas" },
       { value: "eurl", labelKey: "profile.studioCompliance.billing.legalFormFR.eurl" },
-      { value: "auto_entrepreneur", labelKey: "profile.studioCompliance.billing.legalFormFR.autoEntrepreneur" },
+      {
+        value: "auto_entrepreneur",
+        labelKey: "profile.studioCompliance.billing.legalFormFR.autoEntrepreneur",
+      },
     ],
     showBeneficialOwners: true,
   },
@@ -81,8 +119,14 @@ export const COUNTRY_CONFIGS: Record<string, CountryFieldConfig> = {
     taxIdLabelKey: "profile.studioCompliance.billing.taxIdES",
     taxIdPlaceholderKey: "profile.studioCompliance.billing.taxIdPlaceholderES",
     vatClassifications: [
-      { value: "regimen_simplificado", labelKey: "profile.studioCompliance.billing.vatOptionsES.simplificado" },
-      { value: "regimen_general", labelKey: "profile.studioCompliance.billing.vatOptionsES.general" },
+      {
+        value: "regimen_simplificado",
+        labelKey: "profile.studioCompliance.billing.vatOptionsES.simplificado",
+      },
+      {
+        value: "regimen_general",
+        labelKey: "profile.studioCompliance.billing.vatOptionsES.general",
+      },
     ],
     showCompanyRegNumber: true,
     companyRegLabelKey: "profile.studioCompliance.billing.companyRegES",
@@ -95,10 +139,24 @@ export const COUNTRY_CONFIGS: Record<string, CountryFieldConfig> = {
     ],
     showBeneficialOwners: true,
   },
+  IT: createGenericEuCountryConfig("IT"),
+  NL: createGenericEuCountryConfig("NL"),
+  PT: createGenericEuCountryConfig("PT"),
+  IE: createGenericEuCountryConfig("IE"),
+  BE: createGenericEuCountryConfig("BE"),
+  AT: createGenericEuCountryConfig("AT"),
 };
 
 export function getCountryConfig(country: string): CountryFieldConfig {
-  return COUNTRY_CONFIGS[country] ?? COUNTRY_CONFIGS["IL"]!;
+  const normalizedCountry =
+    country.trim().toUpperCase() === "GB" ? "UK" : country.trim().toUpperCase();
+  return (
+    COUNTRY_CONFIGS[normalizedCountry] ??
+    COUNTRY_CONFIGS[
+      getStripeMarketDefaults().country === "GB" ? "UK" : getStripeMarketDefaults().country
+    ] ??
+    COUNTRY_CONFIGS.DE!
+  );
 }
 
 export function isEUCountry(country: string): boolean {

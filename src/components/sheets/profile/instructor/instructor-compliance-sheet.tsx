@@ -5,7 +5,7 @@
 import { useAction, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, AppState, type AppStateStatus, Pressable } from "react-native";
+import { ActivityIndicator, Alert, AppState, type AppStateStatus, Pressable } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { BaseProfileSheet } from "@/components/sheets/profile/base-profile-sheet";
@@ -166,6 +166,7 @@ function VerificationUploadPanel({
   label,
   subtitle,
   statusLabel,
+  reviewStatus,
   onPress,
   accentColor,
   disabled = false,
@@ -174,18 +175,26 @@ function VerificationUploadPanel({
   label: string;
   subtitle: string;
   statusLabel: string;
+  reviewStatus: ComplianceCertificateRow["reviewStatus"] | ComplianceInsuranceRow["reviewStatus"] | undefined;
   onPress: () => void;
   accentColor: string;
   disabled?: boolean;
 }) {
   const theme = useTheme();
+  const isReviewing =
+    reviewStatus === "uploaded" || reviewStatus === "ai_pending" || reviewStatus === "ai_reviewing";
+  const isFailed =
+    reviewStatus === "rejected" || reviewStatus === "needs_resubmission" || reviewStatus === "expired";
+  const isMissing = reviewStatus === undefined;
+  const displayStatusLabel = isReviewing ? "Verifying…" : statusLabel;
+  const statusTone = reviewStatus === "approved" ? theme.color.success : isFailed || isMissing ? theme.color.danger : accentColor;
 
   return (
     <Box gap="sm">
       <Text variant="bodyStrong">{label}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={[label, subtitle, statusLabel].join(". ")}
+        accessibilityLabel={[label, subtitle, displayStatusLabel].join(". ")}
         onPress={onPress}
         disabled={disabled}
         style={({ pressed }) => [
@@ -220,15 +229,23 @@ function VerificationUploadPanel({
             <Text
               variant="caption"
               style={{
-                color: accentColor,
+                color: statusTone,
                 textTransform: "uppercase",
                 letterSpacing: LetterSpacing.trackingWide,
               }}
             >
-              {statusLabel}
+              {displayStatusLabel}
             </Text>
           </Box>
-          <IconSymbol name="chevron.right" size={18} color={theme.color.textMuted} />
+          {isReviewing ? (
+            <ActivityIndicator size="small" color={statusTone} />
+          ) : isFailed ? (
+            <IconSymbol name="exclamationmark.triangle.fill" size={18} color={theme.color.danger} />
+          ) : reviewStatus === "approved" ? (
+            <IconSymbol name="checkmark.circle.fill" size={18} color={theme.color.success} />
+          ) : (
+            <IconSymbol name="chevron.right" size={18} color={theme.color.textMuted} />
+          )}
         </Box>
       </Pressable>
     </Box>
@@ -254,6 +271,8 @@ export function InstructorComplianceSheet({ visible, onClose }: InstructorCompli
   const autoRefreshSessionIdRef = useRef<string | null>(null);
   const didAutoCloseStripeRef = useRef(false);
   const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
+  const currentUserLabel =
+    currentUser?.fullName ?? currentUser?.email ?? t("profile.roles.instructor");
   const complianceArgs = useMemo(
     () => (currentUser?.role === "instructor" ? (refreshAt ? { now: refreshAt } : {}) : "skip"),
     [currentUser?.role, refreshAt],
@@ -269,13 +288,13 @@ export function InstructorComplianceSheet({ visible, onClose }: InstructorCompli
   const diditVerification = accessSnapshot?.verification;
   const compliance = accessSnapshot?.compliance;
   const refreshMyDiditVerification = useAction(
-    api.payments.actions.refreshMyInstructorStripeConnectedAccountV2,
+    api.payments.actions.refreshMyInstructorStripeConnectedAccount,
   );
   const createStripeEmbeddedSession = useAction(
-    api.payments.actions.createMyInstructorStripeEmbeddedSessionV2,
+    api.payments.actions.createMyInstructorStripeEmbeddedSession,
   );
   const createStripeHostedAccountLink = useAction(
-    api.payments.actions.createMyInstructorStripeAccountLinkV2,
+    api.payments.actions.createMyInstructorStripeAccountLink,
   );
   const { isUploading, pickAndUploadComplianceDocument } = useComplianceDocumentUpload();
 
@@ -672,9 +691,7 @@ export function InstructorComplianceSheet({ visible, onClose }: InstructorCompli
                 <IconSymbol name="person.fill" size={20} color={theme.color.primary} />
               </Box>
               <Box flex={1} minWidth={0} gap="xxs">
-                <Text variant="titleLarge">
-                  {currentUser.fullName ?? t("profile.account.fallbackName")}
-                </Text>
+                <Text variant="titleLarge">{currentUserLabel}</Text>
                 <Box
                   alignSelf="flex-start"
                   px="md"
@@ -700,14 +717,11 @@ export function InstructorComplianceSheet({ visible, onClose }: InstructorCompli
               </Box>
             </Box>
 
-            <Box gap="xs">
-              <Text variant="bodyStrong">{t("profile.compliance.identity.title")}</Text>
-              <Text variant="caption" color="textMuted">
-                {diditVerification.isVerified
-                  ? t("profile.compliance.identity.approved")
-                  : t("profile.compliance.identity.required")}
-              </Text>
-            </Box>
+            <Text variant="caption" color="textMuted">
+              {diditVerification.isVerified
+                ? t("profile.compliance.identity.approved")
+                : t("profile.compliance.identity.required")}
+            </Text>
 
             <Box gap="sm">
               {diditVerification.isVerified ? (
@@ -715,11 +729,7 @@ export function InstructorComplianceSheet({ visible, onClose }: InstructorCompli
                   <IconButton
                     accessibilityLabel={t("profile.identityVerification.refreshStatus")}
                     icon={
-                      <IconSymbol
-                        name="arrow.clockwise"
-                        size={18}
-                        color={theme.color.primary}
-                      />
+                      <IconSymbol name="arrow.clockwise" size={18} color={theme.color.primary} />
                     }
                     disabled={isDiditBusy}
                     onPress={() => {
@@ -731,6 +741,13 @@ export function InstructorComplianceSheet({ visible, onClose }: InstructorCompli
               ) : (
                 <ActionButton
                   label={diditActionLabel}
+                  icon={
+                    <IconSymbol
+                      name={diditVerification.isVerified ? "arrow.clockwise" : "checkmark.circle.fill"}
+                      size={18}
+                      color={diditVerification.isVerified ? theme.color.primary : theme.color.onPrimary}
+                    />
+                  }
                   onPress={handleDiditAction}
                   fullWidth
                   loading={isStartingDidit}
@@ -772,6 +789,7 @@ export function InstructorComplianceSheet({ visible, onClose }: InstructorCompli
                 countryCode: marketCountry,
               })}
               statusLabel={getDocumentStatusLabel(preferredInsurance?.reviewStatus, t)}
+              reviewStatus={preferredInsurance?.reviewStatus}
               onPress={onOpenInsuranceUpload}
               accentColor={theme.color.primary}
               disabled={isUploading}
@@ -781,6 +799,7 @@ export function InstructorComplianceSheet({ visible, onClose }: InstructorCompli
               label={t("profile.compliance.certificate.title")}
               subtitle={getCertificateSubtitle(latestCertificate ?? null, locale, t)}
               statusLabel={getDocumentStatusLabel(latestCertificate?.reviewStatus, t)}
+              reviewStatus={latestCertificate?.reviewStatus}
               onPress={onOpenCertificateUpload}
               accentColor={theme.color.primary}
               disabled={isUploading}

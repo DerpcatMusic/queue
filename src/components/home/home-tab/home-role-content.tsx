@@ -1,4 +1,3 @@
-import { useMutation } from "convex/react";
 import { Redirect, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { memo } from "react";
@@ -10,15 +9,12 @@ import {
   useOpenPublicProfileSheet,
   useOpenStudioSheet,
 } from "@/contexts/sheet-context";
-import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { InstructorMarketplaceJob } from "@/features/jobs/instructor-marketplace-job";
 import { buildRoleTabRoute, ROLE_TAB_ROUTE_NAMES } from "@/navigation/role-routes";
 
 const INSTRUCTOR_JOBS_ROUTE = buildRoleTabRoute("instructor", ROLE_TAB_ROUTE_NAMES.jobs);
-const STUDIO_JOBS_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.jobs);
-const STUDIO_CALENDAR_ROUTE = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.calendar);
-const STUDIO_COMPLIANCE_ROUTE = "/studio/profile/compliance" as const;
+const STUDIO_COMPLIANCE_ROUTE = "/onboarding/verification?role=studio" as const;
 
 export type Application = {
   applicationId: Id<"jobApplications">;
@@ -33,7 +29,6 @@ export type Application = {
 export type HomeRoleContentProps = {
   activeRole: "instructor" | "studio";
   locale: string;
-  currencyFormatter: Intl.NumberFormat;
   t: TFunction;
   instructorHomeStats:
     | {
@@ -141,7 +136,6 @@ export type HomeRoleContentProps = {
 export const HomeRoleContent = memo(function HomeRoleContent({
   activeRole,
   locale,
-  currencyFormatter,
   t,
   instructorHomeStats,
   instructorSettings,
@@ -155,7 +149,6 @@ export const HomeRoleContent = memo(function HomeRoleContent({
   onWithdrawApplication,
 }: HomeRoleContentProps) {
   const router = useRouter();
-  const reviewApplication = useMutation(api.jobs.review.reviewApplication);
 
   // Sheet openers for instructor profile sub-pages
   const instructorSheetHandlers = useOpenInstructorSheet();
@@ -166,9 +159,6 @@ export const HomeRoleContent = memo(function HomeRoleContent({
 
   const openInstructorStudio = (studioId: Id<"studioProfiles">, _jobId: Id<"jobs">) => {
     publicProfileHandlers.openStudioProfile(String(studioId));
-  };
-  const openPublicInstructor = (instructorId: Id<"instructorProfiles">) => {
-    publicProfileHandlers.openInstructorProfile(String(instructorId));
   };
 
   if (activeRole === "instructor") {
@@ -231,14 +221,6 @@ export const HomeRoleContent = memo(function HomeRoleContent({
     return <Redirect href="/onboarding" />;
   }
 
-  const studioJobs = myStudioJobs ?? [];
-  const openJobs = studioJobs.filter((job) => job.status === "open").length;
-  const pendingApplicants = studioJobs.reduce(
-    (total, job) => total + job.pendingApplicationsCount,
-    0,
-  );
-  const jobsFilled = studioJobs.filter((job) => job.status === "filled").length;
-
   const isLoading =
     myStudioJobs === undefined ||
     studioSettings === undefined ||
@@ -246,14 +228,18 @@ export const HomeRoleContent = memo(function HomeRoleContent({
   const studioSetupItems: HomeChecklistItem[] = [
     {
       id: "publishing",
-      label: t("home.tasks.studio.readinessTitle"),
+      label: t("home.tasks.studio.readinessTitle", {
+        defaultValue: "Publishing readiness",
+      }),
       icon: "checkmark.shield.fill",
       done: studioComplianceSummary?.canPublishJobs ?? false,
       onPress: () => router.push(STUDIO_COMPLIANCE_ROUTE),
     },
     {
       id: "profile",
-      label: t("home.tasks.studio.profileTitle"),
+      label: t("home.tasks.studio.profileTitle", {
+        defaultValue: "Studio details",
+      }),
       icon: "building.columns.fill",
       done: Boolean(
         studioSettings?.studioName?.trim() &&
@@ -264,7 +250,9 @@ export const HomeRoleContent = memo(function HomeRoleContent({
     },
     {
       id: "branch",
-      label: t("home.tasks.studio.branchTitle"),
+      label: t("home.tasks.studio.branchTitle", {
+        defaultValue: "Branch",
+      }),
       icon: "location.fill",
       done: Boolean(studioSettings?.primaryBranch),
       onPress: () => studioSheetHandlers.openBranches(),
@@ -272,20 +260,6 @@ export const HomeRoleContent = memo(function HomeRoleContent({
   ];
 
   return (
-    <StudioHomeContent
-      isLoading={isLoading}
-      locale={locale}
-      openJobs={openJobs}
-      pendingApplicants={pendingApplicants}
-      currencyFormatter={currencyFormatter}
-      t={t}
-      recentJobs={studioJobs}
-      jobsFilled={jobsFilled}
-      setupItems={studioSetupItems}
-      onOpenJobs={() => router.push(STUDIO_JOBS_ROUTE)}
-      onOpenCalendar={() => router.push(STUDIO_CALENDAR_ROUTE)}
-      onOpenInstructorProfile={openPublicInstructor}
-      reviewApplication={reviewApplication}
-    />
+    <StudioHomeContent isLoading={isLoading} setupItems={studioSetupItems} />
   );
 });

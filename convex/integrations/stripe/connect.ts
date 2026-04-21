@@ -1,0 +1,413 @@
+"use node";
+
+import StripeSDK from "stripe";
+import { ConvexError } from "convex/values";
+import { ErrorCode } from "../../lib/errors";
+
+const STRIPE_ACCOUNTS_API_VERSION = "2026-02-25.preview";
+const STRIPE_API_BASE_URL = "https://api.stripe.com";
+
+function requireStripeSecretKey() {
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!secretKey) {
+    throw new ConvexError({
+      code: ErrorCode.MISSING_CONFIGURATION,
+      message: "STRIPE_SECRET_KEY is not configured",
+    });
+  }
+  return secretKey;
+}
+
+type StripeFetchOptions = {
+  method: "GET" | "POST";
+  path: string;
+  body?: unknown;
+  include?: string[];
+};
+
+async function stripeConnectFetch<T>(input: StripeFetchOptions): Promise<T> {
+  const secretKey = requireStripeSecretKey();
+  const url = new URL(`${STRIPE_API_BASE_URL}${input.path}`);
+
+  if (input.include) {
+    input.include.forEach((value, index) => {
+      url.searchParams.append(`include[${index}]`, value);
+    });
+  }
+
+  const response = await fetch(url, {
+    method: input.method,
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/json",
+      "Stripe-Version": STRIPE_ACCOUNTS_API_VERSION,
+    },
+    ...(input.body ? { body: JSON.stringify(input.body) } : {}),
+  });
+
+  const data = (await response.json()) as T | { error?: { message?: string } };
+  if (!response.ok) {
+    const message =
+      typeof data === "object" && data && "error" in data ? data.error?.message : undefined;
+    throw new ConvexError({
+      code: ErrorCode.STRIPE_ERROR,
+      message: message ?? "Stripe API request failed",
+    });
+  }
+
+  return data as T;
+}
+
+export type StripeAccount = {
+  id: string;
+  dashboard?: "express" | "full" | "none" | null;
+  contact_email?: string | null;
+  display_name?: string | null;
+  defaults?: {
+    responsibilities?: {
+      requirements_collector?: "application" | "stripe" | null;
+    } | null;
+  } | null;
+  identity?: {
+    business_details?: {
+      registered_name?: string | null;
+    } | null;
+    country?: string | null;
+    entity_type?: string | null;
+  } | null;
+  requirements?: {
+    entries?: Array<{
+      description?: string | null;
+      awaiting_action_from?: string | null;
+      errors?: Array<{ reason?: string | null; code?: string | null }> | null;
+      minimum_deadline?: {
+        status?: string | null;
+      } | null;
+    }> | null;
+  } | null;
+  configuration?: {
+    merchant?: {
+      applied?: boolean;
+      capabilities?: {
+        card_payments?: {
+          status?: "active" | "pending" | "restricted" | "unsupported" | null;
+          status_details?: Array<{
+            code?: string | null;
+            resolution?: string | null;
+          }> | null;
+        } | null;
+        stripe_balance?: {
+          payouts?: {
+            status?: "active" | "pending" | "restricted" | "unsupported" | null;
+            status_details?: Array<{
+              code?: string | null;
+              resolution?: string | null;
+            }> | null;
+          } | null;
+        } | null;
+      } | null;
+    } | null;
+    recipient?: {
+      applied?: boolean;
+      capabilities?: {
+        stripe_balance?: {
+          stripe_transfers?: {
+            status?: "active" | "pending" | "restricted" | "unsupported" | null;
+            status_details?: Array<{
+              code?: string | null;
+              resolution?: string | null;
+            }> | null;
+          } | null;
+        } | null;
+      } | null;
+    } | null;
+  } | null;
+};
+
+export type StripeAccountPerson = {
+  id: string;
+  given_name?: string | null;
+  surname?: string | null;
+  relationship?: {
+    representative?: boolean | null;
+    owner?: boolean | null;
+    title?: string | null;
+  } | null;
+};
+
+export function summarizeStripeRecipientAccountStatus(account: StripeAccount) {
+  const merchantCardPaymentsStatus =
+    account.configuration?.merchant?.capabilities?.card_payments?.status;
+  const merchantPayoutsStatus =
+    account.configuration?.merchant?.capabilities?.stripe_balance?.payouts?.status;
+  const transferStatus =
+    account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status;
+  const statuses = [merchantCardPaymentsStatus, merchantPayoutsStatus, transferStatus].filter(
+    Boolean,
+  );
+
+  if (statuses.includes("unsupported")) {
+    return "unsupported" as const;
+  }
+  if (statuses.length > 0 && statuses.every((status) => status === "active")) {
+    return "active" as const;
+  }
+  const requirements = summarizeStripeRecipientRequirements(account);
+  if (requirements.blockingCount > 0) {
+    return "restricted" as const;
+  }
+  if (statuses.includes("restricted")) {
+    return "restricted" as const;
+  }
+  return "pending" as const;
+}
+
+export function summarizeStripeRecipientRequirements(account: StripeAccount) {
+  const entries = account.requirements?.entries ?? [];
+  const blockingEntries = entries.filter((entry) => {
+    const awaiting = entry.awaiting_action_from?.toLowerCase();
+    return awaiting === "account_holder" || awaiting === "platform";
+  });
+  const summary =
+    blockingEntries
+      .map((entry) => entry.description?.trim())
+      .filter((value): value is string => Boolean(value))
+      .slice(0, 3)
+      .join(" • ") || undefined;
+
+  return {
+    blockingCount: blockingEntries.length,
+    summary,
+  };
+}
+
+export async function createStripeRecipientAccount(input: {
+  email: string;
+  displayName: string;
+  country: string;
+  defaultCurrency: string;
+  entityType?: "individual" | "company";
+  registeredName?: string;
+  dashboard?: "none" | "express" | "full";
+  configurations?: Array<"merchant" | "recipient">;
+  responsibilities?: {
+    feesCollector?: "stripe" | "application";
+    lossesCollector?: "stripe" | "application";
+  };
+}) {
+  const configurations = input.configurations ?? ["recipient"];
+  const merchantConfiguration = configurations.includes("merchant")
+    ? {
+        merchant: {
+          capabilities: {
+            card_payments: {
+              requested: true,
+            },
+          },
+        },
+      }
+    : {};
+  const recipientConfiguration = configurations.includes("recipient")
+    ? {
+        recipient: {
+          capabilities: {
+            stripe_balance: {
+              stripe_transfers: {
+                requested: true,
+              },
+            },
+          },
+        },
+      }
+    : {};
+  return await stripeConnectFetch<StripeAccount>({
+    method: "POST",
+    path: "/v2/core/accounts",
+    include: ["configuration.merchant", "configuration.recipient", "identity", "requirements"],
+    body: {
+      contact_email: input.email,
+      display_name: input.displayName,
+      dashboard: input.dashboard ?? "none",
+      identity: {
+        country: input.country,
+        entity_type: input.entityType ?? "individual",
+        ...(input.registeredName
+          ? {
+              business_details: {
+                registered_name: input.registeredName,
+              },
+            }
+          : {}),
+      },
+      configuration: {
+        ...merchantConfiguration,
+        ...recipientConfiguration,
+      },
+      defaults: {
+        currency: input.defaultCurrency.toLowerCase(),
+        responsibilities: {
+          fees_collector: input.responsibilities?.feesCollector ?? "stripe",
+          losses_collector: input.responsibilities?.lossesCollector ?? "application",
+        },
+        locales: ["en-US"],
+      },
+    },
+  });
+}
+
+export async function retrieveStripeAccount(accountId: string) {
+  return await stripeConnectFetch<StripeAccount>({
+    method: "GET",
+    path: `/v2/core/accounts/${accountId}`,
+    include: ["configuration.merchant", "configuration.recipient", "identity", "requirements"],
+  });
+}
+
+export async function updateStripeAccount(
+  accountId: string,
+  updates: {
+    feesCollector?: "stripe" | "application";
+  },
+) {
+  return await stripeConnectFetch<StripeAccount>({
+    method: "POST",
+    path: `/v2/core/accounts/${accountId}`,
+    include: ["configuration.merchant", "configuration.recipient", "identity", "requirements"],
+    body: {
+      defaults: {
+        responsibilities: {
+          ...(updates.feesCollector ? { fees_collector: updates.feesCollector } : {}),
+        },
+      },
+    },
+  });
+}
+
+export async function listStripeAccountPersons(accountId: string) {
+  return await stripeConnectFetch<{
+    data?: StripeAccountPerson[] | null;
+  }>({
+    method: "GET",
+    path: `/v2/core/accounts/${accountId}/persons`,
+  });
+}
+
+export async function getStripeRepresentativeName(accountId: string) {
+  const response = await listStripeAccountPersons(accountId);
+  const people = response.data ?? [];
+  const representative =
+    people.find((person) => person.relationship?.representative) ??
+    people.find((person) => person.relationship?.owner) ??
+    people[0];
+
+  if (!representative) {
+    return null;
+  }
+
+  const firstName = representative.given_name?.trim() || undefined;
+  const lastName = representative.surname?.trim() || undefined;
+  const legalName = [firstName, lastName].filter(Boolean).join(" ").trim() || undefined;
+
+  if (!firstName && !lastName && !legalName) {
+    return null;
+  }
+
+  return {
+    firstName,
+    lastName,
+    legalName,
+  };
+}
+
+export async function createStripeAccountLink(input: {
+  accountId: string;
+  refreshUrl: string;
+  returnUrl: string;
+  configurations: Array<"merchant" | "recipient">;
+}) {
+  return await stripeConnectFetch<{
+    url: string;
+    expires_at?: string | null;
+  }>({
+    method: "POST",
+    path: "/v2/core/account_links",
+    body: {
+      account: input.accountId,
+      use_case: {
+        type: "account_onboarding",
+        account_onboarding: {
+          configurations: input.configurations,
+          refresh_url: input.refreshUrl,
+          return_url: input.returnUrl,
+        },
+      },
+    },
+  });
+}
+
+export async function createStripeAccountSession(input: {
+  accountId: string;
+  enableOnboarding?: boolean;
+  enablePayouts?: boolean;
+  enablePayments?: boolean;
+}) {
+  const secretKey = requireStripeSecretKey();
+  const stripe = new StripeSDK(secretKey);
+  const account = await retrieveStripeAccount(input.accountId);
+  const disableStripeUserAuthentication =
+    account.dashboard === "none" &&
+    account.defaults?.responsibilities?.requirements_collector === "application";
+  const response = await stripe.accountSessions.create({
+    account: input.accountId,
+    components: {
+      ...(input.enableOnboarding !== false
+        ? {
+            account_onboarding: {
+              enabled: true,
+              ...(disableStripeUserAuthentication
+                ? {
+                    features: {
+                      disable_stripe_user_authentication: true,
+                    },
+                  }
+                : {}),
+            },
+          }
+        : {}),
+      ...(input.enablePayouts !== false
+        ? {
+            payouts: {
+              enabled: true,
+              features: {
+                ...(disableStripeUserAuthentication
+                  ? {
+                      disable_stripe_user_authentication: true,
+                    }
+                  : {}),
+                standard_payouts: true,
+                edit_payout_schedule: true,
+                external_account_collection: true,
+              },
+            },
+          }
+        : {}),
+      ...(input.enablePayments !== false
+        ? {
+            payments: {
+              enabled: true,
+            },
+          }
+        : {}),
+    },
+  });
+  if (!response.client_secret) {
+    throw new ConvexError({
+      code: ErrorCode.STRIPE_CONNECT_ERROR,
+      message: "Stripe account session did not return a client secret",
+    });
+  }
+
+  return {
+    clientSecret: response.client_secret,
+  };
+}

@@ -16,9 +16,9 @@ export type IdentityVerificationStatus =
 export async function getLatestStripeConnectedAccount(
   ctx: Ctx,
   userId: Id<"users">,
-): Promise<Doc<"connectedAccountsV2"> | null> {
+): Promise<Doc<"connectedAccounts"> | null> {
   const accounts = await ctx.db
-    .query("connectedAccountsV2")
+    .query("connectedAccounts")
     .withIndex("by_user", (q) => q.eq("userId", userId))
     .order("desc")
     .take(10);
@@ -27,7 +27,7 @@ export async function getLatestStripeConnectedAccount(
 }
 
 export function mapStripeConnectedAccountStatusToIdentityStatus(
-  status: Doc<"connectedAccountsV2">["status"] | undefined,
+  status: Doc<"connectedAccounts">["status"] | undefined,
 ): IdentityVerificationStatus {
   switch (status) {
     case "active":
@@ -46,7 +46,7 @@ export function mapStripeConnectedAccountStatusToIdentityStatus(
 }
 
 export function isStripeIdentityVerified(
-  account: Pick<Doc<"connectedAccountsV2">, "provider" | "status"> | null | undefined,
+  account: Pick<Doc<"connectedAccounts">, "provider" | "status"> | null | undefined,
 ) {
   return account?.provider === "stripe" && account.status === "active";
 }

@@ -26,6 +26,7 @@ type MapRadiusControlProps = {
   commuteEstimateLabel?: string | null | undefined;
   activeResolutionLabel?: string | null | undefined;
   savedCoordinatesLabel?: string | null | undefined;
+  supportingText?: string | null | undefined;
   style?: StyleProp<ViewStyle>;
   onRadiusChange: (radiusKm: number) => void;
   onRadiusCommit?: (radiusKm: number) => void;
@@ -37,6 +38,7 @@ export function MapRadiusControl({
   commuteEstimateLabel,
   activeResolutionLabel,
   savedCoordinatesLabel,
+  supportingText,
   style,
   onRadiusChange,
   onRadiusCommit,
@@ -231,6 +233,18 @@ export function MapRadiusControl({
           }}
         >
           {savedCoordinatesLabel}
+        </Text>
+      ) : null}
+      {supportingText ? (
+        <Text
+          style={{
+            color: themeColor.textMuted,
+            fontSize: 12,
+            lineHeight: 16,
+            textAlign: "center",
+          }}
+        >
+          {supportingText}
         </Text>
       ) : null}
     </Box>

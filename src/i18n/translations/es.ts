@@ -215,7 +215,6 @@ const es = {
       "pending": "Pendiente",
       "instructor": "Instructor",
       "studio": "Estudio",
-      "admin": "Administración",
       "unknown": "Desconocido"
     },
     "navigation": {
@@ -388,10 +387,10 @@ const es = {
       },
       "identity": {
         "title": "Identidad de rayas",
-        "approved": "La incorporación de la identidad de Stripe está completa y su identidad está activa.",
-        "required": "Complete la incorporación de identidad de Stripe para desbloquear acciones laborales de instructor.",
+        "approved": "Identidad verificada.",
+        "required": "Verifica tu identidad para desbloquear las acciones del instructor.",
         "unverified": "Inconfirmado",
-        "cardTitle": "Verificación de identidad de rayas",
+        "cardTitle": "Verificar identidad",
         "cardBody": "Incorporación de documentos e identidad para acceso de instructores y pagos.",
         "cardHint": "Requiere una identificación gubernamental y acceso a la cámara."
       },
@@ -428,7 +427,7 @@ const es = {
         "replaceInsurance": "Reemplazar seguro",
         "uploadCertificate": "Cargar certificado",
         "chooseSports": "Elige deportes",
-        "startIdentity": "Verificar con Stripe",
+        "startIdentity": "Verificar",
         "refreshIdentity": "Actualizar identidad",
         "usePhoto": "usar foto",
         "useFile": "Usar archivo o PDF"
@@ -908,6 +907,7 @@ const es = {
       "releaseModeScheduled": "Lanzamiento programado",
       "receiptReady": "Confirmación de pago lista",
       "receiptPending": "El recibo se generará después de la confirmación del pago.",
+      "downloadReceipt": "Descargar recibo",
       "openReceipt": "recibo abierto",
       "openHostedReceipt": "Abrir recibo alojado",
       "savedMethods": "Métodos de pago guardados",

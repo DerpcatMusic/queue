@@ -224,6 +224,22 @@ export function StudioJobDetailSheet({
                                 </Text>
                               </Pressable>
 
+                              <VStack gap="xxs">
+                                <Text variant="caption" color="textMuted">
+                                  {application.trust.identityVerified
+                                    ? "Identity verified"
+                                    : "Identity pending"}
+                                </Text>
+                                <Text variant="caption" color="textMuted">
+                                  {application.trust.insuranceVerified
+                                    ? "Insurance verified"
+                                    : "Insurance pending"}
+                                </Text>
+                                <Text variant="caption" color="textMuted">
+                                  {application.trust.certificates.length} certifications
+                                </Text>
+                              </VStack>
+
                               {/* Buttons below name - reject LEFT, accept RIGHT */}
                               <HStack gap="sm">
                                 <ActionButton

@@ -4,9 +4,9 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 
 type Ctx = QueryCtx | MutationCtx;
 
-export const internalAccessRoleValidator = v.union(v.literal("tester"), v.literal("admin"));
+export const internalAccessRoleValidator = v.literal("tester");
 
-export type InternalAccessRole = "tester" | "admin";
+export type InternalAccessRole = "tester";
 
 export type InternalAccessSummary = {
   role?: InternalAccessRole;
@@ -23,13 +23,30 @@ export function normalizeInternalAccessEmail(email: string | undefined): string 
   return normalized.length > 0 ? normalized : undefined;
 }
 
-function getEnvInternalAdminEmails() {
+const INTERNAL_TESTER_EMAILS_ENV = "INTERNAL_TESTER_EMAILS";
+
+export function isInternalTesterFeatureEnabled() {
+  const nodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
+  return nodeEnv !== "production";
+}
+
+export function requireInternalTesterFeatureEnabled() {
+  if (!isInternalTesterFeatureEnabled()) {
+    throw new ConvexError("Internal tester access is disabled in production");
+  }
+}
+
+function getEnvInternalTesterEmails() {
   return new Set(
-    (process.env.INTERNAL_ADMIN_EMAILS ?? "")
+    (process.env[INTERNAL_TESTER_EMAILS_ENV] ?? "")
       .split(",")
       .map((value) => normalizeInternalAccessEmail(value))
       .filter((value): value is string => Boolean(value)),
   );
+}
+
+function normalizeGrantedRole(_role: "tester" | undefined): InternalAccessRole {
+  return "tester";
 }
 
 async function getLatestActiveGrantForUserId(ctx: Ctx, userId: Doc<"users">["_id"]) {
@@ -52,6 +69,14 @@ export async function resolveInternalAccessForUser(
   ctx: Ctx,
   user: Pick<Doc<"users">, "_id" | "email">,
 ): Promise<InternalAccessSummary> {
+  if (!isInternalTesterFeatureEnabled()) {
+    return {
+      verificationBypass: false,
+      canManageInternalAccess: false,
+      source: "none",
+    };
+  }
+
   const normalizedEmail = normalizeInternalAccessEmail(user.email);
   const [grantByUserId, grantByEmail] = await Promise.all([
     getLatestActiveGrantForUserId(ctx, user._id),
@@ -61,14 +86,13 @@ export async function resolveInternalAccessForUser(
   const tableGrant =
     grantByUserId ??
     (grantByEmail && grantByEmail.userId === undefined ? grantByEmail : (grantByEmail ?? null));
-  const envAdmin = normalizedEmail ? getEnvInternalAdminEmails().has(normalizedEmail) : false;
+  const envTester = normalizedEmail ? getEnvInternalTesterEmails().has(normalizedEmail) : false;
 
-  const role: InternalAccessRole | undefined = envAdmin ? "admin" : tableGrant?.role;
-  const canManageInternalAccess = envAdmin || tableGrant?.role === "admin";
-  const verificationBypass =
-    envAdmin || canManageInternalAccess || tableGrant?.verificationBypass === true;
+  const role: InternalAccessRole | undefined = envTester || tableGrant ? normalizeGrantedRole(tableGrant?.role) : undefined;
+  const canManageInternalAccess = envTester || Boolean(tableGrant);
+  const verificationBypass = envTester || canManageInternalAccess || tableGrant?.verificationBypass === true;
   const source: InternalAccessSummary["source"] =
-    envAdmin && tableGrant ? "table+env" : envAdmin ? "env" : tableGrant ? "table" : "none";
+    envTester && tableGrant ? "table+env" : envTester ? "env" : tableGrant ? "table" : "none";
 
   return {
     verificationBypass,

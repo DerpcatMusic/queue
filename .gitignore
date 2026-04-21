@@ -7,6 +7,7 @@ node_modules/
 # Expo
 .expo
 .expo/
+.expo-export-smoke/
 dist/
 web-build/
 expo-env.d.ts
@@ -54,6 +55,8 @@ typecheck.log
 gradle-build.log
 temp_brand.ts
 temp_brand_utf8.ts
+tmp/
+tmp-didit-sdk-*.aar
 
 # local gradle user home
 .gradle-user-home/

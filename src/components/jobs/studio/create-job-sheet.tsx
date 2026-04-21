@@ -15,6 +15,7 @@ import { createDefaultStudioDraft } from "@/lib/jobs-utils";
 import {
   BoostBonusSection,
   NotesSection,
+  PaymentTimingSection,
   PayParticipantsSection,
   PickerDock,
   PostingOptionsSection,
@@ -238,6 +239,7 @@ export function CreateJobSheet({
 
           <BoostBonusSection draft={draft} setDraft={setDraft} />
           <PayParticipantsSection draft={draft} setDraft={setDraft} />
+          <PaymentTimingSection draft={draft} setDraft={setDraft} />
           <NotesSection draft={draft} setDraft={setDraft} />
 
           <SubmitBar

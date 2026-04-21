@@ -1,5 +1,5 @@
 import { Appearance, StyleSheet as RNStyleSheet, type TextStyle } from "react-native";
-import { MMKV } from "react-native-mmkv";
+import { createMMKV } from "react-native-mmkv";
 import { StyleSheet, UnistylesRuntime } from "react-native-unistyles";
 
 export type ThemeScheme = "light" | "dark";
@@ -7,7 +7,7 @@ export type ThemePreference = "light" | "dark" | "system";
 export type ResolvedBrandScheme = ThemeScheme;
 
 const THEME_PREFERENCE_KEY = "app_theme_preference";
-const storage = new MMKV({ id: "app-storage" });
+const storage = createMMKV({ id: "app-storage" });
 
 export const Spacing = {
   xxs: 2,

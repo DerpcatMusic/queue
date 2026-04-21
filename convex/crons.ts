@@ -27,18 +27,6 @@ crons.interval(
   {},
 );
 
-/**
- * Cleanup old webhook payloads to save storage.
- * Runs daily at 1 AM UTC.
- * Full payloads older than 30 days are replaced with hashes only.
- */
-crons.cron(
-  "cleanup old webhook payloads",
-  "0 1 * * *", // Every day at 1 AM UTC
-  internal.security.webhookSecurity.cleanupStaleWebhookArtifacts,
-  { olderThanMs: 30 * 24 * 60 * 60 * 1000 }, // 30 days retention
-);
-
 crons.cron(
   "process instructor insurance renewals",
   "0 7 * * *", // Every day at 7 AM UTC
@@ -50,6 +38,20 @@ crons.interval(
   "process due notification schedules",
   { minutes: 5 },
   internal.notifications.core.processDueNotificationSchedules,
+  {},
+);
+
+crons.interval(
+  "enforce overdue studio settlements",
+  { minutes: 30 },
+  internal.jobs.settlement.enforceOverdueSettlementStates,
+  {},
+);
+
+crons.interval(
+  "release recovered studio payment blocks",
+  { minutes: 30 },
+  internal.jobs.settlement.releaseRecoveredStudioPaymentBlocks,
   {},
 );
 

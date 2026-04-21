@@ -1,4 +1,4 @@
-import { useCallback, useMemo, memo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
@@ -17,7 +17,7 @@ import {
   type StatusTone,
 } from "@/lib/payments-utils";
 
-type PaymentActivityId = Id<"payments"> | Id<"paymentOrdersV2">;
+type PaymentActivityId = Id<"paymentOrders">;
 
 type PaymentActivityItem = {
   payment: {

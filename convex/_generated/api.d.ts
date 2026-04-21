@@ -12,75 +12,232 @@ import type * as access_snapshots from "../access/snapshots.js";
 import type * as auth from "../auth.js";
 import type * as auth_magicLink from "../auth/magicLink.js";
 import type * as auth_otp from "../auth/otp.js";
+import type * as authRedirect from "../authRedirect.js";
+import type * as authResolution from "../authResolution.js";
 import type * as calendar_googleCalendar from "../calendar/googleCalendar.js";
+import type * as calendar_googleCalendarActions from "../calendar/googleCalendarActions.js";
+import type * as calendar_googleCalendarMutations from "../calendar/googleCalendarMutations.js";
 import type * as calendar_googleCalendarNode from "../calendar/googleCalendarNode.js";
+import type * as calendar_googleCalendarNodeActions from "../calendar/googleCalendarNodeActions.js";
+import type * as calendar_googleCalendarNodeShared from "../calendar/googleCalendarNodeShared.js";
+import type * as calendar_googleCalendarQueries from "../calendar/googleCalendarQueries.js";
+import type * as calendar_googleCalendarShared from "../calendar/googleCalendarShared.js";
 import type * as compliance_instructor from "../compliance/instructor.js";
+import type * as compliance_instructorCertificateReview from "../compliance/instructorCertificateReview.js";
+import type * as compliance_instructorDocuments from "../compliance/instructorDocuments.js";
+import type * as compliance_instructorInsuranceReview from "../compliance/instructorInsuranceReview.js";
+import type * as compliance_instructorMutations from "../compliance/instructorMutations.js";
+import type * as compliance_instructorProfessionalRegistry from "../compliance/instructorProfessionalRegistry.js";
+import type * as compliance_instructorQueries from "../compliance/instructorQueries.js";
+import type * as compliance_instructorRenewals from "../compliance/instructorRenewals.js";
 import type * as compliance_instructorReview from "../compliance/instructorReview.js";
+import type * as compliance_instructorReviewShared from "../compliance/instructorReviewShared.js";
+import type * as compliance_instructorShared from "../compliance/instructorShared.js";
+import type * as compliance_publicProfessionalRegistry from "../compliance/publicProfessionalRegistry.js";
 import type * as compliance_studio from "../compliance/studio.js";
+import type * as compliance_studioBusinessLookup from "../compliance/studioBusinessLookup.js";
 import type * as components_ from "../components.js";
 import type * as constants from "../constants.js";
 import type * as crons from "../crons.js";
+import type * as deletion_actions from "../deletion/actions.js";
+import type * as deletion_mutations from "../deletion/mutations.js";
 import type * as home_instructorStats from "../home/instructorStats.js";
+import type * as home_instructorStatsPayout from "../home/instructorStatsPayout.js";
+import type * as home_instructorStatsRead from "../home/instructorStatsRead.js";
 import type * as http from "../http.js";
+import type * as httpDidit from "../httpDidit.js";
+import type * as httpShared from "../httpShared.js";
+import type * as httpStripe from "../httpStripe.js";
 import type * as instructors_mapDiscovery from "../instructors/mapDiscovery.js";
 import type * as instructors_publicProfiles from "../instructors/publicProfiles.js";
 import type * as instructors_settings from "../instructors/settings.js";
+import type * as instructors_settingsMutations from "../instructors/settingsMutations.js";
+import type * as instructors_settingsReads from "../instructors/settingsReads.js";
+import type * as instructors_settingsShared from "../instructors/settingsShared.js";
 import type * as instructors_zones from "../instructors/zones.js";
 import type * as integrations_payment_provider from "../integrations/payment_provider.js";
-import type * as integrations_providerAdapterV2 from "../integrations/providerAdapterV2.js";
+import type * as integrations_providerAdapter from "../integrations/providerAdapter.js";
 import type * as integrations_stripe_config from "../integrations/stripe/config.js";
-import type * as integrations_stripe_connectV2 from "../integrations/stripe/connectV2.js";
+import type * as integrations_stripe_connect from "../integrations/stripe/connect.js";
 import type * as internal_access from "../internal/access.js";
 import type * as jobs__helpers from "../jobs/_helpers.js";
+import type * as jobs_applicationMutations from "../jobs/applicationMutations.js";
+import type * as jobs_applicationQueries from "../jobs/applicationQueries.js";
 import type * as jobs_applications from "../jobs/applications.js";
 import type * as jobs_browse from "../jobs/browse.js";
+import type * as jobs_browseRead from "../jobs/browseRead.js";
+import type * as jobs_browseShared from "../jobs/browseShared.js";
 import type * as jobs_calendar from "../jobs/calendar.js";
+import type * as jobs_calendarConflicts from "../jobs/calendarConflicts.js";
+import type * as jobs_calendarLessonDetail from "../jobs/calendarLessonDetail.js";
+import type * as jobs_calendarTimeline from "../jobs/calendarTimeline.js";
 import type * as jobs_cancellation from "../jobs/cancellation.js";
+import type * as jobs_cancellationCleanup from "../jobs/cancellationCleanup.js";
+import type * as jobs_cancellationExpiry from "../jobs/cancellationExpiry.js";
+import type * as jobs_cancellationInstructor from "../jobs/cancellationInstructor.js";
+import type * as jobs_cancellationShared from "../jobs/cancellationShared.js";
+import type * as jobs_cancellationStudio from "../jobs/cancellationStudio.js";
 import type * as jobs_checkIn from "../jobs/checkIn.js";
+import type * as jobs_instructorLessons from "../jobs/instructorLessons.js";
 import type * as jobs_instructorTabs from "../jobs/instructorTabs.js";
+import type * as jobs_jobCheckIns from "../jobs/jobCheckIns.js";
+import type * as jobs_jobConstants from "../jobs/jobConstants.js";
+import type * as jobs_jobNotifications from "../jobs/jobNotifications.js";
+import type * as jobs_jobPaymentReadModels from "../jobs/jobPaymentReadModels.js";
+import type * as jobs_jobProfiles from "../jobs/jobProfiles.js";
+import type * as jobs_jobStats from "../jobs/jobStats.js";
 import type * as jobs_lessonCompletion from "../jobs/lessonCompletion.js";
+import type * as jobs_lessonLifecycleMutations from "../jobs/lessonLifecycleMutations.js";
+import type * as jobs_lifecycle from "../jobs/lifecycle.js";
 import type * as jobs_postJob from "../jobs/postJob.js";
+import type * as jobs_ratings from "../jobs/ratings.js";
 import type * as jobs_review from "../jobs/review.js";
+import type * as jobs_reviewMutations from "../jobs/reviewMutations.js";
+import type * as jobs_reviewWorkflows from "../jobs/reviewWorkflows.js";
+import type * as jobs_settlement from "../jobs/settlement.js";
 import type * as jobs_studioManagement from "../jobs/studioManagement.js";
+import type * as jobs_studioManagementCounts from "../jobs/studioManagementCounts.js";
+import type * as jobs_studioManagementLoaders from "../jobs/studioManagementLoaders.js";
+import type * as jobs_studioManagementShared from "../jobs/studioManagementShared.js";
+import type * as jobs_studioManagementTrust from "../jobs/studioManagementTrust.js";
+import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_authDedupe from "../lib/authDedupe.js";
+import type * as lib_authDedupeInstructorMerge from "../lib/authDedupeInstructorMerge.js";
+import type * as lib_authDedupeMerge from "../lib/authDedupeMerge.js";
+import type * as lib_authDedupeResolve from "../lib/authDedupeResolve.js";
+import type * as lib_authDedupeShared from "../lib/authDedupeShared.js";
+import type * as lib_authDedupeStudioMerge from "../lib/authDedupeStudioMerge.js";
 import type * as lib_calendarCrypto from "../lib/calendarCrypto.js";
 import type * as lib_calendarShared from "../lib/calendarShared.js";
 import type * as lib_domainValidation from "../lib/domainValidation.js";
+import type * as lib_errors from "../lib/errors.js";
 import type * as lib_h3 from "../lib/h3.js";
+import type * as lib_h3Geometry from "../lib/h3Geometry.js";
+import type * as lib_h3JobQueries from "../lib/h3JobQueries.js";
 import type * as lib_instructorCompliance from "../lib/instructorCompliance.js";
+import type * as lib_instructorCompliancePolicy from "../lib/instructorCompliancePolicy.js";
+import type * as lib_instructorComplianceReads from "../lib/instructorComplianceReads.js";
+import type * as lib_instructorComplianceShared from "../lib/instructorComplianceShared.js";
 import type * as lib_instructorEligibility from "../lib/instructorEligibility.js";
 import type * as lib_instructorGeoCoverage from "../lib/instructorGeoCoverage.js";
 import type * as lib_internalAccess from "../lib/internalAccess.js";
 import type * as lib_locationRadius from "../lib/locationRadius.js";
+import type * as lib_marketRules from "../lib/marketRules.js";
 import type * as lib_marketplace from "../lib/marketplace.js";
 import type * as lib_notificationPreferences from "../lib/notificationPreferences.js";
+import type * as lib_professionalRegistry from "../lib/professionalRegistry.js";
+import type * as lib_professionalRegistryFrance from "../lib/professionalRegistryFrance.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
+import type * as lib_rateLimitConfig from "../lib/rateLimitConfig.js";
+import type * as lib_rateLimitFingerprint from "../lib/rateLimitFingerprint.js";
+import type * as lib_rateLimitOperations from "../lib/rateLimitOperations.js";
 import type * as lib_resendDevRouting from "../lib/resendDevRouting.js";
+import type * as lib_secureToken from "../lib/secureToken.js";
 import type * as lib_slug from "../lib/slug.js";
 import type * as lib_stripeIdentity from "../lib/stripeIdentity.js";
+import type * as lib_studioBranchAccess from "../lib/studioBranchAccess.js";
+import type * as lib_studioBranchLifecycle from "../lib/studioBranchLifecycle.js";
+import type * as lib_studioBranchLifecycleCreation from "../lib/studioBranchLifecycleCreation.js";
+import type * as lib_studioBranchLifecycleEntitlements from "../lib/studioBranchLifecycleEntitlements.js";
+import type * as lib_studioBranchLifecycleOwnership from "../lib/studioBranchLifecycleOwnership.js";
+import type * as lib_studioBranchLifecycleSync from "../lib/studioBranchLifecycleSync.js";
 import type * as lib_studioBranches from "../lib/studioBranches.js";
+import type * as lib_studioBusinessLookup from "../lib/studioBusinessLookup.js";
 import type * as lib_studioCompliance from "../lib/studioCompliance.js";
+import type * as lib_studioCompliancePolicy from "../lib/studioCompliancePolicy.js";
+import type * as lib_studioComplianceReads from "../lib/studioComplianceReads.js";
+import type * as lib_studioComplianceShared from "../lib/studioComplianceShared.js";
 import type * as lib_validation from "../lib/validation.js";
+import type * as migrations_diditAuthDev from "../migrations/diditAuthDev.js";
+import type * as migrations_diditAuthDevBackfill from "../migrations/diditAuthDevBackfill.js";
+import type * as migrations_diditAuthDevEmail from "../migrations/diditAuthDevEmail.js";
+import type * as migrations_diditAuthDevReset from "../migrations/diditAuthDevReset.js";
+import type * as migrations_enforceUniqueConstraints from "../migrations/enforceUniqueConstraints.js";
+import type * as migrations_geoBackfills from "../migrations/geoBackfills.js";
+import type * as migrations_geoBackfillsH3 from "../migrations/geoBackfillsH3.js";
+import type * as migrations_geoBackfillsInfrastructure from "../migrations/geoBackfillsInfrastructure.js";
+import type * as migrations_geoBackfillsLegacyFields from "../migrations/geoBackfillsLegacyFields.js";
+import type * as migrations_geoBackfillsSlugs from "../migrations/geoBackfillsSlugs.js";
 import type * as migrations_index from "../migrations/index.js";
+import type * as migrations_jobApplications from "../migrations/jobApplications.js";
+import type * as migrations_paymentsNeutral from "../migrations/paymentsNeutral.js";
+import type * as migrations_paymentsNeutralEntrypoints from "../migrations/paymentsNeutralEntrypoints.js";
+import type * as migrations_paymentsNeutralShared from "../migrations/paymentsNeutralShared.js";
+import type * as migrations_paymentsNeutralStages from "../migrations/paymentsNeutralStages.js";
+import type * as migrations_shared from "../migrations/shared.js";
 import type * as notifications_broadcast from "../notifications/broadcast.js";
 import type * as notifications_core from "../notifications/core.js";
+import type * as notifications_coreMutations from "../notifications/coreMutations.js";
+import type * as notifications_coreQueries from "../notifications/coreQueries.js";
+import type * as notifications_coreShared from "../notifications/coreShared.js";
 import type * as notifications_inbox from "../notifications/inbox.js";
 import type * as notifications_pushDelivery from "../notifications/pushDelivery.js";
 import type * as notifications_settings from "../notifications/settings.js";
 import type * as onboarding__shared from "../onboarding/_shared.js";
 import type * as onboarding_instructor from "../onboarding/instructor.js";
 import type * as onboarding_studio from "../onboarding/studio.js";
+import type * as payments_accountSyncInstructorMutations from "../payments/accountSyncInstructorMutations.js";
+import type * as payments_accountSyncMutations from "../payments/accountSyncMutations.js";
+import type * as payments_accountSyncStudioMutations from "../payments/accountSyncStudioMutations.js";
+import type * as payments_accountSyncWebhookMutations from "../payments/accountSyncWebhookMutations.js";
+import type * as payments_actionShared from "../payments/actionShared.js";
 import type * as payments_actions from "../payments/actions.js";
+import type * as payments_checkoutActions from "../payments/checkoutActions.js";
 import type * as payments_core from "../payments/core.js";
-import type * as payments_invoicing from "../payments/invoicing.js";
+import type * as payments_fundSplitMutations from "../payments/fundSplitMutations.js";
+import type * as payments_helpers from "../payments/helpers.js";
+import type * as payments_instructorActions from "../payments/instructorActions.js";
+import type * as payments_mutationUtils from "../payments/mutationUtils.js";
+import type * as payments_mutations from "../payments/mutations.js";
+import type * as payments_neutralMirror from "../payments/neutralMirror.js";
+import type * as payments_paymentAccountQueries from "../payments/paymentAccountQueries.js";
+import type * as payments_paymentIntentMutations from "../payments/paymentIntentMutations.js";
+import type * as payments_paymentOrderMutations from "../payments/paymentOrderMutations.js";
+import type * as payments_paymentOrderQueries from "../payments/paymentOrderQueries.js";
+import type * as payments_payoutTransferMutations from "../payments/payoutTransferMutations.js";
 import type * as payments_pricing from "../payments/pricing.js";
+import type * as payments_projectors from "../payments/projectors.js";
+import type * as payments_providerSettlementMutations from "../payments/providerSettlementMutations.js";
+import type * as payments_readModels from "../payments/readModels.js";
+import type * as payments_readShared from "../payments/readShared.js";
+import type * as payments_statuses from "../payments/statuses.js";
 import type * as payments_stripeCheckout from "../payments/stripeCheckout.js";
+import type * as payments_studioActions from "../payments/studioActions.js";
+import type * as payments_summaries from "../payments/summaries.js";
+import type * as payments_validators from "../payments/validators.js";
+import type * as payments_views from "../payments/views.js";
+import type * as policy_billing from "../policy/billing.js";
+import type * as policy_compliance from "../policy/compliance.js";
+import type * as policy_marketplace from "../policy/marketplace.js";
+import type * as schemaAudit from "../schemaAudit.js";
+import type * as schemaBilling from "../schemaBilling.js";
+import type * as schemaBillingCurrent from "../schemaBillingCurrent.js";
+import type * as schemaBillingLegacy from "../schemaBillingLegacy.js";
+import type * as schemaDeletion from "../schemaDeletion.js";
+import type * as schemaIdentity from "../schemaIdentity.js";
+import type * as schemaIdentityCore from "../schemaIdentityCore.js";
+import type * as schemaIdentityInstructor from "../schemaIdentityInstructor.js";
+import type * as schemaIdentityIntegration from "../schemaIdentityIntegration.js";
+import type * as schemaIdentityStudio from "../schemaIdentityStudio.js";
+import type * as schemaMarketplace from "../schemaMarketplace.js";
+import type * as schemaMarketplaceJobs from "../schemaMarketplaceJobs.js";
+import type * as schemaMarketplaceOps from "../schemaMarketplaceOps.js";
+import type * as schemaMarketplaceSettlement from "../schemaMarketplaceSettlement.js";
+import type * as schemaNotifications from "../schemaNotifications.js";
+import type * as schemaValidators from "../schemaValidators.js";
+import type * as schemaValidatorsCommon from "../schemaValidatorsCommon.js";
+import type * as schemaValidatorsFinance from "../schemaValidatorsFinance.js";
+import type * as schemaValidatorsIdentity from "../schemaValidatorsIdentity.js";
+import type * as schemaValidatorsNotifications from "../schemaValidatorsNotifications.js";
 import type * as security_rateLimits from "../security/rateLimits.js";
 import type * as security_webhookSecurity from "../security/webhookSecurity.js";
 import type * as studios_branches from "../studios/branches.js";
 import type * as studios_publicProfiles from "../studios/publicProfiles.js";
 import type * as studios_settings from "../studios/settings.js";
+import type * as studios_settingsMutations from "../studios/settingsMutations.js";
+import type * as studios_settingsReads from "../studios/settingsReads.js";
+import type * as studios_settingsShared from "../studios/settingsShared.js";
 import type * as users__shared from "../users/_shared.js";
 import type * as users_getCurrent from "../users/getCurrent.js";
 import type * as users_profileImage from "../users/profileImage.js";
@@ -98,75 +255,232 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   "auth/magicLink": typeof auth_magicLink;
   "auth/otp": typeof auth_otp;
+  authRedirect: typeof authRedirect;
+  authResolution: typeof authResolution;
   "calendar/googleCalendar": typeof calendar_googleCalendar;
+  "calendar/googleCalendarActions": typeof calendar_googleCalendarActions;
+  "calendar/googleCalendarMutations": typeof calendar_googleCalendarMutations;
   "calendar/googleCalendarNode": typeof calendar_googleCalendarNode;
+  "calendar/googleCalendarNodeActions": typeof calendar_googleCalendarNodeActions;
+  "calendar/googleCalendarNodeShared": typeof calendar_googleCalendarNodeShared;
+  "calendar/googleCalendarQueries": typeof calendar_googleCalendarQueries;
+  "calendar/googleCalendarShared": typeof calendar_googleCalendarShared;
   "compliance/instructor": typeof compliance_instructor;
+  "compliance/instructorCertificateReview": typeof compliance_instructorCertificateReview;
+  "compliance/instructorDocuments": typeof compliance_instructorDocuments;
+  "compliance/instructorInsuranceReview": typeof compliance_instructorInsuranceReview;
+  "compliance/instructorMutations": typeof compliance_instructorMutations;
+  "compliance/instructorProfessionalRegistry": typeof compliance_instructorProfessionalRegistry;
+  "compliance/instructorQueries": typeof compliance_instructorQueries;
+  "compliance/instructorRenewals": typeof compliance_instructorRenewals;
   "compliance/instructorReview": typeof compliance_instructorReview;
+  "compliance/instructorReviewShared": typeof compliance_instructorReviewShared;
+  "compliance/instructorShared": typeof compliance_instructorShared;
+  "compliance/publicProfessionalRegistry": typeof compliance_publicProfessionalRegistry;
   "compliance/studio": typeof compliance_studio;
+  "compliance/studioBusinessLookup": typeof compliance_studioBusinessLookup;
   components: typeof components_;
   constants: typeof constants;
   crons: typeof crons;
+  "deletion/actions": typeof deletion_actions;
+  "deletion/mutations": typeof deletion_mutations;
   "home/instructorStats": typeof home_instructorStats;
+  "home/instructorStatsPayout": typeof home_instructorStatsPayout;
+  "home/instructorStatsRead": typeof home_instructorStatsRead;
   http: typeof http;
+  httpDidit: typeof httpDidit;
+  httpShared: typeof httpShared;
+  httpStripe: typeof httpStripe;
   "instructors/mapDiscovery": typeof instructors_mapDiscovery;
   "instructors/publicProfiles": typeof instructors_publicProfiles;
   "instructors/settings": typeof instructors_settings;
+  "instructors/settingsMutations": typeof instructors_settingsMutations;
+  "instructors/settingsReads": typeof instructors_settingsReads;
+  "instructors/settingsShared": typeof instructors_settingsShared;
   "instructors/zones": typeof instructors_zones;
   "integrations/payment_provider": typeof integrations_payment_provider;
-  "integrations/providerAdapterV2": typeof integrations_providerAdapterV2;
+  "integrations/providerAdapter": typeof integrations_providerAdapter;
   "integrations/stripe/config": typeof integrations_stripe_config;
-  "integrations/stripe/connectV2": typeof integrations_stripe_connectV2;
+  "integrations/stripe/connect": typeof integrations_stripe_connect;
   "internal/access": typeof internal_access;
   "jobs/_helpers": typeof jobs__helpers;
+  "jobs/applicationMutations": typeof jobs_applicationMutations;
+  "jobs/applicationQueries": typeof jobs_applicationQueries;
   "jobs/applications": typeof jobs_applications;
   "jobs/browse": typeof jobs_browse;
+  "jobs/browseRead": typeof jobs_browseRead;
+  "jobs/browseShared": typeof jobs_browseShared;
   "jobs/calendar": typeof jobs_calendar;
+  "jobs/calendarConflicts": typeof jobs_calendarConflicts;
+  "jobs/calendarLessonDetail": typeof jobs_calendarLessonDetail;
+  "jobs/calendarTimeline": typeof jobs_calendarTimeline;
   "jobs/cancellation": typeof jobs_cancellation;
+  "jobs/cancellationCleanup": typeof jobs_cancellationCleanup;
+  "jobs/cancellationExpiry": typeof jobs_cancellationExpiry;
+  "jobs/cancellationInstructor": typeof jobs_cancellationInstructor;
+  "jobs/cancellationShared": typeof jobs_cancellationShared;
+  "jobs/cancellationStudio": typeof jobs_cancellationStudio;
   "jobs/checkIn": typeof jobs_checkIn;
+  "jobs/instructorLessons": typeof jobs_instructorLessons;
   "jobs/instructorTabs": typeof jobs_instructorTabs;
+  "jobs/jobCheckIns": typeof jobs_jobCheckIns;
+  "jobs/jobConstants": typeof jobs_jobConstants;
+  "jobs/jobNotifications": typeof jobs_jobNotifications;
+  "jobs/jobPaymentReadModels": typeof jobs_jobPaymentReadModels;
+  "jobs/jobProfiles": typeof jobs_jobProfiles;
+  "jobs/jobStats": typeof jobs_jobStats;
   "jobs/lessonCompletion": typeof jobs_lessonCompletion;
+  "jobs/lessonLifecycleMutations": typeof jobs_lessonLifecycleMutations;
+  "jobs/lifecycle": typeof jobs_lifecycle;
   "jobs/postJob": typeof jobs_postJob;
+  "jobs/ratings": typeof jobs_ratings;
   "jobs/review": typeof jobs_review;
+  "jobs/reviewMutations": typeof jobs_reviewMutations;
+  "jobs/reviewWorkflows": typeof jobs_reviewWorkflows;
+  "jobs/settlement": typeof jobs_settlement;
   "jobs/studioManagement": typeof jobs_studioManagement;
+  "jobs/studioManagementCounts": typeof jobs_studioManagementCounts;
+  "jobs/studioManagementLoaders": typeof jobs_studioManagementLoaders;
+  "jobs/studioManagementShared": typeof jobs_studioManagementShared;
+  "jobs/studioManagementTrust": typeof jobs_studioManagementTrust;
+  "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
   "lib/authDedupe": typeof lib_authDedupe;
+  "lib/authDedupeInstructorMerge": typeof lib_authDedupeInstructorMerge;
+  "lib/authDedupeMerge": typeof lib_authDedupeMerge;
+  "lib/authDedupeResolve": typeof lib_authDedupeResolve;
+  "lib/authDedupeShared": typeof lib_authDedupeShared;
+  "lib/authDedupeStudioMerge": typeof lib_authDedupeStudioMerge;
   "lib/calendarCrypto": typeof lib_calendarCrypto;
   "lib/calendarShared": typeof lib_calendarShared;
   "lib/domainValidation": typeof lib_domainValidation;
+  "lib/errors": typeof lib_errors;
   "lib/h3": typeof lib_h3;
+  "lib/h3Geometry": typeof lib_h3Geometry;
+  "lib/h3JobQueries": typeof lib_h3JobQueries;
   "lib/instructorCompliance": typeof lib_instructorCompliance;
+  "lib/instructorCompliancePolicy": typeof lib_instructorCompliancePolicy;
+  "lib/instructorComplianceReads": typeof lib_instructorComplianceReads;
+  "lib/instructorComplianceShared": typeof lib_instructorComplianceShared;
   "lib/instructorEligibility": typeof lib_instructorEligibility;
   "lib/instructorGeoCoverage": typeof lib_instructorGeoCoverage;
   "lib/internalAccess": typeof lib_internalAccess;
   "lib/locationRadius": typeof lib_locationRadius;
+  "lib/marketRules": typeof lib_marketRules;
   "lib/marketplace": typeof lib_marketplace;
   "lib/notificationPreferences": typeof lib_notificationPreferences;
+  "lib/professionalRegistry": typeof lib_professionalRegistry;
+  "lib/professionalRegistryFrance": typeof lib_professionalRegistryFrance;
   "lib/rateLimit": typeof lib_rateLimit;
+  "lib/rateLimitConfig": typeof lib_rateLimitConfig;
+  "lib/rateLimitFingerprint": typeof lib_rateLimitFingerprint;
+  "lib/rateLimitOperations": typeof lib_rateLimitOperations;
   "lib/resendDevRouting": typeof lib_resendDevRouting;
+  "lib/secureToken": typeof lib_secureToken;
   "lib/slug": typeof lib_slug;
   "lib/stripeIdentity": typeof lib_stripeIdentity;
+  "lib/studioBranchAccess": typeof lib_studioBranchAccess;
+  "lib/studioBranchLifecycle": typeof lib_studioBranchLifecycle;
+  "lib/studioBranchLifecycleCreation": typeof lib_studioBranchLifecycleCreation;
+  "lib/studioBranchLifecycleEntitlements": typeof lib_studioBranchLifecycleEntitlements;
+  "lib/studioBranchLifecycleOwnership": typeof lib_studioBranchLifecycleOwnership;
+  "lib/studioBranchLifecycleSync": typeof lib_studioBranchLifecycleSync;
   "lib/studioBranches": typeof lib_studioBranches;
+  "lib/studioBusinessLookup": typeof lib_studioBusinessLookup;
   "lib/studioCompliance": typeof lib_studioCompliance;
+  "lib/studioCompliancePolicy": typeof lib_studioCompliancePolicy;
+  "lib/studioComplianceReads": typeof lib_studioComplianceReads;
+  "lib/studioComplianceShared": typeof lib_studioComplianceShared;
   "lib/validation": typeof lib_validation;
+  "migrations/diditAuthDev": typeof migrations_diditAuthDev;
+  "migrations/diditAuthDevBackfill": typeof migrations_diditAuthDevBackfill;
+  "migrations/diditAuthDevEmail": typeof migrations_diditAuthDevEmail;
+  "migrations/diditAuthDevReset": typeof migrations_diditAuthDevReset;
+  "migrations/enforceUniqueConstraints": typeof migrations_enforceUniqueConstraints;
+  "migrations/geoBackfills": typeof migrations_geoBackfills;
+  "migrations/geoBackfillsH3": typeof migrations_geoBackfillsH3;
+  "migrations/geoBackfillsInfrastructure": typeof migrations_geoBackfillsInfrastructure;
+  "migrations/geoBackfillsLegacyFields": typeof migrations_geoBackfillsLegacyFields;
+  "migrations/geoBackfillsSlugs": typeof migrations_geoBackfillsSlugs;
   "migrations/index": typeof migrations_index;
+  "migrations/jobApplications": typeof migrations_jobApplications;
+  "migrations/paymentsNeutral": typeof migrations_paymentsNeutral;
+  "migrations/paymentsNeutralEntrypoints": typeof migrations_paymentsNeutralEntrypoints;
+  "migrations/paymentsNeutralShared": typeof migrations_paymentsNeutralShared;
+  "migrations/paymentsNeutralStages": typeof migrations_paymentsNeutralStages;
+  "migrations/shared": typeof migrations_shared;
   "notifications/broadcast": typeof notifications_broadcast;
   "notifications/core": typeof notifications_core;
+  "notifications/coreMutations": typeof notifications_coreMutations;
+  "notifications/coreQueries": typeof notifications_coreQueries;
+  "notifications/coreShared": typeof notifications_coreShared;
   "notifications/inbox": typeof notifications_inbox;
   "notifications/pushDelivery": typeof notifications_pushDelivery;
   "notifications/settings": typeof notifications_settings;
   "onboarding/_shared": typeof onboarding__shared;
   "onboarding/instructor": typeof onboarding_instructor;
   "onboarding/studio": typeof onboarding_studio;
+  "payments/accountSyncInstructorMutations": typeof payments_accountSyncInstructorMutations;
+  "payments/accountSyncMutations": typeof payments_accountSyncMutations;
+  "payments/accountSyncStudioMutations": typeof payments_accountSyncStudioMutations;
+  "payments/accountSyncWebhookMutations": typeof payments_accountSyncWebhookMutations;
+  "payments/actionShared": typeof payments_actionShared;
   "payments/actions": typeof payments_actions;
+  "payments/checkoutActions": typeof payments_checkoutActions;
   "payments/core": typeof payments_core;
-  "payments/invoicing": typeof payments_invoicing;
+  "payments/fundSplitMutations": typeof payments_fundSplitMutations;
+  "payments/helpers": typeof payments_helpers;
+  "payments/instructorActions": typeof payments_instructorActions;
+  "payments/mutationUtils": typeof payments_mutationUtils;
+  "payments/mutations": typeof payments_mutations;
+  "payments/neutralMirror": typeof payments_neutralMirror;
+  "payments/paymentAccountQueries": typeof payments_paymentAccountQueries;
+  "payments/paymentIntentMutations": typeof payments_paymentIntentMutations;
+  "payments/paymentOrderMutations": typeof payments_paymentOrderMutations;
+  "payments/paymentOrderQueries": typeof payments_paymentOrderQueries;
+  "payments/payoutTransferMutations": typeof payments_payoutTransferMutations;
   "payments/pricing": typeof payments_pricing;
+  "payments/projectors": typeof payments_projectors;
+  "payments/providerSettlementMutations": typeof payments_providerSettlementMutations;
+  "payments/readModels": typeof payments_readModels;
+  "payments/readShared": typeof payments_readShared;
+  "payments/statuses": typeof payments_statuses;
   "payments/stripeCheckout": typeof payments_stripeCheckout;
+  "payments/studioActions": typeof payments_studioActions;
+  "payments/summaries": typeof payments_summaries;
+  "payments/validators": typeof payments_validators;
+  "payments/views": typeof payments_views;
+  "policy/billing": typeof policy_billing;
+  "policy/compliance": typeof policy_compliance;
+  "policy/marketplace": typeof policy_marketplace;
+  schemaAudit: typeof schemaAudit;
+  schemaBilling: typeof schemaBilling;
+  schemaBillingCurrent: typeof schemaBillingCurrent;
+  schemaBillingLegacy: typeof schemaBillingLegacy;
+  schemaDeletion: typeof schemaDeletion;
+  schemaIdentity: typeof schemaIdentity;
+  schemaIdentityCore: typeof schemaIdentityCore;
+  schemaIdentityInstructor: typeof schemaIdentityInstructor;
+  schemaIdentityIntegration: typeof schemaIdentityIntegration;
+  schemaIdentityStudio: typeof schemaIdentityStudio;
+  schemaMarketplace: typeof schemaMarketplace;
+  schemaMarketplaceJobs: typeof schemaMarketplaceJobs;
+  schemaMarketplaceOps: typeof schemaMarketplaceOps;
+  schemaMarketplaceSettlement: typeof schemaMarketplaceSettlement;
+  schemaNotifications: typeof schemaNotifications;
+  schemaValidators: typeof schemaValidators;
+  schemaValidatorsCommon: typeof schemaValidatorsCommon;
+  schemaValidatorsFinance: typeof schemaValidatorsFinance;
+  schemaValidatorsIdentity: typeof schemaValidatorsIdentity;
+  schemaValidatorsNotifications: typeof schemaValidatorsNotifications;
   "security/rateLimits": typeof security_rateLimits;
   "security/webhookSecurity": typeof security_webhookSecurity;
   "studios/branches": typeof studios_branches;
   "studios/publicProfiles": typeof studios_publicProfiles;
   "studios/settings": typeof studios_settings;
+  "studios/settingsMutations": typeof studios_settingsMutations;
+  "studios/settingsReads": typeof studios_settingsReads;
+  "studios/settingsShared": typeof studios_settingsShared;
   "users/_shared": typeof users__shared;
   "users/getCurrent": typeof users_getCurrent;
   "users/profileImage": typeof users_profileImage;
@@ -201,1186 +515,8 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
-  complianceWorkpool: {
-    config: {
-      update: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
-          maxParallelism?: number;
-        },
-        any
-      >;
-    };
-    lib: {
-      cancel: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          id: string;
-          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
-        },
-        any
-      >;
-      cancelAll: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          before?: number;
-          limit?: number;
-          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
-        },
-        any
-      >;
-      enqueue: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          config: {
-            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
-            maxParallelism?: number;
-          };
-          fnArgs: any;
-          fnHandle: string;
-          fnName: string;
-          fnType: "action" | "mutation" | "query";
-          onComplete?: { context?: any; fnHandle: string };
-          retryBehavior?: {
-            base: number;
-            initialBackoffMs: number;
-            maxAttempts: number;
-          };
-          runAt: number;
-        },
-        string
-      >;
-      enqueueBatch: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          config: {
-            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
-            maxParallelism?: number;
-          };
-          items: Array<{
-            fnArgs: any;
-            fnHandle: string;
-            fnName: string;
-            fnType: "action" | "mutation" | "query";
-            onComplete?: { context?: any; fnHandle: string };
-            retryBehavior?: {
-              base: number;
-              initialBackoffMs: number;
-              maxAttempts: number;
-            };
-            runAt: number;
-          }>;
-        },
-        Array<string>
-      >;
-      status: FunctionReference<
-        "query",
-        "internal",
-        { id: string },
-        | { previousAttempts: number; state: "pending" }
-        | { previousAttempts: number; state: "running" }
-        | { state: "finished" }
-      >;
-      statusBatch: FunctionReference<
-        "query",
-        "internal",
-        { ids: Array<string> },
-        Array<
-          | { previousAttempts: number; state: "pending" }
-          | { previousAttempts: number; state: "running" }
-          | { state: "finished" }
-        >
-      >;
-    };
-  };
-  workflow: {
-    event: {
-      create: FunctionReference<
-        "mutation",
-        "internal",
-        { name: string; workflowId: string },
-        string
-      >;
-      send: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          eventId?: string;
-          name?: string;
-          result:
-            | { kind: "success"; returnValue: any }
-            | { error: string; kind: "failed" }
-            | { kind: "canceled" };
-          workflowId?: string;
-          workpoolOptions?: {
-            defaultRetryBehavior?: {
-              base: number;
-              initialBackoffMs: number;
-              maxAttempts: number;
-            };
-            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
-            maxParallelism?: number;
-            retryActionsByDefault?: boolean;
-          };
-        },
-        string
-      >;
-    };
-    journal: {
-      load: FunctionReference<
-        "query",
-        "internal",
-        { shortCircuit?: boolean; workflowId: string },
-        {
-          blocked?: boolean;
-          journalEntries: Array<{
-            _creationTime: number;
-            _id: string;
-            step:
-              | {
-                  args: any;
-                  argsSize: number;
-                  completedAt?: number;
-                  functionType: "query" | "mutation" | "action";
-                  handle: string;
-                  inProgress: boolean;
-                  kind?: "function";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                  workId?: string;
-                }
-              | {
-                  args: any;
-                  argsSize: number;
-                  completedAt?: number;
-                  handle: string;
-                  inProgress: boolean;
-                  kind: "workflow";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                  workflowId?: string;
-                }
-              | {
-                  args: { eventId?: string };
-                  argsSize: number;
-                  completedAt?: number;
-                  eventId?: string;
-                  inProgress: boolean;
-                  kind: "event";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                }
-              | {
-                  args: any;
-                  argsSize: number;
-                  completedAt?: number;
-                  inProgress: boolean;
-                  kind: "sleep";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                  workId?: string;
-                };
-            stepNumber: number;
-            workflowId: string;
-          }>;
-          logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
-          ok: boolean;
-          workflow: {
-            _creationTime: number;
-            _id: string;
-            args: any;
-            generationNumber: number;
-            logLevel?: any;
-            name?: string;
-            onComplete?: { context?: any; fnHandle: string };
-            runResult?:
-              | { kind: "success"; returnValue: any }
-              | { error: string; kind: "failed" }
-              | { kind: "canceled" };
-            startedAt?: any;
-            state?: any;
-            workflowHandle: string;
-          };
-        }
-      >;
-      startSteps: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          generationNumber: number;
-          steps: Array<{
-            retry?:
-              | boolean
-              | { base: number; initialBackoffMs: number; maxAttempts: number };
-            schedulerOptions?: { runAt?: number } | { runAfter?: number };
-            step:
-              | {
-                  args: any;
-                  argsSize: number;
-                  completedAt?: number;
-                  functionType: "query" | "mutation" | "action";
-                  handle: string;
-                  inProgress: boolean;
-                  kind?: "function";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                  workId?: string;
-                }
-              | {
-                  args: any;
-                  argsSize: number;
-                  completedAt?: number;
-                  handle: string;
-                  inProgress: boolean;
-                  kind: "workflow";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                  workflowId?: string;
-                }
-              | {
-                  args: { eventId?: string };
-                  argsSize: number;
-                  completedAt?: number;
-                  eventId?: string;
-                  inProgress: boolean;
-                  kind: "event";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                }
-              | {
-                  args: any;
-                  argsSize: number;
-                  completedAt?: number;
-                  inProgress: boolean;
-                  kind: "sleep";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                  workId?: string;
-                };
-          }>;
-          workflowId: string;
-          workpoolOptions?: {
-            defaultRetryBehavior?: {
-              base: number;
-              initialBackoffMs: number;
-              maxAttempts: number;
-            };
-            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
-            maxParallelism?: number;
-            retryActionsByDefault?: boolean;
-          };
-        },
-        Array<{
-          _creationTime: number;
-          _id: string;
-          step:
-            | {
-                args: any;
-                argsSize: number;
-                completedAt?: number;
-                functionType: "query" | "mutation" | "action";
-                handle: string;
-                inProgress: boolean;
-                kind?: "function";
-                name: string;
-                runResult?:
-                  | { kind: "success"; returnValue: any }
-                  | { error: string; kind: "failed" }
-                  | { kind: "canceled" };
-                startedAt: number;
-                workId?: string;
-              }
-            | {
-                args: any;
-                argsSize: number;
-                completedAt?: number;
-                handle: string;
-                inProgress: boolean;
-                kind: "workflow";
-                name: string;
-                runResult?:
-                  | { kind: "success"; returnValue: any }
-                  | { error: string; kind: "failed" }
-                  | { kind: "canceled" };
-                startedAt: number;
-                workflowId?: string;
-              }
-            | {
-                args: { eventId?: string };
-                argsSize: number;
-                completedAt?: number;
-                eventId?: string;
-                inProgress: boolean;
-                kind: "event";
-                name: string;
-                runResult?:
-                  | { kind: "success"; returnValue: any }
-                  | { error: string; kind: "failed" }
-                  | { kind: "canceled" };
-                startedAt: number;
-              }
-            | {
-                args: any;
-                argsSize: number;
-                completedAt?: number;
-                inProgress: boolean;
-                kind: "sleep";
-                name: string;
-                runResult?:
-                  | { kind: "success"; returnValue: any }
-                  | { error: string; kind: "failed" }
-                  | { kind: "canceled" };
-                startedAt: number;
-                workId?: string;
-              };
-          stepNumber: number;
-          workflowId: string;
-        }>
-      >;
-    };
-    workflow: {
-      cancel: FunctionReference<
-        "mutation",
-        "internal",
-        { workflowId: string },
-        null
-      >;
-      cleanup: FunctionReference<
-        "mutation",
-        "internal",
-        { force?: boolean; workflowId: string },
-        boolean
-      >;
-      complete: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          generationNumber: number;
-          runResult:
-            | { kind: "success"; returnValue: any }
-            | { error: string; kind: "failed" }
-            | { kind: "canceled" };
-          workflowId: string;
-        },
-        null
-      >;
-      create: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          maxParallelism?: number;
-          onComplete?: { context?: any; fnHandle: string };
-          startAsync?: boolean;
-          workflowArgs: any;
-          workflowHandle: string;
-          workflowName: string;
-        },
-        string
-      >;
-      getStatus: FunctionReference<
-        "query",
-        "internal",
-        { workflowId: string },
-        {
-          inProgress: Array<{
-            _creationTime: number;
-            _id: string;
-            step:
-              | {
-                  args: any;
-                  argsSize: number;
-                  completedAt?: number;
-                  functionType: "query" | "mutation" | "action";
-                  handle: string;
-                  inProgress: boolean;
-                  kind?: "function";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                  workId?: string;
-                }
-              | {
-                  args: any;
-                  argsSize: number;
-                  completedAt?: number;
-                  handle: string;
-                  inProgress: boolean;
-                  kind: "workflow";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                  workflowId?: string;
-                }
-              | {
-                  args: { eventId?: string };
-                  argsSize: number;
-                  completedAt?: number;
-                  eventId?: string;
-                  inProgress: boolean;
-                  kind: "event";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                }
-              | {
-                  args: any;
-                  argsSize: number;
-                  completedAt?: number;
-                  inProgress: boolean;
-                  kind: "sleep";
-                  name: string;
-                  runResult?:
-                    | { kind: "success"; returnValue: any }
-                    | { error: string; kind: "failed" }
-                    | { kind: "canceled" };
-                  startedAt: number;
-                  workId?: string;
-                };
-            stepNumber: number;
-            workflowId: string;
-          }>;
-          logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
-          workflow: {
-            _creationTime: number;
-            _id: string;
-            args: any;
-            generationNumber: number;
-            logLevel?: any;
-            name?: string;
-            onComplete?: { context?: any; fnHandle: string };
-            runResult?:
-              | { kind: "success"; returnValue: any }
-              | { error: string; kind: "failed" }
-              | { kind: "canceled" };
-            startedAt?: any;
-            state?: any;
-            workflowHandle: string;
-          };
-        }
-      >;
-      list: FunctionReference<
-        "query",
-        "internal",
-        {
-          order: "asc" | "desc";
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-        },
-        {
-          continueCursor: string;
-          isDone: boolean;
-          page: Array<{
-            args: any;
-            context?: any;
-            name?: string;
-            runResult?:
-              | { kind: "success"; returnValue: any }
-              | { error: string; kind: "failed" }
-              | { kind: "canceled" };
-            workflowId: string;
-          }>;
-          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
-          splitCursor?: string | null;
-        }
-      >;
-      listByName: FunctionReference<
-        "query",
-        "internal",
-        {
-          name: string;
-          order: "asc" | "desc";
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-        },
-        {
-          continueCursor: string;
-          isDone: boolean;
-          page: Array<{
-            args: any;
-            context?: any;
-            name?: string;
-            runResult?:
-              | { kind: "success"; returnValue: any }
-              | { error: string; kind: "failed" }
-              | { kind: "canceled" };
-            workflowId: string;
-          }>;
-          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
-          splitCursor?: string | null;
-        }
-      >;
-      listSteps: FunctionReference<
-        "query",
-        "internal",
-        {
-          order: "asc" | "desc";
-          paginationOpts: {
-            cursor: string | null;
-            endCursor?: string | null;
-            id?: number;
-            maximumBytesRead?: number;
-            maximumRowsRead?: number;
-            numItems: number;
-          };
-          workflowId: string;
-        },
-        {
-          continueCursor: string;
-          isDone: boolean;
-          page: Array<{
-            args: any;
-            completedAt?: number;
-            eventId?: string;
-            kind: "function" | "workflow" | "event" | "sleep";
-            name: string;
-            nestedWorkflowId?: string;
-            runResult?:
-              | { kind: "success"; returnValue: any }
-              | { error: string; kind: "failed" }
-              | { kind: "canceled" };
-            startedAt: number;
-            stepId: string;
-            stepNumber: number;
-            workId?: string;
-            workflowId: string;
-          }>;
-          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
-          splitCursor?: string | null;
-        }
-      >;
-      restart: FunctionReference<
-        "mutation",
-        "internal",
-        { from?: number | string; startAsync?: boolean; workflowId: string },
-        null
-      >;
-    };
-  };
-  rateLimiter: {
-    lib: {
-      checkRateLimit: FunctionReference<
-        "query",
-        "internal",
-        {
-          config:
-            | {
-                capacity?: number;
-                kind: "token bucket";
-                maxReserved?: number;
-                period: number;
-                rate: number;
-                shards?: number;
-                start?: null;
-              }
-            | {
-                capacity?: number;
-                kind: "fixed window";
-                maxReserved?: number;
-                period: number;
-                rate: number;
-                shards?: number;
-                start?: number;
-              };
-          count?: number;
-          key?: string;
-          name: string;
-          reserve?: boolean;
-          throws?: boolean;
-        },
-        { ok: true; retryAfter?: number } | { ok: false; retryAfter: number }
-      >;
-      clearAll: FunctionReference<
-        "mutation",
-        "internal",
-        { before?: number },
-        null
-      >;
-      getServerTime: FunctionReference<"mutation", "internal", {}, number>;
-      getValue: FunctionReference<
-        "query",
-        "internal",
-        {
-          config:
-            | {
-                capacity?: number;
-                kind: "token bucket";
-                maxReserved?: number;
-                period: number;
-                rate: number;
-                shards?: number;
-                start?: null;
-              }
-            | {
-                capacity?: number;
-                kind: "fixed window";
-                maxReserved?: number;
-                period: number;
-                rate: number;
-                shards?: number;
-                start?: number;
-              };
-          key?: string;
-          name: string;
-          sampleShards?: number;
-        },
-        {
-          config:
-            | {
-                capacity?: number;
-                kind: "token bucket";
-                maxReserved?: number;
-                period: number;
-                rate: number;
-                shards?: number;
-                start?: null;
-              }
-            | {
-                capacity?: number;
-                kind: "fixed window";
-                maxReserved?: number;
-                period: number;
-                rate: number;
-                shards?: number;
-                start?: number;
-              };
-          shard: number;
-          ts: number;
-          value: number;
-        }
-      >;
-      rateLimit: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          config:
-            | {
-                capacity?: number;
-                kind: "token bucket";
-                maxReserved?: number;
-                period: number;
-                rate: number;
-                shards?: number;
-                start?: null;
-              }
-            | {
-                capacity?: number;
-                kind: "fixed window";
-                maxReserved?: number;
-                period: number;
-                rate: number;
-                shards?: number;
-                start?: number;
-              };
-          count?: number;
-          key?: string;
-          name: string;
-          reserve?: boolean;
-          throws?: boolean;
-        },
-        { ok: true; retryAfter?: number } | { ok: false; retryAfter: number }
-      >;
-      resetRateLimit: FunctionReference<
-        "mutation",
-        "internal",
-        { key?: string; name: string },
-        null
-      >;
-    };
-    time: {
-      getServerTime: FunctionReference<"mutation", "internal", {}, number>;
-    };
-  };
-  stripe: {
-    private: {
-      handleCheckoutSessionCompleted: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          metadata?: any;
-          mode: string;
-          stripeCheckoutSessionId: string;
-          stripeCustomerId?: string;
-        },
-        null
-      >;
-      handleCustomerCreated: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          email?: string;
-          metadata?: any;
-          name?: string;
-          stripeCustomerId: string;
-        },
-        null
-      >;
-      handleCustomerUpdated: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          email?: string;
-          metadata?: any;
-          name?: string;
-          stripeCustomerId: string;
-        },
-        null
-      >;
-      handleInvoiceCreated: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          amountDue: number;
-          amountPaid: number;
-          created: number;
-          status: string;
-          stripeCustomerId: string;
-          stripeInvoiceId: string;
-          stripeSubscriptionId?: string;
-        },
-        null
-      >;
-      handleInvoicePaid: FunctionReference<
-        "mutation",
-        "internal",
-        { amountPaid: number; stripeInvoiceId: string },
-        null
-      >;
-      handleInvoicePaymentFailed: FunctionReference<
-        "mutation",
-        "internal",
-        { stripeInvoiceId: string },
-        null
-      >;
-      handlePaymentIntentSucceeded: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          amount: number;
-          created: number;
-          currency: string;
-          metadata?: any;
-          status: string;
-          stripeCustomerId?: string;
-          stripePaymentIntentId: string;
-        },
-        null
-      >;
-      handleSubscriptionCreated: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          cancelAt?: number;
-          cancelAtPeriodEnd: boolean;
-          currentPeriodEnd: number;
-          metadata?: any;
-          priceId: string;
-          quantity?: number;
-          status: string;
-          stripeCustomerId: string;
-          stripeSubscriptionId: string;
-        },
-        null
-      >;
-      handleSubscriptionDeleted: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          cancelAt?: number;
-          cancelAtPeriodEnd?: boolean;
-          currentPeriodEnd?: number;
-          stripeSubscriptionId: string;
-        },
-        null
-      >;
-      handleSubscriptionUpdated: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          cancelAt?: number;
-          cancelAtPeriodEnd: boolean;
-          currentPeriodEnd: number;
-          metadata?: any;
-          priceId?: string;
-          quantity?: number;
-          status: string;
-          stripeSubscriptionId: string;
-        },
-        null
-      >;
-      listSubscriptionsWithCreationTime: FunctionReference<
-        "query",
-        "internal",
-        { stripeCustomerId: string },
-        Array<{
-          _creationTime: number;
-          status: string;
-          stripeCustomerId: string;
-          stripeSubscriptionId: string;
-        }>
-      >;
-      updatePaymentCustomer: FunctionReference<
-        "mutation",
-        "internal",
-        { stripeCustomerId: string; stripePaymentIntentId: string },
-        null
-      >;
-      updateSubscriptionQuantityInternal: FunctionReference<
-        "mutation",
-        "internal",
-        { quantity: number; stripeSubscriptionId: string },
-        null
-      >;
-    };
-    public: {
-      createOrUpdateCustomer: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          email?: string;
-          metadata?: any;
-          name?: string;
-          stripeCustomerId: string;
-        },
-        string
-      >;
-      getCheckoutSession: FunctionReference<
-        "query",
-        "internal",
-        { stripeCheckoutSessionId: string },
-        {
-          metadata?: any;
-          mode: string;
-          status: string;
-          stripeCheckoutSessionId: string;
-          stripeCustomerId?: string;
-        } | null
-      >;
-      getCustomer: FunctionReference<
-        "query",
-        "internal",
-        { stripeCustomerId: string },
-        {
-          email?: string;
-          metadata?: any;
-          name?: string;
-          stripeCustomerId: string;
-          userId?: string;
-        } | null
-      >;
-      getCustomerByEmail: FunctionReference<
-        "query",
-        "internal",
-        { email: string },
-        {
-          email?: string;
-          metadata?: any;
-          name?: string;
-          stripeCustomerId: string;
-          userId?: string;
-        } | null
-      >;
-      getCustomerByUserId: FunctionReference<
-        "query",
-        "internal",
-        { userId: string },
-        {
-          email?: string;
-          metadata?: any;
-          name?: string;
-          stripeCustomerId: string;
-          userId?: string;
-        } | null
-      >;
-      getPayment: FunctionReference<
-        "query",
-        "internal",
-        { stripePaymentIntentId: string },
-        {
-          amount: number;
-          created: number;
-          currency: string;
-          metadata?: any;
-          orgId?: string;
-          status: string;
-          stripeCustomerId?: string;
-          stripePaymentIntentId: string;
-          userId?: string;
-        } | null
-      >;
-      getSubscription: FunctionReference<
-        "query",
-        "internal",
-        { stripeSubscriptionId: string },
-        {
-          cancelAt?: number;
-          cancelAtPeriodEnd: boolean;
-          currentPeriodEnd: number;
-          metadata?: any;
-          orgId?: string;
-          priceId: string;
-          quantity?: number;
-          status: string;
-          stripeCustomerId: string;
-          stripeSubscriptionId: string;
-          userId?: string;
-        } | null
-      >;
-      getSubscriptionByOrgId: FunctionReference<
-        "query",
-        "internal",
-        { orgId: string },
-        {
-          cancelAt?: number;
-          cancelAtPeriodEnd: boolean;
-          currentPeriodEnd: number;
-          metadata?: any;
-          orgId?: string;
-          priceId: string;
-          quantity?: number;
-          status: string;
-          stripeCustomerId: string;
-          stripeSubscriptionId: string;
-          userId?: string;
-        } | null
-      >;
-      listCheckoutSessions: FunctionReference<
-        "query",
-        "internal",
-        { stripeCustomerId: string },
-        Array<{
-          metadata?: any;
-          mode: string;
-          status: string;
-          stripeCheckoutSessionId: string;
-          stripeCustomerId?: string;
-        }>
-      >;
-      listInvoices: FunctionReference<
-        "query",
-        "internal",
-        { stripeCustomerId: string },
-        Array<{
-          amountDue: number;
-          amountPaid: number;
-          created: number;
-          orgId?: string;
-          status: string;
-          stripeCustomerId: string;
-          stripeInvoiceId: string;
-          stripeSubscriptionId?: string;
-          userId?: string;
-        }>
-      >;
-      listInvoicesByOrgId: FunctionReference<
-        "query",
-        "internal",
-        { orgId: string },
-        Array<{
-          amountDue: number;
-          amountPaid: number;
-          created: number;
-          orgId?: string;
-          status: string;
-          stripeCustomerId: string;
-          stripeInvoiceId: string;
-          stripeSubscriptionId?: string;
-          userId?: string;
-        }>
-      >;
-      listInvoicesByUserId: FunctionReference<
-        "query",
-        "internal",
-        { userId: string },
-        Array<{
-          amountDue: number;
-          amountPaid: number;
-          created: number;
-          orgId?: string;
-          status: string;
-          stripeCustomerId: string;
-          stripeInvoiceId: string;
-          stripeSubscriptionId?: string;
-          userId?: string;
-        }>
-      >;
-      listPayments: FunctionReference<
-        "query",
-        "internal",
-        { stripeCustomerId: string },
-        Array<{
-          amount: number;
-          created: number;
-          currency: string;
-          metadata?: any;
-          orgId?: string;
-          status: string;
-          stripeCustomerId?: string;
-          stripePaymentIntentId: string;
-          userId?: string;
-        }>
-      >;
-      listPaymentsByOrgId: FunctionReference<
-        "query",
-        "internal",
-        { orgId: string },
-        Array<{
-          amount: number;
-          created: number;
-          currency: string;
-          metadata?: any;
-          orgId?: string;
-          status: string;
-          stripeCustomerId?: string;
-          stripePaymentIntentId: string;
-          userId?: string;
-        }>
-      >;
-      listPaymentsByUserId: FunctionReference<
-        "query",
-        "internal",
-        { userId: string },
-        Array<{
-          amount: number;
-          created: number;
-          currency: string;
-          metadata?: any;
-          orgId?: string;
-          status: string;
-          stripeCustomerId?: string;
-          stripePaymentIntentId: string;
-          userId?: string;
-        }>
-      >;
-      listSubscriptions: FunctionReference<
-        "query",
-        "internal",
-        { stripeCustomerId: string },
-        Array<{
-          cancelAt?: number;
-          cancelAtPeriodEnd: boolean;
-          currentPeriodEnd: number;
-          metadata?: any;
-          orgId?: string;
-          priceId: string;
-          quantity?: number;
-          status: string;
-          stripeCustomerId: string;
-          stripeSubscriptionId: string;
-          userId?: string;
-        }>
-      >;
-      listSubscriptionsByOrgId: FunctionReference<
-        "query",
-        "internal",
-        { orgId: string },
-        Array<{
-          cancelAt?: number;
-          cancelAtPeriodEnd: boolean;
-          currentPeriodEnd: number;
-          metadata?: any;
-          orgId?: string;
-          priceId: string;
-          quantity?: number;
-          status: string;
-          stripeCustomerId: string;
-          stripeSubscriptionId: string;
-          userId?: string;
-        }>
-      >;
-      listSubscriptionsByUserId: FunctionReference<
-        "query",
-        "internal",
-        { userId: string },
-        Array<{
-          cancelAt?: number;
-          cancelAtPeriodEnd: boolean;
-          currentPeriodEnd: number;
-          metadata?: any;
-          orgId?: string;
-          priceId: string;
-          quantity?: number;
-          status: string;
-          stripeCustomerId: string;
-          stripeSubscriptionId: string;
-          userId?: string;
-        }>
-      >;
-      updateSubscriptionMetadata: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          metadata: any;
-          orgId?: string;
-          stripeSubscriptionId: string;
-          userId?: string;
-        },
-        null
-      >;
-      updateSubscriptionQuantity: FunctionReference<
-        "action",
-        "internal",
-        { quantity: number; stripeSubscriptionId: string },
-        null
-      >;
-    };
-  };
+  complianceWorkpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"complianceWorkpool">;
+  workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+  stripe: import("@convex-dev/stripe/_generated/component.js").ComponentApi<"stripe">;
 };

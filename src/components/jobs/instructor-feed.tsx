@@ -7,11 +7,17 @@ import { useTranslation } from "react-i18next";
 import { RefreshControl, View } from "react-native";
 import Animated, { FadeIn, LinearTransition, ReduceMotion } from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";
+import { useLessonCheckIn } from "@/components/calendar/use-lesson-check-in";
+import {
+  type InstructorCurrentLesson,
+  InstructorCurrentLessonsList,
+} from "@/components/jobs/instructor/instructor-current-lessons-list";
 import {
   type InstructorArchiveRow,
   InstructorJobsArchiveSheet,
 } from "@/components/jobs/instructor/instructor-jobs-archive-sheet";
 import { InstructorOpenJobsList } from "@/components/jobs/instructor/instructor-open-jobs-list";
+import { useLessonCompletion } from "@/components/jobs/instructor/use-lesson-completion";
 import { NoticeBanner } from "@/components/jobs/notice-banner";
 import { TabOverlayAnchor } from "@/components/layout/tab-overlay-anchor";
 import { TabSceneTransition } from "@/components/layout/tab-scene-transition";
@@ -120,6 +126,8 @@ export function InstructorFeed() {
   const applyToJob = useMutation(api.jobs.applications.applyToJob);
   const withdrawApplication = useMutation(api.jobs.applications.withdrawApplication);
   const studioHomeRoute = buildRoleTabRoute("studio", ROLE_TAB_ROUTE_NAMES.home);
+  const { isSubmitting: isCheckingIn, submitCheckIn } = useLessonCheckIn();
+  const { isSubmitting: isCompletingLesson, submitLessonCompletion } = useLessonCompletion();
 
   // Stable time ref: only recomputes when queryMinuteBucket changes (once/minute)
   // This avoids Filter re-computation on every render while keeping the 24h/72h window current
@@ -133,9 +141,14 @@ export function InstructorFeed() {
     api.jobs.applications.getMyApplications,
     currentUser?.role === "instructor" ? { limit: 120 } : "skip",
   );
+  const currentLessons = useQuery(
+    api.jobs.instructorLessons.getMyCurrentLessons,
+    currentUser?.role === "instructor" ? { limit: 20, now: liveNow } : "skip",
+  );
 
   type AvailableJob = NonNullable<typeof availableJobs>[number];
   type MyApplication = NonNullable<typeof myApplications>[number];
+  type CurrentLesson = NonNullable<typeof currentLessons>[number];
 
   const applicationOverlays = useMemo<InstructorJobApplicationOverlay[]>(
     () =>
@@ -153,6 +166,10 @@ export function InstructorFeed() {
         applicationOverlays,
       ),
     [applicationOverlays, availableJobs],
+  );
+  const currentLessonsRows = useMemo<InstructorCurrentLesson[]>(
+    () => (currentLessons ?? []) as CurrentLesson[],
+    [currentLessons],
   );
   const emptyVariants = [
     t("jobsTab.instructorFeed.emptyInstructorFreshOne"),
@@ -385,10 +402,26 @@ export function InstructorFeed() {
       setActionErrorMessage(null);
       setApplyingJobId(job.jobId);
       try {
-        await applyToJob({ jobId: job.jobId });
-      } catch (error) {
+        const result = await applyToJob({ jobId: job.jobId });
+        // Show success message with reason if available
+        if (result.reason) {
+          setActionErrorMessage(result.reason);
+        }
+      } catch (error: any) {
         console.error("[jobs] apply failed", error);
-        setActionErrorMessage(t("jobsTab.errors.applyError"));
+        // Extract specific error message from ConvexError if available
+        const convexError = error?.data?.data;
+        if (convexError?.code === "MAX_APPLICATIONS_REACHED") {
+          setActionErrorMessage(t("jobsTab.errors.maxApplicationsReached"));
+        } else if (convexError?.code === "JOB_NOT_OPEN") {
+          setActionErrorMessage(t("jobsTab.errors.jobNotOpen"));
+        } else if (convexError?.code === "BOOKING_CONFLICT") {
+          setActionErrorMessage(t("jobsTab.errors.bookingConflict"));
+        } else if (convexError?.code === "APPLICATION_DEADLINE_PASSED") {
+          setActionErrorMessage(t("jobsTab.errors.applicationDeadlinePassed"));
+        } else {
+          setActionErrorMessage(t("jobsTab.errors.applyError"));
+        }
       } finally {
         setApplyingJobId(null);
       }
@@ -419,6 +452,34 @@ export function InstructorFeed() {
     [publicProfileHandlers],
   );
 
+  const onCompleteLesson = useCallback(
+    async (lesson: InstructorCurrentLesson) => {
+      setActionErrorMessage(null);
+      if (isCompletingLesson) {
+        return;
+      }
+      const result = await submitLessonCompletion(lesson.jobId);
+      if (!result) {
+        setActionErrorMessage(t("jobsTab.errors.failedToMarkLessonDone"));
+      }
+    },
+    [isCompletingLesson, submitLessonCompletion, t],
+  );
+
+  const onCheckInLesson = useCallback(
+    async (lesson: InstructorCurrentLesson) => {
+      setActionErrorMessage(null);
+      if (isCheckingIn) {
+        return;
+      }
+      const result = await submitCheckIn(lesson.jobId);
+      if (!result) {
+        setActionErrorMessage(t("calendarTab.card.checkInErrorTitle"));
+      }
+    },
+    [isCheckingIn, submitCheckIn, t],
+  );
+
   useTabSceneDescriptor({
     tabId: "jobs",
     insetTone: "sheet",
@@ -427,7 +488,10 @@ export function InstructorFeed() {
 
   const isLoading =
     currentUser === undefined ||
-    (currentUser?.role === "instructor" && availableJobs === undefined);
+    (currentUser?.role === "instructor" &&
+      (availableJobs === undefined ||
+        myApplications === undefined ||
+        currentLessons === undefined));
 
   const { animatedStyle } = useContentReveal(isLoading);
 
@@ -494,6 +558,16 @@ export function InstructorFeed() {
                     onDismiss={() => setActionErrorMessage(null)}
                   />
                 ) : null}
+                <InstructorCurrentLessonsList
+                  lessons={currentLessonsRows}
+                  locale={locale}
+                  now={liveNow}
+                  t={t}
+                  onCheckIn={onCheckInLesson}
+                  onComplete={onCompleteLesson}
+                  checkingIn={isCheckingIn}
+                  isSubmitting={isCompletingLesson}
+                />
                 {jobs.length === 0 ? (
                   <View
                     style={{

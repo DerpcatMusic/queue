@@ -28,9 +28,11 @@ import {
   BOOST_CUSTOM_STEP,
   BOOST_PRESET_VALUES,
   BOOST_TRIGGER_MINUTES_OPTIONS,
+  DEFAULT_PAYMENT_TIMING,
   EXPIRY_OVERRIDE_PRESETS,
   formatDateWithWeekday,
   formatTime,
+  PAYMENT_TIMING_OPTIONS,
   sanitizeDecimalInput,
 } from "@/lib/jobs-utils";
 import { toSportLabelI18n } from "@/lib/sport-i18n";
@@ -282,6 +284,67 @@ export function PayParticipantsSection({ draft, setDraft }: PayParticipantsSecti
           placeholder="12"
         />
       </View>
+    </View>
+  );
+}
+
+type PaymentTimingSectionProps = {
+  draft: StudioDraft;
+  setDraft: React.Dispatch<React.SetStateAction<StudioDraft>>;
+};
+
+export function PaymentTimingSection({ draft, setDraft }: PaymentTimingSectionProps) {
+  const { color: palette } = useTheme();
+
+  const timingLabels: Record<(typeof PAYMENT_TIMING_OPTIONS)[number], string> = {
+    before_lesson: "Before lesson",
+    after_start: "After lesson starts",
+    after_end: "After lesson ends",
+    net_terms: "Net terms",
+  };
+
+  return (
+    <View style={{ gap: BrandSpacing.md }}>
+      <ThemedText type="defaultSemiBold" style={{ color: palette.text }}>
+        Payment timing
+      </ThemedText>
+      <ThemedText type="micro" style={{ color: palette.textMuted }}>
+        Choose when the studio should settle the instructor for this lesson.
+      </ThemedText>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BrandSpacing.sm }}>
+        {PAYMENT_TIMING_OPTIONS.map((timing) => (
+          <ChoicePill
+            key={timing}
+            label={timingLabels[timing]}
+            selected={draft.paymentTiming === timing}
+            compact
+            backgroundColor={palette.surfaceMuted}
+            selectedBackgroundColor={palette.primary}
+            labelColor={palette.text}
+            selectedLabelColor={palette.onPrimary}
+            onPress={() =>
+              setDraft((current) => ({
+                ...current,
+                paymentTiming: timing,
+              }))
+            }
+          />
+        ))}
+      </View>
+      {draft.paymentTiming !== DEFAULT_PAYMENT_TIMING ? (
+        <KitTextField
+          label="Grace days"
+          value={String(draft.paymentGraceDays)}
+          onChangeText={(value) =>
+            setDraft((current) => ({
+              ...current,
+              paymentGraceDays: Number.parseInt(value, 10) || 3,
+            }))
+          }
+          keyboardType="number-pad"
+          placeholder="3"
+        />
+      ) : null}
     </View>
   );
 }

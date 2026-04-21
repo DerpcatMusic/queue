@@ -215,7 +215,6 @@ const fr = {
       "pending": "En attente",
       "instructor": "Instructeur",
       "studio": "Atelier",
-      "admin": "Administrateur",
       "unknown": "Inconnu"
     },
     "navigation": {
@@ -387,11 +386,11 @@ const fr = {
         "certificatesDescription": "Les certificats approuvés restent publics par émetteur et par titre."
       },
       "identity": {
-        "title": "Identité à rayures",
-        "approved": "L'intégration de l'identité Stripe est terminée et votre identité est active.",
-        "required": "Terminez l'intégration de l'identité Stripe pour débloquer les actions de travail de l'instructeur.",
+        "title": "Identité",
+        "approved": "Identité vérifiée.",
+        "required": "Vérifiez votre identité pour débloquer les actions de l'instructeur.",
         "unverified": "Non vérifié",
-        "cardTitle": "Vérification d'identité Stripe",
+        "cardTitle": "Vérifier l'identité",
         "cardBody": "Intégration des documents et de l'identité pour l'accès et les paiements des instructeurs.",
         "cardHint": "Nécessite une pièce d’identité gouvernementale et un accès à la caméra."
       },
@@ -428,7 +427,7 @@ const fr = {
         "replaceInsurance": "Remplacer l'assurance",
         "uploadCertificate": "Télécharger le certificat",
         "chooseSports": "Choisissez le sport",
-        "startIdentity": "Vérifier avec Stripe",
+        "startIdentity": "Vérifier",
         "refreshIdentity": "Actualiser l'identité",
         "usePhoto": "Utiliser une photo",
         "useFile": "Utiliser un fichier ou un PDF"
@@ -908,6 +907,7 @@ const fr = {
       "releaseModeScheduled": "Sortie programmée",
       "receiptReady": "Confirmation de paiement prête",
       "receiptPending": "Le reçu sera généré après confirmation du paiement",
+      "downloadReceipt": "Télécharger le reçu",
       "openReceipt": "Ouvrir le reçu",
       "openHostedReceipt": "Ouvrir le reçu hébergé",
       "savedMethods": "Modes de paiement enregistrés",

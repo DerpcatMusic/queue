@@ -60,17 +60,17 @@ export function InstructorPaymentsSheet({ visible, onClose }: InstructorPayments
   const currentUser = useQuery(api.users.getCurrent.getCurrentUser);
   const isInstructor = currentUser?.role === "instructor";
   const connectedAccount = useQuery(
-    api.payments.core.getMyInstructorConnectedAccountV2,
+    api.payments.core.getMyInstructorConnectedAccount,
     isInstructor ? {} : "skip",
   );
   const refreshStripeAccount = useAction(
-    api.payments.actions.refreshMyInstructorStripeConnectedAccountV2,
+    api.payments.actions.refreshMyInstructorStripeConnectedAccount,
   );
   const createStripeEmbeddedSession = useAction(
-    api.payments.actions.createMyInstructorStripeEmbeddedSessionV2,
+    api.payments.actions.createMyInstructorStripeEmbeddedSession,
   );
   const createStripeHostedAccountLink = useAction(
-    api.payments.actions.createMyInstructorStripeAccountLinkV2,
+    api.payments.actions.createMyInstructorStripeAccountLink,
   );
 
   const [connectBusy, setConnectBusy] = useState(false);

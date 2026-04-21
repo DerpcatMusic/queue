@@ -1,6 +1,6 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import * as AuthSession from "expo-auth-session";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,6 +13,7 @@ import {
   ProfileSubpageScrollView,
   useProfileSubpageSheet,
 } from "@/components/profile/profile-subpage-sheet";
+import { SettingsUnavailableScreen } from "@/components/profile/settings-unavailable-screen";
 import { ThemedText } from "@/components/themed-text";
 import { ActionButton } from "@/components/ui/action-button";
 import { KitList, KitListItem, KitSwitch } from "@/components/ui/kit";
@@ -40,7 +41,8 @@ const GOOGLE_DISCOVERY: AuthSession.DiscoveryDocument = {
   revocationEndpoint: "https://oauth2.googleapis.com/revoke",
 };
 
-const calendarApi = (api as unknown as { calendar: { googleCalendar: Record<string, unknown> } }).calendar.googleCalendar as {
+const calendarApi = (api as unknown as { calendar: { googleCalendar: Record<string, unknown> } })
+  .calendar.googleCalendar as {
   getMyGoogleCalendarStatus: unknown;
   disconnectGoogleCalendar: unknown;
   connectGoogleCalendarWithCode: unknown;
@@ -153,11 +155,20 @@ export default function StudioCalendarSettingsScreen() {
     }
   }, [seeded, studioSettings]);
 
-  if (studioSettings === undefined) {
+  if (currentUser === undefined) {
     return <LoadingScreen label={t("profile.settings.loading")} />;
   }
+  if (currentUser === null) {
+    return <Redirect href="/sign-in" />;
+  }
+  if (currentUser.role !== "studio") {
+    return <Redirect href="/" />;
+  }
   if (studioSettings === null) {
-    return <LoadingScreen label={t("profile.settings.unavailable")} />;
+    return <SettingsUnavailableScreen label={t("profile.settings.unavailable")} />;
+  }
+  if (studioSettings === undefined || googleStatus === undefined) {
+    return <LoadingScreen label={t("profile.settings.loading")} />;
   }
 
   const hasGoogleConnection = Boolean(googleStatus?.connected);
